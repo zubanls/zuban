@@ -34,6 +34,7 @@ use crate::{
         Function, GeneratorType, Instance, Module, TypeOrClass,
     },
     utils::debug_indent,
+    TypeCheckerFlags,
 };
 
 pub struct Inference<'db: 'file, 'file, 'i_s> {
@@ -3226,6 +3227,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     pub(crate) fn add_issue(&self, node_index: NodeIndex, issue: IssueKind) {
         let from = NodeRef::new(self.file, node_index);
         from.add_issue(self.i_s, issue);
+    }
+
+    pub fn flags(&self) -> &TypeCheckerFlags {
+        self.file.flags(self.i_s.db)
     }
 }
 

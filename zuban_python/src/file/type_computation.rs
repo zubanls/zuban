@@ -917,7 +917,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 ..
             } => {
                 let cls = Class::with_undefined_generics(class_node_ref);
-                if db.project.flags.disallow_any_generics
+                if self.inference.flags().disallow_any_generics
                     && cls.type_vars(self.inference.i_s).contains_non_default()
                 {
                     self.add_issue(
@@ -968,7 +968,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 return match &td.generics {
                     TypedDictGenerics::None => Some(Type::TypedDict(td)),
                     TypedDictGenerics::NotDefinedYet(_) => {
-                        if db.project.flags.disallow_any_generics {
+                        if self.inference.flags().disallow_any_generics {
                             self.add_issue(
                                 node_ref,
                                 IssueKind::MissingTypeParameters {
@@ -992,7 +992,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 self.add_module_issue(node_ref, &n.qualified_name());
             }
             TypeContent::TypeAlias(a) => {
-                if db.project.flags.disallow_any_generics && a.type_vars.contains_non_default() {
+                if self.inference.flags().disallow_any_generics
+                    && a.type_vars.contains_non_default()
+                {
                     self.add_issue(
                         node_ref,
                         IssueKind::MissingTypeParameters {
@@ -1005,7 +1007,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             }
             TypeContent::SpecialType(m) => match m {
                 SpecialType::Callable => {
-                    if db.project.flags.disallow_any_generics {
+                    if self.inference.flags().disallow_any_generics {
                         self.add_issue(
                             node_ref,
                             IssueKind::MissingTypeParameters {
@@ -1025,7 +1027,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 SpecialType::Any => return Some(Type::Any(AnyCause::Explicit)),
                 SpecialType::Never => return Some(Type::Never(NeverCause::Explicit)),
                 SpecialType::Type => {
-                    if db.project.flags.disallow_any_generics {
+                    if self.inference.flags().disallow_any_generics {
                         self.add_issue(
                             node_ref,
                             IssueKind::MissingTypeParameters {
@@ -1036,7 +1038,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     return Some(db.python_state.type_of_any.clone());
                 }
                 SpecialType::Tuple => {
-                    if db.project.flags.disallow_any_generics {
+                    if self.inference.flags().disallow_any_generics {
                         self.add_issue(
                             node_ref,
                             IssueKind::MissingTypeParameters {

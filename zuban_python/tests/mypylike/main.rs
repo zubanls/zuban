@@ -145,6 +145,7 @@ impl<'name, 'code> TestCase<'name, 'code> {
                 warn_unreachable: steps.flags.contains(&"--warn-unreachable"),
                 warn_redundant_casts: steps.flags.contains(&"--warn-redundant-casts"),
                 warn_return_any: steps.flags.contains(&"--warn-return-any"),
+                warn_no_return: !steps.flags.contains(&"--no-warn-no-return"),
                 local_partial_types: steps.flags.contains(&"--local-partial-types"),
                 no_implicit_reexport: steps.flags.contains(&"--no-implicit-reexport"),
                 disable_bytearray_promotion: steps.flags.contains(&"--disable-bytearray-promotion"),

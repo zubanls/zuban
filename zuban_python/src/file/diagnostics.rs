@@ -762,17 +762,19 @@ impl<'db> Inference<'db, '_, '_> {
                     );
                     maybe_add_async()
                 } else if !ret_type.is_simple_super_type_of(i_s, &Type::None).bool() {
-                    self.add_issue(
-                        f.name().index(),
-                        IssueKind::MissingReturnStatement {
-                            code: if has_trivial_body {
-                                "empty-body"
-                            } else {
-                                "return"
+                    if self.flags().warn_no_return {
+                        self.add_issue(
+                            f.name().index(),
+                            IssueKind::MissingReturnStatement {
+                                code: if has_trivial_body {
+                                    "empty-body"
+                                } else {
+                                    "return"
+                                },
                             },
-                        },
-                    );
-                    maybe_add_async()
+                        );
+                        maybe_add_async()
+                    }
                 }
             }
         })

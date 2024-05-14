@@ -359,7 +359,7 @@ impl<'db> PythonFile {
         }
     }
 
-    fn flags<'x>(&'x self, db: &'x Database) -> &TypeCheckerFlags {
+    pub fn flags<'x>(&'x self, db: &'x Database) -> &TypeCheckerFlags {
         self.flags.as_ref().unwrap_or(&db.project.flags)
     }
 }
@@ -466,6 +466,7 @@ fn set_flag<'x>(
         "ignore_errors" => (), // TODO
         "strict_equality" => flags.strict_equality = true,
         "strict_optional" => flags.strict_optional = true,
+        "no_warn_no_return" => flags.warn_no_return = false,
         _ => {
             return Err(format!(
                 "Unrecognized option: {} = {}",
