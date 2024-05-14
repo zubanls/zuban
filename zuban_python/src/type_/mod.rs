@@ -6,6 +6,7 @@ mod enum_;
 mod matching;
 mod named_tuple;
 mod operations;
+mod overlaps;
 mod recursive_type;
 mod replace;
 mod tuple;
