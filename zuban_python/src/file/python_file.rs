@@ -18,13 +18,14 @@ use crate::{
         Specific,
     },
     debug,
-    diagnostics::{Diagnostic, DiagnosticConfig, Diagnostics, Issue},
+    diagnostics::{Diagnostic, DiagnosticConfig, Diagnostics, Issue, IssueKind},
     inference_state::InferenceState,
     inferred::Inferred,
     lines::NewlineIndices,
     matching::ResultContext,
     name::{Names, TreeName, TreePosition},
     node_ref::NodeRef,
+    type_::StringSlice,
     utils::{InsertOnlyVec, SymbolTable},
     workspaces::FileEntry,
 };
@@ -73,6 +74,7 @@ pub struct PythonFile {
     sub_files: RefCell<HashMap<CodeIndex, FileIndex>>,
     pub(crate) super_file: Option<FileIndex>,
     pub is_stub: bool,
+    pub ignore_type_errors: bool,
 
     newline_indices: NewlineIndices,
 }
@@ -216,7 +218,21 @@ impl fmt::Debug for PythonFile {
 
 impl<'db> PythonFile {
     pub fn new(code: Box<str>, is_stub: bool) -> Self {
+        let issues = Diagnostics::default();
         let tree = Tree::parse(code);
+        let ignore_type_errors = tree
+            .has_type_ignore_at_start()
+            .unwrap_or_else(|ignore_code| {
+                /*
+                issues.add_if_not_ignored(
+                    Issue::from_string_slice(StringSlice::new(FileIndex(0), 1, 1), IssueKind::TypeIgnoreWithErrorCodeNotSupportedForModules {
+                        ignore_code: ignore_code.into(),
+                    }),
+                    None,
+                ).ok();
+                */
+                true
+            });
         let length = tree.length();
         Self {
             tree,
@@ -230,6 +246,7 @@ impl<'db> PythonFile {
             sub_files: Default::default(),
             super_file: None,
             is_stub,
+            ignore_type_errors,
         }
     }
 
@@ -305,7 +322,7 @@ impl<'db> PythonFile {
     }
 
     pub fn add_issue(&self, i_s: &InferenceState, issue: Issue) {
-        if !i_s.should_add_issue() {
+        if !i_s.should_add_issue() || self.ignore_type_errors {
             return;
         }
         let maybe_ignored = self

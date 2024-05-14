@@ -1561,12 +1561,6 @@ testNoTypeCheckDecoratorSemanticError
 # Mypy inline config https://mypy.readthedocs.io/en/stable/inline_config.html
 testOptionalIterator
 testNoneVsProtocol
-# type ignore whole module
-testIgnoreWholeModule2
-testIgnoreWholeModule3
-testIgnoreWholeModule4
-testDontIgnoreWholeModule2
-testDontIgnoreWholeModule3
 # type ignore leads to "Revealed type is "A?""
 testSerializeIgnoredInvalidType
 # bad type: ignore

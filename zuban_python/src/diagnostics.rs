@@ -15,6 +15,7 @@ pub(crate) enum IssueKind {
     InvalidSyntax,
     InvalidSyntaxInTypeComment { type_comment: Box<str> },
     InvalidSyntaxInTypeAnnotation,
+    TypeIgnoreWithErrorCodeNotSupportedForModules { ignore_code: Box<str> },
 
     AttributeError { object: Box<str>, name: Box<str> },
     UnionAttributeError { object: Box<str>, union: Box<str>, name: Box<str> },
@@ -611,6 +612,10 @@ impl<'db> Diagnostic<'db> {
                 r#"Syntax error in type comment "{type_comment}""#
             ),
             InvalidSyntaxInTypeAnnotation => "Syntax error in type annotation".to_string(),
+            TypeIgnoreWithErrorCodeNotSupportedForModules { ignore_code } => format!(
+                "type ignore with error code is not supported for modules; \
+                 use `# mypy: disable-error-code=\"{ignore_code}\"`"
+            ),
 
             AttributeError{object, name} => format!("{object} has no attribute {name:?}"),
             UnionAttributeError{object, union, name} => format!("Item {object} of \"{union}\" has no attribute {name:?}"),

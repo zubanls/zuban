@@ -78,7 +78,11 @@ impl Tree {
         } else {
             &code[start as usize..]
         };
-        for line in relevant_region.split(['\n', '\r']) {
+        Self::type_ignore_comment_for_region(relevant_region)
+    }
+
+    fn type_ignore_comment_for_region(region: &str) -> Option<Option<&str>> {
+        for line in region.split(['\n', '\r']) {
             for comment in line.split('#').skip(1) {
                 let rest = comment.trim_start_matches(' ');
                 if let Some(ignore) = rest.strip_prefix("type:") {
@@ -93,6 +97,15 @@ impl Tree {
             }
         }
         None
+    }
+
+    pub fn has_type_ignore_at_start(&self) -> Result<bool, &str> {
+        let start = self.0.root_node().nth_child(0).start();
+        match Self::type_ignore_comment_for_region(&self.code()[0..start as usize]) {
+            Some(Some(ignore)) => Err(ignore),
+            Some(None) => Ok(true),
+            None => Ok(false),
+        }
     }
 
     pub fn debug_info(&self, index: NodeIndex) -> String {
