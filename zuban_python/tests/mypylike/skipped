@@ -1561,6 +1561,22 @@ testNoTypeCheckDecoratorSemanticError
 # Mypy inline config https://mypy.readthedocs.io/en/stable/inline_config.html
 testOptionalIterator
 testNoneVsProtocol
+testInlineSimple1
+testInlineSimple2
+testInlineSimple3
+testInlineSimple4
+testInlineList
+testInlineInvert1
+testInlineInvert2
+testInlineIncremental1
+testInlineIncremental2
+testInlineIncremental3
+testInlineStrict
+testInlineErrorCodes
+testInlineErrorCodesOverrideConfig
+testIgnoreErrorsSimple
+testIgnoreErrorsWithUnsafeSuperCall_no_empty
+testInlineErrorCodesMultipleCodes
 # type ignore leads to "Revealed type is "A?""
 testSerializeIgnoredInvalidType
 # bad type: ignore

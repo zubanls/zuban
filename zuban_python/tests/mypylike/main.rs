@@ -9,7 +9,7 @@ use std::{
 use regex::{Captures, Regex, Replacer};
 use zuban_python::{DiagnosticConfig, Project, ProjectOptions, PythonVersion, TypeCheckerFlags};
 
-const SKIP_MYPY_TEST_FILES: [&str; 30] = [
+const SKIP_MYPY_TEST_FILES: [&str; 29] = [
     // Narrowing tests
     "check-redefine.test",
     "check-callable.test",
@@ -22,7 +22,6 @@ const SKIP_MYPY_TEST_FILES: [&str; 30] = [
     // Mypy flag checking
     "cmdline.test",
     "cmdline.pyproject.test",
-    "check-inline-config.test",
     // Maybe some day
     "check-reports.test",
     "reports.test",

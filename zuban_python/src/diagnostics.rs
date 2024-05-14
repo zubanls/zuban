@@ -16,6 +16,7 @@ pub(crate) enum IssueKind {
     InvalidSyntaxInTypeComment { type_comment: Box<str> },
     InvalidSyntaxInTypeAnnotation,
     TypeIgnoreWithErrorCodeNotSupportedForModules { ignore_code: Box<str> },
+    DirectiveSyntaxError(Box<str>),
 
     AttributeError { object: Box<str>, name: Box<str> },
     UnionAttributeError { object: Box<str>, union: Box<str>, name: Box<str> },
@@ -376,7 +377,8 @@ impl IssueKind {
             InvalidSyntax
             | InvalidSyntaxInTypeComment { .. }
             | InvalidSyntaxInTypeAnnotation
-            | TypeIgnoreWithErrorCodeNotSupportedForModules { .. } => "syntax",
+            | TypeIgnoreWithErrorCodeNotSupportedForModules { .. }
+            | DirectiveSyntaxError(..) => "syntax",
             AttributeError { .. }
             | ImportAttributeError { .. }
             | ModuleAttributeError { .. }
@@ -624,6 +626,7 @@ impl<'db> Diagnostic<'db> {
                      use `# mypy: disable-error-code=\"{ignore_code}\"`"
                 )
             }
+            DirectiveSyntaxError(s) => s.to_string(),
 
             AttributeError{object, name} => format!("{object} has no attribute {name:?}"),
             UnionAttributeError{object, union, name} => format!("Item {object} of \"{union}\" has no attribute {name:?}"),

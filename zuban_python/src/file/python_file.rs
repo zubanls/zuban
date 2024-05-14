@@ -238,7 +238,11 @@ impl<'db> PythonFile {
                     .ok();
                 true
             });
-        let flags = directives_to_flags(project_options, tree.mypy_inline_config_directives());
+        let flags = directives_to_flags(
+            project_options,
+            &issues,
+            tree.mypy_inline_config_directives(),
+        );
         let length = tree.length();
         Self {
             tree,
@@ -361,8 +365,115 @@ impl<'db> PythonFile {
 }
 
 fn directives_to_flags<'x>(
-    base_flags: &PythonProject,
+    project: &PythonProject,
+    issues: &Diagnostics,
     directives: impl Iterator<Item = (CodeIndex, &'x str)>,
 ) -> Option<TypeCheckerFlags> {
-    None
+    // Directives like `# mypy: disallow-any-generics`
+    let mut flags = None;
+    for (start_position, rest) in directives {
+        let splitter = DirectiveSplitter {
+            issues,
+            rest,
+            start_position,
+        };
+        for directive in splitter {
+            let (name, value) = if let Some((first, second)) = directive.split_once('=') {
+                (first.trim(), Some(second.trim()))
+            } else {
+                (directive, None)
+            };
+            let name = name.replace('-', "_");
+            if flags.is_none() {
+                flags = Some(project.flags.clone());
+            }
+            if let Err(err) = set_flag(&name, value, flags.as_mut().unwrap()) {
+                issues
+                    .add_if_not_ignored(
+                        Issue {
+                            kind: IssueKind::DirectiveSyntaxError(err),
+                            start_position,
+                            end_position: start_position + rest.len() as CodeIndex,
+                        },
+                        None,
+                    )
+                    .ok();
+            }
+        }
+    }
+    flags
+}
+
+struct DirectiveSplitter<'db, 'code> {
+    issues: &'db Diagnostics,
+    rest: &'code str,
+    start_position: CodeIndex,
+}
+
+impl<'code> Iterator for DirectiveSplitter<'_, 'code> {
+    type Item = &'code str;
+    fn next(&mut self) -> Option<Self::Item> {
+        let mut opened_quotation_mark = false;
+        for (i, n) in self.rest.chars().enumerate() {
+            if opened_quotation_mark {
+                if n == '"' {
+                    opened_quotation_mark = false;
+                }
+            } else {
+                if n == '"' {
+                    opened_quotation_mark = true;
+                } else if n == ',' {
+                    self.start_position += i as CodeIndex;
+                    let result = &self.rest[..i];
+                    self.rest = &self.rest[i + 1..];
+                    return Some(result.trim());
+                }
+            }
+        }
+        if opened_quotation_mark {
+            self.issues
+                .add_if_not_ignored(
+                    Issue {
+                        kind: IssueKind::DirectiveSyntaxError(
+                            "Unterminated quote in configuration comment".into(),
+                        ),
+                        start_position: self.start_position,
+                        end_position: self.start_position + self.rest.len() as CodeIndex,
+                    },
+                    None,
+                )
+                .ok();
+        } else {
+            let rest = self.rest.trim();
+            if !rest.is_empty() {
+                self.rest = "";
+                return Some(rest);
+            }
+        }
+        self.rest = "";
+        None
+    }
+}
+
+fn set_flag<'x>(
+    name: &str,
+    value: Option<&str>,
+    flags: &mut TypeCheckerFlags,
+) -> Result<(), Box<str>> {
+    match name {
+        "disallow_any_generics" => flags.disallow_any_generics = true,
+        "always_true" => (),   // TODO
+        "ignore_errors" => (), // TODO
+        "strict_equality" => flags.strict_equality = true,
+        "strict_optional" => flags.strict_optional = true,
+        _ => {
+            return Err(format!(
+                "Unrecognized option: {} = {}",
+                name,
+                value.unwrap_or("True")
+            )
+            .into())
+        }
+    }
+    Ok(())
 }
