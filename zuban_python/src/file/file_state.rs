@@ -75,6 +75,7 @@ pub trait FileStateLoader {
 
     fn load_parsed(
         &self,
+        project: &PythonProject,
         file_entry: Rc<FileEntry>,
         path: Box<str>,
         code: Box<str>,
@@ -102,6 +103,7 @@ impl FileStateLoader for PythonFileLoader {
 
     fn load_parsed(
         &self,
+        project: &PythonProject,
         file_entry: Rc<FileEntry>,
         path: Box<str>,
         code: Box<str>,
@@ -110,7 +112,7 @@ impl FileStateLoader for PythonFileLoader {
         Box::pin(LanguageFileState::new_parsed(
             file_entry,
             path,
-            PythonFile::new(code, is_stub),
+            PythonFile::new(project, code, is_stub),
         ))
     }
 }

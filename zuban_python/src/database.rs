@@ -891,7 +891,7 @@ impl Database {
         // A loader should be available for all files in the workspace.
         let loader = self.loader(&path).unwrap();
         let file_index = self.add_file_state(if let Some(code) = self.vfs.read_file(&path) {
-            loader.load_parsed(file_entry, path, code.into())
+            loader.load_parsed(&self.project, file_entry, path, code.into())
         } else {
             //loader.inexistent_file_state(path)
             todo!()
@@ -910,7 +910,12 @@ impl Database {
         let ensured = self.workspaces.ensure_file(&*self.vfs, &path);
         // TODO there could be no loader...
         let loader = self.loader(&path).unwrap();
-        let file_state = loader.load_parsed(ensured.file_entry.clone(), path.clone(), code);
+        let file_state = loader.load_parsed(
+            &self.project,
+            ensured.file_entry.clone(),
+            path.clone(),
+            code,
+        );
         let file_index = if let Some(file_index) = in_mem_file {
             self.update_file_state(file_index, file_state);
             file_index
@@ -1014,8 +1019,12 @@ impl Database {
         let DirectoryEntry::File(file_entry) = &entry else {
             unreachable!()
         };
-        let file_index =
-            self.add_file_state(loader.load_parsed(file_entry.clone(), p.into(), code.into()));
+        let file_index = self.add_file_state(loader.load_parsed(
+            &self.project,
+            file_entry.clone(),
+            p.into(),
+            code.into(),
+        ));
         self.loaded_python_file(file_index)
     }
 

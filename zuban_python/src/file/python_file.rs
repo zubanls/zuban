@@ -27,6 +27,7 @@ use crate::{
     node_ref::NodeRef,
     utils::{InsertOnlyVec, SymbolTable},
     workspaces::FileEntry,
+    TypeCheckerFlags,
 };
 
 #[derive(Default, Debug)]
@@ -74,6 +75,7 @@ pub struct PythonFile {
     pub(crate) super_file: Option<FileIndex>,
     pub is_stub: bool,
     pub ignore_type_errors: bool,
+    flags: Option<TypeCheckerFlags>,
 
     newline_indices: NewlineIndices,
 }
@@ -216,7 +218,7 @@ impl fmt::Debug for PythonFile {
 }
 
 impl<'db> PythonFile {
-    pub fn new(code: Box<str>, is_stub: bool) -> Self {
+    pub fn new(project_options: &PythonProject, code: Box<str>, is_stub: bool) -> Self {
         let issues = Diagnostics::default();
         let tree = Tree::parse(code);
         let ignore_type_errors = tree
@@ -236,6 +238,7 @@ impl<'db> PythonFile {
                     .ok();
                 true
             });
+        let flags = directives_to_flags(project_options, tree.mypy_inline_config_directives());
         let length = tree.length();
         Self {
             tree,
@@ -250,6 +253,7 @@ impl<'db> PythonFile {
             super_file: None,
             is_stub,
             ignore_type_errors,
+            flags,
         }
     }
 
@@ -303,7 +307,11 @@ impl<'db> PythonFile {
         code: Box<str>, // TODO this should not be a string, but probably cow
     ) -> &'db Self {
         // TODO should probably not need a newline
-        let mut file = PythonFile::new(Box::from(code.into_string() + "\n"), self.is_stub);
+        let mut file = PythonFile::new(
+            &db.project,
+            Box::from(code.into_string() + "\n"),
+            self.is_stub,
+        );
         file.super_file = Some(self.file_index());
         // TODO just saving this in the cache and forgetting about it is a bad idea
         let f = db.load_sub_file(self, file);
@@ -346,4 +354,15 @@ impl<'db> PythonFile {
             ),
         }
     }
+
+    fn flags<'x>(&'x self, db: &'x Database) -> &TypeCheckerFlags {
+        self.flags.as_ref().unwrap_or(&db.project.flags)
+    }
+}
+
+fn directives_to_flags<'x>(
+    base_flags: &PythonProject,
+    directives: impl Iterator<Item = (CodeIndex, &'x str)>,
+) -> Option<TypeCheckerFlags> {
+    None
 }

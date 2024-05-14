@@ -100,12 +100,30 @@ impl Tree {
     }
 
     pub fn has_type_ignore_at_start(&self) -> Result<bool, &str> {
-        let start = self.0.root_node().nth_child(0).start();
-        match Self::type_ignore_comment_for_region(&self.code()[0..start as usize]) {
+        match Self::type_ignore_comment_for_region(self.before_first_statement()) {
             Some(Some(ignore)) => Err(ignore),
             Some(None) => Ok(true),
             None => Ok(false),
         }
+    }
+
+    fn before_first_statement(&self) -> &str {
+        let start = self.0.root_node().nth_child(0).start();
+        &self.code()[0..start as usize]
+    }
+
+    pub fn mypy_inline_config_directives(&self) -> impl Iterator<Item = (CodeIndex, &str)> {
+        const PREFIX: &'static str = "# mypy: ";
+        let mut code_index_start = 0;
+        self.before_first_statement()
+            .split("\n")
+            .filter_map(move |line| {
+                let result = line
+                    .strip_prefix(PREFIX)
+                    .map(|rest| (code_index_start + PREFIX.len() as CodeIndex, rest));
+                code_index_start += line.len() as CodeIndex + 1;
+                result
+            })
     }
 
     pub fn debug_info(&self, index: NodeIndex) -> String {
