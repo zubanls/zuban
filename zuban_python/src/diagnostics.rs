@@ -4,7 +4,7 @@ use crate::{
     database::{Database, PythonProject},
     file::{File, GenericCounts, PythonFile, OVERLAPPING_REVERSE_TO_NORMAL_METHODS},
     name::TreePosition,
-    type_::{FunctionKind, StringSlice, TypeVarLike, Variance},
+    type_::{FunctionKind, TypeVarLike, Variance},
     utils::{join_with_commas, InsertOnlyVec},
 };
 
@@ -373,9 +373,10 @@ impl IssueKind {
         use IssueKind::*;
         Some(match &self {
             Note(_) | InvariantNote { .. } => return None,
-            InvalidSyntax | InvalidSyntaxInTypeComment { .. } | InvalidSyntaxInTypeAnnotation => {
-                "syntax"
-            }
+            InvalidSyntax
+            | InvalidSyntaxInTypeComment { .. }
+            | InvalidSyntaxInTypeAnnotation
+            | TypeIgnoreWithErrorCodeNotSupportedForModules { .. } => "syntax",
             AttributeError { .. }
             | ImportAttributeError { .. }
             | ModuleAttributeError { .. }
@@ -481,11 +482,15 @@ impl Issue {
         }
     }
 
-    pub(crate) fn from_string_slice(s: StringSlice, kind: IssueKind) -> Self {
+    pub(crate) fn from_start_stop(
+        start_position: CodeIndex,
+        end_position: CodeIndex,
+        kind: IssueKind,
+    ) -> Self {
         Self {
             kind,
-            start_position: s.start,
-            end_position: s.end,
+            start_position,
+            end_position,
         }
     }
 }
@@ -612,10 +617,13 @@ impl<'db> Diagnostic<'db> {
                 r#"Syntax error in type comment "{type_comment}""#
             ),
             InvalidSyntaxInTypeAnnotation => "Syntax error in type annotation".to_string(),
-            TypeIgnoreWithErrorCodeNotSupportedForModules { ignore_code } => format!(
-                "type ignore with error code is not supported for modules; \
-                 use `# mypy: disable-error-code=\"{ignore_code}\"`"
-            ),
+            TypeIgnoreWithErrorCodeNotSupportedForModules { ignore_code } => {
+                additional_notes.push(r#"Error code "syntax" not covered by "type: ignore" comment"#.to_string());
+                format!(
+                    "type ignore with error code is not supported for modules; \
+                     use `# mypy: disable-error-code=\"{ignore_code}\"`"
+                )
+            }
 
             AttributeError{object, name} => format!("{object} has no attribute {name:?}"),
             UnionAttributeError{object, union, name} => format!("Item {object} of \"{union}\" has no attribute {name:?}"),

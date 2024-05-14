@@ -318,7 +318,10 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> Init
                     unreachable!();
                 };
                 if name.file_index == file.file_index() {
-                    file.add_issue(i_s, Issue::from_string_slice(*name, issue_type));
+                    file.add_issue(
+                        i_s,
+                        Issue::from_start_stop(name.start, name.end, issue_type),
+                    );
                 } else {
                     // The class arguments are always set, because we are working with params from
                     // a different file, which means inheritance.

@@ -1600,6 +1600,8 @@ testErrorCodeSyntaxErrorIgnoreNote
 testMultiLineMethodOverridingWithIncompatibleTypesIgnorableAtDefinition
 # mypy: ignore-errors=True
 testAsyncIteratorWithIgnoredErrorsAndYieldFrom
+# Error code "literal-required" not covered by "type: ignore" comment
+testNoteAboutChangedTypedDictErrorCode
 
 # "mypy: "tmp/typing.py" shadows library module "typing""
 testShadowTypingModule
@@ -1706,11 +1708,6 @@ testStrictEqualityAndEnumWithCustomEq
 testCustomEqCheckStrictEquality
 testStrictEqualityWithALiteral
 testColumnNonOverlappingEqualityCheck
-
-# "type ignore with error code is not supported for modules; use `# mypy: disable-error-code="whatever"`"
-testNoteAboutChangedTypedDictErrorCode
-testRecommendErrorCode
-testRecommendErrorCode2
 
 # Never not rewritten to Any for "Need type annotation for "X""
 testNewAnalyzerLessErrorsNeedAnnotationNested

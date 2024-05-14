@@ -25,7 +25,6 @@ use crate::{
     matching::ResultContext,
     name::{Names, TreeName, TreePosition},
     node_ref::NodeRef,
-    type_::StringSlice,
     utils::{InsertOnlyVec, SymbolTable},
     workspaces::FileEntry,
 };
@@ -223,14 +222,18 @@ impl<'db> PythonFile {
         let ignore_type_errors = tree
             .has_type_ignore_at_start()
             .unwrap_or_else(|ignore_code| {
-                /*
-                issues.add_if_not_ignored(
-                    Issue::from_string_slice(StringSlice::new(FileIndex(0), 1, 1), IssueKind::TypeIgnoreWithErrorCodeNotSupportedForModules {
-                        ignore_code: ignore_code.into(),
-                    }),
-                    None,
-                ).ok();
-                */
+                issues
+                    .add_if_not_ignored(
+                        Issue::from_start_stop(
+                            1,
+                            1,
+                            IssueKind::TypeIgnoreWithErrorCodeNotSupportedForModules {
+                                ignore_code: ignore_code.into(),
+                            },
+                        ),
+                        None,
+                    )
+                    .ok();
                 true
             });
         let length = tree.length();
@@ -241,7 +244,7 @@ impl<'db> PythonFile {
             points: Points::new(length),
             complex_points: Default::default(),
             star_imports: Default::default(),
-            issues: Default::default(),
+            issues,
             newline_indices: NewlineIndices::new(),
             sub_files: Default::default(),
             super_file: None,
