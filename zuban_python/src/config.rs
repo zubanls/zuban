@@ -1,4 +1,12 @@
+use std::borrow::Cow;
+
 use crate::TypeCheckerFlags;
+
+const OPTIONS_STARTING_WITH_ALLOW: [&'static str; 3] = [
+    "allow_untyped_globals",
+    "allow_redefinition",
+    "allow_empty_bodies",
+];
 
 pub fn set_flag<'x>(
     flags: &mut TypeCheckerFlags,
@@ -6,8 +14,8 @@ pub fn set_flag<'x>(
     value: Option<&str>,
 ) -> Result<(), Box<str>> {
     let expect_value = || value.ok_or_else(|| Box::from("TODO string"));
+    let (invert, option_name) = maybe_invert(name);
     match name {
-        "disallow_any_generics" => flags.disallow_any_generics = true,
         "always_true" => flags
             .always_true_symbols
             .extend(split_commas(expect_value()?).map(|s| s.into())),
@@ -16,17 +24,23 @@ pub fn set_flag<'x>(
             .extend(split_commas(expect_value()?).map(|s| s.into())),
         "ignore_errors" => (), // TODO
         _ => {
-            let after_no_prefix = name.strip_prefix("no_");
-            return set_bool_init_flags(
-                flags,
-                name,
-                after_no_prefix.unwrap_or(name),
-                value,
-                after_no_prefix.is_some(),
-            );
+            return set_bool_init_flags(flags, name, &option_name, value, invert);
         }
     }
     Ok(())
+}
+
+fn maybe_invert(name: &str) -> (bool, Cow<str>) {
+    if let Some(after_no_prefix) = name.strip_prefix("no_") {
+        return (true, Cow::Borrowed(after_no_prefix));
+    } else if name.starts_with("allow") && !OPTIONS_STARTING_WITH_ALLOW.contains(&name) {
+        return (true, Cow::Owned(format!("dis{name}")));
+    } else if let Some(after_dis_prefix) = name.strip_prefix("dis") {
+        if OPTIONS_STARTING_WITH_ALLOW.contains(&after_dis_prefix) {
+            return (true, Cow::Borrowed(after_dis_prefix));
+        }
+    }
+    (false, Cow::Borrowed(name))
 }
 
 fn set_bool_init_flags(
@@ -40,6 +54,8 @@ fn set_bool_init_flags(
         "strict_equality" => flags.strict_equality = to_bool(value, invert)?,
         "strict_optional" => flags.strict_optional = to_bool(value, invert)?,
         "warn_no_return" => flags.warn_no_return = to_bool(value, invert)?,
+        "disallow_any_generics" => flags.disallow_any_generics = to_bool(value, invert)?,
+        "allow_untyped_globals" => flags.allow_untyped_globals = to_bool(value, invert)?,
         _ => {
             return Err(format!(
                 "Unrecognized option: {} = {}",

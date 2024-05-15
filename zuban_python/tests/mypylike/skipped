@@ -1561,7 +1561,6 @@ testNoTypeCheckDecoratorSemanticError
 # Mypy inline config https://mypy.readthedocs.io/en/stable/inline_config.html
 testOptionalIterator
 testNoneVsProtocol
-testInlineInvert1
 testInlineInvert2
 testInlineIncremental1
 testInlineIncremental2
