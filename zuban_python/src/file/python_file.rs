@@ -378,12 +378,7 @@ fn directives_to_flags<'x>(
             rest,
             start_position,
         };
-        for directive in splitter {
-            let (name, value) = if let Some((first, second)) = directive.split_once('=') {
-                (first.trim(), Some(second.trim()))
-            } else {
-                (directive, None)
-            };
+        for (name, value) in splitter {
             let name = name.replace('-', "_");
             if flags.is_none() {
                 flags = Some(project.flags.clone());
@@ -412,9 +407,31 @@ struct DirectiveSplitter<'db, 'code> {
 }
 
 impl<'code> Iterator for DirectiveSplitter<'_, 'code> {
-    type Item = &'code str;
+    type Item = (&'code str, Option<&'code str>);
     fn next(&mut self) -> Option<Self::Item> {
+        let split_name_value = |directive: &'code str, had_quotation_marks: bool| {
+            let (name, value) = if let Some((first, second)) = directive.split_once('=') {
+                let mut second = second.trim();
+                if had_quotation_marks {
+                    if second.chars().next().is_some_and(|first| first == '"')
+                        && second.chars().last().is_some_and(|last| last == '"')
+                    {
+                        second = &second[1..second.len() - 1];
+                    } else {
+                        todo!("weird quotes")
+                    }
+                }
+                (first.trim(), Some(second))
+            } else {
+                (directive.trim(), None)
+            };
+            if name.contains('"') {
+                todo!("weird quotes")
+            }
+            Some((name, value))
+        };
         let mut opened_quotation_mark = false;
+        let mut had_quotation_marks = true;
         for (i, n) in self.rest.chars().enumerate() {
             if opened_quotation_mark {
                 if n == '"' {
@@ -423,11 +440,12 @@ impl<'code> Iterator for DirectiveSplitter<'_, 'code> {
             } else {
                 if n == '"' {
                     opened_quotation_mark = true;
+                    had_quotation_marks = true;
                 } else if n == ',' {
                     self.start_position += i as CodeIndex;
                     let result = &self.rest[..i];
                     self.rest = &self.rest[i + 1..];
-                    return Some(result.trim());
+                    return split_name_value(result, had_quotation_marks);
                 }
             }
         }
@@ -448,7 +466,7 @@ impl<'code> Iterator for DirectiveSplitter<'_, 'code> {
             let rest = self.rest.trim();
             if !rest.is_empty() {
                 self.rest = "";
-                return Some(rest);
+                return split_name_value(rest, had_quotation_marks);
             }
         }
         self.rest = "";

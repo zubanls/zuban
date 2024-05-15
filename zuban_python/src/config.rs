@@ -5,9 +5,15 @@ pub fn set_flag<'x>(
     name: &str,
     value: Option<&str>,
 ) -> Result<(), Box<str>> {
+    let expect_value = || value.ok_or_else(|| Box::from("TODO string"));
     match name {
         "disallow_any_generics" => flags.disallow_any_generics = true,
-        "always_true" => (),   // TODO
+        "always_true" => flags
+            .always_true_symbols
+            .extend(split_commas(expect_value()?).map(|s| s.into())),
+        "always_false" => flags
+            .always_false_symbols
+            .extend(split_commas(expect_value()?).map(|s| s.into())),
         "ignore_errors" => (), // TODO
         _ => {
             let after_no_prefix = name.strip_prefix("no_");
@@ -56,4 +62,12 @@ fn to_bool(value: Option<&str>, invert: bool) -> Result<bool, Box<str>> {
         None => true,
     };
     Ok(result != invert)
+}
+
+fn split_commas(s: &str) -> impl Iterator<Item = &str> {
+    let mut s = s.trim();
+    if let Some(new_s) = s.strip_suffix(',') {
+        s = new_s
+    }
+    s.split(',').map(|s| s.trim())
 }
