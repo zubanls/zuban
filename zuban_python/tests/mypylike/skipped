@@ -1559,9 +1559,6 @@ testCallingNoTypeCheckFunction2
 testNoTypeCheckDecoratorSemanticError
 
 # Mypy inline config https://mypy.readthedocs.io/en/stable/inline_config.html
-testOptionalIterator
-testNoneVsProtocol
-testInlineIncremental2
 testIgnoreErrorsSimple
 testIgnoreErrorsWithUnsafeSuperCall_no_empty
 # type ignore leads to "Revealed type is "A?""
@@ -2148,6 +2145,7 @@ testInitializationWithMultipleValues
 testNoneAndGenericTypesOverlapNoStrictOptional
 testNamedTupleAsConditionalStrictOptionalDisabled
 testPartialAttributeNoneType
+testOptionalIterator
 
 # --untyped-calls-exclude=bar.A
 testDisallowUntypedCallsAllowListFlags
@@ -2329,6 +2327,8 @@ testUnionOrSyntaxWithinRuntimeContextNotAllowed2
 testUnionOrSyntaxMissingFutureImport
 testTypeAliasNotSupportedWithNewStyleUnion
 
+# Probably won't support `# flags2: ` in tests
+testInlineIncremental2
 # Won't support ever: Mypy test case details
 testNewAnalyzerIncompleteFixture
 
