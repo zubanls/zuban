@@ -761,7 +761,10 @@ impl<'db> Inference<'db, '_, '_> {
                         IssueKind::ImplicitReturnInFunctionWithNeverReturn,
                     );
                     maybe_add_async()
-                } else if !ret_type.is_simple_super_type_of(i_s, &Type::None).bool() {
+                } else if has_trivial_body
+                    && !ret_type.is_simple_super_type_of(i_s, &Type::None).bool()
+                    || !has_trivial_body && !matches!(ret_type.as_ref(), Type::None | Type::Any(_))
+                {
                     if self.flags().warn_no_return {
                         self.add_issue(
                             f.name().index(),

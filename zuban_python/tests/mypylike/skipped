@@ -1561,7 +1561,6 @@ testNoTypeCheckDecoratorSemanticError
 # Mypy inline config https://mypy.readthedocs.io/en/stable/inline_config.html
 testOptionalIterator
 testNoneVsProtocol
-testInlineIncremental1
 testInlineIncremental2
 testIgnoreErrorsSimple
 testIgnoreErrorsWithUnsafeSuperCall_no_empty
@@ -2152,6 +2151,7 @@ testUnreachableWithStdlibContextManagersNoStrictOptional
 testInitializationWithMultipleValues
 testNoneAndGenericTypesOverlapNoStrictOptional
 testNamedTupleAsConditionalStrictOptionalDisabled
+testPartialAttributeNoneType
 
 # --untyped-calls-exclude=bar.A
 testDisallowUntypedCallsAllowListFlags
