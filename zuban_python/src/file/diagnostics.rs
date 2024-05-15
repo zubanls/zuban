@@ -761,19 +761,30 @@ impl<'db> Inference<'db, '_, '_> {
                         IssueKind::ImplicitReturnInFunctionWithNeverReturn,
                     );
                     maybe_add_async()
-                } else if has_trivial_body
-                    && !ret_type.is_simple_super_type_of(i_s, &Type::None).bool()
-                    || !has_trivial_body && !matches!(ret_type.as_ref(), Type::None | Type::Any(_))
-                {
+                } else {
+                    let is_valid = ret_type.is_simple_super_type_of(i_s, &Type::None).bool();
                     if self.flags().warn_no_return {
+                        if !is_valid
+                            || !has_trivial_body
+                                && !matches!(ret_type.as_ref(), Type::None | Type::Any(_))
+                        {
+                            self.add_issue(
+                                f.name().index(),
+                                IssueKind::MissingReturnStatement {
+                                    code: if has_trivial_body {
+                                        "empty-body"
+                                    } else {
+                                        "return"
+                                    },
+                                },
+                            );
+                            maybe_add_async()
+                        }
+                    } else if !is_valid {
                         self.add_issue(
                             f.name().index(),
-                            IssueKind::MissingReturnStatement {
-                                code: if has_trivial_body {
-                                    "empty-body"
-                                } else {
-                                    "return"
-                                },
+                            IssueKind::IncompatibleImplicitReturn {
+                                expected: ret_type.format_short(i_s.db),
                             },
                         );
                         maybe_add_async()

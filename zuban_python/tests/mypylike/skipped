@@ -1914,10 +1914,6 @@ testFollowImportsSkip
 testSubclassingAnySilentImports
 testSubclassingAnySilentImports2
 
-# --no-warn-no-return
-testNoWarnNoReturn
-testNoWarnNoReturnNoStrictOptional
-
 # ------------------- start of low-prio/won't do tests -----------------------
 
 # "Name "C" is used before definition"

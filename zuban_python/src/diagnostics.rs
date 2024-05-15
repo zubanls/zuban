@@ -35,6 +35,7 @@ pub(crate) enum IssueKind {
     IncompatibleDefaultArgument{ argument_name: Box<str>, got: Box<str>, expected: Box<str> },
     InvalidCastTarget,
     IncompatibleReturn { got: Box<str>, expected: Box<str> },
+    IncompatibleImplicitReturn { expected: Box<str> },
     ReturnValueExpected,
     NoReturnValueExpected,
     IncompatibleTypes { cause: &'static str, got: Box<str>, expected: Box<str> },
@@ -393,9 +394,10 @@ impl IssueKind {
             ArgumentTypeIssue(_) | SuperArgument1MustBeTypeObject => "arg-type",
             ArgumentIssue { .. } | TooManyArguments { .. } | TooFewArguments { .. } => "call-arg",
             InvalidType(_) => "valid-type",
-            IncompatibleReturn { .. } | ReturnValueExpected | NoReturnValueExpected => {
-                "return-value"
-            }
+            IncompatibleReturn { .. }
+            | IncompatibleImplicitReturn { .. }
+            | ReturnValueExpected
+            | NoReturnValueExpected => "return-value",
             MissingReturnStatement { code } => code,
             IncompatibleDefaultArgument { .. }
             | IncompatibleAssignment { .. }
@@ -647,6 +649,9 @@ impl<'db> Diagnostic<'db> {
             IncompatibleReturn{got, expected} => {
                 format!("Incompatible return value type (got {got:?}, expected {expected:?})")
             }
+            IncompatibleImplicitReturn { expected } => format!(
+                r#"Incompatible return value type (implicitly returns "None", expected "{expected}")"#
+            ),
             ReturnValueExpected => "Return value expected".to_string(),
             NoReturnValueExpected => "No return value expected".to_string(),
             IncompatibleTypes{cause, got, expected} => {
