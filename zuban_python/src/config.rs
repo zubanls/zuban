@@ -13,9 +13,15 @@ pub fn set_flag<'x>(
     name: &str,
     value: Option<&str>,
 ) -> Result<(), Box<str>> {
-    let expect_value = || value.ok_or_else(|| Box::from("TODO string"));
     let (invert, option_name) = maybe_invert(name);
-    match name {
+    let expect_value = || {
+        if invert {
+            Err(format!("Can not invert non-boolean key {option_name}").into())
+        } else {
+            value.ok_or_else(|| Box::from("TODO string"))
+        }
+    };
+    match option_name.as_ref() {
         "always_true" => flags
             .always_true_symbols
             .extend(split_commas(expect_value()?).map(|s| s.into())),
