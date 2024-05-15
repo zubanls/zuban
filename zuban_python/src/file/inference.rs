@@ -1040,7 +1040,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             save(name_def.index(), value);
         } else if value.maybe_saved_specific(i_s.db) == Some(Specific::None)
             && assign_kind == AssignKind::Normal
-            && i_s.db.project.flags.local_partial_types
+            && self.flags().local_partial_types
             && !i_s.current_class().is_some_and(|c| {
                 c.lookup_without_descriptors_and_custom_add_issue_ignore_self(
                     self.i_s,
@@ -1527,7 +1527,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         let first_ref = NodeRef::new(self.file, first);
         let mut line = first_ref.line();
         let i_s = self.i_s;
-        if i_s.db.project.flags.mypy_compatible {
+        if self.flags().mypy_compatible {
             // Mypy uses the line of the first decorator as the definition line. This feels
             // weird, because the name is what matters, so in our implementation we use a
             // different line.
@@ -1609,7 +1609,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         // twice, when for example a class F(List[X]) is created, where X = F and X is defined
         // before F, this might happen.
         let inferred = inferred.maybe_save_redirect(self.i_s, self.file, expr.index(), true);
-        if self.i_s.db.project.flags.disallow_any_expr && !self.file.is_stub {
+        if self.flags().disallow_any_expr && !self.file.is_stub {
             let t = inferred.as_cow_type(self.i_s);
             if t.has_any(self.i_s) {
                 self.add_issue(
@@ -1763,7 +1763,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         right_inf: &Inferred,
     ) -> Inferred {
         let needs_strict_equality_error = |from| {
-            if !self.i_s.db.project.flags.strict_equality {
+            if !self.flags().strict_equality {
                 return false;
             }
             // Now check --strict-equality
@@ -1806,7 +1806,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             }
             ComparisonContent::In(_, op, _) | ComparisonContent::NotIn(_, op, _) => {
                 let from = NodeRef::new(self.file, op.index());
-                if self.i_s.db.project.flags.strict_equality {
+                if self.flags().strict_equality {
                     // Now check --strict-equality
 
                     let overlaps_bytes_or_bytearray = |t: &Type| {
@@ -1849,8 +1849,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     }
 
     fn is_strict_equality_comparison(&self, left_t: &Type, right_t: &Type) -> bool {
-        let db = self.i_s.db;
-        debug_assert!(db.project.flags.strict_equality);
+        debug_assert!(self.flags().strict_equality);
         // In mypy this is implemented as "def dangerous_comparison"
         if matches!(left_t, Type::None)
             || matches!(right_t, Type::None)
@@ -1859,6 +1858,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         {
             return true;
         }
+        let db = self.i_s.db;
         let left_t = left_t.remove_none(db);
         let right_t = right_t.remove_none(db);
         if let Some((c1, c2)) = left_t.maybe_class(db).zip(right_t.maybe_class(db)) {

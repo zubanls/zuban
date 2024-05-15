@@ -192,7 +192,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         i_s: &InferenceState<'db, '_>,
         args: &dyn Args<'db>,
     ) -> Inferred {
-        if i_s.db.project.flags.mypy_compatible {
+        if self.node_ref.file.flags(&i_s.db.project).mypy_compatible {
             return Inferred::new_any(AnyCause::Unannotated);
         }
         if self.is_generator() {
@@ -395,7 +395,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         i_s: &InferenceState<'db, '_>,
     ) -> (TypeVarLikes, Option<TypeGuardInfo>, Option<ParamAnnotation>) {
         let func_node = self.node();
-        let implicit_optional = i_s.db.project.flags.implicit_optional;
+        let implicit_optional = self.node_ref.file.flags(&i_s.db.project).implicit_optional;
         let mut inference = self.node_ref.file.inference(i_s);
         let in_result_type = Cell::new(false);
         let mut unbound_type_vars = vec![];
@@ -800,7 +800,12 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 InferredDecorator::Inferred(dec_inf) => {
                     // TODO check if it's an function without a return annotation and
                     // abort in that case.
-                    if i_s.db.project.flags.disallow_untyped_decorators {
+                    if self
+                        .node_ref
+                        .file
+                        .flags(&i_s.db.project)
+                        .disallow_untyped_decorators
+                    {
                         let is_typed = |inf: &Inferred, skip_first_param| {
                             inf.as_cow_type(i_s)
                                 .maybe_callable(i_s)
@@ -836,7 +841,12 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             self.avoid_invalid_typeguard_signatures(i_s, &mut callable);
             *inferred = Inferred::from_type(Type::Callable(Rc::new(callable)));
         };
-        if i_s.db.project.flags.disallow_any_decorated {
+        if self
+            .node_ref
+            .file
+            .flags(&i_s.db.project)
+            .disallow_any_decorated
+        {
             let t = inferred.as_cow_type(i_s);
             if t.has_any(i_s) {
                 let got = (!matches!(t.as_ref(), Type::Any(_))).then(|| t.format_short(i_s.db));
@@ -1479,7 +1489,11 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 result_context,
             )
         } else {
-            if i_s.db.project.flags.disallow_untyped_calls && self.is_dynamic() {
+            if args
+                .as_node_ref()
+                .is_some_and(|n| n.file.flags(&i_s.db.project).disallow_untyped_calls)
+                && self.is_dynamic()
+            {
                 args.add_issue(
                     i_s,
                     IssueKind::CallToUntypedFunction {
@@ -1774,7 +1788,7 @@ impl<'x> Param<'x> for FunctionParam<'x> {
     fn kind(&self, db: &Database) -> ParamKind {
         let mut t = self.param.kind();
         if t == ParamKind::PositionalOrKeyword
-            && db.project.flags.mypy_compatible
+            && self.file.flags(&db.project).mypy_compatible
             && is_private(self.param.name_definition().as_code())
         {
             // Mypy treats __ params as positional only

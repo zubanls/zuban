@@ -178,7 +178,7 @@ pub fn dotted_path_from_dir(dir: &Directory) -> String {
 }
 
 pub fn is_reexport_if_check_needed(db: &Database, file: &PythonFile, link: PointLink) -> bool {
-    let check_reexport = file.is_stub || db.project.flags.no_implicit_reexport;
+    let check_reexport = file.is_stub || file.flags(&db.project).no_implicit_reexport;
     check_reexport && is_reexport(db, link)
 }
 

@@ -92,7 +92,10 @@ impl<'db> TypingCast {
             );
         }
         let result = result.unwrap_or_else(Inferred::new_any_from_error);
-        if i_s.db.project.flags.warn_redundant_casts {
+        if args
+            .as_node_ref()
+            .is_some_and(|n| n.file.flags(&i_s.db.project).warn_redundant_casts)
+        {
             if let Some(actual) = actual {
                 let t_in = actual.as_cow_type(i_s);
                 let t_out = result.as_type(i_s);

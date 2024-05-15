@@ -628,7 +628,11 @@ impl<'db: 'a, 'a> Class<'a> {
                                 }
                             }
                             CalculatedBaseClass::Unknown => {
-                                if i_s.db.project.flags.disallow_subclassing_any {
+                                if node_ref
+                                    .file
+                                    .flags(&i_s.db.project)
+                                    .disallow_subclassing_any
+                                {
                                     NodeRef::new(self.node_ref.file, kwarg.index()).add_issue(
                                         i_s,
                                         IssueKind::DisallowedAnyMetaclass {
@@ -813,7 +817,12 @@ impl<'db: 'a, 'a> Class<'a> {
                             }
                             CalculatedBaseClass::Generic => (),
                             CalculatedBaseClass::Unknown => {
-                                if i_s.db.project.flags.disallow_subclassing_any {
+                                if self
+                                    .node_ref
+                                    .file
+                                    .flags(&i_s.db.project)
+                                    .disallow_subclassing_any
+                                {
                                     NodeRef::new(self.node_ref.file, n.index()).add_issue(
                                         i_s,
                                         IssueKind::DisallowedAnySubclass {

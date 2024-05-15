@@ -156,10 +156,11 @@ impl File for PythonFile {
             // annotation strings, etc.
             self.inference(&i_s).calculate_diagnostics();
         }
+        let flags = self.flags(&db.project);
         let mut vec: Vec<_> = unsafe {
             self.issues
                 .iter()
-                .filter(|i| config.should_be_reported(&db.project, &i.kind))
+                .filter(|i| config.should_be_reported(flags, &i.kind))
                 .map(|i| Diagnostic::new(db, self, i))
                 .collect()
         };

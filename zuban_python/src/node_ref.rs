@@ -260,7 +260,8 @@ impl<'file> NodeRef<'file> {
         };
         let point = self.point();
         let mut partial_flags = point.partial_flags();
-        if !partial_flags.reported_error && !i_s.db.project.flags.allow_untyped_globals {
+        if !partial_flags.reported_error && !self.file.flags(&i_s.db.project).allow_untyped_globals
+        {
             partial_flags.reported_error = true;
             self.set_point(point.set_partial_flags(partial_flags));
             self.add_issue(

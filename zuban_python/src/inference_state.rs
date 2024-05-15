@@ -6,6 +6,7 @@ use crate::{
     file::TypeVarCallbackReturn,
     type_::{CallableContent, TypeVarLike},
     type_helpers::{Class, Function},
+    TypeCheckerFlags,
 };
 
 #[derive(Debug, Copy, Clone)]
@@ -205,5 +206,10 @@ impl<'db, 'a> InferenceState<'db, 'a> {
             }
             _ => true,
         }
+    }
+
+    pub fn flags(&self) -> &TypeCheckerFlags {
+        // TODO this is not implemented properly with context, yet.
+        &self.db.project.flags
     }
 }

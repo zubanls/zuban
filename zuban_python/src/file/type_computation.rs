@@ -1338,7 +1338,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 let node_ref_a = NodeRef::new(self.inference.file, a.index());
                 let node_ref_b = NodeRef::new(self.inference.file, b.index());
                 if self.errors_already_calculated {
-                    if self.inference.i_s.db.project.flags.disallow_any_explicit {
+                    if self.inference.flags().disallow_any_explicit {
                         if matches!(first, TypeContent::SpecialType(SpecialType::Any)) {
                             node_ref_a
                                 .add_issue(self.inference.i_s, IssueKind::DisallowedAnyExplicit)
@@ -3112,7 +3112,8 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             TypeNameLookup::Unknown(cause) => TypeContent::Unknown(cause),
             TypeNameLookup::SpecialType(special) => {
                 let i_s = self.inference.i_s;
-                if matches!(special, SpecialType::Any) && i_s.db.project.flags.disallow_any_explicit
+                if matches!(special, SpecialType::Any)
+                    && self.inference.flags().disallow_any_explicit
                 {
                     self.add_issue(
                         NodeRef::new(self.inference.file, name.index()),
@@ -3642,7 +3643,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                 Some(Specific::TypingAny) => {
                     // This is a bit of a weird special case that was necessary to pass the test
                     // testDisallowAnyExplicitAlias
-                    if self.i_s.db.project.flags.disallow_any_explicit {
+                    if self.flags().disallow_any_explicit {
                         NodeRef::new(file, name.index())
                             .add_issue(self.i_s, IssueKind::DisallowedAnyExplicit)
                     }

@@ -270,7 +270,7 @@ impl<'db> Inference<'db, '_, '_> {
     }
 
     fn add_unreachable_error(&self, start_position: CodeIndex, end_position: CodeIndex) {
-        if self.i_s.db.project.flags.warn_unreachable {
+        if self.flags().warn_unreachable {
             FLOW_ANALYSIS.with(|fa| {
                 fa.report_unreachable_if_not_reported_before(|| {
                     self.file.add_issue(
@@ -306,7 +306,7 @@ impl<'db> Inference<'db, '_, '_> {
                 self.add_unreachable_error(stmt.start(), stmt.end());
                 break;
                 /*
-                if self.i_s.db.project.flags.mypy_compatible {
+                if self.flags().mypy_compatible {
                     // Mypy does not analyze frames that are not reachable. However for normal interaction
                     // in an IDE you typically want to analyze those parts of code, even if they are
                     // unreachable.
@@ -731,7 +731,7 @@ impl<'db> Inference<'db, '_, '_> {
                 && !is_overload_member
                 && !self.file.is_stub
                 && function.return_annotation().is_some()
-                && !(i_s.db.project.flags.allow_empty_bodies && function.has_trivial_body(i_s))
+                && !(self.flags().allow_empty_bodies && function.has_trivial_body(i_s))
                 && !function.is_abstract()
                 && !self.in_type_checking_only_block()
             {
@@ -869,7 +869,7 @@ impl<'db> Inference<'db, '_, '_> {
                 }
             }
         }
-        let flags = &i_s.db.project.flags;
+        let flags = self.flags();
         let mut had_missing_annotation = false;
         for param in params
             .iter()
@@ -1151,7 +1151,7 @@ impl<'db> Inference<'db, '_, '_> {
                 if let Some(star_exprs) = return_stmt.star_expressions() {
                     let inf =
                         self.infer_star_expressions(star_exprs, &mut ResultContext::Known(&t));
-                    if i_s.db.project.flags.warn_return_any
+                    if self.flags().warn_return_any
                         && inf.as_cow_type(i_s).is_any()
                         && t.as_ref() != &i_s.db.python_state.object_type()
                         && !t.is_any_or_any_in_union(i_s.db)
@@ -1695,10 +1695,9 @@ fn find_and_check_override(
             LookupKind::Normal,
         );
         if !has_override_decorator
-            && i_s
-                .db
-                .project
-                .flags
+            && from
+                .file
+                .flags(&i_s.db.project)
                 .enabled_error_codes
                 .iter()
                 .any(|c| c == "explicit-override")

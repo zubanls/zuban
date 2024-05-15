@@ -1,11 +1,12 @@
 use parsa_python_cst::{CodeIndex, NodeIndex, Tree};
 
 use crate::{
-    database::{Database, PythonProject},
+    database::Database,
     file::{File, GenericCounts, PythonFile, OVERLAPPING_REVERSE_TO_NORMAL_METHODS},
     name::TreePosition,
     type_::{FunctionKind, TypeVarLike, Variance},
     utils::{join_with_commas, InsertOnlyVec},
+    TypeCheckerFlags,
 };
 
 #[derive(Debug)]
@@ -1555,12 +1556,12 @@ pub struct DiagnosticConfig {
 }
 
 impl DiagnosticConfig {
-    pub(crate) fn should_be_reported(&self, project: &PythonProject, type_: &IssueKind) -> bool {
-        if !project.flags.disabled_error_codes.is_empty() {
+    pub(crate) fn should_be_reported(&self, flags: &TypeCheckerFlags, type_: &IssueKind) -> bool {
+        if !flags.disabled_error_codes.is_empty() {
             let should_not_report = |code| {
                 if let Some(code) = code {
-                    if project.flags.disabled_error_codes.iter().any(|c| c == code)
-                        && !project.flags.enabled_error_codes.iter().any(|c| c == code)
+                    if flags.disabled_error_codes.iter().any(|c| c == code)
+                        && !flags.enabled_error_codes.iter().any(|c| c == code)
                     {
                         return true;
                     }

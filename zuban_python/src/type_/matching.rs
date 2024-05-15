@@ -365,7 +365,7 @@ impl Type {
                     with_any: !matcher.is_matching_reverse(),
                 };
             }
-            Type::None if !i_s.db.project.flags.strict_optional => return Match::new_true(),
+            Type::None if !i_s.flags().strict_optional => return Match::new_true(),
             Type::TypeVar(t2) => {
                 if let Some(match_) =
                     matcher.match_or_add_type_var_reverse_if_responsible(i_s, t2, self, variance)
