@@ -269,7 +269,7 @@ impl<'db> PythonFile {
     ) {
         self.symbol_table
             .set(NameBinder::with_global_binder(
-                &project.flags,
+                &self.flags(project),
                 &self.tree,
                 &self.points,
                 &self.complex_points,
