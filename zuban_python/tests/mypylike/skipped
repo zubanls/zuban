@@ -1563,7 +1563,6 @@ testOptionalIterator
 testNoneVsProtocol
 testInlineIncremental1
 testInlineIncremental2
-testInlineStrict
 testInlineErrorCodes
 testInlineErrorCodesOverrideConfig
 testIgnoreErrorsSimple

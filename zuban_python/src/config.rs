@@ -29,6 +29,14 @@ pub fn set_flag<'x>(
             .always_false_symbols
             .extend(split_commas(expect_value()?).map(|s| s.into())),
         "ignore_errors" => (), // TODO
+        "strict" => {
+            return Err(concat!(
+                r#"Setting "strict" not supported in inline configuration: "#,
+                r#"specify it in a configuration file instead, or set individual "#,
+                r#"inline flags (see "mypy -h" for the list of flags enabled in strict mode)"#
+            )
+            .into())
+        }
         _ => {
             return set_bool_init_flags(flags, name, &option_name, value, invert);
         }
