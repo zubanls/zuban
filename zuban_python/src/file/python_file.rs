@@ -431,7 +431,7 @@ impl<'code> Iterator for DirectiveSplitter<'_, 'code> {
             Some((name, value))
         };
         let mut opened_quotation_mark = false;
-        let mut had_quotation_marks = true;
+        let mut had_quotation_marks = false;
         for (i, n) in self.rest.chars().enumerate() {
             if opened_quotation_mark {
                 if n == '"' {
