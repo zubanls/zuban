@@ -5,13 +5,14 @@ use parsa_python_cst::*;
 use crate::{
     database::{
         ClassStorage, ComplexPoint, FileIndex, Locality, ParentScope, Point, PointKind, Points,
-        PythonProject, Specific,
+        Specific,
     },
     debug,
     diagnostics::{Diagnostics, Issue, IssueKind},
     file::{python_file::StarImport, ComplexValues},
     type_::StringSlice,
     utils::SymbolTable,
+    TypeCheckerFlags,
 };
 
 #[derive(PartialEq, Debug)]
@@ -42,8 +43,8 @@ struct UnresolvedClass<'db> {
     class_symbol_table: SymbolTable,
 }
 
-pub(crate) struct NameBinder<'project, 'db> {
-    project: &'project PythonProject,
+pub(crate) struct NameBinder<'flags, 'db> {
+    flags: &'flags TypeCheckerFlags,
     tree: &'db Tree,
     kind: NameBinderKind,
     scope_node: NodeIndex,
@@ -60,12 +61,12 @@ pub(crate) struct NameBinder<'project, 'db> {
     file_index: FileIndex,
     is_stub: bool,
     references_need_flow_analysis: bool,
-    parent: Option<*mut NameBinder<'project, 'db>>,
+    parent: Option<*mut NameBinder<'flags, 'db>>,
 }
 
-impl<'project, 'db> NameBinder<'project, 'db> {
+impl<'flags, 'db> NameBinder<'flags, 'db> {
     fn new(
-        project: &'project PythonProject,
+        flags: &'flags TypeCheckerFlags,
         tree: &'db Tree,
         kind: NameBinderKind,
         scope_node: NodeIndex,
@@ -78,7 +79,7 @@ impl<'project, 'db> NameBinder<'project, 'db> {
         parent: Option<*mut Self>,
     ) -> Self {
         Self {
-            project,
+            flags,
             tree,
             kind,
             scope_node,
@@ -100,7 +101,7 @@ impl<'project, 'db> NameBinder<'project, 'db> {
     }
 
     pub(crate) fn with_global_binder(
-        project: &'project PythonProject,
+        flags: &'flags TypeCheckerFlags,
         tree: &'db Tree,
         points: &'db Points,
         complex_points: &'db ComplexValues,
@@ -108,10 +109,10 @@ impl<'project, 'db> NameBinder<'project, 'db> {
         star_imports: &'db RefCell<Vec<StarImport>>,
         file_index: FileIndex,
         is_stub: bool,
-        func: impl FnOnce(&mut NameBinder<'project, 'db>),
+        func: impl FnOnce(&mut NameBinder<'flags, 'db>),
     ) -> SymbolTable {
         let mut binder = NameBinder::new(
-            project,
+            flags,
             tree,
             NameBinderKind::Global,
             0,
@@ -170,10 +171,10 @@ impl<'project, 'db> NameBinder<'project, 'db> {
         &mut self,
         kind: NameBinderKind,
         scope_node: NodeIndex,
-        func: impl FnOnce(&mut NameBinder<'project, 'db>),
+        func: impl FnOnce(&mut NameBinder<'flags, 'db>),
     ) -> SymbolTable {
         let mut name_binder = NameBinder::new(
-            self.project,
+            self.flags,
             self.tree,
             kind,
             scope_node,
@@ -509,7 +510,7 @@ impl<'project, 'db> NameBinder<'project, 'db> {
                     if let Some(error_expr) = error_expr {
                         self.index_non_block_node_full(&error_expr, ordered, false);
                     }
-                    if is_expr_reachable_for_name_binder(self.project, assert_expr)
+                    if is_expr_reachable_for_name_binder(self.flags, assert_expr)
                         == Truthiness::False
                     {
                         self.points.set(
@@ -626,7 +627,7 @@ impl<'project, 'db> NameBinder<'project, 'db> {
                             Point::new_specific(specific, Locality::File),
                         )
                     };
-                    match is_expr_reachable_for_name_binder(self.project, expr.expression()) {
+                    match is_expr_reachable_for_name_binder(self.flags, expr.expression()) {
                         Truthiness::True {
                             in_type_checking_block,
                         } => {
@@ -1253,7 +1254,7 @@ impl Truthiness {
 }
 
 fn check_comparison_reachability(
-    project: &PythonProject,
+    flags: &TypeCheckerFlags,
     comp: ComparisonContent,
     check: ExpressionPart,
     other: ExpressionPart,
@@ -1268,7 +1269,7 @@ fn check_comparison_reachability(
             if let ExpressionPart::Atom(a) = other {
                 if let Some(s) = a.unpack().maybe_single_string_literal() {
                     if let Some(to_compare) = s.as_python_string().as_str() {
-                        let mut result = to_compare == project.flags.computed_platform();
+                        let mut result = to_compare == flags.computed_platform();
                         if matches!(comp, ComparisonContent::NotEquals(..)) {
                             result = !result;
                         }
@@ -1285,12 +1286,12 @@ fn check_comparison_reachability(
         }
 
         if maybe_sys_name(primary, "version_info") {
-            return python_version_matches_tuple(project, comp, other, 0);
+            return python_version_matches_tuple(flags, comp, other, 0);
         }
         if let PrimaryContent::GetItem(slice_type) = primary.second() {
             if let PrimaryOrAtom::Primary(first) = primary.first() {
                 if maybe_sys_name(first, "version_info") {
-                    return python_version_matches_slice(project, comp, slice_type, other);
+                    return python_version_matches_slice(flags, comp, slice_type, other);
                 }
             }
         }
@@ -1299,7 +1300,7 @@ fn check_comparison_reachability(
 }
 
 fn python_version_matches_tuple(
-    project: &PythonProject,
+    flags: &TypeCheckerFlags,
     comp: ComparisonContent,
     other: ExpressionPart,
     from: usize,
@@ -1311,10 +1312,7 @@ fn python_version_matches_tuple(
         // (major, minor, bugfix) is currently not supported
         return Truthiness::Unknown;
     }
-    for (current, tup_entry) in [
-        project.flags.python_version.major,
-        project.flags.python_version.minor,
-    ][from..]
+    for (current, tup_entry) in [flags.python_version.major, flags.python_version.minor][from..]
         .iter()
         .zip(tup.iter())
     {
@@ -1347,7 +1345,7 @@ fn python_version_matches_tuple(
 }
 
 fn python_version_matches_slice(
-    project: &PythonProject,
+    flags: &TypeCheckerFlags,
     comp: ComparisonContent,
     slice_type: SliceType,
     other: ExpressionPart,
@@ -1359,7 +1357,7 @@ fn python_version_matches_slice(
                 let from = first.map(|expr| expr.maybe_simple_int());
                 if from != Some(None) {
                     return python_version_matches_tuple(
-                        project,
+                        flags,
                         comp,
                         other,
                         from.flatten().unwrap_or(0),
@@ -1371,9 +1369,10 @@ fn python_version_matches_slice(
             if let Some(AtomContent::Int(nth)) = ne.expression().maybe_unpacked_atom() {
                 if let Some(AtomContent::Int(wanted)) = other.maybe_unpacked_atom() {
                     if nth.parse() == Some(0) {
-                        if let Some(result) = wanted.parse_as_usize().and_then(|x| {
-                            comp.compare_with_operand(project.flags.python_version.major, x)
-                        }) {
+                        if let Some(result) = wanted
+                            .parse_as_usize()
+                            .and_then(|x| comp.compare_with_operand(flags.python_version.major, x))
+                        {
                             return result.into();
                         }
                     }
@@ -1394,7 +1393,7 @@ fn maybe_sys_name(primary: Primary, name: &str) -> bool {
 }
 
 fn maybe_sys_platform_startswith(
-    project: &PythonProject,
+    flags: &TypeCheckerFlags,
     before: Primary,
     arguments: ArgumentsDetails,
 ) -> Truthiness {
@@ -1404,7 +1403,7 @@ fn maybe_sys_platform_startswith(
                 if let Some(named_expr) = arguments.maybe_single_named_expr() {
                     if let Some(s) = named_expr.maybe_single_string_literal() {
                         if let Some(to_compare) = s.as_python_string().as_str() {
-                            if project.flags.computed_platform().starts_with(to_compare) {
+                            if flags.computed_platform().starts_with(to_compare) {
                                 return Truthiness::True {
                                     in_type_checking_block: false,
                                 };
@@ -1420,15 +1419,15 @@ fn maybe_sys_platform_startswith(
     Truthiness::Unknown
 }
 
-fn is_expr_reachable_for_name_binder(project: &PythonProject, expr: Expression) -> Truthiness {
+fn is_expr_reachable_for_name_binder(flags: &TypeCheckerFlags, expr: Expression) -> Truthiness {
     match expr.unpack() {
-        ExpressionContent::ExpressionPart(p) => is_expr_part_reachable_for_name_binder(project, p),
+        ExpressionContent::ExpressionPart(p) => is_expr_part_reachable_for_name_binder(flags, p),
         _ => Truthiness::Unknown,
     }
 }
 
 pub fn is_expr_part_reachable_for_name_binder(
-    project: &PythonProject,
+    flags: &TypeCheckerFlags,
     expr_part: ExpressionPart,
 ) -> Truthiness {
     match expr_part {
@@ -1439,16 +1438,16 @@ pub fn is_expr_part_reachable_for_name_binder(
                     return Truthiness::True {
                         in_type_checking_block: true,
                     };
-                } else if "PY3" == n || project.flags.always_true_symbols.iter().any(|s| s == n) {
+                } else if "PY3" == n || flags.always_true_symbols.iter().any(|s| s == n) {
                     return Truthiness::True {
                         in_type_checking_block: false,
                     };
-                } else if n == "PY2" || project.flags.always_false_symbols.iter().any(|s| s == n) {
+                } else if n == "PY2" || flags.always_false_symbols.iter().any(|s| s == n) {
                     return Truthiness::False;
                 }
             }
             AtomContent::NamedExpression(named_expr) => {
-                return is_expr_reachable_for_name_binder(project, named_expr.expression())
+                return is_expr_reachable_for_name_binder(flags, named_expr.expression())
             }
             _ => (),
         },
@@ -1467,13 +1466,13 @@ pub fn is_expr_part_reachable_for_name_binder(
             }
             PrimaryContent::Execution(execution) => {
                 if let PrimaryOrAtom::Primary(prim) = primary.first() {
-                    return maybe_sys_platform_startswith(project, prim, execution);
+                    return maybe_sys_platform_startswith(flags, prim, execution);
                 }
             }
             _ => (),
         },
         ExpressionPart::Inversion(inv) => {
-            return is_expr_part_reachable_for_name_binder(project, inv.expression()).invert()
+            return is_expr_part_reachable_for_name_binder(flags, inv.expression()).invert()
         }
         ExpressionPart::Comparisons(comps) => {
             let mut iterator = comps.iter();
@@ -1481,22 +1480,22 @@ pub fn is_expr_part_reachable_for_name_binder(
             if iterator.next().is_none() {
                 let left = first.left();
                 let right = first.right();
-                let result = check_comparison_reachability(project, first, left, right);
+                let result = check_comparison_reachability(flags, first, left, right);
                 if result == Truthiness::Unknown {
-                    return check_comparison_reachability(project, first, right, left);
+                    return check_comparison_reachability(flags, first, right, left);
                 }
                 return result;
             }
         }
         ExpressionPart::Conjunction(conjunction) => {
             let (left, right) = conjunction.unpack();
-            return is_expr_part_reachable_for_name_binder(project, left)
-                & is_expr_part_reachable_for_name_binder(project, right);
+            return is_expr_part_reachable_for_name_binder(flags, left)
+                & is_expr_part_reachable_for_name_binder(flags, right);
         }
         ExpressionPart::Disjunction(disjunction) => {
             let (left, right) = disjunction.unpack();
-            return is_expr_part_reachable_for_name_binder(project, left)
-                .or_else(|| is_expr_part_reachable_for_name_binder(project, right));
+            return is_expr_part_reachable_for_name_binder(flags, left)
+                .or_else(|| is_expr_part_reachable_for_name_binder(flags, right));
         }
         _ => (),
     }

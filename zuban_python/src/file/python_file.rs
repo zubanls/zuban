@@ -269,7 +269,7 @@ impl<'db> PythonFile {
     ) {
         self.symbol_table
             .set(NameBinder::with_global_binder(
-                project,
+                &project.flags,
                 &self.tree,
                 &self.points,
                 &self.complex_points,
@@ -360,8 +360,8 @@ impl<'db> PythonFile {
         }
     }
 
-    pub fn flags<'x>(&'x self, db: &'x Database) -> &TypeCheckerFlags {
-        self.flags.as_ref().unwrap_or(&db.project.flags)
+    pub fn flags<'x>(&'x self, project: &'x PythonProject) -> &TypeCheckerFlags {
+        self.flags.as_ref().unwrap_or(&project.flags)
     }
 }
 
