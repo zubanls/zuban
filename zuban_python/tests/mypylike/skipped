@@ -1563,11 +1563,8 @@ testOptionalIterator
 testNoneVsProtocol
 testInlineIncremental1
 testInlineIncremental2
-testInlineErrorCodes
-testInlineErrorCodesOverrideConfig
 testIgnoreErrorsSimple
 testIgnoreErrorsWithUnsafeSuperCall_no_empty
-testInlineErrorCodesMultipleCodes
 # type ignore leads to "Revealed type is "A?""
 testSerializeIgnoredInvalidType
 # bad type: ignore
@@ -1599,6 +1596,8 @@ testErrorCodeMissingWhenRequired
 testErrorCodeMissingDoesntTrampleUnusedIgnoresWarning
 testErrorCodeMissingWholeFileIgnores
 testErrorCodeMissingMultiple
+testInlineErrorCodes
+testInlineErrorCodesMultipleCodes
 # type: ignore blocking errors cannot be ignored: ""yield" outside function"
 testCannotIgnoreBlockingError
 # type: ignore on forward reference
@@ -1683,6 +1682,7 @@ testPerModuleErrorCodes
 testPerModuleErrorCodesOverride
 testNoCrashFollowImportsForStubs
 testModuleGetattrInit10
+testInlineErrorCodesOverrideConfig
 # strict optional with config file
 testNewAnalyzerTypeArgBoundCheckWithStrictOptional
 testNewAnalyzerTypeArgBoundCheckWithStrictOptionalPyProjectTOML

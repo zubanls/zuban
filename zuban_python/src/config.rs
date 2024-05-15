@@ -28,6 +28,12 @@ pub fn set_flag<'x>(
         "always_false" => flags
             .always_false_symbols
             .extend(split_commas(expect_value()?).map(|s| s.into())),
+        "enable_error_code" => flags
+            .enabled_error_codes
+            .extend(split_commas(expect_value()?).map(|s| s.into())),
+        "disable_error_code" => flags
+            .disabled_error_codes
+            .extend(split_commas(expect_value()?).map(|s| s.into())),
         "ignore_errors" => (), // TODO
         "strict" => {
             return Err(concat!(
