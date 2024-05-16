@@ -1774,7 +1774,6 @@ testContinueOutsideLoop
 #testOverloadWithNonGenericDescriptorLookalike
 #testOverloadWithGenericDescriptor
 #testUnpackIterableClassWithOverloadedIter2
-testErrorCodeUnsafeOverloadError
 
 # ------------------- priority? tests -----------------------
 

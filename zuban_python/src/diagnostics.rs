@@ -426,6 +426,7 @@ impl IssueKind {
             NewTypeMustBeSubclassable { .. } => "valid-newtype",
             OverloadImplementationNeeded { .. } => "no-overload-impl",
             OverloadMismatch { .. } => "call-overload",
+            OverloadIncompatibleReturnTypes { .. } => "overload-overlap",
             SignatureIncompatibleWithSupertype { .. }
             | ArgumentIncompatibleWithSupertype { .. }
             | OverloadOrderMustMatchSupertype { .. }
