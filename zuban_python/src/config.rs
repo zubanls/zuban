@@ -88,7 +88,7 @@ fn set_bool_init_flags(
     Ok(())
 }
 
-fn to_bool(value: Option<&str>, invert: bool) -> Result<bool, Box<str>> {
+pub fn to_bool(value: Option<&str>, invert: bool) -> Result<bool, Box<str>> {
     let result = match value {
         Some(value) => match value.to_lowercase().as_str() {
             "true" | "1" | "yes" | "on" => true,

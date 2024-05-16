@@ -712,6 +712,7 @@ testAbstractBodyTurnsEmptyCoarse
 testSuperWithAbstractProperty
 testEmptyBodyNoSuperWarningWithoutStrict
 testEmptyBodyNoSuperWarningOptionalReturn
+testIgnoreErrorsWithUnsafeSuperCall_no_empty
 # ""abstractmethod" used with a non-method"
 testAbstractNestedFunction
 testAbstractGlobalFunction
@@ -1558,9 +1559,6 @@ testCallingNoTypeCheckFunction
 testCallingNoTypeCheckFunction2
 testNoTypeCheckDecoratorSemanticError
 
-# Mypy inline config https://mypy.readthedocs.io/en/stable/inline_config.html
-testIgnoreErrorsSimple
-testIgnoreErrorsWithUnsafeSuperCall_no_empty
 # type ignore leads to "Revealed type is "A?""
 testSerializeIgnoredInvalidType
 # bad type: ignore
@@ -1600,8 +1598,6 @@ testCannotIgnoreBlockingError
 testErrorCodeSyntaxErrorIgnoreNote
 # type: ignore on call silences errors in call, even if not on same line?!
 testMultiLineMethodOverridingWithIncompatibleTypesIgnorableAtDefinition
-# mypy: ignore-errors=True
-testAsyncIteratorWithIgnoredErrorsAndYieldFrom
 # Error code "literal-required" not covered by "type: ignore" comment
 testNoteAboutChangedTypedDictErrorCode
 

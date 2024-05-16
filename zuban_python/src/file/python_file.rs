@@ -13,7 +13,7 @@ use super::{
     name_binder::NameBinder,
 };
 use crate::{
-    config::set_flag,
+    config::{set_flag, to_bool},
     database::{
         ComplexPoint, Database, FileIndex, Locality, LocalityLink, Point, Points, PythonProject,
         Specific,
@@ -223,28 +223,29 @@ impl<'db> PythonFile {
     pub fn new(project_options: &PythonProject, code: Box<str>, is_stub: bool) -> Self {
         let issues = Diagnostics::default();
         let tree = Tree::parse(code);
-        let ignore_type_errors = tree
-            .has_type_ignore_at_start()
-            .unwrap_or_else(|ignore_code| {
-                issues
-                    .add_if_not_ignored(
-                        Issue::from_start_stop(
-                            1,
-                            1,
-                            IssueKind::TypeIgnoreWithErrorCodeNotSupportedForModules {
-                                ignore_code: ignore_code.into(),
-                            },
-                        ),
-                        None,
-                    )
-                    .ok();
-                true
-            });
-        let flags = directives_to_flags(
+        let mut ignore_type_errors =
+            tree.has_type_ignore_at_start()
+                .unwrap_or_else(|ignore_code| {
+                    issues
+                        .add_if_not_ignored(
+                            Issue::from_start_stop(
+                                1,
+                                1,
+                                IssueKind::TypeIgnoreWithErrorCodeNotSupportedForModules {
+                                    ignore_code: ignore_code.into(),
+                                },
+                            ),
+                            None,
+                        )
+                        .ok();
+                    true
+                });
+        let directives_info = info_from_directives(
             project_options,
             &issues,
             tree.mypy_inline_config_directives(),
         );
+        ignore_type_errors |= directives_info.ignore_errors;
         let length = tree.length();
         Self {
             tree,
@@ -259,7 +260,7 @@ impl<'db> PythonFile {
             super_file: None,
             is_stub,
             ignore_type_errors,
-            flags,
+            flags: directives_info.flags,
         }
     }
 
@@ -366,12 +367,13 @@ impl<'db> PythonFile {
     }
 }
 
-fn directives_to_flags<'x>(
+fn info_from_directives<'x>(
     project: &PythonProject,
     issues: &Diagnostics,
     directives: impl Iterator<Item = (CodeIndex, &'x str)>,
-) -> Option<TypeCheckerFlags> {
+) -> DirectivesInfos {
     // Directives like `# mypy: disallow-any-generics`
+    let mut ignore_errors = false;
     let mut flags = None;
     for (start_position, rest) in directives {
         let splitter = DirectiveSplitter {
@@ -384,7 +386,15 @@ fn directives_to_flags<'x>(
             if flags.is_none() {
                 flags = Some(project.flags.clone());
             }
-            if let Err(err) = set_flag(flags.as_mut().unwrap(), &name, value) {
+            let mut check = || {
+                if name == "ignore_errors" {
+                    ignore_errors = to_bool(value, false)?;
+                    Ok(())
+                } else {
+                    set_flag(flags.as_mut().unwrap(), &name, value)
+                }
+            };
+            if let Err(err) = check() {
                 issues
                     .add_if_not_ignored(
                         Issue {
@@ -398,7 +408,15 @@ fn directives_to_flags<'x>(
             }
         }
     }
-    flags
+    DirectivesInfos {
+        flags,
+        ignore_errors,
+    }
+}
+
+struct DirectivesInfos {
+    flags: Option<TypeCheckerFlags>,
+    ignore_errors: bool,
 }
 
 struct DirectiveSplitter<'db, 'code> {
