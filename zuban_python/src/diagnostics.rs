@@ -1533,7 +1533,7 @@ impl<'db> Diagnostic<'db> {
                 s.clone().into()
             }
         };
-        let mut result = fmt_line(config, path, line_column, kind, &error);
+        let mut result = fmt_line(config, path, line_column, self.end_position(), kind, &error);
         if config.show_error_codes {
             if let Some(mypy_error_code) = self.issue.kind.mypy_error_code() {
                 result += &format!("  [{mypy_error_code}]");
@@ -1541,7 +1541,14 @@ impl<'db> Diagnostic<'db> {
         }
         for note in additional_notes {
             result += "\n";
-            result += &fmt_line(config, path, line_column, "note", &note);
+            result += &fmt_line(
+                config,
+                path,
+                line_column,
+                self.end_position(),
+                "note",
+                &note,
+            );
         }
         result
     }
@@ -1550,16 +1557,25 @@ impl<'db> Diagnostic<'db> {
 fn fmt_line(
     config: &DiagnosticConfig,
     path: &str,
-    line_column: (usize, usize),
+    (line, column): (usize, usize),
+    end_position: TreePosition,
     type_: &str,
     error: &str,
 ) -> String {
-    let line = line_column.0;
+    let mut line_number_infos = String::with_capacity(32);
+    let mut add_part = |n| line_number_infos.push_str(&format!(":{n}"));
+    add_part(line);
     if config.show_column_numbers {
-        format!("{path}:{line}:{}: {type_}: {error}", line_column.1)
-    } else {
-        format!("{path}:{line}: {type_}: {error}")
+        add_part(column);
     }
+    if config.show_error_end {
+        let (line, column) = end_position.line_and_column();
+        add_part(line);
+        if config.show_column_numbers {
+            add_part(column);
+        }
+    }
+    format!("{path}{line_number_infos}: {type_}: {error}")
 }
 
 impl std::fmt::Debug for Diagnostic<'_> {
@@ -1571,6 +1587,7 @@ impl std::fmt::Debug for Diagnostic<'_> {
 #[derive(Default)]
 pub struct DiagnosticConfig {
     pub show_error_codes: bool,
+    pub show_error_end: bool,
     pub show_column_numbers: bool,
 }
 

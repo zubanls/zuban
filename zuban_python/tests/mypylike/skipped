@@ -1727,8 +1727,6 @@ testNewAnalyzerDisallowAnyGenericsMessages
 
 # --show-column-numbers and tuple targets
 testColumnsAssignment
-# --show-error-end
-testCheckEndColumnPositions
 
 # --enable-error-code explicit-override "Method "prop" is not using @override but is overriding a method in class "__main__.A""
 requireExplicitOverrideOverload

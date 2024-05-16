@@ -101,6 +101,9 @@ impl<'name, 'code> TestCase<'name, 'code> {
         if self.file_name == "check-columns" || steps.flags.contains(&"--show-column-numbers") {
             diagnostics_config.show_column_numbers = true;
         }
+        if steps.flags.contains(&"--show-error-end") {
+            diagnostics_config.show_error_end = true;
+        }
         if steps.flags.contains(&"--mypy-compatible") && !mypy_compatible
             || steps.flags.contains(&"--no-mypy-compatible") && mypy_compatible
         {
