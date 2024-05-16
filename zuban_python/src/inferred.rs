@@ -2411,7 +2411,9 @@ pub fn add_attribute_error(
 ) {
     let object = match t {
         Type::Module(f) => {
-            node_ref.add_issue(i_s, IssueKind::ModuleAttributeError { name: name.into() });
+            if !node_ref.file.flags(&i_s.db.project).ignore_missing_imports {
+                node_ref.add_issue(i_s, IssueKind::ModuleAttributeError { name: name.into() });
+            }
             return;
         }
         _ => format!("{:?}", t.format_short(i_s.db)).into(),

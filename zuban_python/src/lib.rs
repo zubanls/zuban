@@ -46,6 +46,7 @@ pub struct TypeCheckerFlags {
     pub strict_equality: bool,
     pub implicit_optional: bool,
     pub check_untyped_defs: bool,
+    pub ignore_missing_imports: bool,
 
     pub disallow_untyped_defs: bool,
     pub disallow_untyped_calls: bool,
@@ -86,6 +87,7 @@ impl Default for TypeCheckerFlags {
             strict_equality: false,
             implicit_optional: false,
             check_untyped_defs: false,
+            ignore_missing_imports: false,
             disallow_untyped_defs: false,
             disallow_untyped_calls: false,
             disallow_untyped_decorators: false,

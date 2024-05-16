@@ -317,13 +317,15 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 continue;
                             }
                             LookupResult::None => {
-                                self.add_issue(
-                                    import_name.index(),
-                                    IssueKind::ImportAttributeError {
-                                        module_name: Box::from(imp.qualified_name(self.i_s.db)),
-                                        name: Box::from(import_name.as_str()),
-                                    },
-                                );
+                                if !self.flags().ignore_missing_imports {
+                                    self.add_issue(
+                                        import_name.index(),
+                                        IssueKind::ImportAttributeError {
+                                            module_name: Box::from(imp.qualified_name(self.i_s.db)),
+                                            name: Box::from(import_name.as_str()),
+                                        },
+                                    );
+                                }
                                 Point::new_specific(Specific::ModuleNotFound, Locality::Todo)
                             }
                         },
@@ -379,12 +381,14 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 return result;
             }
             None => {
-                self.add_issue(
-                    name.index(),
-                    IssueKind::ModuleNotFound {
-                        module_name: Box::from(name.as_str()),
-                    },
-                );
+                if !self.flags().ignore_missing_imports {
+                    self.add_issue(
+                        name.index(),
+                        IssueKind::ModuleNotFound {
+                            module_name: Box::from(name.as_str()),
+                        },
+                    );
+                }
                 Point::new_specific(Specific::ModuleNotFound, Locality::Todo)
             }
         };
@@ -451,7 +455,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             } else {
                 let module_name =
                     format!("{}.{}", import_result.qualified_name(i_s.db), name.as_str()).into();
-                self_.add_issue(name.index(), IssueKind::ModuleNotFound { module_name });
+                if !self.flags().ignore_missing_imports {
+                    self_.add_issue(name.index(), IssueKind::ModuleNotFound { module_name });
+                }
             }
             result
         };

@@ -1308,6 +1308,8 @@ testMultipassAndPartialTypes4
 # None as a default for class variables, even if not optional?
 testNoneClassVariableInInit
 testMultipleAssignmentNoneClassVariableInInit
+# --allow-untyped-globals
+testPermissiveAttributeOverride1
 
 # Function local self attribute name binding
 testOptionalDescriptorsBinder
@@ -1727,9 +1729,6 @@ testNewAnalyzerDisallowAnyGenericsMessages
 testColumnsAssignment
 # --show-error-end
 testCheckEndColumnPositions
-
-# --allow-untyped-globals
-testPermissiveAttributeOverride1
 
 # --disallow-untyped-decorators
 testDisallowUntypedDecoratorsUnresolvedDecorator

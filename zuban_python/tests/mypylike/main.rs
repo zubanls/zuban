@@ -95,9 +95,6 @@ impl<'name, 'code> TestCase<'name, 'code> {
         let steps = self.calculate_steps();
         let mut diagnostics_config = DiagnosticConfig::default();
 
-        if steps.flags.contains(&"--ignore-missing-imports") {
-            diagnostics_config.ignore_missing_imports = true;
-        }
         if self.file_name == "check-errorcodes" || steps.flags.contains(&"--show-error-codes") {
             diagnostics_config.show_error_codes = true;
         }
@@ -128,6 +125,7 @@ impl<'name, 'code> TestCase<'name, 'code> {
             TypeCheckerFlags {
                 implicit_optional: steps.flags.contains(&"--implicit-optional"),
                 check_untyped_defs: steps.flags.contains(&"--check-untyped-defs"),
+                ignore_missing_imports: steps.flags.contains(&"--ignore-missing-imports"),
                 disallow_untyped_defs: steps.flags.contains(&"--disallow-untyped-defs"),
                 disallow_untyped_calls: steps.flags.contains(&"--disallow-untyped-calls"),
                 disallow_untyped_decorators: steps.flags.contains(&"--disallow-untyped-decorators"),

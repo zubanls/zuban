@@ -1570,7 +1570,6 @@ impl std::fmt::Debug for Diagnostic<'_> {
 
 #[derive(Default)]
 pub struct DiagnosticConfig {
-    pub ignore_missing_imports: bool,
     pub show_error_codes: bool,
     pub show_column_numbers: bool,
 }
@@ -1595,12 +1594,7 @@ impl DiagnosticConfig {
                 return false;
             }
         }
-        match type_ {
-            IssueKind::ImportAttributeError { .. }
-            | IssueKind::ModuleNotFound { .. }
-            | IssueKind::ModuleAttributeError { .. } => !self.ignore_missing_imports,
-            _ => true,
-        }
+        true
     }
 }
 
