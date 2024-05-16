@@ -444,6 +444,7 @@ impl<'db> Inference<'db, '_, '_> {
                     };
                     if n.as_code() == "reveal_type" && !self.file.points.get(n.index()).calculated()
                     {
+                        self.infer_name_reference(n);
                         let PrimaryContent::Execution(_) = p.second() else {
                             continue
                         };

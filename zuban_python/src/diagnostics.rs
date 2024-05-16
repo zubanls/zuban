@@ -6,7 +6,7 @@ use crate::{
     name::TreePosition,
     type_::{FunctionKind, TypeVarLike, Variance},
     utils::{join_with_commas, InsertOnlyVec},
-    TypeCheckerFlags,
+    PythonVersion, TypeCheckerFlags,
 };
 
 #[derive(Debug)]
@@ -27,6 +27,7 @@ pub(crate) enum IssueKind {
     ModuleAttributeError { name: Box<str> },
     ImportStubNoExplicitReexport { module_name: Box<str>, attribute: Box<str> },
     UnsupportedClassScopedImport,
+    UnimportedRevealType,  // From --enable-error-code=unimported-reveal
     NameError { name: Box<str> },
     ArgumentIssue(Box<str>),
     ArgumentTypeIssue(Box<str>),
@@ -455,6 +456,7 @@ impl IssueKind {
             NonOverlappingEqualityCheck { .. }
             | NonOverlappingContainsCheck { .. }
             | NonOverlappingIdentityCheck { .. } => "comparison-overlap",
+            UnimportedRevealType => "unimported-reveal",
 
             _ => "misc",
         })
@@ -974,6 +976,18 @@ impl<'db> Diagnostic<'db> {
             NonOverlappingContainsCheck { element_type, container_type } => format!(
                 r#"Non-overlapping container check (element type: "{element_type}", container item type: "{container_type}")"#
             ),
+            UnimportedRevealType => {
+                let module = if self.db.project.flags.python_version < PythonVersion::new(3, 11) {
+                    "typing_extensions"
+                } else {
+                    "typing"
+                };
+                additional_notes.push(format!(
+                    "Did you forget to import it from \"{module}\"? \
+                     (Suggestion: \"from {module} import reveal_type\")"
+                ));
+                r#"Name "reveal_type" is not defined"#.to_string()
+            }
 
             OnlyClassTypeApplication => {
                 "Type application is only supported for generic classes".to_string()

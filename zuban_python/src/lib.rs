@@ -141,7 +141,7 @@ impl TypeCheckerFlags {
     }
 }
 
-#[derive(Clone, Hash, PartialEq, Eq)]
+#[derive(Clone, Hash, PartialEq, Eq, PartialOrd)]
 pub struct PythonVersion {
     major: usize,
     minor: usize,

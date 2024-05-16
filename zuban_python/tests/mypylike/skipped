@@ -1752,9 +1752,7 @@ testTruthyIterable
 testDisableEnableErrorCodesIncremental
 # --enable-error-code=unimported-reveal
 testUnimportedRevealType
-testUnimportedRevealTypePy311
 testUnimportedRevealTypeInUncheckedFunc
-testUnimportedRevealLocals
 # --enable-error-code explicit-override "Method "prop" is not using @override but is overriding a method in class "__main__.A""
 requireExplicitOverrideOverload
 
@@ -2313,6 +2311,7 @@ testMagicMethodPositionalOnlyArgFastparse
 testRevealLocalsFunction
 testRevealLocalsOnClassVars
 testRevealLocals
+testUnimportedRevealLocals
 
 # Won't support: Warning about wrong usage of type var values
 testObsoleteTypevarValuesSyntax
@@ -2340,6 +2339,7 @@ testTupleWithDifferentArgsPy38
 # Won't support Pyhton 3.9 specialities
 testDataclassWithMatchArgsOldVersion
 testUnionOrSyntaxInIsinstanceNotSupported
+testUnimportedRevealType
 # "Subscripting classes that are not generic at runtime may require escaping"
 testCheckDisallowAnyGenericsStubOnly
 

@@ -2692,7 +2692,17 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         }
         let builtins = self.i_s.db.python_state.builtins();
         let point = match name_str {
-            "reveal_type" => Point::new_specific(Specific::RevealTypeFunction, Locality::Stmt),
+            "reveal_type" => {
+                if self
+                    .flags()
+                    .enabled_error_codes
+                    .iter()
+                    .any(|code| code == "unimported-reveal")
+                {
+                    self.add_issue(name_index, IssueKind::UnimportedRevealType);
+                }
+                Point::new_specific(Specific::RevealTypeFunction, Locality::Stmt)
+            }
             "__builtins__" => Point::new_file_reference(builtins.file_index(), Locality::Todo),
             _ => {
                 if let Some(link) = builtins.lookup_global(name.as_str()).filter(|link| {
