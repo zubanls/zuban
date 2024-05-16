@@ -1799,6 +1799,25 @@ impl<'db: 'slf, 'slf> Inferred {
                                     .execute(i_s, args, result_context, on_type_error, false)
                             }
                             ComplexPoint::TypeAlias(alias) => {
+                                if !alias.type_vars.is_empty() {
+                                    if let Some(node_ref) = args.as_node_ref() {
+                                        if node_ref
+                                            .file
+                                            .flags(&i_s.db.project)
+                                            .disallow_any_generics
+                                        {
+                                            node_ref.add_issue(
+                                                i_s,
+                                                IssueKind::MissingTypeParameters {
+                                                    name: alias
+                                                        .name(i_s.db)
+                                                        .unwrap_or("<Alias>")
+                                                        .into(),
+                                                },
+                                            );
+                                        }
+                                    }
+                                }
                                 if alias.application_allowed() {
                                     return execute_type_of_type(
                                         i_s,
