@@ -652,7 +652,12 @@ pub(crate) fn match_arguments_against_params<
                     | WrappedParamType::Star(WrappedStar::ArbitraryLen(t))
                     | WrappedParamType::StarStar(WrappedStarStar::ValueType(t)) => match t {
                         Some(t) => t,
-                        None => continue, // This is the **kwargs without annotation case
+                        None => {
+                            // Simply infer the type to make sure type checking is done on the
+                            // argument if there is no annotation.
+                            argument.infer(i_s, &mut ResultContext::Unknown);
+                            continue;
+                        }
                     },
                     WrappedParamType::StarStar(WrappedStarStar::UnpackTypedDict(td)) => {
                         for member in td.members(i_s.db).iter() {

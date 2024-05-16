@@ -1734,9 +1734,6 @@ testPermissiveAttributeOverride1
 # --disallow-untyped-decorators
 testDisallowUntypedDecoratorsUnresolvedDecorator
 
-# --disallow-untyped-calls
-testDisallowUntypedCallsArgType
-
 # --enable-error-code explicit-override "Method "prop" is not using @override but is overriding a method in class "__main__.A""
 requireExplicitOverrideOverload
 
