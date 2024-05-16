@@ -168,6 +168,10 @@ impl<'name, 'code> TestCase<'name, 'code> {
             let error = "Expected version X.Y like 3.10";
             config.python_version =
                 PythonVersion::new(x.parse().expect(error), y.parse().expect(error));
+        } else {
+            // TODO This appears to cause issues, because Mypy uses a custom typing.pyi that has
+            // different argument types.
+            //config.python_version = self.default_python_version();
         }
 
         {
@@ -315,6 +319,18 @@ impl<'name, 'code> TestCase<'name, 'code> {
             }
         }
         true
+    }
+
+    #[allow(dead_code)]
+    fn default_python_version(&self) -> PythonVersion {
+        match self.file_name {
+            "check-python312" => PythonVersion::new(3, 12),
+            "check-python311" => PythonVersion::new(3, 11),
+            "check-python310" => PythonVersion::new(3, 10),
+            "check-python39" => PythonVersion::new(3, 9),
+            "check-python38" => PythonVersion::new(3, 8),
+            _ => PythonVersion::new(3, 8),
+        }
     }
 
     fn calculate_steps(&self) -> Steps {
