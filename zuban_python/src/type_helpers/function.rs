@@ -807,11 +807,16 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                         .disallow_untyped_decorators
                     {
                         let is_typed = |inf: &Inferred, skip_first_param| {
-                            inf.as_cow_type(i_s)
-                                .maybe_callable(i_s)
+                            let t = inf.as_cow_type(i_s);
+                            if matches!(t.as_ref(), Type::Any(_)) {
+                                return false;
+                            }
+                            t.maybe_callable(i_s)
                                 .map(|c| c.is_typed(skip_first_param))
+                                // A non-callable will raise errors later anyway
+                                .unwrap_or(true)
                         };
-                        if !self.is_dynamic() && !is_typed(&dec_inf, false).unwrap_or(true) {
+                        if !self.is_dynamic() && !is_typed(&dec_inf, false) {
                             NodeRef::new(self.node_ref.file, decorator.index()).add_issue(
                                 i_s,
                                 IssueKind::UntypedDecorator {

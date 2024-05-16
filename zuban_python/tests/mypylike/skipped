@@ -1730,9 +1730,6 @@ testColumnsAssignment
 # --show-error-end
 testCheckEndColumnPositions
 
-# --disallow-untyped-decorators
-testDisallowUntypedDecoratorsUnresolvedDecorator
-
 # --enable-error-code explicit-override "Method "prop" is not using @override but is overriding a method in class "__main__.A""
 requireExplicitOverrideOverload
 
