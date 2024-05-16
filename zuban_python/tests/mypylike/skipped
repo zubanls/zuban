@@ -1737,19 +1737,6 @@ testDisallowUntypedDecoratorsUnresolvedDecorator
 # --disallow-untyped-calls
 testDisallowUntypedCallsArgType
 
-# --enable-error-code redundant-self
-# "Redundant "Self" annotation for the first method argument"
-testTypingSelfRedundantWarning
-testTypingSelfRedundantWarning_pep585
-# --enable-error-code redundant-expr
-# "If condition is always false"
-testRedundantExpressions
-# flags: --enable-error-code truthy-bool
-testTruthyBool
-testTruthyFunctions
-testTruthyIterable
-# flags: --disable-error-code truthy-bool
-testDisableEnableErrorCodesIncremental
 # --enable-error-code explicit-override "Method "prop" is not using @override but is overriding a method in class "__main__.A""
 requireExplicitOverrideOverload
 
@@ -1901,6 +1888,20 @@ testDoNotFollowImportToNonStubFile
 testFollowImportsSkip
 testSubclassingAnySilentImports
 testSubclassingAnySilentImports2
+
+# --enable-error-code redundant-self
+# "Redundant "Self" annotation for the first method argument"
+testTypingSelfRedundantWarning
+testTypingSelfRedundantWarning_pep585
+# --enable-error-code redundant-expr
+# "If condition is always false"
+testRedundantExpressions
+# flags: --enable-error-code truthy-bool
+testTruthyBool
+testTruthyFunctions
+testTruthyIterable
+# flags: --disable-error-code truthy-bool
+testDisableEnableErrorCodesIncremental
 
 # ------------------- start of low-prio/won't do tests -----------------------
 
