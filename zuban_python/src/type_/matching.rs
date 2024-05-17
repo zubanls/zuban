@@ -7,7 +7,7 @@ use crate::{
     debug,
     inference_state::InferenceState,
     matching::{
-        avoid_protocol_mismatch, matches_params, ErrorTypes, GotType, Match, Matcher,
+        avoid_protocol_mismatch, matches_params, ErrorTypes, FormatData, GotType, Match, Matcher,
         MismatchReason,
     },
     node_ref::NodeRef,
@@ -186,12 +186,16 @@ impl Type {
     ) -> Match {
         // 1. Check if the type is part of the mro.
         let debug_message_for_result = |result| {
-            debug!(
-                "Match covariant {} :> {} -> {:?}",
-                self.format_short(i_s.db),
-                value_type.format_short(i_s.db),
-                result
-            )
+            if cfg!(debug_assertions) {
+                let mut format_data = FormatData::new_short(i_s.db);
+                format_data.enable_verbose();
+                debug!(
+                    "Match covariant {} :> {} -> {:?}",
+                    self.format(&format_data),
+                    value_type.format(&format_data),
+                    result
+                )
+            }
         };
         let mut m = Match::new_false();
         let mut mro = value_type.mro(i_s.db);
@@ -297,12 +301,16 @@ impl Type {
         let result = m.or(|| {
             self.check_protocol_and_other_side(i_s, matcher, value_type, Variance::Invariant)
         });
-        debug!(
-            "Match invariant {} ≡ {} -> {:?}",
-            self.format_short(i_s.db),
-            value_type.format_short(i_s.db),
-            result
-        );
+        if cfg!(debug_assertions) {
+            let mut format_data = FormatData::new_short(i_s.db);
+            format_data.enable_verbose();
+            debug!(
+                "Match invariant {} ≡ {} -> {:?}",
+                self.format(&format_data),
+                value_type.format(&format_data),
+                result
+            );
+        }
         result
     }
 

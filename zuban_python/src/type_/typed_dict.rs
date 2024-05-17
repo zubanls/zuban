@@ -288,7 +288,7 @@ impl TypedDict {
             FormatStyle::Short if !format_data.verbose => self.name_or_fallback(format_data),
             _ => self
                 .qualified_name(format_data.db)
-                .unwrap_or_else(|| todo!()),
+                .unwrap_or_else(|| "<TODO unknown TypedDict name>".into()),
         }
     }
 

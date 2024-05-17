@@ -128,15 +128,12 @@ testIsinstanceInInferredLambda
 testConditionalExpressionWithEmptyListAndUnionWithAny
 testConditionalExpressionWithEmptyIteableAndUnionWithAny
 
-# No recursion tests
-testNoRecursiveExpandInstanceUnionCrashGeneric
 # recursive limits missing for joins / unions
 testRecursiveAliasGenericInferenceNested
 testRecursiveAliasTopUnion
 testCrashInJoinOfSelfRecursiveNamedTuples
 testGenericJoinRecursiveTypes
 testRecursiveAliasWithRecursiveInstance
-testBasicRecursiveGenericNamedTuple
 testTypeAliasUpdateNonRecursiveToRecursiveFine
 testTypeAliasUpdateNonRecursiveToRecursiveCoarse
 # Recursive Alias wrong type var inference --enable-recursive-aliases
