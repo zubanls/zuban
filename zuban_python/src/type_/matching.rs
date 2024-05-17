@@ -250,11 +250,7 @@ impl Type {
                         return self.check_promotion(
                             i_s,
                             matcher,
-                            i_s.db
-                                .python_state
-                                .literal_instance(&literal.kind)
-                                .class
-                                .node_ref,
+                            literal.fallback_node_ref(i_s.db),
                         );
                     }
                 }
@@ -574,7 +570,7 @@ impl Type {
                     i_s,
                     matcher,
                     class1,
-                    &i_s.db.python_state.literal_type(&literal.kind),
+                    &literal.fallback_type(i_s.db),
                     variance,
                 )
             }

@@ -730,7 +730,7 @@ fn execute_isinstance_or_issubclass<'db>(
 
 fn get_relevant_type_for_super(db: &Database, t: &Type) -> Type {
     if let Type::Literal(l) = t {
-        return db.python_state.literal_type(&l.kind);
+        return l.fallback_type(db);
     }
     let Type::TypeVar(usage) = t else {
         return t.clone()

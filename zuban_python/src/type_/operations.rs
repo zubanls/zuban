@@ -110,7 +110,7 @@ impl Type {
                     .lookup_with_details(i_s, add_issue, name, kind),
             ),
             Type::Literal(literal) => {
-                let instance = i_s.db.python_state.literal_instance(&literal.kind);
+                let instance = literal.as_instance(i_s.db);
                 let l = instance.lookup_with_details(i_s, add_issue, name, kind);
                 callable(self, l)
             }
@@ -372,12 +372,10 @@ impl Type {
                 slice_type.infer(i_s);
                 Inferred::new_any(AnyCause::Todo)
             }
-            Type::Literal(l) => i_s.db.python_state.literal_type(&l.kind).get_item(
-                i_s,
-                None,
-                slice_type,
-                result_context,
-            ),
+            Type::Literal(l) => {
+                l.fallback_type(i_s.db)
+                    .get_item(i_s, None, slice_type, result_context)
+            }
             Type::Self_ => {
                 i_s.current_class()
                     .unwrap()
@@ -562,10 +560,8 @@ pub(crate) fn attribute_access_of_type(
         Type::Class(g) => g
             .class(i_s.db)
             .lookup_with_details(i_s, add_issue, name, kind),
-        Type::Literal(l) => i_s
-            .db
-            .python_state
-            .literal_instance(&l.kind)
+        Type::Literal(l) => l
+            .as_instance(i_s.db)
             .class
             .lookup_with_details(i_s, add_issue, name, kind),
         Type::Callable(_) => LookupDetails::none(),

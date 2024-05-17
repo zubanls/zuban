@@ -13,8 +13,7 @@ use crate::{
     node_ref::NodeRef,
     type_::{
         dataclasses_replace, AnyCause, CallableContent, CallableParam, CallableParams,
-        ClassGenerics, CustomBehavior, FunctionKind, LiteralKind, ParamType, Tuple, Type,
-        TypeVarLikes,
+        ClassGenerics, CustomBehavior, FunctionKind, ParamType, Tuple, Type, TypeVarLikes,
     },
     type_helpers::{Class, Function, Instance},
     InferenceState,
@@ -708,7 +707,7 @@ impl PythonState {
     attribute_node_ref!(builtins, pub dict_node_ref, builtins_dict_index);
     attribute_node_ref!(builtins, pub set_node_ref, builtins_set_index);
     attribute_node_ref!(builtins, pub bool_node_ref, builtins_bool_index);
-    attribute_node_ref!(builtins, int_node_ref, builtins_int_index);
+    attribute_node_ref!(builtins, pub int_node_ref, builtins_int_index);
     attribute_node_ref!(builtins, float_node_ref, builtins_float_index);
     attribute_node_ref!(builtins, complex_node_ref, builtins_complex_index);
     attribute_node_ref!(builtins, pub str_node_ref, builtins_str_index);
@@ -900,33 +899,10 @@ impl PythonState {
         Inferred::from_saved_node_ref(func.node_ref)
     }
 
-    fn literal_node_ref(&self, literal_kind: &LiteralKind) -> NodeRef {
-        match literal_kind {
-            LiteralKind::Int(_) => self.int_node_ref(),
-            LiteralKind::String(_) => self.str_node_ref(),
-            LiteralKind::Bool(_) => self.bool_node_ref(),
-            LiteralKind::Bytes(_) => self.bytes_node_ref(),
-        }
-    }
-
-    pub fn literal_instance(&self, literal_kind: &LiteralKind) -> Instance {
-        Instance::new(
-            Class::from_non_generic_node_ref(self.literal_node_ref(literal_kind)),
-            None,
-        )
-    }
-
     pub fn module_instance(&self) -> Instance {
         Instance::new(
             Class::from_non_generic_node_ref(self.module_node_ref()),
             None,
-        )
-    }
-
-    pub fn literal_type(&self, literal_kind: &LiteralKind) -> Type {
-        Type::new_class(
-            self.literal_node_ref(literal_kind).as_link(),
-            ClassGenerics::None,
         )
     }
 }

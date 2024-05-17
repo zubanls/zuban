@@ -48,13 +48,7 @@ impl Type {
             }
             Type::Literal(literal1) => match other {
                 Type::Literal(literal2) => return literal1.value(i_s.db) == literal2.value(i_s.db),
-                _ => {
-                    return i_s
-                        .db
-                        .python_state
-                        .literal_type(&literal1.kind)
-                        .overlaps(i_s, matcher, other)
-                }
+                _ => return literal1.fallback_type(i_s.db).overlaps(i_s, matcher, other),
             },
             Type::Tuple(t1) => {
                 if let Type::Tuple(t2) = other {

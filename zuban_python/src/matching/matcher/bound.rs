@@ -267,7 +267,7 @@ impl Bound {
             | Self::UpperAndLower(_, BoundKind::TypeVar(Type::Literal(l)))
                 if l.implicit =>
             {
-                GenericItem::TypeArg(db.python_state.literal_type(&l.kind))
+                GenericItem::TypeArg(l.fallback_type(db))
             }
             Self::Invariant(k) | Self::Upper(k) | Self::Lower(k) | Self::UpperAndLower(_, k) => {
                 k.into_generic_item()

@@ -1126,7 +1126,7 @@ impl Type {
 
     pub fn maybe_avoid_implicit_literal(&self, db: &Database) -> Option<Self> {
         match self {
-            Type::Literal(l) if l.implicit => Some(db.python_state.literal_type(&l.kind)),
+            Type::Literal(l) if l.implicit => Some(l.fallback_type(db)),
             Type::EnumMember(m) if m.implicit => Some(Type::Enum(m.enum_.clone())),
             Type::Tuple(tup) => {
                 if let TupleArgs::FixedLen(ts) = &tup.args {
@@ -1651,15 +1651,31 @@ impl Literal {
         }
     }
 
+    pub fn fallback_node_ref<'db>(&self, db: &'db Database) -> NodeRef<'db> {
+        match &self.kind {
+            LiteralKind::Int(_) => db.python_state.int_node_ref(),
+            LiteralKind::String(_) => db.python_state.str_node_ref(),
+            LiteralKind::Bool(_) => db.python_state.bool_node_ref(),
+            LiteralKind::Bytes(_) => db.python_state.bytes_node_ref(),
+        }
+    }
+
+    pub fn as_instance<'db>(&self, db: &'db Database) -> Instance<'db> {
+        Instance::new(
+            Class::from_non_generic_node_ref(self.fallback_node_ref(db)),
+            None,
+        )
+    }
+
+    pub fn fallback_type(&self, db: &Database) -> Type {
+        Type::new_class(self.fallback_node_ref(db).as_link(), ClassGenerics::None)
+    }
+
     pub fn format(&self, format_data: &FormatData) -> Box<str> {
         let question_mark = match format_data.style {
             FormatStyle::MypyRevealType if self.implicit => "?",
             _ if self.implicit && format_data.hide_implicit_literals => {
-                return format_data
-                    .db
-                    .python_state
-                    .literal_type(&self.kind)
-                    .format(format_data)
+                return self.fallback_type(format_data.db).format(format_data)
             }
             _ => "",
         };
