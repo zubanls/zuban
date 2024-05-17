@@ -1692,7 +1692,6 @@ testBinaryOperationsWithDynamicAsRightOperand
 # --strict-equality strict equality "Non-overlapping equality check (left operand type: "int", right operand type: "str")"
 testStrictEqualityNoPromotePy3
 testStrictEqualityMetaclass
-testStrictEqualityWithALiteralNewType
 testStrictEqualityAllowlist
 testStrictEqualityWithRecursiveMapTypes
 testNarrowingEqualityDisabledForCustomEqualityChain

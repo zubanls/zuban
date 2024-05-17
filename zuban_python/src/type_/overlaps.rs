@@ -16,12 +16,22 @@ impl Type {
         // In mypy this is called `is_overlapping_types` and it basically ignores variance and a
         // lot of other concepts to tell use whether two types have any relationship at all.
         // e.g. list[A | B] and list[B | C] overlap.
+        if let Type::Union(union) = self {
+            return union.iter().any(|t| t.overlaps(i_s, matcher, other));
+        }
+
         match other {
             Type::Union(union_type2) => {
                 return union_type2.iter().any(|t| self.overlaps(i_s, matcher, t))
             }
             Type::Any(_) => return true, // This is a fallback
             Type::TypedDict(td) => return td.overlaps(i_s, matcher, other, self),
+            Type::Literal(literal2) => {
+                return match self {
+                    Type::Literal(literal1) => literal1.value(i_s.db) == literal2.value(i_s.db),
+                    _ => self.overlaps(i_s, matcher, &literal2.fallback_type(i_s.db)),
+                }
+            }
             _ => (),
         }
 
@@ -46,16 +56,14 @@ impl Type {
                         && has_overlapping_params(i_s, matcher, &c1.params, &c2.params);
                 }
             }
-            Type::Literal(literal1) => match other {
-                Type::Literal(literal2) => return literal1.value(i_s.db) == literal2.value(i_s.db),
-                _ => return literal1.fallback_type(i_s.db).overlaps(i_s, matcher, other),
-            },
+            Type::Literal(literal1) => {
+                return literal1.fallback_type(i_s.db).overlaps(i_s, matcher, other)
+            }
             Type::Tuple(t1) => {
                 if let Type::Tuple(t2) = other {
                     return t1.overlaps_tuple(i_s, matcher, t2);
                 }
             }
-            Type::Union(union) => return union.iter().any(|t| t.overlaps(i_s, matcher, other)),
             Type::TypedDict(td) => return td.overlaps(i_s, matcher, self, other),
             _ => (),
         };
