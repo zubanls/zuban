@@ -485,6 +485,10 @@ impl Type {
         matches!(self, Type::Any(_))
     }
 
+    pub fn is_never(&self) -> bool {
+        matches!(self, Type::Never(_))
+    }
+
     pub fn is_any_or_any_in_union(&self, db: &Database) -> bool {
         self.iter_with_unpacked_unions(db)
             .any(|t| matches!(t, Type::Any(_)))
@@ -1236,6 +1240,14 @@ impl Type {
                 false,
             ),
         }
+    }
+
+    pub fn find_class_in_mro<'x>(&'x self, db: &'x Database, target: NodeRef) -> Option<Class> {
+        self.mro(db)
+            .find_map(|(_, type_or_class)| match type_or_class {
+                TypeOrClass::Class(cls) if cls.node_ref == target => Some(cls),
+                _ => None,
+            })
     }
 
     pub(crate) fn error_if_not_matches<'x>(

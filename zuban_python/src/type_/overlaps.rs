@@ -5,7 +5,7 @@ use crate::{
     type_helpers::{Class, TypeOrClass},
 };
 
-use super::{Tuple, Type};
+use super::{Tuple, Type, TypedDict};
 
 impl Type {
     pub fn simple_overlaps(&self, i_s: &InferenceState, other: &Self) -> bool {
@@ -21,6 +21,7 @@ impl Type {
                 return union_type2.iter().any(|t| self.overlaps(i_s, matcher, t))
             }
             Type::Any(_) => return true, // This is a fallback
+            Type::TypedDict(td) => return td.overlaps(i_s, matcher, other, self),
             _ => (),
         }
 
@@ -61,6 +62,7 @@ impl Type {
                 }
             }
             Type::Union(union) => return union.iter().any(|t| t.overlaps(i_s, matcher, other)),
+            Type::TypedDict(td) => return td.overlaps(i_s, matcher, self, other),
             _ => (),
         };
         self.is_sub_type_of(i_s, matcher, other).bool()
@@ -147,4 +149,68 @@ fn overlaps_class(
         }
     }
     None
+}
+
+impl TypedDict {
+    pub fn overlaps(
+        &self,
+        i_s: &InferenceState,
+        matcher: &mut Matcher,
+        original: &Type,
+        other: &Type,
+    ) -> bool {
+        match other {
+            Type::TypedDict(td) => {
+                // TODO this should actually check overlaps of its content and not normal matching
+                original.is_sub_type_of(i_s, matcher, other).bool()
+                    || original.is_super_type_of(i_s, matcher, other).bool()
+            }
+            _ => {
+                self.overlaps_with_mapping(i_s, matcher, other)
+                    || original.is_sub_type_of(i_s, matcher, other).bool()
+            }
+        }
+    }
+
+    fn overlaps_with_mapping(
+        &self,
+        i_s: &InferenceState,
+        matcher: &mut Matcher,
+        other: &Type,
+    ) -> bool {
+        // Mypy has a function for this called "typed_dict_mapping_overlap". Its docstring
+        // describes really well how this works.
+        other
+            .find_class_in_mro(i_s.db, i_s.db.python_state.mapping_node_ref())
+            .is_some_and(|mapping| {
+                let key = mapping.nth_type_argument(i_s.db, 0);
+                let value = mapping.nth_type_argument(i_s.db, 1);
+                if !key.overlaps(i_s, matcher, &i_s.db.python_state.str_type()) {
+                    return false;
+                }
+
+                // Special case for e.g. Matching of X == {}
+                if key.is_never() || value.is_never() {
+                    return !self.iter_required_members(i_s.db).next().is_some();
+                }
+
+                let mut had_required = false;
+                // All required members must overlap
+                for member in self.members(i_s.db).iter() {
+                    if member.required {
+                        had_required = true;
+                        if !member.type_.overlaps(i_s, matcher, &value) {
+                            return false;
+                        }
+                    }
+                }
+                if had_required {
+                    return true;
+                }
+                // In case there were no required members, as long as any optional members overlap we
+                // are fine.
+                self.iter_optional_members(i_s.db)
+                    .any(|member| member.type_.overlaps(i_s, matcher, &value))
+            })
+    }
 }

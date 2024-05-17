@@ -196,6 +196,20 @@ impl TypedDict {
         })
     }
 
+    pub fn iter_required_members(
+        &self,
+        db: &Database,
+    ) -> impl Iterator<Item = &'_ TypedDictMember> {
+        self.members(db).iter().filter(|member| member.required)
+    }
+
+    pub fn iter_optional_members(
+        &self,
+        db: &Database,
+    ) -> impl Iterator<Item = &'_ TypedDictMember> {
+        self.members(db).iter().filter(|member| !member.required)
+    }
+
     pub fn find_member(&self, db: &Database, name: &str) -> Option<&TypedDictMember> {
         self.members(db).iter().find(|p| p.name.as_str(db) == name)
     }
