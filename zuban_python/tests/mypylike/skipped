@@ -103,8 +103,6 @@ testInconsistentOverload2
 testNonconsecutiveOverloads
 testNonconsecutiveOverloadsMissingFirstOverload
 testNonconsecutiveOverloadsMissingLaterOverload
-# Overload needs type var matcher probably (and maybe also overlapping)
-overload_class_type_var_implementation_match_and_mismatch
 # overload variant formatting
 testSpecialCaseEmptyListInitialization2
 
@@ -1691,7 +1689,6 @@ testStrictEqualityWithRecursiveListTypes
 testBinaryOperationsWithDynamicAsRightOperand
 # --strict-equality strict equality "Non-overlapping equality check (left operand type: "int", right operand type: "str")"
 testStrictEqualityNoPromotePy3
-testStrictEqualityMetaclass
 testStrictEqualityAllowlist
 testStrictEqualityWithRecursiveMapTypes
 testNarrowingEqualityDisabledForCustomEqualityChain

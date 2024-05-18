@@ -5,7 +5,7 @@ use crate::{
     type_helpers::{Class, TypeOrClass},
 };
 
-use super::{Tuple, Type, TypedDict};
+use super::{ClassGenerics, Tuple, Type, TypedDict};
 
 impl Type {
     pub fn simple_overlaps(&self, i_s: &InferenceState, other: &Self) -> bool {
@@ -32,6 +32,7 @@ impl Type {
                     _ => self.overlaps(i_s, matcher, &literal2.fallback_type(i_s.db)),
                 }
             }
+            Type::Type(t2) => return t2.overlaps_type_of_type_against_other(i_s, matcher, self),
             _ => (),
         }
 
@@ -45,11 +46,7 @@ impl Type {
                     }
                 }
             }
-            Type::Type(t1) => {
-                if let Type::Type(t2) = other {
-                    return t1.overlaps(i_s, matcher, t2);
-                }
-            }
+            Type::Type(t1) => return t1.overlaps_type_of_type_against_other(i_s, matcher, other),
             Type::Callable(c1) => {
                 if let Type::Callable(c2) = other {
                     return c1.return_type.overlaps(i_s, matcher, &c2.return_type)
@@ -69,6 +66,29 @@ impl Type {
         };
         self.is_sub_type_of(i_s, matcher, other).bool()
             || self.is_super_type_of(i_s, matcher, other).bool()
+    }
+
+    fn overlaps_type_of_type_against_other(
+        &self,
+        i_s: &InferenceState,
+        matcher: &mut Matcher,
+        other: &Self,
+    ) -> bool {
+        match other {
+            Type::Type(t2) => self.overlaps(i_s, matcher, t2),
+            Type::Class(c) => {
+                if let Some(metaclass) = self
+                    .maybe_class(i_s.db)
+                    .and_then(|c| c.maybe_metaclass(i_s.db))
+                {
+                    Type::new_class(metaclass, ClassGenerics::None).overlaps(i_s, matcher, other)
+                } else {
+                    c.class(i_s.db).is_metaclass(i_s.db) && self.overlaps(i_s, matcher, other)
+                }
+            }
+            Type::Any(_) => true,
+            _ => false,
+        }
     }
 }
 

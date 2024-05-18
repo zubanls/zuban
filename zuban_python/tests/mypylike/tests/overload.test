@@ -233,7 +233,7 @@ b: Union[int, str]
 f(a, b) # This is valid
 
 [case overload_class_type_var_implementation_match_and_mismatch]
-from typing import Callable, Union, overload, Generic, Optional
+from typing import TypeVar, Callable, Union, overload, Generic, Optional
 T = TypeVar("T")
 U = TypeVar("U")
 
