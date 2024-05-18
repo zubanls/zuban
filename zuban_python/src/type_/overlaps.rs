@@ -5,7 +5,7 @@ use crate::{
     type_helpers::{Class, TypeOrClass},
 };
 
-use super::{ClassGenerics, Tuple, Type, TypedDict};
+use super::{CallableContent, CallableLike, ClassGenerics, Tuple, Type, TypedDict};
 
 impl Type {
     pub fn simple_overlaps(&self, i_s: &InferenceState, other: &Self) -> bool {
@@ -49,8 +49,7 @@ impl Type {
             Type::Type(t1) => return t1.overlaps_type_of_type_against_other(i_s, matcher, other),
             Type::Callable(c1) => {
                 if let Type::Callable(c2) = other {
-                    return c1.return_type.overlaps(i_s, matcher, &c2.return_type)
-                        && has_overlapping_params(i_s, matcher, &c1.params, &c2.params);
+                    return c1.overlaps(i_s, matcher, c2);
                 }
             }
             Type::Literal(literal1) => {
@@ -84,6 +83,18 @@ impl Type {
                     Type::new_class(metaclass, ClassGenerics::None).overlaps(i_s, matcher, other)
                 } else {
                     c.class(i_s.db).is_metaclass(i_s.db) && self.overlaps(i_s, matcher, other)
+                }
+            }
+            Type::Callable(c2) => {
+                if let Some(callable_like) = self.type_type_maybe_callable(i_s) {
+                    match callable_like {
+                        CallableLike::Callable(c1) => c1.overlaps(i_s, matcher, c2),
+                        CallableLike::Overload(o) => {
+                            o.iter_functions().any(|c1| c1.overlaps(i_s, matcher, c2))
+                        }
+                    }
+                } else {
+                    false
                 }
             }
             Type::Any(_) => true,
@@ -234,5 +245,12 @@ impl TypedDict {
                 self.iter_optional_members(i_s.db)
                     .any(|member| member.type_.overlaps(i_s, matcher, &value))
             })
+    }
+}
+
+impl CallableContent {
+    pub fn overlaps(&self, i_s: &InferenceState, matcher: &mut Matcher, other: &Self) -> bool {
+        self.return_type.overlaps(i_s, matcher, &other.return_type)
+            && has_overlapping_params(i_s, matcher, &self.params, &other.params)
     }
 }

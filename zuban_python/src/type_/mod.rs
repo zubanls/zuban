@@ -612,53 +612,7 @@ impl Type {
     pub fn maybe_callable(&self, i_s: &InferenceState) -> Option<CallableLike> {
         match self {
             Type::Callable(c) => Some(CallableLike::Callable(c.clone())),
-            Type::Type(t) => match t.as_ref() {
-                Type::Class(c) => {
-                    let cls = c.class(i_s.db);
-                    return cls.find_relevant_constructor(i_s).maybe_callable(i_s, cls);
-                }
-                Type::Dataclass(d) => {
-                    let cls = d.class(i_s.db);
-                    if d.options.init {
-                        let mut init = dataclass_init_func(d, i_s.db).clone();
-                        if d.class.generics != ClassGenerics::NotDefinedYet
-                            || cls.use_cached_type_vars(i_s.db).is_empty()
-                        {
-                            init.return_type = t.as_ref().clone();
-                        } else {
-                            let mut type_var_dataclass = (**d).clone();
-                            type_var_dataclass.class =
-                                Class::with_self_generics(i_s.db, cls.node_ref)
-                                    .as_generic_class(i_s.db);
-                            init.return_type = Type::Dataclass(Rc::new(type_var_dataclass));
-                        }
-                        return Some(CallableLike::Callable(Rc::new(init)));
-                    }
-                    return cls.find_relevant_constructor(i_s).maybe_callable(i_s, cls);
-                }
-                Type::TypedDict(_) => {
-                    todo!("Once this is implemented remove the reveal_type formatting")
-                }
-                Type::NamedTuple(nt) => {
-                    let mut callable = nt.__new__.remove_first_param().unwrap();
-                    callable.return_type = (**t).clone();
-                    return Some(CallableLike::Callable(Rc::new(callable)));
-                }
-                _ => {
-                    /*
-                    if matches!(&c1.params, CallableParams::Any) {
-                        c1.return_type.is_super_type_of(
-                            i_s,
-                            matcher,
-                            t2,
-                        )
-                    } else {
-                        None
-                    }
-                    */
-                    None
-                }
-            },
+            Type::Type(t) => t.type_type_maybe_callable(i_s),
             Type::Any(cause) => Some(CallableLike::Callable(Rc::new(CallableContent::new_any(
                 i_s.db.python_state.empty_type_var_likes.clone(),
                 *cause,
@@ -672,6 +626,56 @@ impl Type {
             }
             Type::FunctionOverload(overload) => Some(CallableLike::Overload(overload.clone())),
             _ => None,
+        }
+    }
+
+    fn type_type_maybe_callable(&self, i_s: &InferenceState) -> Option<CallableLike> {
+        // Is Type[Foo] a callable?
+        match self {
+            Type::Class(c) => {
+                let cls = c.class(i_s.db);
+                return cls.find_relevant_constructor(i_s).maybe_callable(i_s, cls);
+            }
+            Type::Dataclass(d) => {
+                let cls = d.class(i_s.db);
+                if d.options.init {
+                    let mut init = dataclass_init_func(d, i_s.db).clone();
+                    if d.class.generics != ClassGenerics::NotDefinedYet
+                        || cls.use_cached_type_vars(i_s.db).is_empty()
+                    {
+                        init.return_type = self.clone();
+                    } else {
+                        let mut type_var_dataclass = (**d).clone();
+                        type_var_dataclass.class = Class::with_self_generics(i_s.db, cls.node_ref)
+                            .as_generic_class(i_s.db);
+                        init.return_type = Type::Dataclass(Rc::new(type_var_dataclass));
+                    }
+                    return Some(CallableLike::Callable(Rc::new(init)));
+                }
+                return cls.find_relevant_constructor(i_s).maybe_callable(i_s, cls);
+            }
+            Type::TypedDict(_) => {
+                todo!("Once this is implemented remove the reveal_type formatting")
+            }
+            Type::NamedTuple(nt) => {
+                let mut callable = nt.__new__.remove_first_param().unwrap();
+                callable.return_type = self.clone();
+                return Some(CallableLike::Callable(Rc::new(callable)));
+            }
+            _ => {
+                /*
+                if matches!(&c1.params, CallableParams::Any) {
+                    c1.return_type.is_super_type_of(
+                        i_s,
+                        matcher,
+                        t2,
+                    )
+                } else {
+                    None
+                }
+                */
+                None
+            }
         }
     }
 
