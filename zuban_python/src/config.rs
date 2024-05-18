@@ -8,7 +8,7 @@ const OPTIONS_STARTING_WITH_ALLOW: [&str; 3] = [
     "allow_empty_bodies",
 ];
 
-pub fn set_flag<'x>(
+pub fn set_flag(
     flags: &mut TypeCheckerFlags,
     name: &str,
     value: Option<&str>,

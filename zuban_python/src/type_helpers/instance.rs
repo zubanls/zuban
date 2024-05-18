@@ -92,14 +92,8 @@ impl<'a> Instance<'a> {
                     };
                 }
             }
-            add_attribute_error(
-                i_s,
-                from,
-                &t,
-                &t,
-                name_str,
-            );
-            return
+            add_attribute_error(i_s, from, &t, &t, name_str);
+            return;
         };
         if inf.maybe_saved_specific(i_s.db) == Some(Specific::AnnotationOrTypeCommentClassVar) {
             add_issue(IssueKind::CannotAssignToClassVarViaInstance {
@@ -726,7 +720,7 @@ fn get_relevant_type_for_super(db: &Database, t: &Type) -> Type {
         return l.fallback_type(db);
     }
     let Type::TypeVar(usage) = t else {
-        return t.clone()
+        return t.clone();
     };
     if let TypeVarKind::Bound(bound) = &usage.type_var.kind {
         return get_relevant_type_for_super(db, bound);

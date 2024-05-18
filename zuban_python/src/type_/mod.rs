@@ -429,6 +429,7 @@ impl<'a, Iter: Iterator<Item = &'a Type>> Iterator for TypeRefIterator<'a, Iter>
 // PartialEq is only here for optimizations, it is not a reliable way to check if a type matches
 // with another type.
 #[derive(Debug, Clone, PartialEq)]
+#[allow(clippy::enum_variant_names)]
 pub enum Type {
     Class(GenericClass),
     Union(UnionType),
@@ -1118,14 +1119,14 @@ impl Type {
     }
 
     pub fn is_subclassable(&self, db: &Database) -> bool {
-        match self {
+        matches!(
+            self,
             Self::Class(_)
-            | Self::Tuple(_)
-            | Self::NewType(_)
-            | Self::NamedTuple(_)
-            | Self::Dataclass(_) => true,
-            _ => false,
-        }
+                | Self::Tuple(_)
+                | Self::NewType(_)
+                | Self::NamedTuple(_)
+                | Self::Dataclass(_)
+        )
     }
 
     pub fn maybe_avoid_implicit_literal(&self, db: &Database) -> Option<Self> {
@@ -1253,7 +1254,7 @@ impl Type {
             })
     }
 
-    pub(crate) fn error_if_not_matches<'x>(
+    pub(crate) fn error_if_not_matches(
         &self,
         i_s: &InferenceState,
         value: &Inferred,
@@ -1269,7 +1270,7 @@ impl Type {
         );
     }
 
-    pub(crate) fn error_if_not_matches_with_matcher<'x>(
+    pub(crate) fn error_if_not_matches_with_matcher(
         &self,
         i_s: &InferenceState,
         matcher: &mut Matcher,
@@ -1502,13 +1503,13 @@ pub enum FunctionKind {
 
 impl FunctionKind {
     pub fn is_same_base_kind(self, other: Self) -> bool {
-        match (self, other) {
+        matches!(
+            (self, other),
             (Self::Function { .. }, Self::Function { .. })
-            | (Self::Property { .. }, Self::Property { .. })
-            | (Self::Classmethod { .. }, Self::Classmethod { .. })
-            | (Self::Staticmethod, Self::Staticmethod) => true,
-            _ => false,
-        }
+                | (Self::Property { .. }, Self::Property { .. })
+                | (Self::Classmethod { .. }, Self::Classmethod { .. })
+                | (Self::Staticmethod, Self::Staticmethod)
+        )
     }
 
     pub fn had_first_self_or_class_annotation(self) -> bool {

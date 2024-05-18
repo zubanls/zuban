@@ -1306,7 +1306,7 @@ fn python_version_matches_tuple(
     from: usize,
 ) -> Truthiness {
     let Some(AtomContent::Tuple(tup)) = other.maybe_unpacked_atom() else {
-        return Truthiness::Unknown
+        return Truthiness::Unknown;
     };
     if tup.iter().count() + from > 2 {
         // (major, minor, bugfix) is currently not supported
@@ -1322,7 +1322,7 @@ fn python_version_matches_tuple(
             _ => return Truthiness::Unknown,
         };
         let Some(AtomContent::Int(n)) = expr.maybe_unpacked_atom() else {
-            return Truthiness::Unknown
+            return Truthiness::Unknown;
         };
         if let Some(n_in_tup) = n
             .parse()

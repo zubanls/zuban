@@ -674,7 +674,7 @@ impl<'a> Matcher<'a> {
         Match::new_false()
     }
 
-    pub(crate) fn match_param_spec_arguments<'db, 'c>(
+    pub(crate) fn match_param_spec_arguments<'db>(
         &mut self,
         i_s: &InferenceState<'db, '_>,
         usage: &ParamSpecUsage,

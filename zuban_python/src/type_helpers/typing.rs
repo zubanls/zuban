@@ -232,7 +232,7 @@ pub(crate) fn execute_assert_type<'db>(
         return error_non_positional();
     };
     let ArgKind::Positional(second_positional) = second.kind else {
-        return error_non_positional()
+        return error_non_positional();
     };
     let first = if matches!(result_context, ResultContext::ExpectUnused) {
         first.infer(i_s, &mut ResultContext::Unknown)
@@ -241,11 +241,13 @@ pub(crate) fn execute_assert_type<'db>(
     };
     let first_type = first.as_cow_type(i_s);
 
-    let Ok(second) = second_positional.node_ref
+    let Ok(second) = second_positional
+        .node_ref
         .file
         .inference(i_s)
-        .compute_cast_target(second_positional.node_ref) else {
-        return Inferred::new_any_from_error()
+        .compute_cast_target(second_positional.node_ref)
+    else {
+        return Inferred::new_any_from_error();
     };
     let second_type = second.as_cow_type(i_s);
     if first_type.as_ref() != second_type.as_ref() {
@@ -701,11 +703,11 @@ fn maybe_param_spec(
         for arg in iterator {
             match arg.kind {
                 ArgKind::Keyword(KeywordArg {
-                    key,
+                    key: "default",
                     node_ref,
                     expression,
                     ..
-                }) if key == "default" => {
+                }) => {
                     if let Some(c) = node_ref
                         .file
                         .inference(i_s)
@@ -777,9 +779,10 @@ fn maybe_new_type<'db>(i_s: &InferenceState<'db, '_>, args: &dyn Args<'db>) -> O
         args.add_issue(
             i_s,
             IssueKind::ArgumentIssue(Box::from(
-                    "NewType(...) expects exactly two positional arguments")),
+                "NewType(...) expects exactly two positional arguments",
+            )),
         );
-        return None
+        return None;
     };
     let result = first
         .as_named_expression()

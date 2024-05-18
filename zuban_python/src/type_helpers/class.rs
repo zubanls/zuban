@@ -595,9 +595,9 @@ impl<'db: 'a, 'a> Class<'a> {
                     let (name, expr) = kwarg.unpack();
                     if name.as_str() == "metaclass" {
                         let node_ref = NodeRef::new(self.node_ref.file, expr.index());
-                        let mut inference = self.node_ref.file.inference(i_s);
+                        let inference = self.node_ref.file.inference(i_s);
                         let meta_base = TypeComputation::new(
-                            &mut inference,
+                            &inference,
                             self.node_ref.as_link(),
                             &mut |i_s, _: &_, type_var_like: TypeVarLike, _| {
                                 todo!();
@@ -655,9 +655,9 @@ impl<'db: 'a, 'a> Class<'a> {
             for argument in arguments.iter() {
                 match argument {
                     Argument::Positional(n) => {
-                        let mut inference = self.node_ref.file.inference(i_s);
+                        let inference = self.node_ref.file.inference(i_s);
                         let base = TypeComputation::new(
-                            &mut inference,
+                            &inference,
                             self.node_ref.as_link(),
                             &mut |i_s, _: &_, type_var_like: TypeVarLike, _| {
                                 if let Some(usage) =

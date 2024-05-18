@@ -291,7 +291,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     add_issue,
                     search_init,
                     class,
-                )
+                );
             };
             if inf.is_union(i_s) {
                 // TODO this is shit

@@ -39,7 +39,7 @@ impl<'a> ResultContext<'a, '_> {
         }
     }
 
-    pub fn with_type_if_exists<'db, T>(
+    pub fn with_type_if_exists<T>(
         &mut self,
         callable: impl FnOnce(&Type, &mut Matcher) -> T,
     ) -> Option<T> {

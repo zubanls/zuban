@@ -2137,7 +2137,10 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             generics.push(generic_item);
         }
         if !is_single_param_spec {
-            while let Some(_) = type_args.next_type_argument(self, has_type_var_tuple) {
+            while type_args
+                .next_type_argument(self, has_type_var_tuple)
+                .is_some()
+            {
                 // Still calculate errors for the rest of the types given. After all they are still
                 // expected to be types.
                 given += 1;
@@ -2176,12 +2179,10 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
     fn compute_type_get_item_on_tuple(&mut self, slice_type: SliceType) -> TypeContent<'db, 'db> {
         let mut iterator = slice_type.iter();
         let first = iterator.next().unwrap();
-        if let Some(slice_or_simple) = iterator.next() {
-            if let SliceOrSimple::Simple(s) = slice_or_simple {
-                if s.named_expr.is_ellipsis_literal() {
-                    let t = self.compute_slice_type(first);
-                    return TypeContent::Type(Type::Tuple(Tuple::new_arbitrary_length(t)));
-                }
+        if let Some(SliceOrSimple::Simple(s)) = iterator.next() {
+            if s.named_expr.is_ellipsis_literal() {
+                let t = self.compute_slice_type(first);
+                return TypeContent::Type(Type::Tuple(Tuple::new_arbitrary_length(t)));
             }
         }
         TypeContent::Type(Type::Tuple(Tuple::new(
@@ -3838,7 +3839,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
         let f: &'db PythonFile =
             self.file
                 .new_annotation_file(self.i_s.db, start, s.trim_end_matches('\\').into());
-        let mut inference = f.inference(self.i_s);
+        let inference = f.inference(self.i_s);
         if let Some(star_exprs) = f.tree.maybe_star_expressions() {
             match star_exprs.unpack() {
                 StarExpressionContent::Expression(expr) => {
@@ -3859,7 +3860,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                     } else {
                         let mut x = type_computation_for_variable_annotation;
                         let mut comp = TypeComputation::new(
-                            &mut inference,
+                            &inference,
                             assignment_node_ref.as_link(),
                             &mut x,
                             TypeComputationOrigin::AssignmentTypeCommentOrAnnotation {
@@ -4269,9 +4270,7 @@ impl<'a, I: Clone + Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
                 }
             }
         }
-        let Some(s) = self.slices.next() else {
-            return None;
-        };
+        let s = self.slices.next()?;
         let t = type_computation.compute_slice_type_content(s);
         match type_computation.convert_slice_type_or_tuple_unpack(t, s.as_node_ref()) {
             TuplePart::Type(t) => Some((s.as_node_ref(), t)),
@@ -4370,11 +4369,8 @@ impl<'a, I: Clone + Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
         type_computation: &mut TypeComputation,
         allow_aesthetic_class_simplification: bool,
     ) -> Option<ParamSpecArg> {
-        let Some(s) = self.slices.next() else {
-            return None;
-        };
         let params = type_computation.calculate_callable_params(
-            s,
+            self.slices.next()?,
             true,
             allow_aesthetic_class_simplification,
         );

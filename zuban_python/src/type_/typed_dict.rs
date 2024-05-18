@@ -215,7 +215,7 @@ impl TypedDict {
     }
 
     fn qualified_name(&self, db: &Database) -> Option<String> {
-        let Some(name) = self.name else { return None };
+        let name = self.name?;
         let module = Module::from_file_index(db, name.file_index).qualified_name(db);
         Some(format!("{module}.{}", name.as_str(db)))
     }
@@ -571,9 +571,9 @@ fn new_typed_dict_internal<'db>(
         }
     };
     let on_type_var = &mut |i_s: &InferenceState, _: &_, _, _| TypeVarCallbackReturn::NotFound;
-    let mut inference = first.node_ref.file.inference(i_s);
+    let inference = first.node_ref.file.inference(i_s);
     let mut comp = TypeComputation::new(
-        &mut inference,
+        &inference,
         first.node_ref.as_link(),
         on_type_var,
         TypeComputationOrigin::TypedDictMember,

@@ -55,9 +55,7 @@ pub(crate) trait Args<'db>: std::fmt::Debug {
 
     fn maybe_two_positional_args(&self, db: &'db Database) -> Option<(NodeRef<'db>, NodeRef<'db>)> {
         let mut iterator = self.iter();
-        let Some(first_arg) = iterator.next() else {
-            return None;
-        };
+        let first_arg = iterator.next()?;
         let ArgKind::Positional(PositionalArg {
             node_ref: node_ref1,
             ..
@@ -65,9 +63,7 @@ pub(crate) trait Args<'db>: std::fmt::Debug {
         else {
             return None;
         };
-        let Some(second_arg) = iterator.next() else {
-            return None;
-        };
+        let second_arg = iterator.next()?;
         let ArgKind::Positional(PositionalArg {
             node_ref: node_ref2,
             ..

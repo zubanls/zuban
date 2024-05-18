@@ -1946,7 +1946,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     }
                 } else {
                     for l_type in left_inf.as_cow_type(i_s).iter_with_unpacked_unions(i_s.db) {
-                        if r_type
+                        let match_ = r_type
                             .lookup(
                                 i_s,
                                 from.file_index(),
@@ -1969,9 +1969,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 &|_| todo!(),
                             )
                             .as_cow_type(i_s)
-                            .is_simple_super_type_of(i_s, l_type)
-                            .bool()
-                        {
+                            .is_simple_super_type_of(i_s, l_type);
+                        if match_.bool() {
                             had_union_member_passing = true;
                         }
                     }

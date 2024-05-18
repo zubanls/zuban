@@ -679,10 +679,10 @@ impl TypeAlias {
 
     pub fn application_allowed(&self) -> bool {
         self.is_valid()
-            && match self.type_if_valid() {
-                Type::Class(_) | Type::TypedDict(_) | Type::Dataclass(_) => true,
-                _ => false,
-            }
+            && matches!(
+                self.type_if_valid(),
+                Type::Class(_) | Type::TypedDict(_) | Type::Dataclass(_)
+            )
     }
 
     pub fn as_type_and_set_type_vars_any(&self, db: &Database) -> Type {

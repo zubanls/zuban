@@ -412,11 +412,8 @@ pub(crate) fn new_typing_named_tuple(
     args: &dyn Args,
     in_type_definition: bool,
 ) -> Option<Rc<NamedTuple>> {
-    let Some((name, second_node_ref, atom_content, mut iterator)) =
-        check_named_tuple_name(i_s, "NamedTuple", args)
-    else {
-        return None;
-    };
+    let (name, second_node_ref, atom_content, mut iterator) =
+        check_named_tuple_name(i_s, "NamedTuple", args)?;
     if iterator.next().is_some() {
         args.add_issue(
             i_s,
@@ -439,9 +436,9 @@ pub(crate) fn new_typing_named_tuple(
         i_s.find_parent_type_var(&type_var_like)
             .unwrap_or(TypeVarCallbackReturn::NotFound)
     };
-    let mut inference = second_node_ref.file.inference(i_s);
+    let inference = second_node_ref.file.inference(i_s);
     let mut comp = TypeComputation::new(
-        &mut inference,
+        &inference,
         second_node_ref.as_link(),
         on_type_var,
         TypeComputationOrigin::NamedTupleMember,
