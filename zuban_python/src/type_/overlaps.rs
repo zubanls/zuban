@@ -1,4 +1,5 @@
 use crate::{
+    debug,
     inference_state::InferenceState,
     matching::{params::has_overlapping_params, Matcher},
     type_::TupleArgs,
@@ -13,6 +14,17 @@ impl Type {
     }
 
     pub fn overlaps(&self, i_s: &InferenceState, matcher: &mut Matcher, other: &Self) -> bool {
+        let result = self.overlaps_internal(i_s, matcher, other);
+        debug!(
+            r#"Overlapping? "{}" and "{}": {result}"#,
+            self.format_short(i_s.db),
+            other.format_short(i_s.db)
+        );
+        result
+    }
+
+    #[inline]
+    fn overlaps_internal(&self, i_s: &InferenceState, matcher: &mut Matcher, other: &Self) -> bool {
         // In mypy this is called `is_overlapping_types` and it basically ignores variance and a
         // lot of other concepts to tell use whether two types have any relationship at all.
         // e.g. list[A | B] and list[B | C] overlap.
