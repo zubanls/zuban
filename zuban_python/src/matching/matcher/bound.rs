@@ -335,11 +335,11 @@ impl Bound {
 
 impl BoundKind {
     fn format(&self, format_data: &FormatData, style: ParamsStyle) -> Box<str> {
-        return match &self {
+        match &self {
             Self::TypeVar(bound) => bound.format(format_data),
             Self::TypeVarTuple(ts) => ts.format(format_data),
             Self::ParamSpec(p) => p.format(format_data, style),
-        };
+        }
     }
 
     pub fn format_short(&self, db: &Database) -> Box<str> {

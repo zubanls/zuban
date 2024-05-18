@@ -247,12 +247,11 @@ impl TypedDict {
         let mut new_members = vec![];
         for m1 in self.members(i_s.db).iter() {
             for m2 in other.members(i_s.db).iter() {
-                if m1.name.as_str(i_s.db) == m2.name.as_str(i_s.db) {
-                    if m1.required == m2.required
-                        && m1.type_.is_simple_same_type(i_s, &m2.type_).bool()
-                    {
-                        new_members.push(m1.clone());
-                    }
+                if m1.name.as_str(i_s.db) == m2.name.as_str(i_s.db)
+                    && m1.required == m2.required
+                    && m1.type_.is_simple_same_type(i_s, &m2.type_).bool()
+                {
+                    new_members.push(m1.clone());
                 }
             }
         }
@@ -308,9 +307,9 @@ impl TypedDict {
             )
         }));
         if let Some(name) = name {
-            format!("TypedDict('{name}', {{{params}}})").into()
+            format!("TypedDict('{name}', {{{params}}})")
         } else {
-            format!("TypedDict({{{params}}})").into()
+            format!("TypedDict({{{params}}})")
         }
     }
 
@@ -400,10 +399,8 @@ impl TypedDict {
                     return Match::new_false();
                 }
                 matches &= m1.type_.is_same_type(i_s, matcher, &m2.type_);
-            } else {
-                if !read_only || m1.required {
-                    return Match::new_false();
-                }
+            } else if !read_only || m1.required {
+                return Match::new_false();
             }
         }
         matches
@@ -756,7 +753,7 @@ fn typed_dict_get_or_pop_internal<'db>(
         Some(second) => match &second.kind {
             ArgKind::Positional(second) => Some(second.infer(i_s, context)),
             ArgKind::Keyword(second) if second.key == "default" => Some(second.infer(i_s, context)),
-            _ => return None,
+            _ => None,
         },
         None => Some(Inferred::new_none()),
     };
@@ -775,19 +772,17 @@ fn typed_dict_get_or_pop_internal<'db>(
                     )
                 }
                 member.type_.clone()
+            } else if is_pop {
+                args.add_issue(
+                    i_s,
+                    IssueKind::TypedDictHasNoKey {
+                        typed_dict: td.format(&FormatData::new_short(i_s.db)).into(),
+                        key: key.into(),
+                    },
+                );
+                Type::Any(AnyCause::FromError)
             } else {
-                if is_pop {
-                    args.add_issue(
-                        i_s,
-                        IssueKind::TypedDictHasNoKey {
-                            typed_dict: td.format(&FormatData::new_short(i_s.db)).into(),
-                            key: key.into(),
-                        },
-                    );
-                    Type::Any(AnyCause::FromError)
-                } else {
-                    i_s.db.python_state.object_type()
-                }
+                i_s.db.python_state.object_type()
             }
         }))
     });

@@ -351,15 +351,22 @@ fn check_named_tuple_name<'x, 'y>(
     };
     let ArgKind::Positional(pos) = first_arg.kind else {
         first_arg.add_issue(i_s, IssueKind::UnexpectedArgumentsTo { name: "namedtuple" });
-        return None
+        return None;
     };
     let expr = pos.node_ref.as_named_expression().expression();
     let first = expr
         .maybe_single_string_literal()
         .map(|py_string| (pos.node_ref, py_string));
-    let Some(mut string_slice) = StringSlice::from_string_in_expression(pos.node_ref.file_index(), expr) else {
-        pos.node_ref.add_issue(i_s, IssueKind::NamedTupleExpectsStringLiteralAsFirstArg { name: executable_name });
-        return None
+    let Some(mut string_slice) =
+        StringSlice::from_string_in_expression(pos.node_ref.file_index(), expr)
+    else {
+        pos.node_ref.add_issue(
+            i_s,
+            IssueKind::NamedTupleExpectsStringLiteralAsFirstArg {
+                name: executable_name,
+            },
+        );
+        return None;
     };
     let py_string = expr.maybe_single_string_literal()?;
     if let Some(name) = py_string.in_simple_assignment() {
@@ -379,14 +386,22 @@ fn check_named_tuple_name<'x, 'y>(
     let Some(second_arg) = iterator.next() else {
         if executable_name != "namedtuple" {
             // For namedtuple this is already handled by type checking.
-            args.add_issue(i_s, IssueKind::TooFewArguments(r#" for "NamedTuple()""#.into()));
+            args.add_issue(
+                i_s,
+                IssueKind::TooFewArguments(r#" for "NamedTuple()""#.into()),
+            );
         }
-        return None
+        return None;
     };
     let ArgKind::Positional(second) = second_arg.kind else {
         todo!()
     };
-    let Some(atom_content) = second.node_ref.as_named_expression().expression().maybe_unpacked_atom() else {
+    let Some(atom_content) = second
+        .node_ref
+        .as_named_expression()
+        .expression()
+        .maybe_unpacked_atom()
+    else {
         todo!()
     };
     Some((string_slice, second.node_ref, atom_content, iterator))
@@ -397,8 +412,10 @@ pub(crate) fn new_typing_named_tuple(
     args: &dyn Args,
     in_type_definition: bool,
 ) -> Option<Rc<NamedTuple>> {
-    let Some((name, second_node_ref, atom_content, mut iterator)) = check_named_tuple_name(i_s, "NamedTuple", args) else {
-        return None
+    let Some((name, second_node_ref, atom_content, mut iterator)) =
+        check_named_tuple_name(i_s, "NamedTuple", args)
+    else {
+        return None;
     };
     if iterator.next().is_some() {
         args.add_issue(
@@ -459,8 +476,10 @@ pub(crate) fn new_collections_named_tuple(
     i_s: &InferenceState,
     args: &dyn Args,
 ) -> Option<Rc<NamedTuple>> {
-    let Some((name, second_node_ref, atom_content, _)) = check_named_tuple_name(i_s, "namedtuple", args) else {
-        return None
+    let Some((name, second_node_ref, atom_content, _)) =
+        check_named_tuple_name(i_s, "namedtuple", args)
+    else {
+        return None;
     };
     let mut params = start_namedtuple_params(i_s.db);
 
@@ -475,12 +494,15 @@ pub(crate) fn new_collections_named_tuple(
     let mut add_from_iterator = |iterator| {
         for element in iterator {
             let StarLikeExpression::NamedExpression(ne) = element else {
-            todo!()
-        };
-            let Some(string_slice) = StringSlice::from_string_in_expression(second_node_ref.file.file_index(), ne.expression()) else {
+                todo!()
+            };
+            let Some(string_slice) = StringSlice::from_string_in_expression(
+                second_node_ref.file.file_index(),
+                ne.expression(),
+            ) else {
                 NodeRef::new(second_node_ref.file, ne.index())
                     .add_issue(i_s, IssueKind::StringLiteralExpectedAsNamedTupleItem);
-                continue
+                continue;
             };
             add_param(string_slice.into())
         }

@@ -188,23 +188,21 @@ impl<'a> Matcher<'a> {
             }
         }
 
-        if cfg!(feature = "zuban_debug") {
-            if !c2.type_vars.is_empty() {
-                let i = self
-                    .find_responsible_type_var_matcher_index(c2.defined_at, type_var_matchers_len)
-                    .unwrap();
-                let matcher = &self.type_var_matchers[i];
-                let generics = matcher.clone().into_generics_list(i_s.db);
-                debug!(
-                    "Type vars for reverse callable matching [{}]{}",
-                    generics.format(&FormatData::new_short(i_s.db)),
-                    if matcher.has_unresolved_transitive_constraints() {
-                        " (has unresolved transitive constraints)"
-                    } else {
-                        ""
-                    }
-                );
-            }
+        if cfg!(feature = "zuban_debug") && !c2.type_vars.is_empty() {
+            let i = self
+                .find_responsible_type_var_matcher_index(c2.defined_at, type_var_matchers_len)
+                .unwrap();
+            let matcher = &self.type_var_matchers[i];
+            let generics = matcher.clone().into_generics_list(i_s.db);
+            debug!(
+                "Type vars for reverse callable matching [{}]{}",
+                generics.format(&FormatData::new_short(i_s.db)),
+                if matcher.has_unresolved_transitive_constraints() {
+                    " (has unresolved transitive constraints)"
+                } else {
+                    ""
+                }
+            );
         }
         result
     }
@@ -267,7 +265,7 @@ impl<'a> Matcher<'a> {
             _ => {
                 if matches!(self.func_or_callable, Some(FunctionOrCallable::Function(_))) {
                     // In case we are working within a function, Self is bound already.
-                    return self.replace_self.unwrap()().matches(i_s, self, value_type, variance);
+                    self.replace_self.unwrap()().matches(i_s, self, value_type, variance)
                 } else {
                     Match::new_false()
                 }
@@ -676,11 +674,11 @@ impl<'a> Matcher<'a> {
         Match::new_false()
     }
 
-    pub(crate) fn match_param_spec_arguments<'db, 'b, 'c>(
+    pub(crate) fn match_param_spec_arguments<'db, 'c>(
         &mut self,
         i_s: &InferenceState<'db, '_>,
         usage: &ParamSpecUsage,
-        args: Box<[Arg<'db, 'b>]>,
+        args: Box<[Arg<'db, '_>]>,
         func_or_callable: FunctionOrCallable,
         add_issue: &dyn Fn(IssueKind),
         on_type_error: Option<OnTypeError>,
@@ -1014,12 +1012,11 @@ impl<'a> Matcher<'a> {
     fn constraint_count(&self) -> usize {
         self.type_var_matchers
             .iter()
-            .map(|tvm| {
+            .flat_map(|tvm| {
                 tvm.calculating_type_args
                     .iter()
                     .map(|c| c.unresolved_transitive_constraints.len() + c.calculated() as usize)
             })
-            .flatten()
             .sum()
     }
 
@@ -1456,7 +1453,6 @@ impl<'a> Matcher<'a> {
                             has_bound = true;
                         }
                     }
-                    return;
                 }
             };
             unresolved.search_type_vars(cycle_search)
@@ -1464,10 +1460,7 @@ impl<'a> Matcher<'a> {
         has_bound
     }
 
-    pub fn into_type_arg_iterator_or_any<'db>(
-        self,
-        db: &'db Database,
-    ) -> impl Iterator<Item = Type> + 'db {
+    pub fn into_type_arg_iterator_or_any(self, db: &Database) -> impl Iterator<Item = Type> + '_ {
         debug_assert!(self
             .type_var_matchers
             .first()
@@ -1638,12 +1631,7 @@ impl TypeVarCycles {
     }
 
     fn find_cycle(&self, tv: TypeVarIndexed) -> Option<&TypeVarCycle> {
-        for cycle in &self.cycles {
-            if cycle.set.contains(&tv) {
-                return Some(cycle);
-            }
-        }
-        return None;
+        self.cycles.iter().find(|&cycle| cycle.set.contains(&tv))
     }
 }
 

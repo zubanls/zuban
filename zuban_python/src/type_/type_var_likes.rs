@@ -52,7 +52,7 @@ impl<'a, T: CallableId> Iterator for CallableAncestors<'a, T> {
         if let Some(next) = self.next {
             let result = next;
             for callable_with_parent in self.callables {
-                if callable_with_parent.defined_at.is_same(&next) {
+                if callable_with_parent.defined_at.is_same(next) {
                     self.next = callable_with_parent.parent_callable.as_ref();
                     return Some(result);
                 }
@@ -148,12 +148,12 @@ impl<T: CallableId> TypeVarManager<T> {
         TypeVarLikes::new(
             self.type_vars
                 .iter()
-                .filter_map(|t| {
-                    (t.most_outer_callable
+                .filter(|&t| {
+                    t.most_outer_callable
                         .as_ref()
-                        .is_some_and(|m| m.matches_callable(callable)))
-                    .then(|| t.type_var_like.clone())
+                        .is_some_and(|m| m.matches_callable(callable))
                 })
+                .map(|t| t.type_var_like.clone())
                 .collect(),
         )
     }
@@ -171,7 +171,7 @@ impl<T: CallableId> TypeVarManager<T> {
                 callables: &self.callables,
                 next: second.as_ref(),
             }) {
-                if ancestor1.is_same(&ancestor2) {
+                if ancestor1.is_same(ancestor2) {
                     return Some(ancestor1.clone());
                 }
             }
@@ -204,7 +204,7 @@ impl<T: CallableId> TypeVarManager<T> {
                 if in_def.is_none() && t.most_outer_callable.is_none()
                     || in_def
                         .zip(t.most_outer_callable.as_ref())
-                        .is_some_and(|(in_def, m)| in_def.is_same(&m))
+                        .is_some_and(|(in_def, m)| in_def.is_same(m))
                 {
                     index += 1;
                 }
@@ -213,7 +213,7 @@ impl<T: CallableId> TypeVarManager<T> {
                 index = 0;
             }
         }
-        in_definition.map(|d| (index.into(), d.clone().map(|d| d.as_in_definition())))
+        in_definition.map(|d| (index.into(), d.map(|d| d.as_in_definition())))
     }
 
     pub fn remap_type_var(&self, usage: &TypeVarUsage) -> TypeVarUsage {
@@ -902,7 +902,7 @@ impl TypeVarLikeUsage {
             .into(),
             Self::ParamSpec(p) => match params_style {
                 ParamsStyle::CallableParams => {
-                    p.param_spec.format(&&FormatData::new_short(db)).into()
+                    p.param_spec.format(&FormatData::new_short(db)).into()
                 }
                 ParamsStyle::CallableParamsInner => format!("**{}", p.param_spec.name(db)).into(),
                 ParamsStyle::Unreachable => unreachable!(),

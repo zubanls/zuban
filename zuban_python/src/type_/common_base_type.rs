@@ -23,9 +23,9 @@ impl Type {
                 return self.clone().union(i_s.db, other.clone()).into_type()
             }
             */
-            Type::None | Type::Union(_) => return Some(self.simplified_union(i_s, other)),
-            Type::Any(cause) => return Some(Type::Any(*cause)),
-            Type::Never(_) => return Some(t2.clone()),
+            Type::None | Type::Union(_) => Some(self.simplified_union(i_s, other)),
+            Type::Any(cause) => Some(Type::Any(*cause)),
+            Type::Never(_) => Some(t2.clone()),
             _ => None,
         };
 
@@ -40,7 +40,7 @@ impl Type {
                 match &c1 {
                     TypeOrClass::Type(t1) => match c2 {
                         TypeOrClass::Class(c2) => {
-                            if let Some(base) = class_against_non_class(i_s, c2, &t1) {
+                            if let Some(base) = class_against_non_class(i_s, c2, t1) {
                                 return base;
                             }
                         }
@@ -66,23 +66,21 @@ impl Type {
             }
         }
         if let Some(first) = self.maybe_class(i_s.db) {
-            if first.is_protocol(i_s.db) {
-                if first
+            if first.is_protocol(i_s.db)
+                && first
                     .check_protocol_match(i_s, &mut Matcher::default(), other)
                     .bool()
-                {
-                    return self.clone();
-                }
+            {
+                return self.clone();
             }
         }
         if let Some(second) = other.maybe_class(i_s.db) {
-            if second.is_protocol(i_s.db) {
-                if second
+            if second.is_protocol(i_s.db)
+                && second
                     .check_protocol_match(i_s, &mut Matcher::default(), self)
                     .bool()
-                {
-                    return other.clone();
-                }
+            {
+                return other.clone();
             }
         }
         // Needed for protocols, because they don't inherit from object.
@@ -236,7 +234,7 @@ fn common_base_for_callables(
     match &c1.params {
         CallableParams::Simple(params1) => match &c2.params {
             CallableParams::Simple(params2) => {
-                if let Some(params) = common_params(i_s, &params1, &params2) {
+                if let Some(params) = common_params(i_s, params1, params2) {
                     return Type::Callable(Rc::new(CallableContent {
                         name: None,
                         class_name: None,

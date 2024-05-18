@@ -191,7 +191,7 @@ impl TypeArgs {
         if matches!(self.args, TupleArgs::ArbitraryLen(_)) {
             Some(format!("Unpack[Tuple[{result}]]").into())
         } else {
-            (!self.args.is_empty()).then(|| result)
+            (!self.args.is_empty()).then_some(result)
         }
     }
 }
@@ -660,7 +660,7 @@ impl Type {
             Type::NamedTuple(nt) => {
                 let mut callable = nt.__new__.remove_first_param().unwrap();
                 callable.return_type = self.clone();
-                return Some(CallableLike::Callable(Rc::new(callable)));
+                Some(CallableLike::Callable(Rc::new(callable)))
             }
             _ => {
                 /*
@@ -1156,8 +1156,7 @@ impl Type {
     }
 
     pub fn avoid_implicit_literal(self, db: &Database) -> Self {
-        self.maybe_avoid_implicit_literal(db)
-            .unwrap_or_else(|| self)
+        self.maybe_avoid_implicit_literal(db).unwrap_or(self)
     }
 
     pub fn is_literal_or_literal_in_tuple(&self) -> bool {
@@ -1295,7 +1294,7 @@ impl Type {
             );
             if let Some(error) = on_error(got, expected, reason) {
                 add_issue(error);
-                error_types.add_mismatch_notes(|issue| add_issue(issue))
+                error_types.add_mismatch_notes(add_issue)
             }
         }
     }
@@ -1416,9 +1415,9 @@ impl Type {
             ClassGenerics::List(GenericsList::new_generics(
                 // Performance issue: clone could probably be removed. Rc -> Vec check
                 // https://github.com/rust-lang/rust/issues/93610#issuecomment-1528108612
-                Generics::from_class_generics(db, &g1)
+                Generics::from_class_generics(db, g1)
                     .iter(db)
-                    .zip(Generics::from_class_generics(db, &g2).iter(db))
+                    .zip(Generics::from_class_generics(db, g2).iter(db))
                     .map(|(gi1, gi2)| gi1.merge_matching_parts(db, gi2))
                     .collect(),
             ))
@@ -1479,7 +1478,7 @@ impl Type {
             }
         }
         if matches!(result, Type::Never(NeverCause::Other)) {
-            return None;
+            None
         } else {
             Some(result)
         }

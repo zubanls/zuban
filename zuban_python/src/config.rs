@@ -2,7 +2,7 @@ use std::borrow::Cow;
 
 use crate::TypeCheckerFlags;
 
-const OPTIONS_STARTING_WITH_ALLOW: [&'static str; 3] = [
+const OPTIONS_STARTING_WITH_ALLOW: [&str; 3] = [
     "allow_untyped_globals",
     "allow_redefinition",
     "allow_empty_bodies",

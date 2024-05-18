@@ -429,12 +429,7 @@ impl WithUnpack {
             self.before
                 .iter()
                 .map(|t| t.format(format_data).into())
-                .chain(
-                    self.unpack
-                        .format(format_data)
-                        .map(|s| s.into())
-                        .into_iter(),
-                )
+                .chain(self.unpack.format(format_data).map(|s| s.into()))
                 .chain(self.after.iter().map(|t| t.format(format_data).into())),
         )
         .into()
@@ -570,7 +565,7 @@ impl TupleArgs {
                 )
             }
             (ArbitraryLen(t1), ArbitraryLen(t2)) => {
-                Self::ArbitraryLen(Box::new(t1.merge_matching_parts(db, &t2)))
+                Self::ArbitraryLen(Box::new(t1.merge_matching_parts(db, t2)))
             }
             (WithUnpack(_), _) => todo!(),
             (_, WithUnpack(_)) => todo!(),
@@ -625,7 +620,7 @@ pub(crate) fn lookup_on_tuple<'x>(
     name: &str,
 ) -> LookupDetails<'x> {
     lookup_tuple_magic_methods(tuple.clone(), name).or_else(|| {
-        let tuple_cls = i_s.db.python_state.tuple_class(i_s.db, &tuple);
+        let tuple_cls = i_s.db.python_state.tuple_class(i_s.db, tuple);
         let tuple_instance = Instance::new(tuple_cls, None);
         for (mro_index, class_or_type) in tuple_cls.mro(i_s.db) {
             let (cls, lookup) = class_or_type.lookup_symbol(i_s, name);
@@ -637,10 +632,10 @@ pub(crate) fn lookup_on_tuple<'x>(
                     i_s,
                     tuple_cls.as_type(i_s.db),
                     cls,
-                    |issue| add_issue(issue),
+                    add_issue,
                     mro_index,
                 ) else {
-                    return LookupDetails::none()
+                    return LookupDetails::none();
                 };
                 return LookupDetails {
                     class: class_or_type,

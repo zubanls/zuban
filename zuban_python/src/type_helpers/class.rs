@@ -47,7 +47,7 @@ use crate::{
     },
 };
 
-const EXCLUDED_PROTOCOL_ATTRIBUTES: [&'static str; 11] = [
+const EXCLUDED_PROTOCOL_ATTRIBUTES: [&str; 11] = [
     "__abstractmethods__",
     "__annotations__",
     "__dict__",
@@ -148,9 +148,12 @@ impl<'db: 'a, 'a> Class<'a> {
         let Some(inf) = __init__.into_maybe_inferred() else {
             if self.is_protocol(i_s.db) {
                 if !from_type_type {
-                    args.add_issue(i_s, IssueKind::CannotInstantiateProtocol {
-                        name: self.name().into()
-                    })
+                    args.add_issue(
+                        i_s,
+                        IssueKind::CannotInstantiateProtocol {
+                            name: self.name().into(),
+                        },
+                    )
                 }
             } else {
                 debug_assert!(self.incomplete_mro(i_s.db));
@@ -159,7 +162,7 @@ impl<'db: 'a, 'a> Class<'a> {
             return Some(match type_var_likes.is_empty() {
                 false => ClassGenerics::List(type_var_likes.as_any_generic_list()),
                 true => ClassGenerics::None,
-            })
+            });
         };
         match inf.init_as_function(i_s, init_class) {
             Some(FunctionOrOverload::Function(func)) => {
@@ -562,10 +565,8 @@ impl<'db: 'a, 'a> Class<'a> {
         self.use_cached_class_infos(db)
             .mro
             .iter()
-            .filter_map(move |b| {
-                b.is_direct_base
-                    .then(|| apply_generics_to_base_class(db, &b.type_, generics))
-            })
+            .filter(|&b| b.is_direct_base)
+            .map(move |b| apply_generics_to_base_class(db, &b.type_, generics))
     }
 
     fn calculate_class_infos(
@@ -662,7 +663,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                 if let Some(usage) =
                                     type_vars.find(type_var_like.clone(), self.node_ref.as_link())
                                 {
-                                    return TypeVarCallbackReturn::TypeVarLike(usage);
+                                    TypeVarCallbackReturn::TypeVarLike(usage)
                                 } else if let Some(usage) =
                                     self.maybe_type_var_like_in_parent(i_s, &type_var_like)
                                 {
@@ -692,15 +693,11 @@ impl<'db: 'a, 'a> Class<'a> {
                                         if let Some(cached) =
                                             c.class(i_s.db).maybe_cached_class_infos(i_s.db)
                                         {
-                                            if cached.class_kind != ClassKind::Normal {
-                                                if class_kind == ClassKind::Normal {
-                                                    if !matches!(
-                                                        cached.class_kind,
-                                                        ClassKind::Protocol
-                                                    ) {
-                                                        class_kind = cached.class_kind.clone();
-                                                    }
-                                                }
+                                            if cached.class_kind != ClassKind::Normal
+                                                && class_kind == ClassKind::Normal
+                                                && !matches!(cached.class_kind, ClassKind::Protocol)
+                                            {
+                                                class_kind = cached.class_kind;
                                             }
                                         }
                                         Some(c.class(db))
@@ -1045,9 +1042,7 @@ impl<'db: 'a, 'a> Class<'a> {
         let mut protocol_member_count = 0;
         debug!("TODO this from is completely wrong and should never be used.");
         for (mro_index, c) in self.mro_maybe_without_object(i_s.db, true) {
-            let TypeOrClass::Class(c) = c else {
-                todo!()
-            };
+            let TypeOrClass::Class(c) = c else { todo!() };
             let protocol_members = &c.use_cached_class_infos(i_s.db).protocol_members;
             protocol_member_count += protocol_members.len();
             for protocol_member in protocol_members.iter() {
@@ -1141,7 +1136,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                                 &t1,
                                                 &t2,
                                                 &t1,
-                                                &full_other.as_ref().unwrap_or(&t2),
+                                                full_other.as_ref().unwrap_or(&t2),
                                             )
                                         }
                                     }
@@ -1249,9 +1244,7 @@ impl<'db: 'a, 'a> Class<'a> {
         for (_, c) in self.mro_maybe_without_object(i_s.db, true) {
             let (c, lookup) = c.lookup_symbol(i_s, "__new__");
             if lookup.into_maybe_inferred().is_some() {
-                let Some(class) = c else {
-                    unreachable!()
-                };
+                let Some(class) = c else { unreachable!() };
                 return class.node_ref.file.file_index()
                     != i_s.db.python_state.enum_file().file_index();
             }
@@ -1427,12 +1420,10 @@ impl<'db: 'a, 'a> Class<'a> {
             let mut attr_kind = AttributeKind::Attribute;
             let result = lookup_result.and_then(|inf| {
                 if let TypeOrClass::Class(in_class) = in_class {
-                    if class_infos.has_slots {
-                        if self.in_slots(i_s.db, name) {
-                            add_issue(IssueKind::SlotsConflictWithClassVariableAccess {
-                                name: name.into(),
-                            })
-                        }
+                    if class_infos.has_slots && self.in_slots(i_s.db, name) {
+                        add_issue(IssueKind::SlotsConflictWithClassVariableAccess {
+                            name: name.into(),
+                        })
                     }
                     let i_s = i_s.with_class_context(&in_class);
                     let result = inf.bind_class_descriptors(
@@ -1470,7 +1461,7 @@ impl<'db: 'a, 'a> Class<'a> {
                         let instance = Instance::new(class_infos.metaclass(i_s.db), None);
                         instance.lookup_with_explicit_self_binding(
                             i_s,
-                            &|issue| add_issue(issue),
+                            &add_issue,
                             name,
                             LookupKind::Normal,
                             0,
@@ -1651,7 +1642,7 @@ impl<'db: 'a, 'a> Class<'a> {
             BlockContent::Indented(stmts) => {
                 for stmt in stmts {
                     let StmtOrError::Stmt(stmt) = stmt else {
-                        continue
+                        continue;
                     };
                     match stmt.unpack() {
                         StmtContent::SimpleStmts(simple) => {
@@ -1728,13 +1719,15 @@ impl<'db: 'a, 'a> Class<'a> {
                         let Some(super_class_members) = td.maybe_calculated_members(i_s.db) else {
                             let super_cls = Class::from_non_generic_link(i_s.db, td.defined_at);
                             let tdd = super_cls.maybe_typed_dict_definition().unwrap();
-                            tdd.deferred_subclass_member_initializations.borrow_mut().push(typed_dict.clone());
+                            tdd.deferred_subclass_member_initializations
+                                .borrow_mut()
+                                .push(typed_dict.clone());
                             debug!(
                                 "Defer typed dict member initialization for {:?} after {:?}",
                                 self.name(),
                                 super_cls.name(),
                             );
-                            return
+                            return;
                         };
                         typed_dict_members.merge(i_s, node_ref, td.members(i_s.db));
                     }
@@ -1748,7 +1741,7 @@ impl<'db: 'a, 'a> Class<'a> {
             BlockContent::Indented(stmts) => {
                 for stmt in stmts {
                     let StmtOrError::Stmt(stmt) = stmt else {
-                        continue
+                        continue;
                     };
                     match stmt.unpack() {
                         StmtContent::SimpleStmts(simple) => find_stmt_typed_dict_types(
@@ -1772,7 +1765,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 .deferred_subclass_member_initializations
                 .borrow_mut();
             let Some(deferred) = borrowed.pop() else {
-                break
+                break;
             };
             drop(borrowed);
             let cls = Class::from_non_generic_link(i_s.db, deferred.defined_at);
@@ -1963,7 +1956,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 }
                 return ClassExecutionResult::Inferred(
                     execute_functional_enum(original_i_s, *self, args, result_context)
-                        .unwrap_or_else(|| Inferred::new_any_from_error()),
+                        .unwrap_or_else(Inferred::new_any_from_error),
                 );
             }
             _ => (),
@@ -2100,7 +2093,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 TypeOrClass::Type(_) => (),
                 TypeOrClass::Class(class) => {
                     let Some(slots) = &class.class_storage.slots else {
-                        return
+                        return;
                     };
                     if class.lookup_symbol(i_s, "__setattr__").is_some() {
                         return;
@@ -2255,7 +2248,7 @@ fn linearize_mro(i_s: &InferenceState, class: &Class, bases: &[Type]) -> Box<[Ba
                     Some(cls)
                 }
                 Type::NamedTuple(nt) => {
-                    let cls = i_s.db.python_state.tuple_class(i_s.db, &nt.as_tuple_ref());
+                    let cls = i_s.db.python_state.tuple_class(i_s.db, nt.as_tuple_ref());
                     additional_type = Some(cls.as_type(i_s.db));
                     Some(cls)
                 }
@@ -2268,7 +2261,7 @@ fn linearize_mro(i_s: &InferenceState, class: &Class, bases: &[Type]) -> Box<[Ba
                 &[]
             };
             std::iter::once(Cow::Borrowed(t))
-                .chain(additional_type.into_iter().map(|t| Cow::Owned(t)))
+                .chain(additional_type.into_iter().map(Cow::Owned))
                 .chain(super_classes.iter().map(|base| Cow::Borrowed(&base.type_)))
                 .enumerate()
                 .peekable()
@@ -2668,7 +2661,7 @@ fn format_callable_like(
     };
 
     match c {
-        CallableLike::Callable(c) => notes.push(format_callable(&c).into()),
+        CallableLike::Callable(c) => notes.push(format_callable(c).into()),
         CallableLike::Overload(o) => {
             for c in o.iter_functions() {
                 notes.push(format!("{prefix}@overload").into());
@@ -2689,27 +2682,7 @@ impl NewOrInitConstructor<'_> {
     pub fn maybe_callable(self, i_s: &InferenceState, cls: Class) -> Option<CallableLike> {
         let inf = self.constructor.into_inferred();
         if self.is_new {
-            inf.as_cow_type(i_s).maybe_callable(i_s).map(
-                |callable_like| /*match self.init_class {
-                                       // TODO probably enable??
-                    Some(class) => match callable_like {
-                        CallableLike::Callable(c) => {
-                            CallableLike::Callable(Rc::new(c.merge_class_type_vars(
-                                i_s.db,
-                                class,
-                                class,
-                            )))
-                        }
-                        CallableLike::Overload(overload) => CallableLike::Overload(FunctionOverload::new(overload.iter_functions().map(|c| {
-                            c.merge_class_type_vars(
-                                i_s.db,
-                                class,
-                                class,
-                            )
-                        }).collect()))
-                    },
-                    None => */callable_like, /*}*/
-            )
+            inf.as_cow_type(i_s).maybe_callable(i_s)
         } else {
             let cls = if matches!(cls.generics(), Generics::NotDefinedYet) {
                 Class::with_self_generics(i_s.db, cls.node_ref)

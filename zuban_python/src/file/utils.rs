@@ -115,7 +115,7 @@ impl<'db> Inference<'db, '_, '_> {
         }
 
         infer_dict_like(i_s, result_context, |matcher, key_t, value_t| {
-            self.check_dict_literal_with_context(matcher, &key_t, &value_t, dict)
+            self.check_dict_literal_with_context(matcher, key_t, value_t, dict)
         })
     }
 
@@ -130,7 +130,8 @@ impl<'db> Inference<'db, '_, '_> {
         let mut missing_keys: Vec<_> = typed_dict
             .members(i_s.db)
             .iter()
-            .filter_map(|m| m.required.then(|| m.name.as_str(i_s.db)))
+            .filter(|&m| m.required)
+            .map(|m| m.name.as_str(i_s.db))
             .collect();
         for element in dict.iter_elements() {
             match element {
@@ -227,8 +228,8 @@ impl<'db> Inference<'db, '_, '_> {
         value_t: &Type,
         dict: Dict,
     ) -> Option<Type> {
-        let mut new_key_context = ResultContext::Known(&key_t);
-        let mut new_value_context = ResultContext::Known(&value_t);
+        let mut new_key_context = ResultContext::Known(key_t);
+        let mut new_value_context = ResultContext::Known(value_t);
 
         // Since it's a list, now check all the entries if they match the given
         // result generic;
@@ -307,8 +308,8 @@ impl<'db> Inference<'db, '_, '_> {
         (!had_error).then(|| {
             new_class!(
                 i_s.db.python_state.dict_node_ref().as_link(),
-                matcher.replace_type_var_likes_for_unknown_type_vars(i_s.db, &key_t),
-                matcher.replace_type_var_likes_for_unknown_type_vars(i_s.db, &value_t),
+                matcher.replace_type_var_likes_for_unknown_type_vars(i_s.db, key_t),
+                matcher.replace_type_var_likes_for_unknown_type_vars(i_s.db, value_t),
             )
         })
     }
@@ -412,11 +413,11 @@ fn check_list_with_context<'db>(
     if matches!(iterator, StarLikeExpressionIterator::Empty) {
         return Some(new_class!(
             i_s.db.python_state.list_node_ref().as_link(),
-            matcher.replace_type_var_likes_for_unknown_type_vars(i_s.db, &generic_t),
+            matcher.replace_type_var_likes_for_unknown_type_vars(i_s.db, generic_t),
         ));
     }
 
-    let mut new_result_context = ResultContext::Known(&generic_t);
+    let mut new_result_context = ResultContext::Known(generic_t);
 
     // Since it's a list, now check all the entries if they match the given
     // result generic;
@@ -472,7 +473,7 @@ fn check_list_with_context<'db>(
             i_s.db.python_state.list_node_ref().as_link(),
             out.map(|t| t.avoid_implicit_literal(i_s.db))
                 .unwrap_or_else(|| {
-                    matcher.replace_type_var_likes_for_unknown_type_vars(i_s.db, &generic_t)
+                    matcher.replace_type_var_likes_for_unknown_type_vars(i_s.db, generic_t)
                 }),
         )
     })

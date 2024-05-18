@@ -270,7 +270,6 @@ impl<'a> Generics<'a> {
         for (t1, t2) in self.iter(i_s.db).zip(other_generics) {
             if let Some(t) = type_var_iterator.next() {
                 // TODO ?
-            } else {
             };
             matches &= t1.overlaps(i_s, matcher, t2);
         }

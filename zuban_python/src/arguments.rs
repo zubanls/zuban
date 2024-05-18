@@ -30,7 +30,7 @@ pub(crate) trait Args<'db>: std::fmt::Debug {
     }
     fn starting_line(&self) -> String {
         let Some(node_ref) = self.as_node_ref() else {
-            return "<unkown line>".into()
+            return "<unkown line>".into();
         };
         node_ref.line().to_string()
     }
@@ -56,16 +56,24 @@ pub(crate) trait Args<'db>: std::fmt::Debug {
     fn maybe_two_positional_args(&self, db: &'db Database) -> Option<(NodeRef<'db>, NodeRef<'db>)> {
         let mut iterator = self.iter();
         let Some(first_arg) = iterator.next() else {
-            return None
+            return None;
         };
-        let ArgKind::Positional(PositionalArg { node_ref: node_ref1, .. }) = first_arg.kind else {
-            return None
+        let ArgKind::Positional(PositionalArg {
+            node_ref: node_ref1,
+            ..
+        }) = first_arg.kind
+        else {
+            return None;
         };
         let Some(second_arg) = iterator.next() else {
-            return None
+            return None;
         };
-        let ArgKind::Positional(PositionalArg { node_ref: node_ref2, .. }) = second_arg.kind else {
-            return None
+        let ArgKind::Positional(PositionalArg {
+            node_ref: node_ref2,
+            ..
+        }) = second_arg.kind
+        else {
+            return None;
         };
         if iterator.next().is_some() {
             return None;
@@ -470,7 +478,7 @@ impl<'db, 'a> Arg<'db, 'a> {
             } => Ok(NodeRef::new(file, comprehension.index())),
             ArgKind::SlicesTuple { slices, .. } => todo!(),
             ArgKind::Overridden { original, .. } => original.as_node_ref(),
-            ArgKind::InferredWithCustomAddIssue { add_issue, .. } => Err(add_issue.clone()),
+            ArgKind::InferredWithCustomAddIssue { add_issue, .. } => Err(*add_issue),
         }
     }
 
@@ -483,7 +491,7 @@ impl<'db, 'a> Arg<'db, 'a> {
 
     pub fn maybe_star_type(&self, i_s: &InferenceState) -> Option<Type> {
         let Ok(node_ref) = self.as_node_ref() else {
-            return None
+            return None;
         };
         node_ref.maybe_starred_expression().map(|starred| {
             node_ref
@@ -496,7 +504,7 @@ impl<'db, 'a> Arg<'db, 'a> {
 
     pub fn maybe_star_star_type(&self, i_s: &InferenceState) -> Option<Type> {
         let Ok(node_ref) = self.as_node_ref() else {
-            return None
+            return None;
         };
         node_ref
             .maybe_double_starred_expression()
@@ -525,7 +533,7 @@ impl<'db, 'a> Arg<'db, 'a> {
 
     pub fn is_from_star_star_args(&self) -> bool {
         let Ok(node_ref) = self.as_node_ref() else {
-            return false
+            return false;
         };
         node_ref.maybe_double_starred_expression().is_some()
     }
@@ -658,11 +666,11 @@ impl<'db, 'a> ArgIteratorBase<'db, 'a> {
                             inference.infer_expression(expr)
                         }
                         CSTArgument::Star(starred_expr) => {
-                            prefix = "*".to_owned();
+                            "*".clone_into(&mut prefix);
                             inference.infer_expression(starred_expr.expression())
                         }
                         CSTArgument::StarStar(double_starred_expr) => {
-                            prefix = "*".to_owned();
+                            "*".clone_into(&mut prefix);
                             inference.infer_expression(double_starred_expr.expression())
                         }
                     };
@@ -1046,13 +1054,12 @@ impl<'db, 'a> Iterator for ArgIterator<'db, 'a> {
             } => {
                 let index = self.counter;
                 self.counter += 1;
-                let Some((name, t)) = typed_dict.members(db).get(iterator_index).map(|member| {
-                    (
-                        member.name,
-                        member.type_.clone(),
-                    )
-                }) else {
-                    return self.next()
+                let Some((name, t)) = typed_dict
+                    .members(db)
+                    .get(iterator_index)
+                    .map(|member| (member.name, member.type_.clone()))
+                else {
+                    return self.next();
                 };
                 self.args_kwargs_iterator = ArgsKwargsIterator::TypedDict {
                     db,
@@ -1101,9 +1108,7 @@ enum ArgsKwargsIterator<'a> {
 pub fn unpack_star_star(i_s: &InferenceState, t: &Type) -> Option<(Type, Type)> {
     let wanted_cls = i_s.db.python_state.supports_keys_and_get_item_class(i_s.db);
     let mut matcher = Matcher::new_class_matcher(i_s, wanted_cls);
-    let matches = wanted_cls
-        .check_protocol_match(i_s, &mut matcher, &t)
-        .bool();
+    let matches = wanted_cls.check_protocol_match(i_s, &mut matcher, t).bool();
     matches.then(|| {
         let mut iter = matcher.into_type_arg_iterator(i_s.db, wanted_cls.type_vars(i_s));
         (iter.next().unwrap(), iter.next().unwrap())

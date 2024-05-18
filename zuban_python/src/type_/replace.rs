@@ -149,7 +149,7 @@ impl Type {
                         .iter()
                         .map(|param| {
                             let ParamType::PositionalOrKeyword(t) = &param.type_ else {
-                                return param.clone()
+                                return param.clone();
                             };
                             CallableParam {
                                 type_: ParamType::PositionalOrKeyword(
@@ -625,9 +625,11 @@ impl TupleArgs {
             )),
             TupleArgs::WithUnpack(unpack) => match &unpack.unpack {
                 TupleUnpack::TypeVarTuple(tvt) => {
-                    let GenericItem::TypeArgs(new) = callable(TypeVarLikeUsage::TypeVarTuple(tvt.clone())) else {
-                            unreachable!();
-                        };
+                    let GenericItem::TypeArgs(new) =
+                        callable(TypeVarLikeUsage::TypeVarTuple(tvt.clone()))
+                    else {
+                        unreachable!();
+                    };
                     let new_before: Vec<_> = unpack
                         .before
                         .iter()

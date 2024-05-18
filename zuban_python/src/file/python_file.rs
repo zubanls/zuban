@@ -271,7 +271,7 @@ impl<'db> PythonFile {
     ) {
         self.symbol_table
             .set(NameBinder::with_global_binder(
-                &self.flags(project),
+                self.flags(project),
                 &self.tree,
                 &self.points,
                 &self.complex_points,
@@ -456,16 +456,14 @@ impl<'code> Iterator for DirectiveSplitter<'_, 'code> {
                 if n == '"' {
                     opened_quotation_mark = false;
                 }
-            } else {
-                if n == '"' {
-                    opened_quotation_mark = true;
-                    had_quotation_marks = true;
-                } else if n == ',' {
-                    self.start_position += i as CodeIndex;
-                    let result = &self.rest[..i];
-                    self.rest = &self.rest[i + 1..];
-                    return split_name_value(result, had_quotation_marks);
-                }
+            } else if n == '"' {
+                opened_quotation_mark = true;
+                had_quotation_marks = true;
+            } else if n == ',' {
+                self.start_position += i as CodeIndex;
+                let result = &self.rest[..i];
+                self.rest = &self.rest[i + 1..];
+                return split_name_value(result, had_quotation_marks);
             }
         }
         if opened_quotation_mark {

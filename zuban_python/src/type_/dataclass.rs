@@ -27,7 +27,7 @@ use crate::{
     type_helpers::{Callable, Class, Instance, LookupDetails, TypeOrClass},
 };
 
-const ORDER_METHOD_NAMES: [&'static str; 4] = ["__lt__", "__gt__", "__le__", "__ge__"];
+const ORDER_METHOD_NAMES: [&str; 4] = ["__lt__", "__gt__", "__le__", "__ge__"];
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct DataclassOptions {
@@ -98,7 +98,7 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> Init
     let i_s = &InferenceState::new(db);
     let cls_i_s = &i_s.with_class_context(&cls);
     let file = cls.node_ref.file;
-    let inference = file.inference(&cls_i_s);
+    let inference = file.inference(cls_i_s);
 
     let mut params: Vec<CallableParam> = vec![];
     let mut post_init_params: Vec<CallableParam> = vec![];
@@ -460,8 +460,6 @@ fn field_options_from_args<'db>(
                     let result = arg.infer_inferrable(i_s, &mut ResultContext::Unknown);
                     if let Some(bool_) = result.maybe_bool_literal(i_s) {
                         options.init = bool_
-                    } else {
-                        ()
                     }
                 }
                 _ => (), // Type checking is done in a separate place.
@@ -715,7 +713,7 @@ pub(crate) fn lookup_on_dataclass_type<'a>(
             LookupResult::UnknownName(Inferred::from_type(Type::Tuple(Tuple::new_fixed_length(
                 repeat_with(|| i_s.db.python_state.str_type())
                     .take(
-                        dataclass_init_func(&self_, i_s.db)
+                        dataclass_init_func(self_, i_s.db)
                             .expect_simple_params()
                             .len(),
                     )
@@ -815,7 +813,7 @@ pub(crate) fn lookup_on_dataclass<'a>(
 }
 
 fn order_func(self_: Rc<Dataclass>, i_s: &InferenceState) -> LookupResult {
-    return LookupResult::UnknownName(Inferred::from_type(Type::Callable(Rc::new(
+    LookupResult::UnknownName(Inferred::from_type(Type::Callable(Rc::new(
         CallableContent {
             name: None,
             class_name: None,
@@ -833,7 +831,7 @@ fn order_func(self_: Rc<Dataclass>, i_s: &InferenceState) -> LookupResult {
             is_abstract: false,
             return_type: i_s.db.python_state.bool_type(),
         },
-    ))));
+    ))))
 }
 
 fn type_order_func(self_: Rc<Dataclass>, i_s: &InferenceState) -> LookupResult {
@@ -844,7 +842,7 @@ fn type_order_func(self_: Rc<Dataclass>, i_s: &InferenceState) -> LookupResult {
         variance: Variance::Invariant,
     });
     let tv_usage = TypeVarUsage::new(type_var.clone(), self_.class.link, 0.into());
-    return LookupResult::UnknownName(Inferred::from_type(Type::Callable(Rc::new(
+    LookupResult::UnknownName(Inferred::from_type(Type::Callable(Rc::new(
         CallableContent {
             name: None,
             class_name: None,
@@ -869,5 +867,5 @@ fn type_order_func(self_: Rc<Dataclass>, i_s: &InferenceState) -> LookupResult {
             is_abstract: false,
             return_type: i_s.db.python_state.bool_type(),
         },
-    ))));
+    ))))
 }

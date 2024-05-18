@@ -384,9 +384,15 @@ pub(crate) fn execute_functional_enum<'db>(
     let name_infos = name_infos.unwrap();
     let fields_infos = fields_infos.unwrap();
 
-    let Type::Literal(Literal { kind: LiteralKind::String(name), .. }) = name_infos.1.as_type(i_s) else {
-        name_infos.0.add_issue(i_s, IssueKind::EnumFirstArgMustBeString);
-        return None
+    let Type::Literal(Literal {
+        kind: LiteralKind::String(name),
+        ..
+    }) = name_infos.1.as_type(i_s)
+    else {
+        name_infos
+            .0
+            .add_issue(i_s, IssueKind::EnumFirstArgMustBeString);
+        return None;
     };
     if let Some(name_def) = name_infos.2 {
         let n = name.as_str(i_s.db);
@@ -465,7 +471,7 @@ fn gather_functional_enum_members(
 ) -> Option<Box<[EnumMemberDefinition]>> {
     let ExpressionContent::ExpressionPart(ExpressionPart::Atom(atom)) = expression.unpack() else {
         node_ref.add_issue(i_s, IssueKind::EnumInvalidSecondArgument);
-        return None
+        return None;
     };
 
     let mut members = EnumMembers::default();
@@ -545,20 +551,25 @@ fn gather_functional_enum_members(
         AtomContent::Dict(d) => {
             for element in d.iter_elements() {
                 let DictElement::KeyValue(kv) = element else {
-                    node_ref.add_issue(i_s, IssueKind::EnumWithDictRequiresStringLiterals {
-                        name: class.name().into(),
-                    });
-                    return None
+                    node_ref.add_issue(
+                        i_s,
+                        IssueKind::EnumWithDictRequiresStringLiterals {
+                            name: class.name().into(),
+                        },
+                    );
+                    return None;
                 };
                 let key = kv.key();
-                let Some(name) = StringSlice::from_string_in_expression(
-                    node_ref.file.file_index(),
-                    key,
-                ) else {
-                    node_ref.add_issue(i_s, IssueKind::EnumWithDictRequiresStringLiterals {
-                        name: class.name().into(),
-                    });
-                    return None
+                let Some(name) =
+                    StringSlice::from_string_in_expression(node_ref.file.file_index(), key)
+                else {
+                    node_ref.add_issue(
+                        i_s,
+                        IssueKind::EnumWithDictRequiresStringLiterals {
+                            name: class.name().into(),
+                        },
+                    );
+                    return None;
                 };
                 members.add_member(
                     i_s,

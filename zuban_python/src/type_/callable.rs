@@ -145,9 +145,12 @@ impl CallableParam {
                     StarParamType::ParamSpecArgs(u) => todo!(),
                     StarParamType::UnpackedTuple(tup) => {
                         if let Some(matcher) = format_data.matcher {
-                            let Type::Tuple(tup) = matcher.replace_type_var_likes_for_unknown_type_vars(
-                                format_data.db, &Type::Tuple(tup.clone())
-                            ) else {
+                            let Type::Tuple(tup) = matcher
+                                .replace_type_var_likes_for_unknown_type_vars(
+                                    format_data.db,
+                                    &Type::Tuple(tup.clone()),
+                                )
+                            else {
                                 unreachable!()
                             };
                             let result = tup.args.format(&format_data.remove_matcher());
@@ -167,7 +170,7 @@ impl CallableParam {
                     StarStarParamType::ValueType(t) => {
                         format!("KwArg({})", t.format(format_data))
                     }
-                    StarStarParamType::UnpackTypedDict(_) => format!("TODO format unpack TD"),
+                    StarStarParamType::UnpackTypedDict(_) => "TODO format unpack TD".to_string(),
                     StarStarParamType::ParamSpecKwargs(_) => todo!(),
                 }
                 .into();
@@ -359,11 +362,11 @@ impl CallableParams {
 
     pub fn is_any_args_and_kwargs(&self) -> bool {
         let Self::Simple(params) = self else {
-            return false
+            return false;
         };
         let mut iterator = params.iter();
         let Some(first) = iterator.next() else {
-            return false
+            return false;
         };
         if !matches!(
             &first.type_,
@@ -690,7 +693,7 @@ impl CallableContent {
                 )
             }
             CallableParams::Any(_) => {
-                self.format_pretty_function_with_params(format_data, &"*Any, **Any")
+                self.format_pretty_function_with_params(format_data, "*Any, **Any")
             }
             CallableParams::Never(_) => "Never".into(),
         }
@@ -805,7 +808,7 @@ impl CallableContent {
             CallableParams::Simple(params) => !params
                 .iter()
                 .skip(skip_first_param.into())
-                .all(|t| t.type_.maybe_type().is_some_and(|t| has_unannotated(t))),
+                .all(|t| t.type_.maybe_type().is_some_and(has_unannotated)),
             CallableParams::Any(cause) => !matches!(cause, AnyCause::Unannotated),
             // Should probably never happen?!
             CallableParams::WithParamSpec(..) | CallableParams::Never(_) => true,
@@ -839,7 +842,7 @@ pub fn format_callable_params<'db: 'x, 'x, P: Param<'x>>(
             }
             WrappedParamType::Star(WrappedStar::ParamSpecArgs(u)) => todo!(),
             WrappedParamType::Star(WrappedStar::UnpackedTuple(tup)) => {
-                Some(tup.format_with_simplified_unpack(format_data)).into()
+                Some(tup.format_with_simplified_unpack(format_data))
             }
             WrappedParamType::StarStar(WrappedStarStar::UnpackTypedDict(td)) => {
                 Some(format!("Unpack[{}]", td.format(format_data)).into())

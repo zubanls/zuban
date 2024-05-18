@@ -208,7 +208,7 @@ impl Point {
         self.node_index
     }
 
-    pub fn as_redirected_node_ref<'db>(self, db: &'db Database) -> NodeRef<'db> {
+    pub fn as_redirected_node_ref(self, db: &Database) -> NodeRef<'_> {
         debug_assert!(self.kind() == PointKind::Redirect);
         let file = db.loaded_python_file(self.file_index());
         NodeRef::new(file, self.node_index())

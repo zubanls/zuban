@@ -1985,7 +1985,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         }
         for (i, type_var_like) in tvs.iter().enumerate() {
             let TypeVarLike::TypeVar(type_var) = type_var_like else {
-                return None
+                return None;
             };
             if let Some(slice_content) = iterator.next() {
                 let t = self.compute_slice_type_content(slice_content);
@@ -2066,7 +2066,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         type_args.next_type_argument(self, has_type_var_tuple)
                     {
                         given += 1;
-                        self.check_constraints(&type_var, node_ref, |_| t.clone(), get_of);
+                        self.check_constraints(type_var, node_ref, |_| t.clone(), get_of);
                         GenericItem::TypeArg(t)
                     } else if let Some(default) = &type_var.default {
                         GenericItem::TypeArg(default.clone())
@@ -2081,7 +2081,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             TypeVarLike::TypeVar(type_var) => {
                                 if let Some((from, t)) = type_args.next_type_argument_back(self) {
                                     given += 1;
-                                    self.check_constraints(&type_var, from, |_| t.clone(), get_of);
+                                    self.check_constraints(type_var, from, |_| t.clone(), get_of);
                                     GenericItem::TypeArg(t)
                                 } else if let Some(default) = &type_var.default {
                                     GenericItem::TypeArg(default.clone())
@@ -2150,13 +2150,11 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         let mut expected_minimum = None;
         let mismatch = if has_type_var_tuple {
             given < expected - default_count
+        } else if default_count > 0 {
+            expected_minimum = Some(expected - has_type_var_tuple as usize - default_count);
+            !((expected - default_count) <= given && given <= expected)
         } else {
-            if default_count > 0 {
-                expected_minimum = Some(expected - has_type_var_tuple as usize - default_count);
-                !((expected - default_count) <= given && given <= expected)
-            } else {
-                given != expected
-            }
+            given != expected
         };
         if mismatch {
             on_count_mismatch(
@@ -3245,24 +3243,20 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     return None;
                 }
             };
-            let Some(first) = parts.next() else {
-                todo!()
-            };
-            let Some(second) = parts.next() else {
-                todo!()
-            };
+            let Some(first) = parts.next() else { todo!() };
+            let Some(second) = parts.next() else { todo!() };
             let StarLikeExpression::NamedExpression(name_expr) = first else {
                 todo!()
             };
             let StarLikeExpression::NamedExpression(type_expr) = second else {
                 todo!()
             };
-            let Some(name) = StringSlice::from_string_in_expression(file_index, name_expr.expression()) else {
-                self.inference.add_issue(
-                    name_expr.index(),
-                    IssueKind::NamedTupleInvalidFieldName,
-                );
-                return None
+            let Some(name) =
+                StringSlice::from_string_in_expression(file_index, name_expr.expression())
+            else {
+                self.inference
+                    .add_issue(name_expr.index(), IssueKind::NamedTupleInvalidFieldName);
+                return None;
             };
             let name_str = name.as_str(self.inference.i_s.db);
             let t = self.compute_named_expr_type(type_expr);
@@ -3787,7 +3781,9 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
             } else if let Some(n) = inferred.maybe_new_type(self.i_s) {
                 TypeNameLookup::NewType(n)
             } else if let Some(t) = inferred.maybe_named_tuple_definition(self.i_s) {
-                let Type::NamedTuple(nt) = t else { unreachable!() };
+                let Type::NamedTuple(nt) = t else {
+                    unreachable!()
+                };
                 TypeNameLookup::NamedTupleDefinition(nt)
             } else if let Some(t) = inferred.maybe_typed_dict_definition(self.i_s) {
                 TypeNameLookup::TypedDictDefinition(t)
@@ -4006,7 +4002,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
 
         let t = comp.compute_type(named_expr.expression());
         let Some(mut type_) = comp.as_type_or_error(t, node_ref) else {
-            return Err(())
+            return Err(());
         };
         let type_vars = comp.into_type_vars(|inf, recalculate_type_vars| {
             type_ = recalculate_type_vars(&type_);
@@ -4265,7 +4261,7 @@ impl<'a, I: Clone + Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
                 TypeCompTupleUnpack::ArbitraryLen(t) => return Some((*from, (**t).clone())),
                 TypeCompTupleUnpack::WithUnpack(with_unpack) => todo!(),
                 TypeCompTupleUnpack::FixedLen(ts) => {
-                    if ts.len() > 0 {
+                    if !ts.is_empty() {
                         return Some((*from, ts.remove(0)));
                     } else {
                         self.current_unpack = None;
@@ -4274,7 +4270,7 @@ impl<'a, I: Clone + Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
             }
         }
         let Some(s) = self.slices.next() else {
-            return None
+            return None;
         };
         let t = type_computation.compute_slice_type_content(s);
         match type_computation.convert_slice_type_or_tuple_unpack(t, s.as_node_ref()) {
@@ -4345,7 +4341,7 @@ impl<'a, I: Clone + Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
                     TypeCompTupleUnpack::WithUnpack(with_unpack) => todo!(),
                     TypeCompTupleUnpack::FixedLen(ts) => {
                         if let Some(result) = ts.pop() {
-                            return Some((*from, result))
+                            return Some((*from, result));
                         } else {
                             self.current_unpack = None;
                         }
@@ -4353,7 +4349,7 @@ impl<'a, I: Clone + Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
                     TypeCompTupleUnpack::ArbitraryLen(t) => return Some((*from, (**t).clone())),
                 }
             }
-            return None
+            return None;
         };
         let from = current_slice_part.as_node_ref();
         self.reverse_already_analyzed = Some(from);
@@ -4375,7 +4371,7 @@ impl<'a, I: Clone + Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
         allow_aesthetic_class_simplification: bool,
     ) -> Option<ParamSpecArg> {
         let Some(s) = self.slices.next() else {
-            return None
+            return None;
         };
         let params = type_computation.calculate_callable_params(
             s,
@@ -4858,7 +4854,8 @@ pub fn maybe_saved_annotation(node_ref: NodeRef) -> Option<&Type> {
     ) {
         let Some(ComplexPoint::TypeInstance(t)) = node_ref
             .add_to_node_index(ANNOTATION_TO_EXPR_DIFFERENCE as i64)
-            .complex() else {
+            .complex()
+        else {
             unreachable!()
         };
         return Some(t);

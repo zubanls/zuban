@@ -93,7 +93,7 @@ impl Type {
                     t @ Type::RecursiveType(rec2) => matcher.avoid_recursion(t1, t, |matcher| {
                         let t1 = rec1.calculated_type(i_s.db);
                         let t2 = rec2.calculated_type(i_s.db);
-                        t1.matches_internal(i_s, matcher, &t2, variance)
+                        t1.matches_internal(i_s, matcher, t2, variance)
                     }),
                     _ => {
                         let g = rec1.calculated_type(i_s.db);
@@ -441,7 +441,7 @@ impl Type {
                     self.matches_internal(
                         i_s,
                         matcher,
-                        &i_s.db.python_state.module_type().into(),
+                        &i_s.db.python_state.module_type(),
                         variance,
                     )
                 })
@@ -468,7 +468,7 @@ impl Type {
                     let mut matches = Match::new_true();
                     for g2 in u2.iter() {
                         matches &=
-                            Match::any(u1.iter(), |g1| g1.matches(i_s, matcher, &g2, variance))
+                            Match::any(u1.iter(), |g1| g1.matches(i_s, matcher, g2, variance))
                     }
                     matches
                 }
@@ -601,7 +601,7 @@ impl Type {
                         &i_s.db.python_state.object_type(),
                         variance,
                     )
-                    .unwrap_or_else(|| Match::new_false())
+                    .unwrap_or_else(Match::new_false)
             }
             _ => Match::new_false(),
         }
@@ -703,20 +703,21 @@ pub fn match_tuple_type_arguments(
     variance: Variance,
 ) -> Match {
     let m = match_tuple_type_arguments_internal(i_s, matcher, tup1, tup2, variance);
-    if !m.bool() && matcher.has_type_var_matcher() {
-        if matches!(
+    if !m.bool()
+        && matcher.has_type_var_matcher()
+        && matches!(
             tup2,
             TupleArgs::WithUnpack(WithUnpack {
                 unpack: TupleUnpack::TypeVarTuple(_),
                 ..
             })
-        ) {
-            return m.or(|| {
-                matcher.match_reverse(|matcher| {
-                    match_tuple_type_arguments_internal(i_s, matcher, tup2, tup1, variance.invert())
-                })
-            });
-        }
+        )
+    {
+        return m.or(|| {
+            matcher.match_reverse(|matcher| {
+                match_tuple_type_arguments_internal(i_s, matcher, tup2, tup1, variance.invert())
+            })
+        });
     }
     m
 }

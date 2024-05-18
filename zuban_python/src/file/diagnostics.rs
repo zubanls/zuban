@@ -295,7 +295,7 @@ impl<'db> Inference<'db, '_, '_> {
         // TODO In general all {} blocks are todos
         for stmt in stmts {
             let StmtOrError::Stmt(stmt) = stmt else {
-                continue
+                continue;
             };
             let point = self.file.points.get(stmt.index());
             if point.calculated() {
@@ -437,16 +437,16 @@ impl<'db> Inference<'db, '_, '_> {
             match interesting {
                 RelevantUntypedNode::Primary(p) => {
                     let PrimaryOrAtom::Atom(atom) = p.first() else {
-                        continue
+                        continue;
                     };
                     let AtomContent::Name(n) = atom.unpack() else {
-                        continue
+                        continue;
                     };
                     if n.as_code() == "reveal_type" && !self.file.points.get(n.index()).calculated()
                     {
                         self.infer_name_reference(n);
                         let PrimaryContent::Execution(_) = p.second() else {
-                            continue
+                            continue;
                         };
                         let n = NodeRef::new(self.file, p.index());
                         n.add_issue(self.i_s, IssueKind::Note("Revealed type is \"Any\"".into()));
@@ -893,11 +893,10 @@ impl<'db> Inference<'db, '_, '_> {
             if let Some(annotation) = param.annotation() {
                 let t = self.use_cached_param_annotation_type(annotation);
                 if matches!(t.as_ref(), Type::TypeVar(tv) if tv.type_var.variance == Variance::Covariant)
+                    && !["__init__", "__new__", "__post_init__"].contains(&name.as_code())
                 {
-                    if !["__init__", "__new__", "__post_init__"].contains(&name.as_code()) {
-                        NodeRef::new(self.file, annotation.index())
-                            .add_issue(i_s, IssueKind::TypeVarCovariantInParamType);
-                    }
+                    NodeRef::new(self.file, annotation.index())
+                        .add_issue(i_s, IssueKind::TypeVarCovariantInParamType);
                 }
 
                 if param.kind() == ParamKind::StarStar {
@@ -949,7 +948,7 @@ impl<'db> Inference<'db, '_, '_> {
                 } else {
                     &i_s.db.python_state.generator_with_any_generics
                 };
-                if !t.is_simple_super_type_of(i_s, &expected).bool() {
+                if !t.is_simple_super_type_of(i_s, expected).bool() {
                     if function.is_async() {
                         NodeRef::new(self.file, return_annotation.index())
                             .add_issue(i_s, IssueKind::InvalidAsyncGeneratorReturnType);
@@ -1196,10 +1195,8 @@ impl<'db> Inference<'db, '_, '_> {
                 } else if !t.is_simple_super_type_of(i_s, &Type::None).bool() {
                     self.add_issue(return_stmt.index(), IssueKind::ReturnValueExpected);
                 }
-            } else {
-                if let Some(star_exprs) = return_stmt.star_expressions() {
-                    self.infer_star_expressions(star_exprs, &mut ResultContext::Unknown);
-                }
+            } else if let Some(star_exprs) = return_stmt.star_expressions() {
+                self.infer_star_expressions(star_exprs, &mut ResultContext::Unknown);
             }
         }
     }
@@ -1336,8 +1333,9 @@ impl<'db> Inference<'db, '_, '_> {
 
     fn check_overlapping_op_methods(&self, func: Function, short_reverse_name: &str) {
         let i_s = self.i_s;
-        let Some(normal_magic) = OVERLAPPING_REVERSE_TO_NORMAL_METHODS.get(short_reverse_name) else {
-            return
+        let Some(normal_magic) = OVERLAPPING_REVERSE_TO_NORMAL_METHODS.get(short_reverse_name)
+        else {
+            return;
         };
 
         let invalid_signature = || {
@@ -1355,12 +1353,10 @@ impl<'db> Inference<'db, '_, '_> {
         let mut param_iterator = func.iter_params();
         let first_param = param_iterator.next();
         let Some(param) = param_iterator.next().or_else(|| {
-            first_param.filter(|first_param| {
-                first_param.kind(i_s.db) == ParamKind::Star
-            })
+            first_param.filter(|first_param| first_param.kind(i_s.db) == ParamKind::Star)
         }) else {
             // If there is param, the signature is invalid and should be checked elsewhere.
-            return invalid_signature()
+            return invalid_signature();
         };
         if param_iterator.any(|param| !param.has_default_or_stars(i_s.db)) {
             return invalid_signature();
@@ -1372,7 +1368,7 @@ impl<'db> Inference<'db, '_, '_> {
             _ => return invalid_signature(),
         };
         let Some(forward_type) = forward_type else {
-            return  // If the type is Any, we do not need to check.
+            return; // If the type is Any, we do not need to check.
         };
         forward_type.run_after_lookup_on_each_union_member(
             i_s,
@@ -1396,7 +1392,7 @@ impl<'db> Inference<'db, '_, '_> {
                     let Some(reverse_param_type) = callable.first_positional_type() else {
                         // If there is no positional type, the signature is invalid and should be
                         // checked elsewhere.
-                        return
+                        return;
                     };
                     if !reverse
                         .is_simple_sub_type_of(i_s, &reverse_param_type)
@@ -1457,7 +1453,7 @@ impl<'db> Inference<'db, '_, '_> {
     fn check_inplace_methods(&self, func: Function, inplace_magic_name: &str) {
         let i_s = self.i_s;
         let Some(normal_magic_name) = INPLACE_TO_NORMAL_METHODS.get(inplace_magic_name) else {
-            return
+            return;
         };
         let normal_method = func
             .class
@@ -1498,7 +1494,7 @@ impl<'db> Inference<'db, '_, '_> {
         let mut had_return = false;
         for return_or_yield in function.iter_return_or_yield() {
             let ReturnOrYield::Return(return_) = return_or_yield else {
-                continue
+                continue;
             };
             had_return = true;
             if let Some(star_expressions) = return_.star_expressions() {
@@ -1775,7 +1771,7 @@ fn check_override(
     let mut match_ = original_t.is_super_type_of(
         i_s,
         &mut Matcher::default().with_ignore_positional_param_names(),
-        &override_t,
+        override_t,
     );
 
     let mut op_method_wider_note = false;
@@ -1839,7 +1835,7 @@ fn check_override(
         let mut emitted = false;
         // Mypy helps the user a bit by formatting different error messages for similar
         // signatures. Try to make this as similar as possible to Mypy.
-        match override_func_infos(&override_t, &original_t) {
+        match override_func_infos(override_t, &original_t) {
             Some(OverrideFuncInfos::CallablesSameParamLen(got_c, expected_c)) => {
                 let supertype = original_class_name(db, &original_class);
 
@@ -1858,7 +1854,7 @@ fn check_override(
                         continue;
                     };
                     let t1 = got_c.erase_func_type_vars_for_type(db, t1);
-                    if !t1.is_simple_super_type_of(i_s, &t2).bool() {
+                    if !t1.is_simple_super_type_of(i_s, t2).bool() {
                         let issue = IssueKind::ArgumentIncompatibleWithSupertype {
                             message: format!(
                                 r#"Argument {} of "{name}" is incompatible with supertype "{supertype}"; supertype defines the argument type as "{}""#,
@@ -1975,7 +1971,7 @@ fn check_override(
             try_pretty_format(
                 &mut notes,
                 &i_s.with_class_context(&override_class),
-                &override_t,
+                override_t,
                 override_class.lookup(i_s, |_| todo!(), name, kind),
             );
 
@@ -2036,7 +2032,7 @@ fn override_func_infos<'t1, 't2>(
             _ => OverrideFuncInfos::Mixed,
         }),
         (Type::FunctionOverload(o1), Type::FunctionOverload(o2)) => {
-            Some(OverrideFuncInfos::BothOverloads(&o1, &o2))
+            Some(OverrideFuncInfos::BothOverloads(o1, o2))
         }
         _ => (t1.is_func_or_overload() || t2.is_func_or_overload())
             .then_some(OverrideFuncInfos::Mixed),
@@ -2051,7 +2047,7 @@ fn operator_domain_is_widened(
     override_overload.iter_functions().any(|overload_func| {
         let widens_callable = |original: &Rc<CallableContent>| {
             let Some(original_domain) = original.first_positional_type() else {
-                return false
+                return false;
             };
             if let Some(override_domain) = overload_func.first_positional_type() {
                 !original_domain
@@ -2072,7 +2068,7 @@ fn operator_domain_is_widened(
 fn check_protocol_type_var_variances(i_s: &InferenceState, class: Class) {
     for (i, tv_like) in class.type_vars(i_s).iter().enumerate() {
         let TypeVarLike::TypeVar(tv) = tv_like else {
-            continue
+            continue;
         };
         let replace_protocol = |is_upper: bool| {
             Type::new_class(

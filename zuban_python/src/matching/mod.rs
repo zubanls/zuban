@@ -49,7 +49,7 @@ pub fn avoid_protocol_mismatch(t1: &Type, t2: &Type, callable: impl FnOnce() -> 
         } else {
             current.push((t1.clone(), t2.clone()));
             drop(current);
-            let result = debug_indent(|| callable());
+            let result = debug_indent(callable);
             vec.borrow_mut().pop();
             result
         }

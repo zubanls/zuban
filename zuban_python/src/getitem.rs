@@ -141,7 +141,7 @@ impl<'file> Starred<'file> {
 
     fn infer(&self, i_s: &InferenceState) -> Inferred {
         self.file
-            .inference(&i_s)
+            .inference(i_s)
             .infer_expression(self.starred_expr.expression());
         Inferred::new_object(i_s.db)
     }

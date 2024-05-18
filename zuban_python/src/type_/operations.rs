@@ -223,7 +223,7 @@ impl Type {
                 let instance = Instance::new(class.class(i_s.db), None);
                 let l = instance.lookup_and_maybe_ignore_super_count(
                     i_s,
-                    &add_issue,
+                    add_issue,
                     name,
                     LookupKind::OnlyType,
                     mro_index + 1,
@@ -574,7 +574,7 @@ pub(crate) fn attribute_access_of_type(
             .python_state
             .bare_type_class()
             .instance()
-            .lookup_with_details(i_s, |issue| add_issue(issue), name, kind)
+            .lookup_with_details(i_s, add_issue, name, kind)
             .or_else(|| LookupDetails::any(*cause)),
         t @ Type::Enum(e) => lookup_on_enum_class(i_s, add_issue, e, name, result_context),
         Type::Dataclass(d) => lookup_on_dataclass_type(d, i_s, add_issue, name, kind),
@@ -611,7 +611,7 @@ pub(crate) fn execute_type_of_type<'db>(
         // TODO remove this
         tuple @ Type::Tuple(tuple_content) => {
             debug!("TODO this does not check the arguments");
-            return Inferred::from_type(tuple.clone());
+            Inferred::from_type(tuple.clone())
             /*
             // TODO reenable this
             let mut args_iterator = args.iter();

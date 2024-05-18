@@ -91,7 +91,7 @@ impl<'a> Callable<'a> {
             result_context,
             Some(on_type_error),
         );
-        calculated_type_vars.as_return_type(i_s, &return_type, self.defined_in.as_ref(), &|| {
+        calculated_type_vars.as_return_type(i_s, return_type, self.defined_in.as_ref(), &|| {
             self.defined_in
                 .map(|c| c.as_type(i_s.db))
                 .unwrap_or(Type::Self_)

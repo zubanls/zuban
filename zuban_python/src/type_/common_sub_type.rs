@@ -33,7 +33,7 @@ impl Type {
                     (ArbitraryLen(t2), FixedLen(ts1)) | (FixedLen(ts1), ArbitraryLen(t2)) => {
                         let mut entries = vec![];
                         for t1 in ts1.iter() {
-                            entries.push(t1.common_sub_type(i_s, &t2)?)
+                            entries.push(t1.common_sub_type(i_s, t2)?)
                         }
                         Type::Tuple(Tuple::new_fixed_length(entries.into()))
                     }
@@ -50,14 +50,14 @@ impl Type {
                             .iter()
                             .zip(w_u.before.iter().chain(between).chain(w_u.after.iter()))
                         {
-                            entries.push(t1.common_sub_type(i_s, &t2)?)
+                            entries.push(t1.common_sub_type(i_s, t2)?)
                         }
                         Type::Tuple(Tuple::new_fixed_length(entries.into()))
                     }
                     (x, y) => todo!("{x:?} {y:?}"),
                 })
             }
-            (Type::TypedDict(td1), Type::TypedDict(td2)) => Some(td1.union(i_s, &td2)),
+            (Type::TypedDict(td1), Type::TypedDict(td2)) => Some(td1.union(i_s, td2)),
             (Type::Callable(c1), Type::Callable(c2)) => {
                 Some(Type::Callable(common_sub_type_for_callables(i_s, c1, c2)))
             }
@@ -84,7 +84,7 @@ impl CallableParams {
     ) -> Option<CallableParams> {
         match &self {
             CallableParams::Simple(params1) => match &other {
-                CallableParams::Simple(params2) => common_sub_type_params(i_s, &params1, &params2),
+                CallableParams::Simple(params2) => common_sub_type_params(i_s, params1, params2),
                 CallableParams::WithParamSpec(_, _) => todo!(),
                 CallableParams::Any(_) | CallableParams::Never(_) => todo!(),
             },

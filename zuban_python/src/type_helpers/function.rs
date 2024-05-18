@@ -147,7 +147,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             }
             BlockContent::Indented(mut stmts) => {
                 let StmtOrError::Stmt(mut first_stmt) = stmts.next().unwrap() else {
-                    return false
+                    return false;
                 };
                 if first_stmt.maybe_single_string_literal().is_some() {
                     // Is a docstr, skip.
@@ -338,17 +338,15 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 self.decorated_to_be_saved(i_s, decorated, maybe_computed)
             }
             .save_redirect(i_s, self.node_ref.file, self.node_ref.node_index);
+        } else if let Some(mut callable_t) = maybe_computed {
+            self.avoid_invalid_typeguard_signatures(i_s, &mut callable_t);
+            self.node_ref.insert_complex(
+                ComplexPoint::TypeInstance(Type::Callable(Rc::new(callable_t))),
+                Locality::Todo,
+            );
         } else {
-            if let Some(mut callable_t) = maybe_computed {
-                self.avoid_invalid_typeguard_signatures(i_s, &mut callable_t);
-                self.node_ref.insert_complex(
-                    ComplexPoint::TypeInstance(Type::Callable(Rc::new(callable_t))),
-                    Locality::Todo,
-                );
-            } else {
-                self.node_ref
-                    .set_point(Point::new_specific(Specific::Function, Locality::Todo));
-            }
+            self.node_ref
+                .set_point(Point::new_specific(Specific::Function, Locality::Todo));
         }
     }
 
@@ -557,8 +555,10 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
     }
 
     fn check_conditional_function_definition(&self, i_s: &InferenceState) {
-        let Some(first) = first_defined_name_of_multi_def(self.node_ref.file, self.node().name().index()) else {
-            return
+        let Some(first) =
+            first_defined_name_of_multi_def(self.node_ref.file, self.node().name().index())
+        else {
+            return;
         };
         // At this point we know it's a conditional redefinition and not just a singular def in an
         // if.
@@ -657,8 +657,9 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         decorated: Decorated,
         base_t: Option<CallableContent>,
     ) -> Inferred {
-        let Some(details) = self.calculate_decorated_function_details(i_s, decorated, base_t) else {
-            return Inferred::new_any_from_error()
+        let Some(details) = self.calculate_decorated_function_details(i_s, decorated, base_t)
+        else {
+            return Inferred::new_any_from_error();
         };
 
         let file = self.node_ref.file;
@@ -866,12 +867,12 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             if let Type::Callable(c) = inferred.as_type(i_s) {
                 overwrite_callable(&mut inferred, (*c).clone())
             }
+        } else if let Some(CallableLike::Callable(c)) =
+            inferred.as_cow_type(i_s).maybe_callable(i_s)
+        {
+            overwrite_callable(&mut inferred, (*c).clone())
         } else {
-            if let Some(CallableLike::Callable(c)) = inferred.as_cow_type(i_s).maybe_callable(i_s) {
-                overwrite_callable(&mut inferred, (*c).clone())
-            } else {
-                todo!()
-            }
+            todo!()
         }
         Some(FunctionDetails {
             inferred,
@@ -888,7 +889,9 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         had_first_annotation: bool,
     ) {
         let is_property_modifier = |decorator: Decorator| {
-            let ExpressionContent::ExpressionPart(ExpressionPart::Primary(primary)) = decorator.named_expression().expression().unpack() else {
+            let ExpressionContent::ExpressionPart(ExpressionPart::Primary(primary)) =
+                decorator.named_expression().expression().unpack()
+            else {
                 return PropertyModifier::JustADecorator;
             };
             let PrimaryOrAtom::Atom(first) = primary.first() else {
@@ -920,7 +923,8 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 break;
             }
             let func_ref = NodeRef::new(file, current_name_index - NAME_TO_FUNCTION_DIFF);
-            let Some(decorated) = func_ref.maybe_function().and_then(|f| f.maybe_decorated()) else {
+            let Some(decorated) = func_ref.maybe_function().and_then(|f| f.maybe_decorated())
+            else {
                 func_ref.add_issue(
                     i_s,
                     IssueKind::UnexpectedDefinitionForProperty {
@@ -1778,8 +1782,8 @@ impl<'x> Param<'x> for FunctionParam<'x> {
                         }) => {
                             debug_assert_eq!(*link, db.python_state.dict_node_ref().as_link());
                             let GenericItem::TypeArg(t) = &generics[1.into()] else {
-                            unreachable!();
-                        };
+                                unreachable!();
+                            };
                             WrappedStarStar::ValueType(Some(Cow::Borrowed(t)))
                         }
                         Type::TypedDict(td) => WrappedStarStar::UnpackTypedDict(td.clone()),

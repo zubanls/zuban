@@ -134,7 +134,7 @@ impl Tuple {
                     }
                     */
                     if let Some(type2) = value_generics.next() {
-                        overlaps &= type1.overlaps(i_s, matcher, &type2);
+                        overlaps &= type1.overlaps(i_s, matcher, type2);
                     } else {
                         overlaps = false;
                     }
@@ -146,9 +146,7 @@ impl Tuple {
             }
             (ArbitraryLen(t1), ArbitraryLen(t2)) => t1.overlaps(i_s, matcher, t2),
             (ArbitraryLen(t1), FixedLen(ts2)) => ts2.iter().all(|t2| t1.overlaps(i_s, matcher, t2)),
-            (FixedLen(ts1), ArbitraryLen(t2)) => {
-                ts1.iter().all(|t1| t1.overlaps(i_s, matcher, &t2))
-            }
+            (FixedLen(ts1), ArbitraryLen(t2)) => ts1.iter().all(|t1| t1.overlaps(i_s, matcher, t2)),
             (WithUnpack(unpack), ArbitraryLen(t1)) | (ArbitraryLen(t1), WithUnpack(unpack)) => {
                 unpack
                     .before
@@ -236,7 +234,7 @@ impl TypedDict {
 
                 // Special case for e.g. Matching of X == {}
                 if key.is_never() || value.is_never() {
-                    return !self.iter_required_members(i_s.db).next().is_some();
+                    return self.iter_required_members(i_s.db).next().is_none();
                 }
 
                 let mut had_required = false;

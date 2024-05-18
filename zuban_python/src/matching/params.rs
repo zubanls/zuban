@@ -162,7 +162,7 @@ pub fn matches_simple_params<
     while let Some(param1) = params1.next() {
         if let Some(mut param2) = params2
             .peek()
-            .or_else(|| unused_keyword_params.get(0))
+            .or_else(|| unused_keyword_params.first())
             .copied()
         {
             if param1.has_default() && !param2.has_default() {
@@ -450,7 +450,7 @@ pub fn matches_simple_params<
                         ) => {
                             let td1 = td1.clone();
                             let mut check = |td_x: &TypedDict, td_y: &TypedDict| {
-                                td_x.matches(i_s, matcher, &td_y, true)
+                                td_x.matches(i_s, matcher, td_y, true)
                             };
                             matches &= match variance {
                                 Variance::Contravariant => check(&td2, &td1),
@@ -698,7 +698,7 @@ fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
                 }
                 if let Some(mut param2) = params2
                     .peek()
-                    .or_else(|| unused_keyword_params.get(0))
+                    .or_else(|| unused_keyword_params.first())
                     .copied()
                 {
                     match param2.kind(db) {
@@ -887,7 +887,7 @@ impl<'db, 'a, I, P, AI: Iterator<Item = Arg<'db, 'a>>> InferrableParamIterator<'
         if let Some(a) = &arg {
             if a.in_args_or_kwargs_and_arbitrary_len() {
                 self.arbitrary_length_handled = false;
-                self.current_arg = arg.clone();
+                self.current_arg.clone_from(&arg);
             }
         }
         arg
@@ -982,18 +982,16 @@ where
                         self.too_many_positional_arguments = true;
                     }
                 }
+            } else if let Some(argument) = self
+                .maybe_exact_multi_arg(true)
+                .or_else(|| self.unused_keyword_arguments.pop())
+            {
+                return Some(InferrableParam {
+                    param,
+                    argument: ParamArgument::Argument(argument),
+                });
             } else {
-                if let Some(argument) = self
-                    .maybe_exact_multi_arg(true)
-                    .or_else(|| self.unused_keyword_arguments.pop())
-                {
-                    return Some(InferrableParam {
-                        param,
-                        argument: ParamArgument::Argument(argument),
-                    });
-                } else {
-                    self.current_double_starred_param = None;
-                }
+                self.current_double_starred_param = None;
             }
         }
         let check_unused = |self_: &mut Self, param: P| {

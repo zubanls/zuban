@@ -317,10 +317,8 @@ impl UnionType {
         let format_as_optional =
             self.format_as_optional && format_data.style != FormatStyle::MypyRevealType;
         let mut unsorted = iterator
-            .filter_map(|e| {
-                (!format_as_optional || !matches!(e.type_, Type::None))
-                    .then(|| (e.format_index, e.type_.format(format_data)))
-            })
+            .filter(|&e| (!format_as_optional || !matches!(e.type_, Type::None)))
+            .map(|e| (e.format_index, e.type_.format(format_data)))
             .collect::<Vec<_>>();
         unsorted.sort_by_key(|(format_index, _)| *format_index);
         sorted += &unsorted

@@ -524,7 +524,7 @@ fn narrow_is_or_eq(
     is_eq: bool,
 ) -> Option<(Frame, Frame)> {
     let split = |key: FlowKey| {
-        let (rest, none) = split_off_singleton(i_s, &left_t, right_t, is_eq)?;
+        let (rest, none) = split_off_singleton(i_s, left_t, right_t, is_eq)?;
         let result = (
             Frame::from_type(key.clone(), none),
             Frame::from_type(key, rest),
@@ -675,8 +675,9 @@ fn split_truthy_and_falsey(i_s: &InferenceState, t: &Type) -> Option<(Type, Type
                         .lookup
                         .into_inferred()
                         .as_cow_type(i_s)
-                        .maybe_callable(i_s) else {
-                        return None
+                        .maybe_callable(i_s)
+                    else {
+                        return None;
                     };
                     match &callable.return_type {
                         Type::Literal(literal) => check_literal(literal),
@@ -809,10 +810,10 @@ impl Inference<'_, '_, '_> {
 
             fa.merge_conditional(self.i_s, true_frame, false_frame);
             let Some(if_inf) = if_inf else {
-                return else_inf.unwrap_or_else(|| todo!())
+                return else_inf.unwrap_or_else(|| todo!());
             };
             let Some(else_inf) = else_inf else {
-                return if_inf
+                return if_inf;
             };
 
             // Mypy has a weird way of doing this:
@@ -876,7 +877,6 @@ impl Inference<'_, '_, '_> {
                     self.calc_block_diagnostics(else_block.block(), class, func)
                 });
                 //fa.overwrite_frame(self.i_s.db, after_else);
-            } else {
             }
         })
     }
@@ -920,7 +920,7 @@ impl Inference<'_, '_, '_> {
         func: Option<&Function>,
     ) {
         let Some(if_block) = if_blocks.next() else {
-            return
+            return;
         };
         let name_binder_check = self
             .file
@@ -979,7 +979,7 @@ impl Inference<'_, '_, '_> {
         and: Conjunction,
     ) -> (Inferred, FramesWithParentUnions, FramesWithParentUnions) {
         let (left, right) = and.unpack();
-        match is_expr_part_reachable_for_name_binder(&self.flags(), left) {
+        match is_expr_part_reachable_for_name_binder(self.flags(), left) {
             Truthiness::True { .. } => {
                 let (inf, r) = self.find_guards_in_expression_parts(right);
                 return (inf, FramesWithParentUnions::default(), r);
@@ -1033,7 +1033,7 @@ impl Inference<'_, '_, '_> {
         or: Disjunction,
     ) -> (Inferred, FramesWithParentUnions, FramesWithParentUnions) {
         let (left, right) = or.unpack();
-        match is_expr_part_reachable_for_name_binder(&self.flags(), left) {
+        match is_expr_part_reachable_for_name_binder(self.flags(), left) {
             Truthiness::False => {
                 let (inf, r) = self.find_guards_in_expression_parts(right);
                 return (inf, FramesWithParentUnions::default(), r);
@@ -1116,7 +1116,8 @@ impl Inference<'_, '_, '_> {
     fn propagate_parent_unions(&self, frame: &mut Frame, parent_unions: &[(FlowKey, UnionType)]) {
         for (key, parent_union) in parent_unions.iter().rev() {
             for entry in &frame.entries {
-                let (FlowKey::Member(base_key, _) | FlowKey::Index{base_key, ..}) = &entry.key else {
+                let (FlowKey::Member(base_key, _) | FlowKey::Index { base_key, .. }) = &entry.key
+                else {
                     continue;
                 };
                 if key.equals(self.i_s.db, base_key) {
@@ -1426,8 +1427,8 @@ impl Inference<'_, '_, '_> {
                     if let Some(ComparisonKey::Len { key, inf }) = &left_infos.key {
                         result = narrow_len(
                             self.i_s,
-                            &key,
-                            &inf,
+                            key,
+                            inf,
                             &left_infos.parent_unions,
                             &right_infos.inf,
                             LenNarrowing::from_operand(operation.infos.operand),
@@ -1435,8 +1436,8 @@ impl Inference<'_, '_, '_> {
                     } else if let Some(ComparisonKey::Len { key, inf }) = &right_infos.key {
                         result = narrow_len(
                             self.i_s,
-                            &key,
-                            &inf,
+                            key,
+                            inf,
                             &right_infos.parent_unions,
                             &left_infos.inf,
                             LenNarrowing::from_operand(operation.infos.operand).invert(),
@@ -1472,12 +1473,12 @@ impl Inference<'_, '_, '_> {
     ) -> Option<FramesWithParentUnions> {
         let mut iterator = args.iter();
         let Argument::Positional(arg) = iterator.next()? else {
-            return None
+            return None;
         };
         let result = self.key_from_namedexpression(arg);
         let key = result.key?;
         let Argument::Positional(type_arg) = iterator.next()? else {
-            return None
+            return None;
         };
         let mut isinstance_type = self.check_isinstance_or_issubclass_type(type_arg, issubclass)?;
         if iterator.next().is_some() {
@@ -1673,12 +1674,12 @@ impl Inference<'_, '_, '_> {
     fn guard_hasattr(&self, args: Arguments) -> Option<FramesWithParentUnions> {
         let mut iterator = args.iter();
         let Argument::Positional(arg) = iterator.next()? else {
-            return None
+            return None;
         };
         let result = self.key_from_namedexpression(arg);
         let key = result.key?;
         let Argument::Positional(str_arg) = iterator.next()? else {
-            return None
+            return None;
         };
         let attr_inf = self.infer_named_expression(str_arg);
         let attr = attr_inf.maybe_string_literal(self.i_s)?;
@@ -1692,7 +1693,7 @@ impl Inference<'_, '_, '_> {
             .iter_with_unpacked_unions(self.i_s.db)
         {
             if let Some(inf) = self
-                .check_attr(&t, attr.as_str(self.i_s.db))
+                .check_attr(t, attr.as_str(self.i_s.db))
                 .into_maybe_inferred()
             {
                 attr_t.union_in_place(inf.as_type(self.i_s));
@@ -1752,7 +1753,7 @@ impl Inference<'_, '_, '_> {
         let guard = callable.guard.as_ref()?;
         let find_arg = || {
             let CallableParams::Simple(c_params) = &callable.params else {
-                return None
+                return None;
             };
             let first_param = c_params.iter().next()?;
             for arg in args.iter() {
@@ -2162,7 +2163,7 @@ impl Inference<'_, '_, '_> {
     fn comparison_part_infos(&self, expr_part: ExpressionPart) -> ComparisonPartInfos {
         let check_for_call = || {
             let ExpressionPart::Primary(primary) = expr_part else {
-                return None
+                return None;
             };
             let PrimaryContent::Execution(ArgumentsDetails::Node(args)) = primary.second() else {
                 return None;
@@ -2204,7 +2205,7 @@ impl Inference<'_, '_, '_> {
         check_for_call().unwrap_or_else(|| {
             let k = self.key_from_expr_part(expr_part);
             ComparisonPartInfos {
-                key: k.key.map(|k| ComparisonKey::Normal(k)),
+                key: k.key.map(ComparisonKey::Normal),
                 inf: k.inf,
                 parent_unions: RefCell::new(k.parent_unions),
             }
@@ -2335,7 +2336,7 @@ fn find_comparison_guards(
     right: &ComparisonPartInfos,
     is_eq: bool,
 ) -> Option<FramesWithParentUnions> {
-    if let Some(result) = check_for_comparison_guard(i_s, &left, &right.inf, is_eq) {
+    if let Some(result) = check_for_comparison_guard(i_s, left, &right.inf, is_eq) {
         return Some(result);
     }
     if let Some(result) = check_for_comparison_guard(i_s, right, &left.inf, is_eq) {
@@ -2426,10 +2427,10 @@ fn check_for_comparison_guard(
         }
         ComparisonKey::Len { key, inf } => Some(narrow_len(
             i_s,
-            &key,
-            &inf,
+            key,
+            inf,
             &checking_side.parent_unions,
-            &other_side_inf,
+            other_side_inf,
             LenNarrowing::Equals,
         )?),
     }
@@ -2597,11 +2598,9 @@ fn narrow_len_for_tuples(
                         // len(...) < 0 does never exist.
                         return true;
                     }
-                } else {
-                    if negative == invert {
-                        add_tuple_of_len(n);
-                        return true;
-                    }
+                } else if negative == invert {
+                    add_tuple_of_len(n);
+                    return true;
                 }
             }
         }

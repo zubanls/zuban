@@ -21,9 +21,9 @@ pub enum ResultContext<'a, 'b> {
 }
 
 impl<'a> ResultContext<'a, '_> {
-    pub fn with_type_if_exists_and_replace_type_var_likes<'db, T>(
+    pub fn with_type_if_exists_and_replace_type_var_likes<T>(
         &self,
-        i_s: &InferenceState<'db, '_>,
+        i_s: &InferenceState<'_, '_>,
         callable: impl FnOnce(&Type) -> T,
     ) -> Option<T> {
         match self {
@@ -74,7 +74,7 @@ impl<'a> ResultContext<'a, '_> {
                         .as_type(i_s.db)
                         .is_sub_type_of(i_s, &mut matcher, t)
                         .bool()
-                        .then(|| matcher)
+                        .then_some(matcher)
                 },
                 on_unique_found,
             )
@@ -86,7 +86,7 @@ impl<'a> ResultContext<'a, '_> {
         matches!(self, Self::Known(_) | Self::WithMatcher { .. })
     }
 
-    pub fn could_be_a_literal<'db>(&self, i_s: &InferenceState<'db, '_>) -> CouldBeALiteral {
+    pub fn could_be_a_literal(&self, i_s: &InferenceState<'_, '_>) -> CouldBeALiteral {
         if matches!(self, Self::AssignmentNewDefinition) && !i_s.is_calculating_enum_members() {
             return CouldBeALiteral::No;
         }
@@ -152,11 +152,7 @@ impl<'a> ResultContext<'a, '_> {
             None
         })
         .flatten()
-        .unwrap_or_else(|| {
-            callable(match self {
-                _ => TupleContextIterator::Unknown,
-            })
-        })
+        .unwrap_or_else(|| callable(TupleContextIterator::Unknown))
     }
 }
 

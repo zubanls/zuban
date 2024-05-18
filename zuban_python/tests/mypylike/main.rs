@@ -189,7 +189,7 @@ impl<'name, 'code> TestCase<'name, 'code> {
                 if flag == &wanted_flag {
                     push_to.push(flag_iterator.next().unwrap().to_string());
                 } else if let Some(rest) = flag.strip_prefix(wanted_flag) {
-                    if let Some(name) = rest.strip_prefix("=") {
+                    if let Some(name) = rest.strip_prefix('=') {
                         push_to.push(name.to_string())
                     }
                 }
@@ -312,7 +312,7 @@ impl<'name, 'code> TestCase<'name, 'code> {
             for path in step.files.keys() {
                 // We need to unload the whole directory, otherwise we might leave up namespace
                 // packages for other tests.
-                if path.contains("/") {
+                if path.contains('/') {
                     let before_slash = path.split('/').next().unwrap();
                     let _ = project.delete_directory(&(BASE_PATH.to_owned() + before_slash));
                 } else {
@@ -497,7 +497,7 @@ fn wanted_output(project: &mut Project, step: &Step) -> Vec<String> {
                     if i != 0 {
                         type_ = "note";
                     }
-                    if let Some(comment) = cleanup_mypy_issues(&comment) {
+                    if let Some(comment) = cleanup_mypy_issues(comment) {
                         if let Some(column) = column {
                             wanted.push(format!(
                                 "{p}:{line_nr}:{column}: {type_}: {}",
@@ -652,7 +652,7 @@ struct ProjectsCache(HashMap<TypeCheckerFlags, Project>);
 
 impl ProjectsCache {
     fn get_mut(&mut self, flags: TypeCheckerFlags) -> &mut Project {
-        if self.0.get(&flags).is_none() {
+        if !self.0.contains_key(&flags) {
             self.0.insert(
                 flags.clone(),
                 Project::new(ProjectOptions {
@@ -825,7 +825,7 @@ fn skipped() -> Box<[Skipped]> {
 
     file.trim()
         .split('\n')
-        .filter(|line| !line.starts_with("#"))
+        .filter(|line| !line.starts_with('#'))
         .map(|mut x| {
             let start_star = x.starts_with('*');
             let end_star = x.ends_with('*');
@@ -835,7 +835,7 @@ fn skipped() -> Box<[Skipped]> {
             if end_star {
                 x = &x[..x.len() - 1]
             }
-            let mut split_by_colon = x.split(":");
+            let mut split_by_colon = x.split(':');
             let first = split_by_colon.next().unwrap();
             let mut only_for_file = None;
             if let Some(rest) = split_by_colon.next() {

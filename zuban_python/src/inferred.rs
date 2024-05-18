@@ -311,10 +311,14 @@ impl<'db: 'slf, 'slf> Inferred {
 
     pub fn maybe_new_partial(&self, i_s: &InferenceState, from: NodeRef) -> Option<Inferred> {
         let Some(ComplexPoint::TypeInstance(t)) = self.maybe_complex_point(i_s.db) else {
-            return None
+            return None;
         };
         let check_for_partial = || {
-            let Type::Class(GenericClass { link, generics: ClassGenerics::List(generics) }) = t else {
+            let Type::Class(GenericClass {
+                link,
+                generics: ClassGenerics::List(generics),
+            }) = t
+            else {
                 return None;
             };
             let specific = if *link == i_s.db.python_state.list_node_ref().as_link() {
@@ -970,7 +974,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                                     &attribute_class,
                                                     &t,
                                                 )
-                                                .map(|c| Rc::new(c))
+                                                .map(Rc::new)
                                             } else {
                                                 todo!()
                                             }
@@ -1387,7 +1391,7 @@ impl<'db: 'slf, 'slf> Inferred {
                     None,
                 );
                 if let Some(inf) = inst
-                    .type_lookup(i_s, |issue| add_issue(issue), "__get__")
+                    .type_lookup(i_s, &add_issue, "__get__")
                     .into_maybe_inferred()
                 {
                     let class_as_inferred = class.as_inferred(i_s);
@@ -1522,7 +1526,7 @@ impl<'db: 'slf, 'slf> Inferred {
                         false
                     }
                 } else {
-                    node_ref.complex().is_some_and(|c| check_complex_point(c))
+                    node_ref.complex().is_some_and(check_complex_point)
                 }
             }
             InferredState::UnsavedComplex(c) => check_complex_point(c),
@@ -1839,7 +1843,9 @@ impl<'db: 'slf, 'slf> Inferred {
                                 let mut iterator = args.iter();
                                 if let Some(first_arg) = iterator.next() {
                                     let t = new_type.type_(i_s);
-                                    let InferredArg::Inferred(inf) = first_arg.infer(i_s, &mut ResultContext::Known(t)) else {
+                                    let InferredArg::Inferred(inf) =
+                                        first_arg.infer(i_s, &mut ResultContext::Known(t))
+                                    else {
                                         todo!()
                                     };
                                     let other = inf.as_cow_type(i_s);

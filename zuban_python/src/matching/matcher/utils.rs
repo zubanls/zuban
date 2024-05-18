@@ -714,9 +714,9 @@ pub(crate) fn match_arguments_against_params<
                                 .as_type(i_s),
                         ))
                     } else {
-                        match arg.infer(&i_s, &mut ResultContext::Unknown) {
+                        match arg.infer(i_s, &mut ResultContext::Unknown) {
                             InferredArg::Inferred(inf) => {
-                                let t = inf.as_type(&i_s);
+                                let t = inf.as_type(i_s);
                                 if unpack.is_some() {
                                     after.push(t)
                                 } else {

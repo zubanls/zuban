@@ -91,7 +91,7 @@ impl LookupResult {
     pub fn and_then(self, c: impl FnOnce(Inferred) -> Option<Inferred>) -> Option<Self> {
         match self {
             Self::GotoName { name, inf } => c(inf).map(|inf| Self::GotoName { name, inf }),
-            Self::UnknownName(inf) => c(inf).map(|inf| Self::UnknownName(inf)),
+            Self::UnknownName(inf) => c(inf).map(Self::UnknownName),
             // TODO is it ok that map does not include FileReference(_)?
             _ => Some(self),
         }
