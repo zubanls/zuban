@@ -24,7 +24,6 @@ testYieldFromUnionOfGenerators
 testYieldFromInvalidUnionReturn
 testYieldFromUnionOfGeneratorWithIterableStr
 testAliasToCallableWithUnpackInvalid
-testFunctionalEnumErrors
 
 # 3.12 type var syntax
 test695TypeAlias

@@ -318,8 +318,8 @@ fn maybe_type_var(
             if name.as_code() != py_string.content() {
                 name_node.add_issue(
                     i_s,
-                    IssueKind::TypeVarNameMismatch {
-                        class_name: "TypeVar",
+                    IssueKind::VarNameMismatch {
+                        class_name: "TypeVar".into(),
                         string_name: Box::from(py_string.content()),
                         variable_name: Box::from(name.as_code()),
                     },
@@ -552,8 +552,8 @@ fn maybe_type_var_tuple(
             if name.as_code() != py_string.content() {
                 name_node.add_issue(
                     i_s,
-                    IssueKind::TypeVarNameMismatch {
-                        class_name: "TypeVarTuple",
+                    IssueKind::VarNameMismatch {
+                        class_name: "TypeVarTuple".into(),
                         string_name: Box::from(py_string.content()),
                         variable_name: Box::from(name.as_code()),
                     },
@@ -686,8 +686,8 @@ fn maybe_param_spec(
             if name.as_code() != py_string.content() {
                 name_node.add_issue(
                     i_s,
-                    IssueKind::TypeVarNameMismatch {
-                        class_name: "ParamSpec",
+                    IssueKind::VarNameMismatch {
+                        class_name: "ParamSpec".into(),
                         string_name: Box::from(py_string.content()),
                         variable_name: Box::from(name.as_code()),
                     },
@@ -801,8 +801,8 @@ fn maybe_new_type<'db>(i_s: &InferenceState<'db, '_>, args: &dyn Args<'db>) -> O
         if name.as_code() != py_string.content() {
             name_node.add_issue(
                 i_s,
-                IssueKind::TypeVarNameMismatch {
-                    class_name: "NewType",
+                IssueKind::VarNameMismatch {
+                    class_name: "NewType".into(),
                     string_name: Box::from(py_string.content()),
                     variable_name: Box::from(name.as_code()),
                 },

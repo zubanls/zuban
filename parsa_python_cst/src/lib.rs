@@ -847,6 +847,10 @@ impl<'db> Expression<'db> {
     pub fn is_ellipsis_literal(&self) -> bool {
         matches!(self.maybe_unpacked_atom(), Some(AtomContent::Ellipsis))
     }
+
+    pub fn in_simple_assignment(&self) -> Option<NameDefinition<'db>> {
+        in_simple_assignment(self.node)
+    }
 }
 
 pub enum ExpressionContent<'db> {
@@ -3691,15 +3695,18 @@ impl<'db> StringLiteral<'db> {
     }
 
     pub fn in_simple_assignment(&self) -> Option<NameDefinition<'db>> {
-        self.node
-            .parent_until(&[Nonterminal(assignment)])
-            .and_then(|n| Assignment::new(n).maybe_simple_type_expression_assignment())
-            .map(|(name, _, _)| name)
+        in_simple_assignment(self.node)
     }
 
     pub fn as_python_string(&self) -> PythonString<'db> {
         PythonString::from_literal(self.node)
     }
+}
+
+fn in_simple_assignment(node: PyNode) -> Option<NameDefinition> {
+    node.parent_until(&[Nonterminal(assignment)])
+        .and_then(|n| Assignment::new(n).maybe_simple_type_expression_assignment())
+        .map(|(name, _, _)| name)
 }
 
 impl<'db> Strings<'db> {

@@ -350,6 +350,7 @@ pub(crate) fn execute_functional_enum<'db>(
                     name_infos = Some((
                         positional.node_ref,
                         positional.infer(i_s, &mut ResultContext::Unknown),
+                        expr.in_simple_assignment(),
                     ));
                 } else if fields_infos.is_none() {
                     fields_infos = Some((positional.node_ref, expr));
@@ -359,7 +360,11 @@ pub(crate) fn execute_functional_enum<'db>(
             }
             ArgKind::Keyword(kw) => match kw.key {
                 "value" => {
-                    name_infos = Some((kw.node_ref, kw.infer(i_s, &mut ResultContext::Unknown)))
+                    name_infos = Some((
+                        kw.node_ref,
+                        kw.infer(i_s, &mut ResultContext::Unknown),
+                        kw.expression.in_simple_assignment(),
+                    ))
                 }
                 "names" => fields_infos = Some((kw.node_ref, kw.expression)),
                 // Keyword names were checked by checking EnumMeta.__call__
@@ -383,6 +388,19 @@ pub(crate) fn execute_functional_enum<'db>(
         name_infos.0.add_issue(i_s, IssueKind::EnumFirstArgMustBeString);
         return None
     };
+    if let Some(name_def) = name_infos.2 {
+        let n = name.as_str(i_s.db);
+        if name_def.as_code() != n {
+            name_infos.0.add_issue(
+                i_s,
+                IssueKind::VarNameMismatch {
+                    class_name: class.qualified_name(i_s.db).into(),
+                    string_name: Box::from(n),
+                    variable_name: Box::from(name_def.as_code()),
+                },
+            );
+        }
+    }
 
     let members =
         gather_functional_enum_members(i_s, class, &name, fields_infos.0, fields_infos.1)?;

@@ -162,8 +162,8 @@ pub(crate) enum IssueKind {
     ParamSpecInvalidDefault,
     TypeVarDefaultMustBeASubtypeOfBound,
     TypeVarDefaultMustBeASubtypeOfConstraints,
-    TypeVarNameMismatch {
-        class_name: &'static str,
+    VarNameMismatch {
+        class_name: Box<str>,
         string_name: Box<str>,
         variable_name: Box<str>
     },
@@ -1141,7 +1141,7 @@ impl<'db> Diagnostic<'db> {
                 "TypeVar default must be a subtype of the bound type".to_owned(),
             TypeVarDefaultMustBeASubtypeOfConstraints =>
                 "TypeVar default must be one of the constraint types".to_owned(),
-            TypeVarNameMismatch{class_name, string_name, variable_name} => format!(
+            VarNameMismatch{class_name, string_name, variable_name} => format!(
                 "String argument 1 \"{string_name}\" to {class_name}(...) does not \
                  match variable name \"{variable_name}\""
             ),
