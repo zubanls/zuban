@@ -395,10 +395,9 @@ fn merge_or(i_s: &InferenceState, x: Frame, y: Frame) -> Frame {
                     type_: x_entry.type_.simplified_union(i_s, &y_entry.type_),
                     from_assignment: x_entry.from_assignment || y_entry.from_assignment,
                     widens: x_entry.widens | y_entry.widens,
-                })
+                });
+                break;
             }
-            // TODO wtf why is the break here? this always aborts after the first entry.
-            break;
         }
     }
     Frame::new(new_entries)
