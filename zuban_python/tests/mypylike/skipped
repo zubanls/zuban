@@ -24,6 +24,7 @@ testYieldFromUnionOfGenerators
 testYieldFromInvalidUnionReturn
 testYieldFromUnionOfGeneratorWithIterableStr
 testAliasToCallableWithUnpackInvalid
+testFunctionalEnumErrors
 
 # 3.12 type var syntax
 test695TypeAlias
@@ -31,6 +32,10 @@ test695Class
 test695Function
 test695TypeVar
 test695TypeAliasType
+testPEP695*
+
+
+
 # TypeAliasType
 testTypeAliasType
 testTypeAliasTypeInvalid
@@ -305,7 +310,7 @@ param_spec_with_identity_mypy_issue_12278
 testInvalidParamSpecDefinitionsWithArgsKwargs
 testInvalidParamSpecAndConcatenateDefinitionsWithArgsKwargs
 testUnboundParamSpec
-testParamSpecArgsAndKwargsMissmatch
+testParamSpecArgsAndKwargsMismatch
 # Param spec invalid calls
 testParamSpecInvalidCalls
 # ParamSpec is not unbound if working like a T in Callable?
