@@ -1566,7 +1566,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     .unwrap_or_else(|| "".to_owned()),
                 self.name()
             );
-            calculated_type_vars.as_return_type(
+            calculated_type_vars.into_return_type(
                 i_s,
                 &return_type,
                 self.class.as_ref(),

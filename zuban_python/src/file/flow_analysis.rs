@@ -397,6 +397,7 @@ fn merge_or(i_s: &InferenceState, x: Frame, y: Frame) -> Frame {
                     widens: x_entry.widens | y_entry.widens,
                 })
             }
+            // TODO wtf why is the break here? this always aborts after the first entry.
             break;
         }
     }

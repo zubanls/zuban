@@ -685,7 +685,7 @@ pub(crate) fn execute_type_of_type<'db>(
             Inferred::from_type(Type::NamedTuple(if nt.__new__.type_vars.is_empty() {
                 nt.clone()
             } else {
-                let inf = calculated_type_vars.as_return_type(
+                let inf = calculated_type_vars.into_return_type(
                     i_s,
                     &Type::Callable(nt.__new__.clone()),
                     None,

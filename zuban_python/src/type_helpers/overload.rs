@@ -408,7 +408,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                         } else {
                             return UnionMathResult::Match {
                                 result: calculated_type_args
-                                    .as_return_type(
+                                    .into_return_type(
                                         i_s,
                                         &callable.content.return_type,
                                         self.class.as_ref(),

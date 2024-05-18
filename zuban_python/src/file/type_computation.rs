@@ -619,7 +619,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     Some(&|slf, tc| {
                         let wrapped = slf.wrap_in_unpack(tc, from);
                         Type::Tuple(Tuple::new(
-                            slf.use_tuple_unpack(wrapped, from).as_tuple_args(),
+                            slf.use_tuple_unpack(wrapped, from).into_tuple_args(),
                         ))
                     }),
                 )
@@ -4095,7 +4095,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
         let node_ref = NodeRef::new(self.file, expr.index());
         self.within_type_var_like_definition(node_ref, |mut comp| match comp.compute_type(expr) {
             TypeContent::Unpacked(unpacked) => Some(TypeArgs::new(
-                comp.use_tuple_unpack(unpacked, node_ref).as_tuple_args(),
+                comp.use_tuple_unpack(unpacked, node_ref).into_tuple_args(),
             )),
             _ => None,
         })
@@ -4212,7 +4212,7 @@ enum TypeCompTupleUnpack {
 }
 
 impl TypeCompTupleUnpack {
-    fn as_tuple_args(self) -> TupleArgs {
+    fn into_tuple_args(self) -> TupleArgs {
         match self {
             Self::TypeVarTuple(tvt) => TupleArgs::WithUnpack(WithUnpack {
                 before: Rc::from([]),

@@ -113,10 +113,10 @@ impl Tree {
     }
 
     pub fn mypy_inline_config_directives(&self) -> impl Iterator<Item = (CodeIndex, &str)> {
-        const PREFIX: &'static str = "# mypy: ";
+        const PREFIX: &str = "# mypy: ";
         let mut code_index_start = 0;
         self.before_first_statement()
-            .split("\n")
+            .split('\n')
             .filter_map(move |line| {
                 let result = line
                     .strip_prefix(PREFIX)
@@ -552,7 +552,7 @@ impl<'db> Int<'db> {
             tmp = to_be_parsed.replace('_', "");
             to_be_parsed = &tmp;
         }
-        if let Some(stripped) = to_be_parsed.strip_prefix("0") {
+        if let Some(stripped) = to_be_parsed.strip_prefix('0') {
             let base = match stripped.as_bytes().first() {
                 None => return Some(0),
                 Some(b'x' | b'X') => 16,
@@ -1321,7 +1321,7 @@ impl<'db> IfBlockIterator<'db> {
     pub fn next_block_start_and_last_block_end(&self) -> Option<(NodeIndex, NodeIndex)> {
         Some((
             self.clone().next()?.start_of_first_block_stmt(),
-            self.0.clone().last()?.end(),
+            self.0.last()?.end(),
         ))
     }
 }
@@ -2576,9 +2576,7 @@ impl<'db> AssertStmt<'db> {
 impl<'db> RaiseStmt<'db> {
     pub fn unpack(&self) -> Option<(Expression<'db>, Option<Expression<'db>>)> {
         let mut iterator = self.node.iter_children().skip(1);
-        let Some(first) = iterator.next() else {
-            return None
-        };
+        let first = iterator.next()?;
         Some((Expression::new(first), iterator.nth(1).map(Expression::new)))
     }
 }
@@ -3030,9 +3028,7 @@ impl<'db> Iterator for ComparisonIterator<'db> {
     type Item = ComparisonContent<'db>;
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        let Some(op) = self.iterator.next() else {
-            return None;
-        };
+        let op = self.iterator.next()?;
         let right = ExpressionPart::new(self.iterator.next().unwrap());
         let left = std::mem::replace(&mut self.left, right);
         let first_operand = op.nth_child(0);
@@ -3318,8 +3314,8 @@ impl<'db> ReturnStmt<'db> {
 
 impl<'db> YieldExpr<'db> {
     pub fn unpack(&self) -> YieldExprContent<'db> {
-        let Some(node) = self.node.iter_children().skip(1).next() else {
-            return YieldExprContent::None
+        let Some(node) = self.node.iter_children().nth(1) else {
+            return YieldExprContent::None;
         };
         if node.is_type(Nonterminal(star_expressions)) {
             YieldExprContent::StarExpressions(StarExpressions::new(node))

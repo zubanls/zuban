@@ -473,11 +473,7 @@ pub(crate) fn new_collections_named_tuple(
     i_s: &InferenceState,
     args: &dyn Args,
 ) -> Option<Rc<NamedTuple>> {
-    let Some((name, second_node_ref, atom_content, _)) =
-        check_named_tuple_name(i_s, "namedtuple", args)
-    else {
-        return None;
-    };
+    let (name, second_node_ref, atom_content, _) = check_named_tuple_name(i_s, "namedtuple", args)?;
     let mut params = start_namedtuple_params(i_s.db);
 
     let mut add_param = |name| {

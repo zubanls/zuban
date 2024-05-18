@@ -518,7 +518,7 @@ pub(crate) fn dataclasses_replace<'db>(
     if let Some(first) = arg_iterator.next() {
         if let ArgKind::Positional(positional) = &first.kind {
             let inferred = positional.infer(i_s, &mut ResultContext::Unknown);
-            if run_on_dataclass(
+            let successful = run_on_dataclass(
                 i_s,
                 Some(positional.node_ref),
                 &inferred.as_cow_type(i_s),
@@ -567,7 +567,8 @@ pub(crate) fn dataclasses_replace<'db>(
                         &mut ResultContext::Unknown,
                     );
                 },
-            ) {
+            );
+            if successful {
                 return inferred;
             } else {
                 // Error is raised by the type checker

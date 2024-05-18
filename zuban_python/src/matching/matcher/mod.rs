@@ -696,7 +696,7 @@ impl<'a> Matcher<'a> {
                     Bound::Uncalculated { .. } => {
                         // TODO fix variance
                         *t = Bound::new_param_spec(
-                            infer_params_from_args(i_s, args),
+                            infer_params_from_args(i_s, &args),
                             Variance::Contravariant,
                         );
                         return SignatureMatch::new_true();
@@ -1393,7 +1393,7 @@ impl<'a> Matcher<'a> {
                         previous: Some(&already_seen),
                     })
                 } else {
-                    let has_bound = self.add_cycles(db, &mut cycles, tv, already_seen);
+                    let has_bound = self.add_cycles(&mut cycles, tv, already_seen);
                     if has_bound {
                         cycles.enable_has_bound_for_type_var(current)
                     }
@@ -1423,7 +1423,6 @@ impl<'a> Matcher<'a> {
 
     fn add_cycles(
         &self,
-        db: &Database,
         cycles: &mut TypeVarCycles,
         calc: &CalculatingTypeArg,
         current_seen: TransitiveConstraintAlreadySeen,
@@ -1448,7 +1447,7 @@ impl<'a> Matcher<'a> {
                         cycles.add(new_already_seen)
                     } else {
                         let current = self.calculating_arg(new_current_seen);
-                        has_bound |= self.add_cycles(db, cycles, current, new_already_seen);
+                        has_bound |= self.add_cycles(cycles, current, new_already_seen);
                         if cycles.find_cycle(new_current_seen).is_none() {
                             has_bound = true;
                         }
@@ -1655,7 +1654,7 @@ impl TypeVarCycle {
 
 fn infer_params_from_args<'db>(
     i_s: &InferenceState<'db, '_>,
-    args: Box<[Arg<'db, '_>]>,
+    args: &[Arg<'db, '_>],
 ) -> CallableParams {
     let mut params = vec![];
     for arg in args.iter() {

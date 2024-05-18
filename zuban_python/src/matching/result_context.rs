@@ -53,7 +53,7 @@ impl<'a> ResultContext<'a, '_> {
         }
     }
 
-    pub fn on_unique_type_in_unpacked_union<'db, T>(
+    pub fn on_unique_type_in_unpacked_union<T>(
         &mut self,
         i_s: &InferenceState,
         class: NodeRef,

@@ -158,7 +158,7 @@ impl CalculatedTypeArgs {
         }
     }
 
-    pub fn as_return_type(
+    pub fn into_return_type(
         self,
         i_s: &InferenceState,
         return_type: &Type,
@@ -185,7 +185,7 @@ impl CalculatedTypeArgs {
                             )
                             .into_inferred();
                         if !had_error.get() {
-                            return self.as_return_type(
+                            return self.into_return_type(
                                 i_s,
                                 &inf.as_cow_type(i_s),
                                 None,

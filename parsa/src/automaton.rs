@@ -1271,7 +1271,7 @@ fn split_tokens(
         if as_list.len() > 1 {
             let must_be_smaller = *as_list[1][0];
             debug_assert!(!as_list[0].is_empty());
-            while let Some(&&nfa_id) = as_list[0].get(0) {
+            while let Some(&&nfa_id) = as_list[0].first() {
                 // It should basically never happen that two transitions are possible from an
                 // NFA. ε-moves are of course always possible.
                 debug_assert!(nfa_id != must_be_smaller);

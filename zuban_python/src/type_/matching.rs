@@ -769,13 +769,15 @@ fn match_tuple_type_arguments_internal(
     }
 }
 
+type OnMismatch<'x> = &'x dyn Fn(ErrorTypes, isize);
+
 pub fn match_unpack(
     i_s: &InferenceState,
     matcher: &mut Matcher,
     with_unpack1: &WithUnpack,
     tup2: &TupleArgs,
     variance: Variance,
-    on_mismatch: Option<&dyn Fn(ErrorTypes, isize)>,
+    on_mismatch: Option<OnMismatch>,
     on_too_few_args: Option<&dyn Fn()>,
 ) -> Match {
     debug_assert!(!matcher.is_matching_reverse());
@@ -796,7 +798,7 @@ fn match_unpack_internal(
     with_unpack1: &WithUnpack,
     tuple2: &TupleArgs,
     variance: Variance,
-    on_mismatch: Option<&dyn Fn(ErrorTypes, isize)>,
+    on_mismatch: Option<OnMismatch>,
     on_too_few_args: Option<&dyn Fn()>,
 ) -> Match {
     let mut matches = Match::new_true();
