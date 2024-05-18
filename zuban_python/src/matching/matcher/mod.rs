@@ -529,7 +529,7 @@ impl<'a> Matcher<'a> {
         for t1 in p1_pre_param_spec {
             let Some(t2) = p2_pre_iterator.next() else {
                 only_check_reverse = true;
-                break
+                break;
             };
             matches &= t1.matches(i_s, self, t2, variance);
             if !matches.bool() {
@@ -1482,9 +1482,10 @@ impl<'a> Matcher<'a> {
             .calculating_type_args
             .into_iter()
             .map(|c| {
-                let GenericItem::TypeArg(g) = c.type_.into_generic_item(db, |_| {
-                    GenericItem::TypeArg(Type::Any(AnyCause::Todo))
-                }) else {
+                let GenericItem::TypeArg(g) = c
+                    .type_
+                    .into_generic_item(db, |_| GenericItem::TypeArg(Type::Any(AnyCause::Todo)))
+                else {
                     unreachable!();
                 };
                 g
@@ -1504,10 +1505,7 @@ impl<'a> Matcher<'a> {
             .into_iter()
             .zip(type_vars.iter())
             .map(|(c, type_var_like)| {
-                let GenericItem::TypeArg(t) = c.into_generic_item(
-                    db,
-                    type_var_like
-                ) else {
+                let GenericItem::TypeArg(t) = c.into_generic_item(db, type_var_like) else {
                     unreachable!();
                 };
                 t

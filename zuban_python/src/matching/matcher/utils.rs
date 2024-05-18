@@ -691,7 +691,9 @@ pub(crate) fn match_arguments_against_params<
                 }
             }
             ParamArgument::TupleUnpack(args) => {
-                let WrappedParamType::Star(WrappedStar::UnpackedTuple(expected)) = p.param.specific(i_s.db) else {
+                let WrappedParamType::Star(WrappedStar::UnpackedTuple(expected)) =
+                    p.param.specific(i_s.db)
+                else {
                     unreachable!()
                 };
 
@@ -752,7 +754,7 @@ pub(crate) fn match_arguments_against_params<
                             Variance::Covariant,
                             Some(&|error_types: ErrorTypes, index: isize| {
                                 let Some(on_type_error) = on_type_error else {
-                                    return
+                                    return;
                                 };
                                 let argument = if index >= 0 {
                                     &args[(index as usize).min(args.len() - 1)]
@@ -783,8 +785,9 @@ pub(crate) fn match_arguments_against_params<
                 if let Some(m) = missing_unpacked_typed_dict_names.as_mut() {
                     m.retain(|n| *n != name)
                 } else {
-                    let WrappedParamType::StarStar(WrappedStarStar::UnpackTypedDict(td))
-                        = p.param.specific(i_s.db) else {
+                    let WrappedParamType::StarStar(WrappedStarStar::UnpackTypedDict(td)) =
+                        p.param.specific(i_s.db)
+                    else {
                         unreachable!();
                     };
                     // Just fill the dict with all names and then remove them gradually.

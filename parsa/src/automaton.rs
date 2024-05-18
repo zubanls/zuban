@@ -844,7 +844,9 @@ fn plans_for_dfa(
     let mut is_left_recursive = false;
     // It is safe to get the dfa_state here, because they are pinned in a list that is insert only.
     let dfa_state = unsafe {
-        &*(&automatons[&automaton_key].dfa_states[dfa_id.0] as &DFAState as *const DFAState)
+        &*(automatons[&automaton_key].dfa_states[dfa_id.0]
+            .as_ref()
+            .get_ref() as *const DFAState)
     };
     for &transition in &dfa_state.transitions {
         match transition.type_ {

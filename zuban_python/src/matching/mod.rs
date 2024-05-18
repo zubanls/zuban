@@ -12,7 +12,7 @@ use std::{cell::RefCell, rc::Rc};
 
 pub use format_data::{AvoidRecursionFor, FormatData, ParamsStyle};
 pub use generic::Generic;
-pub use generics::{Generics, GenericsIterator};
+pub use generics::Generics;
 pub use lookup_result::LookupResult;
 pub use match_::{ArgumentIndexWithParam, Match, MismatchReason, SignatureMatch};
 pub(crate) use matcher::{

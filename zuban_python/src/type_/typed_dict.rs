@@ -215,15 +215,13 @@ impl TypedDict {
     }
 
     fn qualified_name(&self, db: &Database) -> Option<String> {
-        let Some(name) = self.name else {
-            return None
-        };
+        let Some(name) = self.name else { return None };
         let module = Module::from_file_index(db, name.file_index).qualified_name(db);
         Some(format!("{module}.{}", name.as_str(db)))
     }
 
     pub fn union(&self, i_s: &InferenceState, other: &Self) -> Type {
-        let mut members: Vec<_> = self.members(i_s.db).clone().into();
+        let mut members: Vec<_> = self.members(i_s.db).into();
         'outer: for m2 in other.members(i_s.db).iter() {
             for m1 in members.iter() {
                 if m1.name.as_str(i_s.db) == m2.name.as_str(i_s.db) {
@@ -493,12 +491,15 @@ fn new_typed_dict_internal<'db>(
     };
     let ArgKind::Positional(first) = first_arg.kind else {
         args.add_issue(i_s, IssueKind::UnexpectedArgumentsToTypedDict);
-        return None
+        return None;
     };
     let expr = first.node_ref.as_named_expression().expression();
-    let Some(name) = StringSlice::from_string_in_expression(first.node_ref.file_index(), expr) else {
-        first.node_ref.add_issue(i_s, IssueKind::TypedDictFirstArgMustBeString);
-        return None
+    let Some(name) = StringSlice::from_string_in_expression(first.node_ref.file_index(), expr)
+    else {
+        first
+            .node_ref
+            .add_issue(i_s, IssueKind::TypedDictFirstArgMustBeString);
+        return None;
     };
 
     if let Some(definition_name) = expr
@@ -522,12 +523,17 @@ fn new_typed_dict_internal<'db>(
 
     let Some(second_arg) = iterator.next() else {
         args.add_issue(i_s, IssueKind::TooFewArguments(" for TypedDict()".into()));
-        return None
+        return None;
     };
     let ArgKind::Positional(second) = second_arg.kind else {
         todo!()
     };
-    let Some(atom_content) = second.node_ref.as_named_expression().expression().maybe_unpacked_atom() else {
+    let Some(atom_content) = second
+        .node_ref
+        .as_named_expression()
+        .expression()
+        .maybe_unpacked_atom()
+    else {
         todo!()
     };
     let mut total = true;
@@ -579,10 +585,13 @@ fn new_typed_dict_internal<'db>(
     for element in dct_iterator {
         match element {
             DictElement::KeyValue(key_value) => {
-                let Some(name) = StringSlice::from_string_in_expression(first.node_ref.file_index(), key_value.key()) else {
+                let Some(name) = StringSlice::from_string_in_expression(
+                    first.node_ref.file_index(),
+                    key_value.key(),
+                ) else {
                     NodeRef::new(first.node_ref.file, key_value.key().index())
                         .add_issue(i_s, IssueKind::TypedDictInvalidFieldName);
-                    return None
+                    return None;
                 };
                 if let Err(issue) = members.add(
                     i_s.db,
@@ -974,7 +983,7 @@ fn typed_dict_update_internal<'db>(
     td: &TypedDict,
     args: &dyn Args<'db>,
 ) -> Option<Inferred> {
-    let mut members: Vec<_> = td.members(i_s.db).clone().into();
+    let mut members: Vec<_> = td.members(i_s.db).into();
     for member in members.iter_mut() {
         member.required = false;
     }
