@@ -100,7 +100,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
 
     fn iter_non_self_args(&self, i_s: &InferenceState) -> ParamIterator<'a> {
         let mut iterator = self.node().params().iter();
-        if self.class.is_some() && self.kind(i_s) != FunctionKind::Staticmethod {
+        if self.class.is_some() && self.kind() != FunctionKind::Staticmethod {
             // The param annotation is defined implicitly as Self or Type[Self]
             iterator.next();
         }
@@ -255,7 +255,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     _ => unreachable!(),
                 }
             }
-            return &i_s.db.python_state.empty_type_var_likes;
+            &i_s.db.python_state.empty_type_var_likes
         } else {
             unreachable!()
         }
@@ -368,7 +368,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         let mut needs_callable = false;
         if let Some(annotation) = star_annotation {
             let t = use_cached_param_annotation_type(i_s.db, self.node_ref.file, annotation);
-            if let Some(_) = t.maybe_fixed_len_tuple() {
+            if t.maybe_fixed_len_tuple().is_some() {
                 // Save a callable, because we have something like `*foo: *tuple[int, str]`, which
                 // basically means two mandatory positional only arguments. But this is not part of
                 // the type system. Therefore just write a proper callable definition.
@@ -396,7 +396,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
     ) -> (TypeVarLikes, Option<TypeGuardInfo>, Option<ParamAnnotation>) {
         let func_node = self.node();
         let implicit_optional = self.node_ref.file.flags(&i_s.db.project).implicit_optional;
-        let mut inference = self.node_ref.file.inference(i_s);
+        let inference = self.node_ref.file.inference(i_s);
         let in_result_type = Cell::new(false);
         let mut unbound_type_vars = vec![];
         let mut on_type_var = |i_s: &InferenceState,
@@ -422,7 +422,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 })
         };
         let mut type_computation = TypeComputation::new(
-            &mut inference,
+            &inference,
             self.node_ref.as_link(),
             &mut on_type_var,
             TypeComputationOrigin::ParamTypeCommentOrAnnotation,
@@ -617,14 +617,14 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         if self.is_dunder_new() {
             return FirstParamKind::ClassOfSelf;
         }
-        match self.kind(i_s) {
+        match self.kind() {
             FunctionKind::Function { .. } | FunctionKind::Property { .. } => FirstParamKind::Self_,
             FunctionKind::Classmethod { .. } => FirstParamKind::ClassOfSelf,
             FunctionKind::Staticmethod => FirstParamKind::InStaticmethod,
         }
     }
 
-    pub fn kind(&self, i_s: &InferenceState<'db, '_>) -> FunctionKind {
+    pub fn kind(&self) -> FunctionKind {
         let had_first_annotation = self.class.is_none()
             || self
                 .node()
@@ -641,7 +641,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     let original_func =
                         NodeRef::new(self.node_ref.file, first - NAME_TO_FUNCTION_DIFF);
                     let point = original_func.point();
-                    Function::new(original_func, self.class).kind(i_s)
+                    Function::new(original_func, self.class).kind()
                 } else {
                     FunctionKind::Function {
                         had_first_self_or_class_annotation: had_first_annotation,
@@ -1733,7 +1733,7 @@ impl<'x> Param<'x> for FunctionParam<'x> {
             let Cow::Borrowed(t) = t else {
                 unreachable!();
             };
-            *t
+            t
         }
 
         fn dbt<'a>(t: Option<&Cow<'a, Type>>) -> Option<&'a Type> {

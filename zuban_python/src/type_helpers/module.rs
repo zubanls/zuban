@@ -125,7 +125,7 @@ impl<'a> Module<'a> {
             i_s.db
                 .python_state
                 .module_instance()
-                .type_lookup(i_s, |issue| add_issue(issue), name)
+                .type_lookup(i_s, add_issue, name)
         }
     }
 

@@ -845,7 +845,7 @@ impl<'db> Inference<'db, '_, '_> {
         }
         if class.is_some()
             && function.node().params().iter().next().is_none()
-            && function.kind(i_s) != FunctionKind::Staticmethod
+            && function.kind() != FunctionKind::Staticmethod
         {
             function
                 .node_ref
@@ -888,7 +888,7 @@ impl<'db> Inference<'db, '_, '_> {
         let mut had_missing_annotation = false;
         for param in params
             .iter()
-            .skip((class.is_some() && function.kind(i_s) != FunctionKind::Staticmethod).into())
+            .skip((class.is_some() && function.kind() != FunctionKind::Staticmethod).into())
         {
             if let Some(annotation) = param.annotation() {
                 let t = self.use_cached_param_annotation_type(annotation);
@@ -1039,7 +1039,7 @@ impl<'db> Inference<'db, '_, '_> {
         if flags.disallow_any_unimported {
             for param in params
                 .iter()
-                .skip((class.is_some() && function.kind(i_s) != FunctionKind::Staticmethod).into())
+                .skip((class.is_some() && function.kind() != FunctionKind::Staticmethod).into())
             {
                 if let Some(annotation) = param.annotation() {
                     let t = self.use_cached_param_annotation_type(annotation);

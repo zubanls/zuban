@@ -382,7 +382,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                             class.unwrap(),
                             callable,
                             non_union_args.clone().into_iter(),
-                            |issue| add_issue(issue),
+                            add_issue,
                             result_context,
                             None,
                         )
@@ -391,7 +391,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                             i_s,
                             callable,
                             non_union_args.clone().into_iter(),
-                            |issue| add_issue(issue),
+                            add_issue,
                             skip_first_argument,
                             result_context,
                             None,

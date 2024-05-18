@@ -282,17 +282,11 @@ impl<'a> Instance<'a> {
             let result = lookup.and_then(|inf| {
                 if let Some(c) = class_of_lookup {
                     let i_s = i_s.with_class_context(&self.class);
-                    inf.bind_instance_descriptors(
-                        &i_s,
-                        as_self_instance(),
-                        c,
-                        &add_issue,
-                        mro_index,
-                    )
-                    .map(|inf| {
-                        attr_kind = inf.1;
-                        inf.0
-                    })
+                    inf.bind_instance_descriptors(&i_s, as_self_instance(), c, add_issue, mro_index)
+                        .map(|inf| {
+                            attr_kind = inf.1;
+                            inf.0
+                        })
                 } else {
                     Some(inf)
                 }
@@ -341,8 +335,7 @@ impl<'a> Instance<'a> {
         }
         if kind == LookupKind::Normal && super_count == 0 {
             for method_name in ["__getattr__", "__getattribute__"] {
-                let l =
-                    self.lookup_with_details(i_s, &add_issue, method_name, LookupKind::OnlyType);
+                let l = self.lookup_with_details(i_s, add_issue, method_name, LookupKind::OnlyType);
                 if l.class.is_object(i_s.db) {
                     // object defines a __getattribute__ that returns Any
                     continue;

@@ -1129,7 +1129,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                                 Type::Type(t) if is_call => {
                                                     t.maybe_class(i_s.db).and_then(|cls| {
                                                         notes.push(format!(r#""{}" has constructor incompatible with "__call__" of "{}""#, cls.name(), self.name()).into());
-                                                        cls.find_relevant_constructor(i_s).as_type(i_s, cls)
+                                                        cls.find_relevant_constructor(i_s).into_type(i_s, cls)
                                                     })
                                                 }
                                                 _ => None,
@@ -2672,7 +2672,7 @@ fn format_callable_like(
         CallableLike::Overload(o) => {
             for c in o.iter_functions() {
                 notes.push(format!("{prefix}@overload").into());
-                notes.push(format_callable(&c).into());
+                notes.push(format_callable(c).into());
             }
         }
     }
@@ -2789,7 +2789,7 @@ impl NewOrInitConstructor<'_> {
                 })
             };
             callable.and_then(|callable_like| match callable_like {
-                CallableLike::Callable(c) => to_callable(&c).map(|c| CallableLike::Callable(c)),
+                CallableLike::Callable(c) => to_callable(&c).map(CallableLike::Callable),
                 CallableLike::Overload(callables) => {
                     let funcs: Box<_> = callables
                         .iter_functions()
@@ -2804,7 +2804,7 @@ impl NewOrInitConstructor<'_> {
         }
     }
 
-    fn as_type(self, i_s: &InferenceState, cls: Class) -> Option<Type> {
+    fn into_type(self, i_s: &InferenceState, cls: Class) -> Option<Type> {
         self.maybe_callable(i_s, cls).map(|x| match x {
             CallableLike::Callable(c) => Type::Callable(c),
             CallableLike::Overload(o) => Type::FunctionOverload(o),
