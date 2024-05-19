@@ -159,11 +159,11 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> Init
                     let param_name = cloned_name.as_str(db);
                     if let Some(in_current_class) = class_symbol_table.lookup_symbol(param_name) {
                         let mut n = NodeRef::new(file, in_current_class);
-                        if !n
-                            .as_name()
+                        if n.as_name()
                             .name_definition()
                             .unwrap()
                             .maybe_assignment_definition()
+                            .is_none()
                         {
                             if let Some(funcdef) =
                                 NodeRef::new(file, in_current_class - NAME_TO_FUNCTION_DIFF)

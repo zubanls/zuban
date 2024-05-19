@@ -567,12 +567,9 @@ testNoCrashDoubleReexportOverloadEmpty
 testNoCrashDoubleReexportTypedDictEmpty
 
 # Module __all__
-testNewAnalyzerExportedValuesInImportAll
-testExportedValuesInImportAll
 testAllMustBeSequenceStr
 testUnderscoreExportedValuesInImportAll
 testReExportAllInStub
-testNoImplicitReexportRespectsAll
 
 # Module <M> has no attribute <missing_name>
 testRelativeImportFromSameModule

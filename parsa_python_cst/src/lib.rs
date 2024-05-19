@@ -488,6 +488,18 @@ impl<'db> Name<'db> {
         }
     }
 
+    pub fn maybe_atom_of_primary(&self) -> Option<Primary<'db>> {
+        let parent = self.node.parent().unwrap();
+        if parent.is_type(Nonterminal(atom)) {
+            let par_par = parent.parent().unwrap();
+            par_par
+                .is_type(Nonterminal(primary))
+                .then(|| Primary::new(par_par))
+        } else {
+            None
+        }
+    }
+
     pub fn maybe_assignment_definition_name(&self) -> Option<Assignment> {
         let node = self
             .node
@@ -2363,6 +2375,13 @@ impl AssignmentRightSide<'_> {
             Self::StarExpressions(s) => s.index(),
         }
     }
+
+    pub fn maybe_simple_expression(&self) -> Option<Expression> {
+        match self {
+            Self::YieldExpr(_) => None,
+            Self::StarExpressions(star_exprs) => star_exprs.maybe_simple_expression(),
+        }
+    }
 }
 
 pub struct StarTargetsIterator<'db>(StepBy<SiblingIterator<'db>>);
@@ -2666,7 +2685,7 @@ impl<'db> Primary<'db> {
 
     pub fn parent(&self) -> PrimaryParent<'db> {
         let parent = self.node.parent().unwrap();
-        if parent.is_type(Nonterminal(t_primary)) {
+        if parent.is_type(Nonterminal(primary)) {
             PrimaryParent::Primary(Primary::new(parent))
         } else {
             PrimaryParent::Other
@@ -3380,7 +3399,7 @@ impl<'db> NameDefinition<'db> {
         !self.node.parent().unwrap().is_type(Nonterminal(t_primary))
     }
 
-    pub fn maybe_assignment_definition(&self) -> bool {
+    pub fn maybe_assignment_definition(&self) -> Option<Assignment> {
         let node = self
             .node
             .parent_until(&[
@@ -3393,6 +3412,7 @@ impl<'db> NameDefinition<'db> {
             ])
             .expect("There should always be a stmt");
         node.is_type(Nonterminal(assignment))
+            .then(|| Assignment::new(node))
     }
 
     pub fn maybe_import(&self) -> Option<NameImportParent> {

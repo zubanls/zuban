@@ -178,11 +178,16 @@ pub fn dotted_path_from_dir(dir: &Directory) -> String {
 }
 
 pub fn is_reexport_if_check_needed(db: &Database, file: &PythonFile, link: PointLink) -> bool {
-    let check_reexport = file.is_stub || file.flags(&db.project).no_implicit_reexport;
-    check_reexport && is_reexport(db, link)
+    if let Some(dunder_all) = file.maybe_dunder_all(db) {
+        let name = NodeRef::from_link(db, link).maybe_name().unwrap().as_code();
+        !dunder_all.iter().any(|d| d.as_str(db) == name)
+    } else {
+        let check_reexport = file.is_stub || file.flags(&db.project).no_implicit_reexport;
+        check_reexport && is_private_import(db, link)
+    }
 }
 
-pub fn is_reexport(db: &Database, link: PointLink) -> bool {
+pub fn is_private_import(db: &Database, link: PointLink) -> bool {
     NodeRef::from_link(db, link)
         .maybe_name()
         .unwrap()

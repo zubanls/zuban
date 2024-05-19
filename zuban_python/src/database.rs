@@ -51,23 +51,27 @@ const IS_ANALIZED_BIT_INDEX: usize = 31;
 const LOCALITY_BIT_INDEX: usize = 27; // Uses 3 bits
 const NEEDS_FLOW_ANALYSIS_BIT_INDEX: usize = 26;
 // const IS_NULLABLE_BIT_INDEX: usize = 25;
-const TYPE_BIT_INDEX: usize = 22; // Uses 3 bits
+const KIND_BIT_INDEX: usize = 22; // Uses 3 bits
 
-const REST_MASK: u32 = (1 << TYPE_BIT_INDEX) - 1;
+const REST_MASK: u32 = (1 << KIND_BIT_INDEX) - 1;
 const SPECIFIC_BIT_LEN: u32 = 8;
 const SPECIFIC_MASK: u32 = (1 << SPECIFIC_BIT_LEN) - 1; // 8 bits
-                                                        // const MAX_TYPE_VAR: u32 = 0xFF; // 256
+                                                        // const MAX_KIND_VAR: u32 = 0xFF; // 256
                                                         // const FILE_MASK: u32 = 0xFFFFFF; // 24 bits
 const IS_ANALIZED_MASK: u32 = 1 << IS_ANALIZED_BIT_INDEX;
 const NEEDS_FLOW_ANALYSIS_MASK: u32 = 1 << NEEDS_FLOW_ANALYSIS_BIT_INDEX;
 // const IS_NULLABLE_MASK: u32 = 1 << IS_NULLABLE_MASK_BIT_INDEX;
 const LOCALITY_MASK: u32 = 0b111 << LOCALITY_BIT_INDEX;
-const TYPE_MASK: u32 = 0b111 << TYPE_BIT_INDEX;
+const KIND_MASK: u32 = 0b111 << KIND_BIT_INDEX;
 
 const PARTIAL_NULLABLE_INDEX: u32 = SPECIFIC_BIT_LEN + 1;
 const PARTIAL_NULLABLE_MASK: u32 = 1 << PARTIAL_NULLABLE_INDEX;
 const PARTIAL_REPORTED_ERROR_INDEX: u32 = SPECIFIC_BIT_LEN + 2;
 const PARTIAL_REPORTED_ERROR_MASK: u32 = 1 << PARTIAL_REPORTED_ERROR_INDEX;
+
+const CALCULATED_OR_REDIRECT_LIKE_KIND_OR_REST_MASK: u32 = IS_ANALIZED_MASK | KIND_MASK | REST_MASK;
+const REDIRECT_KIND_VALUE: u32 = (PointKind::Redirect as u32) << KIND_BIT_INDEX;
+const MULTI_DEF_KIND_VALUE: u32 = (PointKind::MultiDefinition as u32) << KIND_BIT_INDEX;
 
 // const IS_EXTERN_MASK: u32 = 1 << 30;
 
@@ -83,7 +87,7 @@ impl Point {
         debug_assert!(rest & !REST_MASK == 0);
         rest | IS_ANALIZED_MASK
             | (locality as u32) << LOCALITY_BIT_INDEX
-            | (kind as u32) << TYPE_BIT_INDEX
+            | (kind as u32) << KIND_BIT_INDEX
     }
 
     pub fn new_redirect(file: FileIndex, node_index: NodeIndex, locality: Locality) -> Self {
@@ -155,7 +159,7 @@ impl Point {
 
     pub fn kind(self) -> PointKind {
         debug_assert!(self.calculated());
-        unsafe { mem::transmute((self.flags & TYPE_MASK) >> TYPE_BIT_INDEX) }
+        unsafe { mem::transmute((self.flags & KIND_MASK) >> KIND_BIT_INDEX) }
     }
 
     pub fn locality(self) -> Locality {
@@ -206,6 +210,16 @@ impl Point {
                 || self.kind() == PointKind::MultiDefinition
         );
         self.node_index
+    }
+
+    #[inline]
+    pub fn maybe_redirect_to(self, file: FileIndex, other: NodeIndex) -> bool {
+        debug_assert_eq!(PointKind::Redirect as usize, 2);
+        debug_assert_eq!(PointKind::MultiDefinition as usize, 3);
+        let relevant_flag_stuff = self.flags & CALCULATED_OR_REDIRECT_LIKE_KIND_OR_REST_MASK;
+        self.node_index == other
+            && (relevant_flag_stuff == IS_ANALIZED_MASK | REDIRECT_KIND_VALUE | file.0)
+                | (relevant_flag_stuff == IS_ANALIZED_MASK | MULTI_DEF_KIND_VALUE)
     }
 
     pub fn as_redirected_node_ref(self, db: &Database) -> NodeRef<'_> {
@@ -319,6 +333,11 @@ impl Points {
         }
     }
 
+    #[inline]
+    pub fn iter(&self) -> impl Iterator<Item = Point> + '_ {
+        self.0.iter().map(|p| p.get())
+    }
+
     pub fn backup(&self, range: Range<NodeIndex>) -> PointsBackup {
         let slice = &self.0[range.start as usize..range.end as usize];
         PointsBackup {
@@ -343,9 +362,9 @@ pub struct PointsBackup {
 #[repr(u32)]
 pub enum PointKind {
     Specific,
+    Complex,
     Redirect,
     MultiDefinition,
-    Complex,
     FileReference,
     // Basically stuff like if/for nodes
     NodeAnalysis,

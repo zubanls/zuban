@@ -26,6 +26,7 @@ use crate::{
     matching::ResultContext,
     name::{Names, TreeName, TreePosition},
     node_ref::NodeRef,
+    type_::DbString,
     utils::{InsertOnlyVec, SymbolTable},
     workspaces::FileEntry,
     TypeCheckerFlags,
@@ -66,6 +67,7 @@ impl ComplexValues {
 pub struct PythonFile {
     pub tree: Tree, // TODO should probably not be public
     pub symbol_table: OnceCell<SymbolTable>,
+    maybe_dunder_all: OnceCell<Option<Box<[DbString]>>>, // For __all__
     //all_names_bloom_filter: Option<BloomFilter<&str>>,
     pub points: Points,
     pub complex_points: ComplexValues,
@@ -251,6 +253,7 @@ impl<'db> PythonFile {
             tree,
             file_index: Cell::new(None),
             symbol_table: Default::default(),
+            maybe_dunder_all: OnceCell::default(),
             points: Points::new(length),
             complex_points: Default::default(),
             star_imports: Default::default(),
@@ -333,6 +336,110 @@ impl<'db> PythonFile {
             }
         }
         self.is_stub
+    }
+
+    pub fn maybe_dunder_all(&self, db: &Database) -> Option<&[DbString]> {
+        self.maybe_dunder_all
+            .get_or_init(|| {
+                if self.is_stub {
+                    return None; // TODO this is obviously wrong!
+                }
+                self.symbol_table
+                    .get()
+                    .unwrap()
+                    .lookup_symbol("__all__")
+                    .and_then(|dunder_all_index| {
+                        let name_def = NodeRef::new(self, dunder_all_index)
+                            .maybe_name()
+                            .unwrap()
+                            .name_definition()
+                            .unwrap();
+                        if let Some((_, _, expr)) =
+                            name_def
+                                .maybe_assignment_definition()
+                                .and_then(|assignment| {
+                                    assignment.maybe_simple_type_expression_assignment()
+                                })
+                        {
+                            let base = maybe_dunder_all_names(vec![], self.file_index(), expr);
+                            base.and_then(|all| {
+                                self.gather_dunder_all_modifications(db, dunder_all_index, all)
+                            })
+                        } else if let Some(import) = name_def.maybe_import() {
+                            //self.inference(InferenceState::new(db)).lookup_
+                            None
+                        } else {
+                            None
+                        }
+                    })
+            })
+            .as_deref()
+    }
+
+    fn gather_dunder_all_modifications(
+        &self,
+        db: &Database,
+        dunder_all_index: NodeIndex,
+        mut dunder_all: Vec<DbString>,
+    ) -> Option<Box<[DbString]>> {
+        let file_index = self.file_index();
+        let check_name = |mut dunder_all, name: Name| -> Option<Vec<DbString>> {
+            if let Some(name_def) = name.name_definition() {
+                let assignment = name_def.maybe_assignment_definition()?;
+                return if let AssignmentContent::AugAssign(_, _, right_side) = assignment.unpack() {
+                    maybe_dunder_all_names(
+                        dunder_all,
+                        file_index,
+                        right_side.maybe_simple_expression()?,
+                    )
+                } else {
+                    None
+                };
+            }
+            if let Some(primary) = name.maybe_atom_of_primary() {
+                if let PrimaryParent::Primary(maybe_call) = primary.parent() {
+                    if let PrimaryContent::Execution(arg_details) = maybe_call.second() {
+                        if let PrimaryContent::Attribute(attr) = primary.second() {
+                            let maybe_single = arg_details.maybe_single_named_expr();
+                            match attr.as_code() {
+                                "append" => dunder_all.push(DbString::from_python_string(
+                                    file_index,
+                                    maybe_single?
+                                        .expression()
+                                        .maybe_single_string_literal()?
+                                        .as_python_string(),
+                                )?),
+                                "extend" => {
+                                    return maybe_dunder_all_names(
+                                        dunder_all,
+                                        file_index,
+                                        maybe_single?.expression(),
+                                    )
+                                }
+                                "remove" => {
+                                    let s = maybe_single?
+                                        .expression()
+                                        .maybe_single_string_literal()?
+                                        .as_python_string();
+                                    let to_remove = s.as_str()?;
+                                    dunder_all.retain(|x| x.as_str(db) != to_remove)
+                                }
+                                _ => (),
+                            }
+                        }
+                    }
+                }
+            }
+            Some(dunder_all)
+        };
+        for (index, point) in self.points.iter().enumerate() {
+            if point.maybe_redirect_to(file_index, dunder_all_index) {
+                if let Some(name) = NodeRef::new(self, index as u32).maybe_name() {
+                    dunder_all = check_name(dunder_all, name)?
+                }
+            }
+        }
+        Some(dunder_all.into())
     }
 
     pub fn file_entry(&self, db: &Database) -> Rc<FileEntry> {
@@ -489,4 +596,33 @@ impl<'code> Iterator for DirectiveSplitter<'_, 'code> {
         self.rest = "";
         None
     }
+}
+
+fn maybe_dunder_all_names(
+    mut result: Vec<DbString>,
+    file_index: FileIndex,
+    expr: Expression,
+) -> Option<Vec<DbString>> {
+    let elements = match expr.maybe_unpacked_atom()? {
+        AtomContent::List(list) => list.unpack(),
+        AtomContent::Tuple(tup) => tup.iter(),
+        _ => return None,
+    };
+
+    for star_like in elements {
+        match star_like {
+            StarLikeExpression::NamedExpression(named_expr) => {
+                result.push(DbString::from_python_string(
+                    file_index,
+                    named_expr
+                        .expression()
+                        .maybe_single_string_literal()?
+                        .as_python_string(),
+                )?)
+            }
+            StarLikeExpression::StarNamedExpression(_) => return None,
+            _ => unreachable!(),
+        }
+    }
+    Some(result)
 }
