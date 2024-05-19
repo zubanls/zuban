@@ -2771,42 +2771,39 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     }
 
     pub fn lookup_from_star_import(&self, name: &str, check_local: bool) -> Option<PointLink> {
-        if !name.starts_with('_') {
-            for star_import in self.file.star_imports.borrow().iter() {
-                // TODO these feel a bit weird and do not include parent functions (when in a
-                // closure)
-                if !(star_import.scope == 0
-                    || check_local
-                        && self
-                            .i_s
-                            .current_function()
-                            .map(|f| f.node_ref.node_index == star_import.scope)
-                            .unwrap_or_else(|| {
-                                self.i_s
-                                    .current_class()
-                                    .is_some_and(|c| c.node_ref.node_index == star_import.scope)
-                            }))
-                {
-                    continue;
+        for star_import in self.file.star_imports.borrow().iter() {
+            // TODO these feel a bit weird and do not include parent functions (when in a
+            // closure)
+            if !(star_import.scope == 0
+                || check_local
+                    && self
+                        .i_s
+                        .current_function()
+                        .map(|f| f.node_ref.node_index == star_import.scope)
+                        .unwrap_or_else(|| {
+                            self.i_s
+                                .current_class()
+                                .is_some_and(|c| c.node_ref.node_index == star_import.scope)
+                        }))
+            {
+                continue;
+            }
+            if let Some(other_file) = star_import.to_file(self) {
+                if let Some(link) = other_file.import_global_name(self.i_s.db, name) {
+                    if !is_reexport_issue_if_check_needed(self.i_s.db, other_file, link.into()) {
+                        return Some(link.into());
+                    }
                 }
-                if let Some(other_file) = star_import.to_file(self) {
-                    if let Some(link) = other_file.lookup_global(name) {
-                        if !is_reexport_issue_if_check_needed(self.i_s.db, other_file, link.into())
-                        {
-                            return Some(link.into());
-                        }
-                    }
-                    if let Some(l) = other_file
-                        .inference(self.i_s)
-                        .lookup_from_star_import(name, false)
-                    {
-                        return Some(l);
-                    } else {
-                        debug!(
-                            "Name {name} not found in star import {}",
-                            Module::new(other_file).qualified_name(self.i_s.db)
-                        );
-                    }
+                if let Some(l) = other_file
+                    .inference(self.i_s)
+                    .lookup_from_star_import(name, false)
+                {
+                    return Some(l);
+                } else {
+                    debug!(
+                        "Name {name} not found in star import {}",
+                        Module::new(other_file).qualified_name(self.i_s.db)
+                    );
                 }
             }
         }

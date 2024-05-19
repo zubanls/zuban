@@ -310,6 +310,17 @@ impl<'db> PythonFile {
             })
     }
 
+    pub fn import_global_name(&self, db: &Database, name: &str) -> Option<LocalityLink> {
+        if let Some(dunder) = self.maybe_dunder_all(db) {
+            if !dunder.iter().any(|x| x.as_str(db) == name) {
+                return None;
+            }
+        } else if name.starts_with('_') {
+            return None;
+        }
+        self.lookup_global(name)
+    }
+
     pub(super) fn new_annotation_file(
         &self,
         db: &'db Database,
