@@ -224,3 +224,33 @@ if int():
 foo: list[int]
 (foo := reveal_type([]))  # N: Revealed type is "list[int]"
 reveal_type(foo)  # N: Revealed type is "list[int]"
+
+[case imports_dunder_all_imports_modified1]
+from m1 import C
+from m1 import D  # E: Module "m1" has no attribute "D"
+from m1 import E  # E: Module "m1" has no attribute "E"
+C()
+[file m1.pyi]
+from m2 import *
+from m2 import __all__ as __all__
+__all__.remove("D")
+[file m2.pyi]
+__all__ = ['C', 'D']
+class C: pass
+class D: pass
+class E: pass
+
+[case imports_dunder_all_imports_modified2]
+from m1 import C
+from m1 import D
+from m1 import E  # E: Module "m1" has no attribute "E"
+C()
+[file m1.pyi]
+from m2 import *
+from m2 import __all__ as __all__
+__all__.append("D")
+class D: pass
+[file m2.pyi]
+__all__ = ['C']
+class C: pass
+class E: pass

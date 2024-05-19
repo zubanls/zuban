@@ -358,10 +358,8 @@ impl<'db> PythonFile {
                                     assignment.maybe_simple_type_expression_assignment()
                                 })
                         {
-                            let base = maybe_dunder_all_names(vec![], self.file_index(), expr);
-                            base.and_then(|all| {
-                                self.gather_dunder_all_modifications(db, dunder_all_index, all)
-                            })
+                            let base = maybe_dunder_all_names(vec![], self.file_index(), expr)?;
+                            self.gather_dunder_all_modifications(db, dunder_all_index, base)
                         } else if let Some(import) = name_def.maybe_import() {
                             if let NameImportParent::ImportFromAsName(as_name) = import {
                                 let i_s = InferenceState::new(db);
@@ -376,7 +374,11 @@ impl<'db> PythonFile {
                                     .as_redirected_node_ref(db)
                                     .file
                                     .maybe_dunder_all(db)?;
-                                Some(base.into())
+                                self.gather_dunder_all_modifications(
+                                    db,
+                                    dunder_all_index,
+                                    base.into(),
+                                )
                             } else {
                                 None
                             }
