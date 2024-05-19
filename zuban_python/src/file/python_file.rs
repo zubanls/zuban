@@ -15,8 +15,8 @@ use super::{
 use crate::{
     config::{set_flag, to_bool},
     database::{
-        ComplexPoint, Database, FileIndex, Locality, LocalityLink, Point, Points, PythonProject,
-        Specific,
+        ComplexPoint, Database, FileIndex, Locality, LocalityLink, Point, PointKind, Points,
+        PythonProject, Specific,
     },
     debug,
     diagnostics::{Diagnostic, DiagnosticConfig, Diagnostics, Issue, IssueKind},
@@ -341,9 +341,6 @@ impl<'db> PythonFile {
     pub fn maybe_dunder_all(&self, db: &Database) -> Option<&[DbString]> {
         self.maybe_dunder_all
             .get_or_init(|| {
-                if self.is_stub {
-                    return None; // TODO this is obviously wrong!
-                }
                 self.symbol_table
                     .get()
                     .unwrap()
@@ -383,19 +380,21 @@ impl<'db> PythonFile {
         mut dunder_all: Vec<DbString>,
     ) -> Option<Box<[DbString]>> {
         let file_index = self.file_index();
-        let check_name = |mut dunder_all, name: Name| -> Option<Vec<DbString>> {
-            if let Some(name_def) = name.name_definition() {
-                let assignment = name_def.maybe_assignment_definition()?;
-                return if let AssignmentContent::AugAssign(_, _, right_side) = assignment.unpack() {
-                    maybe_dunder_all_names(
-                        dunder_all,
-                        file_index,
-                        right_side.maybe_simple_expression()?,
-                    )
-                } else {
-                    None
-                };
+        let check_multi_def = |dunder_all: Vec<DbString>, name: Name| -> Option<Vec<DbString>> {
+            let name_def = name.name_definition().unwrap();
+            let assignment = name_def.maybe_assignment_definition()?;
+            if let AssignmentContent::AugAssign(_, _, right_side) = assignment.unpack() {
+                maybe_dunder_all_names(
+                    dunder_all,
+                    file_index,
+                    right_side.maybe_simple_expression()?,
+                )
+            } else {
+                None
             }
+        };
+
+        let check_ref = |mut dunder_all: Vec<DbString>, name: Name| -> Option<Vec<DbString>> {
             if let Some(primary) = name.maybe_atom_of_primary() {
                 if let PrimaryParent::Primary(maybe_call) = primary.parent() {
                     if let PrimaryContent::Execution(arg_details) = maybe_call.second() {
@@ -432,10 +431,17 @@ impl<'db> PythonFile {
             }
             Some(dunder_all)
         };
+        let p = self.points.get(dunder_all_index);
+        if p.calculated() && p.kind() == PointKind::MultiDefinition {
+            for index in MultiDefinitionIterator::new(&self.points, dunder_all_index) {
+                let name = NodeRef::new(self, index as NodeIndex).maybe_name().unwrap();
+                dunder_all = check_multi_def(dunder_all, name)?
+            }
+        }
         for (index, point) in self.points.iter().enumerate() {
             if point.maybe_redirect_to(file_index, dunder_all_index) {
-                if let Some(name) = NodeRef::new(self, index as u32).maybe_name() {
-                    dunder_all = check_name(dunder_all, name)?
+                if let Some(name) = NodeRef::new(self, index as NodeIndex).maybe_name() {
+                    dunder_all = check_ref(dunder_all, name)?
                 }
             }
         }
@@ -625,4 +631,37 @@ fn maybe_dunder_all_names(
         }
     }
     Some(result)
+}
+
+struct MultiDefinitionIterator<'a> {
+    points: &'a Points,
+    start: NodeIndex,
+    current: NodeIndex,
+}
+
+impl<'a> MultiDefinitionIterator<'a> {
+    fn new(points: &'a Points, start: NodeIndex) -> Self {
+        debug_assert_eq!(points.get(start).kind(), PointKind::MultiDefinition);
+        Self {
+            points,
+            start,
+            current: start,
+        }
+    }
+}
+
+impl Iterator for MultiDefinitionIterator<'_> {
+    type Item = NodeIndex;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let p = self.points.get(self.current);
+        debug_assert_eq!(p.kind(), PointKind::MultiDefinition);
+        let next = p.node_index();
+        if next == self.start {
+            None
+        } else {
+            self.current = next;
+            Some(next)
+        }
+    }
 }
