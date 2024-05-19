@@ -2800,6 +2800,11 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         .lookup_from_star_import(name, false)
                     {
                         return Some(l);
+                    } else {
+                        debug!(
+                            "Name {name} not found in star import {}",
+                            Module::new(other_file).qualified_name(self.i_s.db)
+                        );
                     }
                 }
             }
