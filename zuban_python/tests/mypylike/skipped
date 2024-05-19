@@ -569,7 +569,6 @@ testNoCrashDoubleReexportTypedDictEmpty
 # Module __all__
 testAllMustBeSequenceStr
 testUnderscoreExportedValuesInImportAll
-testReExportAllInStub
 
 # Module <M> has no attribute <missing_name>
 testRelativeImportFromSameModule

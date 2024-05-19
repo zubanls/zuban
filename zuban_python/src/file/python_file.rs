@@ -363,8 +363,23 @@ impl<'db> PythonFile {
                                 self.gather_dunder_all_modifications(db, dunder_all_index, all)
                             })
                         } else if let Some(import) = name_def.maybe_import() {
-                            //self.inference(InferenceState::new(db)).lookup_
-                            None
+                            if let NameImportParent::ImportFromAsName(as_name) = import {
+                                let i_s = InferenceState::new(db);
+                                let inference = self.inference(&i_s);
+                                inference.infer_name_definition(name_def);
+                                // Just take the __all__ from the now calculated file. The exact
+                                // position doesn't matter anymore, because that is calculated by
+                                // exactly this method.
+                                let name_def_point =
+                                    NodeRef::new(self, as_name.name_definition().index()).point();
+                                let base = name_def_point
+                                    .as_redirected_node_ref(db)
+                                    .file
+                                    .maybe_dunder_all(db)?;
+                                Some(base.into())
+                            } else {
+                                None
+                            }
                         } else {
                             None
                         }
