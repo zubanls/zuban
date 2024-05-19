@@ -566,9 +566,6 @@ testNoCrashDoubleReexportTupleEmpty
 testNoCrashDoubleReexportOverloadEmpty
 testNoCrashDoubleReexportTypedDictEmpty
 
-# Module __all__
-testAllMustBeSequenceStr
-
 # Module <M> has no attribute <missing_name>
 testRelativeImportFromSameModule
 testImportFromSameModule
@@ -1222,6 +1219,22 @@ testUnreachableFlagMiscTestCaseMissingMethod
 testWalrus
 # FlowAnalysis includes stack above nested function, instead of just the current
 testMultipleNestedFunctionDef
+# --strict-equality regressions
+testStrictEqualityWithRecursiveListTypes
+# if right operand is Any, fallback to Any in operation
+testBinaryOperationsWithDynamicAsRightOperand
+# --strict-equality strict equality "Non-overlapping equality check (left operand type: "int", right operand type: "str")"
+testStrictEqualityNoPromotePy3
+testStrictEqualityAllowlist
+testStrictEqualityWithRecursiveMapTypes
+testNarrowingEqualityDisabledForCustomEqualityChain
+testNarrowingEqualityFlipFlop
+testInferFromEmptyListWhenUsingInWithStrictEquality
+# formatting differences
+testStrictEqualityAndEnumWithCustomEq
+testCustomEqCheckStrictEquality
+testStrictEqualityWithALiteral
+testColumnNonOverlappingEqualityCheck
 
 # None late binding, because it's None (x = None; x = 3)
 testLocalPartialTypesWithInheritance3
@@ -1489,9 +1502,6 @@ testTypeOfNonlocalUsed
 testLocalPartialTypesWithNestedFunction3
 testNonlocalVar
 
-# __init__ None needed
-testInitReturnTypeError
-
 # Special case for assignment to '_'
 testUnusedTargetLocal
 testUnusedTargetNotClass
@@ -1554,57 +1564,6 @@ testNoTypeCheckDecoratorOnMethod2
 testCallingNoTypeCheckFunction
 testCallingNoTypeCheckFunction2
 testNoTypeCheckDecoratorSemanticError
-
-# type ignore leads to "Revealed type is "A?""
-testSerializeIgnoredInvalidType
-# bad type: ignore
-testErrorCodeBadIgnore
-testErrorCodeBadIgnoreNoExtraComment
-# --warn-unused-ignores
-# "Unused "type: ignore" comment"
-testErrorCodeWarnUnusedIgnores1
-testErrorCodeWarnUnusedIgnores2
-testErrorCodeWarnUnusedIgnores3
-testErrorCodeWarnUnusedIgnores4
-testErrorCodeWarnUnusedIgnores5
-testErrorCodeWarnUnusedIgnores6_NoDetailWhenSingleErrorCode
-testMethodAssignCoveredByAssignmentUnused
-testUnusedIgnoreTryExcept
-testUnusedIgnoreEnableCode
-testIgnoreDecoratedFunction1
-testIgnoreScopeUnused1
-testIgnoreScopeUnused2
-testIgnoreScopeUnused3
-testUnusedIgnoreVersionCheck
-testUnusedTypeIgnore
-testUnusedTypeIgnoreImport
-# --warn-unused-ignores whole module
-testIgnoreWholeModule1
-testImportUnusedIgnore2
-# --enable-error-code ignore-without-code
-testErrorCodeMissingWhenRequired
-testErrorCodeMissingDoesntTrampleUnusedIgnoresWarning
-testErrorCodeMissingWholeFileIgnores
-testErrorCodeMissingMultiple
-testInlineErrorCodes
-testInlineErrorCodesMultipleCodes
-# type: ignore blocking errors cannot be ignored: ""yield" outside function"
-testCannotIgnoreBlockingError
-# type: ignore on forward reference
-testErrorCodeSyntaxErrorIgnoreNote
-# type: ignore on call silences errors in call, even if not on same line?!
-testMultiLineMethodOverridingWithIncompatibleTypesIgnorableAtDefinition
-# Error code "literal-required" not covered by "type: ignore" comment
-testNoteAboutChangedTypedDictErrorCode
-
-# "mypy: "tmp/typing.py" shadows library module "typing""
-testShadowTypingModule
-
-# Weird and unsound mypy cases for x: typing.TypeAlias = ...
-testClassLevelTypeAliasesInUnusualContexts
-testMalformedTypeAliasRuntimeReassignments
-# weird files
-testScriptsAreNotModules
 
 # pyproject.toml
 testMultipleModulesInOverridePyProjectTOML
@@ -1682,23 +1641,6 @@ testStrictOptionalCovarianceCrossModule
 # Uses an environment variable in mypy.ini files=$MYPY_CONFIG_FILE_DIR/good.py
 testEnvvar_MYPY_CONFIG_FILE_DIR
 
-# --strict-equality regressions
-testStrictEqualityWithRecursiveListTypes
-# if right operand is Any, fallback to Any in operation
-testBinaryOperationsWithDynamicAsRightOperand
-# --strict-equality strict equality "Non-overlapping equality check (left operand type: "int", right operand type: "str")"
-testStrictEqualityNoPromotePy3
-testStrictEqualityAllowlist
-testStrictEqualityWithRecursiveMapTypes
-testNarrowingEqualityDisabledForCustomEqualityChain
-testNarrowingEqualityFlipFlop
-testInferFromEmptyListWhenUsingInWithStrictEquality
-# formatting differences
-testStrictEqualityAndEnumWithCustomEq
-testCustomEqCheckStrictEquality
-testStrictEqualityWithALiteral
-testColumnNonOverlappingEqualityCheck
-
 # Never not rewritten to Any for "Need type annotation for "X""
 testNewAnalyzerLessErrorsNeedAnnotationNested
 testUnderspecifiedInferenceResult
@@ -1712,6 +1654,63 @@ testInferredTypeSubTypeOfReturnType
 testDisallowAnyGenericsForAliasesInRuntimeContext
 testGenericTypedDictAlias
 testNewAnalyzerDisallowAnyGenericsMessages
+
+# Weird and unsound mypy cases for x: typing.TypeAlias = ...
+testClassLevelTypeAliasesInUnusualContexts
+testMalformedTypeAliasRuntimeReassignments
+
+# ------------- Additional unimportant, but would be nice -----------------
+
+# __init__ None needed
+testInitReturnTypeError
+
+# type ignore leads to "Revealed type is "A?""
+testSerializeIgnoredInvalidType
+# bad type: ignore
+testErrorCodeBadIgnore
+testErrorCodeBadIgnoreNoExtraComment
+# --warn-unused-ignores
+# "Unused "type: ignore" comment"
+testErrorCodeWarnUnusedIgnores1
+testErrorCodeWarnUnusedIgnores2
+testErrorCodeWarnUnusedIgnores3
+testErrorCodeWarnUnusedIgnores4
+testErrorCodeWarnUnusedIgnores5
+testErrorCodeWarnUnusedIgnores6_NoDetailWhenSingleErrorCode
+testMethodAssignCoveredByAssignmentUnused
+testUnusedIgnoreTryExcept
+testUnusedIgnoreEnableCode
+testIgnoreDecoratedFunction1
+testIgnoreScopeUnused1
+testIgnoreScopeUnused2
+testIgnoreScopeUnused3
+testUnusedIgnoreVersionCheck
+testUnusedTypeIgnore
+testUnusedTypeIgnoreImport
+# --warn-unused-ignores whole module
+testIgnoreWholeModule1
+testImportUnusedIgnore2
+# --enable-error-code ignore-without-code
+testErrorCodeMissingWhenRequired
+testErrorCodeMissingDoesntTrampleUnusedIgnoresWarning
+testErrorCodeMissingWholeFileIgnores
+testErrorCodeMissingMultiple
+testInlineErrorCodes
+testInlineErrorCodesMultipleCodes
+# type: ignore blocking errors cannot be ignored: ""yield" outside function"
+testCannotIgnoreBlockingError
+# type: ignore on forward reference
+testErrorCodeSyntaxErrorIgnoreNote
+# type: ignore on call silences errors in call, even if not on same line?!
+testMultiLineMethodOverridingWithIncompatibleTypesIgnorableAtDefinition
+# Error code "literal-required" not covered by "type: ignore" comment
+testNoteAboutChangedTypedDictErrorCode
+
+# "mypy: "tmp/typing.py" shadows library module "typing""
+testShadowTypingModule
+
+# Module __all__
+testAllMustBeSequenceStr
 
 # --show-column-numbers and tuple targets
 testColumnsAssignment
