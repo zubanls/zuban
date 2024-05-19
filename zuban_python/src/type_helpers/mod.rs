@@ -15,8 +15,8 @@ pub(crate) use instance::{
     execute_isinstance, execute_issubclass, execute_super, Instance, LookupDetails,
 };
 pub use module::{
-    dotted_path_from_dir, is_private_import, is_reexport_if_check_needed, lookup_in_namespace,
-    Module,
+    dotted_path_from_dir, is_private_import, is_reexport_issue_if_check_needed,
+    lookup_in_namespace, Module,
 };
 pub use overload::OverloadedFunction;
 pub(crate) use typing::{

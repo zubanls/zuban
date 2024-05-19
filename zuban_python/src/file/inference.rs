@@ -30,8 +30,8 @@ use crate::{
         WithUnpack,
     },
     type_helpers::{
-        is_private_import, is_reexport_if_check_needed, lookup_in_namespace, Class, FirstParamKind,
-        Function, GeneratorType, Instance, Module, TypeOrClass,
+        is_private_import, is_reexport_issue_if_check_needed, lookup_in_namespace, Class,
+        FirstParamKind, Function, GeneratorType, Instance, Module, TypeOrClass,
     },
     utils::debug_indent,
     TypeCheckerFlags,
@@ -2791,7 +2791,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 }
                 if let Some(other_file) = star_import.to_file(self) {
                     if let Some(link) = other_file.lookup_global(name) {
-                        if !is_reexport_if_check_needed(self.i_s.db, other_file, link.into()) {
+                        if !is_reexport_issue_if_check_needed(self.i_s.db, other_file, link.into())
+                        {
                             return Some(link.into());
                         }
                     }

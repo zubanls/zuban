@@ -28,7 +28,9 @@ use crate::{
         TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypeVarTupleUsage, TypeVarUsage, TypedDict,
         TypedDictGenerics, TypedDictMember, UnionEntry, UnionType, WithUnpack,
     },
-    type_helpers::{is_reexport_if_check_needed, start_namedtuple_params, Class, Function, Module},
+    type_helpers::{
+        is_reexport_issue_if_check_needed, start_namedtuple_params, Class, Function, Module,
+    },
     utils::{rc_slice_into_vec, rc_unwrap_or_clone},
 };
 
@@ -1561,7 +1563,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             TypeContent::Module(f) => {
                 if let Some(link) = f
                     .lookup_global(name.as_str())
-                    .filter(|link| !is_reexport_if_check_needed(db, f, (*link).into()))
+                    .filter(|link| !is_reexport_issue_if_check_needed(db, f, (*link).into()))
                 {
                     self.inference
                         .file
