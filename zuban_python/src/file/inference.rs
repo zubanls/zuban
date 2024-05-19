@@ -2789,7 +2789,16 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 continue;
             }
             if let Some(other_file) = star_import.to_file(self) {
-                if let Some(link) = other_file.import_global_name(self.i_s.db, name) {
+                if let Some(dunder) = other_file.maybe_dunder_all(self.i_s.db) {
+                    // Name not in __all__
+                    if !dunder.iter().any(|x| x.as_str(self.i_s.db) == name) {
+                        continue;
+                    }
+                } else if name.starts_with('_') {
+                    continue;
+                }
+
+                if let Some(link) = other_file.lookup_global(name) {
                     if !is_reexport_issue_if_check_needed(self.i_s.db, other_file, link.into()) {
                         return Some(link.into());
                     }

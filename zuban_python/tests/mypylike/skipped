@@ -568,7 +568,6 @@ testNoCrashDoubleReexportTypedDictEmpty
 
 # Module __all__
 testAllMustBeSequenceStr
-imports_dunder_all_imports_modified1
 
 # Module <M> has no attribute <missing_name>
 testRelativeImportFromSameModule
