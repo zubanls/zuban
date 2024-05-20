@@ -1846,7 +1846,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 from.add_issue(
                                     self.i_s,
                                     IssueKind::NonOverlappingContainsCheck {
-                                        element_type: left_inf.format_short(self.i_s),
+                                        element_type: element_t.format_short(self.i_s.db),
                                         container_type: container_t.format_short(self.i_s.db),
                                     },
                                 );
