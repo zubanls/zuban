@@ -12,7 +12,7 @@ use crate::{
         ComplexPoint, Database, FileIndex, Locality, Point, PointKind, PointLink, Specific,
     },
     debug,
-    diagnostics::IssueKind,
+    diagnostics::{Issue, IssueKind},
     getitem::SliceType,
     imports::{find_ancestor, global_import, python_import, ImportResult},
     inference_state::InferenceState,
@@ -1777,7 +1777,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         left_inf: Inferred,
         right_inf: &Inferred,
     ) -> Inferred {
-        let needs_strict_equality_error = |from| {
+        let needs_strict_equality_error = || {
             if !self.flags().strict_equality {
                 return None;
             }
@@ -1788,17 +1788,21 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 .then(|| format_got_expected(self.i_s, &left_t, &right_t))
         };
         match cmp {
-            ComparisonContent::Equals(_, op, _) | ComparisonContent::NotEquals(_, op, _) => {
-                let from = NodeRef::new(self.file, op.index());
-                if let Some(formatted_err) = needs_strict_equality_error(from) {
-                    from.add_issue(
+            ComparisonContent::Equals(l, op, r) | ComparisonContent::NotEquals(l, op, r) => {
+                if let Some(formatted_err) = needs_strict_equality_error() {
+                    self.file.add_issue(
                         self.i_s,
-                        IssueKind::NonOverlappingEqualityCheck {
-                            left_type: formatted_err.got,
-                            right_type: formatted_err.expected,
+                        Issue {
+                            kind: IssueKind::NonOverlappingEqualityCheck {
+                                left_type: formatted_err.got,
+                                right_type: formatted_err.expected,
+                            },
+                            start_position: l.start(),
+                            end_position: r.end(),
                         },
                     )
                 }
+                let from = NodeRef::new(self.file, op.index());
                 left_inf.type_lookup_and_execute(
                     self.i_s,
                     from,
@@ -1807,20 +1811,24 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     &|_| todo!(),
                 )
             }
-            ComparisonContent::Is(_, op, _) | ComparisonContent::IsNot(_, op, _) => {
+            ComparisonContent::Is(l, op, r) | ComparisonContent::IsNot(l, op, r) => {
                 let from = NodeRef::new(self.file, op.index());
-                if let Some(formatted_err) = needs_strict_equality_error(from) {
-                    from.add_issue(
+                if let Some(formatted_err) = needs_strict_equality_error() {
+                    self.file.add_issue(
                         self.i_s,
-                        IssueKind::NonOverlappingIdentityCheck {
-                            left_type: formatted_err.got,
-                            right_type: formatted_err.expected,
+                        Issue {
+                            kind: IssueKind::NonOverlappingIdentityCheck {
+                                left_type: formatted_err.got,
+                                right_type: formatted_err.expected,
+                            },
+                            start_position: l.start(),
+                            end_position: r.end(),
                         },
                     )
                 }
                 Inferred::from_type(self.i_s.db.python_state.bool_type())
             }
-            ComparisonContent::In(_, op, _) | ComparisonContent::NotIn(_, op, _) => {
+            ComparisonContent::In(l, op, r) | ComparisonContent::NotIn(l, op, r) => {
                 let from = NodeRef::new(self.file, op.index());
                 if self.flags().strict_equality {
                     // Now check --strict-equality
@@ -1847,13 +1855,17 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             if !self.is_strict_equality_comparison(&element_t, &container_t) {
                                 let formatted =
                                     format_got_expected(self.i_s, &element_t, &container_t);
-                                from.add_issue(
+                                self.file.add_issue(
                                     self.i_s,
-                                    IssueKind::NonOverlappingContainsCheck {
-                                        element_type: formatted.got,
-                                        container_type: formatted.expected,
+                                    Issue {
+                                        kind: IssueKind::NonOverlappingContainsCheck {
+                                            element_type: formatted.got,
+                                            container_type: formatted.expected,
+                                        },
+                                        start_position: l.start(),
+                                        end_position: r.end(),
                                     },
-                                );
+                                )
                             }
                         }
                     }

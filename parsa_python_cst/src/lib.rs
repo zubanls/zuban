@@ -890,6 +890,30 @@ pub enum ExpressionPart<'db> {
     Disjunction(Disjunction<'db>),
 }
 
+macro_rules! for_each_expr_part {
+    ($name:ident, $return_type:ty) => {
+        pub fn $name(&self) -> $return_type {
+            match self {
+                Self::Atom(n) => n.$name(),
+                Self::Primary(n) => n.$name(),
+                Self::AwaitPrimary(n) => n.$name(),
+                Self::Power(n) => n.$name(),
+                Self::Factor(n) => n.$name(),
+                Self::Term(n) => n.$name(),
+                Self::Sum(n) => n.$name(),
+                Self::ShiftExpr(n) => n.$name(),
+                Self::BitwiseAnd(n) => n.$name(),
+                Self::BitwiseXor(n) => n.$name(),
+                Self::BitwiseOr(n) => n.$name(),
+                Self::Comparisons(n) => n.$name(),
+                Self::Inversion(n) => n.$name(),
+                Self::Conjunction(n) => n.$name(),
+                Self::Disjunction(n) => n.$name(),
+            }
+        }
+    };
+}
+
 impl<'db> ExpressionPart<'db> {
     fn new(node: PyNode<'db>) -> Self {
         // Sorted by how often they probably appear
@@ -928,45 +952,10 @@ impl<'db> ExpressionPart<'db> {
         }
     }
 
-    pub fn index(&self) -> NodeIndex {
-        match self {
-            Self::Atom(n) => n.index(),
-            Self::Primary(n) => n.index(),
-            Self::AwaitPrimary(n) => n.index(),
-            Self::Power(n) => n.index(),
-            Self::Factor(n) => n.index(),
-            Self::Term(n) => n.index(),
-            Self::Sum(n) => n.index(),
-            Self::ShiftExpr(n) => n.index(),
-            Self::BitwiseAnd(n) => n.index(),
-            Self::BitwiseXor(n) => n.index(),
-            Self::BitwiseOr(n) => n.index(),
-            Self::Comparisons(n) => n.index(),
-            Self::Inversion(n) => n.index(),
-            Self::Conjunction(n) => n.index(),
-            Self::Disjunction(n) => n.index(),
-        }
-    }
-
-    pub fn as_code(&self) -> &'db str {
-        match self {
-            Self::Atom(n) => n.as_code(),
-            Self::Primary(n) => n.as_code(),
-            Self::AwaitPrimary(n) => n.as_code(),
-            Self::Power(n) => n.as_code(),
-            Self::Factor(n) => n.as_code(),
-            Self::Term(n) => n.as_code(),
-            Self::Sum(n) => n.as_code(),
-            Self::ShiftExpr(n) => n.as_code(),
-            Self::BitwiseAnd(n) => n.as_code(),
-            Self::BitwiseXor(n) => n.as_code(),
-            Self::BitwiseOr(n) => n.as_code(),
-            Self::Comparisons(n) => n.as_code(),
-            Self::Inversion(n) => n.as_code(),
-            Self::Conjunction(n) => n.as_code(),
-            Self::Disjunction(n) => n.as_code(),
-        }
-    }
+    for_each_expr_part!(index, NodeIndex);
+    for_each_expr_part!(as_code, &'db str);
+    for_each_expr_part!(start, CodeIndex);
+    for_each_expr_part!(end, CodeIndex);
 
     pub fn maybe_unpacked_atom(&self) -> Option<AtomContent<'db>> {
         match self {

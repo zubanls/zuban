@@ -1229,8 +1229,6 @@ testStrictEqualityAllowlist
 testStrictEqualityWithRecursiveMapTypes
 testNarrowingEqualityDisabledForCustomEqualityChain
 testNarrowingEqualityFlipFlop
-# formatting differences
-testColumnNonOverlappingEqualityCheck
 
 # None late binding, because it's None (x = None; x = 3)
 testLocalPartialTypesWithInheritance3
