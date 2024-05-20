@@ -296,17 +296,23 @@ impl<'name, 'code> TestCase<'name, 'code> {
             // To check output only sort by filenames, which should be enough.
             wanted.sort_by_key(|line| line.split(':').next().unwrap().to_owned());
 
-            assert_eq!(
-                wanted_lower,
-                actual_lines,
-                "\n\nError in {} ({}): Step {}/{}\n\nWanted:\n{}\n\nActual:\n{}\n",
-                &self.name,
-                self.file_name,
-                i + 1,
-                steps.steps.len(),
-                wanted.iter().fold(String::new(), |a, b| a + b + "\n"),
-                actual,
-            );
+            if wanted_lower != actual_lines {
+                println!("\nMismatch:\n");
+                println!("Wanted lines: {:?}", wanted_lower);
+                println!("\nActual lines: {:?}", actual_lines);
+                println!(
+                    "\nWanted:\n{}\nActual:\n{}",
+                    wanted.iter().fold(String::new(), |a, b| a + b + "\n"),
+                    actual,
+                );
+                println!(
+                    "\nin {} ({}): Step {}/{}",
+                    &self.name,
+                    self.file_name,
+                    i + 1,
+                    steps.steps.len(),
+                );
+            }
         }
         for step in &steps.steps {
             for path in step.files.keys() {

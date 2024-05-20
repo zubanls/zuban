@@ -2260,7 +2260,7 @@ impl KeyWithParentUnions {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 enum ComparisonKey {
     Normal(FlowKey),
     TypeOf { key: FlowKey, inf: Inferred }, // For type(x) == int
