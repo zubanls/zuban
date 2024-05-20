@@ -1230,9 +1230,6 @@ testStrictEqualityWithRecursiveMapTypes
 testNarrowingEqualityDisabledForCustomEqualityChain
 testNarrowingEqualityFlipFlop
 # formatting differences
-testStrictEqualityAndEnumWithCustomEq
-testCustomEqCheckStrictEquality
-testStrictEqualityWithALiteral
 testColumnNonOverlappingEqualityCheck
 
 # None late binding, because it's None (x = None; x = 3)

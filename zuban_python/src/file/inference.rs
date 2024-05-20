@@ -18,8 +18,9 @@ use crate::{
     inference_state::InferenceState,
     inferred::{add_attribute_error, specific_to_type, Inferred, UnionValue},
     matching::{
-        matches_simple_params, CouldBeALiteral, FormatData, Generics, IteratorContent, LookupKind,
-        LookupResult, Matcher, OnTypeError, ResultContext, TupleLenInfos,
+        format_got_expected, matches_simple_params, CouldBeALiteral, FormatData, Generics,
+        IteratorContent, LookupKind, LookupResult, Matcher, OnTypeError, ResultContext,
+        TupleLenInfos,
     },
     new_class,
     node_ref::NodeRef,
@@ -1778,22 +1779,23 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     ) -> Inferred {
         let needs_strict_equality_error = |from| {
             if !self.flags().strict_equality {
-                return false;
+                return None;
             }
             // Now check --strict-equality
             let left_t = left_inf.as_cow_type(self.i_s);
             let right_t = right_inf.as_cow_type(self.i_s);
-            !self.is_strict_equality_comparison(&left_t, &right_t)
+            (!self.is_strict_equality_comparison(&left_t, &right_t))
+                .then(|| format_got_expected(self.i_s, &left_t, &right_t))
         };
         match cmp {
             ComparisonContent::Equals(_, op, _) | ComparisonContent::NotEquals(_, op, _) => {
                 let from = NodeRef::new(self.file, op.index());
-                if needs_strict_equality_error(from) {
+                if let Some(formatted_err) = needs_strict_equality_error(from) {
                     from.add_issue(
                         self.i_s,
                         IssueKind::NonOverlappingEqualityCheck {
-                            left_type: left_inf.format_short(self.i_s),
-                            right_type: right_inf.format_short(self.i_s),
+                            left_type: formatted_err.got,
+                            right_type: formatted_err.expected,
                         },
                     )
                 }
@@ -1807,12 +1809,12 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             }
             ComparisonContent::Is(_, op, _) | ComparisonContent::IsNot(_, op, _) => {
                 let from = NodeRef::new(self.file, op.index());
-                if needs_strict_equality_error(from) {
+                if let Some(formatted_err) = needs_strict_equality_error(from) {
                     from.add_issue(
                         self.i_s,
                         IssueKind::NonOverlappingIdentityCheck {
-                            left_type: left_inf.format_short(self.i_s),
-                            right_type: right_inf.format_short(self.i_s),
+                            left_type: formatted_err.got,
+                            right_type: formatted_err.expected,
                         },
                     )
                 }
@@ -1843,11 +1845,13 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     {
                         if let Some(container_t) = right_t.container_types(self.i_s.db) {
                             if !self.is_strict_equality_comparison(&element_t, &container_t) {
+                                let formatted =
+                                    format_got_expected(self.i_s, &element_t, &container_t);
                                 from.add_issue(
                                     self.i_s,
                                     IssueKind::NonOverlappingContainsCheck {
-                                        element_type: element_t.format_short(self.i_s.db),
-                                        container_type: container_t.format_short(self.i_s.db),
+                                        element_type: formatted.got,
+                                        container_type: formatted.expected,
                                     },
                                 );
                             }

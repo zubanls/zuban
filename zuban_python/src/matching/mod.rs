@@ -130,6 +130,16 @@ pub struct ErrorTypes<'a> {
     pub reason: &'a MismatchReason,
 }
 
+pub fn format_got_expected(i_s: &InferenceState, got: &Type, expected: &Type) -> ErrorStrs {
+    ErrorTypes {
+        matcher: &Matcher::default(),
+        got: GotType::Type(got),
+        expected,
+        reason: &MismatchReason::None,
+    }
+    .as_boxed_strs(i_s)
+}
+
 pub struct ErrorStrs {
     pub got: Box<str>,
     pub expected: Box<str>,
