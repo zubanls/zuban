@@ -109,10 +109,11 @@ impl FileStateLoader for PythonFileLoader {
         code: Box<str>,
     ) -> Pin<Box<dyn FileState>> {
         let is_stub = path.ends_with(".pyi");
+        let new_python_file = PythonFile::new(project, &file_entry, code, is_stub);
         Box::pin(LanguageFileState::new_parsed(
             file_entry,
             path,
-            PythonFile::new(project, code, is_stub),
+            new_python_file,
         ))
     }
 }
@@ -162,7 +163,7 @@ pub trait File: std::fmt::Debug + AsAny {
 
 pub trait FileState: fmt::Debug + Unpin {
     fn path(&self) -> &str;
-    fn file_entry(&self) -> Rc<FileEntry>;
+    fn file_entry(&self) -> &Rc<FileEntry>;
     fn file(&self, reader: &dyn Vfs) -> Option<&(dyn File + 'static)>;
     fn maybe_loaded_file_mut(&mut self) -> Option<&mut dyn File>;
     fn set_file_index(&self, index: FileIndex);
@@ -176,8 +177,8 @@ impl<F: File + Unpin> FileState for LanguageFileState<F> {
         &self.path
     }
 
-    fn file_entry(&self) -> Rc<FileEntry> {
-        self.file_entry.clone()
+    fn file_entry(&self) -> &Rc<FileEntry> {
+        &self.file_entry
     }
 
     fn file(&self, file_system_reader: &dyn Vfs) -> Option<&(dyn File + 'static)> {

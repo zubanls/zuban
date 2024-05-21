@@ -222,7 +222,12 @@ impl fmt::Debug for PythonFile {
 }
 
 impl<'db> PythonFile {
-    pub fn new(project_options: &PythonProject, code: Box<str>, is_stub: bool) -> Self {
+    pub fn new(
+        project_options: &PythonProject,
+        file_entry: &FileEntry,
+        code: Box<str>,
+        is_stub: bool,
+    ) -> Self {
         let issues = Diagnostics::default();
         let tree = Tree::parse(code);
         let mut ignore_type_errors =
@@ -244,6 +249,7 @@ impl<'db> PythonFile {
                 });
         let directives_info = info_from_directives(
             project_options,
+            file_entry,
             &issues,
             tree.mypy_inline_config_directives(),
         );
@@ -319,6 +325,7 @@ impl<'db> PythonFile {
         // TODO should probably not need a newline
         let mut file = PythonFile::new(
             &db.project,
+            &self.file_entry(db),
             Box::from(code.into_string() + "\n"),
             self.is_stub,
         );
@@ -465,7 +472,7 @@ impl<'db> PythonFile {
         Some(dunder_all.into())
     }
 
-    pub fn file_entry(&self, db: &Database) -> Rc<FileEntry> {
+    pub fn file_entry(&self, db: &'db Database) -> &'db Rc<FileEntry> {
         db.file_state(self.file_index()).file_entry()
     }
 
@@ -493,19 +500,8 @@ impl<'db> PythonFile {
     }
 
     pub fn qualified_name(&self, db: &Database) -> String {
-        let entry = self.file_entry(db);
-        let name = &entry.name;
-        let name = if let Some(n) = name.strip_suffix(".py") {
-            n
-        } else {
-            name.trim_end_matches(".pyi")
-        };
-        if name == "__init__" {
-            if let Ok(dir) = entry.parent.maybe_dir() {
-                return dotted_path_from_dir(&dir);
-            }
-        }
-        if let Ok(parent_dir) = entry.parent.maybe_dir() {
+        let (name, parent_dir) = name_and_parent_dir(self.file_entry(db));
+        if let Some(parent_dir) = parent_dir {
             dotted_path_from_dir(&parent_dir) + "." + name
         } else {
             name.to_string()
@@ -525,24 +521,47 @@ pub fn dotted_path_from_dir(dir: &Directory) -> String {
     }
 }
 
+fn name_and_parent_dir(entry: &FileEntry) -> (&str, Option<Rc<Directory>>) {
+    let name = &entry.name;
+    let name = name
+        .strip_suffix(".py")
+        .or_else(|| name.strip_suffix(".pyi"))
+        .unwrap_or(name);
+    if name == "__init__" {
+        if let Ok(dir) = entry.parent.maybe_dir() {
+            // It's ok to transmute here, because dir.name will exist as the database is
+            // non-mutable, which should be fine.
+            return (
+                unsafe { std::mem::transmute(dir.name.as_ref()) },
+                dir.parent.maybe_dir().ok(),
+            );
+        }
+    }
+    (name, entry.parent.maybe_dir().ok())
+}
+
 fn info_from_directives<'x>(
     project: &PythonProject,
+    file_entry: &FileEntry,
     issues: &Diagnostics,
     directives: impl Iterator<Item = (CodeIndex, &'x str)>,
 ) -> DirectivesInfos {
     // Directives like `# mypy: disallow-any-generics`
     let mut ignore_errors = false;
     let mut flags = None;
-    for override_ in &project.overrides {
-        /*
-        if override_.module.matches_file(directory, name) {
-            if flags.is_none() {
-                flags = Some(project.flags.clone());
+
+    if !project.overrides.is_empty() {
+        let (name, parent_dir) = name_and_parent_dir(file_entry);
+        for override_ in &project.overrides {
+            if override_.matches_file_path(name, parent_dir.as_deref()) {
+                if flags.is_none() {
+                    flags = Some(project.flags.clone());
+                }
+                override_.apply_to_flags(flags.as_mut().unwrap());
             }
-            override_.apply_to_flags(flags.as_mut().unwrap());
         }
-        */
     }
+
     for (start_position, rest) in directives {
         let splitter = DirectiveSplitter {
             issues,

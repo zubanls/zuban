@@ -3,6 +3,8 @@ use std::borrow::Cow;
 use ini::Ini;
 use toml_edit::{DocumentMut, Item, Table, Value};
 
+use crate::workspaces::Directory;
+
 const OPTIONS_STARTING_WITH_ALLOW: [&str; 3] = [
     "allow_untyped_globals",
     "allow_redefinition",
@@ -218,8 +220,8 @@ impl PythonVersion {
 }
 
 #[derive(Clone)]
-pub(crate) struct OverridePath {
-    for_modules: Vec<Box<str>>,
+struct OverridePath {
+    path: Vec<Box<str>>,
     star: bool, // For things like foo.bar.*
 }
 
@@ -231,7 +233,7 @@ impl From<&str> for OverridePath {
             star = true;
         }
         OverridePath {
-            for_modules: value.split('.').map(|s| s.into()).collect(),
+            path: value.split('.').map(|s| s.into()).collect(),
             star,
         }
     }
@@ -245,12 +247,48 @@ enum OverrideIniOrTomlValue {
 
 #[derive(Clone)]
 pub(crate) struct OverrideConfig {
-    pub module: OverridePath, // Path like foo.bar or foo.bar.*
+    module: OverridePath, // Path like foo.bar or foo.bar.*
     // Key/Value mappings
     config: Vec<(Box<str>, OverrideIniOrTomlValue)>,
 }
 
 impl OverrideConfig {
+    pub fn matches_file_path(&self, name: &str, parent_dir: Option<&Directory>) -> bool {
+        fn parent_count(dir: Option<&Directory>) -> usize {
+            if let Some(dir) = dir {
+                parent_count(dir.parent.maybe_dir().ok().as_deref()) + 1
+            } else {
+                0
+            }
+        }
+        fn nth_parent<'x>(name: &'x str, dir: Option<&Directory>, n: usize) -> &'x str {
+            if n == 0 {
+                name
+            } else {
+                let dir = dir.unwrap();
+                nth_parent(
+                    // This transmute is fine, because we're only local and the parents will not
+                    // change during the parent function.
+                    unsafe { std::mem::transmute(dir.name.as_ref()) },
+                    dir.parent.maybe_dir().ok().as_deref(),
+                    n - 1,
+                )
+            }
+        }
+        let actual_path_count = parent_count(parent_dir) + 1;
+        if actual_path_count != self.module.path.len() && !self.module.star
+            || self.module.path.len() > actual_path_count
+        {
+            return false;
+        }
+        for (i, override_part) in self.module.path.iter().enumerate() {
+            if override_part.as_ref() != nth_parent(name, parent_dir, actual_path_count - i - 1) {
+                return true;
+            }
+        }
+        true
+    }
+
     pub fn apply_to_flags(&self, flags: &mut TypeCheckerFlags) {
         for (key, value) in self.config.iter() {
             apply_from_config(

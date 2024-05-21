@@ -891,7 +891,9 @@ impl Database {
 
     pub fn load_sub_file(&self, super_file: &PythonFile, file: PythonFile) -> &PythonFile {
         let index = self.add_file_state(Box::pin(LanguageFileState::new_parsed(
-            self.file_state(super_file.file_index()).file_entry(),
+            self.file_state(super_file.file_index())
+                .file_entry()
+                .clone(),
             "".into(),
             file,
         )));
