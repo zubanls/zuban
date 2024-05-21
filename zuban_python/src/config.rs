@@ -77,9 +77,13 @@ fn set_bool_init_flags(
         "strict_optional" => flags.strict_optional = to_bool(value, invert)?,
         "warn_no_return" => flags.warn_no_return = to_bool(value, invert)?,
         "disallow_any_generics" => flags.disallow_any_generics = to_bool(value, invert)?,
+        "disallow_subclassing_any" => flags.disallow_subclassing_any = to_bool(value, invert)?,
+        "disallow_untyped_calls" => flags.disallow_untyped_calls = to_bool(value, invert)?,
         "allow_untyped_globals" => flags.allow_untyped_globals = to_bool(value, invert)?,
         "ignore_missing_imports" => flags.ignore_missing_imports = to_bool(value, invert)?,
         "local_partial_types" => flags.local_partial_types = to_bool(value, invert)?,
+        "implicit_reexport" => flags.no_implicit_reexport = !to_bool(value, invert)?,
+        "implicit_optional" => flags.implicit_optional = to_bool(value, invert)?,
         // These are currently ignored
         "follow_imports" | "follow_imports_for_stubs" => (),
         // Will always be irrelevant
