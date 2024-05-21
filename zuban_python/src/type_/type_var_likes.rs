@@ -546,7 +546,7 @@ impl TypeVar {
                 let node_ref = NodeRef::from_link(db, link);
                 format!(
                     "{}.{}",
-                    node_ref.in_module().qualified_name(db),
+                    node_ref.file.qualified_name(db),
                     node_ref.maybe_str().unwrap().content()
                 )
                 .into()

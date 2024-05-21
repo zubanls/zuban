@@ -5,7 +5,6 @@ use crate::{
     debug,
     file::{File, PythonFile},
     type_::Namespace,
-    type_helpers::Module,
     workspaces::{Directory, DirectoryEntry},
 };
 
@@ -20,7 +19,7 @@ pub enum ImportResult {
 impl ImportResult {
     pub fn qualified_name(&self, db: &Database) -> String {
         match self {
-            Self::File(file_index) => Module::from_file_index(db, *file_index).qualified_name(db),
+            Self::File(file_index) => db.loaded_python_file(*file_index).qualified_name(db),
             Self::Namespace(ns) => ns.qualified_name(),
         }
     }

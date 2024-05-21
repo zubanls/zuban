@@ -36,7 +36,7 @@ use crate::{
         TypeGuardInfo, TypeVar, TypeVarKind, TypeVarLike, TypeVarLikeUsage, TypeVarLikes,
         TypeVarManager, TypeVarName, TypeVarUsage, Variance, WrongPositionalCount,
     },
-    type_helpers::{Class, Module},
+    type_helpers::Class,
     utils::{rc_slice_into_vec, rc_unwrap_or_clone},
 };
 
@@ -1655,11 +1655,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
     }
 
     pub fn qualified_name(&self, db: &'a Database) -> String {
-        format!(
-            "{}.{}",
-            Module::new(self.node_ref.file).qualified_name(db),
-            self.name()
-        )
+        format!("{}.{}", self.node_ref.file.qualified_name(db), self.name())
     }
 
     pub fn name(&self) -> &str {

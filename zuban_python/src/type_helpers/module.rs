@@ -10,7 +10,7 @@ use crate::{
     matching::LookupResult,
     node_ref::NodeRef,
     type_::{Namespace, Type},
-    workspaces::{Directory, Parent},
+    workspaces::Parent,
 };
 
 #[derive(Copy, Clone)]
@@ -41,26 +41,6 @@ impl<'a> Module<'a> {
         }
     }
 
-    pub fn qualified_name(&self, db: &Database) -> String {
-        let entry = self.file.file_entry(db);
-        let name = &entry.name;
-        let name = if let Some(n) = name.strip_suffix(".py") {
-            n
-        } else {
-            name.trim_end_matches(".pyi")
-        };
-        if name == "__init__" {
-            if let Ok(dir) = entry.parent.maybe_dir() {
-                return dotted_path_from_dir(&dir);
-            }
-        }
-        if let Ok(parent_dir) = entry.parent.maybe_dir() {
-            dotted_path_from_dir(&parent_dir) + "." + name
-        } else {
-            name.to_string()
-        }
-    }
-
     pub(crate) fn lookup(
         &self,
         i_s: &InferenceState,
@@ -81,7 +61,7 @@ impl<'a> Module<'a> {
             let link = link.into();
             if is_reexport_issue_if_check_needed(i_s.db, self.file, link) {
                 add_issue(IssueKind::ImportStubNoExplicitReexport {
-                    module_name: self.qualified_name(i_s.db).into(),
+                    module_name: self.file.qualified_name(i_s.db).into(),
                     attribute: name.into(),
                 })
             }
@@ -166,14 +146,6 @@ pub fn lookup_in_namespace(
             debug!("TODO namespace basic lookups");
             LookupResult::None
         }
-    }
-}
-
-pub fn dotted_path_from_dir(dir: &Directory) -> String {
-    if let Ok(parent_dir) = dir.parent.maybe_dir() {
-        dotted_path_from_dir(&parent_dir) + "." + &dir.name
-    } else {
-        dir.name.to_string()
     }
 }
 

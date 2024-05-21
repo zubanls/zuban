@@ -20,7 +20,7 @@ use crate::{
         OnTypeError, ResultContext,
     },
     node_ref::NodeRef,
-    type_helpers::{Class, Instance, LookupDetails, Module},
+    type_helpers::{Class, Instance, LookupDetails},
     utils::join_with_commas,
 };
 
@@ -216,7 +216,7 @@ impl TypedDict {
 
     fn qualified_name(&self, db: &Database) -> Option<String> {
         let name = self.name?;
-        let module = Module::from_file_index(db, name.file_index).qualified_name(db);
+        let module = db.loaded_python_file(name.file_index).qualified_name(db);
         Some(format!("{module}.{}", name.as_str(db)))
     }
 

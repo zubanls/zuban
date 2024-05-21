@@ -128,7 +128,7 @@ impl InvalidVariableType<'_> {
                 add_issue(IssueKind::InvalidType(
                     format!(
                         "Variable \"{}.{}\" is not valid as a type",
-                        var_ref.in_module().qualified_name(db),
+                        var_ref.file.qualified_name(db),
                         var_ref.as_code().to_owned(),
                     )
                     .into(),
@@ -988,7 +988,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 }
             }
             TypeContent::Module(file) => {
-                self.add_module_issue(node_ref, &Module::new(file).qualified_name(db));
+                self.add_module_issue(node_ref, &file.qualified_name(db));
             }
             TypeContent::Namespace(n) => {
                 self.add_module_issue(node_ref, &n.qualified_name());

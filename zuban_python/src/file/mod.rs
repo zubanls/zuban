@@ -16,7 +16,7 @@ pub use file_state::{
 pub use flow_analysis::FLOW_ANALYSIS;
 use inference::Inference;
 pub use inference::{first_defined_name, first_defined_name_of_multi_def};
-pub use python_file::{ComplexValues, PythonFile};
+pub use python_file::{dotted_path_from_dir, ComplexValues, PythonFile};
 pub use type_computation::{
     maybe_saved_annotation, use_cached_annotation_or_type_comment, use_cached_annotation_type,
     use_cached_param_annotation_type, use_cached_simple_generic_type, CalculatedBaseClass,

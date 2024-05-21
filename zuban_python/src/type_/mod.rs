@@ -64,6 +64,7 @@ use crate::{
     database::{Database, FileIndex, PointLink},
     debug,
     diagnostics::IssueKind,
+    file::dotted_path_from_dir,
     inference_state::InferenceState,
     inferred::Inferred,
     matching::{
@@ -71,7 +72,7 @@ use crate::{
         Matcher, MismatchReason, OnTypeError, ResultContext,
     },
     node_ref::NodeRef,
-    type_helpers::{dotted_path_from_dir, Class, Instance, MroIterator, TypeOrClass},
+    type_helpers::{Class, Instance, MroIterator, TypeOrClass},
     utils::{bytes_repr, join_with_commas, rc_slice_into_vec, str_repr},
     workspaces::Directory,
 };
@@ -1590,7 +1591,7 @@ impl NewType {
         let node_ref = NodeRef::from_link(db, self.name_string);
         format!(
             "{}.{}",
-            node_ref.in_module().qualified_name(db),
+            node_ref.file.qualified_name(db),
             node_ref.maybe_str().unwrap().content()
         )
         .into()

@@ -11,7 +11,7 @@ use parsa_python_cst::{
     SimpleStmts, StmtContent, StmtOrError, Target, TypeLike,
 };
 
-use super::{overload::OverloadResult, Callable, Instance, LookupDetails, Module};
+use super::{overload::OverloadResult, Callable, Instance, LookupDetails};
 use crate::{
     arguments::{Args, KnownArgs, SimpleArgs},
     database::{
@@ -2627,7 +2627,7 @@ fn protocol_conflict_note(db: &Database, other: &Type) -> Box<str> {
     match other {
         Type::Module(file_index) => format!(
             "Following member(s) of Module \"{}\" have conflicts:",
-            Module::from_file_index(db, *file_index).qualified_name(db)
+            db.loaded_python_file(*file_index).qualified_name(db)
         ),
         Type::Type(t) => format!(
             "Following member(s) of \"{}\" have conflicts:",

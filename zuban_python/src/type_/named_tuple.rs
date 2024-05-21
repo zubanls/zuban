@@ -20,7 +20,7 @@ use crate::{
     },
     new_class,
     node_ref::NodeRef,
-    type_helpers::{start_namedtuple_params, LookupDetails, Module},
+    type_helpers::{start_namedtuple_params, LookupDetails},
     utils::join_with_commas,
 };
 
@@ -64,7 +64,9 @@ impl NamedTuple {
     }
 
     pub fn qualified_name(&self, db: &Database) -> String {
-        let module = Module::from_file_index(db, self.name.file_index).qualified_name(db);
+        let module = db
+            .loaded_python_file(self.name.file_index)
+            .qualified_name(db);
         format!("{module}.{}", self.name(db))
     }
 

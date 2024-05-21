@@ -28,7 +28,7 @@ use crate::{
     node_ref::NodeRef,
     type_::DbString,
     utils::{InsertOnlyVec, SymbolTable},
-    workspaces::FileEntry,
+    workspaces::{Directory, FileEntry},
     TypeCheckerFlags,
 };
 
@@ -492,8 +492,36 @@ impl<'db> PythonFile {
         }
     }
 
+    pub fn qualified_name(&self, db: &Database) -> String {
+        let entry = self.file_entry(db);
+        let name = &entry.name;
+        let name = if let Some(n) = name.strip_suffix(".py") {
+            n
+        } else {
+            name.trim_end_matches(".pyi")
+        };
+        if name == "__init__" {
+            if let Ok(dir) = entry.parent.maybe_dir() {
+                return dotted_path_from_dir(&dir);
+            }
+        }
+        if let Ok(parent_dir) = entry.parent.maybe_dir() {
+            dotted_path_from_dir(&parent_dir) + "." + name
+        } else {
+            name.to_string()
+        }
+    }
+
     pub fn flags<'x>(&'x self, project: &'x PythonProject) -> &TypeCheckerFlags {
         self.flags.as_ref().unwrap_or(&project.flags)
+    }
+}
+
+pub fn dotted_path_from_dir(dir: &Directory) -> String {
+    if let Ok(parent_dir) = dir.parent.maybe_dir() {
+        dotted_path_from_dir(&parent_dir) + "." + &dir.name
+    } else {
+        dir.name.to_string()
     }
 }
 

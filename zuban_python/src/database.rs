@@ -24,7 +24,7 @@ use crate::{
         NewType, ParamSpecUsage, RecursiveType, StringSlice, Tuple, Type, TypeVarLike,
         TypeVarLikeUsage, TypeVarLikes, TypeVarTupleUsage, TypeVarUsage, TypedDict, Variance,
     },
-    type_helpers::{Class, Function, Module},
+    type_helpers::{Class, Function},
     utils::{InsertOnlyVec, SymbolTable},
     workspaces::{
         Directory, DirectoryEntry, FileEntry, Invalidations, WorkspaceFileIndex, Workspaces,
@@ -1119,7 +1119,7 @@ impl ParentScope {
     pub fn qualified_name(self, db: &Database, defined_at: NodeRef, name: &str) -> String {
         let file = defined_at.file;
         match self {
-            ParentScope::Module => format!("{}.{name}", Module::new(file).qualified_name(db)),
+            ParentScope::Module => format!("{}.{name}", file.qualified_name(db)),
             ParentScope::Class(node_index) => {
                 let parent_class = Class::with_undefined_generics(NodeRef::new(file, node_index));
                 format!("{}.{}", parent_class.qualified_name(db), name)
@@ -1128,7 +1128,7 @@ impl ParentScope {
                 let node_ref = NodeRef::new(file, node_index);
                 let line = file.byte_to_line_column(defined_at.node_start_position()).0;
                 // Add the position like `foo.Bar@7`
-                format!("{}.{name}@{line}", Module::new(file).qualified_name(db))
+                format!("{}.{name}@{line}", file.qualified_name(db))
             }
         }
     }
