@@ -105,22 +105,31 @@ impl TypeCheckerFlags {
         self.warn_return_any = true;
     }
 
-    pub fn from_mypy_ini(code: &str) -> Result<Self, ini::ParseError> {
-        let ini = Ini::load_from_str(code)?;
+    pub fn from_mypy_ini(code: &str) -> Result<Self, String> {
+        let ini = Ini::load_from_str(code).map_err(|err| err.to_string())?;
         let mut flags = Self::default();
-        if let Some(section) = ini.section(Some("mypy")) {
-            for (key, value) in section.iter() {
-                apply_from_config(&mut flags, key, IniOrTomlValue::Ini(value));
+        let mut overrides = vec![];
+        for (name, section) in ini.iter() {
+            let Some(name) = name else { continue };
+            if name == "mypy" {
+                for (key, value) in section.iter() {
+                    apply_from_config(&mut flags, key, IniOrTomlValue::Ini(value));
+                }
+            } else if let Some(rest) = name.strip_prefix("mypy-") {
+                overrides.push(OverrideConfig {
+                    module: rest.into(),
+                    config: section
+                        .iter()
+                        .map(|(x, y)| (x.into(), OverrideIniOrTomlValue::Ini(y.into())))
+                        .collect(),
+                })
             }
         }
         Ok(flags)
     }
 
     pub fn from_pyproject_toml(code: &str) -> Result<Self, String> {
-        let document = match code.parse::<DocumentMut>() {
-            Ok(doc) => doc,
-            Err(toml_err) => return Err(toml_err.to_string()),
-        };
+        let document = code.parse::<DocumentMut>().map_err(|err| err.to_string())?;
         let mut flags = Self::default();
         if let Some(config) = document.get("tool").and_then(|item| item.get("mypy")) {
             let Item::Table(table) = config else {
@@ -186,6 +195,20 @@ struct OverridePath {
     star: bool, // For things like foo.bar.*
 }
 
+impl From<&str> for OverridePath {
+    fn from(mut value: &str) -> Self {
+        let mut star = false;
+        if let Some(new_s) = value.strip_suffix(".*") {
+            value = new_s;
+            star = true;
+        }
+        OverridePath {
+            for_modules: value.split('.').map(|s| s.into()).collect(),
+            star,
+        }
+    }
+}
+
 enum OverrideIniOrTomlValue {
     Toml(Value),
     Ini(Box<str>),
@@ -197,24 +220,13 @@ struct OverrideConfig {
 }
 
 fn pyproject_toml_override_module_names(table: &Table) -> Result<Vec<OverridePath>, String> {
-    let path_from_str = |mut s: &str| {
-        let mut star = false;
-        if let Some(new_s) = s.strip_suffix(".*") {
-            s = new_s;
-            star = true;
-        }
-        OverridePath {
-            for_modules: s.split('.').map(|s| s.into()).collect(),
-            star,
-        }
-    };
     match table.get("module") {
-        Some(Item::Value(Value::String(s))) => Ok(vec![path_from_str(s.value())]),
+        Some(Item::Value(Value::String(s))) => Ok(vec![s.value().as_str().into()]),
         Some(Item::Value(Value::Array(list))) => {
             let mut result = vec![];
             for entry in list {
                 match entry {
-                    Value::String(s) => result.push(path_from_str(s.value())),
+                    Value::String(s) => result.push(s.value().as_str().into()),
                     _ => return Err("".to_string()),
                 }
             }
