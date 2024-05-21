@@ -221,7 +221,7 @@ impl<'name, 'code> TestCase<'name, 'code> {
                     steps.steps.len()
                 );
             }
-            let mut wanted = wanted_output(project, step);
+            let mut wanted = initialize_and_return_wanted_output(project, step);
 
             for path in &step.deletions {
                 project
@@ -473,7 +473,7 @@ fn temporarily_skip(s: String) -> Option<String> {
     Some(s)
 }
 
-fn wanted_output(project: &mut Project, step: &Step) -> Vec<String> {
+fn initialize_and_return_wanted_output(project: &mut Project, step: &Step) -> Vec<String> {
     let mut wanted = step
         .out
         .trim()
@@ -488,6 +488,9 @@ fn wanted_output(project: &mut Project, step: &Step) -> Vec<String> {
     let mut sorted_files: Vec<_> = step.files.iter().collect();
     sorted_files.sort();
     for (&path, &code) in &sorted_files {
+        if ["mypy.ini", "pyproject.toml"].contains(&path) {
+            continue;
+        }
         let p = if path == "__main__" {
             // TODO this if is so weird. Why is this shit needed???
             "main"
