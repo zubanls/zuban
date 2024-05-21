@@ -123,21 +123,19 @@ impl Default for TypeCheckerFlags {
 }
 
 impl TypeCheckerFlags {
-    pub fn strict() -> Self {
-        Self {
-            strict_equality: true,
-            check_untyped_defs: true,
-            disallow_untyped_defs: true,
-            disallow_untyped_calls: true,
-            disallow_any_generics: true,
-            disallow_any_decorated: true,
-            disallow_any_explicit: true,
-            disallow_subclassing_any: true,
-            disallow_incomplete_defs: true,
-            warn_redundant_casts: true,
-            warn_return_any: true,
-            ..Self::default()
-        }
+    pub fn enable_all_strict_flags(&mut self) {
+        // Use for --strict
+        self.strict_equality = true;
+        self.check_untyped_defs = true;
+        self.disallow_untyped_defs = true;
+        self.disallow_untyped_calls = true;
+        self.disallow_any_generics = true;
+        self.disallow_any_decorated = true;
+        self.disallow_any_explicit = true;
+        self.disallow_subclassing_any = true;
+        self.disallow_incomplete_defs = true;
+        self.warn_redundant_casts = true;
+        self.warn_return_any = true;
     }
 
     pub fn from_mypy_ini(code: &str) -> Result<Self, ini::ParseError> {

@@ -1595,7 +1595,6 @@ testModuleGetattrInit10PyProjectTOML
 # mypy.ini mypy_path 
 testCaseInsensitivityDir
 testPreferPackageOverFileCase
-testStrictInConfigAnyGeneric
 # mypy.ini per file
 testPerFileIncompleteDefsBasic
 testPerFileStrictOptionalBasic

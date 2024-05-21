@@ -130,7 +130,9 @@ pub fn apply_mypy_ini(flags: &mut TypeCheckerFlags, ini: Ini) {
             continue;
         }
         if key == "strict" {
-            // TODO implement
+            if to_bool(Some(value), false).unwrap_or_else(|_| todo!()) {
+                flags.enable_all_strict_flags();
+            }
             continue;
         }
         set_flag(flags, key, Some(value))

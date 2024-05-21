@@ -125,10 +125,7 @@ impl<'name, 'code> TestCase<'name, 'code> {
         }
 
         if steps.flags.contains(&"--strict") {
-            config = TypeCheckerFlags {
-                disallow_any_generics: !steps.flags.contains(&"--allow-any-generics"),
-                ..TypeCheckerFlags::strict()
-            }
+            config.enable_all_strict_flags();
         }
         let set_bool_flag = |change: &mut _, flag| {
             if steps.flags.contains(&flag) {
@@ -193,6 +190,7 @@ impl<'name, 'code> TestCase<'name, 'code> {
         );
         set_reverse_bool_flag(&mut config.warn_no_return, "--no-warn-no-return");
         set_reverse_bool_flag(&mut config.strict_optional, "--no-strict-optional");
+        set_reverse_bool_flag(&mut config.disallow_any_generics, "--allow-any-generics");
         // This is simply for testing and mirrors how mypy does it.
         config.allow_empty_bodies =
             !self.name.ends_with("_no_empty") && self.file_name != "check-abstract";
