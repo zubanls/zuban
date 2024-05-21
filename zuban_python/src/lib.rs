@@ -23,7 +23,7 @@ mod type_helpers;
 mod utils;
 mod workspaces;
 
-pub use config::{PythonVersion, TypeCheckerFlags};
+pub use config::{ProjectOptions, PythonVersion, TypeCheckerFlags};
 use database::{Database, FileIndex, PythonProject};
 pub use diagnostics::DiagnosticConfig;
 use file::Leaf;
@@ -34,12 +34,6 @@ use parsa_python_cst::CodeIndex;
 
 pub struct Project {
     db: Database,
-}
-
-#[derive(Clone)]
-pub struct ProjectOptions {
-    pub path: Box<str>,
-    pub flags: TypeCheckerFlags,
 }
 
 impl Project {
@@ -62,6 +56,7 @@ impl Project {
             PythonProject {
                 sys_path,
                 flags: options.flags,
+                overrides: options.overrides,
             },
         );
         Self { db }

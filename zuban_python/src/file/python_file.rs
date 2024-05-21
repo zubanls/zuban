@@ -533,6 +533,16 @@ fn info_from_directives<'x>(
     // Directives like `# mypy: disallow-any-generics`
     let mut ignore_errors = false;
     let mut flags = None;
+    for override_ in &project.overrides {
+        /*
+        if override_.module.matches_file(directory, name) {
+            if flags.is_none() {
+                flags = Some(project.flags.clone());
+            }
+            override_.apply_to_flags(flags.as_mut().unwrap());
+        }
+        */
+    }
     for (start_position, rest) in directives {
         let splitter = DirectiveSplitter {
             issues,

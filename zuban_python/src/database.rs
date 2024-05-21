@@ -12,6 +12,7 @@ use std::{
 use parsa_python_cst::NodeIndex;
 
 use crate::{
+    config::OverrideConfig,
     debug,
     file::{
         File, FileState, FileStateLoader, FileSystemReader, LanguageFileState, PythonFile,
@@ -1105,6 +1106,7 @@ impl Database {
 pub struct PythonProject {
     pub sys_path: Vec<Box<str>>,
     pub flags: TypeCheckerFlags,
+    pub(crate) overrides: Vec<OverrideConfig>,
     // is_django: bool,  // TODO maybe add?
 }
 

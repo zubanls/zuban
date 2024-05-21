@@ -9,6 +9,97 @@ const OPTIONS_STARTING_WITH_ALLOW: [&str; 3] = [
     "allow_empty_bodies",
 ];
 
+#[derive(Clone)]
+pub struct ProjectOptions {
+    pub path: Box<str>,
+    pub flags: TypeCheckerFlags,
+    pub(crate) overrides: Vec<OverrideConfig>,
+}
+
+impl ProjectOptions {
+    pub fn new(path: Box<str>, flags: TypeCheckerFlags) -> Self {
+        Self {
+            path,
+            flags,
+            overrides: vec![],
+        }
+    }
+
+    pub fn from_mypy_ini(path: Box<str>, code: &str) -> Result<Self, String> {
+        let ini = Ini::load_from_str(code).map_err(|err| err.to_string())?;
+        let mut flags = TypeCheckerFlags::default();
+        let mut overrides = vec![];
+        for (name, section) in ini.iter() {
+            let Some(name) = name else { continue };
+            if name == "mypy" {
+                for (key, value) in section.iter() {
+                    apply_from_config(&mut flags, key, IniOrTomlValue::Ini(value));
+                }
+            } else if let Some(rest) = name.strip_prefix("mypy-") {
+                overrides.push(OverrideConfig {
+                    module: rest.into(),
+                    config: section
+                        .iter()
+                        .map(|(x, y)| (x.into(), OverrideIniOrTomlValue::Ini(y.into())))
+                        .collect(),
+                })
+            }
+        }
+        Ok(ProjectOptions {
+            path,
+            flags,
+            overrides,
+        })
+    }
+
+    pub fn from_pyproject_toml(path: Box<str>, code: &str) -> Result<Self, String> {
+        let document = code.parse::<DocumentMut>().map_err(|err| err.to_string())?;
+        let mut flags = TypeCheckerFlags::default();
+        if let Some(config) = document.get("tool").and_then(|item| item.get("mypy")) {
+            let Item::Table(table) = config else {
+                return Err("Expected tool.mypy to be a table in pyproject.toml".to_string());
+            };
+
+            let mut overrides = vec![];
+            for (key, item) in table.iter() {
+                match item {
+                    Item::Value(value) => {
+                        apply_from_config(&mut flags, key, IniOrTomlValue::Toml(value))
+                    }
+                    Item::ArrayOfTables(override_tables) if key == "overrides" => {
+                        for override_table in override_tables.iter() {
+                            for module in pyproject_toml_override_module_names(override_table)? {
+                                let mut config = vec![];
+                                for (key, part) in override_table.iter() {
+                                    if key != "module" {
+                                        match part {
+                                            Item::Value(v) => {
+                                                config.push((key.into(), OverrideIniOrTomlValue::Toml(v.clone())))
+                                            }
+                                            _ => {
+                                                return Err("Found unexpected value in override in pyproject.toml".to_string())
+                                            }
+                                        }
+                                    }
+                                }
+                                overrides.push(OverrideConfig { module, config })
+                            }
+                        }
+                    }
+                    _ => todo!("{item:?}"),
+                }
+            }
+            Ok(ProjectOptions {
+                path,
+                flags,
+                overrides,
+            })
+        } else {
+            Ok(ProjectOptions::new(path, TypeCheckerFlags::default()))
+        }
+    }
+}
+
 #[derive(Clone, Hash, PartialEq, Eq)]
 pub struct TypeCheckerFlags {
     pub strict_optional: bool,
@@ -105,70 +196,6 @@ impl TypeCheckerFlags {
         self.warn_return_any = true;
     }
 
-    pub fn from_mypy_ini(code: &str) -> Result<Self, String> {
-        let ini = Ini::load_from_str(code).map_err(|err| err.to_string())?;
-        let mut flags = Self::default();
-        let mut overrides = vec![];
-        for (name, section) in ini.iter() {
-            let Some(name) = name else { continue };
-            if name == "mypy" {
-                for (key, value) in section.iter() {
-                    apply_from_config(&mut flags, key, IniOrTomlValue::Ini(value));
-                }
-            } else if let Some(rest) = name.strip_prefix("mypy-") {
-                overrides.push(OverrideConfig {
-                    module: rest.into(),
-                    config: section
-                        .iter()
-                        .map(|(x, y)| (x.into(), OverrideIniOrTomlValue::Ini(y.into())))
-                        .collect(),
-                })
-            }
-        }
-        Ok(flags)
-    }
-
-    pub fn from_pyproject_toml(code: &str) -> Result<Self, String> {
-        let document = code.parse::<DocumentMut>().map_err(|err| err.to_string())?;
-        let mut flags = Self::default();
-        if let Some(config) = document.get("tool").and_then(|item| item.get("mypy")) {
-            let Item::Table(table) = config else {
-                return Err("Expected tool.mypy to be a table in pyproject.toml".to_string());
-            };
-
-            let mut overrides = vec![];
-            for (key, item) in table.iter() {
-                match item {
-                    Item::Value(value) => {
-                        apply_from_config(&mut flags, key, IniOrTomlValue::Toml(value))
-                    }
-                    Item::ArrayOfTables(override_tables) if key == "overrides" => {
-                        for override_table in override_tables.iter() {
-                            for module in pyproject_toml_override_module_names(override_table)? {
-                                let mut config = vec![];
-                                for (key, part) in override_table.iter() {
-                                    if key != "module" {
-                                        match part {
-                                            Item::Value(v) => {
-                                                config.push((key.into(), OverrideIniOrTomlValue::Toml(v.clone())))
-                                            }
-                                            _ => {
-                                                return Err("Found unexpected value in override in pyproject.toml".to_string())
-                                            }
-                                        }
-                                    }
-                                }
-                                overrides.push(OverrideConfig { module, config })
-                            }
-                        }
-                    }
-                    _ => todo!("{item:?}"),
-                }
-            }
-        }
-        Ok(flags)
-    }
-
     pub(crate) fn computed_platform(&self) -> &str {
         self.platform.as_deref().unwrap_or("posix")
     }
@@ -190,7 +217,8 @@ impl PythonVersion {
     }
 }
 
-struct OverridePath {
+#[derive(Clone)]
+pub(crate) struct OverridePath {
     for_modules: Vec<Box<str>>,
     star: bool, // For things like foo.bar.*
 }
@@ -209,14 +237,32 @@ impl From<&str> for OverridePath {
     }
 }
 
+#[derive(Clone)]
 enum OverrideIniOrTomlValue {
     Toml(Value),
     Ini(Box<str>),
 }
-struct OverrideConfig {
-    module: OverridePath,
+
+#[derive(Clone)]
+pub(crate) struct OverrideConfig {
+    pub module: OverridePath, // Path like foo.bar or foo.bar.*
     // Key/Value mappings
     config: Vec<(Box<str>, OverrideIniOrTomlValue)>,
+}
+
+impl OverrideConfig {
+    pub fn apply_to_flags(&self, flags: &mut TypeCheckerFlags) {
+        for (key, value) in self.config.iter() {
+            apply_from_config(
+                flags,
+                key,
+                match value {
+                    OverrideIniOrTomlValue::Toml(v) => IniOrTomlValue::Toml(v),
+                    OverrideIniOrTomlValue::Ini(v) => IniOrTomlValue::Ini(v),
+                },
+            );
+        }
+    }
 }
 
 fn pyproject_toml_override_module_names(table: &Table) -> Result<Vec<OverridePath>, String> {

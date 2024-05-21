@@ -67,13 +67,13 @@ fn main() {
         return;
     }
 
-    let mut project = Project::new(ProjectOptions {
-        path: "tests/blackbox/".into(),
-        flags: TypeCheckerFlags {
+    let mut project = Project::new(ProjectOptions::new(
+        "tests/blackbox/".into(),
+        TypeCheckerFlags {
             check_untyped_defs: true,
             ..Default::default()
         },
-    });
+    ));
 
     let files = python_files();
     let start = Instant::now();

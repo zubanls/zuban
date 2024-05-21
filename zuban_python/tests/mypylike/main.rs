@@ -118,10 +118,13 @@ impl<'name, 'code> TestCase<'name, 'code> {
         };
 
         let mut config = TypeCheckerFlags::default();
+        let mut project_options = None;
         if let Some(mypy_ini_config) = steps.steps[0].files.get("mypy.ini") {
             println!("Loading mypy.ini for {} ({})", self.name, self.file_name);
             let ini = cleanup_mypy_issues(mypy_ini_config).unwrap();
-            config = TypeCheckerFlags::from_mypy_ini(&ini).unwrap()
+            let mut new = ProjectOptions::from_mypy_ini(BASE_PATH.into(), &ini).unwrap();
+            config = std::mem::replace(&mut new.flags, config);
+            project_options = Some(new);
         }
         if let Some(pyproject_toml) = steps.steps[0].files.get("pyproject.toml") {
             println!(
@@ -129,7 +132,9 @@ impl<'name, 'code> TestCase<'name, 'code> {
                 self.name, self.file_name
             );
             let ini = cleanup_mypy_issues(pyproject_toml).unwrap();
-            config = TypeCheckerFlags::from_pyproject_toml(&ini).unwrap()
+            let mut new = ProjectOptions::from_pyproject_toml(BASE_PATH.into(), &ini).unwrap();
+            config = std::mem::replace(&mut new.flags, config);
+            project_options = Some(new);
         }
 
         if steps.flags.contains(&"--strict") {
@@ -247,7 +252,13 @@ impl<'name, 'code> TestCase<'name, 'code> {
             config.disabled_error_codes.push("used-before-def".into());
         }
 
-        let project = projects.get_mut(config);
+        let mut tmp;
+        let project = if let Some(project_options) = project_options {
+            tmp = Project::new(project_options);
+            &mut tmp
+        } else {
+            projects.get_mut(config)
+        };
 
         let is_parse_test = self.file_name.starts_with("parse");
         let is_semanal_test = self.file_name.starts_with("semanal-");
@@ -706,10 +717,7 @@ impl ProjectsCache {
         if !self.0.contains_key(&flags) {
             self.0.insert(
                 flags.clone(),
-                Project::new(ProjectOptions {
-                    path: BASE_PATH.into(),
-                    flags: flags.clone(),
-                }),
+                Project::new(ProjectOptions::new(BASE_PATH.into(), flags.clone())),
             );
         }
         self.0.get_mut(&flags).unwrap()
