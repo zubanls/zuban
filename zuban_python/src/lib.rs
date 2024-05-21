@@ -23,12 +23,12 @@ mod type_helpers;
 mod utils;
 mod workspaces;
 
+pub use config::{PythonVersion, TypeCheckerFlags};
 use database::{Database, FileIndex, PythonProject};
 pub use diagnostics::DiagnosticConfig;
 use file::Leaf;
 use inference_state::InferenceState;
 use inferred::Inferred;
-use ini::Ini;
 use name::Names;
 use parsa_python_cst::CodeIndex;
 
@@ -40,130 +40,6 @@ pub struct Project {
 pub struct ProjectOptions {
     pub path: Box<str>,
     pub flags: TypeCheckerFlags,
-}
-
-#[derive(Clone, Hash, PartialEq, Eq)]
-pub struct TypeCheckerFlags {
-    pub strict_optional: bool,
-    pub strict_equality: bool,
-    pub implicit_optional: bool,
-    pub check_untyped_defs: bool,
-    pub ignore_missing_imports: bool,
-
-    pub disallow_untyped_defs: bool,
-    pub disallow_untyped_calls: bool,
-    pub disallow_untyped_decorators: bool,
-    pub disallow_any_generics: bool,
-    pub disallow_any_decorated: bool,
-    pub disallow_any_explicit: bool,
-    pub disallow_any_unimported: bool,
-    pub disallow_any_expr: bool,
-    pub disallow_subclassing_any: bool,
-    pub disallow_incomplete_defs: bool,
-    pub allow_untyped_globals: bool,
-    pub allow_empty_bodies: bool,
-    pub warn_unreachable: bool,
-    pub warn_redundant_casts: bool,
-    pub warn_return_any: bool,
-    pub warn_no_return: bool,
-    pub local_partial_types: bool,
-    pub no_implicit_reexport: bool,
-    pub disable_bytearray_promotion: bool,
-    pub disable_memoryview_promotion: bool,
-
-    pub platform: Option<String>,
-    pub enabled_error_codes: Vec<String>,
-    pub disabled_error_codes: Vec<String>,
-    pub python_version: PythonVersion,
-    pub always_true_symbols: Vec<String>,
-    pub always_false_symbols: Vec<String>,
-
-    pub extra_checks: bool,
-    pub mypy_compatible: bool,
-}
-
-impl Default for TypeCheckerFlags {
-    fn default() -> Self {
-        Self {
-            strict_optional: true,
-            strict_equality: false,
-            implicit_optional: false,
-            check_untyped_defs: false,
-            ignore_missing_imports: false,
-            disallow_untyped_defs: false,
-            disallow_untyped_calls: false,
-            disallow_untyped_decorators: false,
-            disallow_any_generics: false,
-            disallow_any_decorated: false,
-            disallow_any_explicit: false,
-            disallow_any_unimported: false,
-            disallow_any_expr: false,
-            disallow_subclassing_any: false,
-            disallow_incomplete_defs: false,
-            allow_untyped_globals: false,
-            allow_empty_bodies: false,
-            warn_unreachable: false,
-            warn_redundant_casts: false,
-            warn_return_any: false,
-            warn_no_return: true,
-            local_partial_types: false,
-            no_implicit_reexport: false,
-            disable_bytearray_promotion: false,
-            disable_memoryview_promotion: false,
-            platform: None,
-            python_version: PythonVersion::new(3, 12),
-            always_true_symbols: vec![],
-            always_false_symbols: vec![],
-            enabled_error_codes: vec![],
-            disabled_error_codes: vec![],
-            extra_checks: false,
-            mypy_compatible: false,
-        }
-    }
-}
-
-impl TypeCheckerFlags {
-    pub fn enable_all_strict_flags(&mut self) {
-        // Use for --strict
-        self.strict_equality = true;
-        self.check_untyped_defs = true;
-        self.disallow_untyped_defs = true;
-        self.disallow_untyped_calls = true;
-        self.disallow_any_generics = true;
-        self.disallow_any_decorated = true;
-        self.disallow_any_explicit = true;
-        self.disallow_subclassing_any = true;
-        self.disallow_incomplete_defs = true;
-        self.warn_redundant_casts = true;
-        self.warn_return_any = true;
-    }
-
-    pub fn from_mypy_ini(code: &str) -> Result<Self, ini::ParseError> {
-        let ini = Ini::load_from_str(code)?;
-        let mut flags = Self::default();
-        config::apply_mypy_ini(&mut flags, ini);
-        Ok(flags)
-    }
-
-    fn computed_platform(&self) -> &str {
-        self.platform.as_deref().unwrap_or("posix")
-    }
-}
-
-#[derive(Clone, Hash, PartialEq, Eq, PartialOrd)]
-pub struct PythonVersion {
-    major: usize,
-    minor: usize,
-}
-
-impl PythonVersion {
-    pub fn new(major: usize, minor: usize) -> Self {
-        Self { major, minor }
-    }
-
-    pub fn at_least_3_dot(&self, minor: usize) -> bool {
-        self.major >= 3 && self.minor >= minor
-    }
 }
 
 impl Project {
