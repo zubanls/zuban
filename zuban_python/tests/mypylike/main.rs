@@ -70,7 +70,7 @@ lazy_static::lazy_static! {
     static ref REPLACE_MYPY: Regex = Regex::new(r"`-?\d+").unwrap();
     static ref REPLACE_MYPY_ELLIPSIS: Regex = Regex::new(r#""ellipsis""#).unwrap();
     static ref REPLACE_MYPY_NO_RETURN: Regex = Regex::new(r"\bNoReturn\b").unwrap();
-    static ref REPLACE_ESCAPES: Regex = Regex::new(r"^\\\[").unwrap();
+    static ref REPLACE_ESCAPES: Regex = Regex::new(r"(?m)^\\\[").unwrap();
 }
 
 #[derive(Default, Clone, Debug)]

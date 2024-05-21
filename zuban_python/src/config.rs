@@ -199,6 +199,7 @@ fn set_bool_init_flags(
         "strict_optional" => flags.strict_optional = to_bool(value, invert)?,
         "warn_no_return" => flags.warn_no_return = to_bool(value, invert)?,
         "disallow_any_generics" => flags.disallow_any_generics = to_bool(value, invert)?,
+        "disallow_incomplete_defs" => flags.disallow_incomplete_defs = to_bool(value, invert)?,
         "disallow_subclassing_any" => flags.disallow_subclassing_any = to_bool(value, invert)?,
         "disallow_untyped_calls" => flags.disallow_untyped_calls = to_bool(value, invert)?,
         "allow_untyped_globals" => flags.allow_untyped_globals = to_bool(value, invert)?,
