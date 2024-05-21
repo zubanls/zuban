@@ -1881,6 +1881,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     fn is_strict_equality_comparison(&self, left_t: &Type, right_t: &Type) -> bool {
         debug_assert!(self.flags().strict_equality);
         // In mypy this is implemented as "def dangerous_comparison"
+
+        // Mypy considers None in general to be fine.
         if matches!(left_t, Type::None)
             || matches!(right_t, Type::None)
             || has_custom_special_method(self.i_s, left_t, "__eq__")
@@ -1888,6 +1890,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         {
             return true;
         }
+
         let db = self.i_s.db;
         let left_t = left_t.remove_none(db);
         let right_t = right_t.remove_none(db);
