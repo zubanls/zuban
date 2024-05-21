@@ -13,7 +13,7 @@ use super::{
     name_binder::NameBinder,
 };
 use crate::{
-    config::{set_flag, to_bool},
+    config::{set_flag, IniOrTomlValue},
     database::{
         ComplexPoint, Database, FileIndex, Locality, LocalityLink, Point, PointKind, Points,
         PythonProject, Specific,
@@ -517,8 +517,12 @@ fn info_from_directives<'x>(
                 flags = Some(project.flags.clone());
             }
             let mut check = || {
+                let value = match value {
+                    Some(value) => IniOrTomlValue::Ini(value),
+                    None => IniOrTomlValue::InlineConfigNoValue,
+                };
                 if name == "ignore_errors" {
-                    ignore_errors = to_bool(value, false)?;
+                    ignore_errors = value.to_bool(false)?;
                     Ok(())
                 } else {
                     set_flag(flags.as_mut().unwrap(), &name, value)

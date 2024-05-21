@@ -123,6 +123,14 @@ impl<'name, 'code> TestCase<'name, 'code> {
             let ini = cleanup_mypy_issues(mypy_ini_config).unwrap();
             config = TypeCheckerFlags::from_mypy_ini(&ini).unwrap()
         }
+        if let Some(pyproject_toml) = steps.steps[0].files.get("pyproject.toml") {
+            println!(
+                "Loading pyproject.toml for {} ({})",
+                self.name, self.file_name
+            );
+            let ini = cleanup_mypy_issues(pyproject_toml).unwrap();
+            config = TypeCheckerFlags::from_pyproject_toml(&ini).unwrap()
+        }
 
         if steps.flags.contains(&"--strict") {
             config.enable_all_strict_flags();

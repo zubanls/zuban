@@ -1,6 +1,7 @@
 use std::borrow::Cow;
 
 use ini::Ini;
+use toml_edit::{DocumentMut, Item, TomlError, Value};
 
 const OPTIONS_STARTING_WITH_ALLOW: [&str; 3] = [
     "allow_untyped_globals",
@@ -107,7 +108,31 @@ impl TypeCheckerFlags {
     pub fn from_mypy_ini(code: &str) -> Result<Self, ini::ParseError> {
         let ini = Ini::load_from_str(code)?;
         let mut flags = Self::default();
-        apply_mypy_ini(&mut flags, ini);
+        if let Some(section) = ini.section(Some("mypy")) {
+            for (key, value) in section.iter() {
+                apply_from_config(&mut flags, key, IniOrTomlValue::Ini(value));
+            }
+        }
+        Ok(flags)
+    }
+
+    pub fn from_pyproject_toml(code: &str) -> Result<Self, TomlError> {
+        let document = code.parse::<DocumentMut>()?;
+        let mut flags = Self::default();
+        if let Some(config) = document.get("tool").and_then(|item| item.get("mypy")) {
+            let Item::Table(table) = config else {
+                todo!();
+            };
+            for (key, item) in table.iter() {
+                match item {
+                    Item::Value(value) => {
+                        apply_from_config(&mut flags, key, IniOrTomlValue::Toml(value))
+                    }
+                    Item::ArrayOfTables(_) => (), // Implement per file
+                    _ => todo!("{item:?}"),
+                }
+            }
+        }
         Ok(flags)
     }
 
@@ -132,32 +157,66 @@ impl PythonVersion {
     }
 }
 
+#[derive(Debug, Copy, Clone)]
+pub enum IniOrTomlValue<'config> {
+    Toml(&'config Value),
+    Ini(&'config str),
+    InlineConfigNoValue,
+}
+
+impl IniOrTomlValue<'_> {
+    fn as_repr(&self) -> Cow<str> {
+        match self {
+            Self::Toml(v) => Cow::from(v.to_string()),
+            Self::Ini(v) => Cow::Borrowed(v),
+            Self::InlineConfigNoValue => Cow::Borrowed("True"),
+        }
+    }
+
+    pub fn to_bool(&self, invert: bool) -> Result<bool, Box<str>> {
+        let result = match self {
+            Self::Toml(v) => v.as_bool().unwrap_or_else(|| todo!()),
+            Self::Ini(value) => match value.to_lowercase().as_str() {
+                "true" | "1" | "yes" | "on" => true,
+                "false" | "0" | "no" | "off" => false,
+                _ => todo!(),
+            },
+            Self::InlineConfigNoValue => true,
+        };
+        Ok(result != invert)
+    }
+}
+
 pub fn set_flag(
     flags: &mut TypeCheckerFlags,
     name: &str,
-    value: Option<&str>,
+    value: IniOrTomlValue,
 ) -> Result<(), Box<str>> {
     let (invert, option_name) = maybe_invert(name);
-    let expect_value = || {
+    let expect_str = || {
         if invert {
             Err(format!("Can not invert non-boolean key {option_name}").into())
         } else {
-            value.ok_or_else(|| Box::from("TODO string"))
+            match &value {
+                IniOrTomlValue::Toml(Value::String(s)) => Ok(s.value().as_str()),
+                IniOrTomlValue::Ini(v) => Ok(*v),
+                _ => Err(Box::from("TODO expected string")),
+            }
         }
     };
     match option_name.as_ref() {
         "always_true" => flags
             .always_true_symbols
-            .extend(split_commas(expect_value()?).map(|s| s.into())),
+            .extend(split_commas(expect_str()?).map(|s| s.into())),
         "always_false" => flags
             .always_false_symbols
-            .extend(split_commas(expect_value()?).map(|s| s.into())),
+            .extend(split_commas(expect_str()?).map(|s| s.into())),
         "enable_error_code" => flags
             .enabled_error_codes
-            .extend(split_commas(expect_value()?).map(|s| s.into())),
+            .extend(split_commas(expect_str()?).map(|s| s.into())),
         "disable_error_code" => flags
             .disabled_error_codes
-            .extend(split_commas(expect_value()?).map(|s| s.into())),
+            .extend(split_commas(expect_str()?).map(|s| s.into())),
         "ignore_errors" => (), // TODO
         "strict" => {
             return Err(concat!(
@@ -191,22 +250,22 @@ fn set_bool_init_flags(
     flags: &mut TypeCheckerFlags,
     original_name: &str,
     name: &str,
-    value: Option<&str>,
+    value: IniOrTomlValue,
     invert: bool,
 ) -> Result<(), Box<str>> {
     match name {
-        "strict_equality" => flags.strict_equality = to_bool(value, invert)?,
-        "strict_optional" => flags.strict_optional = to_bool(value, invert)?,
-        "warn_no_return" => flags.warn_no_return = to_bool(value, invert)?,
-        "disallow_any_generics" => flags.disallow_any_generics = to_bool(value, invert)?,
-        "disallow_incomplete_defs" => flags.disallow_incomplete_defs = to_bool(value, invert)?,
-        "disallow_subclassing_any" => flags.disallow_subclassing_any = to_bool(value, invert)?,
-        "disallow_untyped_calls" => flags.disallow_untyped_calls = to_bool(value, invert)?,
-        "allow_untyped_globals" => flags.allow_untyped_globals = to_bool(value, invert)?,
-        "ignore_missing_imports" => flags.ignore_missing_imports = to_bool(value, invert)?,
-        "local_partial_types" => flags.local_partial_types = to_bool(value, invert)?,
-        "implicit_reexport" => flags.no_implicit_reexport = !to_bool(value, invert)?,
-        "implicit_optional" => flags.implicit_optional = to_bool(value, invert)?,
+        "strict_equality" => flags.strict_equality = value.to_bool(invert)?,
+        "strict_optional" => flags.strict_optional = value.to_bool(invert)?,
+        "warn_no_return" => flags.warn_no_return = value.to_bool(invert)?,
+        "disallow_any_generics" => flags.disallow_any_generics = value.to_bool(invert)?,
+        "disallow_incomplete_defs" => flags.disallow_incomplete_defs = value.to_bool(invert)?,
+        "disallow_subclassing_any" => flags.disallow_subclassing_any = value.to_bool(invert)?,
+        "disallow_untyped_calls" => flags.disallow_untyped_calls = value.to_bool(invert)?,
+        "allow_untyped_globals" => flags.allow_untyped_globals = value.to_bool(invert)?,
+        "ignore_missing_imports" => flags.ignore_missing_imports = value.to_bool(invert)?,
+        "local_partial_types" => flags.local_partial_types = value.to_bool(invert)?,
+        "implicit_reexport" => flags.no_implicit_reexport = !value.to_bool(invert)?,
+        "implicit_optional" => flags.implicit_optional = value.to_bool(invert)?,
         // These are currently ignored
         "follow_imports" | "follow_imports_for_stubs" => (),
         // Will always be irrelevant
@@ -215,24 +274,12 @@ fn set_bool_init_flags(
             return Err(format!(
                 "Unrecognized option: {} = {}",
                 original_name,
-                value.unwrap_or("True")
+                value.as_repr()
             )
             .into())
         }
     }
     Ok(())
-}
-
-pub fn to_bool(value: Option<&str>, invert: bool) -> Result<bool, Box<str>> {
-    let result = match value {
-        Some(value) => match value.to_lowercase().as_str() {
-            "true" | "1" | "yes" | "on" => true,
-            "false" | "0" | "no" | "off" => false,
-            _ => todo!(),
-        },
-        None => true,
-    };
-    Ok(result != invert)
 }
 
 fn split_commas(s: &str) -> impl Iterator<Item = &str> {
@@ -243,22 +290,16 @@ fn split_commas(s: &str) -> impl Iterator<Item = &str> {
     s.split(',').map(|s| s.trim())
 }
 
-fn apply_mypy_ini(flags: &mut TypeCheckerFlags, ini: Ini) {
-    let Some(section) = ini.section(Some("mypy")) else {
+fn apply_from_config(flags: &mut TypeCheckerFlags, key: &str, value: IniOrTomlValue) {
+    if key == "show_error_codes" {
+        // This is currently not handled here but in diagnostics config
         return;
-    };
-    for (key, value) in section.iter() {
-        if key == "show_error_codes" {
-            // This is currently not handled here but in diagnostics config
-            continue;
+    }
+    if key == "strict" {
+        if value.to_bool(false).unwrap_or_else(|_| todo!()) {
+            flags.enable_all_strict_flags();
         }
-        if key == "strict" {
-            if to_bool(Some(value), false).unwrap_or_else(|_| todo!()) {
-                flags.enable_all_strict_flags();
-            }
-            continue;
-        }
-        set_flag(flags, key, Some(value))
-            .unwrap_or_else(|_| todo!("key: {key:?}, value: {value:?}"))
+    } else {
+        set_flag(flags, key, value).unwrap_or_else(|_| todo!("key: {key:?}, value: {value:?}"))
     }
 }

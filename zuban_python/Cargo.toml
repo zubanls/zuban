@@ -12,6 +12,7 @@ lazy_static = "*"
 regex = "*"
 walkdir = "2"
 rust-ini = "0.21.0"
+toml_edit = "0.22.13"
 
 [features]
 zuban_debug = []
