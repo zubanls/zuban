@@ -28,6 +28,7 @@ pub use diagnostics::DiagnosticConfig;
 use file::Leaf;
 use inference_state::InferenceState;
 use inferred::Inferred;
+use ini::Ini;
 use name::Names;
 use parsa_python_cst::CodeIndex;
 
@@ -137,6 +138,13 @@ impl TypeCheckerFlags {
             warn_return_any: true,
             ..Self::default()
         }
+    }
+
+    pub fn from_mypy_ini(code: &str) -> Result<Self, ini::ParseError> {
+        let ini = Ini::load_from_str(code)?;
+        let mut flags = Self::default();
+        config::apply_mypy_ini(&mut flags, ini);
+        Ok(flags)
     }
 
     fn computed_platform(&self) -> &str {

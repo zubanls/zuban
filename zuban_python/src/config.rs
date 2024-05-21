@@ -1,5 +1,7 @@
 use std::borrow::Cow;
 
+use ini::Ini;
+
 use crate::TypeCheckerFlags;
 
 const OPTIONS_STARTING_WITH_ALLOW: [&str; 3] = [
@@ -76,6 +78,12 @@ fn set_bool_init_flags(
         "warn_no_return" => flags.warn_no_return = to_bool(value, invert)?,
         "disallow_any_generics" => flags.disallow_any_generics = to_bool(value, invert)?,
         "allow_untyped_globals" => flags.allow_untyped_globals = to_bool(value, invert)?,
+        "ignore_missing_imports" => flags.ignore_missing_imports = to_bool(value, invert)?,
+        "local_partial_types" => flags.local_partial_types = to_bool(value, invert)?,
+        // These are currently ignored
+        "follow_imports" | "follow_imports_for_stubs" => (),
+        // Will always be irrelevant
+        "cache_fine_grained" => (),
         _ => {
             return Err(format!(
                 "Unrecognized option: {} = {}",
@@ -106,4 +114,22 @@ fn split_commas(s: &str) -> impl Iterator<Item = &str> {
         s = new_s
     }
     s.split(',').map(|s| s.trim())
+}
+
+pub fn apply_mypy_ini(flags: &mut TypeCheckerFlags, ini: Ini) {
+    let Some(section) = ini.section(Some("mypy")) else {
+        return;
+    };
+    for (key, value) in section.iter() {
+        if key == "show_error_codes" {
+            // This is currently not handled here but in diagnostics config
+            continue;
+        }
+        if key == "strict" {
+            // TODO implement
+            continue;
+        }
+        set_flag(flags, key, Some(value))
+            .unwrap_or_else(|_| todo!("key: {key:?}, value: {value:?}"))
+    }
 }

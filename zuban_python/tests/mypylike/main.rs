@@ -70,6 +70,7 @@ lazy_static::lazy_static! {
     static ref REPLACE_MYPY: Regex = Regex::new(r"`-?\d+").unwrap();
     static ref REPLACE_MYPY_ELLIPSIS: Regex = Regex::new(r#""ellipsis""#).unwrap();
     static ref REPLACE_MYPY_NO_RETURN: Regex = Regex::new(r"\bNoReturn\b").unwrap();
+    static ref REPLACE_ESCAPES: Regex = Regex::new(r"^\\\[").unwrap();
 }
 
 #[derive(Default, Clone, Debug)]
@@ -110,59 +111,93 @@ impl<'name, 'code> TestCase<'name, 'code> {
         {
             return false;
         }
-        let extra_checks = steps.flags.contains(&"--extra-checks");
-
         let arg_after = |after_name| {
             let mut flag_iterator = steps.flags.iter();
             (flag_iterator.any(|x| *x == after_name))
                 .then(|| flag_iterator.next().unwrap().to_string())
         };
 
-        let mut config = if steps.flags.contains(&"--strict") {
-            TypeCheckerFlags {
-                extra_checks,
-                mypy_compatible,
+        let mut config = TypeCheckerFlags::default();
+        if let Some(mypy_ini_config) = steps.steps[0].files.get("mypy.ini") {
+            println!("Loading mypy.ini for {} ({})", self.name, self.file_name);
+            let ini = cleanup_mypy_issues(mypy_ini_config).unwrap();
+            config = TypeCheckerFlags::from_mypy_ini(&ini).unwrap()
+        }
+
+        if steps.flags.contains(&"--strict") {
+            config = TypeCheckerFlags {
                 disallow_any_generics: !steps.flags.contains(&"--allow-any-generics"),
                 ..TypeCheckerFlags::strict()
             }
-        } else {
-            TypeCheckerFlags {
-                implicit_optional: steps.flags.contains(&"--implicit-optional"),
-                check_untyped_defs: steps.flags.contains(&"--check-untyped-defs"),
-                ignore_missing_imports: steps.flags.contains(&"--ignore-missing-imports"),
-                disallow_untyped_defs: steps.flags.contains(&"--disallow-untyped-defs"),
-                disallow_untyped_calls: steps.flags.contains(&"--disallow-untyped-calls"),
-                disallow_untyped_decorators: steps.flags.contains(&"--disallow-untyped-decorators"),
-                disallow_any_generics: steps.flags.contains(&"--disallow-any-generics"),
-                disallow_any_decorated: steps.flags.contains(&"--disallow-any-decorated"),
-                disallow_any_explicit: steps.flags.contains(&"--disallow-any-explicit"),
-                disallow_any_expr: steps.flags.contains(&"--disallow-any-expr"),
-                disallow_any_unimported: steps.flags.contains(&"--disallow-any-unimported"),
-                disallow_subclassing_any: steps.flags.contains(&"--disallow-subclassing-any"),
-                disallow_incomplete_defs: steps.flags.contains(&"--disallow-incomplete-defs"),
-                allow_untyped_globals: steps.flags.contains(&"--allow-untyped-globals"),
-                // This is simply for testing and mirrors how mypy does it.
-                allow_empty_bodies: !self.name.ends_with("_no_empty")
-                    && self.file_name != "check-abstract",
-                warn_unreachable: steps.flags.contains(&"--warn-unreachable"),
-                warn_redundant_casts: steps.flags.contains(&"--warn-redundant-casts"),
-                warn_return_any: steps.flags.contains(&"--warn-return-any"),
-                warn_no_return: !steps.flags.contains(&"--no-warn-no-return"),
-                local_partial_types: steps.flags.contains(&"--local-partial-types"),
-                no_implicit_reexport: steps.flags.contains(&"--no-implicit-reexport"),
-                disable_bytearray_promotion: steps.flags.contains(&"--disable-bytearray-promotion"),
-                disable_memoryview_promotion: steps
-                    .flags
-                    .contains(&"--disable-memoryview-promotion"),
-                platform: arg_after("--platform"),
-                extra_checks,
-                strict_optional: !steps.flags.contains(&"--no-strict-optional")
-                    && !self.file_name.starts_with("semanal-"),
-                strict_equality: steps.flags.contains(&"--strict-equality"),
-                mypy_compatible,
-                ..Default::default()
+        }
+        let set_bool_flag = |change: &mut _, flag| {
+            if steps.flags.contains(&flag) {
+                *change = true;
             }
         };
+        let set_reverse_bool_flag = |change: &mut _, flag| {
+            if steps.flags.contains(&flag) {
+                *change = false;
+            }
+        };
+        set_bool_flag(&mut config.implicit_optional, "--implicit-optional");
+        set_bool_flag(&mut config.check_untyped_defs, "--check-untyped-defs");
+        set_bool_flag(&mut config.disallow_untyped_defs, "--disallow-untyped-defs");
+        set_bool_flag(
+            &mut config.disallow_untyped_calls,
+            "--disallow-untyped-calls",
+        );
+        set_bool_flag(
+            &mut config.disallow_untyped_decorators,
+            "--disallow-untyped-decorators",
+        );
+        set_bool_flag(&mut config.disallow_any_generics, "--disallow-any-generics");
+        set_bool_flag(
+            &mut config.disallow_any_decorated,
+            "--disallow-any-decorated",
+        );
+        set_bool_flag(&mut config.disallow_any_explicit, "--disallow-any-explicit");
+        set_bool_flag(&mut config.disallow_any_expr, "--disallow-any-expr");
+        set_bool_flag(
+            &mut config.disallow_any_unimported,
+            "--disallow-any-unimported",
+        );
+        set_bool_flag(
+            &mut config.disallow_subclassing_any,
+            "--disallow-subclassing-any",
+        );
+        set_bool_flag(
+            &mut config.disallow_incomplete_defs,
+            "--disallow-incomplete-defs",
+        );
+        set_bool_flag(&mut config.allow_untyped_globals, "--allow-untyped-globals");
+        set_bool_flag(&mut config.warn_unreachable, "--warn-unreachable");
+        set_bool_flag(&mut config.warn_redundant_casts, "--warn-redundant-casts");
+        set_bool_flag(&mut config.warn_return_any, "--warn-return-any");
+        set_bool_flag(&mut config.warn_no_return, "");
+        set_bool_flag(&mut config.local_partial_types, "--local-partial-types");
+        set_bool_flag(&mut config.no_implicit_reexport, "--no-implicit-reexport");
+        set_bool_flag(
+            &mut config.disable_bytearray_promotion,
+            "--disable-bytearray-promotion",
+        );
+        set_bool_flag(
+            &mut config.disable_memoryview_promotion,
+            "--disable-memoryview-promotion",
+        );
+        set_bool_flag(&mut config.strict_equality, "--strict-equality");
+        set_bool_flag(&mut config.extra_checks, "--extra-checks");
+        set_bool_flag(
+            &mut config.ignore_missing_imports,
+            "--ignore-missing-imports",
+        );
+        set_reverse_bool_flag(&mut config.warn_no_return, "--no-warn-no-return");
+        set_reverse_bool_flag(&mut config.strict_optional, "--no-strict-optional");
+        // This is simply for testing and mirrors how mypy does it.
+        config.allow_empty_bodies =
+            !self.name.ends_with("_no_empty") && self.file_name != "check-abstract";
+        config.platform = arg_after("--platform");
+        config.mypy_compatible = mypy_compatible;
 
         if let Some(version) = arg_after("--python-version") {
             let x = &version[..1];
@@ -617,6 +652,7 @@ fn cleanup_mypy_issues(mut s: &str) -> Option<String> {
     // Mypy has a bit of a different handling for ellipsis when reading it from typeshed.
     let s = REPLACE_MYPY_ELLIPSIS.replace_all(&s, "\"EllipsisType\"");
     let s = REPLACE_MYPY_NO_RETURN.replace_all(&s, "Never");
+    let s = REPLACE_ESCAPES.replace_all(&s, "[");
     Some(replace_annoyances(s.replace("tmp/", "")))
 }
 
