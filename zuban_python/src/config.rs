@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
 use ini::Ini;
-use toml_edit::{DocumentMut, Item, TomlError, Value};
+use toml_edit::{DocumentMut, Item, Table, Value};
 
 const OPTIONS_STARTING_WITH_ALLOW: [&str; 3] = [
     "allow_untyped_globals",
@@ -116,19 +116,43 @@ impl TypeCheckerFlags {
         Ok(flags)
     }
 
-    pub fn from_pyproject_toml(code: &str) -> Result<Self, TomlError> {
-        let document = code.parse::<DocumentMut>()?;
+    pub fn from_pyproject_toml(code: &str) -> Result<Self, String> {
+        let document = match code.parse::<DocumentMut>() {
+            Ok(doc) => doc,
+            Err(toml_err) => return Err(toml_err.to_string()),
+        };
         let mut flags = Self::default();
         if let Some(config) = document.get("tool").and_then(|item| item.get("mypy")) {
             let Item::Table(table) = config else {
-                todo!();
+                return Err("Expected tool.mypy to be a table in pyproject.toml".to_string());
             };
+
+            let mut overrides = vec![];
             for (key, item) in table.iter() {
                 match item {
                     Item::Value(value) => {
                         apply_from_config(&mut flags, key, IniOrTomlValue::Toml(value))
                     }
-                    Item::ArrayOfTables(_) => (), // Implement per file
+                    Item::ArrayOfTables(override_tables) if key == "overrides" => {
+                        for override_table in override_tables.iter() {
+                            for module in pyproject_toml_override_module_names(override_table)? {
+                                let mut config = vec![];
+                                for (key, part) in override_table.iter() {
+                                    if key != "module" {
+                                        match part {
+                                            Item::Value(v) => {
+                                                config.push((key.into(), OverrideIniOrTomlValue::Toml(v.clone())))
+                                            }
+                                            _ => {
+                                                return Err("Found unexpected value in override in pyproject.toml".to_string())
+                                            }
+                                        }
+                                    }
+                                }
+                                overrides.push(OverrideConfig { module, config })
+                            }
+                        }
+                    }
                     _ => todo!("{item:?}"),
                 }
             }
@@ -154,6 +178,50 @@ impl PythonVersion {
 
     pub fn at_least_3_dot(&self, minor: usize) -> bool {
         self.major >= 3 && self.minor >= minor
+    }
+}
+
+struct OverridePath {
+    for_modules: Vec<Box<str>>,
+    star: bool, // For things like foo.bar.*
+}
+
+enum OverrideIniOrTomlValue {
+    Toml(Value),
+    Ini(Box<str>),
+}
+struct OverrideConfig {
+    module: OverridePath,
+    // Key/Value mappings
+    config: Vec<(Box<str>, OverrideIniOrTomlValue)>,
+}
+
+fn pyproject_toml_override_module_names(table: &Table) -> Result<Vec<OverridePath>, String> {
+    let path_from_str = |mut s: &str| {
+        let mut star = false;
+        if let Some(new_s) = s.strip_suffix(".*") {
+            s = new_s;
+            star = true;
+        }
+        OverridePath {
+            for_modules: s.split('.').map(|s| s.into()).collect(),
+            star,
+        }
+    };
+    match table.get("module") {
+        Some(Item::Value(Value::String(s))) => Ok(vec![path_from_str(s.value())]),
+        Some(Item::Value(Value::Array(list))) => {
+            let mut result = vec![];
+            for entry in list {
+                match entry {
+                    Value::String(s) => result.push(path_from_str(s.value())),
+                    _ => return Err("".to_string()),
+                }
+            }
+            Ok(result)
+        }
+        Some(_) => Err("Unexpected value for module in override in pyproject.toml".to_string()),
+        None => Err("Expected a module entry for every override in pyproject.toml".to_string()),
     }
 }
 
