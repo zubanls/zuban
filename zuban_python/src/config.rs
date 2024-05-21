@@ -193,31 +193,34 @@ pub fn set_flag(
     value: IniOrTomlValue,
 ) -> Result<(), Box<str>> {
     let (invert, option_name) = maybe_invert(name);
-    let expect_str = || {
+    let add_list_of_str = |target: &mut Vec<String>| {
         if invert {
             Err(format!("Can not invert non-boolean key {option_name}").into())
         } else {
             match &value {
-                IniOrTomlValue::Toml(Value::String(s)) => Ok(s.value().as_str()),
-                IniOrTomlValue::Ini(v) => Ok(*v),
+                IniOrTomlValue::Toml(Value::Array(lst)) => {
+                    for entry in lst.iter() {
+                        match entry {
+                            Value::String(s) => target.push(s.value().clone()),
+                            _ => return Err(Box::from("TODO expected string array")),
+                        }
+                    }
+                    Ok(())
+                }
+                IniOrTomlValue::Ini(v) => {
+                    target.extend(split_commas(v).map(|s| String::from(s)));
+                    Ok(())
+                }
                 _ => Err(Box::from("TODO expected string")),
             }
         }
     };
     match option_name.as_ref() {
-        "always_true" => flags
-            .always_true_symbols
-            .extend(split_commas(expect_str()?).map(|s| s.into())),
-        "always_false" => flags
-            .always_false_symbols
-            .extend(split_commas(expect_str()?).map(|s| s.into())),
-        "enable_error_code" => flags
-            .enabled_error_codes
-            .extend(split_commas(expect_str()?).map(|s| s.into())),
-        "disable_error_code" => flags
-            .disabled_error_codes
-            .extend(split_commas(expect_str()?).map(|s| s.into())),
-        "ignore_errors" => (), // TODO
+        "always_true" => add_list_of_str(&mut flags.always_true_symbols),
+        "always_false" => add_list_of_str(&mut flags.always_false_symbols),
+        "enable_error_code" => add_list_of_str(&mut flags.enabled_error_codes),
+        "disable_error_code" => add_list_of_str(&mut flags.disabled_error_codes),
+        "ignore_errors" => Ok(()), // TODO
         "strict" => {
             return Err(concat!(
                 r#"Setting "strict" not supported in inline configuration: "#,
@@ -230,7 +233,6 @@ pub fn set_flag(
             return set_bool_init_flags(flags, name, &option_name, value, invert);
         }
     }
-    Ok(())
 }
 
 fn maybe_invert(name: &str) -> (bool, Cow<str>) {

@@ -1572,9 +1572,6 @@ testCallingNoTypeCheckFunction
 testCallingNoTypeCheckFunction2
 testNoTypeCheckDecoratorSemanticError
 
-# pyproject.toml
-testAlwaysTrueAlwaysFalseConfigFilePyProjectTOML
-testDisableErrorCodeConfigFilePyProjectTOML
 # mypy.ini/pyproject.toml mypy_path 
 testCaseInsensitivityDir
 testPreferPackageOverFileCase
