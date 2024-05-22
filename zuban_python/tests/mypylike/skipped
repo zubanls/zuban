@@ -1578,24 +1578,18 @@ testPreferPackageOverFileCase
 testCaseInsensitivityDirPyProjectTOML
 testPreferPackageOverFileCasePyProjectTOML
 # mypy.ini/pyproject.toml per file
+testStrictEqualityPerFile
+testStrictEqualityPerFilePyProjectTOML
+testDisallowSubclassingAny
+testDisallowSubclassingAnyPyProjectTOML
+# strict optional with config file
 testPerFileStrictOptionalBasic
 testPerFileStrictOptionalBasicImportStandard
 testPerFileStrictOptionalBasicImportOptional
 testPerFileStrictOptionalListItemImportOptional
-testStrictEqualityPerFile
-testPerModuleErrorCodes
-testPerModuleErrorCodesOverride
-testInlineErrorCodesOverrideConfig
-testDisallowSubclassingAny
-testModuleGetattrInit10
-testIgnoreErrorFromMissingStubs2
 testPerFileStrictOptionalBasicPyProjectTOML
 testPerFileStrictOptionalBasicImportStandardPyProjectTOML
 testPerFileStrictOptionalListItemImportOptionalPyProjectTOML
-testStrictEqualityPerFilePyProjectTOML
-testDisallowSubclassingAnyPyProjectTOML
-testModuleGetattrInit10PyProjectTOML
-# strict optional with config file
 testNewAnalyzerTypeArgBoundCheckWithStrictOptional
 testNewAnalyzerTypeArgBoundCheckWithStrictOptionalPyProjectTOML
 testPerFileStrictOptionalModule
@@ -1625,6 +1619,11 @@ testClassLevelTypeAliasesInUnusualContexts
 testMalformedTypeAliasRuntimeReassignments
 
 # ------------- Additional unimportant, but would be nice -----------------
+
+# ignore_missing_imports in Mypy overrides ignores import errors if those modules are not presents
+testModuleGetattrInit10
+testIgnoreErrorFromMissingStubs2
+testModuleGetattrInit10PyProjectTOML
 
 # __init__ None needed
 testInitReturnTypeError
@@ -1662,6 +1661,8 @@ testErrorCodeMissingWholeFileIgnores
 testErrorCodeMissingMultiple
 testInlineErrorCodes
 testInlineErrorCodesMultipleCodes
+testInlineErrorCodesOverrideConfig
+testPerModuleErrorCodesOverride
 # type: ignore blocking errors cannot be ignored: ""yield" outside function"
 testCannotIgnoreBlockingError
 # type: ignore on forward reference

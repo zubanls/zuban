@@ -439,6 +439,7 @@ fn set_bool_init_flags(
         "local_partial_types" => flags.local_partial_types = value.to_bool(invert)?,
         "implicit_reexport" => flags.no_implicit_reexport = !value.to_bool(invert)?,
         "implicit_optional" => flags.implicit_optional = value.to_bool(invert)?,
+        "disallow_untyped_defs" => flags.disallow_untyped_defs = value.to_bool(invert)?,
         // These are currently ignored
         "follow_imports" | "follow_imports_for_stubs" => (),
         // Will always be irrelevant
