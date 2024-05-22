@@ -1708,7 +1708,7 @@ fn find_and_check_override(
         if !has_override_decorator
             && from
                 .file
-                .flags(&i_s.db.project)
+                .flags(i_s.db)
                 .enabled_error_codes
                 .iter()
                 .any(|c| c == "explicit-override")

@@ -3277,7 +3277,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     }
 
     pub fn flags(&self) -> &TypeCheckerFlags {
-        self.file.flags(&self.i_s.db.project)
+        self.file.flags(self.i_s.db)
     }
 }
 

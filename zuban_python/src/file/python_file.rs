@@ -158,7 +158,7 @@ impl File for PythonFile {
             // annotation strings, etc.
             self.inference(&i_s).calculate_diagnostics();
         }
-        let flags = self.flags(&db.project);
+        let flags = self.flags(db);
         let mut vec: Vec<_> = unsafe {
             self.issues
                 .iter()
@@ -296,7 +296,8 @@ impl<'db> PythonFile {
     ) {
         self.symbol_table
             .set(NameBinder::with_global_binder(
-                self.flags(project),
+                // TODO this does not use flags of the super file. Is this an issue?
+                self.flags.as_ref().unwrap_or(&project.flags),
                 &self.tree,
                 &self.points,
                 &self.complex_points,
@@ -526,13 +527,13 @@ impl<'db> PythonFile {
         }
     }
 
-    pub fn flags<'x>(&'x self, project: &'x PythonProject) -> &TypeCheckerFlags {
-        /*
+    pub fn flags<'x>(&'x self, db: &'x Database) -> &TypeCheckerFlags {
         if let Some(super_file) = self.super_file {
+            debug_assert!(self.flags.is_none());
             &db.loaded_python_file(super_file).flags(db)
+        } else {
+            self.flags.as_ref().unwrap_or(&db.project.flags)
         }
-        */
-        self.flags.as_ref().unwrap_or(&project.flags)
     }
 }
 

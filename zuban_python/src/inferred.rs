@@ -1805,11 +1805,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             ComplexPoint::TypeAlias(alias) => {
                                 if !alias.type_vars.is_empty() {
                                     if let Some(node_ref) = args.as_node_ref() {
-                                        if node_ref
-                                            .file
-                                            .flags(&i_s.db.project)
-                                            .disallow_any_generics
-                                        {
+                                        if node_ref.file.flags(i_s.db).disallow_any_generics {
                                             node_ref.add_issue(
                                                 i_s,
                                                 IssueKind::MissingTypeParameters {
@@ -2436,7 +2432,7 @@ pub fn add_attribute_error(
 ) {
     let object = match t {
         Type::Module(f) => {
-            if !node_ref.file.flags(&i_s.db.project).ignore_missing_imports {
+            if !node_ref.file.flags(i_s.db).ignore_missing_imports {
                 node_ref.add_issue(i_s, IssueKind::ModuleAttributeError { name: name.into() });
             }
             return;

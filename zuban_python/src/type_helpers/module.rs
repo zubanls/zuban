@@ -158,7 +158,7 @@ pub fn is_reexport_issue_if_check_needed(
         let name = NodeRef::from_link(db, link).maybe_name().unwrap().as_code();
         !(dunder_all.iter().any(|d| d.as_str(db) == name) || name == "__all__")
     } else {
-        let check_reexport = file.is_stub || file.flags(&db.project).no_implicit_reexport;
+        let check_reexport = file.is_stub || file.flags(db).no_implicit_reexport;
         check_reexport && is_private_import(db, link)
     }
 }
