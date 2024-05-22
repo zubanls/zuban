@@ -254,6 +254,22 @@ impl<'db> PythonFile {
             tree.mypy_inline_config_directives(),
         );
         ignore_type_errors |= directives_info.ignore_errors;
+        Self::new_internal(
+            tree,
+            issues,
+            is_stub,
+            directives_info.flags,
+            ignore_type_errors,
+        )
+    }
+
+    fn new_internal(
+        tree: Tree,
+        issues: Diagnostics,
+        is_stub: bool,
+        flags: Option<TypeCheckerFlags>,
+        ignore_type_errors: bool,
+    ) -> Self {
         let length = tree.length();
         Self {
             tree,
@@ -269,7 +285,7 @@ impl<'db> PythonFile {
             super_file: None,
             is_stub,
             ignore_type_errors,
-            flags: directives_info.flags,
+            flags,
         }
     }
 
@@ -323,11 +339,13 @@ impl<'db> PythonFile {
         code: Box<str>, // TODO this should not be a string, but probably cow
     ) -> &'db Self {
         // TODO should probably not need a newline
-        let mut file = PythonFile::new(
-            &db.project,
-            &self.file_entry(db),
-            Box::from(code.into_string() + "\n"),
+        let tree = Tree::parse(Box::from(code.into_string() + "\n"));
+        let mut file = PythonFile::new_internal(
+            tree,
+            Diagnostics::default(),
             self.is_stub,
+            None,
+            self.ignore_type_errors,
         );
         file.super_file = Some(self.file_index());
         // TODO just saving this in the cache and forgetting about it is a bad idea
@@ -509,6 +527,11 @@ impl<'db> PythonFile {
     }
 
     pub fn flags<'x>(&'x self, project: &'x PythonProject) -> &TypeCheckerFlags {
+        /*
+        if let Some(super_file) = self.super_file {
+            &db.loaded_python_file(super_file).flags(db)
+        }
+        */
         self.flags.as_ref().unwrap_or(&project.flags)
     }
 }
