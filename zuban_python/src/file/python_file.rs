@@ -13,7 +13,7 @@ use super::{
     name_binder::NameBinder,
 };
 use crate::{
-    config::{set_flag, IniOrTomlValue},
+    config::{set_flag_and_return_ignore_errors, IniOrTomlValue},
     database::{
         ComplexPoint, Database, FileIndex, Locality, LocalityLink, Point, PointKind, Points,
         PythonProject, Specific,
@@ -557,7 +557,9 @@ fn info_from_directives<'x>(
                 if flags.is_none() {
                     flags = Some(project.flags.clone());
                 }
-                override_.apply_to_flags(flags.as_mut().unwrap());
+                ignore_errors |= override_
+                    .apply_to_flags_and_return_ignore_errors(flags.as_mut().unwrap())
+                    .expect("Issues with loading config overrides, TODO need better error");
             }
         }
     }
@@ -578,12 +580,9 @@ fn info_from_directives<'x>(
                     Some(value) => IniOrTomlValue::Ini(value),
                     None => IniOrTomlValue::InlineConfigNoValue,
                 };
-                if name == "ignore_errors" {
-                    ignore_errors = value.to_bool(false)?;
-                    Ok(())
-                } else {
-                    set_flag(flags.as_mut().unwrap(), &name, value)
-                }
+                ignore_errors |=
+                    set_flag_and_return_ignore_errors(flags.as_mut().unwrap(), &name, value)?;
+                Ok(())
             };
             if let Err(err) = check() {
                 issues

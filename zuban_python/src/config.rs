@@ -5,6 +5,8 @@ use toml_edit::{DocumentMut, Item, Table, Value};
 
 use crate::workspaces::Directory;
 
+type ConfigResult = Result<bool, String>;
+
 const OPTIONS_STARTING_WITH_ALLOW: [&str; 3] = [
     "allow_untyped_globals",
     "allow_redefinition",
@@ -35,7 +37,7 @@ impl ProjectOptions {
             let Some(name) = name else { continue };
             if name == "mypy" {
                 for (key, value) in section.iter() {
-                    apply_from_config(&mut flags, key, IniOrTomlValue::Ini(value));
+                    apply_from_config(&mut flags, key, IniOrTomlValue::Ini(value))?;
                 }
             } else if let Some(rest) = name.strip_prefix("mypy-") {
                 overrides.push(OverrideConfig {
@@ -66,7 +68,7 @@ impl ProjectOptions {
             for (key, item) in table.iter() {
                 match item {
                     Item::Value(value) => {
-                        apply_from_config(&mut flags, key, IniOrTomlValue::Toml(value))
+                        apply_from_config(&mut flags, key, IniOrTomlValue::Toml(value))?;
                     }
                     Item::ArrayOfTables(override_tables) if key == "overrides" => {
                         for override_table in override_tables.iter() {
@@ -289,17 +291,22 @@ impl OverrideConfig {
         true
     }
 
-    pub fn apply_to_flags(&self, flags: &mut TypeCheckerFlags) {
+    pub fn apply_to_flags_and_return_ignore_errors(
+        &self,
+        flags: &mut TypeCheckerFlags,
+    ) -> ConfigResult {
+        let mut ignore_errors = false;
         for (key, value) in self.config.iter() {
-            apply_from_config(
+            ignore_errors |= apply_from_config(
                 flags,
                 key,
                 match value {
                     OverrideIniOrTomlValue::Toml(v) => IniOrTomlValue::Toml(v),
                     OverrideIniOrTomlValue::Ini(v) => IniOrTomlValue::Ini(v),
                 },
-            );
+            )?;
         }
+        Ok(ignore_errors)
     }
 }
 
@@ -337,7 +344,7 @@ impl IniOrTomlValue<'_> {
         }
     }
 
-    pub fn to_bool(&self, invert: bool) -> Result<bool, Box<str>> {
+    fn to_bool(&self, invert: bool) -> Result<bool, Box<str>> {
         let result = match self {
             Self::Toml(v) => v.as_bool().unwrap_or_else(|| todo!()),
             Self::Ini(value) => match value.to_lowercase().as_str() {
@@ -351,31 +358,31 @@ impl IniOrTomlValue<'_> {
     }
 }
 
-pub fn set_flag(
+pub fn set_flag_and_return_ignore_errors(
     flags: &mut TypeCheckerFlags,
     name: &str,
     value: IniOrTomlValue,
-) -> Result<(), Box<str>> {
+) -> ConfigResult {
     let (invert, option_name) = maybe_invert(name);
     let add_list_of_str = |target: &mut Vec<String>| {
         if invert {
-            Err(format!("Can not invert non-boolean key {option_name}").into())
+            Err(format!("Can not invert non-boolean key {option_name}"))
         } else {
             match &value {
                 IniOrTomlValue::Toml(Value::Array(lst)) => {
                     for entry in lst.iter() {
                         match entry {
                             Value::String(s) => target.push(s.value().clone()),
-                            _ => return Err(Box::from("TODO expected string array")),
+                            _ => return Err("TODO expected string array".to_string()),
                         }
                     }
-                    Ok(())
+                    Ok(false)
                 }
                 IniOrTomlValue::Ini(v) => {
                     target.extend(split_commas(v).map(|s| String::from(s)));
-                    Ok(())
+                    Ok(false)
                 }
-                _ => Err(Box::from("TODO expected string")),
+                _ => Err("TODO expected string".to_string()),
             }
         }
     };
@@ -384,7 +391,7 @@ pub fn set_flag(
         "always_false" => add_list_of_str(&mut flags.always_false_symbols),
         "enable_error_code" => add_list_of_str(&mut flags.enabled_error_codes),
         "disable_error_code" => add_list_of_str(&mut flags.disabled_error_codes),
-        "ignore_errors" => Ok(()), // TODO
+        "ignore_errors" => Ok(value.to_bool(invert)?),
         "strict" => {
             return Err(concat!(
                 r#"Setting "strict" not supported in inline configuration: "#,
@@ -418,7 +425,7 @@ fn set_bool_init_flags(
     name: &str,
     value: IniOrTomlValue,
     invert: bool,
-) -> Result<(), Box<str>> {
+) -> ConfigResult {
     match name {
         "strict_equality" => flags.strict_equality = value.to_bool(invert)?,
         "strict_optional" => flags.strict_optional = value.to_bool(invert)?,
@@ -445,7 +452,7 @@ fn set_bool_init_flags(
             .into())
         }
     }
-    Ok(())
+    Ok(false)
 }
 
 fn split_commas(s: &str) -> impl Iterator<Item = &str> {
@@ -456,16 +463,21 @@ fn split_commas(s: &str) -> impl Iterator<Item = &str> {
     s.split(',').map(|s| s.trim())
 }
 
-fn apply_from_config(flags: &mut TypeCheckerFlags, key: &str, value: IniOrTomlValue) {
+fn apply_from_config(
+    flags: &mut TypeCheckerFlags,
+    key: &str,
+    value: IniOrTomlValue,
+) -> ConfigResult {
     if key == "show_error_codes" {
         // This is currently not handled here but in diagnostics config
-        return;
+        return Ok(false);
     }
     if key == "strict" {
         if value.to_bool(false).unwrap_or_else(|_| todo!()) {
             flags.enable_all_strict_flags();
         }
+        Ok(false)
     } else {
-        set_flag(flags, key, value).unwrap_or_else(|_| todo!("key: {key:?}, value: {value:?}"))
+        set_flag_and_return_ignore_errors(flags, key, value)
     }
 }
