@@ -507,6 +507,14 @@ fn apply_from_base_config(
             diagnostic_config.show_error_codes = value.to_bool(false)?;
             Ok(false)
         }
+        "show_column_numbers" => {
+            diagnostic_config.show_column_numbers = value.to_bool(false)?;
+            Ok(false)
+        }
+        "show_error_end" => {
+            diagnostic_config.show_error_end = value.to_bool(false)?;
+            Ok(false)
+        }
         // Currently ignored, but need to use in the future.
         "mypy_path" => Ok(false),
         _ => apply_from_config_part(flags, key, value),
