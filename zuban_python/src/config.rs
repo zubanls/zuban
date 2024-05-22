@@ -283,7 +283,7 @@ impl OverrideConfig {
         }
         for (i, override_part) in self.module.path.iter().enumerate() {
             if override_part.as_ref() != nth_parent(name, parent_dir, actual_path_count - i - 1) {
-                return true;
+                return false;
             }
         }
         true
