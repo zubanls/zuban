@@ -3,7 +3,7 @@ use std::borrow::Cow;
 use ini::Ini;
 use toml_edit::{DocumentMut, Item, Table, Value};
 
-use crate::workspaces::Directory;
+use crate::{workspaces::Directory, DiagnosticConfig};
 
 type ConfigResult = Result<bool, String>;
 
@@ -29,7 +29,11 @@ impl ProjectOptions {
         }
     }
 
-    pub fn from_mypy_ini(path: Box<str>, code: &str) -> Result<Self, String> {
+    pub fn from_mypy_ini(
+        path: Box<str>,
+        code: &str,
+        diagnostic_config: &mut DiagnosticConfig,
+    ) -> Result<Self, String> {
         let ini = Ini::load_from_str(code).map_err(|err| err.to_string())?;
         let mut flags = TypeCheckerFlags::default();
         let mut overrides = vec![];
@@ -37,7 +41,12 @@ impl ProjectOptions {
             let Some(name) = name else { continue };
             if name == "mypy" {
                 for (key, value) in section.iter() {
-                    apply_from_base_config(&mut flags, key, IniOrTomlValue::Ini(value))?;
+                    apply_from_base_config(
+                        &mut flags,
+                        diagnostic_config,
+                        key,
+                        IniOrTomlValue::Ini(value),
+                    )?;
                 }
             } else if let Some(rest) = name.strip_prefix("mypy-") {
                 overrides.push(OverrideConfig {
@@ -56,7 +65,11 @@ impl ProjectOptions {
         })
     }
 
-    pub fn from_pyproject_toml(path: Box<str>, code: &str) -> Result<Self, String> {
+    pub fn from_pyproject_toml(
+        path: Box<str>,
+        code: &str,
+        diagnostic_config: &mut DiagnosticConfig,
+    ) -> Result<Self, String> {
         let document = code.parse::<DocumentMut>().map_err(|err| err.to_string())?;
         let mut flags = TypeCheckerFlags::default();
         if let Some(config) = document.get("tool").and_then(|item| item.get("mypy")) {
@@ -68,7 +81,12 @@ impl ProjectOptions {
             for (key, item) in table.iter() {
                 match item {
                     Item::Value(value) => {
-                        apply_from_base_config(&mut flags, key, IniOrTomlValue::Toml(value))?;
+                        apply_from_base_config(
+                            &mut flags,
+                            diagnostic_config,
+                            key,
+                            IniOrTomlValue::Toml(value),
+                        )?;
                     }
                     Item::ArrayOfTables(override_tables) if key == "overrides" => {
                         for override_table in override_tables.iter() {
@@ -480,12 +498,15 @@ fn split_commas(s: &str) -> impl Iterator<Item = &str> {
 
 fn apply_from_base_config(
     flags: &mut TypeCheckerFlags,
+    diagnostic_config: &mut DiagnosticConfig,
     key: &str,
     value: IniOrTomlValue,
 ) -> ConfigResult {
     match key {
-        // This is currently not handled here but in diagnostics config
-        "show_error_codes" => Ok(false),
+        "show_error_codes" => {
+            diagnostic_config.show_error_codes = value.to_bool(false)?;
+            Ok(false)
+        }
         // Currently ignored, but need to use in the future.
         "mypy_path" => Ok(false),
         _ => apply_from_config_part(flags, key, value),

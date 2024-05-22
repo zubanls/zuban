@@ -43,3 +43,16 @@ class Foo:
 [out]
 main:4: error: Function is missing a return type annotation
 main:4: note: Use "-> None" if function does not return a value
+
+[case show_error_codes_in_mypy_config]
+a: str = 3  # E: Incompatible types in assignment (expression has type "int", variable has type "str")  [assignment]
+[file mypy.ini]
+[mypy]
+show_error_codes = True
+
+[case show_error_codes_in_pyproject_toml]
+a: str = 3  # E: Incompatible types in assignment (expression has type "int", variable has type "str")  [assignment]
+[file pyproject.toml]
+[tool.mypy]
+show_error_codes = true
+

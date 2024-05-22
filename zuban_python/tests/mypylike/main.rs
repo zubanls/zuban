@@ -97,15 +97,6 @@ impl<'name, 'code> TestCase<'name, 'code> {
         let steps = self.calculate_steps();
         let mut diagnostics_config = DiagnosticConfig::default();
 
-        if self.file_name == "check-errorcodes" || steps.flags.contains(&"--show-error-codes") {
-            diagnostics_config.show_error_codes = true;
-        }
-        if self.file_name == "check-columns" || steps.flags.contains(&"--show-column-numbers") {
-            diagnostics_config.show_column_numbers = true;
-        }
-        if steps.flags.contains(&"--show-error-end") {
-            diagnostics_config.show_error_end = true;
-        }
         if steps.flags.contains(&"--mypy-compatible") && !mypy_compatible
             || steps.flags.contains(&"--no-mypy-compatible") && mypy_compatible
         {
@@ -122,7 +113,9 @@ impl<'name, 'code> TestCase<'name, 'code> {
         if let Some(mypy_ini_config) = steps.steps[0].files.get("mypy.ini") {
             println!("Loading mypy.ini for {} ({})", self.name, self.file_name);
             let ini = cleanup_mypy_issues(mypy_ini_config).unwrap();
-            let mut new = ProjectOptions::from_mypy_ini(BASE_PATH.into(), &ini).unwrap();
+            let mut new =
+                ProjectOptions::from_mypy_ini(BASE_PATH.into(), &ini, &mut diagnostics_config)
+                    .unwrap();
             config = std::mem::replace(&mut new.flags, config);
             project_options = Some(new);
         }
@@ -132,9 +125,24 @@ impl<'name, 'code> TestCase<'name, 'code> {
                 self.name, self.file_name
             );
             let ini = cleanup_mypy_issues(pyproject_toml).unwrap();
-            let mut new = ProjectOptions::from_pyproject_toml(BASE_PATH.into(), &ini).unwrap();
+            let mut new = ProjectOptions::from_pyproject_toml(
+                BASE_PATH.into(),
+                &ini,
+                &mut diagnostics_config,
+            )
+            .unwrap();
             config = std::mem::replace(&mut new.flags, config);
             project_options = Some(new);
+        }
+
+        if self.file_name == "check-errorcodes" || steps.flags.contains(&"--show-error-codes") {
+            diagnostics_config.show_error_codes = true;
+        }
+        if self.file_name == "check-columns" || steps.flags.contains(&"--show-column-numbers") {
+            diagnostics_config.show_column_numbers = true;
+        }
+        if steps.flags.contains(&"--show-error-end") {
+            diagnostics_config.show_error_end = true;
         }
 
         if steps.flags.contains(&"--strict") {
