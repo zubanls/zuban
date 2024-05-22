@@ -37,7 +37,7 @@ impl ProjectOptions {
             let Some(name) = name else { continue };
             if name == "mypy" {
                 for (key, value) in section.iter() {
-                    apply_from_config(&mut flags, key, IniOrTomlValue::Ini(value))?;
+                    apply_from_base_config(&mut flags, key, IniOrTomlValue::Ini(value))?;
                 }
             } else if let Some(rest) = name.strip_prefix("mypy-") {
                 overrides.push(OverrideConfig {
@@ -68,7 +68,7 @@ impl ProjectOptions {
             for (key, item) in table.iter() {
                 match item {
                     Item::Value(value) => {
-                        apply_from_config(&mut flags, key, IniOrTomlValue::Toml(value))?;
+                        apply_from_base_config(&mut flags, key, IniOrTomlValue::Toml(value))?;
                     }
                     Item::ArrayOfTables(override_tables) if key == "overrides" => {
                         for override_table in override_tables.iter() {
@@ -297,7 +297,7 @@ impl OverrideConfig {
     ) -> ConfigResult {
         let mut ignore_errors = false;
         for (key, value) in self.config.iter() {
-            ignore_errors |= apply_from_config(
+            ignore_errors |= apply_from_config_part(
                 flags,
                 key,
                 match value {
@@ -478,15 +478,25 @@ fn split_commas(s: &str) -> impl Iterator<Item = &str> {
     s.split(',').map(|s| s.trim())
 }
 
-fn apply_from_config(
+fn apply_from_base_config(
     flags: &mut TypeCheckerFlags,
     key: &str,
     value: IniOrTomlValue,
 ) -> ConfigResult {
-    if key == "show_error_codes" {
+    match key {
         // This is currently not handled here but in diagnostics config
-        return Ok(false);
+        "show_error_codes" => Ok(false),
+        // Currently ignored, but need to use in the future.
+        "mypy_path" => Ok(false),
+        _ => apply_from_config_part(flags, key, value),
     }
+}
+
+fn apply_from_config_part(
+    flags: &mut TypeCheckerFlags,
+    key: &str,
+    value: IniOrTomlValue,
+) -> ConfigResult {
     if key == "strict" {
         if value.to_bool(false).unwrap_or_else(|_| todo!()) {
             flags.enable_all_strict_flags();

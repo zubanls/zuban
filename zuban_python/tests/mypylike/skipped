@@ -679,6 +679,11 @@ testTypedPkg_config_nositepackages
 testClassicPackageInsideNamespacePackageCasePyProjectTOML
 testNamespacePackageWithMypyPathPyProjectTOML
 testNamespacePackagePickFirstOnMypyPathCasePyProjectTOML
+# mypy.ini/pyproject.toml mypy_path
+testCaseInsensitivityDir
+testPreferPackageOverFileCase
+testCaseInsensitivityDirPyProjectTOML
+testPreferPackageOverFileCasePyProjectTOML
 
 # Metaclass descriptor
 metaclass_descriptor
@@ -1572,11 +1577,6 @@ testCallingNoTypeCheckFunction
 testCallingNoTypeCheckFunction2
 testNoTypeCheckDecoratorSemanticError
 
-# mypy.ini/pyproject.toml mypy_path 
-testCaseInsensitivityDir
-testPreferPackageOverFileCase
-testCaseInsensitivityDirPyProjectTOML
-testPreferPackageOverFileCasePyProjectTOML
 # strict optional with config file
 testPerFileStrictOptionalBasic
 testPerFileStrictOptionalBasicImportStandard
