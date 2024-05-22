@@ -358,6 +358,19 @@ impl IniOrTomlValue<'_> {
     }
 }
 
+fn maybe_invert(name: &str) -> (bool, Cow<str>) {
+    if let Some(after_no_prefix) = name.strip_prefix("no_") {
+        return (true, Cow::Borrowed(after_no_prefix));
+    } else if name.starts_with("allow") && !OPTIONS_STARTING_WITH_ALLOW.contains(&name) {
+        return (true, Cow::Owned(format!("dis{name}")));
+    } else if let Some(after_dis_prefix) = name.strip_prefix("dis") {
+        if OPTIONS_STARTING_WITH_ALLOW.contains(&after_dis_prefix) {
+            return (true, Cow::Borrowed(after_dis_prefix));
+        }
+    }
+    (false, Cow::Borrowed(name))
+}
+
 pub fn set_flag_and_return_ignore_errors(
     flags: &mut TypeCheckerFlags,
     name: &str,
@@ -391,7 +404,6 @@ pub fn set_flag_and_return_ignore_errors(
         "always_false" => add_list_of_str(&mut flags.always_false_symbols),
         "enable_error_code" => add_list_of_str(&mut flags.enabled_error_codes),
         "disable_error_code" => add_list_of_str(&mut flags.disabled_error_codes),
-        "ignore_errors" => Ok(value.to_bool(invert)?),
         "strict" => {
             return Err(concat!(
                 r#"Setting "strict" not supported in inline configuration: "#,
@@ -404,19 +416,6 @@ pub fn set_flag_and_return_ignore_errors(
             return set_bool_init_flags(flags, name, &option_name, value, invert);
         }
     }
-}
-
-fn maybe_invert(name: &str) -> (bool, Cow<str>) {
-    if let Some(after_no_prefix) = name.strip_prefix("no_") {
-        return (true, Cow::Borrowed(after_no_prefix));
-    } else if name.starts_with("allow") && !OPTIONS_STARTING_WITH_ALLOW.contains(&name) {
-        return (true, Cow::Owned(format!("dis{name}")));
-    } else if let Some(after_dis_prefix) = name.strip_prefix("dis") {
-        if OPTIONS_STARTING_WITH_ALLOW.contains(&after_dis_prefix) {
-            return (true, Cow::Borrowed(after_dis_prefix));
-        }
-    }
-    (false, Cow::Borrowed(name))
 }
 
 fn set_bool_init_flags(
@@ -458,6 +457,7 @@ fn set_bool_init_flags(
         "allow_redefinition" | "follow_imports" | "follow_imports_for_stubs" => (),
         // Will always be irrelevant
         "cache_fine_grained" => (),
+        "ignore_errors" => return Ok(value.to_bool(invert)?),
         _ => {
             return Err(format!(
                 "Unrecognized option: {} = {}",
