@@ -427,21 +427,35 @@ fn set_bool_init_flags(
     invert: bool,
 ) -> ConfigResult {
     match name {
-        "strict_equality" => flags.strict_equality = value.to_bool(invert)?,
         "strict_optional" => flags.strict_optional = value.to_bool(invert)?,
-        "warn_no_return" => flags.warn_no_return = value.to_bool(invert)?,
-        "disallow_any_generics" => flags.disallow_any_generics = value.to_bool(invert)?,
-        "disallow_incomplete_defs" => flags.disallow_incomplete_defs = value.to_bool(invert)?,
-        "disallow_subclassing_any" => flags.disallow_subclassing_any = value.to_bool(invert)?,
-        "disallow_untyped_calls" => flags.disallow_untyped_calls = value.to_bool(invert)?,
-        "allow_untyped_globals" => flags.allow_untyped_globals = value.to_bool(invert)?,
+        "strict_equality" => flags.strict_equality = value.to_bool(invert)?,
+        "implicit_optional" => flags.implicit_optional = value.to_bool(invert)?,
+        "check_untyped_defs" => flags.check_untyped_defs = value.to_bool(invert)?,
         "ignore_missing_imports" => flags.ignore_missing_imports = value.to_bool(invert)?,
+
+        "disallow_untyped_defs" => flags.disallow_untyped_defs = value.to_bool(invert)?,
+        "disallow_untyped_calls" => flags.disallow_untyped_calls = value.to_bool(invert)?,
+        "disallow_untyped_decorators" => {
+            flags.disallow_untyped_decorators = value.to_bool(invert)?
+        }
+        "disallow_any_generics" => flags.disallow_any_generics = value.to_bool(invert)?,
+        "disallow_any_decorated" => flags.disallow_any_decorated = value.to_bool(invert)?,
+        "disallow_any_explicit" => flags.disallow_any_explicit = value.to_bool(invert)?,
+        "disallow_any_unimported" => flags.disallow_any_unimported = value.to_bool(invert)?,
+        "disallow_any_expr" => flags.disallow_any_expr = value.to_bool(invert)?,
+        "disallow_subclassing_any" => flags.disallow_subclassing_any = value.to_bool(invert)?,
+        "disallow_incomplete_defs" => flags.disallow_incomplete_defs = value.to_bool(invert)?,
+        "allow_untyped_globals" => flags.allow_untyped_globals = value.to_bool(invert)?,
+        "allow_empty_bodies" => flags.allow_empty_bodies = value.to_bool(invert)?,
+        "warn_unreachable" => flags.warn_unreachable = value.to_bool(invert)?,
+        "warn_return_any" => flags.warn_return_any = value.to_bool(invert)?,
+        "warn_no_return" => flags.warn_no_return = value.to_bool(invert)?,
         "local_partial_types" => flags.local_partial_types = value.to_bool(invert)?,
         "implicit_reexport" => flags.no_implicit_reexport = !value.to_bool(invert)?,
-        "implicit_optional" => flags.implicit_optional = value.to_bool(invert)?,
-        "disallow_untyped_defs" => flags.disallow_untyped_defs = value.to_bool(invert)?,
+
+        "extra_checks" => flags.extra_checks = value.to_bool(invert)?,
         // These are currently ignored
-        "follow_imports" | "follow_imports_for_stubs" => (),
+        "allow_redefinition" | "follow_imports" | "follow_imports_for_stubs" => (),
         // Will always be irrelevant
         "cache_fine_grained" => (),
         _ => {
