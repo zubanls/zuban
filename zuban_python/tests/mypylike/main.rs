@@ -253,7 +253,8 @@ impl<'name, 'code> TestCase<'name, 'code> {
         }
 
         let mut tmp;
-        let project = if let Some(project_options) = project_options {
+        let project = if let Some(mut project_options) = project_options {
+            project_options.flags = config;
             tmp = Project::new(project_options);
             &mut tmp
         } else {
