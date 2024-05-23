@@ -536,10 +536,6 @@ testFutureMetaclassAndBase
 testFutureMetaclassGenerics
 testFutureMetaclassErrors
 testFutureMetaclassAny
-# "Library stubs not installed for "requests""
-testLibraryStubsNotInstalled
-testIgnoreImportIfNoPython3StubAvailable
-testNoPython3StubAvailable
 # six imports
 testNewAnalyzerMetaclassSix1
 testNewAnalyzerMetaclassSix2
