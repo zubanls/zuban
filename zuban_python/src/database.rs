@@ -821,10 +821,10 @@ impl Database {
             overrides: options.overrides,
         };
         let mut workspaces = Workspaces::default();
+        workspaces.add(file_state_loaders.as_ref(), options.path.clone());
         for p in &project.sys_path {
             workspaces.add(file_state_loaders.as_ref(), p.to_owned())
         }
-        workspaces.add(file_state_loaders.as_ref(), options.path.clone());
         let mut this = Self {
             in_use: false,
             vfs: Box::<FileSystemReader>::default(),
@@ -1197,7 +1197,7 @@ impl Database {
 
     fn initial_python_load(&mut self) {
         // TODO this is wrong, because it's just a random dir...
-        let mut dirs = self.workspaces.directories();
+        let mut dirs = self.workspaces.directories().skip(1);
         let stdlib_dir = dirs.next().unwrap().1.clone();
         let mypy_extensions_dir = dirs.next().unwrap().1.clone();
         let collections_dir = match &*stdlib_dir.search("collections").unwrap() {

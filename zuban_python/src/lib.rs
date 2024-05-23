@@ -68,7 +68,7 @@ impl Project {
         let mut file_indexes = vec![];
         self.db
             .workspaces
-            .last()
+            .first()
             .directory()
             .for_each_file(&mut |file_index| {
                 file_indexes.push(file_index);

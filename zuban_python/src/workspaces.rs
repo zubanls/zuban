@@ -57,8 +57,8 @@ impl Workspaces {
     }
 
     // TODO this should probably not be needed
-    pub fn last(&self) -> &Workspace {
-        self.0.last().unwrap()
+    pub fn first(&self) -> &Workspace {
+        self.0.first().unwrap()
     }
 
     pub fn clone_with_new_rcs(&self) -> Self {

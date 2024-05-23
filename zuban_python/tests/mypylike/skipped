@@ -522,9 +522,6 @@ testVariadicTupleInProtocol
 # TypeVarTuple as unpacked varargs
 testVariadicStarArgsCallNoCrash
 
-# import order
-testTypeAliasesToNamedTuple
-
 # Override import cached files like typing types builtins etc.
 testNoCrashDoubleReexportFunctionEmpty
 testNoCrashDoubleReexportBaseEmpty
