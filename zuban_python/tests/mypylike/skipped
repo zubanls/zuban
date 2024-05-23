@@ -524,35 +524,6 @@ testVariadicStarArgsCallNoCrash
 
 # import order
 testTypeAliasesToNamedTuple
-# future imports (future is not part of stubs)
-testNewAnalyzerMetaclassFuture1
-testNewAnalyzerMetaclassFuture3
-testNewAnalyzerMetaclassFuture4
-testFutureMetaclass
-testFromFutureMetaclass
-testFutureMetaclassImportFrom
-testFutureMetaclassImport
-testFutureMetaclassAndBase
-testFutureMetaclassGenerics
-testFutureMetaclassErrors
-testFutureMetaclassAny
-# six imports
-testNewAnalyzerMetaclassSix1
-testNewAnalyzerMetaclassSix2
-testNewAnalyzerMetaclassSix3
-testNewAnalyzerMetaclassSix4
-testSixMetaclassImportFrom
-testSixMetaclassImport
-testSixMetaclassAndBase
-testSixMetaclassGenerics
-testSixMetaclassErrors
-testSixMetaclassAny
-testSixMetaclass
-testFromSixMetaclass
-testSixMetaclassGenericBase
-testIgnoreInsideClassDoesntAffectWhole
-# import of typeshed stubs
-testErrorFromGoogleCloud
 
 # Override import cached files like typing types builtins etc.
 testNoCrashDoubleReexportFunctionEmpty
@@ -1708,6 +1679,36 @@ testContinueOutsideLoop
 #testUnpackIterableClassWithOverloadedIter2
 
 # ------------------- priority? tests -----------------------
+
+# future imports (future is not part of stubs)
+testNewAnalyzerMetaclassFuture1
+testNewAnalyzerMetaclassFuture3
+testNewAnalyzerMetaclassFuture4
+testFutureMetaclass
+testFromFutureMetaclass
+testFutureMetaclassImportFrom
+testFutureMetaclassImport
+testFutureMetaclassAndBase
+testFutureMetaclassGenerics
+testFutureMetaclassErrors
+testFutureMetaclassAny
+# six imports
+testNewAnalyzerMetaclassSix1
+testNewAnalyzerMetaclassSix2
+testNewAnalyzerMetaclassSix3
+testNewAnalyzerMetaclassSix4
+testSixMetaclassImportFrom
+testSixMetaclassImport
+testSixMetaclassAndBase
+testSixMetaclassGenerics
+testSixMetaclassErrors
+testSixMetaclassAny
+testSixMetaclass
+testFromSixMetaclass
+testSixMetaclassGenericBase
+testIgnoreInsideClassDoesntAffectWhole
+# import of typeshed stubs
+testErrorFromGoogleCloud
 
 # typing.assert_type in untyped functions
 testAssertTypeUncheckedFunction
