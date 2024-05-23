@@ -32,7 +32,7 @@ use crate::{
     TypeCheckerFlags,
 };
 
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Clone)]
 pub struct ComplexValues(InsertOnlyVec<ComplexPoint>);
 
 impl ComplexValues {
@@ -64,6 +64,7 @@ impl ComplexValues {
     }
 }
 
+#[derive(Clone)]
 pub struct PythonFile {
     pub tree: Tree, // TODO should probably not be public
     pub symbol_table: OnceCell<SymbolTable>,
@@ -185,7 +186,7 @@ impl File for PythonFile {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct StarImport {
     pub(super) scope: NodeIndex,
     pub(super) import_from_node: NodeIndex,

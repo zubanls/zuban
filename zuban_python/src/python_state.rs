@@ -87,18 +87,19 @@ macro_rules! node_ref_to_type_class_without_generic {
     };
 }
 
+#[derive(Clone)]
 pub struct PythonState {
-    builtins: *const PythonFile,
-    typing: *const PythonFile,
-    typeshed: *const PythonFile,
-    collections: *const PythonFile,
-    types: *const PythonFile,
-    abc: *const PythonFile,
-    functools: *const PythonFile,
-    enum_file: *const PythonFile,
-    dataclasses_file: *const PythonFile,
-    mypy_extensions: *const PythonFile,
-    typing_extensions: *const PythonFile,
+    pub builtins: *const PythonFile,
+    pub typing: *const PythonFile,
+    pub typeshed: *const PythonFile,
+    pub collections: *const PythonFile,
+    pub types: *const PythonFile,
+    pub abc: *const PythonFile,
+    pub functools: *const PythonFile,
+    pub enum_file: *const PythonFile,
+    pub dataclasses_file: *const PythonFile,
+    pub mypy_extensions: *const PythonFile,
+    pub typing_extensions: *const PythonFile,
 
     builtins_object_index: NodeIndex,
     builtins_type_index: NodeIndex,

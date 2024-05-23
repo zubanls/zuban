@@ -85,7 +85,7 @@ macro_rules! check_point_cache_with {
 impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     fn cache_simple_stmts_name(&self, simple_stmts: SimpleStmts, name_def: NodeRef) {
         debug!(
-            "Infer stmt (#{}, {}:{}): {:?}",
+            "Infer simple_stmt (#{}, {}:{}): {:?}",
             self.file.byte_to_line_column(simple_stmts.start()).0,
             self.file.file_index(),
             simple_stmts.index(),

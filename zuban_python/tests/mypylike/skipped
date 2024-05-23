@@ -8,6 +8,11 @@ testRecursiveAliasBasicGenericInference
 
 testTwoUncomfortablyIncompatibleProtocolsWithoutRunningInIssue9771
 
+testOperatorContainsNarrowsTypedDicts_final
+testUnionOrSyntaxWithTwoBuiltinsTypes
+testUnreachableFlagContextManagersNoSuppress
+testUnreachableFlagContextAsyncManagersNoSuppress
+
 # callable matching regression
 testNoCrashOnNestedGenericCallable
 

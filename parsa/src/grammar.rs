@@ -25,7 +25,7 @@ pub trait Tokenizer<'a, T: Token>: Iterator {
     fn new(code: &'a str) -> Self;
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct InternalTree {
     pub code: Box<str>,
     pub nodes: Vec<InternalNode>,

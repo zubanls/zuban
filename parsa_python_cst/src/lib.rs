@@ -19,6 +19,7 @@ pub use strings::PythonString;
 
 pub const NAME_DEF_TO_NAME_DIFFERENCE: u32 = 1;
 
+#[derive(Clone)]
 pub struct Tree(PyTree);
 
 impl Tree {

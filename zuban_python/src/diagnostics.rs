@@ -9,7 +9,7 @@ use crate::{
     PythonVersion, TypeCheckerFlags,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 #[allow(dead_code)]  // TODO remove this
 #[rustfmt::skip]  // This is way more readable if we are not auto-formatting this.
 pub(crate) enum IssueKind {
@@ -474,7 +474,7 @@ impl IssueKind {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Issue {
     pub(crate) kind: IssueKind,
     pub start_position: CodeIndex,
@@ -1615,7 +1615,7 @@ impl DiagnosticConfig {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct Diagnostics(InsertOnlyVec<Issue>);
 
 impl Diagnostics {

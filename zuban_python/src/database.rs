@@ -30,7 +30,7 @@ use crate::{
     workspaces::{
         Directory, DirectoryEntry, FileEntry, Invalidations, WorkspaceFileIndex, Workspaces,
     },
-    TypeCheckerFlags,
+    ProjectOptions, TypeCheckerFlags,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -301,7 +301,7 @@ impl fmt::Debug for Point {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Points(Vec<Cell<Point>>);
 
 impl Points {
@@ -793,6 +793,7 @@ pub struct Database {
     pub vfs: Box<dyn Vfs>,
     file_state_loaders: FileStateLoaders,
     files: InsertOnlyVec<dyn FileState>,
+    // TODO this seems to be unused currently
     path_to_file: HashMap<&'static str, FileIndex>,
     pub workspaces: Workspaces,
     in_memory_files: HashMap<Box<str>, FileIndex>,
@@ -802,16 +803,28 @@ pub struct Database {
 }
 
 impl Database {
-    pub fn new(
-        file_state_loaders: FileStateLoaders,
-        project_path: Box<str>,
-        project: PythonProject,
-    ) -> Self {
+    pub fn new(file_state_loaders: FileStateLoaders, options: ProjectOptions) -> Self {
+        // TODO use a real sys path
+        let sys_path = vec![
+            "../typeshed/stdlib".into(),
+            "../typeshed/stubs/mypy-extensions".into(),
+            //"../typeshed/stubs".into(),
+            //"/usr/lib/python3/dist-packages".into(),
+            //"/usr/local/lib/python3.8/dist-packages/pip-20.0.2-py3.8.egg".into(),
+            //"/usr/lib/python3.8".into(),
+            //"/home/dave/.local/lib/python3.8/site-packages".into(),
+            //"/usr/local/lib/python3.8/dist-packages".into(),
+        ];
+        let project = PythonProject {
+            sys_path,
+            flags: options.flags,
+            overrides: options.overrides,
+        };
         let mut workspaces = Workspaces::default();
         for p in &project.sys_path {
             workspaces.add(file_state_loaders.as_ref(), p.to_owned())
         }
-        workspaces.add(file_state_loaders.as_ref(), project_path.clone());
+        workspaces.add(file_state_loaders.as_ref(), options.path.clone());
         let mut this = Self {
             in_use: false,
             vfs: Box::<FileSystemReader>::default(),
@@ -825,6 +838,74 @@ impl Database {
         };
         this.initial_python_load();
         this
+    }
+
+    pub fn try_to_reuse_project_resources_for_tests(
+        &self,
+        file_state_loaders: FileStateLoaders,
+        options: ProjectOptions,
+    ) -> Self {
+        let project = PythonProject {
+            sys_path: self.project.sys_path.clone(),
+            flags: options.flags,
+            overrides: options.overrides,
+        };
+        let files = self.files.clone();
+        let mut python_state = self.python_state.clone();
+        let set_pointer = |pointer_ref: &mut *const PythonFile, name, is_package| {
+            for (i, file_state) in unsafe { files.iter() }.enumerate() {
+                let entry = file_state.file_entry();
+                if is_package
+                    && entry
+                        .parent
+                        .maybe_dir()
+                        .is_ok_and(|dir| dir.name.as_ref() == name)
+                    || !is_package && entry.name.as_ref() == name
+                {
+                    *pointer_ref = file_state
+                        .file(&*self.vfs)
+                        .unwrap()
+                        .as_any()
+                        .downcast_ref()
+                        .unwrap();
+                    debug_assert!(i < 11);
+                    return;
+                }
+            }
+            unreachable!()
+        };
+        set_pointer(&mut python_state.builtins, "builtins.pyi", false);
+        set_pointer(&mut python_state.typing, "typing.pyi", false);
+        // Since those files are loaded in the beginning, we can just match against that and the
+        // first __init__.pyi will automaticall be the typeshed module
+        set_pointer(&mut python_state.typeshed, "_typeshed", true);
+        set_pointer(&mut python_state.collections, "collections", true);
+        set_pointer(&mut python_state.types, "types.pyi", false);
+        set_pointer(&mut python_state.abc, "abc.pyi", false);
+        set_pointer(&mut python_state.functools, "functools.pyi", false);
+        set_pointer(&mut python_state.enum_file, "enum.pyi", false);
+        set_pointer(&mut python_state.dataclasses_file, "dataclasses.pyi", false);
+        set_pointer(
+            &mut python_state.typing_extensions,
+            "typing_extensions.pyi",
+            false,
+        );
+        set_pointer(
+            &mut python_state.mypy_extensions,
+            "mypy_extensions.pyi",
+            false,
+        );
+        Self {
+            in_use: false,
+            vfs: Box::<FileSystemReader>::default(),
+            file_state_loaders,
+            files,
+            path_to_file: self.path_to_file.clone(),
+            workspaces: self.workspaces.clone_with_new_rcs(),
+            in_memory_files: Default::default(),
+            python_state,
+            project,
+        }
     }
 
     pub fn acquire(&mut self) {
@@ -1138,7 +1219,7 @@ impl ParentScope {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ClassStorage {
     pub class_symbol_table: SymbolTable,
     pub self_symbol_table: SymbolTable,
@@ -1221,12 +1302,6 @@ impl ClassInfos {
             }
             _ => None,
         }
-    }
-}
-
-impl std::clone::Clone for ClassStorage {
-    fn clone(&self) -> Self {
-        unreachable!("This should never happen, because should never be cloned");
     }
 }
 

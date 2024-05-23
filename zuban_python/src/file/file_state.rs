@@ -82,7 +82,7 @@ pub trait FileStateLoader {
     ) -> Pin<Box<dyn FileState>>;
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct PythonFileLoader {}
 
 impl FileStateLoader for PythonFileLoader {
@@ -170,9 +170,16 @@ pub trait FileState: fmt::Debug + Unpin {
     fn unload_and_return_invalidations(&mut self) -> Invalidations;
     fn add_invalidates(&self, file_index: FileIndex);
     fn take_invalidations(&mut self) -> Invalidations;
+    fn clone_box(&self) -> Box<dyn FileState>;
 }
 
-impl<F: File + Unpin> FileState for LanguageFileState<F> {
+impl Clone for Box<dyn FileState> {
+    fn clone(&self) -> Self {
+        self.clone_box()
+    }
+}
+
+impl<F: File + Unpin + Clone> FileState for LanguageFileState<F> {
     fn path(&self) -> &str {
         &self.path
     }
@@ -215,16 +222,21 @@ impl<F: File + Unpin> FileState for LanguageFileState<F> {
     fn add_invalidates(&self, file_index: FileIndex) {
         self.invalidates.add(file_index)
     }
+
+    fn clone_box(&self) -> Box<dyn FileState> {
+        Box::new(self.clone())
+    }
 }
 
-pub struct LanguageFileState<F: 'static> {
+#[derive(Clone)]
+pub struct LanguageFileState<F: 'static + Clone> {
     path: Box<str>,
     file_entry: Rc<FileEntry>,
     state: InternalFileExistence<F>,
     invalidates: Invalidations,
 }
 
-impl<F> fmt::Debug for LanguageFileState<F> {
+impl<F: Clone> fmt::Debug for LanguageFileState<F> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("LanguageFileState")
             .field("path", &self.path)
@@ -234,7 +246,7 @@ impl<F> fmt::Debug for LanguageFileState<F> {
     }
 }
 
-impl<F: File> LanguageFileState<F> {
+impl<F: File + Clone> LanguageFileState<F> {
     pub fn new_parsed(file_entry: Rc<FileEntry>, path: Box<str>, file: F) -> Self {
         Self {
             file_entry,
@@ -245,12 +257,13 @@ impl<F: File> LanguageFileState<F> {
     }
 }
 
-enum InternalFileExistence<F: 'static> {
+#[derive(Clone)]
+enum InternalFileExistence<F: 'static + Clone> {
     Unloaded,
     Parsed(F),
 }
 
-impl<F> fmt::Debug for InternalFileExistence<F> {
+impl<F: Clone> fmt::Debug for InternalFileExistence<F> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // Intentionally remove the T here, because it's usually huge and we are usually not
         // interested in that while debugging.

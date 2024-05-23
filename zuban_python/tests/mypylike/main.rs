@@ -263,7 +263,7 @@ impl<'name, 'code> TestCase<'name, 'code> {
         let mut tmp;
         let project = if let Some(mut project_options) = project_options {
             project_options.flags = config;
-            tmp = Project::new(project_options);
+            tmp = projects.try_to_reuse_project_parts(project_options);
             &mut tmp
         } else {
             projects.get_mut(config)
@@ -719,17 +719,31 @@ fn calculate_filters(args: Vec<String>) -> Vec<String> {
     filters
 }
 
-struct ProjectsCache(HashMap<TypeCheckerFlags, Project>);
+struct ProjectsCache {
+    base_project: Project,
+    map: HashMap<TypeCheckerFlags, Project>,
+}
 
 impl ProjectsCache {
-    fn get_mut(&mut self, flags: TypeCheckerFlags) -> &mut Project {
-        if !self.0.contains_key(&flags) {
-            self.0.insert(
-                flags.clone(),
-                Project::new(ProjectOptions::new(BASE_PATH.into(), flags.clone())),
-            );
+    fn new() -> Self {
+        Self {
+            base_project: Project::new(ProjectOptions::new(BASE_PATH.into(), Default::default())),
+            map: Default::default(),
         }
-        self.0.get_mut(&flags).unwrap()
+    }
+
+    fn get_mut(&mut self, flags: TypeCheckerFlags) -> &mut Project {
+        if !self.map.contains_key(&flags) {
+            let project = self
+                .try_to_reuse_project_parts(ProjectOptions::new(BASE_PATH.into(), flags.clone()));
+            self.map.insert(flags.clone(), project);
+        }
+        self.map.get_mut(&flags).unwrap()
+    }
+
+    fn try_to_reuse_project_parts(&self, options: ProjectOptions) -> Project {
+        self.base_project
+            .try_to_reuse_project_resources_for_tests(options)
     }
 }
 
@@ -737,7 +751,7 @@ fn main() {
     let cli_args: Vec<String> = env::args().collect();
     let filters = calculate_filters(cli_args);
 
-    let mut projects = ProjectsCache(HashMap::new());
+    let mut projects = ProjectsCache::new();
     let skipped = skipped();
 
     let files = find_mypy_style_files();

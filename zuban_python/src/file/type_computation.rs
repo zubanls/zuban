@@ -4871,7 +4871,7 @@ pub struct TypeCommentDetails<'db> {
     pub inferred: Inferred,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct GenericCounts {
     pub expected: usize,
     pub expected_minimum: Option<usize>,

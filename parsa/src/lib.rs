@@ -726,6 +726,7 @@ macro_rules! create_grammar {
             }
         }
 
+        #[derive(Clone)]
         pub struct $Tree {
             internal_tree: $crate::InternalTree
         }

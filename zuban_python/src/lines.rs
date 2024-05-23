@@ -7,6 +7,7 @@ lazy_static::lazy_static! {
     static ref NEWLINES: Regex = Regex::new(r"\n|\r\n|\r").unwrap();
 }
 
+#[derive(Clone)]
 pub struct NewlineIndices(OnceCell<Box<[u32]>>);
 
 impl NewlineIndices {

@@ -26,7 +26,7 @@ mod workspaces;
 pub use config::{ProjectOptions, PythonVersion, TypeCheckerFlags};
 use database::{Database, FileIndex, PythonProject};
 pub use diagnostics::DiagnosticConfig;
-use file::Leaf;
+use file::{FileStateLoader, Leaf};
 use inference_state::InferenceState;
 use inferred::Inferred;
 use name::Names;
@@ -38,27 +38,7 @@ pub struct Project {
 
 impl Project {
     pub fn new(options: ProjectOptions) -> Self {
-        let loaders = Box::new([Box::<file::PythonFileLoader>::default() as Box<_>]);
-        // TODO use a real sys path
-        let sys_path = vec![
-            "../typeshed/stdlib".into(),
-            "../typeshed/stubs/mypy-extensions".into(),
-            //"../typeshed/stubs".into(),
-            //"/usr/lib/python3/dist-packages".into(),
-            //"/usr/local/lib/python3.8/dist-packages/pip-20.0.2-py3.8.egg".into(),
-            //"/usr/lib/python3.8".into(),
-            //"/home/dave/.local/lib/python3.8/site-packages".into(),
-            //"/usr/local/lib/python3.8/dist-packages".into(),
-        ];
-        let db = Database::new(
-            loaders,
-            options.path,
-            PythonProject {
-                sys_path,
-                flags: options.flags,
-                overrides: options.overrides,
-            },
-        );
+        let db = Database::new(get_loaders(), options);
         Self { db }
     }
 
@@ -106,6 +86,21 @@ impl Project {
         }
         all_diagnostics.into_boxed_slice()
     }
+
+    /// This function is mostly for tests and should therefore not be used for something
+    /// stable. We would have to ensure first it works everywhere.
+    /// It currently is for example a big issue that HashableRawStr used in the name binder is very
+    /// unsafe and will lead to SEGFAULTS if the original project is not kept.
+    pub fn try_to_reuse_project_resources_for_tests(&self, options: ProjectOptions) -> Self {
+        let db = self
+            .db
+            .try_to_reuse_project_resources_for_tests(get_loaders(), options);
+        Project { db }
+    }
+}
+
+fn get_loaders() -> Box<[Box<dyn FileStateLoader>; 1]> {
+    Box::new([Box::<file::PythonFileLoader>::default() as Box<_>])
 }
 
 #[derive(Debug, Clone, Copy)]

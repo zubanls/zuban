@@ -120,7 +120,18 @@ impl<T: ?Sized + Unpin> std::ops::IndexMut<usize> for InsertOnlyVec<T> {
         &mut self.vec.get_mut()[index]
     }
 }
+impl<T: ?Sized> Clone for InsertOnlyVec<T>
+where
+    Box<T>: Clone,
+{
+    fn clone(&self) -> Self {
+        Self {
+            vec: UnsafeCell::new(unsafe { &*self.vec.get() }.clone()),
+        }
+    }
+}
 
+#[derive(Clone)]
 pub struct HashableRawStr {
     ptr: *const str,
 }
@@ -157,7 +168,7 @@ impl fmt::Debug for HashableRawStr {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct SymbolTable {
     // The name symbol table comes from compiler theory, it's basically a mapping of a name to a
     // pointer. To avoid wasting space, we don't use a pointer here, instead we use the node index,

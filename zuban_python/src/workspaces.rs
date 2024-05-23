@@ -12,7 +12,7 @@ use crate::{
     utils::{rc_unwrap_or_clone, VecRefWrapper},
 };
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct Workspaces(Vec<Workspace>);
 
 impl Workspaces {
@@ -59,6 +59,42 @@ impl Workspaces {
     // TODO this should probably not be needed
     pub fn last(&self) -> &Workspace {
         self.0.last().unwrap()
+    }
+
+    pub fn clone_with_new_rcs(&self) -> Self {
+        fn clone_inner_rcs(base_dir: &Directory, parent: Parent) -> Rc<Directory> {
+            let mut new_dir = base_dir.clone();
+            new_dir.parent = parent;
+            let new_dir = Rc::new(new_dir);
+            for entry in new_dir.entries.borrow_mut().iter_mut() {
+                match entry {
+                    DirectoryEntry::File(file) => {
+                        let mut new_file = file.as_ref().clone();
+                        new_file.parent = Parent::Directory(Rc::downgrade(&new_dir));
+                        *file = Rc::new(new_file);
+                    }
+                    DirectoryEntry::MissingEntry {
+                        name,
+                        invalidations,
+                    } => (),
+                    DirectoryEntry::Directory(dir) => {
+                        *dir = clone_inner_rcs(dir, Parent::Directory(Rc::downgrade(&new_dir)));
+                    }
+                }
+            }
+            new_dir
+        }
+        let mut new = self.clone();
+        for workspace in new.0.iter_mut() {
+            workspace.directory.entries = workspace.directory.entries.clone();
+            for entry in workspace.directory.entries.borrow_mut().iter_mut() {
+                if let DirectoryEntry::Directory(dir) = entry {
+                    debug_assert!(matches!(dir.parent, Parent::Workspace(_)));
+                    *dir = clone_inner_rcs(dir, dir.parent.clone())
+                }
+            }
+        }
+        new
     }
 }
 
