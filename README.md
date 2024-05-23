@@ -26,7 +26,11 @@ Debugging:
 
     sudo apt-get install linux-tools-generic
     cargo install flamegraph
-    sudo sysctl -w kernel.perf_event_paranoid=1  # Might be needed
+
+    # Might be needed
+    sudo sysctl -w kernel.perf_event_paranoid=-1
+    sudo sysctl -w kernel.kptr_restrict=0
+
     flamegraph -- cargo test blackbox --release
     # Sometimes [Unknown] appears, because only part of the stack is copied, use the command below.
     # see also https://github.com/flamegraph-rs/flamegraph/issues/193#issuecomment-2119274041
