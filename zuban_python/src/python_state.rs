@@ -799,8 +799,8 @@ impl PythonState {
     node_ref_to_class!(str, str_node_ref);
     node_ref_to_class!(bytes, bytes_node_ref);
     node_ref_to_class!(float, float_node_ref);
-    node_ref_to_class!(memoryview, memoryview_node_ref);
-    node_ref_to_class!(bytearray, bytearray_node_ref);
+    node_ref_to_class!(pub memoryview, memoryview_node_ref);
+    node_ref_to_class!(pub bytearray, bytearray_node_ref);
     node_ref_to_class!(pub function_class, function_node_ref);
     node_ref_to_class!(pub bare_type_class, bare_type_node_ref);
     node_ref_to_class!(pub typed_dict_class, typed_dict_node_ref);

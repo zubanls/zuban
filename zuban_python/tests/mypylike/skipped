@@ -1248,8 +1248,6 @@ testInferEqualsStillOptionalWithNoOverlap
 testPerFileStrictOptionalModuleOnly
 testPerFileStrictOptionalFunction
 testPerFileStrictOptionalMethod
-testDisableBytearrayPromotion
-testDisableMemoryviewPromotion
 # --strict-equality regressions
 testStrictEqualityWithRecursiveListTypes
 # if right operand is Any, fallback to Any in operation

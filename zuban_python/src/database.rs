@@ -944,7 +944,7 @@ impl Database {
             "mypy_extensions.pyi",
             false,
         );
-        Self {
+        let db = Self {
             in_use: false,
             vfs: Box::<FileSystemReader>::default(),
             file_state_loaders,
@@ -954,7 +954,22 @@ impl Database {
             in_memory_files: Default::default(),
             python_state,
             project,
+        };
+        if db.project.flags.disable_bytearray_promotion {
+            db.python_state
+                .bytearray()
+                .class_storage
+                .promote_to
+                .set(None);
         }
+        if db.project.flags.disable_memoryview_promotion {
+            db.python_state
+                .memoryview()
+                .class_storage
+                .promote_to
+                .set(None);
+        }
+        db
     }
 
     pub fn acquire(&mut self) {
