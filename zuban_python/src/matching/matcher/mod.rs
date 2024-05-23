@@ -777,7 +777,7 @@ impl<'a> Matcher<'a> {
                     }
                     _ => {
                         if let Some(type_var_matcher) = self.type_var_matchers.first() {
-                            dbg!(self.class);
+                            println!("{:?}", self.class);
                         }
                         todo!("{:?}", last_arg.kind)
                     }

@@ -780,7 +780,7 @@ fn main() {
                 .iter()
                 .any(|s| s.is_skip(case.file_name, &case.name) && !filters.contains(&case.name))
             {
-                println!("Skipped: {}", case.name);
+                //println!("Skipped: {}", case.name);
                 full_count += 1;
                 continue;
             }

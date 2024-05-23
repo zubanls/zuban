@@ -343,11 +343,14 @@ impl<'a, T: Token> Grammar<T> {
         }
         //let rest = &code[token.start_index() as usize..];
         //dbg!(token, rest);
-        dbg!(stack
-            .stack_nodes
-            .iter()
-            .map(|n| n.dfa_state.from_rule)
-            .collect::<Vec<_>>());
+        println!(
+            "{:?}",
+            stack
+                .stack_nodes
+                .iter()
+                .map(|n| n.dfa_state.from_rule)
+                .collect::<Vec<_>>()
+        );
         //dbg!(self.tos());
         panic!("No error recovery function found");
     }

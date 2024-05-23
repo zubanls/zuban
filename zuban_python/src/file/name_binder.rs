@@ -828,7 +828,7 @@ impl<'flags, 'db> NameBinder<'flags, 'db> {
                         }
                         NameParent::GlobalStmt => {
                             //self.maybe_add_reference(name, ordered);
-                            dbg!("TODO unhandled global");
+                            debug!("TODO unhandled global");
                         }
                         NameParent::NonlocalStmt => {
                             // TODO nonlocal
