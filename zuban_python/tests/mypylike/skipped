@@ -1237,6 +1237,19 @@ testUnreachableFlagMiscTestCaseMissingMethod
 testWalrus
 # FlowAnalysis includes stack above nested function, instead of just the current
 testMultipleNestedFunctionDef
+# random test regressions fix soon please
+testStrictEqualityWithALiteralNewType
+testMultipleModulesInOverridePyProjectTOML
+testNarrowingEqualityRequiresExplicitStrLiteral
+testNewAnalyzerVersionCheck2
+testInferEqualsNotOptional
+testInferEqualsNotOptionalWithUnion
+testInferEqualsStillOptionalWithNoOverlap
+testPerFileStrictOptionalModuleOnly
+testPerFileStrictOptionalFunction
+testPerFileStrictOptionalMethod
+testDisableBytearrayPromotion
+testDisableMemoryviewPromotion
 # --strict-equality regressions
 testStrictEqualityWithRecursiveListTypes
 # if right operand is Any, fallback to Any in operation

@@ -358,16 +358,16 @@ impl<'name, 'code> TestCase<'name, 'code> {
             wanted.sort_by_key(|line| line.split(':').next().unwrap().to_owned());
 
             if wanted_lower != actual_lines {
-                println!("\nMismatch:\n");
-                println!("Wanted lines: {:?}", wanted_lower);
-                println!("\nActual lines: {:?}", actual_lines);
-                println!(
-                    "\nWanted:\n{}\nActual:\n{}",
-                    wanted.iter().fold(String::new(), |a, b| a + b + "\n"),
-                    actual,
-                );
-                println!(
-                    "\nin {} ({}): Step {}/{}",
+                let wanted = wanted.iter().fold(String::new(), |a, b| a + b + "\n");
+                panic!(
+                    "\nMismatch:\n\
+                     Wanted lines: {wanted_lower:?}\n\n\
+                     Actual lines: {actual_lines:?}\n\n\
+                     Wanted:\n\
+                     {wanted}\n\
+                     Actual:\n\
+                     {actual}\n\
+                     in {} ({}): Step {}/{}",
                     &self.name,
                     self.file_name,
                     i + 1,
@@ -720,14 +720,15 @@ fn calculate_filters(args: Vec<String>) -> Vec<String> {
 }
 
 struct ProjectsCache {
-    base_project: Project,
+    base_project: Option<Project>,
     map: HashMap<TypeCheckerFlags, Project>,
 }
 
 impl ProjectsCache {
-    fn new() -> Self {
+    fn new(reuse_db: bool) -> Self {
         Self {
-            base_project: Project::new(ProjectOptions::new(BASE_PATH.into(), Default::default())),
+            base_project: reuse_db
+                .then(|| Project::new(ProjectOptions::new(BASE_PATH.into(), Default::default()))),
             map: Default::default(),
         }
     }
@@ -742,8 +743,11 @@ impl ProjectsCache {
     }
 
     fn try_to_reuse_project_parts(&self, options: ProjectOptions) -> Project {
-        self.base_project
-            .try_to_reuse_project_resources_for_tests(options)
+        if let Some(base_project) = self.base_project.as_ref() {
+            base_project.try_to_reuse_project_resources_for_tests(options)
+        } else {
+            Project::new(options)
+        }
     }
 }
 
@@ -755,7 +759,8 @@ fn main() {
 
     let files = find_mypy_style_files();
     let start = Instant::now();
-    let mut projects = ProjectsCache::new();
+    let reuse_db = true; // This is a hack to make tests much faster.
+    let mut projects = ProjectsCache::new(reuse_db);
     let mut full_count = 0;
     let mut ran_count = 0;
     let file_count = files.len();
