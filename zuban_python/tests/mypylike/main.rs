@@ -751,11 +751,11 @@ fn main() {
     let cli_args: Vec<String> = env::args().collect();
     let filters = calculate_filters(cli_args);
 
-    let mut projects = ProjectsCache::new();
     let skipped = skipped();
 
     let files = find_mypy_style_files();
     let start = Instant::now();
+    let mut projects = ProjectsCache::new();
     let mut full_count = 0;
     let mut ran_count = 0;
     let file_count = files.len();

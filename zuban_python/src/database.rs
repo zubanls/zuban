@@ -28,7 +28,7 @@ use crate::{
     type_helpers::{Class, Function},
     utils::{InsertOnlyVec, SymbolTable},
     workspaces::{
-        Directory, DirectoryEntry, FileEntry, Invalidations, WorkspaceFileIndex, Workspaces,
+        Directory, DirectoryEntry, FileEntry, Invalidations, Parent, WorkspaceFileIndex, Workspaces,
     },
     ProjectOptions, TypeCheckerFlags,
 };
@@ -850,7 +850,56 @@ impl Database {
             flags: options.flags,
             overrides: options.overrides,
         };
-        let files = self.files.clone();
+        let files = InsertOnlyVec::<dyn FileState>::default();
+        let workspaces = self.workspaces.clone_with_new_rcs();
+        for (i, file_state) in unsafe { self.files.iter() }.enumerate() {
+            fn search_parent(
+                workspaces: &Workspaces,
+                parent: Parent,
+                name: &str,
+            ) -> DirectoryEntry {
+                let tmp;
+                let parent_dir = match parent {
+                    Parent::Directory(dir) => {
+                        tmp = dir.upgrade().unwrap();
+                        &tmp
+                    }
+                    Parent::Workspace(w) => {
+                        workspaces
+                            .directories()
+                            .find(|(name, _)| **name == **w)
+                            .unwrap()
+                            .1
+                    }
+                };
+                let x = parent_dir.search(name).unwrap().clone();
+                x
+            }
+            fn replace_from_new_workspace(workspaces: &Workspaces, parent: &Parent) -> Parent {
+                match parent {
+                    Parent::Directory(dir) => {
+                        let dir = dir.upgrade().unwrap();
+                        let replaced = replace_from_new_workspace(workspaces, &dir.parent);
+                        let search = search_parent(workspaces, replaced, &dir.name);
+                        let DirectoryEntry::Directory(new_dir) = search else {
+                            unreachable!();
+                        };
+                        Parent::Directory(Rc::downgrade(&new_dir))
+                    }
+                    Parent::Workspace(workspace) => parent.clone(),
+                }
+            }
+            let current_entry = file_state.file_entry();
+            let parent_dir = replace_from_new_workspace(&workspaces, &current_entry.parent);
+            let DirectoryEntry::File(new_file_entry) =
+                search_parent(&workspaces, parent_dir, &current_entry.name)
+            else {
+                unreachable!()
+            };
+            //debug_assert_ne!(new_file_entry.as_ref() as *const _, current_entry.as_ref() as *const _);
+            files.push(file_state.clone_box(new_file_entry.clone()));
+        }
+
         let mut python_state = self.python_state.clone();
         let set_pointer = |pointer_ref: &mut *const PythonFile, name, is_package| {
             for (i, file_state) in unsafe { files.iter() }.enumerate() {
@@ -901,7 +950,7 @@ impl Database {
             file_state_loaders,
             files,
             path_to_file: self.path_to_file.clone(),
-            workspaces: self.workspaces.clone_with_new_rcs(),
+            workspaces,
             in_memory_files: Default::default(),
             python_state,
             project,

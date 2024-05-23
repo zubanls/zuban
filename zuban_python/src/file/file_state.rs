@@ -170,13 +170,7 @@ pub trait FileState: fmt::Debug + Unpin {
     fn unload_and_return_invalidations(&mut self) -> Invalidations;
     fn add_invalidates(&self, file_index: FileIndex);
     fn take_invalidations(&mut self) -> Invalidations;
-    fn clone_box(&self) -> Box<dyn FileState>;
-}
-
-impl Clone for Box<dyn FileState> {
-    fn clone(&self) -> Self {
-        self.clone_box()
-    }
+    fn clone_box(&self, new_file_entry: Rc<FileEntry>) -> Pin<Box<dyn FileState>>;
 }
 
 impl<F: File + Unpin + Clone> FileState for LanguageFileState<F> {
@@ -223,8 +217,10 @@ impl<F: File + Unpin + Clone> FileState for LanguageFileState<F> {
         self.invalidates.add(file_index)
     }
 
-    fn clone_box(&self) -> Box<dyn FileState> {
-        Box::new(self.clone())
+    fn clone_box(&self, new_file_entry: Rc<FileEntry>) -> Pin<Box<dyn FileState>> {
+        let mut new = self.clone();
+        new.file_entry = new_file_entry;
+        Box::pin(new)
     }
 }
 
