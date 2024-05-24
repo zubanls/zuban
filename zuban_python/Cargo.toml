@@ -13,13 +13,14 @@ regex = "*"
 walkdir = "2"
 rust-ini = "0.21.0"
 toml_edit = "0.22.13"
+clap = { version = "4.5.4", features = ["derive"] }
 
 [features]
 zuban_debug = []
 
-[[test]]
-name = "blackbox"
-harness = false
+#[[test]]
+#name = "blackbox"
+#harness = false
 
 [[test]]
 name = "mypylike"

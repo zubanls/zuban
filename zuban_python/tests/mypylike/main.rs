@@ -6,6 +6,8 @@ use std::{
     time::Instant,
 };
 
+use clap::Parser;
+
 use regex::{Captures, Regex, Replacer};
 use zuban_python::{DiagnosticConfig, Project, ProjectOptions, PythonVersion, TypeCheckerFlags};
 
@@ -71,6 +73,19 @@ lazy_static::lazy_static! {
     static ref REPLACE_MYPY_ELLIPSIS: Regex = Regex::new(r#""ellipsis""#).unwrap();
     static ref REPLACE_MYPY_NO_RETURN: Regex = Regex::new(r"\bNoReturn\b").unwrap();
     static ref REPLACE_ESCAPES: Regex = Regex::new(r"(?m)^\\\[").unwrap();
+}
+
+/// Simple program to greet a person
+#[derive(Parser, Debug)]
+#[command(about, long_about = None)]
+struct CliArgs {
+    /// Will not reuse the database, which disables a hack, but is slower.
+    #[arg(long)]
+    no_reuse_db: bool,
+
+    /// Filter files or test names like "check-classes" or "testFooBar"
+    #[arg(num_args = 0..)]
+    filters: Vec<String>,
 }
 
 #[derive(Default, Clone, Debug)]
@@ -752,15 +767,16 @@ impl ProjectsCache {
 }
 
 fn main() {
-    let cli_args: Vec<String> = env::args().collect();
-    let filters = calculate_filters(cli_args);
+    // Avoid the --, because that's the only way how we can accept flags like --foo like
+    // cargo test mypy -- -- --foo. Otherwise libtest? complains, if we just use -- once.
+    let cli_args = CliArgs::parse_from(env::args().filter(|arg| arg != "--"));
+    let filters = calculate_filters(cli_args.filters);
 
     let skipped = skipped();
 
     let files = find_mypy_style_files();
     let start = Instant::now();
-    let reuse_db = true; // This is a hack to make tests much faster.
-    let mut projects = ProjectsCache::new(reuse_db);
+    let mut projects = ProjectsCache::new(!cli_args.no_reuse_db);
     let mut full_count = 0;
     let mut ran_count = 0;
     let file_count = files.len();
