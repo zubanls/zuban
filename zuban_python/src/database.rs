@@ -1174,8 +1174,7 @@ impl Database {
         }
     }
 
-    fn py_load_tmp(&self, dir: &Directory, p: &'static str) -> &PythonFile {
-        // TODO give this function a better name and put it into a workspace
+    fn preload_typeshed_stub(&self, dir: &Directory, p: &'static str) -> &PythonFile {
         let loader = self.loader(p).unwrap();
         let code = self.vfs.read_file(p).unwrap();
         let entry = dir.search(self.vfs.dir_and_name(p).1).unwrap().clone();
@@ -1188,6 +1187,7 @@ impl Database {
             p.into(),
             code.into(),
         ));
+        file_entry.file_index.set(file_index);
         self.loaded_python_file(file_index)
     }
 
@@ -1210,25 +1210,32 @@ impl Database {
         };
         drop(dirs);
 
-        let builtins = self.py_load_tmp(&stdlib_dir, "../typeshed/stdlib/builtins.pyi") as *const _;
-        let typing = self.py_load_tmp(&stdlib_dir, "../typeshed/stdlib/typing.pyi") as *const _;
-        let typeshed = self.py_load_tmp(&typeshed_dir, "../typeshed/stdlib/_typeshed/__init__.pyi")
+        let builtins =
+            self.preload_typeshed_stub(&stdlib_dir, "../typeshed/stdlib/builtins.pyi") as *const _;
+        let typing =
+            self.preload_typeshed_stub(&stdlib_dir, "../typeshed/stdlib/typing.pyi") as *const _;
+        let typeshed = self
+            .preload_typeshed_stub(&typeshed_dir, "../typeshed/stdlib/_typeshed/__init__.pyi")
             as *const _;
-        let types = self.py_load_tmp(&stdlib_dir, "../typeshed/stdlib/types.pyi") as *const _;
-        let abc = self.py_load_tmp(&stdlib_dir, "../typeshed/stdlib/abc.pyi") as *const _;
+        let types =
+            self.preload_typeshed_stub(&stdlib_dir, "../typeshed/stdlib/types.pyi") as *const _;
+        let abc = self.preload_typeshed_stub(&stdlib_dir, "../typeshed/stdlib/abc.pyi") as *const _;
         let functools =
-            self.py_load_tmp(&stdlib_dir, "../typeshed/stdlib/functools.pyi") as *const _;
-        let enum_file = self.py_load_tmp(&stdlib_dir, "../typeshed/stdlib/enum.pyi") as *const _;
-        let dataclasses_file =
-            self.py_load_tmp(&stdlib_dir, "../typeshed/stdlib/dataclasses.pyi") as *const _;
-        let typing_extensions =
-            self.py_load_tmp(&stdlib_dir, "../typeshed/stdlib/typing_extensions.pyi") as *const _;
-        let mypy_extensions = self.py_load_tmp(
+            self.preload_typeshed_stub(&stdlib_dir, "../typeshed/stdlib/functools.pyi") as *const _;
+        let enum_file =
+            self.preload_typeshed_stub(&stdlib_dir, "../typeshed/stdlib/enum.pyi") as *const _;
+        let dataclasses_file = self
+            .preload_typeshed_stub(&stdlib_dir, "../typeshed/stdlib/dataclasses.pyi")
+            as *const _;
+        let typing_extensions = self
+            .preload_typeshed_stub(&stdlib_dir, "../typeshed/stdlib/typing_extensions.pyi")
+            as *const _;
+        let mypy_extensions = self.preload_typeshed_stub(
             &mypy_extensions_dir,
             "../typeshed/stubs/mypy-extensions/mypy_extensions.pyi",
         ) as *const _;
 
-        let collections = self.py_load_tmp(
+        let collections = self.preload_typeshed_stub(
             &collections_dir,
             "../typeshed/stdlib/collections/__init__.pyi",
         ) as *const _;

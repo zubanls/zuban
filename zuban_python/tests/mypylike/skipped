@@ -533,18 +533,6 @@ testNoCrashDoubleReexportTypedDictEmpty
 # Module <M> has no attribute <missing_name>
 testRelativeImportFromSameModule
 testImportFromSameModule
-# Module <M> has no attribute <missing_name>; maybe <name>
-testNewAnalyzerTypeAnnotationCycle3
-testModuleAttributeTwoSuggestions
-testModuleAttributeThreeSuggestions
-testImportMisspellingSingleCandidate
-testImportMisspellingMultipleCandidates
-testImportMisspellingMultipleCandidatesTruncated
-testColumnHasNoAttribute
-testErrorCodeNoAttribute
-testDequeWrongCase
-# "C" has no attribute "__aenter__"; maybe "__enter__"?
-testAsyncWithError
 
 # Unexpected keyword argument "otter" for "f"; did you mean "other"?
 testMultipleKeywordsForMisspelling
@@ -1574,6 +1562,19 @@ testClassLevelTypeAliasesInUnusualContexts
 testMalformedTypeAliasRuntimeReassignments
 
 # ------------- Additional unimportant, but would be nice -----------------
+
+# Module <M> has no attribute <missing_name>; maybe <name>
+testNewAnalyzerTypeAnnotationCycle3
+testModuleAttributeTwoSuggestions
+testModuleAttributeThreeSuggestions
+testImportMisspellingSingleCandidate
+testImportMisspellingMultipleCandidates
+testImportMisspellingMultipleCandidatesTruncated
+testColumnHasNoAttribute
+testErrorCodeNoAttribute
+testDequeWrongCase
+# "C" has no attribute "__aenter__"; maybe "__enter__"?
+testAsyncWithError
 
 # ignore_missing_imports in Mypy overrides ignores import errors if those modules are not presents
 testModuleGetattrInit10

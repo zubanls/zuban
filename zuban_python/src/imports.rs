@@ -37,40 +37,13 @@ pub fn global_import<'a>(
     from_file: FileIndex,
     name: &'a str,
 ) -> Option<ImportResult> {
-    if name == "typing" {
-        return Some(ImportResult::File(db.python_state.typing().file_index()));
-    }
     if name == "typing_extensions" {
         return Some(ImportResult::File(
             db.python_state.typing_extensions().file_index(),
         ));
     }
-    if name == "collections" {
-        return Some(ImportResult::File(
-            db.python_state.collections().file_index(),
-        ));
-    }
-    if name == "types" {
-        return Some(ImportResult::File(db.python_state.types().file_index()));
-    }
-    if name == "mypy_extensions" {
-        return Some(ImportResult::File(
-            db.python_state.mypy_extensions().file_index(),
-        ));
-    }
-    if name == "abc" {
-        return Some(ImportResult::File(db.python_state.abc().file_index()));
-    }
     if name == "functools" {
         return Some(ImportResult::File(db.python_state.functools().file_index()));
-    }
-    if name == "enum" {
-        return Some(ImportResult::File(db.python_state.enum_file().file_index()));
-    }
-    if name == "dataclasses" {
-        return Some(ImportResult::File(
-            db.python_state.dataclasses_file().file_index(),
-        ));
     }
 
     for (dir_path, dir) in db.workspaces.directories() {
