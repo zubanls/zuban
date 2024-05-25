@@ -1045,7 +1045,7 @@ impl Database {
         self.loaded_python_file(index)
     }
 
-    pub fn load_file_from_workspace(&self, file_entry: Rc<FileEntry>, path: Box<str>) {
+    pub fn load_file_from_workspace(&self, file_entry: Rc<FileEntry>, path: Box<str>) -> FileIndex {
         // A loader should be available for all files in the workspace.
         let loader = self.loader(&path).unwrap();
         let file_index = self.add_file_state(if let Some(code) = self.vfs.read_file(&path) {
@@ -1055,6 +1055,7 @@ impl Database {
             todo!()
         });
         file_entry.file_index.set(file_index);
+        file_index
     }
 
     pub fn load_in_memory_file(&mut self, path: Box<str>, code: Box<str>) -> FileIndex {
@@ -1176,19 +1177,11 @@ impl Database {
 
     fn preload_typeshed_stub(&self, dir: &Directory, p: &'static str) -> &PythonFile {
         let loader = self.loader(p).unwrap();
-        let code = self.vfs.read_file(p).unwrap();
         let entry = dir.search(self.vfs.dir_and_name(p).1).unwrap().clone();
         let DirectoryEntry::File(file_entry) = &entry else {
-            unreachable!()
+            panic!("It seems like you are using directories in typeshed for {p}")
         };
-        let file_index = self.add_file_state(loader.load_parsed(
-            &self.project,
-            file_entry.clone(),
-            p.into(),
-            code.into(),
-            true,
-        ));
-        file_entry.file_index.set(file_index);
+        let file_index = self.load_file_from_workspace(file_entry.clone(), p.into());
         self.loaded_python_file(file_index)
     }
 
