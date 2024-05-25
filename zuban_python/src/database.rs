@@ -27,9 +27,7 @@ use crate::{
     },
     type_helpers::{Class, Function},
     utils::{InsertOnlyVec, SymbolTable},
-    workspaces::{
-        Directory, DirectoryEntry, FileEntry, Invalidations, Parent, WorkspaceFileIndex, Workspaces,
-    },
+    workspaces::{Directory, DirectoryEntry, FileEntry, Invalidations, Parent, Workspaces},
     ProjectOptions, TypeCheckerFlags,
 };
 
@@ -1047,21 +1045,16 @@ impl Database {
         self.loaded_python_file(index)
     }
 
-    pub fn load_file_from_workspace(
-        &self,
-        file_entry: Rc<FileEntry>,
-        path: Box<str>,
-        index: &WorkspaceFileIndex,
-    ) {
+    pub fn load_file_from_workspace(&self, file_entry: Rc<FileEntry>, path: Box<str>) {
         // A loader should be available for all files in the workspace.
         let loader = self.loader(&path).unwrap();
         let file_index = self.add_file_state(if let Some(code) = self.vfs.read_file(&path) {
-            loader.load_parsed(&self.project, file_entry, path, code.into(), false)
+            loader.load_parsed(&self.project, file_entry.clone(), path, code.into(), false)
         } else {
             //loader.inexistent_file_state(path)
             todo!()
         });
-        index.set(file_index);
+        file_entry.file_index.set(file_index);
     }
 
     pub fn load_in_memory_file(&mut self, path: Box<str>, code: Box<str>) -> FileIndex {
