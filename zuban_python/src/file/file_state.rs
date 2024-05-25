@@ -79,6 +79,7 @@ pub trait FileStateLoader {
         file_entry: Rc<FileEntry>,
         path: Box<str>,
         code: Box<str>,
+        invalidates_db: bool,
     ) -> Pin<Box<dyn FileState>>;
 }
 
@@ -107,6 +108,7 @@ impl FileStateLoader for PythonFileLoader {
         file_entry: Rc<FileEntry>,
         path: Box<str>,
         code: Box<str>,
+        invalidates_db: bool,
     ) -> Pin<Box<dyn FileState>> {
         let is_stub = path.ends_with(".pyi");
         let new_python_file = PythonFile::new(project, &file_entry, code, is_stub);
@@ -114,6 +116,7 @@ impl FileStateLoader for PythonFileLoader {
             file_entry,
             path,
             new_python_file,
+            invalidates_db,
         ))
     }
 }
@@ -167,9 +170,10 @@ pub trait FileState: fmt::Debug + Unpin {
     fn file(&self, reader: &dyn Vfs) -> Option<&(dyn File + 'static)>;
     fn maybe_loaded_file_mut(&mut self) -> Option<&mut dyn File>;
     fn set_file_index(&self, index: FileIndex);
-    fn unload_and_return_invalidations(&mut self) -> Invalidations;
+    fn unload_and_return_invalidations(&mut self) -> Option<Invalidations>;
     fn add_invalidates(&self, file_index: FileIndex);
-    fn take_invalidations(&mut self) -> Invalidations;
+    fn take_invalidations(&mut self) -> Option<Invalidations>;
+    fn invalidate_invalidates_db(&self) -> bool;
     fn clone_box(&self, new_file_entry: Rc<FileEntry>) -> Pin<Box<dyn FileState>>;
 }
 
@@ -203,18 +207,26 @@ impl<F: File + Unpin + Clone> FileState for LanguageFileState<F> {
         }
     }
 
-    fn unload_and_return_invalidations(&mut self) -> Invalidations {
-        let invalidates = std::mem::take(&mut self.invalidates);
+    fn unload_and_return_invalidations(&mut self) -> Option<Invalidations> {
+        let invalidates = self.take_invalidations();
         self.state = InternalFileExistence::Unloaded;
         invalidates
     }
 
-    fn take_invalidations(&mut self) -> Invalidations {
-        std::mem::take(&mut self.invalidates)
+    fn take_invalidations(&mut self) -> Option<Invalidations> {
+        self.invalidates
+            .as_mut()
+            .map(|invalidations| std::mem::take(invalidations))
     }
 
     fn add_invalidates(&self, file_index: FileIndex) {
-        self.invalidates.add(file_index)
+        if let Some(invalidates) = &self.invalidates {
+            invalidates.add(file_index)
+        }
+    }
+
+    fn invalidate_invalidates_db(&self) -> bool {
+        return self.invalidates.is_none();
     }
 
     fn clone_box(&self, new_file_entry: Rc<FileEntry>) -> Pin<Box<dyn FileState>> {
@@ -229,7 +241,7 @@ pub struct LanguageFileState<F: 'static + Clone> {
     path: Box<str>,
     file_entry: Rc<FileEntry>,
     state: InternalFileExistence<F>,
-    invalidates: Invalidations,
+    invalidates: Option<Invalidations>,
 }
 
 impl<F: Clone> fmt::Debug for LanguageFileState<F> {
@@ -243,12 +255,17 @@ impl<F: Clone> fmt::Debug for LanguageFileState<F> {
 }
 
 impl<F: File + Clone> LanguageFileState<F> {
-    pub fn new_parsed(file_entry: Rc<FileEntry>, path: Box<str>, file: F) -> Self {
+    pub fn new_parsed(
+        file_entry: Rc<FileEntry>,
+        path: Box<str>,
+        file: F,
+        invalidates_db: bool,
+    ) -> Self {
         Self {
             file_entry,
             path,
             state: InternalFileExistence::Parsed(file),
-            invalidates: Default::default(),
+            invalidates: (!invalidates_db).then(Invalidations::default),
         }
     }
 }

@@ -1041,6 +1041,8 @@ impl Database {
                 .clone(),
             "".into(),
             file,
+            self.file_state(super_file.file_index())
+                .invalidate_invalidates_db(),
         )));
         self.loaded_python_file(index)
     }
@@ -1054,7 +1056,7 @@ impl Database {
         // A loader should be available for all files in the workspace.
         let loader = self.loader(&path).unwrap();
         let file_index = self.add_file_state(if let Some(code) = self.vfs.read_file(&path) {
-            loader.load_parsed(&self.project, file_entry, path, code.into())
+            loader.load_parsed(&self.project, file_entry, path, code.into(), false)
         } else {
             //loader.inexistent_file_state(path)
             todo!()
@@ -1078,6 +1080,7 @@ impl Database {
             ensured.file_entry.clone(),
             path.clone(),
             code,
+            false,
         );
         let file_index = if let Some(file_index) = in_mem_file {
             self.update_file_state(file_index, file_state);
@@ -1105,14 +1108,18 @@ impl Database {
     fn unload_file(&mut self, file_index: FileIndex) {
         let file_state = &mut self.files[file_index.0 as usize];
         self.workspaces.unload_file(&*self.vfs, file_state.path());
-        let invalidations = file_state.unload_and_return_invalidations();
+        let invalidations = file_state
+            .unload_and_return_invalidations()
+            .expect("We don't support rebuilding after changing of typeshed, yet.");
         self.invalidate_files(file_index, invalidations)
     }
 
     fn invalidate_files(&mut self, original_file_index: FileIndex, invalidations: Invalidations) {
         for invalid_index in invalidations.into_iter() {
             let file_state = self.file_state_mut(invalid_index);
-            let invalidations = file_state.take_invalidations();
+            let invalidations = file_state
+                .take_invalidations()
+                .expect("We don't support rebuilding after changing of typeshed, yet.");
             if let Some(file) = file_state.maybe_loaded_file_mut() {
                 file.invalidate_references_to(original_file_index);
             }
@@ -1186,6 +1193,7 @@ impl Database {
             file_entry.clone(),
             p.into(),
             code.into(),
+            true,
         ));
         file_entry.file_index.set(file_index);
         self.loaded_python_file(file_index)
