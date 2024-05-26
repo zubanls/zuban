@@ -33,8 +33,6 @@ test695TypeVar
 test695TypeAliasType
 testPEP695*
 
-
-
 # TypeAliasType
 testTypeAliasType
 testTypeAliasTypeInvalid
@@ -193,6 +191,8 @@ testAssignmentToStarFromTupleType
 # empty tuple as iterator ("Need type annotation for "x"")
 testAssignmentToStarMissingAnnotation
 testForLoopOverEmptyTuple
+# tuple unpack with lists like (x, y) = [1, ""]
+testMultiModuleAlias
 
 # Special-case type inference of empty collections https://github.com/python/mypy/pull/16122
 testInferenceWorksWithEmptyCollectionsUnion
@@ -556,10 +556,6 @@ testNewAnalyzerImportAmbiguousWithTopLevelFunction
 testImportCycleSpecialCase
 testPackagePath
 testIncrementalNestedBrokenCascade
-
-# Module type does not contain module info
-testMultiModuleAlias
-testModuleAliasWithExplicitAnnotation
 
 # import cycle
 testBoundGenericMethodParamSpecFine
