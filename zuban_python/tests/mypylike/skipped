@@ -1444,18 +1444,11 @@ testUnusedTargetForLoop
 testUnusedTargetWithClause
 testUnusedTargetNotExceptClause
 
-# Assignment like ac[b] += c with both __getitem__ and __setitem__ has same error twice
-testOperatorAssignmentWithIndexLvalue1
-
 # EllipsisType
 testUnionWithEllipsis
 # Ellipsis / raise NotimplementedError / pass are considered stubs in normal files 
 testEllipsisDefaultArgValueInNonStub
 testEllipsisDefaultArgValueInNonStubsMethods
-
-# NotImplemented
-testOperatorMethodAgainstSameType
-testReturnAnyForNotImplementedInNormalMethods
 
 # typing.no_type_check
 testNoTypeCheckDecoratorOnMethod1
@@ -1500,6 +1493,12 @@ testClassLevelTypeAliasesInUnusualContexts
 testMalformedTypeAliasRuntimeReassignments
 
 # ------------- Additional unimportant, but would be nice -----------------
+
+# Assignment like ac[b] += c with both __getitem__ and __setitem__ has same error twice
+testOperatorAssignmentWithIndexLvalue1
+
+# NotImplemented
+testReturnAnyForNotImplementedInNormalMethods
 
 # qualified name in function contains class path: __main__.Cls.FooEnum@4
 testAnonymousFunctionalEnum
