@@ -1045,11 +1045,18 @@ impl Database {
         self.loaded_python_file(index)
     }
 
-    pub fn load_file_from_workspace(&self, file_entry: Rc<FileEntry>, path: Box<str>) -> FileIndex {
+    pub fn load_file_from_workspace(&self, file_entry: Rc<FileEntry>) -> FileIndex {
         // A loader should be available for all files in the workspace.
+        let path = file_entry.path(&*self.vfs);
         let loader = self.loader(&path).unwrap();
         let file_index = self.add_file_state(if let Some(code) = self.vfs.read_file(&path) {
-            loader.load_parsed(&self.project, file_entry.clone(), path, code.into(), false)
+            loader.load_parsed(
+                &self.project,
+                file_entry.clone(),
+                path.into(),
+                code.into(),
+                false,
+            )
         } else {
             //loader.inexistent_file_state(path)
             todo!()
@@ -1175,13 +1182,16 @@ impl Database {
         }
     }
 
-    fn preload_typeshed_stub(&self, dir: &Directory, p: &'static str) -> &PythonFile {
-        let loader = self.loader(p).unwrap();
-        let entry = dir.search(self.vfs.dir_and_name(p).1).unwrap().clone();
+    fn preload_typeshed_stub(&self, dir: &Directory, file_name: &'static str) -> &PythonFile {
+        let loader = self.loader(file_name).unwrap();
+        let entry = dir.search(file_name).unwrap().clone();
         let DirectoryEntry::File(file_entry) = &entry else {
-            panic!("It seems like you are using directories in typeshed for {p}")
+            panic!(
+                "It seems like you are using directories in typeshed for {}: {file_name}",
+                dir.path(&*self.vfs)
+            )
         };
-        let file_index = self.load_file_from_workspace(file_entry.clone(), p.into());
+        let file_index = self.load_file_from_workspace(file_entry.clone());
         self.loaded_python_file(file_index)
     }
 
@@ -1204,35 +1214,21 @@ impl Database {
         };
         drop(dirs);
 
-        let builtins =
-            self.preload_typeshed_stub(&stdlib_dir, "../typeshed/stdlib/builtins.pyi") as *const _;
-        let typing =
-            self.preload_typeshed_stub(&stdlib_dir, "../typeshed/stdlib/typing.pyi") as *const _;
-        let typeshed = self
-            .preload_typeshed_stub(&typeshed_dir, "../typeshed/stdlib/_typeshed/__init__.pyi")
-            as *const _;
-        let types =
-            self.preload_typeshed_stub(&stdlib_dir, "../typeshed/stdlib/types.pyi") as *const _;
-        let abc = self.preload_typeshed_stub(&stdlib_dir, "../typeshed/stdlib/abc.pyi") as *const _;
-        let functools =
-            self.preload_typeshed_stub(&stdlib_dir, "../typeshed/stdlib/functools.pyi") as *const _;
-        let enum_file =
-            self.preload_typeshed_stub(&stdlib_dir, "../typeshed/stdlib/enum.pyi") as *const _;
-        let dataclasses_file = self
-            .preload_typeshed_stub(&stdlib_dir, "../typeshed/stdlib/dataclasses.pyi")
-            as *const _;
-        let typing_extensions = self
-            .preload_typeshed_stub(&stdlib_dir, "../typeshed/stdlib/typing_extensions.pyi")
-            as *const _;
-        let mypy_extensions = self.preload_typeshed_stub(
-            &mypy_extensions_dir,
-            "../typeshed/stubs/mypy-extensions/mypy_extensions.pyi",
-        ) as *const _;
+        let builtins = self.preload_typeshed_stub(&stdlib_dir, "builtins.pyi") as *const _;
+        let typing = self.preload_typeshed_stub(&stdlib_dir, "typing.pyi") as *const _;
+        let typeshed = self.preload_typeshed_stub(&typeshed_dir, "__init__.pyi") as *const _;
+        let types = self.preload_typeshed_stub(&stdlib_dir, "types.pyi") as *const _;
+        let abc = self.preload_typeshed_stub(&stdlib_dir, "abc.pyi") as *const _;
+        let functools = self.preload_typeshed_stub(&stdlib_dir, "functools.pyi") as *const _;
+        let enum_file = self.preload_typeshed_stub(&stdlib_dir, "enum.pyi") as *const _;
+        let dataclasses_file =
+            self.preload_typeshed_stub(&stdlib_dir, "dataclasses.pyi") as *const _;
+        let typing_extensions =
+            self.preload_typeshed_stub(&stdlib_dir, "typing_extensions.pyi") as *const _;
+        let mypy_extensions =
+            self.preload_typeshed_stub(&mypy_extensions_dir, "mypy_extensions.pyi") as *const _;
 
-        let collections = self.preload_typeshed_stub(
-            &collections_dir,
-            "../typeshed/stdlib/collections/__init__.pyi",
-        ) as *const _;
+        let collections = self.preload_typeshed_stub(&collections_dir, "__init__.pyi") as *const _;
 
         PythonState::initialize(
             self,

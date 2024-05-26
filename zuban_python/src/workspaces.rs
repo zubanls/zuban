@@ -233,8 +233,15 @@ pub enum Parent {
 impl Parent {
     pub fn maybe_dir(&self) -> Result<Rc<Directory>, &Rc<Box<str>>> {
         match self {
-            Self::Directory(dir) => Ok(dir.upgrade().expect("THere should always be a parent")),
+            Self::Directory(dir) => Ok(dir.upgrade().unwrap()),
             Self::Workspace(w) => Err(w),
+        }
+    }
+
+    fn path(&self, vfs: &dyn Vfs) -> String {
+        match self {
+            Self::Directory(dir) => dir.upgrade().unwrap().path(vfs),
+            Self::Workspace(workspace) => workspace.to_string(),
         }
     }
 }
@@ -253,6 +260,12 @@ impl FileEntry {
             file_index: WorkspaceFileIndex::none(),
             parent,
         })
+    }
+
+    pub fn path(&self, vfs: &dyn Vfs) -> String {
+        let mut path = self.parent.path(vfs);
+        path.push(vfs.separator());
+        path + &self.name
     }
 }
 
@@ -462,6 +475,12 @@ impl Directory {
         for n in self.entries.borrow_mut().iter_mut() {
             n.for_each_file(callable)
         }
+    }
+
+    pub fn path(&self, vfs: &dyn Vfs) -> String {
+        let mut path = self.parent.path(vfs);
+        path.push(vfs.separator());
+        path + &self.name
     }
 }
 

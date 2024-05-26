@@ -89,10 +89,7 @@ pub fn python_import<'a>(
                 let is_py_file = file.name.as_ref() == format!("{name}.py");
                 if is_py_file || file.name.as_ref() == format!("{name}.pyi") {
                     if file.file_index.get().is_none() {
-                        db.load_file_from_workspace(
-                            file.clone(),
-                            format!("{dir_path}{SEPARATOR}{}", file.name).into(),
-                        );
+                        db.load_file_from_workspace(file.clone());
                     }
                     debug_assert!(file.file_index.get().is_some());
                     if is_py_file {
@@ -132,7 +129,7 @@ fn load_init_file(
         if let DirectoryEntry::File(file) = child {
             if file.name.as_ref() == "__init__.py" || file.name.as_ref() == "__init__.pyi" {
                 if file.file_index.get().is_none() {
-                    db.load_file_from_workspace(file.clone(), on_new(&file.name));
+                    db.load_file_from_workspace(file.clone());
                 }
                 return file.file_index.get();
             }
