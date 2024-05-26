@@ -522,14 +522,6 @@ testVariadicTupleInProtocol
 # TypeVarTuple as unpacked varargs
 testVariadicStarArgsCallNoCrash
 
-# Override import cached files like typing types builtins etc.
-testNoCrashDoubleReexportFunctionEmpty
-testNoCrashDoubleReexportBaseEmpty
-testNoCrashDoubleReexportMetaEmpty
-testNoCrashDoubleReexportTupleEmpty
-testNoCrashDoubleReexportOverloadEmpty
-testNoCrashDoubleReexportTypedDictEmpty
-
 # Module <M> has no attribute <missing_name>
 testRelativeImportFromSameModule
 testImportFromSameModule

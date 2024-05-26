@@ -1043,7 +1043,11 @@ impl Database {
         self.loaded_python_file(index)
     }
 
-    pub fn load_file_from_workspace(&self, file_entry: Rc<FileEntry>) -> FileIndex {
+    pub fn load_file_from_workspace(
+        &self,
+        file_entry: Rc<FileEntry>,
+        invalidates_db: bool,
+    ) -> FileIndex {
         // A loader should be available for all files in the workspace.
         let path = file_entry.path(&*self.vfs);
         let loader = self.loader(&path).unwrap();
@@ -1053,7 +1057,7 @@ impl Database {
                 file_entry.clone(),
                 path.into(),
                 code.into(),
-                false,
+                invalidates_db,
             )
         } else {
             //loader.inexistent_file_state(path)
@@ -1213,7 +1217,7 @@ impl Database {
         let file_index = file_entry
             .file_index
             .get()
-            .unwrap_or_else(|| self.load_file_from_workspace(file_entry.clone()));
+            .unwrap_or_else(|| self.load_file_from_workspace(file_entry.clone(), true));
         self.loaded_python_file(file_index)
     }
 
