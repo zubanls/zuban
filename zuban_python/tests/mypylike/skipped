@@ -526,12 +526,6 @@ testVariadicStarArgsCallNoCrash
 testRelativeImportFromSameModule
 testImportFromSameModule
 
-# Unexpected keyword argument "otter" for "f"; did you mean "other"?
-testMultipleKeywordsForMisspelling
-testKeywordMisspelling*
-# "TypedDict "XXX" has no key "xxx" note: Did you mean "type"?"
-testCannotGetItemOfTypedDictWithInvalidStringLiteralKey
-
 # Import submodules
 testNewAnalyzerImportStarSpecialCase
 # import a.b.c issues
@@ -1567,6 +1561,11 @@ testErrorCodeNoAttribute
 testDequeWrongCase
 # "C" has no attribute "__aenter__"; maybe "__enter__"?
 testAsyncWithError
+# Unexpected keyword argument "otter" for "f"; did you mean "other"?
+testMultipleKeywordsForMisspelling
+testKeywordMisspelling*
+# "TypedDict "XXX" has no key "xxx" note: Did you mean "type"?"
+testCannotGetItemOfTypedDictWithInvalidStringLiteralKey
 
 # ignore_missing_imports in Mypy overrides ignores import errors if those modules are not presents
 testModuleGetattrInit10
