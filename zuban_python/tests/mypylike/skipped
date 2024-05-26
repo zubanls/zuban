@@ -567,6 +567,7 @@ testReExportChildStubs2
 # Module <M> has no attribute <missing_name>
 testRelativeImportFromSameModule
 testImportFromSameModule
+testModuleAliasRepeatedWithAnnotation
 
 # namespace multiple packages
 testTypedPkgSimple
@@ -1444,10 +1445,6 @@ testUnusedTargetNotExceptClause
 # __doc__ definitions
 testNewNamedTupleDocString
 
-# Formatting Module as types ("ModuleType" instead of Module)
-testInvalidOperationsOnModules
-testConditionalImportAndAssignInvalidToModule
-testModuleAliasRepeatedWithAnnotation
 # qualified name in function contains class path: __main__.Cls.FooEnum@4
 testAnonymousFunctionalEnum
 testNewAnalyzerIncrementalMethodNamedTuple
