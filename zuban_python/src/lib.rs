@@ -123,12 +123,7 @@ impl<'a> Script<'a> {
                 if let Some(code) = code {
                     db.load_in_memory_file(path, code)
                 } else {
-                    db.in_memory_file(&path)
-                        .or_else(|| {
-                            let file_index = db.file_state_index_by_path(&path);
-                            todo!()
-                        })
-                        .unwrap()
+                    db.in_memory_file(&path).or_else(|| todo!()).unwrap()
                 }
             }
             None => todo!(),

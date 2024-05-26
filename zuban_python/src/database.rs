@@ -797,8 +797,6 @@ pub struct Database {
     pub vfs: Box<dyn Vfs>,
     file_state_loaders: FileStateLoaders,
     files: InsertOnlyVec<dyn FileState>,
-    // TODO this seems to be unused currently
-    path_to_file: HashMap<&'static str, FileIndex>,
     pub workspaces: Workspaces,
     in_memory_files: HashMap<Box<str>, FileIndex>,
 
@@ -834,7 +832,6 @@ impl Database {
             vfs: Box::<FileSystemReader>::default(),
             file_state_loaders,
             files: Default::default(),
-            path_to_file: Default::default(),
             workspaces,
             in_memory_files: Default::default(),
             python_state: PythonState::reserve(),
@@ -953,7 +950,6 @@ impl Database {
             vfs: Box::<FileSystemReader>::default(),
             file_state_loaders,
             files,
-            path_to_file: self.path_to_file.clone(),
             workspaces,
             in_memory_files: Default::default(),
             python_state,
@@ -997,10 +993,6 @@ impl Database {
 
     pub fn file_path(&self, index: FileIndex) -> &str {
         self.file_state(index).path()
-    }
-
-    pub fn file_state_index_by_path(&self, path: &str) -> Option<FileIndex> {
-        self.path_to_file.get(path).copied()
     }
 
     pub fn loaded_file(&self, index: FileIndex) -> &(dyn File + 'static) {
