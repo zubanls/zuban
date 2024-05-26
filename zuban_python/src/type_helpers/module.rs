@@ -34,8 +34,7 @@ impl<'a> Module<'a> {
                 if &*entry.name != "__init__.py" && &*entry.name != "__init__.pyi" {
                     return None;
                 }
-                let p = db.vfs.dir_path(self.file.file_path(db)).unwrap();
-                python_import(db, self.file.file_index(), p, &dir.upgrade().unwrap(), name)
+                python_import(db, self.file.file_index(), &dir.upgrade().unwrap(), name)
             }
             Parent::Workspace(_) => None,
         }
@@ -137,7 +136,7 @@ pub fn lookup_in_namespace(
     namespace: &Namespace,
     name: &str,
 ) -> LookupResult {
-    match python_import(db, from_file, &namespace.path, &namespace.content, name) {
+    match python_import(db, from_file, &namespace.content, name) {
         Some(ImportResult::File(file_index)) => LookupResult::FileReference(file_index),
         Some(ImportResult::Namespace(namespace)) => {
             LookupResult::UnknownName(Inferred::from_type(Type::Namespace(namespace)))

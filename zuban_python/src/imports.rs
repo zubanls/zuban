@@ -8,8 +8,6 @@ use crate::{
     workspaces::{Directory, DirectoryEntry},
 };
 
-const SEPARATOR: &str = "/"; // TODO different separator
-
 #[derive(Debug)]
 pub enum ImportResult {
     File(FileIndex),
@@ -47,7 +45,7 @@ pub fn global_import<'a>(
     }
 
     for (dir_path, dir) in db.workspaces.directories() {
-        let result = python_import(db, from_file, dir_path, dir, name);
+        let result = python_import(db, from_file, dir, name);
         if result.is_some() {
             return result;
         }
@@ -58,7 +56,6 @@ pub fn global_import<'a>(
 pub fn python_import<'a>(
     db: &Database,
     from_file: FileIndex,
-    dir_path: &'a str,
     dir: &Directory,
     name: &'a str,
 ) -> Option<ImportResult> {
@@ -69,13 +66,7 @@ pub fn python_import<'a>(
         match entry {
             DirectoryEntry::Directory(dir2) => {
                 if dir2.name.as_ref() == name {
-                    let result = load_init_file(db, dir2, |child| {
-                        format!(
-                            "{dir_path}{SEPARATOR}{dir_name}{SEPARATOR}{child}",
-                            dir_name = dir2.name
-                        )
-                        .into()
-                    });
+                    let result = load_init_file(db, dir2);
                     if let Some(file_index) = &result {
                         db.add_invalidates(*file_index, from_file);
                         return result.map(ImportResult::File);
@@ -112,7 +103,7 @@ pub fn python_import<'a>(
     if let Some(content) = namespace_content {
         debug!("// TODO invalidate!");
         return Some(ImportResult::Namespace(Rc::new(Namespace {
-            path: format!("{dir_path}{SEPARATOR}{name}"),
+            path: content.path(&*db.vfs),
             content,
         })));
     }
@@ -120,11 +111,7 @@ pub fn python_import<'a>(
     None
 }
 
-fn load_init_file(
-    db: &Database,
-    content: &Directory,
-    on_new: impl Fn(&str) -> Box<str>,
-) -> Option<FileIndex> {
+fn load_init_file(db: &Database, content: &Directory) -> Option<FileIndex> {
     for child in &content.iter() {
         if let DirectoryEntry::File(file) = child {
             if file.name.as_ref() == "__init__.py" || file.name.as_ref() == "__init__.pyi" {
@@ -145,6 +132,6 @@ pub fn find_ancestor(db: &Database, file: &PythonFile, level: usize) -> Option<I
         parent = parent.parent.maybe_dir().ok()?;
     }
     Some(ImportResult::File(
-        load_init_file(db, &parent, |_| todo!()).unwrap_or_else(|| todo!()),
+        load_init_file(db, &parent).unwrap_or_else(|| todo!()),
     ))
 }
