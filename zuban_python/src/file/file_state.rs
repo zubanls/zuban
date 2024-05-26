@@ -162,6 +162,8 @@ pub trait File: std::fmt::Debug + AsAny {
         config: &DiagnosticConfig,
     ) -> Box<[Diagnostic<'db>]>;
     fn invalidate_references_to(&mut self, file_index: FileIndex);
+    fn invalidate_full_db(&mut self);
+    fn has_super_file(&self) -> bool;
 }
 
 pub trait FileState: fmt::Debug + Unpin {

@@ -62,6 +62,10 @@ impl ComplexValues {
     pub unsafe fn iter(&self) -> impl Iterator<Item = &ComplexPoint> {
         self.0.iter()
     }
+
+    pub fn clear(&mut self) {
+        self.0.clear()
+    }
 }
 
 #[derive(Clone)]
@@ -183,6 +187,21 @@ impl File for PythonFile {
     fn invalidate_references_to(&mut self, file_index: FileIndex) {
         self.points.invalidate_references_to(file_index);
         self.issues.clear();
+    }
+
+    fn invalidate_full_db(&mut self) {
+        debug_assert!(self.super_file.is_none());
+        self.points.invalidate_full_db();
+        self.complex_points.clear();
+        self.issues.clear();
+        self.symbol_table.take();
+        self.maybe_dunder_all.take();
+        self.sub_files.get_mut().clear();
+        self.star_imports.get_mut().clear()
+    }
+
+    fn has_super_file(&self) -> bool {
+        self.super_file.is_some()
     }
 }
 

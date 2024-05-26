@@ -328,6 +328,12 @@ impl Points {
         }
     }
 
+    pub fn invalidate_full_db(&mut self) {
+        for cell in &self.0 {
+            cell.set(Point::new_uncalculated())
+        }
+    }
+
     #[inline]
     pub fn iter(&self) -> impl Iterator<Item = Point> + '_ {
         self.0.iter().map(|p| p.get())
@@ -834,7 +840,7 @@ impl Database {
             python_state: PythonState::reserve(),
             project,
         };
-        this.initial_python_load();
+        this.generate_python_state();
         this
     }
 
@@ -1111,16 +1117,23 @@ impl Database {
         self.workspaces.unload_file(&*self.vfs, file_state.path());
         let invalidations = file_state
             .unload_and_return_invalidations()
-            .expect("We don't support rebuilding after changing of typeshed, yet.");
+            .expect("We don't support rebuilding/unloading after changing of typeshed, yet.");
         self.invalidate_files(file_index, invalidations)
     }
 
     fn invalidate_files(&mut self, original_file_index: FileIndex, invalidations: Invalidations) {
         for invalid_index in invalidations.into_iter() {
             let file_state = self.file_state_mut(invalid_index);
-            let invalidations = file_state
-                .take_invalidations()
-                .expect("We don't support rebuilding after changing of typeshed, yet.");
+            let Some(invalidations) = file_state.take_invalidations() else {
+                // None here means that the file was created with `invalidates_db = true`, which
+                // means we have to invalidate the whole database.
+                debug!(
+                    "Invalidate whole db because we have invalidated {}",
+                    self.file_state(invalid_index).path()
+                );
+                self.invalidate_db();
+                return;
+            };
             if let Some(file) = file_state.maybe_loaded_file_mut() {
                 file.invalidate_references_to(original_file_index);
             }
@@ -1136,6 +1149,20 @@ impl Database {
             }
             self.invalidate_files(original_file_index, invalidations);
         }
+    }
+
+    fn invalidate_db(&mut self) {
+        for file_state in self.files.iter_mut() {
+            if let Some(file) = file_state.maybe_loaded_file_mut() {
+                if file.has_super_file() {
+                    file_state.unload_and_return_invalidations();
+                } else {
+                    file.invalidate_full_db();
+                }
+            }
+        }
+        self.python_state = PythonState::reserve();
+        self.generate_python_state();
     }
 
     pub fn add_invalidates(&self, file: FileIndex, invalidates: FileIndex) {
@@ -1191,7 +1218,10 @@ impl Database {
                 dir.path(&*self.vfs)
             )
         };
-        let file_index = self.load_file_from_workspace(file_entry.clone());
+        let file_index = file_entry
+            .file_index
+            .get()
+            .unwrap_or_else(|| self.load_file_from_workspace(file_entry.clone()));
         self.loaded_python_file(file_index)
     }
 
@@ -1199,7 +1229,7 @@ impl Database {
         self.loaded_file(index).as_any().downcast_ref().unwrap()
     }
 
-    fn initial_python_load(&mut self) {
+    fn generate_python_state(&mut self) {
         // TODO this is wrong, because it's just a random dir...
         let mut dirs = self.workspaces.directories().skip(1);
         let stdlib_dir = dirs.next().unwrap().1.clone();

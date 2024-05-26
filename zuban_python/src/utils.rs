@@ -86,6 +86,14 @@ impl<T: ?Sized + Unpin> InsertOnlyVec<T> {
         unsafe { &*self.vec.get() }.last().map(|x| x as &T)
     }
 
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut T> {
+        self.vec.get_mut().iter_mut().map(|x| x as &mut T)
+    }
+
+    pub fn clear(&mut self) {
+        self.vec.get_mut().clear()
+    }
+
     pub unsafe fn iter(&self) -> impl Iterator<Item = &T> {
         // Because the size of the vec can grow and shrink at any point, this is an unsafe
         // operation.
