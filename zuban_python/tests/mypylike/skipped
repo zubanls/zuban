@@ -523,12 +523,6 @@ testVariadicTupleInProtocol
 # TypeVarTuple as unpacked varargs
 testVariadicStarArgsCallNoCrash
 
-# Module <M> has no attribute <missing_name>
-testRelativeImportFromSameModule
-testImportFromSameModule
-
-# Import submodules
-testNewAnalyzerImportStarSpecialCase
 # import a.b.c issues
 testMissingSubmoduleImportedWithIgnoreMissingImportsStub
 testMissingSubmoduleOfInstalledStubPackage
@@ -545,6 +539,7 @@ testSerializeStarImport
 testImportStarWithinFunction
 # Star import override
 testAssignToFuncDefViaImport
+testAssignAndConditionalStarImport
 # Unsupported class scoped import with stars
 testClassScopeImportModuleStar
 testImportStarAddMissingDependencyWithinClass
@@ -556,7 +551,6 @@ testNewAnalyzerImportAmbiguousWithTopLevelFunction
 testImportCycleSpecialCase
 testPackagePath
 testIncrementalNestedBrokenCascade
-
 # import cycle
 testBoundGenericMethodParamSpecFine
 testCyclicUndefinedImportWithName
@@ -570,11 +564,9 @@ testNewImportCycleTupleBase
 testNewImportCycleTypedDict
 testReExportChildStubs
 testReExportChildStubs2
-
-# "Incompatible import of "y" (imported name has type "str", local name has type "int")"
-testAssignAndConditionalImport
-testAssignAndConditionalStarImport
-testImportedVariableViaImport
+# Module <M> has no attribute <missing_name>
+testRelativeImportFromSameModule
+testImportFromSameModule
 
 # namespace multiple packages
 testTypedPkgSimple
