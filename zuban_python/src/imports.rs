@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::{borrow::Cow, rc::Rc};
 
 use crate::{
     database::{Database, FileIndex},
@@ -22,10 +22,10 @@ impl ImportResult {
         }
     }
 
-    pub fn path<'x>(&'x self, db: &'x Database) -> &'x str {
+    pub fn path<'x>(&'x self, db: &'x Database) -> Cow<'x, str> {
         match self {
-            Self::File(f) => db.loaded_python_file(*f).file_path(db),
-            Self::Namespace(namespace) => &namespace.path,
+            Self::File(f) => Cow::Borrowed(db.loaded_python_file(*f).file_path(db)),
+            Self::Namespace(namespace) => Cow::Owned(namespace.path(db)),
         }
     }
 }
@@ -102,10 +102,7 @@ pub fn python_import<'a>(
     // The folder should not exist for folder/__init__.py or a namespace.
     if let Some(content) = namespace_content {
         debug!("// TODO invalidate!");
-        return Some(ImportResult::Namespace(Rc::new(Namespace {
-            path: content.path(&*db.vfs),
-            content,
-        })));
+        return Some(ImportResult::Namespace(Rc::new(Namespace { content })));
     }
     dir.add_missing_entry(name.into(), from_file);
     None

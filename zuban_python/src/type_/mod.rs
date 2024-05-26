@@ -321,7 +321,6 @@ impl std::ops::Index<TypeVarIndex> for GenericsList {
 
 #[derive(Debug, Clone)]
 pub struct Namespace {
-    pub path: String,
     pub content: Rc<Directory>,
 }
 
@@ -329,11 +328,15 @@ impl Namespace {
     pub fn qualified_name(&self) -> String {
         dotted_path_from_dir(&self.content)
     }
+
+    pub fn path(&self, db: &Database) -> String {
+        self.content.path(&*db.vfs)
+    }
 }
 
 impl std::cmp::PartialEq for Namespace {
     fn eq(&self, other: &Self) -> bool {
-        self.path == other.path && Rc::ptr_eq(&self.content, &other.content)
+        Rc::ptr_eq(&self.content, &other.content)
     }
 }
 
