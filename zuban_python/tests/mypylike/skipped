@@ -228,6 +228,7 @@ testDictFromIterableAndStarStarArgs
 testDictFromIterableAndStarStarArgs2
 # Type variable "C.T" cannot be used as an expression
 testClassMemberTypeVarInFunctionBody
+testClassScopeImportWithError
 # Type variable "__main__.Ts" is invalid as target for type alias
 testTypeVarTupleIsNotValidAliasTarget
 testGenericTypeAliasesWrongAliases
@@ -544,6 +545,9 @@ testSerializeStarImport
 testImportStarWithinFunction
 # Star import override
 testAssignToFuncDefViaImport
+# Unsupported class scoped import with stars
+testClassScopeImportModuleStar
+testImportStarAddMissingDependencyWithinClass
 # Import itself / Extremely weird import orders
 testNewAnalyzerImportCycleWithIgnoreMissingImports
 testNewAnalyzerImportFromTopLevelFunction
@@ -575,18 +579,6 @@ testReExportChildStubs2
 testAssignAndConditionalImport
 testAssignAndConditionalStarImport
 testImportedVariableViaImport
-
-# Unsupported class scoped import
-testClassScopeImports
-testClassScopeImportAlias
-testClassScopeImportModuleStar
-testClassScopeImportFunctionNested
-testClassScopeImportUndefined
-testClassScopeImportWithFollowImports
-testClassScopeImportVarious
-testClassScopeImportWithError
-testIncrementalSilentImportsAndImportsInClass
-testImportStarAddMissingDependencyWithinClass
 
 # namespace multiple packages
 testTypedPkgSimple
@@ -1811,6 +1803,7 @@ testSubclassingAnySilentImports
 testSubclassingAnySilentImports2
 testIncrementalFollowImportsVariable
 testIncrementalFollowImportsVariablePyProjectTOML
+testClassScopeImportWithFollowImports
 
 # --enable-error-code redundant-self
 # "Redundant "Self" annotation for the first method argument"

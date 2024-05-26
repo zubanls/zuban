@@ -6,7 +6,9 @@ use std::{
 
 use parsa_python_cst::*;
 
-use super::{flow_analysis::FLOW_ANALYSIS, inference::await_, on_argument_type_error};
+use super::{
+    first_defined_name, flow_analysis::FLOW_ANALYSIS, inference::await_, on_argument_type_error,
+};
 use crate::{
     arguments::{CombinedArgs, KnownArgs, NoArgs},
     database::{
@@ -220,11 +222,42 @@ impl<'db> Inference<'db, '_, '_> {
                     self.mark_current_frame_unreachable()
                 }
                 SimpleStmtContent::ImportFrom(import_from) => {
-                    if class.is_some() && func.is_none() {
-                        NodeRef::new(self.file, simple_stmt.index())
-                            .add_issue(self.i_s, IssueKind::UnsupportedClassScopedImport);
-                    }
                     self.cache_import_from(import_from);
+                    if class.is_some() && func.is_none() {
+                        match import_from.unpack_targets() {
+                            ImportFromTargets::Star(_) => {
+                                // TODO check unsupported class scoped import
+                            }
+                            ImportFromTargets::Iterator(iter) => {
+                                for target in iter {
+                                    let name_def = target.name_definition();
+                                    let name_index = name_def.name_index();
+                                    if first_defined_name(self.file, name_index) != name_index {
+                                        // Apparently Mypy only checks the first name...
+                                        continue;
+                                    }
+                                    match self
+                                        .infer_name_definition(name_def)
+                                        .as_cow_type(self.i_s)
+                                        .as_ref()
+                                    {
+                                        Type::Callable(_) | Type::FunctionOverload(_) => {
+                                            let from = NodeRef::new(self.file, name_def.index());
+                                            from.add_issue(
+                                                self.i_s,
+                                                IssueKind::UnsupportedClassScopedImport,
+                                            );
+                                            from.set_point(Point::new_specific(
+                                                Specific::AnyDueToError,
+                                                from.point().locality(),
+                                            ))
+                                        }
+                                        _ => (),
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
                 SimpleStmtContent::ImportName(import_name) => {
                     self.cache_import_name(import_name);
