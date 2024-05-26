@@ -428,6 +428,8 @@ testReplaceIsDataclass
 
 # namedtuple unsure if we refactor it
 testNamedTupleWithBoolNarrowsToBool
+# __doc__ definitions
+testNewNamedTupleDocString
 
 # int | str leads to object instead of Any when using Enum().value?
 testEnumValueInhomogenous
@@ -1442,33 +1444,6 @@ testUnusedTargetForLoop
 testUnusedTargetWithClause
 testUnusedTargetNotExceptClause
 
-# __doc__ definitions
-testNewNamedTupleDocString
-
-# qualified name in function contains class path: __main__.Cls.FooEnum@4
-testAnonymousFunctionalEnum
-testNewAnalyzerIncrementalMethodNamedTuple
-testNewAnalyzerNamedTupleClassNestedMethod
-testNoIncrementalCrashOnTypedDictMethod
-# qualified name for TypedDict for different module
-testGenericTypedDictWithError
-# qualified name for Type[cls] for different module (when format short)
-testProtocolWithNestedClass
-# NewType formatting instead of internal type
-testNewTypeDependencies3
-# Nicer Callable Errors
-testCallableParsingFromExpr
-testCallableParsing
-testCallableTooManyVarArg
-testCallableKindsOrdering
-testCallableFastParseBadArgArgName
-# Formatting better verbosity
-testDistinctTypes
-# Separate formatting for ambigous names???
-testIncompatibleAssignmentAmbiguousShortnames
-# for long tuples: "Expression tuple item 8 has type "str"; "int" expected;"
-testAssigningWithLongTupleInitializer
-
 # Assignment like ac[b] += c with both __getitem__ and __setitem__ has same error twice
 testOperatorAssignmentWithIndexLvalue1
 
@@ -1525,6 +1500,30 @@ testClassLevelTypeAliasesInUnusualContexts
 testMalformedTypeAliasRuntimeReassignments
 
 # ------------- Additional unimportant, but would be nice -----------------
+
+# qualified name in function contains class path: __main__.Cls.FooEnum@4
+testAnonymousFunctionalEnum
+testNewAnalyzerIncrementalMethodNamedTuple
+testNewAnalyzerNamedTupleClassNestedMethod
+testNoIncrementalCrashOnTypedDictMethod
+# qualified name for TypedDict for different module
+testGenericTypedDictWithError
+# qualified name for Type[cls] for different module (when format short)
+testProtocolWithNestedClass
+# NewType formatting instead of internal type
+testNewTypeDependencies3
+# Nicer Callable Errors
+testCallableParsingFromExpr
+testCallableParsing
+testCallableTooManyVarArg
+testCallableKindsOrdering
+testCallableFastParseBadArgArgName
+# Formatting better verbosity
+testDistinctTypes
+# Separate formatting for ambigous names???
+testIncompatibleAssignmentAmbiguousShortnames
+# for long tuples: "Expression tuple item 8 has type "str"; "int" expected;"
+testAssigningWithLongTupleInitializer
 
 # Module <M> has no attribute <missing_name>; maybe <name>
 testNewAnalyzerTypeAnnotationCycle3
