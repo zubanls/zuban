@@ -386,6 +386,7 @@ impl PythonState {
             module: impl Fn(&Database) -> &PythonFile,
             name: &str,
             update: impl FnOnce(&mut Database, Option<NodeIndex>),
+            is_func: bool,
         ) {
             let name_index = module(db).symbol_table.get().unwrap().lookup_symbol(name);
             let Some(name_index) = name_index else {
@@ -397,6 +398,12 @@ impl PythonState {
                 .maybe_class()
                 .is_some()
             {
+                if is_func {
+                    panic!(
+                        "Expected a function for {}.{name}",
+                        module(db).qualified_name(db)
+                    )
+                }
                 update(db, Some(class_index));
                 let class = Class::with_undefined_generics(NodeRef::new(module(db), class_index));
                 class.ensure_calculated_class_infos(
@@ -409,14 +416,26 @@ impl PythonState {
                     .maybe_function()
                     .is_some()
                 {
+                    if !is_func {
+                        panic!(
+                            "Expected a class for {}.{name}",
+                            module(db).qualified_name(db)
+                        )
+                    }
                     update(db, Some(func_index))
                 } else {
-                    todo!("what about aliases?")
+                    panic!(
+                        "It's not possible to cache the index for the alias {}.{name}",
+                        module(db).qualified_name(db)
+                    )
                 }
             }
         }
         macro_rules! cache_index {
             ($attr_name:ident, $module_name:ident, $name:literal) => {
+                cache_index!($attr_name, $module_name, $name, false)
+            };
+            ($attr_name:ident, $module_name:ident, $name:literal, $is_func:expr) => {
                 cache_index(
                     db,
                     |db| db.python_state.$module_name(),
@@ -424,11 +443,15 @@ impl PythonState {
                     |db, class_index| {
                         db.python_state.$attr_name = class_index.unwrap();
                     },
+                    $is_func,
                 );
             };
         }
         macro_rules! cache_optional_index {
             ($attr_name:ident, $module_name:ident, $name:literal) => {
+                cache_optional_index!($attr_name, $module_name, $name, false)
+            };
+            ($attr_name:ident, $module_name:ident, $name:literal, $is_func:expr) => {
                 cache_index(
                     db,
                     |db| db.python_state.$module_name(),
@@ -436,6 +459,7 @@ impl PythonState {
                     |db, class_index| {
                         db.python_state.$attr_name = class_index;
                     },
+                    $is_func,
                 );
             };
         }
@@ -443,11 +467,11 @@ impl PythonState {
         // This first block
         cache_index!(builtins_object_index, builtins, "object");
         cache_index!(builtins_type_index, builtins, "type");
-        cache_index!(typing_final_index, typing, "final");
+        cache_index!(typing_final_index, typing, "final", true);
         cache_index!(abc_abc_meta_index, abc, "ABCMeta");
         cache_index!(types_module_type_index, types, "ModuleType");
         cache_index!(enum_enum_meta_index, enum_file, "EnumMeta");
-        cache_index!(typing_overload_index, typing, "overload");
+        cache_index!(typing_overload_index, typing, "overload", true);
         cache_index!(enum_enum_index, enum_file, "Enum");
         cache_index!(enum_auto_index, enum_file, "auto");
 
@@ -513,20 +537,25 @@ impl PythonState {
         cache_index!(dataclasses_init_var_index, dataclasses_file, "InitVar");
         cache_index!(dataclasses_capital_field_index, dataclasses_file, "Field");
 
-        cache_index!(builtins_isinstance_index, builtins, "isinstance");
-        cache_index!(builtins_issubclass_index, builtins, "issubclass");
-        cache_index!(builtins_callable_index, builtins, "callable");
-        cache_index!(builtins_hasattr_index, builtins, "hasattr");
-        cache_index!(builtins_len_index, builtins, "len");
+        cache_index!(builtins_isinstance_index, builtins, "isinstance", true);
+        cache_index!(builtins_issubclass_index, builtins, "issubclass", true);
+        cache_index!(builtins_callable_index, builtins, "callable", true);
+        cache_index!(builtins_hasattr_index, builtins, "hasattr", true);
+        cache_index!(builtins_len_index, builtins, "len", true);
 
-        cache_optional_index!(typing_override_index, typing, "override");
+        cache_optional_index!(typing_override_index, typing, "override", true);
 
-        cache_index!(dataclasses_field_index, dataclasses_file, "field");
-        cache_index!(dataclasses_replace_index, dataclasses_file, "replace");
+        cache_index!(dataclasses_field_index, dataclasses_file, "field", true);
+        cache_index!(dataclasses_replace_index, dataclasses_file, "replace", true);
 
-        cache_index!(abc_abstractmethod_index, abc, "abstractmethod");
+        cache_index!(abc_abstractmethod_index, abc, "abstractmethod", true);
 
-        cache_index!(collections_namedtuple_index, collections, "namedtuple");
+        cache_index!(
+            collections_namedtuple_index,
+            collections,
+            "namedtuple",
+            true
+        );
 
         db.python_state.typing_mapping_get_index = db
             .python_state
