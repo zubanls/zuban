@@ -1436,10 +1436,8 @@ testNonlocalVar
 testUnusedTargetLocal
 testUnusedTargetNotClass
 testUnusedTargetNotClass2
-testUnusedTargetTupleUnpacking
 testUnusedTargetMultipleTargets
 testUnusedTargetNotImport
-testUnderscoreClass
 testUnusedTargetForLoop
 testUnusedTargetWithClause
 testUnusedTargetNotExceptClause
