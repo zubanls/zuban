@@ -157,6 +157,7 @@ pub struct PythonState {
     types_module_type_index: NodeIndex,
     types_none_type_index: Option<NodeIndex>,
     types_ellipsis_type_index: Option<NodeIndex>,
+    typing_ellipsis_fallback_index: Option<NodeIndex>,
     collections_namedtuple_index: NodeIndex,
     abc_abc_meta_index: NodeIndex,
     abc_abstractmethod_index: NodeIndex,
@@ -244,6 +245,7 @@ impl PythonState {
             types_module_type_index: 0,
             types_none_type_index: None,
             types_ellipsis_type_index: None,
+            typing_ellipsis_fallback_index: None,
             typeshed_supports_keys_and_get_item_index: 0,
             typing_namedtuple_index: 0,
             typing_type_var: 0,
@@ -500,6 +502,7 @@ impl PythonState {
         cache_index!(typing_special_form_index, typing, "_SpecialForm");
         cache_optional_index!(types_none_type_index, types, "NoneType");
         cache_optional_index!(types_ellipsis_type_index, types, "EllipsisType");
+        cache_optional_index!(typing_ellipsis_fallback_index, typing, "ellipsis");
         cache_index!(abc_abstractproperty_index, abc, "abstractproperty");
         cache_index!(
             functools_cached_property_index,
@@ -755,7 +758,6 @@ impl PythonState {
     );
     optional_attribute_node_ref!(types, none_type_node_ref, types_none_type_index);
     attribute_node_ref!(types, module_node_ref, types_module_type_index);
-    optional_attribute_node_ref!(types, pub ellipsis_node_ref, types_ellipsis_type_index);
     attribute_node_ref!(
         typeshed,
         pub supports_keys_and_get_item_node_ref,
@@ -784,6 +786,12 @@ impl PythonState {
     attribute_link!(typing, pub async_iterator_link, typing_async_iterator_index);
     attribute_link!(typing, pub async_iterable_link, typing_async_iterable_index);
     attribute_link!(typing, pub mapping_link, typing_mapping_index);
+    optional_attribute_link!(types, ellipsis_type_link, types_ellipsis_type_index);
+    optional_attribute_link!(
+        typing,
+        ellipsis_fallback_link,
+        typing_ellipsis_fallback_index
+    );
     optional_attribute_link!(dataclasses_file, pub dataclasses_kw_only_link, dataclasses_kw_only_index);
     attribute_link!(dataclasses_file, pub dataclasses_init_var_link, dataclasses_init_var_index);
     attribute_link!(dataclasses_file, pub dataclasses_field_link, dataclasses_field_index);
@@ -829,12 +837,15 @@ impl PythonState {
         )
     }
 
+    fn ellipsis_link(&self) -> PointLink {
+        self.ellipsis_type_link().unwrap_or_else(|| {
+            self.ellipsis_fallback_link()
+                .expect("None of typing.ellipsis or types.EllipsisType exists")
+        })
+    }
+
     pub fn ellipsis_type(&self) -> Type {
-        if let Some(ellipsis_node_ref) = self.ellipsis_node_ref() {
-            Type::new_class(ellipsis_node_ref.as_link(), ClassGenerics::None)
-        } else {
-            Type::Any(AnyCause::Internal)
-        }
+        Type::new_class(self.ellipsis_link(), ClassGenerics::None)
     }
 
     pub fn supports_keys_and_get_item_class<'a>(&'a self, db: &'a Database) -> Class<'a> {
