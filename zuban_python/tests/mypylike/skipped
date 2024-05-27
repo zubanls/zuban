@@ -1433,14 +1433,9 @@ testLocalPartialTypesWithNestedFunction3
 testNonlocalVar
 
 # Special case for assignment to '_'
-testUnusedTargetLocal
 testUnusedTargetNotClass
 testUnusedTargetNotClass2
-testUnusedTargetMultipleTargets
 testUnusedTargetNotImport
-testUnusedTargetForLoop
-testUnusedTargetWithClause
-testUnusedTargetNotExceptClause
 
 # EllipsisType
 testUnionWithEllipsis
