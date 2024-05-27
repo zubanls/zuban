@@ -758,7 +758,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         let mut is_abstract = false;
         for decorator in decorated.decorators().iter_reverse() {
             let inferred_dec =
-                infer_decorator(i_s, self.node_ref.file, decorator, had_first_annotation);
+                infer_decorator_details(i_s, self.node_ref.file, decorator, had_first_annotation);
             if matches!(kind, FunctionKind::Property { .. })
                 && !matches!(
                     inferred_dec,
@@ -1827,7 +1827,7 @@ fn kind_of_decorators(
 ) -> FunctionKind {
     for decorator in decorated.decorators().iter() {
         if let InferredDecorator::FunctionKind { kind, .. } =
-            infer_decorator(i_s, file, decorator, had_first_annotation)
+            infer_decorator_details(i_s, file, decorator, had_first_annotation)
         {
             return kind;
         }
@@ -1837,20 +1837,13 @@ fn kind_of_decorators(
     }
 }
 
-fn infer_decorator(
+fn infer_decorator_details(
     i_s: &InferenceState,
     file: &PythonFile,
     decorator: Decorator,
     had_first_annotation: bool,
 ) -> InferredDecorator {
-    let node_ref = NodeRef::new(file, decorator.index());
-    let inference = file.inference(i_s);
-    let redirect = if node_ref.point().calculated() {
-        inference.check_point_cache(node_ref.node_index).unwrap()
-    } else {
-        let i = inference.infer_named_expression(decorator.named_expression());
-        i.save_redirect(i_s, file, node_ref.node_index)
-    };
+    let redirect = file.inference(i_s).infer_decorator(decorator);
     if let Some(saved_link) = redirect.maybe_saved_link() {
         let node_ref = NodeRef::from_link(i_s.db, saved_link);
         if saved_link == i_s.db.python_state.overload_link() {

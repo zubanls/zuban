@@ -3273,6 +3273,12 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         ))
     }
 
+    check_point_cache_with!(pub infer_decorator, Self::_infer_decorator, Decorator);
+    fn _infer_decorator(&self, decorator: Decorator) -> Inferred {
+        let i = self.infer_named_expression(decorator.named_expression());
+        i.save_redirect(self.i_s, self.file, decorator.index())
+    }
+
     pub(crate) fn add_issue(&self, node_index: NodeIndex, issue: IssueKind) {
         let from = NodeRef::new(self.file, node_index);
         from.add_issue(self.i_s, issue);
