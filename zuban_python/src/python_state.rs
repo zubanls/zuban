@@ -379,30 +379,43 @@ impl PythonState {
         // This needs to be done before it gets accessed, because we expect the MRO etc. to be
         // calculated when a class is accessed. Normally this happens on access, but here we access
         // classes randomly via db.python_state. Therefore do the calculation here.
-        fn cache_class_index(
+        fn cache_index(
             db: &mut Database,
             module: impl Fn(&Database) -> &PythonFile,
             name: &str,
             update: impl FnOnce(&mut Database, Option<NodeIndex>),
         ) {
-            let class_index = module(db)
-                .symbol_table
-                .get()
-                .unwrap()
-                .lookup_symbol(name)
-                .map(|node_index| node_index - NAME_TO_CLASS_DIFF);
-            update(db, class_index);
-            if let Some(class_index) = class_index {
+            let name_index = module(db).symbol_table.get().unwrap().lookup_symbol(name);
+            let Some(name_index) = name_index else {
+                update(db, None);
+                return;
+            };
+            let class_index = name_index - NAME_TO_CLASS_DIFF;
+            if NodeRef::new(module(db), class_index)
+                .maybe_class()
+                .is_some()
+            {
+                update(db, Some(class_index));
                 let class = Class::with_undefined_generics(NodeRef::new(module(db), class_index));
                 class.ensure_calculated_class_infos(
                     &InferenceState::new(db),
                     NodeRef::new(class.node_ref.file, class.node().name_definition().index()),
                 );
+            } else {
+                let func_index = name_index - NAME_TO_FUNCTION_DIFF;
+                if NodeRef::new(module(db), func_index)
+                    .maybe_function()
+                    .is_some()
+                {
+                    update(db, Some(func_index))
+                } else {
+                    todo!("what about aliases?")
+                }
             }
         }
         macro_rules! cache_index {
             ($attr_name:ident, $module_name:ident, $name:literal) => {
-                cache_class_index(
+                cache_index(
                     db,
                     |db| db.python_state.$module_name(),
                     $name,
@@ -414,7 +427,7 @@ impl PythonState {
         }
         macro_rules! cache_optional_index {
             ($attr_name:ident, $module_name:ident, $name:literal) => {
-                cache_class_index(
+                cache_index(
                     db,
                     |db| db.python_state.$module_name(),
                     $name,
@@ -424,40 +437,15 @@ impl PythonState {
                 );
             };
         }
-        macro_rules! cache_optional_func_index {
-            ($attr_name:ident, $module_name:ident, $name:literal) => {
-                db.python_state.$attr_name = db
-                    .python_state
-                    .$module_name()
-                    .symbol_table
-                    .get()
-                    .unwrap()
-                    .lookup_symbol($name)
-                    .map(|node_index| node_index - NAME_TO_FUNCTION_DIFF);
-            };
-        }
-        macro_rules! cache_func_index {
-            ($attr_name:ident, $module_name:ident, $name:literal) => {
-                db.python_state.$attr_name = db
-                    .python_state
-                    .$module_name()
-                    .symbol_table
-                    .get()
-                    .unwrap()
-                    .lookup_symbol($name)
-                    .unwrap()
-                    - NAME_TO_FUNCTION_DIFF;
-            };
-        }
 
         // This first block
         cache_index!(builtins_object_index, builtins, "object");
         cache_index!(builtins_type_index, builtins, "type");
-        cache_func_index!(typing_final_index, typing, "final");
+        cache_index!(typing_final_index, typing, "final");
         cache_index!(abc_abc_meta_index, abc, "ABCMeta");
         cache_index!(types_module_type_index, types, "ModuleType");
         cache_index!(enum_enum_meta_index, enum_file, "EnumMeta");
-        cache_func_index!(typing_overload_index, typing, "overload");
+        cache_index!(typing_overload_index, typing, "overload");
         cache_index!(enum_enum_index, enum_file, "Enum");
         cache_index!(enum_auto_index, enum_file, "auto");
 
@@ -522,20 +510,20 @@ impl PythonState {
         cache_index!(dataclasses_init_var_index, dataclasses_file, "InitVar");
         cache_index!(dataclasses_capital_field_index, dataclasses_file, "Field");
 
-        cache_func_index!(builtins_isinstance_index, builtins, "isinstance");
-        cache_func_index!(builtins_issubclass_index, builtins, "issubclass");
-        cache_func_index!(builtins_callable_index, builtins, "callable");
-        cache_func_index!(builtins_hasattr_index, builtins, "hasattr");
-        cache_func_index!(builtins_len_index, builtins, "len");
+        cache_index!(builtins_isinstance_index, builtins, "isinstance");
+        cache_index!(builtins_issubclass_index, builtins, "issubclass");
+        cache_index!(builtins_callable_index, builtins, "callable");
+        cache_index!(builtins_hasattr_index, builtins, "hasattr");
+        cache_index!(builtins_len_index, builtins, "len");
 
-        cache_optional_func_index!(typing_override_index, typing, "override");
+        cache_optional_index!(typing_override_index, typing, "override");
 
-        cache_func_index!(dataclasses_field_index, dataclasses_file, "field");
-        cache_func_index!(dataclasses_replace_index, dataclasses_file, "replace");
+        cache_index!(dataclasses_field_index, dataclasses_file, "field");
+        cache_index!(dataclasses_replace_index, dataclasses_file, "replace");
 
-        cache_func_index!(abc_abstractmethod_index, abc, "abstractmethod");
+        cache_index!(abc_abstractmethod_index, abc, "abstractmethod");
 
-        cache_func_index!(collections_namedtuple_index, collections, "namedtuple");
+        cache_index!(collections_namedtuple_index, collections, "namedtuple");
 
         db.python_state.typing_mapping_get_index = db
             .python_state
