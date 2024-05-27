@@ -988,6 +988,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     return
                 }
                 */
+                save(name_def.index(), value);
             } else {
                 let original_inf = self.infer_name_of_definition_by_index(first_index);
                 let maybe_overwrite_partial = |class_node_ref, type_when_any: &Type| {
@@ -1049,9 +1050,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 } else {
                     check_for_error()
                 }
-                return;
             }
-            save(name_def.index(), value);
         } else if value.maybe_saved_specific(i_s.db) == Some(Specific::None)
             && assign_kind == AssignKind::Normal
             && self.flags().local_partial_types
