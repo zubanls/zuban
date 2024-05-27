@@ -450,6 +450,7 @@ pub struct CallableContent {
     pub guard: Option<TypeGuardInfo>,
     pub return_type: Type,
     pub is_abstract: bool,
+    pub no_type_check: bool, // Has a decorator with @typing.no_type_check
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -470,6 +471,30 @@ impl TypeGuardInfo {
 }
 
 impl CallableContent {
+    pub fn new_simple(
+        name: Option<DbString>,
+        class_name: Option<StringSlice>,
+        defined_at: PointLink,
+        type_vars: TypeVarLikes,
+        params: CallableParams,
+        return_type: Type,
+    ) -> Self {
+        Self {
+            name,
+            class_name,
+            defined_at,
+            kind: FunctionKind::Function {
+                had_first_self_or_class_annotation: true,
+            },
+            type_vars,
+            params,
+            guard: None,
+            return_type,
+            is_abstract: false,
+            no_type_check: false,
+        }
+    }
+
     pub fn new_any(type_vars: TypeVarLikes, cause: AnyCause) -> Self {
         Self::new_any_internal(PointLink::new(FileIndex(0), 0), type_vars, cause)
     }
@@ -493,6 +518,7 @@ impl CallableContent {
             params: CallableParams::Any(cause),
             guard: None,
             is_abstract: false,
+            no_type_check: false,
             return_type: Type::Any(cause),
         }
     }

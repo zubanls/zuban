@@ -349,6 +349,25 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         }
         let maybe_computed = self.ensure_cached_type_vars(i_s);
         if let Some(decorated) = self.node().maybe_decorated() {
+            if self
+                .node_ref
+                .file
+                .inference(i_s)
+                .is_no_type_check(decorated)
+            {
+                let mut callable_t = self.as_callable_content_internal(
+                    i_s.db.python_state.empty_type_var_likes.clone(),
+                    CallableParams::Any(AnyCause::Explicit),
+                    false,
+                    Type::Any(AnyCause::Explicit),
+                );
+                callable_t.no_type_check = true;
+                self.node_ref.insert_complex(
+                    ComplexPoint::TypeInstance(Type::Callable(Rc::new(callable_t))),
+                    Locality::Todo,
+                );
+                return;
+            }
             if let Some(class) = self.class {
                 let class = Class::with_self_generics(i_s.db, class.node_ref);
                 Self::new(self.node_ref, Some(class)).decorated_to_be_saved(
@@ -1339,19 +1358,13 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             );
         }
 
-        let return_result = |params| CallableContent {
-            name: Some(DbString::StringSlice(self.name_string_slice())),
-            class_name: self.class.map(|c| c.name_string_slice()),
-            defined_at: self.node_ref.as_link(),
-            // The actual kind is set by using the decorated() function.
-            kind: FunctionKind::Function {
-                had_first_self_or_class_annotation: had_first_annotation,
-            },
-            guard: None,
-            is_abstract: false,
-            params,
-            type_vars: i_s.db.python_state.empty_type_var_likes.clone(),
-            return_type,
+        let return_result = |params| {
+            self.as_callable_content_internal(
+                i_s.db.python_state.empty_type_var_likes.clone(),
+                params,
+                had_first_annotation,
+                return_type,
+            )
         };
 
         let mut new_params = vec![];
@@ -1460,6 +1473,30 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             });
         }
         return_result(CallableParams::Simple(Rc::from(new_params)))
+    }
+
+    fn as_callable_content_internal(
+        &self,
+        type_vars: TypeVarLikes,
+        params: CallableParams,
+        had_first_self_or_class_annotation: bool,
+        return_type: Type,
+    ) -> CallableContent {
+        CallableContent {
+            name: Some(DbString::StringSlice(self.name_string_slice())),
+            class_name: self.class.map(|c| c.name_string_slice()),
+            defined_at: self.node_ref.as_link(),
+            // The actual kind is set by using the decorated() function.
+            kind: FunctionKind::Function {
+                had_first_self_or_class_annotation,
+            },
+            guard: None,
+            is_abstract: false,
+            params,
+            type_vars,
+            return_type,
+            no_type_check: false,
+        }
     }
 
     pub fn name_string_slice(&self) -> StringSlice {

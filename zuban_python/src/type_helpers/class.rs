@@ -40,10 +40,10 @@ use crate::{
         check_dataclass_options, dataclass_init_func, execute_functional_enum,
         infer_typed_dict_total_argument, infer_value_on_member, AnyCause, CallableContent,
         CallableLike, CallableParam, CallableParams, ClassGenerics, Dataclass, DataclassOptions,
-        DbString, Enum, EnumMemberDefinition, FormatStyle, FunctionKind, FunctionOverload,
-        GenericClass, GenericsList, NamedTuple, ParamType, StringSlice, Tuple, TupleArgs, Type,
-        TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypedDict, TypedDictMember,
-        TypedDictMemberGatherer, Variance,
+        DbString, Enum, EnumMemberDefinition, FormatStyle, FunctionOverload, GenericClass,
+        GenericsList, NamedTuple, ParamType, StringSlice, Tuple, TupleArgs, Type, TypeVarLike,
+        TypeVarLikeUsage, TypeVarLikes, TypedDict, TypedDictMember, TypedDictMemberGatherer,
+        Variance,
     },
 };
 
@@ -1655,19 +1655,14 @@ impl<'db: 'a, 'a> Class<'a> {
             BlockContent::OneLine(simple) => todo!(), //find_stmt_named_tuple_types(i_s, file, &mut vec, simple),
         }
         let tvls = self.use_cached_type_vars(i_s.db);
-        CallableContent {
-            name: Some(DbString::StringSlice(name)),
-            class_name: None,
-            defined_at: self.node_ref.as_link(),
-            kind: FunctionKind::Function {
-                had_first_self_or_class_annotation: true,
-            },
-            type_vars: self.use_cached_type_vars(i_s.db).clone(),
-            guard: None,
-            is_abstract: false,
-            params: CallableParams::Simple(Rc::from(vec)),
-            return_type: Type::Self_,
-        }
+        CallableContent::new_simple(
+            Some(DbString::StringSlice(name)),
+            None,
+            self.node_ref.as_link(),
+            self.use_cached_type_vars(i_s.db).clone(),
+            CallableParams::Simple(Rc::from(vec)),
+            Type::Self_,
+        )
     }
 
     fn insert_typed_dict_definition(

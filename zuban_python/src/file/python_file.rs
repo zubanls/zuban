@@ -15,8 +15,8 @@ use super::{
 use crate::{
     config::{set_flag_and_return_ignore_errors, IniOrTomlValue},
     database::{
-        ComplexPoint, Database, FileIndex, Locality, LocalityLink, Point, PointKind, Points,
-        PythonProject, Specific,
+        ComplexPoint, Database, FileIndex, Locality, LocalityLink, Point, PointKind, PointLink,
+        Points, PythonProject, Specific,
     },
     debug,
     diagnostics::{Diagnostic, DiagnosticConfig, Diagnostics, Issue, IssueKind},
@@ -502,7 +502,7 @@ impl<'db> PythonFile {
             }
         }
         for (index, point) in self.points.iter().enumerate() {
-            if point.maybe_redirect_to(file_index, dunder_all_index) {
+            if point.maybe_redirect_to(PointLink::new(file_index, dunder_all_index)) {
                 if let Some(name) = NodeRef::new(self, index as NodeIndex).maybe_name() {
                     dunder_all = check_ref(dunder_all, name)?
                 }

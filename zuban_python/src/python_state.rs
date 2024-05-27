@@ -13,7 +13,7 @@ use crate::{
     node_ref::NodeRef,
     type_::{
         dataclasses_replace, AnyCause, CallableContent, CallableParam, CallableParams,
-        ClassGenerics, CustomBehavior, FunctionKind, ParamType, Tuple, Type, TypeVarLikes,
+        ClassGenerics, CustomBehavior, ParamType, Tuple, Type, TypeVarLikes,
     },
     type_helpers::{Class, Function, Instance},
     InferenceState,
@@ -153,6 +153,7 @@ pub struct PythonState {
     typing_container_index: NodeIndex,
     typing_mapping_get_index: NodeIndex,
     typing_special_form_index: NodeIndex,
+    typing_no_type_check_index: NodeIndex,
     pub typing_typed_dict_bases: Box<[BaseClass]>,
     types_module_type_index: NodeIndex,
     types_none_type_index: Option<NodeIndex>,
@@ -257,6 +258,7 @@ impl PythonState {
             typing_mapping_index: 0,
             typing_mapping_get_index: 0,
             typing_special_form_index: 0,
+            typing_no_type_check_index: 0,
             typing_coroutine_index: 0,
             typing_iterator_index: 0,
             typing_iterable_index: 0,
@@ -465,6 +467,7 @@ impl PythonState {
         }
 
         // This first block
+        cache_index!(typing_no_type_check_index, typing, "no_type_check", true);
         cache_index!(builtins_object_index, builtins, "object");
         cache_index!(builtins_type_index, builtins, "type");
         cache_index!(typing_final_index, typing, "final", true);
@@ -593,24 +596,19 @@ impl PythonState {
             Type::Any(AnyCause::Internal),
             Type::Any(AnyCause::Internal),
         );
-        s.valid_getattr_supertype = Type::Callable(Rc::new(CallableContent {
-            name: None,
-            class_name: None,
-            defined_at: PointLink::new(FileIndex(0), 0),
-            kind: FunctionKind::Function {
-                had_first_self_or_class_annotation: true,
-            },
-            type_vars: s.empty_type_var_likes.clone(),
-            guard: None,
-            is_abstract: false,
-            params: CallableParams::Simple(Rc::new([
+        s.valid_getattr_supertype = Type::Callable(Rc::new(CallableContent::new_simple(
+            None,
+            None,
+            PointLink::new(FileIndex(0), 0),
+            s.empty_type_var_likes.clone(),
+            CallableParams::Simple(Rc::new([
                 CallableParam::new_anonymous(ParamType::PositionalOnly(Type::Any(
                     AnyCause::Internal,
                 ))),
                 CallableParam::new_anonymous(ParamType::PositionalOnly(s.str_type())),
             ])),
-            return_type: Type::Any(AnyCause::Internal),
-        }));
+            Type::Any(AnyCause::Internal),
+        )));
         s.iterable_of_str = new_class!(s.iterable_link(), s.str_type(),);
 
         // Set promotions
@@ -815,6 +813,7 @@ impl PythonState {
     attribute_link!(typing, pub async_iterator_link, typing_async_iterator_index);
     attribute_link!(typing, pub async_iterable_link, typing_async_iterable_index);
     attribute_link!(typing, pub mapping_link, typing_mapping_index);
+    attribute_link!(typing, pub no_type_check_link, typing_no_type_check_index);
     optional_attribute_link!(types, ellipsis_type_link, types_ellipsis_type_index);
     optional_attribute_link!(
         typing,

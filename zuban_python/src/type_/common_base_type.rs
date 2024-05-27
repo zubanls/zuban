@@ -246,6 +246,7 @@ fn common_base_for_callables(
                         is_abstract: c1.is_abstract && c2.is_abstract,
                         params,
                         return_type: c1.return_type.common_base_type(i_s, &c2.return_type),
+                        no_type_check: false,
                     }));
                 }
             }
@@ -268,6 +269,7 @@ fn common_base_for_callables(
                         is_abstract: c1.is_abstract && c2.is_abstract,
                         params: CallableParams::WithParamSpec(pre1.clone(), spec1.clone()),
                         return_type: c1.return_type.common_base_type(i_s, &c2.return_type),
+                        no_type_check: false,
                     }));
                 }
             }

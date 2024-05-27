@@ -2513,6 +2513,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     .clone(),
                 guard,
                 is_abstract: false,
+                no_type_check: false,
                 params,
                 return_type,
             })

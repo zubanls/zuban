@@ -211,10 +211,10 @@ impl Point {
     }
 
     #[inline]
-    pub fn maybe_redirect_to(self, file: FileIndex, other: NodeIndex) -> bool {
+    pub fn maybe_redirect_to(self, link: PointLink) -> bool {
         let relevant_flag_stuff = self.flags & CALCULATED_OR_REDIRECT_LIKE_KIND_OR_REST_MASK;
-        self.node_index == other
-            && relevant_flag_stuff == IS_ANALIZED_MASK | REDIRECT_KIND_VALUE | file.0
+        self.node_index == link.node_index
+            && relevant_flag_stuff == IS_ANALIZED_MASK | REDIRECT_KIND_VALUE | link.file.0
     }
 
     pub fn as_redirected_node_ref(self, db: &Database) -> NodeRef<'_> {

@@ -167,19 +167,14 @@ impl NamedTuple {
                         ParamType::KeywordOnly(new_param.type_.expect_positional_type().clone());
                     params.push(new_param);
                 }
-                Rc::new(CallableContent {
-                    name: Some(DbString::Static("_replace")),
-                    class_name: Some(self.name),
-                    defined_at: PointLink::new(FileIndex(0), 0),
-                    kind: FunctionKind::Function {
-                        had_first_self_or_class_annotation: true,
-                    },
-                    type_vars: i_s.db.python_state.empty_type_var_likes.clone(),
-                    guard: None,
-                    is_abstract: false,
-                    params: CallableParams::Simple(params.into()),
-                    return_type: as_self.map(|as_self| as_self()).unwrap_or(Type::Self_),
-                })
+                Rc::new(CallableContent::new_simple(
+                    Some(DbString::Static("_replace")),
+                    Some(self.name),
+                    PointLink::new(FileIndex(0), 0),
+                    i_s.db.python_state.empty_type_var_likes.clone(),
+                    CallableParams::Simple(params.into()),
+                    as_self.map(|as_self| as_self()).unwrap_or(Type::Self_),
+                ))
             }),
             "_asdict" => Type::Callable({
                 attr_kind = AttributeKind::DefMethod;
@@ -189,23 +184,18 @@ impl NamedTuple {
                         as_self.map(|as_self| as_self()).unwrap_or(Type::Self_),
                     )));
                 }
-                Rc::new(CallableContent {
-                    name: Some(DbString::Static("_as_dict")),
-                    class_name: Some(self.name),
-                    defined_at: PointLink::new(FileIndex(0), 0),
-                    kind: FunctionKind::Function {
-                        had_first_self_or_class_annotation: true,
-                    },
-                    type_vars: i_s.db.python_state.empty_type_var_likes.clone(),
-                    guard: None,
-                    is_abstract: false,
-                    params: CallableParams::Simple(params.into()),
-                    return_type: new_class!(
+                Rc::new(CallableContent::new_simple(
+                    Some(DbString::Static("_as_dict")),
+                    Some(self.name),
+                    PointLink::new(FileIndex(0), 0),
+                    i_s.db.python_state.empty_type_var_likes.clone(),
+                    CallableParams::Simple(params.into()),
+                    new_class!(
                         i_s.db.python_state.dict_node_ref().as_link(),
                         i_s.db.python_state.str_type(),
                         Type::Any(AnyCause::Explicit),
                     ),
-                })
+                ))
             }),
             "_make" => Type::Callable({
                 attr_kind = AttributeKind::Classmethod;
@@ -233,6 +223,7 @@ impl NamedTuple {
                     type_vars: i_s.db.python_state.empty_type_var_likes.clone(),
                     guard: None,
                     is_abstract: false,
+                    no_type_check: false,
                     params: CallableParams::Simple(params.into()),
                     return_type: as_self.map(|as_self| as_self()).unwrap_or(Type::Self_),
                 })
@@ -452,19 +443,14 @@ pub(crate) fn new_typing_named_tuple(
             args.add_issue(i_s, IssueKind::NamedTupleGenericInClassDefinition);
             return None;
         }
-        let callable = CallableContent {
-            name: Some(DbString::StringSlice(name)),
-            class_name: None,
-            defined_at: second_node_ref.as_link(),
-            kind: FunctionKind::Function {
-                had_first_self_or_class_annotation: true,
-            },
-            type_vars: type_var_likes,
-            guard: None,
-            is_abstract: false,
-            params: CallableParams::Simple(Rc::from(params)),
-            return_type: Type::Self_,
-        };
+        let callable = CallableContent::new_simple(
+            Some(DbString::StringSlice(name)),
+            None,
+            second_node_ref.as_link(),
+            type_var_likes,
+            CallableParams::Simple(Rc::from(params)),
+            Type::Self_,
+        );
         Some(Rc::new(NamedTuple::new(name, callable)))
     } else {
         None
@@ -563,19 +549,14 @@ pub(crate) fn new_collections_named_tuple(
         }
     }
 
-    let callable = CallableContent {
-        name: Some(DbString::StringSlice(name)),
-        class_name: None,
-        defined_at: second_node_ref.as_link(),
-        kind: FunctionKind::Function {
-            had_first_self_or_class_annotation: true,
-        },
-        type_vars: i_s.db.python_state.empty_type_var_likes.clone(),
-        guard: None,
-        is_abstract: false,
-        params: CallableParams::Simple(Rc::from(params)),
-        return_type: Type::Self_,
-    };
+    let callable = CallableContent::new_simple(
+        Some(DbString::StringSlice(name)),
+        None,
+        second_node_ref.as_link(),
+        i_s.db.python_state.empty_type_var_likes.clone(),
+        CallableParams::Simple(Rc::from(params)),
+        Type::Self_,
+    );
     Some(Rc::new(NamedTuple::new(name, callable)))
 }
 

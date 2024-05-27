@@ -25,10 +25,9 @@ use crate::{
     new_class,
     node_ref::NodeRef,
     type_::{
-        AnyCause, CallableContent, CallableParam, CallableParams, FunctionKind, Literal,
-        LiteralKind, Namespace, NeverCause, ParamType, StarParamType, StarStarParamType,
-        StringSlice, Tuple, TupleArgs, TupleUnpack, Type, UnionEntry, UnionType, Variance,
-        WithUnpack,
+        AnyCause, CallableContent, CallableParam, CallableParams, Literal, LiteralKind, Namespace,
+        NeverCause, ParamType, StarParamType, StarStarParamType, StringSlice, Tuple, TupleArgs,
+        TupleUnpack, Type, UnionEntry, UnionType, Variance, WithUnpack,
     },
     type_helpers::{
         is_private_import, is_reexport_issue_if_check_needed, lookup_in_namespace, Class,
@@ -2089,19 +2088,14 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 check_defaults();
                 let result =
                     self.infer_expression_without_cache(expr, &mut ResultContext::ExpectUnused);
-                let c = CallableContent {
-                    name: None,
-                    class_name: None,
-                    defined_at: PointLink::new(self.file.file_index(), lambda.index()),
-                    kind: FunctionKind::Function {
-                        had_first_self_or_class_annotation: true,
-                    },
-                    type_vars: self.i_s.db.python_state.empty_type_var_likes.clone(),
-                    guard: None,
-                    is_abstract: false,
-                    params: CallableParams::Simple(params.map(to_callable_param).collect()),
-                    return_type: result.as_type(self.i_s),
-                };
+                let c = CallableContent::new_simple(
+                    None,
+                    None,
+                    PointLink::new(self.file.file_index(), lambda.index()),
+                    self.i_s.db.python_state.empty_type_var_likes.clone(),
+                    CallableParams::Simple(params.map(to_callable_param).collect()),
+                    result.as_type(self.i_s),
+                );
                 Inferred::from_type(Type::Callable(Rc::new(c)))
             })
     }
@@ -3277,6 +3271,13 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     fn _infer_decorator(&self, decorator: Decorator) -> Inferred {
         let i = self.infer_named_expression(decorator.named_expression());
         i.save_redirect(self.i_s, self.file, decorator.index())
+    }
+
+    pub fn is_no_type_check(&self, decorated: Decorated) -> bool {
+        let no_type_check_link = self.i_s.db.python_state.no_type_check_link();
+        decorated.decorators().iter().any(|decorator| {
+            self.infer_decorator(decorator).maybe_saved_link() == Some(no_type_check_link)
+        })
     }
 
     pub(crate) fn add_issue(&self, node_index: NodeIndex, issue: IssueKind) {
