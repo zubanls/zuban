@@ -467,13 +467,11 @@ fn split_off_singleton(
     abort_on_custom_eq: bool,
 ) -> Option<(Type, Type)> {
     let matches_singleton = |t: &_| match split_off {
-        Type::None => split_off == t,
         Type::EnumMember(member1) => match t {
             Type::EnumMember(member2) => member1.is_same_member(member2),
             _ => false,
         },
-        Type::Class(c) if c.link == i_s.db.python_state.ellipsis_link() => split_off == t,
-        _ => false,
+        _ => split_off == t,
     };
     let mut other_return = Type::Never(NeverCause::Other);
     let mut left = Type::Never(NeverCause::Other);
