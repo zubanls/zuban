@@ -1433,9 +1433,6 @@ testNonlocalVar
 
 # EllipsisType
 testUnionWithEllipsis
-# Ellipsis / raise NotimplementedError / pass are considered stubs in normal files 
-testEllipsisDefaultArgValueInNonStub
-testEllipsisDefaultArgValueInNonStubsMethods
 
 # typing.no_type_check
 testNoTypeCheckDecoratorOnMethod1

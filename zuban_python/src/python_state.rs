@@ -129,6 +129,7 @@ pub struct PythonState {
     builtins_callable_index: NodeIndex,
     builtins_hasattr_index: NodeIndex,
     builtins_len_index: NodeIndex,
+    builtins_notimplementederror: NodeIndex,
     pub builtins_int_mro: Box<[BaseClass]>,
     pub builtins_bool_mro: Box<[BaseClass]>,
     pub builtins_str_mro: Box<[BaseClass]>,
@@ -230,6 +231,7 @@ impl PythonState {
             builtins_classmethod_index: 0,
             builtins_staticmethod_index: 0,
             builtins_property_index: 0,
+            builtins_notimplementederror: 0,
             builtins_isinstance_index: 0,
             builtins_issubclass_index: 0,
             builtins_callable_index: 0,
@@ -484,6 +486,11 @@ impl PythonState {
         cache_index!(builtins_classmethod_index, builtins, "classmethod");
         cache_index!(builtins_staticmethod_index, builtins, "staticmethod");
         cache_index!(builtins_property_index, builtins, "property");
+        cache_index!(
+            builtins_notimplementederror,
+            builtins,
+            "NotImplementedError"
+        );
         cache_index!(
             typeshed_supports_keys_and_get_item_index,
             typeshed,
@@ -773,6 +780,7 @@ impl PythonState {
         collections_namedtuple_index
     );
 
+    attribute_link!(builtins, pub notimplementederror, builtins_notimplementederror);
     attribute_link!(abc, pub abc_meta_link, abc_abc_meta_index);
     attribute_link!(abc, pub abstractmethod_link, abc_abstractmethod_index);
     attribute_link!(abc, pub abstractproperty_link, abc_abstractproperty_index);

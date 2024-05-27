@@ -128,7 +128,29 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 SimpleStmtContent::StarExpressions(star_exprs) => star_exprs
                     .maybe_simple_expression()
                     .is_some_and(|expr| expr.is_ellipsis_literal()),
-                SimpleStmtContent::RaiseStmt(_) => false, // TODO check for NotImplementedError
+                SimpleStmtContent::RaiseStmt(raise_stmt) => {
+                    raise_stmt.unpack().is_some_and(|(expr, _)| {
+                        match self
+                            .node_ref
+                            .file
+                            .inference(i_s)
+                            .infer_expression(expr)
+                            .as_cow_type(i_s)
+                            .as_ref()
+                        {
+                            Type::Class(cls) => {
+                                cls.link == i_s.db.python_state.notimplementederror()
+                            }
+                            Type::Type(t) => match t.as_ref() {
+                                Type::Class(cls) => {
+                                    cls.link == i_s.db.python_state.notimplementederror()
+                                }
+                                _ => false,
+                            },
+                            _ => false,
+                        }
+                    })
+                }
                 _ => false,
             }
         };
