@@ -755,6 +755,11 @@ impl<'db> Inference<'db, '_, '_> {
         let function = Function::new(NodeRef::new(self.file, f.index()), class);
         let i_s = self.i_s;
         function.cache_func(i_s);
+        if let Some(ComplexPoint::TypeInstance(Type::Callable(c))) = function.node_ref.complex() {
+            if c.no_type_check {
+                return;
+            }
+        }
         FLOW_ANALYSIS.with(|fa| {
             let mut is_overload_member = false;
             let unreachable = fa.with_new_frame_and_return_unreachable(|| {

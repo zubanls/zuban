@@ -1431,13 +1431,6 @@ testTypeOfNonlocalUsed
 testLocalPartialTypesWithNestedFunction3
 testNonlocalVar
 
-# typing.no_type_check
-testNoTypeCheckDecoratorOnMethod1
-testNoTypeCheckDecoratorOnMethod2
-testCallingNoTypeCheckFunction
-testCallingNoTypeCheckFunction2
-testNoTypeCheckDecoratorSemanticError
-
 # strict optional with config file
 testPerFileStrictOptionalBasic
 testPerFileStrictOptionalBasicImportStandard
