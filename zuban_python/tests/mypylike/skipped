@@ -63,11 +63,6 @@ testSuperWithNew
 testSuperNew
 testMetaclassAndSuper
 
-# Uses function context but is in fact in module context
-testFunctionForwardRefAlias
-# Class is still set in InferenceState
-testAsyncForComprehensionErrors
-
 # functools.total_ordering
 testTotalOrderingEqLt
 testTotalOrderingLambda
@@ -236,7 +231,10 @@ testGenericTypeAliasesWrongAliases
 testGenericClassAlternativeConstructorPreciseOverloaded
 # current_class in i_s should probably be a type and not a class
 testEnumNameWorkCorrectlyOn311
-# current_function in i_s is wrong.
+# Class/Function is still set in InferenceState/i_s
+testAsyncForComprehensionErrors
+testUnusedTargetNotImport
+testFunctionForwardRefAlias
 testTypeVarTuplePep646TypeVarStarArgs
 
 # function type vars are not late bound in Mypy in params
@@ -1140,6 +1138,7 @@ testNarrowedVariableInNestedModifiedInWalrus
 testLocalPartialTypesWithGlobalInitializedToNone4
 testAttributePartiallyInitializedToNoneWithMissingAnnotation
 testIncompatibleInheritedAttributeNoStrictOptional
+testUnusedTargetNotClass2
 # unreachable after Never return
 testUnreachableFlagOkWithDeadStatements
 testUnreachableFlagWithTerminalBranchInDeferredNode
@@ -1431,11 +1430,6 @@ testTypeOfOuterMostNonlocalUsed
 testTypeOfNonlocalUsed
 testLocalPartialTypesWithNestedFunction3
 testNonlocalVar
-
-# Special case for assignment to '_'
-testUnusedTargetNotClass
-testUnusedTargetNotClass2
-testUnusedTargetNotImport
 
 # EllipsisType
 testUnionWithEllipsis
@@ -2022,6 +2016,7 @@ testStarLvalues
 testRenameGlobalVariable
 testNoRenameGlobalVariable
 testCannotRenameExternalVarWithinClass
+testUnusedTargetNotClass
 
 # --no-strict-optional details
 testUnreachableWithStdlibContextManagersNoStrictOptional

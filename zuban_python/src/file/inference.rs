@@ -1089,7 +1089,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     save(name_def.index(), &partial);
                     return;
                 }
-                if name_def.as_code() == "_" && self.i_s.current_function().is_some() {
+                if name_def.as_code() == "_"
+                    && self.i_s.current_function().is_some()
+                    && name_def.maybe_import().is_none()
+                {
                     save(name_def.index(), &Inferred::new_any(AnyCause::Todo));
                     return;
                 }
