@@ -866,7 +866,7 @@ impl PythonState {
         )
     }
 
-    fn ellipsis_link(&self) -> PointLink {
+    pub fn ellipsis_link(&self) -> PointLink {
         self.ellipsis_type_link().unwrap_or_else(|| {
             self.ellipsis_fallback_link()
                 .expect("None of typing.ellipsis or types.EllipsisType exists")

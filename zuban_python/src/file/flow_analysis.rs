@@ -472,6 +472,7 @@ fn split_off_singleton(
             Type::EnumMember(member2) => member1.is_same_member(member2),
             _ => false,
         },
+        Type::Class(c) if c.link == i_s.db.python_state.ellipsis_link() => split_off == t,
         _ => false,
     };
     let mut other_return = Type::Never(NeverCause::Other);
@@ -597,6 +598,7 @@ fn narrow_is_or_eq(
             Frame::from_type(key, left_t.clone()),
         )),
         */
+        Type::Class(c) if c.link == i_s.db.python_state.ellipsis_link() => split(key),
         _ => match left_t {
             left_t @ Type::Union(union) => {
                 // Remove None from left, if the right types match everything except None.

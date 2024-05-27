@@ -1431,9 +1431,6 @@ testTypeOfNonlocalUsed
 testLocalPartialTypesWithNestedFunction3
 testNonlocalVar
 
-# EllipsisType
-testUnionWithEllipsis
-
 # typing.no_type_check
 testNoTypeCheckDecoratorOnMethod1
 testNoTypeCheckDecoratorOnMethod2
