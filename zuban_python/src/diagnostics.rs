@@ -426,7 +426,7 @@ impl IssueKind {
             | NotCallable { .. }
             | UnknownFunctionNotCallable => "operator",
             TypeArgumentIssue { .. } | MissingTypeParameters { .. } => "type-arg",
-            ModuleNotFound { .. } => "import",
+            ModuleNotFound { .. } => "import-not-found",
             ListItemMismatch { .. } => "list-item",
             DictMemberMismatch { .. } | UnpackedDictMemberMismatch { .. } => "dict-item",
             NewTypeMustBeSubclassable { .. } => "valid-newtype",
@@ -475,6 +475,7 @@ impl IssueKind {
         match &self {
             TypedDictExtraKey { .. } | TypedDictHasNoKey { .. } => Some("typeddict-item"),
             CannotAssignToAMethod => Some("assignment"),
+            ModuleNotFound { .. } => Some("import"),
             _ => None,
         }
     }

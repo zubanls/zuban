@@ -528,8 +528,6 @@ testGenericAliasCollectionsABCReveal
 # `import a.b # type: ignore` means that the attribute is later Any without error
 testAddedMissingStubsIgnorePackagePartial
 testFineAddedMissingStubsIgnorePackagePartial
-# imports have different error codes, see https://github.com/python/mypy/commit/78339b97dc911c8c6841184eaddbbc30d0e406da
-testErrorCodeMissingModule
 # Complex Star import
 testImportWithinMethod
 testNoCrashOnImportFromStarNested
