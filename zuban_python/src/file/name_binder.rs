@@ -831,7 +831,20 @@ impl<'db> NameBinder<'db> {
                             debug!("TODO unhandled global");
                         }
                         NameParent::NonlocalStmt => {
-                            // TODO nonlocal
+                            let name_str = name.as_code();
+                            if let Some(parent) = self.parent {
+                                if self.symbol_table.lookup_symbol(name_str).is_some() {
+                                    self.add_issue(
+                                        name.index(),
+                                        IssueKind::NameDefinedInLocalScopeBeforeNonlocal {
+                                            name: name_str.into(),
+                                        },
+                                    )
+                                }
+                                // TODO nonlocal
+                            } else {
+                                self.add_issue(name.index(), IssueKind::NonlocalAtModuleLevel)
+                            }
                         }
                         _ => {
                             // All other names are not references or part of imports and should be

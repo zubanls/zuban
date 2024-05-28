@@ -105,6 +105,8 @@ pub(crate) enum IssueKind {
     AwaitOutsideCoroutine,
     YieldFromInAsyncFunction,
     ReturnInAsyncGenerator,
+    NonlocalAtModuleLevel,
+    NameDefinedInLocalScopeBeforeNonlocal { name: Box<str> },
     OnlyClassTypeApplication,
     InvalidBaseClass,
     CannotInheritFromFinalClass { class_name: Box<str> },
@@ -1027,6 +1029,10 @@ impl<'db> Diagnostic<'db> {
             AwaitOutsideCoroutine => r#""await" outside coroutine ("async def")"#.to_string(),
             YieldFromInAsyncFunction => r#""yield from" in async function"#.to_string(),
             ReturnInAsyncGenerator => r#""return" with value in async generator is not allowed"#.to_string(),
+            NonlocalAtModuleLevel => "nonlocal declaration not allowed at module level".to_string(),
+            NameDefinedInLocalScopeBeforeNonlocal { name } => format!(
+                r#"Name "{name}" is already defined in local scope before nonlocal declaration"#
+            ),
             InvalidBaseClass => format!("Invalid base class {:?}", self.code_under_issue()),
             CannotInheritFromFinalClass { class_name } => format!(
                 r#"Cannot inherit from final class "{class_name}""#

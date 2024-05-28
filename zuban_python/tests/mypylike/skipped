@@ -1421,8 +1421,6 @@ testVarDefinedInOuterScopeUpdated
 # Nonlocal
 testInvalidNonlocalDecl
 testNonlocalDeclNotMatchingGlobal
-testNonlocalDeclConflictingWithParameter
-testNonlocalDeclOutsideFunction
 testGlobalAndNonlocalDecl
 testNonlocalAndGlobalDecl
 testNewAnalyzerRedefinedNonlocal
