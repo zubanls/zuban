@@ -43,50 +43,43 @@ struct UnresolvedClass<'db> {
     class_symbol_table: SymbolTable,
 }
 
+#[derive(Clone, Copy)]
+pub struct DbInfos<'db> {
+    pub flags: &'db TypeCheckerFlags,
+    pub tree: &'db Tree,
+    pub points: &'db Points,
+    pub complex_points: &'db ComplexValues,
+    pub issues: &'db Diagnostics,
+    pub star_imports: &'db RefCell<Vec<StarImport>>,
+    pub file_index: FileIndex,
+    pub is_stub: bool,
+}
+
 pub(crate) struct NameBinder<'db> {
-    flags: &'db TypeCheckerFlags,
-    tree: &'db Tree,
+    db_infos: DbInfos<'db>,
     kind: NameBinderKind,
     scope_node: NodeIndex,
     symbol_table: SymbolTable,
-    points: &'db Points,
-    complex_points: &'db ComplexValues,
-    issues: &'db Diagnostics,
-    star_imports: &'db RefCell<Vec<StarImport>>,
     unordered_references: Vec<UnorderedReference<'db>>,
     unresolved_nodes: Vec<Unresolved<'db>>,
     names_to_be_resolved_in_parent: Vec<Name<'db>>,
     unresolved_class_self_vars: Vec<UnresolvedClass<'db>>,
     annotation_names: Vec<Name<'db>>,
-    file_index: FileIndex,
-    is_stub: bool,
     references_need_flow_analysis: bool,
     parent: Option<*mut NameBinder<'db>>,
 }
 
 impl<'db> NameBinder<'db> {
     fn new(
-        flags: &'db TypeCheckerFlags,
-        tree: &'db Tree,
+        db_infos: DbInfos<'db>,
         kind: NameBinderKind,
         scope_node: NodeIndex,
-        points: &'db Points,
-        complex_points: &'db ComplexValues,
-        issues: &'db Diagnostics,
-        star_imports: &'db RefCell<Vec<StarImport>>,
-        file_index: FileIndex,
-        is_stub: bool,
         parent: Option<*mut Self>,
     ) -> Self {
         Self {
-            flags,
-            tree,
+            db_infos,
             kind,
             scope_node,
-            points,
-            complex_points,
-            issues,
-            star_imports,
             symbol_table: SymbolTable::default(),
             unordered_references: vec![],
             unresolved_nodes: vec![],
@@ -94,36 +87,15 @@ impl<'db> NameBinder<'db> {
             unresolved_class_self_vars: vec![],
             annotation_names: vec![],
             references_need_flow_analysis: false,
-            file_index,
-            is_stub,
             parent,
         }
     }
 
     pub(crate) fn with_global_binder(
-        flags: &'db TypeCheckerFlags,
-        tree: &'db Tree,
-        points: &'db Points,
-        complex_points: &'db ComplexValues,
-        issues: &'db Diagnostics,
-        star_imports: &'db RefCell<Vec<StarImport>>,
-        file_index: FileIndex,
-        is_stub: bool,
+        db_infos: DbInfos<'db>,
         func: impl FnOnce(&mut NameBinder<'db>),
     ) -> SymbolTable {
-        let mut binder = NameBinder::new(
-            flags,
-            tree,
-            NameBinderKind::Global,
-            0,
-            points,
-            complex_points,
-            issues,
-            star_imports,
-            file_index,
-            is_stub,
-            None,
-        );
+        let mut binder = NameBinder::new(db_infos, NameBinderKind::Global, 0, None);
         func(&mut binder);
         binder.close();
 
@@ -136,13 +108,13 @@ impl<'db> NameBinder<'db> {
                 .lookup_symbol("__slots__")
             {
                 if let Some(assignment) =
-                    Name::by_index(tree, slots_index).maybe_assignment_definition_name()
+                    Name::by_index(db_infos.tree, slots_index).maybe_assignment_definition_name()
                 {
-                    slots = gather_slots(file_index, assignment);
+                    slots = gather_slots(db_infos.file_index, assignment);
                 }
             }
-            binder.complex_points.insert(
-                binder.points,
+            binder.db_infos.complex_points.insert(
+                binder.db_infos.points,
                 unresolved_class.class_def.index(),
                 ComplexPoint::Class(Box::new(ClassStorage {
                     class_symbol_table: unresolved_class.class_symbol_table,
@@ -158,8 +130,8 @@ impl<'db> NameBinder<'db> {
         for annotation_name in &binder.annotation_names {
             try_to_process_reference_for_symbol_table(
                 &mut binder.symbol_table,
-                binder.file_index,
-                binder.points,
+                binder.db_infos.file_index,
+                binder.db_infos.points,
                 *annotation_name,
                 false,
             );
@@ -173,19 +145,7 @@ impl<'db> NameBinder<'db> {
         scope_node: NodeIndex,
         func: impl FnOnce(&mut NameBinder<'db>),
     ) -> SymbolTable {
-        let mut name_binder = NameBinder::new(
-            self.flags,
-            self.tree,
-            kind,
-            scope_node,
-            self.points,
-            self.complex_points,
-            self.issues,
-            self.star_imports,
-            self.file_index,
-            self.is_stub,
-            Some(self),
-        );
+        let mut name_binder = NameBinder::new(self.db_infos, kind, scope_node, Some(self));
         func(&mut name_binder);
         name_binder.close();
         let NameBinder {
@@ -207,8 +167,8 @@ impl<'db> NameBinder<'db> {
         for annotation_name in annotation_names {
             if !try_to_process_reference_for_symbol_table(
                 &mut symbol_table,
-                self.file_index,
-                self.points,
+                self.db_infos.file_index,
+                self.db_infos.points,
                 annotation_name,
                 false,
             ) {
@@ -219,11 +179,16 @@ impl<'db> NameBinder<'db> {
     }
 
     fn add_issue(&self, node_index: NodeIndex, kind: IssueKind) {
-        let issue = Issue::from_node_index(self.tree, node_index, kind);
+        let issue = Issue::from_node_index(self.db_infos.tree, node_index, kind);
         let maybe_ignored = self
+            .db_infos
             .tree
             .type_ignore_comment_for(issue.start_position, issue.end_position);
-        match self.issues.add_if_not_ignored(issue, maybe_ignored) {
+        match self
+            .db_infos
+            .issues
+            .add_if_not_ignored(issue, maybe_ignored)
+        {
             Ok(issue) => debug!("New name binder issue: {:?}", issue.kind),
             Err(issue) => debug!("New ignored name binder issue: {:?}", issue.kind),
         }
@@ -242,7 +207,7 @@ impl<'db> NameBinder<'db> {
         if let Some(first) = self.symbol_table.lookup_symbol(name_def.as_code()) {
             let mut latest_name_index = first;
             loop {
-                let point = self.points.get(latest_name_index);
+                let point = self.db_infos.points.get(latest_name_index);
                 if point.calculated()
                     && point.kind() == PointKind::MultiDefinition
                     && point.node_index() > first
@@ -252,13 +217,13 @@ impl<'db> NameBinder<'db> {
                 } else {
                     let new_index = name_def.name().index();
                     self.references_need_flow_analysis = true;
-                    self.points.set(
+                    self.db_infos.points.set(
                         latest_name_index,
                         Point::new_multi_definition(new_index, Locality::File),
                     );
                     // Here we create a loop, so it's easy to find the relevant definitions from
                     // any point.
-                    self.points.set(
+                    self.db_infos.points.set(
                         new_index,
                         Point::new_multi_definition(first, Locality::File),
                     );
@@ -268,7 +233,7 @@ impl<'db> NameBinder<'db> {
         } else {
             self.symbol_table.add_or_replace_symbol(name_def.name());
         }
-        self.points.set(name_def.index(), point);
+        self.db_infos.points.set(name_def.index(), point);
     }
 
     fn add_point_definition(&mut self, name_def: NameDefinition<'db>, specific: Specific) {
@@ -381,12 +346,12 @@ impl<'db> NameBinder<'db> {
     fn merge_latest_return_or_yield(&self, first: NodeIndex, mut second: NodeIndex) -> NodeIndex {
         if first != 0 && second != 0 {
             loop {
-                let point = self.points.get(second);
+                let point = self.db_infos.points.get(second);
                 let node_index = point.node_index();
                 if node_index == 0 {
                     // Now that we have the first node in the chain of the second nodes, link that
                     // to the first one (like a linked list)
-                    self.points.set(
+                    self.db_infos.points.set(
                         second,
                         Point::new_node_analysis_with_node_index(Locality::File, first),
                     );
@@ -510,10 +475,10 @@ impl<'db> NameBinder<'db> {
                     if let Some(error_expr) = error_expr {
                         self.index_non_block_node_full(&error_expr, ordered, false);
                     }
-                    if is_expr_reachable_for_name_binder(self.flags, assert_expr)
+                    if is_expr_reachable_for_name_binder(self.db_infos.flags, assert_expr)
                         == Truthiness::False
                     {
-                        self.points.set(
+                        self.db_infos.points.set(
                             assert_stmt.index(),
                             Point::new_specific(Specific::AssertAlwaysFails, Locality::File),
                         );
@@ -528,7 +493,7 @@ impl<'db> NameBinder<'db> {
                 SimpleStmtContent::ImportFrom(import) => {
                     match import.unpack_targets() {
                         ImportFromTargets::Star(star) => {
-                            self.star_imports.borrow_mut().push(StarImport {
+                            self.db_infos.star_imports.borrow_mut().push(StarImport {
                                 scope: self.scope_node,
                                 import_from_node: import.index(),
                                 star_node: star.index(),
@@ -622,12 +587,13 @@ impl<'db> NameBinder<'db> {
                     latest_return_or_yield =
                         self.merge_latest_return_or_yield(latest_return_or_yield, latest);
                     let set_block_specific = |if_block: IfBlockType, specific| {
-                        self.points.set(
+                        self.db_infos.points.set(
                             if_block.first_leaf_index(),
                             Point::new_specific(specific, Locality::File),
                         )
                     };
-                    match is_expr_reachable_for_name_binder(self.flags, expr.expression()) {
+                    match is_expr_reachable_for_name_binder(self.db_infos.flags, expr.expression())
+                    {
                         Truthiness::True {
                             in_type_checking_block,
                         } => {
@@ -756,13 +722,13 @@ impl<'db> NameBinder<'db> {
     }
 
     fn is_self_param(&self, name: Name<'db>) -> bool {
-        let point = self.points.get(name.index());
+        let point = self.db_infos.points.get(name.index());
         if point.calculated() && point.kind() == PointKind::Redirect {
             let param_index = point.node_index();
             // Points to the name and not the name definition, therefore check that.
             // It should be safe to check the index before, because the name binder only ever
             // redirects to ame definitions.
-            let param_point = self.points.get(param_index - 1);
+            let param_point = self.db_infos.points.get(param_index - 1);
             if param_point.calculated()
                 && param_point.kind() == PointKind::Specific
                 && param_point.specific() == Specific::MaybeSelfParam
@@ -917,7 +883,7 @@ impl<'db> NameBinder<'db> {
 
     fn index_return_or_yield(&self, latest_return_or_yield: &mut NodeIndex, node_index: NodeIndex) {
         let keyword_index = node_index + 1;
-        self.points.set(
+        self.db_infos.points.set(
             keyword_index,
             Point::new_node_analysis_with_node_index(Locality::File, *latest_return_or_yield),
         );
@@ -1037,7 +1003,7 @@ impl<'db> NameBinder<'db> {
 
         let latest_return_index = self.index_block(block, true);
         // It's kind of hard to know where to store the latest reference statement.
-        self.points.set(
+        self.db_infos.points.set(
             func.index() + 1,
             Point::new_node_analysis_with_node_index(
                 Locality::ClassOrFunction,
@@ -1095,8 +1061,8 @@ impl<'db> NameBinder<'db> {
     fn try_to_process_reference(&mut self, name: Name<'db>, needs_flow_analysis: bool) -> bool {
         try_to_process_reference_for_symbol_table(
             &mut self.symbol_table,
-            self.file_index,
-            self.points,
+            self.db_infos.file_index,
+            self.db_infos.points,
             name,
             needs_flow_analysis,
         )
@@ -1106,12 +1072,12 @@ impl<'db> NameBinder<'db> {
         for unordered_reference in &self.unordered_references {
             if try_to_process_reference_for_symbol_table(
                 &mut self.symbol_table,
-                self.file_index,
-                self.points,
+                self.db_infos.file_index,
+                self.db_infos.points,
                 unordered_reference.name,
                 unordered_reference.needs_flow_analysis,
             ) {
-                if unordered_reference.ordered && !self.is_stub {
+                if unordered_reference.ordered && !self.db_infos.is_stub {
                     self.add_issue(
                         unordered_reference.name.index(),
                         IssueKind::NameUsedBeforeDefinition {

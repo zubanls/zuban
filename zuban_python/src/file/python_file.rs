@@ -10,7 +10,7 @@ use parsa_python_cst::*;
 use super::{
     file_state::{File, Leaf},
     inference::Inference,
-    name_binder::NameBinder,
+    name_binder::{DbInfos, NameBinder},
 };
 use crate::{
     config::{set_flag_and_return_ignore_errors, IniOrTomlValue},
@@ -96,15 +96,17 @@ impl File for PythonFile {
         }
         self.symbol_table
             .set(NameBinder::with_global_binder(
-                // TODO this does not use flags of the super file. Is this an issue?
-                self.flags.as_ref().unwrap_or(&project.flags),
-                &self.tree,
-                &self.points,
-                &self.complex_points,
-                &self.issues,
-                &self.star_imports,
-                self.file_index.get().unwrap(),
-                self.is_stub,
+                DbInfos {
+                    // TODO this does not use flags of the super file. Is this an issue?
+                    flags: self.flags.as_ref().unwrap_or(&project.flags),
+                    tree: &self.tree,
+                    points: &self.points,
+                    complex_points: &self.complex_points,
+                    issues: &self.issues,
+                    star_imports: &self.star_imports,
+                    file_index: self.file_index.get().unwrap(),
+                    is_stub: self.is_stub,
+                },
                 |binder| binder.index_file(self.tree.root()),
             ))
             .unwrap()
@@ -318,13 +320,6 @@ impl<'db> PythonFile {
             ignore_type_errors,
             flags,
         }
-    }
-
-    fn with_global_binder(
-        &'db self,
-        project: &'db PythonProject,
-        func: impl FnOnce(&mut NameBinder<'db>),
-    ) {
     }
 
     pub fn inference<'file, 'i_s>(
