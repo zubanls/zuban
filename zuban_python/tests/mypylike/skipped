@@ -1246,6 +1246,15 @@ testNoneClassVariableInInit
 testMultipleAssignmentNoneClassVariableInInit
 # --allow-untyped-globals
 testPermissiveAttributeOverride1
+# Global
+testLocalPartialTypesWithGlobalInitializedToNone
+testLocalPartialTypesWithGlobalInitializedToNone2
+testLocalPartialTypesWithGlobalInitializedToNone3
+testLocalPartialTypesWithGlobalInitializedToNoneStrictOptional
+testNonePartialType1
+testNonePartialType2
+testNonePartialType3
+testNonePartialType4
 
 # Function local self attribute name binding
 testOptionalDescriptorsBinder
@@ -1402,21 +1411,6 @@ testOtherTypeConstructorsSucceed
 testTypeEquivalentTypeAny2
 # Type[Any] is object
 testSimplifyingUnionWithTypeTypes2
-
-# Global
-testLocalPartialTypesWithGlobalInitializedToNone
-testLocalPartialTypesWithGlobalInitializedToNone2
-testLocalPartialTypesWithGlobalInitializedToNone3
-testLocalPartialTypesWithGlobalInitializedToNoneStrictOptional
-testNonePartialType1
-testNonePartialType2
-testNonePartialType3
-testNonePartialType4
-# Nonlocal NameError after "No binding for nonlocal "x" found"
-testInvalidNonlocalDecl
-testNonlocalDeclNotMatchingGlobal
-# Nonlocal
-testLocalPartialTypesWithNestedFunction3
 
 # strict optional with config file
 testPerFileStrictOptionalBasic
@@ -1824,6 +1818,9 @@ testWithStmtComplexTypeComment
 testAsyncWithTypeComments
 testNewAnalyzerTypeArgBoundCheckDifferentNodes
 testForwardRefsInWithStatement
+
+# binder probably deferred issues
+testLocalPartialTypesWithNestedFunction3
 
 # Type Vars qualified names
 testQualifiedTypeVariableName
