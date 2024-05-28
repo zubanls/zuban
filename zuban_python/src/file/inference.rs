@@ -362,10 +362,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     self.i_s,
                     |issue| self.add_issue(import_name.index(), issue),
                     import_name.as_str(),
-                    Some(PointLink::new(
-                        self.file_index,
-                        import_name_def.index() + NAME_DEF_TO_NAME_DIFFERENCE,
-                    )),
+                    Some(self.file_index),
                 )
             }
             ImportResult::Namespace(namespace) => {

@@ -540,8 +540,6 @@ testAssignAndConditionalStarImport
 testClassScopeImportModuleStar
 testImportStarAddMissingDependencyWithinClass
 # Import itself / Extremely weird import orders
-testNewAnalyzerImportFromTopLevelFunction
-testNewAnalyzerImportFromTopLevelAlias
 testNewAnalyzerImportAmbiguousWithTopLevelFunction
 testPackagePath
 testIncrementalNestedBrokenCascade

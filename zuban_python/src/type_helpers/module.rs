@@ -55,12 +55,12 @@ impl<'a> Module<'a> {
         add_issue: impl Fn(IssueKind),
         name: &str,
         // Coming from an import we need to make sure that we do not create loops for imports
-        original_import_name_to_be_defined: Option<PointLink>,
+        original_import_file: Option<FileIndex>,
     ) -> LookupResult {
         if let Some(link) = self
             .file
             .lookup_global(name)
-            .filter(|link| original_import_name_to_be_defined != Some((*link).into()))
+            .filter(|link| original_import_file != Some(link.file))
         {
             let link = link.into();
             if is_reexport_issue_if_check_needed(i_s.db, self.file, link) {
@@ -71,7 +71,7 @@ impl<'a> Module<'a> {
             }
             LookupResult::GotoName {
                 name: link,
-                inf: if original_import_name_to_be_defined.is_some() {
+                inf: if original_import_file.is_some() {
                     Inferred::from_saved_link(link)
                 } else {
                     self.file
@@ -89,7 +89,7 @@ impl<'a> Module<'a> {
             .inference(i_s)
             .lookup_from_star_import(name, false)
         {
-            let inf = if original_import_name_to_be_defined.is_some() {
+            let inf = if original_import_file.is_some() {
                 Inferred::from_saved_link(link)
             } else {
                 i_s.db
