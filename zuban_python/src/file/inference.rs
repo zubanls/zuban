@@ -306,30 +306,34 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     let (import_name, name_def) = target.unpack();
 
                     let point = match &from_first_part {
-                        Some(imp) => match self.lookup_import_from_target(imp, import_name) {
-                            LookupResult::GotoName { name: link, .. } => {
-                                link.into_redirect_point(Locality::Todo)
-                            }
-                            LookupResult::FileReference(file_index) => {
-                                Point::new_file_reference(file_index, Locality::Todo)
-                            }
-                            LookupResult::UnknownName(inf) => {
-                                inf.save_redirect(self.i_s, self.file, name_def.index());
-                                continue;
-                            }
-                            LookupResult::None => {
-                                if !self.flags().ignore_missing_imports {
-                                    self.add_issue(
-                                        import_name.index(),
-                                        IssueKind::ImportAttributeError {
-                                            module_name: Box::from(imp.qualified_name(self.i_s.db)),
-                                            name: Box::from(import_name.as_str()),
-                                        },
-                                    );
+                        Some(imp) => {
+                            match self.lookup_import_from_target(imp, import_name, name_def) {
+                                LookupResult::GotoName { name: link, .. } => {
+                                    link.into_redirect_point(Locality::Todo)
                                 }
-                                Point::new_specific(Specific::ModuleNotFound, Locality::Todo)
+                                LookupResult::FileReference(file_index) => {
+                                    Point::new_file_reference(file_index, Locality::Todo)
+                                }
+                                LookupResult::UnknownName(inf) => {
+                                    inf.save_redirect(self.i_s, self.file, name_def.index());
+                                    continue;
+                                }
+                                LookupResult::None => {
+                                    if !self.flags().ignore_missing_imports {
+                                        self.add_issue(
+                                            import_name.index(),
+                                            IssueKind::ImportAttributeError {
+                                                module_name: Box::from(
+                                                    imp.qualified_name(self.i_s.db),
+                                                ),
+                                                name: Box::from(import_name.as_str()),
+                                            },
+                                        );
+                                    }
+                                    Point::new_specific(Specific::ModuleNotFound, Locality::Todo)
+                                }
                             }
-                        },
+                        }
                         // Means one of the imports before failed.
                         None => Point::new_specific(Specific::ModuleNotFound, Locality::Todo),
                     };
@@ -348,6 +352,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         &self,
         from_first_part: &ImportResult,
         import_name: Name,
+        import_name_def: NameDefinition,
     ) -> LookupResult {
         let name = import_name.as_str();
         match from_first_part {
@@ -357,7 +362,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     self.i_s,
                     |issue| self.add_issue(import_name.index(), issue),
                     import_name.as_str(),
-                    true,
+                    Some(PointLink::new(
+                        self.file_index,
+                        import_name_def.index() + NAME_DEF_TO_NAME_DIFFERENCE,
+                    )),
                 )
             }
             ImportResult::Namespace(namespace) => {

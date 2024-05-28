@@ -46,7 +46,7 @@ impl<'a> Module<'a> {
         add_issue: impl Fn(IssueKind),
         name: &str,
     ) -> LookupResult {
-        self.lookup_with_is_import(i_s, add_issue, name, false)
+        self.lookup_with_is_import(i_s, add_issue, name, None)
     }
 
     pub(crate) fn lookup_with_is_import(
@@ -54,9 +54,14 @@ impl<'a> Module<'a> {
         i_s: &InferenceState,
         add_issue: impl Fn(IssueKind),
         name: &str,
-        is_import: bool,
+        // Coming from an import we need to make sure that we do not create loops for imports
+        original_import_name_to_be_defined: Option<PointLink>,
     ) -> LookupResult {
-        if let Some(link) = self.file.lookup_global(name) {
+        if let Some(link) = self
+            .file
+            .lookup_global(name)
+            .filter(|link| original_import_name_to_be_defined != Some((*link).into()))
+        {
             let link = link.into();
             if is_reexport_issue_if_check_needed(i_s.db, self.file, link) {
                 add_issue(IssueKind::ImportStubNoExplicitReexport {
@@ -66,7 +71,7 @@ impl<'a> Module<'a> {
             }
             LookupResult::GotoName {
                 name: link,
-                inf: if is_import {
+                inf: if original_import_name_to_be_defined.is_some() {
                     Inferred::from_saved_link(link)
                 } else {
                     self.file
@@ -84,7 +89,7 @@ impl<'a> Module<'a> {
             .inference(i_s)
             .lookup_from_star_import(name, false)
         {
-            let inf = if is_import {
+            let inf = if original_import_name_to_be_defined.is_some() {
                 Inferred::from_saved_link(link)
             } else {
                 i_s.db

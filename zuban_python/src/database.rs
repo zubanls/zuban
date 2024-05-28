@@ -516,7 +516,7 @@ impl From<LocalityLink> for PointLink {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub struct LocalityLink {
     pub file: FileIndex,
     pub node_index: NodeIndex,
