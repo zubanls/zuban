@@ -386,6 +386,8 @@ pub enum Specific {
     IfBranchAfterAlwaysReachableInNameBinder,
     IfBranchAlwaysUnreachableInNameBinder,
     AssertAlwaysFails,
+    GlobalVariable,
+    NonlocalVariable,
 
     String,
     Float,

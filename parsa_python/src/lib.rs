@@ -48,8 +48,8 @@ create_grammar!(
                 "<<=" | ">>=" | "**=" | "//=")
     return_stmt: "return" [star_expressions]
     raise_stmt: "raise" [expression ["from" expression]]
-    global_stmt: "global" ",".Name+
-    nonlocal_stmt: "nonlocal" ",".Name+
+    global_stmt: "global" ",".name_definition+
+    nonlocal_stmt: "nonlocal" ",".name_definition+
     del_stmt: "del" del_targets
     assert_stmt: "assert" expression ["," expression]
     pass_stmt: "pass"

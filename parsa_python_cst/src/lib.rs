@@ -480,10 +480,6 @@ impl<'db> Name<'db> {
             NameParent::NameDefinition(NameDefinition::new(parent))
         } else if parent.is_type(Nonterminal(primary)) {
             NameParent::Primary(Primary::new(parent))
-        } else if parent.is_type(Nonterminal(global_stmt)) {
-            NameParent::GlobalStmt
-        } else if parent.is_type(Nonterminal(nonlocal_stmt)) {
-            NameParent::NonlocalStmt
         } else {
             NameParent::Other
         }
@@ -538,8 +534,6 @@ pub enum NameParent<'db> {
     NameDefinition(NameDefinition<'db>),
     Primary(Primary<'db>),
     Atom,
-    GlobalStmt,
-    NonlocalStmt,
     Other,
 }
 
@@ -3385,8 +3379,17 @@ impl<'db> NameDefinition<'db> {
         self.index() + 1
     }
 
-    pub fn is_not_primary(&self) -> bool {
-        !self.node.parent().unwrap().is_type(Nonterminal(t_primary))
+    pub fn parent(&self) -> NameDefinitionParent {
+        let parent = self.node.parent().unwrap();
+        if parent.is_type(Nonterminal(t_primary)) {
+            NameDefinitionParent::Primary
+        } else if parent.is_type(Nonterminal(global_stmt)) {
+            NameDefinitionParent::GlobalStmt
+        } else if parent.is_type(Nonterminal(nonlocal_stmt)) {
+            NameDefinitionParent::NonlocalStmt
+        } else {
+            NameDefinitionParent::Other
+        }
     }
 
     pub fn maybe_assignment_definition(&self) -> Option<Assignment> {
@@ -3491,6 +3494,13 @@ impl<'db> NameDefinition<'db> {
         }
         None
     }
+}
+
+pub enum NameDefinitionParent {
+    Primary,
+    GlobalStmt,
+    NonlocalStmt,
+    Other,
 }
 
 #[derive(Debug)]

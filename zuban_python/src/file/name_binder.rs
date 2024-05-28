@@ -15,6 +15,8 @@ use crate::{
     TypeCheckerFlags,
 };
 
+const GLOBAL_NONLOCAL_TO_NAME_DIFFERENCE: NodeIndex = 2;
+
 #[derive(PartialEq, Debug)]
 enum NameBinderKind {
     Global,
@@ -787,28 +789,44 @@ impl<'db> NameBinder<'db> {
                             }
                         }
                         NameParent::NameDefinition(name_def) => {
-                            if name_def.is_not_primary() {
-                                // The types are inferred later.
-                                self.add_new_definition(name_def, Point::new_uncalculated())
-                            }
-                        }
-                        NameParent::GlobalStmt => {
-                            //self.maybe_add_reference(name, ordered);
-                            debug!("TODO unhandled global");
-                        }
-                        NameParent::NonlocalStmt => {
-                            if let Some(parent) = self.lookup_nonlocal_in_parent(name) {
-                                let name_str = name.as_code();
-                                // If there is no parent, an error was added
-                                if self.symbol_table.lookup_symbol(name_str).is_some() {
-                                    self.add_issue(
-                                        name.index(),
-                                        IssueKind::NameDefinedInLocalScopeBeforeNonlocal {
-                                            name: name_str.into(),
-                                        },
-                                    )
+                            match name_def.parent() {
+                                NameDefinitionParent::Other => {
+                                    // The types are inferred later.
+                                    self.add_new_definition(name_def, Point::new_uncalculated())
                                 }
-                                // TODO nonlocal
+                                NameDefinitionParent::GlobalStmt => {
+                                    /*
+                                    self.add_point_definition(name.name_definition().unwrap(), Specific::GlobalVariable);
+                                    self.db_infos.points.set(
+                                        name.index() - GLOBAL_NONLOCAL_TO_NAME_DIFFERENCE,
+                                        Point::new_specific(Specific::GlobalVariable, Locality::File),
+                                    );
+                                    */
+                                }
+                                NameDefinitionParent::NonlocalStmt => {
+                                    if let Some(parent) = self.lookup_nonlocal_in_parent(name) {
+                                        let name_str = name.as_code();
+                                        // If there is no parent, an error was added
+                                        if self.symbol_table.lookup_symbol(name_str).is_some() {
+                                            self.add_issue(
+                                                name.index(),
+                                                IssueKind::NameDefinedInLocalScopeBeforeNonlocal {
+                                                    name: name_str.into(),
+                                                },
+                                            )
+                                        } else {
+                                            /*
+                                            self.add_point_definition(name.name_definition().unwrap(), Specific::NonlocalVariable);
+                                            self.db_infos.points.set(
+                                                name.index() - GLOBAL_NONLOCAL_TO_NAME_DIFFERENCE,
+                                                Point::new_redirect(self.db_infos.file_index, parent, Locality::File),
+                                            );
+                                            */
+                                        }
+                                        // TODO nonlocal
+                                    }
+                                }
+                                NameDefinitionParent::Primary => (),
                             }
                         }
                         _ => {
