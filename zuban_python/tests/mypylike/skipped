@@ -1983,10 +1983,6 @@ testIncrementalAddOverloadedMethodPlugin
 testShowErrorCodeLinks
 
 # --allow-redefinition
-testStarLvalues
-testRenameGlobalVariable
-testNoRenameGlobalVariable
-testCannotRenameExternalVarWithinClass
 testUnusedTargetNotClass
 
 # --no-strict-optional details
