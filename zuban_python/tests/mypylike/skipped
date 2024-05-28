@@ -1418,9 +1418,10 @@ testNonePartialType3
 testNonePartialType4
 testVarDefinedInOuterScopeUpdated
 
-# Nonlocal
+# Nonlocal NameError after "No binding for nonlocal "x" found"
 testInvalidNonlocalDecl
 testNonlocalDeclNotMatchingGlobal
+# Nonlocal
 testGlobalAndNonlocalDecl
 testNonlocalAndGlobalDecl
 testNewAnalyzerRedefinedNonlocal

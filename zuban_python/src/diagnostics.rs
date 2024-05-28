@@ -106,6 +106,7 @@ pub(crate) enum IssueKind {
     YieldFromInAsyncFunction,
     ReturnInAsyncGenerator,
     NonlocalAtModuleLevel,
+    NonlocalNoBindingFound { name: Box<str> },
     NameDefinedInLocalScopeBeforeNonlocal { name: Box<str> },
     OnlyClassTypeApplication,
     InvalidBaseClass,
@@ -1030,6 +1031,7 @@ impl<'db> Diagnostic<'db> {
             YieldFromInAsyncFunction => r#""yield from" in async function"#.to_string(),
             ReturnInAsyncGenerator => r#""return" with value in async generator is not allowed"#.to_string(),
             NonlocalAtModuleLevel => "nonlocal declaration not allowed at module level".to_string(),
+            NonlocalNoBindingFound { name } => format!(r#"No binding for nonlocal "{name}" found"#),
             NameDefinedInLocalScopeBeforeNonlocal { name } => format!(
                 r#"Name "{name}" is already defined in local scope before nonlocal declaration"#
             ),

@@ -831,8 +831,9 @@ impl<'db> NameBinder<'db> {
                             debug!("TODO unhandled global");
                         }
                         NameParent::NonlocalStmt => {
-                            let name_str = name.as_code();
-                            if let Some(parent) = self.parent {
+                            if let Some(parent) = self.lookup_nonlocal_in_parent(name) {
+                                let name_str = name.as_code();
+                                // If there is no parent, an error was added
                                 if self.symbol_table.lookup_symbol(name_str).is_some() {
                                     self.add_issue(
                                         name.index(),
@@ -842,8 +843,6 @@ impl<'db> NameBinder<'db> {
                                     )
                                 }
                                 // TODO nonlocal
-                            } else {
-                                self.add_issue(name.index(), IssueKind::NonlocalAtModuleLevel)
                             }
                         }
                         _ => {
@@ -968,6 +967,26 @@ impl<'db> NameBinder<'db> {
                 on_expr(binder)
             }
         });
+    }
+
+    fn lookup_nonlocal_in_parent(&self, name: Name) -> Option<NodeIndex> {
+        if let Some(parent) = self.parent {
+            let parent = unsafe { &*parent };
+            let name_str = name.as_code();
+            let result = parent.symbol_table.lookup_symbol(name_str);
+            if result.is_none() || !matches!(parent.kind, NameBinderKind::Function { .. }) {
+                self.add_issue(
+                    name.index(),
+                    IssueKind::NonlocalNoBindingFound {
+                        name: name_str.into(),
+                    },
+                );
+            }
+            result
+        } else {
+            self.add_issue(name.index(), IssueKind::NonlocalAtModuleLevel);
+            None
+        }
     }
 
     fn index_function_name_and_param_defaults(
