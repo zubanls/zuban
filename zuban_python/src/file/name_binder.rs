@@ -15,7 +15,7 @@ use crate::{
     TypeCheckerFlags,
 };
 
-const GLOBAL_NONLOCAL_TO_NAME_DIFFERENCE: NodeIndex = 2;
+pub const GLOBAL_NONLOCAL_TO_NAME_DIFFERENCE: NodeIndex = 2;
 
 #[derive(PartialEq, Debug)]
 enum NameBinderKind {
@@ -795,13 +795,22 @@ impl<'db> NameBinder<'db> {
                                     self.add_new_definition(name_def, Point::new_uncalculated())
                                 }
                                 NameDefinitionParent::GlobalStmt => {
-                                    /*
-                                    self.add_point_definition(name.name_definition().unwrap(), Specific::GlobalVariable);
-                                    self.db_infos.points.set(
-                                        name.index() - GLOBAL_NONLOCAL_TO_NAME_DIFFERENCE,
-                                        Point::new_specific(Specific::GlobalVariable, Locality::File),
+                                    self.add_point_definition(
+                                        name.name_definition().unwrap(),
+                                        Specific::GlobalVariable,
                                     );
-                                    */
+                                    let p = if let Some(i) = self.lookup_in_global_scope(name) {
+                                        Point::new_redirect(
+                                            self.db_infos.file_index,
+                                            i,
+                                            Locality::File,
+                                        )
+                                    } else {
+                                        Point::new_uncalculated()
+                                    };
+                                    self.db_infos
+                                        .points
+                                        .set(name.index() - GLOBAL_NONLOCAL_TO_NAME_DIFFERENCE, p);
                                 }
                                 NameDefinitionParent::NonlocalStmt => {
                                     if let Some(parent) = self.lookup_nonlocal_in_parent(name) {
@@ -815,13 +824,18 @@ impl<'db> NameBinder<'db> {
                                                 },
                                             )
                                         } else {
-                                            /*
-                                            self.add_point_definition(name.name_definition().unwrap(), Specific::NonlocalVariable);
+                                            self.add_point_definition(
+                                                name.name_definition().unwrap(),
+                                                Specific::NonlocalVariable,
+                                            );
                                             self.db_infos.points.set(
                                                 name.index() - GLOBAL_NONLOCAL_TO_NAME_DIFFERENCE,
-                                                Point::new_redirect(self.db_infos.file_index, parent, Locality::File),
+                                                Point::new_redirect(
+                                                    self.db_infos.file_index,
+                                                    parent,
+                                                    Locality::File,
+                                                ),
                                             );
-                                            */
                                         }
                                         // TODO nonlocal
                                     }
@@ -951,6 +965,14 @@ impl<'db> NameBinder<'db> {
                 on_expr(binder)
             }
         });
+    }
+
+    fn lookup_in_global_scope(&self, name: Name) -> Option<NodeIndex> {
+        if let Some(parent) = self.parent {
+            unsafe { &*parent }.lookup_in_global_scope(name)
+        } else {
+            self.symbol_table.lookup_symbol(name.as_code())
+        }
     }
 
     fn lookup_nonlocal_in_parent(&self, name: Name) -> Option<NodeIndex> {

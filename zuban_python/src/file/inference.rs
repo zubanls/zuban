@@ -4,7 +4,8 @@ use parsa_python_cst::*;
 
 use super::{
     diagnostics::await_aiter_and_next, flow_analysis::has_custom_special_method,
-    on_argument_type_error, utils::infer_dict_like, File, PythonFile, FLOW_ANALYSIS,
+    name_binder::GLOBAL_NONLOCAL_TO_NAME_DIFFERENCE, on_argument_type_error,
+    utils::infer_dict_like, File, PythonFile, FLOW_ANALYSIS,
 };
 use crate::{
     arguments::{Args, KnownArgs, NoArgs, SimpleArgs},
@@ -3008,6 +3009,16 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 }
                                 unreachable!()
                             }
+                        }
+                    }
+                    specific @ (Specific::GlobalVariable | Specific::NonlocalVariable) => {
+                        let index = node_index - GLOBAL_NONLOCAL_TO_NAME_DIFFERENCE
+                            + NAME_DEF_TO_NAME_DIFFERENCE;
+                        if self.file.points.get(index).calculated() {
+                            self.check_point_cache(index).unwrap()
+                        } else {
+                            debug_assert_eq!(specific, Specific::GlobalVariable);
+                            todo!()
                         }
                     }
                     Specific::LazyInferredClass => {

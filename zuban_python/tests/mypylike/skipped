@@ -1404,8 +1404,6 @@ testTypeEquivalentTypeAny2
 testSimplifyingUnionWithTypeTypes2
 
 # Global
-testAssignToFuncDefViaGlobalDecl2
-testTypeOfGlobalUsed
 testGlobalWithoutInitialization
 testInvalidGlobalDecl
 testLocalPartialTypesWithGlobalInitializedToNone
@@ -1416,7 +1414,6 @@ testNonePartialType1
 testNonePartialType2
 testNonePartialType3
 testNonePartialType4
-testVarDefinedInOuterScopeUpdated
 
 # Nonlocal NameError after "No binding for nonlocal "x" found"
 testInvalidNonlocalDecl
@@ -1424,11 +1421,7 @@ testNonlocalDeclNotMatchingGlobal
 # Nonlocal
 testGlobalAndNonlocalDecl
 testNonlocalAndGlobalDecl
-testNewAnalyzerRedefinedNonlocal
-testTypeOfOuterMostNonlocalUsed
-testTypeOfNonlocalUsed
 testLocalPartialTypesWithNestedFunction3
-testNonlocalVar
 
 # strict optional with config file
 testPerFileStrictOptionalBasic
