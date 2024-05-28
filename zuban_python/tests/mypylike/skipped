@@ -1404,8 +1404,6 @@ testTypeEquivalentTypeAny2
 testSimplifyingUnionWithTypeTypes2
 
 # Global
-testGlobalWithoutInitialization
-testInvalidGlobalDecl
 testLocalPartialTypesWithGlobalInitializedToNone
 testLocalPartialTypesWithGlobalInitializedToNone2
 testLocalPartialTypesWithGlobalInitializedToNone3

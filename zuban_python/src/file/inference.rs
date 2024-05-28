@@ -2407,7 +2407,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     LookupKind::Normal,
                     result_context,
                 )
-                .save_name(self.i_s, self.file, name)
+                .save_name(self.i_s, self.file, name.index())
                 .unwrap_or_else(Inferred::new_any_from_error)
             }
             PrimaryContent::Execution(details) => {
@@ -2701,16 +2701,18 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
 
     check_point_cache_with!(pub infer_name_reference, Self::_infer_name_reference, Name);
     fn _infer_name_reference(&self, name: Name) -> Inferred {
+        self.infer_name_by_str(name.as_code(), name.index())
+    }
+
+    fn infer_name_by_str(&self, name_str: &str, save_to_index: NodeIndex) -> Inferred {
         // If it's not inferred already through the name binder, it's either a star import, a
         // builtin or really missing.
-        let name_str = name.as_str();
-        let name_index = name.index();
         if let Some(point_link) = self.lookup_from_star_import(name_str, true) {
             self.file.points.set(
-                name_index,
+                save_to_index,
                 Point::new_redirect(point_link.file, point_link.node_index, Locality::Todo),
             );
-            return self.infer_name_reference(name);
+            return self.check_point_cache(save_to_index).unwrap();
         }
         let builtins = self.i_s.db.python_state.builtins();
         let point = match name_str {
@@ -2721,20 +2723,23 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     .iter()
                     .any(|code| code == "unimported-reveal")
                 {
-                    self.add_issue(name_index, IssueKind::UnimportedRevealType);
+                    self.add_issue(save_to_index, IssueKind::UnimportedRevealType);
                 }
                 Point::new_specific(Specific::RevealTypeFunction, Locality::Stmt)
             }
             "__builtins__" => Point::new_file_reference(builtins.file_index(), Locality::Todo),
             _ => {
-                if let Some(link) = builtins.lookup_global(name.as_str()).filter(|link| {
+                if let Some(link) = builtins.lookup_global(name_str).filter(|link| {
                     !name_str.starts_with('_') && !is_private_import(self.i_s.db, (*link).into())
                 }) {
-                    debug_assert!(link.file != self.file_index || link.node_index != name_index);
+                    debug_assert!(link.file != self.file_index || link.node_index != save_to_index);
                     link.into_point_redirect()
                 } else {
                     // The builtin module should really not have any issues.
-                    debug_assert!(self.file_index != builtins.file_index(), "{:?}", name);
+                    debug_assert!(
+                        self.file_index != builtins.file_index(),
+                        "{name_str}; {save_to_index}"
+                    );
                     if let Some(inf) = self
                         .i_s
                         .db
@@ -2742,18 +2747,18 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         .module_instance()
                         .type_lookup(
                             self.i_s,
-                            |issue| self.add_issue(name_index, issue),
-                            name.as_code(),
+                            |issue| self.add_issue(save_to_index, issue),
+                            name_str,
                         )
-                        .save_name(self.i_s, self.file, name)
+                        .save_name(self.i_s, self.file, save_to_index)
                     {
                         return inf;
                     }
                     // TODO check star imports
                     self.add_issue(
-                        name_index,
+                        save_to_index,
                         IssueKind::NameError {
-                            name: Box::from(name.as_str()),
+                            name: Box::from(name_str),
                         },
                     );
                     if !name_str.starts_with('_')
@@ -2767,7 +2772,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     {
                         // TODO what about underscore or other vars?
                         self.add_issue(
-                            name_index,
+                            save_to_index,
                             IssueKind::Note(
                                 format!(
                                     "Did you forget to import it from \"typing\"? \
@@ -2781,9 +2786,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 }
             }
         };
-        self.file.points.set(name_index, point);
-        debug_assert!(self.file.points.get(name_index).calculated());
-        self.infer_name_reference(name)
+        self.file.points.set(save_to_index, point);
+        debug_assert!(self.file.points.get(save_to_index).calculated());
+        self.check_point_cache(save_to_index).unwrap()
     }
 
     pub fn lookup_from_star_import(&self, name: &str, check_local: bool) -> Option<PointLink> {
@@ -3018,7 +3023,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             self.check_point_cache(index).unwrap()
                         } else {
                             debug_assert_eq!(specific, Specific::GlobalVariable);
-                            todo!()
+                            self.infer_name_by_str(
+                                NodeRef::new(self.file, node_index).as_code(),
+                                index,
+                            )
                         }
                     }
                     Specific::LazyInferredClass => {

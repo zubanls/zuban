@@ -1,4 +1,4 @@
-use parsa_python_cst::Name;
+use parsa_python_cst::NodeIndex;
 
 use crate::{
     database::{FileIndex, Locality, Point, PointLink},
@@ -54,20 +54,20 @@ impl LookupResult {
         self,
         i_s: &InferenceState,
         file: &PythonFile,
-        name: Name,
+        name_index: NodeIndex,
     ) -> Option<Inferred> {
         match &self {
             LookupResult::GotoName { name: link, inf } => {
                 // TODO this is not correct, because there can be multiple runs, so setting
                 // it here can be overwritten.
                 file.points.set(
-                    name.index(),
+                    name_index,
                     Point::new_redirect(link.file, link.node_index, Locality::Todo),
                 );
             }
             LookupResult::FileReference(file_index) => {
                 file.points.set(
-                    name.index(),
+                    name_index,
                     Point::new_file_reference(*file_index, Locality::Todo),
                 );
             }
