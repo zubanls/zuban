@@ -1414,13 +1414,10 @@ testNonePartialType1
 testNonePartialType2
 testNonePartialType3
 testNonePartialType4
-
 # Nonlocal NameError after "No binding for nonlocal "x" found"
 testInvalidNonlocalDecl
 testNonlocalDeclNotMatchingGlobal
 # Nonlocal
-testGlobalAndNonlocalDecl
-testNonlocalAndGlobalDecl
 testLocalPartialTypesWithNestedFunction3
 
 # strict optional with config file

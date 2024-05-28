@@ -746,14 +746,14 @@ fn maybe_dunder_all_names(
     Some(result)
 }
 
-struct MultiDefinitionIterator<'a> {
+pub struct MultiDefinitionIterator<'a> {
     points: &'a Points,
     start: NodeIndex,
     current: NodeIndex,
 }
 
 impl<'a> MultiDefinitionIterator<'a> {
-    fn new(points: &'a Points, start: NodeIndex) -> Self {
+    pub fn new(points: &'a Points, start: NodeIndex) -> Self {
         debug_assert_eq!(points.get(start).kind(), PointKind::MultiDefinition);
         Self {
             points,

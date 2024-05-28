@@ -15,6 +15,8 @@ use crate::{
     TypeCheckerFlags,
 };
 
+use super::python_file::MultiDefinitionIterator;
+
 pub const GLOBAL_NONLOCAL_TO_NAME_DIFFERENCE: NodeIndex = 2;
 
 #[derive(PartialEq, Debug)]
@@ -795,34 +797,66 @@ impl<'db> NameBinder<'db> {
                                     self.add_new_definition(name_def, Point::new_uncalculated())
                                 }
                                 NameDefinitionParent::GlobalStmt => {
-                                    self.add_point_definition(
-                                        name.name_definition().unwrap(),
-                                        Specific::GlobalVariable,
-                                    );
-                                    let p = if let Some(i) = self.lookup_in_global_scope(name) {
-                                        Point::new_redirect(
-                                            self.db_infos.file_index,
-                                            i,
-                                            Locality::File,
-                                        )
+                                    let name_index = name.index();
+                                    let name_str = name_def.as_code();
+                                    if let Some(local_index) =
+                                        self.symbol_table.lookup_symbol(name_str)
+                                    {
+                                        if self.has_specific_in_multi_definitions(
+                                            local_index,
+                                            Specific::NonlocalVariable,
+                                        ) {
+                                            self.add_issue(
+                                                name_index,
+                                                IssueKind::NonlocalAndGlobal {
+                                                    name: name_str.into(),
+                                                },
+                                            )
+                                        } else {
+                                            todo!()
+                                        }
                                     } else {
-                                        Point::new_uncalculated()
-                                    };
-                                    self.db_infos
-                                        .points
-                                        .set(name.index() - GLOBAL_NONLOCAL_TO_NAME_DIFFERENCE, p);
+                                        let p = if let Some(i) =
+                                            self.lookup_in_global_scope(name_str)
+                                        {
+                                            Point::new_redirect(
+                                                self.db_infos.file_index,
+                                                i,
+                                                Locality::File,
+                                            )
+                                        } else {
+                                            Point::new_uncalculated()
+                                        };
+                                        self.db_infos.points.set(
+                                            name_index - GLOBAL_NONLOCAL_TO_NAME_DIFFERENCE,
+                                            p,
+                                        );
+                                        self.add_point_definition(
+                                            name.name_definition().unwrap(),
+                                            Specific::GlobalVariable,
+                                        );
+                                    }
                                 }
                                 NameDefinitionParent::NonlocalStmt => {
                                     if let Some(parent) = self.lookup_nonlocal_in_parent(name) {
                                         let name_str = name.as_code();
                                         // If there is no parent, an error was added
-                                        if self.symbol_table.lookup_symbol(name_str).is_some() {
-                                            self.add_issue(
-                                                name.index(),
+                                        if let Some(local_index) =
+                                            self.symbol_table.lookup_symbol(name_str)
+                                        {
+                                            let issue = if self.has_specific_in_multi_definitions(
+                                                local_index,
+                                                Specific::GlobalVariable,
+                                            ) {
+                                                IssueKind::NonlocalAndGlobal {
+                                                    name: name_str.into(),
+                                                }
+                                            } else {
                                                 IssueKind::NameDefinedInLocalScopeBeforeNonlocal {
                                                     name: name_str.into(),
-                                                },
-                                            )
+                                                }
+                                            };
+                                            self.add_issue(name.index(), issue)
                                         } else {
                                             self.add_point_definition(
                                                 name.name_definition().unwrap(),
@@ -837,7 +871,6 @@ impl<'db> NameBinder<'db> {
                                                 ),
                                             );
                                         }
-                                        // TODO nonlocal
                                     }
                                 }
                                 NameDefinitionParent::Primary => (),
@@ -967,11 +1000,11 @@ impl<'db> NameBinder<'db> {
         });
     }
 
-    fn lookup_in_global_scope(&self, name: Name) -> Option<NodeIndex> {
+    fn lookup_in_global_scope(&self, name: &str) -> Option<NodeIndex> {
         if let Some(parent) = self.parent {
             unsafe { &*parent }.lookup_in_global_scope(name)
         } else {
-            self.symbol_table.lookup_symbol(name.as_code())
+            self.symbol_table.lookup_symbol(name)
         }
     }
 
@@ -992,6 +1025,25 @@ impl<'db> NameBinder<'db> {
         } else {
             self.add_issue(name.index(), IssueKind::NonlocalAtModuleLevel);
             None
+        }
+    }
+
+    fn has_specific_in_multi_definitions(&self, name_index: NodeIndex, search: Specific) -> bool {
+        let p = self.db_infos.points.get(name_index);
+        if p.calculated() && p.kind() == PointKind::MultiDefinition {
+            MultiDefinitionIterator::new(&self.db_infos.points, name_index).any(|index| {
+                self.db_infos
+                    .points
+                    .get(index)
+                    .maybe_calculated_and_specific()
+                    .is_some_and(|specific| specific == specific)
+            })
+        } else {
+            self.db_infos
+                .points
+                .get(name_index - NAME_DEF_TO_NAME_DIFFERENCE)
+                .maybe_calculated_and_specific()
+                .is_some_and(|specific| specific == search)
         }
     }
 
