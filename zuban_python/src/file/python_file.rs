@@ -94,9 +94,20 @@ impl File for PythonFile {
             // It was already done.
             return;
         }
-        self.with_global_binder(project, |binder| binder.index_file(self.tree.root()));
-
-        self.points.set(0, Point::new_node_analysis(Locality::File));
+        self.symbol_table
+            .set(NameBinder::with_global_binder(
+                // TODO this does not use flags of the super file. Is this an issue?
+                self.flags.as_ref().unwrap_or(&project.flags),
+                &self.tree,
+                &self.points,
+                &self.complex_points,
+                &self.issues,
+                &self.star_imports,
+                self.file_index.get().unwrap(),
+                self.is_stub,
+                |binder| binder.index_file(self.tree.root()),
+            ))
+            .unwrap()
     }
 
     fn implementation<'db>(&self, names: Names<'db>) -> Names<'db> {
@@ -314,20 +325,6 @@ impl<'db> PythonFile {
         project: &'db PythonProject,
         func: impl FnOnce(&mut NameBinder<'db>),
     ) {
-        self.symbol_table
-            .set(NameBinder::with_global_binder(
-                // TODO this does not use flags of the super file. Is this an issue?
-                self.flags.as_ref().unwrap_or(&project.flags),
-                &self.tree,
-                &self.points,
-                &self.complex_points,
-                &self.issues,
-                &self.star_imports,
-                self.file_index.get().unwrap(),
-                self.is_stub,
-                func,
-            ))
-            .unwrap()
     }
 
     pub fn inference<'file, 'i_s>(
