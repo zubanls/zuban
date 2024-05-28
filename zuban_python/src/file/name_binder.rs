@@ -43,8 +43,8 @@ struct UnresolvedClass<'db> {
     class_symbol_table: SymbolTable,
 }
 
-pub(crate) struct NameBinder<'flags, 'db> {
-    flags: &'flags TypeCheckerFlags,
+pub(crate) struct NameBinder<'db> {
+    flags: &'db TypeCheckerFlags,
     tree: &'db Tree,
     kind: NameBinderKind,
     scope_node: NodeIndex,
@@ -61,12 +61,12 @@ pub(crate) struct NameBinder<'flags, 'db> {
     file_index: FileIndex,
     is_stub: bool,
     references_need_flow_analysis: bool,
-    parent: Option<*mut NameBinder<'flags, 'db>>,
+    parent: Option<*mut NameBinder<'db>>,
 }
 
-impl<'flags, 'db> NameBinder<'flags, 'db> {
+impl<'db> NameBinder<'db> {
     fn new(
-        flags: &'flags TypeCheckerFlags,
+        flags: &'db TypeCheckerFlags,
         tree: &'db Tree,
         kind: NameBinderKind,
         scope_node: NodeIndex,
@@ -101,7 +101,7 @@ impl<'flags, 'db> NameBinder<'flags, 'db> {
     }
 
     pub(crate) fn with_global_binder(
-        flags: &'flags TypeCheckerFlags,
+        flags: &'db TypeCheckerFlags,
         tree: &'db Tree,
         points: &'db Points,
         complex_points: &'db ComplexValues,
@@ -109,7 +109,7 @@ impl<'flags, 'db> NameBinder<'flags, 'db> {
         star_imports: &'db RefCell<Vec<StarImport>>,
         file_index: FileIndex,
         is_stub: bool,
-        func: impl FnOnce(&mut NameBinder<'flags, 'db>),
+        func: impl FnOnce(&mut NameBinder<'db>),
     ) -> SymbolTable {
         let mut binder = NameBinder::new(
             flags,
@@ -171,7 +171,7 @@ impl<'flags, 'db> NameBinder<'flags, 'db> {
         &mut self,
         kind: NameBinderKind,
         scope_node: NodeIndex,
-        func: impl FnOnce(&mut NameBinder<'flags, 'db>),
+        func: impl FnOnce(&mut NameBinder<'db>),
     ) -> SymbolTable {
         let mut name_binder = NameBinder::new(
             self.flags,
@@ -933,7 +933,7 @@ impl<'flags, 'db> NameBinder<'flags, 'db> {
         &mut self,
         clause: &ForIfClause<'db>,
         clauses: &mut ForIfClauseIterator<'db>,
-        on_expr: impl FnOnce(&mut NameBinder<'_, 'db>),
+        on_expr: impl FnOnce(&mut NameBinder<'db>),
     ) {
         let (targets, ifs) = match clause {
             ForIfClause::Sync(sync_for_if_clause) | ForIfClause::Async(sync_for_if_clause) => {

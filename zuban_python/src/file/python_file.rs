@@ -311,8 +311,8 @@ impl<'db> PythonFile {
 
     fn with_global_binder(
         &'db self,
-        project: &PythonProject,
-        func: impl FnOnce(&mut NameBinder<'_, 'db>),
+        project: &'db PythonProject,
+        func: impl FnOnce(&mut NameBinder<'db>),
     ) {
         self.symbol_table
             .set(NameBinder::with_global_binder(
