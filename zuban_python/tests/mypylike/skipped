@@ -525,9 +525,6 @@ testVariadicStarArgsCallNoCrash
 
 # star import for type?
 testGenericAliasCollectionsABCReveal
-# `import a.b # type: ignore` means that the attribute is later Any without error
-testAddedMissingStubsIgnorePackagePartial
-testFineAddedMissingStubsIgnorePackagePartial
 # Complex Star import
 testImportWithinMethod
 testNoCrashOnImportFromStarNested
@@ -1478,6 +1475,9 @@ testKeywordMisspelling*
 # "TypedDict "XXX" has no key "xxx" note: Did you mean "type"?"
 testCannotGetItemOfTypedDictWithInvalidStringLiteralKey
 
+# `import a.b # type: ignore` means that the attribute is later Any without error
+testAddedMissingStubsIgnorePackagePartial
+testFineAddedMissingStubsIgnorePackagePartial
 # ignore_missing_imports in Mypy overrides ignores import errors if those modules are not presents
 testModuleGetattrInit10
 testIgnoreErrorFromMissingStubs2

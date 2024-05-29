@@ -385,8 +385,7 @@ impl<'db> PythonFile {
                     .lookup_symbol("__all__")
                     .and_then(|dunder_all_index| {
                         let name_def = NodeRef::new(self, dunder_all_index)
-                            .maybe_name()
-                            .unwrap()
+                            .as_name()
                             .name_definition()
                             .unwrap();
                         if let Some((_, _, expr)) =
@@ -489,7 +488,7 @@ impl<'db> PythonFile {
         let p = self.points.get(dunder_all_index);
         if p.calculated() && p.kind() == PointKind::MultiDefinition {
             for index in MultiDefinitionIterator::new(&self.points, dunder_all_index) {
-                let name = NodeRef::new(self, index as NodeIndex).maybe_name().unwrap();
+                let name = NodeRef::new(self, index as NodeIndex).as_name();
                 dunder_all = check_multi_def(dunder_all, name)?
             }
         }

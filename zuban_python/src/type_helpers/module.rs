@@ -172,7 +172,7 @@ pub fn is_reexport_issue_if_check_needed(
     link: PointLink,
 ) -> bool {
     if let Some(dunder_all) = file.maybe_dunder_all(db) {
-        let name = NodeRef::from_link(db, link).maybe_name().unwrap().as_code();
+        let name = NodeRef::from_link(db, link).as_name().as_code();
         !(dunder_all.iter().any(|d| d.as_str(db) == name) || name == "__all__")
     } else {
         let check_reexport = file.is_stub || file.flags(db).no_implicit_reexport;
@@ -182,8 +182,7 @@ pub fn is_reexport_issue_if_check_needed(
 
 pub fn is_private_import(db: &Database, link: PointLink) -> bool {
     NodeRef::from_link(db, link)
-        .maybe_name()
-        .unwrap()
+        .as_name()
         .name_definition()
         .unwrap()
         .maybe_import()
