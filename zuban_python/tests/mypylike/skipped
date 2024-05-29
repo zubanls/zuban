@@ -527,7 +527,6 @@ testVariadicStarArgsCallNoCrash
 testGenericAliasCollectionsABCReveal
 # Complex Star import
 testImportWithinMethod
-testNoCrashOnImportFromStarNested
 testSerializeStarImport
 testImportStarWithinFunction
 # Star import override
