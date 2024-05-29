@@ -1,5 +1,7 @@
 use std::rc::Rc;
 
+use parsa_python_cst::NameImportParent;
+
 use crate::{
     arguments::KnownArgsWithCustomAddIssue,
     database::{Database, FileIndex, PointLink},
@@ -50,6 +52,13 @@ impl<'a> Module<'a> {
         }
     }
 
+    fn sub_module_lookup(&self, db: &'a Database, name: &str) -> Option<LookupResult> {
+        Some(match self.sub_module(db, name)? {
+            ImportResult::File(file_index) => LookupResult::FileReference(file_index),
+            ImportResult::Namespace { .. } => todo!(),
+        })
+    }
+
     pub(crate) fn lookup(
         &self,
         i_s: &InferenceState,
@@ -74,6 +83,24 @@ impl<'a> Module<'a> {
         {
             let link = link.into();
             if is_reexport_issue_if_check_needed(i_s.db, self.file, link) {
+                if let Some(import) =
+                    NodeRef::from_link(i_s.db, link).maybe_import_of_name_in_symbol_table()
+                {
+                    match import {
+                        NameImportParent::ImportFromAsName(import) => {
+                            let (level, dotted_name) =
+                                import.import_from().level_with_dotted_name();
+                            // from . import x simply imports the module that exists in the same
+                            // directory anyway and should not be considered a reexport.
+                            if level == 1 && dotted_name.is_none() {
+                                return self
+                                    .sub_module_lookup(i_s.db, name)
+                                    .unwrap_or(LookupResult::None);
+                            }
+                        }
+                        NameImportParent::DottedAsName(_) => (),
+                    }
+                }
                 add_issue(IssueKind::ImportStubNoExplicitReexport {
                     module_name: self.file.qualified_name(i_s.db).into(),
                     attribute: name.into(),
@@ -89,11 +116,8 @@ impl<'a> Module<'a> {
                         .infer_name_of_definition_by_index(link.node_index)
                 },
             }
-        } else if let Some(sub_module) = self.sub_module(i_s.db, name) {
-            match sub_module {
-                ImportResult::File(file_index) => LookupResult::FileReference(file_index),
-                ImportResult::Namespace { .. } => todo!(),
-            }
+        } else if let Some(result) = self.sub_module_lookup(i_s.db, name) {
+            result
         } else if let Some(link) = self
             .file
             .inference(i_s)

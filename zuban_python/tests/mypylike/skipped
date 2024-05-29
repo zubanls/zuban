@@ -542,8 +542,6 @@ testCyclicUndefinedImportWithStar1
 testCyclicUndefinedImportWithStar2
 testCyclicUndefinedImportWithStar3
 testNewAnalyzerTypeAnnotationCycle4
-testReExportChildStubs
-testReExportChildStubs2
 # Weird interaction with ModuleType
 testModuleAliasRepeatedWithAnnotation
 

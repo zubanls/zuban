@@ -2516,6 +2516,14 @@ pub enum DottedNameContent<'db> {
     Name(Name<'db>),
 }
 
+impl<'db> DottedNameContent<'db> {
+    pub fn last_name(&self) -> Name<'db> {
+        match self {
+            Self::Name(name) | Self::DottedName(_, name) => *name,
+        }
+    }
+}
+
 impl<'db> ImportName<'db> {
     pub fn iter_dotted_as_names(&self) -> DottedAsNameIterator<'db> {
         DottedAsNameIterator(self.node.nth_child(1).iter_children())
