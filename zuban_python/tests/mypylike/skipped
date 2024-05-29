@@ -523,7 +523,6 @@ testVariadicTupleInProtocol
 # TypeVarTuple as unpacked varargs
 testVariadicStarArgsCallNoCrash
 
-testNoReExportFromMissingStubs
 # star import for type?
 testGenericAliasCollectionsABCReveal
 # Complex Star import

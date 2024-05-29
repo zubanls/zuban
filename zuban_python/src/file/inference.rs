@@ -417,6 +417,16 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         dotted: DottedName,
         base: Option<ImportResult>,
     ) -> Option<ImportResult> {
+        let node_ref = NodeRef::new(self.file, dotted.index());
+        let p = node_ref.point();
+        if p.calculated() {
+            return match p.kind() {
+                PointKind::FileReference => Some(ImportResult::File(p.file_index())),
+                PointKind::Specific => None,
+                PointKind::Complex => todo!(),
+                _ => unreachable!(),
+            };
+        }
         let file_index = self.file_index;
         let infer_name = |self_: &Self, import_result, name: Name| {
             let i_s = self_.i_s;
@@ -467,7 +477,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             }
             result
         };
-        match dotted.unpack() {
+        let result = match dotted.unpack() {
             DottedNameContent::Name(name) => {
                 if let Some(base) = base {
                     infer_name(self, base, name)
@@ -479,7 +489,22 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 let result = self.infer_import_dotted_name(dotted_name, base)?;
                 infer_name(self, result, name)
             }
+        };
+        // Cache
+        match &result {
+            Some(ImportResult::File(f)) => {
+                node_ref.set_point(Point::new_file_reference(*f, Locality::ComplexExtern))
+            }
+            Some(ImportResult::Namespace(n)) => node_ref.insert_complex(
+                ComplexPoint::TypeInstance(Type::Namespace(n.clone())),
+                Locality::ComplexExtern,
+            ),
+            None => node_ref.set_point(Point::new_specific(
+                Specific::ModuleNotFound,
+                Locality::ComplexExtern,
+            )),
         }
+        result
     }
 
     fn inferred_context_for_simple_assignment(
