@@ -540,9 +540,7 @@ testAssignAndConditionalStarImport
 testClassScopeImportModuleStar
 testImportStarAddMissingDependencyWithinClass
 # Import itself / Extremely weird import orders
-testNewAnalyzerImportAmbiguousWithTopLevelFunction
 testPackagePath
-testIncrementalNestedBrokenCascade
 # import cycle
 testCyclicUndefinedImportWithName
 testCyclicUndefinedImportWithStar1
@@ -1687,6 +1685,8 @@ testFollowImportsNormalDeleteFile7
 testSubmoduleMixingImportFromAndImport
 testSubmoduleImportFromDoesNotAddParents
 
+# import missing --follow-imports=normal
+testIncrementalNestedBrokenCascade
 # --follow-imports=error
 testImportSuppressedWhileAlmostSilent
 testAncestorSuppressedWhileAlmostSilent
