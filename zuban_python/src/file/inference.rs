@@ -498,15 +498,15 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         // Cache
         match &result {
             Some(ImportResult::File(f)) => {
-                node_ref.set_point(Point::new_file_reference(*f, Locality::ComplexExtern))
+                node_ref.set_point(Point::new_file_reference(*f, Locality::Complex))
             }
             Some(ImportResult::Namespace(n)) => node_ref.insert_complex(
                 ComplexPoint::TypeInstance(Type::Namespace(n.clone())),
-                Locality::ComplexExtern,
+                Locality::Complex,
             ),
             None => node_ref.set_point(Point::new_specific(
                 Specific::ModuleNotFound,
-                Locality::ComplexExtern,
+                Locality::Complex,
             )),
         }
         result

@@ -322,7 +322,7 @@ impl Points {
             let locality = cell.get().locality();
             if locality == Locality::DirectExtern && cell.get().file_index() == file_index {
                 cell.set(Point::new_uncalculated());
-            } else if locality as u32 >= Locality::ComplexExtern as u32 {
+            } else if locality as u32 >= Locality::Complex as u32 {
                 cell.set(Point::new_uncalculated())
             }
         }
@@ -489,7 +489,7 @@ pub enum Locality {
 
     // Extern: 1xx
     DirectExtern,   // Contains a direct link that can be checked
-    ComplexExtern,  // Means we have to recalculate the value all the links
+    Complex,        // Means we have to recalculate the value all the links
     ImplicitExtern, // Contains star imports for now (always recheck on invalidation of the module)
     Todo,
 }
