@@ -539,8 +539,6 @@ testAssignAndConditionalStarImport
 # Unsupported class scoped import with stars
 testClassScopeImportModuleStar
 testImportStarAddMissingDependencyWithinClass
-# Import itself / Extremely weird import orders
-testPackagePath
 # import cycle
 testCyclicUndefinedImportWithName
 testCyclicUndefinedImportWithStar1

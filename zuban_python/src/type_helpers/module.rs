@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use crate::{
     arguments::KnownArgsWithCustomAddIssue,
     database::{Database, FileIndex, PointLink},
@@ -10,7 +12,7 @@ use crate::{
     matching::LookupResult,
     node_ref::NodeRef,
     type_::{Namespace, Type},
-    workspaces::Parent,
+    workspaces::{FileEntry, Parent},
 };
 
 #[derive(Copy, Clone)]
@@ -27,13 +29,21 @@ impl<'a> Module<'a> {
         Self::new(db.loaded_python_file(file_index))
     }
 
-    pub fn sub_module(&self, db: &'a Database, name: &str) -> Option<ImportResult> {
+    fn file_entry_and_is_package(&self, db: &'a Database) -> (&'a Rc<FileEntry>, bool) {
         let entry = self.file.file_entry(db);
+        (
+            entry,
+            &*entry.name == "__init__.py" || &*entry.name == "__init__.pyi",
+        )
+    }
+
+    pub fn sub_module(&self, db: &'a Database, name: &str) -> Option<ImportResult> {
+        let (entry, is_package) = self.file_entry_and_is_package(db);
+        if !is_package {
+            return None;
+        }
         match &entry.parent {
             Parent::Directory(dir) => {
-                if &*entry.name != "__init__.py" && &*entry.name != "__init__.pyi" {
-                    return None;
-                }
                 python_import(db, self.file.file_index(), &dir.upgrade().unwrap(), name)
             }
             Parent::Workspace(_) => None,
@@ -106,6 +116,9 @@ impl<'a> Module<'a> {
             // https://github.com/python/typeshed/blob/516f6655051b061652f086445ea54e8e82232349/stdlib/types.pyi#L352
             LookupResult::None
         } else {
+            if name == "__path__" && !self.file_entry_and_is_package(i_s.db).1 {
+                return LookupResult::None;
+            }
             i_s.db
                 .python_state
                 .module_instance()
