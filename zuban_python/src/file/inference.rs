@@ -412,7 +412,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         Inferred::from_type(Type::Namespace(namespace)).save_redirect(self.i_s, self.file, index);
     }
 
-    fn infer_import_dotted_name(
+    pub fn infer_import_dotted_name(
         &self,
         dotted: DottedName,
         base: Option<ImportResult>,
@@ -423,7 +423,12 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             return match p.kind() {
                 PointKind::FileReference => Some(ImportResult::File(p.file_index())),
                 PointKind::Specific => None,
-                PointKind::Complex => todo!(),
+                PointKind::Complex => match node_ref.complex().unwrap() {
+                    ComplexPoint::TypeInstance(Type::Namespace(ns)) => {
+                        Some(ImportResult::Namespace(ns.clone()))
+                    }
+                    _ => unreachable!(),
+                },
                 _ => unreachable!(),
             };
         }

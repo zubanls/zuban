@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use parsa_python_cst::NameImportParent;
+use parsa_python_cst::{DottedAsNameContent, DottedNameContent, NameImportParent};
 
 use crate::{
     arguments::KnownArgsWithCustomAddIssue,
@@ -86,22 +86,44 @@ impl<'a> Module<'a> {
                 if let Some(import) =
                     NodeRef::from_link(i_s.db, link).maybe_import_of_name_in_symbol_table()
                 {
-                    match import {
+                    let is_submodule = |import_result| {
+                        if let Some(ImportResult::File(f)) = import_result {
+                            f == self.file.file_index()
+                        } else {
+                            false
+                        }
+                    };
+                    let is_submodule_import = match import {
                         NameImportParent::ImportFromAsName(imp) => {
                             let import_from = imp.import_from();
                             // from . import x simply imports the module that exists in the same
                             // directory anyway and should not be considered a reexport.
-                            if let Some(ImportResult::File(f)) =
-                                self.file.inference(i_s).import_from_first_part(import_from)
-                            {
-                                if f == self.file.file_index() {
-                                    return self
-                                        .sub_module_lookup(i_s.db, name)
-                                        .unwrap_or(LookupResult::None);
+                            is_submodule(
+                                self.file.inference(i_s).import_from_first_part(import_from),
+                            )
+                        }
+                        NameImportParent::DottedAsName(dotted) => {
+                            if let DottedAsNameContent::WithAs(dotted, _) = dotted.unpack() {
+                                // Only import `foo.bar as bar` can be a submodule.
+                                // `import foo.bar` just exports the name foo.
+                                if let DottedNameContent::DottedName(super_, _) = dotted.unpack() {
+                                    is_submodule(
+                                        self.file
+                                            .inference(i_s)
+                                            .infer_import_dotted_name(super_, None),
+                                    )
+                                } else {
+                                    false
                                 }
+                            } else {
+                                false
                             }
                         }
-                        NameImportParent::DottedAsName(_) => (),
+                    };
+                    if is_submodule_import {
+                        return self
+                            .sub_module_lookup(i_s.db, name)
+                            .unwrap_or(LookupResult::None);
                     }
                 }
                 add_issue(IssueKind::ImportStubNoExplicitReexport {
