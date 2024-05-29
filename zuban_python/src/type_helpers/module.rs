@@ -182,9 +182,6 @@ pub fn is_reexport_issue_if_check_needed(
 
 pub fn is_private_import(db: &Database, link: PointLink) -> bool {
     NodeRef::from_link(db, link)
-        .as_name()
-        .name_definition()
-        .unwrap()
-        .maybe_import()
+        .maybe_import_of_name_in_symbol_table()
         .is_some_and(|i| !i.is_stub_reexport())
 }

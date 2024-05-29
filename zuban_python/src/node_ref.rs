@@ -2,8 +2,8 @@ use std::fmt;
 
 use parsa_python_cst::{
     Annotation, Assignment, Atom, AtomContent, Bytes, ClassDef, CodeIndex, Expression, Factor,
-    FunctionDef, ImportFrom, Int, Name, NameDefinition, NamedExpression, NodeIndex, Primary,
-    PythonString, Slices, StarStarExpression, StarredExpression, StringLiteral,
+    FunctionDef, ImportFrom, Int, Name, NameDefinition, NameImportParent, NamedExpression,
+    NodeIndex, Primary, PythonString, Slices, StarStarExpression, StarredExpression, StringLiteral,
 };
 
 use crate::{
@@ -166,6 +166,10 @@ impl<'file> NodeRef<'file> {
 
     pub fn maybe_function(&self) -> Option<FunctionDef<'file>> {
         FunctionDef::maybe_by_index(&self.file.tree, self.node_index)
+    }
+
+    pub fn maybe_import_of_name_in_symbol_table(&self) -> Option<NameImportParent> {
+        self.as_name().name_definition().unwrap().maybe_import()
     }
 
     pub fn file_index(&self) -> FileIndex {

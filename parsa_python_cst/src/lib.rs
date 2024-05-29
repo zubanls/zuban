@@ -3408,7 +3408,7 @@ impl<'db> NameDefinition<'db> {
             .then(|| Assignment::new(node))
     }
 
-    pub fn maybe_import(&self) -> Option<NameImportParent> {
+    pub fn maybe_import(&self) -> Option<NameImportParent<'db>> {
         let node = self
             .node
             .parent_until(&[
