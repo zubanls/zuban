@@ -3,12 +3,9 @@ use std::{cell::Cell, rc::Rc};
 use parsa_python_cst::*;
 
 use super::{
-    diagnostics::await_aiter_and_next,
-    flow_analysis::{has_custom_special_method, FlowKey},
-    name_binder::GLOBAL_NONLOCAL_TO_NAME_DIFFERENCE,
-    on_argument_type_error,
-    utils::infer_dict_like,
-    File, PythonFile, FLOW_ANALYSIS,
+    diagnostics::await_aiter_and_next, flow_analysis::has_custom_special_method,
+    name_binder::GLOBAL_NONLOCAL_TO_NAME_DIFFERENCE, on_argument_type_error,
+    utils::infer_dict_like, File, PythonFile, FLOW_ANALYSIS,
 };
 use crate::{
     arguments::{Args, KnownArgs, NoArgs, SimpleArgs},
@@ -1005,7 +1002,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         let current_index = name_def.name_index();
         let i_s = self.i_s;
 
-        let assign_to_known_definition = |key, original: Inferred| {
+        let assign_to_known_definition = |first_name_link, original: Inferred| {
             let original_t = original.as_cow_type(i_s);
             let check_for_error = || {
                 original_t.error_if_not_matches(
@@ -1016,7 +1013,11 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 );
             };
             if matches!(assign_kind, AssignKind::Normal) {
-                if !self.narrow_or_widen_name_target(key, &original_t, &value.as_cow_type(i_s)) {
+                if !self.narrow_or_widen_name_target(
+                    first_name_link,
+                    &original_t,
+                    &value.as_cow_type(i_s),
+                ) {
                     check_for_error()
                 }
             } else {
@@ -1092,7 +1093,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     return;
                 }
                 assign_to_known_definition(
-                    FlowKey::Name(PointLink::new(self.file_index, first_index)),
+                    PointLink::new(self.file_index, first_index),
                     original_inf,
                 )
             }
@@ -1102,7 +1103,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 .file
                 .inference(self.i_s)
                 .infer_name_of_definition_by_index(star_link.node_index);
-            assign_to_known_definition(FlowKey::Name(star_link), original)
+            assign_to_known_definition(star_link, original)
         } else if value.maybe_saved_specific(i_s.db) == Some(Specific::None)
             && assign_kind == AssignKind::Normal
             && self.flags().local_partial_types

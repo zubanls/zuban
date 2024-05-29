@@ -47,7 +47,7 @@ thread_local! {
 }
 
 #[derive(Debug, Clone)]
-pub enum FlowKey {
+enum FlowKey {
     Name(PointLink),
     Member(Rc<FlowKey>, DbString),
     Index {
@@ -91,7 +91,7 @@ impl FlowKey {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum FlowKeyIndex {
+enum FlowKeyIndex {
     Int(usize),
     Str(String),
 }
@@ -757,7 +757,7 @@ impl Inference<'_, '_, '_> {
 
     pub fn narrow_or_widen_name_target(
         &self,
-        key: FlowKey,
+        first_name_link: PointLink,
         declaration_t: &Type,
         current_t: &Type,
     ) -> bool {
@@ -770,7 +770,7 @@ impl Inference<'_, '_, '_> {
         {
             return false;
         }
-        self.save_narrowed(key, current_t, widens);
+        self.save_narrowed(FlowKey::Name(first_name_link), current_t, widens);
         true
     }
 
