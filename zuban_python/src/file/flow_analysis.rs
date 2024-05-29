@@ -47,7 +47,7 @@ thread_local! {
 }
 
 #[derive(Debug, Clone)]
-enum FlowKey {
+pub enum FlowKey {
     Name(PointLink),
     Member(Rc<FlowKey>, DbString),
     Index {
@@ -91,7 +91,7 @@ impl FlowKey {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-enum FlowKeyIndex {
+pub enum FlowKeyIndex {
     Int(usize),
     Str(String),
 }
@@ -757,7 +757,7 @@ impl Inference<'_, '_, '_> {
 
     pub fn narrow_or_widen_name_target(
         &self,
-        first_name_index: NodeIndex,
+        key: FlowKey,
         declaration_t: &Type,
         current_t: &Type,
     ) -> bool {
@@ -770,7 +770,6 @@ impl Inference<'_, '_, '_> {
         {
             return false;
         }
-        let key = FlowKey::Name(PointLink::new(self.file_index, first_name_index));
         self.save_narrowed(key, current_t, widens);
         true
     }
