@@ -274,19 +274,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             return;
         }
 
-        let (level, dotted_name) = imp.level_with_dotted_name();
-        let maybe_level_file = (level > 0)
-            .then(|| {
-                find_ancestor(self.i_s.db, self.file, level).or_else(|| {
-                    self.add_issue(imp.index(), IssueKind::NoParentModule);
-                    None
-                })
-            })
-            .flatten();
-        let from_first_part = match dotted_name {
-            Some(dotted_name) => self.infer_import_dotted_name(dotted_name, maybe_level_file),
-            None => maybe_level_file,
-        };
+        let from_first_part = self.import_from_first_part(imp);
 
         match imp.unpack_targets() {
             ImportFromTargets::Star(keyword) => {
@@ -346,6 +334,22 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         self.file
             .points
             .set(imp.index(), Point::new_node_analysis(Locality::Todo));
+    }
+
+    pub fn import_from_first_part(&self, import_from: ImportFrom) -> Option<ImportResult> {
+        let (level, dotted_name) = import_from.level_with_dotted_name();
+        let maybe_level_file = (level > 0)
+            .then(|| {
+                find_ancestor(self.i_s.db, self.file, level).or_else(|| {
+                    self.add_issue(import_from.index(), IssueKind::NoParentModule);
+                    None
+                })
+            })
+            .flatten();
+        match dotted_name {
+            Some(dotted_name) => self.infer_import_dotted_name(dotted_name, maybe_level_file),
+            None => maybe_level_file,
+        }
     }
 
     fn lookup_import_from_target(

@@ -254,3 +254,15 @@ class D: pass
 __all__ = ['C']
 class C: pass
 class E: pass
+
+[case import_no_reexport_if_importing_submodule]
+# A bit like testReExportChildStubs, but without relative imports
+from mod import submod
+reveal_type(submod.C().a)  # N: Revealed type is "builtins.str"
+
+[file mod/__init__.pyi]
+from mod import submod
+
+[file mod/submod.pyi]
+class C:
+    a: str

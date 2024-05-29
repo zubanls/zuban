@@ -87,15 +87,18 @@ impl<'a> Module<'a> {
                     NodeRef::from_link(i_s.db, link).maybe_import_of_name_in_symbol_table()
                 {
                     match import {
-                        NameImportParent::ImportFromAsName(import) => {
-                            let (level, dotted_name) =
-                                import.import_from().level_with_dotted_name();
+                        NameImportParent::ImportFromAsName(imp) => {
+                            let import_from = imp.import_from();
                             // from . import x simply imports the module that exists in the same
                             // directory anyway and should not be considered a reexport.
-                            if level == 1 && dotted_name.is_none() {
-                                return self
-                                    .sub_module_lookup(i_s.db, name)
-                                    .unwrap_or(LookupResult::None);
+                            if let Some(ImportResult::File(f)) =
+                                self.file.inference(i_s).import_from_first_part(import_from)
+                            {
+                                if f == self.file.file_index() {
+                                    return self
+                                        .sub_module_lookup(i_s.db, name)
+                                        .unwrap_or(LookupResult::None);
+                                }
                             }
                         }
                         NameImportParent::DottedAsName(_) => (),
