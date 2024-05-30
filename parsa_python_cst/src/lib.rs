@@ -3383,8 +3383,8 @@ impl<'db> NameDefinition<'db> {
     }
 
     pub fn name_index(&self) -> NodeIndex {
-        debug_assert!(self.name().index() == self.index() + 1);
-        self.index() + 1
+        debug_assert!(self.name().index() == self.index() + NAME_DEF_TO_NAME_DIFFERENCE);
+        self.index() + NAME_DEF_TO_NAME_DIFFERENCE
     }
 
     pub fn parent(&self) -> NameDefinitionParent {
