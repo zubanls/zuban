@@ -7,7 +7,7 @@ use crate::{
     database::{Database, FileIndex, PointLink},
     debug,
     diagnostics::IssueKind,
-    file::{File, PythonFile},
+    file::{File, PythonFile, StarImportResult},
     imports::{python_import, ImportResult},
     inference_state::InferenceState,
     inferred::Inferred,
@@ -143,20 +143,21 @@ impl<'a> Module<'a> {
             }
         } else if let Some(result) = self.sub_module_lookup(i_s.db, name) {
             result
-        } else if let Some(link) = self
+        } else if let Some(star_imp) = self
             .file
             .inference(i_s)
             .lookup_from_star_import(name, false)
         {
-            let inf = if original_import_file.is_some() {
-                Inferred::from_saved_link(link)
-            } else {
-                i_s.db
-                    .loaded_python_file(link.file)
-                    .inference(i_s)
-                    .infer_name_of_definition_by_index(link.node_index)
-            };
-            LookupResult::GotoName { name: link, inf }
+            match star_imp {
+                StarImportResult::Link(link) => {
+                    let inf = if original_import_file.is_some() {
+                        Inferred::from_saved_link(link)
+                    } else {
+                        star_imp.as_inferred(i_s)
+                    };
+                    LookupResult::GotoName { name: link, inf }
+                }
+            }
         } else if let Some(inf) = self.maybe_execute_getattr(i_s, &add_issue) {
             LookupResult::UnknownName(inf)
         } else if name == "__getattr__" {

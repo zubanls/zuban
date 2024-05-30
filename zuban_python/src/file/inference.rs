@@ -1097,13 +1097,14 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     &original_inf,
                 )
             }
-        } else if let Some(star_link) = self.lookup_from_star_import(name_def.as_code(), true) {
-            let node_ref = NodeRef::from_link(self.i_s.db, star_link);
-            let original = node_ref
-                .file
-                .inference(self.i_s)
-                .infer_name_of_definition_by_index(star_link.node_index);
-            check_assign_to_known_definition(star_link, &original);
+        } else if let Some(star_imp) = self.lookup_from_star_import(name_def.as_code(), true) {
+            let original = star_imp.as_inferred(self.i_s);
+            match star_imp {
+                StarImportResult::Link(star_link) => {
+                    let node_ref = NodeRef::from_link(self.i_s.db, star_link);
+                    check_assign_to_known_definition(star_link, &original);
+                }
+            };
             save(name_def.index(), &original);
         } else if value.maybe_saved_specific(i_s.db) == Some(Specific::None)
             && assign_kind == AssignKind::Normal
@@ -2761,12 +2762,16 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     fn infer_name_by_str(&self, name_str: &str, save_to_index: NodeIndex) -> Inferred {
         // If it's not inferred already through the name binder, it's either a star import, a
         // builtin or really missing.
-        if let Some(point_link) = self.lookup_from_star_import(name_str, true) {
-            self.file.points.set(
-                save_to_index,
-                Point::new_redirect(point_link.file, point_link.node_index, Locality::Todo),
-            );
-            return self.check_point_cache(save_to_index).unwrap();
+        if let Some(star_imp) = self.lookup_from_star_import(name_str, true) {
+            return match star_imp {
+                StarImportResult::Link(link) => {
+                    self.file.points.set(
+                        save_to_index,
+                        Point::new_redirect(link.file, link.node_index, Locality::Todo),
+                    );
+                    self.check_point_cache(save_to_index).unwrap()
+                } //star_imp.as_inferred(self.i_s).save_redirect(self.i_s, self.file, save_to_index)
+            };
         }
         let builtins = self.i_s.db.python_state.builtins();
         let point = match name_str {
@@ -2845,7 +2850,11 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         self.check_point_cache(save_to_index).unwrap()
     }
 
-    pub fn lookup_from_star_import(&self, name: &str, check_local: bool) -> Option<PointLink> {
+    pub fn lookup_from_star_import(
+        &self,
+        name: &str,
+        check_local: bool,
+    ) -> Option<StarImportResult> {
         for star_import in self.file.star_imports.borrow().iter() {
             // TODO these feel a bit weird and do not include parent functions (when in a
             // closure)
@@ -2875,7 +2884,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
 
                 if let Some(link) = other_file.lookup_global(name) {
                     if !is_reexport_issue_if_check_needed(self.i_s.db, other_file, link.into()) {
-                        return Some(link.into());
+                        return Some(StarImportResult::Link(link.into()));
                     }
                 }
                 if let Some(l) = other_file
@@ -2900,7 +2909,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
 
             let super_file = self.i_s.db.loaded_python_file(*super_file);
             if let Some(link) = super_file.lookup_global(name) {
-                return Some(link.into());
+                return Some(StarImportResult::Link(link.into()));
             }
             super_file
                 .inference(self.i_s)
@@ -3593,4 +3602,20 @@ pub enum AssignKind {
     Annotation, // `a: int = 1` or `a = 1 # type: int
     Normal,     // a = 1
     AugAssign,  // a += 1
+}
+
+pub enum StarImportResult {
+    Link(PointLink),
+}
+
+impl StarImportResult {
+    pub fn as_inferred(&self, i_s: &InferenceState) -> Inferred {
+        match self {
+            Self::Link(link) => i_s
+                .db
+                .loaded_python_file(link.file)
+                .inference(i_s)
+                .infer_name_of_definition_by_index(link.node_index),
+        }
+    }
 }
