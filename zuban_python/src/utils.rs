@@ -185,7 +185,7 @@ pub struct SymbolTable {
 }
 
 impl SymbolTable {
-    pub fn iter_on_finished_table(&self) -> impl Iterator<Item = (&str, &NodeIndex)> {
+    pub fn iter(&self) -> impl Iterator<Item = (&str, &NodeIndex)> {
         // This should only ever be called on a table that is not still mutated.
         self.symbols.iter().map(|(k, v)| (k.as_str(), v))
     }

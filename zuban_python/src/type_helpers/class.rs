@@ -1766,11 +1766,7 @@ impl<'db: 'a, 'a> Class<'a> {
     fn enum_members(&self, i_s: &InferenceState) -> Box<[EnumMemberDefinition]> {
         let mut members = vec![];
         let mut name_indexes = vec![];
-        for (name, name_index) in self
-            .class_storage
-            .class_symbol_table
-            .iter_on_finished_table()
-        {
+        for (name, name_index) in self.class_storage.class_symbol_table.iter() {
             if name.starts_with('_') {
                 if name == "__members__" {
                     let name_node_ref = NodeRef::new(self.node_ref.file, *name_index);
@@ -1821,11 +1817,7 @@ impl<'db: 'a, 'a> Class<'a> {
 
     fn gather_protocol_members(&self) -> Box<[ProtocolMember]> {
         let mut protocol_members = vec![];
-        for (name, name_index) in self
-            .class_storage
-            .class_symbol_table
-            .iter_on_finished_table()
-        {
+        for (name, name_index) in self.class_storage.class_symbol_table.iter() {
             if EXCLUDED_PROTOCOL_ATTRIBUTES.contains(&name) {
                 continue;
             }

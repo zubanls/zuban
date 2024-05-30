@@ -200,7 +200,7 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> Init
         is_init_var: bool, // e.g. InitVar[int]
     }
 
-    for (_, name_index) in class_symbol_table.iter_on_finished_table() {
+    for (_, name_index) in class_symbol_table.iter() {
         let name = NodeRef::new(file, *name_index).as_name();
         if let Some(assignment) = name.maybe_assignment_definition_name() {
             if let AssignmentContent::WithAnnotation(target, annotation, right_side) =
