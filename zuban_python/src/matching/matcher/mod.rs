@@ -37,7 +37,7 @@ use crate::{
         TypedDictGenerics, Variance, WithUnpack,
     },
     type_helpers::{Callable, Class, Function},
-    utils::join_with_commas,
+    utils::{join_with_commas, AlreadySeen},
 };
 
 #[derive(Debug)]
@@ -1382,13 +1382,13 @@ impl<'a> Matcher<'a> {
                     matcher_index: i,
                     type_var_index: k,
                 };
-                let already_seen = TransitiveConstraintAlreadySeen {
+                let already_seen = AlreadySeen {
                     current,
                     previous: None,
                 };
                 if !tv.calculated() && tv.unresolved_transitive_constraints.is_empty() {
                     // Create a cycle for a type var that is not part of a cycle
-                    cycles.add(TransitiveConstraintAlreadySeen {
+                    cycles.add(AlreadySeen {
                         current,
                         previous: Some(&already_seen),
                     })
@@ -1425,7 +1425,7 @@ impl<'a> Matcher<'a> {
         &self,
         cycles: &mut TypeVarCycles,
         calc: &CalculatingTypeArg,
-        current_seen: TransitiveConstraintAlreadySeen,
+        current_seen: AlreadySeen<TypeVarIndexed>,
     ) -> bool {
         let mut has_bound = calc.calculated();
         for unresolved in &calc.unresolved_transitive_constraints {
@@ -1439,7 +1439,7 @@ impl<'a> Matcher<'a> {
                         matcher_index,
                         type_var_index,
                     };
-                    let new_already_seen = TransitiveConstraintAlreadySeen {
+                    let new_already_seen = AlreadySeen {
                         current: new_current_seen,
                         previous: Some(&current_seen),
                     };
@@ -1545,36 +1545,6 @@ struct TypeVarIndexed {
     type_var_index: usize,
 }
 
-#[derive(Debug)]
-struct TransitiveConstraintAlreadySeen<'a> {
-    current: TypeVarIndexed,
-    previous: Option<&'a TransitiveConstraintAlreadySeen<'a>>,
-}
-
-impl<'a> TransitiveConstraintAlreadySeen<'a> {
-    fn is_cycle(&self) -> bool {
-        self.iter_ancestors()
-            .any(|ancestor| ancestor == self.current)
-    }
-
-    fn iter_ancestors(&self) -> TypeVarAlreadySeenIterator<'a> {
-        TypeVarAlreadySeenIterator(self.previous)
-    }
-}
-
-struct TypeVarAlreadySeenIterator<'a>(Option<&'a TransitiveConstraintAlreadySeen<'a>>);
-
-impl Iterator for TypeVarAlreadySeenIterator<'_> {
-    type Item = TypeVarIndexed;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let first = self.0.take()?;
-        let result = Some(first.current);
-        self.0 = first.previous;
-        result
-    }
-}
-
 #[derive(Default)]
 struct TypeVarCycles {
     cycles: Vec<TypeVarCycle>,
@@ -1582,12 +1552,12 @@ struct TypeVarCycles {
 }
 
 impl TypeVarCycles {
-    fn add(&mut self, already_seen: TransitiveConstraintAlreadySeen) {
+    fn add(&mut self, already_seen: AlreadySeen<TypeVarIndexed>) {
         let cycle_parts = || {
             already_seen
                 .iter_ancestors()
-                .take_while(|tv| *tv != already_seen.current)
-                .chain(std::iter::once(already_seen.current))
+                .take_while(|tv| **tv != already_seen.current)
+                .chain(std::iter::once(&already_seen.current))
         };
         for tv in cycle_parts() {
             for (i, cycle) in self.cycles.iter_mut().enumerate() {
@@ -1616,8 +1586,9 @@ impl TypeVarCycles {
                 }
             }
         }
-        self.cycles
-            .push(TypeVarCycle::new(HashSet::from_iter(cycle_parts())));
+        self.cycles.push(TypeVarCycle::new(HashSet::from_iter(
+            cycle_parts().copied(),
+        )));
     }
 
     fn enable_has_bound_for_type_var(&mut self, tv: TypeVarIndexed) {

@@ -266,3 +266,32 @@ pub fn rc_slice_into_vec<T: Clone>(this: Rc<[T]>) -> Vec<T> {
     // https://stackoverflow.com/questions/77511698/rct-try-unwrap-into-vect#comment136989622_77511997
     Vec::from(this.as_ref())
 }
+
+pub struct AlreadySeen<'a, T> {
+    pub current: T,
+    pub previous: Option<&'a AlreadySeen<'a, T>>,
+}
+
+impl<'a, T: PartialEq<T>> AlreadySeen<'a, T> {
+    pub fn is_cycle(&self) -> bool {
+        self.iter_ancestors()
+            .any(|ancestor| *ancestor == self.current)
+    }
+
+    pub fn iter_ancestors(&self) -> AlreadySeenIterator<'a, T> {
+        AlreadySeenIterator(self.previous)
+    }
+}
+
+pub struct AlreadySeenIterator<'a, T>(Option<&'a AlreadySeen<'a, T>>);
+
+impl<'a, T> Iterator for AlreadySeenIterator<'a, T> {
+    type Item = &'a T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let first = self.0.take()?;
+        let result = Some(&first.current);
+        self.0 = first.previous;
+        result
+    }
+}
