@@ -7,13 +7,13 @@ use crate::{
     database::{Database, FileIndex, PointLink},
     debug,
     diagnostics::IssueKind,
-    file::{File, PythonFile, StarImportResult},
+    file::{File, PythonFile},
     imports::{python_import, ImportResult},
     inference_state::InferenceState,
     inferred::Inferred,
     matching::LookupResult,
     node_ref::NodeRef,
-    type_::{AnyCause, Namespace, Type},
+    type_::{Namespace, Type},
     workspaces::{FileEntry, Parent},
 };
 
@@ -148,13 +148,7 @@ impl<'a> Module<'a> {
             .inference(i_s)
             .lookup_from_star_import(name, false)
         {
-            match star_imp {
-                StarImportResult::Link(link) => LookupResult::GotoName {
-                    name: link,
-                    inf: star_imp.as_inferred(i_s),
-                },
-                StarImportResult::AnyDueToError => LookupResult::any(AnyCause::FromError),
-            }
+            star_imp.into_lookup_result(i_s)
         } else if let Some(inf) = self.maybe_execute_getattr(i_s, &add_issue) {
             LookupResult::UnknownName(inf)
         } else if name == "__getattr__" {

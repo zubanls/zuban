@@ -530,8 +530,6 @@ testSerializeStarImport
 testImportStarWithinFunction
 # Star import check what we override
 testAssignAndConditionalStarImport
-# Unsupported class scoped import with stars
-testClassScopeImportModuleStar
 # import cycle
 testCyclicUndefinedImportWithName
 testCyclicUndefinedImportWithStar1

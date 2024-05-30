@@ -220,7 +220,7 @@ impl File for PythonFile {
 
 #[derive(Debug, Clone)]
 pub struct StarImport {
-    pub(super) scope: NodeIndex,
+    pub scope: NodeIndex,
     pub(super) import_from_node: NodeIndex,
     pub(super) star_node: NodeIndex,
 }

@@ -5,7 +5,7 @@ use parsa_python_cst::*;
 use super::{
     diagnostics::await_aiter_and_next, flow_analysis::has_custom_special_method,
     name_binder::GLOBAL_NONLOCAL_TO_NAME_DIFFERENCE, on_argument_type_error,
-    utils::infer_dict_like, File, PythonFile, FLOW_ANALYSIS,
+    python_file::StarImport, utils::infer_dict_like, File, PythonFile, FLOW_ANALYSIS,
 };
 use crate::{
     arguments::{Args, KnownArgs, NoArgs, SimpleArgs},
@@ -2880,41 +2880,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             {
                 continue;
             }
-            if let Some(other_file) = star_import.to_file(self) {
-                if let Some(dunder) = other_file.maybe_dunder_all(self.i_s.db) {
-                    // Name not in __all__
-                    if !dunder.iter().any(|x| x.as_str(self.i_s.db) == name) {
-                        continue;
-                    }
-                } else if name.starts_with('_') {
-                    continue;
-                }
-
-                if let Some(link) = other_file.lookup_global(name) {
-                    if !is_reexport_issue_if_check_needed(self.i_s.db, other_file, link.into()) {
-                        let mut result = StarImportResult::Link(link.into());
-                        if is_class_star_import
-                            && result
-                                .as_inferred(self.i_s)
-                                .as_cow_type(self.i_s)
-                                .is_func_or_overload()
-                        {
-                            result = StarImportResult::AnyDueToError;
-                        }
-                        return Some(result);
-                    }
-                }
-                if let Some(l) = other_file
-                    .inference(self.i_s)
-                    .lookup_from_star_import(name, false)
-                {
-                    return Some(l);
-                } else {
-                    debug!(
-                        "Name {name} not found in star import {}",
-                        other_file.qualified_name(self.i_s.db)
-                    );
-                }
+            if let Some(result) =
+                self.lookup_name_in_star_import(star_import, name, is_class_star_import)
+            {
+                return Some(result);
             }
         }
         if let Some(super_file) = &self.file.super_file {
@@ -2932,6 +2901,50 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 .inference(self.i_s)
                 .lookup_from_star_import(name, false)
         } else {
+            None
+        }
+    }
+
+    pub fn lookup_name_in_star_import(
+        &self,
+        star_import: &StarImport,
+        name: &str,
+        is_class_star_import: bool,
+    ) -> Option<StarImportResult> {
+        let other_file = star_import.to_file(self)?;
+        if let Some(dunder) = other_file.maybe_dunder_all(self.i_s.db) {
+            // Name not in __all__
+            if !dunder.iter().any(|x| x.as_str(self.i_s.db) == name) {
+                return None;
+            }
+        } else if name.starts_with('_') {
+            return None;
+        }
+
+        if let Some(link) = other_file.lookup_global(name) {
+            if !is_reexport_issue_if_check_needed(self.i_s.db, other_file, link.into()) {
+                let mut result = StarImportResult::Link(link.into());
+                if is_class_star_import
+                    && result
+                        .as_inferred(self.i_s)
+                        .as_cow_type(self.i_s)
+                        .is_func_or_overload()
+                {
+                    result = StarImportResult::AnyDueToError;
+                }
+                return Some(result);
+            }
+        }
+        if let Some(l) = other_file
+            .inference(self.i_s)
+            .lookup_from_star_import(name, false)
+        {
+            Some(l)
+        } else {
+            debug!(
+                "Name {name} not found in star import {}",
+                other_file.qualified_name(self.i_s.db)
+            );
             None
         }
     }
@@ -3635,6 +3648,14 @@ impl StarImportResult {
                 .inference(i_s)
                 .infer_name_of_definition_by_index(link.node_index),
             Self::AnyDueToError => Inferred::new_any_from_error(),
+        }
+    }
+
+    pub fn into_lookup_result(self, i_s: &InferenceState) -> LookupResult {
+        let inf = self.as_inferred(i_s);
+        match self {
+            StarImportResult::Link(link) => LookupResult::GotoName { name: link, inf },
+            StarImportResult::AnyDueToError => LookupResult::UnknownName(inf),
         }
     }
 }
