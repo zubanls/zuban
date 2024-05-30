@@ -1104,6 +1104,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     let node_ref = NodeRef::from_link(self.i_s.db, star_link);
                     check_assign_to_known_definition(star_link, &original);
                 }
+                StarImportResult::AnyDueToError => (),
             };
             save(name_def.index(), &original);
         } else if value.maybe_saved_specific(i_s.db) == Some(Specific::None)
@@ -2770,7 +2771,12 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         Point::new_redirect(link.file, link.node_index, Locality::Todo),
                     );
                     self.check_point_cache(save_to_index).unwrap()
-                } //star_imp.as_inferred(self.i_s).save_redirect(self.i_s, self.file, save_to_index)
+                }
+                StarImportResult::AnyDueToError => {
+                    star_imp
+                        .as_inferred(self.i_s)
+                        .save_redirect(self.i_s, self.file, save_to_index)
+                }
             };
         }
         let builtins = self.i_s.db.python_state.builtins();
@@ -2858,6 +2864,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         for star_import in self.file.star_imports.borrow().iter() {
             // TODO these feel a bit weird and do not include parent functions (when in a
             // closure)
+            let mut is_class_star_import = false;
             if !(star_import.scope == 0
                 || check_local
                     && self
@@ -2865,9 +2872,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         .current_function()
                         .map(|f| f.node_ref.node_index == star_import.scope)
                         .unwrap_or_else(|| {
-                            self.i_s
-                                .current_class()
-                                .is_some_and(|c| c.node_ref.node_index == star_import.scope)
+                            self.i_s.current_class().is_some_and(|c| {
+                                is_class_star_import = true;
+                                c.node_ref.node_index == star_import.scope
+                            })
                         }))
             {
                 continue;
@@ -2884,7 +2892,16 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
 
                 if let Some(link) = other_file.lookup_global(name) {
                     if !is_reexport_issue_if_check_needed(self.i_s.db, other_file, link.into()) {
-                        return Some(StarImportResult::Link(link.into()));
+                        let mut result = StarImportResult::Link(link.into());
+                        if is_class_star_import
+                            && result
+                                .as_inferred(self.i_s)
+                                .as_cow_type(self.i_s)
+                                .is_func_or_overload()
+                        {
+                            result = StarImportResult::AnyDueToError;
+                        }
+                        return Some(result);
                     }
                 }
                 if let Some(l) = other_file
@@ -3606,6 +3623,7 @@ pub enum AssignKind {
 
 pub enum StarImportResult {
     Link(PointLink),
+    AnyDueToError,
 }
 
 impl StarImportResult {
@@ -3616,6 +3634,7 @@ impl StarImportResult {
                 .loaded_python_file(link.file)
                 .inference(i_s)
                 .infer_name_of_definition_by_index(link.node_index),
+            Self::AnyDueToError => Inferred::new_any_from_error(),
         }
     }
 }

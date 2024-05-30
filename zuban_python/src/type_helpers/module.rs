@@ -13,7 +13,7 @@ use crate::{
     inferred::Inferred,
     matching::LookupResult,
     node_ref::NodeRef,
-    type_::{Namespace, Type},
+    type_::{AnyCause, Namespace, Type},
     workspaces::{FileEntry, Parent},
 };
 
@@ -157,6 +157,7 @@ impl<'a> Module<'a> {
                     };
                     LookupResult::GotoName { name: link, inf }
                 }
+                StarImportResult::AnyDueToError => LookupResult::any(AnyCause::FromError),
             }
         } else if let Some(inf) = self.maybe_execute_getattr(i_s, &add_issue) {
             LookupResult::UnknownName(inf)

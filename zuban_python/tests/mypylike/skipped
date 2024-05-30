@@ -525,10 +525,10 @@ testVariadicStarArgsCallNoCrash
 
 # star import for type?
 testGenericAliasCollectionsABCReveal
-# Complex Star import
 testSerializeStarImport
+# Star import override of local scope
 testImportStarWithinFunction
-# Star import override
+# Star import check what we override
 testAssignAndConditionalStarImport
 # Unsupported class scoped import with stars
 testClassScopeImportModuleStar
