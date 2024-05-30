@@ -1002,7 +1002,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         let current_index = name_def.name_index();
         let i_s = self.i_s;
 
-        let assign_to_known_definition = |first_name_link, original: Inferred| {
+        let check_assign_to_known_definition = |first_name_link, original: &Inferred| {
             let original_t = original.as_cow_type(i_s);
             let check_for_error = || {
                 original_t.error_if_not_matches(
@@ -1092,9 +1092,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 if is_done {
                     return;
                 }
-                assign_to_known_definition(
+                check_assign_to_known_definition(
                     PointLink::new(self.file_index, first_index),
-                    original_inf,
+                    &original_inf,
                 )
             }
         } else if let Some(star_link) = self.lookup_from_star_import(name_def.as_code(), true) {
@@ -1103,7 +1103,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 .file
                 .inference(self.i_s)
                 .infer_name_of_definition_by_index(star_link.node_index);
-            assign_to_known_definition(star_link, original)
+            check_assign_to_known_definition(star_link, &original);
+            save(name_def.index(), &original);
         } else if value.maybe_saved_specific(i_s.db) == Some(Specific::None)
             && assign_kind == AssignKind::Normal
             && self.flags().local_partial_types

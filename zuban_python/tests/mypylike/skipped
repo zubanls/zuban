@@ -526,11 +526,9 @@ testVariadicStarArgsCallNoCrash
 # star import for type?
 testGenericAliasCollectionsABCReveal
 # Complex Star import
-testImportWithinMethod
 testSerializeStarImport
 testImportStarWithinFunction
 # Star import override
-testAssignToFuncDefViaImport
 testAssignAndConditionalStarImport
 # Unsupported class scoped import with stars
 testClassScopeImportModuleStar
