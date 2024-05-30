@@ -529,9 +529,6 @@ testImportStarWithinFunction
 testAssignAndConditionalStarImport
 # import cycle
 testCyclicUndefinedImportWithName
-testCyclicUndefinedImportWithStar1
-testCyclicUndefinedImportWithStar2
-testCyclicUndefinedImportWithStar3
 testNewAnalyzerTypeAnnotationCycle4
 # Weird interaction with ModuleType
 testModuleAliasRepeatedWithAnnotation

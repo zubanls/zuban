@@ -293,31 +293,46 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 for target in targets {
                     let (import_name, name_def) = target.unpack();
 
+                    let n_index = name_def.index();
+                    // Set calculating here, so that the logic that follows the names can set a
+                    // cycle if it needs to.
+                    self.file.points.set(n_index, Point::new_calculating());
                     let point = match &from_first_part {
                         Some(imp) => {
+                            let maybe_add_issue = || {
+                                if !self.flags().ignore_missing_imports {
+                                    self.add_issue(
+                                        import_name.index(),
+                                        IssueKind::ImportAttributeError {
+                                            module_name: Box::from(imp.qualified_name(self.i_s.db)),
+                                            name: Box::from(import_name.as_str()),
+                                        },
+                                    );
+                                }
+                            };
                             match self.lookup_import_from_target(imp, import_name, name_def) {
                                 LookupResult::GotoName { name: link, .. } => {
+                                    if self
+                                        .file
+                                        .points
+                                        .get(n_index)
+                                        .maybe_calculated_and_specific()
+                                        == Some(Specific::Cycle)
+                                    {
+                                        maybe_add_issue();
+                                        continue;
+                                    }
                                     link.into_redirect_point(Locality::Todo)
                                 }
                                 LookupResult::FileReference(file_index) => {
                                     Point::new_file_reference(file_index, Locality::Todo)
                                 }
                                 LookupResult::UnknownName(inf) => {
-                                    inf.save_redirect(self.i_s, self.file, name_def.index());
+                                    inf.save_redirect(self.i_s, self.file, n_index);
                                     continue;
                                 }
                                 LookupResult::None => {
-                                    if !self.flags().ignore_missing_imports {
-                                        self.add_issue(
-                                            import_name.index(),
-                                            IssueKind::ImportAttributeError {
-                                                module_name: Box::from(
-                                                    imp.qualified_name(self.i_s.db),
-                                                ),
-                                                name: Box::from(import_name.as_str()),
-                                            },
-                                        );
-                                    }
+                                    maybe_add_issue();
                                     Point::new_specific(Specific::ModuleNotFound, Locality::Todo)
                                 }
                             }
@@ -326,7 +341,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         None => Point::new_specific(Specific::ModuleNotFound, Locality::Todo),
                     };
 
-                    self.file.points.set(name_def.index(), point);
+                    self.file.points.set(n_index, point);
                     self.check_import_type(name_def);
                 }
             }
