@@ -40,12 +40,7 @@ use crate::{
     utils::{join_with_commas, AlreadySeen},
 };
 
-#[derive(Debug)]
-struct CheckedTypeRecursion<'a> {
-    type1: &'a Type,
-    type2: &'a Type,
-    previously_checked: Option<&'a CheckedTypeRecursion<'a>>,
-}
+type CheckedTypeRecursion<'a> = AlreadySeen<'a, (&'a Type, &'a Type)>;
 
 #[derive(Default)]
 pub struct Matcher<'a> {
@@ -983,19 +978,16 @@ impl<'a> Matcher<'a> {
         callable: impl FnOnce(&mut Matcher) -> Match,
     ) -> Match {
         let mut type_recursion = self.checking_type_recursion.as_ref();
-        while let Some(tr) = type_recursion {
-            if type1 == tr.type1 && type2 == tr.type2 {
-                return Match::new_true();
-            }
-            type_recursion = tr.previously_checked;
+        let checking_type_recursion = CheckedTypeRecursion {
+            current: (type1, type2),
+            previous: self.checking_type_recursion.as_ref(),
+        };
+        if checking_type_recursion.is_cycle() {
+            return Match::new_true();
         }
         let mut inner_matcher = Matcher {
             type_var_matchers: std::mem::take(&mut self.type_var_matchers),
-            checking_type_recursion: Some(CheckedTypeRecursion {
-                type1,
-                type2,
-                previously_checked: self.checking_type_recursion.as_ref(),
-            }),
+            checking_type_recursion: Some(checking_type_recursion),
             class: self.class,
             func_or_callable: self.func_or_callable,
             ignore_promotions: self.ignore_promotions,
@@ -1525,7 +1517,10 @@ impl fmt::Debug for Matcher<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("Matcher")
             .field("type_var_matcher", &self.type_var_matchers)
-            .field("checking_type_recursion", &self.checking_type_recursion)
+            .field(
+                "checking_type_recursion",
+                &self.checking_type_recursion.as_ref().map(|_| "..."),
+            )
             .field("class", &self.class)
             .field("func_or_callable", &self.func_or_callable)
             .field("ignore_promotions", &self.ignore_promotions)
