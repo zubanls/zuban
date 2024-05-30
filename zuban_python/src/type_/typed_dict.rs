@@ -290,26 +290,26 @@ impl TypedDict {
     }
 
     pub fn format_full(&self, format_data: &FormatData, name: Option<&str>) -> String {
-        let rec = AvoidRecursionFor::TypedDict(self.defined_at);
-        if format_data.has_already_seen_recursive_type(rec) {
-            return "...".to_string();
-        }
-        let format_data = &format_data.with_seen_recursive_type(rec);
-        let params = join_with_commas(self.members(format_data.db).iter().map(|p| {
-            format!(
-                "'{}'{}: {}",
-                p.name.as_str(format_data.db),
-                match p.required {
-                    true => "",
-                    false => "?",
-                },
-                p.type_.format(format_data)
-            )
-        }));
-        if let Some(name) = name {
-            format!("TypedDict('{name}', {{{params}}})")
-        } else {
-            format!("TypedDict({{{params}}})")
+        match format_data.with_seen_recursive_type(AvoidRecursionFor::TypedDict(self.defined_at)) {
+            Ok(format_data) => {
+                let params = join_with_commas(self.members(format_data.db).iter().map(|p| {
+                    format!(
+                        "'{}'{}: {}",
+                        p.name.as_str(format_data.db),
+                        match p.required {
+                            true => "",
+                            false => "?",
+                        },
+                        p.type_.format(&format_data)
+                    )
+                }));
+                if let Some(name) = name {
+                    format!("TypedDict('{name}', {{{params}}})")
+                } else {
+                    format!("TypedDict({{{params}}})")
+                }
+            }
+            Err(()) => "...".to_string(),
         }
     }
 

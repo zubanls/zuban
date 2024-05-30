@@ -17,12 +17,6 @@ pub enum AvoidRecursionFor<'a> {
 
 type DisplayedRecursive<'a> = AlreadySeen<'a, AvoidRecursionFor<'a>>;
 
-impl DisplayedRecursive<'_> {
-    fn has_already_seen_recursive_type(&self, rec: AvoidRecursionFor) -> bool {
-        self.current == rec || self.iter_ancestors().any(|c| *c == rec)
-    }
-}
-
 #[derive(Clone, Copy)]
 pub enum ParamsStyle {
     CallableParamsInner,
@@ -92,17 +86,22 @@ impl<'db, 'a, 'b, 'c> FormatData<'db, 'a, 'b, 'c> {
     pub fn with_seen_recursive_type<'x: 'c>(
         &'x self,
         rec: AvoidRecursionFor<'x>,
-    ) -> FormatData<'db, 'a, 'b, 'x> {
-        Self {
-            db: self.db,
-            matcher: self.matcher,
-            style: self.style,
-            verbose: self.verbose,
-            hide_implicit_literals: self.hide_implicit_literals,
-            displayed_recursive: Some(DisplayedRecursive {
-                current: rec,
-                previous: self.displayed_recursive.as_ref(),
-            }),
+    ) -> Result<FormatData<'db, 'a, 'b, 'x>, ()> {
+        let displayed_recursive = DisplayedRecursive {
+            current: rec,
+            previous: self.displayed_recursive.as_ref(),
+        };
+        if displayed_recursive.is_cycle() {
+            Err(())
+        } else {
+            Ok(Self {
+                db: self.db,
+                matcher: self.matcher,
+                style: self.style,
+                verbose: self.verbose,
+                hide_implicit_literals: self.hide_implicit_literals,
+                displayed_recursive: Some(displayed_recursive),
+            })
         }
     }
 
@@ -114,14 +113,6 @@ impl<'db, 'a, 'b, 'c> FormatData<'db, 'a, 'b, 'c> {
             verbose: self.verbose,
             hide_implicit_literals: self.hide_implicit_literals,
             displayed_recursive: self.displayed_recursive,
-        }
-    }
-
-    pub fn has_already_seen_recursive_type(&self, rec: AvoidRecursionFor) -> bool {
-        if let Some(displayed_recursive) = &self.displayed_recursive {
-            displayed_recursive.has_already_seen_recursive_type(rec)
-        } else {
-            false
         }
     }
 

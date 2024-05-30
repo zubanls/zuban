@@ -101,32 +101,33 @@ impl NamedTuple {
         // We need to check recursions here, because for class definitions of named tuples can
         // recurse with their attributes.
         let avoid = AvoidRecursionFor::NamedTuple(self.__new__.defined_at);
-        if format_data.has_already_seen_recursive_type(avoid) {
-            return Box::from("...");
+        match format_data.with_seen_recursive_type(avoid) {
+            Ok(format_data) => {
+                let types = match params.is_empty() {
+                    true => "()".into(),
+                    false => join_with_commas(params.iter().map(|p| {
+                        let t = p.type_.expect_positional_type_as_ref();
+                        match generics {
+                            Generics::NotDefinedYet | Generics::None => t.format(&format_data),
+                            _ => t
+                                .replace_type_var_likes_and_self(
+                                    format_data.db,
+                                    &mut |usage| {
+                                        generics
+                                            .nth_usage(format_data.db, &usage)
+                                            .into_generic_item(format_data.db)
+                                    },
+                                    &|| todo!(),
+                                )
+                                .format(&format_data),
+                        }
+                        .into()
+                    })),
+                };
+                format!("tuple[{types}, fallback={name}]",).into()
+            }
+            Err(_) => Box::from("..."),
         }
-        let format_data = &format_data.with_seen_recursive_type(avoid);
-        let types = match params.is_empty() {
-            true => "()".into(),
-            false => join_with_commas(params.iter().map(|p| {
-                let t = p.type_.expect_positional_type_as_ref();
-                match generics {
-                    Generics::NotDefinedYet | Generics::None => t.format(format_data),
-                    _ => t
-                        .replace_type_var_likes_and_self(
-                            format_data.db,
-                            &mut |usage| {
-                                generics
-                                    .nth_usage(format_data.db, &usage)
-                                    .into_generic_item(format_data.db)
-                            },
-                            &|| todo!(),
-                        )
-                        .format(format_data),
-                }
-                .into()
-            })),
-        };
-        format!("tuple[{types}, fallback={name}]",).into()
     }
 
     pub fn iter(&self, i_s: &InferenceState, from: NodeRef) -> IteratorContent {

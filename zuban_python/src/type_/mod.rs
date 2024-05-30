@@ -832,15 +832,15 @@ impl Type {
                 }
 
                 let avoid = AvoidRecursionFor::RecursiveType(rec);
-                if format_data.has_already_seen_recursive_type(avoid) {
-                    if format_data.style == FormatStyle::MypyRevealType {
-                        "...".into()
-                    } else {
-                        rec.name(format_data.db).into()
+                match format_data.with_seen_recursive_type(avoid) {
+                    Ok(format_data) => rec.calculated_type(format_data.db).format(&format_data),
+                    Err(()) => {
+                        if format_data.style == FormatStyle::MypyRevealType {
+                            "...".into()
+                        } else {
+                            rec.name(format_data.db).into()
+                        }
                     }
-                } else {
-                    let format_data = format_data.with_seen_recursive_type(avoid);
-                    rec.calculated_type(format_data.db).format(&format_data)
                 }
             }
             Self::Self_ => Box::from("Self"),
