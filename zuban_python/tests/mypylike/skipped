@@ -523,9 +523,6 @@ testVariadicTupleInProtocol
 # TypeVarTuple as unpacked varargs
 testVariadicStarArgsCallNoCrash
 
-# star import for type?
-testGenericAliasCollectionsABCReveal
-testSerializeStarImport
 # Star import override of local scope
 testImportStarWithinFunction
 # Star import check what we override

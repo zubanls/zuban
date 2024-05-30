@@ -2,11 +2,12 @@ use std::{borrow::Cow, cell::Cell, rc::Rc};
 
 use parsa_python_cst::{SliceType as CSTSliceType, *};
 
-use super::TypeVarFinder;
+use super::{inference::StarImportResult, TypeVarFinder};
 use crate::{
     arguments::SimpleArgs,
     database::{
-        ComplexPoint, Database, Locality, Point, PointKind, PointLink, Specific, TypeAlias,
+        ComplexPoint, Database, Locality, LocalityLink, Point, PointKind, PointLink, Specific,
+        TypeAlias,
     },
     debug,
     diagnostics::{Issue, IssueKind},
@@ -1564,6 +1565,19 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 if let Some(link) = f
                     .lookup_global(name.as_str())
                     .filter(|link| !is_reexport_issue_if_check_needed(db, f, (*link).into()))
+                    .or_else(|| {
+                        match f
+                            .inference(self.inference.i_s)
+                            .lookup_from_star_import(name.as_str(), false)?
+                        {
+                            StarImportResult::Link(link) => Some(LocalityLink {
+                                file: link.file,
+                                node_index: link.node_index,
+                                locality: Locality::Complex,
+                            }),
+                            StarImportResult::AnyDueToError => None,
+                        }
+                    })
                 {
                     self.inference
                         .file
