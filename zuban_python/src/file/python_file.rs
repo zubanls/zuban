@@ -71,7 +71,7 @@ impl ComplexValues {
 #[derive(Clone)]
 pub struct PythonFile {
     pub tree: Tree, // TODO should probably not be public
-    pub symbol_table: OnceCell<SymbolTable>,
+    symbol_table: OnceCell<SymbolTable>,
     maybe_dunder_all: OnceCell<Option<Box<[DbString]>>>, // For __all__
     //all_names_bloom_filter: Option<BloomFilter<&str>>,
     pub points: Points,
@@ -334,9 +334,7 @@ impl<'db> PythonFile {
     }
 
     pub fn lookup_global(&self, name: &str) -> Option<LocalityLink> {
-        self.symbol_table
-            .get()
-            .unwrap()
+        self.symbol_table()
             .lookup_symbol(name)
             .map(|node_index| LocalityLink {
                 file: self.file_index(),
@@ -379,9 +377,7 @@ impl<'db> PythonFile {
     pub fn maybe_dunder_all(&self, db: &Database) -> Option<&[DbString]> {
         self.maybe_dunder_all
             .get_or_init(|| {
-                self.symbol_table
-                    .get()
-                    .unwrap()
+                self.symbol_table()
                     .lookup_symbol("__all__")
                     .and_then(|dunder_all_index| {
                         let name_def = NodeRef::new(self, dunder_all_index)
@@ -536,6 +532,11 @@ impl<'db> PythonFile {
         } else {
             name.to_string()
         }
+    }
+
+    #[inline]
+    pub fn symbol_table(&self) -> &SymbolTable {
+        self.symbol_table.get().unwrap()
     }
 
     pub fn flags<'x>(&'x self, db: &'x Database) -> &TypeCheckerFlags {
