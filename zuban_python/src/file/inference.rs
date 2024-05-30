@@ -948,19 +948,27 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         if name_def.as_code() == "__slots__" {
             return None;
         }
-        let check_base_class = |name_def: NameDefinition| {
-            self.i_s.current_class().and_then(|cls| {
-                if cls.is_calculating_class_infos() {
-                    return None;
-                }
-                cls.lookup_without_descriptors_and_custom_add_issue_ignore_self(
-                    self.i_s,
-                    name_def.as_code(),
-                    |_| todo!(),
-                )
-                .lookup
-                .into_maybe_inferred()
-            })
+        let check_fallback = |name_def: NameDefinition| {
+            self.i_s
+                .current_class()
+                .and_then(|cls| {
+                    if cls.is_calculating_class_infos() {
+                        return None;
+                    }
+                    cls.lookup_without_descriptors_and_custom_add_issue_ignore_self(
+                        self.i_s,
+                        name_def.as_code(),
+                        |_| todo!(),
+                    )
+                    .lookup
+                    .into_maybe_inferred()
+                })
+                .or_else(|| {
+                    Some(
+                        self.lookup_from_star_import(name_def.as_code(), true)?
+                            .as_inferred(self.i_s),
+                    )
+                })
         };
         first_defined_name_of_multi_def(self.file, name_def.name_index())
             .and_then(|first_index| {
@@ -988,7 +996,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 // TODO check base class!
                 Some(self.infer_name_of_definition_by_index(first_index))
             })
-            .or_else(|| check_base_class(name_def))
+            .or_else(|| check_fallback(name_def))
     }
 
     fn assign_to_name_def(

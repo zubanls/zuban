@@ -278,3 +278,14 @@ import mod.submod as submod
 [file mod/submod.pyi]
 class C:
     a: str
+
+[case use_context_of_star_import]
+from foo import *
+
+x = [""]
+y = []
+z = [""]  # E: List item 0 has incompatible type "str"; expected "int"
+[file foo.py]
+x: list[object]
+y: list[int]
+z: list[int]
