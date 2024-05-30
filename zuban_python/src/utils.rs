@@ -277,11 +277,30 @@ impl<'a, T: PartialEq<T>> AlreadySeen<'a, T> {
         self.iter_ancestors()
             .any(|ancestor| *ancestor == self.current)
     }
+}
 
+impl<'a, T> AlreadySeen<'a, T> {
     pub fn iter_ancestors(&self) -> AlreadySeenIterator<'a, T> {
         AlreadySeenIterator(self.previous)
     }
 }
+
+impl<'a, T: fmt::Debug> fmt::Debug for AlreadySeen<'a, T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_list().entries(self.iter_ancestors()).finish()
+    }
+}
+
+impl<'a, T: Clone> Clone for AlreadySeen<'a, T> {
+    fn clone(&self) -> Self {
+        Self {
+            current: self.current.clone(),
+            previous: self.previous.clone(),
+        }
+    }
+}
+
+impl<'a, T: Copy> Copy for AlreadySeen<'a, T> {}
 
 pub struct AlreadySeenIterator<'a, T>(Option<&'a AlreadySeen<'a, T>>);
 

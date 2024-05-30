@@ -977,7 +977,6 @@ impl<'a> Matcher<'a> {
         type2: &Type,
         callable: impl FnOnce(&mut Matcher) -> Match,
     ) -> Match {
-        let mut type_recursion = self.checking_type_recursion.as_ref();
         let checking_type_recursion = CheckedTypeRecursion {
             current: (type1, type2),
             previous: self.checking_type_recursion.as_ref(),

@@ -5,6 +5,7 @@ use crate::{
         FormatStyle, ParamSpecUsage, RecursiveType, TypeVarLikeUsage, TypeVarTupleUsage,
         TypeVarUsage,
     },
+    utils::AlreadySeen,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -14,18 +15,11 @@ pub enum AvoidRecursionFor<'a> {
     NamedTuple(PointLink),
 }
 
-#[derive(Clone, Copy, Debug)]
-struct DisplayedRecursive<'a> {
-    current: AvoidRecursionFor<'a>,
-    parent: Option<&'a DisplayedRecursive<'a>>,
-}
+type DisplayedRecursive<'a> = AlreadySeen<'a, AvoidRecursionFor<'a>>;
 
 impl DisplayedRecursive<'_> {
     fn has_already_seen_recursive_type(&self, rec: AvoidRecursionFor) -> bool {
-        self.current == rec
-            || self
-                .parent
-                .is_some_and(|d| d.has_already_seen_recursive_type(rec))
+        self.current == rec || self.iter_ancestors().any(|c| *c == rec)
     }
 }
 
@@ -107,7 +101,7 @@ impl<'db, 'a, 'b, 'c> FormatData<'db, 'a, 'b, 'c> {
             hide_implicit_literals: self.hide_implicit_literals,
             displayed_recursive: Some(DisplayedRecursive {
                 current: rec,
-                parent: self.displayed_recursive.as_ref(),
+                previous: self.displayed_recursive.as_ref(),
             }),
         }
     }
