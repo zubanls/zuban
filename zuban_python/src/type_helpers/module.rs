@@ -149,14 +149,10 @@ impl<'a> Module<'a> {
             .lookup_from_star_import(name, false)
         {
             match star_imp {
-                StarImportResult::Link(link) => {
-                    let inf = if original_import_file.is_some() {
-                        Inferred::from_saved_link(link)
-                    } else {
-                        star_imp.as_inferred(i_s)
-                    };
-                    LookupResult::GotoName { name: link, inf }
-                }
+                StarImportResult::Link(link) => LookupResult::GotoName {
+                    name: link,
+                    inf: star_imp.as_inferred(i_s),
+                },
                 StarImportResult::AnyDueToError => LookupResult::any(AnyCause::FromError),
             }
         } else if let Some(inf) = self.maybe_execute_getattr(i_s, &add_issue) {
