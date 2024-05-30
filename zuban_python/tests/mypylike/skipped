@@ -532,7 +532,6 @@ testImportStarWithinFunction
 testAssignAndConditionalStarImport
 # Unsupported class scoped import with stars
 testClassScopeImportModuleStar
-testImportStarAddMissingDependencyWithinClass
 # import cycle
 testCyclicUndefinedImportWithName
 testCyclicUndefinedImportWithStar1

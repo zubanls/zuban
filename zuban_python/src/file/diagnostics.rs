@@ -19,6 +19,7 @@ use crate::{
     diagnostics::{Issue, IssueKind},
     file::{inference::AssignKind, Inference},
     getitem::SliceType,
+    imports::ImportResult,
     inference_state::InferenceState,
     inferred::{infer_class_method, AttributeKind, Inferred},
     matching::{
@@ -226,7 +227,17 @@ impl<'db> Inference<'db, '_, '_> {
                     if class.is_some() && func.is_none() {
                         match import_from.unpack_targets() {
                             ImportFromTargets::Star(_) => {
-                                // TODO check unsupported class scoped import
+                                if let Some(ImportResult::File(file)) =
+                                    self.import_from_first_part(import_from)
+                                {
+                                    let imported = self.i_s.db.loaded_python_file(file);
+                                    if imported.has_unsupported_class_scoped_import(self.i_s) {
+                                        self.add_issue(
+                                            import_from.index(),
+                                            IssueKind::UnsupportedClassScopedImport,
+                                        );
+                                    }
+                                }
                             }
                             ImportFromTargets::Iterator(iter) => {
                                 for target in iter {

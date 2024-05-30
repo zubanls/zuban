@@ -244,6 +244,10 @@ impl StarImport {
         debug_assert!(inference.file.points.get(self.star_node).calculated());
         self.to_file(inference)
     }
+
+    pub fn in_module_scope(&self) -> bool {
+        self.scope == 0
+    }
 }
 
 impl fmt::Debug for PythonFile {
@@ -546,6 +550,21 @@ impl<'db> PythonFile {
         } else {
             self.flags.as_ref().unwrap_or(&db.project.flags)
         }
+    }
+
+    pub fn has_unsupported_class_scoped_import(&self, i_s: &InferenceState) -> bool {
+        let inference = self.inference(i_s);
+        self.symbol_table().iter().any(|(_, index)| {
+            inference
+                .infer_name_of_definition_by_index(*index)
+                .as_cow_type(i_s)
+                .is_func_or_overload()
+        }) || self.star_imports.borrow().iter().any(|star_import| {
+            star_import.in_module_scope()
+                && star_import
+                    .to_file(&inference)
+                    .is_some_and(|file| file.has_unsupported_class_scoped_import(i_s))
+        })
     }
 }
 
