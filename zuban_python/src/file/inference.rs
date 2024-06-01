@@ -97,9 +97,6 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 SimpleStmtContent::Assignment(assignment) => {
                     self.cache_assignment_nodes(assignment);
                 }
-                SimpleStmtContent::ImportFrom(import_from) => {
-                    self.cache_import_from(import_from);
-                }
                 SimpleStmtContent::ImportName(import_name) => {
                     self.cache_import_name(import_name);
                 }
@@ -269,6 +266,74 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         }
     }
 
+    fn cache_import_from_only_particular_name_def(&self, as_name: ImportFromAsName) {
+        let import_from = as_name.import_from();
+        let from_first_part = self.import_from_first_part(import_from);
+        self.cache_import_from_part(&from_first_part, as_name)
+    }
+
+    fn cache_import_from_part(
+        &self,
+        from_first_part: &Option<ImportResult>,
+        as_name: ImportFromAsName,
+    ) {
+        let (import_name, name_def) = as_name.unpack();
+
+        let n_index = name_def.index();
+        if self.file.points.get(n_index).calculated() {
+            return;
+        }
+        // Set calculating here, so that the logic that follows the names can set a
+        // cycle if it needs to.
+        self.file.points.set(n_index, Point::new_calculating());
+        let point = match from_first_part {
+            Some(imp) => {
+                let maybe_add_issue = || {
+                    if !self.flags().ignore_missing_imports {
+                        self.add_issue(
+                            import_name.index(),
+                            IssueKind::ImportAttributeError {
+                                module_name: Box::from(imp.qualified_name(self.i_s.db)),
+                                name: Box::from(import_name.as_str()),
+                            },
+                        );
+                    }
+                };
+                match self.lookup_import_from_target(imp, import_name, name_def) {
+                    LookupResult::GotoName { name: link, .. } => {
+                        if self
+                            .file
+                            .points
+                            .get(n_index)
+                            .maybe_calculated_and_specific()
+                            == Some(Specific::Cycle)
+                        {
+                            maybe_add_issue();
+                            return;
+                        }
+                        link.into_redirect_point(Locality::Todo)
+                    }
+                    LookupResult::FileReference(file_index) => {
+                        Point::new_file_reference(file_index, Locality::Todo)
+                    }
+                    LookupResult::UnknownName(inf) => {
+                        inf.save_redirect(self.i_s, self.file, n_index);
+                        return;
+                    }
+                    LookupResult::None => {
+                        maybe_add_issue();
+                        Point::new_specific(Specific::ModuleNotFound, Locality::Todo)
+                    }
+                }
+            }
+            // Means one of the imports before failed.
+            None => Point::new_specific(Specific::ModuleNotFound, Locality::Todo),
+        };
+
+        self.file.points.set(n_index, point);
+        self.check_import_type(name_def);
+    }
+
     pub(super) fn cache_import_from(&self, imp: ImportFrom) {
         if self.file.points.get(imp.index()).calculated() {
             return;
@@ -288,61 +353,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 };
                 self.file.points.set(keyword.index(), point);
             }
-            ImportFromTargets::Iterator(targets) => {
-                // as names should have been calculated earlier
-                for target in targets {
-                    let (import_name, name_def) = target.unpack();
-
-                    let n_index = name_def.index();
-                    // Set calculating here, so that the logic that follows the names can set a
-                    // cycle if it needs to.
-                    self.file.points.set(n_index, Point::new_calculating());
-                    let point = match &from_first_part {
-                        Some(imp) => {
-                            let maybe_add_issue = || {
-                                if !self.flags().ignore_missing_imports {
-                                    self.add_issue(
-                                        import_name.index(),
-                                        IssueKind::ImportAttributeError {
-                                            module_name: Box::from(imp.qualified_name(self.i_s.db)),
-                                            name: Box::from(import_name.as_str()),
-                                        },
-                                    );
-                                }
-                            };
-                            match self.lookup_import_from_target(imp, import_name, name_def) {
-                                LookupResult::GotoName { name: link, .. } => {
-                                    if self
-                                        .file
-                                        .points
-                                        .get(n_index)
-                                        .maybe_calculated_and_specific()
-                                        == Some(Specific::Cycle)
-                                    {
-                                        maybe_add_issue();
-                                        continue;
-                                    }
-                                    link.into_redirect_point(Locality::Todo)
-                                }
-                                LookupResult::FileReference(file_index) => {
-                                    Point::new_file_reference(file_index, Locality::Todo)
-                                }
-                                LookupResult::UnknownName(inf) => {
-                                    inf.save_redirect(self.i_s, self.file, n_index);
-                                    continue;
-                                }
-                                LookupResult::None => {
-                                    maybe_add_issue();
-                                    Point::new_specific(Specific::ModuleNotFound, Locality::Todo)
-                                }
-                            }
-                        }
-                        // Means one of the imports before failed.
-                        None => Point::new_specific(Specific::ModuleNotFound, Locality::Todo),
-                    };
-
-                    self.file.points.set(n_index, point);
-                    self.check_import_type(name_def);
+            ImportFromTargets::Iterator(as_names) => {
+                for as_name in as_names {
+                    self.cache_import_from_part(&from_first_part, as_name)
                 }
             }
         }
@@ -3219,6 +3232,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             match stmt_like {
                 StmtLike::SimpleStmts(s) => {
                     self.cache_simple_stmts_name(s, NodeRef::new(self.file, name_def.index()));
+                }
+                StmtLike::ImportFromAsName(as_name) => {
+                    self.cache_import_from_only_particular_name_def(as_name)
                 }
                 StmtLike::Stmt(stmt) => {
                     self.cache_stmt_name(stmt, NodeRef::new(self.file, name_def.index()));

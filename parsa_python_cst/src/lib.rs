@@ -577,6 +577,7 @@ impl<'db> Int<'db> {
 #[derive(Debug)]
 pub enum StmtLike<'db> {
     SimpleStmts(SimpleStmts<'db>),
+    ImportFromAsName(ImportFromAsName<'db>),
     Stmt(Stmt<'db>),
     Lambda(Lambda<'db>),
     Comprehension(Comprehension<'db>),
@@ -589,6 +590,7 @@ impl<'db> StmtLike<'db> {
     pub fn index(&self) -> NodeIndex {
         match self {
             StmtLike::SimpleStmts(n) => n.index(),
+            StmtLike::ImportFromAsName(imp) => imp.index(),
             StmtLike::Stmt(n) => n.index(),
             StmtLike::Lambda(n) => n.index(),
             StmtLike::Comprehension(n) => n.index(),
@@ -3442,6 +3444,7 @@ impl<'db> NameDefinition<'db> {
             .node
             .parent_until(&[
                 Nonterminal(simple_stmts),
+                Nonterminal(import_from_as_name),
                 Nonterminal(stmt),
                 Nonterminal(lambda),
                 Nonterminal(comprehension),
@@ -3451,6 +3454,8 @@ impl<'db> NameDefinition<'db> {
             .expect("There should always be a stmt");
         if stmt_node.is_type(Nonterminal(simple_stmts)) {
             StmtLike::SimpleStmts(SimpleStmts::new(stmt_node))
+        } else if stmt_node.is_type(Nonterminal(import_from_as_name)) {
+            StmtLike::ImportFromAsName(ImportFromAsName::new(stmt_node))
         } else if stmt_node.is_type(Nonterminal(stmt)) {
             StmtLike::Stmt(Stmt::new(stmt_node))
         } else if stmt_node.is_type(Nonterminal(lambda)) {
