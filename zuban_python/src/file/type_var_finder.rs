@@ -298,10 +298,6 @@ fn follow_name<'db>(
             TypeLike::ClassDef(c) => {
                 let name_def_node_ref =
                     NodeRef::new(node_ref.file, name.name_definition().unwrap().index());
-                node_ref
-                    .file
-                    .inference(i_s)
-                    .cache_class(name_def_node_ref, c);
                 return Err(BaseLookup::Class(PointLink::new(
                     node_ref.file_index(),
                     c.index(),
