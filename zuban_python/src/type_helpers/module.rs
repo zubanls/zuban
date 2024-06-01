@@ -133,13 +133,10 @@ impl<'a> Module<'a> {
             }
             LookupResult::GotoName {
                 name: link,
-                inf: if original_import_file.is_some() {
-                    Inferred::from_saved_link(link)
-                } else {
-                    self.file
-                        .inference(i_s)
-                        .infer_name_of_definition_by_index(link.node_index)
-                },
+                inf: self
+                    .file
+                    .inference(i_s)
+                    .infer_name_of_definition_by_index(link.node_index),
             }
         } else if let Some(result) = self.sub_module_lookup(i_s.db, name) {
             result

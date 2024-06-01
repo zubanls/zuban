@@ -289,3 +289,28 @@ z = [""]  # E: List item 0 has incompatible type "str"; expected "int"
 x: list[object]
 y: list[int]
 z: list[int]
+
+[case import_recursion_usage1]
+# A bit like testCyclicUndefinedImportWithName, but with a usage
+import a
+[file a.py]
+from b import no_such_export  # E: Module "b" has no attribute "no_such_export"
+reveal_type(no_such_export)  # N: Revealed type is "Any"
+[file b.py]
+from a import no_such_export
+
+[case import_recursion_usage2]
+import a
+[file a.py]
+from b import no_such_export  # E: Module "b" has no attribute "no_such_export"
+[file b.py]
+from a import no_such_export
+reveal_type(no_such_export)  # N: Revealed type is "Any"
+
+[case import_recursion_usage3]
+import a
+reveal_type(a.no_such_export)  # N: Revealed type is "Any"
+[file a.py]
+from b import no_such_export  # E: Module "b" has no attribute "no_such_export"
+[file b.py]
+from a import no_such_export

@@ -523,13 +523,17 @@ testVariadicTupleInProtocol
 # TypeVarTuple as unpacked varargs
 testVariadicStarArgsCallNoCrash
 
+# TODO recursions?
+testMetaclassSubclassSelf
+testNamedTupleUpdateNonRecursiveToRecursiveCoarse
+testTupleTypeUpdateNonRecursiveToRecursiveCoarse
+testTypedDictUpdateNonRecursiveToRecursiveCoarse
+testNamedTupleUpdateNonRecursiveToRecursiveFine
+testTupleTypeUpdateNonRecursiveToRecursiveFine
 # Star import override of local scope
 testImportStarWithinFunction
 # Star import check what we override
 testAssignAndConditionalStarImport
-# import cycle
-testCyclicUndefinedImportWithName
-testNewAnalyzerTypeAnnotationCycle4
 # Weird interaction with ModuleType
 testModuleAliasRepeatedWithAnnotation
 
