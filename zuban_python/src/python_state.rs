@@ -23,6 +23,7 @@ use crate::{
 // wrong. Basically it goes three nodes back: name_def class literal and then the actual
 // class.
 const NAME_TO_CLASS_DIFF: u32 = 3;
+pub const NAME_DEF_TO_CLASS_DIFF: u32 = NAME_TO_CLASS_DIFF - NAME_DEF_TO_NAME_DIFFERENCE;
 pub const NAME_TO_FUNCTION_DIFF: u32 = 3;
 
 macro_rules! attribute_node_ref {
@@ -406,10 +407,14 @@ impl PythonState {
                 }
                 update(db, Some(class_index));
                 let class = Class::with_undefined_generics(NodeRef::new(module(db), class_index));
-                class.ensure_calculated_class_infos(
-                    &InferenceState::new(db),
-                    NodeRef::new(class.node_ref.file, class.node().name_definition().index()),
-                );
+                let name_def_ref =
+                    NodeRef::new(class.node_ref.file, class.node().name_definition().index());
+                name_def_ref.set_point(Point::new_redirect(
+                    name_def_ref.file_index(),
+                    class.node_ref.node_index,
+                    Locality::Todo,
+                ));
+                class.ensure_calculated_class_infos(&InferenceState::new(db), name_def_ref);
             } else {
                 let func_index = name_index - NAME_TO_FUNCTION_DIFF;
                 if NodeRef::new(module(db), func_index)

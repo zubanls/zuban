@@ -15,7 +15,7 @@ use crate::{
     file::{File, PythonFile},
     inference_state::InferenceState,
     inferred::Inferred,
-    python_state::NAME_TO_FUNCTION_DIFF,
+    python_state::{NAME_DEF_TO_CLASS_DIFF, NAME_TO_FUNCTION_DIFF},
     type_::Type,
     type_helpers::Module,
 };
@@ -229,6 +229,13 @@ impl<'file> NodeRef<'file> {
             ComplexPoint::Class(c) => c,
             _ => unreachable!("Probably an issue with indexing: {complex:?}"),
         }
+    }
+
+    pub fn cache_class_todo(&self, i_s: &InferenceState) {
+        self.file.inference(i_s).cache_class(
+            self.add_to_node_index(NAME_DEF_TO_CLASS_DIFF as i64),
+            self.maybe_class().unwrap(),
+        );
     }
 
     pub fn debug_info(&self, db: &Database) -> String {

@@ -129,10 +129,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 self.cache_for_stmt_names(star_targets, star_exprs, false);
                 // TODO do the async case as well
             }
-            StmtContent::ClassDef(cls) => self.cache_class(name_def, cls),
+            StmtContent::ClassDef(cls) => self.cache_class_name(name_def, cls),
             StmtContent::FunctionDef(func_def) => cache_func_def(func_def),
             StmtContent::Decorated(decorated) => match decorated.decoratee() {
-                Decoratee::ClassDef(cls) => self.cache_class(name_def, cls),
+                Decoratee::ClassDef(cls) => self.cache_class_name(name_def, cls),
                 Decoratee::FunctionDef(func_def) => cache_func_def(func_def),
                 Decoratee::AsyncFunctionDef(func_def) => cache_func_def(func_def),
             },
@@ -186,14 +186,27 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         }
     }
 
+    fn cache_class_name(&self, name_def: NodeRef, class: ClassDef) {
+        // TODO it is questionable that we are just marking this as OK, because it could be an
+        // Enum / dataclass.
+        name_def.set_point(Point::new_redirect(
+            self.file_index,
+            class.index(),
+            Locality::Todo,
+        ));
+    }
+
     pub fn cache_class(&self, name_def: NodeRef, class_node: ClassDef) {
         if !name_def.point().calculated() {
-            let definition = NodeRef::new(self.file, class_node.index());
-            let ComplexPoint::Class(cls_storage) = definition.complex().unwrap() else {
+            self.cache_class_name(name_def, class_node)
+        }
+        if !name_def.add_to_node_index(2).point().calculated() {
+            let class_ref = NodeRef::new(self.file, class_node.index());
+            let ComplexPoint::Class(cls_storage) = class_ref.complex().unwrap() else {
                 unreachable!()
             };
 
-            let class = Class::new(definition, cls_storage, Generics::NotDefinedYet, None);
+            let class = Class::new(class_ref, cls_storage, Generics::NotDefinedYet, None);
             // Make sure the type vars are properly pre-calculated
             class.ensure_calculated_class_infos(self.i_s, name_def);
             self.check_for_redefinition(name_def, |issue| name_def.add_issue(self.i_s, issue))

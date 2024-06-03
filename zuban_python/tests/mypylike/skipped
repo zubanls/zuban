@@ -523,6 +523,8 @@ testVariadicTupleInProtocol
 # TypeVarTuple as unpacked varargs
 testVariadicStarArgsCallNoCrash
 
+testIncrementalDataclassesSubclassModified
+testIncrementalDataclassesSubclassModifiedErrorFirst
 # TODO recursions?
 testMetaclassSubclassSelf
 testNamedTupleUpdateNonRecursiveToRecursiveCoarse

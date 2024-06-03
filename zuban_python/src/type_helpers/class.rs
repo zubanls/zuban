@@ -323,17 +323,10 @@ impl<'db: 'a, 'a> Class<'a> {
             return;
         }
 
-        debug_assert!(!name_def.point().calculated());
+        debug_assert!(name_def.point().calculated());
         debug!("Calculate class infos for {}", self.name());
 
         node_ref.set_point(Point::new_calculating());
-        // TODO it is questionable that we are just marking this as OK, because it could be an
-        // Enum / dataclass.
-        name_def.set_point(Point::new_redirect(
-            self.node_ref.file_index(),
-            self.node_ref.node_index,
-            Locality::Todo,
-        ));
 
         let type_vars = self.type_vars(i_s);
 
@@ -466,7 +459,8 @@ impl<'db: 'a, 'a> Class<'a> {
         };
 
         if let Some(enum_) = was_enum {
-            let c = ComplexPoint::TypeInstance(Type::Type(Rc::new(Type::Enum(enum_.clone()))));
+            let enum_type = Rc::new(Type::Enum(enum_.clone()));
+            let c = ComplexPoint::TypeInstance(Type::Type(enum_type));
             // The locality is implicit, because we have a OnceCell that is inferred
             // after what we are doing here.
             name_def.insert_complex(c, Locality::ImplicitExtern);
@@ -916,6 +910,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 has_slots,
                 protocol_members,
                 is_final,
+                undefined_generics_type: OnceCell::new(),
             }),
             typed_dict_total,
         )
