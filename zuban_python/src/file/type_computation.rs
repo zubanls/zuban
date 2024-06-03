@@ -4634,8 +4634,14 @@ pub(super) fn check_type_name<'db: 'file, 'file>(
             }
 
             name_def.file.inference(i_s).cache_class(name_def, c);
-            match name_def.complex() {
-                Some(ComplexPoint::TypedDictDefinition(t)) => match t.type_.as_ref() {
+            if let Some(t) = class
+                .use_cached_class_infos(i_s.db)
+                .undefined_generics_type
+                .get()
+            {
+                match t.as_ref() {
+                    Type::Enum(e) => return TypeNameLookup::Enum(e.clone()),
+                    Type::Dataclass(d) => return TypeNameLookup::Dataclass(d.clone()),
                     Type::TypedDict(td) => {
                         if td.calculating() {
                             return TypeNameLookup::RecursiveClass(NodeRef::from_link(
@@ -4646,18 +4652,6 @@ pub(super) fn check_type_name<'db: 'file, 'file>(
                             return TypeNameLookup::TypedDictDefinition(td.clone());
                         }
                     }
-                    _ => unreachable!(),
-                },
-                _ => (),
-            }
-            if let Some(t) = class
-                .use_cached_class_infos(i_s.db)
-                .undefined_generics_type
-                .get()
-            {
-                match t.as_ref() {
-                    Type::Enum(e) => return TypeNameLookup::Enum(e.clone()),
-                    Type::Dataclass(d) => return TypeNameLookup::Dataclass(d.clone()),
                     _ => (),
                 }
             }

@@ -432,6 +432,20 @@ impl<'db: 'a, 'a> Class<'a> {
                 .set(enum_type.clone())
                 .unwrap();
         }
+        let mut was_typed_dict = None;
+        if let Some(total) = typed_dict_total {
+            let td = TypedDict::new_class_definition(
+                self.name_string_slice(),
+                self.node_ref.as_link(),
+                self.type_vars(i_s).clone(),
+                is_final,
+            );
+            class_infos
+                .undefined_generics_type
+                .set(Rc::new(Type::TypedDict(td.clone())))
+                .unwrap();
+            was_typed_dict = Some((td, total));
+        }
 
         node_ref.insert_complex(ComplexPoint::ClassInfos(class_infos), Locality::Todo);
         debug_assert!(node_ref.point().calculated());
@@ -468,8 +482,8 @@ impl<'db: 'a, 'a> Class<'a> {
             dataclass_init_func(&dataclass, i_s.db);
         }
 
-        if let Some(total) = typed_dict_total {
-            self.insert_typed_dict_definition(i_s, name_def, total, is_final)
+        if let Some((td, total)) = was_typed_dict {
+            self.insert_typed_dict_definition(i_s, name_def, td, total, is_final)
         };
 
         if let Some(enum_) = was_enum {
@@ -1692,15 +1706,10 @@ impl<'db: 'a, 'a> Class<'a> {
         &self,
         i_s: &InferenceState,
         name_def: NodeRef,
+        td: Rc<TypedDict>,
         total: bool,
         is_final: bool,
     ) {
-        let td = TypedDict::new_class_definition(
-            self.name_string_slice(),
-            self.node_ref.as_link(),
-            self.type_vars(i_s).clone(),
-            is_final,
-        );
         name_def.insert_complex(
             ComplexPoint::TypedDictDefinition(TypedDictDefinition::new(td.clone(), total)),
             Locality::ImplicitExtern,

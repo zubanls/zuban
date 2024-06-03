@@ -9,7 +9,6 @@ testRecursiveAliasBasicGenericInference
 testTwoUncomfortablyIncompatibleProtocolsWithoutRunningInIssue9771
 
 testSelfTypeProperSupertypeAttributeMeta
-testTypedDictUpdateGeneric
 
 # callable matching regression
 testNoCrashOnNestedGenericCallable
