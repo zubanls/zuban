@@ -19,9 +19,8 @@ use crate::{
     inference_state::InferenceState,
     inferred::{add_attribute_error, specific_to_type, Inferred, UnionValue},
     matching::{
-        format_got_expected, matches_simple_params, CouldBeALiteral, FormatData, Generics,
-        IteratorContent, LookupKind, LookupResult, Matcher, OnTypeError, ResultContext,
-        TupleLenInfos,
+        format_got_expected, matches_simple_params, CouldBeALiteral, FormatData, IteratorContent,
+        LookupKind, LookupResult, Matcher, OnTypeError, ResultContext, TupleLenInfos,
     },
     new_class,
     node_ref::NodeRef,
@@ -33,7 +32,7 @@ use crate::{
     type_helpers::{
         cache_class_name, is_private_import, is_reexport_issue_if_check_needed,
         lookup_in_namespace, Class, FirstParamKind, Function, GeneratorType, Instance, Module,
-        TypeOrClass, CLASS_TO_CLASS_INFO_DIFFERENCE,
+        TypeOrClass,
     },
     utils::debug_indent,
     TypeCheckerFlags,
@@ -184,25 +183,6 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 _ => unreachable!(),
             },
             _ => unreachable!("Found type {:?}", stmt.short_debug()),
-        }
-    }
-
-    pub fn cache_class(&self, name_def: NodeRef, class_node: ClassDef) {
-        if !self
-            .file
-            .points
-            .get(class_node.index() + CLASS_TO_CLASS_INFO_DIFFERENCE as u32)
-            .calculated()
-        {
-            let class_ref = NodeRef::new(self.file, class_node.index());
-            let ComplexPoint::Class(cls_storage) = class_ref.complex().unwrap() else {
-                unreachable!()
-            };
-
-            let class = Class::new(class_ref, cls_storage, Generics::NotDefinedYet, None);
-            // Make sure the type vars are properly pre-calculated
-            class.ensure_calculated_class_infos(self.i_s, name_def);
-            self.check_for_redefinition(name_def, |issue| name_def.add_issue(self.i_s, issue))
         }
     }
 

@@ -24,7 +24,6 @@ use crate::{
     },
     new_class,
     node_ref::NodeRef,
-    python_state::NAME_DEF_TO_CLASS_DIFF,
     type_::{
         execute_collections_named_tuple, execute_type_of_type, execute_typing_named_tuple,
         new_typed_dict, AnyCause, CallableContent, CallableLike, CallableParams, ClassGenerics,
@@ -430,7 +429,7 @@ impl<'db: 'slf, 'slf> Inferred {
                 let ComplexPoint::Class(c) = complex else {
                     unreachable!();
                 };
-                node_ref.cache_class_todo(i_s);
+                node_ref.ensure_cached_class_infos(i_s);
                 *link
             }
             PointKind::Specific => match point.specific() {
@@ -1801,12 +1800,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 );
                             }
                             ComplexPoint::Class(cls) => {
-                                node_ref.cache_class_todo(i_s);
-                                let class = node_ref.maybe_class().unwrap();
-                                node_ref.file.inference(i_s).cache_class(
-                                    node_ref.add_to_node_index(NAME_DEF_TO_CLASS_DIFF as i64),
-                                    class,
-                                );
+                                node_ref.ensure_cached_class_infos(i_s);
                                 let c = Class::new(node_ref, cls, Generics::NotDefinedYet, None);
                                 if c.use_cached_class_infos(i_s.db)
                                     .undefined_generics_type
@@ -2282,7 +2276,7 @@ fn type_of_complex<'db: 'x, 'x>(
 ) -> Cow<'x, Type> {
     match complex {
         ComplexPoint::Class(cls_storage) => {
-            definition.unwrap().cache_class_todo(i_s);
+            definition.unwrap().ensure_cached_class_infos(i_s);
             let cls = Class::new(
                 // This can only ever happen for saved definitions, therefore we can unwrap.
                 definition.unwrap(),

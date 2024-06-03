@@ -548,8 +548,8 @@ impl<'db> Inference<'db, '_, '_> {
         debug!("TODO this from is completely wrong and should never be used.");
         let hack = name_def;
         cache_class_name(name_def, class);
-        self.cache_class(name_def, class);
         let class_node_ref = NodeRef::new(self.file, class.index());
+        class_node_ref.ensure_cached_class_infos(self.i_s);
         let db = self.i_s.db;
         let c = Class::with_self_generics(db, class_node_ref);
         let class_infos = c.use_cached_class_infos(db);
