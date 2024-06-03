@@ -2290,17 +2290,7 @@ fn type_of_complex<'db: 'x, 'x>(
                 Generics::NotDefinedYet,
                 None,
             );
-            Cow::Owned(Type::Type(
-                cls.use_cached_class_infos(i_s.db)
-                    .undefined_generics_type
-                    .get_or_init(|| {
-                        Rc::new(Type::new_class(
-                            cls.node_ref.as_link(),
-                            ClassGenerics::NotDefinedYet,
-                        ))
-                    })
-                    .clone(),
-            ))
+            Cow::Owned(cls.as_type_type(i_s))
         }
         ComplexPoint::FunctionOverload(overload) => {
             let overload =

@@ -1643,19 +1643,19 @@ impl<'db: 'a, 'a> Class<'a> {
 
     pub fn as_type_type(&self, i_s: &InferenceState<'db, '_>) -> Type {
         let class_infos = self.use_cached_class_infos(i_s.db);
-        if let Some(t) = class_infos.undefined_generics_type.get() {
-            if !matches!(t.as_ref(), Type::Class(_))
-                || matches!(self.generics, Generics::NotDefinedYet)
-            {
-                return Type::Type(
-                    class_infos
-                        .undefined_generics_type
-                        .get_or_init(|| Rc::new(self.as_type(i_s.db)))
-                        .clone(),
-                );
-            }
-        }
-        Type::Type(Rc::new(self.as_type(i_s.db)))
+        Type::Type(if matches!(self.generics, Generics::NotDefinedYet) {
+            class_infos
+                .undefined_generics_type
+                .get_or_init(|| {
+                    Rc::new(Type::new_class(
+                        self.node_ref.as_link(),
+                        ClassGenerics::NotDefinedYet,
+                    ))
+                })
+                .clone()
+        } else {
+            Rc::new(self.as_type(i_s.db))
+        })
     }
 
     fn named_tuple_from_class(&self, i_s: &InferenceState, cls: Class) -> Rc<NamedTuple> {
