@@ -245,9 +245,9 @@ impl<'file> NodeRef<'file> {
             };
 
             let class = Class::new(class_ref, cls_storage, Generics::NotDefinedYet, None);
-            let name_def = self.add_to_node_index(NAME_DEF_TO_CLASS_DIFF as i64);
             // Make sure the type vars and MRO are properly pre-calculated
-            class.ensure_calculated_class_infos(i_s, name_def);
+            class.ensure_calculated_class_infos(i_s);
+            let name_def = self.add_to_node_index(NAME_DEF_TO_CLASS_DIFF as i64);
             self.file
                 .inference(i_s)
                 .check_for_redefinition(name_def, |issue| name_def.add_issue(i_s, issue))

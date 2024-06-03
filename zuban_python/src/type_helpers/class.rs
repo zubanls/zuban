@@ -333,14 +333,18 @@ impl<'db: 'a, 'a> Class<'a> {
             .add_to_node_index(CLASS_TO_CLASS_INFO_DIFFERENCE)
     }
 
-    pub fn ensure_calculated_class_infos(&self, i_s: &InferenceState<'db, '_>, name_def: NodeRef) {
+    pub fn ensure_calculated_class_infos(&self, i_s: &InferenceState<'db, '_>) {
         let node_ref = self.class_info_node_ref();
         let point = node_ref.point();
         if point.calculated() {
             return;
         }
 
-        debug_assert!(name_def.point().calculated());
+        debug_assert!(
+            NodeRef::new(node_ref.file, self.node().name_definition().index())
+                .point()
+                .calculated()
+        );
         debug!("Calculate class infos for {}", self.name());
 
         node_ref.set_point(Point::new_calculating());
@@ -498,7 +502,7 @@ impl<'db: 'a, 'a> Class<'a> {
         }
 
         if let Some((td, total)) = was_typed_dict {
-            self.insert_typed_dict_definition(i_s, name_def, td, total, is_final)
+            self.insert_typed_dict_definition(i_s, td, total, is_final)
         };
 
         if let Some(enum_) = was_enum {
@@ -1727,12 +1731,11 @@ impl<'db: 'a, 'a> Class<'a> {
     fn insert_typed_dict_definition(
         &self,
         i_s: &InferenceState,
-        name_def: NodeRef,
         td: Rc<TypedDict>,
         total: bool,
         is_final: bool,
     ) {
-        name_def.insert_complex(
+        NodeRef::new(self.node_ref.file, self.node().name_definition().index()).insert_complex(
             ComplexPoint::TypedDictDefinition(TypedDictDefinition::new(td.clone(), total)),
             Locality::ImplicitExtern,
         );

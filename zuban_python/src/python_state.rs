@@ -414,7 +414,7 @@ impl PythonState {
                     class.node_ref.node_index,
                     Locality::Todo,
                 ));
-                class.ensure_calculated_class_infos(&InferenceState::new(db), name_def_ref);
+                class.ensure_calculated_class_infos(&InferenceState::new(db));
             } else {
                 let func_index = name_index - NAME_TO_FUNCTION_DIFF;
                 if NodeRef::new(module(db), func_index)
@@ -882,10 +882,7 @@ impl PythonState {
     pub fn supports_keys_and_get_item_class<'a>(&'a self, db: &'a Database) -> Class<'a> {
         let node_ref = self.supports_keys_and_get_item_node_ref();
         let cls = Class::with_undefined_generics(node_ref);
-        cls.ensure_calculated_class_infos(
-            &InferenceState::new(db),
-            NodeRef::new(node_ref.file, cls.node().name_definition().index()),
-        );
+        cls.ensure_calculated_class_infos(&InferenceState::new(db));
         Class::with_self_generics(db, node_ref)
     }
 
