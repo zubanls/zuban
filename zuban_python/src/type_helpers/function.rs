@@ -1921,6 +1921,7 @@ fn infer_decorator_details(
                 };
             }
             let class = Class::from_non_generic_link(i_s.db, saved_link);
+            class.node_ref.cache_class_todo(i_s);
             let is_abstract_property = saved_link == i_s.db.python_state.abstractproperty_link();
             if is_abstract_property
                 || class

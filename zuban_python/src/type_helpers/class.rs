@@ -425,6 +425,14 @@ impl<'db: 'a, 'a> Class<'a> {
                 }
             }
         }
+        if let Some(enum_) = &was_enum {
+            let enum_type = Rc::new(Type::Enum(enum_.clone()));
+            class_infos
+                .undefined_generics_type
+                .set(enum_type.clone())
+                .unwrap();
+        }
+
         node_ref.insert_complex(ComplexPoint::ClassInfos(class_infos), Locality::Todo);
         debug_assert!(node_ref.point().calculated());
 
@@ -466,10 +474,6 @@ impl<'db: 'a, 'a> Class<'a> {
 
         if let Some(enum_) = was_enum {
             let enum_type = Rc::new(Type::Enum(enum_.clone()));
-            self.use_cached_class_infos(i_s.db)
-                .undefined_generics_type
-                .set(enum_type.clone())
-                .unwrap();
             let c = ComplexPoint::TypeInstance(Type::Type(enum_type));
             // The locality is implicit, because we have a OnceCell that is inferred
             // after what we are doing here.

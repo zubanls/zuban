@@ -278,6 +278,7 @@ pub(crate) fn lookup_on_enum_member_instance<'a>(
     name: &str,
 ) -> LookupDetails<'a> {
     let enum_class = member.enum_.class(i_s.db);
+    enum_class.use_cached_class_infos(i_s.db);
     let is_enum = enum_class.mro(i_s.db).any(|(_, base)| match base {
         TypeOrClass::Class(c) => c.node_ref == i_s.db.python_state.enum_node_ref(),
         _ => false,

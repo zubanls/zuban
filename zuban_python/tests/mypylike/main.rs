@@ -11,8 +11,7 @@ use clap::Parser;
 use regex::{Captures, Regex, Replacer};
 use zuban_python::{DiagnosticConfig, Project, ProjectOptions, PythonVersion, TypeCheckerFlags};
 
-const SKIP_MYPY_TEST_FILES: [&str; 31] = [
-    "check-enum.test",
+const SKIP_MYPY_TEST_FILES: [&str; 30] = [
     // Narrowing tests
     "check-redefine.test",
     "check-callable.test",
