@@ -463,7 +463,11 @@ impl<'db: 'a, 'a> Class<'a> {
                 .undefined_generics_type
                 .set(Rc::new(Type::TypedDict(td.clone())))
                 .unwrap();
-            was_typed_dict = Some((td, total));
+            NodeRef::new(self.node_ref.file, self.node().name_definition().index()).insert_complex(
+                ComplexPoint::TypedDictDefinition(TypedDictDefinition::new(td.clone(), total)),
+                Locality::ImplicitExtern,
+            );
+            was_typed_dict = Some(td);
         }
 
         node_ref.insert_complex(ComplexPoint::ClassInfos(class_infos), Locality::Todo);
@@ -501,8 +505,8 @@ impl<'db: 'a, 'a> Class<'a> {
             dataclass_init_func(&dataclass, i_s.db);
         }
 
-        if let Some((td, total)) = was_typed_dict {
-            self.insert_typed_dict_definition(i_s, td, total, is_final)
+        if let Some(td) = was_typed_dict {
+            self.initialize_typed_dict_members(i_s, td);
         };
 
         if let Some(enum_) = was_enum {
@@ -1726,20 +1730,6 @@ impl<'db: 'a, 'a> Class<'a> {
             CallableParams::Simple(Rc::from(vec)),
             Type::Self_,
         )
-    }
-
-    fn insert_typed_dict_definition(
-        &self,
-        i_s: &InferenceState,
-        td: Rc<TypedDict>,
-        total: bool,
-        is_final: bool,
-    ) {
-        NodeRef::new(self.node_ref.file, self.node().name_definition().index()).insert_complex(
-            ComplexPoint::TypedDictDefinition(TypedDictDefinition::new(td.clone(), total)),
-            Locality::ImplicitExtern,
-        );
-        self.initialize_typed_dict_members(i_s, td);
     }
 
     fn initialize_typed_dict_members(&self, i_s: &InferenceState, typed_dict: Rc<TypedDict>) {
