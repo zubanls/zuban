@@ -15,7 +15,7 @@ use crate::{
         dataclasses_replace, AnyCause, CallableContent, CallableParam, CallableParams,
         ClassGenerics, CustomBehavior, ParamType, Tuple, Type, TypeVarLikes,
     },
-    type_helpers::{Class, Function, Instance},
+    type_helpers::{cache_class_name, Class, Function, Instance},
     InferenceState,
 };
 
@@ -409,6 +409,10 @@ impl PythonState {
                 let class = Class::with_undefined_generics(NodeRef::new(module(db), class_index));
                 let name_def_ref =
                     NodeRef::new(class.node_ref.file, class.node().name_definition().index());
+                cache_class_name(
+                    name_def_ref,
+                    NodeRef::new(module(db), class_index).maybe_class().unwrap(),
+                );
                 name_def_ref.set_point(Point::new_redirect(
                     name_def_ref.file_index(),
                     class.node_ref.node_index,
@@ -880,10 +884,7 @@ impl PythonState {
     }
 
     pub fn supports_keys_and_get_item_class<'a>(&'a self, db: &'a Database) -> Class<'a> {
-        let node_ref = self.supports_keys_and_get_item_node_ref();
-        let cls = Class::with_undefined_generics(node_ref);
-        cls.ensure_calculated_class_infos(&InferenceState::new(db));
-        Class::with_self_generics(db, node_ref)
+        Class::with_self_generics(db, self.supports_keys_and_get_item_node_ref())
     }
 
     pub fn type_var_type(&self) -> Type {
