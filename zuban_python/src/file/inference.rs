@@ -31,9 +31,9 @@ use crate::{
         TupleUnpack, Type, UnionEntry, UnionType, Variance, WithUnpack,
     },
     type_helpers::{
-        is_private_import, is_reexport_issue_if_check_needed, lookup_in_namespace, Class,
-        FirstParamKind, Function, GeneratorType, Instance, Module, TypeOrClass,
-        CLASS_TO_CLASS_INFO_DIFFERENCE,
+        cache_class_name, is_private_import, is_reexport_issue_if_check_needed,
+        lookup_in_namespace, Class, FirstParamKind, Function, GeneratorType, Instance, Module,
+        TypeOrClass, CLASS_TO_CLASS_INFO_DIFFERENCE,
     },
     utils::debug_indent,
     TypeCheckerFlags,
@@ -130,10 +130,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 self.cache_for_stmt_names(star_targets, star_exprs, false);
                 // TODO do the async case as well
             }
-            StmtContent::ClassDef(cls) => self.cache_class_name(name_def, cls),
+            StmtContent::ClassDef(cls) => cache_class_name(name_def, cls),
             StmtContent::FunctionDef(func_def) => cache_func_def(func_def),
             StmtContent::Decorated(decorated) => match decorated.decoratee() {
-                Decoratee::ClassDef(cls) => self.cache_class_name(name_def, cls),
+                Decoratee::ClassDef(cls) => cache_class_name(name_def, cls),
                 Decoratee::FunctionDef(func_def) => cache_func_def(func_def),
                 Decoratee::AsyncFunctionDef(func_def) => cache_func_def(func_def),
             },
@@ -184,16 +184,6 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 _ => unreachable!(),
             },
             _ => unreachable!("Found type {:?}", stmt.short_debug()),
-        }
-    }
-
-    pub fn cache_class_name(&self, name_def: NodeRef, class: ClassDef) {
-        if !name_def.point().calculated() {
-            name_def.set_point(Point::new_redirect(
-                self.file_index,
-                class.index(),
-                Locality::Todo,
-            ));
         }
     }
 

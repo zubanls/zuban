@@ -30,7 +30,8 @@ use crate::{
         TypedDictGenerics, TypedDictMember, UnionEntry, UnionType, WithUnpack,
     },
     type_helpers::{
-        is_reexport_issue_if_check_needed, start_namedtuple_params, Class, Function, Module,
+        cache_class_name, is_reexport_issue_if_check_needed, start_namedtuple_params, Class,
+        Function, Module,
     },
     utils::{rc_slice_into_vec, rc_unwrap_or_clone},
 };
@@ -4633,7 +4634,7 @@ pub(super) fn check_type_name<'db: 'file, 'file>(
                 return TypeNameLookup::RecursiveClass(from);
             }
 
-            name_def.file.inference(i_s).cache_class_name(name_def, c);
+            cache_class_name(name_def, c);
             name_def.file.inference(i_s).cache_class(name_def, c);
             if let Some(t) = class
                 .use_cached_class_infos(i_s.db)

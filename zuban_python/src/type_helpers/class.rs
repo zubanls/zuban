@@ -66,6 +66,16 @@ const EXCLUDED_PROTOCOL_ATTRIBUTES: [&str; 11] = [
     "__class_getitem__",
 ];
 
+pub fn cache_class_name(name_def: NodeRef, class: ClassDef) {
+    if !name_def.point().calculated() {
+        name_def.set_point(Point::new_redirect(
+            name_def.file_index(),
+            class.index(),
+            Locality::Todo,
+        ));
+    }
+}
+
 #[derive(Clone, Copy)]
 pub struct Class<'a> {
     pub node_ref: NodeRef<'a>,
