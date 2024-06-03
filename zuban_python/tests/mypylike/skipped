@@ -8,6 +8,9 @@ testRecursiveAliasBasicGenericInference
 
 testTwoUncomfortablyIncompatibleProtocolsWithoutRunningInIssue9771
 
+testSelfTypeProperSupertypeAttributeMeta
+testTypedDictUpdateGeneric
+
 # callable matching regression
 testNoCrashOnNestedGenericCallable
 
@@ -523,15 +526,6 @@ testVariadicTupleInProtocol
 # TypeVarTuple as unpacked varargs
 testVariadicStarArgsCallNoCrash
 
-testIncrementalDataclassesSubclassModified
-testIncrementalDataclassesSubclassModifiedErrorFirst
-# TODO recursions?
-testMetaclassSubclassSelf
-testNamedTupleUpdateNonRecursiveToRecursiveCoarse
-testTupleTypeUpdateNonRecursiveToRecursiveCoarse
-testTypedDictUpdateNonRecursiveToRecursiveCoarse
-testNamedTupleUpdateNonRecursiveToRecursiveFine
-testTupleTypeUpdateNonRecursiveToRecursiveFine
 # Star import override of local scope
 testImportStarWithinFunction
 # Star import check what we override

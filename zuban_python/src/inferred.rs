@@ -1807,8 +1807,20 @@ impl<'db: 'slf, 'slf> Inferred {
                                     node_ref.add_to_node_index(NAME_DEF_TO_CLASS_DIFF as i64),
                                     class,
                                 );
-                                return Class::new(node_ref, cls, Generics::NotDefinedYet, None)
-                                    .execute(i_s, args, result_context, on_type_error, false);
+                                let c = Class::new(node_ref, cls, Generics::NotDefinedYet, None);
+                                if c.use_cached_class_infos(i_s.db)
+                                    .undefined_generics_type
+                                    .get()
+                                    .is_none()
+                                {
+                                    return c.execute(
+                                        i_s,
+                                        args,
+                                        result_context,
+                                        on_type_error,
+                                        false,
+                                    );
+                                }
                             }
                             ComplexPoint::TypeAlias(alias) => {
                                 if !alias.type_vars.is_empty() {
@@ -2276,11 +2288,24 @@ fn type_of_complex<'db: 'x, 'x>(
     match complex {
         ComplexPoint::Class(cls_storage) => {
             definition.unwrap().cache_class_todo(i_s);
-            // This can only ever happen for saved definitions, therefore we can unwrap.
-            Cow::Owned(Type::Type(Rc::new(Type::new_class(
-                definition.unwrap().as_link(),
-                ClassGenerics::NotDefinedYet,
-            ))))
+            let cls = Class::new(
+                // This can only ever happen for saved definitions, therefore we can unwrap.
+                definition.unwrap(),
+                cls_storage,
+                Generics::NotDefinedYet,
+                None,
+            );
+            Cow::Owned(Type::Type(
+                cls.use_cached_class_infos(i_s.db)
+                    .undefined_generics_type
+                    .get_or_init(|| {
+                        Rc::new(Type::new_class(
+                            cls.node_ref.as_link(),
+                            ClassGenerics::NotDefinedYet,
+                        ))
+                    })
+                    .clone(),
+            ))
         }
         ComplexPoint::FunctionOverload(overload) => {
             let overload =

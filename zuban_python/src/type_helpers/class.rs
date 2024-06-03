@@ -395,6 +395,12 @@ impl<'db: 'a, 'a> Class<'a> {
         }
 
         let (mut class_infos, typed_dict_total) = self.calculate_class_infos(i_s, type_vars);
+        if let Some(dataclass) = &was_dataclass {
+            class_infos
+                .undefined_generics_type
+                .set(Rc::new(Type::Dataclass(dataclass.clone())))
+                .unwrap();
+        }
         class_infos.is_final |= is_final;
         let mut was_enum = None;
         let mut was_enum_base = false;
@@ -460,6 +466,10 @@ impl<'db: 'a, 'a> Class<'a> {
 
         if let Some(enum_) = was_enum {
             let enum_type = Rc::new(Type::Enum(enum_.clone()));
+            self.use_cached_class_infos(i_s.db)
+                .undefined_generics_type
+                .set(enum_type.clone())
+                .unwrap();
             let c = ComplexPoint::TypeInstance(Type::Type(enum_type));
             // The locality is implicit, because we have a OnceCell that is inferred
             // after what we are doing here.
@@ -1620,7 +1630,13 @@ impl<'db: 'a, 'a> Class<'a> {
     }
 
     pub fn as_type_type(&self, i_s: &InferenceState<'db, '_>) -> Type {
-        Type::Type(Rc::new(self.as_type(i_s.db)))
+        Type::Type(
+            self.use_cached_class_infos(i_s.db)
+                .undefined_generics_type
+                .get()
+                .cloned()
+                .unwrap_or_else(|| Rc::new(self.as_type(i_s.db))),
+        )
     }
 
     fn named_tuple_from_class(&self, i_s: &InferenceState, cls: Class) -> Rc<NamedTuple> {
