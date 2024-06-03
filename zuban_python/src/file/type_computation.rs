@@ -4633,6 +4633,7 @@ pub(super) fn check_type_name<'db: 'file, 'file>(
                 return TypeNameLookup::RecursiveClass(from);
             }
 
+            name_def.file.inference(i_s).cache_class_name(name_def, c);
             name_def.file.inference(i_s).cache_class(name_def, c);
             if let Some(t) = class
                 .use_cached_class_infos(i_s.db)

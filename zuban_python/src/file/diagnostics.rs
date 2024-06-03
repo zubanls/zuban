@@ -546,6 +546,7 @@ impl<'db> Inference<'db, '_, '_> {
         let name_def = NodeRef::new(self.file, class.name_definition().index());
         debug!("TODO this from is completely wrong and should never be used.");
         let hack = name_def;
+        self.cache_class_name(name_def, class);
         self.cache_class(name_def, class);
         let class_node_ref = NodeRef::new(self.file, class.index());
         let db = self.i_s.db;

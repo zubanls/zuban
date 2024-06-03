@@ -186,20 +186,17 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         }
     }
 
-    fn cache_class_name(&self, name_def: NodeRef, class: ClassDef) {
-        // TODO it is questionable that we are just marking this as OK, because it could be an
-        // Enum / dataclass.
-        name_def.set_point(Point::new_redirect(
-            self.file_index,
-            class.index(),
-            Locality::Todo,
-        ));
+    pub fn cache_class_name(&self, name_def: NodeRef, class: ClassDef) {
+        if !name_def.point().calculated() {
+            name_def.set_point(Point::new_redirect(
+                self.file_index,
+                class.index(),
+                Locality::Todo,
+            ));
+        }
     }
 
     pub fn cache_class(&self, name_def: NodeRef, class_node: ClassDef) {
-        if !name_def.point().calculated() {
-            self.cache_class_name(name_def, class_node)
-        }
         if !name_def.add_to_node_index(2).point().calculated() {
             let class_ref = NodeRef::new(self.file, class_node.index());
             let ComplexPoint::Class(cls_storage) = class_ref.complex().unwrap() else {
