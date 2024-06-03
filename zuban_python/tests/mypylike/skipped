@@ -8,8 +8,6 @@ testRecursiveAliasBasicGenericInference
 
 testTwoUncomfortablyIncompatibleProtocolsWithoutRunningInIssue9771
 
-testSelfTypeProperSupertypeAttributeMeta
-
 # callable matching regression
 testNoCrashOnNestedGenericCallable
 

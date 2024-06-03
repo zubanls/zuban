@@ -474,7 +474,7 @@ impl<'db: 'a, 'a> Class<'a> {
                     ),
                 );
             }
-            // TODO for now don't save classdecorators, becaues they are really not used in mypy.
+            // TODO for now don't save class decorators, because they are really not used in mypy.
             // let saved = inferred.save_redirect(i_s, name_def.file, name_def.node_index);
         }
 
@@ -1642,13 +1642,20 @@ impl<'db: 'a, 'a> Class<'a> {
     }
 
     pub fn as_type_type(&self, i_s: &InferenceState<'db, '_>) -> Type {
-        Type::Type(
-            self.use_cached_class_infos(i_s.db)
-                .undefined_generics_type
-                .get()
-                .cloned()
-                .unwrap_or_else(|| Rc::new(self.as_type(i_s.db))),
-        )
+        let class_infos = self.use_cached_class_infos(i_s.db);
+        if let Some(t) = class_infos.undefined_generics_type.get() {
+            if !matches!(t.as_ref(), Type::Class(_))
+                || matches!(self.generics, Generics::NotDefinedYet)
+            {
+                return Type::Type(
+                    class_infos
+                        .undefined_generics_type
+                        .get_or_init(|| Rc::new(self.as_type(i_s.db)))
+                        .clone(),
+                );
+            }
+        }
+        Type::Type(Rc::new(self.as_type(i_s.db)))
     }
 
     fn named_tuple_from_class(&self, i_s: &InferenceState, cls: Class) -> Rc<NamedTuple> {
