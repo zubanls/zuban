@@ -645,7 +645,7 @@ impl<'db> Inference<'db, '_, '_> {
                 }
                 let mut node_ref = NodeRef::new(self.file, *index - NAME_DEF_TO_NAME_DIFFERENCE);
                 if name == "__post_init__" {
-                    if let Some(dataclass) = c.maybe_dataclass() {
+                    if let Some(dataclass) = c.maybe_dataclass(db) {
                         let override_details = Instance::new(c, None).lookup_on_self(
                             self.i_s,
                             &|issue| todo!(),

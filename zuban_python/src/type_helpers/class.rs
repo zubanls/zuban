@@ -396,7 +396,6 @@ impl<'db: 'a, 'a> Class<'a> {
                     },
                     dataclass_options,
                 );
-                was_dataclass = Some(dataclass.clone());
                 let class = dataclass.class(i_s.db);
                 if dataclass.options.slots && class.lookup_symbol(i_s, "__slots__").is_some() {
                     class.node_ref.add_issue(
@@ -406,8 +405,7 @@ impl<'db: 'a, 'a> Class<'a> {
                         },
                     )
                 }
-                let new_t = Type::Type(Rc::new(Type::Dataclass(dataclass)));
-                Inferred::from_type(new_t).save_redirect(i_s, name_def.file, name_def.node_index);
+                was_dataclass = Some(dataclass);
             }
         }
 
@@ -2172,17 +2170,17 @@ impl<'db: 'a, 'a> Class<'a> {
         self.check_slots(i_s, add_issue, name)
     }
 
-    pub fn maybe_dataclass(&self) -> Option<Rc<Dataclass>> {
+    pub fn maybe_dataclass(&self, db: &Database) -> Option<Rc<Dataclass>> {
         // TODO this should probably not be needed.
-        NodeRef::new(self.node_ref.file, self.node().name_definition().index())
-            .complex()
-            .and_then(|c| match c {
-                ComplexPoint::TypeInstance(Type::Type(t)) => match t.as_ref() {
-                    Type::Dataclass(d) => Some(d.clone()),
-                    _ => None,
-                },
-                _ => None,
-            })
+        match self
+            .maybe_cached_class_infos(db)?
+            .undefined_generics_type
+            .get()?
+            .as_ref()
+        {
+            Type::Dataclass(d) => Some(d.clone()),
+            _ => None,
+        }
     }
 
     pub fn maybe_typed_dict(&self) -> Option<Rc<TypedDict>> {

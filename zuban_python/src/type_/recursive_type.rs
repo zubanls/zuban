@@ -82,7 +82,7 @@ impl RecursiveType {
                 } else {
                     ClassGenerics::None
                 };
-                if let Some(dataclass) = class.maybe_dataclass() {
+                if let Some(dataclass) = class.maybe_dataclass(db) {
                     Type::Dataclass(Dataclass::new(
                         GenericClass {
                             link: self.link,
