@@ -699,7 +699,7 @@ pub(crate) fn execute_type_of_type<'db>(
                 Rc::new(NamedTuple::new(nt.name, __new__))
             }))
         }
-        Type::Enum(_) => {
+        Type::Enum(enum_) => {
             debug!("TODO did not check arguments in execution of enum");
             Inferred::from_type(type_.clone())
         }

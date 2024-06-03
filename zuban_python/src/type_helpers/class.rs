@@ -473,12 +473,6 @@ impl<'db: 'a, 'a> Class<'a> {
         };
 
         if let Some(enum_) = was_enum {
-            let enum_type = Rc::new(Type::Enum(enum_.clone()));
-            let c = ComplexPoint::TypeInstance(Type::Type(enum_type));
-            // The locality is implicit, because we have a OnceCell that is inferred
-            // after what we are doing here.
-            name_def.insert_complex(c, Locality::ImplicitExtern);
-
             // Precalculate the enum values here. Note that this is intentionally done after
             // the insertion, to avoid recursions.
             // We need to calculate here, because otherwise the normal class

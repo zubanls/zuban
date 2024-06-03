@@ -4635,11 +4635,6 @@ pub(super) fn check_type_name<'db: 'file, 'file>(
 
             name_def.file.inference(i_s).cache_class(name_def, c);
             match name_def.complex() {
-                Some(ComplexPoint::TypeInstance(Type::Type(t))) => match t.as_ref() {
-                    Type::Dataclass(d) => return TypeNameLookup::Dataclass(d.clone()),
-                    Type::Enum(e) => return TypeNameLookup::Enum(e.clone()),
-                    _ => (),
-                },
                 Some(ComplexPoint::TypedDictDefinition(t)) => match t.type_.as_ref() {
                     Type::TypedDict(td) => {
                         if td.calculating() {
@@ -4654,6 +4649,17 @@ pub(super) fn check_type_name<'db: 'file, 'file>(
                     _ => unreachable!(),
                 },
                 _ => (),
+            }
+            if let Some(t) = class
+                .use_cached_class_infos(i_s.db)
+                .undefined_generics_type
+                .get()
+            {
+                match t.as_ref() {
+                    Type::Enum(e) => return TypeNameLookup::Enum(e.clone()),
+                    Type::Dataclass(d) => return TypeNameLookup::Dataclass(d.clone()),
+                    _ => (),
+                }
             }
             TypeNameLookup::Class {
                 node_ref: NodeRef::new(name_node_ref.file, c.index()),

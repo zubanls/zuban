@@ -2006,11 +2006,6 @@ impl<'db: 'slf, 'slf> Inferred {
                                     ),
                                 )
                         }
-                        Some(ComplexPoint::Class(c)) => {
-                            node_ref.cache_class_todo(i_s);
-                            let class = Class::new(node_ref, c, Generics::NotDefinedYet, None);
-                            return class.get_item(i_s, slice_type, result_context);
-                        }
                         _ => (),
                     }
                 }
