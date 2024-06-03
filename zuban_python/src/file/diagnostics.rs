@@ -35,7 +35,8 @@ use crate::{
         LiteralKind, NeverCause, TupleArgs, Type, TypeVarLike, Variance,
     },
     type_helpers::{
-        is_private, Class, FirstParamProperties, Function, Instance, LookupDetails, TypeOrClass,
+        cache_class_name, is_private, Class, FirstParamProperties, Function, Instance,
+        LookupDetails, TypeOrClass,
     },
 };
 
@@ -546,8 +547,9 @@ impl<'db> Inference<'db, '_, '_> {
         let name_def = NodeRef::new(self.file, class.name_definition().index());
         debug!("TODO this from is completely wrong and should never be used.");
         let hack = name_def;
-        self.cache_class(name_def, class);
+        cache_class_name(name_def, class);
         let class_node_ref = NodeRef::new(self.file, class.index());
+        class_node_ref.ensure_cached_class_infos(self.i_s);
         let db = self.i_s.db;
         let c = Class::with_self_generics(db, class_node_ref);
         let class_infos = c.use_cached_class_infos(db);
@@ -643,7 +645,7 @@ impl<'db> Inference<'db, '_, '_> {
                 }
                 let mut node_ref = NodeRef::new(self.file, *index - NAME_DEF_TO_NAME_DIFFERENCE);
                 if name == "__post_init__" {
-                    if let Some(dataclass) = c.maybe_dataclass() {
+                    if let Some(dataclass) = c.maybe_dataclass(db) {
                         let override_details = Instance::new(c, None).lookup_on_self(
                             self.i_s,
                             &|issue| todo!(),

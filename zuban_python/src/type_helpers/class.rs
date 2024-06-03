@@ -35,7 +35,7 @@ use crate::{
         OnTypeError, ResultContext,
     },
     node_ref::NodeRef,
-    python_state::NAME_TO_FUNCTION_DIFF,
+    python_state::{NAME_TO_CLASS_DIFF, NAME_TO_FUNCTION_DIFF},
     type_::{
         check_dataclass_options, dataclass_init_func, execute_functional_enum,
         infer_typed_dict_total_argument, infer_value_on_member, AnyCause, CallableContent,
@@ -46,6 +46,11 @@ use crate::{
         Variance,
     },
 };
+
+// Basically save the type vars on the class keyword.
+const CLASS_TO_TYPE_VARS_DIFFERENCE: i64 = 1;
+// Basically the `(` or `:` after the name
+pub const CLASS_TO_CLASS_INFO_DIFFERENCE: i64 = NAME_TO_CLASS_DIFF as i64 + 1;
 
 const EXCLUDED_PROTOCOL_ATTRIBUTES: [&str; 11] = [
     "__abstractmethods__",
@@ -60,6 +65,16 @@ const EXCLUDED_PROTOCOL_ATTRIBUTES: [&str; 11] = [
     "__weakref__",
     "__class_getitem__",
 ];
+
+pub fn cache_class_name(name_def: NodeRef, class: ClassDef) {
+    if !name_def.point().calculated() {
+        name_def.set_point(Point::new_redirect(
+            name_def.file_index(),
+            class.index(),
+            Locality::Todo,
+        ));
+    }
+}
 
 #[derive(Clone, Copy)]
 pub struct Class<'a> {
@@ -308,32 +323,31 @@ impl<'db: 'a, 'a> Class<'a> {
 
     #[inline]
     fn type_vars_node_ref(&self) -> NodeRef<'a> {
-        self.node_ref.add_to_node_index(1)
+        self.node_ref
+            .add_to_node_index(CLASS_TO_TYPE_VARS_DIFFERENCE)
     }
 
     #[inline]
     fn class_info_node_ref(&self) -> NodeRef<'a> {
-        self.node_ref.add_to_node_index(4)
+        self.node_ref
+            .add_to_node_index(CLASS_TO_CLASS_INFO_DIFFERENCE)
     }
 
-    pub fn ensure_calculated_class_infos(&self, i_s: &InferenceState<'db, '_>, name_def: NodeRef) {
+    pub fn ensure_calculated_class_infos(&self, i_s: &InferenceState<'db, '_>) {
         let node_ref = self.class_info_node_ref();
         let point = node_ref.point();
         if point.calculated() {
             return;
         }
 
-        debug_assert!(!name_def.point().calculated());
+        debug_assert!(
+            NodeRef::new(node_ref.file, self.node().name_definition().index())
+                .point()
+                .calculated()
+        );
         debug!("Calculate class infos for {}", self.name());
 
         node_ref.set_point(Point::new_calculating());
-        // TODO it is questionable that we are just marking this as OK, because it could be an
-        // Enum / dataclass.
-        name_def.set_point(Point::new_redirect(
-            self.node_ref.file_index(),
-            self.node_ref.node_index,
-            Locality::Todo,
-        ));
 
         let type_vars = self.type_vars(i_s);
 
@@ -386,7 +400,6 @@ impl<'db: 'a, 'a> Class<'a> {
                     },
                     dataclass_options,
                 );
-                was_dataclass = Some(dataclass.clone());
                 let class = dataclass.class(i_s.db);
                 if dataclass.options.slots && class.lookup_symbol(i_s, "__slots__").is_some() {
                     class.node_ref.add_issue(
@@ -396,12 +409,17 @@ impl<'db: 'a, 'a> Class<'a> {
                         },
                     )
                 }
-                let new_t = Type::Type(Rc::new(Type::Dataclass(dataclass)));
-                Inferred::from_type(new_t).save_redirect(i_s, name_def.file, name_def.node_index);
+                was_dataclass = Some(dataclass);
             }
         }
 
         let (mut class_infos, typed_dict_total) = self.calculate_class_infos(i_s, type_vars);
+        if let Some(dataclass) = &was_dataclass {
+            class_infos
+                .undefined_generics_type
+                .set(Rc::new(Type::Dataclass(dataclass.clone())))
+                .unwrap();
+        }
         class_infos.is_final |= is_final;
         let mut was_enum = None;
         let mut was_enum_base = false;
@@ -426,6 +444,32 @@ impl<'db: 'a, 'a> Class<'a> {
                 }
             }
         }
+        if let Some(enum_) = &was_enum {
+            let enum_type = Rc::new(Type::Enum(enum_.clone()));
+            class_infos
+                .undefined_generics_type
+                .set(enum_type.clone())
+                .unwrap();
+        }
+        let mut was_typed_dict = None;
+        if let Some(total) = typed_dict_total {
+            let td = TypedDict::new_class_definition(
+                self.name_string_slice(),
+                self.node_ref.as_link(),
+                self.type_vars(i_s).clone(),
+                is_final,
+            );
+            class_infos
+                .undefined_generics_type
+                .set(Rc::new(Type::TypedDict(td.clone())))
+                .unwrap();
+            NodeRef::new(self.node_ref.file, self.node().name_definition().index()).insert_complex(
+                ComplexPoint::TypedDictDefinition(TypedDictDefinition::new(td.clone(), total)),
+                Locality::ImplicitExtern,
+            );
+            was_typed_dict = Some(td);
+        }
+
         node_ref.insert_complex(ComplexPoint::ClassInfos(class_infos), Locality::Todo);
         debug_assert!(node_ref.point().calculated());
 
@@ -453,7 +497,7 @@ impl<'db: 'a, 'a> Class<'a> {
                     ),
                 );
             }
-            // TODO for now don't save classdecorators, becaues they are really not used in mypy.
+            // TODO for now don't save class decorators, because they are really not used in mypy.
             // let saved = inferred.save_redirect(i_s, name_def.file, name_def.node_index);
         }
 
@@ -461,16 +505,11 @@ impl<'db: 'a, 'a> Class<'a> {
             dataclass_init_func(&dataclass, i_s.db);
         }
 
-        if let Some(total) = typed_dict_total {
-            self.insert_typed_dict_definition(i_s, name_def, total, is_final)
+        if let Some(td) = was_typed_dict {
+            self.initialize_typed_dict_members(i_s, td);
         };
 
         if let Some(enum_) = was_enum {
-            let c = ComplexPoint::TypeInstance(Type::Type(Rc::new(Type::Enum(enum_.clone()))));
-            // The locality is implicit, because we have a OnceCell that is inferred
-            // after what we are doing here.
-            name_def.insert_complex(c, Locality::ImplicitExtern);
-
             // Precalculate the enum values here. Note that this is intentionally done after
             // the insertion, to avoid recursions.
             // We need to calculate here, because otherwise the normal class
@@ -916,6 +955,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 has_slots,
                 protocol_members,
                 is_final,
+                undefined_generics_type: OnceCell::new(),
             }),
             typed_dict_total,
         )
@@ -1625,7 +1665,20 @@ impl<'db: 'a, 'a> Class<'a> {
     }
 
     pub fn as_type_type(&self, i_s: &InferenceState<'db, '_>) -> Type {
-        Type::Type(Rc::new(self.as_type(i_s.db)))
+        let class_infos = self.use_cached_class_infos(i_s.db);
+        Type::Type(if matches!(self.generics, Generics::NotDefinedYet) {
+            class_infos
+                .undefined_generics_type
+                .get_or_init(|| {
+                    Rc::new(Type::new_class(
+                        self.node_ref.as_link(),
+                        ClassGenerics::NotDefinedYet,
+                    ))
+                })
+                .clone()
+        } else {
+            Rc::new(self.as_type(i_s.db))
+        })
     }
 
     fn named_tuple_from_class(&self, i_s: &InferenceState, cls: Class) -> Rc<NamedTuple> {
@@ -1677,26 +1730,6 @@ impl<'db: 'a, 'a> Class<'a> {
             CallableParams::Simple(Rc::from(vec)),
             Type::Self_,
         )
-    }
-
-    fn insert_typed_dict_definition(
-        &self,
-        i_s: &InferenceState,
-        name_def: NodeRef,
-        total: bool,
-        is_final: bool,
-    ) {
-        let td = TypedDict::new_class_definition(
-            self.name_string_slice(),
-            self.node_ref.as_link(),
-            self.type_vars(i_s).clone(),
-            is_final,
-        );
-        name_def.insert_complex(
-            ComplexPoint::TypedDictDefinition(TypedDictDefinition::new(td.clone(), total)),
-            Locality::ImplicitExtern,
-        );
-        self.initialize_typed_dict_members(i_s, td);
     }
 
     fn initialize_typed_dict_members(&self, i_s: &InferenceState, typed_dict: Rc<TypedDict>) {
@@ -2130,17 +2163,17 @@ impl<'db: 'a, 'a> Class<'a> {
         self.check_slots(i_s, add_issue, name)
     }
 
-    pub fn maybe_dataclass(&self) -> Option<Rc<Dataclass>> {
+    pub fn maybe_dataclass(&self, db: &Database) -> Option<Rc<Dataclass>> {
         // TODO this should probably not be needed.
-        NodeRef::new(self.node_ref.file, self.node().name_definition().index())
-            .complex()
-            .and_then(|c| match c {
-                ComplexPoint::TypeInstance(Type::Type(t)) => match t.as_ref() {
-                    Type::Dataclass(d) => Some(d.clone()),
-                    _ => None,
-                },
-                _ => None,
-            })
+        match self
+            .maybe_cached_class_infos(db)?
+            .undefined_generics_type
+            .get()?
+            .as_ref()
+        {
+            Type::Dataclass(d) => Some(d.clone()),
+            _ => None,
+        }
     }
 
     pub fn maybe_typed_dict(&self) -> Option<Rc<TypedDict>> {

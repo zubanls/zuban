@@ -1355,6 +1355,8 @@ pub struct ClassInfos {
     pub protocol_members: Box<[ProtocolMember]>,
     pub has_slots: bool,
     pub is_final: bool,
+    // We have this less for caching and more to be able to have different types.
+    pub undefined_generics_type: OnceCell<Rc<Type>>,
 }
 
 impl ClassInfos {

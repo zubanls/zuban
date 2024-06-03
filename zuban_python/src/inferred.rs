@@ -429,6 +429,7 @@ impl<'db: 'slf, 'slf> Inferred {
                 let ComplexPoint::Class(c) = complex else {
                     unreachable!();
                 };
+                node_ref.ensure_cached_class_infos(i_s);
                 *link
             }
             PointKind::Specific => match point.specific() {
@@ -1799,8 +1800,21 @@ impl<'db: 'slf, 'slf> Inferred {
                                 );
                             }
                             ComplexPoint::Class(cls) => {
-                                return Class::new(node_ref, cls, Generics::NotDefinedYet, None)
-                                    .execute(i_s, args, result_context, on_type_error, false)
+                                node_ref.ensure_cached_class_infos(i_s);
+                                let c = Class::new(node_ref, cls, Generics::NotDefinedYet, None);
+                                if c.use_cached_class_infos(i_s.db)
+                                    .undefined_generics_type
+                                    .get()
+                                    .is_none()
+                                {
+                                    return c.execute(
+                                        i_s,
+                                        args,
+                                        result_context,
+                                        on_type_error,
+                                        false,
+                                    );
+                                }
                             }
                             ComplexPoint::TypeAlias(alias) => {
                                 if !alias.type_vars.is_empty() {
@@ -1985,10 +1999,6 @@ impl<'db: 'slf, 'slf> Inferred {
                                         ResultContext::AssignmentNewDefinition
                                     ),
                                 )
-                        }
-                        Some(ComplexPoint::Class(c)) => {
-                            let class = Class::new(node_ref, c, Generics::NotDefinedYet, None);
-                            return class.get_item(i_s, slice_type, result_context);
                         }
                         _ => (),
                     }
@@ -2266,11 +2276,15 @@ fn type_of_complex<'db: 'x, 'x>(
 ) -> Cow<'x, Type> {
     match complex {
         ComplexPoint::Class(cls_storage) => {
-            // This can only ever happen for saved definitions, therefore we can unwrap.
-            Cow::Owned(Type::Type(Rc::new(Type::new_class(
-                definition.unwrap().as_link(),
-                ClassGenerics::NotDefinedYet,
-            ))))
+            definition.unwrap().ensure_cached_class_infos(i_s);
+            let cls = Class::new(
+                // This can only ever happen for saved definitions, therefore we can unwrap.
+                definition.unwrap(),
+                cls_storage,
+                Generics::NotDefinedYet,
+                None,
+            );
+            Cow::Owned(cls.as_type_type(i_s))
         }
         ComplexPoint::FunctionOverload(overload) => {
             let overload =

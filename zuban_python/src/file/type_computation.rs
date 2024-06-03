@@ -30,7 +30,8 @@ use crate::{
         TypedDictGenerics, TypedDictMember, UnionEntry, UnionType, WithUnpack,
     },
     type_helpers::{
-        is_reexport_issue_if_check_needed, start_namedtuple_params, Class, Function, Module,
+        cache_class_name, is_reexport_issue_if_check_needed, start_namedtuple_params, Class,
+        Function, Module,
     },
     utils::{rc_slice_into_vec, rc_unwrap_or_clone},
 };
@@ -4633,14 +4634,16 @@ pub(super) fn check_type_name<'db: 'file, 'file>(
                 return TypeNameLookup::RecursiveClass(from);
             }
 
-            name_def.file.inference(i_s).cache_class(name_def, c);
-            match name_def.complex() {
-                Some(ComplexPoint::TypeInstance(Type::Type(t))) => match t.as_ref() {
-                    Type::Dataclass(d) => return TypeNameLookup::Dataclass(d.clone()),
+            cache_class_name(name_def, c);
+            class.node_ref.ensure_cached_class_infos(i_s);
+            if let Some(t) = class
+                .use_cached_class_infos(i_s.db)
+                .undefined_generics_type
+                .get()
+            {
+                match t.as_ref() {
                     Type::Enum(e) => return TypeNameLookup::Enum(e.clone()),
-                    _ => (),
-                },
-                Some(ComplexPoint::TypedDictDefinition(t)) => match t.type_.as_ref() {
+                    Type::Dataclass(d) => return TypeNameLookup::Dataclass(d.clone()),
                     Type::TypedDict(td) => {
                         if td.calculating() {
                             return TypeNameLookup::RecursiveClass(NodeRef::from_link(
@@ -4651,9 +4654,8 @@ pub(super) fn check_type_name<'db: 'file, 'file>(
                             return TypeNameLookup::TypedDictDefinition(td.clone());
                         }
                     }
-                    _ => unreachable!(),
-                },
-                _ => (),
+                    _ => (),
+                }
             }
             TypeNameLookup::Class {
                 node_ref: NodeRef::new(name_node_ref.file, c.index()),

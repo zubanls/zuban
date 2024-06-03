@@ -19,9 +19,8 @@ use crate::{
     inference_state::InferenceState,
     inferred::{add_attribute_error, specific_to_type, Inferred, UnionValue},
     matching::{
-        format_got_expected, matches_simple_params, CouldBeALiteral, FormatData, Generics,
-        IteratorContent, LookupKind, LookupResult, Matcher, OnTypeError, ResultContext,
-        TupleLenInfos,
+        format_got_expected, matches_simple_params, CouldBeALiteral, FormatData, IteratorContent,
+        LookupKind, LookupResult, Matcher, OnTypeError, ResultContext, TupleLenInfos,
     },
     new_class,
     node_ref::NodeRef,
@@ -31,8 +30,9 @@ use crate::{
         TupleUnpack, Type, UnionEntry, UnionType, Variance, WithUnpack,
     },
     type_helpers::{
-        is_private_import, is_reexport_issue_if_check_needed, lookup_in_namespace, Class,
-        FirstParamKind, Function, GeneratorType, Instance, Module, TypeOrClass,
+        cache_class_name, is_private_import, is_reexport_issue_if_check_needed,
+        lookup_in_namespace, Class, FirstParamKind, Function, GeneratorType, Instance, Module,
+        TypeOrClass,
     },
     utils::debug_indent,
     TypeCheckerFlags,
@@ -129,10 +129,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 self.cache_for_stmt_names(star_targets, star_exprs, false);
                 // TODO do the async case as well
             }
-            StmtContent::ClassDef(cls) => self.cache_class(name_def, cls),
+            StmtContent::ClassDef(cls) => cache_class_name(name_def, cls),
             StmtContent::FunctionDef(func_def) => cache_func_def(func_def),
             StmtContent::Decorated(decorated) => match decorated.decoratee() {
-                Decoratee::ClassDef(cls) => self.cache_class(name_def, cls),
+                Decoratee::ClassDef(cls) => cache_class_name(name_def, cls),
                 Decoratee::FunctionDef(func_def) => cache_func_def(func_def),
                 Decoratee::AsyncFunctionDef(func_def) => cache_func_def(func_def),
             },
@@ -183,20 +183,6 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 _ => unreachable!(),
             },
             _ => unreachable!("Found type {:?}", stmt.short_debug()),
-        }
-    }
-
-    pub fn cache_class(&self, name_def: NodeRef, class_node: ClassDef) {
-        if !name_def.point().calculated() {
-            let definition = NodeRef::new(self.file, class_node.index());
-            let ComplexPoint::Class(cls_storage) = definition.complex().unwrap() else {
-                unreachable!()
-            };
-
-            let class = Class::new(definition, cls_storage, Generics::NotDefinedYet, None);
-            // Make sure the type vars are properly pre-calculated
-            class.ensure_calculated_class_infos(self.i_s, name_def);
-            self.check_for_redefinition(name_def, |issue| name_def.add_issue(self.i_s, issue))
         }
     }
 

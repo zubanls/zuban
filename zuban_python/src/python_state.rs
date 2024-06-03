@@ -15,14 +15,15 @@ use crate::{
         dataclasses_replace, AnyCause, CallableContent, CallableParam, CallableParams,
         ClassGenerics, CustomBehavior, ParamType, Tuple, Type, TypeVarLikes,
     },
-    type_helpers::{Class, Function, Instance},
+    type_helpers::{cache_class_name, Class, Function, Instance},
     InferenceState,
 };
 
 // This is a bit hacky, but I'm sure the tests will fail somewhere if this constant is
 // wrong. Basically it goes three nodes back: name_def class literal and then the actual
 // class.
-const NAME_TO_CLASS_DIFF: u32 = 3;
+pub const NAME_TO_CLASS_DIFF: u32 = 3;
+pub const NAME_DEF_TO_CLASS_DIFF: u32 = NAME_TO_CLASS_DIFF - NAME_DEF_TO_NAME_DIFFERENCE;
 pub const NAME_TO_FUNCTION_DIFF: u32 = 3;
 
 macro_rules! attribute_node_ref {
@@ -406,10 +407,18 @@ impl PythonState {
                 }
                 update(db, Some(class_index));
                 let class = Class::with_undefined_generics(NodeRef::new(module(db), class_index));
-                class.ensure_calculated_class_infos(
-                    &InferenceState::new(db),
-                    NodeRef::new(class.node_ref.file, class.node().name_definition().index()),
+                let name_def_ref =
+                    NodeRef::new(class.node_ref.file, class.node().name_definition().index());
+                cache_class_name(
+                    name_def_ref,
+                    NodeRef::new(module(db), class_index).maybe_class().unwrap(),
                 );
+                name_def_ref.set_point(Point::new_redirect(
+                    name_def_ref.file_index(),
+                    class.node_ref.node_index,
+                    Locality::Todo,
+                ));
+                class.ensure_calculated_class_infos(&InferenceState::new(db));
             } else {
                 let func_index = name_index - NAME_TO_FUNCTION_DIFF;
                 if NodeRef::new(module(db), func_index)
@@ -875,13 +884,7 @@ impl PythonState {
     }
 
     pub fn supports_keys_and_get_item_class<'a>(&'a self, db: &'a Database) -> Class<'a> {
-        let node_ref = self.supports_keys_and_get_item_node_ref();
-        let cls = Class::with_undefined_generics(node_ref);
-        cls.ensure_calculated_class_infos(
-            &InferenceState::new(db),
-            NodeRef::new(node_ref.file, cls.node().name_definition().index()),
-        );
-        Class::with_self_generics(db, node_ref)
+        Class::with_self_generics(db, self.supports_keys_and_get_item_node_ref())
     }
 
     pub fn type_var_type(&self) -> Type {

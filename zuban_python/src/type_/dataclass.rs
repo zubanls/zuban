@@ -59,8 +59,7 @@ impl Default for DataclassOptions {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Dataclass {
     pub class: GenericClass,
-    __init__: OnceCell<CallableContent>,
-    __post_init__: OnceCell<CallableContent>,
+    inits: OnceCell<Inits>,
     pub options: DataclassOptions,
 }
 
@@ -68,8 +67,7 @@ impl Dataclass {
     pub fn new(class: GenericClass, options: DataclassOptions) -> Rc<Self> {
         Rc::new(Self {
             class,
-            __init__: OnceCell::new(),
-            __post_init__: OnceCell::new(),
+            inits: OnceCell::new(),
             options,
         })
     }
@@ -83,16 +81,17 @@ impl Dataclass {
     }
 
     pub fn expect_calculated_post_init(&self) -> &CallableContent {
-        self.__post_init__.get().unwrap()
+        &self.inits.get().unwrap().__post_init__
     }
 }
 
-struct InitResult {
+#[derive(Debug, Clone, PartialEq)]
+struct Inits {
     __init__: CallableContent,
     __post_init__: CallableContent,
 }
 
-fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> InitResult {
+fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> Inits {
     let cls = dataclass.class(db);
     let mut with_indexes = vec![];
     let i_s = &InferenceState::new(db);
@@ -143,7 +142,7 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> Init
                 }
                 let cls = super_dataclass.class(db);
                 let init = dataclass_init_func(super_dataclass, db);
-                let post_init = super_dataclass.__post_init__.get().unwrap();
+                let post_init = &super_dataclass.inits.get().unwrap().__post_init__;
                 for param in init.expect_simple_params().iter() {
                     let mut new_param = param.clone();
                     let t = match &mut new_param.type_ {
@@ -364,7 +363,7 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> Init
             has_default: false,
         });
     }
-    InitResult {
+    Inits {
         __init__: CallableContent::new_simple(
             Some(DbString::StringSlice(cls.name_string_slice())),
             None,
@@ -665,14 +664,12 @@ pub(crate) fn dataclass_initialize<'db>(
 }
 
 pub fn dataclass_init_func<'a>(self_: &'a Rc<Dataclass>, db: &Database) -> &'a CallableContent {
-    if self_.__init__.get().is_none() {
+    if self_.inits.get().is_none() {
         // Cannot use get_or_init, because this might cycle ones for some reasons (see for
         // example the test testDeferredDataclassInitSignatureSubclass)
-        let result = calculate_init_of_dataclass(db, self_);
-        self_.__init__.set(result.__init__).ok();
-        self_.__post_init__.set(result.__post_init__).ok();
+        self_.inits.set(calculate_init_of_dataclass(db, self_)).ok();
     }
-    self_.__init__.get().unwrap()
+    &self_.inits.get().unwrap().__init__
 }
 
 pub(crate) fn lookup_on_dataclass_type<'a>(

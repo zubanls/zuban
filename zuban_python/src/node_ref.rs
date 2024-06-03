@@ -15,9 +15,10 @@ use crate::{
     file::{File, PythonFile},
     inference_state::InferenceState,
     inferred::Inferred,
-    python_state::NAME_TO_FUNCTION_DIFF,
+    matching::Generics,
+    python_state::{NAME_DEF_TO_CLASS_DIFF, NAME_TO_FUNCTION_DIFF},
     type_::Type,
-    type_helpers::Module,
+    type_helpers::{Class, Module, CLASS_TO_CLASS_INFO_DIFFERENCE},
 };
 
 #[derive(Clone, Copy)]
@@ -228,6 +229,28 @@ impl<'file> NodeRef<'file> {
         match complex {
             ComplexPoint::Class(c) => c,
             _ => unreachable!("Probably an issue with indexing: {complex:?}"),
+        }
+    }
+
+    pub fn ensure_cached_class_infos(&self, i_s: &InferenceState) {
+        if !self
+            .file
+            .points
+            .get(self.node_index + CLASS_TO_CLASS_INFO_DIFFERENCE as u32)
+            .calculated()
+        {
+            let class_ref = NodeRef::new(self.file, self.node_index);
+            let ComplexPoint::Class(cls_storage) = class_ref.complex().unwrap() else {
+                unreachable!()
+            };
+
+            let class = Class::new(class_ref, cls_storage, Generics::NotDefinedYet, None);
+            // Make sure the type vars and MRO are properly pre-calculated
+            class.ensure_calculated_class_infos(i_s);
+            let name_def = self.add_to_node_index(NAME_DEF_TO_CLASS_DIFF as i64);
+            self.file
+                .inference(i_s)
+                .check_for_redefinition(name_def, |issue| name_def.add_issue(i_s, issue))
         }
     }
 
