@@ -35,7 +35,7 @@ use crate::{
         OnTypeError, ResultContext,
     },
     node_ref::NodeRef,
-    python_state::NAME_TO_FUNCTION_DIFF,
+    python_state::{NAME_TO_CLASS_DIFF, NAME_TO_FUNCTION_DIFF},
     type_::{
         check_dataclass_options, dataclass_init_func, execute_functional_enum,
         infer_typed_dict_total_argument, infer_value_on_member, AnyCause, CallableContent,
@@ -46,6 +46,11 @@ use crate::{
         Variance,
     },
 };
+
+// Basically save the type vars on the class keyword.
+const CLASS_TO_TYPE_VARS_DIFFERENCE: i64 = 1;
+// Basically the `(` or `:` after the name
+pub const CLASS_TO_CLASS_INFO_DIFFERENCE: i64 = NAME_TO_CLASS_DIFF as i64 + 1;
 
 const EXCLUDED_PROTOCOL_ATTRIBUTES: [&str; 11] = [
     "__abstractmethods__",
@@ -308,12 +313,14 @@ impl<'db: 'a, 'a> Class<'a> {
 
     #[inline]
     fn type_vars_node_ref(&self) -> NodeRef<'a> {
-        self.node_ref.add_to_node_index(1)
+        self.node_ref
+            .add_to_node_index(CLASS_TO_TYPE_VARS_DIFFERENCE)
     }
 
     #[inline]
     fn class_info_node_ref(&self) -> NodeRef<'a> {
-        self.node_ref.add_to_node_index(4)
+        self.node_ref
+            .add_to_node_index(CLASS_TO_CLASS_INFO_DIFFERENCE)
     }
 
     pub fn ensure_calculated_class_infos(&self, i_s: &InferenceState<'db, '_>, name_def: NodeRef) {

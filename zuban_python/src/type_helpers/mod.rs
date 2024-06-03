@@ -9,7 +9,9 @@ mod typing;
 
 pub use bound_method::{BoundMethod, BoundMethodFunction};
 pub use callable::Callable;
-pub use class::{start_namedtuple_params, Class, MroIterator, TypeOrClass};
+pub use class::{
+    start_namedtuple_params, Class, MroIterator, TypeOrClass, CLASS_TO_CLASS_INFO_DIFFERENCE,
+};
 pub use function::{is_private, FirstParamKind, FirstParamProperties, Function, GeneratorType};
 pub(crate) use instance::{
     execute_isinstance, execute_issubclass, execute_super, Instance, LookupDetails,

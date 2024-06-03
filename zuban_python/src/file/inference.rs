@@ -33,6 +33,7 @@ use crate::{
     type_helpers::{
         is_private_import, is_reexport_issue_if_check_needed, lookup_in_namespace, Class,
         FirstParamKind, Function, GeneratorType, Instance, Module, TypeOrClass,
+        CLASS_TO_CLASS_INFO_DIFFERENCE,
     },
     utils::debug_indent,
     TypeCheckerFlags,
@@ -197,7 +198,12 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     }
 
     pub fn cache_class(&self, name_def: NodeRef, class_node: ClassDef) {
-        if !name_def.add_to_node_index(2).point().calculated() {
+        if !self
+            .file
+            .points
+            .get(class_node.index() + CLASS_TO_CLASS_INFO_DIFFERENCE as u32)
+            .calculated()
+        {
             let class_ref = NodeRef::new(self.file, class_node.index());
             let ComplexPoint::Class(cls_storage) = class_ref.complex().unwrap() else {
                 unreachable!()
