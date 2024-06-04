@@ -157,6 +157,7 @@ pub struct TypeCheckerFlags {
     pub python_version: PythonVersion,
     pub always_true_symbols: Vec<String>,
     pub always_false_symbols: Vec<String>,
+    pub mypy_path: Vec<String>,
 
     pub extra_checks: bool,
     pub mypy_compatible: bool,
@@ -196,6 +197,7 @@ impl Default for TypeCheckerFlags {
             always_false_symbols: vec![],
             enabled_error_codes: vec![],
             disabled_error_codes: vec![],
+            mypy_path: vec![],
             extra_checks: false,
             mypy_compatible: false,
         }
@@ -374,6 +376,18 @@ impl IniOrTomlValue<'_> {
         };
         Ok(result != invert)
     }
+
+    fn as_mypy_path(&self) -> Result<Vec<String>, Box<str>> {
+        match self {
+            Self::Toml(v) => {
+                todo!() //v.as_array()
+            }
+            Self::Ini(v) => Ok(split_and_trim(v, &[',', ':'])
+                .map(|x| x.to_string())
+                .collect()),
+            Self::InlineConfigNoValue => unreachable!(),
+        }
+    }
 }
 
 fn maybe_invert(name: &str) -> (bool, Cow<str>) {
@@ -410,7 +424,7 @@ pub fn set_flag_and_return_ignore_errors(
                     Ok(false)
                 }
                 IniOrTomlValue::Ini(v) => {
-                    target.extend(split_commas(v).map(|s| String::from(s)));
+                    target.extend(split_and_trim(v, &[',']).map(|s| String::from(s)));
                     Ok(false)
                 }
                 _ => Err("TODO expected string".to_string()),
@@ -488,12 +502,12 @@ fn set_bool_init_flags(
     Ok(false)
 }
 
-fn split_commas(s: &str) -> impl Iterator<Item = &str> {
+fn split_and_trim<'a>(s: &'a str, pattern: &'a [char]) -> impl Iterator<Item = &'a str> {
     let mut s = s.trim();
-    if let Some(new_s) = s.strip_suffix(',') {
+    if let Some(new_s) = s.strip_suffix(pattern) {
         s = new_s
     }
-    s.split(',').map(|s| s.trim())
+    s.split(pattern).map(|s| s.trim())
 }
 
 fn apply_from_base_config(
@@ -516,7 +530,10 @@ fn apply_from_base_config(
             Ok(false)
         }
         // Currently ignored, but need to use in the future.
-        "mypy_path" => Ok(false),
+        "mypy_path" => {
+            flags.mypy_path.extend(value.as_mypy_path()?);
+            Ok(false)
+        }
         _ => apply_from_config_part(flags, key, value),
     }
 }
