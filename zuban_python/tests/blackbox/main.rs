@@ -68,7 +68,7 @@ fn main() {
     }
 
     let mut project = Project::new(ProjectOptions::new(
-        "tests/blackbox/".into(),
+        //"tests/blackbox/".into(),
         TypeCheckerFlags {
             check_untyped_defs: true,
             ..Default::default()

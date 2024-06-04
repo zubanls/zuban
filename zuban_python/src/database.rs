@@ -825,7 +825,9 @@ impl Database {
             overrides: options.overrides,
         };
         let mut workspaces = Workspaces::default();
-        workspaces.add(file_state_loaders.as_ref(), options.path.clone());
+        for p in project.flags.mypy_path.iter() {
+            workspaces.add(file_state_loaders.as_ref(), Box::from(p.as_ref()));
+        }
         for p in &project.sys_path {
             workspaces.add(file_state_loaders.as_ref(), p.to_owned())
         }

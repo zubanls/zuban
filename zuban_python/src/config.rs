@@ -15,15 +15,13 @@ const OPTIONS_STARTING_WITH_ALLOW: [&str; 3] = [
 
 #[derive(Clone)]
 pub struct ProjectOptions {
-    pub path: Box<str>,
     pub flags: TypeCheckerFlags,
     pub(crate) overrides: Vec<OverrideConfig>,
 }
 
 impl ProjectOptions {
-    pub fn new(path: Box<str>, flags: TypeCheckerFlags) -> Self {
+    pub fn new(flags: TypeCheckerFlags) -> Self {
         Self {
-            path,
             flags,
             overrides: vec![],
         }
@@ -58,11 +56,7 @@ impl ProjectOptions {
                 })
             }
         }
-        Ok(ProjectOptions {
-            path,
-            flags,
-            overrides,
-        })
+        Ok(ProjectOptions { flags, overrides })
     }
 
     pub fn from_pyproject_toml(
@@ -111,13 +105,9 @@ impl ProjectOptions {
                     _ => todo!("{item:?}"),
                 }
             }
-            Ok(ProjectOptions {
-                path,
-                flags,
-                overrides,
-            })
+            Ok(ProjectOptions { flags, overrides })
         } else {
-            Ok(ProjectOptions::new(path, TypeCheckerFlags::default()))
+            Ok(ProjectOptions::new(TypeCheckerFlags::default()))
         }
     }
 }

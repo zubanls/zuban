@@ -131,6 +131,7 @@ impl<'name, 'code> TestCase<'name, 'code> {
             let mut new =
                 ProjectOptions::from_mypy_ini(BASE_PATH.into(), &ini, &mut diagnostics_config)
                     .unwrap();
+            set_mypy_path(&mut new);
             config = std::mem::replace(&mut new.flags, config);
             project_options = Some(new);
         }
@@ -146,6 +147,7 @@ impl<'name, 'code> TestCase<'name, 'code> {
                 &mut diagnostics_config,
             )
             .unwrap();
+            set_mypy_path(&mut new);
             config = std::mem::replace(&mut new.flags, config);
             project_options = Some(new);
         }
@@ -739,19 +741,25 @@ struct ProjectsCache {
     map: HashMap<TypeCheckerFlags, Project>,
 }
 
+fn set_mypy_path(options: &mut ProjectOptions) {
+    options.flags.mypy_path.push(BASE_PATH.into());
+}
+
 impl ProjectsCache {
     fn new(reuse_db: bool) -> Self {
+        let mut po = ProjectOptions::new(Default::default());
+        set_mypy_path(&mut po);
         Self {
-            base_project: reuse_db
-                .then(|| Project::new(ProjectOptions::new(BASE_PATH.into(), Default::default()))),
+            base_project: reuse_db.then(|| Project::new(po)),
             map: Default::default(),
         }
     }
 
     fn get_mut(&mut self, flags: TypeCheckerFlags) -> &mut Project {
         if !self.map.contains_key(&flags) {
-            let project = self
-                .try_to_reuse_project_parts(ProjectOptions::new(BASE_PATH.into(), flags.clone()));
+            let mut options = ProjectOptions::new(flags.clone());
+            set_mypy_path(&mut options);
+            let project = self.try_to_reuse_project_parts(options);
             self.map.insert(flags.clone(), project);
         }
         self.map.get_mut(&flags).unwrap()
