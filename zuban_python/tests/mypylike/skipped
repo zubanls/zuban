@@ -529,8 +529,6 @@ testVariadicStarArgsCallNoCrash
 testImportStarWithinFunction
 # Star import check what we override
 testAssignAndConditionalStarImport
-# Weird interaction with ModuleType
-testModuleAliasRepeatedWithAnnotation
 
 # namespace multiple packages
 testTypedPkgSimple
@@ -905,6 +903,7 @@ testIntersectionUsingPromotion2
 testIntersectionUsingPromotion4
 testIntersectionUsingPromotion5
 testIntersectionUsingPromotion6
+testModuleAliasRepeatedWithAnnotation
 # isinstance Intersection types
 testNarrowingIsInstanceFinalSubclass
 testNarrowingIsInstanceFinalSubclassWithUnions
