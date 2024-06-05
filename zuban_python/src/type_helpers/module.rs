@@ -45,9 +45,12 @@ impl<'a> Module<'a> {
             return None;
         }
         match &entry.parent {
-            Parent::Directory(dir) => {
-                python_import(db, self.file.file_index(), &dir.upgrade().unwrap(), name)
-            }
+            Parent::Directory(dir) => python_import(
+                db,
+                self.file.file_index(),
+                std::iter::once(dir.upgrade().unwrap()),
+                name,
+            ),
             Parent::Workspace(_) => None,
         }
     }
@@ -192,7 +195,7 @@ pub fn lookup_in_namespace(
     namespace: &Namespace,
     name: &str,
 ) -> LookupResult {
-    match python_import(db, from_file, &namespace.directories, name) {
+    match python_import(db, from_file, namespace.directories.iter().cloned(), name) {
         Some(ImportResult::File(file_index)) => LookupResult::FileReference(file_index),
         Some(ImportResult::Namespace(namespace)) => {
             LookupResult::UnknownName(Inferred::from_type(Type::Namespace(namespace)))

@@ -1623,7 +1623,12 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 }
             }
             TypeContent::Namespace(n) => {
-                match python_import(db, self.inference.file_index, &n.directories, name.as_str()) {
+                match python_import(
+                    db,
+                    self.inference.file_index,
+                    n.directories.iter().cloned(),
+                    name.as_str(),
+                ) {
                     Some(ImportResult::File(file_index)) => {
                         let file = db.loaded_python_file(file_index);
                         TypeContent::Module(file)

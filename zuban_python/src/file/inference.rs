@@ -472,9 +472,12 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     }
                     r
                 }
-                ImportResult::Namespace(namespace) => {
-                    python_import(i_s.db, file_index, &namespace.directories, name.as_str())
-                }
+                ImportResult::Namespace(namespace) => python_import(
+                    i_s.db,
+                    file_index,
+                    namespace.directories.iter().cloned(),
+                    name.as_str(),
+                ),
             };
             if let Some(imported) = &result {
                 debug!(

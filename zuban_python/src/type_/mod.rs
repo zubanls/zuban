@@ -321,16 +321,17 @@ impl std::ops::Index<TypeVarIndex> for GenericsList {
 
 #[derive(Debug, Clone)]
 pub struct Namespace {
-    pub directories: Rc<Directory>,
+    pub directories: Rc<[Rc<Directory>]>,
 }
 
 impl Namespace {
     pub fn qualified_name(&self) -> String {
-        dotted_path_from_dir(&self.directories)
+        dotted_path_from_dir(&self.directories.first().unwrap())
     }
 
     pub fn path(&self, db: &Database) -> String {
-        self.directories.path(&*db.vfs)
+        // TODO this path is not correct, there are multiple paths
+        self.directories.first().unwrap().path(&*db.vfs)
     }
 }
 

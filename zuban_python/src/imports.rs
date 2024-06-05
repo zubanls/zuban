@@ -1,4 +1,7 @@
-use std::{borrow::Cow, rc::Rc};
+use std::{
+    borrow::{Borrow, Cow},
+    rc::Rc,
+};
 
 use crate::{
     database::{Database, FileIndex},
@@ -45,7 +48,7 @@ pub fn global_import<'a>(
     }
 
     for (dir_path, dir) in db.workspaces.directories() {
-        let result = python_import(db, from_file, dir, name);
+        let result = python_import(db, from_file, std::iter::once(dir), name);
         if result.is_some() {
             return result;
         }
@@ -53,58 +56,64 @@ pub fn global_import<'a>(
     None
 }
 
-pub fn python_import<'a>(
+pub fn python_import<'a, 'x>(
     db: &Database,
     from_file: FileIndex,
-    dir: &Directory,
+    dirs: impl Iterator<Item = impl Borrow<Directory>>,
     name: &'a str,
 ) -> Option<ImportResult> {
     let mut python_file_index = None;
     let mut stub_file_index = None;
-    let mut namespace_content = None;
-    for entry in &dir.iter() {
-        match entry {
-            DirectoryEntry::Directory(dir2) => {
-                if dir2.name.as_ref() == name {
-                    let result = load_init_file(db, dir2);
-                    if let Some(file_index) = &result {
-                        db.add_invalidates(*file_index, from_file);
-                        return result.map(ImportResult::File);
-                    }
-                    dir2.add_missing_entry(Box::from("__init__.py"), from_file);
-                    dir2.add_missing_entry(Box::from("__init__.pyi"), from_file);
-                    namespace_content = Some(dir2.clone());
-                }
-            }
-            DirectoryEntry::File(file) => {
-                let is_py_file = file.name.as_ref() == format!("{name}.py");
-                if is_py_file || file.name.as_ref() == format!("{name}.pyi") {
-                    if file.file_index.get().is_none() {
-                        db.load_file_from_workspace(file.clone(), false);
-                    }
-                    debug_assert!(file.file_index.get().is_some());
-                    if is_py_file {
-                        python_file_index = file.file_index.get();
-                    } else {
-                        stub_file_index = file.file_index.get();
+    let mut namespace_directories = vec![];
+    'outer: for dir in dirs {
+        let dir = dir.borrow();
+        for entry in &dir.iter() {
+            match entry {
+                DirectoryEntry::Directory(dir2) => {
+                    if dir2.name.as_ref() == name {
+                        let result = load_init_file(db, dir2);
+                        if let Some(file_index) = &result {
+                            db.add_invalidates(*file_index, from_file);
+                            return result.map(ImportResult::File);
+                        }
+                        dir2.add_missing_entry(Box::from("__init__.py"), from_file);
+                        dir2.add_missing_entry(Box::from("__init__.pyi"), from_file);
+                        namespace_directories.push(dir2.clone());
+                        continue 'outer;
                     }
                 }
+                DirectoryEntry::File(file) => {
+                    let is_py_file = file.name.as_ref() == format!("{name}.py");
+                    if is_py_file || file.name.as_ref() == format!("{name}.pyi") {
+                        if file.file_index.get().is_none() {
+                            db.load_file_from_workspace(file.clone(), false);
+                        }
+                        debug_assert!(file.file_index.get().is_some());
+                        if is_py_file {
+                            python_file_index = file.file_index.get();
+                        } else {
+                            stub_file_index = file.file_index.get();
+                        }
+                    }
+                }
+                DirectoryEntry::MissingEntry { .. } => (),
             }
-            DirectoryEntry::MissingEntry { .. } => (),
         }
+        if let Some(file_index) = stub_file_index.or(python_file_index) {
+            db.add_invalidates(file_index, from_file);
+            return Some(ImportResult::File(file_index));
+        }
+        dir.add_missing_entry((name.to_string() + ".py").into(), from_file);
+        dir.add_missing_entry((name.to_string() + ".pyi").into(), from_file);
+        // The folder should not exist for folder/__init__.py or a namespace.
+        dir.add_missing_entry(name.into(), from_file);
     }
-    if let Some(file_index) = stub_file_index.or(python_file_index) {
-        db.add_invalidates(file_index, from_file);
-        return Some(ImportResult::File(file_index));
-    }
-    dir.add_missing_entry((name.to_string() + ".py").into(), from_file);
-    dir.add_missing_entry((name.to_string() + ".pyi").into(), from_file);
-    // The folder should not exist for folder/__init__.py or a namespace.
-    if let Some(directories) = namespace_content {
+    if !namespace_directories.is_empty() {
         debug!("// TODO invalidate!");
-        return Some(ImportResult::Namespace(Rc::new(Namespace { directories })));
+        return Some(ImportResult::Namespace(Rc::new(Namespace {
+            directories: namespace_directories.into(),
+        })));
     }
-    dir.add_missing_entry(name.into(), from_file);
     None
 }
 

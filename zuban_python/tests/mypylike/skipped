@@ -530,6 +530,7 @@ testImportStarWithinFunction
 # Star import check what we override
 testAssignAndConditionalStarImport
 
+testTurnPackageToModule
 # namespace multiple packages
 testTypedPkgSimple
 testTypedPkg_args_nositepackages
