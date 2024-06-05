@@ -614,11 +614,10 @@ impl<'db> Diagnostic<'db> {
 
     pub fn as_string(&self, config: &DiagnosticConfig) -> String {
         let mut kind = "error";
-        // TODO REMOVE mypy removal
         let mut path = self
             .db
             .file_path(self.file.file_index())
-            .trim_start_matches("/mypylike/");
+            .trim_start_matches(&self.file.file_entry(self.db).parent.workspace_path() as &str);
         if path == "__main__" {
             path = "main";
         }

@@ -248,6 +248,13 @@ impl Parent {
             Self::Workspace(workspace) => workspace.to_string(),
         }
     }
+
+    pub fn workspace_path(&self) -> Rc<Box<str>> {
+        match self {
+            Self::Directory(dir) => dir.upgrade().unwrap().parent.workspace_path(),
+            Self::Workspace(workspace) => workspace.clone(),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
