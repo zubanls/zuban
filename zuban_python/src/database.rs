@@ -824,16 +824,21 @@ impl Database {
             flags: options.flags,
             overrides: options.overrides,
         };
+
+        let vfs = Box::<FileSystemReader>::default();
+
         let mut workspaces = Workspaces::default();
+        let separator = vfs.separator();
         for p in project.flags.mypy_path.iter() {
-            workspaces.add(file_state_loaders.as_ref(), Box::from(p.as_ref()));
+            workspaces.add(vfs.as_ref(), file_state_loaders.as_ref(), p.clone().into());
         }
         for p in &project.sys_path {
-            workspaces.add(file_state_loaders.as_ref(), p.to_owned())
+            workspaces.add(vfs.as_ref(), file_state_loaders.as_ref(), p.clone().into())
         }
+
         let mut this = Self {
             in_use: false,
-            vfs: Box::<FileSystemReader>::default(),
+            vfs,
             file_state_loaders,
             files: Default::default(),
             workspaces,
@@ -908,7 +913,11 @@ impl Database {
         let mut mypy_path_iter = project.flags.mypy_path.iter();
         assert_eq!(mypy_path_iter.next_back().unwrap(), "/mypylike/");
         for p in mypy_path_iter.rev() {
-            workspaces.add_at_start(file_state_loaders.as_ref(), p.clone().into())
+            workspaces.add_at_start(
+                self.vfs.as_ref(),
+                file_state_loaders.as_ref(),
+                p.clone().into(),
+            )
         }
 
         let mut python_state = self.python_state.clone();

@@ -16,12 +16,17 @@ use crate::{
 pub struct Workspaces(Vec<Workspace>);
 
 impl Workspaces {
-    pub fn add(&mut self, loaders: &[Box<dyn FileStateLoader>], root: Box<str>) {
-        self.0.push(Workspace::new(loaders, root))
+    pub fn add(&mut self, vfs: &dyn Vfs, loaders: &[Box<dyn FileStateLoader>], root: String) {
+        self.0.push(Workspace::new(vfs, loaders, root))
     }
 
-    pub fn add_at_start(&mut self, loaders: &[Box<dyn FileStateLoader>], root: Box<str>) {
-        self.0.insert(0, Workspace::new(loaders, root))
+    pub fn add_at_start(
+        &mut self,
+        vfs: &dyn Vfs,
+        loaders: &[Box<dyn FileStateLoader>],
+        root: String,
+    ) {
+        self.0.insert(0, Workspace::new(vfs, loaders, root))
     }
 
     pub fn directories(&self) -> impl Iterator<Item = (&str, &Directory)> {
@@ -29,6 +34,9 @@ impl Workspaces {
     }
 
     pub fn ensure_file(&mut self, vfs: &dyn Vfs, path: &str) -> AddedFile {
+        for workspace in &self.0 {
+            dbg!(workspace.root_path());
+        }
         for workspace in &mut self.0 {
             if let Some(p) = path.strip_prefix(workspace.root_path()) {
                 return ensure_dirs_and_file(
@@ -117,8 +125,13 @@ pub struct Workspace {
 }
 
 impl Workspace {
-    fn new(loaders: &[Box<dyn FileStateLoader>], root_path: Box<str>) -> Self {
-        let root_path = Rc::new(root_path);
+    fn new(vfs: &dyn Vfs, loaders: &[Box<dyn FileStateLoader>], mut root_path: String) -> Self {
+        let separator = vfs.separator();
+        if !root_path.ends_with(separator) {
+            root_path.push(separator);
+        }
+        let root_path = Rc::<Box<str>>::new(root_path.into());
+
         let mut stack = vec![(
             PathBuf::from(&**root_path),
             Directory::new(Parent::Workspace(root_path.clone()), "".into()),
