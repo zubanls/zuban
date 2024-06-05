@@ -34,9 +34,6 @@ impl Workspaces {
     }
 
     pub fn ensure_file(&mut self, vfs: &dyn Vfs, path: &str) -> AddedFile {
-        for workspace in &self.0 {
-            dbg!(workspace.root_path());
-        }
         for workspace in &mut self.0 {
             if let Some(p) = path.strip_prefix(workspace.root_path()) {
                 return ensure_dirs_and_file(
