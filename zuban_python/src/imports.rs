@@ -25,10 +25,10 @@ impl ImportResult {
         }
     }
 
-    pub fn path<'x>(&'x self, db: &'x Database) -> Cow<'x, str> {
+    pub fn debug_path<'x>(&'x self, db: &'x Database) -> Cow<'x, str> {
         match self {
             Self::File(f) => Cow::Borrowed(db.loaded_python_file(*f).file_path(db)),
-            Self::Namespace(namespace) => Cow::Owned(namespace.path(db)),
+            Self::Namespace(namespace) => Cow::Owned(namespace.debug_path(db)),
         }
     }
 }

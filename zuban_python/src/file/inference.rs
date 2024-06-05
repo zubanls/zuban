@@ -392,7 +392,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     fn global_import(&self, name: Name, name_def: Option<NameDefinition>) -> Option<ImportResult> {
         let result = global_import(self.i_s.db, self.file.file_index(), name.as_str());
         if let Some(result) = &result {
-            debug!("Global import {name:?}: {:?}", result.path(self.i_s.db),);
+            debug!(
+                "Global import {name:?}: {:?}",
+                result.debug_path(self.i_s.db),
+            );
         }
         let point = match &result {
             Some(ImportResult::File(file_index)) => {
@@ -482,7 +485,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             if let Some(imported) = &result {
                 debug!(
                     "Imported {:?} for {:?}",
-                    imported.path(i_s.db),
+                    imported.debug_path(i_s.db),
                     dotted.as_code(),
                 );
             } else if in_stub_and_has_getattr {

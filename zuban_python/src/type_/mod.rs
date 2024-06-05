@@ -329,9 +329,8 @@ impl Namespace {
         dotted_path_from_dir(&self.directories.first().unwrap())
     }
 
-    pub fn path(&self, db: &Database) -> String {
-        // TODO this path is not correct, there are multiple paths
-        self.directories.first().unwrap().path(&*db.vfs)
+    pub fn debug_path(&self, db: &Database) -> String {
+        join_with_commas(self.directories.iter().map(|d| d.path(&*db.vfs)))
     }
 }
 
