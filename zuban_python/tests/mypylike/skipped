@@ -531,9 +531,8 @@ testImportStarWithinFunction
 testAssignAndConditionalStarImport
 
 testTurnPackageToModule
-# namespace multiple packages
+# namespace multiple packages "# pkgs: ..."
 testTypedPkgSimple
-testTypedPkg_args_nositepackages
 testTypedPkgStubs
 testStubPrecedence
 testTypedPkgSimpleEditable
@@ -547,13 +546,8 @@ testTypedPkgNamespaceRegFromImportTwiceMissing
 testTypedPkgNamespaceRegFromImportTwiceMissing2
 # namespace packages config
 testClassicPackageInsideNamespacePackageCase
-testClassicPackageIgnoresEarlierNamespacePackage
-testClassicPackageInsideNamespacePackage
-testNamespacePackageWithMypyPath
-testNamespacePackageInsideClassicPackage
 testNamespacePackagePickFirstOnMypyPathCase
 testTypedPkgNoSitePkgsIgnoredImports
-testTypedPkg_config_nositepackages
 testClassicPackageInsideNamespacePackageCasePyProjectTOML
 testNamespacePackageWithMypyPathPyProjectTOML
 testNamespacePackagePickFirstOnMypyPathCasePyProjectTOML
@@ -1707,6 +1701,9 @@ testIncrementalFollowImportsVariable
 testIncrementalFollowImportsVariablePyProjectTOML
 testClassScopeImportWithFollowImports
 testMissingSubmoduleImportedWithIgnoreMissingImportsStub
+# --no-site-packages
+testTypedPkg_config_nositepackages
+testTypedPkg_args_nositepackages
 
 # --enable-error-code redundant-self
 # "Redundant "Self" annotation for the first method argument"

@@ -47,13 +47,12 @@ pub fn global_import<'a>(
         return Some(ImportResult::File(db.python_state.functools().file_index()));
     }
 
-    for (dir_path, dir) in db.workspaces.directories() {
-        let result = python_import(db, from_file, std::iter::once(dir), name);
-        if result.is_some() {
-            return result;
-        }
-    }
-    None
+    python_import(
+        db,
+        from_file,
+        db.workspaces.directories().map(|(_, d)| d),
+        name,
+    )
 }
 
 pub fn python_import<'a, 'x>(
