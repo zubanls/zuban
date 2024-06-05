@@ -56,6 +56,7 @@ const SKIP_MYPY_TEST_FILES: [&str; 30] = [
 ];
 
 const BASE_PATH: &str = "/mypylike/";
+const MYPY_TEST_DATA_PACKAGES_FOLDER: &str = "tests/mypylike/mypy/test-data/packages/";
 
 lazy_static::lazy_static! {
     static ref CASE: Regex = Regex::new(r"(?m)^\[case ([a-zA-Z_0-9-]+)\][ \t]*\n").unwrap();
@@ -150,6 +151,18 @@ impl<'name, 'code> TestCase<'name, 'code> {
             set_mypy_path(&mut new);
             config = std::mem::replace(&mut new.flags, config);
             project_options = Some(new);
+        }
+
+        if self.file_name == "pep561" {
+            let first_line = self.code.split("\n").next().unwrap();
+            let Some(suffix) = first_line.strip_prefix("# pkgs:") else {
+                unreachable!()
+            };
+            config.mypy_path.extend(
+                suffix
+                    .split([';', ','])
+                    .map(|s| MYPY_TEST_DATA_PACKAGES_FOLDER.to_string() + s.trim()),
+            );
         }
 
         if self.file_name == "check-errorcodes" || steps.flags.contains(&"--show-error-codes") {
@@ -350,6 +363,11 @@ impl<'name, 'code> TestCase<'name, 'code> {
                     // Since the file name can be in a reveal_type like _fooTest.A, but it should
                     // actually be __main__.A to be closer to what we do.
                     *line = line.replace(&file_name_qualified, "__main__.");
+                }
+            } else if self.file_name == "pep561" {
+                let file_name_dot_py = format!("{}.py:", self.name);
+                for line in wanted.iter_mut() {
+                    *line = line.replace(&file_name_dot_py, "main:");
                 }
             }
             let mut actual_lines = actual
@@ -743,8 +761,10 @@ struct ProjectsCache {
 
 fn set_mypy_path(options: &mut ProjectOptions) {
     for path in options.flags.mypy_path.iter_mut() {
-        // Mypy has a kind of weird way how they deal with tmp/
-        *path = BASE_PATH.to_owned() + &path;
+        if !path.starts_with(MYPY_TEST_DATA_PACKAGES_FOLDER) {
+            // Mypy has a kind of weird way how they deal with tmp/
+            *path = BASE_PATH.to_owned() + &path;
+        }
     }
     options.flags.mypy_path.push(BASE_PATH.into());
 }

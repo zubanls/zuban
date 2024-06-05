@@ -532,18 +532,10 @@ testAssignAndConditionalStarImport
 
 testTurnPackageToModule
 # namespace multiple packages "# pkgs: ..."
-testTypedPkgSimple
 testTypedPkgStubs
 testStubPrecedence
-testTypedPkgSimpleEditable
-testTypedPkgNamespaceImportFrom
-testTypedPkgNamespaceImportAs
-testTypedPkgNamespaceRegImport
-testTypedPkgNamespaceRegFromImportTwice
 testNamespacePkgWStubs
 testNamespacePkgWStubsWithNamespacePackagesFlag
-testTypedPkgNamespaceRegFromImportTwiceMissing
-testTypedPkgNamespaceRegFromImportTwiceMissing2
 # namespace packages config
 testClassicPackageInsideNamespacePackageCase
 testNamespacePackagePickFirstOnMypyPathCase
