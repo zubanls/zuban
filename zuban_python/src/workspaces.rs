@@ -20,6 +20,10 @@ impl Workspaces {
         self.0.push(Workspace::new(loaders, root))
     }
 
+    pub fn add_at_start(&mut self, loaders: &[Box<dyn FileStateLoader>], root: Box<str>) {
+        self.0.insert(0, Workspace::new(loaders, root))
+    }
+
     pub fn directories(&self) -> impl Iterator<Item = (&str, &Directory)> {
         self.0.iter().map(|x| (x.root_path(), &x.directory))
     }

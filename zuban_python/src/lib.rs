@@ -64,6 +64,12 @@ impl Project {
     }
 
     pub fn diagnostics(&mut self, config: &DiagnosticConfig) -> Box<[diagnostics::Diagnostic<'_>]> {
+        if self.db.project.flags.mypy_path.len() > 1 {
+            debug!(
+                "Has complex mypy path: {:?}",
+                &self.db.project.flags.mypy_path
+            );
+        }
         let mut all_diagnostics: Vec<diagnostics::Diagnostic> = vec![];
         let mut file_indexes = vec![];
         self.db

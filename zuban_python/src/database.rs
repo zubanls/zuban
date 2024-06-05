@@ -856,7 +856,7 @@ impl Database {
             overrides: options.overrides,
         };
         let files = InsertOnlyVec::<dyn FileState>::default();
-        let workspaces = self.workspaces.clone_with_new_rcs();
+        let mut workspaces = self.workspaces.clone_with_new_rcs();
         for (i, file_state) in unsafe { self.files.iter() }.enumerate() {
             fn search_parent(
                 workspaces: &Workspaces,
@@ -903,6 +903,12 @@ impl Database {
             };
             //debug_assert_ne!(new_file_entry.as_ref() as *const _, current_entry.as_ref() as *const _);
             files.push(file_state.clone_box(new_file_entry.clone()));
+        }
+
+        let mut mypy_path_iter = project.flags.mypy_path.iter();
+        assert_eq!(mypy_path_iter.next_back().unwrap(), "/mypylike/");
+        for p in mypy_path_iter.rev() {
+            workspaces.add_at_start(file_state_loaders.as_ref(), p.clone().into())
         }
 
         let mut python_state = self.python_state.clone();
