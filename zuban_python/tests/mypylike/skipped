@@ -547,14 +547,11 @@ testTypedPkgNamespaceRegFromImportTwiceMissing2
 # namespace packages config
 testClassicPackageInsideNamespacePackageCase
 testNamespacePackagePickFirstOnMypyPathCase
-testTypedPkgNoSitePkgsIgnoredImports
 testClassicPackageInsideNamespacePackageCasePyProjectTOML
-testNamespacePackageWithMypyPathPyProjectTOML
 testNamespacePackagePickFirstOnMypyPathCasePyProjectTOML
-# mypy.ini/pyproject.toml mypy_path
+# case insensitive mypy_path
 testCaseInsensitivityDir
 testCaseInsensitivityDirPyProjectTOML
-testPreferPackageOverFileCasePyProjectTOML
 
 # Metaclass descriptor
 metaclass_descriptor
@@ -1704,6 +1701,7 @@ testMissingSubmoduleImportedWithIgnoreMissingImportsStub
 # --no-site-packages
 testTypedPkg_config_nositepackages
 testTypedPkg_args_nositepackages
+testTypedPkgNoSitePkgsIgnoredImports
 
 # --enable-error-code redundant-self
 # "Redundant "Self" annotation for the first method argument"

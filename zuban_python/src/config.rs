@@ -354,7 +354,7 @@ impl IniOrTomlValue<'_> {
         }
     }
 
-    fn to_bool(&self, invert: bool) -> Result<bool, Box<str>> {
+    fn to_bool(&self, invert: bool) -> Result<bool, String> {
         let result = match self {
             Self::Toml(v) => v.as_bool().unwrap_or_else(|| todo!()),
             Self::Ini(value) => match value.to_lowercase().as_str() {
@@ -367,14 +367,28 @@ impl IniOrTomlValue<'_> {
         Ok(result != invert)
     }
 
-    fn as_mypy_path(&self) -> Result<Vec<String>, Box<str>> {
+    fn as_mypy_path(&self) -> Result<Vec<String>, String> {
+        let split_str = |s| {
+            split_and_trim(s, &[',', ':'])
+                .map(|x| x.to_string())
+                .collect()
+        };
         match self {
             Self::Toml(v) => {
-                todo!() //v.as_array()
+                if let Some(s) = v.as_str() {
+                    return Ok(split_str(s));
+                }
+                v.as_array()
+                    .ok_or_else(|| "Expected an array or string for mypy_path".to_string())?
+                    .iter()
+                    .map(|v| {
+                        v.as_str()
+                            .map(|s| s.to_string())
+                            .ok_or_else(|| "".to_string())
+                    })
+                    .collect()
             }
-            Self::Ini(v) => Ok(split_and_trim(v, &[',', ':'])
-                .map(|x| x.to_string())
-                .collect()),
+            Self::Ini(s) => Ok(split_str(s)),
             Self::InlineConfigNoValue => unreachable!(),
         }
     }
