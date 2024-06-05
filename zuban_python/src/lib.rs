@@ -86,8 +86,6 @@ impl Project {
                     file.file_path(&self.db),
                     file.file_index(),
                 );
-
-                let array: [i32; 3] = [0; 3];
                 all_diagnostics.append(&mut file.diagnostics(&self.db, config).into_vec())
             }
         }
