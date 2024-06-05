@@ -100,9 +100,9 @@ pub fn python_import<'a>(
     dir.add_missing_entry((name.to_string() + ".py").into(), from_file);
     dir.add_missing_entry((name.to_string() + ".pyi").into(), from_file);
     // The folder should not exist for folder/__init__.py or a namespace.
-    if let Some(content) = namespace_content {
+    if let Some(directories) = namespace_content {
         debug!("// TODO invalidate!");
-        return Some(ImportResult::Namespace(Rc::new(Namespace { content })));
+        return Some(ImportResult::Namespace(Rc::new(Namespace { directories })));
     }
     dir.add_missing_entry(name.into(), from_file);
     None

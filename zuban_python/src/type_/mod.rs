@@ -321,22 +321,22 @@ impl std::ops::Index<TypeVarIndex> for GenericsList {
 
 #[derive(Debug, Clone)]
 pub struct Namespace {
-    pub content: Rc<Directory>,
+    pub directories: Rc<Directory>,
 }
 
 impl Namespace {
     pub fn qualified_name(&self) -> String {
-        dotted_path_from_dir(&self.content)
+        dotted_path_from_dir(&self.directories)
     }
 
     pub fn path(&self, db: &Database) -> String {
-        self.content.path(&*db.vfs)
+        self.directories.path(&*db.vfs)
     }
 }
 
 impl std::cmp::PartialEq for Namespace {
     fn eq(&self, other: &Self) -> bool {
-        Rc::ptr_eq(&self.content, &other.content)
+        Rc::ptr_eq(&self.directories, &other.directories)
     }
 }
 
