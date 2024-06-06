@@ -530,10 +530,6 @@ testImportStarWithinFunction
 # Star import check what we override
 testAssignAndConditionalStarImport
 
-testTurnPackageToModule
-# namespace multiple packages "# pkgs: ..."
-testNamespacePkgWStubsWithNamespacePackagesFlag
-
 # Metaclass descriptor
 metaclass_descriptor
 # Metaclass Union
@@ -1685,6 +1681,8 @@ testTypedPkg_args_nositepackages
 testTypedPkgNoSitePkgsIgnoredImports
 # "Skipping analyzing "typedpkg_ns.b.bbb": module is installed, but missing library stubs or py.typed marker"
 testNamespacePkgWStubs
+# __import__("pkg_resources").declare_namespace(__name__)
+testNamespacePkgWStubsWithNamespacePackagesFlag
 
 # --enable-error-code redundant-self
 # "Redundant "Self" annotation for the first method argument"

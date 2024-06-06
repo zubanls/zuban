@@ -108,7 +108,8 @@ pub fn python_import_with_needs_exact_case<'a, 'x>(
     let mut python_file_index = None;
     let mut stub_file_index = None;
     let mut namespace_directories = vec![];
-    'outer: for dir in dirs {
+    for dir in dirs {
+        let mut had_namespace_dir = false;
         let dir = dir.borrow();
         for entry in &dir.iter() {
             match entry {
@@ -121,8 +122,9 @@ pub fn python_import_with_needs_exact_case<'a, 'x>(
                         }
                         dir2.add_missing_entry(Box::from(INIT_PY), from_file);
                         dir2.add_missing_entry(Box::from(INIT_PYI), from_file);
+                        had_namespace_dir = true;
                         namespace_directories.push(dir2.clone());
-                        continue 'outer;
+                        continue;
                     }
                 }
                 DirectoryEntry::File(file) => {
@@ -153,10 +155,11 @@ pub fn python_import_with_needs_exact_case<'a, 'x>(
         dir.add_missing_entry((name.to_string() + ".py").into(), from_file);
         dir.add_missing_entry((name.to_string() + ".pyi").into(), from_file);
         // The folder should not exist for folder/__init__.py or a namespace.
-        dir.add_missing_entry(name.into(), from_file);
+        if !had_namespace_dir {
+            dir.add_missing_entry(name.into(), from_file);
+        }
     }
     if !namespace_directories.is_empty() {
-        debug!("// TODO invalidate!");
         return Some(ImportResult::Namespace(Rc::new(Namespace {
             directories: namespace_directories.into(),
         })));
