@@ -1094,7 +1094,9 @@ impl Database {
         }
 
         // Then load the new one
-        let ensured = self.workspaces.ensure_file(&*self.vfs, &path);
+        let ensured = self
+            .workspaces
+            .ensure_file(&self.project.flags, &*self.vfs, &path);
         // TODO there could be no loader...
         let loader = self.loader(&path).unwrap();
         let file_state = loader.load_parsed(

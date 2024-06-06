@@ -151,6 +151,7 @@ pub struct TypeCheckerFlags {
 
     pub extra_checks: bool,
     pub mypy_compatible: bool,
+    pub case_sensitive: bool,
 }
 
 impl Default for TypeCheckerFlags {
@@ -190,6 +191,7 @@ impl Default for TypeCheckerFlags {
             mypy_path: vec![],
             extra_checks: false,
             mypy_compatible: false,
+            case_sensitive: true,
         }
     }
 }

@@ -9,7 +9,9 @@ use walkdir::WalkDir;
 use crate::{
     database::FileIndex,
     file::{FileStateLoader, Vfs},
+    imports::match_case,
     utils::{rc_unwrap_or_clone, VecRefWrapper},
+    TypeCheckerFlags,
 };
 
 #[derive(Debug, Default, Clone)]
@@ -33,9 +35,24 @@ impl Workspaces {
         self.0.iter().map(|x| (x.root_path(), &x.directory))
     }
 
-    pub fn ensure_file(&mut self, vfs: &dyn Vfs, path: &str) -> AddedFile {
+    pub fn ensure_file(
+        &mut self,
+        flags: &TypeCheckerFlags,
+        vfs: &dyn Vfs,
+        path: &str,
+    ) -> AddedFile {
         for workspace in &mut self.0 {
-            if let Some(p) = path.strip_prefix(workspace.root_path()) {
+            let root_path = workspace.root_path();
+            let rest = if flags.case_sensitive {
+                path.strip_prefix(root_path)
+            } else {
+                path.get(..root_path.len())
+                    .and_then(|p| {
+                        match_case(flags, root_path, p).then(|| path.get(root_path.len()..))
+                    })
+                    .flatten()
+            };
+            if let Some(p) = rest {
                 return ensure_dirs_and_file(
                     Parent::Workspace(workspace.root_path.clone()),
                     &workspace.directory,

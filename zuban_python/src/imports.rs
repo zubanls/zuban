@@ -9,6 +9,7 @@ use crate::{
     file::{File, PythonFile},
     type_::Namespace,
     workspaces::{Directory, DirectoryEntry},
+    TypeCheckerFlags,
 };
 
 #[derive(Debug)]
@@ -38,12 +39,12 @@ pub fn global_import<'a>(
     from_file: FileIndex,
     name: &'a str,
 ) -> Option<ImportResult> {
-    if name == "typing_extensions" {
+    if match_c(db, name, "typing_extensions") {
         return Some(ImportResult::File(
             db.python_state.typing_extensions().file_index(),
         ));
     }
-    if name == "functools" {
+    if match_c(db, name, "functools") {
         return Some(ImportResult::File(db.python_state.functools().file_index()));
     }
 
@@ -69,7 +70,7 @@ pub fn python_import<'a, 'x>(
         for entry in &dir.iter() {
             match entry {
                 DirectoryEntry::Directory(dir2) => {
-                    if dir2.name.as_ref() == name {
+                    if match_c(db, dir2.name.as_ref(), name) {
                         let result = load_init_file(db, dir2);
                         if let Some(file_index) = &result {
                             db.add_invalidates(*file_index, from_file);
@@ -82,8 +83,9 @@ pub fn python_import<'a, 'x>(
                     }
                 }
                 DirectoryEntry::File(file) => {
-                    let is_py_file = file.name.as_ref() == format!("{name}.py");
-                    if is_py_file || file.name.as_ref() == format!("{name}.pyi") {
+                    // TODO these format!() always allocate a lot and don't seem to be necessary
+                    let is_py_file = match_c(db, &file.name, &format!("{name}.py"));
+                    if is_py_file || match_c(db, &file.name, &format!("{name}.pyi")) {
                         if file.file_index.get().is_none() {
                             db.load_file_from_workspace(file.clone(), false);
                         }
@@ -116,10 +118,23 @@ pub fn python_import<'a, 'x>(
     None
 }
 
+#[inline]
+fn match_c(db: &Database, x: &str, y: &str) -> bool {
+    match_case(&db.project.flags, x, y)
+}
+
+pub fn match_case(flags: &TypeCheckerFlags, x: &str, y: &str) -> bool {
+    if flags.case_sensitive {
+        x == y
+    } else {
+        x.eq_ignore_ascii_case(y)
+    }
+}
+
 fn load_init_file(db: &Database, content: &Directory) -> Option<FileIndex> {
     for child in &content.iter() {
         if let DirectoryEntry::File(file) = child {
-            if file.name.as_ref() == "__init__.py" || file.name.as_ref() == "__init__.pyi" {
+            if match_c(db, &file.name, "__init__.py") || match_c(db, &file.name, "__init__.pyi") {
                 if file.file_index.get().is_none() {
                     db.load_file_from_workspace(file.clone(), false);
                 }

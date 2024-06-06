@@ -288,6 +288,9 @@ impl<'name, 'code> TestCase<'name, 'code> {
             // This feels very broken, but for now we disable these errors, because they don't feel
             // wrong, but Mypy does not have them.
             config.disabled_error_codes.push("used-before-def".into());
+        } else if self.file_name == "check-modules-case" {
+            // These tests are checking for case insensitive file systems like macOS, Windows
+            config.case_sensitive = false;
         }
 
         let mut tmp;

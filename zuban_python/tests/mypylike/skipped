@@ -536,14 +536,11 @@ testTypedPkgStubs
 testStubPrecedence
 testNamespacePkgWStubs
 testNamespacePkgWStubsWithNamespacePackagesFlag
-# namespace packages config
-testClassicPackageInsideNamespacePackageCase
-testNamespacePackagePickFirstOnMypyPathCase
-testClassicPackageInsideNamespacePackageCasePyProjectTOML
-testNamespacePackagePickFirstOnMypyPathCasePyProjectTOML
-# case insensitive mypy_path
+# case sensitive/insensitive
 testCaseInsensitivityDir
 testCaseInsensitivityDirPyProjectTOML
+testCaseSensitivityDir
+testCaseSensitivityDirNamespacePackages
 
 # Metaclass descriptor
 metaclass_descriptor
