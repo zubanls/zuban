@@ -8,7 +8,7 @@ use crate::{
     debug,
     diagnostics::IssueKind,
     file::{File, PythonFile},
-    imports::{python_import, ImportResult},
+    imports::{python_import, python_import_with_needs_exact_case, ImportResult},
     inference_state::InferenceState,
     inferred::Inferred,
     matching::LookupResult,
@@ -45,11 +45,12 @@ impl<'a> Module<'a> {
             return None;
         }
         match &entry.parent {
-            Parent::Directory(dir) => python_import(
+            Parent::Directory(dir) => python_import_with_needs_exact_case(
                 db,
                 self.file.file_index(),
                 std::iter::once(dir.upgrade().unwrap()),
                 name,
+                true,
             ),
             Parent::Workspace(_) => None,
         }

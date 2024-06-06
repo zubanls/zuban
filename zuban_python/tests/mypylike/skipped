@@ -536,11 +536,6 @@ testTypedPkgStubs
 testStubPrecedence
 testNamespacePkgWStubs
 testNamespacePkgWStubsWithNamespacePackagesFlag
-# case sensitive/insensitive
-testCaseInsensitivityDir
-testCaseInsensitivityDirPyProjectTOML
-testCaseSensitivityDir
-testCaseSensitivityDirNamespacePackages
 
 # Metaclass descriptor
 metaclass_descriptor

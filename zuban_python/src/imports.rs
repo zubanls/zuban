@@ -39,12 +39,12 @@ pub fn global_import<'a>(
     from_file: FileIndex,
     name: &'a str,
 ) -> Option<ImportResult> {
-    if match_c(db, name, "typing_extensions") {
+    if match_case(&db.project.flags, name, "typing_extensions") {
         return Some(ImportResult::File(
             db.python_state.typing_extensions().file_index(),
         ));
     }
-    if match_c(db, name, "functools") {
+    if match_case(&db.project.flags, name, "functools") {
         return Some(ImportResult::File(db.python_state.functools().file_index()));
     }
 
@@ -62,6 +62,16 @@ pub fn python_import<'a, 'x>(
     dirs: impl Iterator<Item = impl Borrow<Directory>>,
     name: &'a str,
 ) -> Option<ImportResult> {
+    python_import_with_needs_exact_case(db, from_file, dirs, name, false)
+}
+
+pub fn python_import_with_needs_exact_case<'a, 'x>(
+    db: &Database,
+    from_file: FileIndex,
+    dirs: impl Iterator<Item = impl Borrow<Directory>>,
+    name: &'a str,
+    needs_exact_case: bool,
+) -> Option<ImportResult> {
     let mut python_file_index = None;
     let mut stub_file_index = None;
     let mut namespace_directories = vec![];
@@ -70,7 +80,7 @@ pub fn python_import<'a, 'x>(
         for entry in &dir.iter() {
             match entry {
                 DirectoryEntry::Directory(dir2) => {
-                    if match_c(db, dir2.name.as_ref(), name) {
+                    if match_c(db, dir2.name.as_ref(), name, needs_exact_case) {
                         let result = load_init_file(db, dir2);
                         if let Some(file_index) = &result {
                             db.add_invalidates(*file_index, from_file);
@@ -84,8 +94,11 @@ pub fn python_import<'a, 'x>(
                 }
                 DirectoryEntry::File(file) => {
                     // TODO these format!() always allocate a lot and don't seem to be necessary
-                    let is_py_file = match_c(db, &file.name, &format!("{name}.py"));
-                    if is_py_file || match_c(db, &file.name, &format!("{name}.pyi")) {
+                    let is_py_file =
+                        match_c(db, &file.name, &format!("{name}.py"), needs_exact_case);
+                    if is_py_file
+                        || match_c(db, &file.name, &format!("{name}.pyi"), needs_exact_case)
+                    {
                         if file.file_index.get().is_none() {
                             db.load_file_from_workspace(file.clone(), false);
                         }
@@ -119,8 +132,12 @@ pub fn python_import<'a, 'x>(
 }
 
 #[inline]
-fn match_c(db: &Database, x: &str, y: &str) -> bool {
-    match_case(&db.project.flags, x, y)
+fn match_c(db: &Database, x: &str, y: &str, needs_exact_case: bool) -> bool {
+    if needs_exact_case {
+        x == y
+    } else {
+        match_case(&db.project.flags, x, y)
+    }
 }
 
 pub fn match_case(flags: &TypeCheckerFlags, x: &str, y: &str) -> bool {
@@ -134,7 +151,9 @@ pub fn match_case(flags: &TypeCheckerFlags, x: &str, y: &str) -> bool {
 fn load_init_file(db: &Database, content: &Directory) -> Option<FileIndex> {
     for child in &content.iter() {
         if let DirectoryEntry::File(file) = child {
-            if match_c(db, &file.name, "__init__.py") || match_c(db, &file.name, "__init__.pyi") {
+            if match_c(db, &file.name, "__init__.py", false)
+                || match_c(db, &file.name, "__init__.pyi", false)
+            {
                 if file.file_index.get().is_none() {
                     db.load_file_from_workspace(file.clone(), false);
                 }
