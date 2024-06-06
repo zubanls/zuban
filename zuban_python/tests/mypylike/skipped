@@ -532,7 +532,6 @@ testAssignAndConditionalStarImport
 
 testTurnPackageToModule
 # namespace multiple packages "# pkgs: ..."
-testStubPrecedence
 testNamespacePkgWStubsWithNamespacePackagesFlag
 
 # Metaclass descriptor

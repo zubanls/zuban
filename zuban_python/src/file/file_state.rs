@@ -7,6 +7,7 @@ use crate::{
     database::{Database, FileIndex},
     diagnostics::{Diagnostic, DiagnosticConfig},
     file::PythonFile,
+    imports::STUBS_SUFFIX,
     inferred::Inferred,
     name::{Name, Names, TreePosition},
     workspaces::{FileEntry, Invalidations},
@@ -95,7 +96,7 @@ impl FileStateLoader for PythonFileLoader {
         if name.ends_with(".py") || name.ends_with(".pyi") {
             return true;
         }
-        !name.contains('.') && (!name.contains('-') || name.ends_with("-stubs"))
+        !name.contains('.') && (!name.contains('-') || name.ends_with(STUBS_SUFFIX))
             || name == "py.typed"
     }
 

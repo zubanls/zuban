@@ -20,6 +20,7 @@ use crate::{
     },
     debug,
     diagnostics::{Diagnostic, DiagnosticConfig, Diagnostics, Issue, IssueKind},
+    imports::{global_import_without_stubs_first, ImportResult, STUBS_SUFFIX},
     inference_state::InferenceState,
     inferred::Inferred,
     lines::NewlineIndices,
@@ -395,6 +396,10 @@ impl<'db> PythonFile {
                 let Some(dir) = self.file_entry(db).parent.most_outer_dir() else {
                     return false;
                 };
+                if !dir.name.ends_with(STUBS_SUFFIX) {
+                    // partial is only relevant for -stubs, otherwise we don't really care.
+                    return false;
+                }
                 dir.search("py.typed").is_some_and(|entry| match &*entry {
                     DirectoryEntry::File(entry) => db
                         .vfs
@@ -409,12 +414,33 @@ impl<'db> PythonFile {
     pub fn normal_file_of_stub_file(&self, db: &'db Database) -> Option<&'db PythonFile> {
         let stub_cache = self.stub_cache.as_ref()?;
         let file_index = *stub_cache.non_stub.get_or_init(|| {
-            /*
-            let file_index = self.file_index();
-            assert_ne!(file_index, self.file_index());
-            Some(file_index)
-            */
-            None
+            fn try_to_import(
+                db: &Database,
+                original_file_index: FileIndex,
+                parent_dir: Option<Rc<Directory>>,
+                name: &str,
+            ) -> Option<ImportResult> {
+                if let Some(parent_dir) = parent_dir {
+                    try_to_import(
+                        db,
+                        original_file_index,
+                        parent_dir.parent.maybe_dir().ok(),
+                        &parent_dir.name,
+                    )?
+                    .import(db, original_file_index, name)
+                } else {
+                    let name = name.strip_suffix(STUBS_SUFFIX)?;
+                    global_import_without_stubs_first(db, original_file_index, name)
+                }
+            }
+            let (name, parent_dir) = name_and_parent_dir(self.file_entry(db));
+            match try_to_import(db, self.file_index(), parent_dir, name)? {
+                ImportResult::File(file_index) => {
+                    assert_ne!(file_index, self.file_index());
+                    Some(file_index)
+                }
+                ImportResult::Namespace(_) => None,
+            }
         });
         Some(db.loaded_python_file(file_index?))
     }
@@ -575,7 +601,7 @@ impl<'db> PythonFile {
         if let Some(parent_dir) = parent_dir {
             dotted_path_from_dir(&parent_dir) + "." + name
         } else {
-            name.strip_suffix("-stubs").unwrap_or(name).to_string()
+            name.strip_suffix(STUBS_SUFFIX).unwrap_or(name).to_string()
         }
     }
 
