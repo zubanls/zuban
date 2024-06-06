@@ -534,7 +534,7 @@ impl<'db> PythonFile {
         if let Some(parent_dir) = parent_dir {
             dotted_path_from_dir(&parent_dir) + "." + name
         } else {
-            name.to_string()
+            name.strip_suffix("-stubs").unwrap_or(name).to_string()
         }
     }
 

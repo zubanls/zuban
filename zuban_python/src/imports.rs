@@ -52,8 +52,16 @@ pub fn global_import<'a>(
         db,
         from_file,
         db.workspaces.directories().map(|(_, d)| d),
-        name,
+        &format!("{name}-stubs"),
     )
+    .or_else(|| {
+        python_import(
+            db,
+            from_file,
+            db.workspaces.directories().map(|(_, d)| d),
+            name,
+        )
+    })
 }
 
 pub fn python_import<'a, 'x>(

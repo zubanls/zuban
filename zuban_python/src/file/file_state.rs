@@ -95,7 +95,7 @@ impl FileStateLoader for PythonFileLoader {
         if name.ends_with(".py") || name.ends_with(".pyi") {
             return true;
         }
-        !name.contains('.') && !name.contains('-')
+        !name.contains('.') && (!name.contains('-') || name.ends_with("-stubs"))
     }
 
     fn should_be_ignored(&self, name: &str) -> bool {

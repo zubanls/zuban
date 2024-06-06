@@ -532,9 +532,7 @@ testAssignAndConditionalStarImport
 
 testTurnPackageToModule
 # namespace multiple packages "# pkgs: ..."
-testTypedPkgStubs
 testStubPrecedence
-testNamespacePkgWStubs
 testNamespacePkgWStubsWithNamespacePackagesFlag
 
 # Metaclass descriptor
@@ -1686,6 +1684,8 @@ testMissingSubmoduleImportedWithIgnoreMissingImportsStub
 testTypedPkg_config_nositepackages
 testTypedPkg_args_nositepackages
 testTypedPkgNoSitePkgsIgnoredImports
+# "Skipping analyzing "typedpkg_ns.b.bbb": module is installed, but missing library stubs or py.typed marker"
+testNamespacePkgWStubs
 
 # --enable-error-code redundant-self
 # "Redundant "Self" annotation for the first method argument"
