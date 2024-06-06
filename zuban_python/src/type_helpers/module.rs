@@ -51,7 +51,14 @@ impl<'a> Module<'a> {
                 std::iter::once(dir.upgrade().unwrap()),
                 name,
                 true,
-            ),
+            )
+            .or_else(|| {
+                if self.file.in_partial_stubs(db) {
+                    Module::new(self.file.normal_file_of_stub_file(db)?).sub_module(db, name)
+                } else {
+                    None
+                }
+            }),
             Parent::Workspace(_) => None,
         }
     }
@@ -217,7 +224,7 @@ pub fn is_reexport_issue_if_check_needed(
         let name = NodeRef::from_link(db, link).as_name().as_code();
         !(dunder_all.iter().any(|d| d.as_str(db) == name) || name == "__all__")
     } else {
-        let check_reexport = file.is_stub || file.flags(db).no_implicit_reexport;
+        let check_reexport = file.is_stub() || file.flags(db).no_implicit_reexport;
         check_reexport && is_private_import(db, link)
     }
 }

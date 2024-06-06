@@ -269,6 +269,16 @@ impl Parent {
         }
     }
 
+    pub fn most_outer_dir(&self) -> Option<Rc<Directory>> {
+        match self {
+            Self::Directory(dir) => {
+                let d = dir.upgrade().unwrap();
+                d.parent.most_outer_dir().or_else(|| Some(d))
+            }
+            Self::Workspace(w) => None,
+        }
+    }
+
     fn path(&self, vfs: &dyn Vfs) -> String {
         match self {
             Self::Directory(dir) => dir.upgrade().unwrap().path(vfs),

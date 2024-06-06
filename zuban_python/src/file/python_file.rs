@@ -28,7 +28,7 @@ use crate::{
     node_ref::NodeRef,
     type_::DbString,
     utils::{InsertOnlyVec, SymbolTable},
-    workspaces::{Directory, FileEntry},
+    workspaces::{Directory, DirectoryEntry, FileEntry},
     TypeCheckerFlags,
 };
 
@@ -81,7 +81,7 @@ pub struct PythonFile {
     pub star_imports: RefCell<Vec<StarImport>>,
     sub_files: RefCell<HashMap<CodeIndex, FileIndex>>,
     pub(crate) super_file: Option<FileIndex>,
-    pub is_stub: bool,
+    stub_cache: Option<StubCache>,
     pub ignore_type_errors: bool,
     flags: Option<TypeCheckerFlags>,
 
@@ -105,7 +105,7 @@ impl File for PythonFile {
                     issues: &self.issues,
                     star_imports: &self.star_imports,
                     file_index: self.file_index.get().unwrap(),
-                    is_stub: self.is_stub,
+                    is_stub: self.is_stub(),
                 },
                 |binder| binder.index_file(self.tree.root()),
             ))
@@ -200,6 +200,9 @@ impl File for PythonFile {
     fn invalidate_references_to(&mut self, file_index: FileIndex) {
         self.points.invalidate_references_to(file_index);
         self.issues.clear();
+        self.stub_cache
+            .as_mut()
+            .map(|cache| *cache = StubCache::default());
     }
 
     fn invalidate_full_db(&mut self) {
@@ -210,7 +213,10 @@ impl File for PythonFile {
         self.symbol_table.take();
         self.maybe_dunder_all.take();
         self.sub_files.get_mut().clear();
-        self.star_imports.get_mut().clear()
+        self.star_imports.get_mut().clear();
+        self.stub_cache
+            .as_mut()
+            .map(|cache| *cache = StubCache::default());
     }
 
     fn has_super_file(&self) -> bool {
@@ -320,7 +326,7 @@ impl<'db> PythonFile {
             newline_indices: NewlineIndices::new(),
             sub_files: Default::default(),
             super_file: None,
-            is_stub,
+            stub_cache: is_stub.then(|| StubCache::default()),
             ignore_type_errors,
             flags,
         }
@@ -358,7 +364,7 @@ impl<'db> PythonFile {
         let mut file = PythonFile::new_internal(
             tree,
             Diagnostics::default(),
-            self.is_stub,
+            self.is_stub(),
             None,
             self.ignore_type_errors,
         );
@@ -375,7 +381,42 @@ impl<'db> PythonFile {
                 return true;
             }
         }
-        self.is_stub
+        self.is_stub()
+    }
+
+    #[inline]
+    pub fn is_stub(&self) -> bool {
+        self.stub_cache.is_some()
+    }
+
+    pub fn in_partial_stubs(&self, db: &Database) -> bool {
+        self.stub_cache.as_ref().is_some_and(|cache| {
+            *cache.partial.get_or_init(|| {
+                let Some(dir) = self.file_entry(db).parent.most_outer_dir() else {
+                    return false;
+                };
+                dir.search("py.typed").is_some_and(|entry| match &*entry {
+                    DirectoryEntry::File(entry) => db
+                        .vfs
+                        .read_file(&entry.path(db.vfs.as_ref()))
+                        .is_some_and(|code| code.contains("partial\n")),
+                    _ => false,
+                })
+            })
+        })
+    }
+
+    pub fn normal_file_of_stub_file(&self, db: &'db Database) -> Option<&'db PythonFile> {
+        let stub_cache = self.stub_cache.as_ref()?;
+        let file_index = *stub_cache.non_stub.get_or_init(|| {
+            /*
+            let file_index = self.file_index();
+            assert_ne!(file_index, self.file_index());
+            Some(file_index)
+            */
+            None
+        });
+        Some(db.loaded_python_file(file_index?))
     }
 
     pub fn maybe_dunder_all(&self, db: &Database) -> Option<&[DbString]> {
@@ -796,4 +837,10 @@ impl Iterator for MultiDefinitionIterator<'_> {
             Some(next)
         }
     }
+}
+
+#[derive(Clone, Default)]
+struct StubCache {
+    partial: OnceCell<bool>,
+    non_stub: OnceCell<Option<FileIndex>>,
 }

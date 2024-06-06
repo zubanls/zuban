@@ -96,6 +96,7 @@ impl FileStateLoader for PythonFileLoader {
             return true;
         }
         !name.contains('.') && (!name.contains('-') || name.ends_with("-stubs"))
+            || name == "py.typed"
     }
 
     fn should_be_ignored(&self, name: &str) -> bool {

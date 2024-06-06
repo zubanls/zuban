@@ -781,7 +781,7 @@ impl<'db> Inference<'db, '_, '_> {
             });
             if !unreachable
                 && !is_overload_member
-                && !self.file.is_stub
+                && !self.file.is_stub()
                 && function.return_annotation().is_some()
                 && !(self.flags().allow_empty_bodies && function.has_trivial_body(i_s))
                 && !function.is_abstract()
@@ -918,7 +918,7 @@ impl<'db> Inference<'db, '_, '_> {
                             |issue| self.add_issue(default.index(), issue),
                             |got, expected| {
                                 if default.is_ellipsis_literal()
-                                    && (self.file.is_stub || function.has_trivial_body(i_s))
+                                    && (self.file.is_stub() || function.has_trivial_body(i_s))
                                 {
                                     // In stubs it is allowed to do stuff like:
                                     // def foo(x: int = ...) -> int: ...

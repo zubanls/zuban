@@ -462,7 +462,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     // It seems to come from here:
                     // https://github.com/python/mypy/blob/bc591c756a453bb6a78a31e734b1f0aa475e90e0/mypy/semanal_pass1.py#L87-L96
                     if r.is_none()
-                        && module.file.is_stub
+                        && module.file.is_stub()
                         && module
                             .lookup(
                                 i_s,
@@ -593,7 +593,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     ) {
         let on_type_error = |got, expected| {
             // In cases of stubs when an ellipsis is given, it's not an error.
-            if self.file.is_stub {
+            if self.file.is_stub() {
                 // Right side always exists, because it was compared and there was an error because
                 // of it.
                 if let AssignmentRightSide::StarExpressions(star_exprs) = right_side {
@@ -1711,7 +1711,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         // twice, when for example a class F(List[X]) is created, where X = F and X is defined
         // before F, this might happen.
         let inferred = inferred.maybe_save_redirect(self.i_s, self.file, expr.index(), true);
-        if self.flags().disallow_any_expr && !self.file.is_stub {
+        if self.flags().disallow_any_expr && !self.file.is_stub() {
             let t = inferred.as_cow_type(self.i_s);
             if t.has_any(self.i_s) {
                 self.add_issue(
