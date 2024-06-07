@@ -877,7 +877,13 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 }
                 InferredDecorator::Overload => is_overload = true,
                 InferredDecorator::Abstractmethod => is_abstract = true,
-                InferredDecorator::Final => is_final = true,
+                InferredDecorator::Final => {
+                    if self.class.is_none() {
+                        NodeRef::new(self.node_ref.file, decorator.index())
+                            .add_issue(i_s, IssueKind::FinalCanOnlyBeUsedInMethods);
+                    }
+                    is_final = true
+                }
                 InferredDecorator::Override => (),
             }
         }
