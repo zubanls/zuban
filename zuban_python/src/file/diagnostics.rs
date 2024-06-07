@@ -1806,7 +1806,15 @@ fn check_override(
 
     let is_final_callable = match original_t.as_ref() {
         Type::Callable(c) => c.is_final,
-        Type::FunctionOverload(o) => o.is_final(),
+        Type::FunctionOverload(_) => {
+            if let Some(ComplexPoint::FunctionOverload(o)) =
+                original_inf.maybe_complex_point(i_s.db)
+            {
+                o.is_final
+            } else {
+                false
+            }
+        }
         _ => false,
     };
 

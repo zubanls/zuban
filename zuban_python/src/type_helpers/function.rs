@@ -1011,16 +1011,36 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         let mut current_name_index = first_index;
         let file = self.node_ref.file;
         let mut functions = vec![];
-        let mut add_func = |inf: Inferred| {
+        let in_stub = file.is_stub();
+
+        let mut add_func = |func: &Function, inf: Inferred, is_first: bool| {
             if let Some(CallableLike::Callable(callable)) = inf.as_cow_type(i_s).maybe_callable(i_s)
             {
+                if callable.is_final && !(in_stub && is_first) {
+                    for decorator in func.node().maybe_decorated().unwrap().decorators().iter() {
+                        if matches!(
+                            infer_decorator_details(i_s, func.node_ref.file, decorator, true),
+                            InferredDecorator::Final
+                        ) {
+                            NodeRef::new(func.node_ref.file, decorator.index()).add_issue(
+                                i_s,
+                                match in_stub {
+                                    false => {
+                                        IssueKind::FinalShouldBeAppliedOnlyToOverloadImplementation
+                                    }
+                                    true => IssueKind::FinalInStubMustBeAppliedToFirstOverload,
+                                },
+                            )
+                        }
+                    }
+                }
                 functions.push(callable)
             } else {
                 todo!()
             }
         };
         let mut inconsistent_function_kind = None;
-        add_func(details.inferred);
+        add_func(self, details.inferred, true);
         let mut implementation: Option<OverloadImplementation> = None;
         let mut should_error_out = false;
         loop {
@@ -1088,7 +1108,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     NodeRef::from_link(i_s.db, implementation.function_link)
                         .add_issue(i_s, IssueKind::OverloadImplementationNotLast)
                 }
-                add_func(next_details.inferred)
+                add_func(&next_func, next_details.inferred, false)
             } else {
                 // Check if the implementing function was already set
                 if implementation.is_none() {
@@ -1142,22 +1162,32 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             self.node_ref
                 .add_issue(i_s, IssueKind::OverloadSingleNotAllowed);
         } else if implementation.is_none()
-            && !file.is_stub()
+            && !in_stub
             && self.class.map(|c| !c.is_protocol(i_s.db)).unwrap_or(true)
         {
             name_def_node_ref(functions.last().unwrap().defined_at)
                 .add_issue(i_s, IssueKind::OverloadImplementationNeeded);
         }
         if let Some(implementation) = &implementation {
-            if file.is_stub() {
+            if in_stub {
                 name_def_node_ref(implementation.function_link)
                     .add_issue(i_s, IssueKind::OverloadStubImplementationNotAllowed);
             }
         }
+
+        let is_final = if in_stub {
+            functions.first().unwrap().is_final
+        } else {
+            implementation
+                .as_ref()
+                .is_some_and(|implementation| implementation.callable.is_final)
+        };
+
         debug_assert!(!functions.is_empty());
         (!should_error_out).then(|| OverloadDefinition {
             functions: FunctionOverload::new(functions.into_boxed_slice()),
             implementation,
+            is_final,
         })
     }
 

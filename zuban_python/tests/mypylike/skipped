@@ -751,9 +751,6 @@ testFinalAddFinalPropertyWithVarFine
 testFinalBodyReprocessedAndStillFinalOverloaded-only_when_cache
 testFinalBodyReprocessedAndStillFinalOverloaded2-only_when_nocache
 testTypingSelfAllowAliasUseInFinalClasses
-# @final issues
-testFinalDefiningMethOverloaded
-testFinalDefiningMethOverloadedStubs
 # "Protocol member cannot be final"
 testFinalNotInProtocol
 # Final: "Cannot assign to final name "x""
@@ -802,6 +799,7 @@ testFinalOverridingMethodMultipleInheritance
 testFinalOverridingMethodMultipleInheritanceVar
 testFinalOverridingProperty
 testFinalOverridingMethodOverloads
+testFinalAddFinalMethodOverrideOverloadFine
 testFinalCantOverrideWriteable
 # : Final in dataclasses
 testFinalInDataclass

@@ -149,6 +149,8 @@ pub(crate) enum IssueKind {
     FinalInClassBodyCannotDependOnTypeVariables,
     FinalAndClassVarUsedBoth,
     FinalCanOnlyBeUsedInMethods,
+    FinalShouldBeAppliedOnlyToOverloadImplementation,
+    FinalInStubMustBeAppliedToFirstOverload,
 
     DuplicateTypeVar,
     UnboundTypeVarLike { type_var_like: TypeVarLike },
@@ -1113,6 +1115,10 @@ impl<'db> Diagnostic<'db> {
                 "Variable should not be annotated with both ClassVar and Final".to_string(),
             FinalCanOnlyBeUsedInMethods =>
                 "@final cannot be used with non-method functions".to_string(),
+            FinalShouldBeAppliedOnlyToOverloadImplementation =>
+                "@final should be applied only to overload implementation".to_string(),
+            FinalInStubMustBeAppliedToFirstOverload =>
+                "In a stub file @final must be applied only to the first overload".to_string(),
 
             DuplicateTypeVar =>
                 "Duplicate type variables in Generic[...] or Protocol[...]".to_string(),
