@@ -148,6 +148,7 @@ pub(crate) enum IssueKind {
     FinalWithoutInitializerAndType,
     FinalInClassBodyCannotDependOnTypeVariables,
     FinalAndClassVarUsedBoth,
+    FinalCanOnlyBeUsedInMethods,
 
     DuplicateTypeVar,
     UnboundTypeVarLike { type_var_like: TypeVarLike },
@@ -1110,6 +1111,8 @@ impl<'db> Diagnostic<'db> {
                 "Final name declared in class body cannot depend on type variables".to_string(),
             FinalAndClassVarUsedBoth =>
                 "Variable should not be annotated with both ClassVar and Final".to_string(),
+            FinalCanOnlyBeUsedInMethods =>
+                "@final cannot be used with non-method functions".to_string(),
 
             DuplicateTypeVar =>
                 "Duplicate type variables in Generic[...] or Protocol[...]".to_string(),

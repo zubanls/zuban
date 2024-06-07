@@ -616,6 +616,12 @@ testEmptyBodyImplicitlyAbstractProtocolStub
 testEmptyBodyVariationsImplicitlyAbstractProtocol
 testEmptyBodyNoneCompatibleProtocol
 testEmptyBodyWithFinal
+# @final + abc abstract class
+testFinalClassWithAbstractMethod
+testFinalDefiningFuncWithAbstractMethod
+testFinalClassWithAbstractAttributes
+testFinalClassWithoutABCMeta
+testFinalClassInheritedAbstractAttributes
 
 # "Invalid self argument "A[C]" to attribute function "f" with type "Callable[[A[B]], None]""
 testInvalidMethodAsDataAttributeInGenericClass
@@ -745,15 +751,7 @@ testFinalAddFinalPropertyWithVarFine
 testFinalBodyReprocessedAndStillFinalOverloaded-only_when_cache
 testFinalBodyReprocessedAndStillFinalOverloaded2-only_when_nocache
 testTypingSelfAllowAliasUseInFinalClasses
-testFinalClassWithAbstractAttributes
-testFinalClassWithoutABCMeta
-testFinalClassInheritedAbstractAttributes
-# @final + abc abstract class
-testFinalClassWithAbstractMethod
-testFinalDefiningFuncWithAbstractMethod
 # @final issues
-testFinalDefiningFunc
-testFinalDefiningFuncOverloaded
 testFinalDefiningMethOverloaded
 testFinalDefiningMethOverloadedStubs
 # "Protocol member cannot be final"

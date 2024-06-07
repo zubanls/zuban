@@ -364,7 +364,22 @@ impl<'db> Inference<'db, '_, '_> {
                 StmtContent::FunctionDef(f) => self.calc_function_diagnostics(f, class),
                 StmtContent::ClassDef(class) => self.calc_class_diagnostics(class),
                 StmtContent::Decorated(decorated) => match decorated.decoratee() {
-                    Decoratee::FunctionDef(f) => self.calc_function_diagnostics(f, class),
+                    Decoratee::FunctionDef(f) => {
+                        self.calc_function_diagnostics(f, class);
+                        for decorator in decorated.decorators().iter() {
+                            if let Some(inf) = self.check_point_cache(decorator.index()) {
+                                if inf.maybe_saved_link()
+                                    == Some(self.i_s.db.python_state.typing_final().as_link())
+                                    && class.is_none()
+                                {
+                                    self.add_issue(
+                                        decorator.index(),
+                                        IssueKind::FinalCanOnlyBeUsedInMethods,
+                                    );
+                                }
+                            }
+                        }
+                    }
                     Decoratee::ClassDef(class) => self.calc_class_diagnostics(class),
                     Decoratee::AsyncFunctionDef(func) => {
                         self.calc_function_diagnostics(func, class)
