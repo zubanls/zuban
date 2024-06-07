@@ -248,23 +248,20 @@ impl<'db> Inference<'db, '_, '_> {
                                         // Apparently Mypy only checks the first name...
                                         continue;
                                     }
-                                    match self
+                                    if self
                                         .infer_name_definition(name_def)
                                         .as_cow_type(self.i_s)
-                                        .as_ref()
+                                        .is_func_or_overload()
                                     {
-                                        Type::Callable(_) | Type::FunctionOverload(_) => {
-                                            let from = NodeRef::new(self.file, name_def.index());
-                                            from.add_issue(
-                                                self.i_s,
-                                                IssueKind::UnsupportedClassScopedImport,
-                                            );
-                                            from.set_point(Point::new_specific(
-                                                Specific::AnyDueToError,
-                                                from.point().locality(),
-                                            ))
-                                        }
-                                        _ => (),
+                                        let from = NodeRef::new(self.file, name_def.index());
+                                        from.add_issue(
+                                            self.i_s,
+                                            IssueKind::UnsupportedClassScopedImport,
+                                        );
+                                        from.set_point(Point::new_specific(
+                                            Specific::AnyDueToError,
+                                            from.point().locality(),
+                                        ))
                                     }
                                 }
                             }

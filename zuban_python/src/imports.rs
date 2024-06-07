@@ -5,7 +5,6 @@ use std::{
 
 use crate::{
     database::{Database, FileIndex},
-    debug,
     file::{File, PythonFile},
     type_::Namespace,
     type_helpers::Module,
