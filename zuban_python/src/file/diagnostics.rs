@@ -1807,13 +1807,17 @@ fn check_override(
     let is_final_callable = match original_t.as_ref() {
         Type::Callable(c) => c.is_final,
         Type::FunctionOverload(_) => {
-            if let Some(ComplexPoint::FunctionOverload(o)) =
-                original_inf.maybe_complex_point(i_s.db)
-            {
-                o.is_final
-            } else {
-                false
-            }
+            original_inf
+                .maybe_bound_method_of_function()
+                .is_some_and(|func_link| {
+                    if let Some(ComplexPoint::FunctionOverload(o)) =
+                        NodeRef::from_link(i_s.db, func_link).complex()
+                    {
+                        o.is_final
+                    } else {
+                        false
+                    }
+                })
         }
         _ => false,
     };

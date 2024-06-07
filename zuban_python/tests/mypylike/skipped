@@ -748,8 +748,6 @@ testStrictEqualityDisabledWithTypeVarRestrictions
 # @final
 testFinalAddFinalMethodOverrideWithVarFine
 testFinalAddFinalPropertyWithVarFine
-testFinalBodyReprocessedAndStillFinalOverloaded-only_when_cache
-testFinalBodyReprocessedAndStillFinalOverloaded2-only_when_nocache
 testTypingSelfAllowAliasUseInFinalClasses
 # "Protocol member cannot be final"
 testFinalNotInProtocol
@@ -798,8 +796,6 @@ testFinalOverridingMethodWithVarImplicit
 testFinalOverridingMethodMultipleInheritance
 testFinalOverridingMethodMultipleInheritanceVar
 testFinalOverridingProperty
-testFinalOverridingMethodOverloads
-testFinalAddFinalMethodOverrideOverloadFine
 testFinalCantOverrideWriteable
 # : Final in dataclasses
 testFinalInDataclass

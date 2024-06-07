@@ -2045,6 +2045,13 @@ impl<'db: 'slf, 'slf> Inferred {
         );
     }
 
+    pub fn maybe_bound_method_of_function(&self) -> Option<PointLink> {
+        match &self.state {
+            InferredState::BoundMethod { func_link, .. } => Some(*func_link),
+            _ => None,
+        }
+    }
+
     pub fn iter(self, i_s: &InferenceState, from: NodeRef) -> IteratorContent {
         self.as_cow_type(i_s).iter(i_s, from)
     }
