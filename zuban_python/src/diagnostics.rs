@@ -242,6 +242,7 @@ pub(crate) enum IssueKind {
     ProtocolWrongVariance { type_var_name: Box<str>, actual_variance: Variance, expected_variance: Variance },
     CannotOverrideClassVariableWithInstanceVariable { base_class: Box<str> },
     CannotOverrideInstanceVariableWithClassVariable { base_class: Box<str> },
+    CannotOverrideFinalAttribute { base_class: Box<str>, name: Box<str> },
     ExplicitOverrideFlagRequiresOverride { method: Box<str>, class: Box<str> },
 
     BaseExceptionExpected,
@@ -1344,6 +1345,9 @@ impl<'db> Diagnostic<'db> {
             ),
             CannotOverrideInstanceVariableWithClassVariable { base_class } => format!(
                 r#"Cannot override instance variable (previously declared on base class "{base_class}") with class variable"#
+            ),
+            CannotOverrideFinalAttribute { name, base_class } => format!(
+                r#"Cannot override final attribute "{name}" (previously declared in base class "{base_class}")"#
             ),
             ExplicitOverrideFlagRequiresOverride { method, class } => format!(
                 r#"Method "{method}" is not using @override but is overriding a method in class "{class}""#

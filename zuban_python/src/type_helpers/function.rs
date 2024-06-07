@@ -779,6 +779,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         };
         let mut is_overload = false;
         let mut is_abstract = false;
+        let mut is_final = false;
         for decorator in decorated.decorators().iter_reverse() {
             let inferred_dec =
                 infer_decorator_details(i_s, self.node_ref.file, decorator, had_first_annotation);
@@ -876,7 +877,8 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 }
                 InferredDecorator::Overload => is_overload = true,
                 InferredDecorator::Abstractmethod => is_abstract = true,
-                InferredDecorator::Override | InferredDecorator::Final => (),
+                InferredDecorator::Final => is_final = true,
+                InferredDecorator::Override => (),
             }
         }
         let overwrite_callable = |inferred: &mut _, mut callable: CallableContent| {
@@ -884,6 +886,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             callable.class_name = self.class.map(|c| c.name_string_slice());
             callable.kind = kind;
             callable.is_abstract = is_abstract;
+            callable.is_final = is_final;
             self.avoid_invalid_typeguard_signatures(i_s, &mut callable);
             *inferred = Inferred::from_type(Type::Callable(Rc::new(callable)));
         };
@@ -1496,6 +1499,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             },
             guard: None,
             is_abstract: false,
+            is_final: false,
             params,
             type_vars,
             return_type,

@@ -224,6 +224,7 @@ impl NamedTuple {
                     type_vars: i_s.db.python_state.empty_type_var_likes.clone(),
                     guard: None,
                     is_abstract: false,
+                    is_final: false,
                     no_type_check: false,
                     params: CallableParams::Simple(params.into()),
                     return_type: as_self.map(|as_self| as_self()).unwrap_or(Type::Self_),

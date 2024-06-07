@@ -357,6 +357,10 @@ impl FunctionOverload {
         self.0[0].is_abstract
     }
 
+    pub fn is_final(&self) -> bool {
+        self.0[0].is_final
+    }
+
     pub fn iter_functions(&self) -> impl Iterator<Item = &Rc<CallableContent>> {
         self.0.iter()
     }

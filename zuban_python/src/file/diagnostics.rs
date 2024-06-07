@@ -1804,6 +1804,12 @@ fn check_override(
         unreachable!();
     };
 
+    let is_final_callable = match original_t.as_ref() {
+        Type::Callable(c) => c.is_final,
+        Type::FunctionOverload(o) => o.is_final(),
+        _ => false,
+    };
+
     let kind = LookupKind::Normal;
     let maybe_func = || match override_t {
         Type::Callable(c) if c.defined_at.file == from.file_index() => {
@@ -1815,6 +1821,20 @@ fn check_override(
         }
         _ => None,
     };
+    let add_issue_including_decorator = |issue| {
+        if let Some(func) = maybe_func() {
+            func.add_issue_onto_start_including_decorator(i_s, issue)
+        } else {
+            from.add_issue(i_s, issue);
+        }
+    };
+
+    if is_final_callable {
+        add_issue_including_decorator(IssueKind::CannotOverrideFinalAttribute {
+            base_class: original_class_name(i_s.db, &original_class).into(),
+            name: name.into(),
+        });
+    }
 
     let mut match_ = original_t.is_super_type_of(
         i_s,
