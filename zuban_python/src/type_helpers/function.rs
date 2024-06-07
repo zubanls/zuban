@@ -783,14 +783,14 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         for decorator in decorated.decorators().iter_reverse() {
             let inferred_dec =
                 infer_decorator_details(i_s, self.node_ref.file, decorator, had_first_annotation);
+            let nr = || NodeRef::new(self.node_ref.file, decorator.index());
             if matches!(kind, FunctionKind::Property { .. })
                 && !matches!(
                     inferred_dec,
                     InferredDecorator::Final | InferredDecorator::Override
                 )
             {
-                NodeRef::new(self.node_ref.file, decorator.index())
-                    .add_issue(i_s, IssueKind::DecoratorOnTopOfPropertyNotSupported);
+                nr().add_issue(i_s, IssueKind::DecoratorOnTopOfPropertyNotSupported);
                 break;
             }
 
@@ -803,8 +803,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     match k {
                         FunctionKind::Property { .. } => {
                             if is_overload {
-                                NodeRef::new(self.node_ref.file, decorator.index())
-                                    .add_issue(i_s, IssueKind::OverloadedPropertyNotSupported);
+                                nr().add_issue(i_s, IssueKind::OverloadedPropertyNotSupported);
                                 return None;
                             }
                             if self.class.is_none() {
@@ -812,7 +811,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                                 return None;
                             }
                             if !matches!(kind, FunctionKind::Function { .. }) {
-                                NodeRef::new(self.node_ref.file, decorator.index()).add_issue(
+                                nr().add_issue(
                                     i_s,
                                     IssueKind::OnlyInstanceMethodsCanBeDecoratedWithProperty,
                                 );
@@ -820,8 +819,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                         }
                         FunctionKind::Classmethod { .. } => {
                             if kind == FunctionKind::Staticmethod {
-                                NodeRef::new(self.node_ref.file, decorated.index())
-                                    .add_issue(i_s, IssueKind::InvalidClassmethodAndStaticmethod);
+                                nr().add_issue(i_s, IssueKind::InvalidClassmethodAndStaticmethod);
                                 return None;
                             }
                             if self.class.is_none() {
@@ -831,8 +829,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                         }
                         FunctionKind::Staticmethod => {
                             if matches!(kind, FunctionKind::Classmethod { .. }) {
-                                NodeRef::new(self.node_ref.file, decorated.index())
-                                    .add_issue(i_s, IssueKind::InvalidClassmethodAndStaticmethod)
+                                nr().add_issue(i_s, IssueKind::InvalidClassmethodAndStaticmethod)
                             }
                             if self.class.is_none() {
                                 used_with_a_non_method("staticmethod");
@@ -859,7 +856,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                                 .unwrap_or(true)
                         };
                         if !self.is_dynamic() && !is_typed(&dec_inf, false) {
-                            NodeRef::new(self.node_ref.file, decorator.index()).add_issue(
+                            nr().add_issue(
                                 i_s,
                                 IssueKind::UntypedDecorator {
                                     name: self.name().into(),
@@ -867,20 +864,13 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                             );
                         }
                     }
-                    inferred = dec_inf.execute(
-                        i_s,
-                        &KnownArgs::new(
-                            &inferred,
-                            NodeRef::new(self.node_ref.file, decorator.index()),
-                        ),
-                    );
+                    inferred = dec_inf.execute(i_s, &KnownArgs::new(&inferred, nr()));
                 }
                 InferredDecorator::Overload => is_overload = true,
                 InferredDecorator::Abstractmethod => is_abstract = true,
                 InferredDecorator::Final => {
                     if self.class.is_none() {
-                        NodeRef::new(self.node_ref.file, decorator.index())
-                            .add_issue(i_s, IssueKind::FinalCanOnlyBeUsedInMethods);
+                        nr().add_issue(i_s, IssueKind::FinalCanOnlyBeUsedInMethods);
                     }
                     is_final = true
                 }
