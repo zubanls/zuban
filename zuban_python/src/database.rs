@@ -416,6 +416,7 @@ pub enum Specific {
     AnnotationOrTypeCommentWithoutTypeVars,
     AnnotationOrTypeCommentClassVar,
     AnnotationOrTypeCommentFinal,
+    AnnotationTypeAlias,
     // A generic class where the generics are either SimpleGeneric or classes without generics
     SimpleGeneric, // primary: primary '[' slices ']'
 

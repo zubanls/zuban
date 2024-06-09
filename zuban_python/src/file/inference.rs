@@ -704,7 +704,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 let specific = self.file.points.get(annotation.index()).maybe_specific();
                 let assign_kind = AssignKind::Annotation(specific);
                 match specific {
-                    Some(Specific::TypingTypeAlias) => {
+                    Some(Specific::AnnotationTypeAlias) => {
                         let inf = self.compute_explicit_type_assignment(assignment);
                         self.assign_single_target(
                             target,

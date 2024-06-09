@@ -213,7 +213,7 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> Init
                         // ClassVar[] are not part of the dataclass.
                         continue;
                     }
-                    Some(Specific::TypingTypeAlias) => {
+                    Some(Specific::AnnotationTypeAlias) => {
                         NodeRef::new(file, assignment.index())
                             .add_issue(i_s, IssueKind::DataclassContainsTypeAlias);
                         continue;

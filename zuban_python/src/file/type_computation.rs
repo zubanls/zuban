@@ -806,7 +806,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     debug_assert!(!is_implicit_optional);
                     annotation_node_ref.set_point(Point::new_specific(
                         match special {
-                            SpecialType::TypeAlias => Specific::TypingTypeAlias,
+                            SpecialType::TypeAlias => Specific::AnnotationTypeAlias,
                             SpecialType::Final => Specific::TypingFinal,
                             _ => unreachable!(),
                         },
