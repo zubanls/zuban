@@ -31,8 +31,8 @@ use crate::{
     },
     type_helpers::{
         cache_class_name, is_private_import, is_reexport_issue_if_check_needed,
-        lookup_in_namespace, Class, FirstParamKind, Function, GeneratorType, Instance, Module,
-        TypeOrClass,
+        lookup_in_namespace, Class, ClassLookupOptions, FirstParamKind, Function, GeneratorType,
+        Instance, Module, TypeOrClass,
     },
     utils::debug_indent,
     TypeCheckerFlags,
@@ -975,10 +975,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     if cls.is_calculating_class_infos() {
                         return None;
                     }
-                    cls.lookup_without_descriptors_and_custom_add_issue_ignore_self(
+                    cls.lookup(
                         self.i_s,
                         name_def.as_code(),
-                        |_| todo!(),
+                        ClassLookupOptions::new(&|_| ()).with_ignore_self(),
                     )
                     .lookup
                     .into_maybe_inferred()
@@ -1139,10 +1139,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             && assign_kind == AssignKind::Normal
             && self.flags().local_partial_types
             && !i_s.current_class().is_some_and(|c| {
-                c.lookup_without_descriptors_and_custom_add_issue_ignore_self(
+                c.lookup(
                     self.i_s,
                     name_def.as_code(),
-                    |_| todo!(),
+                    ClassLookupOptions::new(&|_| ()).with_ignore_self(),
                 )
                 .lookup
                 .is_some()

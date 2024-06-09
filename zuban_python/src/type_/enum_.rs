@@ -17,7 +17,7 @@ use crate::{
     inferred::{AttributeKind, Inferred},
     matching::{FormatData, LookupKind, LookupResult, ResultContext},
     node_ref::NodeRef,
-    type_helpers::{Class, Instance, LookupDetails, TypeOrClass},
+    type_helpers::{Class, ClassLookupOptions, Instance, LookupDetails, TypeOrClass},
 };
 
 #[derive(Debug, PartialEq, Clone)]
@@ -160,12 +160,11 @@ pub(crate) fn lookup_on_enum_class<'a>(
             AttributeKind::Attribute,
         )
         .or_else(|| {
-            enum_.class(i_s.db).lookup_with_custom_self_type(
+            enum_.class(i_s.db).lookup(
                 i_s,
-                add_issue,
                 name,
-                LookupKind::Normal,
-                || Type::Type(Rc::new(Type::Enum(enum_.clone()))),
+                ClassLookupOptions::new(&add_issue)
+                    .with_as_type_type(&|| Type::Type(Rc::new(Type::Enum(enum_.clone())))),
             )
         }),
     }
@@ -240,7 +239,7 @@ pub fn infer_value_on_member(
                     Inferred::from_type(
                         enum_
                             .class(i_s.db)
-                            .lookup(
+                            .simple_lookup(
                                 i_s,
                                 |issue| node_ref.add_issue(i_s, issue),
                                 "_generate_next_value_",

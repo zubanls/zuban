@@ -27,7 +27,7 @@ use crate::{
         ClassGenerics, DbString, EnumMember, Literal, LiteralKind, NamedTuple, NeverCause,
         StringSlice, Tuple, TupleArgs, TupleUnpack, Type, TypeVarKind, UnionType, WithUnpack,
     },
-    type_helpers::{Callable, Class, Function},
+    type_helpers::{Callable, Class, ClassLookupOptions, Function},
 };
 
 use super::{
@@ -451,7 +451,7 @@ pub fn has_custom_special_method(i_s: &InferenceState, t: &Type, method: &str) -
             }
             _ => return false,
         };
-        let details = cls.lookup_without_descriptors_and_custom_add_issue(i_s, method, |_| ());
+        let details = cls.lookup(i_s, method, ClassLookupOptions::new(&|_| ()));
         details.lookup.is_some() && !details.class.originates_in_builtins_or_typing(i_s.db)
     })
 }
@@ -676,7 +676,7 @@ fn split_truthy_and_falsey(i_s: &InferenceState, t: &Type) -> Option<(Type, Type
                         }
                     }
                     let Some(CallableLike::Callable(callable)) = class
-                        .lookup_without_descriptors_and_custom_add_issue(i_s, "__bool__", |_| ())
+                        .lookup(i_s, "__bool__", ClassLookupOptions::new(&|_| ()))
                         .lookup
                         .into_inferred()
                         .as_cow_type(i_s)

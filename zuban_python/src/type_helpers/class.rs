@@ -1143,10 +1143,10 @@ impl<'db: 'a, 'a> Class<'a> {
                                             name,
                                             &t1,
                                             &t2,
-                                            &c.lookup(i_s, |_| (), name, LookupKind::Normal)
+                                            &c.simple_lookup(i_s, |_| (), name, LookupKind::Normal)
                                                 .into_inferred()
                                                 .as_cow_type(i_s),
-                                            &cls.lookup(i_s, |_| (), name, LookupKind::Normal)
+                                            &cls.simple_lookup(i_s, |_| (), name, LookupKind::Normal)
                                                 .into_inferred()
                                                 .as_cow_type(i_s),
                                         ),
@@ -1344,129 +1344,44 @@ impl<'db: 'a, 'a> Class<'a> {
         )
     }
 
-    pub(crate) fn lookup_and_class_and_maybe_ignore_self(
-        &self,
-        i_s: &InferenceState<'db, '_>,
-        add_issue: impl Fn(IssueKind),
-        name: &str,
-        kind: LookupKind,
-        ignore_self: bool,
-    ) -> LookupDetails {
-        self.lookup_with_or_without_descriptors_internal(
-            i_s,
-            add_issue,
-            name,
-            kind,
-            false,
-            ignore_self,
-        )
-    }
-
     pub fn lookup_without_descriptors(
         &self,
         i_s: &InferenceState<'db, '_>,
         node_ref: NodeRef,
         name: &str,
     ) -> LookupDetails {
-        self.lookup_with_or_without_descriptors_internal(
+        self.lookup(
             i_s,
-            |issue| node_ref.add_issue(i_s, issue),
             name,
-            LookupKind::Normal,
-            false,
-            false,
+            ClassLookupOptions::new(&|issue| node_ref.add_issue(i_s, issue)).without_descriptors(),
         )
     }
 
-    pub(crate) fn lookup_without_descriptors_and_custom_add_issue(
+    pub fn lookup(
         &self,
         i_s: &InferenceState<'db, '_>,
         name: &str,
-        add_issue: impl Fn(IssueKind),
-    ) -> LookupDetails {
-        self.lookup_with_or_without_descriptors_internal(
-            i_s,
-            add_issue,
-            name,
-            LookupKind::Normal,
-            false,
-            false,
-        )
-    }
-
-    pub(crate) fn lookup_without_descriptors_and_custom_add_issue_ignore_self(
-        &self,
-        i_s: &InferenceState<'db, '_>,
-        name: &str,
-        add_issue: impl Fn(IssueKind),
-    ) -> LookupDetails {
-        self.lookup_with_or_without_descriptors_internal(
-            i_s,
-            add_issue,
-            name,
-            LookupKind::Normal,
-            false,
-            true,
-        )
-    }
-
-    pub(crate) fn lookup_with_custom_self_type(
-        &self,
-        i_s: &InferenceState<'db, '_>,
-        add_issue: impl Fn(IssueKind),
-        name: &str,
-        kind: LookupKind,
-        as_type_type: impl Fn() -> Type,
-    ) -> LookupDetails<'a> {
-        self.lookup_internal_detailed(i_s, add_issue, name, kind, true, false, as_type_type)
-    }
-
-    fn lookup_with_or_without_descriptors_internal(
-        &self,
-        i_s: &InferenceState<'db, '_>,
-        add_issue: impl Fn(IssueKind),
-        name: &str,
-        kind: LookupKind,
-        use_descriptors: bool,
-        ignore_self: bool,
-    ) -> LookupDetails<'a> {
-        self.lookup_internal_detailed(
-            i_s,
-            add_issue,
-            name,
-            kind,
-            use_descriptors,
-            ignore_self,
-            || self.as_type_type(i_s),
-        )
-    }
-
-    fn lookup_internal_detailed(
-        &self,
-        i_s: &InferenceState<'db, '_>,
-        add_issue: impl Fn(IssueKind),
-        name: &str,
-        kind: LookupKind,
-        use_descriptors: bool,
-        ignore_self: bool,
-        as_type_type: impl Fn() -> Type,
+        options: ClassLookupOptions,
     ) -> LookupDetails<'a> {
         let class_infos = self.use_cached_class_infos(i_s.db);
-        let result = if kind == LookupKind::Normal {
-            if class_infos.class_kind == ClassKind::Enum && use_descriptors && name == "_ignore_" {
+        let result = if options.kind == LookupKind::Normal {
+            if class_infos.class_kind == ClassKind::Enum
+                && options.use_descriptors
+                && name == "_ignore_"
+            {
                 return LookupDetails {
                     lookup: LookupResult::None,
                     class: TypeOrClass::Class(*self),
                     attr_kind: AttributeKind::Attribute,
                 };
             }
-            let (lookup_result, in_class, _) =
-                self.lookup_and_class_and_maybe_ignore_self_internal(i_s, name, ignore_self);
+            let (lookup_result, in_class, _) = self
+                .lookup_and_class_and_maybe_ignore_self_internal(i_s, name, options.ignore_self);
             let mut attr_kind = AttributeKind::Attribute;
             let result = lookup_result.and_then(|inf| {
                 if let TypeOrClass::Class(in_class) = in_class {
                     if class_infos.has_slots && self.in_slots(i_s.db, name) {
-                        add_issue(IssueKind::SlotsConflictWithClassVariableAccess {
+                        (options.add_issue)(IssueKind::SlotsConflictWithClassVariableAccess {
                             name: name.into(),
                         })
                     }
@@ -1475,8 +1390,8 @@ impl<'db: 'a, 'a> Class<'a> {
                         &i_s,
                         self,
                         in_class,
-                        &add_issue,
-                        use_descriptors,
+                        options.add_issue,
+                        options.use_descriptors,
                     );
                     if let Some((_, k)) = &result {
                         attr_kind = *k;
@@ -1506,11 +1421,11 @@ impl<'db: 'a, 'a> Class<'a> {
                         let instance = Instance::new(class_infos.metaclass(i_s.db), None);
                         instance.lookup_with_explicit_self_binding(
                             i_s,
-                            &add_issue,
+                            options.add_issue,
                             name,
                             LookupKind::Normal,
                             0,
-                            as_type_type,
+                            options.as_type_type.unwrap_or(&|| self.as_type_type(i_s)),
                         )
                     }
                 };
@@ -2023,7 +1938,7 @@ impl<'db: 'a, 'a> Class<'a> {
         }
     }
 
-    pub(crate) fn lookup(
+    pub(crate) fn simple_lookup(
         &self,
         i_s: &InferenceState,
         add_issue: impl Fn(IssueKind),
@@ -2040,7 +1955,11 @@ impl<'db: 'a, 'a> Class<'a> {
         name: &str,
         kind: LookupKind,
     ) -> LookupDetails<'a> {
-        self.lookup_with_or_without_descriptors_internal(i_s, add_issue, name, kind, true, false)
+        self.lookup(
+            i_s,
+            name,
+            ClassLookupOptions::new(&add_issue).with_kind(kind),
+        )
     }
 
     pub fn qualified_name(&self, db: &Database) -> String {
@@ -2062,7 +1981,7 @@ impl<'db: 'a, 'a> Class<'a> {
         match self.use_cached_class_infos(i_s.db).metaclass {
             MetaclassState::Some(_) => {
                 if let Some(__getitem__) = self
-                    .lookup(
+                    .simple_lookup(
                         i_s,
                         |issue| slice_type.as_node_ref().add_issue(i_s, issue),
                         "__getitem__",
@@ -2816,4 +2735,44 @@ pub fn start_namedtuple_params(db: &Database) -> Vec<CallableParam> {
         has_default: false,
         name: None,
     }]
+}
+
+pub struct ClassLookupOptions<'x> {
+    add_issue: &'x dyn Fn(IssueKind),
+    kind: LookupKind,
+    use_descriptors: bool,
+    ignore_self: bool,
+    as_type_type: Option<&'x dyn Fn() -> Type>,
+}
+
+impl<'x> ClassLookupOptions<'x> {
+    pub(crate) fn new(add_issue: &'x dyn Fn(IssueKind)) -> Self {
+        Self {
+            add_issue,
+            kind: LookupKind::Normal,
+            use_descriptors: true,
+            ignore_self: false,
+            as_type_type: None,
+        }
+    }
+
+    pub fn with_ignore_self(mut self) -> Self {
+        self.ignore_self = true;
+        self
+    }
+
+    pub fn with_as_type_type(mut self, as_type_type: &'x dyn Fn() -> Type) -> Self {
+        self.as_type_type = Some(as_type_type);
+        self
+    }
+
+    pub fn without_descriptors(mut self) -> Self {
+        self.use_descriptors = false;
+        self
+    }
+
+    pub fn with_kind(mut self, kind: LookupKind) -> Self {
+        self.kind = kind;
+        self
+    }
 }

@@ -35,8 +35,8 @@ use crate::{
         LiteralKind, NeverCause, TupleArgs, Type, TypeVarLike, Variance,
     },
     type_helpers::{
-        cache_class_name, is_private, Class, FirstParamProperties, Function, Instance,
-        LookupDetails, TypeOrClass,
+        cache_class_name, is_private, Class, ClassLookupOptions, FirstParamProperties, Function,
+        Instance, LookupDetails, TypeOrClass,
     },
 };
 
@@ -638,10 +638,12 @@ impl<'db> Inference<'db, '_, '_> {
                 if is_private(name) {
                     continue;
                 }
-                let lookup_infos = c.lookup_without_descriptors_and_custom_add_issue_ignore_self(
+                let lookup_infos = c.lookup(
                     &i_s,
                     name,
-                    |issue| (),
+                    ClassLookupOptions::new(&|issue| ())
+                        .without_descriptors()
+                        .with_ignore_self(),
                 );
                 if let Some(original_inf) = lookup_infos.lookup.into_maybe_inferred() {
                     let is_final_callable = match original_inf.as_cow_type(&i_s).as_ref() {
@@ -1838,7 +1840,6 @@ fn check_override(
         unreachable!();
     };
 
-    let kind = LookupKind::Normal;
     let maybe_func = || match override_t {
         Type::Callable(c) if c.defined_at.file == from.file_index() => {
             let node_ref = NodeRef::from_link(i_s.db, c.defined_at);
@@ -2045,7 +2046,11 @@ fn check_override(
                     }),
                     &original_t,
                     override_class
-                        .lookup_and_class_and_maybe_ignore_self(i_s, |_| todo!(), name, kind, true)
+                        .lookup(
+                            i_s,
+                            name,
+                            ClassLookupOptions::new(&|_| todo!()).with_ignore_self(),
+                        )
                         .lookup,
                 );
             }
@@ -2054,7 +2059,7 @@ fn check_override(
                 &mut notes,
                 &i_s.with_class_context(&override_class),
                 override_t,
-                override_class.lookup(i_s, |_| todo!(), name, kind),
+                override_class.simple_lookup(i_s, |_| todo!(), name, LookupKind::Normal),
             );
 
             if op_method_wider_note {
