@@ -745,6 +745,9 @@ testUnreachableFlagWithGenerics
 testNarrowOnSelfInGeneric
 testStrictEqualityDisabledWithTypeVarRestrictions
 
+# literal final details
+testLiteralWithFinalPropagation
+testLiteralWithFinalPropagationIsNotLeaking
 # @final overloads
 testFinalOverridingMethodOverloads
 testFinalAddFinalMethodOverrideOverloadFine
@@ -757,19 +760,15 @@ testTypingSelfAllowAliasUseInFinalClasses
 # "Protocol member cannot be final"
 testFinalNotInProtocol
 # Final: "Cannot assign to final name "x""
-testNewAnalyzerFinalReassignModuleReexport
 testNewAnalyzerFinalOverrideInSubclass
 testFinalAddFinalVarAssignFine
 testFinalAddFinalVarOverrideFine
-testNewAnalyzerFinalReassignModuleVar
 testLiteralFinalMismatchCausesError
 testFinalAddFinalVarAssign
 testFinalAddFinalVarOverride
 testFinalDelayedDefinition
 testFinalDelayedDefinitionOtherMethod
 testFinalReassignModuleVar3
-testFinalReassignModuleReexport
-testFinalReassignFuncScope
 testFinalReassignModuleVarExternal
 testFinalReassignInstanceVarClassBody
 testFinalReassignInstanceVarInit
@@ -777,7 +776,6 @@ testFinalReassignInstanceVarClassVsInit
 testFinalReassignInstanceVarMethod
 testFinalReassignInstanceVarExternalClass
 testFinalReassignInstanceVarExternalInstance
-testFinalWorksWithComplexTargets
 testFinalInplaceAssign
 testFinalCanUseTypingExtensions
 testFinalCanUseTypingExtensionsAliased

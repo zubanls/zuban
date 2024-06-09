@@ -702,7 +702,7 @@ impl<'db> Diagnostic<'db> {
                 "Cannot assign to class variable \"{name}\" via instance"
             ),
             CannotAssignToAMethod => "Cannot assign to a method".to_owned(),
-            CannotAssignToFinalName { name } => "Cannot assign to final name \"{name}\"".to_owned(),
+            CannotAssignToFinalName { name } => format!("Cannot assign to final name \"{name}\""),
             AssigningToNameOutsideOfSlots { name, class } => format!(
                 r#"Trying to assign name "{name}" that is not in "__slots__" of type "{class}""#
             ),

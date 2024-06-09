@@ -37,7 +37,7 @@ use crate::{
 };
 
 const ASSIGNMENT_TYPE_CACHE_OFFSET: u32 = 1;
-const ANNOTATION_TO_EXPR_DIFFERENCE: u32 = 2;
+pub(super) const ANNOTATION_TO_EXPR_DIFFERENCE: u32 = 2;
 
 #[derive(Debug)]
 pub enum TypeVarCallbackReturn {
@@ -807,7 +807,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     annotation_node_ref.set_point(Point::new_specific(
                         match special {
                             SpecialType::TypeAlias => Specific::AnnotationTypeAlias,
-                            SpecialType::Final => Specific::TypingFinal,
+                            SpecialType::Final => Specific::AnnotationOrTypeCommentFinal,
                             _ => unreachable!(),
                         },
                         Locality::Todo,
@@ -3591,7 +3591,6 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
             Specific::AnnotationOrTypeCommentSimpleClassInstance => self
                 .infer_expression(expr)
                 .expect_class_or_simple_generic(self.i_s),
-            Specific::TypingFinal => todo!(),
             _ => {
                 debug_assert!(matches!(
                     point.specific(),

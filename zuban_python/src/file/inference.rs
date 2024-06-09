@@ -5,7 +5,8 @@ use parsa_python_cst::*;
 use super::{
     diagnostics::await_aiter_and_next, flow_analysis::has_custom_special_method,
     name_binder::GLOBAL_NONLOCAL_TO_NAME_DIFFERENCE, on_argument_type_error,
-    python_file::StarImport, utils::infer_dict_like, File, PythonFile, FLOW_ANALYSIS,
+    python_file::StarImport, type_computation::ANNOTATION_TO_EXPR_DIFFERENCE,
+    utils::infer_dict_like, File, PythonFile, FLOW_ANALYSIS,
 };
 use crate::{
     arguments::{Args, KnownArgs, NoArgs, SimpleArgs},
@@ -716,36 +717,37 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             },
                         );
                     }
-                    Some(Specific::TypingFinal) => {
-                        let (right, index) = if let Some(right_side) = right_side {
-                            (
-                                self.infer_assignment_right_side(
-                                    right_side,
-                                    &mut ResultContext::Unknown,
-                                ),
-                                right_side.index(),
-                            )
-                        } else {
-                            self.add_issue(
-                                annotation.index(),
-                                IssueKind::FinalWithoutInitializerAndType,
-                            );
-                            (Inferred::new_any_from_error(), annotation.index())
-                        };
-                        self.assign_single_target(
-                            target,
-                            NodeRef::new(self.file, index),
-                            &right,
-                            assign_kind,
-                            |index, right| {
-                                right.clone().save_redirect(self.i_s, self.file, index);
-                            },
-                        );
-                    }
                     _ => {
+                        let mut checked = false;
+                        if specific == Some(Specific::AnnotationOrTypeCommentFinal) {
+                            let to_annot_expr = NodeRef::new(
+                                self.file,
+                                annotation.index() + ANNOTATION_TO_EXPR_DIFFERENCE,
+                            );
+                            if !to_annot_expr.point().calculated() {
+                                let t = if let Some(right_side) = right_side {
+                                    self.infer_assignment_right_side(
+                                        right_side,
+                                        &mut ResultContext::Unknown,
+                                    )
+                                    .as_type(self.i_s)
+                                } else {
+                                    self.add_issue(
+                                        annotation.index(),
+                                        IssueKind::FinalWithoutInitializerAndType,
+                                    );
+                                    Type::Any(AnyCause::FromError)
+                                };
+                                to_annot_expr
+                                    .insert_complex(ComplexPoint::TypeInstance(t), Locality::Todo);
+                                checked = true;
+                            }
+                        }
                         if let Some(right_side) = right_side {
-                            let t = self.use_cached_annotation_type(annotation);
-                            self.check_right_side_against_annotation(&t, right_side);
+                            if !checked {
+                                let t = self.use_cached_annotation_type(annotation);
+                                self.check_right_side_against_annotation(&t, right_side);
+                            }
                         }
                         let n = match right_side {
                             Some(right_side) => NodeRef::new(self.file, right_side.index()),
@@ -1033,6 +1035,16 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         let i_s = self.i_s;
 
         let check_assign_to_known_definition = |first_name_link, original: &Inferred| {
+            if original.maybe_saved_specific(i_s.db) == Some(Specific::AnnotationOrTypeCommentFinal)
+            {
+                from.add_issue(
+                    i_s,
+                    IssueKind::CannotAssignToFinalName {
+                        name: name_def.as_code().into(),
+                    },
+                );
+                return;
+            }
             let original_t = original.as_cow_type(i_s);
             let check_for_error = || {
                 original_t.error_if_not_matches(
@@ -1069,7 +1081,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 }
                 if matches!(
                     assign_kind,
-                    AssignKind::Annotation(Some(Specific::TypingFinal))
+                    AssignKind::Annotation(Some(Specific::AnnotationOrTypeCommentFinal))
                 ) {
                     name_def_ref.add_issue(self.i_s, IssueKind::CannotRedifineAsFinal);
                 } else {
