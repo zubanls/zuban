@@ -18,7 +18,7 @@ use crate::{
     matching::Generics,
     python_state::{NAME_DEF_TO_CLASS_DIFF, NAME_TO_FUNCTION_DIFF},
     type_::Type,
-    type_helpers::{Class, Module, CLASS_TO_CLASS_INFO_DIFFERENCE},
+    type_helpers::{Class, Function, Module, CLASS_TO_CLASS_INFO_DIFFERENCE},
 };
 
 #[derive(Clone, Copy)]
@@ -276,6 +276,20 @@ impl<'file> NodeRef<'file> {
     pub(crate) fn add_issue(&self, i_s: &InferenceState, kind: IssueKind) {
         let issue = Issue::from_node_index(&self.file.tree, self.node_index, kind);
         self.file.add_issue(i_s, issue)
+    }
+
+    pub(crate) fn add_issue_onto_start_including_decorator(
+        &self,
+        i_s: &InferenceState,
+        kind: IssueKind,
+    ) {
+        debug_assert!(self.maybe_name().is_some());
+        let func_node_ref = self.add_to_node_index(-(NAME_TO_FUNCTION_DIFF as i64));
+        if func_node_ref.maybe_function().is_some() {
+            Function::new(func_node_ref, None).add_issue_onto_start_including_decorator(i_s, kind)
+        } else {
+            self.add_issue(i_s, kind)
+        }
     }
 
     pub fn add_need_type_annotation_issue(&self, i_s: &InferenceState, specific: Specific) {

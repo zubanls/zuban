@@ -635,9 +635,43 @@ impl<'db> Inference<'db, '_, '_> {
             &c.class_storage.self_symbol_table,
         ] {
             for (name, index) in table.iter() {
-                if ["__init__", "__new__", "__init_subclass__", "__slots__"].contains(&name)
-                    || is_private(name)
-                {
+                if is_private(name) {
+                    continue;
+                }
+                let lookup_infos = c.lookup_without_descriptors_and_custom_add_issue_ignore_self(
+                    &i_s,
+                    name,
+                    |issue| (),
+                );
+                if let Some(original_inf) = lookup_infos.lookup.into_maybe_inferred() {
+                    let is_final_callable = match original_inf.as_cow_type(&i_s).as_ref() {
+                        Type::Callable(c) => c.is_final,
+                        Type::FunctionOverload(_) => {
+                            dbg!(&original_inf);
+                            original_inf.maybe_saved_link().is_some_and(|func_link| {
+                                if let Some(ComplexPoint::FunctionOverload(o)) =
+                                    NodeRef::from_link(i_s.db, func_link).complex()
+                                {
+                                    o.is_final
+                                } else {
+                                    false
+                                }
+                            })
+                        }
+                        _ => false,
+                    };
+                    if is_final_callable {
+                        NodeRef::new(self.file, *index).add_issue_onto_start_including_decorator(
+                            &i_s,
+                            IssueKind::CannotOverrideFinalAttribute {
+                                base_class: lookup_infos.class.name(i_s.db).into(),
+                                name: name.into(),
+                            },
+                        );
+                    }
+                }
+
+                if ["__init__", "__new__", "__init_subclass__", "__slots__"].contains(&name) {
                     continue;
                 }
                 let mut node_ref = NodeRef::new(self.file, *index - NAME_DEF_TO_NAME_DIFFERENCE);
@@ -1804,24 +1838,6 @@ fn check_override(
         unreachable!();
     };
 
-    let is_final_callable = match original_t.as_ref() {
-        Type::Callable(c) => c.is_final,
-        Type::FunctionOverload(_) => {
-            original_inf
-                .maybe_bound_method_of_function()
-                .is_some_and(|func_link| {
-                    if let Some(ComplexPoint::FunctionOverload(o)) =
-                        NodeRef::from_link(i_s.db, func_link).complex()
-                    {
-                        o.is_final
-                    } else {
-                        false
-                    }
-                })
-        }
-        _ => false,
-    };
-
     let kind = LookupKind::Normal;
     let maybe_func = || match override_t {
         Type::Callable(c) if c.defined_at.file == from.file_index() => {
@@ -1833,20 +1849,6 @@ fn check_override(
         }
         _ => None,
     };
-    let add_issue_including_decorator = |issue| {
-        if let Some(func) = maybe_func() {
-            func.add_issue_onto_start_including_decorator(i_s, issue)
-        } else {
-            from.add_issue(i_s, issue);
-        }
-    };
-
-    if is_final_callable {
-        add_issue_including_decorator(IssueKind::CannotOverrideFinalAttribute {
-            base_class: original_class_name(i_s.db, &original_class).into(),
-            name: name.into(),
-        });
-    }
 
     let mut match_ = original_t.is_super_type_of(
         i_s,
