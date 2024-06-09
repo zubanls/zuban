@@ -772,6 +772,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         let type_ = as_type(self);
 
         let mut is_class_var = false;
+        let mut is_final = false;
         let i_s = self.inference.i_s;
         let uses_class_generics = |class: &Class, t: &Type| {
             let mut uses_class_generics = false;
@@ -867,6 +868,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         is_initialized,
                     } = self.origin
                     {
+                        is_final = true;
                         if !is_initialized && !self.inference.file.is_stub() {
                             self.add_issue(
                                 type_storage_node_ref,
@@ -899,6 +901,8 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         annotation_node_ref.set_point(Point::new_specific(
             if is_class_var {
                 Specific::AnnotationOrTypeCommentClassVar
+            } else if is_final {
+                Specific::AnnotationOrTypeCommentFinal
             } else if self.has_type_vars_or_self {
                 Specific::AnnotationOrTypeCommentWithTypeVars
             } else {
@@ -3512,6 +3516,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                 | Specific::AnnotationOrTypeCommentWithoutTypeVars
                 | Specific::AnnotationOrTypeCommentSimpleClassInstance
                 | Specific::AnnotationOrTypeCommentClassVar
+                | Specific::AnnotationOrTypeCommentFinal
         ));
         self.check_point_cache(annotation.index()).unwrap()
     }
@@ -3524,6 +3529,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                 | Specific::AnnotationOrTypeCommentWithoutTypeVars
                 | Specific::AnnotationOrTypeCommentSimpleClassInstance
                 | Specific::AnnotationOrTypeCommentClassVar
+                | Specific::AnnotationOrTypeCommentFinal
         ));
         self.check_point_cache(annotation.index()).unwrap()
     }
@@ -3592,6 +3598,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                     Specific::AnnotationOrTypeCommentWithTypeVars
                         | Specific::AnnotationOrTypeCommentWithoutTypeVars
                         | Specific::AnnotationOrTypeCommentClassVar
+                        | Specific::AnnotationOrTypeCommentFinal
                 ));
                 self.use_cached_annotation_internal(expr.index())
             }
@@ -4846,6 +4853,7 @@ pub fn use_cached_annotation_or_type_comment<'db: 'file, 'file>(
             | Specific::AnnotationOrTypeCommentWithoutTypeVars
             | Specific::AnnotationOrTypeCommentWithTypeVars
             | Specific::AnnotationOrTypeCommentClassVar
+            | Specific::AnnotationOrTypeCommentFinal
     ));
     definition
         .file
@@ -4865,6 +4873,7 @@ pub fn maybe_saved_annotation(node_ref: NodeRef) -> Option<&Type> {
             Specific::AnnotationOrTypeCommentWithTypeVars
                 | Specific::AnnotationOrTypeCommentWithoutTypeVars
                 | Specific::AnnotationOrTypeCommentClassVar
+                | Specific::AnnotationOrTypeCommentFinal
         )
     ) {
         let Some(ComplexPoint::TypeInstance(t)) = node_ref

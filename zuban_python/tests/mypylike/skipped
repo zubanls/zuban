@@ -767,8 +767,6 @@ testFinalAddFinalVarAssign
 testFinalAddFinalVarOverride
 testFinalDelayedDefinition
 testFinalDelayedDefinitionOtherMethod
-testFinalReassignModuleVar
-testFinalReassignModuleVar2
 testFinalReassignModuleVar3
 testFinalReassignModuleReexport
 testFinalReassignFuncScope
@@ -1911,6 +1909,8 @@ testShowErrorCodeLinks
 
 # --allow-redefinition
 testUnusedTargetNotClass
+testFinalReassignModuleVar
+testFinalReassignModuleVar2
 
 # --no-strict-optional details
 testUnreachableWithStdlibContextManagersNoStrictOptional

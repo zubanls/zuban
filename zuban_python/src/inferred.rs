@@ -2382,7 +2382,8 @@ pub fn specific_to_type<'db>(
         Specific::AnnotationOrTypeCommentSimpleClassInstance
         | Specific::AnnotationOrTypeCommentWithoutTypeVars
         | Specific::AnnotationOrTypeCommentWithTypeVars
-        | Specific::AnnotationOrTypeCommentClassVar => {
+        | Specific::AnnotationOrTypeCommentClassVar
+        | Specific::AnnotationOrTypeCommentFinal => {
             use_cached_annotation_or_type_comment(i_s, definition)
         }
         Specific::MaybeSelfParam => Cow::Borrowed(&Type::Self_),
