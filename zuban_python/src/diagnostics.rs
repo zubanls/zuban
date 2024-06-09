@@ -54,6 +54,7 @@ pub(crate) enum IssueKind {
     IncompatibleImportAssignment { name: Box<str>, got: Box<str>, expected: Box<str> },
     CannotAssignToClassVarViaInstance { name: Box<str> },
     CannotAssignToAMethod,
+    CannotAssignToFinalName { name: Box<str> },
     AssigningToNameOutsideOfSlots { name: Box<str>, class: Box<str> },
     ListItemMismatch { item: usize, got: Box<str>, expected: Box<str> },
     ListComprehensionMismatch { got: Box<str>, expected: Box<str> },
@@ -67,6 +68,7 @@ pub(crate) enum IssueKind {
 
     Redefinition { name: Box<str>, suffix: Box<str> },
     CannotRedifineAs { name: Box<str>, as_: &'static str },
+    CannotRedifineAsFinal,
     IncompatibleConditionalFunctionSignature { original: Box<str>, redefinition: Box<str> },
     IncompatibleConditionalFunctionSignaturePretty { original: Box<str>, redefinition: Box<str> },
     NameUsedBeforeDefinition { name: Box<str> },
@@ -700,6 +702,7 @@ impl<'db> Diagnostic<'db> {
                 "Cannot assign to class variable \"{name}\" via instance"
             ),
             CannotAssignToAMethod => "Cannot assign to a method".to_owned(),
+            CannotAssignToFinalName { name } => "Cannot assign to final name \"{name}\"".to_owned(),
             AssigningToNameOutsideOfSlots { name, class } => format!(
                 r#"Trying to assign name "{name}" that is not in "__slots__" of type "{class}""#
             ),
@@ -734,6 +737,7 @@ impl<'db> Diagnostic<'db> {
 
             Redefinition{name, suffix} => format!(r#"Name "{name}" already defined {suffix}"#),
             CannotRedifineAs { name, as_ } => format!(r#"Cannot redefine "{name}" as {as_}"#),
+            CannotRedifineAsFinal => r#"Cannot redefine an existing name as final"#.to_string(),
             IncompatibleConditionalFunctionSignature { original, redefinition } => format!(
                 r#"Incompatible redefinition (redefinition with type "{redefinition}", original type "{original}")"#
             ),

@@ -630,7 +630,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             target,
             node_ref,
             &inf_annot,
-            AssignKind::Annotation,
+            AssignKind::Annotation(inf_annot.maybe_saved_specific(self.i_s.db)),
             |index, _| {
                 self.file.points.set(
                     index,
@@ -662,9 +662,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             AssignmentContent::Normal(targets, right_side) => {
                 let type_comment_result = self.check_for_type_comment(assignment);
 
-                let assign_kind = match type_comment_result.is_some() {
-                    true => AssignKind::Annotation,
-                    false => AssignKind::Normal,
+                let assign_kind = match type_comment_result.as_ref() {
+                    Some(r) => AssignKind::Annotation(r.inferred.maybe_saved_specific(self.i_s.db)),
+                    None => AssignKind::Normal,
                 };
                 let right = if let Some(type_comment) = type_comment_result {
                     let right = self.infer_assignment_right_side(
@@ -701,14 +701,16 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             }
             AssignmentContent::WithAnnotation(target, annotation, right_side) => {
                 self.ensure_cached_annotation(annotation, right_side.is_some());
-                match self.file.points.get(annotation.index()).maybe_specific() {
+                let specific = self.file.points.get(annotation.index()).maybe_specific();
+                let assign_kind = AssignKind::Annotation(specific);
+                match specific {
                     Some(Specific::TypingTypeAlias) => {
                         let inf = self.compute_explicit_type_assignment(assignment);
                         self.assign_single_target(
                             target,
                             node_ref,
                             &inf,
-                            AssignKind::Annotation,
+                            assign_kind,
                             |index, inf| {
                                 inf.clone().save_redirect(self.i_s, self.file, index);
                             },
@@ -734,7 +736,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             target,
                             NodeRef::new(self.file, index),
                             &right,
-                            AssignKind::Annotation,
+                            assign_kind,
                             |index, right| {
                                 right.clone().save_redirect(self.i_s, self.file, index);
                             },
@@ -1054,7 +1056,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         };
         if let Some(first_index) = first_defined_name_of_multi_def(self.file, current_index) {
             let special_def = self.is_special_definition(first_index);
-            if assign_kind == AssignKind::Annotation || special_def.is_some() {
+            if matches!(assign_kind, AssignKind::Annotation(_)) || special_def.is_some() {
                 let name_def_ref = NodeRef::new(self.file, name_def.index());
                 if let Some(ComplexPoint::NewTypeDefinition(special_def)) = special_def {
                     name_def_ref.add_issue(
@@ -1065,9 +1067,16 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         },
                     )
                 }
-                self.add_redefinition_issue(first_index, name_def.as_code(), |issue| {
-                    name_def_ref.add_issue(self.i_s, issue)
-                });
+                if matches!(
+                    assign_kind,
+                    AssignKind::Annotation(Some(Specific::TypingFinal))
+                ) {
+                    name_def_ref.add_issue(self.i_s, IssueKind::CannotRedifineAsFinal);
+                } else {
+                    self.add_redefinition_issue(first_index, name_def.as_code(), |issue| {
+                        name_def_ref.add_issue(self.i_s, issue)
+                    });
+                }
                 // Nothing needed to assign anymore, the original definition was already assigned.
                 return;
             }
@@ -1214,7 +1223,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         );
                     }
                 } else {
-                    if matches!(assign_kind, AssignKind::Annotation) {
+                    if matches!(assign_kind, AssignKind::Annotation(_)) {
                         self.add_issue(primary_target.index(), IssueKind::InvalidTypeDeclaration);
                     }
                     if matches!(assign_kind, AssignKind::Normal) {
@@ -1320,7 +1329,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             }
             Target::IndexExpression(primary_target) => {
                 let base = self.infer_primary_target_or_atom(primary_target.first());
-                if matches!(assign_kind, AssignKind::Annotation) {
+                if matches!(assign_kind, AssignKind::Annotation(_)) {
                     self.add_issue(primary_target.index(), IssueKind::UnexpectedTypeDeclaration);
                 }
                 let PrimaryContent::GetItem(slice_type) = primary_target.second() else {
@@ -3658,11 +3667,11 @@ fn targets_len_infos(targets: TargetIterator) -> (usize, TupleLenInfos) {
     )
 }
 
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum AssignKind {
-    Annotation, // `a: int = 1` or `a = 1 # type: int
-    Normal,     // a = 1
-    AugAssign,  // a += 1
+    Annotation(Option<Specific>), // `a: int = 1` or `a = 1 # type: int
+    Normal,                       // a = 1
+    AugAssign,                    // a += 1
 }
 
 pub enum StarImportResult {
