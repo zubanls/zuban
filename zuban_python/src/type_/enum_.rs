@@ -243,7 +243,6 @@ pub fn infer_value_on_member(
                                 i_s,
                                 |issue| node_ref.add_issue(i_s, issue),
                                 "_generate_next_value_",
-                                LookupKind::Normal,
                             )
                             .into_maybe_inferred()
                             .and_then(|inf| {

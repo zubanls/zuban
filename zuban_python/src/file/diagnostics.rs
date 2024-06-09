@@ -2059,7 +2059,7 @@ fn check_override(
                 &mut notes,
                 &i_s.with_class_context(&override_class),
                 override_t,
-                override_class.simple_lookup(i_s, |_| todo!(), name, LookupKind::Normal),
+                override_class.simple_lookup(i_s, |_| (), name),
             );
 
             if op_method_wider_note {

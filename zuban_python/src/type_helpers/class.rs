@@ -1143,10 +1143,10 @@ impl<'db: 'a, 'a> Class<'a> {
                                             name,
                                             &t1,
                                             &t2,
-                                            &c.simple_lookup(i_s, |_| (), name, LookupKind::Normal)
+                                            &c.simple_lookup(i_s, |_| (), name)
                                                 .into_inferred()
                                                 .as_cow_type(i_s),
-                                            &cls.simple_lookup(i_s, |_| (), name, LookupKind::Normal)
+                                            &cls.simple_lookup(i_s, |_| (), name)
                                                 .into_inferred()
                                                 .as_cow_type(i_s),
                                         ),
@@ -1943,23 +1943,9 @@ impl<'db: 'a, 'a> Class<'a> {
         i_s: &InferenceState,
         add_issue: impl Fn(IssueKind),
         name: &str,
-        kind: LookupKind,
     ) -> LookupResult {
-        self.lookup_with_details(i_s, add_issue, name, kind).lookup
-    }
-
-    pub(crate) fn lookup_with_details(
-        &self,
-        i_s: &InferenceState<'db, '_>,
-        add_issue: impl Fn(IssueKind),
-        name: &str,
-        kind: LookupKind,
-    ) -> LookupDetails<'a> {
-        self.lookup(
-            i_s,
-            name,
-            ClassLookupOptions::new(&add_issue).with_kind(kind),
-        )
+        self.lookup(i_s, name, ClassLookupOptions::new(&add_issue))
+            .lookup
     }
 
     pub fn qualified_name(&self, db: &Database) -> String {
@@ -1981,12 +1967,15 @@ impl<'db: 'a, 'a> Class<'a> {
         match self.use_cached_class_infos(i_s.db).metaclass {
             MetaclassState::Some(_) => {
                 if let Some(__getitem__) = self
-                    .simple_lookup(
+                    .lookup(
                         i_s,
-                        |issue| slice_type.as_node_ref().add_issue(i_s, issue),
                         "__getitem__",
-                        LookupKind::OnlyType,
+                        ClassLookupOptions::new(&|issue| {
+                            slice_type.as_node_ref().add_issue(i_s, issue)
+                        })
+                        .with_kind(LookupKind::OnlyType),
                     )
+                    .lookup
                     .into_maybe_inferred()
                 {
                     return __getitem__.execute(i_s, &slice_type.as_args(*i_s));

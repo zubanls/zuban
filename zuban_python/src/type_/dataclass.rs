@@ -24,7 +24,7 @@ use crate::{
     node_ref::NodeRef,
     python_state::NAME_TO_FUNCTION_DIFF,
     type_::{StarParamType, StarStarParamType},
-    type_helpers::{Callable, Class, Instance, LookupDetails, TypeOrClass},
+    type_helpers::{Callable, Class, ClassLookupOptions, Instance, LookupDetails, TypeOrClass},
 };
 
 const ORDER_METHOD_NAMES: [&str; 4] = ["__lt__", "__gt__", "__le__", "__ge__"];
@@ -710,9 +710,11 @@ pub(crate) fn lookup_on_dataclass_type<'a>(
             AttributeKind::Attribute,
         );
     }
-    self_
-        .class(i_s.db)
-        .lookup_with_details(i_s, add_issue, name, kind)
+    self_.class(i_s.db).lookup(
+        i_s,
+        name,
+        ClassLookupOptions::new(&add_issue).with_kind(kind),
+    )
 }
 
 pub fn lookup_symbol_internal(

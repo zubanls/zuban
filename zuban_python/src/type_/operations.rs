@@ -22,7 +22,8 @@ use crate::{
     node_ref::NodeRef,
     type_::NamedTuple,
     type_helpers::{
-        lookup_in_namespace, Callable, Class, Instance, LookupDetails, Module, OverloadedFunction,
+        lookup_in_namespace, Callable, Class, ClassLookupOptions, Instance, LookupDetails, Module,
+        OverloadedFunction,
     },
     utils::rc_unwrap_or_clone,
 };
@@ -557,18 +558,22 @@ pub(crate) fn attribute_access_of_type(
             }
             return;
         }
-        Type::Class(g) => g
-            .class(i_s.db)
-            .lookup_with_details(i_s, add_issue, name, kind),
-        Type::Literal(l) => l
-            .as_instance(i_s.db)
-            .class
-            .lookup_with_details(i_s, add_issue, name, kind),
+        Type::Class(g) => g.class(i_s.db).lookup(
+            i_s,
+            name,
+            ClassLookupOptions::new(&add_issue).with_kind(kind),
+        ),
+        Type::Literal(l) => l.as_instance(i_s.db).class.lookup(
+            i_s,
+            name,
+            ClassLookupOptions::new(&add_issue).with_kind(kind),
+        ),
         Type::Callable(_) => LookupDetails::none(),
-        Type::Self_ => i_s
-            .current_class()
-            .unwrap()
-            .lookup_with_details(i_s, add_issue, name, kind),
+        Type::Self_ => i_s.current_class().unwrap().lookup(
+            i_s,
+            name,
+            ClassLookupOptions::new(&add_issue).with_kind(kind),
+        ),
         Type::Any(cause) => i_s
             .db
             .python_state
@@ -578,22 +583,22 @@ pub(crate) fn attribute_access_of_type(
             .or_else(|| LookupDetails::any(*cause)),
         t @ Type::Enum(e) => lookup_on_enum_class(i_s, add_issue, e, name, result_context),
         Type::Dataclass(d) => lookup_on_dataclass_type(d, i_s, add_issue, name, kind),
-        Type::TypedDict(d) => i_s
-            .db
-            .python_state
-            .typed_dict_class()
-            .lookup_with_details(i_s, add_issue, name, kind),
+        Type::TypedDict(d) => i_s.db.python_state.typed_dict_class().lookup(
+            i_s,
+            name,
+            ClassLookupOptions::new(&add_issue).with_kind(kind),
+        ),
         Type::NamedTuple(nt) => nt.type_lookup(i_s, name, Some(&|| (*in_type).clone())),
-        Type::Tuple(tup) => i_s
-            .db
-            .python_state
-            .tuple_class(i_s.db, tup)
-            .lookup_with_details(i_s, add_issue, name, kind),
-        Type::Type(_) => i_s
-            .db
-            .python_state
-            .bare_type_class()
-            .lookup_with_details(i_s, add_issue, name, kind),
+        Type::Tuple(tup) => i_s.db.python_state.tuple_class(i_s.db, tup).lookup(
+            i_s,
+            name,
+            ClassLookupOptions::new(&add_issue).with_kind(kind),
+        ),
+        Type::Type(_) => i_s.db.python_state.bare_type_class().lookup(
+            i_s,
+            name,
+            ClassLookupOptions::new(&add_issue).with_kind(kind),
+        ),
         t => todo!("{name} on {t:?}"),
     };
     callable(&Type::Type(in_type.clone()), details)
