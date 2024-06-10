@@ -1035,16 +1035,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         let i_s = self.i_s;
 
         let check_assign_to_known_definition = |first_name_link, original: &Inferred| {
-            if original.maybe_saved_specific(i_s.db) == Some(Specific::AnnotationOrTypeCommentFinal)
-            {
-                from.add_issue(
-                    i_s,
-                    IssueKind::CannotAssignToFinalName {
-                        name: name_def.as_code().into(),
-                    },
-                );
+            if original.add_issue_if_final_assignment(i_s, from, name_def.as_code(), false) {
                 return;
             }
+
             let original_t = original.as_cow_type(i_s);
             let check_for_error = || {
                 original_t.error_if_not_matches(
@@ -1287,45 +1281,45 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             _ => (),
                         }
 
+                        let name_str = name_definition.as_code();
                         let inf = t
                             .maybe_type_of_class(i_s.db)
                             .and_then(|c| {
                                 // We need to handle class descriptors separately, because
                                 // there the __get__ descriptor should not be applied.
-                                c.lookup_without_descriptors(
-                                    i_s,
-                                    node_ref,
-                                    name_definition.as_code(),
-                                )
-                                .lookup
-                                .into_maybe_inferred()
-                                .map(|inf| {
-                                    if inf.as_cow_type(i_s).is_func_or_overload_not_any_callable() {
-                                        from.add_issue(i_s, IssueKind::CannotAssignToAMethod);
-                                    }
-                                    inf
-                                })
+                                c.lookup_without_descriptors(i_s, node_ref, name_str)
+                                    .lookup
+                                    .into_maybe_inferred()
+                                    .map(|inf| {
+                                        if inf
+                                            .as_cow_type(i_s)
+                                            .is_func_or_overload_not_any_callable()
+                                        {
+                                            from.add_issue(i_s, IssueKind::CannotAssignToAMethod);
+                                        }
+                                        inf
+                                    })
                             })
                             .unwrap_or_else(|| {
                                 t.lookup(
                                     i_s,
                                     node_ref.file_index(),
-                                    name_definition.as_code(),
+                                    name_str,
                                     LookupKind::Normal,
                                     &mut ResultContext::Unknown,
                                     &|issue| node_ref.add_issue(i_s, issue),
-                                    &|t| {
-                                        add_attribute_error(
-                                            i_s,
-                                            node_ref,
-                                            &base,
-                                            t,
-                                            name_definition.as_code(),
-                                        )
-                                    },
+                                    &|t| add_attribute_error(i_s, node_ref, &base, t, name_str),
                                 )
                                 .into_inferred()
                             });
+                        if inf.add_issue_if_final_assignment(
+                            i_s,
+                            from,
+                            name_str,
+                            !matches!(t, Type::Module(_)),
+                        ) {
+                            continue;
+                        }
                         inf.as_cow_type(i_s).error_if_not_matches(
                             i_s,
                             value,

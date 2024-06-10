@@ -100,6 +100,9 @@ impl<'a> Instance<'a> {
                 name: name_str.into(),
             });
         }
+        if inf.add_issue_if_final_assignment(i_s, from, name_str, true) {
+            return;
+        }
 
         let assign_to = inf.as_cow_type(i_s);
         match assign_to.as_ref() {

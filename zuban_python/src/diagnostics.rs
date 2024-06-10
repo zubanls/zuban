@@ -54,7 +54,7 @@ pub(crate) enum IssueKind {
     IncompatibleImportAssignment { name: Box<str>, got: Box<str>, expected: Box<str> },
     CannotAssignToClassVarViaInstance { name: Box<str> },
     CannotAssignToAMethod,
-    CannotAssignToFinalName { name: Box<str> },
+    CannotAssignToFinal { name: Box<str>, is_attribute: bool },
     AssigningToNameOutsideOfSlots { name: Box<str>, class: Box<str> },
     ListItemMismatch { item: usize, got: Box<str>, expected: Box<str> },
     ListComprehensionMismatch { got: Box<str>, expected: Box<str> },
@@ -702,7 +702,13 @@ impl<'db> Diagnostic<'db> {
                 "Cannot assign to class variable \"{name}\" via instance"
             ),
             CannotAssignToAMethod => "Cannot assign to a method".to_owned(),
-            CannotAssignToFinalName { name } => format!("Cannot assign to final name \"{name}\""),
+            CannotAssignToFinal { is_attribute, name } => {
+                if *is_attribute {
+                    format!("Cannot assign to final attribute \"{name}\"")
+                } else {
+                    format!("Cannot assign to final name \"{name}\"")
+                }
+            }
             AssigningToNameOutsideOfSlots { name, class } => format!(
                 r#"Trying to assign name "{name}" that is not in "__slots__" of type "{class}""#
             ),

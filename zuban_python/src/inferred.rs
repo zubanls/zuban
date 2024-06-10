@@ -2045,6 +2045,28 @@ impl<'db: 'slf, 'slf> Inferred {
         );
     }
 
+    #[inline]
+    pub fn add_issue_if_final_assignment(
+        &self,
+        i_s: &InferenceState,
+        from: NodeRef,
+        name: &str,
+        is_attribute: bool,
+    ) -> bool {
+        let result =
+            self.maybe_saved_specific(i_s.db) == Some(Specific::AnnotationOrTypeCommentFinal);
+        if result {
+            from.add_issue(
+                i_s,
+                IssueKind::CannotAssignToFinal {
+                    is_attribute,
+                    name: name.into(),
+                },
+            );
+        }
+        result
+    }
+
     pub fn maybe_bound_method_of_function(&self) -> Option<PointLink> {
         match &self.state {
             InferredState::BoundMethod { func_link, .. } => Some(*func_link),
