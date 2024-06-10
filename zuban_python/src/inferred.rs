@@ -929,6 +929,8 @@ impl<'db: 'slf, 'slf> Inferred {
                                 specific == Specific::AnnotationOrTypeCommentClassVar;
                             let attr_kind = if is_class_var {
                                 AttributeKind::ClassVar
+                            } else if specific == Specific::AnnotationOrTypeCommentFinal {
+                                AttributeKind::Final
                             } else {
                                 AttributeKind::AnnotatedAttribute
                             };
@@ -1250,6 +1252,8 @@ impl<'db: 'slf, 'slf> Inferred {
                             }
                             if specific == Specific::AnnotationOrTypeCommentClassVar {
                                 attr_kind = AttributeKind::ClassVar
+                            } else if specific == Specific::AnnotationOrTypeCommentFinal {
+                                attr_kind = AttributeKind::Final
                             } else {
                                 attr_kind = AttributeKind::AnnotatedAttribute
                             };
@@ -2521,6 +2525,7 @@ pub enum AttributeKind {
     AnnotatedAttribute,
     Attribute,
     ClassVar,
+    Final,
     Property { writable: bool },
     Classmethod,
     Staticmethod,

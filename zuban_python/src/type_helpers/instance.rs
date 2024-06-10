@@ -69,10 +69,9 @@ impl<'a> Instance<'a> {
         };
 
         let lookup_details = self.class.lookup_without_descriptors(i_s, from, name_str);
-        let result = lookup_details
-            .lookup
-            .or_else(|| self.lookup(i_s, add_issue, name_str, LookupKind::Normal));
-        let Some(inf) = result.into_maybe_inferred() else {
+        let lookup_details = lookup_details
+            .or_else(|| self.lookup_with_details(i_s, add_issue, name_str, LookupKind::Normal));
+        let Some(inf) = lookup_details.lookup.into_maybe_inferred() else {
             let t = self.class.as_type(i_s.db);
             let l = self.lookup_with_details(i_s, add_issue, "__setattr__", LookupKind::OnlyType);
             if let Some(setattr) = l.lookup.into_maybe_inferred() {
@@ -100,7 +99,14 @@ impl<'a> Instance<'a> {
                 name: name_str.into(),
             });
         }
-        if inf.add_issue_if_final_assignment(i_s, from, name_str, true) {
+        if lookup_details.attr_kind == AttributeKind::Final {
+            from.add_issue(
+                i_s,
+                IssueKind::CannotAssignToFinal {
+                    is_attribute: true,
+                    name: name_str.into(),
+                },
+            );
             return;
         }
 
@@ -313,17 +319,22 @@ impl<'a> Instance<'a> {
                     if let Some(self_symbol) = c.class_storage.self_symbol_table.lookup_symbol(name)
                     {
                         let i_s = i_s.with_class_context(&c);
+                        let inf = c
+                            .node_ref
+                            .file
+                            .inference(&i_s)
+                            .infer_name_of_definition_by_index(self_symbol);
+                        if inf.maybe_saved_specific(i_s.db)
+                            == Some(Specific::AnnotationOrTypeCommentFinal)
+                        {
+                            attr_kind = AttributeKind::Final
+                        }
                         return LookupDetails {
                             class,
                             attr_kind,
                             lookup: LookupResult::GotoName {
                                 name: PointLink::new(c.node_ref.file.file_index(), self_symbol),
-                                inf: c
-                                    .node_ref
-                                    .file
-                                    .inference(&i_s)
-                                    .infer_name_of_definition_by_index(self_symbol)
-                                    .resolve_class_type_vars(&i_s, &self.class, &c),
+                                inf: inf.resolve_class_type_vars(&i_s, &self.class, &c),
                             },
                         };
                     }
