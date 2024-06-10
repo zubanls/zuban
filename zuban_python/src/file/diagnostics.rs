@@ -646,6 +646,19 @@ impl<'db> Inference<'db, '_, '_> {
                         .with_ignore_self(),
                 );
                 if let Some(original_inf) = lookup_infos.lookup.into_maybe_inferred() {
+                    if lookup_infos.attr_kind == AttributeKind::Final {
+                        debug!("TODO add cannot assign to final code");
+                        /*
+                        NodeRef::new(self.file, *index).add_issue(
+                            &i_s,
+                            IssueKind::CannotAssignToFinal {
+                                name: name.into(),
+                                is_attribute: false,
+                            },
+                        );
+                        */
+                        continue;
+                    }
                     let is_final_callable = match original_inf.as_cow_type(&i_s).as_ref() {
                         Type::Callable(c) => c.is_final,
                         Type::FunctionOverload(_) => {
