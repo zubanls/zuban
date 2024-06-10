@@ -766,12 +766,9 @@ testLiteralFinalMismatchCausesError
 testFinalAddFinalVarOverride
 testFinalDelayedDefinition
 testFinalDelayedDefinitionOtherMethod
-testFinalReassignModuleVar3
-testFinalReassignInstanceVarClassBody
 testFinalReassignInstanceVarInit
 testFinalReassignInstanceVarClassVsInit
 testFinalReassignInstanceVarMethod
-testFinalReassignInstanceVarExternalClass
 testFinalDefiningNoRhsSubclass
 # Overrides
 testFinalOverridingVarClassBody
@@ -792,7 +789,7 @@ testFinalCantOverrideWriteable
 testFinalInDataclass
 # Final literal issues
 testEnumCreatedFromFinalValue
-# "Cannot access final instance attribute "x" on class object"
+# Final generics not resolved?
 testFinalDefiningTypevarsImplicit
 # Final "Protocol member PPS.attr expected settable variable, got read-only attribute"
 testFinalAttributeProtocol
