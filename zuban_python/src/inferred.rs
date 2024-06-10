@@ -390,7 +390,8 @@ impl<'db: 'slf, 'slf> Inferred {
                         todo!("might not even happen - remove")
                         //return i_s.infer_param(&definition);
                     }
-                    Specific::AnnotationOrTypeCommentWithTypeVars => {
+                    Specific::AnnotationOrTypeCommentWithTypeVars
+                    | Specific::AnnotationOrTypeCommentFinal => {
                         let t = use_cached_annotation_or_type_comment(i_s, definition);
                         let d = replace_class_type_vars(i_s.db, &t, attribute_class, &|| {
                             class.as_type(i_s.db)
@@ -902,6 +903,7 @@ impl<'db: 'slf, 'slf> Inferred {
                         }
                         // TODO this should have the case of Specific::AnnotationOrTypeCommentClassVar as well
                         Specific::AnnotationOrTypeCommentWithTypeVars
+                        | Specific::AnnotationOrTypeCommentFinal
                             if !attribute_class.has_simple_self_generics() =>
                         {
                             let t = use_cached_annotation_or_type_comment(i_s, node_ref);
@@ -920,7 +922,8 @@ impl<'db: 'slf, 'slf> Inferred {
                         specific @ (Specific::AnnotationOrTypeCommentWithTypeVars
                         | Specific::AnnotationOrTypeCommentWithoutTypeVars
                         | Specific::AnnotationOrTypeCommentSimpleClassInstance
-                        | Specific::AnnotationOrTypeCommentClassVar) => {
+                        | Specific::AnnotationOrTypeCommentClassVar
+                        | Specific::AnnotationOrTypeCommentFinal) => {
                             let t = use_cached_annotation_or_type_comment(i_s, node_ref);
                             let is_class_var =
                                 specific == Specific::AnnotationOrTypeCommentClassVar;
@@ -1225,7 +1228,8 @@ impl<'db: 'slf, 'slf> Inferred {
                         specific @ (Specific::AnnotationOrTypeCommentWithoutTypeVars
                         | Specific::AnnotationOrTypeCommentClassVar
                         | Specific::AnnotationOrTypeCommentWithTypeVars
-                        | Specific::AnnotationOrTypeCommentSimpleClassInstance) => {
+                        | Specific::AnnotationOrTypeCommentSimpleClassInstance
+                        | Specific::AnnotationOrTypeCommentFinal) => {
                             if specific == Specific::AnnotationOrTypeCommentWithTypeVars
                                 && apply_descriptor
                             {
