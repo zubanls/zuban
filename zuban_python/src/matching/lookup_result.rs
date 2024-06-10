@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use parsa_python_cst::NodeIndex;
 
 use crate::{
@@ -31,6 +33,14 @@ impl LookupResult {
         match self {
             Self::GotoName { inf, .. } | Self::UnknownName(inf) => Some(inf),
             Self::FileReference(f) => Some(Inferred::new_file_reference(f)),
+            Self::None => None,
+        }
+    }
+
+    pub fn maybe_inferred(&self) -> Option<Cow<Inferred>> {
+        match self {
+            Self::GotoName { inf, .. } | Self::UnknownName(inf) => Some(Cow::Borrowed(inf)),
+            Self::FileReference(f) => Some(Cow::Owned(Inferred::new_file_reference(*f))),
             Self::None => None,
         }
     }

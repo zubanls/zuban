@@ -9,7 +9,7 @@ use super::{
 };
 use crate::{
     arguments::{Args, NoArgs},
-    database::FileIndex,
+    database::{FileIndex, Specific},
     debug,
     diagnostics::IssueKind,
     getitem::SliceType,
@@ -39,7 +39,29 @@ impl Type {
         add_issue: &dyn Fn(IssueKind),
         on_lookup_error: OnLookupError,
     ) -> LookupResult {
-        let mut result: Option<LookupResult> = None;
+        self.lookup_with_first_attr_kind(
+            i_s,
+            from_file,
+            name,
+            lookup_kind,
+            result_context,
+            add_issue,
+            on_lookup_error,
+        )
+        .0
+    }
+
+    pub(crate) fn lookup_with_first_attr_kind(
+        &self,
+        i_s: &InferenceState,
+        from_file: FileIndex,
+        name: &str,
+        lookup_kind: LookupKind,
+        result_context: &mut ResultContext,
+        add_issue: &dyn Fn(IssueKind),
+        on_lookup_error: OnLookupError,
+    ) -> (LookupResult, AttributeKind) {
+        let mut result: Option<(LookupResult, AttributeKind)> = None;
         self.run_after_lookup_on_each_union_member(
             i_s,
             None,
@@ -53,12 +75,15 @@ impl Type {
                     on_lookup_error(t);
                 }
                 result = Some(if let Some(l) = result.take() {
-                    LookupResult::UnknownName(
-                        l.into_inferred()
-                            .simplified_union(i_s, lookup_result.lookup.into_inferred()),
+                    (
+                        LookupResult::UnknownName(
+                            l.0.into_inferred()
+                                .simplified_union(i_s, lookup_result.lookup.into_inferred()),
+                        ),
+                        l.1,
                     )
                 } else {
-                    lookup_result.lookup
+                    (lookup_result.lookup, lookup_result.attr_kind)
                 })
             },
         );
@@ -194,10 +219,15 @@ impl Type {
             Type::Module(file_index) => {
                 let module = Module::from_file_index(i_s.db, *file_index);
                 let lookup = module.lookup(i_s, add_issue, name);
-                callable(
-                    self,
-                    LookupDetails::new(self.clone(), lookup, AttributeKind::Attribute),
-                )
+                let mut attr_kind = AttributeKind::Attribute;
+                if let Some(inf) = lookup.maybe_inferred() {
+                    if inf.maybe_saved_specific(i_s.db)
+                        == Some(Specific::AnnotationOrTypeCommentFinal)
+                    {
+                        attr_kind = AttributeKind::Final
+                    }
+                }
+                callable(self, LookupDetails::new(self.clone(), lookup, attr_kind))
             }
             Type::Namespace(namespace) => callable(
                 self,

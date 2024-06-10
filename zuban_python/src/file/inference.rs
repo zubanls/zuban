@@ -18,7 +18,7 @@ use crate::{
     getitem::SliceType,
     imports::{find_ancestor, global_import, python_import, ImportResult},
     inference_state::InferenceState,
-    inferred::{add_attribute_error, specific_to_type, Inferred, UnionValue},
+    inferred::{add_attribute_error, specific_to_type, AttributeKind, Inferred, UnionValue},
     matching::{
         format_got_expected, matches_simple_params, CouldBeALiteral, FormatData, IteratorContent,
         LookupKind, LookupResult, Matcher, OnTypeError, ResultContext, TupleLenInfos,
@@ -1282,42 +1282,43 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         }
 
                         let name_str = name_definition.as_code();
-                        let inf = t
-                            .maybe_type_of_class(i_s.db)
-                            .and_then(|c| {
-                                // We need to handle class descriptors separately, because
-                                // there the __get__ descriptor should not be applied.
-                                c.lookup_without_descriptors(i_s, node_ref, name_str)
-                                    .lookup
-                                    .into_maybe_inferred()
-                                    .map(|inf| {
-                                        if inf
-                                            .as_cow_type(i_s)
-                                            .is_func_or_overload_not_any_callable()
-                                        {
-                                            from.add_issue(i_s, IssueKind::CannotAssignToAMethod);
-                                        }
-                                        inf
-                                    })
-                            })
-                            .unwrap_or_else(|| {
-                                t.lookup(
-                                    i_s,
-                                    node_ref.file_index(),
-                                    name_str,
-                                    LookupKind::Normal,
-                                    &mut ResultContext::Unknown,
-                                    &|issue| node_ref.add_issue(i_s, issue),
-                                    &|t| add_attribute_error(i_s, node_ref, &base, t, name_str),
-                                )
-                                .into_inferred()
-                            });
-                        if inf.add_issue_if_final_assignment(
-                            i_s,
-                            from,
-                            name_str,
-                            !matches!(t, Type::Module(_)),
-                        ) {
+                        let mut lookup = LookupResult::None;
+                        let mut attr_kind = AttributeKind::Attribute;
+                        if let Some(c) = t.maybe_type_of_class(i_s.db) {
+                            // We need to handle class descriptors separately, because
+                            // there the __get__ descriptor should not be applied.
+                            let lookup_details =
+                                c.lookup_without_descriptors(i_s, node_ref, name_str);
+                            if let Some(inf) = lookup_details.lookup.maybe_inferred() {
+                                if inf.as_cow_type(i_s).is_func_or_overload_not_any_callable() {
+                                    from.add_issue(i_s, IssueKind::CannotAssignToAMethod);
+                                }
+                            }
+                            lookup = lookup_details.lookup;
+                            attr_kind = lookup_details.attr_kind;
+                        }
+                        lookup = lookup.or_else(|| {
+                            let result = t.lookup_with_first_attr_kind(
+                                i_s,
+                                node_ref.file_index(),
+                                name_str,
+                                LookupKind::Normal,
+                                &mut ResultContext::Unknown,
+                                &|issue| node_ref.add_issue(i_s, issue),
+                                &|t| add_attribute_error(i_s, node_ref, &base, t, name_str),
+                            );
+                            attr_kind = result.1;
+                            result.0
+                        });
+                        let inf = lookup.into_inferred();
+                        if attr_kind == AttributeKind::Final {
+                            from.add_issue(
+                                i_s,
+                                IssueKind::CannotAssignToFinal {
+                                    is_attribute: !matches!(t, Type::Module(_)),
+                                    name: name_str.into(),
+                                },
+                            );
                             continue;
                         }
                         inf.as_cow_type(i_s).error_if_not_matches(

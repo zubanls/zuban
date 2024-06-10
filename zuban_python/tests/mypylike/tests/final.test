@@ -1,0 +1,8 @@
+[case final_in_generic_class_attr]
+from typing import Final, Generic, TypeVar
+T = TypeVar("T")
+
+class Foo(Generic[T]):
+    x: Final = 1
+
+Foo.x = 3  # E: Cannot assign to final attribute "x"
