@@ -3683,8 +3683,10 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                 // definition like:
                 //
                 //     Foo = 1  # type: Any
-                if let Type::Any(cause) = type_comment.type_.as_ref() {
-                    return TypeNameLookup::Unknown(*cause);
+                if let TypeCommentState::Type(t) = &type_comment.type_ {
+                    if let Type::Any(cause) = t.as_ref() {
+                        return TypeNameLookup::Unknown(*cause);
+                    }
                 }
             }
             if !is_explicit
@@ -3897,10 +3899,20 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                         });
                         debug_assert!(type_vars.is_empty());
                     }
+                    let inf_node_ref = NodeRef::new(f, index);
                     TypeCommentDetails {
-                        inferred: Inferred::from_saved_node_ref(NodeRef::new(f, index)),
-                        type_: inference
-                            .use_cached_annotation_or_type_comment_type_internal(index, expr),
+                        inferred: Inferred::from_saved_node_ref(inf_node_ref),
+                        type_: if inf_node_ref.point().maybe_specific()
+                            == Some(Specific::AnnotationOrTypeCommentFinal)
+                        {
+                            TypeCommentState::UnfinishedFinal(inf_node_ref)
+                        } else {
+                            TypeCommentState::Type(
+                                inference.use_cached_annotation_or_type_comment_type_internal(
+                                    index, expr,
+                                ),
+                            )
+                        },
                     }
                 }
                 StarExpressionContent::Tuple(t) => {
@@ -3915,7 +3927,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                         type_: if let ComplexPoint::TypeInstance(type_) =
                             f.complex_points.get(complex_index)
                         {
-                            Cow::Borrowed(type_)
+                            TypeCommentState::Type(Cow::Borrowed(type_))
                         } else {
                             unreachable!()
                         },
@@ -3928,7 +3940,9 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                 if let StmtOrError::Error(node_index) = stmt_or_error {
                     return TypeCommentDetails {
                         inferred: Inferred::new_any_from_error(),
-                        type_: Cow::Borrowed(&Type::Any(AnyCause::FromError)),
+                        type_: TypeCommentState::Type(Cow::Borrowed(&Type::Any(
+                            AnyCause::FromError,
+                        ))),
                     };
                 }
             }
@@ -3945,7 +3959,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
             );
             return TypeCommentDetails {
                 inferred: Inferred::new_any_from_error(),
-                type_: Cow::Borrowed(&Type::Any(AnyCause::FromError)),
+                type_: TypeCommentState::Type(Cow::Borrowed(&Type::Any(AnyCause::FromError))),
             };
         }
     }
@@ -4891,8 +4905,13 @@ struct TupleArgsDetails {
     empty_not_explicit: bool, // Explicit would be something like Unpack[Tuple[()]]
 }
 
+pub enum TypeCommentState<'db> {
+    Type(Cow<'db, Type>),
+    UnfinishedFinal(NodeRef<'db>),
+}
+
 pub struct TypeCommentDetails<'db> {
-    pub type_: Cow<'db, Type>,
+    pub type_: TypeCommentState<'db>,
     pub inferred: Inferred,
 }
 

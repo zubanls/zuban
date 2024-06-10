@@ -15,6 +15,7 @@ use crate::{
     },
     debug,
     diagnostics::{Issue, IssueKind},
+    file::type_computation::TypeCommentState,
     getitem::SliceType,
     imports::{find_ancestor, global_import, python_import, ImportResult},
     inference_state::InferenceState,
@@ -668,21 +669,28 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     None => AssignKind::Normal,
                 };
                 let right = if let Some(type_comment) = type_comment_result {
-                    let right = self.infer_assignment_right_side(
-                        right_side,
-                        &mut ResultContext::Known(&type_comment.type_),
-                    );
-                    // It is very weird, but somehow type comments in Mypy are allowed to have the
-                    // form of `x = None  # type: int` in classes, even with strict-optional. It's
-                    // even weirder that the form `x: int = None` is not allowed.
-                    if !(self.i_s.current_class().is_some()
-                        && matches!(right.as_cow_type(self.i_s).as_ref(), Type::None))
-                    {
-                        self.check_right_side_against_expected(
-                            &type_comment.type_,
-                            right,
-                            right_side,
-                        )
+                    match type_comment.type_ {
+                        TypeCommentState::Type(t) => {
+                            let right = self.infer_assignment_right_side(
+                                right_side,
+                                &mut ResultContext::Known(&t),
+                            );
+                            // It is very weird, but somehow type comments in Mypy are allowed to
+                            // have the form of `x = None  # type: int` in classes, even with
+                            // strict-optional. It's even weirder that the form `x: int = None` is
+                            // not allowed.
+                            if !(self.i_s.current_class().is_some()
+                                && matches!(right.as_cow_type(self.i_s).as_ref(), Type::None))
+                            {
+                                self.check_right_side_against_expected(&t, right, right_side)
+                            }
+                        }
+                        TypeCommentState::UnfinishedFinal(node_ref) => {
+                            self.fill_potentially_unfinished_final(
+                                node_ref.node_index,
+                                Some(right_side),
+                            );
+                        }
                     }
                     type_comment.inferred
                 } else {
@@ -720,28 +728,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     _ => {
                         let mut checked = false;
                         if specific == Some(Specific::AnnotationOrTypeCommentFinal) {
-                            let to_annot_expr = NodeRef::new(
-                                self.file,
-                                annotation.index() + ANNOTATION_TO_EXPR_DIFFERENCE,
-                            );
-                            if !to_annot_expr.point().calculated() {
-                                let t = if let Some(right_side) = right_side {
-                                    self.infer_assignment_right_side(
-                                        right_side,
-                                        &mut ResultContext::Unknown,
-                                    )
-                                    .as_type(self.i_s)
-                                } else {
-                                    self.add_issue(
-                                        annotation.index(),
-                                        IssueKind::FinalWithoutInitializerAndType,
-                                    );
-                                    Type::Any(AnyCause::FromError)
-                                };
-                                to_annot_expr
-                                    .insert_complex(ComplexPoint::TypeInstance(t), Locality::Todo);
-                                checked = true;
-                            }
+                            checked = self
+                                .fill_potentially_unfinished_final(annotation.index(), right_side)
                         }
                         if let Some(right_side) = right_side {
                             if !checked {
@@ -828,6 +816,27 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 self.infer_yield_expr(yield_expr, result_context)
             }
         }
+    }
+
+    fn fill_potentially_unfinished_final(
+        &self,
+        annotation_index: NodeIndex,
+        right_side: Option<AssignmentRightSide>,
+    ) -> bool {
+        let to_annot_expr =
+            NodeRef::new(self.file, annotation_index + ANNOTATION_TO_EXPR_DIFFERENCE);
+        let needed_recalculation = !to_annot_expr.point().calculated();
+        if needed_recalculation {
+            let t = if let Some(right_side) = right_side {
+                self.infer_assignment_right_side(right_side, &mut ResultContext::Unknown)
+                    .as_type(self.i_s)
+            } else {
+                self.add_issue(annotation_index, IssueKind::FinalWithoutInitializerAndType);
+                Type::Any(AnyCause::FromError)
+            };
+            to_annot_expr.insert_complex(ComplexPoint::TypeInstance(t), Locality::Todo);
+        }
+        needed_recalculation
     }
 
     pub fn infer_yield_expr(
