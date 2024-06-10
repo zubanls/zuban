@@ -218,6 +218,23 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> Init
                             .add_issue(i_s, IssueKind::DataclassContainsTypeAlias);
                         continue;
                     }
+                    Some(Specific::AnnotationOrTypeCommentFinal) => {
+                        if !file
+                            .points
+                            .get(annotation.expression().index())
+                            .calculated()
+                        {
+                            let annotation_ref = NodeRef::new(file, annotation.index());
+                            inference.fill_potentially_unfinished_final(
+                                annotation_ref.node_index,
+                                right_side,
+                            );
+                            if right_side.is_some_and(|right_side| !right_side.is_literal_value()) {
+                                annotation_ref
+                                    .add_issue(i_s, IssueKind::NeedTypeArgumentForFinalInDataclass)
+                            }
+                        }
+                    }
                     _ => (),
                 }
                 let mut t = inference

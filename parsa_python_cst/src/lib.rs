@@ -823,6 +823,28 @@ impl<'db> Expression<'db> {
         }
     }
 
+    pub fn is_literal_value(&self) -> bool {
+        match self.unpack() {
+            ExpressionContent::ExpressionPart(expr_part) => match expr_part {
+                ExpressionPart::Atom(atom_) => match atom_.unpack() {
+                    AtomContent::Float(_)
+                    | AtomContent::Int(_)
+                    | AtomContent::Complex(_)
+                    | AtomContent::Strings(_)
+                    | AtomContent::Bytes(_)
+                    | AtomContent::NoneLiteral
+                    | AtomContent::Bool(_) => true,
+                    AtomContent::NamedExpression(named_expr) => {
+                        named_expr.expression().is_literal_value()
+                    }
+                    _ => false,
+                },
+                _ => false,
+            },
+            _ => false,
+        }
+    }
+
     pub fn is_none_literal(&self) -> bool {
         matches!(self.maybe_unpacked_atom(), Some(AtomContent::NoneLiteral))
     }
@@ -2366,6 +2388,16 @@ impl AssignmentRightSide<'_> {
         match self {
             Self::YieldExpr(_) => None,
             Self::StarExpressions(star_exprs) => star_exprs.maybe_simple_expression(),
+        }
+    }
+
+    pub fn is_literal_value(&self) -> bool {
+        match self {
+            Self::YieldExpr(_) => false,
+            Self::StarExpressions(star_exprs) => match star_exprs.unpack() {
+                StarExpressionContent::Expression(expr) => expr.is_literal_value(),
+                _ => false,
+            },
         }
     }
 }

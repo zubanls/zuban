@@ -818,7 +818,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         }
     }
 
-    fn fill_potentially_unfinished_final(
+    pub fn fill_potentially_unfinished_final(
         &self,
         annotation_index: NodeIndex,
         right_side: Option<AssignmentRightSide>,

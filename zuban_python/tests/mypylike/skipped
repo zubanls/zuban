@@ -785,8 +785,6 @@ testFinalOverridingMethodWithVarImplicit
 testFinalOverridingMethodMultipleInheritance
 testFinalOverridingMethodMultipleInheritanceVar
 testFinalCantOverrideWriteable
-# : Final in dataclasses
-testFinalInDataclass
 # Final literal issues
 testEnumCreatedFromFinalValue
 # Final "Protocol member PPS.attr expected settable variable, got read-only attribute"
