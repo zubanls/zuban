@@ -97,7 +97,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         for simple_stmt in simple_stmts.iter() {
             match simple_stmt.unpack() {
                 SimpleStmtContent::Assignment(assignment) => {
-                    self.cache_assignment_nodes(assignment);
+                    self.cache_assignment(assignment);
                 }
                 SimpleStmtContent::ImportName(import_name) => {
                     self.cache_import_name(import_name);
@@ -642,7 +642,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         )
     }
 
-    pub fn cache_assignment_nodes(&self, assignment: Assignment) {
+    pub fn cache_assignment(&self, assignment: Assignment) {
         let node_ref = NodeRef::new(self.file, assignment.index());
         if node_ref.point().calculated() {
             return;

@@ -202,7 +202,7 @@ impl<'db> Inference<'db, '_, '_> {
                         );
                     }
 
-                    self.cache_assignment_nodes(assignment);
+                    self.cache_assignment(assignment);
                 }
                 SimpleStmtContent::StarExpressions(star_exprs) => {
                     self.infer_star_expressions(star_exprs, &mut ResultContext::ExpectUnused);

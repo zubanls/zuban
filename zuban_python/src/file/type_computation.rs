@@ -3823,7 +3823,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
             result
         } else {
             if let Some(annotation) = assignment.maybe_annotation() {
-                self.cache_assignment_nodes(assignment);
+                self.cache_assignment(assignment);
                 if let Type::Any(cause) = self.use_cached_annotation_type(annotation).as_ref() {
                     return TypeNameLookup::Unknown(*cause);
                 }
@@ -4694,7 +4694,7 @@ pub(super) fn check_type_name<'db: 'file, 'file>(
                 .get(new_name.name_definition().unwrap().index());
             let inference = name_node_ref.file.inference(i_s);
             if !def_point.calculated() || def_point.maybe_specific() != Some(Specific::Cycle) {
-                inference.cache_assignment_nodes(assignment);
+                inference.cache_assignment(assignment);
             }
             inference.compute_type_assignment(assignment, false)
         }
