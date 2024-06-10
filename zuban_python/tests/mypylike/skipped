@@ -785,8 +785,6 @@ testFinalOverridingMethodWithVarImplicit
 testFinalOverridingMethodMultipleInheritance
 testFinalOverridingMethodMultipleInheritanceVar
 testFinalCantOverrideWriteable
-# Final literal issues
-testEnumCreatedFromFinalValue
 # Final "Protocol member PPS.attr expected settable variable, got read-only attribute"
 testFinalAttributeProtocol
 testModuleAsProtocolImplementationFinal
@@ -1848,6 +1846,9 @@ testConstructorJoinsWithCustomMetaclass
 # Callable override https://github.com/python/mypy/issues/16549
 testClassSpec
 testClassSpecError
+
+# Final Literal[str] = "foo" is suddenly a Literal['foo']?
+testEnumCreatedFromFinalValue
 
 # "Access to generic class variables is ambiguous" (unimportant, because similar lint exists)
 testClassVarWithGeneric

@@ -1,8 +1,7 @@
 use std::{cell::OnceCell, rc::Rc};
 
 use parsa_python_cst::{
-    AtomContent, CodeIndex, DictElement, Expression, ExpressionContent, ExpressionPart,
-    StarLikeExpression, StarLikeExpressionIterator,
+    AtomContent, CodeIndex, DictElement, Expression, StarLikeExpression, StarLikeExpressionIterator,
 };
 
 use super::{
@@ -439,12 +438,12 @@ impl EnumMembers {
         &mut self,
         i_s: &InferenceState,
         enum_name: &DbString,
-        node_ref: NodeRef,
+        from: NodeRef,
         d: EnumMemberDefinition,
     ) {
         let member_name = d.name(i_s.db);
         if self.0.iter().any(|t| t.name(i_s.db) == member_name) {
-            node_ref.add_issue(
+            from.add_issue(
                 i_s,
                 IssueKind::EnumReusedMemberName {
                     enum_name: enum_name.as_str(i_s.db).into(),
@@ -468,11 +467,6 @@ fn gather_functional_enum_members(
     node_ref: NodeRef,
     expression: Expression,
 ) -> Option<Box<[EnumMemberDefinition]>> {
-    let ExpressionContent::ExpressionPart(ExpressionPart::Atom(atom)) = expression.unpack() else {
-        node_ref.add_issue(i_s, IssueKind::EnumInvalidSecondArgument);
-        return None;
-    };
-
     let mut members = EnumMembers::default();
 
     let get_tuple_like = |mut iterator: StarLikeExpressionIterator| -> Option<StringSlice> {
@@ -517,7 +511,7 @@ fn gather_functional_enum_members(
 
     let mut add_from_iterator_with_error = |iterator| -> Option<()> {
         if add_from_iterator(iterator).is_none() {
-            NodeRef::new(node_ref.file, atom.index()).add_issue(
+            NodeRef::new(node_ref.file, expression.index()).add_issue(
                 i_s,
                 IssueKind::EnumWithTupleOrListExpectsStringPairs {
                     name: class.name().into(),
@@ -528,26 +522,27 @@ fn gather_functional_enum_members(
             Some(())
         }
     };
-    match atom.unpack() {
-        AtomContent::List(list) => {
+
+    match expression.maybe_unpacked_atom() {
+        Some(AtomContent::List(list)) => {
             add_from_iterator_with_error(list.unpack())?;
         }
-        AtomContent::Tuple(tup) => {
+        Some(AtomContent::Tuple(tup)) => {
             add_from_iterator_with_error(tup.iter())?;
         }
-        AtomContent::Strings(s) => {
+        Some(AtomContent::Strings(s)) => {
             match DbString::from_python_string(node_ref.file_index(), s.as_python_string()) {
                 Some(s) => split_enum_members(
                     i_s,
                     enum_name,
-                    NodeRef::new(node_ref.file, atom.index()),
+                    NodeRef::new(node_ref.file, expression.index()),
                     &mut members,
                     &s,
                 ),
                 _ => todo!(),
             }
         }
-        AtomContent::Dict(d) => {
+        Some(AtomContent::Dict(d)) => {
             for element in d.iter_elements() {
                 let DictElement::KeyValue(kv) = element else {
                     node_ref.add_issue(
@@ -585,16 +580,13 @@ fn gather_functional_enum_members(
             }
         }
         _ => {
-            let inf = node_ref
-                .file
-                .inference(i_s)
-                .infer_atom(atom, &mut ResultContext::Unknown);
+            let inf = node_ref.file.inference(i_s).infer_expression(expression);
             if let Type::Literal(literal) = inf.as_cow_type(i_s).as_ref() {
                 if let LiteralKind::String(s) = &literal.kind {
                     split_enum_members(
                         i_s,
                         enum_name,
-                        NodeRef::new(node_ref.file, atom.index()),
+                        NodeRef::new(node_ref.file, expression.index()),
                         &mut members,
                         s,
                     );
@@ -611,7 +603,7 @@ fn gather_functional_enum_members(
 fn split_enum_members(
     i_s: &InferenceState,
     enum_name: &DbString,
-    node_ref: NodeRef,
+    from: NodeRef,
     members: &mut EnumMembers,
     s: &DbString,
 ) {
@@ -628,12 +620,7 @@ fn split_enum_members(
             }
             _ => DbString::RcStr(part.into()),
         };
-        members.add_member(
-            i_s,
-            enum_name,
-            node_ref,
-            EnumMemberDefinition::new(name, None),
-        );
+        members.add_member(i_s, enum_name, from, EnumMemberDefinition::new(name, None));
         start += part.len() as CodeIndex + 1;
     }
 }

@@ -81,3 +81,15 @@ reveal_type(E.x | E.y)  # N: Revealed type is "__main__.E"
 reveal_type(x | E.y)  # N: Revealed type is "__main__.E"
 reveal_type(E.x | x)  # N: Revealed type is "__main__.E"
 reveal_type(x | x)  # N: Revealed type is "__main__.E"
+
+[case enum_from_final]
+# Like testEnumCreatedFromFinalValue, but without Final[str], which makes no sense.
+from enum import Enum
+from typing_extensions import Final
+
+x: Final = 'ANT BEE CAT DOG'
+Animal = Enum('Animal', x)
+reveal_type(Animal.ANT)  # N: Revealed type is "Literal[__main__.Animal.ANT]?"
+reveal_type(Animal.BEE)  # N: Revealed type is "Literal[__main__.Animal.BEE]?"
+reveal_type(Animal.CAT)  # N: Revealed type is "Literal[__main__.Animal.CAT]?"
+reveal_type(Animal.DOG)  # N: Revealed type is "Literal[__main__.Animal.DOG]?"
