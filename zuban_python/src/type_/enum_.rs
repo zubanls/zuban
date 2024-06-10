@@ -224,20 +224,21 @@ pub fn infer_value_on_member(
         // defined.
         Some(link) if !enum_.has_customized_new(i_s) => {
             let node_ref = NodeRef::from_link(i_s.db, link);
+            let enum_class = enum_.class(i_s.db);
+            let class_i_s = &i_s.with_class_context(&enum_class);
             let inferred = if let Some(name) = node_ref.maybe_name() {
                 node_ref
                     .file
-                    .inference(&i_s.with_enum_calculation_mode())
+                    .inference(&class_i_s.with_enum_calculation_mode())
                     .infer_name_of_definition(name)
             } else {
                 let expr = node_ref.as_expression();
-                node_ref.file.inference(i_s).infer_expression(expr)
+                node_ref.file.inference(class_i_s).infer_expression(expr)
             };
-            match inferred.as_cow_type(i_s).as_ref() {
+            match inferred.as_cow_type(&class_i_s).as_ref() {
                 Type::Class(c) if c.link == i_s.db.python_state.enum_auto_link() => {
                     Inferred::from_type(
-                        enum_
-                            .class(i_s.db)
+                        enum_class
                             .simple_lookup(
                                 i_s,
                                 |issue| node_ref.add_issue(i_s, issue),
