@@ -445,7 +445,6 @@ testEnumValueUnionSimplification
 testGenericEnum
 # "Cannot override writable attribute "x" with a final one"
 testEnumNotFinalWithMethodsAndUninitializedValues
-testEnumAreStillFinalAfterCache
 
 # "Enum type as attribute is not supported"
 testAssignEnumAsAttribute

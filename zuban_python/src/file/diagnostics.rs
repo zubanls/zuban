@@ -40,6 +40,8 @@ use crate::{
     },
 };
 
+const ENUM_NAMES_OVERRIDABLE: [&'static str; 2] = ["value", "name"];
+
 lazy_static::lazy_static! {
     static ref FORWARD_OP_METHODS: HashSet<&'static str> = HashSet::from([
         "__add__",
@@ -1819,6 +1821,24 @@ fn find_and_check_override(
                         .format(&FormatData::with_style(i_s.db, FormatStyle::Qualified)),
                 },
             );
+        }
+        if let Some(t) = override_class
+            .use_cached_class_infos(i_s.db)
+            .undefined_generics_type
+            .get()
+        {
+            if let Type::Enum(e) = t.as_ref() {
+                if e.members.iter().any(|member| member.name(i_s.db) == name)
+                    && !ENUM_NAMES_OVERRIDABLE.contains(&name)
+                {
+                    from.add_issue(
+                        i_s,
+                        IssueKind::EnumCannotOverrideWritableAttributeWithFinal {
+                            name: name.into(),
+                        },
+                    )
+                }
+            }
         }
         check_override(
             i_s,

@@ -1765,11 +1765,17 @@ impl<'db: 'a, 'a> Class<'a> {
                         },
                     )
                 }
+                let name = name_node_ref.as_name();
+                if name.is_assignment_annotation_without_definition()
+                    && !self.node_ref.file.is_stub()
+                {
+                    continue;
+                }
+
                 // TODO An enum member is never a descriptor. (that's how 3.10 does it). Here we
                 // however only filter for functions and ignore decorators.
                 members.push(EnumMemberDefinition::new(
-                    StringSlice::from_name(self.node_ref.file_index(), name_node_ref.as_name())
-                        .into(),
+                    StringSlice::from_name(self.node_ref.file_index(), name).into(),
                     Some(name_node_ref.as_link()),
                 ))
             }
