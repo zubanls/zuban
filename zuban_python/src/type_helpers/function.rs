@@ -906,7 +906,13 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         {
             overwrite_callable(&mut inferred, (*c).clone())
         } else {
-            todo!()
+            self.add_issue_for_declaration(
+                i_s,
+                IssueKind::NotCallable {
+                    type_: format!("\"{}\"", inferred.format_short(i_s)).into(),
+                },
+            );
+            return None;
         }
         Some(FunctionDetails {
             inferred,
