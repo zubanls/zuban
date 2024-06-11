@@ -151,9 +151,8 @@ impl NamedTuple {
         as_self: Option<&dyn Fn() -> Type>,
     ) -> LookupDetails<'static> {
         let mut attr_kind = AttributeKind::Attribute;
-        let type_ = match name {
-            "__new__" => Type::Callable(self.__new__.clone()),
-            "_replace" => Type::Callable({
+        let mut replace_method = |method_name| {
+            Type::Callable({
                 attr_kind = AttributeKind::DefMethod;
                 let mut params = vec![];
                 if from_type {
@@ -169,14 +168,21 @@ impl NamedTuple {
                     params.push(new_param);
                 }
                 Rc::new(CallableContent::new_simple(
-                    Some(DbString::Static("_replace")),
+                    Some(DbString::Static(method_name)),
                     Some(self.name),
                     PointLink::new(FileIndex(0), 0),
                     i_s.db.python_state.empty_type_var_likes.clone(),
                     CallableParams::Simple(params.into()),
                     as_self.map(|as_self| as_self()).unwrap_or(Type::Self_),
                 ))
-            }),
+            })
+        };
+        let type_ = match name {
+            "__new__" => Type::Callable(self.__new__.clone()),
+            "_replace" => replace_method("_replace"),
+            "__replace__" if i_s.flags().python_version.at_least_3_dot(13) => {
+                replace_method("__replace__")
+            }
             "_asdict" => Type::Callable({
                 attr_kind = AttributeKind::DefMethod;
                 let mut params = vec![];
