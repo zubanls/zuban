@@ -11,7 +11,6 @@ testTwoUncomfortablyIncompatibleProtocolsWithoutRunningInIssue9771
 # callable matching regression
 testNoCrashOnNestedGenericCallable
 
-testNoCrashOnUnpackOverride
 # mypy upgrade
 testMultilineQuotedAnnotation
 testDataclassFieldWithPositionalArguments
