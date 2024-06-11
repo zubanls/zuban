@@ -504,6 +504,13 @@ impl Type {
             .any(|t| matches!(t, Type::None))
     }
 
+    pub fn is_true_literal(&self) -> bool {
+        match self {
+            Self::Literal(literal) => matches!(literal.kind, LiteralKind::Bool(true)),
+            _ => false,
+        }
+    }
+
     pub fn remove_none(&self, db: &Database) -> Cow<Type> {
         if self.is_none_or_none_in_union(db) {
             Cow::Owned(Type::from_union_entries(

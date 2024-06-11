@@ -37,7 +37,6 @@ testTypeApplicationGenericConstructor
 testInvalidTypeVarParametersConcrete
 testInvalidTypeVarParametersArbitrary
 testOverloadedGenericInit
-testNamedTupleRename
 testNamedTupleDunderReplace
 testParamSpecLocations
 testRecursiveTupleFallback1

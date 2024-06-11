@@ -459,10 +459,16 @@ pub(crate) fn new_typing_named_tuple(
     }
 }
 
-pub(crate) fn new_collections_named_tuple(
-    i_s: &InferenceState,
-    args: &dyn Args,
+pub(crate) fn new_collections_named_tuple<'db>(
+    i_s: &InferenceState<'db, '_>,
+    args: &dyn Args<'db>,
 ) -> Option<Rc<NamedTuple>> {
+    let rename = args.iter().any(|arg| {
+        matches!(arg.keyword_name(i_s.db), Some("rename"))
+            && arg
+                .infer(i_s, &mut ResultContext::Unknown)
+                .is_true_literal(i_s)
+    });
     let (name, second_node_ref, atom_content, _) = check_named_tuple_name(i_s, "namedtuple", args)?;
     let mut params = start_namedtuple_params(i_s.db);
 
@@ -473,6 +479,7 @@ pub(crate) fn new_collections_named_tuple(
             &mut params,
             name,
             Type::Any(AnyCause::Todo),
+            rename,
             |issue| args.add_issue(i_s, issue),
         )
     };
@@ -589,13 +596,16 @@ pub fn add_named_tuple_param(
     params: &mut Vec<CallableParam>,
     field_name: StringSlice,
     t: Type,
+    rename: bool,
     add_issue: impl Fn(IssueKind),
 ) {
     let name_str = field_name.as_str(db);
     let mut field_name = field_name.into();
     let mut add_and_change = |issue| {
         field_name = DbString::RcStr(Rc::from(format!("_{}", params.len() - 1)));
-        add_issue(issue)
+        if !rename {
+            add_issue(issue)
+        }
     };
     if params.iter().any(|param| {
         param

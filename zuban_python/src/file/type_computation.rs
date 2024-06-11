@@ -3290,6 +3290,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 &mut params,
                 name,
                 t,
+                false,
                 |issue| self.inference.add_issue(ne.index(), issue),
             )
         }

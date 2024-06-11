@@ -406,6 +406,15 @@ pub enum InferredArg<'a> {
     ParamSpec(&'a ParamSpecUsage),
 }
 
+impl InferredArg<'_> {
+    pub fn is_true_literal(&self, i_s: &InferenceState) -> bool {
+        match self {
+            Self::Inferred(inf) => inf.as_cow_type(i_s).is_true_literal(),
+            _ => false,
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Arg<'db, 'a> {
     pub kind: ArgKind<'db, 'a>,
