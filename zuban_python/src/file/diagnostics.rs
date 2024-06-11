@@ -649,16 +649,13 @@ impl<'db> Inference<'db, '_, '_> {
                 );
                 if let Some(original_inf) = lookup_infos.lookup.into_maybe_inferred() {
                     if lookup_infos.attr_kind == AttributeKind::Final {
-                        debug!("TODO add cannot assign to final code");
-                        /*
                         NodeRef::new(self.file, *index).add_issue(
                             &i_s,
-                            IssueKind::CannotAssignToFinal {
+                            IssueKind::CannotOverrideFinalAttribute {
                                 name: name.into(),
-                                is_attribute: false,
+                                base_class: lookup_infos.class.name(i_s.db).into(),
                             },
                         );
-                        */
                         continue;
                     }
                     let is_final_callable = match original_inf.as_cow_type(&i_s).as_ref() {
