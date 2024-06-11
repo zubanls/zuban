@@ -431,23 +431,8 @@ testNamedTupleWithBoolNarrowsToBool
 # __doc__ definitions
 testNewNamedTupleDocString
 
-# int | str leads to object instead of Any when using Enum().value?
-testEnumValueInhomogenous
-# All members in a union lead to the enum again
-testEnumTypeCompatibleWithLiteralUnion
-# Enum Dict value inferred is int instead of Literal[1]
-testFunctionalEnumListOfPairs
 # enum member gathering
 testFinalWithMethodAssignment
-# Enum access merging leads to int | Any instead of Any
-testEnumValueUnionSimplification
-# Generic Enums
-testGenericEnum
-
-# "Enum type as attribute is not supported"
-testAssignEnumAsAttribute
-# "TypedDict type as attribute is not supported"
-testAssignTypedDictAsAttribute
 
 # Recursive definitions
 testRecursiveNamedTupleTypedDict
@@ -1179,6 +1164,10 @@ testNoCrashUnsupportedNamedTuple
 # Dynamic functions are ignored in classes and the super class is used?
 testInferringTypesFromIterable
 testMultipleAssignmentAndGenericSubtyping
+# "Enum type as attribute is not supported"
+testAssignEnumAsAttribute
+# "TypedDict type as attribute is not supported"
+testAssignTypedDictAsAttribute
 
 # Redefinition (Name "X" already defined on line X)
 testRedefineVariableAsTypevar
@@ -1487,6 +1476,15 @@ testContinueOutsideLoop
 #testUnpackIterableClassWithOverloadedIter2
 
 # ------------------- priority? tests -----------------------
+
+# int | str leads to object instead of Any when using Enum().value?
+testEnumValueInhomogenous
+# All members in a union lead to the enum again
+testEnumTypeCompatibleWithLiteralUnion
+# Enum Dict value inferred is int instead of Literal[1]
+testFunctionalEnumListOfPairs
+# Enum access merging leads to int | Any instead of Any
+testEnumValueUnionSimplification
 
 # future imports (future is not part of stubs)
 testNewAnalyzerMetaclassFuture1
