@@ -482,6 +482,7 @@ impl PythonState {
         cache_index!(types_module_type_index, types, "ModuleType");
         cache_index!(enum_enum_meta_index, enum_file, "EnumMeta");
         cache_index!(typing_overload_index, typing, "overload", true);
+        cache_index!(builtins_str_index, builtins, "str");
         cache_index!(enum_enum_index, enum_file, "Enum");
         cache_index!(enum_auto_index, enum_file, "auto");
 
@@ -502,7 +503,6 @@ impl PythonState {
             "BaseExceptionGroup"
         );
         cache_optional_index!(builtins_exception_group_index, builtins, "ExceptionGroup");
-        cache_index!(builtins_str_index, builtins, "str");
         cache_index!(builtins_bytes_index, builtins, "bytes");
         cache_index!(builtins_bytearray_index, builtins, "bytearray");
         cache_index!(builtins_memoryview_index, builtins, "memoryview");

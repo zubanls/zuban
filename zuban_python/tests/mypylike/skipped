@@ -5,6 +5,7 @@ testVariadicUnpackWithRegularInstance
 testMisguidedSetItem
 testTypeshedRecursiveTypesExample
 testRecursiveAliasBasicGenericInference
+testIOTypes
 
 testTwoUncomfortablyIncompatibleProtocolsWithoutRunningInIssue9771
 
@@ -24,14 +25,6 @@ testYieldFromUnionOfGenerators
 testYieldFromInvalidUnionReturn
 testYieldFromUnionOfGeneratorWithIterableStr
 testAliasToCallableWithUnpackInvalid
-
-# 3.12 type var syntax
-test695TypeAlias
-test695Class
-test695Function
-test695TypeVar
-test695TypeAliasType
-testPEP695*
 
 # TypeAliasType
 testTypeAliasType
@@ -1323,6 +1316,14 @@ testClassLevelTypeAliasesInUnusualContexts
 testMalformedTypeAliasRuntimeReassignments
 
 # ------------- Additional unimportant, but would be nice -----------------
+
+# 3.12 type var syntax
+test695TypeAlias
+test695Class
+test695Function
+test695TypeVar
+test695TypeAliasType
+testPEP695*
 
 # Assignment like ac[b] += c with both __getitem__ and __setitem__ has same error twice
 testOperatorAssignmentWithIndexLvalue1
