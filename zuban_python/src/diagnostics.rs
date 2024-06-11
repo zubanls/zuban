@@ -269,7 +269,7 @@ pub(crate) enum IssueKind {
     UnexpectedArgumentsTo { name: &'static str },
     UnexpectedArgumentTo { name: &'static str },
     TupleExpectedAsNamedTupleField,
-    NamedTupleNamesCannotStartWithUnderscore { name: &'static str, field_names: Box<str> },
+    FunctionalNamedTupleNameCannotStartWithUnderscore { name: &'static str, field_name: Box<str> },
     NamedTupleNameCannotStartWithUnderscore { field_name: Box<str> },
     NamedTupleInvalidFieldName,
     NamedTupleFirstArgumentMismatch { should: Box<str>, is: Box<str> },
@@ -1417,8 +1417,9 @@ impl<'db> Diagnostic<'db> {
             UnexpectedArgumentTo{name} =>
                 format!("Unexpected argument to \"{name}()\""),
             TupleExpectedAsNamedTupleField => "Tuple expected as \"NamedTuple()\" field".to_string(),
-            NamedTupleNamesCannotStartWithUnderscore{name, field_names} => format!(
-                "\"{name}()\" field names cannot start with an underscore: {field_names}"),
+            FunctionalNamedTupleNameCannotStartWithUnderscore{name, field_name} => format!(
+                r#""{name}()" field name "{field_name}" starts with an underscore"#
+            ),
             NamedTupleNameCannotStartWithUnderscore{field_name} => format!(
                 "NamedTuple field name cannot start with an underscore: {field_name}"),
             NamedTupleInvalidFieldName => "Invalid \"NamedTuple()\" field name".to_string(),

@@ -568,22 +568,18 @@ fn check_named_tuple_has_no_fields_with_underscore(
     args: &dyn Args,
     params: &[CallableParam],
 ) {
-    let field_names_with_underscore: Vec<_> = params
-        .iter()
-        .filter_map(|p| {
-            p.name.as_ref().and_then(|name| {
-                let name_str = name.as_str(i_s.db);
-                name_str.starts_with('_').then_some(name_str)
-            })
-        })
-        .collect();
-    if !field_names_with_underscore.is_empty() {
-        args.add_issue(
-            i_s,
-            IssueKind::NamedTupleNamesCannotStartWithUnderscore {
-                name,
-                field_names: field_names_with_underscore.join(", ").into(),
-            },
-        );
+    for param in params.iter() {
+        if let Some(param_name) = param.name.as_ref() {
+            let name_str = param_name.as_str(i_s.db);
+            if name_str.starts_with('_') {
+                args.add_issue(
+                    i_s,
+                    IssueKind::FunctionalNamedTupleNameCannotStartWithUnderscore {
+                        name,
+                        field_name: name_str.into(),
+                    },
+                );
+            }
+        }
     }
 }

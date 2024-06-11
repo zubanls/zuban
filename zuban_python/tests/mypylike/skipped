@@ -53,8 +53,6 @@ testDescriptorAccessForUnionOfTypesWithNoStrictOptional
 testLambdaNoReturn
 testModuleAttributes
 testDecoratedProperty
-testNamedTupleWithUnderscoreItemName
-testTypingNamedTupleWithUnderscoreItemName
 
 # TypeAliasType
 testTypeAliasType
