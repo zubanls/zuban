@@ -5,13 +5,13 @@ testVariadicUnpackWithRegularInstance
 testMisguidedSetItem
 testTypeshedRecursiveTypesExample
 testRecursiveAliasBasicGenericInference
-testIOTypes
 
 testTwoUncomfortablyIncompatibleProtocolsWithoutRunningInIssue9771
 
 # callable matching regression
 testNoCrashOnNestedGenericCallable
 
+testNoCrashOnUnpackOverride
 # mypy upgrade
 testMultilineQuotedAnnotation
 testDataclassFieldWithPositionalArguments
@@ -25,6 +25,37 @@ testYieldFromUnionOfGenerators
 testYieldFromInvalidUnionReturn
 testYieldFromUnionOfGeneratorWithIterableStr
 testAliasToCallableWithUnpackInvalid
+testInvalidOverrideArgumentCountWithImplicitSignature4
+testFinalInProtocol
+testFinalWithClassVarInProtocol
+testKeywordOnlyArgumentOrderInsensitivity
+testTypeVarIdsNested
+testGenericUnionFunctionJoin
+testTypeVariableClashErrorMessage
+testOverrideErrorLocationNamed
+testSubtypingWithGenericFunctions
+testSubtypingWithGenericInnerFunctions
+testTypeApplicationGenericConstructor
+testInvalidTypeVarParametersConcrete
+testInvalidTypeVarParametersArbitrary
+testOverloadedGenericInit
+testNamedTupleInvalidFields
+testNamedTupleRename
+testNamedTupleDunderReplace
+testParamSpecLocations
+testRecursiveTupleFallback1
+testRecursiveTupleFallback3
+testAliasInstanceNameClash
+testInferTupleType
+testNameUndefinedErrorDoesNotLoseUnpackedKWArgsInformation
+testTypeVarTupleOverloadOverlap
+testTypeVarTupleTypeApplicationOverload
+testDescriptorAccessForUnionOfTypesWithNoStrictOptional
+testLambdaNoReturn
+testModuleAttributes
+testDecoratedProperty
+testNamedTupleWithUnderscoreItemName
+testTypingNamedTupleWithUnderscoreItemName
 
 # TypeAliasType
 testTypeAliasType
@@ -1316,6 +1347,18 @@ testClassLevelTypeAliasesInUnusualContexts
 testMalformedTypeAliasRuntimeReassignments
 
 # ------------- Additional unimportant, but would be nice -----------------
+
+# functools.partial
+testFunctoolsPartialBasic
+testFunctoolsPartialStar
+testFunctoolsPartialGeneric
+testFunctoolsPartialCallable
+testFunctoolsPartialTypeGuard
+testFunctoolsPartialType
+testFunctoolsPartialTypeVarTuple
+testFunctoolsPartialUnion
+testFunctoolsPartialTypeObject
+testIncrementalFunctoolsPartial
 
 # 3.12 type var syntax
 test695TypeAlias
