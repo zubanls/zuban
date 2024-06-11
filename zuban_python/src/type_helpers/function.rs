@@ -1235,6 +1235,20 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         }
     }
 
+    pub fn is_final(&self) -> bool {
+        match self.node_ref.complex() {
+            Some(ComplexPoint::TypeInstance(Type::Callable(c))) => c.is_final,
+            Some(ComplexPoint::FunctionOverload(o)) => o.is_final,
+            _ => {
+                if let Some(overload) = self.maybe_part_of_unreachable_overload() {
+                    overload.is_final
+                } else {
+                    false
+                }
+            }
+        }
+    }
+
     pub(crate) fn add_issue_for_declaration(&self, i_s: &InferenceState, kind: IssueKind) {
         let node = self.node();
         self.node_ref.file.add_issue(

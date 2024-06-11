@@ -178,11 +178,23 @@ impl<'db> Inference<'db, '_, '_> {
             }
             match simple_stmt.unpack() {
                 SimpleStmtContent::Assignment(assignment) => {
+                    self.cache_assignment(assignment);
+
                     // Check if protocol assignment is invalid
                     if class.is_some_and(|cls| {
                         cls.is_protocol(self.i_s.db)
                             && match assignment.unpack() {
-                                AssignmentContent::WithAnnotation(..) => false,
+                                AssignmentContent::WithAnnotation(_, annotation, _) => {
+                                    if self.file.points.get(annotation.index()).maybe_specific()
+                                        == Some(Specific::AnnotationOrTypeCommentFinal)
+                                    {
+                                        self.add_issue(
+                                            annotation.index(),
+                                            IssueKind::ProtocolMemberCannotBeFinal,
+                                        )
+                                    }
+                                    false
+                                }
                                 AssignmentContent::Normal(mut targets, _) => {
                                     let first_target = targets.next().unwrap();
                                     match first_target {
@@ -203,8 +215,6 @@ impl<'db> Inference<'db, '_, '_> {
                             IssueKind::ProtocolMembersMustHaveExplicitlyDeclaredTypes,
                         );
                     }
-
-                    self.cache_assignment(assignment);
                 }
                 SimpleStmtContent::StarExpressions(star_exprs) => {
                     self.infer_star_expressions(star_exprs, &mut ResultContext::ExpectUnused);
@@ -817,6 +827,12 @@ impl<'db> Inference<'db, '_, '_> {
             if c.no_type_check {
                 return;
             }
+        }
+        if class.is_some_and(|cls| cls.is_protocol(self.i_s.db) && function.is_final()) {
+            function.add_issue_onto_start_including_decorator(
+                self.i_s,
+                IssueKind::ProtocolMemberCannotBeFinal,
+            )
         }
         FLOW_ANALYSIS.with(|fa| {
             let mut is_overload_member = false;

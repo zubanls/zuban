@@ -154,6 +154,7 @@ pub(crate) enum IssueKind {
     FinalShouldBeAppliedOnlyToOverloadImplementation,
     FinalInStubMustBeAppliedToFirstOverload,
     NeedTypeArgumentForFinalInDataclass,
+    ProtocolMemberCannotBeFinal,
 
     DuplicateTypeVar,
     UnboundTypeVarLike { type_var_like: TypeVarLike },
@@ -1141,6 +1142,7 @@ impl<'db> Diagnostic<'db> {
                 "In a stub file @final must be applied only to the first overload".to_string(),
             NeedTypeArgumentForFinalInDataclass =>
                 "Need type argument for Final[...] with non-literal default in dataclass".to_string(),
+            ProtocolMemberCannotBeFinal => "Protocol member cannot be final".to_string(),
 
             DuplicateTypeVar =>
                 "Duplicate type variables in Generic[...] or Protocol[...]".to_string(),
