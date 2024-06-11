@@ -3284,7 +3284,14 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             };
             let name_str = name.as_str(self.inference.i_s.db);
             let t = self.compute_named_expr_type(type_expr);
-            add_named_tuple_param(&mut params, name, t)
+            add_named_tuple_param(
+                "NamedTuple",
+                self.inference.i_s.db,
+                &mut params,
+                name,
+                t,
+                |issue| self.inference.add_issue(ne.index(), issue),
+            )
         }
         Some(params)
     }

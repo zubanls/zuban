@@ -270,7 +270,9 @@ pub(crate) enum IssueKind {
     UnexpectedArgumentTo { name: &'static str },
     TupleExpectedAsNamedTupleField,
     FunctionalNamedTupleInvalidFieldName { name: &'static str, field_name: Box<str> },
+    FunctionalNamedTupleNameUsedAKeyword { name: &'static str, field_name: Box<str> },
     FunctionalNamedTupleNameCannotStartWithUnderscore { name: &'static str, field_name: Box<str> },
+    FunctionalNamedTupleDuplicateField { name: &'static str, field_name: Box<str> },
     NamedTupleNameCannotStartWithUnderscore { field_name: Box<str> },
     NamedTupleInvalidFieldName,
     NamedTupleFirstArgumentMismatch { should: Box<str>, is: Box<str> },
@@ -1421,10 +1423,16 @@ impl<'db> Diagnostic<'db> {
                 format!("Unexpected argument to \"{name}()\""),
             TupleExpectedAsNamedTupleField => "Tuple expected as \"NamedTuple()\" field".to_string(),
             FunctionalNamedTupleInvalidFieldName { name, field_name } => format!(
-                r#""{name}" field name "{field_name}" is not a valid identifier"#
+                r#""{name}()" field name "{field_name}" is not a valid identifier"#
+            ),
+            FunctionalNamedTupleNameUsedAKeyword { name, field_name } => format!(
+                r#""{name}()" field name "{field_name}" is a keyword"#
             ),
             FunctionalNamedTupleNameCannotStartWithUnderscore{name, field_name} => format!(
                 r#""{name}()" field name "{field_name}" starts with an underscore"#
+            ),
+            FunctionalNamedTupleDuplicateField { name, field_name } => format!(
+                r#""{name}()" has duplicate field name "{field_name}""#
             ),
             NamedTupleNameCannotStartWithUnderscore{field_name} => format!(
                 "NamedTuple field name cannot start with an underscore: {field_name}"),

@@ -466,7 +466,16 @@ pub(crate) fn new_collections_named_tuple(
     let (name, second_node_ref, atom_content, _) = check_named_tuple_name(i_s, "namedtuple", args)?;
     let mut params = start_namedtuple_params(i_s.db);
 
-    let mut add_param = |name| add_named_tuple_param(&mut params, name, Type::Any(AnyCause::Todo));
+    let mut add_param = |name| {
+        add_named_tuple_param(
+            "namedtuple",
+            i_s.db,
+            &mut params,
+            name,
+            Type::Any(AnyCause::Todo),
+            |issue| args.add_issue(i_s, issue),
+        )
+    };
 
     let mut add_from_iterator = |iterator| {
         for element in iterator {
@@ -562,28 +571,7 @@ fn check_named_tuple_has_no_fields_with_underscore(
     params: &[CallableParam],
 ) {
     for param in params.iter() {
-        if let Some(param_name) = param.name.as_ref() {
-            let name_str = param_name.as_str(i_s.db);
-            if !is_identifier(name_str) {
-                args.add_issue(
-                    i_s,
-                    IssueKind::FunctionalNamedTupleInvalidFieldName {
-                        name,
-                        field_name: name_str.into(),
-                    },
-                );
-                continue;
-            }
-            if name_str.starts_with('_') {
-                args.add_issue(
-                    i_s,
-                    IssueKind::FunctionalNamedTupleNameCannotStartWithUnderscore {
-                        name,
-                        field_name: name_str.into(),
-                    },
-                );
-            }
-        }
+        if let Some(param_name) = param.name.as_ref() {}
     }
 }
 
@@ -595,10 +583,52 @@ fn is_identifier(s: &str) -> bool {
     chars.all(|c| c.is_alphanumeric() || c == '_')
 }
 
-pub fn add_named_tuple_param(params: &mut Vec<CallableParam>, name: StringSlice, t: Type) {
+pub fn add_named_tuple_param(
+    named_tuple: &'static str,
+    db: &Database,
+    params: &mut Vec<CallableParam>,
+    field_name: StringSlice,
+    t: Type,
+    add_issue: impl Fn(IssueKind),
+) {
+    let name_str = field_name.as_str(db);
+    let mut field_name = field_name.into();
+    let mut add_and_change = |issue| {
+        field_name = DbString::RcStr(Rc::from(format!("_{}", params.len() - 1)));
+        add_issue(issue)
+    };
+    if params.iter().any(|param| {
+        param
+            .name
+            .as_ref()
+            .is_some_and(|name| name.as_str(db) == name_str)
+    }) {
+        add_and_change(IssueKind::FunctionalNamedTupleDuplicateField {
+            name: named_tuple,
+            field_name: name_str.into(),
+        })
+    } else if !is_identifier(name_str) {
+        add_and_change(IssueKind::FunctionalNamedTupleInvalidFieldName {
+            name: named_tuple,
+            field_name: name_str.into(),
+        });
+    } else if name_str.starts_with('_') {
+        add_and_change(
+            IssueKind::FunctionalNamedTupleNameCannotStartWithUnderscore {
+                name: named_tuple,
+                field_name: name_str.into(),
+            },
+        );
+    } else if name_str == "def" {
+        // TODO use a list of keywords
+        add_and_change(IssueKind::FunctionalNamedTupleNameUsedAKeyword {
+            name: named_tuple,
+            field_name: name_str.into(),
+        });
+    }
     params.push(CallableParam {
         type_: ParamType::PositionalOrKeyword(t),
-        name: Some(name.into()),
+        name: Some(field_name),
         has_default: false,
     });
 }
