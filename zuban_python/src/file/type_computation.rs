@@ -1316,8 +1316,8 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         Type::RecursiveType(_) => {
                             IssueKind::InvalidRecursiveTypeAliasUnionOfItself { target: "union" }
                         }
-                        _ => IssueKind::VariadicUnpackMustBeTupleOrTypeVarTuple {
-                            type_: t.format_short(self.inference.i_s.db),
+                        _ => IssueKind::VariadicUnpackMustBeTupleLike {
+                            actual: t.format_short(self.inference.i_s.db),
                         },
                     },
                 );
@@ -2252,6 +2252,17 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     after: Rc::from([]),
                 }))),
             ),
+            TypeContent::Unpacked(TypeOrUnpack::Type(t)) => {
+                if !t.is_any() {
+                    self.add_issue(
+                        from,
+                        IssueKind::VariadicUnpackMustBeTupleLike {
+                            actual: t.format_short(self.inference.i_s.db),
+                        },
+                    )
+                }
+                ParamType::Star(StarParamType::ArbitraryLen(Type::Any(AnyCause::FromError)))
+            }
             TypeContent::SpecialType(SpecialType::Unpack) => {
                 ParamType::Star(StarParamType::ArbitraryLen(
                     // Creates an Any.

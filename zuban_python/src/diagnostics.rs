@@ -207,7 +207,6 @@ pub(crate) enum IssueKind {
     UnpackOnlyValidInVariadicPosition,
     VariadicUnpackMustBeTupleLike { actual: Box<str> },
     MoreThanOneUnpackTypeIsNotAllowed,
-    VariadicUnpackMustBeTupleOrTypeVarTuple { type_: Box<str> },
     TypeVarTupleCannotBeSplit,
 
     CannotUseIsinstanceWith { func: &'static str, with: &'static str },
@@ -1256,9 +1255,6 @@ impl<'db> Diagnostic<'db> {
             ),
             MoreThanOneUnpackTypeIsNotAllowed =>
                 "More than one Unpack in a type is not allowed".to_string(),
-            VariadicUnpackMustBeTupleOrTypeVarTuple { type_ } => format!(
-                r#""{type_}" cannot be unpacked (must be tuple or TypeVarTuple)"#
-            ),
             TypeVarTupleCannotBeSplit => "TypeVarTuple cannot be split".to_string(),
 
             CannotUseIsinstanceWith { func, with } => format!("Cannot use {func}() with {with} type"),
