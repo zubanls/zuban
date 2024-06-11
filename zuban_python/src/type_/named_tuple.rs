@@ -498,14 +498,16 @@ pub(crate) fn new_collections_named_tuple(
                 let (mut start, _) = s.content_start_and_end_in_literal();
                 start += s.start();
                 for part in s.content().split(&[',', ' ']) {
-                    add_param(
-                        StringSlice::new(
-                            second_node_ref.file_index(),
-                            start,
-                            start + part.len() as CodeIndex,
-                        )
-                        .into(),
-                    );
+                    if part != "" {
+                        add_param(
+                            StringSlice::new(
+                                second_node_ref.file_index(),
+                                start,
+                                start + part.len() as CodeIndex,
+                            )
+                            .into(),
+                        );
+                    }
                     start += part.len() as CodeIndex + 1;
                 }
             }
@@ -571,6 +573,16 @@ fn check_named_tuple_has_no_fields_with_underscore(
     for param in params.iter() {
         if let Some(param_name) = param.name.as_ref() {
             let name_str = param_name.as_str(i_s.db);
+            if !is_identifier(name_str) {
+                args.add_issue(
+                    i_s,
+                    IssueKind::FunctionalNamedTupleInvalidFieldName {
+                        name,
+                        field_name: name_str.into(),
+                    },
+                );
+                continue;
+            }
             if name_str.starts_with('_') {
                 args.add_issue(
                     i_s,
@@ -582,4 +594,12 @@ fn check_named_tuple_has_no_fields_with_underscore(
             }
         }
     }
+}
+
+fn is_identifier(s: &str) -> bool {
+    let mut chars = s.chars();
+    if !chars.next().is_some_and(|c| c.is_alphabetic() || c == '_') {
+        return false;
+    }
+    chars.all(|c| c.is_alphanumeric() || c == '_')
 }
