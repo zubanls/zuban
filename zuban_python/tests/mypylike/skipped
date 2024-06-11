@@ -51,7 +51,6 @@ testTypeVarTupleOverloadOverlap
 testTypeVarTupleTypeApplicationOverload
 testDescriptorAccessForUnionOfTypesWithNoStrictOptional
 testLambdaNoReturn
-testModuleAttributes
 testDecoratedProperty
 
 # TypeAliasType

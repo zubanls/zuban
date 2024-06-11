@@ -624,7 +624,7 @@ pub(crate) fn attribute_access_of_type(
             name,
             ClassLookupOptions::new(&add_issue).with_kind(kind),
         ),
-        Type::Type(_) => i_s.db.python_state.bare_type_class().lookup(
+        Type::Type(_) | Type::None => i_s.db.python_state.bare_type_class().lookup(
             i_s,
             name,
             ClassLookupOptions::new(&add_issue).with_kind(kind),
