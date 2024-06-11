@@ -1249,6 +1249,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     }
                     let base = base.as_cow_type(i_s);
                     let node_ref = NodeRef::new(self.file, primary_target.index());
+                    let name_str = name_definition.as_code();
                     for t in base.iter_with_unpacked_unions(i_s.db) {
                         if let Some(cls) = t.maybe_class(i_s.db) {
                             Instance::new(cls, None).check_set_descriptor(
@@ -1287,10 +1288,27 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                     continue;
                                 }
                             }
+                            Type::Type(type_) => match type_.as_ref() {
+                                Type::Enum(enum_)
+                                    if enum_
+                                        .members
+                                        .iter()
+                                        .any(|member| member.name(i_s.db) == name_str) =>
+                                {
+                                    from.add_issue(
+                                        i_s,
+                                        IssueKind::CannotAssignToFinal {
+                                            is_attribute: true,
+                                            name: name_str.into(),
+                                        },
+                                    );
+                                    continue;
+                                }
+                                _ => (),
+                            },
                             _ => (),
                         }
 
-                        let name_str = name_definition.as_code();
                         let mut lookup = LookupResult::None;
                         let mut attr_kind = AttributeKind::Attribute;
                         if let Some(c) = t.maybe_type_of_class(i_s.db) {

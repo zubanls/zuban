@@ -443,9 +443,6 @@ testFinalWithMethodAssignment
 testEnumValueUnionSimplification
 # Generic Enums
 testGenericEnum
-# "Cannot assign to final attribute "gold""
-testEnumFinalValues
-testEnumFinalSpecialProps
 # "Cannot override writable attribute "x" with a final one"
 testEnumNotFinalWithMethodsAndUninitializedValues
 testEnumAreStillFinalAfterCache
