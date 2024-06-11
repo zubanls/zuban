@@ -37,8 +37,8 @@ pub(crate) use self::{
     },
     matching::{match_tuple_type_arguments, match_unpack},
     named_tuple::{
-        execute_collections_named_tuple, execute_typing_named_tuple, new_collections_named_tuple,
-        new_typing_named_tuple, NamedTuple,
+        add_named_tuple_param, execute_collections_named_tuple, execute_typing_named_tuple,
+        new_collections_named_tuple, new_typing_named_tuple, NamedTuple,
     },
     operations::execute_type_of_type,
     recursive_type::{RecursiveType, RecursiveTypeOrigin},

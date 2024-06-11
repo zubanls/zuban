@@ -466,13 +466,7 @@ pub(crate) fn new_collections_named_tuple(
     let (name, second_node_ref, atom_content, _) = check_named_tuple_name(i_s, "namedtuple", args)?;
     let mut params = start_namedtuple_params(i_s.db);
 
-    let mut add_param = |name| {
-        params.push(CallableParam {
-            type_: ParamType::PositionalOrKeyword(Type::Any(AnyCause::Todo)),
-            name: Some(name),
-            has_default: false,
-        })
-    };
+    let mut add_param = |name| add_named_tuple_param(&mut params, name, Type::Any(AnyCause::Todo));
 
     let mut add_from_iterator = |iterator| {
         for element in iterator {
@@ -487,7 +481,7 @@ pub(crate) fn new_collections_named_tuple(
                     .add_issue(i_s, IssueKind::StringLiteralExpectedAsNamedTupleItem);
                 continue;
             };
-            add_param(string_slice.into())
+            add_param(string_slice)
         }
     };
     match atom_content {
@@ -499,14 +493,11 @@ pub(crate) fn new_collections_named_tuple(
                 start += s.start();
                 for part in s.content().split(&[',', ' ']) {
                     if part != "" {
-                        add_param(
-                            StringSlice::new(
-                                second_node_ref.file_index(),
-                                start,
-                                start + part.len() as CodeIndex,
-                            )
-                            .into(),
-                        );
+                        add_param(StringSlice::new(
+                            second_node_ref.file_index(),
+                            start,
+                            start + part.len() as CodeIndex,
+                        ));
                     }
                     start += part.len() as CodeIndex + 1;
                 }
@@ -602,4 +593,12 @@ fn is_identifier(s: &str) -> bool {
         return false;
     }
     chars.all(|c| c.is_alphanumeric() || c == '_')
+}
+
+pub fn add_named_tuple_param(params: &mut Vec<CallableParam>, name: StringSlice, t: Type) {
+    params.push(CallableParam {
+        type_: ParamType::PositionalOrKeyword(t),
+        name: Some(name.into()),
+        has_default: false,
+    });
 }
