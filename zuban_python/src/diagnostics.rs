@@ -456,6 +456,7 @@ impl IssueKind {
             AwaitOutsideCoroutine => "await-not-async",
             NeedTypeAnnotation { .. } => "var-annotated",
             TypeIsNarrowedTypeIsNotSubtypeOfInput { .. } => "narrowed-type-not-subtype",
+            DecoratorOnTopOfPropertyNotSupported => "prop-decorator",
 
             TypedDictNameMismatch { .. } | NamedTupleFirstArgumentMismatch { .. } => "name-match",
             TypedDictMissingKeys { .. }
@@ -480,12 +481,13 @@ impl IssueKind {
     fn mypy_error_supercode(&self) -> Option<&'static str> {
         // See also https://mypy.readthedocs.io/en/stable/error_codes.html#subcodes-of-error-codes
         use IssueKind::*;
-        match &self {
-            TypedDictExtraKey { .. } | TypedDictHasNoKey { .. } => Some("typeddict-item"),
-            CannotAssignToAMethod => Some("assignment"),
-            ModuleNotFound { .. } => Some("import"),
-            _ => None,
-        }
+        Some(match &self {
+            TypedDictExtraKey { .. } | TypedDictHasNoKey { .. } => "typeddict-item",
+            CannotAssignToAMethod => "assignment",
+            ModuleNotFound { .. } => "import",
+            DecoratorOnTopOfPropertyNotSupported => "misc",
+            _ => return None,
+        })
     }
 }
 
