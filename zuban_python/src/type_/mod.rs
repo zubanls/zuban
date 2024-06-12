@@ -1038,9 +1038,12 @@ impl Type {
                 } else {
                     already_checked.push(recursive_alias.clone());
                     match recursive_alias.origin(i_s.db) {
-                        RecursiveTypeOrigin::TypeAlias(type_alias) => type_alias
-                            .type_if_valid()
-                            .has_any_internal(i_s, already_checked),
+                        RecursiveTypeOrigin::TypeAlias(type_alias) => {
+                            !type_alias.calculating()
+                                && type_alias
+                                    .type_if_valid()
+                                    .has_any_internal(i_s, already_checked)
+                        }
                         RecursiveTypeOrigin::Class(_) => false,
                     }
                 }
