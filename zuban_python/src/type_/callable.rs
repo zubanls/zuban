@@ -9,11 +9,12 @@ use super::{
 };
 use crate::{
     database::{Database, FileIndex, PointLink},
+    format_data::{FormatData, ParamsStyle},
     inference_state::InferenceState,
     matching::{
         maybe_class_usage,
         params::{WrappedParamType, WrappedStar, WrappedStarStar},
-        FormatData, Param, ParamsStyle,
+        Param,
     },
     type_::{FormatStyle, TupleArgs, TypeVarLikeUsage},
     type_helpers::Class,

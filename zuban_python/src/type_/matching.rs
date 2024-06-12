@@ -5,9 +5,10 @@ use super::{
 use crate::{
     database::{ComplexPoint, MetaclassState},
     debug,
+    format_data::FormatData,
     inference_state::InferenceState,
     matching::{
-        avoid_protocol_mismatch, matches_params, ErrorTypes, FormatData, GotType, Match, Matcher,
+        avoid_protocol_mismatch, matches_params, ErrorTypes, GotType, Match, Matcher,
         MismatchReason,
     },
     node_ref::NodeRef,

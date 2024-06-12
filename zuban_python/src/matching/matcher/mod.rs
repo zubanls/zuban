@@ -21,13 +21,14 @@ use self::{
 
 use super::{
     params::{matches_params, InferrableParamIterator},
-    FormatData, Match, OnTypeError, ParamsStyle, ResultContext, SignatureMatch,
+    Match, OnTypeError, ResultContext, SignatureMatch,
 };
 use crate::{
     arguments::{Arg, ArgKind, InferredArg},
     database::{Database, PointLink},
     debug,
     diagnostics::IssueKind,
+    format_data::{FormatData, ParamsStyle},
     inference_state::InferenceState,
     type_::{
         match_tuple_type_arguments, AnyCause, CallableContent, CallableParam, CallableParams,

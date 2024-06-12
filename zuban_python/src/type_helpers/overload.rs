@@ -6,12 +6,13 @@ use crate::{
     database::Database,
     debug,
     diagnostics::IssueKind,
+    format_data::FormatData,
     inference_state::InferenceState,
     inferred::Inferred,
     matching::{
         calculate_callable_init_type_vars_and_return, calculate_callable_type_vars_and_return,
-        replace_class_type_vars_in_callable, ArgumentIndexWithParam, FormatData,
-        FunctionOrCallable, OnTypeError, ResultContext, SignatureMatch,
+        replace_class_type_vars_in_callable, ArgumentIndexWithParam, FunctionOrCallable,
+        OnTypeError, ResultContext, SignatureMatch,
     },
     type_::{AnyCause, FunctionOverload, NeverCause, ReplaceSelf, Type},
 };

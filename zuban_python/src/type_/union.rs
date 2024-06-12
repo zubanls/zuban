@@ -2,9 +2,7 @@ use std::{borrow::Cow, collections::HashMap, rc::Rc};
 
 use super::{FormatStyle, LiteralKind, NeverCause, Type};
 use crate::{
-    database::Database,
-    inference_state::InferenceState,
-    matching::{FormatData, Matcher},
+    database::Database, format_data::FormatData, inference_state::InferenceState, matching::Matcher,
 };
 
 impl Type {

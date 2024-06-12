@@ -6,7 +6,7 @@ use super::{
 };
 use crate::{
     database::{Database, PointLink},
-    matching::{FormatData, ParamsStyle},
+    format_data::{FormatData, ParamsStyle},
     node_ref::NodeRef,
     utils::join_with_commas,
 };

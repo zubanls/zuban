@@ -12,9 +12,10 @@ use crate::{
     database::{Database, ParentScope, PointLink},
     diagnostics::IssueKind,
     file::File,
+    format_data::FormatData,
     inference_state::InferenceState,
     inferred::{AttributeKind, Inferred},
-    matching::{FormatData, LookupKind, LookupResult, ResultContext},
+    matching::{LookupKind, LookupResult, ResultContext},
     node_ref::NodeRef,
     type_helpers::{Class, ClassLookupOptions, Instance, LookupDetails, TypeOrClass},
 };

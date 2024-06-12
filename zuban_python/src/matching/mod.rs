@@ -1,4 +1,3 @@
-mod format_data;
 mod generic;
 mod generics;
 mod lookup_result;
@@ -10,7 +9,6 @@ mod utils;
 
 use std::{cell::RefCell, rc::Rc};
 
-pub use format_data::{AvoidRecursionFor, FormatData, ParamsStyle};
 pub use generic::Generic;
 pub use generics::Generics;
 pub use lookup_result::LookupResult;
@@ -31,6 +29,7 @@ use crate::{
     arguments::Arg,
     database::Database,
     diagnostics::IssueKind,
+    format_data::FormatData,
     inference_state::InferenceState,
     inferred::Inferred,
     type_::{AnyCause, FormatStyle, Tuple, TupleUnpack, Type, WithUnpack},

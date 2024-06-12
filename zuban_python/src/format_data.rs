@@ -1,6 +1,6 @@
-use super::{Matcher, MatcherFormatResult};
 use crate::{
     database::{Database, PointLink},
+    matching::{Matcher, MatcherFormatResult},
     type_::{
         FormatStyle, ParamSpecUsage, RecursiveType, TypeVarLikeUsage, TypeVarTupleUsage,
         TypeVarUsage,

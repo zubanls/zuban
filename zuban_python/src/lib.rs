@@ -9,6 +9,7 @@ mod config;
 mod database;
 mod diagnostics;
 mod file;
+mod format_data;
 mod getitem;
 mod imports;
 mod inference_state;

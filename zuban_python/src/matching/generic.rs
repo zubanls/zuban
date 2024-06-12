@@ -1,8 +1,9 @@
 use std::borrow::Cow;
 
-use super::{matches_params_with_variance, FormatData, Match, Matcher, ParamsStyle};
+use super::{matches_params_with_variance, Match, Matcher};
 use crate::{
     database::Database,
+    format_data::{FormatData, ParamsStyle},
     inference_state::InferenceState,
     type_::{
         format_callable_params, match_tuple_type_arguments, CallableParams, GenericItem,

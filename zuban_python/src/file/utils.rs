@@ -11,12 +11,11 @@ use crate::{
     debug,
     diagnostics::IssueKind,
     file::{Inference, PythonFile},
+    format_data::FormatData,
     getitem::Simple,
     inference_state::InferenceState,
     inferred::UnionValue,
-    matching::{
-        ErrorStrs, ErrorTypes, FormatData, GotType, Match, Matcher, MismatchReason, ResultContext,
-    },
+    matching::{ErrorStrs, ErrorTypes, GotType, Match, Matcher, MismatchReason, ResultContext},
     new_class,
     node_ref::NodeRef,
     type_::{

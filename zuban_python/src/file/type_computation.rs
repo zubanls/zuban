@@ -12,11 +12,12 @@ use crate::{
     debug,
     diagnostics::{Issue, IssueKind},
     file::{File, Inference, PythonFile},
+    format_data::FormatData,
     getitem::{SliceOrSimple, SliceType, SliceTypeIterator},
     imports::{python_import, ImportResult},
     inference_state::InferenceState,
     inferred::Inferred,
-    matching::{FormatData, Generics, ResultContext},
+    matching::{Generics, ResultContext},
     new_class,
     node_ref::NodeRef,
     type_::{

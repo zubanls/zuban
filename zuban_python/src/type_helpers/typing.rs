@@ -5,9 +5,10 @@ use crate::{
     database::{ComplexPoint, PointLink},
     debug,
     diagnostics::IssueKind,
+    format_data::FormatData,
     inference_state::InferenceState,
     inferred::Inferred,
-    matching::{CouldBeALiteral, FormatData, Matcher, OnTypeError, ResultContext},
+    matching::{CouldBeALiteral, Matcher, OnTypeError, ResultContext},
     node_ref::NodeRef,
     type_::{
         ClassGenerics, FormatStyle, NewType, ParamSpec, Type, TypeVar, TypeVarKind, TypeVarLike,

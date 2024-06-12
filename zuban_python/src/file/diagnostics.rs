@@ -18,6 +18,7 @@ use crate::{
     debug,
     diagnostics::{Issue, IssueKind},
     file::{inference::AssignKind, Inference},
+    format_data::FormatData,
     getitem::SliceType,
     imports::ImportResult,
     inference_state::InferenceState,
@@ -25,8 +26,8 @@ use crate::{
     matching::{
         matches_params,
         params::{has_overlapping_params, WrappedParamType, WrappedStar},
-        ErrorStrs, FormatData, Generics, LookupKind, LookupResult, Match, Matcher, OnTypeError,
-        Param, ResultContext,
+        ErrorStrs, Generics, LookupKind, LookupResult, Match, Matcher, OnTypeError, Param,
+        ResultContext,
     },
     node_ref::NodeRef,
     type_::{

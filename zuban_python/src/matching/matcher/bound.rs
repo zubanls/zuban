@@ -1,11 +1,9 @@
-use super::{
-    super::{FormatData, Match},
-    Matcher, MatcherFormatResult,
-};
+use super::{super::Match, Matcher, MatcherFormatResult};
 use crate::{
     database::Database,
+    format_data::{FormatData, ParamsStyle},
     inference_state::InferenceState,
-    matching::{matches_params_with_variance, ParamsStyle},
+    matching::matches_params_with_variance,
     type_::{
         match_tuple_type_arguments, AnyCause, CallableParams, GenericItem, NeverCause,
         ParamSpecArg, TupleArgs, Type, TypeArgs, TypeVar, TypeVarKind, TypeVarLike,
