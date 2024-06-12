@@ -268,6 +268,10 @@ impl TypedDict {
             let name = name.as_str(format_data.db);
             match &self.generics {
                 TypedDictGenerics::Generics(list) => {
+                    // Mypy seems to format TypedDicts with generics always with a qualified name.
+                    let name = self
+                        .qualified_name(format_data.db)
+                        .unwrap_or_else(|| name.into());
                     format!("{name}[{}]", list.format(format_data))
                 }
                 _ => name.into(),

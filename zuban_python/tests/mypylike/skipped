@@ -1364,8 +1364,6 @@ testAnonymousFunctionalEnum
 testNewAnalyzerIncrementalMethodNamedTuple
 testNewAnalyzerNamedTupleClassNestedMethod
 testNoIncrementalCrashOnTypedDictMethod
-# qualified name for TypedDict for different module
-testGenericTypedDictWithError
 # qualified name for Type[cls] for different module (when format short)
 testProtocolWithNestedClass
 # NewType formatting instead of internal type
