@@ -1513,10 +1513,14 @@ impl<'db: 'a, 'a> Class<'a> {
 
     pub fn format(&self, format_data: &FormatData) -> Box<str> {
         let mut result = match format_data.style {
-            FormatStyle::Short => self.name().to_owned(),
-            FormatStyle::Qualified | FormatStyle::MypyRevealType => {
-                self.qualified_name(format_data.db)
+            FormatStyle::Short
+                if !format_data
+                    .types_that_need_qualified_names
+                    .contains(&self.node_ref.as_link()) =>
+            {
+                self.name().to_owned()
             }
+            _ => self.qualified_name(format_data.db),
         };
         let type_var_likes = self.type_vars(&InferenceState::new(format_data.db));
         if !type_var_likes.is_empty() {

@@ -257,7 +257,7 @@ pub(crate) fn execute_assert_type<'db>(
         let mut actual = first_type.format(&format_data);
         let mut wanted = second_type.format(&format_data);
         if actual == wanted {
-            format_data.verbose = true;
+            format_data.enable_verbose();
             actual = first_type.format(&format_data);
             wanted = second_type.format(&format_data);
         }

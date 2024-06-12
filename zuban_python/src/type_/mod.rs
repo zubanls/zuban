@@ -849,11 +849,17 @@ impl Type {
             Self::Dataclass(d) => d.class(format_data.db).format(format_data),
             Self::TypedDict(d) => d.format(format_data).into(),
             Self::NamedTuple(nt) => match format_data.style {
-                FormatStyle::Short => nt.format_with_name(
-                    format_data,
-                    nt.name(format_data.db),
-                    Generics::NotDefinedYet,
-                ),
+                FormatStyle::Short
+                    if !format_data
+                        .types_that_need_qualified_names
+                        .contains(&nt.__new__.defined_at) =>
+                {
+                    nt.format_with_name(
+                        format_data,
+                        nt.name(format_data.db),
+                        Generics::NotDefinedYet,
+                    )
+                }
                 _ => nt.format_with_name(
                     format_data,
                     &nt.qualified_name(format_data.db),
@@ -1095,12 +1101,15 @@ impl Type {
             Self::Type(t) => check(self) || t.find_in_type(db, check),
             Self::Tuple(tup) => tup.find_in_type(db, check),
             Self::Callable(content) => check(self) || content.find_in_type(db, check),
-            Self::TypedDict(d) => match &d.generics {
-                TypedDictGenerics::Generics(gs) => {
-                    gs.iter().any(|g| Generic::new(g).find_in_type(db, check))
-                }
-                TypedDictGenerics::None | TypedDictGenerics::NotDefinedYet(_) => false,
-            },
+            Self::TypedDict(d) => {
+                check(self)
+                    || match &d.generics {
+                        TypedDictGenerics::Generics(gs) => {
+                            gs.iter().any(|g| Generic::new(g).find_in_type(db, check))
+                        }
+                        TypedDictGenerics::None | TypedDictGenerics::NotDefinedYet(_) => false,
+                    }
+            }
             _ => check(self),
         }
     }

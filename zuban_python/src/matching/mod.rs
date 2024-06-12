@@ -29,7 +29,7 @@ use crate::{
     arguments::Arg,
     database::Database,
     diagnostics::IssueKind,
-    format_data::FormatData,
+    format_data::{find_similar_types, FormatData},
     inference_state::InferenceState,
     inferred::Inferred,
     type_::{AnyCause, FormatStyle, Tuple, TupleUnpack, Type, WithUnpack},
@@ -120,6 +120,13 @@ impl GotType<'_> {
             GotType::DoubleStarred(t) => format!("**{}", t.format(format_data)),
         }
     }
+
+    fn contained_type(&self) -> &Type {
+        match self {
+            GotType::Type(t) => t,
+            GotType::Starred(t) | GotType::DoubleStarred(t) => t,
+        }
+    }
 }
 
 pub struct ErrorTypes<'a> {
@@ -150,8 +157,9 @@ impl ErrorTypes<'_> {
         // possible, but still different if they are different. e.g. a.Foo is not b.Foo and should
         // therefore not be formatted both as Foo. Mypy does a lot more here like subtype matching,
         // but for now this should suffice.
-        let mut fmt_got = FormatData::new_short(i_s.db);
-        let mut fmt_expected = FormatData::with_matcher(i_s.db, self.matcher);
+        let similar_types = find_similar_types(i_s.db, &[self.got.contained_type(), self.expected]);
+        let mut fmt_got = FormatData::with_types_that_need_qualified_names(i_s.db, &similar_types);
+        let mut fmt_expected = FormatData::with_matcher(i_s.db, self.matcher, &similar_types);
         if self.expected.is_literal_or_literal_in_tuple() {
             fmt_got.hide_implicit_literals = false;
             fmt_expected.hide_implicit_literals = false;
