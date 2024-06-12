@@ -34,7 +34,7 @@ use crate::{
         cache_class_name, is_reexport_issue_if_check_needed, start_namedtuple_params, Class,
         Function, Module,
     },
-    utils::{rc_slice_into_vec, rc_unwrap_or_clone},
+    utils::{rc_slice_into_vec, rc_unwrap_or_clone, AlreadySeen},
 };
 
 const ASSIGNMENT_TYPE_CACHE_OFFSET: u32 = 1;
@@ -3765,7 +3765,11 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                             );
                             had_error = true;
                         }
-                        if is_invalid_recursive_alias(self.i_s.db, &type_) {
+                        if is_invalid_recursive_alias(
+                            self.i_s.db,
+                            &SeenRecursiveAliases::new(in_definition),
+                            &type_,
+                        ) {
                             node_ref.add_issue(
                                 self.i_s,
                                 IssueKind::InvalidRecursiveTypeAliasUnionOfItself {
@@ -4185,8 +4189,23 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
     }
 }
 
-fn is_invalid_recursive_alias(db: &Database, t: &Type) -> bool {
-    t.iter_with_unpacked_unions_without_unpacking_recursive_types().any(|t| matches!(t, Type::RecursiveType(rec) if rec.has_alias_origin(db) && rec.calculating(db)))
+type SeenRecursiveAliases<'a> = AlreadySeen<'a, PointLink>;
+
+fn is_invalid_recursive_alias(db: &Database, seen: &SeenRecursiveAliases, t: &Type) -> bool {
+    t.iter_with_unpacked_unions_without_unpacking_recursive_types()
+        .any(|t| {
+            if let Type::RecursiveType(rec) = t {
+                if rec.has_alias_origin(db) {
+                    let new_seen = seen.append(rec.link);
+                    return if rec.calculating(db) {
+                        new_seen.is_cycle()
+                    } else {
+                        is_invalid_recursive_alias(db, &new_seen, rec.calculated_type(db))
+                    };
+                }
+            }
+            false
+        })
 }
 
 fn detect_diverging_alias(db: &Database, type_var_likes: &TypeVarLikes, t: &Type) -> bool {
