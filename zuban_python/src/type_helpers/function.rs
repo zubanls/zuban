@@ -1301,10 +1301,10 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         let mut type_vars = self.type_vars(i_s).as_vec();
         match options.first_param {
             FirstParamProperties::MethodAccessedOnClass => {
-                let mut needs_self_type_variable = self.return_type(i_s).has_self_type();
+                let mut needs_self_type_variable = self.return_type(i_s).has_self_type(i_s.db);
                 for param in self.iter_params().skip(1) {
                     if let Some(t) = param.annotation(i_s.db) {
-                        needs_self_type_variable |= t.has_self_type();
+                        needs_self_type_variable |= t.has_self_type(i_s.db);
                     }
                 }
                 if needs_self_type_variable {

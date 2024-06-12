@@ -852,7 +852,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                                 IssueKind::ClassVarCannotContainTypeVariables,
                             );
                             Type::Any(AnyCause::FromError)
-                        } else if !class.type_vars(i_s).is_empty() && t.has_self_type() {
+                        } else if !class.type_vars(i_s).is_empty() && t.has_self_type(i_s.db) {
                             self.add_issue(
                                 type_storage_node_ref,
                                 IssueKind::ClassVarCannotContainSelfTypeInGenericClass,
@@ -4211,7 +4211,7 @@ fn is_invalid_recursive_alias(db: &Database, seen: &SeenRecursiveAliases, t: &Ty
 
 fn detect_diverging_alias(db: &Database, type_var_likes: &TypeVarLikes, t: &Type) -> bool {
     !type_var_likes.is_empty()
-        && t.find_in_type(&mut |t| match t {
+        && t.find_in_type(db, &mut |t| match t {
             Type::RecursiveType(rec) if rec.has_alias_origin(db) && rec.generics.is_some() => {
                 if rec.calculating(db) {
                     rec.generics.as_ref().is_some_and(|generics| {
@@ -4245,22 +4245,25 @@ fn check_for_and_replace_type_type_in_finished_alias(
     //
     //  will probably just be ignored and should need additional logic to be recognized.
     //  see also the test type_type_alias_circular
-    if alias.type_if_valid().find_in_type(&mut |t| match t {
-        Type::Type(t) => t
-            .iter_with_unpacked_unions_without_unpacking_recursive_types()
-            .any(|t| match t {
-                Type::RecursiveType(recursive_alias) => {
-                    !recursive_alias.calculating(i_s.db)
-                        && recursive_alias.has_alias_origin(i_s.db)
-                        && recursive_alias
-                            .calculated_type(i_s.db)
-                            .iter_with_unpacked_unions_without_unpacking_recursive_types()
-                            .any(|t| matches!(t, Type::Type(_)))
-                }
-                _ => false,
-            }),
-        _ => false,
-    }) {
+    if alias
+        .type_if_valid()
+        .find_in_type(i_s.db, &mut |t| match t {
+            Type::Type(t) => t
+                .iter_with_unpacked_unions_without_unpacking_recursive_types()
+                .any(|t| match t {
+                    Type::RecursiveType(recursive_alias) => {
+                        !recursive_alias.calculating(i_s.db)
+                            && recursive_alias.has_alias_origin(i_s.db)
+                            && recursive_alias
+                                .calculated_type(i_s.db)
+                                .iter_with_unpacked_unions_without_unpacking_recursive_types()
+                                .any(|t| matches!(t, Type::Type(_)))
+                    }
+                    _ => false,
+                }),
+            _ => false,
+        })
+    {
         alias_origin.add_issue(i_s, IssueKind::TypeCannotContainAnotherType);
         let alias = TypeAlias::new(alias.type_vars.clone(), alias.location, alias.name);
         alias.set_valid(Type::Any(AnyCause::FromError), false);

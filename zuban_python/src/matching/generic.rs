@@ -7,7 +7,7 @@ use crate::{
     inference_state::InferenceState,
     type_::{
         format_callable_params, match_tuple_type_arguments, CallableParams, GenericItem,
-        ParamSpecArg, Type, TypeArgs, TypeVarLike, Variance,
+        ParamSpecArg, TupleArgs, Type, TypeArgs, TypeVarLike, Variance,
     },
 };
 
@@ -156,6 +156,18 @@ impl<'a> Generic<'a> {
                 GenericItem::TypeArgs(TypeArgs::new(ts1.args.merge_matching_parts(db, &ts2.args)))
             }
             Self::ParamSpecArg(params) => todo!(),
+        }
+    }
+
+    pub fn find_in_type(&self, db: &Database, check: &mut impl FnMut(&Type) -> bool) -> bool {
+        match self {
+            Generic::TypeArg(t) => t.find_in_type(db, check),
+            Generic::TypeArgs(ts) => match &ts.args {
+                TupleArgs::FixedLen(ts) => ts.iter().any(|t| t.find_in_type(db, check)),
+                TupleArgs::ArbitraryLen(t) => t.find_in_type(db, check),
+                TupleArgs::WithUnpack(with_unpack) => with_unpack.find_in_type(db, check),
+            },
+            Generic::ParamSpecArg(a) => a.params.find_in_type(db, check),
         }
     }
 }

@@ -2645,7 +2645,7 @@ impl NewOrInitConstructor<'_> {
 
                     // If the __init__ comes from a super class, we need to fetch the generics that
                     // are relevant for our class.
-                    if c.has_self_type() || needs_type_var_remap {
+                    if c.has_self_type(i_s.db) || needs_type_var_remap {
                         c = c.replace_type_var_likes_and_self(
                             i_s.db,
                             &mut |usage| {

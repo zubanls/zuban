@@ -344,7 +344,7 @@ impl<'db: 'slf, 'slf> Inferred {
             })
         };
         check_for_partial().or_else(|| {
-            if t.has_never_from_inference() {
+            if t.has_never_from_inference(i_s.db) {
                 from.add_issue(
                     i_s,
                     IssueKind::NeedTypeAnnotation {
@@ -1242,7 +1242,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 i_s,
                                 NodeRef::from_link(i_s.db, *definition),
                             );
-                            let has_explicit_self = t.has_self_type();
+                            let has_explicit_self = t.has_self_type(i_s.db);
                             if has_explicit_self {
                                 t = Cow::Owned(replace_class_type_vars(
                                     i_s.db,
@@ -1381,7 +1381,7 @@ impl<'db: 'slf, 'slf> Inferred {
         let needs_remapping = match attribute_class.generics {
             Generics::Self_ { .. } => !attribute_class.has_simple_self_generics(),
             _ => !attribute_class.type_vars(i_s).is_empty(),
-        } || t.has_self_type();
+        } || t.has_self_type(i_s.db);
         let mut new = None;
         if needs_remapping {
             new = Some(replace_class_type_vars(

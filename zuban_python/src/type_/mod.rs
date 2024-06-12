@@ -289,18 +289,6 @@ impl GenericsList {
         }
     }
 
-    pub fn find_in_type(&self, check: &mut impl FnMut(&Type) -> bool) -> bool {
-        self.iter().any(|g| match g {
-            GenericItem::TypeArg(t) => t.find_in_type(check),
-            GenericItem::TypeArgs(ts) => match &ts.args {
-                TupleArgs::FixedLen(ts) => ts.iter().any(|t| t.find_in_type(check)),
-                TupleArgs::ArbitraryLen(t) => t.find_in_type(check),
-                TupleArgs::WithUnpack(with_unpack) => with_unpack.find_in_type(check),
-            },
-            GenericItem::ParamSpecArg(a) => a.params.find_in_type(check),
-        })
-    }
-
     pub fn has_type_vars(&self) -> bool {
         let mut result = false;
         self.search_type_vars(&mut |_| result = true);
@@ -1088,33 +1076,37 @@ impl Type {
         }
     }
 
-    pub fn has_self_type(&self) -> bool {
-        self.find_in_type(&mut Self::is_self_type)
+    pub fn has_self_type(&self, db: &Database) -> bool {
+        self.find_in_type(db, &mut Self::is_self_type)
     }
 
-    pub fn find_in_type(&self, check: &mut impl FnMut(&Type) -> bool) -> bool {
+    pub fn find_in_type(&self, db: &Database, check: &mut impl FnMut(&Type) -> bool) -> bool {
         match self {
-            Self::Class(GenericClass {
-                generics: ClassGenerics::List(generics),
-                ..
-            }) => check(self) || generics.find_in_type(check),
-            Self::Union(u) => u.iter().any(|t| t.find_in_type(check)),
-            Self::FunctionOverload(intersection) => {
-                intersection.iter_functions().any(|c| c.find_in_type(check))
+            Self::Class(c) => {
+                check(self)
+                    || Generics::from_class_generics(db, &c.generics)
+                        .iter(db)
+                        .any(|generic| generic.find_in_type(db, check))
             }
-            Self::Type(t) => check(self) || t.find_in_type(check),
-            Self::Tuple(tup) => tup.find_in_type(check),
-            Self::Callable(content) => check(self) || content.find_in_type(check),
+            Self::Union(u) => u.iter().any(|t| t.find_in_type(db, check)),
+            Self::FunctionOverload(intersection) => intersection
+                .iter_functions()
+                .any(|c| c.find_in_type(db, check)),
+            Self::Type(t) => check(self) || t.find_in_type(db, check),
+            Self::Tuple(tup) => tup.find_in_type(db, check),
+            Self::Callable(content) => check(self) || content.find_in_type(db, check),
             Self::TypedDict(d) => match &d.generics {
-                TypedDictGenerics::Generics(g) => g.find_in_type(check),
+                TypedDictGenerics::Generics(gs) => {
+                    gs.iter().any(|g| Generic::new(g).find_in_type(db, check))
+                }
                 TypedDictGenerics::None | TypedDictGenerics::NotDefinedYet(_) => false,
             },
             _ => check(self),
         }
     }
 
-    pub fn has_never_from_inference(&self) -> bool {
-        self.find_in_type(&mut |t| match t {
+    pub fn has_never_from_inference(&self, db: &Database) -> bool {
+        self.find_in_type(db, &mut |t| match t {
             Type::Never(NeverCause::Inference) => true,
             Type::Callable(c) => matches!(c.params, CallableParams::Never(NeverCause::Inference)),
             Type::Class(c) => match &c.generics {

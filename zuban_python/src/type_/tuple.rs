@@ -365,11 +365,11 @@ impl Tuple {
         }
     }
 
-    pub fn find_in_type(&self, check: &mut impl FnMut(&Type) -> bool) -> bool {
+    pub fn find_in_type(&self, db: &Database, check: &mut impl FnMut(&Type) -> bool) -> bool {
         match &self.args {
-            TupleArgs::FixedLen(ts) => ts.iter().any(|t| t.find_in_type(check)),
-            TupleArgs::ArbitraryLen(t) => t.find_in_type(check),
-            TupleArgs::WithUnpack(with_unpack) => with_unpack.find_in_type(check),
+            TupleArgs::FixedLen(ts) => ts.iter().any(|t| t.find_in_type(db, check)),
+            TupleArgs::ArbitraryLen(t) => t.find_in_type(db, check),
+            TupleArgs::WithUnpack(with_unpack) => with_unpack.find_in_type(db, check),
         }
     }
 
@@ -436,13 +436,13 @@ impl WithUnpack {
         .into()
     }
 
-    pub fn find_in_type(&self, check: &mut impl FnMut(&Type) -> bool) -> bool {
-        self.before.iter().any(|t| t.find_in_type(check))
+    pub fn find_in_type(&self, db: &Database, check: &mut impl FnMut(&Type) -> bool) -> bool {
+        self.before.iter().any(|t| t.find_in_type(db, check))
             || match &self.unpack {
                 TupleUnpack::TypeVarTuple(_) => false,
-                TupleUnpack::ArbitraryLen(t) => t.find_in_type(check),
+                TupleUnpack::ArbitraryLen(t) => t.find_in_type(db, check),
             }
-            || self.before.iter().any(|t| t.find_in_type(check))
+            || self.before.iter().any(|t| t.find_in_type(db, check))
     }
 
     fn has_any_internal(

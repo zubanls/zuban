@@ -421,21 +421,23 @@ impl CallableParams {
         }
     }
 
-    pub fn find_in_type(&self, check: &mut impl FnMut(&Type) -> bool) -> bool {
+    pub fn find_in_type(&self, db: &Database, check: &mut impl FnMut(&Type) -> bool) -> bool {
         match self {
             Self::Simple(params) => params.iter().any(|param| match &param.type_ {
                 ParamType::PositionalOnly(t)
                 | ParamType::PositionalOrKeyword(t)
                 | ParamType::KeywordOnly(t)
                 | ParamType::Star(StarParamType::ArbitraryLen(t))
-                | ParamType::StarStar(StarStarParamType::ValueType(t)) => t.find_in_type(check),
+                | ParamType::StarStar(StarStarParamType::ValueType(t)) => t.find_in_type(db, check),
                 ParamType::Star(StarParamType::ParamSpecArgs(_)) => false,
-                ParamType::Star(StarParamType::UnpackedTuple(u)) => u.find_in_type(check),
+                ParamType::Star(StarParamType::UnpackedTuple(u)) => u.find_in_type(db, check),
                 ParamType::StarStar(StarStarParamType::ParamSpecKwargs(_)) => false,
                 ParamType::StarStar(StarStarParamType::UnpackTypedDict(_)) => todo!(),
             }),
             Self::Any(_) | Self::Never(_) => false,
-            Self::WithParamSpec(types, param_spec) => types.iter().any(|t| t.find_in_type(check)),
+            Self::WithParamSpec(types, param_spec) => {
+                types.iter().any(|t| t.find_in_type(db, check))
+            }
         }
     }
 }
@@ -650,16 +652,16 @@ impl CallableContent {
             || self.params.has_any_internal(i_s, already_checked)
     }
 
-    pub fn has_self_type(&self) -> bool {
-        self.return_type.has_self_type() || self.find_in_type(&mut Type::is_self_type)
+    pub fn has_self_type(&self, db: &Database) -> bool {
+        self.return_type.has_self_type(db) || self.find_in_type(db, &mut Type::is_self_type)
     }
 
-    pub fn find_in_type(&self, check: &mut impl FnMut(&Type) -> bool) -> bool {
+    pub fn find_in_type(&self, db: &Database, check: &mut impl FnMut(&Type) -> bool) -> bool {
         self.guard
             .as_ref()
-            .is_some_and(|guard| guard.type_.find_in_type(check))
-            || self.return_type.find_in_type(check)
-            || self.params.find_in_type(check)
+            .is_some_and(|guard| guard.type_.find_in_type(db, check))
+            || self.return_type.find_in_type(db, check)
+            || self.params.find_in_type(db, check)
     }
 
     pub fn format(&self, format_data: &FormatData) -> String {
@@ -764,10 +766,10 @@ impl CallableContent {
         class: Class,
         attribute_class: Class,
     ) -> Rc<CallableContent> {
-        let mut needs_self_type_variable = self.return_type.has_self_type();
+        let mut needs_self_type_variable = self.return_type.has_self_type(db);
         for param in self.expect_simple_params().iter() {
             if let Some(t) = param.type_.maybe_type() {
-                needs_self_type_variable |= t.has_self_type();
+                needs_self_type_variable |= t.has_self_type(db);
             }
         }
         let mut type_vars = self.type_vars.as_vec();

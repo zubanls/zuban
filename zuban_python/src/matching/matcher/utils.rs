@@ -15,7 +15,7 @@ use super::{
 };
 use crate::{
     arguments::{Arg, ArgKind, InferredArg},
-    database::PointLink,
+    database::{Database, PointLink},
     debug,
     diagnostics::IssueKind,
     inference_state::InferenceState,
@@ -214,12 +214,13 @@ impl CalculatedTypeArgs {
         );
         if let Some(type_var_likes) = self.type_var_likes {
             fn create_callable_hierarchy(
+                db: &Database,
                 manager: &mut TypeVarManager<Rc<CallableContent>>,
                 parent_callable: Option<Rc<CallableContent>>,
                 type_var_likes: &TypeVarLikes,
                 t: &Type,
             ) {
-                t.find_in_type(&mut |t| {
+                t.find_in_type(db, &mut |t| {
                     if let Type::Callable(c) = t {
                         // TODO the is_callable_known is only known, because we recurse
                         // potentially multiple times into the same data structures, which is
@@ -235,7 +236,13 @@ impl CalculatedTypeArgs {
                                     manager.add(found, Some(c.clone()));
                                 }
                             });
-                            create_callable_hierarchy(manager, Some(c.clone()), type_var_likes, t)
+                            create_callable_hierarchy(
+                                db,
+                                manager,
+                                Some(c.clone()),
+                                type_var_likes,
+                                t,
+                            )
                         }
                     }
                     false
@@ -243,7 +250,7 @@ impl CalculatedTypeArgs {
             }
 
             let mut manager = TypeVarManager::default();
-            create_callable_hierarchy(&mut manager, None, &type_var_likes, &type_);
+            create_callable_hierarchy(i_s.db, &mut manager, None, &type_var_likes, &type_);
             type_ = type_.rewrite_late_bound_callables(&manager);
             let mut unused_type_vars = vec![];
             for type_var_like in type_var_likes.iter() {
