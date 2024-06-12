@@ -1312,13 +1312,8 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             TypeOrUnpack::Type(t) => {
                 self.add_issue(
                     from,
-                    match t {
-                        Type::RecursiveType(_) => {
-                            IssueKind::InvalidRecursiveTypeAliasUnionOfItself { target: "union" }
-                        }
-                        _ => IssueKind::VariadicUnpackMustBeTupleLike {
-                            actual: t.format_short(self.inference.i_s.db),
-                        },
+                    IssueKind::VariadicUnpackMustBeTupleLike {
+                        actual: t.format_short(self.inference.i_s.db),
                     },
                 );
                 TypeCompTupleUnpack::ArbitraryLen(Box::new(Type::Any(AnyCause::FromError)))
