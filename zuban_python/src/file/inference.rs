@@ -21,8 +21,9 @@ use crate::{
     inference_state::InferenceState,
     inferred::{add_attribute_error, specific_to_type, AttributeKind, Inferred, UnionValue},
     matching::{
-        format_got_expected, matches_simple_params, CouldBeALiteral, FormatData, IteratorContent,
-        LookupKind, LookupResult, Matcher, OnTypeError, ResultContext, TupleLenInfos,
+        format_got_expected, matches_simple_params, CouldBeALiteral, ErrorStrs, ErrorTypes,
+        FormatData, IteratorContent, LookupKind, LookupResult, Matcher, OnTypeError, ResultContext,
+        TupleLenInfos,
     },
     new_class,
     node_ref::NodeRef,
@@ -243,7 +244,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     self.i_s,
                     &import_inferred,
                     |issue| from.add_issue(self.i_s, issue),
-                    |got, expected| {
+                    |error_types| {
+                        let ErrorStrs { expected, got } = error_types.as_boxed_strs(self.i_s);
                         Some(IssueKind::IncompatibleImportAssignment {
                             name: name_def.as_code().into(),
                             got,
@@ -593,7 +595,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         right: Inferred,
         right_side: AssignmentRightSide,
     ) {
-        let on_type_error = |got, expected| {
+        let on_type_error = |error_types: &ErrorTypes| {
             // In cases of stubs when an ellipsis is given, it's not an error.
             if self.file.is_stub() {
                 // Right side always exists, because it was compared and there was an error because
@@ -606,6 +608,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     }
                 }
             }
+            let ErrorStrs { expected, got } = error_types.as_boxed_strs(self.i_s);
             Some(IssueKind::IncompatibleAssignment { got, expected })
         };
         expected.error_if_not_matches(
@@ -870,7 +873,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         i_s,
                         &inf,
                         |issue| from.add_issue(i_s, issue),
-                        |got, expected| {
+                        |error_types| {
+                            let ErrorStrs { expected, got } = error_types.as_boxed_strs(i_s);
                             Some(IssueKind::IncompatibleTypes {
                                 cause: "\"yield\"",
                                 got,
@@ -910,7 +914,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     i_s,
                     &yields,
                     |issue| from.add_issue(i_s, issue),
-                    |got, expected| {
+                    |error_types| {
+                        let ErrorStrs { expected, got } = error_types.as_boxed_strs(self.i_s);
                         Some(IssueKind::IncompatibleTypes {
                             cause: "\"yield from\"",
                             got,
@@ -1054,7 +1059,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     i_s,
                     value,
                     |issue| from.add_issue(i_s, issue),
-                    |got, expected| Some(IssueKind::IncompatibleAssignment { got, expected }),
+                    |error_types| {
+                        let ErrorStrs { expected, got } = error_types.as_boxed_strs(i_s);
+                        Some(IssueKind::IncompatibleAssignment { got, expected })
+                    },
                 );
             };
             if matches!(assign_kind, AssignKind::Normal) {
@@ -1352,7 +1360,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             i_s,
                             value,
                             |issue| from.add_issue(i_s, issue),
-                            |got, expected| {
+                            |error_types| {
+                                let ErrorStrs { expected, got } = error_types.as_boxed_strs(i_s);
                                 Some(IssueKind::IncompatibleAssignment { got, expected })
                             },
                         );
@@ -3367,7 +3376,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         &self,
         result_context: &mut ResultContext,
         class: NodeRef,
-        mut on_mismatch: impl FnMut(Box<str>, Box<str>) -> IssueKind,
+        mut on_mismatch: impl FnMut(&ErrorTypes) -> IssueKind,
         comp: Comprehension,
     ) -> Type {
         let i_s = self.i_s;
@@ -3392,7 +3401,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     matcher,
                     &inf,
                     |issue| self.add_issue(comp_expr.index(), issue),
-                    |got, expected, _: &_| Some(on_mismatch(got, expected)),
+                    |error_types, _: &_| Some(on_mismatch(error_types)),
                 );
                 matcher.replace_type_var_likes_for_unknown_type_vars(i_s.db, &inner_expected)
             })
@@ -3408,7 +3417,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         let t = self.infer_comprehension_expr_with_context(
             result_context,
             self.i_s.db.python_state.list_node_ref(),
-            |got, expected| IssueKind::ListComprehensionMismatch { got, expected },
+            |error_types| {
+                let ErrorStrs { expected, got } = error_types.as_boxed_strs(self.i_s);
+                IssueKind::ListComprehensionMismatch { got, expected }
+            },
             comp,
         );
         Inferred::from_type(new_class!(
@@ -3425,7 +3437,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         let t = self.infer_comprehension_expr_with_context(
             result_context,
             self.i_s.db.python_state.set_node_ref(),
-            |got, expected| IssueKind::SetComprehensionMismatch { got, expected },
+            |error_types| {
+                let ErrorStrs { expected, got } = error_types.as_boxed_strs(self.i_s);
+                IssueKind::SetComprehensionMismatch { got, expected }
+            },
             comp,
         );
         Inferred::from_type(new_class!(
@@ -3442,7 +3457,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         let t = self.infer_comprehension_expr_with_context(
             result_context,
             self.i_s.db.python_state.generator_node_ref(),
-            |got, expected| IssueKind::GeneratorComprehensionMismatch { got, expected },
+            |error_types| {
+                let ErrorStrs { expected, got } = error_types.as_boxed_strs(self.i_s);
+                IssueKind::GeneratorComprehensionMismatch { got, expected }
+            },
             comp,
         );
         Inferred::from_type(new_class!(

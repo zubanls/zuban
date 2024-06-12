@@ -24,7 +24,8 @@ use crate::{
     matching::{
         calculate_function_type_vars_and_return, maybe_class_usage,
         params::{InferrableParamIterator, Param, WrappedParamType, WrappedStar, WrappedStarStar},
-        CalculatedTypeArgs, FormatData, Generic, LookupResult, OnTypeError, ResultContext,
+        CalculatedTypeArgs, ErrorStrs, FormatData, Generic, LookupResult, OnTypeError,
+        ResultContext,
     },
     new_class,
     node_ref::NodeRef,
@@ -644,7 +645,8 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 i_s,
                 &redefinition,
                 |issue| self.add_issue_for_declaration(i_s, issue),
-                |got, expected| {
+                |error_types| {
+                    let ErrorStrs { expected, got } = error_types.as_boxed_strs(i_s);
                     Some(IssueKind::IncompatibleConditionalFunctionSignature {
                         original: expected,
                         redefinition: got,

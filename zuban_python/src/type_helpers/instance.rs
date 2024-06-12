@@ -12,7 +12,7 @@ use crate::{
     getitem::SliceType,
     inference_state::InferenceState,
     inferred::{add_attribute_error, AttributeKind, Inferred},
-    matching::{IteratorContent, LookupKind, LookupResult, OnTypeError, ResultContext},
+    matching::{ErrorStrs, IteratorContent, LookupKind, LookupResult, OnTypeError, ResultContext},
     node_ref::NodeRef,
     type_::{
         AnyCause, CallableLike, CallableParams, FunctionKind, GenericClass, Type, TypeVarKind,
@@ -63,7 +63,8 @@ impl<'a> Instance<'a> {
             }
         }
         let check_compatible = |t: &Type, value: &_| {
-            t.error_if_not_matches(i_s, value, add_issue, |got, expected| {
+            t.error_if_not_matches(i_s, value, add_issue, |error_types| {
+                let ErrorStrs { expected, got } = error_types.as_boxed_strs(i_s);
                 Some(IssueKind::IncompatibleAssignment { got, expected })
             })
         };

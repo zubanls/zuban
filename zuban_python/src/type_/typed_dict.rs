@@ -16,8 +16,8 @@ use crate::{
     inference_state::InferenceState,
     inferred::{AttributeKind, Inferred},
     matching::{
-        AvoidRecursionFor, FormatData, LookupKind, LookupResult, Match, Matcher, MismatchReason,
-        OnTypeError, ResultContext,
+        AvoidRecursionFor, ErrorStrs, FormatData, LookupKind, LookupResult, Match, Matcher,
+        MismatchReason, OnTypeError, ResultContext,
     },
     node_ref::NodeRef,
     type_helpers::{Class, Instance, LookupDetails},
@@ -904,7 +904,8 @@ fn typed_dict_setitem_internal<'db>(
                 i_s,
                 &value,
                 |issue| args.add_issue(i_s, issue),
-                |got, expected| {
+                |error_types| {
+                    let ErrorStrs { expected, got } = error_types.as_boxed_strs(i_s);
                     Some(IssueKind::TypedDictKeySetItemIncompatibleType {
                         key: key.into(),
                         got,
@@ -1082,7 +1083,8 @@ pub(crate) fn infer_typed_dict_item(
             matcher,
             &inferred,
             add_issue,
-            |got, expected, _: &MismatchReason| {
+            |error_types, _: &MismatchReason| {
+                let ErrorStrs { expected, got } = error_types.as_boxed_strs(i_s);
                 Some(IssueKind::TypedDictIncompatibleType {
                     key: key.into(),
                     got,

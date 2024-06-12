@@ -1273,14 +1273,14 @@ impl Type {
         i_s: &InferenceState,
         value: &Inferred,
         add_issue: impl Fn(IssueKind),
-        mut on_error: impl FnMut(Box<str>, Box<str>) -> Option<IssueKind>,
+        mut on_error: impl FnMut(&ErrorTypes) -> Option<IssueKind>,
     ) {
         self.error_if_not_matches_with_matcher(
             i_s,
             &mut Matcher::default(),
             value,
             add_issue,
-            |t1, t2, reason: &MismatchReason| on_error(t1, t2),
+            |error_types, reason: &MismatchReason| on_error(error_types),
         );
     }
 
@@ -1291,7 +1291,7 @@ impl Type {
         value: &Inferred,
         //callback: Option<impl FnOnce(Box<str>, Box<str>, &MismatchReason) -> NodeRef<'x>>,
         add_issue: impl Fn(IssueKind),
-        mut on_error: impl FnMut(Box<str>, Box<str>, &MismatchReason) -> Option<IssueKind>,
+        mut on_error: impl FnMut(&ErrorTypes, &MismatchReason) -> Option<IssueKind>,
     ) {
         let value_type = value.as_cow_type(i_s);
         let matches = self.is_super_type_of(i_s, matcher, &value_type);
@@ -1302,12 +1302,14 @@ impl Type {
                 matcher,
                 reason,
             };
-            let ErrorStrs { expected, got } = error_types.as_boxed_strs(i_s);
-            debug!(
-                "Mismatch between {expected:?} and {got:?} -> {:?}",
-                &matches
-            );
-            if let Some(error) = on_error(got, expected, reason) {
+            if cfg!(feature = "zuban_debug") {
+                let ErrorStrs { expected, got } = error_types.as_boxed_strs(i_s);
+                debug!(
+                    "Mismatch between {expected:?} and {got:?} -> {:?}",
+                    &matches
+                );
+            }
+            if let Some(error) = on_error(&error_types, reason) {
                 add_issue(error);
                 error_types.add_mismatch_notes(add_issue)
             }

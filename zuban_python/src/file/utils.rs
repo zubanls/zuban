@@ -432,7 +432,8 @@ fn check_list_with_context<'db>(
                 matcher,
                 &inferred,
                 |issue| NodeRef::new(file, index).add_issue(i_s, issue),
-                |got, expected, _: &MismatchReason| {
+                |error_types, _: &MismatchReason| {
+                    let ErrorStrs { expected, got } = error_types.as_boxed_strs(i_s);
                     had_error = true;
                     Some(IssueKind::ListItemMismatch {
                         item,

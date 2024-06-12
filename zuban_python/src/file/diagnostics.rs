@@ -25,8 +25,8 @@ use crate::{
     matching::{
         matches_params,
         params::{has_overlapping_params, WrappedParamType, WrappedStar},
-        FormatData, Generics, LookupKind, LookupResult, Match, Matcher, OnTypeError, Param,
-        ResultContext,
+        ErrorStrs, FormatData, Generics, LookupKind, LookupResult, Match, Matcher, OnTypeError,
+        Param, ResultContext,
     },
     node_ref::NodeRef,
     type_::{
@@ -977,7 +977,8 @@ impl<'db> Inference<'db, '_, '_> {
                             i_s,
                             &inf,
                             |issue| self.add_issue(default.index(), issue),
-                            |got, expected| {
+                            |error_types| {
+                                let ErrorStrs { expected, got } = error_types.as_boxed_strs(i_s);
                                 if default.is_ellipsis_literal()
                                     && (self.file.is_stub() || function.has_trivial_body(i_s))
                                 {
@@ -1294,11 +1295,13 @@ impl<'db> Inference<'db, '_, '_> {
                         i_s,
                         &inf,
                         |issue| self.add_issue(star_exprs.index(), issue),
-                        |got, expected| {
+                        |error_types| {
                             Some({
                                 if matches!(t.as_ref(), Type::None) {
                                     IssueKind::NoReturnValueExpected
                                 } else {
+                                    let ErrorStrs { expected, got } =
+                                        error_types.as_boxed_strs(i_s);
                                     IssueKind::IncompatibleReturn { got, expected }
                                 }
                             })
