@@ -1749,14 +1749,6 @@ testForwardRefsInWithStatement
 # binder probably deferred issues
 testLocalPartialTypesWithNestedFunction3
 
-# Type Vars qualified names
-testQualifiedTypeVariableName
-testPartiallyQualifiedTypeVariableName
-testSerializeSimpleTypeVar
-testSerializeBoundedTypeVar
-testSerializeTypeVarWithValues
-testSerializeTypeVarInClassBody
-
 # "unknown encoding: uft-8"
 testInvalidEncoding
 testInvalidEncoding2
@@ -2087,6 +2079,14 @@ testFollowImportsNormalSearchPathUpdate-only_when_nocache
 testFollowImportsNormalSearchPathUpdate2-only_when_cache
 testAddNonPackageSubdir
 testAddPackage5
+
+# Won't do: Type Vars qualified names -> comes from visit_Attribute and is not really qualified, but the expr name
+testQualifiedTypeVariableName
+testPartiallyQualifiedTypeVariableName
+testSerializeSimpleTypeVar
+testSerializeBoundedTypeVar
+testSerializeTypeVarWithValues
+testSerializeTypeVarInClassBody
 
 # Won't support: __eq__ called directly with a keyword argument (which is actually legal)
 testMagicMethodPositionalOnlyArg
