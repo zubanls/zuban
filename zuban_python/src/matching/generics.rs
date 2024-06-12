@@ -49,22 +49,6 @@ impl<'a> Generics<'a> {
         Self::List(list, None)
     }
 
-    pub fn from_non_list_class_generics(db: &'a Database, g: &ClassGenerics) -> Self {
-        match g {
-            ClassGenerics::None => Generics::None,
-            ClassGenerics::ExpressionWithClassType(link) => {
-                let node_ref = NodeRef::from_link(db, *link);
-                Self::ExpressionWithClassType(node_ref.file, node_ref.as_expression())
-            }
-            ClassGenerics::SlicesWithClassTypes(link) => {
-                let node_ref = NodeRef::from_link(db, *link);
-                Self::SlicesWithClassTypes(node_ref.file, node_ref.as_slices())
-            }
-            ClassGenerics::NotDefinedYet => Generics::NotDefinedYet,
-            ClassGenerics::List(l) => unreachable!(),
-        }
-    }
-
     pub fn from_class_generics(db: &'a Database, g: &'a ClassGenerics) -> Self {
         match g {
             ClassGenerics::List(l) => Self::List(l, None),
