@@ -280,8 +280,22 @@ impl<'a, T: PartialEq<T>> AlreadySeen<'a, T> {
 }
 
 impl<'a, T> AlreadySeen<'a, T> {
+    pub fn new(current: T) -> Self {
+        Self {
+            current,
+            previous: None,
+        }
+    }
+
     pub fn iter_ancestors(&self) -> AlreadySeenIterator<'a, T> {
         AlreadySeenIterator(self.previous)
+    }
+
+    pub fn append<'x: 'a>(&'x self, current: T) -> AlreadySeen<'x, T> {
+        Self {
+            current,
+            previous: Some(self),
+        }
     }
 }
 

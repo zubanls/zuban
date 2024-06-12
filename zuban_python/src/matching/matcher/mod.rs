@@ -1373,16 +1373,10 @@ impl<'a> Matcher<'a> {
                     matcher_index: i,
                     type_var_index: k,
                 };
-                let already_seen = AlreadySeen {
-                    current,
-                    previous: None,
-                };
+                let already_seen = AlreadySeen::new(current);
                 if !tv.calculated() && tv.unresolved_transitive_constraints.is_empty() {
                     // Create a cycle for a type var that is not part of a cycle
-                    cycles.add(AlreadySeen {
-                        current,
-                        previous: Some(&already_seen),
-                    })
+                    cycles.add(already_seen.append(current));
                 } else {
                     let has_bound = self.add_cycles(&mut cycles, tv, already_seen);
                     if has_bound {
@@ -1430,10 +1424,7 @@ impl<'a> Matcher<'a> {
                         matcher_index,
                         type_var_index,
                     };
-                    let new_already_seen = AlreadySeen {
-                        current: new_current_seen,
-                        previous: Some(&current_seen),
-                    };
+                    let new_already_seen = current_seen.append(new_current_seen);
                     if new_already_seen.is_cycle() {
                         cycles.add(new_already_seen)
                     } else {
