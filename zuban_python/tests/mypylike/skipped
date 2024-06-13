@@ -1,5 +1,4 @@
 # Next up
-testBadEnumLoading
 testMisguidedSetItem
 testTypeshedRecursiveTypesExample
 testRecursiveAliasBasicGenericInference
