@@ -1438,7 +1438,7 @@ mod tests {
         assert_eq!(size_of::<Type>(), 40); // TODO Would like it to be 32, but ClassGenerics is 24
         assert_eq!(size_of::<ComplexPoint>(), size_of::<Type>());
         assert_eq!(size_of::<ClassStorage>(), 136);
-        assert_eq!(size_of::<ClassInfos>(), 48);
+        assert_eq!(size_of::<ClassInfos>(), 56);
         assert_eq!(size_of::<PointLink>(), 8);
         assert_eq!(size_of::<StringSlice>(), 12);
     }
