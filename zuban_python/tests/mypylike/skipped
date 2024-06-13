@@ -1,7 +1,6 @@
 # Next up
 testBadEnumLoading
 testInvalidNamedTupleWithinFunction
-testVariadicUnpackWithRegularInstance
 testMisguidedSetItem
 testTypeshedRecursiveTypesExample
 testRecursiveAliasBasicGenericInference
