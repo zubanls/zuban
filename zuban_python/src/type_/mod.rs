@@ -1588,10 +1588,10 @@ impl NewType {
 
     pub fn format(&self, format_data: &FormatData) -> Box<str> {
         match format_data.style {
-            FormatStyle::Short => self.name(format_data.db).into(),
-            FormatStyle::Qualified | FormatStyle::MypyRevealType => {
-                self.qualified_name(format_data.db)
+            FormatStyle::Short if !format_data.should_format_qualified(self.name_string) => {
+                self.name(format_data.db).into()
             }
+            _ => self.qualified_name(format_data.db),
         }
     }
 

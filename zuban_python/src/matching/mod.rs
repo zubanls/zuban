@@ -157,7 +157,10 @@ impl ErrorTypes<'_> {
         // possible, but still different if they are different. e.g. a.Foo is not b.Foo and should
         // therefore not be formatted both as Foo. Mypy does a lot more here like subtype matching,
         // but for now this should suffice.
-        let similar_types = find_similar_types(i_s.db, &[self.got.contained_type(), self.expected]);
+        let expected_t = self
+            .matcher
+            .replace_type_var_likes_for_unknown_type_vars(i_s.db, self.expected);
+        let similar_types = find_similar_types(i_s.db, &[self.got.contained_type(), &expected_t]);
         let mut fmt_got = FormatData::with_types_that_need_qualified_names(i_s.db, &similar_types);
         let mut fmt_expected = FormatData::with_matcher(i_s.db, self.matcher, &similar_types);
         if self.expected.is_literal_or_literal_in_tuple() {
@@ -170,7 +173,7 @@ impl ErrorTypes<'_> {
             fmt_got.enable_verbose();
             fmt_expected.enable_verbose();
             got = self.got.format(&fmt_got);
-            expected = self.expected.format(&fmt_expected);
+            expected = expected_t.format(&fmt_expected);
         }
         ErrorStrs {
             got: got.into(),

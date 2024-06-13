@@ -1377,7 +1377,6 @@ testCallableFastParseBadArgArgName
 # Formatting better verbosity
 testDistinctTypes
 testLiteralWithEnumsSimilarDefinitions
-testNewTypeInMultipleFiles
 # Separate formatting for ambigous names???
 testIncompatibleAssignmentAmbiguousShortnames
 # for long tuples: "Expression tuple item 8 has type "str"; "int" expected;"

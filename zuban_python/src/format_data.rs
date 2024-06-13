@@ -31,7 +31,7 @@ pub struct FormatData<'db, 'a, 'b, 'c> {
     pub style: FormatStyle,
     pub verbose: bool,
     pub hide_implicit_literals: bool,
-    pub types_that_need_qualified_names: &'a [PointLink],
+    types_that_need_qualified_names: &'a [PointLink],
     displayed_recursive: Option<DisplayedRecursive<'c>>,
 }
 
@@ -194,8 +194,9 @@ pub fn find_similar_types(db: &Database, types: &[&Type]) -> Vec<PointLink> {
                 Type::Class(_)
                 | Type::RecursiveType(_)
                 | Type::NamedTuple(_)
+                | Type::TypedDict(_)
                 | Type::Enum(_)
-                | Type::TypedDict(_) => {
+                | Type::NewType(_) => {
                     let Some((s2, link2)) = short_type_name_with_link(db, t) else {
                         return false;
                     };
@@ -232,6 +233,7 @@ fn short_type_name_with_link<'x>(db: &'x Database, t: &'x Type) -> Option<(&'x s
         Type::NamedTuple(n) => (n.name.as_str(db), n.__new__.defined_at),
         Type::TypedDict(td) => (td.name?.as_str(db), td.defined_at),
         Type::Enum(e) => (e.name.as_str(db), e.defined_at),
+        Type::NewType(n) => (n.name(db), n.name_string),
         _ => unreachable!(),
     })
 }
