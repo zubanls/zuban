@@ -2088,7 +2088,15 @@ impl GeneratorType {
                             yield_type: a.yield_type.union(b.yield_type),
                             // TODO is taking the Union here correct, since its contravariant?
                             send_type: optional_union(a.send_type, b.send_type),
-                            return_type: optional_union(a.return_type, b.return_type),
+                            return_type: if a.return_type.is_none() && b.return_type.is_none() {
+                                None
+                            } else {
+                                Some(
+                                    a.return_type
+                                        .unwrap_or(Type::None)
+                                        .union(b.return_type.unwrap_or(Type::None)),
+                                )
+                            },
                         })
                     } else {
                         Some(b)

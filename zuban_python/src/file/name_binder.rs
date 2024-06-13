@@ -468,7 +468,9 @@ impl<'db> NameBinder<'db> {
                         )
                     }
                     if let Some(return_expr) = return_stmt.star_expressions() {
-                        self.index_non_block_node_full(&return_expr, ordered, false);
+                        let l = self.index_non_block_node_full(&return_expr, ordered, false);
+                        latest_return_or_yield =
+                            self.merge_latest_return_or_yield(latest_return_or_yield, l);
                     }
                     self.index_return_or_yield(&mut latest_return_or_yield, return_stmt.index());
                     return (latest_return_or_yield, true);
