@@ -112,6 +112,7 @@ impl Workspaces {
         }
         let mut new = self.clone();
         for workspace in new.0.iter_mut() {
+            #![allow(clippy::assigning_clones)] // This is a clippy bug
             workspace.directory.entries = workspace.directory.entries.clone();
             for entry in workspace.directory.entries.borrow_mut().iter_mut() {
                 match entry {
