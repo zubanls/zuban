@@ -3822,19 +3822,31 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
             }
 
             let inferred = self.check_point_cache(name_def.index()).unwrap();
-            let result = if let Some(tv) = inferred.maybe_type_var_like(self.i_s) {
-                TypeNameLookup::TypeVarLike(tv)
-            } else if let Some(n) = inferred.maybe_new_type(self.i_s) {
-                TypeNameLookup::NewType(n)
-            } else if let Some(t) = inferred.maybe_named_tuple_definition(self.i_s) {
-                let Type::NamedTuple(nt) = t else {
-                    unreachable!()
-                };
-                TypeNameLookup::NamedTupleDefinition(nt)
-            } else if let Some(t) = inferred.maybe_typed_dict_definition(self.i_s) {
-                TypeNameLookup::TypedDictDefinition(t)
-            } else if let Some(t) = inferred.maybe_enum_definition(self.i_s) {
-                TypeNameLookup::Enum(t)
+            let result = if let Some(saved) = inferred.maybe_saved_link() {
+                match NodeRef::from_link(self.i_s.db, saved).complex() {
+                    Some(ComplexPoint::TypeVarLike(tv)) => TypeNameLookup::TypeVarLike(tv.clone()),
+                    Some(ComplexPoint::NamedTupleDefinition(t)) => {
+                        let Type::NamedTuple(nt) = t.as_ref() else {
+                            unreachable!()
+                        };
+                        TypeNameLookup::NamedTupleDefinition(nt.clone())
+                    }
+                    Some(ComplexPoint::NewTypeDefinition(n)) => TypeNameLookup::NewType(n.clone()),
+                    Some(ComplexPoint::TypedDictDefinition(tdd)) => {
+                        let Type::TypedDict(td) = tdd.type_.as_ref() else {
+                            unreachable!();
+                        };
+                        return TypeNameLookup::TypedDictDefinition(td.clone());
+                    }
+                    Some(ComplexPoint::TypeInstance(Type::Type(t))) => {
+                        if let Type::Enum(e) = t.as_ref() {
+                            TypeNameLookup::Enum(e.clone())
+                        } else {
+                            check_for_alias()
+                        }
+                    }
+                    _ => check_for_alias(),
+                }
             } else {
                 check_for_alias()
             };

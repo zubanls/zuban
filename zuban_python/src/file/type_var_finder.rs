@@ -2,7 +2,7 @@ use parsa_python_cst::*;
 
 use super::type_computation::cache_name_on_class;
 use crate::{
-    database::{PointKind, PointLink, Specific},
+    database::{ComplexPoint, PointKind, PointLink, Specific},
     diagnostics::IssueKind,
     file::PythonFile,
     getitem::{SliceOrSimple, SliceType},
@@ -306,8 +306,11 @@ fn follow_name<'db>(
             TypeLike::Assignment(assignment) => {
                 let inference = node_ref.file.inference(i_s);
                 let inf = inference.infer_name_of_definition(name);
-                if let Some(tv) = inf.maybe_type_var_like(i_s) {
-                    return Ok(tv);
+                if let Some(saved) = inf.maybe_saved_link() {
+                    let node_ref = NodeRef::from_link(i_s.db, saved);
+                    if let Some(ComplexPoint::TypeVarLike(tvl)) = node_ref.complex() {
+                        return Ok(tvl.clone());
+                    }
                 }
             }
             TypeLike::ImportFromAsName(import_from_as_name) => {

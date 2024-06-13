@@ -28,9 +28,9 @@ use crate::{
     type_::{
         execute_collections_named_tuple, execute_type_of_type, execute_typing_named_tuple,
         new_typed_dict, AnyCause, CallableContent, CallableLike, CallableParams, ClassGenerics,
-        DbString, Enum, FunctionKind, FunctionOverload, GenericClass, GenericItem, GenericsList,
-        Literal as DbLiteral, LiteralKind, LiteralValue, NeverCause, NewType, Type, TypeVarKind,
-        TypeVarLike, TypeVarLikes, TypedDict,
+        DbString, FunctionKind, FunctionOverload, GenericClass, GenericItem, GenericsList,
+        Literal as DbLiteral, LiteralKind, LiteralValue, NeverCause, Type, TypeVarKind,
+        TypeVarLike, TypeVarLikes,
     },
     type_helpers::{
         execute_assert_type, execute_isinstance, execute_issubclass, execute_super, execute_type,
@@ -229,60 +229,6 @@ impl<'db: 'slf, 'slf> Inferred {
                 _ => unreachable!(),
             },
         }
-    }
-    pub fn maybe_type_var_like(&self, i_s: &InferenceState) -> Option<TypeVarLike> {
-        if let InferredState::Saved(definition) = self.state {
-            let node_ref = NodeRef::from_link(i_s.db, definition);
-            if let Some(ComplexPoint::TypeVarLike(t)) = node_ref.complex() {
-                return Some(t.clone());
-            }
-        }
-        None
-    }
-
-    pub fn maybe_new_type(&self, i_s: &InferenceState) -> Option<Rc<NewType>> {
-        if let InferredState::Saved(definition) = self.state {
-            let node_ref = NodeRef::from_link(i_s.db, definition);
-            if let Some(ComplexPoint::NewTypeDefinition(n)) = node_ref.complex() {
-                return Some(n.clone());
-            }
-        }
-        None
-    }
-
-    pub fn maybe_named_tuple_definition(&self, i_s: &InferenceState) -> Option<Type> {
-        if let InferredState::Saved(definition) = self.state {
-            let node_ref = NodeRef::from_link(i_s.db, definition);
-            if let Some(ComplexPoint::NamedTupleDefinition(n)) = node_ref.complex() {
-                return Some(n.as_ref().clone());
-            }
-        }
-        None
-    }
-
-    pub fn maybe_typed_dict_definition(&self, i_s: &InferenceState) -> Option<Rc<TypedDict>> {
-        if let InferredState::Saved(definition) = self.state {
-            let node_ref = NodeRef::from_link(i_s.db, definition);
-            if let Some(ComplexPoint::TypedDictDefinition(t)) = node_ref.complex() {
-                let Type::TypedDict(td) = t.type_.as_ref() else {
-                    unreachable!();
-                };
-                return Some(td.clone());
-            }
-        }
-        None
-    }
-
-    pub fn maybe_enum_definition(&self, i_s: &InferenceState) -> Option<Rc<Enum>> {
-        if let InferredState::Saved(definition) = self.state {
-            let node_ref = NodeRef::from_link(i_s.db, definition);
-            if let Some(ComplexPoint::TypeInstance(Type::Type(t))) = node_ref.complex() {
-                if let Type::Enum(e) = t.as_ref() {
-                    return Some(e.clone());
-                }
-            }
-        }
-        None
     }
 
     pub fn maybe_saved_link(&self) -> Option<PointLink> {
