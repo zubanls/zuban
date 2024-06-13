@@ -891,7 +891,7 @@ impl TypeVarLikeUsage {
                 let mut s = usage.type_var.name(db).to_owned();
                 if let Some(default) = &usage.type_var.default {
                     s += " = ";
-                    s += &default.format(&FormatData::new_short(db));
+                    s += &default.format_short(db);
                 }
                 s.into()
             }

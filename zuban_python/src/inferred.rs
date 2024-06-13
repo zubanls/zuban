@@ -184,7 +184,7 @@ impl<'db: 'slf, 'slf> Inferred {
         self.as_cow_type(i_s).into_owned()
     }
 
-    pub fn format(&self, i_s: &InferenceState, format_data: &FormatData) -> Box<str> {
+    pub fn format_short(&self, i_s: &InferenceState) -> Box<str> {
         if let Some(specific) = self.maybe_saved_specific(i_s.db) {
             match specific {
                 Specific::PartialList => return "List[<Partial>]".into(),
@@ -193,11 +193,7 @@ impl<'db: 'slf, 'slf> Inferred {
                 _ => (),
             }
         }
-        self.as_cow_type(i_s).format(format_data)
-    }
-
-    pub fn format_short(&self, i_s: &InferenceState) -> Box<str> {
-        self.format(i_s, &FormatData::new_short(i_s.db))
+        self.as_cow_type(i_s).format_short(i_s.db)
     }
 
     fn load_bound_method_class<'a: 'slf>(

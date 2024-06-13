@@ -606,7 +606,7 @@ pub(crate) fn match_arguments_against_params<
                                 IssueKind::InvalidTypeVarValue {
                                     type_var_name: Box::from(type_var.name(i_s.db)),
                                     of: diagnostic_string("").unwrap_or(Box::from("function")),
-                                    actual: expected.format(&FormatData::new_short(i_s.db)),
+                                    actual: expected.format_short(i_s.db),
                                 },
                             );
                         }
