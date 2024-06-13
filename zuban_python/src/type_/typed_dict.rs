@@ -287,11 +287,7 @@ impl TypedDict {
             FormatStyle::MypyRevealType => {
                 self.format_full(format_data, self.qualified_name(format_data.db).as_deref())
             }
-            FormatStyle::Short
-                if !format_data
-                    .types_that_need_qualified_names
-                    .contains(&self.defined_at) =>
-            {
+            FormatStyle::Short if !format_data.should_format_qualified(self.defined_at) => {
                 self.name_or_fallback(format_data)
             }
             _ => self

@@ -141,6 +141,10 @@ impl<'db, 'a, 'b, 'c> FormatData<'db, 'a, 'b, 'c> {
         self.verbose = true;
     }
 
+    pub fn should_format_qualified(&self, link: PointLink) -> bool {
+        self.types_that_need_qualified_names.contains(&link)
+    }
+
     pub fn format_type_var(&self, usage: &TypeVarUsage) -> Box<str> {
         match self.format_internal(
             &TypeVarLikeUsage::TypeVar(usage.clone()),

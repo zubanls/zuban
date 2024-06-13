@@ -1513,11 +1513,7 @@ impl<'db: 'a, 'a> Class<'a> {
 
     pub fn format(&self, format_data: &FormatData) -> Box<str> {
         let mut result = match format_data.style {
-            FormatStyle::Short
-                if !format_data
-                    .types_that_need_qualified_names
-                    .contains(&self.node_ref.as_link()) =>
-            {
+            FormatStyle::Short if !format_data.should_format_qualified(self.node_ref.as_link()) => {
                 self.name().to_owned()
             }
             _ => self.qualified_name(format_data.db),

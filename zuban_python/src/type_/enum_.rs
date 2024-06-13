@@ -49,7 +49,7 @@ impl EnumMember {
     }
 
     pub fn format(&self, format_data: &FormatData) -> String {
-        if !format_data.types_that_need_qualified_names.is_empty() {
+        if format_data.should_format_qualified(self.enum_.defined_at) {
             todo!()
         }
         let question_mark = match format_data.style {
@@ -138,11 +138,7 @@ impl Enum {
     pub fn format(&self, format_data: &FormatData) -> String {
         let enum_name = self.name.as_str(format_data.db);
         match format_data.style {
-            FormatStyle::Short
-                if !format_data
-                    .types_that_need_qualified_names
-                    .contains(&self.defined_at) =>
-            {
+            FormatStyle::Short if !format_data.should_format_qualified(self.defined_at) => {
                 enum_name.to_string()
             }
             _ => self.parent_scope.qualified_name(

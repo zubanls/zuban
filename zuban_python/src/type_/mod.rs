@@ -850,9 +850,7 @@ impl Type {
             Self::TypedDict(d) => d.format(format_data).into(),
             Self::NamedTuple(nt) => match format_data.style {
                 FormatStyle::Short
-                    if !format_data
-                        .types_that_need_qualified_names
-                        .contains(&nt.__new__.defined_at) =>
+                    if format_data.should_format_qualified(nt.__new__.defined_at) =>
                 {
                     nt.format_with_name(
                         format_data,
