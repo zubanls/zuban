@@ -7,7 +7,7 @@ pub mod params;
 mod result_context;
 mod utils;
 
-use std::{cell::RefCell, rc::Rc};
+use std::{borrow::Cow, cell::RefCell, rc::Rc};
 
 pub use generic::Generic;
 pub use generics::Generics;
@@ -159,8 +159,8 @@ impl ErrorTypes<'_> {
         // but for now this should suffice.
         let expected_t = self
             .matcher
-            .map(|m| m.replace_type_var_likes_for_unknown_type_vars(db, self.expected))
-            .unwrap_or_else(|| self.expected.clone());
+            .map(|m| Cow::Owned(m.replace_type_var_likes_for_unknown_type_vars(db, self.expected)))
+            .unwrap_or_else(|| Cow::Borrowed(self.expected));
         let similar_types = find_similar_types(db, &[self.got.contained_type(), &expected_t]);
         let mut fmt_got = FormatData::with_types_that_need_qualified_names(db, &similar_types);
         let mut fmt_expected = if let Some(matcher) = self.matcher {
