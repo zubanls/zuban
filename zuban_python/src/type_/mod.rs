@@ -65,7 +65,7 @@ use crate::{
     debug,
     diagnostics::IssueKind,
     file::dotted_path_from_dir,
-    format_data::{AvoidRecursionFor, FormatData},
+    format_data::{find_similar_types, AvoidRecursionFor, FormatData},
     inference_state::InferenceState,
     inferred::Inferred,
     matching::{
@@ -790,7 +790,11 @@ impl Type {
     }
 
     pub fn format_short(&self, db: &Database) -> Box<str> {
-        self.format(&FormatData::new_short(db))
+        let similar_types = find_similar_types(db, &[self]);
+        self.format(&FormatData::with_types_that_need_qualified_names(
+            db,
+            &similar_types,
+        ))
     }
 
     pub fn format(&self, format_data: &FormatData) -> Box<str> {
