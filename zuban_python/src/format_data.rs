@@ -58,15 +58,10 @@ impl<'db, 'a, 'b, 'c> FormatData<'db, 'a, 'b, 'c> {
         }
     }
 
-    pub fn with_style(db: &'db Database, style: FormatStyle) -> Self {
+    pub fn new_reveal_type(db: &'db Database) -> Self {
         Self {
-            db,
-            matcher: None,
-            style,
-            verbose: false,
-            hide_implicit_literals: true,
-            displayed_recursive: None,
-            types_that_need_qualified_names: &[],
+            style: FormatStyle::MypyRevealType,
+            ..Self::new_short(db)
         }
     }
 
@@ -76,29 +71,9 @@ impl<'db, 'a, 'b, 'c> FormatData<'db, 'a, 'b, 'c> {
         types_that_need_qualified_names: &'a [PointLink],
     ) -> Self {
         Self {
-            db,
             matcher: Some(matcher),
-            style: FormatStyle::Short,
-            verbose: false,
-            hide_implicit_literals: true,
-            displayed_recursive: None,
             types_that_need_qualified_names,
-        }
-    }
-
-    pub fn with_matcher_and_style(
-        db: &'db Database,
-        matcher: &'b Matcher<'a>,
-        style: FormatStyle,
-    ) -> Self {
-        Self {
-            db,
-            matcher: Some(matcher),
-            style,
-            verbose: false,
-            hide_implicit_literals: true,
-            displayed_recursive: None,
-            types_that_need_qualified_names: &[],
+            ..Self::new_short(db)
         }
     }
 

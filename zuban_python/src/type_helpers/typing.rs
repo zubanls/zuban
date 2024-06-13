@@ -11,8 +11,8 @@ use crate::{
     matching::{CouldBeALiteral, Matcher, OnTypeError, ResultContext},
     node_ref::NodeRef,
     type_::{
-        ClassGenerics, FormatStyle, NewType, ParamSpec, Type, TypeVar, TypeVarKind, TypeVarLike,
-        TypeVarName, TypeVarTuple, TypedDictGenerics, Variance,
+        ClassGenerics, NewType, ParamSpec, Type, TypeVar, TypeVarKind, TypeVarLike, TypeVarName,
+        TypeVarTuple, TypedDictGenerics, Variance,
     },
     utils::join_with_commas,
 };
@@ -165,7 +165,7 @@ impl RevealTypeFunction {
 }
 
 fn reveal_type_info(i_s: &InferenceState, t: &Type) -> Box<str> {
-    let format_data = FormatData::with_style(i_s.db, FormatStyle::MypyRevealType);
+    let format_data = FormatData::new_reveal_type(i_s.db);
     if let Type::Type(type_) = t {
         match type_.as_ref() {
             Type::Class(c) if c.generics != ClassGenerics::NotDefinedYet => (),

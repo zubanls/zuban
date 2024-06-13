@@ -32,8 +32,8 @@ use crate::{
     node_ref::NodeRef,
     type_::{
         format_callable_params, AnyCause, CallableContent, CallableParams, ClassGenerics, DbString,
-        FormatStyle, FunctionKind, FunctionOverload, GenericItem, GenericsList, Literal,
-        LiteralKind, NeverCause, TupleArgs, Type, TypeVarLike, Variance,
+        FunctionKind, FunctionOverload, GenericItem, GenericsList, Literal, LiteralKind,
+        NeverCause, TupleArgs, Type, TypeVarLike, Variance,
     },
     type_helpers::{
         cache_class_name, is_private, Class, ClassLookupOptions, FirstParamProperties, Function,
