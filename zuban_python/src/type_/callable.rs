@@ -213,7 +213,7 @@ impl CallableParam {
                         }
                         return string.into();
                     }
-                    _ => {
+                    FormatStyle::Short => {
                         return match &self.type_ {
                             ParamType::PositionalOnly(t) | ParamType::PositionalOrKeyword(t) => {
                                 let t = t.format(format_data);

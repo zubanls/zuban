@@ -281,7 +281,7 @@ impl UnionType {
         let mut iterator = self.entries.iter();
         let mut sorted = match format_data.style {
             FormatStyle::MypyRevealType => String::new(),
-            _ => {
+            FormatStyle::Short => {
                 // Fetch the literals in the front of the union and format them like Literal[1, 2]
                 // instead of Literal[1] | Literal[2].
                 let count = self
