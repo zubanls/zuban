@@ -653,6 +653,9 @@ impl<'db: 'slf, 'slf> Inferred {
                 ComplexPoint::TypeInstance(Type::None) => {
                     Point::new_specific(Specific::None, Locality::Todo)
                 }
+                ComplexPoint::TypeInstance(Type::Any(AnyCause::FromError)) => {
+                    Point::new_specific(Specific::AnyDueToError, Locality::Todo)
+                }
                 _ => {
                     file.complex_points
                         .insert(&file.points, index, complex, Locality::Todo);
