@@ -173,7 +173,7 @@ impl ErrorTypes<'_> {
             fmt_got.enable_verbose();
             fmt_expected.enable_verbose();
             got = self.got.format(&fmt_got);
-            expected = expected_t.format(&fmt_expected);
+            expected = self.expected.format(&fmt_expected);
         }
         ErrorStrs {
             got: got.into(),
