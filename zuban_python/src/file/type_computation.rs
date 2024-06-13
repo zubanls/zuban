@@ -1160,7 +1160,10 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 );
                 self.add_issue(
                     node_ref,
-                    IssueKind::Note(Box::from("You can use ParamSpec as the first argument to Callable, e.g., 'Callable[P, int]'"))
+                    IssueKind::Note(Box::from(
+                        "You can use ParamSpec as the first \
+                                              argument to Callable, e.g., \"Callable[P, int]\"",
+                    )),
                 );
             }
             TypeContent::Unpacked(t) => {
