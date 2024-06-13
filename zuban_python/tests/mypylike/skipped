@@ -1366,8 +1366,6 @@ testAnonymousFunctionalEnum
 testNewAnalyzerIncrementalMethodNamedTuple
 testNewAnalyzerNamedTupleClassNestedMethod
 testNoIncrementalCrashOnTypedDictMethod
-# NewType formatting instead of internal type
-testNewTypeDependencies3
 # Nicer Callable Errors
 testCallableParsingFromExpr
 testCallableParsing
