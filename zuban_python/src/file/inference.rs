@@ -890,18 +890,22 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     return Inferred::new_any_from_error();
                 }
                 let expr_result = self.infer_expression(yield_from.expression());
+                let added_iter_issue = Cell::new(false);
                 let iter_result = expr_result.type_lookup_and_execute(
                     i_s,
                     from,
                     "__iter__",
                     &NoArgs::new(from),
                     &|_| {
-                        from.add_issue(
-                            i_s,
-                            IssueKind::YieldFromCannotBeApplied {
-                                to: expr_result.format_short(i_s),
-                            },
-                        )
+                        if !added_iter_issue.get() {
+                            added_iter_issue.set(true);
+                            from.add_issue(
+                                i_s,
+                                IssueKind::YieldFromCannotBeApplied {
+                                    to: expr_result.format_short(i_s),
+                                },
+                            )
+                        }
                     },
                 );
                 let yields = iter_result.type_lookup_and_execute(
