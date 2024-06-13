@@ -49,9 +49,6 @@ impl EnumMember {
     }
 
     pub fn format(&self, format_data: &FormatData) -> String {
-        if format_data.should_format_qualified(self.enum_.defined_at) {
-            todo!()
-        }
         let question_mark = match format_data.style {
             FormatStyle::MypyRevealType if self.implicit => "?",
             _ if self.implicit && format_data.hide_implicit_literals => {
