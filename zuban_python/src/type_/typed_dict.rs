@@ -482,7 +482,7 @@ fn add_access_key_must_be_string_literal_issue(
 }
 
 pub(crate) fn new_typed_dict<'db>(i_s: &InferenceState<'db, '_>, args: &dyn Args<'db>) -> Inferred {
-    new_typed_dict_internal(i_s, args).unwrap_or_else(Inferred::new_any_from_error)
+    new_typed_dict_internal(i_s, args).unwrap_or_else(Inferred::new_invalid_type_definition)
 }
 
 fn new_typed_dict_internal<'db>(

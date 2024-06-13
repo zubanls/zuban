@@ -313,7 +313,7 @@ pub(crate) fn execute_typing_named_tuple(i_s: &InferenceState, args: &dyn Args) 
         Some(rc) => Inferred::new_unsaved_complex(ComplexPoint::NamedTupleDefinition(Rc::new(
             Type::NamedTuple(rc),
         ))),
-        None => Inferred::new_any_from_error(),
+        None => Inferred::new_invalid_type_definition(),
     }
 }
 
@@ -330,7 +330,7 @@ pub(crate) fn execute_collections_named_tuple<'db>(
         Some(rc) => Inferred::new_unsaved_complex(ComplexPoint::NamedTupleDefinition(Rc::new(
             Type::NamedTuple(rc),
         ))),
-        None => Inferred::new_any_from_error(),
+        None => Inferred::new_invalid_type_definition(),
     }
 }
 

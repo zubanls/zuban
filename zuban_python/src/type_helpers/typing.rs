@@ -280,7 +280,7 @@ impl TypeVarClass {
         if let Some(t) = maybe_type_var(i_s, args, result_context) {
             Inferred::new_unsaved_complex(ComplexPoint::TypeVarLike(t))
         } else {
-            Inferred::new_any_from_error()
+            Inferred::new_invalid_type_definition()
         }
     }
 }
@@ -514,7 +514,7 @@ impl TypeVarTupleClass {
         if let Some(t) = maybe_type_var_tuple(i_s, args, result_context) {
             Inferred::new_unsaved_complex(ComplexPoint::TypeVarLike(t))
         } else {
-            Inferred::new_any_from_error()
+            Inferred::new_invalid_type_definition()
         }
     }
 }
@@ -648,7 +648,7 @@ impl ParamSpecClass {
         if let Some(t) = maybe_param_spec(i_s, args, result_context) {
             Inferred::new_unsaved_complex(ComplexPoint::TypeVarLike(t))
         } else {
-            Inferred::new_any_from_error()
+            Inferred::new_invalid_type_definition()
         }
     }
 }
@@ -770,7 +770,7 @@ impl NewTypeClass {
         if let Some(n) = maybe_new_type(i_s, args) {
             Inferred::new_unsaved_complex(ComplexPoint::NewTypeDefinition(Rc::new(n)))
         } else {
-            Inferred::new_any_from_error()
+            Inferred::new_invalid_type_definition()
         }
     }
 }

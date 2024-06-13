@@ -1,6 +1,5 @@
 # Next up
 testBadEnumLoading
-testInvalidNamedTupleWithinFunction
 testMisguidedSetItem
 testTypeshedRecursiveTypesExample
 testRecursiveAliasBasicGenericInference

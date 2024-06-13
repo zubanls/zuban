@@ -1897,7 +1897,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 }
                 return ClassExecutionResult::Inferred(
                     execute_functional_enum(original_i_s, *self, args, result_context)
-                        .unwrap_or_else(Inferred::new_any_from_error),
+                        .unwrap_or_else(Inferred::new_invalid_type_definition),
                 );
             }
             _ => (),

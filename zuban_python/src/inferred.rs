@@ -124,6 +124,12 @@ impl<'db: 'slf, 'slf> Inferred {
         }
     }
 
+    pub fn new_invalid_type_definition() -> Self {
+        Self {
+            state: InferredState::UnsavedSpecific(Specific::InvalidTypeDefinition),
+        }
+    }
+
     pub fn new_object(db: &Database) -> Self {
         Self::from_type(db.python_state.object_type())
     }
@@ -2319,7 +2325,9 @@ pub fn specific_to_type<'db>(
     specific: Specific,
 ) -> Cow<'db, Type> {
     match specific {
-        Specific::AnyDueToError => Cow::Borrowed(&Type::Any(AnyCause::FromError)),
+        Specific::AnyDueToError | Specific::InvalidTypeDefinition => {
+            Cow::Borrowed(&Type::Any(AnyCause::FromError))
+        }
         Specific::ModuleNotFound => Cow::Borrowed(&Type::Any(AnyCause::ModuleNotFound)),
         Specific::Cycle => Cow::Borrowed(&Type::Any(AnyCause::Todo)),
         Specific::IntLiteral => Cow::Owned(Type::Literal(DbLiteral {

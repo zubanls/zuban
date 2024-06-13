@@ -380,6 +380,7 @@ pub enum Specific {
     Cycle,
     OverloadUnreachable,
     AnyDueToError,
+    InvalidTypeDefinition,
     ModuleNotFound,
     IfBranchAlwaysReachableInNameBinder,
     IfBranchAlwaysReachableInTypeCheckingBlock, // For if TYPE_CHECKING:

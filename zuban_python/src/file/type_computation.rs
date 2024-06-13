@@ -3823,7 +3823,8 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
 
             let inferred = self.check_point_cache(name_def.index()).unwrap();
             let result = if let Some(saved) = inferred.maybe_saved_link() {
-                match NodeRef::from_link(self.i_s.db, saved).complex() {
+                let node_ref = NodeRef::from_link(self.i_s.db, saved);
+                match node_ref.complex() {
                     Some(ComplexPoint::TypeVarLike(tv)) => TypeNameLookup::TypeVarLike(tv.clone()),
                     Some(ComplexPoint::NamedTupleDefinition(t)) => {
                         let Type::NamedTuple(nt) = t.as_ref() else {
@@ -3845,7 +3846,16 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                             check_for_alias()
                         }
                     }
-                    _ => check_for_alias(),
+                    _ => {
+                        if matches!(
+                            node_ref.point().maybe_specific(),
+                            Some(Specific::InvalidTypeDefinition)
+                        ) {
+                            TypeNameLookup::Unknown(AnyCause::FromError)
+                        } else {
+                            check_for_alias()
+                        }
+                    }
                 }
             } else {
                 check_for_alias()
