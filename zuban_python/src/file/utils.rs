@@ -260,7 +260,7 @@ impl<'db> Inference<'db, '_, '_> {
                                     Match::True { .. } => MismatchReason::None,
                                 },
                             };
-                            let ErrorStrs { expected, got } = error_types.as_boxed_strs(i_s);
+                            let ErrorStrs { expected, got } = error_types.as_boxed_strs(i_s.db);
                             (expected, got)
                         };
                         let (expected_key, got_key) = format_errors(key_t, &got_key_t, key_match);
@@ -432,7 +432,7 @@ fn check_list_with_context<'db>(
                 &inferred,
                 |issue| NodeRef::new(file, index).add_issue(i_s, issue),
                 |error_types, _: &MismatchReason| {
-                    let ErrorStrs { expected, got } = error_types.as_boxed_strs(i_s);
+                    let ErrorStrs { expected, got } = error_types.as_boxed_strs(i_s.db);
                     had_error = true;
                     Some(IssueKind::ListItemMismatch {
                         item,
@@ -485,7 +485,7 @@ pub fn on_argument_type_error(
     arg: &Arg,
     types: ErrorTypes,
 ) {
-    let strings = types.as_boxed_strs(i_s);
+    let strings = types.as_boxed_strs(i_s.db);
     let got = match strings.got.as_ref() {
         "ModuleType" => "Module".to_string(),
         got => format!("\"{got}\""),

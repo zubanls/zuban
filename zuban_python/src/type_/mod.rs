@@ -1306,7 +1306,7 @@ impl Type {
                 reason,
             };
             if cfg!(feature = "zuban_debug") {
-                let ErrorStrs { expected, got } = error_types.as_boxed_strs(i_s);
+                let ErrorStrs { expected, got } = error_types.as_boxed_strs(i_s.db);
                 debug!(
                     "Mismatch between {expected:?} and {got:?} -> {:?}",
                     &matches

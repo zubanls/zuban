@@ -187,7 +187,7 @@ impl Type {
         // 1. Check if the type is part of the mro.
         let debug_message_for_result = |matcher, result| {
             if cfg!(feature = "zuban_debug") {
-                let ErrorStrs { got, expected } = format_got_expected(i_s, self, value_type);
+                let ErrorStrs { got, expected } = format_got_expected(i_s.db, self, value_type);
                 debug!("Match covariant {got} :> {expected} -> {result:?}",)
             }
         };
@@ -292,7 +292,7 @@ impl Type {
             self.check_protocol_and_other_side(i_s, matcher, value_type, Variance::Invariant)
         });
         if cfg!(feature = "zuban_debug") {
-            let ErrorStrs { got, expected } = format_got_expected(i_s, self, value_type);
+            let ErrorStrs { got, expected } = format_got_expected(i_s.db, self, value_type);
             debug!("Match invariant {got} ≡ {expected} -> {result:?}");
         }
         result

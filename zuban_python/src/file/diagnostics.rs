@@ -979,7 +979,7 @@ impl<'db> Inference<'db, '_, '_> {
                             &inf,
                             |issue| self.add_issue(default.index(), issue),
                             |error_types| {
-                                let ErrorStrs { expected, got } = error_types.as_boxed_strs(i_s);
+                                let ErrorStrs { expected, got } = error_types.as_boxed_strs(i_s.db);
                                 if default.is_ellipsis_literal()
                                     && (self.file.is_stub() || function.has_trivial_body(i_s))
                                 {
@@ -1302,7 +1302,7 @@ impl<'db> Inference<'db, '_, '_> {
                                     IssueKind::NoReturnValueExpected
                                 } else {
                                     let ErrorStrs { expected, got } =
-                                        error_types.as_boxed_strs(i_s);
+                                        error_types.as_boxed_strs(i_s.db);
                                     IssueKind::IncompatibleReturn { got, expected }
                                 }
                             })

@@ -908,7 +908,7 @@ fn typed_dict_setitem_internal<'db>(
                 &value,
                 |issue| args.add_issue(i_s, issue),
                 |error_types| {
-                    let ErrorStrs { expected, got } = error_types.as_boxed_strs(i_s);
+                    let ErrorStrs { expected, got } = error_types.as_boxed_strs(i_s.db);
                     Some(IssueKind::TypedDictKeySetItemIncompatibleType {
                         key: key.into(),
                         got,
@@ -1087,7 +1087,7 @@ pub(crate) fn infer_typed_dict_item(
             &inferred,
             add_issue,
             |error_types, _: &MismatchReason| {
-                let ErrorStrs { expected, got } = error_types.as_boxed_strs(i_s);
+                let ErrorStrs { expected, got } = error_types.as_boxed_strs(i_s.db);
                 Some(IssueKind::TypedDictIncompatibleType {
                     key: key.into(),
                     got,

@@ -2039,7 +2039,7 @@ impl<'db: 'slf, 'slf> Inferred {
                 )
             },
             OnTypeError::new(&|i_s, function, arg, types| {
-                let ErrorStrs { got, expected } = types.as_boxed_strs(i_s);
+                let ErrorStrs { got, expected } = types.as_boxed_strs(i_s.db);
                 let type_ = if arg.index == 1 {
                     IssueKind::InvalidGetItem {
                         type_: self.format_short(i_s),

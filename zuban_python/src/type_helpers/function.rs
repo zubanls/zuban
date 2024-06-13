@@ -646,7 +646,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 &redefinition,
                 |issue| self.add_issue_for_declaration(i_s, issue),
                 |error_types| {
-                    let ErrorStrs { expected, got } = error_types.as_boxed_strs(i_s);
+                    let ErrorStrs { expected, got } = error_types.as_boxed_strs(i_s.db);
                     Some(IssueKind::IncompatibleConditionalFunctionSignature {
                         original: expected,
                         redefinition: got,

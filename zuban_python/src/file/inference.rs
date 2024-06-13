@@ -246,7 +246,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     &import_inferred,
                     |issue| from.add_issue(self.i_s, issue),
                     |error_types| {
-                        let ErrorStrs { expected, got } = error_types.as_boxed_strs(self.i_s);
+                        let ErrorStrs { expected, got } = error_types.as_boxed_strs(self.i_s.db);
                         Some(IssueKind::IncompatibleImportAssignment {
                             name: name_def.as_code().into(),
                             got,
@@ -609,7 +609,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     }
                 }
             }
-            let ErrorStrs { expected, got } = error_types.as_boxed_strs(self.i_s);
+            let ErrorStrs { expected, got } = error_types.as_boxed_strs(self.i_s.db);
             Some(IssueKind::IncompatibleAssignment { got, expected })
         };
         expected.error_if_not_matches(
@@ -875,7 +875,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         &inf,
                         |issue| from.add_issue(i_s, issue),
                         |error_types| {
-                            let ErrorStrs { expected, got } = error_types.as_boxed_strs(i_s);
+                            let ErrorStrs { expected, got } = error_types.as_boxed_strs(i_s.db);
                             Some(IssueKind::IncompatibleTypes {
                                 cause: "\"yield\"",
                                 got,
@@ -916,7 +916,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     &yields,
                     |issue| from.add_issue(i_s, issue),
                     |error_types| {
-                        let ErrorStrs { expected, got } = error_types.as_boxed_strs(self.i_s);
+                        let ErrorStrs { expected, got } = error_types.as_boxed_strs(self.i_s.db);
                         Some(IssueKind::IncompatibleTypes {
                             cause: "\"yield from\"",
                             got,
@@ -1061,7 +1061,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     value,
                     |issue| from.add_issue(i_s, issue),
                     |error_types| {
-                        let ErrorStrs { expected, got } = error_types.as_boxed_strs(i_s);
+                        let ErrorStrs { expected, got } = error_types.as_boxed_strs(i_s.db);
                         Some(IssueKind::IncompatibleAssignment { got, expected })
                     },
                 );
@@ -1362,7 +1362,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             value,
                             |issue| from.add_issue(i_s, issue),
                             |error_types| {
-                                let ErrorStrs { expected, got } = error_types.as_boxed_strs(i_s);
+                                let ErrorStrs { expected, got } = error_types.as_boxed_strs(i_s.db);
                                 Some(IssueKind::IncompatibleAssignment { got, expected })
                             },
                         );
@@ -1924,7 +1924,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             let left_t = left_inf.as_cow_type(self.i_s);
             let right_t = right_inf.as_cow_type(self.i_s);
             (!self.is_strict_equality_comparison(&left_t, &right_t))
-                .then(|| format_got_expected(self.i_s, &left_t, &right_t))
+                .then(|| format_got_expected(self.i_s.db, &left_t, &right_t))
         };
         match cmp {
             ComparisonContent::Equals(l, op, r) | ComparisonContent::NotEquals(l, op, r) => {
@@ -1993,7 +1993,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         if let Some(container_t) = right_t.container_types(self.i_s.db) {
                             if !self.is_strict_equality_comparison(&element_t, &container_t) {
                                 let formatted =
-                                    format_got_expected(self.i_s, &element_t, &container_t);
+                                    format_got_expected(self.i_s.db, &element_t, &container_t);
                                 self.file.add_issue(
                                     self.i_s,
                                     Issue {
@@ -3419,7 +3419,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             result_context,
             self.i_s.db.python_state.list_node_ref(),
             |error_types| {
-                let ErrorStrs { expected, got } = error_types.as_boxed_strs(self.i_s);
+                let ErrorStrs { expected, got } = error_types.as_boxed_strs(self.i_s.db);
                 IssueKind::ListComprehensionMismatch { got, expected }
             },
             comp,
@@ -3439,7 +3439,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             result_context,
             self.i_s.db.python_state.set_node_ref(),
             |error_types| {
-                let ErrorStrs { expected, got } = error_types.as_boxed_strs(self.i_s);
+                let ErrorStrs { expected, got } = error_types.as_boxed_strs(self.i_s.db);
                 IssueKind::SetComprehensionMismatch { got, expected }
             },
             comp,
@@ -3459,7 +3459,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             result_context,
             self.i_s.db.python_state.generator_node_ref(),
             |error_types| {
-                let ErrorStrs { expected, got } = error_types.as_boxed_strs(self.i_s);
+                let ErrorStrs { expected, got } = error_types.as_boxed_strs(self.i_s.db);
                 IssueKind::GeneratorComprehensionMismatch { got, expected }
             },
             comp,

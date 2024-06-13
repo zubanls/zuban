@@ -136,14 +136,14 @@ pub struct ErrorTypes<'a> {
     pub reason: &'a MismatchReason,
 }
 
-pub fn format_got_expected(i_s: &InferenceState, got: &Type, expected: &Type) -> ErrorStrs {
+pub fn format_got_expected(db: &Database, got: &Type, expected: &Type) -> ErrorStrs {
     ErrorTypes {
         matcher: None,
         got: GotType::Type(got),
         expected,
         reason: &MismatchReason::None,
     }
-    .as_boxed_strs(i_s)
+    .as_boxed_strs(db)
 }
 
 pub struct ErrorStrs {
@@ -152,19 +152,19 @@ pub struct ErrorStrs {
 }
 
 impl ErrorTypes<'_> {
-    pub fn as_boxed_strs(&self, i_s: &InferenceState) -> ErrorStrs {
+    pub fn as_boxed_strs(&self, db: &Database) -> ErrorStrs {
         // This is our own very limited implementation of formatting different types as small as
         // possible, but still different if they are different. e.g. a.Foo is not b.Foo and should
         // therefore not be formatted both as Foo. Mypy does a lot more here like subtype matching,
         // but for now this should suffice.
         let expected_t = self
             .matcher
-            .map(|m| m.replace_type_var_likes_for_unknown_type_vars(i_s.db, self.expected))
+            .map(|m| m.replace_type_var_likes_for_unknown_type_vars(db, self.expected))
             .unwrap_or_else(|| self.expected.clone());
-        let similar_types = find_similar_types(i_s.db, &[self.got.contained_type(), &expected_t]);
-        let mut fmt_got = FormatData::with_types_that_need_qualified_names(i_s.db, &similar_types);
+        let similar_types = find_similar_types(db, &[self.got.contained_type(), &expected_t]);
+        let mut fmt_got = FormatData::with_types_that_need_qualified_names(db, &similar_types);
         let mut fmt_expected = if let Some(matcher) = self.matcher {
-            FormatData::with_matcher(i_s.db, matcher, &similar_types)
+            FormatData::with_matcher(db, matcher, &similar_types)
         } else {
             fmt_got
         };

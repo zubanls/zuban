@@ -64,7 +64,7 @@ impl<'a> Instance<'a> {
         }
         let check_compatible = |t: &Type, value: &_| {
             t.error_if_not_matches(i_s, value, add_issue, |error_types| {
-                let ErrorStrs { expected, got } = error_types.as_boxed_strs(i_s);
+                let ErrorStrs { expected, got } = error_types.as_boxed_strs(i_s.db);
                 Some(IssueKind::IncompatibleAssignment { got, expected })
             })
         };
@@ -498,7 +498,7 @@ impl<'a> Instance<'a> {
                         &args,
                         &mut ResultContext::Unknown,
                         OnTypeError::new(&|i_s, function, arg, types| {
-                            let strs = types.as_boxed_strs(i_s);
+                            let strs = types.as_boxed_strs(i_s.db);
                             arg.add_issue(
                                 i_s,
                                 IssueKind::InvalidGetItem {
@@ -544,7 +544,7 @@ fn calculate_descriptor(
         &mut ResultContext::ExpectUnused,
         OnTypeError::new(&|i_s, error_text, argument, types| {
             if argument.index == 2 {
-                let strs = types.as_boxed_strs(i_s);
+                let strs = types.as_boxed_strs(i_s.db);
                 from.add_issue(
                     i_s,
                     IssueKind::IncompatibleAssignment {
