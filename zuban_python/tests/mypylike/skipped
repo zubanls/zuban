@@ -503,6 +503,8 @@ testMutuallyRecursiveProtocolsTypesWithSubteMismatchWriteable
 testProtocolAndRuntimeAreDefinedAlsoInTypingExtensions
 testOverloadOnProtocol
 testSimpleRuntimeProtocolCheck
+# Protocol nested class matching
+testProtocolWithNestedClass
 
 # subtyping arbitrary length unpacks
 testVariadicTupleSubtyping
@@ -1364,8 +1366,6 @@ testAnonymousFunctionalEnum
 testNewAnalyzerIncrementalMethodNamedTuple
 testNewAnalyzerNamedTupleClassNestedMethod
 testNoIncrementalCrashOnTypedDictMethod
-# qualified name for Type[cls] for different module (when format short)
-testProtocolWithNestedClass
 # NewType formatting instead of internal type
 testNewTypeDependencies3
 # Nicer Callable Errors

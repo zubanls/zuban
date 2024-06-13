@@ -31,8 +31,9 @@ use crate::{
     inferred::{AttributeKind, FunctionOrOverload, Inferred, MroIndex},
     matching::{
         calculate_callable_init_type_vars_and_return, calculate_callable_type_vars_and_return,
-        calculate_class_init_type_vars_and_return, maybe_class_usage, FunctionOrCallable, Generics,
-        LookupKind, LookupResult, Match, Matcher, MismatchReason, OnTypeError, ResultContext,
+        calculate_class_init_type_vars_and_return, format_got_expected, maybe_class_usage,
+        ErrorStrs, FunctionOrCallable, Generics, LookupKind, LookupResult, Match, Matcher,
+        MismatchReason, OnTypeError, ResultContext,
     },
     node_ref::NodeRef,
     python_state::{NAME_TO_CLASS_DIFF, NAME_TO_FUNCTION_DIFF},
@@ -2556,14 +2557,10 @@ fn add_protocol_mismatch(
             notes.push("    Got:".into());
             format_callable_like(i_s.db, notes, &c2, &c1);
         }
-        _ => notes.push(
-            format!(
-                r#"    {name}: expected "{}", got "{}""#,
-                t1.format(&FormatData::new_short(i_s.db)),
-                t2.format(&FormatData::new_short(i_s.db))
-            )
-            .into(),
-        ),
+        _ => {
+            let ErrorStrs { got, expected } = format_got_expected(i_s.db, t2, t1);
+            notes.push(format!(r#"    {name}: expected "{expected}", got "{got}""#).into())
+        }
     }
 }
 
