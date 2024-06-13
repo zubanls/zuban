@@ -190,6 +190,7 @@ pub fn find_similar_types(db: &Database, types: &[&Type]) -> Vec<PointLink> {
                 Type::Class(_)
                 | Type::RecursiveType(_)
                 | Type::NamedTuple(_)
+                | Type::Enum(_)
                 | Type::TypedDict(_) => {
                     let Some((s2, link2)) = short_type_name_with_link(db, t) else {
                         return false;
@@ -226,6 +227,7 @@ fn short_type_name_with_link<'x>(db: &'x Database, t: &'x Type) -> Option<(&'x s
         ),
         Type::NamedTuple(n) => (n.name.as_str(db), n.__new__.defined_at),
         Type::TypedDict(td) => (td.name?.as_str(db), td.defined_at),
+        Type::Enum(e) => (e.name.as_str(db), e.defined_at),
         _ => unreachable!(),
     })
 }

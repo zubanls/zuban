@@ -93,3 +93,19 @@ reveal_type(Animal.ANT)  # N: Revealed type is "Literal[__main__.Animal.ANT]?"
 reveal_type(Animal.BEE)  # N: Revealed type is "Literal[__main__.Animal.BEE]?"
 reveal_type(Animal.CAT)  # N: Revealed type is "Literal[__main__.Animal.CAT]?"
 reveal_type(Animal.DOG)  # N: Revealed type is "Literal[__main__.Animal.DOG]?"
+
+[case enum_formatting_distinct]
+import a
+import b
+x: a.B
+y: b.B
+x = y  # E: Incompatible types in assignment (expression has type "b.B", variable has type "a.B")
+[file a.py]
+from enum import Enum
+class B(Enum):
+    b = 10
+
+[file b.py]
+from enum import Enum
+class B(Enum):
+    b = 10

@@ -49,6 +49,9 @@ impl EnumMember {
     }
 
     pub fn format(&self, format_data: &FormatData) -> String {
+        if !format_data.types_that_need_qualified_names.is_empty() {
+            todo!()
+        }
         let question_mark = match format_data.style {
             FormatStyle::MypyRevealType if self.implicit => "?",
             _ if self.implicit && format_data.hide_implicit_literals => {
@@ -135,7 +138,13 @@ impl Enum {
     pub fn format(&self, format_data: &FormatData) -> String {
         let enum_name = self.name.as_str(format_data.db);
         match format_data.style {
-            FormatStyle::Short if !format_data.verbose => enum_name.to_string(),
+            FormatStyle::Short
+                if !format_data
+                    .types_that_need_qualified_names
+                    .contains(&self.defined_at) =>
+            {
+                enum_name.to_string()
+            }
             _ => self.parent_scope.qualified_name(
                 format_data.db,
                 NodeRef::from_link(format_data.db, self.defined_at),
