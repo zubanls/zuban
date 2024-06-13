@@ -201,9 +201,9 @@ impl File for PythonFile {
     fn invalidate_references_to(&mut self, file_index: FileIndex) {
         self.points.invalidate_references_to(file_index);
         self.issues.clear();
-        self.stub_cache
-            .as_mut()
-            .map(|cache| *cache = StubCache::default());
+        if let Some(cache) = self.stub_cache.as_mut() {
+            *cache = StubCache::default();
+        }
     }
 
     fn invalidate_full_db(&mut self) {
@@ -215,9 +215,9 @@ impl File for PythonFile {
         self.maybe_dunder_all.take();
         self.sub_files.get_mut().clear();
         self.star_imports.get_mut().clear();
-        self.stub_cache
-            .as_mut()
-            .map(|cache| *cache = StubCache::default());
+        if let Some(cache) = self.stub_cache.as_mut() {
+            *cache = StubCache::default();
+        }
     }
 
     fn has_super_file(&self) -> bool {
@@ -464,28 +464,22 @@ impl<'db> PythonFile {
                         {
                             let base = maybe_dunder_all_names(vec![], self.file_index(), expr)?;
                             self.gather_dunder_all_modifications(db, dunder_all_index, base)
-                        } else if let Some(import) = name_def.maybe_import() {
-                            if let NameImportParent::ImportFromAsName(as_name) = import {
-                                let i_s = InferenceState::new(db);
-                                let inference = self.inference(&i_s);
-                                inference.infer_name_definition(name_def);
-                                // Just take the __all__ from the now calculated file. The exact
-                                // position doesn't matter anymore, because that is calculated by
-                                // exactly this method.
-                                let name_def_point =
-                                    NodeRef::new(self, as_name.name_definition().index()).point();
-                                let base = name_def_point
-                                    .as_redirected_node_ref(db)
-                                    .file
-                                    .maybe_dunder_all(db)?;
-                                self.gather_dunder_all_modifications(
-                                    db,
-                                    dunder_all_index,
-                                    base.into(),
-                                )
-                            } else {
-                                None
-                            }
+                        } else if let Some(NameImportParent::ImportFromAsName(as_name)) =
+                            name_def.maybe_import()
+                        {
+                            let i_s = InferenceState::new(db);
+                            let inference = self.inference(&i_s);
+                            inference.infer_name_definition(name_def);
+                            // Just take the __all__ from the now calculated file. The exact
+                            // position doesn't matter anymore, because that is calculated by
+                            // exactly this method.
+                            let name_def_point =
+                                NodeRef::new(self, as_name.name_definition().index()).point();
+                            let base = name_def_point
+                                .as_redirected_node_ref(db)
+                                .file
+                                .maybe_dunder_all(db)?;
+                            self.gather_dunder_all_modifications(db, dunder_all_index, base.into())
                         } else {
                             None
                         }

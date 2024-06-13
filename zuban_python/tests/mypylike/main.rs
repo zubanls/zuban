@@ -154,7 +154,7 @@ impl<'name, 'code> TestCase<'name, 'code> {
         }
 
         if self.file_name == "pep561" {
-            let first_line = self.code.split("\n").next().unwrap();
+            let first_line = self.code.split('\n').next().unwrap();
             let Some(suffix) = first_line.strip_prefix("# pkgs:") else {
                 unreachable!()
             };
@@ -766,7 +766,7 @@ fn set_mypy_path(options: &mut ProjectOptions) {
     for path in options.flags.mypy_path.iter_mut() {
         if !path.starts_with(MYPY_TEST_DATA_PACKAGES_FOLDER) {
             // Mypy has a kind of weird way how they deal with tmp/
-            *path = BASE_PATH.to_owned() + &path;
+            *path = BASE_PATH.to_owned() + path;
         }
     }
     options.flags.mypy_path.push(BASE_PATH.into());

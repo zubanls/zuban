@@ -28,7 +28,7 @@ impl ProjectOptions {
     }
 
     pub fn from_mypy_ini(
-        path: Box<str>,
+        path: &str,
         code: &str,
         diagnostic_config: &mut DiagnosticConfig,
     ) -> Result<Self, String> {
@@ -60,7 +60,7 @@ impl ProjectOptions {
     }
 
     pub fn from_pyproject_toml(
-        path: Box<str>,
+        path: &str,
         code: &str,
         diagnostic_config: &mut DiagnosticConfig,
     ) -> Result<Self, String> {
@@ -356,7 +356,7 @@ impl IniOrTomlValue<'_> {
         }
     }
 
-    fn to_bool(&self, invert: bool) -> Result<bool, String> {
+    fn as_bool(&self, invert: bool) -> Result<bool, String> {
         let result = match self {
             Self::Toml(v) => v.as_bool().unwrap_or_else(|| todo!()),
             Self::Ini(value) => match value.to_lowercase().as_str() {
@@ -460,38 +460,38 @@ fn set_bool_init_flags(
     invert: bool,
 ) -> ConfigResult {
     match name {
-        "strict_optional" => flags.strict_optional = value.to_bool(invert)?,
-        "strict_equality" => flags.strict_equality = value.to_bool(invert)?,
-        "implicit_optional" => flags.implicit_optional = value.to_bool(invert)?,
-        "check_untyped_defs" => flags.check_untyped_defs = value.to_bool(invert)?,
-        "ignore_missing_imports" => flags.ignore_missing_imports = value.to_bool(invert)?,
+        "strict_optional" => flags.strict_optional = value.as_bool(invert)?,
+        "strict_equality" => flags.strict_equality = value.as_bool(invert)?,
+        "implicit_optional" => flags.implicit_optional = value.as_bool(invert)?,
+        "check_untyped_defs" => flags.check_untyped_defs = value.as_bool(invert)?,
+        "ignore_missing_imports" => flags.ignore_missing_imports = value.as_bool(invert)?,
 
-        "disallow_untyped_defs" => flags.disallow_untyped_defs = value.to_bool(invert)?,
-        "disallow_untyped_calls" => flags.disallow_untyped_calls = value.to_bool(invert)?,
+        "disallow_untyped_defs" => flags.disallow_untyped_defs = value.as_bool(invert)?,
+        "disallow_untyped_calls" => flags.disallow_untyped_calls = value.as_bool(invert)?,
         "disallow_untyped_decorators" => {
-            flags.disallow_untyped_decorators = value.to_bool(invert)?
+            flags.disallow_untyped_decorators = value.as_bool(invert)?
         }
-        "disallow_any_generics" => flags.disallow_any_generics = value.to_bool(invert)?,
-        "disallow_any_decorated" => flags.disallow_any_decorated = value.to_bool(invert)?,
-        "disallow_any_explicit" => flags.disallow_any_explicit = value.to_bool(invert)?,
-        "disallow_any_unimported" => flags.disallow_any_unimported = value.to_bool(invert)?,
-        "disallow_any_expr" => flags.disallow_any_expr = value.to_bool(invert)?,
-        "disallow_subclassing_any" => flags.disallow_subclassing_any = value.to_bool(invert)?,
-        "disallow_incomplete_defs" => flags.disallow_incomplete_defs = value.to_bool(invert)?,
-        "allow_untyped_globals" => flags.allow_untyped_globals = value.to_bool(invert)?,
-        "allow_empty_bodies" => flags.allow_empty_bodies = value.to_bool(invert)?,
-        "warn_unreachable" => flags.warn_unreachable = value.to_bool(invert)?,
-        "warn_return_any" => flags.warn_return_any = value.to_bool(invert)?,
-        "warn_no_return" => flags.warn_no_return = value.to_bool(invert)?,
-        "local_partial_types" => flags.local_partial_types = value.to_bool(invert)?,
-        "implicit_reexport" => flags.no_implicit_reexport = !value.to_bool(invert)?,
+        "disallow_any_generics" => flags.disallow_any_generics = value.as_bool(invert)?,
+        "disallow_any_decorated" => flags.disallow_any_decorated = value.as_bool(invert)?,
+        "disallow_any_explicit" => flags.disallow_any_explicit = value.as_bool(invert)?,
+        "disallow_any_unimported" => flags.disallow_any_unimported = value.as_bool(invert)?,
+        "disallow_any_expr" => flags.disallow_any_expr = value.as_bool(invert)?,
+        "disallow_subclassing_any" => flags.disallow_subclassing_any = value.as_bool(invert)?,
+        "disallow_incomplete_defs" => flags.disallow_incomplete_defs = value.as_bool(invert)?,
+        "allow_untyped_globals" => flags.allow_untyped_globals = value.as_bool(invert)?,
+        "allow_empty_bodies" => flags.allow_empty_bodies = value.as_bool(invert)?,
+        "warn_unreachable" => flags.warn_unreachable = value.as_bool(invert)?,
+        "warn_return_any" => flags.warn_return_any = value.as_bool(invert)?,
+        "warn_no_return" => flags.warn_no_return = value.as_bool(invert)?,
+        "local_partial_types" => flags.local_partial_types = value.as_bool(invert)?,
+        "implicit_reexport" => flags.no_implicit_reexport = !value.as_bool(invert)?,
 
-        "extra_checks" => flags.extra_checks = value.to_bool(invert)?,
+        "extra_checks" => flags.extra_checks = value.as_bool(invert)?,
         // These are currently ignored
         "allow_redefinition" | "follow_imports" | "follow_imports_for_stubs" => (),
         // Will always be irrelevant
         "cache_fine_grained" => (),
-        "ignore_errors" => return value.to_bool(invert),
+        "ignore_errors" => return value.as_bool(invert),
         _ => {
             return Err(format!(
                 "Unrecognized option: {} = {}",
@@ -519,15 +519,15 @@ fn apply_from_base_config(
 ) -> ConfigResult {
     match key {
         "show_error_codes" => {
-            diagnostic_config.show_error_codes = value.to_bool(false)?;
+            diagnostic_config.show_error_codes = value.as_bool(false)?;
             Ok(false)
         }
         "show_column_numbers" => {
-            diagnostic_config.show_column_numbers = value.to_bool(false)?;
+            diagnostic_config.show_column_numbers = value.as_bool(false)?;
             Ok(false)
         }
         "show_error_end" => {
-            diagnostic_config.show_error_end = value.to_bool(false)?;
+            diagnostic_config.show_error_end = value.as_bool(false)?;
             Ok(false)
         }
         // Currently ignored, but need to use in the future.
@@ -545,7 +545,7 @@ fn apply_from_config_part(
     value: IniOrTomlValue,
 ) -> ConfigResult {
     if key == "strict" {
-        if value.to_bool(false).unwrap_or_else(|_| todo!()) {
+        if value.as_bool(false).unwrap_or_else(|_| todo!()) {
             flags.enable_all_strict_flags();
         }
         Ok(false)

@@ -88,7 +88,7 @@ pub fn global_import_without_stubs_first<'a>(
     )
 }
 
-pub fn python_import<'x>(
+pub fn python_import(
     db: &Database,
     from_file: FileIndex,
     dirs: impl Iterator<Item = impl Borrow<Directory>>,
@@ -97,7 +97,7 @@ pub fn python_import<'x>(
     python_import_with_needs_exact_case(db, from_file, dirs, name, false)
 }
 
-pub fn python_import_with_needs_exact_case<'x>(
+pub fn python_import_with_needs_exact_case(
     db: &Database,
     from_file: FileIndex,
     dirs: impl Iterator<Item = impl Borrow<Directory>>,

@@ -1036,7 +1036,9 @@ impl<'db> NameBinder<'db> {
                     .points
                     .get(index)
                     .maybe_calculated_and_specific()
-                    .is_some_and(|specific| specific == specific)
+                    .is_some_and(|specific| {
+                        todo!("This case is currently not reached, but probably necessary")
+                    })
             })
         } else {
             self.db_infos

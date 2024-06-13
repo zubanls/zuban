@@ -825,8 +825,8 @@ impl<'db> Expression<'db> {
 
     pub fn is_literal_value(&self) -> bool {
         match self.unpack() {
-            ExpressionContent::ExpressionPart(expr_part) => match expr_part {
-                ExpressionPart::Atom(atom_) => match atom_.unpack() {
+            ExpressionContent::ExpressionPart(ExpressionPart::Atom(atom_)) => {
+                match atom_.unpack() {
                     AtomContent::Float(_)
                     | AtomContent::Int(_)
                     | AtomContent::Complex(_)
@@ -838,9 +838,8 @@ impl<'db> Expression<'db> {
                         named_expr.expression().is_literal_value()
                     }
                     _ => false,
-                },
-                _ => false,
-            },
+                }
+            }
             _ => false,
         }
     }
