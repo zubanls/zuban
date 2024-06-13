@@ -1833,9 +1833,7 @@ fn find_and_check_override(
                 i_s,
                 IssueKind::ExplicitOverrideFlagRequiresOverride {
                     method: name.into(),
-                    class: original_details
-                        .class
-                        .format(&FormatData::with_style(i_s.db, FormatStyle::Qualified)),
+                    class: original_details.class.qualified_name(i_s.db).into(),
                 },
             );
         }

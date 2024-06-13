@@ -547,10 +547,7 @@ impl<'db: 'a, 'a> Class<'a> {
                             self.node_ref.add_issue(
                                 i_s,
                                 IssueKind::EnumMultipleMixinNew {
-                                    extra: c.format(&FormatData::with_style(
-                                        i_s.db,
-                                        FormatStyle::Qualified,
-                                    )),
+                                    extra: c.qualified_name(i_s.db).into(),
                                 },
                             );
                         }
@@ -561,10 +558,7 @@ impl<'db: 'a, 'a> Class<'a> {
                             self.node_ref.add_issue(
                                 i_s,
                                 IssueKind::EnumMixinNotAllowedAfterEnum {
-                                    after: after.format(&FormatData::with_style(
-                                        i_s.db,
-                                        FormatStyle::Qualified,
-                                    )),
+                                    after: after.qualified_name(i_s.db).into(),
                                 },
                             );
                         }
@@ -2057,7 +2051,7 @@ impl<'db: 'a, 'a> Class<'a> {
         }
         add_issue(IssueKind::AssigningToNameOutsideOfSlots {
             name: name.into(),
-            class: self.format(&FormatData::with_style(i_s.db, FormatStyle::Qualified)),
+            class: self.qualified_name(i_s.db).into(),
         })
     }
 
@@ -2318,6 +2312,17 @@ impl<'a> TypeOrClass<'a> {
                 Type::NamedTuple(nt) => nt.name(db),
                 Type::Tuple(_) => "Tuple",
                 _ => todo!(),
+            },
+        }
+    }
+
+    pub fn qualified_name(&self, db: &'a Database) -> String {
+        match self {
+            Self::Class(class) => class.qualified_name(db),
+            Self::Type(t) => match t.as_ref() {
+                Type::Dataclass(d) => d.class(db).qualified_name(db),
+                Type::NamedTuple(nt) => nt.qualified_name(db),
+                _ => self.name(db).into(),
             },
         }
     }

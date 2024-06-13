@@ -89,7 +89,6 @@ pub fn empty_types() -> Rc<[Type]> {
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum FormatStyle {
     Short,
-    Qualified,
     MypyRevealType,
 }
 

@@ -78,7 +78,7 @@ impl Tuple {
     pub fn format_with_fallback(&self, format_data: &FormatData, fallback: &str) -> Box<str> {
         let base = match format_data.style {
             FormatStyle::Short => "tuple",
-            FormatStyle::Qualified | FormatStyle::MypyRevealType => "builtins.tuple",
+            FormatStyle::MypyRevealType => "builtins.tuple",
         };
         format!("{base}[{}{fallback}]", self.args.format(format_data)).into()
     }
