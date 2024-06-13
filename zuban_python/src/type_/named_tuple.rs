@@ -1,6 +1,6 @@
 use std::{cell::OnceCell, rc::Rc};
 
-use parsa_python_cst::{AtomContent, CodeIndex, StarLikeExpression};
+use parsa_python_cst::{keywords_contain, AtomContent, CodeIndex, StarLikeExpression};
 
 use super::{
     tuple::lookup_tuple_magic_methods, AnyCause, CallableContent, CallableParam, CallableParams,
@@ -633,8 +633,7 @@ pub fn add_named_tuple_param(
                 field_name: name_str.into(),
             },
         );
-    } else if name_str == "def" {
-        // TODO use a list of keywords
+    } else if keywords_contain(name_str) {
         add_and_change(IssueKind::FunctionalNamedTupleNameUsedAKeyword {
             name: named_tuple,
             field_name: name_str.into(),

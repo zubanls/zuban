@@ -451,6 +451,10 @@ pub fn parse(code: Box<str>) -> PyTree {
     PYTHON_GRAMMAR.parse(code.into())
 }
 
+pub fn keywords_contain(keyword: &str) -> bool {
+    PYTHON_GRAMMAR.keywords_contain(keyword)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

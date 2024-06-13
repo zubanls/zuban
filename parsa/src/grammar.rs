@@ -82,7 +82,7 @@ pub struct Grammar<T> {
     nonterminal_map: &'static InternalStrToNode,
     phantom: PhantomData<T>,
     automatons: Automatons,
-    keywords: Keywords,
+    pub keywords: Keywords,
     soft_keywords: SoftKeywords,
 }
 

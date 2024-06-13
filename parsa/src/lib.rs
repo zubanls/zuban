@@ -9,7 +9,7 @@ pub use std::{collections::HashSet, io::Bytes, marker::PhantomData, mem};
 
 pub use automaton::{
     new_fast_hash_map, FastHashMap, InternalNonterminalType, InternalSquashedType,
-    InternalStrToNode, InternalStrToToken, InternalTerminalType, Rule, NODE_START,
+    InternalStrToNode, InternalStrToToken, InternalTerminalType, Keywords, Rule, NODE_START,
 };
 pub use grammar::{
     CodeIndex, CodeLength, Grammar, InternalNode, InternalTree, NodeIndex, Token, Tokenizer,
@@ -713,6 +713,14 @@ macro_rules! create_grammar {
                     &rules, $NonterminalType::map(), $TerminalType::map(),
                     soft_keywords
                 )}
+            }
+
+            fn keywords(&self) -> impl Iterator<Item = &str> {
+                self.internal_grammar.keywords.keywords.keys().cloned()
+            }
+
+            fn keywords_contain(&self, keyword: &str) -> bool {
+                self.internal_grammar.keywords.keywords.get(keyword).is_some()
             }
 
             pub fn parse(&self, code: Box<str>) -> $Tree {

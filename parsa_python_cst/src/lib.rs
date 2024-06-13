@@ -7,6 +7,7 @@ use std::{
     str::from_utf8,
 };
 
+pub use parsa_python::{keywords_contain, CodeIndex, NodeIndex};
 use parsa_python::{
     parse,
     NonterminalType::*,
@@ -14,7 +15,6 @@ use parsa_python::{
     PyNodeType::{ErrorNonterminal, ErrorTerminal, Nonterminal, Terminal},
     PyTree, SearchIterator, SiblingIterator, TerminalType,
 };
-pub use parsa_python::{CodeIndex, NodeIndex};
 pub use strings::PythonString;
 
 pub const NAME_DEF_TO_NAME_DIFFERENCE: u32 = 1;

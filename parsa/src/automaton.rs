@@ -226,7 +226,7 @@ enum FirstPlan {
 #[derive(Debug, Default)]
 pub struct Keywords {
     counter: usize,
-    keywords: FastHashMap<&'static str, InternalSquashedType>,
+    pub keywords: FastHashMap<&'static str, InternalSquashedType>,
 }
 
 impl Keywords {
