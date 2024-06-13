@@ -215,7 +215,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         i_s: &InferenceState<'db, '_>,
         args: &dyn Args<'db>,
     ) -> Inferred {
-        if self.node_ref.file.flags(&i_s.db).mypy_compatible {
+        if self.node_ref.file.flags(i_s.db).mypy_compatible {
             return Inferred::new_any(AnyCause::Unannotated);
         }
         if self.is_generator() {
@@ -439,7 +439,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         i_s: &InferenceState<'db, '_>,
     ) -> (TypeVarLikes, Option<TypeGuardInfo>, Option<ParamAnnotation>) {
         let func_node = self.node();
-        let implicit_optional = self.node_ref.file.flags(&i_s.db).implicit_optional;
+        let implicit_optional = self.node_ref.file.flags(i_s.db).implicit_optional;
         let inference = self.node_ref.file.inference(i_s);
         let in_result_type = Cell::new(false);
         let mut unbound_type_vars = vec![];

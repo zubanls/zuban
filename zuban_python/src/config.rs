@@ -430,7 +430,7 @@ pub fn set_flag_and_return_ignore_errors(
                     Ok(false)
                 }
                 IniOrTomlValue::Ini(v) => {
-                    target.extend(split_and_trim(v, &[',']).map(|s| String::from(s)));
+                    target.extend(split_and_trim(v, &[',']).map(String::from));
                     Ok(false)
                 }
                 _ => Err("TODO expected string".to_string()),
@@ -442,17 +442,13 @@ pub fn set_flag_and_return_ignore_errors(
         "always_false" => add_list_of_str(&mut flags.always_false_symbols),
         "enable_error_code" => add_list_of_str(&mut flags.enabled_error_codes),
         "disable_error_code" => add_list_of_str(&mut flags.disabled_error_codes),
-        "strict" => {
-            return Err(concat!(
-                r#"Setting "strict" not supported in inline configuration: "#,
-                r#"specify it in a configuration file instead, or set individual "#,
-                r#"inline flags (see "mypy -h" for the list of flags enabled in strict mode)"#
-            )
-            .into())
-        }
-        _ => {
-            return set_bool_init_flags(flags, name, &option_name, value, invert);
-        }
+        "strict" => Err(concat!(
+            r#"Setting "strict" not supported in inline configuration: "#,
+            r#"specify it in a configuration file instead, or set individual "#,
+            r#"inline flags (see "mypy -h" for the list of flags enabled in strict mode)"#
+        )
+        .into()),
+        _ => set_bool_init_flags(flags, name, &option_name, value, invert),
     }
 }
 
@@ -495,14 +491,13 @@ fn set_bool_init_flags(
         "allow_redefinition" | "follow_imports" | "follow_imports_for_stubs" => (),
         // Will always be irrelevant
         "cache_fine_grained" => (),
-        "ignore_errors" => return Ok(value.to_bool(invert)?),
+        "ignore_errors" => return value.to_bool(invert),
         _ => {
             return Err(format!(
                 "Unrecognized option: {} = {}",
                 original_name,
                 value.as_repr()
-            )
-            .into())
+            ))
         }
     }
     Ok(false)

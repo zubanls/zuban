@@ -512,7 +512,7 @@ pub(crate) fn new_collections_named_tuple<'db>(
                 let (mut start, _) = s.content_start_and_end_in_literal();
                 start += s.start();
                 for part in s.content().split(&[',', ' ']) {
-                    if part != "" {
+                    if !part.is_empty() {
                         add_param(StringSlice::new(
                             second_node_ref.file_index(),
                             start,

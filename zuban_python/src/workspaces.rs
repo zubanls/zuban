@@ -103,7 +103,7 @@ impl Workspaces {
                     } => (),
                     DirectoryEntry::Directory(dir) => {
                         let mut new = dir.as_ref().clone();
-                        new.parent = Parent::Directory(Rc::downgrade(&dir));
+                        new.parent = Parent::Directory(Rc::downgrade(dir));
                         *dir = clone_inner_rcs(new);
                     }
                 }

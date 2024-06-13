@@ -41,7 +41,7 @@ use crate::{
     },
 };
 
-const ENUM_NAMES_OVERRIDABLE: [&'static str; 2] = ["value", "name"];
+const ENUM_NAMES_OVERRIDABLE: [&str; 2] = ["value", "name"];
 
 lazy_static::lazy_static! {
     static ref FORWARD_OP_METHODS: HashSet<&'static str> = HashSet::from([

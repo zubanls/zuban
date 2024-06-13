@@ -218,9 +218,7 @@ impl<F: File + Unpin + Clone> FileState for LanguageFileState<F> {
     }
 
     fn take_invalidations(&mut self) -> Option<Invalidations> {
-        self.invalidates
-            .as_mut()
-            .map(|invalidations| std::mem::take(invalidations))
+        self.invalidates.as_mut().map(std::mem::take)
     }
 
     fn add_invalidates(&self, file_index: FileIndex) {
@@ -230,7 +228,7 @@ impl<F: File + Unpin + Clone> FileState for LanguageFileState<F> {
     }
 
     fn invalidate_invalidates_db(&self) -> bool {
-        return self.invalidates.is_none();
+        self.invalidates.is_none()
     }
 
     fn clone_box(&self, new_file_entry: Rc<FileEntry>) -> Pin<Box<dyn FileState>> {

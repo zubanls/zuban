@@ -309,7 +309,7 @@ impl<'a, T: Clone> Clone for AlreadySeen<'a, T> {
     fn clone(&self) -> Self {
         Self {
             current: self.current.clone(),
-            previous: self.previous.clone(),
+            previous: self.previous,
         }
     }
 }

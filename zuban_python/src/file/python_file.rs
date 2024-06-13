@@ -327,7 +327,7 @@ impl<'db> PythonFile {
             newline_indices: NewlineIndices::new(),
             sub_files: Default::default(),
             super_file: None,
-            stub_cache: is_stub.then(|| StubCache::default()),
+            stub_cache: is_stub.then(StubCache::default),
             ignore_type_errors,
             flags,
         }
@@ -613,7 +613,7 @@ impl<'db> PythonFile {
     pub fn flags<'x>(&'x self, db: &'x Database) -> &TypeCheckerFlags {
         if let Some(super_file) = self.super_file {
             debug_assert!(self.flags.is_none());
-            &db.loaded_python_file(super_file).flags(db)
+            db.loaded_python_file(super_file).flags(db)
         } else {
             self.flags.as_ref().unwrap_or(&db.project.flags)
         }

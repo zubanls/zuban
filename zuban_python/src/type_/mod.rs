@@ -314,7 +314,7 @@ pub struct Namespace {
 
 impl Namespace {
     pub fn qualified_name(&self) -> String {
-        dotted_path_from_dir(&self.directories.first().unwrap())
+        dotted_path_from_dir(self.directories.first().unwrap())
     }
 
     pub fn debug_path(&self, db: &Database) -> String {

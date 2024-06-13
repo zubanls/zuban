@@ -833,7 +833,7 @@ impl Database {
         let mut workspaces = Workspaces::default();
         let separator = vfs.separator();
         for p in project.flags.mypy_path.iter() {
-            workspaces.add(vfs.as_ref(), file_state_loaders.as_ref(), p.clone().into());
+            workspaces.add(vfs.as_ref(), file_state_loaders.as_ref(), p.clone());
         }
         for p in &project.sys_path {
             workspaces.add(vfs.as_ref(), file_state_loaders.as_ref(), p.clone().into())
@@ -916,11 +916,7 @@ impl Database {
         let mut mypy_path_iter = project.flags.mypy_path.iter();
         assert_eq!(mypy_path_iter.next_back().unwrap(), "/mypylike/");
         for p in mypy_path_iter.rev() {
-            workspaces.add_at_start(
-                self.vfs.as_ref(),
-                file_state_loaders.as_ref(),
-                p.clone().into(),
-            )
+            workspaces.add_at_start(self.vfs.as_ref(), file_state_loaders.as_ref(), p.clone())
         }
 
         let mut python_state = self.python_state.clone();

@@ -88,20 +88,20 @@ pub fn global_import_without_stubs_first<'a>(
     )
 }
 
-pub fn python_import<'a, 'x>(
+pub fn python_import<'x>(
     db: &Database,
     from_file: FileIndex,
     dirs: impl Iterator<Item = impl Borrow<Directory>>,
-    name: &'a str,
+    name: &str,
 ) -> Option<ImportResult> {
     python_import_with_needs_exact_case(db, from_file, dirs, name, false)
 }
 
-pub fn python_import_with_needs_exact_case<'a, 'x>(
+pub fn python_import_with_needs_exact_case<'x>(
     db: &Database,
     from_file: FileIndex,
     dirs: impl Iterator<Item = impl Borrow<Directory>>,
-    name: &'a str,
+    name: &str,
     needs_exact_case: bool,
 ) -> Option<ImportResult> {
     let mut python_file_index = None;

@@ -238,7 +238,7 @@ pub fn infer_value_on_member(
                 let expr = node_ref.as_expression();
                 node_ref.file.inference(class_i_s).infer_expression(expr)
             };
-            match inferred.as_cow_type(&class_i_s).as_ref() {
+            match inferred.as_cow_type(class_i_s).as_ref() {
                 Type::Class(c) if c.link == i_s.db.python_state.enum_auto_link() => {
                     Inferred::from_type(
                         enum_class

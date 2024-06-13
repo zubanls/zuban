@@ -1547,7 +1547,7 @@ impl TypeVarCycles {
         };
         for tv in cycle_parts() {
             for (i, cycle) in self.cycles.iter_mut().enumerate() {
-                if cycle.set.contains(&tv) {
+                if cycle.set.contains(tv) {
                     // If a cycle is discovered, add the type vars to that cycle.
                     cycle.set.extend(cycle_parts());
 
@@ -1559,7 +1559,7 @@ impl TypeVarCycles {
                     let mut new_has_bound = false;
                     for other_cycle in self.cycles.iter_mut().skip(i) {
                         for other_tv in cycle_parts() {
-                            if other_cycle.set.contains(&other_tv) {
+                            if other_cycle.set.contains(other_tv) {
                                 taken_cycle.extend(other_cycle.set.drain());
                                 new_has_bound |= other_cycle.has_bound;
                             }
