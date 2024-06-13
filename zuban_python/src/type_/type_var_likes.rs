@@ -781,6 +781,17 @@ impl TypeVarLikeUsage {
         }
     }
 
+    pub fn name_definition(&self) -> Option<PointLink> {
+        match self {
+            Self::TypeVar(t) => match t.type_var.name_string {
+                TypeVarName::PointLink(link) => Some(link),
+                TypeVarName::Self_ => None,
+            },
+            Self::TypeVarTuple(t) => Some(t.type_var_tuple.name_string),
+            Self::ParamSpec(p) => Some(p.param_spec.name_string),
+        }
+    }
+
     pub fn add_to_index(&mut self, amount: i32) {
         match self {
             Self::TypeVar(t) => t.index += amount,
@@ -885,7 +896,7 @@ impl TypeVarLikeUsage {
         }
     }
 
-    pub fn format_without_matcher(&self, db: &Database, params_style: ParamsStyle) -> Box<str> {
+    pub fn format_without_matcher(&self, db: &Database, params_style: ParamsStyle) -> String {
         match self {
             Self::TypeVar(usage) => {
                 let mut s = usage.type_var.name(db).to_owned();

@@ -71,16 +71,16 @@ def h(x: U, y: U, /) -> U: pass
 if int():
     f = f
 if int():
-    f = g # E: Incompatible types in assignment (expression has type "Callable[[T, U], U]", variable has type "Callable[[T, int], T]")
+    f = g # E: Incompatible types in assignment (expression has type "Callable[[T@g, U], U]", variable has type "Callable[[T@f, int], T@f]")
 if int():
     f = h # E: Incompatible types in assignment (expression has type "Callable[[U, U], U]", variable has type "Callable[[T, int], T]")
 
 if int():
-    g = f # E: Incompatible types in assignment (expression has type "Callable[[T, int], T]", variable has type "Callable[[T, U], U]")
+    g = f # E: Incompatible types in assignment (expression has type "Callable[[T@f, int], T@f]", variable has type "Callable[[T@g, U], U]")
 if int():
     g = g
 if int():
-    g = h # E: Incompatible types in assignment (expression has type "Callable[[U, U], U]", variable has type "Callable[[T, U], U]")
+    g = h # E: Incompatible types in assignment (expression has type "Callable[[U@h, U@h], U@h]", variable has type "Callable[[T, U@g], U@g]")
 
 if int():
     h = f # E: Incompatible types in assignment (expression has type "Callable[[T, int], T]", variable has type "Callable[[U, U], U]")
@@ -109,7 +109,7 @@ class A:
     def __init__(self, x: T) -> None:
         self.x = x
     def get(self) -> T:  # E: A function returning TypeVar should receive at least one argument containing the same Typevar
-        return self.x  # E: Incompatible return value type (got "T", expected "T")
+        return self.x  # E: Incompatible return value type (got "T@__init__", expected "T@get")
 
 x: int = A('lol').get()
 

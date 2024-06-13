@@ -1,9 +1,10 @@
 use crate::{
     database::{Database, PointLink},
     matching::{Matcher, MatcherFormatResult},
+    node_ref::NodeRef,
     type_::{
         FormatStyle, ParamSpecUsage, RecursiveType, RecursiveTypeOrigin, Type, TypeVarLikeUsage,
-        TypeVarTupleUsage, TypeVarUsage,
+        TypeVarName, TypeVarTupleUsage, TypeVarUsage,
     },
     utils::AlreadySeen,
 };
@@ -121,7 +122,7 @@ impl<'db, 'a, 'b, 'c> FormatData<'db, 'a, 'b, 'c> {
     }
 
     pub fn format_type_var(&self, usage: &TypeVarUsage) -> Box<str> {
-        match self.format_internal(
+        match self.format_type_var_like(
             &TypeVarLikeUsage::TypeVar(usage.clone()),
             ParamsStyle::Unreachable,
         ) {
@@ -131,7 +132,7 @@ impl<'db, 'a, 'b, 'c> FormatData<'db, 'a, 'b, 'c> {
     }
 
     pub fn format_type_var_tuple(&self, usage: &TypeVarTupleUsage) -> Option<Box<str>> {
-        match self.format_internal(
+        match self.format_type_var_like(
             &TypeVarLikeUsage::TypeVarTuple(usage.clone()),
             ParamsStyle::Unreachable,
         ) {
@@ -141,13 +142,13 @@ impl<'db, 'a, 'b, 'c> FormatData<'db, 'a, 'b, 'c> {
     }
 
     pub fn format_param_spec(&self, usage: &ParamSpecUsage, style: ParamsStyle) -> Box<str> {
-        match self.format_internal(&TypeVarLikeUsage::ParamSpec(usage.clone()), style) {
+        match self.format_type_var_like(&TypeVarLikeUsage::ParamSpec(usage.clone()), style) {
             MatcherFormatResult::Str(s) => s,
             MatcherFormatResult::TypeVarTupleUnknown => unreachable!(),
         }
     }
 
-    fn format_internal(
+    pub fn format_type_var_like(
         &self,
         type_var_usage: &TypeVarLikeUsage,
         params_style: ParamsStyle,
@@ -155,7 +156,19 @@ impl<'db, 'a, 'b, 'c> FormatData<'db, 'a, 'b, 'c> {
         if let Some(matcher) = self.matcher {
             return matcher.format(type_var_usage, self, params_style);
         }
-        MatcherFormatResult::Str(type_var_usage.format_without_matcher(self.db, params_style))
+        let mut s = type_var_usage.format_without_matcher(self.db, params_style);
+        if type_var_usage
+            .name_definition()
+            .is_some_and(|link| self.should_format_qualified(link))
+        {
+            if let Some(func) =
+                NodeRef::from_link(self.db, type_var_usage.in_definition()).maybe_function()
+            {
+                s += "@";
+                s += func.name().as_code();
+            }
+        }
+        MatcherFormatResult::Str(s.into())
     }
 }
 
@@ -172,16 +185,21 @@ pub fn find_similar_types(db: &Database, types: &[&Type]) -> Vec<PointLink> {
                 | Type::TypedDict(_)
                 | Type::Enum(_)
                 | Type::EnumMember(_)
+                | Type::TypeVar(_)
                 | Type::NewType(_) => {
-                    let Some((s2, link2)) = short_type_name_with_link(db, t) else {
+                    let Some(name_infos2) = short_type_name_with_link(db, t) else {
                         return false;
                     };
-                    if !types_with_same_names.contains(&link2) {
+                    if !types_with_same_names.contains(&name_infos2.name_link) {
                         for seen_type in seen_types.iter() {
-                            let (s1, link1) = short_type_name_with_link(db, seen_type).unwrap();
-                            if s1 == s2 && link1 != link2 {
-                                types_with_same_names.push(link1);
-                                types_with_same_names.push(link2);
+                            let name_infos1 = short_type_name_with_link(db, seen_type).unwrap();
+                            if name_infos1.name == name_infos2.name
+                                && name_infos1.name_unique_for != name_infos2.name_unique_for
+                            {
+                                types_with_same_names.push(name_infos2.name_link);
+                                if name_infos1.name_link != name_infos2.name_link {
+                                    types_with_same_names.push(name_infos1.name_link);
+                                }
                                 return false;
                             }
                         }
@@ -196,21 +214,45 @@ pub fn find_similar_types(db: &Database, types: &[&Type]) -> Vec<PointLink> {
     types_with_same_names
 }
 
-fn short_type_name_with_link<'x>(db: &'x Database, t: &'x Type) -> Option<(&'x str, PointLink)> {
+struct NameInfos<'x> {
+    name: &'x str,
+    name_unique_for: PointLink,
+    name_link: PointLink,
+}
+
+impl<'x> NameInfos<'x> {
+    fn new(name: &'x str, link: PointLink) -> Self {
+        Self {
+            name,
+            name_unique_for: link,
+            name_link: link,
+        }
+    }
+}
+
+fn short_type_name_with_link<'x>(db: &'x Database, t: &'x Type) -> Option<NameInfos<'x>> {
     Some(match t {
-        Type::Class(c) => (c.class(db).name(), c.link),
-        Type::RecursiveType(rec) => (
+        Type::Class(c) => NameInfos::new(c.class(db).name(), c.link),
+        Type::RecursiveType(rec) => NameInfos::new(
             match rec.origin(db) {
                 RecursiveTypeOrigin::TypeAlias(alias) => alias.name(db).unwrap_or_else(|| todo!()),
                 RecursiveTypeOrigin::Class(c) => c.name(),
             },
             rec.link,
         ),
-        Type::NamedTuple(n) => (n.name.as_str(db), n.__new__.defined_at),
-        Type::TypedDict(td) => (td.name?.as_str(db), td.defined_at),
-        Type::Enum(e) => (e.name.as_str(db), e.defined_at),
-        Type::EnumMember(m) => (m.enum_.name.as_str(db), m.enum_.defined_at),
-        Type::NewType(n) => (n.name(db), n.name_string),
+        Type::NamedTuple(n) => NameInfos::new(n.name.as_str(db), n.__new__.defined_at),
+        Type::TypedDict(td) => NameInfos::new(td.name?.as_str(db), td.defined_at),
+        Type::Enum(e) => NameInfos::new(e.name.as_str(db), e.defined_at),
+        Type::EnumMember(m) => NameInfos::new(m.enum_.name.as_str(db), m.enum_.defined_at),
+        Type::NewType(n) => NameInfos::new(n.name(db), n.name_string),
+        Type::TypeVar(tv) => match tv.type_var.name_string {
+            TypeVarName::PointLink(link) => NameInfos {
+                name: tv.type_var.name(db),
+                name_unique_for: tv.in_definition,
+                name_link: link,
+            },
+            TypeVarName::Self_ => return None,
+        },
         _ => unreachable!(),
     })
 }

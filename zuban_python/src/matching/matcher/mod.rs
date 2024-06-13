@@ -823,7 +823,9 @@ impl<'a> Matcher<'a> {
                 }
             }
         }
-        MatcherFormatResult::Str(usage.format_without_matcher(format_data.db, params_style))
+        format_data
+            .remove_matcher()
+            .format_type_var_like(usage, params_style)
     }
 
     pub fn remove_self_from_callable(
