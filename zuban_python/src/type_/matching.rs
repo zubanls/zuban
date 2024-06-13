@@ -5,11 +5,10 @@ use super::{
 use crate::{
     database::{ComplexPoint, MetaclassState},
     debug,
-    format_data::FormatData,
     inference_state::InferenceState,
     matching::{
-        avoid_protocol_mismatch, matches_params, ErrorTypes, GotType, Match, Matcher,
-        MismatchReason,
+        avoid_protocol_mismatch, format_got_expected, matches_params, ErrorStrs, ErrorTypes,
+        GotType, Match, Matcher, MismatchReason,
     },
     node_ref::NodeRef,
     type_::{CallableLike, CallableParams, TupleArgs, TupleUnpack, Variance},
@@ -186,16 +185,10 @@ impl Type {
         value_type: &Self,
     ) -> Match {
         // 1. Check if the type is part of the mro.
-        let debug_message_for_result = |result| {
+        let debug_message_for_result = |matcher, result| {
             if cfg!(feature = "zuban_debug") {
-                let mut format_data = FormatData::new_short(i_s.db);
-                format_data.enable_verbose();
-                debug!(
-                    "Match covariant {} :> {} -> {:?}",
-                    self.format(&format_data),
-                    value_type.format(&format_data),
-                    result
-                )
+                let ErrorStrs { got, expected } = format_got_expected(i_s, self, value_type);
+                debug!("Match covariant {got} :> {expected} -> {result:?}",)
             }
         };
         let mut m = Match::new_false();
@@ -226,7 +219,7 @@ impl Type {
                     similar: false
                 }
             ) {
-                debug_message_for_result(&m);
+                debug_message_for_result(matcher, &m);
                 return m;
             }
         }
@@ -257,7 +250,7 @@ impl Type {
                 }
                 Match::new_false()
             });
-        debug_message_for_result(&result);
+        debug_message_for_result(matcher, &result);
         result
     }
 
@@ -299,14 +292,8 @@ impl Type {
             self.check_protocol_and_other_side(i_s, matcher, value_type, Variance::Invariant)
         });
         if cfg!(feature = "zuban_debug") {
-            let mut format_data = FormatData::new_short(i_s.db);
-            format_data.enable_verbose();
-            debug!(
-                "Match invariant {} ≡ {} -> {:?}",
-                self.format(&format_data),
-                value_type.format(&format_data),
-                result
-            );
+            let ErrorStrs { got, expected } = format_got_expected(i_s, self, value_type);
+            debug!("Match invariant {got} ≡ {expected} -> {result:?}");
         }
         result
     }
@@ -810,7 +797,7 @@ fn match_unpack_internal(
             if let Some(on_mismatch) = on_mismatch {
                 on_mismatch(
                     ErrorTypes {
-                        matcher,
+                        matcher: Some(matcher),
                         reason,
                         expected: t1,
                         got: GotType::Type(t2),
@@ -828,7 +815,7 @@ fn match_unpack_internal(
                 if let Some(on_mismatch) = on_mismatch {
                     on_mismatch(
                         ErrorTypes {
-                            matcher,
+                            matcher: Some(matcher),
                             reason,
                             expected: &Type::Tuple(Tuple::new(TupleArgs::WithUnpack(
                                 with_unpack1.clone(),
@@ -909,7 +896,7 @@ fn match_unpack_internal(
                         if let Some(on_mismatch) = on_mismatch {
                             on_mismatch(
                                 ErrorTypes {
-                                    matcher,
+                                    matcher: Some(matcher),
                                     reason: &MismatchReason::None,
                                     expected: &with_unpack1.before[len_before_2],
                                     got: GotType::Starred(Type::Tuple(Tuple::new(tuple2.clone()))),

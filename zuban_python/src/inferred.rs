@@ -1881,7 +1881,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                             },
                                             &first_arg,
                                             ErrorTypes {
-                                                matcher: &Matcher::default(),
+                                                matcher: None,
                                                 reason,
                                                 got: GotType::Type(&other),
                                                 expected: t,

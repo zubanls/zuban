@@ -130,7 +130,7 @@ impl GotType<'_> {
 }
 
 pub struct ErrorTypes<'a> {
-    pub matcher: &'a Matcher<'a>,
+    pub matcher: Option<&'a Matcher<'a>>,
     pub got: GotType<'a>,
     pub expected: &'a Type,
     pub reason: &'a MismatchReason,
@@ -138,7 +138,7 @@ pub struct ErrorTypes<'a> {
 
 pub fn format_got_expected(i_s: &InferenceState, got: &Type, expected: &Type) -> ErrorStrs {
     ErrorTypes {
-        matcher: &Matcher::default(),
+        matcher: None,
         got: GotType::Type(got),
         expected,
         reason: &MismatchReason::None,
@@ -159,10 +159,15 @@ impl ErrorTypes<'_> {
         // but for now this should suffice.
         let expected_t = self
             .matcher
-            .replace_type_var_likes_for_unknown_type_vars(i_s.db, self.expected);
+            .map(|m| m.replace_type_var_likes_for_unknown_type_vars(i_s.db, self.expected))
+            .unwrap_or_else(|| self.expected.clone());
         let similar_types = find_similar_types(i_s.db, &[self.got.contained_type(), &expected_t]);
         let mut fmt_got = FormatData::with_types_that_need_qualified_names(i_s.db, &similar_types);
-        let mut fmt_expected = FormatData::with_matcher(i_s.db, self.matcher, &similar_types);
+        let mut fmt_expected = if let Some(matcher) = self.matcher {
+            FormatData::with_matcher(i_s.db, matcher, &similar_types)
+        } else {
+            fmt_got
+        };
         if self.expected.is_literal_or_literal_in_tuple() {
             fmt_got.hide_implicit_literals = false;
             fmt_expected.hide_implicit_literals = false;

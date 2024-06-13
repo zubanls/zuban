@@ -1302,7 +1302,7 @@ impl Type {
             let error_types = ErrorTypes {
                 expected: self,
                 got: GotType::Type(&value_type),
-                matcher,
+                matcher: Some(matcher),
                 reason,
             };
             if cfg!(feature = "zuban_debug") {

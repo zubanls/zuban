@@ -432,7 +432,9 @@ impl CallableParams {
                 ParamType::Star(StarParamType::ParamSpecArgs(_)) => false,
                 ParamType::Star(StarParamType::UnpackedTuple(u)) => u.find_in_type(db, check),
                 ParamType::StarStar(StarStarParamType::ParamSpecKwargs(_)) => false,
-                ParamType::StarStar(StarStarParamType::UnpackTypedDict(_)) => todo!(),
+                ParamType::StarStar(StarStarParamType::UnpackTypedDict(td)) => {
+                    Type::TypedDict(td.clone()).find_in_type(db, check)
+                }
             }),
             Self::Any(_) | Self::Never(_) => false,
             Self::WithParamSpec(types, param_spec) => {

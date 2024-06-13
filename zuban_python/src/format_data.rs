@@ -24,7 +24,7 @@ pub enum ParamsStyle {
     Unreachable,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct FormatData<'db, 'a, 'b, 'c> {
     pub db: &'db Database,
     pub matcher: Option<&'b Matcher<'a>>,

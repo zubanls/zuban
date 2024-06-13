@@ -612,7 +612,7 @@ pub(crate) fn match_arguments_against_params<
                         }
                         _ => {
                             let error_types = ErrorTypes {
-                                matcher,
+                                matcher: Some(matcher),
                                 reason,
                                 got,
                                 expected: &expected,

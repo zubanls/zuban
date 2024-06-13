@@ -254,7 +254,7 @@ impl<'db> Inference<'db, '_, '_> {
                             let error_types = ErrorTypes {
                                 expected,
                                 got: GotType::Type(got),
-                                matcher,
+                                matcher: Some(matcher),
                                 reason: &match match_ {
                                     Match::False { reason, .. } => reason,
                                     Match::True { .. } => MismatchReason::None,
