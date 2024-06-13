@@ -187,7 +187,7 @@ impl Type {
     ) -> Match {
         // 1. Check if the type is part of the mro.
         let debug_message_for_result = |result| {
-            if cfg!(debug_assertions) {
+            if cfg!(feature = "zuban_debug") {
                 let mut format_data = FormatData::new_short(i_s.db);
                 format_data.enable_verbose();
                 debug!(
@@ -298,7 +298,7 @@ impl Type {
         let result = m.or(|| {
             self.check_protocol_and_other_side(i_s, matcher, value_type, Variance::Invariant)
         });
-        if cfg!(debug_assertions) {
+        if cfg!(feature = "zuban_debug") {
             let mut format_data = FormatData::new_short(i_s.db);
             format_data.enable_verbose();
             debug!(
