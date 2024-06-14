@@ -1,6 +1,7 @@
 # Next up
 testTypeshedRecursiveTypesExample
 testRecursiveAliasBasicGenericInference
+testLiteralErrorsWhenInvoked-skip
 
 testTwoUncomfortablyIncompatibleProtocolsWithoutRunningInIssue9771
 
@@ -25,7 +26,6 @@ testInvalidTypeVarParametersConcrete
 testInvalidTypeVarParametersArbitrary
 testOverloadedGenericInit
 testAliasInstanceNameClash
-testInferTupleType
 testNameUndefinedErrorDoesNotLoseUnpackedKWArgsInformation
 testTypeVarTupleOverloadOverlap
 testTypeVarTupleTypeApplicationOverload
@@ -2169,5 +2169,4 @@ testOpWithInheritedFromAny-xfail
 testSubtypingWithTypeImplementingGenericABCViaInheritance2-skip
 testOverloadInferringArgumentsUsingContext2-skip
 testUnionTwoPassInference-skip
-testLiteralErrorsWhenInvoked-skip
 testWeirdRecursiveInferenceForProtocols-skip
