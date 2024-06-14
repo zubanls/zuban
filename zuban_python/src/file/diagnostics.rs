@@ -1080,11 +1080,10 @@ impl<'db> Inference<'db, '_, '_> {
             )
         }
 
-        let is_dynamic = function.is_dynamic();
         let args = NoArgs::new(NodeRef::new(self.file, f.index()));
         let function_i_s = &mut i_s.with_diagnostic_func_and_args(&function, &args);
         let inference = self.file.inference(function_i_s);
-        if !is_dynamic || flags.check_untyped_defs {
+        if function.is_typed() || flags.check_untyped_defs {
             inference.calc_block_diagnostics(block, None, Some(&function))
         } else {
             inference.calc_untyped_block_diagnostics(block)

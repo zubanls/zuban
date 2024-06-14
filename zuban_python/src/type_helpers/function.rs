@@ -84,8 +84,8 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         )
     }
 
-    pub fn is_dynamic(&self) -> bool {
-        !self.node().is_typed()
+    pub fn is_typed(&self) -> bool {
+        self.node().is_typed()
     }
 
     pub fn generator_return(&self, i_s: &InferenceState) -> Option<GeneratorType> {
@@ -857,7 +857,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                                 // A non-callable will raise errors later anyway
                                 .unwrap_or(true)
                         };
-                        if !self.is_dynamic() && !is_typed(&dec_inf, false) {
+                        if self.is_typed() && !is_typed(&dec_inf, false) {
                             nr().add_issue(
                                 i_s,
                                 IssueKind::UntypedDecorator {
@@ -1121,7 +1121,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 // Check if the implementing function was already set
                 if implementation.is_none() {
                     let t = next_details.inferred.as_cow_type(i_s);
-                    if !next_details.has_decorator && next_func.is_dynamic() || t.is_any() {
+                    if !next_details.has_decorator && !next_func.is_typed() || t.is_any() {
                         implementation = Some(OverloadImplementation {
                             function_link: func_ref.as_link(),
                             callable: CallableContent::new_any_with_defined_at(
@@ -1606,7 +1606,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             if args
                 .as_node_ref()
                 .is_some_and(|n| n.file.flags(i_s.db).disallow_untyped_calls)
-                && self.is_dynamic()
+                && !self.is_typed()
             {
                 args.add_issue(
                     i_s,
