@@ -1155,6 +1155,10 @@ impl<'a> Matcher<'a> {
         cycle: &TypeVarCycle,
     ) -> Result<(), Match> {
         let mut current_bound = if let Some(free_type_var_index) = cycle.free_type_var_index {
+            // We are using the first matcher, because the first matcher is responsible for the
+            // type vars that we actually care about.
+            // TODO please explain why this is fine in cases like __init__ with generics in both
+            // class and function.
             let in_definition = self.type_var_matchers[0].match_in_definition;
             Bound::Invariant(
                 match cycles.free_type_var_likes[free_type_var_index].clone() {
