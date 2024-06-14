@@ -1,7 +1,6 @@
 # Next up
 testTypeshedRecursiveTypesExample
 testRecursiveAliasBasicGenericInference
-testLiteralErrorsWhenInvoked-skip
 
 testTwoUncomfortablyIncompatibleProtocolsWithoutRunningInIssue9771
 

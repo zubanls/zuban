@@ -1670,13 +1670,6 @@ impl<'db: 'slf, 'slf> Inferred {
                                     on_type_error,
                                 )
                             }
-                            Specific::TypingProtocol
-                            | Specific::TypingGeneric
-                            | Specific::TypingUnion
-                            | Specific::TypingOptional
-                            | Specific::TypingLiteral
-                            | Specific::TypingAnnotated
-                            | Specific::TypingCallable => todo!(),
                             Specific::TypingNamedTuple => {
                                 return execute_typing_named_tuple(i_s, args)
                             }
@@ -1745,6 +1738,21 @@ impl<'db: 'slf, 'slf> Inferred {
                                     .python_state
                                     .mypy_extensions_arg_func(i_s.db, specific)
                                     .execute_with_details(i_s, args, result_context, on_type_error)
+                            }
+                            Specific::TypingProtocol
+                            | Specific::TypingGeneric
+                            | Specific::TypingUnion
+                            | Specific::TypingOptional
+                            | Specific::TypingLiteral
+                            | Specific::TypingAnnotated
+                            | Specific::TypingCallable => {
+                                args.add_issue(
+                                    i_s,
+                                    IssueKind::NotCallable {
+                                        type_: "\"_SpecialForm\"".into(),
+                                    },
+                                );
+                                return Inferred::new_any_from_error();
                             }
                             _ => (),
                         }
