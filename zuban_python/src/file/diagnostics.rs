@@ -741,7 +741,7 @@ impl<'db> Inference<'db, '_, '_> {
                 // Calculate if there is an @override decorator
                 let mut has_override_decorator = false;
                 if let Some(func_def) = NodeRef::new(self.file, *index).maybe_name_of_function() {
-                    if !func_def.is_typed() {
+                    if !func_def.is_typed() && !self.flags().check_untyped_defs {
                         // Mypy completely ignores untyped functions.
                         continue;
                     }
