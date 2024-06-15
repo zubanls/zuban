@@ -11,19 +11,13 @@ testNoCrashOnNestedGenericCallable
 testMultilineQuotedAnnotation
 
 # mypy upgrade
-testCanCreateClassWithFunctionBasedTypedDictBase
 testUnpackNewSyntaxInvalidCallableAlias
 testTypeVarIdsNested
-testGenericUnionFunctionJoin
 testTypeVariableClashErrorMessage
+testGenericUnionFunctionJoin
 testOverrideErrorLocationNamed
-testTypeApplicationGenericConstructor
-testInvalidTypeVarParametersConcrete
-testInvalidTypeVarParametersArbitrary
 testOverloadedGenericInit
 testNameUndefinedErrorDoesNotLoseUnpackedKWArgsInformation
-testDescriptorAccessForUnionOfTypesWithNoStrictOptional
-testLambdaNoReturn
 
 # TypeAliasType
 testTypeAliasType
@@ -466,6 +460,8 @@ testTypedDictWith__or__method
 testTypedDictWith__or__method_error
 testTypedDictWith__ror__method
 testTypedDictWith__ior__method
+# Functional TypedDict in class def
+testCanCreateClassWithFunctionBasedTypedDictBase
 
 # Protocol invariant matching for attributes
 testPartialAttributeNoneTypeStrictOptional
@@ -1034,6 +1030,8 @@ testStrictEqualityNoPromotePy3
 testStrictEqualityAllowlist
 testNarrowingEqualityDisabledForCustomEqualityChain
 testNarrowingEqualityFlipFlop
+# lambda unreachable raise
+testLambdaNoReturn
 
 # None late binding, because it's None (x = None; x = 3)
 testLocalPartialTypesWithInheritance3
@@ -1898,6 +1896,7 @@ testNoneAndGenericTypesOverlapNoStrictOptional
 testNamedTupleAsConditionalStrictOptionalDisabled
 testPartialAttributeNoneType
 testOptionalIterator
+testDescriptorAccessForUnionOfTypesWithNoStrictOptional
 
 # --untyped-calls-exclude=bar.A
 testDisallowUntypedCallsAllowListFlags
