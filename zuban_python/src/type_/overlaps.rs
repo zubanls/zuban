@@ -2,7 +2,7 @@ use crate::{
     debug,
     inference_state::InferenceState,
     matching::{params::has_overlapping_params, Matcher},
-    type_::TupleArgs,
+    type_::{TupleArgs, TupleUnpack, Variance},
     type_helpers::{Class, TypeOrClass},
 };
 
@@ -154,8 +154,64 @@ impl Tuple {
                     .chain(unpack.after.iter())
                     .all(|t2| t1.overlaps(i_s, matcher, t1))
             }
-            (WithUnpack(_), WithUnpack(_)) => todo!(),
-            (WithUnpack(_), FixedLen(_)) | (FixedLen(_), WithUnpack(_)) => todo!(),
+            (WithUnpack(w1), WithUnpack(w2)) => {
+                // TODO write tests for WithUnpack when the lengths do not match
+                /*
+                if w1.before.len() != w2.before.len() || w1.after.len() != w2.after.len() {
+                }
+                */
+                let mut before2_it = w2.before.iter();
+                let mut after2_it = w2.after.iter();
+                w1.before
+                    .iter()
+                    .zip(before2_it.by_ref())
+                    .all(|(t1, t2)| t1.overlaps(i_s, matcher, t2))
+                    && w1
+                        .after
+                        .iter()
+                        .zip(after2_it.by_ref())
+                        .all(|(t1, t2)| t1.overlaps(i_s, matcher, t2))
+                    && match &w1.unpack {
+                        TupleUnpack::ArbitraryLen(t1) => match &w2.unpack {
+                            TupleUnpack::TypeVarTuple(_) => todo!(),
+                            TupleUnpack::ArbitraryLen(t2) => t1.overlaps(i_s, matcher, t2),
+                        },
+                        TupleUnpack::TypeVarTuple(tvt1) => {
+                            /*
+                            let tup_args2 = TupleArgs::WithUnpack(super::WithUnpack {
+                                before: before2_it.cloned().collect(),
+                                unpack: w2.unpack.clone(),
+                                after: after2_it.cloned().collect(),
+                            });
+                            matcher.match_or_add_type_var_tuple(i_s, tvt1, tup_args2, Variance::Invariant).bool()
+                            */
+                            todo!()
+                        }
+                    }
+            }
+            (WithUnpack(w1), FixedLen(ts2)) => {
+                if w1.before.len() + w1.after.len() > ts2.len() {
+                    return false;
+                }
+                let middle2 = &ts2[w1.before.len()..ts2.len() - w1.after.len()];
+                w1.before
+                    .iter()
+                    .zip(ts2.iter())
+                    .all(|(t1, t2)| t1.overlaps(i_s, matcher, t2))
+                    && w1
+                        .after
+                        .iter()
+                        .rev()
+                        .zip(ts2.iter().rev())
+                        .all(|(t1, t2)| t1.overlaps(i_s, matcher, t2))
+                    && match &w1.unpack {
+                        TupleUnpack::ArbitraryLen(t1) => {
+                            middle2.iter().all(|t2| t1.overlaps(i_s, matcher, t2))
+                        }
+                        TupleUnpack::TypeVarTuple(tvt1) => todo!(),
+                    }
+            }
+            (FixedLen(_), WithUnpack(_)) => other.overlaps_tuple(i_s, matcher, self),
         }
     }
 }

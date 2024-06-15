@@ -441,7 +441,7 @@ impl<'a> Matcher<'a> {
         m.or(|| other_side)
     }
 
-    pub fn match_or_add_type_var_tuple_internal(
+    fn match_or_add_type_var_tuple_internal(
         &mut self,
         i_s: &InferenceState,
         tvt: &TypeVarTupleUsage,
