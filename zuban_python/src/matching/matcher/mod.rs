@@ -463,7 +463,6 @@ impl<'a> Matcher<'a> {
             }
             let tv_matcher = &mut self.type_var_matchers[matcher_index];
             return tv_matcher.calculating_type_args[tvt.index.as_usize()]
-                .type_
                 .merge(i_s.db, Bound::new_type_args(args2, variance));
         }
 
@@ -590,11 +589,7 @@ impl<'a> Matcher<'a> {
                 return Some(Match::new_true());
             }
             let tv_matcher = &mut self.type_var_matchers[matcher_index];
-            return Some(
-                tv_matcher.calculating_type_args[type_var_index]
-                    .type_
-                    .merge(i_s.db, new_bound),
-            );
+            return Some(tv_matcher.calculating_type_args[type_var_index].merge(i_s.db, new_bound));
         }
 
         if !self.match_reverse {
@@ -655,7 +650,6 @@ impl<'a> Matcher<'a> {
             let tv_matcher = &mut self.type_var_matchers[matcher_index];
             return matches
                 & tv_matcher.calculating_type_args[type_var_index]
-                    .type_
                     .merge(i_s.db, Bound::new_param_spec(new_params, variance));
         }
         if !self.match_reverse {
@@ -1154,7 +1148,7 @@ impl<'a> Matcher<'a> {
         cycles: &TypeVarCycles,
         cycle: &TypeVarCycle,
     ) -> Result<(), Match> {
-        let mut current_bound = if let Some(free_type_var_index) = cycle.free_type_var_index {
+        let bound = if let Some(free_type_var_index) = cycle.free_type_var_index {
             // We are using the first matcher, because the first matcher is responsible for the
             // type vars that we actually care about.
             // TODO please explain why this is fine in cases like __init__ with generics in both
@@ -1196,19 +1190,24 @@ impl<'a> Matcher<'a> {
         } else {
             Bound::default()
         };
+        let mut current = CalculatingTypeArg {
+            type_: bound,
+            unresolved_transitive_constraints: vec![],
+            defined_by_result_context: false,
+        };
         for tv_in_cycle in &cycle.set {
             // Use normal bound
             let used = &mut self.type_var_matchers[tv_in_cycle.matcher_index].calculating_type_args
                 [tv_in_cycle.type_var_index];
-            let taken_bounds = std::mem::take(&mut used.type_);
-            let m = current_bound.merge(db, taken_bounds);
-            if !m.bool() {
-                return Err(m);
-            }
 
             // Use unresolved transitive constraints
             let unresolved_transitive_constraints =
                 std::mem::take(&mut used.unresolved_transitive_constraints);
+
+            let m = current.merge_full(db, std::mem::take(used));
+            if !m.bool() {
+                return Err(m);
+            }
 
             for unresolved in unresolved_transitive_constraints.into_iter() {
                 // Cache unresolved transitive constraints recursively to create a topological
@@ -1294,7 +1293,7 @@ impl<'a> Matcher<'a> {
                     return Err(err);
                 }
                 if !is_in_cycle {
-                    let m = current_bound.merge(db, replaced_unresolved);
+                    let m = current.merge(db, replaced_unresolved);
                     if !m.bool() {
                         return Err(m);
                     }
@@ -1305,8 +1304,7 @@ impl<'a> Matcher<'a> {
         // Set the bounds properly
         for tv_in_cycle in &cycle.set {
             self.type_var_matchers[tv_in_cycle.matcher_index].calculating_type_args
-                [tv_in_cycle.type_var_index]
-                .type_ = current_bound.clone();
+                [tv_in_cycle.type_var_index] = current.clone();
         }
         Ok(())
     }

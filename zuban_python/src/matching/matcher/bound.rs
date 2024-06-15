@@ -93,108 +93,7 @@ impl Bound {
         })
     }
 
-    pub fn merge(&mut self, db: &Database, other: Self) -> Match {
-        if self == &other {
-            return Match::new_true();
-        }
-        let i_s = InferenceState::new(db);
-        let mut m = Match::new_true();
-        if let Self::Uncalculated { fallback } = self {
-            if !matches!(&other, Self::Uncalculated { .. }) || fallback.is_none() {
-                *self = other;
-            }
-            return Match::new_true();
-        }
-        let (t, variance) = match other {
-            Self::Upper(t) => (t, Variance::Contravariant),
-            Self::Lower(t) => (t, Variance::Covariant),
-            Self::Invariant(t) => (t, Variance::Invariant),
-            Self::UpperAndLower(upper, t) => {
-                m = self.merge_or_mismatch(&i_s, &upper, Variance::Contravariant);
-                (t, Variance::Covariant)
-            }
-            Self::Uncalculated { .. } => return Match::new_true(),
-        };
-        m & self.merge_or_mismatch(&i_s, &t, variance)
-    }
-
-    pub fn merge_or_mismatch(
-        &mut self,
-        i_s: &InferenceState,
-        other: &BoundKind,
-        variance: Variance,
-    ) -> Match {
-        // First check if the value is between the bounds.
-        let matches = match self {
-            Self::Invariant(t) => {
-                let m = t.is_simple_same_type(i_s, other);
-                if m.bool() {
-                    return m; // In the false case we still have to check for the variance cases.
-                }
-                m
-            }
-            Self::Upper(lower) => lower.is_simple_super_type_of(i_s, other),
-            Self::Lower(upper) => upper.is_simple_sub_type_of(i_s, other),
-            Self::UpperAndLower(lower, upper) => {
-                lower.is_simple_super_type_of(i_s, other) & upper.is_simple_sub_type_of(i_s, other)
-            }
-            Self::Uncalculated { .. } => unreachable!(),
-        };
-        if matches.bool() {
-            // If we are between the bounds we might need to update lower/upper bounds
-            match variance {
-                Variance::Invariant => *self = Self::Invariant(other.clone()),
-                Variance::Covariant => self.update_lower_bound(i_s, other),
-                Variance::Contravariant => self.update_upper_bound(i_s, other),
-            }
-        } else {
-            // If we are not between the lower and upper bound, but the value is co or
-            // contravariant, it can still be valid.
-            match variance {
-                Variance::Invariant => (),
-                Variance::Covariant => match self {
-                    Self::Lower(t) => {
-                        // TODO shouldn't this also do a limited common base type search in the
-                        // case of LowerAndUpper?
-                        let m = t.is_simple_super_type_of(i_s, other);
-                        *t = t.common_base_type(i_s, other);
-                        if !m.bool() {
-                            return Match::new_true();
-                        }
-                        return m;
-                    }
-                    Self::Invariant(t) | Self::UpperAndLower(_, t) => {
-                        return t.is_simple_super_type_of(i_s, other)
-                    }
-                    Self::Upper(t) => {}
-                    Self::Uncalculated { .. } => unreachable!(),
-                },
-                Variance::Contravariant => match self {
-                    Self::Upper(t) => {
-                        // TODO shouldn't we also check LowerAndUpper like this?
-                        let m = t.is_simple_sub_type_of(i_s, other);
-                        if !m.bool() {
-                            if let Some(new) = t.common_sub_type(i_s, other) {
-                                *t = new;
-                                return Match::new_true();
-                            } else {
-                                return Match::new_false();
-                            }
-                        }
-                        return m;
-                    }
-                    Self::Invariant(t) | Self::UpperAndLower(t, _) => {
-                        return t.is_simple_sub_type_of(i_s, other);
-                    }
-                    Self::Lower(_) => {}
-                    Self::Uncalculated { .. } => unreachable!(),
-                },
-            };
-        }
-        matches
-    }
-
-    fn update_upper_bound(&mut self, i_s: &InferenceState, upper: &BoundKind) {
+    pub(super) fn update_upper_bound(&mut self, i_s: &InferenceState, upper: &BoundKind) {
         match self {
             Self::Upper(old) => *self = Self::Upper(upper.clone()),
             Self::Lower(lower) | Self::UpperAndLower(_, lower) => {
@@ -204,7 +103,7 @@ impl Bound {
         }
     }
 
-    fn update_lower_bound(&mut self, i_s: &InferenceState, lower: &BoundKind) {
+    pub(super) fn update_lower_bound(&mut self, i_s: &InferenceState, lower: &BoundKind) {
         match self {
             Self::Lower(old) => *self = Self::Lower(old.common_base_type(i_s, lower)),
             Self::Upper(upper) => *self = Self::UpperAndLower(upper.clone(), lower.clone()),
@@ -348,19 +247,19 @@ impl BoundKind {
         self.matches(i_s, &mut Matcher::default(), other, variance)
     }
 
-    fn is_simple_same_type(&self, i_s: &InferenceState, other: &Self) -> Match {
+    pub(super) fn is_simple_same_type(&self, i_s: &InferenceState, other: &Self) -> Match {
         self.simple_matches(i_s, other, Variance::Invariant)
     }
 
-    fn is_simple_super_type_of(&self, i_s: &InferenceState, other: &Self) -> Match {
+    pub(super) fn is_simple_super_type_of(&self, i_s: &InferenceState, other: &Self) -> Match {
         self.simple_matches(i_s, other, Variance::Covariant)
     }
 
-    fn is_simple_sub_type_of(&self, i_s: &InferenceState, other: &Self) -> Match {
+    pub(super) fn is_simple_sub_type_of(&self, i_s: &InferenceState, other: &Self) -> Match {
         self.simple_matches(i_s, other, Variance::Contravariant)
     }
 
-    fn common_base_type(&self, i_s: &InferenceState, other: &Self) -> Self {
+    pub(super) fn common_base_type(&self, i_s: &InferenceState, other: &Self) -> Self {
         match (self, other) {
             (Self::TypeVar(t1), Self::TypeVar(t2)) => Self::TypeVar(t1.common_base_type(i_s, t2)),
             (Self::TypeVarTuple(tup1), Self::TypeVarTuple(tup2)) => {
@@ -371,7 +270,7 @@ impl BoundKind {
         }
     }
 
-    fn common_sub_type(&self, i_s: &InferenceState, other: &Self) -> Option<Self> {
+    pub(super) fn common_sub_type(&self, i_s: &InferenceState, other: &Self) -> Option<Self> {
         match (self, other) {
             (Self::TypeVar(t1), Self::TypeVar(t2)) => Some(Self::TypeVar(
                 t1.common_sub_type(i_s, t2)

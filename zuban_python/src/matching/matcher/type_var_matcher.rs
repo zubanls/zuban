@@ -110,6 +110,112 @@ impl CalculatingTypeArg {
         !matches!(self.type_, Bound::Uncalculated { .. })
     }
 
+    pub fn merge_full(&mut self, db: &Database, other: Self) -> Match {
+        self.defined_by_result_context |= other.defined_by_result_context;
+        self.merge(db, other.type_)
+    }
+
+    pub fn merge(&mut self, db: &Database, other: Bound) -> Match {
+        if self.type_ == other {
+            return Match::new_true();
+        }
+        let i_s = InferenceState::new(db);
+        let mut m = Match::new_true();
+        if let Bound::Uncalculated { fallback } = &self.type_ {
+            if !matches!(&other, Bound::Uncalculated { .. }) || fallback.is_none() {
+                self.type_ = other;
+            }
+            return Match::new_true();
+        }
+        let (t, variance) = match other {
+            Bound::Upper(t) => (t, Variance::Contravariant),
+            Bound::Lower(t) => (t, Variance::Covariant),
+            Bound::Invariant(t) => (t, Variance::Invariant),
+            Bound::UpperAndLower(upper, t) => {
+                m = self.merge_or_mismatch(&i_s, &upper, Variance::Contravariant);
+                (t, Variance::Covariant)
+            }
+            Bound::Uncalculated { .. } => return Match::new_true(),
+        };
+        m & self.merge_or_mismatch(&i_s, &t, variance)
+    }
+
+    pub fn merge_or_mismatch(
+        &mut self,
+        i_s: &InferenceState,
+        other: &BoundKind,
+        variance: Variance,
+    ) -> Match {
+        // First check if the value is between the bounds.
+        let matches = match &mut self.type_ {
+            Bound::Invariant(t) => {
+                let m = t.is_simple_same_type(i_s, other);
+                if m.bool() {
+                    return m; // In the false case we still have to check for the variance cases.
+                }
+                m
+            }
+            Bound::Upper(lower) => lower.is_simple_super_type_of(i_s, other),
+            Bound::Lower(upper) => upper.is_simple_sub_type_of(i_s, other),
+            Bound::UpperAndLower(lower, upper) => {
+                lower.is_simple_super_type_of(i_s, other) & upper.is_simple_sub_type_of(i_s, other)
+            }
+            Bound::Uncalculated { .. } => unreachable!(),
+        };
+        if matches.bool() {
+            // If we are between the bounds we might need to update lower/upper bounds
+            match variance {
+                Variance::Invariant => self.type_ = Bound::Invariant(other.clone()),
+                Variance::Covariant => self.type_.update_lower_bound(i_s, other),
+                Variance::Contravariant => self.type_.update_upper_bound(i_s, other),
+            }
+        } else {
+            // If we are not between the lower and upper bound, but the value is co or
+            // contravariant, it can still be valid.
+            match variance {
+                Variance::Invariant => (),
+                Variance::Covariant => match &mut self.type_ {
+                    Bound::Lower(t) => {
+                        // TODO shouldn't this also do a limited common base type search in the
+                        // case of LowerAndUpper?
+                        let m = t.is_simple_super_type_of(i_s, other);
+                        *t = t.common_base_type(i_s, other);
+                        if !m.bool() {
+                            return Match::new_true();
+                        }
+                        return m;
+                    }
+                    Bound::Invariant(t) | Bound::UpperAndLower(_, t) => {
+                        return t.is_simple_super_type_of(i_s, other)
+                    }
+                    Bound::Upper(t) => {}
+                    Bound::Uncalculated { .. } => unreachable!(),
+                },
+                Variance::Contravariant => match &mut self.type_ {
+                    Bound::Upper(t) => {
+                        // TODO shouldn't we also check LowerAndUpper like this?
+                        let m = t.is_simple_sub_type_of(i_s, other);
+                        if !m.bool() {
+                            if let Some(new) = t.common_sub_type(i_s, other) {
+                                *t = new;
+                                return Match::new_true();
+                            } else {
+                                return Match::new_false();
+                            }
+                        }
+                        return m;
+                    }
+                    Bound::Invariant(t) | Bound::UpperAndLower(t, _) => {
+                        return t.is_simple_sub_type_of(i_s, other);
+                    }
+                    Bound::Lower(_) => {}
+                    Bound::Uncalculated { .. } => unreachable!(),
+                },
+            };
+        }
+        matches
+    }
+
     pub fn into_generic_item(self, db: &Database, type_var_like: &TypeVarLike) -> GenericItem {
         self.type_.into_generic_item(db, |fallback| {
             if let Some(fallback) = fallback {
@@ -175,7 +281,7 @@ impl TypeVarMatcher {
         debug_assert_eq!(type_var_usage.in_definition, self.match_in_definition);
         let current = &mut self.calculating_type_args[type_var_usage.index.as_usize()];
         if current.calculated() {
-            return current.type_.merge_or_mismatch(
+            return current.merge_or_mismatch(
                 i_s,
                 &BoundKind::TypeVar(value_type.clone()),
                 variance,
