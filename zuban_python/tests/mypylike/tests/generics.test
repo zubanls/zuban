@@ -1094,3 +1094,16 @@ def foo2(f: Callable[[List[T1]], List[T1]]) -> Callable[[T1], T1]: ...
 def id2(x: List[T2]) -> Any: ...
 
 reveal_type(foo2(id2))  # N: Revealed type is "def (Any) -> Any"
+
+[case type_var_meets_object]
+from typing import TypeVar
+
+T = TypeVar("T")
+
+def foo(x: T, y: object) -> T | object: ...
+
+reveal_type(foo(1, ''))  # N: Revealed type is "object"
+
+def bar(x: T | object) -> T: ...
+
+reveal_type(bar(1))  # N: Revealed type is "Never"
