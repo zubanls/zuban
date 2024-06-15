@@ -7,9 +7,10 @@ testTwoUncomfortablyIncompatibleProtocolsWithoutRunningInIssue9771
 # callable matching regression
 testNoCrashOnNestedGenericCallable
 
-# mypy upgrade
+# multiline annotations
 testMultilineQuotedAnnotation
-testDataclassFieldWithPositionalArguments
+
+# mypy upgrade
 testCanCreateClassWithFunctionBasedTypedDictBase
 testUnpackNewSyntaxInvalidCallableAlias
 testTypeVarIdsNested
@@ -20,9 +21,7 @@ testTypeApplicationGenericConstructor
 testInvalidTypeVarParametersConcrete
 testInvalidTypeVarParametersArbitrary
 testOverloadedGenericInit
-testAliasInstanceNameClash
 testNameUndefinedErrorDoesNotLoseUnpackedKWArgsInformation
-testTypeVarTupleTypeApplicationOverload
 testDescriptorAccessForUnionOfTypesWithNoStrictOptional
 testLambdaNoReturn
 
@@ -130,6 +129,8 @@ testRecursiveAliasesJoins
 testRecursiveAliasWithRecursiveInstanceInference
 # Recursive alias class type aliases --enable-recursive-aliases
 testRecursiveClassLevelAlias
+# used before def wrong error in recursive type definition
+testAliasInstanceNameClash
 
 # Type var finder recursion is not handled, because imports are involved.
 testRecursiveAliasImported
@@ -266,6 +267,7 @@ testTypeVarDefaultsTypeAliasRecursive2
 testParamSpecInferredFromLambda
 testTypeGuardOverload
 testTypeIsOverload
+testTypeVarTupleTypeApplicationOverload
 # lambda --new-type-inference
 testPartialTypeContextWithTwoLambdas
 testInferenceAgainstGenericLambdas
