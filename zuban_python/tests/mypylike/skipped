@@ -7,17 +7,13 @@ testTwoUncomfortablyIncompatibleProtocolsWithoutRunningInIssue9771
 # callable matching regression
 testNoCrashOnNestedGenericCallable
 
-# multiline annotations
-testMultilineQuotedAnnotation
-
 # mypy upgrade
 testUnpackNewSyntaxInvalidCallableAlias
-testTypeVarIdsNested
-testTypeVariableClashErrorMessage
-testGenericUnionFunctionJoin
 testOverrideErrorLocationNamed
 testOverloadedGenericInit
 testNameUndefinedErrorDoesNotLoseUnpackedKWArgsInformation
+# multiline annotations
+testMultilineQuotedAnnotation
 
 # TypeAliasType
 testTypeAliasType
@@ -284,6 +280,9 @@ testNoCrashOnLambdaGenerator
 testJoinProtocolCallback
 testMeetOfIncompatibleProtocols
 testMeetProtocolCallback
+# join with matcher
+testGenericUnionFunctionJoin
+testTypeVarIdsNested
 
 # Nested type vars
 testFunctionInGenericInnerClassTypeVariable-skip
@@ -1134,6 +1133,7 @@ testSlotsAssignmentWithMethodReassign
 testTypeVarTupleNewSyntaxGenerics
 testAssignmentToAttributeInMultipleMethods
 testInheritanceFromGenericWithImplicitDynamic
+testTypeVariableClashErrorMessage
 # Confusions with overrides, because of self definitions
 testVariableSubclassAssignment
 testClassOneErrorPerLine
