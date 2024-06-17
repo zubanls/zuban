@@ -134,6 +134,25 @@ impl CallableParam {
         }
     }
 
+    pub fn similar_kind_and_keyword_if_kw_param(&self, db: &Database, other: &Self) -> bool {
+        use ParamType::*;
+        match &self.type_ {
+            PositionalOnly(_) | PositionalOrKeyword(_) => {
+                matches!(&other.type_, PositionalOnly(_) | PositionalOrKeyword(_))
+            }
+            KeywordOnly(_) => {
+                matches!(&other.type_, KeywordOnly(_))
+                    && self
+                        .name
+                        .as_ref()
+                        .zip(other.name.as_ref())
+                        .is_some_and(|(n1, n2)| n1.as_str(db) == n2.as_str(db))
+            }
+            Star(_) => matches!(&other.type_, Star(_)),
+            StarStar(_) => matches!(&other.type_, StarStar(_)),
+        }
+    }
+
     pub fn format(&self, format_data: &FormatData) -> Box<str> {
         if !matches!(self.type_, ParamType::PositionalOnly(_))
             || format_data.verbose && self.has_default

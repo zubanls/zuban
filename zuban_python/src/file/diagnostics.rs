@@ -33,7 +33,7 @@ use crate::{
     type_::{
         format_callable_params, AnyCause, CallableContent, CallableParams, ClassGenerics, DbString,
         FunctionKind, FunctionOverload, GenericItem, GenericsList, Literal, LiteralKind,
-        NeverCause, TupleArgs, Type, TypeVarLike, Variance,
+        NeverCause, ParamType, TupleArgs, Type, TypeVarLike, Variance,
     },
     type_helpers::{
         cache_class_name, is_private, Class, ClassLookupOptions, FirstParamProperties, Function,
@@ -1959,6 +1959,7 @@ fn check_override(
         ),
         _ => (),
     }
+    let mut added_liskov_note = false;
     if !match_.bool() {
         let db = i_s.db;
         let mut emitted = false;
@@ -1975,7 +1976,30 @@ fn check_override(
                 let CallableParams::Simple(params2) = &expected_c.params else {
                     unreachable!()
                 };
-                for (i, (param1, param2)) in params1.iter().zip(params2.iter()).enumerate() {
+                for (i, (param1, mut param2)) in params1.iter().zip(params2.iter()).enumerate() {
+                    if !param1.similar_kind_and_keyword_if_kw_param(db, param2) {
+                        if matches!(&param1.type_, ParamType::KeywordOnly(_)) {
+                            let search = params2.iter().find(|p2| {
+                                param1.name.as_ref().zip(p2.name.as_ref()).is_some_and(
+                                    |(n1, n2)| {
+                                        n1.as_str(db) == n2.as_str(db)
+                                            && matches!(
+                                                &p2.type_,
+                                                ParamType::PositionalOrKeyword(_)
+                                                    | ParamType::KeywordOnly(_)
+                                            )
+                                    },
+                                )
+                            });
+                            if let Some(p) = search {
+                                param2 = p
+                            } else {
+                                continue;
+                            }
+                        } else {
+                            continue;
+                        }
+                    }
                     let Some(t1) = param1.type_.maybe_type() else {
                         continue;
                     };
@@ -1991,8 +2015,9 @@ fn check_override(
                                 t2.format_short(db),
                             ).into(),
                             eq_class: (name == "__eq__").then(|| override_class.name().into()),
-                            add_liskov_note: name != "__post_init__",
+                            add_liskov_note: name != "__post_init__" && !added_liskov_note,
                         };
+                        added_liskov_note = true;
                         match &param1.name {
                             Some(DbString::StringSlice(s)) if maybe_func().is_some() => {
                                 from.file.add_issue(

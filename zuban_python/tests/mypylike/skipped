@@ -8,7 +8,6 @@ testTwoUncomfortablyIncompatibleProtocolsWithoutRunningInIssue9771
 testNoCrashOnNestedGenericCallable
 
 # mypy upgrade
-testOverrideErrorLocationNamed
 testOverloadedGenericInit
 testNameUndefinedErrorDoesNotLoseUnpackedKWArgsInformation
 # multiline annotations
