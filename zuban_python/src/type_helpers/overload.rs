@@ -506,7 +506,9 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         result_context: &mut ResultContext,
         on_type_error: OnTypeError,
     ) -> Inferred {
-        self.execute_internal(i_s, args, false, result_context, on_type_error)
+        self.execute_internal(i_s, args, false, result_context, on_type_error, &|| {
+            Type::Self_
+        })
     }
 
     pub(super) fn execute_internal(
@@ -516,6 +518,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         skip_first_argument: bool,
         result_context: &mut ResultContext,
         on_type_error: OnTypeError,
+        replace_self_type: ReplaceSelf,
     ) -> Inferred {
         debug!("Execute overloaded function {}", self.name(i_s.db));
         match self.find_matching_function(
@@ -533,6 +536,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                 skip_first_argument,
                 on_type_error,
                 result_context,
+                Some(replace_self_type),
             ),
             OverloadResult::Union(t) => Inferred::from_type(t),
             OverloadResult::NotFound => self.fallback_type(i_s),

@@ -6,7 +6,7 @@ use crate::{
     inference_state::InferenceState,
     inferred::Inferred,
     matching::{calculate_callable_type_vars_and_return, OnTypeError, ResultContext},
-    type_::{CallableContent, Type},
+    type_::{CallableContent, ReplaceSelf, Type},
 };
 
 #[derive(Debug, Copy, Clone)]
@@ -40,7 +40,7 @@ impl<'a> Callable<'a> {
         on_type_error: OnTypeError,
         result_context: &mut ResultContext,
     ) -> Inferred {
-        self.execute_internal(i_s, args, false, on_type_error, result_context)
+        self.execute_internal(i_s, args, false, on_type_error, result_context, None)
     }
 
     pub(crate) fn execute_internal<'db>(
@@ -50,6 +50,7 @@ impl<'a> Callable<'a> {
         skip_first_argument: bool,
         on_type_error: OnTypeError,
         result_context: &mut ResultContext,
+        as_self_type: Option<ReplaceSelf>,
     ) -> Inferred {
         let return_type = &self.content.return_type;
         if result_context.expect_not_none(i_s) && matches!(&return_type, Type::None) {
@@ -70,6 +71,7 @@ impl<'a> Callable<'a> {
             return_type,
             on_type_error,
             result_context,
+            as_self_type,
         )
     }
 
@@ -81,6 +83,7 @@ impl<'a> Callable<'a> {
         return_type: &Type,
         on_type_error: OnTypeError,
         result_context: &mut ResultContext,
+        as_self_type: Option<ReplaceSelf>,
     ) -> Inferred {
         let calculated_type_vars = calculate_callable_type_vars_and_return(
             i_s,
@@ -91,10 +94,15 @@ impl<'a> Callable<'a> {
             result_context,
             Some(on_type_error),
         );
-        calculated_type_vars.into_return_type(i_s, return_type, self.defined_in.as_ref(), &|| {
-            self.defined_in
-                .map(|c| c.as_type(i_s.db))
-                .unwrap_or(Type::Self_)
-        })
+        calculated_type_vars.into_return_type(
+            i_s,
+            return_type,
+            self.defined_in.as_ref(),
+            as_self_type.unwrap_or(&|| {
+                self.defined_in
+                    .map(|c| c.as_type(i_s.db))
+                    .unwrap_or(Type::Self_)
+            }),
+        )
     }
 }

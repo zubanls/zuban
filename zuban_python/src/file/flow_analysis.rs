@@ -1794,6 +1794,7 @@ impl Inference<'_, '_, '_> {
                     }
                 }),
                 &mut ResultContext::Unknown,
+                None,
             );
         if had_error.get() {
             return None;

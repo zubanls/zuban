@@ -571,6 +571,7 @@ pub(crate) fn dataclasses_replace<'db>(
                             ))
                         }),
                         &mut ResultContext::Unknown,
+                        None,
                     );
                 },
             );

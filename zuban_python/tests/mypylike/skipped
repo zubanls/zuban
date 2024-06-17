@@ -4,7 +4,6 @@
 testNoCrashOnNestedGenericCallable
 
 # mypy upgrade
-testOverloadAndSelfTypesGenericNoOverlap
 testTypeAliasWithNewUnionIsInstance
 # multiline annotations
 testMultilineQuotedAnnotation

@@ -41,7 +41,9 @@ impl<'a, 'b> BoundMethod<'a, 'b> {
                 result_context,
             ),
             BoundMethodFunction::Overload(f) => {
-                f.execute_internal(i_s, args, true, result_context, on_type_error)
+                f.execute_internal(i_s, args, true, result_context, on_type_error, &|| {
+                    self.instance.clone()
+                })
             }
         }
     }
