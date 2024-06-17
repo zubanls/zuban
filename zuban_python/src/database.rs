@@ -1331,6 +1331,7 @@ impl ParentScope {
 pub struct ClassStorage {
     pub class_symbol_table: SymbolTable,
     pub self_symbol_table: SymbolTable,
+    pub abstract_attributes: Box<[NodeIndex]>,
     pub parent_scope: ParentScope,
     pub promote_to: Cell<Option<PointLink>>,
     pub slots: Option<Box<[StringSlice]>>,
@@ -1374,6 +1375,7 @@ pub struct ClassInfos {
     pub protocol_members: Box<[ProtocolMember]>,
     pub has_slots: bool,
     pub is_final: bool,
+    pub abstract_attributes: Box<[PointLink]>,
     // We have this less for caching and more to be able to have different types.
     pub undefined_generics_type: OnceCell<Rc<Type>>,
 }

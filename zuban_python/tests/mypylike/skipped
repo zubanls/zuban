@@ -4,7 +4,6 @@
 testNoCrashOnNestedGenericCallable
 
 # mypy upgrade
-testTypeAliasWithNewUnionIsInstance
 # multiline annotations
 testMultilineQuotedAnnotation
 
@@ -553,19 +552,19 @@ testInstantiationProtocolInTypeForVariables
 testOverloadedAbstractMethodVariantMissingDecorator0
 testOverloadedAbstractMethodVariantMissingDecorator1
 # class: "Cannot instantiate abstract class "C" with abstract attribute "f""
-testInstantiatingAbstractClass
-testInstantiatingClassWithInheritedAbstractMethod
 testInstantiationAbstractsInTypeForFunctions
 testInstantiationAbstractsInTypeForAliases
-testOverloadedAbstractMethod
-testOverloadedAbstractMethodWithAlternativeDecoratorOrder
-testInstantiateClassWithReadOnlyAbstractProperty
-testInstantiateClassWithReadWriteAbstractProperty
 testNestedAbstractClass
 testAbstractNewTypeAllowed
 testSubclassOfABCFromDictionary
-testAbstractPropertiesAllowed
-testInstantiatingAbstractClassWithMultipleBaseClasses
+# regressions: class: "Cannot instantiate abstract class "C" with abstract attribute "f""
+testInstantiationAbstractsInTypeForClassMethods
+testAbstractClassWithAnyBase
+testClassMethodMayCallAbstractMethod
+testCtypesCharPArrayDoesNotCrash
+testCtypesArrayConstructorStarargs
+testCtypesArrayConstructorKwargs
+testTypingOrderedDictAlias
 # Cannot instantiate abstract class "A" with abstract attributes "a", "b", ... and "j" (7 methods suppressed)
 testInstantiatingClassWithInheritedAbstractMethodAndSuppression
 # Same but not from check-abstract.test
@@ -1028,6 +1027,8 @@ testNarrowingEqualityDisabledForCustomEqualityChain
 testNarrowingEqualityFlipFlop
 # lambda unreachable raise
 testLambdaNoReturn
+# isinstance with union literals `isinstance(x, A | B)`
+testTypeAliasWithNewUnionIsInstance
 
 # None late binding, because it's None (x = None; x = 3)
 testLocalPartialTypesWithInheritance3

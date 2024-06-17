@@ -10,6 +10,7 @@ use crate::{
     debug,
     diagnostics::{Diagnostics, Issue, IssueKind},
     file::{python_file::StarImport, ComplexValues},
+    python_state::NAME_TO_FUNCTION_DIFF,
     type_::StringSlice,
     utils::SymbolTable,
     TypeCheckerFlags,
@@ -45,6 +46,7 @@ struct UnresolvedClass<'db> {
     class_def: ClassDef<'db>,
     parent_scope: ParentScope,
     class_symbol_table: SymbolTable,
+    abstract_attributes: Box<[NodeIndex]>,
 }
 
 #[derive(Clone, Copy)]
@@ -122,6 +124,7 @@ impl<'db> NameBinder<'db> {
                 unresolved_class.class_def.index(),
                 ComplexPoint::Class(Box::new(ClassStorage {
                     class_symbol_table: unresolved_class.class_symbol_table,
+                    abstract_attributes: unresolved_class.abstract_attributes,
                     self_symbol_table,
                     parent_scope: unresolved_class.parent_scope,
                     promote_to: Default::default(),
@@ -691,9 +694,12 @@ impl<'db> NameBinder<'db> {
                 }
                 binder.index_block(block, true);
             });
+
+        let abstract_attributes = self.search_abstract_method_likes(&class_symbol_table);
         self.unresolved_class_self_vars.push(UnresolvedClass {
             class_def,
             class_symbol_table,
+            abstract_attributes,
             parent_scope: match self.kind {
                 NameBinderKind::Global => ParentScope::Module,
                 NameBinderKind::Class => ParentScope::Class(self.scope_node),
@@ -743,6 +749,35 @@ impl<'db> NameBinder<'db> {
             }
         }
         false
+    }
+
+    fn search_abstract_method_likes(&self, class_symbol_table: &SymbolTable) -> Box<[NodeIndex]> {
+        let mut result = vec![];
+        for (name, &node_index) in class_symbol_table.iter() {
+            let function_index = node_index - NAME_TO_FUNCTION_DIFF;
+            if let Some(func) = FunctionDef::maybe_by_index(self.db_infos.tree, function_index) {
+                if let Some(decorated) = func.maybe_decorated() {
+                    // We could use a more sophisticated logic for abstracmethod/abstractproperty,
+                    // but it also seems kind of fine for now.
+                    if decorated.decorators().iter().any(|d| {
+                        matches!(
+                            d.named_expression().as_code(),
+                            "abstractmethod" | "abstractproperty"
+                        )
+                    }) {
+                        // Check if it's already in the list
+                        if !result
+                            .iter()
+                            .any(|&i| self.db_infos.tree.code_of_index(i) == name)
+                        {
+                            result.push(node_index)
+                        }
+                    }
+                }
+            }
+        }
+        result.sort();
+        result.into()
     }
 
     fn index_match_stmt(&mut self, match_stmt: MatchStmt<'db>, ordered: bool) -> NodeIndex {

@@ -944,6 +944,7 @@ impl<'db: 'a, 'a> Class<'a> {
         } else {
             Default::default()
         };
+        let abstract_attributes = self.calculate_abstract_attributes(i_s.db, &mro);
         (
             Box::new(ClassInfos {
                 mro,
@@ -953,10 +954,40 @@ impl<'db: 'a, 'a> Class<'a> {
                 has_slots,
                 protocol_members,
                 is_final,
+                abstract_attributes,
                 undefined_generics_type: OnceCell::new(),
             }),
             typed_dict_total,
         )
+    }
+
+    fn calculate_abstract_attributes(&self, db: &Database, mro: &[BaseClass]) -> Box<[PointLink]> {
+        let mut result = vec![];
+        for &n in self.class_storage.abstract_attributes.iter() {
+            result.push(PointLink::new(self.node_ref.file_index(), n))
+        }
+        for c in mro {
+            if c.is_direct_base {
+                if let Type::Class(c) = &c.type_ {
+                    let c = c.class(db);
+                    for &link in c.use_cached_class_infos(db).abstract_attributes.iter() {
+                        let name = NodeRef::from_link(db, link).as_code();
+                        if self
+                            .class_storage
+                            .class_symbol_table
+                            .lookup_symbol(name)
+                            .is_none()
+                            && !result
+                                .iter()
+                                .any(|&l| NodeRef::from_link(db, l).as_code() == name)
+                        {
+                            result.push(link)
+                        }
+                    }
+                }
+            }
+        }
+        result.into()
     }
 
     fn update_metaclass(
@@ -1915,7 +1946,17 @@ impl<'db: 'a, 'a> Class<'a> {
         };
         let on_type_error = on_type_error.with_custom_generate_diagnostic_string(&d);
 
-        match &self.use_cached_class_infos(i_s.db).class_kind {
+        let class_infos = self.use_cached_class_infos(i_s.db);
+        if !class_infos.abstract_attributes.is_empty() {
+            args.add_issue(
+                i_s,
+                IssueKind::CannotInstantiateAbstractClass {
+                    name: self.name().into(),
+                    abstract_attributes: class_infos.abstract_attributes.clone(),
+                },
+            )
+        }
+        match &class_infos.class_kind {
             ClassKind::Enum if self.node_ref.as_link() != i_s.db.python_state.enum_auto_link() => {
                 // For whatever reason, auto is special, because it is somehow defined as an enum as
                 // well, which is very weird.

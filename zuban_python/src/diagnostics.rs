@@ -3,9 +3,10 @@ use std::collections::HashMap;
 use parsa_python_cst::{CodeIndex, NodeIndex, Tree};
 
 use crate::{
-    database::Database,
+    database::{Database, PointLink},
     file::{File, GenericCounts, PythonFile, OVERLAPPING_REVERSE_TO_NORMAL_METHODS},
     name::TreePosition,
+    node_ref::NodeRef,
     type_::{FunctionKind, TypeVarLike, Variance},
     utils::{join_with_commas, InsertOnlyVec},
     PythonVersion, TypeCheckerFlags,
@@ -202,6 +203,7 @@ pub(crate) enum IssueKind {
     AmbigousClassVariableAccess,
     SlotsConflictWithClassVariableAccess { name: Box<str> },
     CannotInstantiateProtocol { name: Box<str> },
+    CannotInstantiateAbstractClass{ name: Box<str>, abstract_attributes: Box<[PointLink]> },
     OnlyConcreteClassAllowedWhereTypeExpected { type_: Box<str> },
     UnpackRequiresExactlyOneArgument,
     UnpackOnlyValidInVariadicPosition,
@@ -1244,6 +1246,27 @@ impl<'db> Diagnostic<'db> {
             CannotInstantiateProtocol{name} => format!(
                 "Cannot instantiate protocol class \"{name}\""
             ),
+            CannotInstantiateAbstractClass{ name, abstract_attributes } => {
+                match abstract_attributes.as_ref() {
+                    [link] => {
+                        let attribute = NodeRef::from_link(self.db, *link).as_code();
+                        format!(
+                            "Cannot instantiate abstract class \"{name}\" with abstract attribute \"{attribute}\""
+                        )
+                    }
+                    _ => {
+                        let mut iterator = abstract_attributes
+                            .iter()
+                            .map(|&link| NodeRef::from_link(self.db, link).as_code());
+                        let end = iterator.next_back().unwrap();
+                        let attributes = join_with_commas(iterator.map(|name| format!("\"{name}\"")));
+                        format!(
+                            "Cannot instantiate abstract class \"{name}\" with abstract attributes \
+                            {attributes} and \"{end}\""
+                        )
+                    }
+                }
+            }
             OnlyConcreteClassAllowedWhereTypeExpected { type_ } => format!(
                 r#"Only concrete class can be given where "{type_}" is expected"#
             ),
