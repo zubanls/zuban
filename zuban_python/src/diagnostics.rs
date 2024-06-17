@@ -1176,7 +1176,7 @@ impl<'db> Diagnostic<'db> {
             TypeVarValuesAndUpperBound =>
                 "TypeVar cannot have both values and an upper bound".to_string(),
             TypeVarOnlySingleRestriction =>
-                 "TypeVar cannot have only a single constraint".to_string(),
+                 "Type variable must have at least two constrained types".to_string(),
             UnexpectedArgument{class_name, argument_name} => format!(
                  "Unexpected argument to \"{class_name}()\": \"{argument_name}\""),
             TypeVarLikeTooFewArguments{class_name} => format!("Too few arguments for {class_name}()"),
