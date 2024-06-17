@@ -195,15 +195,15 @@ impl<'db: 'a, 'a> Class<'a> {
             }
             Some(FunctionOrOverload::Callable(callable_content)) => {
                 let calculated_type_args = match init_class {
-                    Some(class) => todo!() /*calculate_callable_init_type_vars_and_return(
+                    Some(class) => calculate_callable_init_type_vars_and_return(
                         i_s,
                         &class,
                         Callable::new(&callable_content, Some(*self)),
                         args.iter(),
-                        &|| args.as_node_ref(),
+                        |issue| args.add_issue(i_s, issue),
                         result_context,
                         Some(on_type_error),
-                    )*/,
+                    ),
                     // Happens for example when NamedTuples are involved.
                     None => calculate_callable_type_vars_and_return(
                         i_s,
