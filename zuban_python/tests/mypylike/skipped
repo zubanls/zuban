@@ -559,7 +559,6 @@ testAbstractNewTypeAllowed
 testSubclassOfABCFromDictionary
 # regressions: class: "Cannot instantiate abstract class "C" with abstract attribute "f""
 testInstantiationAbstractsInTypeForClassMethods
-testAbstractClassWithAnyBase
 testClassMethodMayCallAbstractMethod
 testCtypesCharPArrayDoesNotCrash
 testCtypesArrayConstructorStarargs

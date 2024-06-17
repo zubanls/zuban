@@ -1947,7 +1947,7 @@ impl<'db: 'a, 'a> Class<'a> {
         let on_type_error = on_type_error.with_custom_generate_diagnostic_string(&d);
 
         let class_infos = self.use_cached_class_infos(i_s.db);
-        if !class_infos.abstract_attributes.is_empty() {
+        if !class_infos.abstract_attributes.is_empty() && !class_infos.incomplete_mro {
             args.add_issue(
                 i_s,
                 IssueKind::CannotInstantiateAbstractClass {
