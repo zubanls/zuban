@@ -268,3 +268,25 @@ def foo(x: int) -> int: ...
 @overload
 def foo(x: str = ...) -> str: ...
 def foo(x: int | str = b"") -> str | int: ... # E: Incompatible default for argument "x" (default has type "bytes", argument has type "int | str")
+
+[case overload_with_self_types_fallback]
+# Inspired by testOverloadAndSelfTypesGenericNoOverlap
+from typing import overload, Self, Any
+
+class C:
+    @overload
+    def get(self, obj: None) -> Self: ...
+    @overload
+    def get(self, obj: int) -> Self: ...
+    def get(self, obj) -> Self:
+        return self
+
+any: Any
+class D(C): ...
+d: D
+reveal_type(d.get(None))  # N: Revealed type is "__main__.D"
+reveal_type(d.get(""))  # E: No overload variant of "get" of "C" matches argument type "str" \
+                        # N: Possible overload variants: \
+                        # N:     def get(self, obj: None) -> Self \
+                        # N:     def get(self, obj: int) -> Self \
+                        # N: Revealed type is "Any"
