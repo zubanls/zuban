@@ -1,11 +1,12 @@
 # Next up
-testTypeshedRecursiveTypesExample
-testRecursiveAliasBasicGenericInference
 
 # callable matching regression
 testNoCrashOnNestedGenericCallable
 
 # mypy upgrade
+testOverloadAndSelfTypesGenericNoOverlap
+testTypeAliasWithNewUnionIsInstance
+testInvalidTypevarArguments
 # multiline annotations
 testMultilineQuotedAnnotation
 
@@ -107,11 +108,13 @@ testGenericJoinRecursiveTypes
 testRecursiveAliasWithRecursiveInstance
 testTypeAliasUpdateNonRecursiveToRecursiveFine
 testTypeAliasUpdateNonRecursiveToRecursiveCoarse
-# Recursive Alias wrong type var inference --enable-recursive-aliases
+# Recursive Alias wrong type var inference
 testRecursiveAliasesJoins
-# Recursive alias union type var inference --enable-recursive-aliases
+# Recursive alias union type var inference
 testRecursiveAliasWithRecursiveInstanceInference
-# Recursive alias class type aliases --enable-recursive-aliases
+testTypeshedRecursiveTypesExample
+testRecursiveAliasBasicGenericInference
+# Recursive alias class type aliases
 testRecursiveClassLevelAlias
 # used before def wrong error in recursive type definition
 testAliasInstanceNameClash
@@ -1336,6 +1339,10 @@ test695Function
 test695TypeVar
 test695TypeAliasType
 testPEP695*
+
+# enum.member / enum.nonmember
+testEnumNonMemberSupport
+testEnumMemberSupport
 
 # Assignment like ac[b] += c with both __getitem__ and __setitem__ has same error twice
 testOperatorAssignmentWithIndexLvalue1
