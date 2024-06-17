@@ -22,8 +22,16 @@ impl Type {
         &self,
         db: &Database,
         callable: &mut impl FnMut(TypeVarLikeUsage) -> GenericItem,
-    ) -> Type {
+    ) -> Self {
         self.replace_type_var_likes_and_self(db, callable, &|| Type::Self_)
+    }
+
+    pub fn replace_self(&self, db: &Database, replace_self: ReplaceSelf) -> Self {
+        self.replace_type_var_likes_and_self(
+            db,
+            &mut |usage| usage.into_generic_item(),
+            replace_self,
+        )
     }
 
     pub fn replace_type_var_likes_and_self(
@@ -31,7 +39,7 @@ impl Type {
         db: &Database,
         mut callable: ReplaceTypeVarLike,
         replace_self: ReplaceSelf,
-    ) -> Type {
+    ) -> Self {
         let mut replace_generics = |generics: &GenericsList| {
             GenericsList::new_generics(
                 generics

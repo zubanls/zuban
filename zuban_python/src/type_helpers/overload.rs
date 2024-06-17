@@ -538,7 +538,12 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                 result_context,
                 Some(replace_self_type),
             ),
-            OverloadResult::Union(t) => Inferred::from_type(t),
+            OverloadResult::Union(mut t) => {
+                if t.has_self_type(i_s.db) {
+                    t = t.replace_self(i_s.db, replace_self_type)
+                }
+                Inferred::from_type(t)
+            }
             OverloadResult::NotFound => self.fallback_type(i_s),
         }
     }

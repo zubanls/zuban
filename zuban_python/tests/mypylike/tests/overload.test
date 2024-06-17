@@ -290,3 +290,20 @@ reveal_type(d.get(""))  # E: No overload variant of "get" of "C" matches argumen
                         # N:     def get(self, obj: None) -> Self \
                         # N:     def get(self, obj: int) -> Self \
                         # N: Revealed type is "Any"
+
+[case overload_with_self_types_union_math]
+# Inspired by testOverloadAndSelfTypesGenericNoOverlap
+from typing import overload, Self, Any
+
+class C:
+    @overload
+    def get(self, obj: None) -> Self: ...
+    @overload
+    def get(self, obj: int) -> int: ...
+    def get(self, obj) -> Self | int:
+        return self
+
+u: int | None
+class D(C): ...
+d: D
+reveal_type(d.get(u))  # N: Revealed type is "int | __main__.D"
