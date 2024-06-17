@@ -818,7 +818,7 @@ fn main() {
     let start = Instant::now();
     let mut projects = ProjectsCache::new(!cli_args.no_reuse_db);
     let mut full_count = 0;
-    let mut ran_count = 0;
+    let mut passed_count = 0;
     let mut error_count = 0;
     let file_count = files.len();
     let mut error_summary = String::new();
@@ -842,10 +842,13 @@ fn main() {
                 full_count += 1;
                 continue;
             }
-            let mut ran_in = 0;
             let mut check = |result| match result {
-                Ok(ran) => ran_in += ran as usize,
+                Ok(ran) => {
+                    passed_count += ran as usize;
+                    full_count += ran as usize;
+                }
                 Err(err) => {
+                    full_count += 1;
                     if cli_args.stop_after_first_error {
                         panic!("{err}")
                     } else {
@@ -860,19 +863,19 @@ fn main() {
                 check(case.run(&mut projects, from_mypy_test_suite))
             }
             check(case.run(&mut projects, true));
-            ran_count += ran_in;
-            full_count += ran_in;
         }
     }
     if error_count > 0 {
         println!("\nError summary:");
         println!("{error_summary}");
     }
+    let error_s = match error_count {
+        1 => "",
+        _ => "s",
+    };
     println!(
-        "Passed {} of {} ({error_count} errors) mypy-like tests in {} files; finished in {:.2}s",
-        ran_count,
-        full_count,
-        file_count,
+        "Passed {passed_count} of {full_count} ({error_count} error{error_s}) \
+         mypy-like tests in {file_count} files; finished in {:.2}s",
         start.elapsed().as_secs_f32(),
     );
 }
