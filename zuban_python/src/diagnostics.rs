@@ -462,6 +462,7 @@ impl IssueKind {
             NeedTypeAnnotation { .. } => "var-annotated",
             TypeIsNarrowedTypeIsNotSubtypeOfInput { .. } => "narrowed-type-not-subtype",
             DecoratorOnTopOfPropertyNotSupported => "prop-decorator",
+            CannotInstantiateAbstractClass { .. } => "abstract",
 
             TypedDictNameMismatch { .. } | NamedTupleFirstArgumentMismatch { .. } => "name-match",
             TypedDictMissingKeys { .. }

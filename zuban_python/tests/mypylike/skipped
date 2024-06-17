@@ -567,7 +567,6 @@ testCtypesArrayConstructorKwargs
 testTypingOrderedDictAlias
 # Same but not from check-abstract.test
 testAbstractInit
-testErrorCodeInstantiateAbstract
 # protocol: "Cannot instantiate abstract class "C" with abstract attribute "x""
 testNonProtocolToProtocol
 testCannotInstantiateAbstractMethodExplicitProtocolSubtypes
