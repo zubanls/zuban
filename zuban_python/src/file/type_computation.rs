@@ -221,7 +221,7 @@ impl InvalidVariableType<'_> {
 pub enum TypeOrUnpack {
     Type(Type),
     TypeVarTuple(TypeVarTupleUsage),
-    Unknown(AnyCause),
+    Unknown(UnknownCause),
 }
 
 #[derive(Debug, Clone)]
@@ -256,7 +256,7 @@ enum TypeContent<'db, 'a> {
     Final(Type),
     NotRequired(Type),
     TypeGuardInfo(TypeGuardInfo),
-    Unknown(AnyCause),
+    Unknown(UnknownCause),
 }
 
 enum ClassGetItemResult<'db> {
@@ -284,7 +284,7 @@ pub(super) enum TypeNameLookup<'db, 'a> {
     Dataclass(Rc<Dataclass>),
     RecursiveAlias(PointLink),
     RecursiveClass(NodeRef<'db>),
-    Unknown(AnyCause),
+    Unknown(UnknownCause),
 }
 
 #[derive(Debug)]
@@ -377,7 +377,7 @@ macro_rules! compute_type_application {
                     Inferred::from_type(Type::Type(Rc::new(type_)))
                 }
             },
-            TypeContent::Unknown(cause) => Inferred::new_any(cause),
+            TypeContent::Unknown(cause) => Inferred::new_any(cause.into()),
             _ => todo!("type application: {t:?}"),
         }
     }}
@@ -490,7 +490,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             for stmt_or_error in f.tree.root().iter_stmts() {
                 if let StmtOrError::Error(node_index) = stmt_or_error {
                     // There is invalid syntax (issue added previously)
-                    return TypeContent::Unknown(AnyCause::FromError);
+                    return TypeContent::Unknown(UnknownCause::ReportedIssue);
                 }
             }
             self.inference.file.add_issue(
@@ -501,7 +501,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     kind: IssueKind::InvalidSyntaxInTypeAnnotation,
                 },
             );
-            TypeContent::Unknown(AnyCause::FromError)
+            TypeContent::Unknown(UnknownCause::ReportedIssue)
         }
     }
 
@@ -1311,7 +1311,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 TupleArgs::FixedLen(ts) => TypeCompTupleUnpack::FixedLen(rc_slice_into_vec(ts)),
             },
             TypeOrUnpack::Unknown(cause) => {
-                TypeCompTupleUnpack::ArbitraryLen(Box::new(Type::Any(cause)))
+                TypeCompTupleUnpack::ArbitraryLen(Box::new(Type::Any(cause.into())))
             }
             TypeOrUnpack::Type(t) => {
                 self.add_issue(
@@ -1540,7 +1540,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             |t| self.add_issue(s.as_node_ref(), t),
                             self.origin,
                         );
-                        TypeContent::Unknown(AnyCause::FromError)
+                        TypeContent::Unknown(UnknownCause::ReportedIssue)
                     }
                     TypeContent::TypeVarTuple(_) => todo!(),
                     TypeContent::ParamSpec(_) => todo!(),
@@ -1620,7 +1620,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                                     name.index(),
                                     Point::new_specific(Specific::AnyDueToError, Locality::Todo),
                                 );
-                                TypeContent::Unknown(AnyCause::FromError)
+                                TypeContent::Unknown(UnknownCause::ReportedIssue)
                             }
                         }
                     }
@@ -1640,7 +1640,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     Some(ImportResult::Namespace(ns)) => TypeContent::Namespace(ns),
                     None => {
                         self.add_issue_for_index(primary.index(), IssueKind::TypeNotFound);
-                        TypeContent::Unknown(AnyCause::FromError)
+                        TypeContent::Unknown(UnknownCause::ReportedIssue)
                     }
                 }
             }
@@ -1708,7 +1708,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             debug!("TypeComputation: Attribute on class not found");
             debug_assert_eq!(point_kind, PointKind::Specific);
             self.add_issue_for_index(primary.index(), IssueKind::TypeNotFound);
-            TypeContent::Unknown(AnyCause::FromError)
+            TypeContent::Unknown(UnknownCause::ReportedIssue)
         }
     }
 
@@ -2495,7 +2495,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 TypeContent::SpecialType(SpecialType::Any) if from_class_generics => {
                     CallableParams::Any(AnyCause::Explicit)
                 }
-                TypeContent::Unknown(cause) => CallableParams::Any(cause),
+                TypeContent::Unknown(cause) => CallableParams::Any(cause.into()),
                 TypeContent::Concatenate(p) => p,
                 t if allow_aesthetic_class_simplification => CallableParams::Simple(Rc::new([
                     self.check_param(t, NodeRef::new(self.inference.file, expr.index())),
@@ -2679,7 +2679,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 slice_type
                     .as_node_ref()
                     .add_issue(self.inference.i_s, IssueKind::FinalAndClassVarUsedBoth);
-                TypeContent::Unknown(AnyCause::FromError)
+                TypeContent::Unknown(UnknownCause::ReportedIssue)
             }
             t => TypeContent::Final(self.as_type(t, slice_type.as_node_ref())),
         }
@@ -2704,7 +2704,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 slice_type.as_node_ref(),
                 IssueKind::UnpackRequiresExactlyOneArgument,
             );
-            TypeContent::Unknown(AnyCause::FromError)
+            TypeContent::Unknown(UnknownCause::ReportedIssue)
         }
     }
 
@@ -2725,7 +2725,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             }
             TypeContent::Concatenate(_) => {
                 self.add_issue(slice_type.as_node_ref(), IssueKind::NestedConcatenate);
-                TypeContent::Unknown(AnyCause::FromError)
+                TypeContent::Unknown(UnknownCause::ReportedIssue)
             }
             TypeContent::Unknown(cause) => TypeContent::Unknown(cause),
             TypeContent::InvalidVariable(InvalidVariableType::Ellipsis) => {
@@ -2746,7 +2746,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     slice_type.as_node_ref(),
                     IssueKind::ConcatenateLastParamNeedsToBeParamSpec,
                 );
-                TypeContent::Unknown(AnyCause::FromError)
+                TypeContent::Unknown(UnknownCause::ReportedIssue)
             }
         }
     }
@@ -2786,7 +2786,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         "Invalid type: Literal[...] cannot contain arbitrary expressions".into(),
                     ),
                 );
-                TypeContent::Unknown(AnyCause::FromError)
+                TypeContent::Unknown(UnknownCause::ReportedIssue)
             };
             match s.named_expr.expression().unpack() {
                 ExpressionContent::ExpressionPart(ExpressionPart::Atom(atom)) => {
@@ -2820,7 +2820,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                                     .into(),
                                 ),
                             );
-                            return TypeContent::Unknown(AnyCause::FromError);
+                            return TypeContent::Unknown(UnknownCause::ReportedIssue);
                         }
                         AtomContent::Complex(_) => {
                             self.add_issue(
@@ -2833,7 +2833,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                                     .into(),
                                 ),
                             );
-                            return TypeContent::Unknown(AnyCause::FromError);
+                            return TypeContent::Unknown(UnknownCause::ReportedIssue);
                         }
                         AtomContent::Name(_) | AtomContent::NoneLiteral => None,
                         _ => return expr_not_allowed(self),
@@ -2885,7 +2885,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             .into(),
                     ),
                 );
-                TypeContent::Unknown(AnyCause::FromError)
+                TypeContent::Unknown(UnknownCause::ReportedIssue)
             }
             TypeContent::InvalidVariable(_) => {
                 self.add_issue(
@@ -2894,11 +2894,11 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         format!("Parameter {index} of Literal[...] is invalid").into(),
                     ),
                 );
-                TypeContent::Unknown(AnyCause::FromError)
+                TypeContent::Unknown(UnknownCause::ReportedIssue)
             }
             TypeContent::EnumMember(e) => TypeContent::Type(Type::EnumMember(e)),
             t => match self.as_type(t, slice.as_node_ref()) {
-                Type::Any(_) => TypeContent::Unknown(AnyCause::FromError),
+                Type::Any(cause) => TypeContent::Unknown(UnknownCause::AnyCause(cause)),
                 t @ (Type::None | Type::Literal(_)) => TypeContent::Type(t),
                 Type::Union(u)
                     if u.iter().all(|t| {
@@ -2914,7 +2914,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             format!("Parameter {} of Literal[...] is invalid", index).into(),
                         ),
                     );
-                    TypeContent::Unknown(AnyCause::FromError)
+                    TypeContent::Unknown(UnknownCause::ReportedIssue)
                 }
             },
         }
@@ -2930,7 +2930,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     "Annotated[...] must have exactly one type argument and at least one annotation",
                 )),
             );
-            TypeContent::Unknown(AnyCause::FromError)
+            TypeContent::Unknown(UnknownCause::ReportedIssue)
         } else {
             TypeContent::Type(self.compute_slice_type(first))
         }
@@ -2944,7 +2944,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 slice_type.as_node_ref(),
                 IssueKind::ClassVarTooManyArguments,
             );
-            TypeContent::Unknown(AnyCause::FromError)
+            TypeContent::Unknown(UnknownCause::ReportedIssue)
         } else {
             let i_s = self.inference.i_s;
             if i_s.current_class().is_none() || i_s.current_function().is_some() {
@@ -2952,7 +2952,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     slice_type.as_node_ref(),
                     IssueKind::ClassVarOnlyInAssignmentsInClass,
                 );
-                TypeContent::Unknown(AnyCause::FromError)
+                TypeContent::Unknown(UnknownCause::ReportedIssue)
             } else {
                 TypeContent::ClassVar(self.compute_slice_type(first))
             }
@@ -2993,7 +2993,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 "NotRequired[]"
             };
             self.add_issue(next.as_node_ref(), IssueKind::MustHaveOneArgument { name });
-            TypeContent::Unknown(AnyCause::FromError)
+            TypeContent::Unknown(UnknownCause::ReportedIssue)
         } else {
             let t = self.compute_slice_type(first);
             if is_required {
@@ -3093,7 +3093,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                                 type_var_like: type_var_like.clone(),
                             },
                         );
-                        Some(TypeContent::Unknown(AnyCause::FromError))
+                        Some(TypeContent::Unknown(UnknownCause::ReportedIssue))
                     }
                     TypeVarCallbackReturn::NotFound => None,
                 }
@@ -3342,6 +3342,22 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 "Perhaps you meant to use a protocol matching the module structure?",
             )),
         );
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum UnknownCause {
+    ReportedIssue,
+    AnyCause(AnyCause),
+    UnknownName(AnyCause),
+}
+
+impl UnknownCause {
+    fn into(self) -> AnyCause {
+        match self {
+            Self::ReportedIssue => AnyCause::FromError,
+            Self::AnyCause(c) | Self::UnknownName(c) => c,
+        }
     }
 }
 
@@ -3700,7 +3716,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                 //     Foo = 1  # type: Any
                 if let TypeCommentState::Type(t) = &type_comment.type_ {
                     if let Type::Any(cause) = t.as_ref() {
-                        return TypeNameLookup::Unknown(*cause);
+                        return TypeNameLookup::Unknown(UnknownCause::AnyCause(*cause));
                     }
                 }
             }
@@ -3851,7 +3867,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                             node_ref.point().maybe_specific(),
                             Some(Specific::InvalidTypeDefinition)
                         ) {
-                            TypeNameLookup::Unknown(AnyCause::FromError)
+                            TypeNameLookup::Unknown(UnknownCause::ReportedIssue)
                         } else {
                             check_for_alias()
                         }
@@ -3866,7 +3882,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
             if let Some(annotation) = assignment.maybe_annotation() {
                 self.cache_assignment(assignment);
                 if let Type::Any(cause) = self.use_cached_annotation_type(annotation).as_ref() {
-                    return TypeNameLookup::Unknown(*cause);
+                    return TypeNameLookup::Unknown(UnknownCause::AnyCause(*cause));
                 }
             }
             TypeNameLookup::InvalidVariable(InvalidVariableType::Other)
@@ -3883,7 +3899,9 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
         debug_assert!(self.file.points.get(name.index()).calculated());
         match point.kind() {
             PointKind::Specific => match point.specific() {
-                Specific::AnyDueToError => TypeNameLookup::Unknown(AnyCause::Todo),
+                Specific::AnyDueToError => {
+                    TypeNameLookup::Unknown(UnknownCause::UnknownName(AnyCause::FromError))
+                }
                 _ => todo!(),
             },
             PointKind::Redirect => {
@@ -4794,7 +4812,7 @@ pub(super) fn check_type_name<'db: 'file, 'file>(
                     }
                 }
                 if p.maybe_specific() == Some(Specific::ModuleNotFound) {
-                    TypeNameLookup::Unknown(AnyCause::ModuleNotFound)
+                    TypeNameLookup::Unknown(UnknownCause::UnknownName(AnyCause::ModuleNotFound))
                 } else {
                     // This typically happens with a module __getattr__ and the type can be
                     // anything.
@@ -4872,7 +4890,7 @@ fn check_module_getattr_type(
     inf: Inferred,
 ) -> TypeNameLookup<'static, 'static> {
     if let Type::Any(cause) = inf.as_cow_type(i_s).as_ref() {
-        TypeNameLookup::Unknown(*cause)
+        TypeNameLookup::Unknown(UnknownCause::AnyCause(*cause))
     } else {
         todo!()
     }
