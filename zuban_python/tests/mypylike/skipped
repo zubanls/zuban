@@ -8,7 +8,6 @@ testTwoUncomfortablyIncompatibleProtocolsWithoutRunningInIssue9771
 testNoCrashOnNestedGenericCallable
 
 # mypy upgrade
-testUnpackNewSyntaxInvalidCallableAlias
 testOverrideErrorLocationNamed
 testOverloadedGenericInit
 testNameUndefinedErrorDoesNotLoseUnpackedKWArgsInformation

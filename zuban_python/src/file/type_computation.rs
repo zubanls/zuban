@@ -2252,15 +2252,19 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 }))),
             ),
             TypeContent::Unpacked(TypeOrUnpack::Type(t)) => {
-                if !t.is_any() {
-                    self.add_issue(
-                        from,
-                        IssueKind::VariadicUnpackMustBeTupleLike {
-                            actual: t.format_short(self.inference.i_s.db),
-                        },
-                    )
-                }
-                ParamType::Star(StarParamType::ArbitraryLen(Type::Any(AnyCause::FromError)))
+                let any_cause = match t {
+                    Type::Any(cause) => cause,
+                    _ => {
+                        self.add_issue(
+                            from,
+                            IssueKind::VariadicUnpackMustBeTupleLike {
+                                actual: t.format_short(self.inference.i_s.db),
+                            },
+                        );
+                        AnyCause::FromError
+                    }
+                };
+                ParamType::Star(StarParamType::ArbitraryLen(Type::Any(any_cause)))
             }
             TypeContent::SpecialType(SpecialType::Unpack) => {
                 ParamType::Star(StarParamType::ArbitraryLen(
@@ -2466,21 +2470,24 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                                 _ => {
                                     let node_ref =
                                         NodeRef::new(self.inference.file, star_expr.index());
-                                    let t = self.as_type(t, node_ref);
+                                    let mut t = self.as_type(t, node_ref);
                                     if matches!(t, Type::Tuple(_)) {
-                                        self.add_param(
-                                            &mut params,
-                                            TypeContent::Unpacked(TypeOrUnpack::Type(t)),
-                                            star_expr.index(),
-                                        )
                                     } else {
-                                        self.add_issue(
-                                            node_ref,
-                                            IssueKind::VariadicUnpackMustBeTupleLike {
-                                                actual: t.format_short(self.inference.i_s.db),
-                                            },
-                                        );
+                                        if !t.is_any() {
+                                            self.add_issue(
+                                                node_ref,
+                                                IssueKind::VariadicUnpackMustBeTupleLike {
+                                                    actual: t.format_short(self.inference.i_s.db),
+                                                },
+                                            );
+                                        }
+                                        t = Type::Tuple(Tuple::new_arbitrary_length_with_any());
                                     }
+                                    self.add_param(
+                                        &mut params,
+                                        TypeContent::Unpacked(TypeOrUnpack::Type(t)),
+                                        star_expr.index(),
+                                    )
                                 }
                             }
                         }
@@ -3346,7 +3353,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-enum UnknownCause {
+pub enum UnknownCause {
     ReportedIssue,
     AnyCause(AnyCause),
     UnknownName(AnyCause),
@@ -3768,7 +3775,10 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                 };
                 let node_ref = NodeRef::new(file, expr.index());
                 match t {
-                    TypeContent::InvalidVariable(t) if !is_explicit => {
+                    TypeContent::InvalidVariable(_)
+                    | TypeContent::Unknown(UnknownCause::UnknownName(_))
+                        if !is_explicit =>
+                    {
                         alias.set_invalid();
                     }
                     _ => {
