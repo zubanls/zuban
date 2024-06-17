@@ -882,7 +882,10 @@ impl<'db: 'a, 'a> Class<'a> {
                         if name.as_str() != "metaclass" {
                             // Generate diagnostics
                             self.node_ref.file.inference(i_s).infer_expression(expr);
-                            debug!("TODO shouldn't we handle this? In testNewAnalyzerClassKeywordsForward it's ignored...")
+                            debug!(
+                                "TODO shouldn't we handle this? In \
+                                    testNewAnalyzerClassKeywordsForward it's ignored..."
+                            )
                         }
                     }
                     Argument::Star(starred) => {
@@ -1112,12 +1115,13 @@ impl<'db: 'a, 'a> Class<'a> {
                             had_lookup_error = true;
                         } else {
                             had_at_least_one_member_with_same_name = true;
-                            let protocol_lookup_details = Instance::new(c, None).lookup_with_details(
-                                i_s,
-                                |issue| todo!(),
-                                name,
-                                LookupKind::Normal,
-                            );
+                            let protocol_lookup_details = Instance::new(c, None)
+                                .lookup_with_details(
+                                    i_s,
+                                    |issue| todo!(),
+                                    name,
+                                    LookupKind::Normal,
+                                );
                             let inf1 = protocol_lookup_details.lookup.into_inferred();
                             let t1 = inf1.as_cow_type(i_s);
                             let lookup = lookup_details.lookup.into_inferred();
@@ -1149,8 +1153,13 @@ impl<'db: 'a, 'a> Class<'a> {
                                             let full_other = match other {
                                                 Type::Type(t) if is_call => {
                                                     t.maybe_class(i_s.db).and_then(|cls| {
-                                                        notes.push(format!(r#""{}" has constructor incompatible with "__call__" of "{}""#, cls.name(), self.name()).into());
-                                                        cls.find_relevant_constructor(i_s).into_type(i_s, cls)
+                                                        notes.push(format!(
+                                                            r#""{}" has constructor incompatible with "__call__" of "{}""#,
+                                                            cls.name(),
+                                                            self.name()
+                                                        ).into());
+                                                        cls.find_relevant_constructor(i_s)
+                                                            .into_type(i_s, cls)
                                                     })
                                                 }
                                                 _ => None,
@@ -1173,7 +1182,14 @@ impl<'db: 'a, 'a> Class<'a> {
                             {
                                 mismatch = true;
                                 if mismatches < SHOW_MAX_MISMATCHES {
-                                    notes.push(format!("Protocol member {}.{name} expected settable variable, got read-only attribute", self.name()).into());
+                                    notes.push(
+                                        format!(
+                                        "Protocol member {}.{name} expected settable variable, \
+                                         got read-only attribute",
+                                        self.name()
+                                    )
+                                        .into(),
+                                    );
                                 }
                             }
                             if matches!(protocol_lookup_details.attr_kind, AttributeKind::ClassVar)
@@ -1181,32 +1197,50 @@ impl<'db: 'a, 'a> Class<'a> {
                             {
                                 mismatch = true;
                                 if mismatches < SHOW_MAX_MISMATCHES {
-                                    notes.push(format!("Protocol member {}.{name} expected class variable, got instance variable", self.name()).into());
+                                    notes.push(
+                                        format!(
+                                            "Protocol member {}.{name} expected class variable, \
+                                         got instance variable",
+                                            self.name()
+                                        )
+                                        .into(),
+                                    );
                                 }
                             }
-                            if protocol_lookup_details.attr_kind.classmethod_or_staticmethod()
+                            if protocol_lookup_details
+                                .attr_kind
+                                .classmethod_or_staticmethod()
                                 && !lookup_details.attr_kind.classmethod_or_staticmethod()
                             {
                                 mismatch = true;
                                 if mismatches < SHOW_MAX_MISMATCHES {
-                                    notes.push(format!("Protocol member {}.{name} expected class or static method", self.name()).into());
+                                    notes.push(
+                                        format!(
+                                        "Protocol member {}.{name} expected class or static method",
+                                        self.name()
+                                    )
+                                        .into(),
+                                    );
                                 }
                             }
                             if lookup_details.attr_kind == AttributeKind::AnnotatedAttribute {
                                 if let Type::Type(t) = other {
                                     mismatch = true;
                                     if mismatches < SHOW_MAX_MISMATCHES {
-                                        notes.push(format!(
+                                        notes.push(
+                                            format!(
                                             "Only class variables allowed for class object access \
                                              on protocols, {} is an instance variable of \"{}\"",
                                             name,
                                             t.format_short(i_s.db),
-                                        ).into());
+                                        )
+                                            .into(),
+                                        );
                                     }
                                 }
                             }
                         }
-                    }
+                    },
                 );
                 if had_lookup_error {
                     missing_members.push(name);
