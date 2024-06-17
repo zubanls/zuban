@@ -87,6 +87,9 @@ struct CliArgs {
     /// Filter files or test names like "check-classes" or "testFooBar"
     #[arg(num_args = 0..)]
     filters: Vec<String>,
+
+    #[arg(short = 'x')]
+    stop_after_first_error: bool,
 }
 
 #[derive(Default, Clone, Debug)]
@@ -109,14 +112,14 @@ struct Steps<'code> {
 }
 
 impl<'name, 'code> TestCase<'name, 'code> {
-    fn run(&self, projects: &mut ProjectsCache, mypy_compatible: bool) -> bool {
+    fn run(&self, projects: &mut ProjectsCache, mypy_compatible: bool) -> Result<bool, String> {
         let steps = self.calculate_steps();
         let mut diagnostics_config = DiagnosticConfig::default();
 
         if steps.flags.contains(&"--mypy-compatible") && !mypy_compatible
             || steps.flags.contains(&"--no-mypy-compatible") && mypy_compatible
         {
-            return false;
+            return Ok(false);
         }
         let arg_after = |after_name| {
             let mut flag_iterator = steps.flags.iter();
@@ -305,6 +308,7 @@ impl<'name, 'code> TestCase<'name, 'code> {
         let is_parse_test = self.file_name.starts_with("parse");
         let is_semanal_test = self.file_name.starts_with("semanal-");
 
+        let mut result = Ok(true);
         for (i, step) in steps.steps.iter().enumerate() {
             if cfg!(feature = "zuban_debug") {
                 println!(
@@ -397,7 +401,7 @@ impl<'name, 'code> TestCase<'name, 'code> {
 
             if wanted_lower != actual_lines {
                 let wanted = wanted.iter().fold(String::new(), |a, b| a + b + "\n");
-                panic!(
+                result = Err(format!(
                     "\nMismatch:\n\
                      Wanted lines: {wanted_lower:?}\n\n\
                      Actual lines: {actual_lines:?}\n\n\
@@ -410,7 +414,8 @@ impl<'name, 'code> TestCase<'name, 'code> {
                     self.file_name,
                     i + 1,
                     steps.steps.len(),
-                );
+                ));
+                break;
             }
         }
         for step in &steps.steps {
@@ -425,7 +430,7 @@ impl<'name, 'code> TestCase<'name, 'code> {
                 }
             }
         }
-        true
+        result
     }
 
     #[allow(dead_code)]
@@ -814,7 +819,9 @@ fn main() {
     let mut projects = ProjectsCache::new(!cli_args.no_reuse_db);
     let mut full_count = 0;
     let mut ran_count = 0;
+    let mut error_count = 0;
     let file_count = files.len();
+    let mut error_summary = String::new();
     for (from_mypy_test_suite, file) in files {
         let code = read_to_string(&file).unwrap();
         let code = REPLACE_COMMENTS.replace_all(&code, "");
@@ -836,17 +843,33 @@ fn main() {
                 continue;
             }
             let mut ran_in = 0;
+            let mut check = |result| match result {
+                Ok(ran) => ran_in += ran as usize,
+                Err(err) => {
+                    if cli_args.stop_after_first_error {
+                        panic!("{err}")
+                    } else {
+                        error_summary += &format!("{} ({})\n", case.name, case.file_name);
+                        error_count += 1;
+                        println!("{err}")
+                    }
+                }
+            };
             if !from_mypy_test_suite {
                 // Run our own tests both with mypy-compatible and without it.
-                ran_in += case.run(&mut projects, from_mypy_test_suite) as usize
+                check(case.run(&mut projects, from_mypy_test_suite))
             }
-            ran_in += case.run(&mut projects, true) as usize;
+            check(case.run(&mut projects, true));
             ran_count += ran_in;
             full_count += ran_in;
         }
     }
+    if error_count > 0 {
+        println!("\nError summary:");
+        println!("{error_summary}");
+    }
     println!(
-        "Ran {} of {} mypy-like tests in {} files; finished in {:.2}s",
+        "Passed {} of {} ({error_count} errors) mypy-like tests in {} files; finished in {:.2}s",
         ran_count,
         full_count,
         file_count,
