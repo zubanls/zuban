@@ -1247,25 +1247,21 @@ impl<'db> Diagnostic<'db> {
                 "Cannot instantiate protocol class \"{name}\""
             ),
             CannotInstantiateAbstractClass{ name, abstract_attributes } => {
-                match abstract_attributes.as_ref() {
-                    [link] => {
-                        let attribute = NodeRef::from_link(self.db, *link).as_code();
-                        format!(
-                            "Cannot instantiate abstract class \"{name}\" with abstract attribute \"{attribute}\""
-                        )
-                    }
-                    _ => {
-                        let mut iterator = abstract_attributes
-                            .iter()
-                            .map(|&link| NodeRef::from_link(self.db, link).as_code());
-                        let end = iterator.next_back().unwrap();
-                        let attributes = join_with_commas(iterator.map(|name| format!("\"{name}\"")));
-                        format!(
-                            "Cannot instantiate abstract class \"{name}\" with abstract attributes \
-                            {attributes} and \"{end}\""
-                        )
-                    }
-                }
+                let mut iterator = abstract_attributes
+                    .iter()
+                    .map(|&link| format!("\"{}\"", NodeRef::from_link(self.db, link).as_code()));
+                let end = iterator.next_back().unwrap();
+                let suffix = match abstract_attributes.len() {
+                    1 => format!("attribute {end}"),
+                    2..=5 => format!("attributes {} and {end}", join_with_commas(iterator)),
+                    _ => format!(
+                        "attributes {}, {}, ... and {end} ({} methods suppressed)",
+                        iterator.next().unwrap(),
+                        iterator.next().unwrap(),
+                        abstract_attributes.len() - 3
+                    ),
+                };
+                format!("Cannot instantiate abstract class \"{name}\" with abstract {suffix}")
             }
             OnlyConcreteClassAllowedWhereTypeExpected { type_ } => format!(
                 r#"Only concrete class can be given where "{type_}" is expected"#

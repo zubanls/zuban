@@ -565,15 +565,9 @@ testCtypesCharPArrayDoesNotCrash
 testCtypesArrayConstructorStarargs
 testCtypesArrayConstructorKwargs
 testTypingOrderedDictAlias
-# Cannot instantiate abstract class "A" with abstract attributes "a", "b", ... and "j" (7 methods suppressed)
-testInstantiatingClassWithInheritedAbstractMethodAndSuppression
 # Same but not from check-abstract.test
-testAddAbstractMethod
-testMakeClassAbstract
 testAbstractInit
 testErrorCodeInstantiateAbstract
-testNewAnalyzerClassPropertiesInAllScopes
-testSerializeAbstractClass
 # protocol: "Cannot instantiate abstract class "C" with abstract attribute "x""
 testNonProtocolToProtocol
 testCannotInstantiateAbstractMethodExplicitProtocolSubtypes
