@@ -2,13 +2,10 @@
 testTypeshedRecursiveTypesExample
 testRecursiveAliasBasicGenericInference
 
-testTwoUncomfortablyIncompatibleProtocolsWithoutRunningInIssue9771
-
 # callable matching regression
 testNoCrashOnNestedGenericCallable
 
 # mypy upgrade
-testOverloadedGenericInit
 # multiline annotations
 testMultilineQuotedAnnotation
 
@@ -350,6 +347,8 @@ testMethodRefInClassBody
 testRefMethodWithDecorator
 # Class argument and __init__ as overloaded DbType
 testOverloadedToGeneric
+# Class __init__ like `def __init__(self: C[Int[S]], x: int, y: S) -> None: ...`
+testOverloadedGenericInit
 
 # name binding of type definitions within function/class scopes
 testSerializeNamedTupleInMethod4

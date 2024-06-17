@@ -339,7 +339,7 @@ impl Type {
                     // We need to avoid protocols recursions in a different way than
                     // Matcher::avoid_recursion, because the matcher is not always passed when
                     // checking protocol members (e.g. for self types).
-                    avoid_protocol_mismatch(self, value_type, || {
+                    avoid_protocol_mismatch(i_s.db, self, value_type, || {
                         class1.check_protocol_match(i_s, matcher, value_type)
                     })
                 });

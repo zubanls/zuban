@@ -40,12 +40,38 @@ thread_local! {
     static PROTOCOL_RECURSION_AVOIDANCE: RefCell<Vec<(Type, Type)>> = const { RefCell::new(vec![]) };
 }
 
-pub fn avoid_protocol_mismatch(t1: &Type, t2: &Type, callable: impl FnOnce() -> Match) -> Match {
+pub fn avoid_protocol_mismatch(
+    db: &Database,
+    t1: &Type,
+    t2: &Type,
+    callable: impl FnOnce() -> Match,
+) -> Match {
     PROTOCOL_RECURSION_AVOIDANCE.with(|vec| {
         let mut current = vec.borrow_mut();
         if current.iter().any(|(x1, x2)| x1 == t1 && x2 == t2) {
             Match::new_true()
         } else {
+            if !current.is_empty() {
+                let mut had_temporary_matcher_id = false;
+                t1.search_type_vars(&mut |usage| {
+                    if usage.temporary_matcher_id() > 0 {
+                        had_temporary_matcher_id = true;
+                    }
+                });
+                if had_temporary_matcher_id {
+                    let new_t = t1.replace_type_var_likes(db, &mut |mut usage| {
+                        usage.update_temporary_matcher_index(0);
+                        usage.into_generic_item()
+                    });
+                    // This case arose in
+                    // testTwoUncomfortablyIncompatibleProtocolsWithoutRunningInIssue9771
+                    // where it replace function type vars repeatedly with new generated type vars.
+                    // I'm not 100% sure this holds for all cases, but it feels like this is fine.
+                    if current.iter().any(|(x1, x2)| x1 == &new_t && x2 == t2) {
+                        return Match::new_true();
+                    }
+                }
+            }
             current.push((t1.clone(), t2.clone()));
             drop(current);
             let result = debug_indent(callable);
