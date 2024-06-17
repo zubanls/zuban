@@ -9,7 +9,6 @@ testNoCrashOnNestedGenericCallable
 
 # mypy upgrade
 testOverloadedGenericInit
-testNameUndefinedErrorDoesNotLoseUnpackedKWArgsInformation
 # multiline annotations
 testMultilineQuotedAnnotation
 

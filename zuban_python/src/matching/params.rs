@@ -305,6 +305,21 @@ pub fn matches_simple_params<
                         matches &= match_(i_s, matcher, t1, t2);
                         continue;
                     }
+                    WrappedParamType::StarStar(WrappedStarStar::UnpackTypedDict(u)) => {
+                        if let Some(member2) = param1
+                            .name(i_s.db)
+                            .and_then(|name1| u.find_member(i_s.db, name1))
+                        {
+                            // TODO check if param can be optional
+                            if let Some(t1) = t1 {
+                                matches &= t1.matches(i_s, matcher, &member2.type_, variance);
+                            }
+                            continue;
+                        } else {
+                            debug!("Param mismatch because kw name was not found in unpack");
+                            return Match::new_false();
+                        }
+                    }
                     WrappedParamType::StarStar(_) => return Match::new_false(),
                     _ => {
                         let mut found = false;
