@@ -966,22 +966,44 @@ impl<'db: 'a, 'a> Class<'a> {
         for &n in self.class_storage.abstract_attributes.iter() {
             result.push(PointLink::new(self.node_ref.file_index(), n))
         }
-        for c in mro {
-            if c.is_direct_base {
-                if let Type::Class(c) = &c.type_ {
-                    let c = c.class(db);
-                    for &link in c.use_cached_class_infos(db).abstract_attributes.iter() {
+        let mut add = |link, name| {
+            if !result
+                .iter()
+                .any(|&l| NodeRef::from_link(db, l).as_code() == name)
+            {
+                result.push(link)
+            }
+        };
+        for base in mro {
+            if let Type::Class(c) = &base.type_ {
+                let class = c.class(db);
+                let class_infos = class.use_cached_class_infos(db);
+                if base.is_direct_base {
+                    for &link in class_infos.abstract_attributes.iter() {
                         let name = NodeRef::from_link(db, link).as_code();
                         if self
                             .class_storage
                             .class_symbol_table
                             .lookup_symbol(name)
                             .is_none()
-                            && !result
-                                .iter()
-                                .any(|&l| NodeRef::from_link(db, l).as_code() == name)
                         {
-                            result.push(link)
+                            add(link, name)
+                        }
+                    }
+                    for protocol_member in class_infos.protocol_members.iter() {
+                        let link = PointLink::new(c.link.file, protocol_member.name_index);
+                        let name = class
+                            .node_ref
+                            .file
+                            .tree
+                            .code_of_index(protocol_member.name_index);
+                        if self
+                            .class_storage
+                            .class_symbol_table
+                            .lookup_symbol(name)
+                            .is_none()
+                        {
+                            add(link, name);
                         }
                     }
                 }
