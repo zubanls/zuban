@@ -563,10 +563,8 @@ testCtypesArrayConstructorStarargs
 testCtypesArrayConstructorKwargs
 testTypingOrderedDictAlias
 # protocol: "Cannot instantiate abstract class "C" with abstract attribute "x""
-testEmptyBodyImplicitlyAbstractProtocolStub
 testEmptyBodyNoneCompatibleProtocol
 # protocol implicit abstract members regressions
-testAsyncFor
 testProtocolsCannotInheritFromNormal
 testAllowDefaultConstructorInProtocols
 # @final + abc abstract class

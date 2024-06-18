@@ -1874,7 +1874,7 @@ impl<'db: 'a, 'a> Class<'a> {
             }
             let file = self.node_ref.file;
             let name_node_ref = NodeRef::new(file, name_index);
-            let mut is_abstract = true;
+            let mut is_abstract = !file.is_stub();
             let variance = match name_node_ref.as_name().expect_type() {
                 TypeLike::ImportFromAsName(_) | TypeLike::DottedAsName(_) => continue,
                 TypeLike::Function(_) => {
@@ -1908,12 +1908,12 @@ impl<'db: 'a, 'a> Class<'a> {
                         // aliasing for this to break. Additionally not a lot of people are even
                         // inheriting from protocols (except the stdlib ones that don't use
                         // overload implementations AFAIK and would use @overload anyway).
-                        is_abstract = !(has_overload && has_non_overload);
+                        is_abstract &= !(has_overload && has_non_overload);
                     }
                     Variance::Covariant
                 }
                 TypeLike::Assignment(assignment) => {
-                    is_abstract = !matches!(
+                    is_abstract &= !matches!(
                         assignment.unpack(),
                         AssignmentContent::Normal(..)
                             | AssignmentContent::WithAnnotation(_, _, Some(_)),
