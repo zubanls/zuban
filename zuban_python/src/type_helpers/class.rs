@@ -966,10 +966,15 @@ impl<'db: 'a, 'a> Class<'a> {
         for &n in self.class_storage.abstract_attributes.iter() {
             result.push(PointLink::new(self.node_ref.file_index(), n))
         }
-        let mut add = |link, name| {
-            if !result
-                .iter()
-                .any(|&l| NodeRef::from_link(db, l).as_code() == name)
+        let mut maybe_add = |link, name| {
+            if self
+                .class_storage
+                .class_symbol_table
+                .lookup_symbol(name)
+                .is_none()
+                && !result
+                    .iter()
+                    .any(|&l| NodeRef::from_link(db, l).as_code() == name)
             {
                 result.push(link)
             }
@@ -981,14 +986,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 if base.is_direct_base {
                     for &link in class_infos.abstract_attributes.iter() {
                         let name = NodeRef::from_link(db, link).as_code();
-                        if self
-                            .class_storage
-                            .class_symbol_table
-                            .lookup_symbol(name)
-                            .is_none()
-                        {
-                            add(link, name)
-                        }
+                        maybe_add(link, name)
                     }
                     for protocol_member in class_infos.protocol_members.iter() {
                         if protocol_member.has_overload_implementation {
@@ -1002,11 +1000,11 @@ impl<'db: 'a, 'a> Class<'a> {
                             .code_of_index(protocol_member.name_index);
                         if self
                             .class_storage
-                            .class_symbol_table
+                            .self_symbol_table
                             .lookup_symbol(name)
                             .is_none()
                         {
-                            add(link, name);
+                            maybe_add(link, name);
                         }
                     }
                 }
