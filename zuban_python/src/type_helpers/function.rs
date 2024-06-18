@@ -887,6 +887,15 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 },
             )
         }
+        if is_abstract && self.class.is_none() {
+            is_abstract = false;
+            self.add_issue_onto_start_including_decorator(
+                i_s,
+                IssueKind::UsedWithANonMethod {
+                    name: "abstractmethod",
+                },
+            )
+        }
         let overwrite_callable = |inferred: &mut _, mut callable: CallableContent| {
             callable.name = Some(DbString::StringSlice(self.name_string_slice()));
             callable.class_name = self.class.map(|c| c.name_string_slice());

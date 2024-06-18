@@ -536,9 +536,6 @@ testSuperWithAbstractProperty
 testEmptyBodyNoSuperWarningWithoutStrict
 testEmptyBodyNoSuperWarningOptionalReturn
 testIgnoreErrorsWithUnsafeSuperCall_no_empty
-# ""abstractmethod" used with a non-method"
-testAbstractNestedFunction
-testAbstractGlobalFunction
 # "Class a.B has abstract attributes "f""
 # "If it is meant to be abstract, add 'abc.ABCMeta' as an explicit metaclass"
 testAbstractClasses
