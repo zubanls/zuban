@@ -327,6 +327,7 @@ pub(crate) enum IssueKind {
     OverloadImplementationArgumentsNotBroadEnough { signature_index: usize },
     OverloadInconsistentKind { kind: FunctionKind },
     OverloadedPropertyNotSupported,
+    OverloadWithAbstractAndNonAbstract,
 
     DecoratorOnTopOfPropertyNotSupported,
     ReadOnlyPropertyCannotOverwriteReadWriteProperty,
@@ -1592,6 +1593,8 @@ impl<'db> Diagnostic<'db> {
             ),
             OverloadedPropertyNotSupported =>
                 "An overload can not be a property".to_string(),
+            OverloadWithAbstractAndNonAbstract =>
+                "Overloaded method has both abstract and non-abstract variants".to_string(),
 
             DecoratorOnTopOfPropertyNotSupported =>
                 "Decorators on top of @property are not supported".to_string(),

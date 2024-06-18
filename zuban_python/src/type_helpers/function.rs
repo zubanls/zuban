@@ -1038,6 +1038,8 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         let mut functions = vec![];
         let in_stub = file.is_stub();
 
+        let mut has_abstract = false;
+        let mut has_non_abstract = false;
         let mut add_func = |func: &Function, inf: Inferred, is_first: bool| {
             if let Some(CallableLike::Callable(callable)) = inf.as_cow_type(i_s).maybe_callable(i_s)
             {
@@ -1058,6 +1060,11 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                             )
                         }
                     }
+                }
+                if callable.is_abstract {
+                    has_abstract = true;
+                } else {
+                    has_non_abstract = true;
                 }
                 functions.push(callable)
             } else {
@@ -1198,6 +1205,13 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 name_def_node_ref(implementation.function_link)
                     .add_issue(i_s, IssueKind::OverloadStubImplementationNotAllowed);
             }
+        }
+
+        if has_non_abstract && has_abstract {
+            self.add_issue_onto_start_including_decorator(
+                i_s,
+                IssueKind::OverloadWithAbstractAndNonAbstract,
+            );
         }
 
         let is_final = if in_stub {

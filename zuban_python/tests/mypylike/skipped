@@ -542,9 +542,6 @@ testAbstractTypeInADict
 # "Can only assign concrete classes to a variable of type "Type[A]""
 testInstantiationAbstractsInTypeForVariables
 testInstantiationProtocolInTypeForVariables
-# "Overloaded method has both abstract and non-abstract variants"
-testOverloadedAbstractMethodVariantMissingDecorator0
-testOverloadedAbstractMethodVariantMissingDecorator1
 # class: "Cannot instantiate abstract class "C" with abstract attribute "f""
 testInstantiationAbstractsInTypeForFunctions
 testInstantiationAbstractsInTypeForAliases
