@@ -536,9 +536,6 @@ testSuperWithAbstractProperty
 testEmptyBodyNoSuperWarningWithoutStrict
 testEmptyBodyNoSuperWarningOptionalReturn
 testIgnoreErrorsWithUnsafeSuperCall_no_empty
-# "Class a.B has abstract attributes "f""
-# "If it is meant to be abstract, add 'abc.ABCMeta' as an explicit metaclass"
-testAbstractClasses
 # "Only concrete class can be given where "Type[C]" is expected"
 testDedicatedErrorCodeTypeAbstract
 testAbstractTypeInADict

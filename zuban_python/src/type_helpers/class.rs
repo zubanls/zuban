@@ -429,13 +429,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 i_s,
                 IssueKind::FinalClassHasAbstractAttributes {
                     class_name: self.qualified_name(i_s.db).into(),
-                    attributes: join_with_commas(
-                        class_infos
-                            .abstract_attributes
-                            .iter()
-                            .map(|&l| format!("\"{}\"", NodeRef::from_link(i_s.db, l).as_code())),
-                    )
-                    .into(),
+                    attributes: join_abstract_attributes(i_s.db, &class_infos.abstract_attributes),
                 },
             );
         }
@@ -962,7 +956,8 @@ impl<'db: 'a, 'a> Class<'a> {
         } else {
             Default::default()
         };
-        let abstract_attributes = self.calculate_abstract_attributes(i_s.db, &class_kind, &mro);
+        let abstract_attributes =
+            self.calculate_abstract_attributes(i_s, &metaclass, &class_kind, &mro);
         (
             Box::new(ClassInfos {
                 mro,
@@ -981,7 +976,8 @@ impl<'db: 'a, 'a> Class<'a> {
 
     fn calculate_abstract_attributes(
         &self,
-        db: &Database,
+        i_s: &InferenceState,
+        metaclass: &MetaclassState,
         class_kind: &ClassKind,
         mro: &[BaseClass],
     ) -> Box<[PointLink]> {
@@ -997,18 +993,18 @@ impl<'db: 'a, 'a> Class<'a> {
                 .is_none()
                 && !result
                     .iter()
-                    .any(|&l| NodeRef::from_link(db, l).as_code() == name)
+                    .any(|&l| NodeRef::from_link(i_s.db, l).as_code() == name)
             {
                 result.push(link)
             }
         };
         for base in mro {
             if let Type::Class(c) = &base.type_ {
-                let class = c.class(db);
-                let class_infos = class.use_cached_class_infos(db);
+                let class = c.class(i_s.db);
+                let class_infos = class.use_cached_class_infos(i_s.db);
                 if base.is_direct_base {
                     for &link in class_infos.abstract_attributes.iter() {
-                        let name = NodeRef::from_link(db, link).as_code();
+                        let name = NodeRef::from_link(i_s.db, link).as_code();
                         maybe_add(link, name)
                     }
                     if !matches!(class_kind, ClassKind::Protocol) {
@@ -1036,7 +1032,26 @@ impl<'db: 'a, 'a> Class<'a> {
             }
         }
         // Mypy sorts these alphanumerically
-        result.sort_by_key(|&l| NodeRef::from_link(db, l).as_code());
+        result.sort_by_key(|&l| NodeRef::from_link(i_s.db, l).as_code());
+        if self.class_storage.abstract_attributes.is_empty()
+            && !result.is_empty()
+            && self.node_ref.file.is_stub()
+        {
+            let has_abc_meta_metaclass = || match metaclass {
+                MetaclassState::Some(link) => Class::from_non_generic_link(i_s.db, *link)
+                    .class_link_in_mro(i_s.db, i_s.db.python_state.abc_meta_link()),
+                _ => false,
+            };
+            if !has_abc_meta_metaclass() {
+                self.add_issue_on_name(
+                    i_s,
+                    IssueKind::ClassNeedsAbcMeta {
+                        class_name: self.qualified_name(i_s.db).into(),
+                        attributes: join_abstract_attributes(i_s.db, &result),
+                    },
+                )
+            }
+        }
         result.into()
     }
 
@@ -2761,6 +2776,15 @@ fn protocol_conflict_note(db: &Database, other: &Type) -> Box<str> {
             other.format_short(db)
         ),
     }
+    .into()
+}
+
+fn join_abstract_attributes(db: &Database, abstract_attributes: &[PointLink]) -> Box<str> {
+    join_with_commas(
+        abstract_attributes
+            .iter()
+            .map(|&l| format!("\"{}\"", NodeRef::from_link(db, l).as_code())),
+    )
     .into()
 }
 

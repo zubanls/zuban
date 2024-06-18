@@ -117,6 +117,7 @@ pub(crate) enum IssueKind {
     CannotInheritFromFinalClass { class_name: Box<str> },
     FinalClassHasAbstractAttributes { class_name: Box<str>, attributes: Box<str> },
     FinalMethodIsAbstract { name: Box<str> },
+    ClassNeedsAbcMeta { class_name: Box<str>, attributes: Box<str> },
     IncompatibleBaseTuples,
     InvalidMetaclass,
     MetaclassMustInheritFromType,
@@ -1074,6 +1075,12 @@ impl<'db> Diagnostic<'db> {
                 "Final class {class_name} has abstract attributes {attributes}"
             ),
             FinalMethodIsAbstract { name } => format!("Method {name} is both abstract and final"),
+            ClassNeedsAbcMeta { class_name, attributes } => {
+                additional_notes.push(
+                    "If it is meant to be abstract, add 'abc.ABCMeta' as an explicit metaclass".to_string()
+                );
+                format!("Class {class_name} has abstract attributes {attributes}")
+            }
             IncompatibleBaseTuples => "Class has two incompatible bases derived from tuple".to_string(),
             InvalidMetaclass => format!("Invalid metaclass {:?}", self.code_under_issue()),
             MetaclassMustInheritFromType =>
