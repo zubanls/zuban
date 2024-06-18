@@ -1363,6 +1363,7 @@ pub struct BaseClass {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ProtocolMember {
     pub name_index: NodeIndex,
+    pub has_overload_implementation: bool,
     pub variance: Variance,
 }
 

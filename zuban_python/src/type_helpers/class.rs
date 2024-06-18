@@ -22,8 +22,8 @@ use crate::{
     debug,
     diagnostics::IssueKind,
     file::{
-        use_cached_annotation_type, CalculatedBaseClass, File, PythonFile, TypeComputation,
-        TypeComputationOrigin, TypeVarCallbackReturn, TypeVarFinder,
+        use_cached_annotation_type, CalculatedBaseClass, File, MultiDefinitionIterator, PythonFile,
+        TypeComputation, TypeComputationOrigin, TypeVarCallbackReturn, TypeVarFinder,
     },
     format_data::FormatData,
     getitem::SliceType,
@@ -991,6 +991,9 @@ impl<'db: 'a, 'a> Class<'a> {
                         }
                     }
                     for protocol_member in class_infos.protocol_members.iter() {
+                        if protocol_member.has_overload_implementation {
+                            continue;
+                        }
                         let link = PointLink::new(c.link.file, protocol_member.name_index);
                         let name = class
                             .node_ref
@@ -1867,18 +1870,56 @@ impl<'db: 'a, 'a> Class<'a> {
 
     fn gather_protocol_members(&self) -> Box<[ProtocolMember]> {
         let mut protocol_members = vec![];
-        for (name, name_index) in self.class_storage.class_symbol_table.iter() {
+        for (name, &name_index) in self.class_storage.class_symbol_table.iter() {
             if EXCLUDED_PROTOCOL_ATTRIBUTES.contains(&name) {
                 continue;
             }
-            let name_node_ref = NodeRef::new(self.node_ref.file, *name_index);
+            let file = self.node_ref.file;
+            let name_node_ref = NodeRef::new(file, name_index);
+            let mut has_overload_implementation = false;
+            let variance = match name_node_ref.as_name().expect_type() {
+                TypeLike::ImportFromAsName(_) | TypeLike::DottedAsName(_) => continue,
+                TypeLike::Function(_) => {
+                    let p = name_node_ref.point();
+                    if p.calculated() && p.kind() == PointKind::MultiDefinition {
+                        let mut has_overload = false;
+                        let mut has_non_overload = false;
+                        for index in MultiDefinitionIterator::new(&file.points, name_index) {
+                            let n = NodeRef::new(self.node_ref.file, index);
+                            if let Some(func) = n.maybe_name_of_function() {
+                                let mut found_overload = false;
+                                if let Some(func) = func.maybe_decorated() {
+                                    for decorator in func.decorators().iter() {
+                                        if matches!(
+                                            decorator.named_expression().expression().as_code(),
+                                            "overload" | "typing.overload"
+                                        ) {
+                                            found_overload = true;
+                                        }
+                                    }
+                                }
+                                if found_overload {
+                                    has_overload = true;
+                                } else {
+                                    has_non_overload = true;
+                                }
+                            }
+                        }
+                        // While this is just a heuristic, I'm pretty sure that this is good enough
+                        // for almost all cases, because people would need to do some weird
+                        // aliasing for this to break. Additionally not a lot of people are even
+                        // inheriting from protocols (except the stdlib ones that don't use
+                        // overload implementations AFAIK and would use @overload anyway).
+                        has_overload_implementation = has_overload && has_non_overload;
+                    }
+                    Variance::Covariant
+                }
+                _ => Variance::Invariant,
+            };
             protocol_members.push(ProtocolMember {
-                name_index: *name_index,
-                variance: match name_node_ref.as_name().expect_type() {
-                    TypeLike::ImportFromAsName(_) | TypeLike::DottedAsName(_) => continue,
-                    TypeLike::Function(_) => Variance::Covariant,
-                    _ => Variance::Invariant,
-                },
+                name_index,
+                variance,
+                has_overload_implementation,
             })
         }
         protocol_members.sort_by_key(|member| member.name_index);
