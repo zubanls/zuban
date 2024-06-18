@@ -989,7 +989,7 @@ impl<'db: 'a, 'a> Class<'a> {
                         maybe_add(link, name)
                     }
                     for protocol_member in class_infos.protocol_members.iter() {
-                        if protocol_member.has_overload_implementation {
+                        if !protocol_member.is_abstract {
                             continue;
                         }
                         let link = PointLink::new(c.link.file, protocol_member.name_index);
@@ -1874,7 +1874,7 @@ impl<'db: 'a, 'a> Class<'a> {
             }
             let file = self.node_ref.file;
             let name_node_ref = NodeRef::new(file, name_index);
-            let mut has_overload_implementation = false;
+            let mut is_abstract = true;
             let variance = match name_node_ref.as_name().expect_type() {
                 TypeLike::ImportFromAsName(_) | TypeLike::DottedAsName(_) => continue,
                 TypeLike::Function(_) => {
@@ -1908,16 +1908,24 @@ impl<'db: 'a, 'a> Class<'a> {
                         // aliasing for this to break. Additionally not a lot of people are even
                         // inheriting from protocols (except the stdlib ones that don't use
                         // overload implementations AFAIK and would use @overload anyway).
-                        has_overload_implementation = has_overload && has_non_overload;
+                        is_abstract = !(has_overload && has_non_overload);
                     }
                     Variance::Covariant
+                }
+                TypeLike::Assignment(assignment) => {
+                    is_abstract = !matches!(
+                        assignment.unpack(),
+                        AssignmentContent::Normal(..)
+                            | AssignmentContent::WithAnnotation(_, _, Some(_)),
+                    );
+                    Variance::Invariant
                 }
                 _ => Variance::Invariant,
             };
             protocol_members.push(ProtocolMember {
                 name_index,
                 variance,
-                has_overload_implementation,
+                is_abstract,
             })
         }
         protocol_members.sort_by_key(|member| member.name_index);
