@@ -879,6 +879,14 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 InferredDecorator::Override => (),
             }
         }
+        if is_abstract && is_final {
+            self.add_issue_onto_start_including_decorator(
+                i_s,
+                IssueKind::FinalMethodIsAbstract {
+                    name: self.name().into(),
+                },
+            )
+        }
         let overwrite_callable = |inferred: &mut _, mut callable: CallableContent| {
             callable.name = Some(DbString::StringSlice(self.name_string_slice()));
             callable.class_name = self.class.map(|c| c.name_string_slice());

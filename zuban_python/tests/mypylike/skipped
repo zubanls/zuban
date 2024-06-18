@@ -562,8 +562,6 @@ testCtypesCharPArrayDoesNotCrash
 testCtypesArrayConstructorStarargs
 testCtypesArrayConstructorKwargs
 testTypingOrderedDictAlias
-# @final: "Method B is both abstract and final"
-testFinalDefiningFuncWithAbstractMethod
 
 # "Invalid self argument "A[C]" to attribute function "f" with type "Callable[[A[B]], None]""
 testInvalidMethodAsDataAttributeInGenericClass
