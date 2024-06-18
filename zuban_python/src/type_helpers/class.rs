@@ -1881,7 +1881,14 @@ impl<'db: 'a, 'a> Class<'a> {
             }
             let file = self.node_ref.file;
             let name_node_ref = NodeRef::new(file, name_index);
-            let mut is_abstract = !file.is_stub();
+            // is_abstract is not properly inferred here. This is basically only heuristics,
+            // because that's probably good enough for now.
+            let mut is_abstract = !file.is_stub()
+                && self
+                    .class_storage
+                    .self_symbol_table
+                    .lookup_symbol(name)
+                    .is_none();
             let variance = match name_node_ref.as_name().expect_type() {
                 TypeLike::ImportFromAsName(_) | TypeLike::DottedAsName(_) => continue,
                 TypeLike::Function(_) => {

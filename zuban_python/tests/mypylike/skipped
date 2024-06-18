@@ -562,10 +562,6 @@ testCtypesCharPArrayDoesNotCrash
 testCtypesArrayConstructorStarargs
 testCtypesArrayConstructorKwargs
 testTypingOrderedDictAlias
-# protocol: "Cannot instantiate abstract class "C" with abstract attribute "x""
-testEmptyBodyNoneCompatibleProtocol
-# protocol implicit abstract members regressions
-testAllowDefaultConstructorInProtocols
 # @final + abc abstract class
 testFinalClassWithAbstractMethod
 testFinalDefiningFuncWithAbstractMethod
@@ -1711,6 +1707,9 @@ testForwardRefsInWithStatement
 
 # binder probably deferred issues
 testLocalPartialTypesWithNestedFunction3
+
+# "note: "f" is implicitly abstract because it has an empty function body. If it is not meant to be abstract, explicitly `return` or `return None`."
+testEmptyBodyNoneCompatibleProtocol
 
 # "unknown encoding: uft-8"
 testInvalidEncoding
