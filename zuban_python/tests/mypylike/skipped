@@ -554,7 +554,6 @@ testOverloadedAbstractMethodVariantMissingDecorator1
 # class: "Cannot instantiate abstract class "C" with abstract attribute "f""
 testInstantiationAbstractsInTypeForFunctions
 testInstantiationAbstractsInTypeForAliases
-testNestedAbstractClass
 testAbstractNewTypeAllowed
 testSubclassOfABCFromDictionary
 # regressions: class: "Cannot instantiate abstract class "C" with abstract attribute "f""

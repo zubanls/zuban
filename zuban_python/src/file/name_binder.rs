@@ -686,12 +686,12 @@ impl<'db> NameBinder<'db> {
 
     fn index_class(&mut self, class_def: ClassDef<'db>, is_decorated: bool) {
         let self_symbol_table = SymbolTable::default();
+        let (arguments, block) = class_def.unpack();
+        if let Some(arguments) = arguments {
+            self.index_non_block_node(&arguments, true);
+        }
         let class_symbol_table =
             self.with_nested(NameBinderKind::Class, class_def.index(), |binder| {
-                let (arguments, block) = class_def.unpack();
-                if let Some(arguments) = arguments {
-                    binder.index_non_block_node(&arguments, true);
-                }
                 binder.index_block(block, true);
             });
 

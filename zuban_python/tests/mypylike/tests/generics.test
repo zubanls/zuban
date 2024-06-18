@@ -563,7 +563,7 @@ d4: Iterable[A] = f(b_co, c_contra) # E: Argument 2 to "f" has incompatible type
 from typing import TypeVar
 T = TypeVar("T")
 
-class X(list[X[T] | T]): ...
+class X(list[X[T] | T]): ...  # E: Name "X" is used before definition
 
 foo: X[int] = X([X([1])])
 reveal_type(foo) # N: Revealed type is "__main__.X[int]"
@@ -661,8 +661,10 @@ x4: TupList[str, str] = f(g([((1, 1), (1, 1))])) # E: List item 0 has incompatib
 
 [case context_inference_with_any]
 from typing import TypeVar, Generic, Any
-class Foo(Generic[U]): ...
 U = TypeVar('U')
+
+class Foo(Generic[U]): ...
+
 T = TypeVar('T', Foo[int], Foo[str])
 
 def f(x: T, y: T) -> list[T]:
