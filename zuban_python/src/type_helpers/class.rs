@@ -46,6 +46,7 @@ use crate::{
         TypeVarLikeUsage, TypeVarLikes, TypedDict, TypedDictMember, TypedDictMemberGatherer,
         Variance,
     },
+    utils::join_with_commas,
 };
 
 // Basically save the type vars on the class keyword.
@@ -422,6 +423,23 @@ impl<'db: 'a, 'a> Class<'a> {
                 .unwrap();
         }
         class_infos.is_final |= is_final;
+
+        if is_final && !class_infos.abstract_attributes.is_empty() {
+            self.node_ref.add_issue(
+                i_s,
+                IssueKind::FinalClassHasAbstractAttributes {
+                    class_name: self.qualified_name(i_s.db).into(),
+                    attributes: join_with_commas(
+                        class_infos
+                            .abstract_attributes
+                            .iter()
+                            .map(|&l| format!("\"{}\"", NodeRef::from_link(i_s.db, l).as_code())),
+                    )
+                    .into(),
+                },
+            );
+        }
+
         let mut was_enum = None;
         let mut was_enum_base = false;
         if let MetaclassState::Some(link) = class_infos.metaclass {
@@ -1017,6 +1035,8 @@ impl<'db: 'a, 'a> Class<'a> {
                 }
             }
         }
+        // Mypy sorts these alphanumerically
+        result.sort_by_key(|&l| NodeRef::from_link(db, l).as_code());
         result.into()
     }
 
