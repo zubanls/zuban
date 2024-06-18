@@ -828,7 +828,8 @@ impl<'db> Inference<'db, '_, '_> {
                 return;
             }
         }
-        if class.is_some_and(|cls| cls.is_protocol(self.i_s.db) && function.is_final()) {
+        let is_protocol = class.is_some_and(|cls| cls.is_protocol(self.i_s.db));
+        if is_protocol && function.is_final() {
             function.add_issue_onto_start_including_decorator(
                 self.i_s,
                 IssueKind::ProtocolMemberCannotBeFinal,
@@ -877,9 +878,10 @@ impl<'db> Inference<'db, '_, '_> {
                 } else {
                     let is_valid = ret_type.is_simple_super_type_of(i_s, &Type::None).bool();
                     if self.flags().warn_no_return {
-                        if !is_valid
+                        if (!is_valid
                             || !has_trivial_body
-                                && !matches!(ret_type.as_ref(), Type::None | Type::Any(_))
+                                && !matches!(ret_type.as_ref(), Type::None | Type::Any(_)))
+                            && !is_protocol
                         {
                             self.add_issue(
                                 f.name().index(),
