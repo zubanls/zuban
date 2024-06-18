@@ -404,7 +404,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 );
                 let class = dataclass.class(i_s.db);
                 if dataclass.options.slots && class.lookup_symbol(i_s, "__slots__").is_some() {
-                    class.node_ref.add_issue(
+                    class.add_issue_on_name(
                         i_s,
                         IssueKind::DataclassPlusExplicitSlots {
                             class_name: class.name().into(),
@@ -425,7 +425,7 @@ impl<'db: 'a, 'a> Class<'a> {
         class_infos.is_final |= is_final;
 
         if is_final && !class_infos.abstract_attributes.is_empty() {
-            self.node_ref.add_issue(
+            self.add_issue_on_name(
                 i_s,
                 IssueKind::FinalClassHasAbstractAttributes {
                     class_name: self.qualified_name(i_s.db).into(),
@@ -446,7 +446,7 @@ impl<'db: 'a, 'a> Class<'a> {
             if link == i_s.db.python_state.enum_meta_link() {
                 was_enum_base = true;
                 if !self.use_cached_type_vars(i_s.db).is_empty() {
-                    self.node_ref.add_issue(i_s, IssueKind::EnumCannotBeGeneric);
+                    self.add_issue_on_name(i_s, IssueKind::EnumCannotBeGeneric);
                 }
                 class_infos.class_kind = ClassKind::Enum;
                 let members = self.enum_members(i_s);
@@ -563,7 +563,7 @@ impl<'db: 'a, 'a> Class<'a> {
                     if has_mixin_enum_new {
                         had_new += 1;
                         if had_new > 1 {
-                            self.node_ref.add_issue(
+                            self.add_issue_on_name(
                                 i_s,
                                 IssueKind::EnumMultipleMixinNew {
                                     extra: c.qualified_name(i_s.db).into(),
@@ -574,7 +574,7 @@ impl<'db: 'a, 'a> Class<'a> {
                     // (2)
                     match enum_spotted {
                         Some(after) if !is_enum => {
-                            self.node_ref.add_issue(
+                            self.add_issue_on_name(
                                 i_s,
                                 IssueKind::EnumMixinNotAllowedAfterEnum {
                                     after: after.qualified_name(i_s.db).into(),
@@ -2192,6 +2192,10 @@ impl<'db: 'a, 'a> Class<'a> {
             }
         }
         false
+    }
+
+    fn add_issue_on_name(&self, i_s: &InferenceState, issue: IssueKind) {
+        NodeRef::new(self.node_ref.file, self.node().name().index()).add_issue(i_s, issue)
     }
 
     pub(crate) fn check_slots(
