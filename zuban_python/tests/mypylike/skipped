@@ -565,7 +565,6 @@ testTypingOrderedDictAlias
 # protocol: "Cannot instantiate abstract class "C" with abstract attribute "x""
 testEmptyBodyNoneCompatibleProtocol
 # protocol implicit abstract members regressions
-testProtocolsCannotInheritFromNormal
 testAllowDefaultConstructorInProtocols
 # @final + abc abstract class
 testFinalClassWithAbstractMethod

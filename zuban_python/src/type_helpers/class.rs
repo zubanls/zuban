@@ -944,7 +944,7 @@ impl<'db: 'a, 'a> Class<'a> {
         } else {
             Default::default()
         };
-        let abstract_attributes = self.calculate_abstract_attributes(i_s.db, &mro);
+        let abstract_attributes = self.calculate_abstract_attributes(i_s.db, &class_kind, &mro);
         (
             Box::new(ClassInfos {
                 mro,
@@ -961,7 +961,12 @@ impl<'db: 'a, 'a> Class<'a> {
         )
     }
 
-    fn calculate_abstract_attributes(&self, db: &Database, mro: &[BaseClass]) -> Box<[PointLink]> {
+    fn calculate_abstract_attributes(
+        &self,
+        db: &Database,
+        class_kind: &ClassKind,
+        mro: &[BaseClass],
+    ) -> Box<[PointLink]> {
         let mut result = vec![];
         for &n in self.class_storage.abstract_attributes.iter() {
             result.push(PointLink::new(self.node_ref.file_index(), n))
@@ -988,23 +993,25 @@ impl<'db: 'a, 'a> Class<'a> {
                         let name = NodeRef::from_link(db, link).as_code();
                         maybe_add(link, name)
                     }
-                    for protocol_member in class_infos.protocol_members.iter() {
-                        if !protocol_member.is_abstract {
-                            continue;
-                        }
-                        let link = PointLink::new(c.link.file, protocol_member.name_index);
-                        let name = class
-                            .node_ref
-                            .file
-                            .tree
-                            .code_of_index(protocol_member.name_index);
-                        if self
-                            .class_storage
-                            .self_symbol_table
-                            .lookup_symbol(name)
-                            .is_none()
-                        {
-                            maybe_add(link, name);
+                    if !matches!(class_kind, ClassKind::Protocol) {
+                        for protocol_member in class_infos.protocol_members.iter() {
+                            if !protocol_member.is_abstract {
+                                continue;
+                            }
+                            let link = PointLink::new(c.link.file, protocol_member.name_index);
+                            let name = class
+                                .node_ref
+                                .file
+                                .tree
+                                .code_of_index(protocol_member.name_index);
+                            if self
+                                .class_storage
+                                .self_symbol_table
+                                .lookup_symbol(name)
+                                .is_none()
+                            {
+                                maybe_add(link, name);
+                            }
                         }
                     }
                 }
