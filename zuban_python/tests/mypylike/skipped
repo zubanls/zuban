@@ -517,10 +517,6 @@ testMetaclassMemberAccessViaType
 testNoneAlias
 testNoneAliasStrict
 
-# Tuple Target definitions of self names
-testSlotsAssignmentMultipleLeftValues
-testMultipleAssignment
-
 # "Invalid self argument "A[C]" to attribute function "f" with type "Callable[[A[B]], None]""
 testInvalidMethodAsDataAttributeInGenericClass
 # "Attribute function "f" with type "Callable[[], None]" does not accept self argument"
@@ -532,7 +528,6 @@ no_self
 testOverrideOnSelf
 testOverrideOnSelfInSubclass
 testMetaclassStrictSupertypeOfTypeWithClassmethods
-testClassVarsInProtocols
 # "ClassVar protocol member P.foo can never be matched by a class object"
 testProtocolClassObjectClassVarRejected
 # x = 1  # type: ClassVar
@@ -1092,6 +1087,9 @@ testMultipleAssignmentAndGenericSubtyping
 testAssignEnumAsAttribute
 # "TypedDict type as attribute is not supported"
 testAssignTypedDictAsAttribute
+# Tuple Target definitions of self names
+testSlotsAssignmentMultipleLeftValues
+testMultipleAssignment
 
 # Redefinition (Name "X" already defined on line X)
 testRedefineVariableAsTypevar

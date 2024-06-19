@@ -1316,6 +1316,21 @@ impl<'db: 'a, 'a> Class<'a> {
                                     );
                                 }
                             }
+                            if !matches!(protocol_lookup_details.attr_kind, AttributeKind::ClassVar)
+                                && matches!(lookup_details.attr_kind, AttributeKind::ClassVar)
+                            {
+                                mismatch = true;
+                                if mismatches < SHOW_MAX_MISMATCHES {
+                                    notes.push(
+                                        format!(
+                                            "Protocol member {}.{name} expected instance variable, \
+                                         got class variable",
+                                            self.name()
+                                        )
+                                        .into(),
+                                    );
+                                }
+                            }
                             if protocol_lookup_details
                                 .attr_kind
                                 .classmethod_or_staticmethod()
