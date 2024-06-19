@@ -521,22 +521,7 @@ testNoneAliasStrict
 testSlotsAssignmentMultipleLeftValues
 testMultipleAssignment
 
-# "Only concrete class can be given where "Type[C]" is expected"
-testDedicatedErrorCodeTypeAbstract
-testAbstractTypeInADict
-# "Can only assign concrete classes to a variable of type "Type[A]""
-testInstantiationAbstractsInTypeForVariables
-testInstantiationProtocolInTypeForVariables
-# class: "Cannot instantiate abstract class "C" with abstract attribute "f""
-testInstantiationAbstractsInTypeForFunctions
-testInstantiationAbstractsInTypeForAliases
-testSubclassOfABCFromDictionary
 # regressions: class: "Cannot instantiate abstract class "C" with abstract attribute "f""
-testInstantiationAbstractsInTypeForClassMethods
-testClassMethodMayCallAbstractMethod
-testCtypesCharPArrayDoesNotCrash
-testCtypesArrayConstructorStarargs
-testCtypesArrayConstructorKwargs
 testTypingOrderedDictAlias
 
 # "Invalid self argument "A[C]" to attribute function "f" with type "Callable[[A[B]], None]""
@@ -1324,6 +1309,18 @@ testSuperWithAbstractProperty
 testEmptyBodyNoSuperWarningWithoutStrict
 testEmptyBodyNoSuperWarningOptionalReturn
 testIgnoreErrorsWithUnsafeSuperCall_no_empty
+# "Only concrete class can be given where "Type[C]" is expected"
+testDedicatedErrorCodeTypeAbstract
+testAbstractTypeInADict
+testInstantiationAbstractsInTypeForFunctions
+testInstantiationAbstractsInTypeForAliases
+# "Can only assign concrete classes to a variable of type "Type[A]""
+testInstantiationAbstractsInTypeForVariables
+testInstantiationProtocolInTypeForVariables
+# Dictionary part of abstract class: "Cannot instantiate abstract class "C" with abstract attribute "f""
+testSubclassOfABCFromDictionary
+# Mapping[str, str](): "Cannot instantiate abstract class "Mapping" with abstract attribute "...""
+testAbstractNewTypeAllowed
 
 # Module <M> has no attribute <missing_name>; maybe <name>
 testNewAnalyzerTypeAnnotationCycle3
