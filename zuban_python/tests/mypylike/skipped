@@ -524,18 +524,6 @@ testMultipleAssignment
 # "Invalid assignment target"
 testSuperWithReadWriteAbstractProperty
 testAssignToBaseClassMethod
-# "Call to abstract method "meth" of "Proto" with trivial body via super() is unsafe"
-testEmptyBodyUnsafeAbstractSuper
-testEmptyBodyUnsafeAbstractSuperOverloads
-testEmptyBodyUnsafeAbstractSuperProperty
-testErrorCodeUnsafeSuper_no_empty
-testAbstractBodyTurnsEmpty
-testAbstractBodyTurnsEmptyProtocol
-testAbstractBodyTurnsEmptyCoarse
-testSuperWithAbstractProperty
-testEmptyBodyNoSuperWarningWithoutStrict
-testEmptyBodyNoSuperWarningOptionalReturn
-testIgnoreErrorsWithUnsafeSuperCall_no_empty
 # "Only concrete class can be given where "Type[C]" is expected"
 testDedicatedErrorCodeTypeAbstract
 testAbstractTypeInADict
@@ -1326,6 +1314,19 @@ testCallableFastParseBadArgArgName
 testIncompatibleAssignmentAmbiguousShortnames
 # for long tuples: "Expression tuple item 8 has type "str"; "int" expected;"
 testAssigningWithLongTupleInitializer
+
+# "Call to abstract method "meth" of "Proto" with trivial body via super() is unsafe"
+testEmptyBodyUnsafeAbstractSuper
+testEmptyBodyUnsafeAbstractSuperOverloads
+testEmptyBodyUnsafeAbstractSuperProperty
+testErrorCodeUnsafeSuper_no_empty
+testAbstractBodyTurnsEmpty
+testAbstractBodyTurnsEmptyProtocol
+testAbstractBodyTurnsEmptyCoarse
+testSuperWithAbstractProperty
+testEmptyBodyNoSuperWarningWithoutStrict
+testEmptyBodyNoSuperWarningOptionalReturn
+testIgnoreErrorsWithUnsafeSuperCall_no_empty
 
 # Module <M> has no attribute <missing_name>; maybe <name>
 testNewAnalyzerTypeAnnotationCycle3

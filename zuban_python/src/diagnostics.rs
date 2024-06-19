@@ -229,6 +229,7 @@ pub(crate) enum IssueKind {
     SuperUnsupportedArgument{argument_index: usize},
     SuperTargetClassHasNoBaseClass,
     UndefinedInSuperclass { name: Box<str> },
+    CallToAbstractMethodViaSuper { method_name: Box<str>, class_name: Box<str> },
 
     IncompatibleAssignmentInSubclass { base_class: Box<str>, got: Box<str>, expected: Box<str> },
     SignatureIncompatibleWithSupertype { base_class: Box<str>, name: Box<str>, notes: Box<[Box<str>]> },
@@ -1313,6 +1314,9 @@ impl<'db> Diagnostic<'db> {
                 format!("Unsupported argument {argument_index} for \"super\""),
             SuperTargetClassHasNoBaseClass => "Target class has no base class".to_string(),
             UndefinedInSuperclass{name} => format!("\"{name}\" undefined in superclass"),
+            CallToAbstractMethodViaSuper { method_name, class_name } => format!(
+                r#"Call to abstract method "{method_name}" of "{class_name}" with trivial body via super() is unsafe"#
+            ),
 
             IncompatibleAssignmentInSubclass {base_class, got, expected} => format!(
                 "Incompatible types in assignment (expression has type \"{got}\", \
