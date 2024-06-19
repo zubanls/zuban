@@ -521,9 +521,6 @@ testNoneAliasStrict
 testSlotsAssignmentMultipleLeftValues
 testMultipleAssignment
 
-# "Invalid assignment target"
-testSuperWithReadWriteAbstractProperty
-testAssignToBaseClassMethod
 # "Only concrete class can be given where "Type[C]" is expected"
 testDedicatedErrorCodeTypeAbstract
 testAbstractTypeInADict

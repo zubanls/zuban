@@ -98,6 +98,7 @@ pub(crate) enum IssueKind {
     TooManyValuesToUnpack { actual: usize, expected: usize},
     VariadicTupleUnpackingRequiresStarTarget,
     TooManyAssignmentTargetsForVariadicUnpack,
+    InvalidAssignmentTarget,
     UnpackingAStringIsDisallowed,
     StarredExpressionOnlyNoTarget,
     BreakOutsideLoop,
@@ -1050,6 +1051,7 @@ impl<'db> Diagnostic<'db> {
                 "Variadic tuple unpacking requires a star target".to_string(),
             TooManyAssignmentTargetsForVariadicUnpack =>
                 "Too many assignment targets for variadic unpack".to_string(),
+            InvalidAssignmentTarget => "Invalid assignment target".to_string(),
             UnpackingAStringIsDisallowed => "Unpacking a string is disallowed".to_string(),
             StarredExpressionOnlyNoTarget =>
                 "can't use starred expression here".to_string(),

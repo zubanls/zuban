@@ -1319,6 +1319,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 }
                                 _ => (),
                             },
+                            Type::Super { .. } => {
+                                from.add_issue(i_s, IssueKind::InvalidAssignmentTarget);
+                                continue;
+                            }
                             _ => (),
                         }
 
