@@ -521,9 +521,6 @@ testNoneAliasStrict
 testSlotsAssignmentMultipleLeftValues
 testMultipleAssignment
 
-# regressions: class: "Cannot instantiate abstract class "C" with abstract attribute "f""
-testTypingOrderedDictAlias
-
 # "Invalid self argument "A[C]" to attribute function "f" with type "Callable[[A[B]], None]""
 testInvalidMethodAsDataAttributeInGenericClass
 # "Attribute function "f" with type "Callable[[], None]" does not accept self argument"

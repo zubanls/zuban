@@ -985,7 +985,7 @@ impl<'db: 'a, 'a> Class<'a> {
         for &n in self.class_storage.abstract_attributes.iter() {
             result.push(PointLink::new(self.node_ref.file_index(), n))
         }
-        let mut maybe_add = |link, name| {
+        let mut maybe_add = |link, name, mro_index| {
             if self
                 .class_storage
                 .class_symbol_table
@@ -995,17 +995,30 @@ impl<'db: 'a, 'a> Class<'a> {
                     .iter()
                     .any(|&l| NodeRef::from_link(i_s.db, l).as_code() == name)
             {
+                for base in &mro[..mro_index] {
+                    if let Type::Class(c) = &base.type_ {
+                        let class = c.class(i_s.db);
+                        if class
+                            .class_storage
+                            .class_symbol_table
+                            .lookup_symbol(name)
+                            .is_some()
+                        {
+                            return;
+                        }
+                    }
+                }
                 result.push(link)
             }
         };
-        for base in mro {
+        for (i, base) in mro.iter().enumerate() {
             if let Type::Class(c) = &base.type_ {
                 let class = c.class(i_s.db);
                 let class_infos = class.use_cached_class_infos(i_s.db);
                 if base.is_direct_base {
                     for &link in class_infos.abstract_attributes.iter() {
                         let name = NodeRef::from_link(i_s.db, link).as_code();
-                        maybe_add(link, name)
+                        maybe_add(link, name, i)
                     }
                     if !matches!(class_kind, ClassKind::Protocol) {
                         for protocol_member in class_infos.protocol_members.iter() {
@@ -1024,7 +1037,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                 .lookup_symbol(name)
                                 .is_none()
                             {
-                                maybe_add(link, name);
+                                maybe_add(link, name, i);
                             }
                         }
                     }
