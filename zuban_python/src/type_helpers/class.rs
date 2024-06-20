@@ -1316,8 +1316,9 @@ impl<'db: 'a, 'a> Class<'a> {
                                     );
                                 }
                             }
-                            if !matches!(protocol_lookup_details.attr_kind, AttributeKind::ClassVar)
-                                && matches!(lookup_details.attr_kind, AttributeKind::ClassVar)
+                            if matches!(lookup_details.attr_kind, AttributeKind::ClassVar)
+                               && !protocol_lookup_details.attr_kind.classvar_like()
+                               && other.maybe_class(i_s.db).is_some()
                             {
                                 mismatch = true;
                                 if mismatches < SHOW_MAX_MISMATCHES {

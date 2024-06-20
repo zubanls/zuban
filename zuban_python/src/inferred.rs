@@ -2502,4 +2502,15 @@ impl AttributeKind {
     pub fn classmethod_or_staticmethod(&self) -> bool {
         matches!(self, Self::Classmethod | Self::Staticmethod)
     }
+
+    pub fn classvar_like(&self) -> bool {
+        matches!(
+            self,
+            AttributeKind::ClassVar
+                | AttributeKind::DefMethod
+                | AttributeKind::Property { .. }
+                | AttributeKind::Classmethod
+                | AttributeKind::Staticmethod
+        )
+    }
 }
