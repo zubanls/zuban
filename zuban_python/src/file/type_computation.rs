@@ -285,6 +285,7 @@ pub(super) enum TypeNameLookup<'db, 'a> {
     RecursiveAlias(PointLink),
     RecursiveClass(NodeRef<'db>),
     Unknown(UnknownCause),
+    AliasNoneType,
 }
 
 #[derive(Debug)]
@@ -3161,6 +3162,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             }
             TypeNameLookup::RecursiveAlias(link) => TypeContent::RecursiveAlias(link),
             TypeNameLookup::RecursiveClass(node_ref) => TypeContent::RecursiveClass(node_ref),
+            TypeNameLookup::AliasNoneType => TypeContent::Type(Type::None),
         }
     }
 
@@ -3863,13 +3865,11 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                         };
                         return TypeNameLookup::TypedDictDefinition(td.clone());
                     }
-                    Some(ComplexPoint::TypeInstance(Type::Type(t))) => {
-                        if let Type::Enum(e) = t.as_ref() {
-                            TypeNameLookup::Enum(e.clone())
-                        } else {
-                            check_for_alias()
-                        }
-                    }
+                    Some(ComplexPoint::TypeInstance(Type::Type(t))) => match t.as_ref() {
+                        Type::Enum(e) => TypeNameLookup::Enum(e.clone()),
+                        Type::None => TypeNameLookup::AliasNoneType,
+                        _ => check_for_alias(),
+                    },
                     _ => {
                         if matches!(
                             node_ref.point().maybe_specific(),

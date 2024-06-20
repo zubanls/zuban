@@ -505,9 +505,6 @@ testInferenceOfDunderDictOnClassObjects
 # Use type(foo) when foo has a metaclass
 testMetaclassTypeCallable
 testMetaclassMemberAccessViaType
-# Foo = type(...) used as `x: Foo` (type execution)
-testNoneAlias
-testNoneAliasStrict
 
 # "Attribute function "f" with type "Callable[[], None]" does not accept self argument"
 testMethodWithInvalidMethodAsDataAttribute
