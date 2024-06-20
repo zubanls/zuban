@@ -503,8 +503,6 @@ testMetaclassConflictingInstanceVars
 testInferenceOfDunderDictOnClassObjects
 
 # "Attribute function "f" with type "Callable[[], None]" does not accept self argument"
-testMethodWithInvalidMethodAsDataAttribute
-testClassValuedAttributesBasics
 no_self
 
 # More information needed

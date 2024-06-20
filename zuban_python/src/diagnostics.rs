@@ -197,6 +197,7 @@ pub(crate) enum IssueKind {
     NestedConcatenate,
     ConcatenateLastParamNeedsToBeParamSpec,
     InvalidSelfArgument { argument_type: Box<str>, function_name: Box<str>, callable: Box<str> },
+    NotAcceptingSelfArgument { function_name: Box<str>, callable: Box<str> },
     SelfTypeInMetaclass,
     SelfTypeInTypeAliasTarget,
     SelfTypeOutsideOfClass,
@@ -1244,6 +1245,9 @@ impl<'db> Diagnostic<'db> {
                 "The last parameter to Concatenate needs to be a ParamSpec".to_string(),
             InvalidSelfArgument{argument_type, function_name, callable} => format!(
                 "Invalid self argument \"{argument_type}\" to attribute function \"{function_name}\" with type \"{callable}\""
+            ),
+            NotAcceptingSelfArgument { function_name, callable } => format!(
+                r#"Attribute function "{function_name}" with type "{callable}" does not accept self argument"#
             ),
             SelfTypeInMetaclass => "Self type cannot be used in a metaclass".to_string(),
             SelfTypeInTypeAliasTarget => "Self type cannot be used in type alias target".to_string(),

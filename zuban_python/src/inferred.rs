@@ -1089,7 +1089,10 @@ impl<'db: 'slf, 'slf> Inferred {
                             AttributeKind::DefMethod,
                         )));
                     } else {
-                        todo!()
+                        add_issue(IssueKind::NotAcceptingSelfArgument {
+                            function_name: Box::from(for_name),
+                            callable: c.format(&FormatData::new_short(i_s.db)).into(),
+                        })
                     }
                 }
                 FunctionKind::Function { .. } => (),
