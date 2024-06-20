@@ -528,10 +528,6 @@ no_self
 testOverrideOnSelf
 testOverrideOnSelfInSubclass
 testMetaclassStrictSupertypeOfTypeWithClassmethods
-# "ClassVar protocol member P.foo can never be matched by a class object"
-testProtocolClassObjectClassVarRejected
-# x = 1  # type: ClassVar
-testIncrementalClassVar
 
 # More information needed
 # "Read-only property cannot override read-write property"
@@ -1027,6 +1023,8 @@ testPartiallyInitializedToNoneAndPartialListAndLeftPartial
 testPartiallyInitializedToNoneAndThenToIncompleteType-skip
 # partial for `x: Final = []`
 testLiteralFinalErasureInMutableDatastructures2
+# partial for `x: ClassVar = None`
+testIncrementalClassVar
 # error formatting?
 testMultipassAndPartialTypes4
 # None as a default for class variables, even if not optional?

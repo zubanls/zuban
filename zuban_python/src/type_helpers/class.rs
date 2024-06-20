@@ -1301,21 +1301,35 @@ impl<'db: 'a, 'a> Class<'a> {
                                     );
                                 }
                             }
-                            if matches!(protocol_lookup_details.attr_kind, AttributeKind::ClassVar)
-                                && !matches!(lookup_details.attr_kind, AttributeKind::ClassVar)
-                            {
-                                mismatch = true;
-                                if mismatches < SHOW_MAX_MISMATCHES {
-                                    notes.push(
-                                        format!(
-                                            "Protocol member {}.{name} expected class variable, \
-                                         got instance variable",
-                                            self.name()
-                                        )
-                                        .into(),
-                                    );
+                            if matches!(protocol_lookup_details.attr_kind, AttributeKind::ClassVar) {
+                                if !matches!(lookup_details.attr_kind, AttributeKind::ClassVar)
+                                {
+                                    mismatch = true;
+                                    if mismatches < SHOW_MAX_MISMATCHES {
+                                        notes.push(
+                                            format!(
+                                                "Protocol member {}.{name} expected class variable, \
+                                             got instance variable",
+                                                self.name()
+                                            )
+                                            .into(),
+                                        );
+                                    }
+                                } else if other.maybe_type_of_class(i_s.db).is_some() {
+                                    mismatch = true;
+                                    if mismatches < SHOW_MAX_MISMATCHES {
+                                        notes.push(
+                                            format!(
+                                                "ClassVar protocol member {}.{name} can never be \
+                                                 matched by a class object",
+                                                self.name()
+                                            )
+                                            .into(),
+                                        );
+                                    }
                                 }
                             }
+
                             if matches!(lookup_details.attr_kind, AttributeKind::ClassVar)
                                && !protocol_lookup_details.attr_kind.classvar_like()
                                && other.maybe_class(i_s.db).is_some()
