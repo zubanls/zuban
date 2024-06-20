@@ -798,8 +798,21 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     ));
                     return;
                 }
+                TypeContent::SpecialType(SpecialType::ClassVar)
+                    if !matches!(
+                        self.origin,
+                        TypeComputationOrigin::AssignmentTypeCommentOrAnnotation { .. }
+                    ) || i_s.current_class().is_none()
+                        || i_s.current_function().is_some() =>
+                {
+                    self.add_issue(
+                        type_storage_node_ref,
+                        IssueKind::ClassVarOnlyInAssignmentsInClass,
+                    );
+                    Type::Any(AnyCause::FromError)
+                }
                 TypeContent::SpecialType(
-                    special @ (SpecialType::TypeAlias | SpecialType::Final),
+                    special @ (SpecialType::TypeAlias | SpecialType::Final | SpecialType::ClassVar),
                 ) if matches!(
                     self.origin,
                     TypeComputationOrigin::AssignmentTypeCommentOrAnnotation { .. }
@@ -810,27 +823,12 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         match special {
                             SpecialType::TypeAlias => Specific::AnnotationTypeAlias,
                             SpecialType::Final => Specific::AnnotationOrTypeCommentFinal,
+                            SpecialType::ClassVar => Specific::AnnotationOrTypeCommentClassVar,
                             _ => unreachable!(),
                         },
                         Locality::Todo,
                     ));
                     return;
-                }
-                TypeContent::SpecialType(SpecialType::ClassVar) => {
-                    if matches!(
-                        self.origin,
-                        TypeComputationOrigin::AssignmentTypeCommentOrAnnotation { .. }
-                    ) && i_s.current_class().is_some()
-                        && i_s.current_function().is_none()
-                    {
-                        todo!()
-                    } else {
-                        self.add_issue(
-                            type_storage_node_ref,
-                            IssueKind::ClassVarOnlyInAssignmentsInClass,
-                        );
-                        Type::Any(AnyCause::FromError)
-                    }
                 }
                 TypeContent::ClassVar(t) => {
                     is_class_var = true;
@@ -3971,10 +3969,15 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                     let inf_node_ref = NodeRef::new(f, index);
                     TypeCommentDetails {
                         inferred: Inferred::from_saved_node_ref(inf_node_ref),
-                        type_: if inf_node_ref.point().maybe_specific()
-                            == Some(Specific::AnnotationOrTypeCommentFinal)
-                        {
-                            TypeCommentState::UnfinishedFinal(inf_node_ref)
+                        type_: if !NodeRef::new(f, expr_index).point().calculated()
+                            && matches!(
+                                inf_node_ref.point().maybe_specific(),
+                                Some(
+                                    Specific::AnnotationOrTypeCommentFinal
+                                        | Specific::AnnotationOrTypeCommentClassVar
+                                )
+                            ) {
+                            TypeCommentState::UnfinishedFinalOrClassVar(inf_node_ref)
                         } else {
                             TypeCommentState::Type(
                                 inference.use_cached_annotation_or_type_comment_type_internal(
@@ -4994,7 +4997,7 @@ struct TupleArgsDetails {
 
 pub enum TypeCommentState<'db> {
     Type(Cow<'db, Type>),
-    UnfinishedFinal(NodeRef<'db>),
+    UnfinishedFinalOrClassVar(NodeRef<'db>),
 }
 
 pub struct TypeCommentDetails<'db> {

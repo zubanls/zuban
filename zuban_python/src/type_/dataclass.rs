@@ -225,8 +225,8 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> Init
                             .calculated()
                         {
                             let annotation_ref = NodeRef::new(file, annotation.index());
-                            inference.fill_potentially_unfinished_final(
-                                annotation_ref.node_index,
+                            inference.fill_potentially_unfinished_final_or_class_var(
+                                annotation_ref,
                                 right_side,
                             );
                             if right_side.is_some_and(|right_side| !right_side.is_literal_value()) {

@@ -689,9 +689,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 self.check_right_side_against_expected(&t, right, right_side)
                             }
                         }
-                        TypeCommentState::UnfinishedFinal(node_ref) => {
-                            self.fill_potentially_unfinished_final(
-                                node_ref.node_index,
+                        TypeCommentState::UnfinishedFinalOrClassVar(node_ref) => {
+                            self.fill_potentially_unfinished_final_or_class_var(
+                                node_ref,
                                 Some(right_side),
                             );
                         }
@@ -731,9 +731,17 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     }
                     _ => {
                         let mut checked = false;
-                        if specific == Some(Specific::AnnotationOrTypeCommentFinal) {
-                            checked = self
-                                .fill_potentially_unfinished_final(annotation.index(), right_side)
+                        if matches!(
+                            specific,
+                            Some(
+                                Specific::AnnotationOrTypeCommentFinal
+                                    | Specific::AnnotationOrTypeCommentClassVar
+                            )
+                        ) {
+                            checked = self.fill_potentially_unfinished_final_or_class_var(
+                                NodeRef::new(self.file, annotation.index()),
+                                right_side,
+                            )
                         }
                         if let Some(right_side) = right_side {
                             if !checked {
@@ -822,22 +830,24 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         }
     }
 
-    pub fn fill_potentially_unfinished_final(
+    pub fn fill_potentially_unfinished_final_or_class_var(
         &self,
-        annotation_index: NodeIndex,
+        annotation_ref: NodeRef,
         right_side: Option<AssignmentRightSide>,
     ) -> bool {
-        let to_annot_expr =
-            NodeRef::new(self.file, annotation_index + ANNOTATION_TO_EXPR_DIFFERENCE);
+        let to_annot_expr = annotation_ref.add_to_node_index(ANNOTATION_TO_EXPR_DIFFERENCE as i64);
         let needed_recalculation = !to_annot_expr.point().calculated();
         if needed_recalculation {
-            let t = if let Some(right_side) = right_side {
+            let mut t = if let Some(right_side) = right_side {
                 self.infer_assignment_right_side(right_side, &mut ResultContext::Unknown)
                     .as_type(self.i_s)
             } else {
-                self.add_issue(annotation_index, IssueKind::FinalWithoutInitializerAndType);
+                annotation_ref.add_issue(self.i_s, IssueKind::FinalWithoutInitializerAndType);
                 Type::Any(AnyCause::FromError)
             };
+            if annotation_ref.point().specific() == Specific::AnnotationOrTypeCommentClassVar {
+                t = t.avoid_implicit_literal(self.i_s.db);
+            }
             to_annot_expr.insert_complex(ComplexPoint::TypeInstance(t), Locality::Todo);
         }
         needed_recalculation

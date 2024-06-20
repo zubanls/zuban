@@ -531,7 +531,6 @@ testMetaclassStrictSupertypeOfTypeWithClassmethods
 # "ClassVar protocol member P.foo can never be matched by a class object"
 testProtocolClassObjectClassVarRejected
 # x = 1  # type: ClassVar
-testClassVarWithoutArguments
 testIncrementalClassVar
 
 # More information needed

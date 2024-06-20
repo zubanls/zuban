@@ -314,3 +314,14 @@ reveal_type(a.no_such_export)  # N: Revealed type is "Any"
 from b import no_such_export  # E: Module "b" has no attribute "no_such_export"
 [file b.py]
 from a import no_such_export
+
+[case class_var_without_type_qualifier]
+from typing import ClassVar
+
+class Foo:
+    x: ClassVar = 1
+
+reveal_type(Foo.x)  # N: Revealed type is "int"
+reveal_type(Foo().x)  # N: Revealed type is "int"
+Foo().x = 3  # E: Cannot assign to class variable "x" via instance
+Foo.x = 4
