@@ -22,8 +22,8 @@ use crate::{
     node_ref::NodeRef,
     type_::NamedTuple,
     type_helpers::{
-        lookup_in_namespace, Callable, Class, ClassLookupOptions, Instance, LookupDetails, Module,
-        OverloadedFunction,
+        lookup_in_namespace, Callable, Class, ClassLookupOptions, Instance, InstanceLookupOptions,
+        LookupDetails, Module, OverloadedFunction,
     },
     utils::rc_unwrap_or_clone,
 };
@@ -252,12 +252,12 @@ impl Type {
             }
             Type::Super { class, mro_index } => {
                 let instance = Instance::new(class.class(i_s.db), None);
-                let l = instance.lookup_and_maybe_ignore_super_count(
+                let l = instance.lookup(
                     i_s,
-                    add_issue,
                     name,
-                    LookupKind::OnlyType,
-                    mro_index + 1,
+                    InstanceLookupOptions::new(add_issue)
+                        .with_kind(LookupKind::OnlyType)
+                        .with_super_count(mro_index + 1),
                 );
                 if matches!(&l.lookup, LookupResult::None) {
                     add_issue(IssueKind::UndefinedInSuperclass { name: name.into() });

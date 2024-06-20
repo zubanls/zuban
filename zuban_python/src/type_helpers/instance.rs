@@ -270,7 +270,7 @@ impl<'a> Instance<'a> {
         IteratorContent::Any(AnyCause::Todo)
     }
 
-    pub(crate) fn lookup_with_explicit_self_binding(
+    pub(crate) fn lookup(
         &self,
         i_s: &'a InferenceState,
         name: &str,
@@ -397,33 +397,6 @@ impl<'a> Instance<'a> {
         }
     }
 
-    pub(crate) fn lookup_and_maybe_ignore_super_count(
-        &self,
-        i_s: &'a InferenceState,
-        add_issue: impl Fn(IssueKind),
-        name: &str,
-        kind: LookupKind,
-        super_count: usize,
-    ) -> LookupDetails<'a> {
-        self.lookup_with_explicit_self_binding(
-            i_s,
-            name,
-            InstanceLookupOptions::new(&add_issue)
-                .with_kind(kind)
-                .with_super_count(super_count),
-        )
-    }
-
-    pub(crate) fn lookup(
-        &self,
-        i_s: &InferenceState,
-        add_issue: impl Fn(IssueKind),
-        name: &str,
-        kind: LookupKind,
-    ) -> LookupResult {
-        self.lookup_with_details(i_s, add_issue, name, kind).lookup
-    }
-
     pub(crate) fn lookup_with_details(
         &self,
         i_s: &'a InferenceState,
@@ -431,7 +404,11 @@ impl<'a> Instance<'a> {
         name: &str,
         kind: LookupKind,
     ) -> LookupDetails<'a> {
-        self.lookup_and_maybe_ignore_super_count(i_s, add_issue, name, kind, 0)
+        self.lookup(
+            i_s,
+            name,
+            InstanceLookupOptions::new(&add_issue).with_kind(kind),
+        )
     }
 
     pub(crate) fn lookup_on_self(
@@ -441,7 +418,7 @@ impl<'a> Instance<'a> {
         name: &str,
         kind: LookupKind,
     ) -> LookupDetails<'a> {
-        self.lookup_with_explicit_self_binding(
+        self.lookup(
             i_s,
             name,
             InstanceLookupOptions::new(add_issue)
@@ -456,12 +433,13 @@ impl<'a> Instance<'a> {
         node_ref: NodeRef,
         name: &str,
     ) -> LookupResult {
-        self.lookup(
+        self.lookup_with_details(
             i_s,
             |issue| node_ref.add_issue(i_s, issue),
             name,
             LookupKind::Normal,
         )
+        .lookup
     }
 
     pub(crate) fn type_lookup(
@@ -470,7 +448,8 @@ impl<'a> Instance<'a> {
         add_issue: impl Fn(IssueKind),
         name: &str,
     ) -> LookupResult {
-        self.lookup(i_s, add_issue, name, LookupKind::OnlyType)
+        self.lookup_with_details(i_s, add_issue, name, LookupKind::OnlyType)
+            .lookup
     }
 
     pub fn run_on_symbols(&self, mut callable: impl FnMut(&str)) {

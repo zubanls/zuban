@@ -13,7 +13,7 @@ use crate::{
     getitem::{SliceType, SliceTypeContent},
     inference_state::InferenceState,
     inferred::{AttributeKind, Inferred},
-    matching::{IteratorContent, LookupKind, LookupResult, OnTypeError, ResultContext},
+    matching::{IteratorContent, LookupResult, OnTypeError, ResultContext},
     node_ref::NodeRef,
     type_::{AnyCause, Type},
     type_helpers::{Instance, LookupDetails, TypeOrClass},
@@ -127,11 +127,10 @@ impl Tuple {
                     .bool()
                 {
                     Instance::new(i_s.db.python_state.tuple_class(i_s.db, self), None)
-                        .lookup(
+                        .type_lookup(
                             i_s,
                             |issue| slice_type.as_node_ref().add_issue(i_s, issue),
                             "__getitem__",
-                            LookupKind::OnlyType,
                         )
                         .into_inferred()
                         .execute(i_s, &slice_type.as_args(*i_s));

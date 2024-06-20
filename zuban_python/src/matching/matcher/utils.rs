@@ -20,7 +20,7 @@ use crate::{
     diagnostics::IssueKind,
     inference_state::InferenceState,
     inferred::Inferred,
-    matching::{matcher::bound::Bound, maybe_class_usage, ErrorTypes, GotType, LookupKind},
+    matching::{matcher::bound::Bound, maybe_class_usage, ErrorTypes, GotType},
     node_ref::NodeRef,
     type_::{
         match_unpack, CallableContent, CallableParams, CallableWithParent, ClassGenerics,
@@ -177,12 +177,7 @@ impl CalculatedTypeArgs {
                         let had_error = Cell::new(false);
                         let inf = cls
                             .instance()
-                            .lookup(
-                                i_s,
-                                |_| had_error.set(true),
-                                "__call__",
-                                LookupKind::OnlyType,
-                            )
+                            .type_lookup(i_s, |_| had_error.set(true), "__call__")
                             .into_inferred();
                         if !had_error.get() {
                             return self.into_return_type(

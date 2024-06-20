@@ -3,7 +3,7 @@ use crate::{
     arguments::Args,
     inference_state::InferenceState,
     inferred::Inferred,
-    matching::{LookupKind, OnTypeError, ResultContext},
+    matching::{OnTypeError, ResultContext},
 };
 
 pub(crate) fn method_with_fallback<'db, 'x, T>(
@@ -18,12 +18,7 @@ pub(crate) fn method_with_fallback<'db, 'x, T>(
 ) -> Inferred {
     handler(i_s, td, args).unwrap_or_else(|| {
         fallback_instance()
-            .lookup(
-                i_s,
-                |issue| args.add_issue(i_s, issue),
-                name,
-                LookupKind::OnlyType,
-            )
+            .type_lookup(i_s, |issue| args.add_issue(i_s, issue), name)
             .into_inferred()
             .execute_with_details(i_s, args, result_context, on_type_error)
     })

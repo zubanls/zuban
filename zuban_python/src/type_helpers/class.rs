@@ -1587,7 +1587,7 @@ impl<'db: 'a, 'a> Class<'a> {
                     MetaclassState::Unknown => LookupDetails::any(AnyCause::Todo),
                     _ => {
                         let instance = Instance::new(class_infos.metaclass(i_s.db), None);
-                        instance.lookup_with_explicit_self_binding(
+                        instance.lookup(
                             i_s,
                             name,
                             InstanceLookupOptions::new(options.add_issue).with_as_self_instance(

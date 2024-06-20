@@ -37,7 +37,7 @@ use crate::{
     },
     type_helpers::{
         cache_class_name, is_private, Class, ClassLookupOptions, FirstParamProperties, Function,
-        Instance, LookupDetails, TypeOrClass,
+        Instance, InstanceLookupOptions, LookupDetails, TypeOrClass,
     },
 };
 
@@ -1807,12 +1807,10 @@ fn find_and_check_override(
     has_override_decorator: bool,
 ) {
     let instance = Instance::new(override_class, None);
-    let original_details = instance.lookup_and_maybe_ignore_super_count(
+    let original_details = instance.lookup(
         i_s,
-        |issue| from.add_issue(i_s, issue),
         name,
-        LookupKind::Normal,
-        1,
+        InstanceLookupOptions::new(&|issue| from.add_issue(i_s, issue)).with_super_count(1),
     );
     if original_details.lookup.is_some() {
         let override_details = instance.lookup_with_details(

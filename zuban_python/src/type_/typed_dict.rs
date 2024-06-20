@@ -1053,14 +1053,13 @@ pub(crate) fn lookup_on_typed_dict<'a>(
         "__delitem__" => CustomBehavior::new_method(typed_dict_delitem, Some(bound())),
         "update" => CustomBehavior::new_method(typed_dict_update, Some(bound())),
         _ => {
-            return Instance::new(i_s.db.python_state.typed_dict_class(), None)
-                .lookup_with_explicit_self_binding(
-                    i_s,
-                    name,
-                    InstanceLookupOptions::new(add_issue)
-                        .with_kind(kind)
-                        .with_as_self_instance(&|| Type::TypedDict(typed_dict.clone())),
-                )
+            return Instance::new(i_s.db.python_state.typed_dict_class(), None).lookup(
+                i_s,
+                name,
+                InstanceLookupOptions::new(add_issue)
+                    .with_kind(kind)
+                    .with_as_self_instance(&|| Type::TypedDict(typed_dict.clone())),
+            )
         }
     })));
     LookupDetails::new(

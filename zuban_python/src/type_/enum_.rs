@@ -209,7 +209,7 @@ fn lookup_on_enum_instance_fallback<'a>(
     enum_: &'a Rc<Enum>,
     name: &str,
 ) -> LookupDetails<'a> {
-    Instance::new(enum_.class(i_s.db), None).lookup_with_explicit_self_binding(
+    Instance::new(enum_.class(i_s.db), None).lookup(
         i_s,
         name,
         InstanceLookupOptions::new(add_issue).with_as_self_instance(&|| Type::Enum(enum_.clone())),
