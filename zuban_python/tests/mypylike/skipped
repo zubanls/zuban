@@ -325,6 +325,7 @@ testTypingSelfConflict
 # "Self argument missing for a non-static method"
 # "The erased type of self "None" is not a supertype of its class "__main__.A""
 testSelfTypeNotSelfType
+no_self
 # Self in bound method shouldn't probably be there
 testFunctionAssignedAsCallback
 testErrorSettingCallbackWithDifferentFutureType
@@ -501,9 +502,6 @@ testIterableProtocolOnMetaclass
 # Metaclass instance vs. class members
 testMetaclassConflictingInstanceVars
 testInferenceOfDunderDictOnClassObjects
-
-# "Attribute function "f" with type "Callable[[], None]" does not accept self argument"
-no_self
 
 # More information needed
 # "Read-only property cannot override read-write property"

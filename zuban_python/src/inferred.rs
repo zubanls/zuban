@@ -939,7 +939,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                                 )
                                                 .map(Rc::new)
                                             } else {
-                                                todo!()
+                                                None
                                             }
                                         })
                                         .collect();

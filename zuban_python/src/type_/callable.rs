@@ -588,7 +588,8 @@ impl CallableContent {
         match &self.params {
             CallableParams::Simple(params) => params.first().and_then(|p| match &p.type_ {
                 ParamType::PositionalOnly(t) | ParamType::PositionalOrKeyword(t) => Some(t.clone()),
-                _ => todo!(),
+                ParamType::Star(_) => todo!(),
+                _ => None,
             }),
             CallableParams::WithParamSpec(pre, usage) => {
                 todo!()
