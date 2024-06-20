@@ -760,8 +760,10 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         base_t: Option<CallableContent>,
     ) -> Option<FunctionDetails> {
         let used_with_a_non_method = |name| {
-            NodeRef::new(self.node_ref.file, decorated.index())
-                .add_issue(i_s, IssueKind::UsedWithANonMethod { name })
+            self.add_issue_onto_start_including_decorator(
+                i_s,
+                IssueKind::UsedWithANonMethod { name },
+            )
         };
 
         let mut inferred = Inferred::from_type(
@@ -876,7 +878,11 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     }
                     is_final = true
                 }
-                InferredDecorator::Override => (),
+                InferredDecorator::Override => {
+                    if self.class.is_none() {
+                        used_with_a_non_method("override")
+                    }
+                }
             }
         }
         if is_abstract && is_final {
@@ -889,12 +895,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         }
         if is_abstract && self.class.is_none() {
             is_abstract = false;
-            self.add_issue_onto_start_including_decorator(
-                i_s,
-                IssueKind::UsedWithANonMethod {
-                    name: "abstractmethod",
-                },
-            )
+            used_with_a_non_method("abstractmethod")
         }
         let overwrite_callable = |inferred: &mut _, mut callable: CallableContent| {
             callable.name = Some(DbString::StringSlice(self.name_string_slice()));

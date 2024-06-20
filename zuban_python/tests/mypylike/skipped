@@ -377,12 +377,6 @@ testRefMethodWithOverloadDecorator
 # classmethod self type with overload
 testSelfTypeClassMethodOverloadedOnInstance
 SelfTypeOverloadedClassMethod
-# "staticmethod" used with a non-method"
-testStaticmethodAndNonMethod
-# "classmethod" used with a non-method"
-testClassmethodAndNonMethod
-# "override" used with a non-method"
-invalidExplicitOverride
 # Error for staticmethod: "Overloaded function implementation does not accept all possible arguments of signature 1"
 testOverloadWithSwappedDecorators2
 testTypeVarTupleNewSyntaxCallables
