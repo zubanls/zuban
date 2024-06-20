@@ -273,20 +273,22 @@ impl<'a> Instance<'a> {
     pub(crate) fn lookup_with_explicit_self_binding(
         &self,
         i_s: &'a InferenceState,
-        add_issue: &dyn Fn(IssueKind),
         name: &str,
-        kind: LookupKind,
-        super_count: usize,
-        as_self_instance: impl Fn() -> Type,
+        options: InstanceLookupOptions,
     ) -> LookupDetails<'a> {
         let mut attr_kind = AttributeKind::Attribute;
-        for (mro_index, class) in self.class.mro(i_s.db).skip(super_count) {
+        for (mro_index, class) in self.class.mro(i_s.db).skip(options.super_count) {
             let (class_of_lookup, lookup) = class.lookup_symbol(i_s, name);
             // First check class infos
             let result = lookup.and_then(|inf| {
                 if let Some(c) = class_of_lookup {
                     let i_s = i_s.with_class_context(&self.class);
-                    inf.bind_instance_descriptors(&i_s, as_self_instance(), c, add_issue, mro_index)
+                    let instance = if let Some(as_self_instance) = options.as_self_instance {
+                        as_self_instance()
+                    } else {
+                        self.class.as_type(i_s.db)
+                    };
+                    inf.bind_instance_descriptors(&i_s, instance, c, options.add_issue, mro_index)
                         .map(|inf| {
                             attr_kind = inf.1;
                             inf.0
@@ -314,7 +316,7 @@ impl<'a> Instance<'a> {
                     }
                 }
             }
-            if kind == LookupKind::Normal {
+            if options.kind == LookupKind::Normal {
                 // Then check self attributes
                 if let TypeOrClass::Class(c) = class {
                     if let Some(self_symbol) = c.class_storage.self_symbol_table.lookup_symbol(name)
@@ -342,9 +344,14 @@ impl<'a> Instance<'a> {
                 }
             }
         }
-        if kind == LookupKind::Normal && super_count == 0 {
+        if options.kind == LookupKind::Normal && options.super_count == 0 {
             for method_name in ["__getattr__", "__getattribute__"] {
-                let l = self.lookup_with_details(i_s, add_issue, method_name, LookupKind::OnlyType);
+                let l = self.lookup_with_details(
+                    i_s,
+                    options.add_issue,
+                    method_name,
+                    LookupKind::OnlyType,
+                );
                 if l.class.is_object(i_s.db) {
                     // object defines a __getattribute__ that returns Any
                     continue;
@@ -354,7 +361,7 @@ impl<'a> Instance<'a> {
                         i_s,
                         &KnownArgsWithCustomAddIssue::new(
                             &Inferred::new_any(AnyCause::Internal),
-                            &add_issue,
+                            &options.add_issue,
                         ),
                     ));
                     return LookupDetails {
@@ -364,7 +371,7 @@ impl<'a> Instance<'a> {
                             writable: {
                                 let details = self.lookup_with_details(
                                     i_s,
-                                    add_issue,
+                                    options.add_issue,
                                     "__setattr__",
                                     LookupKind::OnlyType,
                                 );
@@ -398,9 +405,13 @@ impl<'a> Instance<'a> {
         kind: LookupKind,
         super_count: usize,
     ) -> LookupDetails<'a> {
-        self.lookup_with_explicit_self_binding(i_s, &add_issue, name, kind, super_count, || {
-            self.class.as_type(i_s.db)
-        })
+        self.lookup_with_explicit_self_binding(
+            i_s,
+            name,
+            InstanceLookupOptions::new(&add_issue)
+                .with_kind(kind)
+                .with_super_count(super_count),
+        )
     }
 
     pub(crate) fn lookup(
@@ -430,7 +441,13 @@ impl<'a> Instance<'a> {
         name: &str,
         kind: LookupKind,
     ) -> LookupDetails<'a> {
-        self.lookup_with_explicit_self_binding(i_s, add_issue, name, kind, 0, || Type::Self_)
+        self.lookup_with_explicit_self_binding(
+            i_s,
+            name,
+            InstanceLookupOptions::new(add_issue)
+                .with_kind(kind)
+                .with_as_self_instance(&|| Type::Self_),
+        )
     }
 
     pub(crate) fn full_lookup(
@@ -779,5 +796,38 @@ impl LookupDetails<'_> {
             LookupResult::None => c(),
             _ => self,
         }
+    }
+}
+
+pub struct InstanceLookupOptions<'x> {
+    add_issue: &'x dyn Fn(IssueKind),
+    kind: LookupKind,
+    super_count: usize,
+    as_self_instance: Option<&'x dyn Fn() -> Type>,
+}
+
+impl<'x> InstanceLookupOptions<'x> {
+    pub(crate) fn new(add_issue: &'x dyn Fn(IssueKind)) -> Self {
+        Self {
+            add_issue,
+            kind: LookupKind::Normal,
+            super_count: 0,
+            as_self_instance: None,
+        }
+    }
+
+    pub fn with_super_count(mut self, super_count: usize) -> Self {
+        self.super_count = super_count;
+        self
+    }
+
+    pub fn with_as_self_instance(mut self, as_self_instance: &'x dyn Fn() -> Type) -> Self {
+        self.as_self_instance = Some(as_self_instance);
+        self
+    }
+
+    pub fn with_kind(mut self, kind: LookupKind) -> Self {
+        self.kind = kind;
+        self
     }
 }

@@ -21,7 +21,7 @@ use crate::{
         ResultContext,
     },
     node_ref::NodeRef,
-    type_helpers::{Class, Instance, LookupDetails},
+    type_helpers::{Class, Instance, InstanceLookupOptions, LookupDetails},
     utils::join_with_commas,
 };
 
@@ -1040,7 +1040,7 @@ pub(crate) fn initialize_typed_dict<'db>(
 pub(crate) fn lookup_on_typed_dict<'a>(
     typed_dict: Rc<TypedDict>,
     i_s: &'a InferenceState,
-    add_issue: impl Fn(IssueKind),
+    add_issue: &dyn Fn(IssueKind),
     name: &str,
     kind: LookupKind,
 ) -> LookupDetails<'a> {
@@ -1054,9 +1054,13 @@ pub(crate) fn lookup_on_typed_dict<'a>(
         "update" => CustomBehavior::new_method(typed_dict_update, Some(bound())),
         _ => {
             return Instance::new(i_s.db.python_state.typed_dict_class(), None)
-                .lookup_with_explicit_self_binding(i_s, &add_issue, name, kind, 0, || {
-                    Type::TypedDict(typed_dict.clone())
-                })
+                .lookup_with_explicit_self_binding(
+                    i_s,
+                    name,
+                    InstanceLookupOptions::new(add_issue)
+                        .with_kind(kind)
+                        .with_as_self_instance(&|| Type::TypedDict(typed_dict.clone())),
+                )
         }
     })));
     LookupDetails::new(

@@ -17,7 +17,9 @@ use crate::{
     inferred::{AttributeKind, Inferred},
     matching::{LookupKind, LookupResult, ResultContext},
     node_ref::NodeRef,
-    type_helpers::{Class, ClassLookupOptions, Instance, LookupDetails, TypeOrClass},
+    type_helpers::{
+        Class, ClassLookupOptions, Instance, InstanceLookupOptions, LookupDetails, TypeOrClass,
+    },
 };
 
 #[derive(Debug, PartialEq, Clone)]
@@ -174,7 +176,7 @@ pub(crate) fn lookup_on_enum_class<'a>(
 
 pub(crate) fn lookup_on_enum_instance<'a>(
     i_s: &'a InferenceState,
-    add_issue: impl Fn(IssueKind),
+    add_issue: &dyn Fn(IssueKind),
     enum_: &'a Rc<Enum>,
     name: &str,
     result_context: &mut ResultContext,
@@ -203,17 +205,14 @@ pub(crate) fn lookup_on_enum_instance<'a>(
 
 fn lookup_on_enum_instance_fallback<'a>(
     i_s: &'a InferenceState,
-    add_issue: impl Fn(IssueKind),
+    add_issue: &dyn Fn(IssueKind),
     enum_: &'a Rc<Enum>,
     name: &str,
 ) -> LookupDetails<'a> {
     Instance::new(enum_.class(i_s.db), None).lookup_with_explicit_self_binding(
         i_s,
-        &add_issue,
         name,
-        LookupKind::Normal,
-        0,
-        || Type::Enum(enum_.clone()),
+        InstanceLookupOptions::new(add_issue).with_as_self_instance(&|| Type::Enum(enum_.clone())),
     )
 }
 
@@ -274,7 +273,7 @@ pub fn infer_value_on_member(
 
 pub(crate) fn lookup_on_enum_member_instance<'a>(
     i_s: &'a InferenceState,
-    add_issue: impl Fn(IssueKind),
+    add_issue: &dyn Fn(IssueKind),
     member: &'a EnumMember,
     name: &str,
 ) -> LookupDetails<'a> {

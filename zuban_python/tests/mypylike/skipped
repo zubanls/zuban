@@ -555,17 +555,6 @@ testNewNamedTupleIllegalNames
 testNamedTupleFallback
 testNamedTupleIncompatibleRedefinition
 
-# __init_subclass__
-testOverride__init_subclass__WithDifferentSignature
-testInitSubclassWrongType
-testInitSubclassTooFewArgs
-testInitSubclassTooFewArgs2
-testInitSubclassWithImports
-testInitSubclassUnannotated
-testTooManyArgsForObject
-testNoClassKeywordsForNamedTuple
-testTypedDictWithClassLevelKeywords
-
 # __setattr__ and __getattr__
 testGetattrAndSetattr
 
@@ -1330,6 +1319,17 @@ testMultipleModulesInOverridePyProjectTOML
 
 # __init__ None needed
 testInitReturnTypeError
+
+# __init_subclass__
+testOverride__init_subclass__WithDifferentSignature
+testInitSubclassWrongType
+testInitSubclassTooFewArgs
+testInitSubclassTooFewArgs2
+testInitSubclassWithImports
+testInitSubclassUnannotated
+testTooManyArgsForObject
+testNoClassKeywordsForNamedTuple
+testTypedDictWithClassLevelKeywords
 
 # type ignore leads to "Revealed type is "A?""
 testSerializeIgnoredInvalidType

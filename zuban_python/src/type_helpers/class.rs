@@ -11,7 +11,7 @@ use parsa_python_cst::{
     SimpleStmts, StmtContent, StmtOrError, Target, TypeLike,
 };
 
-use super::{overload::OverloadResult, Callable, Instance, LookupDetails};
+use super::{overload::OverloadResult, Callable, Instance, InstanceLookupOptions, LookupDetails};
 use crate::{
     arguments::{Args, KnownArgs, SimpleArgs},
     database::{
@@ -1589,11 +1589,10 @@ impl<'db: 'a, 'a> Class<'a> {
                         let instance = Instance::new(class_infos.metaclass(i_s.db), None);
                         instance.lookup_with_explicit_self_binding(
                             i_s,
-                            options.add_issue,
                             name,
-                            LookupKind::Normal,
-                            0,
-                            options.as_type_type.unwrap_or(&|| self.as_type_type(i_s)),
+                            InstanceLookupOptions::new(options.add_issue).with_as_self_instance(
+                                options.as_type_type.unwrap_or(&|| self.as_type_type(i_s)),
+                            ),
                         )
                     }
                 };
