@@ -1406,7 +1406,13 @@ impl<'db: 'slf, 'slf> Inferred {
                         ComplexPoint::FunctionOverload(o) => {
                             return infer_overloaded_class_method(i_s, *class, attribute_class, o)
                         }
-                        ComplexPoint::TypeInstance(Type::Callable(_)) => todo!(),
+                        ComplexPoint::TypeInstance(t @ Type::Callable(c)) => {
+                            let Some(c) = infer_class_method(i_s, *class, attribute_class, c)
+                            else {
+                                todo!();
+                            };
+                            return Inferred::from_type(Type::Callable(Rc::new(c)));
+                        }
                         _ => (),
                     },
                     _ => (),

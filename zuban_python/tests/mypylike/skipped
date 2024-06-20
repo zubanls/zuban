@@ -557,8 +557,6 @@ testNamedTupleIncompatibleRedefinition
 
 # "Accessing "__init__" on an instance is unsound, since instance.__init__ could be from an incompatible subclass"
 testAccessingInit
-# Decorated constructors
-testDecoratedConstructors
 # "Unsupported decorated constructor type"
 testDecoratedConstructorsBad
 
