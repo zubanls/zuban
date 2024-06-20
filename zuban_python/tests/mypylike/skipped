@@ -555,9 +555,6 @@ testNewNamedTupleIllegalNames
 testNamedTupleFallback
 testNamedTupleIncompatibleRedefinition
 
-# __setattr__ and __getattr__
-testGetattrAndSetattr
-
 # "Accessing "__init__" on an instance is unsound, since instance.__init__ could be from an incompatible subclass"
 testAccessingInit
 # Decorated constructors

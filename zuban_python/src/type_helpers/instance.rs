@@ -70,8 +70,13 @@ impl<'a> Instance<'a> {
         };
 
         let lookup_details = self.class.lookup_without_descriptors(i_s, from, name_str);
-        let lookup_details = lookup_details
-            .or_else(|| self.lookup_with_details(i_s, add_issue, name_str, LookupKind::Normal));
+        let lookup_details = lookup_details.or_else(|| {
+            self.lookup(
+                i_s,
+                name_str,
+                InstanceLookupOptions::new(&add_issue).with_no_check_dunder_getattr(),
+            )
+        });
         let Some(inf) = lookup_details.lookup.into_maybe_inferred() else {
             let t = self.class.as_type(i_s.db);
             let l = self.lookup_with_details(i_s, add_issue, "__setattr__", LookupKind::OnlyType);
@@ -344,7 +349,7 @@ impl<'a> Instance<'a> {
                 }
             }
         }
-        if options.kind == LookupKind::Normal && options.super_count == 0 {
+        if options.kind == LookupKind::Normal && options.check_dunder_getattr {
             for method_name in ["__getattr__", "__getattribute__"] {
                 let l = self.lookup_with_details(
                     i_s,
@@ -768,6 +773,7 @@ pub struct InstanceLookupOptions<'x> {
     kind: LookupKind,
     super_count: usize,
     as_self_instance: Option<&'x dyn Fn() -> Type>,
+    check_dunder_getattr: bool,
 }
 
 impl<'x> InstanceLookupOptions<'x> {
@@ -777,11 +783,19 @@ impl<'x> InstanceLookupOptions<'x> {
             kind: LookupKind::Normal,
             super_count: 0,
             as_self_instance: None,
+            check_dunder_getattr: true,
         }
     }
 
     pub fn with_super_count(mut self, super_count: usize) -> Self {
         self.super_count = super_count;
+        // It feels like this is never wanted.
+        self.check_dunder_getattr = false;
+        self
+    }
+
+    pub fn with_no_check_dunder_getattr(mut self) -> Self {
+        self.check_dunder_getattr = false;
         self
     }
 
