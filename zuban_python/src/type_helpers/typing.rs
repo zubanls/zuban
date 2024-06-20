@@ -31,7 +31,6 @@ pub(crate) fn execute_type<'db>(
             todo!()
         };
         let mut type_part = Type::Never(NeverCause::Other);
-        let mut result = Type::Never(NeverCause::Other);
         for t in inf.as_cow_type(i_s).iter_with_unpacked_unions(i_s.db) {
             match t {
                 Type::Class(_) | Type::None | Type::Any(_) => type_part.union_in_place(t.clone()),
@@ -39,10 +38,11 @@ pub(crate) fn execute_type<'db>(
                 Type::Type(type_) => match type_.as_ref() {
                     Type::Class(c) => {
                         match &c.class(i_s.db).use_cached_class_infos(i_s.db).metaclass {
-                            MetaclassState::Some(link) => {
-                                result.union_in_place(Type::new_class(*link, ClassGenerics::None))
+                            MetaclassState::Some(link) => type_part
+                                .union_in_place(Type::new_class(*link, ClassGenerics::None)),
+                            _ => {
+                                type_part.union_in_place(i_s.db.python_state.type_of_object.clone())
                             }
-                            _ => result.union_in_place(i_s.db.python_state.type_of_object.clone()),
                         }
                     }
                     _ => todo!(),
@@ -50,10 +50,11 @@ pub(crate) fn execute_type<'db>(
                 _ => todo!("{t:?}"),
             }
         }
-        if !matches!(type_part, Type::Never(_)) {
-            result.union_in_place(Type::Type(Rc::new(type_part)));
-        }
-        Inferred::from_type(result)
+        Inferred::from_type(if type_part.is_never() {
+            inf.as_type(i_s)
+        } else {
+            Type::Type(Rc::new(type_part))
+        })
     } else {
         todo!()
     }
