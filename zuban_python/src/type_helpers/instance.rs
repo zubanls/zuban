@@ -427,21 +427,6 @@ impl<'a> Instance<'a> {
         )
     }
 
-    pub(crate) fn full_lookup(
-        &self,
-        i_s: &InferenceState,
-        node_ref: NodeRef,
-        name: &str,
-    ) -> LookupResult {
-        self.lookup_with_details(
-            i_s,
-            |issue| node_ref.add_issue(i_s, issue),
-            name,
-            LookupKind::Normal,
-        )
-        .lookup
-    }
-
     pub(crate) fn type_lookup(
         &self,
         i_s: &InferenceState,

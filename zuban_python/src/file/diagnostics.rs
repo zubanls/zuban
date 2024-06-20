@@ -1,5 +1,6 @@
 use std::{
     borrow::Cow,
+    cell::Cell,
     collections::{HashMap, HashSet},
     rc::Rc,
 };
@@ -554,10 +555,10 @@ impl<'db> Inference<'db, '_, '_> {
 
     fn calc_class_diagnostics(&self, class: ClassDef) {
         let (arguments, block) = class.unpack();
-        let name_def = NodeRef::new(self.file, class.name_definition().index());
-        debug!("TODO this from is completely wrong and should never be used.");
-        let hack = name_def;
-        cache_class_name(name_def, class);
+        cache_class_name(
+            NodeRef::new(self.file, class.name_definition().index()),
+            class,
+        );
         let class_node_ref = NodeRef::new(self.file, class.index());
         class_node_ref.ensure_cached_class_infos(self.i_s);
         let db = self.i_s.db;
@@ -610,7 +611,12 @@ impl<'db> Inference<'db, '_, '_> {
                     if name.starts_with("__") {
                         return;
                     }
-                    if let Some(inf) = instance2.full_lookup(self.i_s, hack, name).into_maybe_inferred()
+                    let had_lookup_issue = Cell::new(false);
+                    let inst2_lookup = instance2.lookup(self.i_s, name, InstanceLookupOptions::new(&|_| had_lookup_issue.set(true)));
+                    if had_lookup_issue.get() {
+                        todo!()
+                    }
+                    if let Some(inf) = inst2_lookup.lookup.into_maybe_inferred()
                     {
                         if c.lookup_symbol(self.i_s, name).into_maybe_inferred().is_some() {
                             // These checks happen elsewhere.
@@ -618,7 +624,10 @@ impl<'db> Inference<'db, '_, '_> {
                             return
                         }
                         let second = inf.as_cow_type(self.i_s);
-                        let first = instance1.full_lookup(self.i_s, hack, name).into_inferred();
+                        let first = instance1.lookup(self.i_s, name, InstanceLookupOptions::new(&|_| had_lookup_issue.set(true))).lookup.into_inferred();
+                        if had_lookup_issue.get() {
+                            todo!()
+                        }
                         let first = first.as_cow_type(self.i_s);
                         if !first
                             .is_sub_type_of(
