@@ -1178,7 +1178,6 @@ impl<'db: 'a, 'a> Class<'a> {
             other.format_short(i_s.db)
         );
         let mut protocol_member_count = 0;
-        debug!("TODO this from is completely wrong and should never be used.");
         for (mro_index, c) in self.mro_maybe_without_object(i_s.db, true) {
             let TypeOrClass::Class(c) = c else { todo!() };
             let protocol_members = &c.use_cached_class_infos(i_s.db).protocol_members;

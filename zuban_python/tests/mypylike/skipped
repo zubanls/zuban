@@ -509,9 +509,6 @@ testMetaclassMemberAccessViaType
 testNoneAlias
 testNoneAliasStrict
 
-# "Invalid self argument issues
-testNamedTupleWithManyArgsCallableField
-
 # "Attribute function "f" with type "Callable[[], None]" does not accept self argument"
 testMethodWithInvalidMethodAsDataAttribute
 testClassValuedAttributesBasics

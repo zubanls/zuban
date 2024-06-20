@@ -1815,11 +1815,18 @@ fn find_and_check_override(
     name: &str,
     has_override_decorator: bool,
 ) {
+    let override_class_infos = override_class.use_cached_class_infos(i_s.db);
     let instance = Instance::new(override_class, None);
     let original_details = instance.lookup(
         i_s,
         name,
-        InstanceLookupOptions::new(&|issue| from.add_issue(i_s, issue)).with_super_count(1),
+        // NamedTuple / Tuple are special, because they insert an additional type of themselves.
+        InstanceLookupOptions::new(&|issue| from.add_issue(i_s, issue)).with_super_count(
+            1 + matches!(
+                override_class_infos.class_kind,
+                ClassKind::Tuple | ClassKind::NamedTuple
+            ) as usize,
+        ),
     );
     if original_details.lookup.is_some() {
         let override_details = instance.lookup_with_details(
@@ -1844,11 +1851,7 @@ fn find_and_check_override(
                 },
             );
         }
-        if let Some(t) = override_class
-            .use_cached_class_infos(i_s.db)
-            .undefined_generics_type
-            .get()
-        {
+        if let Some(t) = override_class_infos.undefined_generics_type.get() {
             if let Type::Enum(e) = t.as_ref() {
                 if e.members.iter().any(|member| member.name(i_s.db) == name)
                     && !ENUM_NAMES_OVERRIDABLE.contains(&name)
