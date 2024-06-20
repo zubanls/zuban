@@ -503,7 +503,6 @@ testMetaclassConflictingInstanceVars
 testInferenceOfDunderDictOnClassObjects
 
 # Use type(foo) when foo has a metaclass
-testMetaclassTypeCallable
 testMetaclassMemberAccessViaType
 
 # "Attribute function "f" with type "Callable[[], None]" does not accept self argument"

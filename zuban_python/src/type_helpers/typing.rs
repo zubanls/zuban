@@ -2,7 +2,7 @@ use std::{borrow::Cow, rc::Rc};
 
 use crate::{
     arguments::{ArgKind, Args, InferredArg, KeywordArg},
-    database::{ComplexPoint, PointLink},
+    database::{ComplexPoint, MetaclassState, PointLink},
     debug,
     diagnostics::IssueKind,
     format_data::FormatData,
@@ -11,8 +11,8 @@ use crate::{
     matching::{CouldBeALiteral, Matcher, OnTypeError, ResultContext},
     node_ref::NodeRef,
     type_::{
-        ClassGenerics, NewType, ParamSpec, Type, TypeVar, TypeVarKind, TypeVarLike, TypeVarName,
-        TypeVarTuple, TypedDictGenerics, Variance,
+        ClassGenerics, NeverCause, NewType, ParamSpec, Type, TypeVar, TypeVarKind, TypeVarLike,
+        TypeVarName, TypeVarTuple, TypedDictGenerics, Variance,
     },
     utils::join_with_commas,
 };
@@ -30,7 +30,30 @@ pub(crate) fn execute_type<'db>(
         let InferredArg::Inferred(inf) = first.infer(i_s, &mut ResultContext::Unknown) else {
             todo!()
         };
-        Inferred::from_type(Type::Type(Rc::new(inf.as_type(i_s))))
+        let mut type_part = Type::Never(NeverCause::Other);
+        let mut result = Type::Never(NeverCause::Other);
+        for t in inf.as_cow_type(i_s).iter_with_unpacked_unions(i_s.db) {
+            match t {
+                Type::Class(_) | Type::None | Type::Any(_) => type_part.union_in_place(t.clone()),
+                Type::Literal(l) => type_part.union_in_place(l.fallback_type(i_s.db)),
+                Type::Type(type_) => match type_.as_ref() {
+                    Type::Class(c) => {
+                        match &c.class(i_s.db).use_cached_class_infos(i_s.db).metaclass {
+                            MetaclassState::Some(link) => {
+                                result.union_in_place(Type::new_class(*link, ClassGenerics::None))
+                            }
+                            _ => result.union_in_place(i_s.db.python_state.type_of_object.clone()),
+                        }
+                    }
+                    _ => todo!(),
+                },
+                _ => todo!("{t:?}"),
+            }
+        }
+        if !matches!(type_part, Type::Never(_)) {
+            result.union_in_place(Type::Type(Rc::new(type_part)));
+        }
+        Inferred::from_type(result)
     } else {
         todo!()
     }
