@@ -16,7 +16,7 @@ use crate::{
     arguments::{Args, KnownArgs, SimpleArgs},
     database::{
         BaseClass, ClassInfos, ClassKind, ClassStorage, ComplexPoint, Database, Locality,
-        MetaclassState, ParentScope, Point, PointKind, PointLink, ProtocolMember,
+        MetaclassState, ParentScope, Point, PointKind, PointLink, ProtocolMember, Specific,
         TypedDictDefinition,
     },
     debug,
@@ -2307,7 +2307,9 @@ impl<'db: 'a, 'a> Class<'a> {
     ) {
         let (lookup, _, _) = self.lookup_and_class_and_maybe_ignore_self_internal(i_s, name, false);
         if let Some(inf) = lookup.into_maybe_inferred() {
-            if inf.as_cow_type(i_s).is_func_or_overload_not_any_callable() {
+            if inf.maybe_saved_specific(i_s.db) == Some(Specific::AnnotationOrTypeCommentClassVar) {
+                add_issue(IssueKind::CannotAssignToClassVarViaInstance { name: name.into() })
+            } else if inf.as_cow_type(i_s).is_func_or_overload_not_any_callable() {
                 // See testSlotsAssignmentWithMethodReassign
                 //add_issue(IssueType::CannotAssignToAMethod);
             }

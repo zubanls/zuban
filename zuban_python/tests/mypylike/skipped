@@ -509,6 +509,8 @@ testIterableProtocolOnMetaclass
 # Metaclass instance vs. class members
 testMetaclassConflictingInstanceVars
 testInferenceOfDunderDictOnClassObjects
+# Metaclass matching in assignment
+testMetaclassStrictSupertypeOfTypeWithClassmethods
 
 # Use type(foo) when foo has a metaclass
 testMetaclassTypeCallable
@@ -523,11 +525,6 @@ testInvalidMethodAsDataAttributeInGenericClass
 testMethodWithInvalidMethodAsDataAttribute
 testClassValuedAttributesBasics
 no_self
-
-# ClassVar
-testOverrideOnSelf
-testOverrideOnSelfInSubclass
-testMetaclassStrictSupertypeOfTypeWithClassmethods
 
 # More information needed
 # "Read-only property cannot override read-write property"
