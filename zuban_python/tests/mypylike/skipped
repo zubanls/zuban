@@ -333,17 +333,13 @@ testErrorSettingCallbackWithDifferentFutureType
 testNewTypeInLocalScope
 # class in class forward reference
 testForwardReferenceToNestedClassWithinClass
-testClassWithBaseClassWithinClass
 testDeclarationReferenceToNestedClass
 testNewAnalyzerNamedTupleCallNested
 testNewAnalyzerNamedTupleCallNestedMethod
 # class in function forward reference / type comment
 testGenericClassWithinFunction
 testGenericClassWithInvalidTypevarUseWithinFunction
-testClassWithinFunction
-testDeclareVariableWithNestedClassType
 # function types in class body
-testMethodRefInClassBody
 testRefMethodWithDecorator
 # Class argument and __init__ as overloaded DbType
 testOverloadedToGeneric
@@ -479,7 +475,6 @@ testParamSpecPrefixSubtypingProtocolInvalid
 # Protocols mypy might be wrong?
 testMutuallyRecursiveProtocolsTypesWithSubteMismatchWriteable
 # typing_extensions.runtime_checkable
-testProtocolAndRuntimeAreDefinedAlsoInTypingExtensions
 testOverloadOnProtocol
 testSimpleRuntimeProtocolCheck
 # Protocol nested class matching
@@ -501,10 +496,7 @@ testAssignAndConditionalStarImport
 
 # Metaclass descriptor
 metaclass_descriptor
-# Metaclass Union
-testNotSimplifyingUnionWithMetaclass
 # Metaclass iter/getitem/addition
-testInferringLvarTypesUnpackedFromIterableClassObjectWithGenericIter
 testIterableProtocolOnMetaclass
 # Metaclass instance vs. class members
 testMetaclassConflictingInstanceVars
