@@ -509,8 +509,6 @@ testIterableProtocolOnMetaclass
 # Metaclass instance vs. class members
 testMetaclassConflictingInstanceVars
 testInferenceOfDunderDictOnClassObjects
-# Metaclass matching in assignment
-testMetaclassStrictSupertypeOfTypeWithClassmethods
 
 # Use type(foo) when foo has a metaclass
 testMetaclassTypeCallable

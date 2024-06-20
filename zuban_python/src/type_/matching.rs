@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use super::{
     CallableContent, ClassGenerics, FunctionOverload, Tuple, Type, TypeVarKind, UnionType,
     WithUnpack,
@@ -534,25 +536,34 @@ impl Type {
             Type::Class(c2) => {
                 Self::matches_class(i_s, matcher, class1, &c2.class(i_s.db), variance)
             }
-            Type::Type(t2) => {
-                if let Type::Class(c2) = t2.as_ref() {
+            Type::Type(t2) => match t2.as_ref() {
+                Type::TypeVar(tv) => match &tv.type_var.kind {
+                    TypeVarKind::Bound(bound) => Self::matches_class_against_type(
+                        i_s,
+                        matcher,
+                        class1,
+                        &Type::Type(Rc::new(bound.clone())),
+                        variance,
+                    ),
+                    TypeVarKind::Constraints(_) => todo!(),
+                    TypeVarKind::Unrestricted => Match::new_false(),
+                },
+                Type::Class(c2) => {
                     match c2.class(i_s.db).use_cached_class_infos(i_s.db).metaclass {
-                        MetaclassState::Some(link) => {
-                            return class1.as_type(i_s.db).matches(
-                                i_s,
-                                matcher,
-                                &Type::new_class(link, ClassGenerics::None),
-                                variance,
-                            );
-                        }
+                        MetaclassState::Some(link) => class1.as_type(i_s.db).matches(
+                            i_s,
+                            matcher,
+                            &Type::new_class(link, ClassGenerics::None),
+                            variance,
+                        ),
                         MetaclassState::Unknown => {
                             todo!()
                         }
-                        MetaclassState::None => (),
+                        MetaclassState::None => Match::new_false(),
                     }
                 }
-                Match::new_false()
-            }
+                _ => Match::new_false(),
+            },
             Type::Literal(literal) if variance == Variance::Covariant => {
                 Self::matches_class_against_type(
                     i_s,
