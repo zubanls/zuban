@@ -327,6 +327,7 @@ testSelfTypeNotSelfType
 testSelfTypeNonsensical
 testSelfTypeNew
 testSelfTypeNew_explicit
+testOverloadWithSwappedDecorators2
 no_self
 # Self in bound method shouldn't probably be there
 testFunctionAssignedAsCallback
@@ -370,15 +371,12 @@ testSelfTypeClone
 testNewAnalyzerTypeVarBoundInCycle
 testSelfTypeVarIndexExpr
 testSelfTypesWithParamSpecInfer
-# classmethod self param in overload is not a self param
-testOverloadClassMethodImplementation
 # Recursion error wtf?
 testRefMethodWithOverloadDecorator
 # classmethod self type with overload
 testSelfTypeClassMethodOverloadedOnInstance
 SelfTypeOverloadedClassMethod
 # Error for staticmethod: "Overloaded function implementation does not accept all possible arguments of signature 1"
-testOverloadWithSwappedDecorators2
 testTypeVarTupleNewSyntaxCallables
 # "Static methods cannot use Self type"
 testTypingSelfClassMethod
