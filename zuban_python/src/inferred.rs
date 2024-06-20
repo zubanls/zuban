@@ -777,6 +777,7 @@ impl<'db: 'slf, 'slf> Inferred {
     pub(crate) fn bind_instance_descriptors(
         self,
         i_s: &InferenceState,
+        for_name: &str,
         instance: Type,
         func_class: Class,
         add_issue: impl Fn(IssueKind),
@@ -784,6 +785,7 @@ impl<'db: 'slf, 'slf> Inferred {
     ) -> Option<(Self, AttributeKind)> {
         self.bind_instance_descriptors_internal(
             i_s,
+            for_name,
             instance,
             func_class,
             add_issue,
@@ -795,6 +797,7 @@ impl<'db: 'slf, 'slf> Inferred {
     fn bind_instance_descriptors_internal(
         self,
         i_s: &InferenceState,
+        for_name: &str,
         instance: Type,
         attribute_class: Class,
         add_issue: impl Fn(IssueKind),
@@ -864,6 +867,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             });
                             return Inferred::from_type(t).bind_instance_descriptors_internal(
                                 i_s,
+                                for_name,
                                 instance,
                                 attribute_class,
                                 add_issue,
@@ -888,6 +892,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             };
                             if let Some(r) = Self::bind_instance_descriptors_for_type(
                                 i_s,
+                                for_name,
                                 instance,
                                 attribute_class,
                                 add_issue,
@@ -988,6 +993,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             ComplexPoint::TypeInstance(t) => {
                                 if let Some(inf) = Self::bind_instance_descriptors_for_type(
                                     i_s,
+                                    for_name,
                                     instance,
                                     attribute_class,
                                     add_issue,
@@ -1017,6 +1023,7 @@ impl<'db: 'slf, 'slf> Inferred {
                 if let ComplexPoint::TypeInstance(t) = complex {
                     if let Some(inf) = Self::bind_instance_descriptors_for_type(
                         i_s,
+                        for_name,
                         instance,
                         attribute_class,
                         add_issue,
@@ -1037,6 +1044,7 @@ impl<'db: 'slf, 'slf> Inferred {
 
     fn bind_instance_descriptors_for_type(
         i_s: &InferenceState,
+        for_name: &str,
         instance: Type,
         attribute_class: Class,
         add_issue: impl Fn(IssueKind),
@@ -1045,6 +1053,18 @@ impl<'db: 'slf, 'slf> Inferred {
         apply_descriptors_kind: ApplyDescriptorsKind,
     ) -> Option<Option<(Self, AttributeKind)>> {
         let mut t = t; // Weird lifetime issue
+        let add_invalid_self_arg = |c: &CallableContent| {
+            add_issue(IssueKind::InvalidSelfArgument {
+                argument_type: instance.format_short(i_s.db),
+                function_name: Box::from(
+                    c.name
+                        .as_ref()
+                        .map(|n| n.as_str(i_s.db))
+                        .unwrap_or(for_name.into()),
+                ),
+                callable: c.format(&FormatData::new_short(i_s.db)).into(),
+            })
+        };
         match t {
             Type::Callable(c) => match c.kind {
                 FunctionKind::Function { .. }
@@ -1052,21 +1072,22 @@ impl<'db: 'slf, 'slf> Inferred {
                 {
                     debug_assert!(matches!(c.kind, FunctionKind::Function { .. }));
                     if let Some(f) = c.first_positional_type() {
-                        return Some(
-                            create_signature_without_self_for_callable(
-                                i_s,
-                                c,
-                                &instance,
-                                &attribute_class,
-                                &f,
-                            )
-                            .map(|c| {
-                                (
-                                    Inferred::from_type(Type::Callable(Rc::new(c))),
-                                    AttributeKind::DefMethod,
-                                )
-                            }),
-                        );
+                        let new_c = create_signature_without_self_for_callable(
+                            i_s,
+                            c,
+                            &instance,
+                            &attribute_class,
+                            &f,
+                        )
+                        .map(|c| Rc::new(c))
+                        .unwrap_or_else(|| {
+                            add_invalid_self_arg(c);
+                            i_s.db.python_state.any_callable_from_error.clone()
+                        });
+                        return Some(Some((
+                            Inferred::from_type(Type::Callable(new_c)),
+                            AttributeKind::DefMethod,
+                        )));
                     } else {
                         todo!()
                     }
@@ -1080,13 +1101,7 @@ impl<'db: 'slf, 'slf> Inferred {
                         {
                             (Inferred::from_type(t), AttributeKind::Property { writable })
                         } else {
-                            add_issue(IssueKind::InvalidSelfArgument {
-                                argument_type: instance.format_short(i_s.db),
-                                function_name: Box::from(
-                                    c.name.as_ref().map(|n| n.as_str(i_s.db)).unwrap_or(""),
-                                ),
-                                callable: c.format(&FormatData::new_short(i_s.db)).into(),
-                            });
+                            add_invalid_self_arg(c);
                             (Inferred::new_any_from_error(), AttributeKind::Attribute)
                         },
                     ));

@@ -293,11 +293,18 @@ impl<'a> Instance<'a> {
                     } else {
                         self.class.as_type(i_s.db)
                     };
-                    inf.bind_instance_descriptors(&i_s, instance, c, options.add_issue, mro_index)
-                        .map(|inf| {
-                            attr_kind = inf.1;
-                            inf.0
-                        })
+                    inf.bind_instance_descriptors(
+                        &i_s,
+                        name,
+                        instance,
+                        c,
+                        options.add_issue,
+                        mro_index,
+                    )
+                    .map(|inf| {
+                        attr_kind = inf.1;
+                        inf.0
+                    })
                 } else {
                     Some(inf)
                 }
@@ -570,6 +577,7 @@ impl<'db: 'a, 'a> Iterator for ClassMroFinder<'db, 'a, '_> {
                         .and_then(|inf| {
                             inf.bind_instance_descriptors(
                                 self.i_s,
+                                self.name,
                                 self.instance.class.as_type(self.i_s.db),
                                 class,
                                 |issue| self.from.add_issue(self.i_s, issue),

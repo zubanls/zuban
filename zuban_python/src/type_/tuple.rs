@@ -630,6 +630,7 @@ pub(crate) fn lookup_on_tuple<'x>(
                 };
                 let Some((lookup, attr_kind)) = inf.bind_instance_descriptors(
                     i_s,
+                    name,
                     tuple_cls.as_type(i_s.db),
                     cls,
                     add_issue,

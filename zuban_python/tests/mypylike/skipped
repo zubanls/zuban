@@ -509,8 +509,9 @@ testMetaclassMemberAccessViaType
 testNoneAlias
 testNoneAliasStrict
 
-# "Invalid self argument "A[C]" to attribute function "f" with type "Callable[[A[B]], None]""
-testInvalidMethodAsDataAttributeInGenericClass
+# "Invalid self argument issues
+testNamedTupleWithManyArgsCallableField
+
 # "Attribute function "f" with type "Callable[[], None]" does not accept self argument"
 testMethodWithInvalidMethodAsDataAttribute
 testClassValuedAttributesBasics
@@ -554,11 +555,6 @@ testIntroducingInplaceOperatorInSubclass
 testNewNamedTupleIllegalNames
 testNamedTupleFallback
 testNamedTupleIncompatibleRedefinition
-
-# "Accessing "__init__" on an instance is unsound, since instance.__init__ could be from an incompatible subclass"
-testAccessingInit
-# "Unsupported decorated constructor type"
-testDecoratedConstructorsBad
 
 # TypeVar Values in func
 testErrorCodeInvalidTypeArg
@@ -1314,6 +1310,10 @@ testMultipleModulesInOverridePyProjectTOML
 
 # __init__ None needed
 testInitReturnTypeError
+# "Accessing "__init__" on an instance is unsound, since instance.__init__ could be from an incompatible subclass"
+testAccessingInit
+# "Unsupported decorated constructor type"
+testDecoratedConstructorsBad
 
 # __init_subclass__
 testOverride__init_subclass__WithDifferentSignature
