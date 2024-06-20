@@ -115,6 +115,13 @@ testRecursiveAliasBasicGenericInference
 testRecursiveClassLevelAlias
 # used before def wrong error in recursive type definition
 testAliasInstanceNameClash
+# better meet/join
+testJoinProtocolCallback
+testMeetOfIncompatibleProtocols
+testMeetProtocolCallback
+# join with matcher
+testGenericUnionFunctionJoin
+testTypeVarIdsNested
 
 # Type var finder recursion is not handled, because imports are involved.
 testRecursiveAliasImported
@@ -270,14 +277,6 @@ testInferLambdaTypeUsingContext
 # Generator in lambda
 testNoCrashOnLambdaGenerator
 
-# better meet/join
-testJoinProtocolCallback
-testMeetOfIncompatibleProtocols
-testMeetProtocolCallback
-# join with matcher
-testGenericUnionFunctionJoin
-testTypeVarIdsNested
-
 # Nested type vars
 testFunctionInGenericInnerClassTypeVariable-skip
 testParamSpecTestPropAccess
@@ -325,6 +324,9 @@ testTypingSelfConflict
 # "Self argument missing for a non-static method"
 # "The erased type of self "None" is not a supertype of its class "__main__.A""
 testSelfTypeNotSelfType
+testSelfTypeNonsensical
+testSelfTypeNew
+testSelfTypeNew_explicit
 no_self
 # Self in bound method shouldn't probably be there
 testFunctionAssignedAsCallback
@@ -386,11 +388,6 @@ testOverloadWithSwappedDecorators2
 testTypeVarTupleNewSyntaxCallables
 # "Static methods cannot use Self type"
 testTypingSelfClassMethod
-
-# "The erased type of self "Type[__main__.A]" is not a supertype of its class "Type[__main__.B]""
-testSelfTypeNonsensical
-testSelfTypeNew
-testSelfTypeNew_explicit
 
 # dataclasses __slots__
 testDataclassWithSlotsArg
