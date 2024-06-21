@@ -307,3 +307,33 @@ u: int | None
 class D(C): ...
 d: D
 reveal_type(d.get(u))  # N: Revealed type is "int | __main__.D"
+
+[case overload_classmethod_without_self_type]
+# Like testSelfTypeClassMethodOverloadedOnInstance, but without first annotations.
+from typing import Optional, Type, TypeVar, overload, Union
+
+Id = int
+
+class AClass:
+    @overload
+    @classmethod
+    def delete(cls, id: Id, id2: Id) -> Optional[int]: ...
+
+    @overload
+    @classmethod
+    def delete(cls, id: AClass, id2: None = None) -> Optional[int]: ...
+
+    @classmethod
+    def delete(cls, id: Union[AClass, Id], id2: Optional[Id] = None) -> Optional[int]:
+        ...
+
+def foo(x: Type[AClass]) -> None:
+    reveal_type(x.delete)  # N: Revealed type is "Overload(def (id: builtins.int, id2: builtins.int) -> Union[builtins.int, None], def (id: __main__.AClass, id2: None =) -> Union[builtins.int, None])"
+    y = x()
+    reveal_type(y.delete)  # N: Revealed type is "Overload(def (id: builtins.int, id2: builtins.int) -> Union[builtins.int, None], def (id: __main__.AClass, id2: None =) -> Union[builtins.int, None])"
+    y.delete(10, 20)
+    y.delete(y)
+
+def bar(x: AClass) -> None:
+    reveal_type(x.delete)  # N: Revealed type is "Overload(def (id: builtins.int, id2: builtins.int) -> Union[builtins.int, None], def (id: __main__.AClass, id2: None =) -> Union[builtins.int, None])"
+    x.delete(10, 20)

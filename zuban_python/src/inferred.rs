@@ -913,7 +913,8 @@ impl<'db: 'slf, 'slf> Inferred {
                     PointKind::Complex => {
                         match node_ref.complex().unwrap() {
                             ComplexPoint::FunctionOverload(o) => {
-                                let attr_kind = match o.kind() {
+                                let kind = o.kind();
+                                let attr_kind = match kind {
                                     FunctionKind::Staticmethod => {
                                         return Some((self, AttributeKind::Staticmethod))
                                     }
@@ -929,18 +930,35 @@ impl<'db: 'slf, 'slf> Inferred {
                                     let results: Vec<_> = o
                                         .iter_functions()
                                         .filter_map(|callable| {
-                                            if let Some(t) = callable.first_positional_type() {
-                                                create_signature_without_self_for_callable(
-                                                    i_s,
-                                                    callable,
-                                                    &instance,
-                                                    &attribute_class,
-                                                    &t,
-                                                )
-                                                .map(Rc::new)
-                                            } else {
-                                                None
+                                            match kind {
+                                                FunctionKind::Function { .. } => {
+                                                    if let Some(t) =
+                                                        callable.first_positional_type()
+                                                    {
+                                                        create_signature_without_self_for_callable(
+                                                            i_s,
+                                                            callable,
+                                                            &instance,
+                                                            &attribute_class,
+                                                            &t,
+                                                        )
+                                                    } else {
+                                                        None
+                                                    }
+                                                }
+                                                FunctionKind::Classmethod { .. } => {
+                                                    let inst_c = instance_cls(i_s, &instance);
+                                                    infer_class_method(
+                                                        i_s,
+                                                        inst_c.class(i_s.db),
+                                                        attribute_class,
+                                                        &callable,
+                                                    )
+                                                }
+                                                FunctionKind::Staticmethod
+                                                | FunctionKind::Property { .. } => unreachable!(),
                                             }
+                                            .map(Rc::new)
                                         })
                                         .collect();
                                     match results.len() {
