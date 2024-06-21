@@ -53,34 +53,28 @@ overload_union_math_on_class_init_constrained
 testOverloadDetectsPossibleMatchesWithGenerics
 testOverloadsAndNoReturnNarrowWhenBlacklistingSubtype
 testOverloadsAndNoReturnNarrowWhenBlacklistingSubtype2
-# overload *args should be used if a list of never/any is given?
-testOverloadVarargsSelection
 # overload Any unclear why Mypy decides like this
 testTypeVarTupleOverloadMatch
 # overload x should be preferred over an *x alternative
 testTupleOverloadZipAny
-# - Overload does not consistently use the "@classmethod" decorator on all function signatures
-# - Overload does not consistently use the "@staticmethod" decorator on all function signatures
-testOverloadWithInconsistentStaticMethods
 # - Condition cannot be inferred, unable to merge overloads
-testOverloadIf*
-# Overloads are detected in name binder (imports can not be there)
-testVeryBrokenOverload
-testVeryBrokenOverload2
-# - The implementation for an overloaded function must come last
-testInconsistentOverload
-testInconsistentOverload2
-# Non consecutive overloads
-testNonconsecutiveOverloads
-testNonconsecutiveOverloadsMissingFirstOverload
-testNonconsecutiveOverloadsMissingLaterOverload
-# overload variant formatting
-testSpecialCaseEmptyListInitialization2
+testOverloadIfSplitFunctionDef
+testOverloadIfMixed
+testOverloadIfUnconditionalFuncDef
+testOverloadIfBasic
+testOverloadIfNotMerging
+testOverloadIfElse
+testOverloadIfElse2
+testOverloadIfElse3
+testOverloadIfSkipUnknownExecution
+testOverloadIfDontSkipUnrelatedOverload
+testOverloadIfNotMergingDifferentNames
+testOverloadIfNestedOk
+testOverloadIfNestedFailure
 
 # Union/addition of empty lists dicts sets with used ones
 testOrOperationWithGenericOperands
 testOrOperationInferredFromContext
-testOperatorWithEmptyListAndSum
 testInWithInvalidArgs
 # ternary context inference
 testUnificationEmptyListLeft
@@ -287,7 +281,6 @@ testUnpackingParamsSpecArgsAndKwargs
 testParamSpecConcatenateFromPep
 testNestedGenericFunctionTypeApplication
 testIncrementalInnerClassAttrInMethodReveal
-param_spec_with_identity_mypy_issue_12278
 
 # Param spec invalid definitions
 testInvalidParamSpecDefinitionsWithArgsKwargs
@@ -299,7 +292,6 @@ testParamSpecInvalidCalls
 # ParamSpec is not unbound if working like a T in Callable?
 testTrivialParametersHandledCorrectly
 # Class function Foo.bar something like a BoundFunction
-testParamSpecConstraintOnOtherParamSpec
 testExpandNonBareParamSpecAgainstCallable
 # param spec new tests
 testParamSpecClassConstructor
@@ -331,6 +323,7 @@ testSelfTypeNew
 testSelfTypeNew_explicit
 testOverloadWithSwappedDecorators2
 no_self
+testOverloadWithInconsistentStaticMethods
 # Self in bound method shouldn't probably be there
 testFunctionAssignedAsCallback
 testErrorSettingCallbackWithDifferentFutureType
@@ -1295,6 +1288,14 @@ testInitSubclassUnannotated
 testTooManyArgsForObject
 testNoClassKeywordsForNamedTuple
 testTypedDictWithClassLevelKeywords
+
+# - The implementation for an overloaded function must come last
+testInconsistentOverload
+testInconsistentOverload2
+# Non consecutive overloads
+testNonconsecutiveOverloads
+testNonconsecutiveOverloadsMissingFirstOverload
+testNonconsecutiveOverloadsMissingLaterOverload
 
 # type ignore leads to "Revealed type is "A?""
 testSerializeIgnoredInvalidType
