@@ -93,9 +93,16 @@ pub(super) enum SpecialType {
 #[derive(Debug, Clone)]
 pub(super) enum InvalidVariableType<'a> {
     List,
-    Tuple { tuple_length: usize },
-    Execution { was_class: bool },
-    Function(Function<'a, 'a>),
+    Tuple {
+        tuple_length: usize,
+    },
+    Execution {
+        was_class: bool,
+    },
+    Function {
+        name: &'a str,
+        qualified_name: String,
+    },
     ParamNameAsBaseClassAny(NodeRef<'a>),
     Literal(&'a str),
     Variable(NodeRef<'a>),
@@ -141,15 +148,14 @@ impl InvalidVariableType<'_> {
                     Box::from("See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases"),
                 )
             }
-            Self::Function(func) => {
+            Self::Function {
+                name,
+                qualified_name,
+            } => {
                 add_issue(IssueKind::InvalidType(
-                    format!(
-                        "Function {:?} is not valid as a type",
-                        func.qualified_name(db),
-                    )
-                    .into(),
+                    format!("Function {:?} is not valid as a type", qualified_name,).into(),
                 ));
-                IssueKind::Note(Box::from(match func.name() {
+                IssueKind::Note(Box::from(match *name {
                     "any" => "Perhaps you meant \"typing.Any\" instead of \"any\"?",
                     "callable" => "Perhaps you meant \"typing.Callable\" instead of \"callable\"?",
                     _ => "Perhaps you need \"Callable[...]\" or a callback protocol?",
@@ -4791,7 +4797,7 @@ pub(super) fn check_type_name<'db: 'file, 'file>(
             }
             inference.compute_type_assignment(assignment, false)
         }
-        TypeLike::Function(f) => TypeNameLookup::InvalidVariable(InvalidVariableType::Function({
+        TypeLike::Function(f) => TypeNameLookup::InvalidVariable({
             let name_def_ref =
                 name_node_ref.add_to_node_index(-(NAME_DEF_TO_NAME_DIFFERENCE as i64));
             let name_def_point = name_def_ref.point();
@@ -4801,8 +4807,15 @@ pub(super) fn check_type_name<'db: 'file, 'file>(
                 }
             }
             let point = name_node_ref.point();
-            Function::new(NodeRef::new(name_node_ref.file, f.index()), None)
-        })),
+            let func = Function::new(
+                NodeRef::new(name_node_ref.file, f.index()),
+                i_s.current_class().copied(),
+            );
+            InvalidVariableType::Function {
+                name: name_node_ref.as_code(),
+                qualified_name: func.qualified_name(i_s.db),
+            }
+        }),
         TypeLike::ImportFromAsName(_) | TypeLike::DottedAsName(_) => {
             let name_def_ref =
                 name_node_ref.add_to_node_index(-(NAME_DEF_TO_NAME_DIFFERENCE as i64));
