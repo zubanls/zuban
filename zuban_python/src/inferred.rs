@@ -1274,10 +1274,25 @@ impl<'db: 'slf, 'slf> Inferred {
                             }
                             FunctionKind::Property { .. } => unreachable!(),
                             FunctionKind::Classmethod { .. } => {
-                                return Some((
-                                    infer_overloaded_class_method(i_s, *class, attribute_class, o),
-                                    AttributeKind::Attribute,
-                                ))
+                                let Some(inf) =
+                                    infer_overloaded_class_method(i_s, *class, attribute_class, o)
+                                else {
+                                    add_issue(IssueKind::InvalidSelfArgument {
+                                        argument_type: class.as_type_type(i_s).format_short(i_s.db),
+                                        function_name: o
+                                            .iter_functions()
+                                            .next()
+                                            .map(|c| c.name(i_s.db))
+                                            .unwrap()
+                                            .into(),
+                                        callable: self.format_short(i_s),
+                                    });
+                                    return Some((
+                                        Inferred::new_any_from_error(),
+                                        AttributeKind::Attribute,
+                                    ));
+                                };
+                                return Some((inf, AttributeKind::Attribute));
                             }
                             FunctionKind::Staticmethod => (),
                         },
@@ -1431,7 +1446,12 @@ impl<'db: 'slf, 'slf> Inferred {
                     },
                     PointKind::Complex => match node_ref.complex().unwrap() {
                         ComplexPoint::FunctionOverload(o) => {
-                            return infer_overloaded_class_method(i_s, *class, attribute_class, o)
+                            let Some(inf) =
+                                infer_overloaded_class_method(i_s, *class, attribute_class, o)
+                            else {
+                                todo!()
+                            };
+                            return inf;
                         }
                         ComplexPoint::TypeInstance(t @ Type::Callable(c)) => {
                             let Some(c) = infer_class_method(i_s, *class, attribute_class, c)
@@ -2135,17 +2155,19 @@ fn infer_overloaded_class_method(
     class: Class,
     attribute_class: Class,
     o: &OverloadDefinition,
-) -> Inferred {
-    Inferred::from_type(Type::FunctionOverload(FunctionOverload::new(
-        o.iter_functions()
-            .map(|callable| {
-                let Some(c) = infer_class_method(i_s, class, attribute_class, callable) else {
-                    todo!();
-                };
-                Rc::new(c)
-            })
-            .collect(),
-    )))
+) -> Option<Inferred> {
+    let functions: Box<[_]> = o
+        .iter_functions()
+        .filter_map(|callable| {
+            let c = infer_class_method(i_s, class, attribute_class, callable)?;
+            Some(Rc::new(c))
+        })
+        .collect();
+    Some(Inferred::from_type(match functions.len() {
+        0 => return None,
+        1 => Type::Callable(functions.into_vec().into_iter().next().unwrap()),
+        _ => Type::FunctionOverload(FunctionOverload::new(functions)),
+    }))
 }
 
 fn instance_cls<'x>(i_s: &InferenceState, instance_t: &'x Type) -> Cow<'x, GenericClass> {

@@ -337,3 +337,59 @@ def foo(x: Type[AClass]) -> None:
 def bar(x: AClass) -> None:
     reveal_type(x.delete)  # N: Revealed type is "Overload(def (id: builtins.int, id2: builtins.int) -> Union[builtins.int, None], def (id: __main__.AClass, id2: None =) -> Union[builtins.int, None])"
     x.delete(10, 20)
+
+[case self_type_filtering_of_classmethod_overload]
+from typing import Optional, Type, TypeVar, overload, Union, Generic
+
+T = TypeVar("T")
+
+class A(Generic[T]):
+    @overload
+    @classmethod
+    def delete(cls: Type[A[int]], id: int) -> int: ...
+
+    @overload
+    @classmethod
+    def delete(cls: Type[A[str]], id: str) -> str: ...
+
+    @overload
+    @classmethod
+    def delete(cls: Type[A[str]], id: bytes) -> bytes: ...
+
+    @classmethod
+    def delete(cls, id):
+        ...
+
+def foo_no_generics(x: Type[A]) -> None:
+    reveal_type(x.delete)  # N: Revealed type is "Overload(def (id: int) -> int, def (id: str) -> str, def (id: bytes) -> bytes)"
+    y = x()
+    reveal_type(y.delete)  # N: Revealed type is "Overload(def (id: int) -> int, def (id: str) -> str, def (id: bytes) -> bytes)"
+    reveal_type(y.delete(10))  # N: Revealed type is "int"
+
+def bar_no_generics(x: A) -> None:
+    reveal_type(x.delete)  # N: Revealed type is "Overload(def (id: int) -> int, def (id: str) -> str, def (id: bytes) -> bytes)"
+    reveal_type(x.delete(""))  # N: Revealed type is "str"
+
+def foo_str(x: Type[A[str]]) -> None:
+    reveal_type(x.delete)  # N: Revealed type is "Overload(def (id: str) -> str, def (id: bytes) -> bytes)"
+    y = x()
+    reveal_type(y.delete)  # N: Revealed type is "Overload(def (id: str) -> str, def (id: bytes) -> bytes)"
+    reveal_type(y.delete(10))  # E: No overload variant of "delete" of "A" matches argument type "int" \
+                               # N: Possible overload variants: \
+                               # N:     def delete(cls, id: str) -> str \
+                               # N:     def delete(cls, id: bytes) -> bytes \
+                               # N: Revealed type is "Any"
+    reveal_type(y.delete(b''))  # N: Revealed type is "bytes"
+
+def foo_int(x: Type[A[int]]) -> None:
+    reveal_type(x.delete)  # N: Revealed type is "def (id: int) -> int"
+    y = x()
+    reveal_type(y.delete)  # N: Revealed type is "def (id: int) -> int"
+    reveal_type(y.delete(10))  # N: Revealed type is "int"
+
+def foo_something_else(x: Type[A[list[int]]]) -> None:
+    reveal_type(x.delete)  # E: Invalid self argument "Type[A[list[int]]]" to attribute function "delete" with type "overloaded function" \
+                           # N: Revealed type is "Any"
+    y = x()
+    reveal_type(y.delete)  # E: Invalid self argument "Type[A[list[int]]]" to class attribute function "delete" with type "Callable[[Type[A[int]], int], int]" \
+                           # N: Revealed type is "Any"

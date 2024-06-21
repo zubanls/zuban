@@ -115,8 +115,13 @@ fn calculate_init_type_vars_and_return<'db: 'a, 'a>(
     if has_generics {
         type_arguments.type_arguments = match class.generics_as_list(i_s.db) {
             ClassGenerics::List(generics_list) => Some(generics_list),
-            ClassGenerics::ExpressionWithClassType(_) => todo!(),
-            ClassGenerics::SlicesWithClassTypes(_) => todo!(),
+            class_generics @ (ClassGenerics::ExpressionWithClassType(_)
+            | ClassGenerics::SlicesWithClassTypes(_)) => Some(GenericsList::new_generics(
+                Generics::from_class_generics(i_s.db, &class_generics)
+                    .iter(i_s.db)
+                    .map(|g| g.into_generic_item(i_s.db))
+                    .collect(),
+            )),
             ClassGenerics::None => None,
             ClassGenerics::NotDefinedYet => unreachable!(),
         };
