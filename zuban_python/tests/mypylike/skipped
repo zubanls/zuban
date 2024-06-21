@@ -335,31 +335,10 @@ no_self
 testFunctionAssignedAsCallback
 testErrorSettingCallbackWithDifferentFutureType
 
-# NewType in function "A@6" as qualified name
-testNewTypeInLocalScope
-# class in class forward reference
-testForwardReferenceToNestedClassWithinClass
-testDeclarationReferenceToNestedClass
-testNewAnalyzerNamedTupleCallNested
-testNewAnalyzerNamedTupleCallNestedMethod
-# class in function forward reference / type comment
-testGenericClassWithinFunction
-testGenericClassWithInvalidTypevarUseWithinFunction
-# function types in class body
-testRefMethodWithDecorator
 # Class argument and __init__ as overloaded DbType
 testOverloadedToGeneric
 # Class __init__ like `def __init__(self: C[Int[S]], x: int, y: S) -> None: ...`
 testOverloadedGenericInit
-
-# name binding of type definitions within function/class scopes
-testSerializeNamedTupleInMethod4
-testForwardBoundFunctionScopeWorks
-testIncrementalNestedTypeAlias
-testNewAnalyzerAnnotationConflictsWithAttributeSinglePass
-testNewAnalyzerAnnotationConflictsWithAttributeTwoPasses
-testNewAnalyzerNameConflictsAndMultiLineDefinition
-
 # object.__new__(cls) -> Self where object.__new__(int) leads to Never
 testOverride__new__AndCallObject
 # __new__ return types with Never
@@ -1206,12 +1185,32 @@ testPEP695*
 testEnumNonMemberSupport
 testEnumMemberSupport
 
+# Forward name binder reference in class
+testNewAnalyzerNamedTupleCallNested
+# class binder questionable types in class body
+testRefMethodWithDecorator
+# str methods vs. str annotations, when do we use which type
+testNewAnalyzerAnnotationConflictsWithAttributeSinglePass
+testNewAnalyzerAnnotationConflictsWithAttributeTwoPasses
+testNewAnalyzerNameConflictsAndMultiLineDefinition
+# forwards references/type comments name binding of type definitions within function/class scopes
+testForwardBoundFunctionScopeWorks
+testIncrementalNestedTypeAlias
+testSerializeNamedTupleInMethod4
+testForwardReferenceToNestedClassWithinClass
+testDeclarationReferenceToNestedClass
+testNewAnalyzerNamedTupleCallNestedMethod
+testGenericClassWithinFunction
+testGenericClassWithInvalidTypevarUseWithinFunction
+
 # Assignment like ac[b] += c with both __getitem__ and __setitem__ has same error twice
 testOperatorAssignmentWithIndexLvalue1
 
 # NotImplemented
 testReturnAnyForNotImplementedInNormalMethods
 
+# NewType in function "A@6" as qualified name
+testNewTypeInLocalScope
 # qualified name in function contains class path: __main__.Cls.FooEnum@4
 testAnonymousFunctionalEnum
 testNewAnalyzerIncrementalMethodNamedTuple
