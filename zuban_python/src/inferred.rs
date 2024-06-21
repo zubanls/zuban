@@ -1110,17 +1110,8 @@ impl<'db: 'slf, 'slf> Inferred {
                     ));
                 }
                 FunctionKind::Classmethod { .. } => {
-                    let tmp;
-                    let instance_cls = match &instance {
-                        Type::Class(c) => c,
-                        Type::Self_ => {
-                            tmp = i_s.current_class().unwrap().as_generic_class(i_s.db);
-                            &tmp
-                        }
-                        _ => todo!("Is this always the case?"),
-                    };
-                    let instance_cls = instance_cls.class(i_s.db);
-                    let result = infer_class_method(i_s, instance_cls, attribute_class, c);
+                    let inst_c = instance_cls(i_s, &instance);
+                    let result = infer_class_method(i_s, inst_c.class(i_s.db), attribute_class, c);
                     if result.is_none() {
                         let t = IssueKind::InvalidClassMethodFirstArgument {
                             argument_type: Type::Type(Rc::new(instance)).format_short(i_s.db),
@@ -2137,6 +2128,14 @@ fn infer_overloaded_class_method(
             })
             .collect(),
     )))
+}
+
+fn instance_cls<'x>(i_s: &InferenceState, instance_t: &'x Type) -> Cow<'x, GenericClass> {
+    match instance_t {
+        Type::Class(c) => Cow::Borrowed(c),
+        Type::Self_ => Cow::Owned(i_s.current_class().unwrap().as_generic_class(i_s.db)),
+        _ => todo!("Is this always the case?"),
+    }
 }
 
 pub fn infer_class_method<'db: 'class, 'class>(
