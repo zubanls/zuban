@@ -1792,7 +1792,12 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
     }
 
     pub fn qualified_name(&self, db: &'a Database) -> String {
-        format!("{}.{}", self.node_ref.file.qualified_name(db), self.name())
+        let file_names = self.node_ref.file.qualified_name(db);
+        if let Some(class) = self.class {
+            format!("{file_names}.{}.{}", class.name(), self.name())
+        } else {
+            format!("{file_names}.{}", self.name())
+        }
     }
 
     pub fn name(&self) -> &str {

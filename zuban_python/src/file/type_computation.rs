@@ -3040,10 +3040,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
 
     fn compute_type_atom(&mut self, atom: Atom<'x>) -> TypeContent<'db, 'x> {
         match atom.unpack() {
-            AtomContent::Name(n) => {
-                self.inference.infer_name_reference(n);
-                self.compute_type_name(n)
-            }
+            AtomContent::Name(n) => self.compute_type_name(n),
             AtomContent::Strings(s_o_b) => match s_o_b.as_python_string() {
                 PythonString::Ref(start, s) => self.compute_forward_reference(start, s.into()),
                 PythonString::String(start, s) => self.compute_forward_reference(start, s.into()),
@@ -3685,10 +3682,6 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
         if point.calculated() {
             return load_cached_type(cached_type_node_ref);
         }
-        // It is a little bit special that at this point we can have point.calculating(), but this
-        // is due to weird alias recursions where an alias is inferred normally and the type
-        // computation is kind of invoked as a type application. So in some very weird and
-        // recursive cases the calculation is done twice.
 
         if let Some(name) = assignment.maybe_simple_type_reassignment() {
             // For very simple cases like `Foo = int`. Not sure yet if this going to stay.
@@ -3903,8 +3896,11 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
     }
 
     pub(super) fn lookup_type_name(&self, name: Name<'x>) -> TypeNameLookup<'db, 'x> {
-        let point = self.file.points.get(name.index());
-        debug_assert!(self.file.points.get(name.index()).calculated());
+        let mut point = self.file.points.get(name.index());
+        if !self.file.points.get(name.index()).calculated() {
+            self.infer_name_reference(name);
+            point = self.file.points.get(name.index());
+        }
         match point.kind() {
             PointKind::Specific => match point.specific() {
                 Specific::AnyDueToError => {
@@ -4783,8 +4779,15 @@ pub(super) fn check_type_name<'db: 'file, 'file>(
                 .points
                 .get(new_name.name_definition().unwrap().index());
             let inference = name_node_ref.file.inference(i_s);
-            if !def_point.calculated() || def_point.maybe_specific() != Some(Specific::Cycle) {
-                inference.cache_assignment(assignment);
+            if !def_point.calculated() {
+                if def_point.calculating() {
+                    name_node_ref.file.points.set(
+                        new_name.name_definition().unwrap().index(),
+                        Point::new_specific(Specific::Cycle, Locality::Todo),
+                    );
+                } else {
+                    inference.cache_assignment(assignment);
+                }
             }
             inference.compute_type_assignment(assignment, false)
         }
