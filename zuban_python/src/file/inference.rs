@@ -2986,10 +2986,16 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             }
         }
         if let Some(super_file) = &self.file.super_file {
+            // This sub file currently means we're in a type definition.
             if let Some(func) = self.i_s.current_function() {
                 debug!("TODO lookup in func of sub file")
             } else if let Some(class) = self.i_s.current_class() {
-                debug!("TODO lookup in class of sub file")
+                if let Some(index) = class.class_storage.class_symbol_table.lookup_symbol(name) {
+                    return Some(StarImportResult::Link(PointLink::new(
+                        class.node_ref.file_index(),
+                        index,
+                    )));
+                }
             }
 
             let super_file = self.i_s.db.loaded_python_file(*super_file);
