@@ -240,6 +240,7 @@ impl<'a> Instance<'a> {
             mro_iterator,
             from,
             name: "__iter__",
+            as_instance: None,
         };
         for found_on_class in finder {
             match found_on_class {
@@ -464,6 +465,7 @@ impl<'a> Instance<'a> {
         i_s: &InferenceState,
         slice_type: &SliceType,
         result_context: &mut ResultContext,
+        as_instance: &Type,
     ) -> Inferred {
         if let Some(named_tuple) = self
             .class
@@ -481,6 +483,7 @@ impl<'a> Instance<'a> {
             mro_iterator,
             from,
             name: "__getitem__",
+            as_instance: Some(as_instance),
         };
         for found_on_class in finder {
             match found_on_class {
@@ -563,6 +566,7 @@ struct ClassMroFinder<'db, 'a, 'd> {
     mro_iterator: MroIterator<'db, 'a>,
     from: NodeRef<'d>,
     name: &'d str,
+    as_instance: Option<&'a Type>,
 }
 
 impl<'db: 'a, 'a> Iterator for ClassMroFinder<'db, 'a, '_> {
@@ -578,7 +582,9 @@ impl<'db: 'a, 'a> Iterator for ClassMroFinder<'db, 'a, '_> {
                             inf.bind_instance_descriptors(
                                 self.i_s,
                                 self.name,
-                                self.instance.class.as_type(self.i_s.db),
+                                self.as_instance
+                                    .cloned()
+                                    .unwrap_or_else(|| self.instance.class.as_type(self.i_s.db)),
                                 class,
                                 |issue| self.from.add_issue(self.i_s, issue),
                                 mro_index,

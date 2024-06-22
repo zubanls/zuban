@@ -2174,6 +2174,10 @@ fn instance_cls<'x>(i_s: &InferenceState, instance_t: &'x Type) -> Cow<'x, Gener
     match instance_t {
         Type::Class(c) => Cow::Borrowed(c),
         Type::Self_ => Cow::Owned(i_s.current_class().unwrap().as_generic_class(i_s.db)),
+        Type::TypeVar(tv) => match &tv.type_var.kind {
+            TypeVarKind::Bound(t) => instance_cls(i_s, t),
+            _ => unreachable!(),
+        },
         _ => todo!("Is this always the case?"),
     }
 }

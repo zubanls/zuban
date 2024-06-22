@@ -142,6 +142,13 @@ impl Type {
             }
             t @ Type::TypeVar(usage) => match &usage.type_var.kind {
                 TypeVarKind::Bound(bound) => {
+                    /*
+                    if let Type::Class(c) = bound {
+                        let inst = Instance::new(c.class(i_s.db), None);
+                        let l = inst.lookup(i_s, name, InstanceLookupOptions::new(add_issue).with_kind(kind).with_as_self_instance(&|| t.clone()));
+                        callable(self, l)
+                    } else {
+                    */
                     bound.run_after_lookup_on_each_union_member(
                         i_s,
                         None,
@@ -152,6 +159,7 @@ impl Type {
                         add_issue,
                         callable,
                     );
+                    //}
                 }
                 TypeVarKind::Constraints(constraints) => {
                     debug!("TODO type var values");
@@ -329,6 +337,7 @@ impl Type {
                 i_s,
                 slice_type,
                 result_context,
+                self,
             ),
             Type::Any(cause) => {
                 // Make sure the slices are inferred
@@ -342,11 +351,19 @@ impl Type {
                     callable(t.get_item(i_s, None, slice_type, result_context))
                 }
             }),
-            t @ Type::TypeVar(tv) => match &tv.type_var.kind {
-                TypeVarKind::Bound(bound) => bound.get_item(i_s, None, slice_type, result_context),
-                TypeVarKind::Constraints(constraints) => todo!(),
-                TypeVarKind::Unrestricted => todo!(),
-            },
+            t @ Type::TypeVar(tv) => {
+                match &tv.type_var.kind {
+                    TypeVarKind::Bound(bound) => {
+                        match bound {
+                            Type::Class(c) => Instance::new(c.class(i_s.db), from_inferred)
+                                .get_item(i_s, slice_type, result_context, self),
+                            _ => bound.get_item(i_s, None, slice_type, result_context),
+                        }
+                    }
+                    TypeVarKind::Constraints(constraints) => todo!(),
+                    TypeVarKind::Unrestricted => todo!(),
+                }
+            }
             Type::Type(t) => match t.as_ref() {
                 Type::Class(c) => c.class(i_s.db).get_item(i_s, slice_type, result_context),
                 Type::Dataclass(d) => slice_type
@@ -407,12 +424,12 @@ impl Type {
                 l.fallback_type(i_s.db)
                     .get_item(i_s, None, slice_type, result_context)
             }
-            Type::Self_ => {
-                i_s.current_class()
-                    .unwrap()
-                    .instance()
-                    .get_item(i_s, slice_type, result_context)
-            }
+            Type::Self_ => i_s.current_class().unwrap().instance().get_item(
+                i_s,
+                slice_type,
+                result_context,
+                self,
+            ),
             _ => todo!("get_item not implemented for {self:?}"),
         }
     }
