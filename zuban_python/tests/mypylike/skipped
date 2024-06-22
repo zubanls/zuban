@@ -341,9 +341,6 @@ testOverloadedNewAndInitNoReturn
 # Enum classmethod instance binding
 testNewSetsUnexpectedValueType
 # Self type classmethod access with type vars(no Self)
-testSelfTypeClone
-testNewAnalyzerTypeVarBoundInCycle
-testSelfTypeVarIndexExpr
 testSelfTypesWithParamSpecInfer
 # Error for staticmethod: "Overloaded function implementation does not accept all possible arguments of signature 1"
 testTypeVarTupleNewSyntaxCallables

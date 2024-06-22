@@ -593,22 +593,30 @@ pub(crate) fn attribute_access_of_type(
             }
             return;
         }
-        Type::TypeVar(t) => {
-            match &t.type_var.kind {
-                TypeVarKind::Bound(bound) => attribute_access_of_type(
+        Type::TypeVar(t) => match &t.type_var.kind {
+            TypeVarKind::Bound(bound) => match bound {
+                Type::Class(c) => c.class(i_s.db).lookup(
                     i_s,
-                    add_issue,
                     name,
-                    kind,
-                    result_context,
-                    callable,
-                    Rc::new(bound.clone()),
+                    ClassLookupOptions::new(&add_issue)
+                        .with_kind(kind)
+                        .with_as_type_type(&|| Type::Type(in_type.clone())),
                 ),
-                TypeVarKind::Constraints(_) => todo!(),
-                TypeVarKind::Unrestricted => todo!(),
-            }
-            return;
-        }
+                _ => {
+                    return attribute_access_of_type(
+                        i_s,
+                        add_issue,
+                        name,
+                        kind,
+                        result_context,
+                        callable,
+                        Rc::new(bound.clone()),
+                    )
+                }
+            },
+            TypeVarKind::Constraints(_) => todo!(),
+            TypeVarKind::Unrestricted => todo!(),
+        },
         Type::Class(g) => g.class(i_s.db).lookup(
             i_s,
             name,

@@ -1559,6 +1559,7 @@ impl<'db: 'a, 'a> Class<'a> {
                         in_class,
                         options.add_issue,
                         options.use_descriptors,
+                        options.as_type_type,
                     );
                     if let Some((_, k)) = &result {
                         attr_kind = *k;

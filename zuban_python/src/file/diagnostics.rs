@@ -1130,6 +1130,7 @@ impl<'db> Inference<'db, '_, '_> {
                 class,
                 class,
                 &function.as_callable(i_s, FirstParamProperties::None),
+                None,
             ) else {
                 todo!()
             };

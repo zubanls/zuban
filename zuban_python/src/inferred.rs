@@ -214,6 +214,17 @@ impl<'db: 'slf, 'slf> Inferred {
                     .class(i_s.db)
                     .use_cached_class_infos(i_s.db)
                     .metaclass(i_s.db),
+                Type::TypeVar(tv) => match &tv.type_var.kind {
+                    TypeVarKind::Bound(bound) => {
+                        // TODO should this case be handled?
+                        bound
+                            .maybe_class(i_s.db)
+                            .unwrap()
+                            .use_cached_class_infos(i_s.db)
+                            .metaclass(i_s.db)
+                    }
+                    _ => unreachable!(),
+                },
                 _ => unreachable!(),
             },
             Type::Self_ => *i_s.current_class().unwrap(),
@@ -957,6 +968,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                                         inst_c.class(i_s.db),
                                                         attribute_class,
                                                         &callable,
+                                                        None,
                                                     )
                                                 }
                                                 FunctionKind::Staticmethod
@@ -1133,7 +1145,13 @@ impl<'db: 'slf, 'slf> Inferred {
                 }
                 FunctionKind::Classmethod { .. } => {
                     let inst_c = instance_cls(i_s, &instance);
-                    let result = infer_class_method(i_s, inst_c.class(i_s.db), attribute_class, c);
+                    let result = infer_class_method(
+                        i_s,
+                        inst_c.class(i_s.db),
+                        attribute_class,
+                        c,
+                        Some(&|| Type::Type(Rc::new(instance.clone()))),
+                    );
                     if result.is_none() {
                         let t = IssueKind::InvalidClassMethodFirstArgument {
                             argument_type: Type::Type(Rc::new(instance)).format_short(i_s.db),
@@ -1197,6 +1215,7 @@ impl<'db: 'slf, 'slf> Inferred {
         attribute_class: Class, // The (sub-)class in which an attribute is defined
         add_issue: impl Fn(IssueKind),
         apply_descriptor: bool,
+        as_type_type: Option<&dyn Fn() -> Type>,
     ) -> Option<(Self, AttributeKind)> {
         let mut attr_kind = AttributeKind::Attribute;
         match &self.state {
@@ -1247,6 +1266,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 add_issue,
                                 apply_descriptor,
                                 &t,
+                                as_type_type,
                             ) {
                                 return r.map(|inf| (inf, attr_kind));
                             }
@@ -1308,6 +1328,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 add_issue,
                                 apply_descriptor,
                                 t,
+                                as_type_type,
                             ) {
                                 return r.map(|inf| (inf, AttributeKind::Attribute));
                             }
@@ -1326,6 +1347,7 @@ impl<'db: 'slf, 'slf> Inferred {
                         add_issue,
                         apply_descriptor,
                         t,
+                        as_type_type,
                     ) {
                         return inf.map(|inf| (inf, AttributeKind::Attribute));
                     }
@@ -1345,6 +1367,7 @@ impl<'db: 'slf, 'slf> Inferred {
         add_issue: impl Fn(IssueKind),
         apply_descriptor: bool,
         t: &Type,
+        as_type_type: Option<&dyn Fn() -> Type>,
     ) -> Option<Option<Self>> {
         let mut t = t;
         if let Type::Callable(c) = t {
@@ -1360,7 +1383,7 @@ impl<'db: 'slf, 'slf> Inferred {
                     }
                 }
                 FunctionKind::Classmethod { .. } => {
-                    let result = infer_class_method(i_s, *class, attribute_class, c);
+                    let result = infer_class_method(i_s, *class, attribute_class, c, as_type_type);
                     if result.is_none() {
                         let inv = IssueKind::InvalidSelfArgument {
                             argument_type: class.as_type_type(i_s).format_short(i_s.db),
@@ -1439,6 +1462,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 *class,
                                 attribute_class,
                                 &func.as_callable(i_s, FirstParamProperties::None),
+                                None,
                             );
                             if let Some(result) = result {
                                 return callable_into_inferred(result);
@@ -1458,7 +1482,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             return inf;
                         }
                         ComplexPoint::TypeInstance(t @ Type::Callable(c)) => {
-                            let Some(c) = infer_class_method(i_s, *class, attribute_class, c)
+                            let Some(c) = infer_class_method(i_s, *class, attribute_class, c, None)
                             else {
                                 todo!();
                             };
@@ -1471,7 +1495,7 @@ impl<'db: 'slf, 'slf> Inferred {
             }
             InferredState::UnsavedComplex(ComplexPoint::TypeInstance(Type::Callable(c))) => {
                 // This is reached by NamedTuples. Not sure it this reached otherwise as well.
-                let result = infer_class_method(i_s, *class, attribute_class, c);
+                let result = infer_class_method(i_s, *class, attribute_class, c, None);
                 if let Some(result) = result {
                     return callable_into_inferred(result);
                 } else {
@@ -2163,7 +2187,7 @@ fn infer_overloaded_class_method(
     let functions: Box<[_]> = o
         .iter_functions()
         .filter_map(|callable| {
-            let c = infer_class_method(i_s, class, attribute_class, callable)?;
+            let c = infer_class_method(i_s, class, attribute_class, callable, None)?;
             Some(Rc::new(c))
         })
         .collect();
@@ -2191,6 +2215,7 @@ pub fn infer_class_method<'db: 'class, 'class>(
     mut class: Class<'class>,
     func_class: Class,
     callable: &CallableContent,
+    as_type_type: Option<&dyn Fn() -> Type>,
 ) -> Option<CallableContent> {
     let mut func_class = func_class;
     let class_generics_not_defined_yet =
@@ -2211,6 +2236,7 @@ pub fn infer_class_method<'db: 'class, 'class>(
         &class,
         &func_class,
         class_generics_not_defined_yet,
+        as_type_type,
     )
 }
 
@@ -2220,6 +2246,7 @@ fn proper_classmethod_callable(
     class: &Class,
     func_class: &Class,
     class_generics_not_defined_yet: bool,
+    as_type_type: Option<&dyn Fn() -> Type>,
 ) -> Option<CallableContent> {
     let mut class_method_type_var_usage = None;
     // TODO performance this clone might not be necessary.
@@ -2233,7 +2260,10 @@ fn proper_classmethod_callable(
 
             if let Some(t) = first_param.type_.maybe_positional_type() {
                 let mut matcher = Matcher::new_callable_matcher(&callable);
-                let instance_t = class.as_type_type(i_s);
+                let instance_t = match as_type_type {
+                    Some(as_type_type) => as_type_type(),
+                    None => class.as_type_type(i_s),
+                };
                 let t = replace_class_type_vars(i_s.db, t, func_class, &|| class.as_type(i_s.db));
                 if !t.is_super_type_of(i_s, &mut matcher, &instance_t).bool() {
                     return None;
@@ -2278,7 +2308,13 @@ fn proper_classmethod_callable(
                 },
             )
         } else {
-            class.as_type(i_s.db)
+            match as_type_type {
+                Some(as_type_type) => match as_type_type() {
+                    Type::Type(t) => (*t).clone(),
+                    _ => unreachable!(),
+                },
+                None => class.as_type(i_s.db),
+            }
         }
     };
     let mut new_callable = callable.replace_type_var_likes_and_self(
