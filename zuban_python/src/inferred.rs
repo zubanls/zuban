@@ -219,6 +219,10 @@ impl<'db: 'slf, 'slf> Inferred {
             Type::Self_ => *i_s.current_class().unwrap(),
             Type::TypedDict(_) => i_s.db.python_state.typed_dict_class(),
             Type::Enum(enum_) => enum_.class(i_s.db),
+            Type::TypeVar(tv) => match &tv.type_var.kind {
+                TypeVarKind::Bound(t) => Self::load_bound_method_class(i_s, t, mro_index),
+                _ => unreachable!(),
+            },
             _ => unreachable!(),
         };
         let class_t = instance_class

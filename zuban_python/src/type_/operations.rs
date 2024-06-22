@@ -142,24 +142,28 @@ impl Type {
             }
             t @ Type::TypeVar(usage) => match &usage.type_var.kind {
                 TypeVarKind::Bound(bound) => {
-                    /*
                     if let Type::Class(c) = bound {
                         let inst = Instance::new(c.class(i_s.db), None);
-                        let l = inst.lookup(i_s, name, InstanceLookupOptions::new(add_issue).with_kind(kind).with_as_self_instance(&|| t.clone()));
+                        let l = inst.lookup(
+                            i_s,
+                            name,
+                            InstanceLookupOptions::new(add_issue)
+                                .with_kind(kind)
+                                .with_as_self_instance(&|| t.clone()),
+                        );
                         callable(self, l)
                     } else {
-                    */
-                    bound.run_after_lookup_on_each_union_member(
-                        i_s,
-                        None,
-                        from_file,
-                        name,
-                        kind,
-                        result_context,
-                        add_issue,
-                        callable,
-                    );
-                    //}
+                        bound.run_after_lookup_on_each_union_member(
+                            i_s,
+                            None,
+                            from_file,
+                            name,
+                            kind,
+                            result_context,
+                            add_issue,
+                            callable,
+                        );
+                    }
                 }
                 TypeVarKind::Constraints(constraints) => {
                     debug!("TODO type var values");
