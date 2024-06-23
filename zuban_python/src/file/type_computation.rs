@@ -1653,8 +1653,6 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 let cls = Class::with_undefined_generics(node_ref);
                 self.check_attribute_on_class(cls, primary, name)
             }
-            TypeContent::Dataclass(_) | TypeContent::NamedTuple(_) => todo!(),
-            TypeContent::TypedDictDefinition(_) => todo!(),
             TypeContent::SimpleGeneric {
                 class_link,
                 generics,
@@ -1677,26 +1675,14 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 },
                 _ => TypeContent::InvalidVariable(InvalidVariableType::Other),
             },
-            TypeContent::TypeAlias(_)
-            | TypeContent::RecursiveAlias(_)
-            | TypeContent::RecursiveClass(_) => todo!(),
-            TypeContent::SpecialType(m) => todo!(),
-            TypeContent::TypeVarTuple(_) => todo!(),
             TypeContent::ParamSpec(param_spec) => match name.as_code() {
                 "args" => TypeContent::Type(Type::ParamSpecArgs(param_spec)),
                 "kwargs" => TypeContent::Type(Type::ParamSpecKwargs(param_spec)),
                 _ => todo!(),
             },
-            TypeContent::Unpacked(_) => todo!(),
-            TypeContent::Concatenate(_) => todo!(),
             TypeContent::InvalidVariable(t) => TypeContent::InvalidVariable(t),
-            TypeContent::ClassVar(_) => todo!(),
-            TypeContent::EnumMember(_) => todo!(),
-            TypeContent::Required(_) => todo!(),
-            TypeContent::NotRequired(_) => todo!(),
-            TypeContent::Final(_) => todo!(),
-            TypeContent::TypeGuardInfo(_) => todo!(),
             TypeContent::Unknown(cause) => TypeContent::Unknown(cause),
+            _ => TypeContent::InvalidVariable(InvalidVariableType::Other),
         }
     }
 

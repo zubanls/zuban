@@ -325,3 +325,8 @@ reveal_type(Foo.x)  # N: Revealed type is "int"
 reveal_type(Foo().x)  # N: Revealed type is "int"
 Foo().x = 3  # E: Cannot assign to class variable "x" via instance
 Foo.x = 4
+
+[case invalid_classvar_attribute]
+from typing import ClassVar
+class Foo:
+    x: ClassVar[str].upper  # E: Invalid type comment or annotation
