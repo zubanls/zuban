@@ -192,7 +192,6 @@ testRegression12258
 testDerivedEnumIterable
 testEnumIterMetaInference
 # Callable matching
-testSubtypingGenericTypeObject
 testParamSpecNoCrashOnUnificationPrefix
 # Callable matching positional names ignored, but kwargs is there; mypy wrong?
 testProtocolIncompatibilityWithUnionType
