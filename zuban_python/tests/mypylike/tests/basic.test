@@ -330,3 +330,12 @@ Foo.x = 4
 from typing import ClassVar
 class Foo:
     x: ClassVar[str].upper  # E: Invalid type comment or annotation
+
+[case double_classvar_getitem]
+from typing import ClassVar
+class Foo:
+    x: ClassVar[str][str]  # E: Invalid type comment or annotation
+
+[case any_getitem]
+from typing import Any
+x: Any[int]  # E: Invalid type comment or annotation

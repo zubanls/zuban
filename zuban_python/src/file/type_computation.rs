@@ -1441,13 +1441,6 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     TypeContent::TypedDictDefinition(td) => {
                         self.compute_type_get_item_on_typed_dict(&td, s, Some(primary))
                     }
-                    TypeContent::SimpleGeneric {
-                        class_link,
-                        generics,
-                        ..
-                    } => {
-                        todo!()
-                    }
                     TypeContent::Type(d) => match d {
                         Type::Any(_) => TypeContent::Type(d),
                         _ => {
@@ -1458,30 +1451,20 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             TypeContent::InvalidVariable(InvalidVariableType::Other)
                         }
                     },
-                    TypeContent::Module(m) => todo!("{primary:?}"),
-                    TypeContent::Namespace(namespace) => todo!("{primary:?}"),
                     TypeContent::TypeAlias(m) => self.compute_type_get_item_on_alias(m, s),
                     TypeContent::SpecialType(special) => match special {
                         SpecialType::Union => self.compute_type_get_item_on_union(s),
                         SpecialType::Optional => self.compute_type_get_item_on_optional(s),
                         SpecialType::Type => self.compute_type_get_item_on_type(s),
                         SpecialType::Tuple => self.compute_type_get_item_on_tuple(s),
-                        SpecialType::Any => todo!(),
-                        SpecialType::Never => todo!(),
                         SpecialType::Protocol => {
                             self.expect_type_var_like_args(s, "Protocol");
                             TypeContent::SpecialType(SpecialType::ProtocolWithGenerics)
                         }
-                        SpecialType::ProtocolWithGenerics => todo!(),
                         SpecialType::Generic => {
                             self.expect_type_var_like_args(s, "Generic");
                             TypeContent::SpecialType(SpecialType::GenericWithGenerics)
                         }
-                        SpecialType::GenericWithGenerics => todo!(),
-                        SpecialType::TypingNamedTuple | SpecialType::CollectionsNamedTuple => {
-                            todo!()
-                        }
-                        SpecialType::TypingTypedDict => todo!(),
                         SpecialType::Required => {
                             self.compute_type_get_item_on_required_like(s, true)
                         }
@@ -1489,11 +1472,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             self.compute_type_get_item_on_required_like(s, false)
                         }
                         SpecialType::Callable => self.compute_type_get_item_on_callable(s),
-                        SpecialType::MypyExtensionsParamType(_) => todo!(),
-                        SpecialType::CallableParam(_) => todo!(),
                         SpecialType::Literal => self.compute_get_item_on_literal(s),
-                        SpecialType::LiteralString => todo!(),
-                        SpecialType::TypeAlias => todo!(),
                         SpecialType::Self_ => {
                             self.add_issue(
                                 s.as_node_ref(),
@@ -1510,6 +1489,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         SpecialType::ClassVar => self.compute_get_item_on_class_var(s),
                         SpecialType::TypeGuard => self.compute_get_item_on_type_guard(s, false),
                         SpecialType::TypeIs => self.compute_get_item_on_type_guard(s, true),
+                        _ => TypeContent::InvalidVariable(InvalidVariableType::Other),
                     },
                     TypeContent::RecursiveAlias(link) => {
                         self.is_recursive_alias = true;
@@ -1547,17 +1527,8 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         );
                         TypeContent::Unknown(UnknownCause::ReportedIssue)
                     }
-                    TypeContent::TypeVarTuple(_) => todo!(),
-                    TypeContent::ParamSpec(_) => todo!(),
-                    TypeContent::Unpacked(_) => todo!(),
-                    TypeContent::Concatenate(_) => todo!(),
-                    TypeContent::ClassVar(_) => todo!(),
-                    TypeContent::EnumMember(_) => todo!(),
-                    TypeContent::Required(_) => todo!(),
-                    TypeContent::NotRequired(_) => todo!(),
-                    TypeContent::Final(_) => todo!(),
-                    TypeContent::TypeGuardInfo(_) => todo!(),
                     TypeContent::Unknown(cause) => TypeContent::Unknown(cause),
+                    _ => TypeContent::InvalidVariable(InvalidVariableType::Other),
                 }
             }
         }
