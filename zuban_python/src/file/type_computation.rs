@@ -621,6 +621,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         &mut self,
         param_annotation: ParamAnnotation,
         param_kind: ParamKind,
+        previous_param: Option<Param>,
         is_implicit_optional: bool,
     ) {
         match param_annotation.maybe_starred() {
@@ -652,7 +653,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     param_annotation.index(),
                     expr,
                     false,
-                    Some(&|slf, t| slf.wrap_star_star(t, expr)),
+                    Some(&|slf, t| slf.wrap_star_star(t, expr, previous_param)),
                 ),
                 _ => self.cache_annotation(param_annotation.index(), expr, is_implicit_optional),
             },
@@ -705,8 +706,46 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         }
     }
 
-    fn wrap_star_star(&mut self, tc: TypeContent, expr: Expression) -> Type {
+    fn wrap_star_star(
+        &mut self,
+        tc: TypeContent,
+        expr: Expression,
+        previous_param: Option<Param>,
+    ) -> Type {
         let from = NodeRef::new(self.inference.file, expr.index());
+        let new_dct = |t| {
+            new_class!(
+                self.inference.i_s.db.python_state.dict_node_ref().as_link(),
+                self.inference.i_s.db.python_state.str_type(),
+                t,
+            )
+        };
+        let previous_param_annotation = previous_param.and_then(|param| param.annotation());
+        let cached_previous_param = previous_param_annotation
+            .map(|annotation| self.inference.use_cached_param_annotation_type(annotation));
+        match cached_previous_param.as_deref() {
+            Some(Type::ParamSpecArgs(usage_before)) => match tc {
+                TypeContent::ParamSpecKwargs(usage) => {
+                    if *usage_before == usage {
+                        return Type::ParamSpecKwargs(usage);
+                    } else {
+                        todo!()
+                    }
+                }
+                _ => {
+                    let new_t =
+                        Type::Tuple(Tuple::new_arbitrary_length(Type::Any(AnyCause::FromError)));
+                    let star_annotation = previous_param_annotation
+                        .unwrap()
+                        .maybe_starred()
+                        .err()
+                        .unwrap();
+                    let overwrite = NodeRef::new(self.inference.file, star_annotation.index());
+                    overwrite.insert_complex(ComplexPoint::TypeInstance(new_t), Locality::Todo);
+                }
+            },
+            _ => (),
+        }
         match tc {
             TypeContent::Unpacked(TypeOrUnpack::Type(t @ Type::TypedDict(_))) => t,
             TypeContent::Unpacked(_) => {
@@ -717,7 +756,10 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     Type::Any(AnyCause::FromError),
                 )
             }
-            TypeContent::ParamSpecKwargs(usage) => Type::ParamSpecKwargs(usage),
+            TypeContent::ParamSpecKwargs(usage) => {
+                // TODO add an error
+                new_dct(Type::Any(AnyCause::FromError))
+            }
             TypeContent::ParamSpecArgs(usage) => {
                 self.add_issue(
                     from,
@@ -727,11 +769,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 );
                 Type::ParamSpecKwargs(usage)
             }
-            _ => new_class!(
-                self.inference.i_s.db.python_state.dict_node_ref().as_link(),
-                self.inference.i_s.db.python_state.str_type(),
-                self.as_type(tc, from),
-            ),
+            _ => new_dct(self.as_type(tc, from)),
         }
     }
 
@@ -1658,7 +1696,10 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             TypeContent::ParamSpec(param_spec) => match name.as_code() {
                 "args" => TypeContent::ParamSpecArgs(param_spec),
                 "kwargs" => TypeContent::ParamSpecKwargs(param_spec),
-                _ => todo!(),
+                _ => {
+                    self.add_issue_for_index(primary.index(), IssueKind::TypeNotFound);
+                    TypeContent::Unknown(UnknownCause::ReportedIssue)
+                }
             },
             TypeContent::InvalidVariable(t) => TypeContent::InvalidVariable(t),
             TypeContent::Unknown(cause) => TypeContent::Unknown(cause),

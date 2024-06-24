@@ -63,6 +63,7 @@ impl ParamType {
     }
 
     pub fn expect_positional_type(self) -> Type {
+        dbg!(&self);
         match self {
             Self::PositionalOnly(t) | Self::PositionalOrKeyword(t) => t,
             _ => unreachable!(),

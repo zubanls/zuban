@@ -472,6 +472,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             TypeComputationOrigin::ParamTypeCommentOrAnnotation,
         );
         let mut star_annotation = None;
+        let mut previous_param = None;
         for param in func_node.params().iter() {
             if let Some(annotation) = param.annotation() {
                 let mut is_implicit_optional = false;
@@ -486,12 +487,14 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 type_computation.cache_param_annotation(
                     annotation,
                     param_kind,
+                    previous_param,
                     is_implicit_optional,
                 );
                 if param_kind == ParamKind::Star {
                     star_annotation = Some(annotation);
                 }
             }
+            previous_param = Some(param);
         }
         let type_guard = func_node.return_annotation().and_then(|return_annot| {
             in_result_type.set(true);
@@ -1544,9 +1547,6 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     ParamType::StarStar(StarStarParamType::UnpackTypedDict(u))
                 }
                 WrappedParamType::StarStar(WrappedStarStar::ParamSpecKwargs(u)) => {
-                    if !had_param_spec_args {
-                        todo!()
-                    }
                     return return_result(self.remap_param_spec(i_s, new_params, u));
                 }
             };
