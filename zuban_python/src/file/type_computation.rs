@@ -262,8 +262,10 @@ enum TypeContent<'db, 'a> {
     Final(Type),
     NotRequired(Type),
     TypeGuardInfo(TypeGuardInfo),
-    ParamSpecArgs(ParamSpecUsage),
-    ParamSpecKwargs(ParamSpecUsage),
+    ParamSpecAttr {
+        usage: ParamSpecUsage,
+        name: &'a str,
+    },
     Unknown(UnknownCause),
 }
 
@@ -692,8 +694,11 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             TypeContent::Unpacked(TypeOrUnpack::Unknown(_)) => {
                 Type::Tuple(Tuple::new_arbitrary_length_with_any())
             }
-            TypeContent::ParamSpecArgs(usage) => Type::ParamSpecArgs(usage),
-            TypeContent::ParamSpecKwargs(usage) => {
+            TypeContent::ParamSpecAttr {
+                usage,
+                name: "args",
+            } => Type::ParamSpecArgs(usage),
+            TypeContent::ParamSpecAttr { usage, .. } => {
                 self.add_issue(
                     from,
                     IssueKind::UseParamSpecArgs {
@@ -725,7 +730,10 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             .map(|annotation| self.inference.use_cached_param_annotation_type(annotation));
         match cached_previous_param.as_deref() {
             Some(Type::ParamSpecArgs(usage_before)) => match tc {
-                TypeContent::ParamSpecKwargs(usage) => {
+                TypeContent::ParamSpecAttr {
+                    usage,
+                    name: "kwargs",
+                } => {
                     if *usage_before == usage {
                         return Type::ParamSpecKwargs(usage);
                     } else {
@@ -756,18 +764,14 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     Type::Any(AnyCause::FromError),
                 )
             }
-            TypeContent::ParamSpecKwargs(usage) => {
-                // TODO add an error
-                new_dct(Type::Any(AnyCause::FromError))
-            }
-            TypeContent::ParamSpecArgs(usage) => {
+            TypeContent::ParamSpecAttr { usage, .. } => {
                 self.add_issue(
                     from,
                     IssueKind::UseParamSpecKwargs {
                         name: usage.param_spec.name(self.inference.i_s.db).into(),
                     },
                 );
-                Type::ParamSpecKwargs(usage)
+                new_dct(Type::Any(AnyCause::FromError))
             }
             _ => new_dct(self.as_type(tc, from)),
         }
@@ -1290,8 +1294,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     ),
                 );
             }
-            TypeContent::ParamSpecArgs(_) => todo!(),
-            TypeContent::ParamSpecKwargs(_) => todo!(),
+            TypeContent::ParamSpecAttr { .. } => todo!(),
         }
         None
     }
@@ -1693,14 +1696,16 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 },
                 _ => TypeContent::InvalidVariable(InvalidVariableType::Other),
             },
-            TypeContent::ParamSpec(param_spec) => match name.as_code() {
-                "args" => TypeContent::ParamSpecArgs(param_spec),
-                "kwargs" => TypeContent::ParamSpecKwargs(param_spec),
-                _ => {
+            TypeContent::ParamSpec(usage) => {
+                if !matches!(name.as_code(), "args" | "kwargs") {
                     self.add_issue_for_index(primary.index(), IssueKind::TypeNotFound);
-                    TypeContent::Unknown(UnknownCause::ReportedIssue)
                 }
-            },
+                // Return even the error cases to be able to give more hints later.
+                TypeContent::ParamSpecAttr {
+                    usage,
+                    name: name.as_code(),
+                }
+            }
             TypeContent::InvalidVariable(t) => TypeContent::InvalidVariable(t),
             TypeContent::Unknown(cause) => TypeContent::Unknown(cause),
             _ => TypeContent::InvalidVariable(InvalidVariableType::Other),

@@ -274,7 +274,6 @@ testNoCrashOnLambdaGenerator
 
 # Nested type vars
 testFunctionInGenericInnerClassTypeVariable-skip
-testParamSpecTestPropAccess
 testTupleAndDictOperationsOnParamSpecArgsAndKwargs
 testUnpackingParamsSpecArgsAndKwargs
 testParamSpecConcatenateFromPep
@@ -285,7 +284,6 @@ testIncrementalInnerClassAttrInMethodReveal
 testInvalidParamSpecDefinitionsWithArgsKwargs
 testInvalidParamSpecAndConcatenateDefinitionsWithArgsKwargs
 testUnboundParamSpec
-testParamSpecArgsAndKwargsMismatch
 # Param spec invalid calls
 testParamSpecInvalidCalls
 # ParamSpec is not unbound if working like a T in Callable?
