@@ -313,7 +313,7 @@ pub enum CalculatedBaseClass {
 
 macro_rules! compute_type_application {
     ($self:ident, $slice_type:expr, $from_alias_definition:expr, $method:ident $args:tt) => {{
-        let mut on_type_var = |i_s: &InferenceState, _: &_, type_var_like: TypeVarLike, _| {
+        let mut on_type_var = |i_s: &InferenceState, _: &_, type_var_like: TypeVarLike, current_callable: Option<_>| {
             if let Some(class) = i_s.current_class() {
                 if let Some(usage) = class
                     .type_vars(i_s)
@@ -348,7 +348,7 @@ macro_rules! compute_type_application {
                     }
                 }
             }
-            if $from_alias_definition {
+            if $from_alias_definition || current_callable.is_some(){
                 TypeVarCallbackReturn::NotFound
             } else {
                 TypeVarCallbackReturn::UnboundTypeVar
@@ -375,7 +375,7 @@ macro_rules! compute_type_application {
                 let type_var_likes = tcomp.into_type_vars(|inf, recalculate_type_vars| {
                     type_ = recalculate_type_vars(&type_);
                 });
-                if type_var_likes.len() > 0 {
+                if type_var_likes.len() > 0 && $from_alias_definition  {
                     debug_assert!($from_alias_definition);
                     Inferred::new_unsaved_complex(ComplexPoint::TypeAlias(Box::new(TypeAlias::new_valid(
                         type_var_likes,
@@ -3126,6 +3126,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                                     TypeComputationOrigin::ParamTypeCommentOrAnnotation
                                         | TypeComputationOrigin::AssignmentTypeCommentOrAnnotation { .. }
                                         | TypeComputationOrigin::CastTarget
+                                        | TypeComputationOrigin::TypeApplication
                                 )
                             }),
                         );

@@ -292,7 +292,6 @@ testTrivialParametersHandledCorrectly
 testExpandNonBareParamSpecAgainstCallable
 # param spec new tests
 testParamSpecClassConstructor
-testParamSpecAliasNested
 testParamSpecArgumentParamInferenceRegular
 testParamSpecApplyPosVsNamedOptional
 testParamSpecConcatenateSelfType
