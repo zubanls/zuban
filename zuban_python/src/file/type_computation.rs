@@ -639,12 +639,23 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     }),
                 )
             }
-            Err(expr) => self.cache_annotation(
-                param_annotation.index(),
-                expr,
-                Some(param_kind),
-                is_implicit_optional,
-            ),
+            Err(expr) => match param_kind {
+                ParamKind::Star => self.cache_annotation_or_type_comment(
+                    param_annotation.index(),
+                    expr,
+                    false,
+                    Some(&|slf, t| {
+                        slf.wrap_star(t, NodeRef::new(self.inference.file, expr.index()))
+                    }),
+                ),
+                ParamKind::StarStar => self.cache_annotation_or_type_comment(
+                    param_annotation.index(),
+                    expr,
+                    false,
+                    Some(&|slf, t| slf.wrap_star_star(t, expr)),
+                ),
+                _ => self.cache_annotation(param_annotation.index(), expr, is_implicit_optional),
+            },
         }
     }
 
@@ -652,30 +663,10 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         &mut self,
         annotation_index: NodeIndex,
         expr: Expression,
-        kind: Option<ParamKind>,
         is_implicit_optional: bool,
     ) {
         let from = NodeRef::new(self.inference.file, expr.index());
-        match kind {
-            Some(ParamKind::Star) => self.cache_annotation_or_type_comment(
-                annotation_index,
-                expr,
-                false,
-                Some(&|slf, t| slf.wrap_star(t, from)),
-            ),
-            Some(ParamKind::StarStar) => self.cache_annotation_or_type_comment(
-                annotation_index,
-                expr,
-                false,
-                Some(&|slf, t| slf.wrap_star_star(t, expr)),
-            ),
-            _ => self.cache_annotation_or_type_comment(
-                annotation_index,
-                expr,
-                is_implicit_optional,
-                None,
-            ),
-        };
+        self.cache_annotation_or_type_comment(annotation_index, expr, is_implicit_optional, None)
     }
 
     fn wrap_star(&mut self, tc: TypeContent, from: NodeRef) -> Type {
@@ -3364,7 +3355,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                 &mut x,
                 origin,
             );
-            comp.cache_annotation(annotation.index(), annotation.expression(), None, false);
+            comp.cache_annotation(annotation.index(), annotation.expression(), false);
             comp.into_type_vars(|inf, recalculate_type_vars| {
                 inf.recalculate_annotation_type_vars(annotation.index(), recalculate_type_vars);
             });
