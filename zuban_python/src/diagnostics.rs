@@ -140,6 +140,7 @@ pub(crate) enum IssueKind {
     InvalidParamSpecGenerics { got: Box<str> },
     UseParamSpecArgs { name: Box<str> },
     UseParamSpecKwargs { name: Box<str> },
+    ParamSpecArgsNeedsBothStarAndStarStar { name: Box<str> },
     NewTypeInvalidType,
     NewTypeMustBeSubclassable { got: Box<str> },
     SubclassOfFinalCannotExist { final_class: Box<str>, other_class: Box<str> },
@@ -1124,6 +1125,9 @@ impl<'db> Diagnostic<'db> {
             ),
             UseParamSpecArgs { name } => format!(r#"Use "{name}.args" for variadic "*" parameter"#),
             UseParamSpecKwargs { name } => format!(r#"Use "{name}.kwargs" for variadic "**" parameter"#),
+            ParamSpecArgsNeedsBothStarAndStarStar { name } => format!(
+                r#"ParamSpec must have "*args" typed as "{name}.args" and "**kwargs" typed as "{name}.kwargs""#
+            ),
             NewTypeInvalidType => "Argument 2 to NewType(...) must be a valid type".to_string(),
             NewTypeMustBeSubclassable{got} => format!(
                 "Argument 2 to NewType(...) must be subclassable (got \"{got}\")"

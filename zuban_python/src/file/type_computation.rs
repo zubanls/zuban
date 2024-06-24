@@ -764,13 +764,14 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     Type::Any(AnyCause::FromError),
                 )
             }
-            TypeContent::ParamSpecAttr { usage, .. } => {
-                self.add_issue(
-                    from,
-                    IssueKind::UseParamSpecKwargs {
-                        name: usage.param_spec.name(self.inference.i_s.db).into(),
-                    },
-                );
+            TypeContent::ParamSpecAttr { usage, name } => {
+                let n = usage.param_spec.name(self.inference.i_s.db).into();
+                let issue = if name == "kwargs" {
+                    IssueKind::ParamSpecArgsNeedsBothStarAndStarStar { name: n }
+                } else {
+                    IssueKind::UseParamSpecKwargs { name: n }
+                };
+                self.add_issue(from, issue);
                 new_dct(Type::Any(AnyCause::FromError))
             }
             _ => new_dct(self.as_type(tc, from)),
