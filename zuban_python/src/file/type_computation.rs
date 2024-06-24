@@ -262,6 +262,8 @@ enum TypeContent<'db, 'a> {
     Final(Type),
     NotRequired(Type),
     TypeGuardInfo(TypeGuardInfo),
+    ParamSpecArgs(ParamSpecUsage),
+    ParamSpecKwargs(ParamSpecUsage),
     Unknown(UnknownCause),
 }
 
@@ -698,10 +700,17 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             TypeContent::Unpacked(TypeOrUnpack::Unknown(_)) => {
                 Type::Tuple(Tuple::new_arbitrary_length_with_any())
             }
-            _ => match self.as_type(tc, from) {
-                t @ Type::ParamSpecArgs(_) => t,
-                t => Type::Tuple(Tuple::new_arbitrary_length(t)),
-            },
+            TypeContent::ParamSpecArgs(usage) => Type::ParamSpecArgs(usage),
+            TypeContent::ParamSpecKwargs(usage) => {
+                self.add_issue(
+                    from,
+                    IssueKind::UseParamSpecArgs {
+                        name: usage.param_spec.name(self.inference.i_s.db).into(),
+                    },
+                );
+                Type::ParamSpecArgs(usage)
+            }
+            _ => Type::Tuple(Tuple::new_arbitrary_length(self.as_type(tc, from))),
         }
     }
 
@@ -717,14 +726,21 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     Type::Any(AnyCause::FromError),
                 )
             }
-            _ => match self.as_type(tc, from) {
-                t @ Type::ParamSpecKwargs(_) => t,
-                t => new_class!(
-                    self.inference.i_s.db.python_state.dict_node_ref().as_link(),
-                    self.inference.i_s.db.python_state.str_type(),
-                    t,
-                ),
-            },
+            TypeContent::ParamSpecKwargs(usage) => Type::ParamSpecKwargs(usage),
+            TypeContent::ParamSpecArgs(usage) => {
+                self.add_issue(
+                    from,
+                    IssueKind::UseParamSpecKwargs {
+                        name: usage.param_spec.name(self.inference.i_s.db).into(),
+                    },
+                );
+                Type::ParamSpecKwargs(usage)
+            }
+            _ => new_class!(
+                self.inference.i_s.db.python_state.dict_node_ref().as_link(),
+                self.inference.i_s.db.python_state.str_type(),
+                self.as_type(tc, from),
+            ),
         }
     }
 
@@ -1201,6 +1217,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     None,
                 ))));
             }
+            TypeContent::TypeGuardInfo(_) => {
+                return Some(self.inference.i_s.db.python_state.bool_type())
+            }
             TypeContent::Unknown(cause) => (),
             TypeContent::ClassVar(t) => {
                 self.add_issue(node_ref, IssueKind::ClassVarNestedInsideOtherType);
@@ -1242,9 +1261,8 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     ),
                 );
             }
-            TypeContent::TypeGuardInfo(_) => {
-                return Some(self.inference.i_s.db.python_state.bool_type())
-            }
+            TypeContent::ParamSpecArgs(_) => todo!(),
+            TypeContent::ParamSpecKwargs(_) => todo!(),
         }
         None
     }
@@ -1647,8 +1665,8 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 _ => TypeContent::InvalidVariable(InvalidVariableType::Other),
             },
             TypeContent::ParamSpec(param_spec) => match name.as_code() {
-                "args" => TypeContent::Type(Type::ParamSpecArgs(param_spec)),
-                "kwargs" => TypeContent::Type(Type::ParamSpecKwargs(param_spec)),
+                "args" => TypeContent::ParamSpecArgs(param_spec),
+                "kwargs" => TypeContent::ParamSpecKwargs(param_spec),
                 _ => todo!(),
             },
             TypeContent::InvalidVariable(t) => TypeContent::InvalidVariable(t),

@@ -138,6 +138,8 @@ pub(crate) enum IssueKind {
     ClassVarCannotContainSelfTypeInGenericClass,
     InvalidCallableParams,
     InvalidParamSpecGenerics { got: Box<str> },
+    UseParamSpecArgs { name: Box<str> },
+    UseParamSpecKwargs { name: Box<str> },
     NewTypeInvalidType,
     NewTypeMustBeSubclassable { got: Box<str> },
     SubclassOfFinalCannotExist { final_class: Box<str>, other_class: Box<str> },
@@ -1120,6 +1122,8 @@ impl<'db> Diagnostic<'db> {
             InvalidParamSpecGenerics{got} => format!(
                 "Can only replace ParamSpec with a parameter types list or another ParamSpec, got \"{got}\""
             ),
+            UseParamSpecArgs { name } => format!(r#"Use "{name}.args" for variadic "*" parameter"#),
+            UseParamSpecKwargs { name } => format!(r#"Use "{name}.kwargs" for variadic "**" parameter"#),
             NewTypeInvalidType => "Argument 2 to NewType(...) must be a valid type".to_string(),
             NewTypeMustBeSubclassable{got} => format!(
                 "Argument 2 to NewType(...) must be subclassable (got \"{got}\")"
