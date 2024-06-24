@@ -3099,13 +3099,13 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     self.current_callable,
                 ) {
                     TypeVarCallbackReturn::TypeVarLike(TypeVarLikeUsage::TypeVar(usage)) => {
-                        Some(TypeContent::Type(Type::TypeVar(usage)))
+                        TypeContent::Type(Type::TypeVar(usage))
                     }
                     TypeVarCallbackReturn::TypeVarLike(TypeVarLikeUsage::TypeVarTuple(usage)) => {
-                        Some(TypeContent::TypeVarTuple(usage))
+                        TypeContent::TypeVarTuple(usage)
                     }
                     TypeVarCallbackReturn::TypeVarLike(TypeVarLikeUsage::ParamSpec(usage)) => {
-                        Some(TypeContent::ParamSpec(usage))
+                        TypeContent::ParamSpec(usage)
                     }
                     TypeVarCallbackReturn::UnboundTypeVar => {
                         let node_ref = NodeRef::new(self.inference.file, name.index());
@@ -3115,46 +3115,33 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                                 type_var_like: type_var_like.clone(),
                             },
                         );
-                        Some(TypeContent::Unknown(UnknownCause::ReportedIssue))
+                        TypeContent::Unknown(UnknownCause::ReportedIssue)
                     }
-                    TypeVarCallbackReturn::NotFound => None,
+                    TypeVarCallbackReturn::NotFound => {
+                        let index = self.type_var_manager.add(
+                            type_var_like.clone(),
+                            self.current_callable.filter(|_| {
+                                matches!(
+                                    self.origin,
+                                    TypeComputationOrigin::ParamTypeCommentOrAnnotation
+                                        | TypeComputationOrigin::AssignmentTypeCommentOrAnnotation { .. }
+                                        | TypeComputationOrigin::CastTarget
+                                )
+                            }),
+                        );
+                        match type_var_like {
+                            TypeVarLike::TypeVar(type_var) => TypeContent::Type(Type::TypeVar(
+                                TypeVarUsage::new(type_var, self.for_definition, index),
+                            )),
+                            TypeVarLike::TypeVarTuple(type_var_tuple) => TypeContent::TypeVarTuple(
+                                TypeVarTupleUsage::new(type_var_tuple, self.for_definition, index),
+                            ),
+                            TypeVarLike::ParamSpec(param_spec) => TypeContent::ParamSpec(
+                                ParamSpecUsage::new(param_spec, self.for_definition, index),
+                            ),
+                        }
+                    }
                 }
-                .unwrap_or_else(|| {
-                    let index = self.type_var_manager.add(
-                        type_var_like.clone(),
-                        self.current_callable.filter(|_| {
-                            matches!(
-                                self.origin,
-                                TypeComputationOrigin::ParamTypeCommentOrAnnotation
-                                    | TypeComputationOrigin::AssignmentTypeCommentOrAnnotation { .. }
-                                    | TypeComputationOrigin::CastTarget
-                            )
-                        }),
-                    );
-                    match type_var_like {
-                        TypeVarLike::TypeVar(type_var) => {
-                            TypeContent::Type(Type::TypeVar(TypeVarUsage::new(
-                                type_var,
-                                self.for_definition,
-                                index,
-                            )))
-                        }
-                        TypeVarLike::TypeVarTuple(type_var_tuple) => {
-                            TypeContent::TypeVarTuple(TypeVarTupleUsage::new(
-                                type_var_tuple,
-                                self.for_definition,
-                                index,
-                            ))
-                        }
-                        TypeVarLike::ParamSpec(param_spec) => {
-                            TypeContent::ParamSpec(ParamSpecUsage::new(
-                                param_spec,
-                                self.for_definition,
-                                index,
-                            ))
-                        }
-                    }
-                })
             }
             TypeNameLookup::TypeAlias(alias) => TypeContent::TypeAlias(alias),
             TypeNameLookup::NewType(n) => TypeContent::Type(Type::NewType(n)),
