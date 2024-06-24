@@ -33,9 +33,9 @@ use crate::{
     type_::{
         match_tuple_type_arguments, AnyCause, CallableContent, CallableParam, CallableParams,
         DbString, GenericItem, GenericsList, NeverCause, ParamSpecArg, ParamSpecUsage, ParamType,
-        ReplaceSelf, StarParamType, TupleArgs, TupleUnpack, Type, TypeArgs, TypeVarKind,
-        TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarTupleUsage, TypeVarUsage, TypedDict,
-        TypedDictGenerics, Variance, WithUnpack,
+        ReplaceSelf, StarParamType, StarStarParamType, TupleArgs, TupleUnpack, Type, TypeArgs,
+        TypeVarKind, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarTupleUsage, TypeVarUsage,
+        TypedDict, TypedDictGenerics, Variance, WithUnpack,
     },
     type_helpers::{Callable, Class, Function},
     utils::{join_with_commas, AlreadySeen},
@@ -632,7 +632,7 @@ impl<'a> Matcher<'a> {
                 return matches;
             }
         }
-        let new_params = CallableParams::Simple(params2_iterator.cloned().collect());
+        let new_params = CallableParams::Simple(params2_iterator.clone().cloned().collect());
         if let Some(matcher_index) =
             self.find_responsible_type_var_matcher_index(p1.in_definition, p1.temporary_matcher_id)
         {
@@ -661,7 +661,15 @@ impl<'a> Matcher<'a> {
                 }
             }
         }
-        Match::new_false()
+        let mut star_count = 0;
+        for p in params2_iterator {
+            match p.type_ {
+                ParamType::Star(StarParamType::ArbitraryLen(Type::Any(_))) => star_count += 1,
+                ParamType::StarStar(StarStarParamType::ValueType(Type::Any(_))) => star_count += 1,
+                _ => return Match::new_false(),
+            }
+        }
+        (star_count == 2).into()
     }
 
     pub(crate) fn match_param_spec_arguments<'db>(
