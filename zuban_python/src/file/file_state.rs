@@ -36,14 +36,6 @@ pub trait Vfs {
         }
     }
 
-    fn dir_and_name<'a>(&self, path: &'a str) -> (Option<&'a str>, &'a str) {
-        if let Some(pos) = path.rfind(self.separator()) {
-            (Some(&path[..pos]), &path[pos + 1..])
-        } else {
-            (None, path)
-        }
-    }
-
     fn dir_path<'a>(&self, path: &'a str) -> Option<&'a str> {
         path.rfind(self.separator()).map(|index| &path[..index])
     }

@@ -1014,6 +1014,11 @@ impl<'a> Matcher<'a> {
 
     fn find_secondary_transitive_constraints(&mut self, db: &Database, cycles: &TypeVarCycles) {
         debug!("Start calculating secondary transitive constraints");
+        // This does what Mypy introduced with --new-type-inference, which is described here:
+        // - https://github.com/python/mypy/pull/15287
+        // - https://github.com/python/mypy/pull/15754
+        // - Description of the algorithm:
+        //   https://inria.hal.science/inria-00073205/document Definition 7.1
         for cycle in &cycles.cycles {
             let mut unresolved = vec![];
             // First check for all relevant unresolved constraints in the cycle that are non-cycles
