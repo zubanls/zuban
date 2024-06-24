@@ -1647,12 +1647,14 @@ fn infer_params_from_args<'db>(
                     unreachable!()
                 };
                 CallableParam {
-                    type_: ParamType::PositionalOnly(t),
+                    type_: ParamType::PositionalOrKeyword(t),
                     name: Some(DbString::RcStr(key.into())),
                     has_default: false,
                 }
             }
-            (false, true) => todo!(),
+            (false, true) => {
+                CallableParam::new_anonymous(ParamType::Star(StarParamType::ArbitraryLen(t)))
+            }
             (true, true) => todo!(),
         };
         params.push(p);
