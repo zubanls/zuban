@@ -496,6 +496,25 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             }
             previous_param = Some(param);
         }
+        if let Some(annotation) = star_annotation {
+            let t = use_cached_param_annotation_type(i_s.db, self.node_ref.file, annotation);
+            if let Type::ParamSpecArgs(usage) = t.as_ref() {
+                let iterator = func_node.params().iter();
+                if !iterator
+                    .skip_while(|p| p.kind() != ParamKind::Star)
+                    .skip(1)
+                    .next()
+                    .is_some_and(|p| p.annotation().is_some())
+                {
+                    NodeRef::new(self.node_ref.file, annotation.index()).add_issue(
+                        i_s,
+                        IssueKind::ParamSpecArgsNeedsBothStarAndStarStar {
+                            name: usage.param_spec.name(i_s.db).into(),
+                        },
+                    );
+                }
+            }
+        }
         let type_guard = func_node.return_annotation().and_then(|return_annot| {
             in_result_type.set(true);
             type_computation.cache_return_annotation(return_annot)
