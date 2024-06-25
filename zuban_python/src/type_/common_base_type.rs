@@ -223,6 +223,36 @@ fn common_base_type_for_non_class(
     None
 }
 
+impl CallableParams {
+    pub fn common_base_type(
+        &self,
+        i_s: &InferenceState,
+        other: &CallableParams,
+    ) -> Option<CallableParams> {
+        match self {
+            CallableParams::Simple(params1) => match other {
+                CallableParams::Simple(params2) => common_params(i_s, params1, params2),
+                CallableParams::WithParamSpec(_, _) => None,
+                CallableParams::Any(_) | CallableParams::Never(_) => todo!(),
+            },
+            CallableParams::WithParamSpec(pre1, spec1) => match other {
+                CallableParams::WithParamSpec(pre2, spec2) => {
+                    if spec1 == spec2 {
+                        if !pre1.is_empty() || !pre2.is_empty() {
+                            todo!()
+                        }
+                        Some(CallableParams::WithParamSpec(pre1.clone(), spec1.clone()))
+                    } else {
+                        None
+                    }
+                }
+                _ => None,
+            },
+            CallableParams::Any(_) | CallableParams::Never(_) => todo!(),
+        }
+    }
+}
+
 fn common_base_for_callables(
     i_s: &InferenceState,
     c1: &CallableContent,
@@ -231,55 +261,24 @@ fn common_base_for_callables(
     if !c1.kind.is_same_base_kind(c2.kind) {
         todo!("{:?} {:?}", c1.kind, c2.kind)
     }
-    match &c1.params {
-        CallableParams::Simple(params1) => match &c2.params {
-            CallableParams::Simple(params2) => {
-                if let Some(params) = common_params(i_s, params1, params2) {
-                    return Type::Callable(Rc::new(CallableContent {
-                        name: None,
-                        class_name: None,
-                        defined_at: c1.defined_at,
-                        kind: c1.kind,
-                        // TODO why do we just use the first type vars here???
-                        type_vars: c1.type_vars.clone(),
-                        guard: common_base_guard(i_s, &c1.guard, &c2.guard),
-                        is_abstract: c1.is_abstract && c2.is_abstract,
-                        is_final: c1.is_final && c2.is_final,
-                        params,
-                        return_type: c1.return_type.common_base_type(i_s, &c2.return_type),
-                        no_type_check: false,
-                    }));
-                }
-            }
-            CallableParams::WithParamSpec(_, _) => (),
-            CallableParams::Any(_) | CallableParams::Never(_) => todo!(),
-        },
-        CallableParams::WithParamSpec(pre1, spec1) => match &c2.params {
-            CallableParams::WithParamSpec(pre2, spec2) => {
-                if !pre1.is_empty() || !pre2.is_empty() {
-                    todo!()
-                }
-                if spec1 == spec2 {
-                    return Type::Callable(Rc::new(CallableContent {
-                        name: None,
-                        class_name: None,
-                        defined_at: c1.defined_at,
-                        kind: c1.kind,
-                        type_vars: c1.type_vars.clone(),
-                        guard: common_base_guard(i_s, &c1.guard, &c2.guard),
-                        is_abstract: c1.is_abstract && c2.is_abstract,
-                        is_final: c1.is_final && c2.is_final,
-                        params: CallableParams::WithParamSpec(pre1.clone(), spec1.clone()),
-                        return_type: c1.return_type.common_base_type(i_s, &c2.return_type),
-                        no_type_check: false,
-                    }));
-                }
-            }
-            _ => (),
-        },
-        CallableParams::Any(_) | CallableParams::Never(_) => todo!(),
+    if let Some(params) = c1.params.common_base_type(i_s, &c2.params) {
+        Type::Callable(Rc::new(CallableContent {
+            name: None,
+            class_name: None,
+            defined_at: c1.defined_at,
+            kind: c1.kind,
+            // TODO why do we just use the first type vars here???
+            type_vars: c1.type_vars.clone(),
+            guard: common_base_guard(i_s, &c1.guard, &c2.guard),
+            is_abstract: c1.is_abstract && c2.is_abstract,
+            is_final: c1.is_final && c2.is_final,
+            params,
+            return_type: c1.return_type.common_base_type(i_s, &c2.return_type),
+            no_type_check: false,
+        }))
+    } else {
+        i_s.db.python_state.function_type()
     }
-    i_s.db.python_state.function_type()
 }
 
 fn common_params<'x>(
