@@ -289,7 +289,6 @@ testParamSpecInvalidCalls
 # Class function Foo.bar something like a BoundFunction
 testExpandNonBareParamSpecAgainstCallable
 # param spec new tests
-testParamSpecClassConstructor
 testParamSpecApplyPosVsNamedOptional
 testParamSpecConcatenateSelfType
 testParamSpecGenericWithNamedArg1
