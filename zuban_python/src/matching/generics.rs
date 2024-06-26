@@ -234,6 +234,7 @@ impl<'a> Generics<'a> {
                 TypeVarLike::TypeVar(t) if variance == Variance::Contravariant => {
                     t.variance.invert()
                 }
+                TypeVarLike::ParamSpec(_) => Variance::Covariant,
                 _ => Variance::Invariant,
             };
             matches &= t1.matches(i_s, matcher, &t2, v);
