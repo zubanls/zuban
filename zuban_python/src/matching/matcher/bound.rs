@@ -93,7 +93,7 @@ impl Bound {
         })
     }
 
-    pub(super) fn update_upper_bound(&mut self, i_s: &InferenceState, upper: &BoundKind) {
+    pub(super) fn update_upper_bound(&mut self, i_s: &InferenceState, upper: BoundKind) {
         match self {
             Self::Upper(old) => *self = Self::Upper(upper.clone()),
             Self::Lower(lower) | Self::UpperAndLower(_, lower) => {
@@ -103,12 +103,12 @@ impl Bound {
         }
     }
 
-    pub(super) fn update_lower_bound(&mut self, i_s: &InferenceState, lower: &BoundKind) {
+    pub(super) fn update_lower_bound(&mut self, i_s: &InferenceState, lower: BoundKind) {
         match self {
-            Self::Lower(old) => *self = Self::Lower(old.common_base_type(i_s, lower)),
-            Self::Upper(upper) => *self = Self::UpperAndLower(upper.clone(), lower.clone()),
+            Self::Lower(old) => *self = Self::Lower(old.common_base_type(i_s, &lower)),
+            Self::Upper(upper) => *self = Self::UpperAndLower(upper.clone(), lower),
             Self::UpperAndLower(upper, old) => {
-                *self = Self::UpperAndLower(upper.clone(), old.common_base_type(i_s, lower))
+                *self = Self::UpperAndLower(upper.clone(), old.common_base_type(i_s, &lower))
             }
             _ => unreachable!(),
         }

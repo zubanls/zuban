@@ -132,33 +132,34 @@ impl CalculatingTypeArg {
             Bound::Lower(t) => (t, Variance::Covariant),
             Bound::Invariant(t) => (t, Variance::Invariant),
             Bound::UpperAndLower(upper, t) => {
-                m = self.merge_or_mismatch(&i_s, &upper, Variance::Contravariant);
+                m = self.merge_or_mismatch(&i_s, upper, Variance::Contravariant);
                 (t, Variance::Covariant)
             }
             Bound::Uncalculated { .. } => return Match::new_true(),
         };
-        m & self.merge_or_mismatch(&i_s, &t, variance)
+        m & self.merge_or_mismatch(&i_s, t, variance)
     }
 
     pub fn merge_or_mismatch(
         &mut self,
         i_s: &InferenceState,
-        other: &BoundKind,
+        other: BoundKind,
         variance: Variance,
     ) -> Match {
         // First check if the value is between the bounds.
         let matches = match &mut self.type_ {
             Bound::Invariant(t) => {
-                let m = t.is_simple_same_type(i_s, other);
+                let m = t.is_simple_same_type(i_s, &other);
                 if m.bool() {
                     return m; // In the false case we still have to check for the variance cases.
                 }
                 m
             }
-            Bound::Upper(lower) => lower.is_simple_super_type_of(i_s, other),
-            Bound::Lower(upper) => upper.is_simple_sub_type_of(i_s, other),
+            Bound::Upper(lower) => lower.is_simple_super_type_of(i_s, &other),
+            Bound::Lower(upper) => upper.is_simple_sub_type_of(i_s, &other),
             Bound::UpperAndLower(lower, upper) => {
-                lower.is_simple_super_type_of(i_s, other) & upper.is_simple_sub_type_of(i_s, other)
+                lower.is_simple_super_type_of(i_s, &other)
+                    & upper.is_simple_sub_type_of(i_s, &other)
             }
             Bound::Uncalculated { .. } => unreachable!(),
         };
@@ -178,15 +179,15 @@ impl CalculatingTypeArg {
                     Bound::Lower(t) => {
                         // TODO shouldn't this also do a limited common base type search in the
                         // case of LowerAndUpper?
-                        let m = t.is_simple_super_type_of(i_s, other);
-                        *t = t.common_base_type(i_s, other);
+                        let m = t.is_simple_super_type_of(i_s, &other);
+                        *t = t.common_base_type(i_s, &other);
                         if !m.bool() {
                             return Match::new_true();
                         }
                         return m;
                     }
                     Bound::Invariant(t) | Bound::UpperAndLower(_, t) => {
-                        return t.is_simple_super_type_of(i_s, other)
+                        return t.is_simple_super_type_of(i_s, &other)
                     }
                     Bound::Upper(t) => {}
                     Bound::Uncalculated { .. } => unreachable!(),
@@ -194,9 +195,9 @@ impl CalculatingTypeArg {
                 Variance::Contravariant => match &mut self.type_ {
                     Bound::Upper(t) => {
                         // TODO shouldn't we also check LowerAndUpper like this?
-                        let m = t.is_simple_sub_type_of(i_s, other);
+                        let m = t.is_simple_sub_type_of(i_s, &other);
                         if !m.bool() {
-                            if let Some(new) = t.common_sub_type(i_s, other) {
+                            if let Some(new) = t.common_sub_type(i_s, &other) {
                                 *t = new;
                                 return Match::new_true();
                             } else {
@@ -206,7 +207,7 @@ impl CalculatingTypeArg {
                         return m;
                     }
                     Bound::Invariant(t) | Bound::UpperAndLower(t, _) => {
-                        return t.is_simple_sub_type_of(i_s, other);
+                        return t.is_simple_sub_type_of(i_s, &other);
                     }
                     Bound::Lower(_) => {}
                     Bound::Uncalculated { .. } => unreachable!(),
@@ -283,7 +284,7 @@ impl TypeVarMatcher {
         if current.calculated() {
             return current.merge_or_mismatch(
                 i_s,
-                &BoundKind::TypeVar(value_type.clone()),
+                BoundKind::TypeVar(value_type.clone()),
                 variance,
             );
         }
