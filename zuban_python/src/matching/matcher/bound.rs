@@ -94,11 +94,12 @@ impl Bound {
     }
 
     pub(super) fn update_upper_bound(&mut self, i_s: &InferenceState, upper: BoundKind) {
+        let common =
+            |upper: BoundKind, b: &BoundKind| upper.common_sub_type(i_s, &b).unwrap_or(upper);
         match self {
-            Self::Upper(old) => *self = Self::Upper(upper.clone()),
-            Self::Lower(lower) | Self::UpperAndLower(_, lower) => {
-                *self = Self::UpperAndLower(upper.clone(), lower.clone())
-            }
+            Self::Upper(old) => *self = Self::Upper(upper),
+            Self::Lower(lower) => *self = Self::UpperAndLower(upper, lower.clone()),
+            Self::UpperAndLower(old, lower) => *self = Self::UpperAndLower(upper, lower.clone()),
             _ => unreachable!(),
         }
     }

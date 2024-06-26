@@ -196,15 +196,12 @@ impl CalculatingTypeArg {
                     Bound::Upper(t) => {
                         // TODO shouldn't we also check LowerAndUpper like this?
                         let m = t.is_simple_sub_type_of(i_s, &other);
-                        if !m.bool() {
-                            if let Some(new) = t.common_sub_type(i_s, &other) {
-                                *t = new;
-                                return Match::new_true();
-                            } else {
-                                return Match::new_false();
-                            }
+                        if let Some(new) = t.common_sub_type(i_s, &other) {
+                            *t = new;
+                            return Match::new_true();
+                        } else {
+                            return m;
                         }
-                        return m;
                     }
                     Bound::Invariant(t) | Bound::UpperAndLower(t, _) => {
                         return t.is_simple_sub_type_of(i_s, &other);
