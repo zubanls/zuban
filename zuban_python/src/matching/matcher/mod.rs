@@ -1215,11 +1215,8 @@ impl<'a> Matcher<'a> {
         } else {
             Bound::default()
         };
-        let mut current = CalculatingTypeArg {
-            type_: bound,
-            unresolved_transitive_constraints: vec![],
-            defined_by_result_context: false,
-        };
+        let mut current = CalculatingTypeArg::default();
+        current.type_ = bound;
         for tv_in_cycle in &cycle.set {
             // Use normal bound
             let used = &mut self.type_var_matchers[tv_in_cycle.matcher_index].calculating_type_args

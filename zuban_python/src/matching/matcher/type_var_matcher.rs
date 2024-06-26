@@ -103,6 +103,7 @@ pub(super) struct CalculatingTypeArg {
     pub(super) type_: Bound,
     pub(super) unresolved_transitive_constraints: Vec<Bound>,
     pub(super) defined_by_result_context: bool,
+    pub(super) uninferrable: bool,
 }
 
 impl CalculatingTypeArg {
@@ -141,6 +142,19 @@ impl CalculatingTypeArg {
     }
 
     pub fn merge_or_mismatch(
+        &mut self,
+        i_s: &InferenceState,
+        other: BoundKind,
+        variance: Variance,
+    ) -> Match {
+        let result = self.merge_or_mismatch_internal(i_s, other, variance);
+        if !result.bool() && !self.defined_by_result_context {
+            self.uninferrable = true;
+        }
+        result
+    }
+
+    fn merge_or_mismatch_internal(
         &mut self,
         i_s: &InferenceState,
         other: BoundKind,
@@ -216,6 +230,9 @@ impl CalculatingTypeArg {
     }
 
     pub fn into_generic_item(self, db: &Database, type_var_like: &TypeVarLike) -> GenericItem {
+        if self.uninferrable {
+            return type_var_like.as_any_generic_item();
+        }
         self.type_.into_generic_item(db, |fallback| {
             if let Some(fallback) = fallback {
                 GenericItem::TypeArg(fallback)
