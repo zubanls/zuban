@@ -298,6 +298,7 @@ testParamSpecCorrectParameterNameInference
 testOverloadingWithParamSpec
 testParamSpecGenericWithNamedArg1
 testParamSpecGenericWithNamedArg2
+testParamSpecVariance
 
 # Are generics in self types always bound to the function?
 # https://github.com/python/typing/discussions/1340

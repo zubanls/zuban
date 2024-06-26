@@ -701,7 +701,14 @@ impl<'a> Matcher<'a> {
                         );
                         return SignatureMatch::new_true();
                     }
-                    _ => todo!(),
+                    Bound::UpperAndLower(
+                        BoundKind::ParamSpec(upper),
+                        BoundKind::ParamSpec(lower),
+                    ) => {
+                        // TODO also match with lower
+                        upper
+                    }
+                    _ => unreachable!(),
                 }
             } else {
                 todo!("why?")
@@ -1074,7 +1081,10 @@ impl<'a> Matcher<'a> {
                         let (t2, variance) = match bound {
                             Bound::Invariant(t) => (t, Variance::Invariant),
                             Bound::Upper(t) => (t, Variance::Contravariant),
-                            Bound::UpperAndLower(_, _) => todo!(),
+                            Bound::UpperAndLower(upper, lower) => {
+                                t1.matches(i_s, self, &lower, Variance::Covariant);
+                                (upper, Variance::Contravariant)
+                            }
                             Bound::Lower(t) => (t, Variance::Covariant),
                             Bound::Uncalculated { .. } => unreachable!(),
                         };
