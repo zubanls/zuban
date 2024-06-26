@@ -318,7 +318,7 @@ impl Type {
                     add_issue,
                     callable,
                 ),
-            _ => todo!("{self:?}"),
+            _ => todo!("{self:?}, {name}"),
         }
     }
 

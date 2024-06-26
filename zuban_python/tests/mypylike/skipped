@@ -223,6 +223,7 @@ testParamSpecSubtypeChecking2
 testParamSpecNestedApplyPosVsNamed
 testTypeGuardAsGenericFunctionArg
 testTypeIsAsGenericFunctionArg
+testTrivialParametersHandledCorrectly
 # Callable remapping over overload leads to a mapped overload (this is special cased for only one arg and decorator like behavior, see also is_generic_decorator_overload_call)
 testRegularGenericDecoratorOverload
 testParamSpecDecoratorOverload
@@ -285,8 +286,6 @@ testInvalidParamSpecDefinitionsWithArgsKwargs
 testInvalidParamSpecAndConcatenateDefinitionsWithArgsKwargs
 # Param spec invalid calls
 testParamSpecInvalidCalls
-# ParamSpec is not unbound if working like a T in Callable?
-testTrivialParametersHandledCorrectly
 # Class function Foo.bar something like a BoundFunction
 testExpandNonBareParamSpecAgainstCallable
 # param spec new tests

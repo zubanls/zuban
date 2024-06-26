@@ -577,7 +577,10 @@ impl CallableContent {
                 CallableParams::Simple(params.into())
             }
             CallableParams::WithParamSpec(pre, usage) => {
-                todo!()
+                if pre.is_empty() {
+                    return None;
+                }
+                CallableParams::WithParamSpec(pre.iter().skip(1).cloned().collect(), usage.clone())
             }
             CallableParams::Any(cause) => CallableParams::Any(*cause),
             CallableParams::Never(cause) => CallableParams::Never(*cause),
@@ -592,9 +595,7 @@ impl CallableContent {
                 ParamType::Star(_) => todo!(),
                 _ => None,
             }),
-            CallableParams::WithParamSpec(pre, usage) => {
-                todo!()
-            }
+            CallableParams::WithParamSpec(pre, usage) => pre.first().cloned(),
             CallableParams::Any(cause) => Some(Type::Any(*cause)),
             CallableParams::Never(cause) => Some(Type::Never(*cause)),
         }
