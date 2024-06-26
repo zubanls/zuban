@@ -118,7 +118,13 @@ fn matches_params_detailed(
             if skip_first_of_params2 {
                 todo!()
             }
-            matcher.match_or_add_param_spec(i_s, types, param_spec, params1.iter(), inner_variance)
+            matcher.match_or_add_param_spec(
+                i_s,
+                types,
+                param_spec,
+                params1.iter(),
+                inner_variance.invert(),
+            )
         }
         (_, Never(cause)) => Match::new_true(),
         (Never(cause), _) => Match::new_false(),

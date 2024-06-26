@@ -643,14 +643,16 @@ impl<'a> Matcher<'a> {
                     type_var_index: p1.index.as_usize(),
                 },
                 |found_type_var| new_params.search_type_vars(found_type_var),
-                || Bound::new_param_spec(new_params.clone(), variance),
+                || Bound::new_param_spec(new_params.clone(), variance.invert()),
             ) {
                 return matches;
             }
             let tv_matcher = &mut self.type_var_matchers[matcher_index];
+            // It feels weird that we invert the variance here. However we have inverted the
+            // variance to match params and we just invert it back.
             return matches
                 & tv_matcher.calculating_type_args[type_var_index]
-                    .merge(i_s.db, Bound::new_param_spec(new_params, variance));
+                    .merge(i_s.db, Bound::new_param_spec(new_params, variance.invert()));
         }
         if !self.match_reverse {
             if let Some(class) = self.class {

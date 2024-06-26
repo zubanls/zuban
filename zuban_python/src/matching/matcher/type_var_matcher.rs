@@ -182,11 +182,10 @@ impl CalculatingTypeArg {
                         let m = t.is_simple_super_type_of(i_s, &other);
                         if let Some(new) = t.common_base_type(i_s, &other) {
                             *t = new;
-                        }
-                        if !m.bool() {
                             return Match::new_true();
+                        } else {
+                            return m;
                         }
-                        return m;
                     }
                     Bound::Invariant(t) | Bound::UpperAndLower(_, t) => {
                         return t.is_simple_super_type_of(i_s, &other)
