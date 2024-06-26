@@ -180,7 +180,9 @@ impl CalculatingTypeArg {
                         // TODO shouldn't this also do a limited common base type search in the
                         // case of LowerAndUpper?
                         let m = t.is_simple_super_type_of(i_s, &other);
-                        *t = t.common_base_type(i_s, &other);
+                        if let Some(new) = t.common_base_type(i_s, &other) {
+                            *t = new;
+                        }
                         if !m.bool() {
                             return Match::new_true();
                         }

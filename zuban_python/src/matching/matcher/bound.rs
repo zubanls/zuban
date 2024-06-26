@@ -94,8 +94,9 @@ impl Bound {
     }
 
     pub(super) fn update_upper_bound(&mut self, i_s: &InferenceState, upper: BoundKind) {
-        let common =
-            |upper: BoundKind, b: &BoundKind| upper.common_sub_type(i_s, &b).unwrap_or(upper);
+        let common = |b: &BoundKind, upper: BoundKind| {
+            b.common_sub_type(i_s, &upper).expect("See expect below")
+        };
         match self {
             Self::Upper(old) => *self = Self::Upper(upper),
             Self::Lower(lower) => *self = Self::UpperAndLower(upper, lower.clone()),
@@ -105,11 +106,15 @@ impl Bound {
     }
 
     pub(super) fn update_lower_bound(&mut self, i_s: &InferenceState, lower: BoundKind) {
+        let common = |b: &BoundKind, lower: BoundKind| {
+            b.common_base_type(i_s, &lower)
+                .expect("It feels like this should never happend, because matching happened before")
+        };
         match self {
-            Self::Lower(old) => *self = Self::Lower(old.common_base_type(i_s, &lower)),
+            Self::Lower(old) => *self = Self::Lower(common(old, lower)),
             Self::Upper(upper) => *self = Self::UpperAndLower(upper.clone(), lower),
             Self::UpperAndLower(upper, old) => {
-                *self = Self::UpperAndLower(upper.clone(), old.common_base_type(i_s, &lower))
+                *self = Self::UpperAndLower(upper.clone(), common(old, lower))
             }
             _ => unreachable!(),
         }
@@ -260,13 +265,17 @@ impl BoundKind {
         self.simple_matches(i_s, other, Variance::Contravariant)
     }
 
-    pub(super) fn common_base_type(&self, i_s: &InferenceState, other: &Self) -> Self {
+    pub(super) fn common_base_type(&self, i_s: &InferenceState, other: &Self) -> Option<Self> {
         match (self, other) {
-            (Self::TypeVar(t1), Self::TypeVar(t2)) => Self::TypeVar(t1.common_base_type(i_s, t2)),
-            (Self::TypeVarTuple(tup1), Self::TypeVarTuple(tup2)) => {
-                Self::TypeVarTuple(tup1.common_base_type(i_s, tup2))
+            (Self::TypeVar(t1), Self::TypeVar(t2)) => {
+                Some(Self::TypeVar(t1.common_base_type(i_s, t2)))
             }
-            (Self::ParamSpec(params1), Self::ParamSpec(params2)) => todo!(),
+            (Self::TypeVarTuple(tup1), Self::TypeVarTuple(tup2)) => {
+                Some(Self::TypeVarTuple(tup1.common_base_type(i_s, tup2)))
+            }
+            (Self::ParamSpec(params1), Self::ParamSpec(params2)) => {
+                params1.common_base_type(i_s, params2).map(Self::ParamSpec)
+            }
             _ => unreachable!(),
         }
     }
