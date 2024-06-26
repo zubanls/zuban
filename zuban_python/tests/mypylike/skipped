@@ -294,7 +294,6 @@ testExpandNonBareParamSpecAgainstCallable
 testParamSpecClassConstructor
 testParamSpecApplyPosVsNamedOptional
 testParamSpecConcatenateSelfType
-testOverloadingWithParamSpec
 testParamSpecGenericWithNamedArg1
 testParamSpecGenericWithNamedArg2
 # Weird overload interaction with type vars
