@@ -725,6 +725,17 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 t,
             )
         };
+        let param_spec_error = |usage: &ParamSpecUsage, name| {
+            let n = usage.param_spec.name(self.inference.i_s.db).into();
+            let issue = if name == "kwargs" {
+                IssueKind::ParamSpecArgsNeedsBothStarAndStarStar { name: n }
+            } else {
+                IssueKind::UseParamSpecKwargs { name: n }
+            };
+            self.add_issue(from, issue);
+            new_dct(Type::Any(AnyCause::FromError))
+        };
+
         let previous_param_annotation = previous_param.and_then(|param| param.annotation());
         let cached_previous_param = previous_param_annotation
             .map(|annotation| self.inference.use_cached_param_annotation_type(annotation));
@@ -733,12 +744,8 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 TypeContent::ParamSpecAttr {
                     usage,
                     name: "kwargs",
-                } => {
-                    if *usage_before == usage {
-                        return Type::ParamSpecKwargs(usage);
-                    } else {
-                        todo!()
-                    }
+                } if *usage_before == usage => {
+                    return Type::ParamSpecKwargs(usage);
                 }
                 _ => {
                     let new_t =
@@ -750,6 +757,13 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         .unwrap();
                     let overwrite = NodeRef::new(self.inference.file, star_annotation.index());
                     overwrite.insert_complex(ComplexPoint::TypeInstance(new_t), Locality::Todo);
+                    return param_spec_error(
+                        usage_before,
+                        match tc {
+                            TypeContent::ParamSpecAttr { name, .. } => name,
+                            _ => "kwargs",
+                        },
+                    );
                 }
             },
             _ => (),
@@ -764,16 +778,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     Type::Any(AnyCause::FromError),
                 )
             }
-            TypeContent::ParamSpecAttr { usage, name } => {
-                let n = usage.param_spec.name(self.inference.i_s.db).into();
-                let issue = if name == "kwargs" {
-                    IssueKind::ParamSpecArgsNeedsBothStarAndStarStar { name: n }
-                } else {
-                    IssueKind::UseParamSpecKwargs { name: n }
-                };
-                self.add_issue(from, issue);
-                new_dct(Type::Any(AnyCause::FromError))
-            }
+            TypeContent::ParamSpecAttr { usage, name } => param_spec_error(&usage, name),
             _ => new_dct(self.as_type(tc, from)),
         }
     }

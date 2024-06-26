@@ -283,7 +283,6 @@ testIncrementalInnerClassAttrInMethodReveal
 # Param spec invalid definitions
 testInvalidParamSpecDefinitionsWithArgsKwargs
 testInvalidParamSpecAndConcatenateDefinitionsWithArgsKwargs
-testUnboundParamSpec
 # Param spec invalid calls
 testParamSpecInvalidCalls
 # ParamSpec is not unbound if working like a T in Callable?
