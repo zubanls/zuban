@@ -1031,11 +1031,6 @@ impl<'a> Matcher<'a> {
 
     fn find_secondary_transitive_constraints(&mut self, db: &Database, cycles: &TypeVarCycles) {
         debug!("Start calculating secondary transitive constraints");
-        // This does what Mypy introduced with --new-type-inference, which is described here:
-        // - https://github.com/python/mypy/pull/15287
-        // - https://github.com/python/mypy/pull/15754
-        // - Description of the algorithm:
-        //   https://inria.hal.science/inria-00073205/document Definition 7.1
         for cycle in &cycles.cycles {
             let mut unresolved = vec![];
             // First check for all relevant unresolved constraints in the cycle that are non-cycles
@@ -1109,12 +1104,27 @@ impl<'a> Matcher<'a> {
             return (self, Ok(None));
         }
 
+        // This does what Mypy introduced with --new-type-inference, which is described here:
+        //
+        // - https://github.com/python/mypy/pull/15287
+        // - https://github.com/python/mypy/pull/15754
+        // - Description of the algorithm:
+        //   https://inria.hal.science/inria-00073205/document Definition 7.1
+
+        // First we find cycles, i.e. type var likes that depend on each other.
         let mut cycles = self.find_unresolved_transitive_constraint_cycles(db);
         let before = self.constraint_count();
+        // Some cases need to propagate type vars across ParamSpec and TypeVarTuple. In that case
+        // we need to match constraints against each other, see for example
+        // testInferenceAgainstGenericParamSpecSecondary.
         self.find_secondary_transitive_constraints(db, &cycles);
+        // If constraints were added, that we rescan for cycles, because the information is out of
+        // date.
         if before < self.constraint_count() {
             cycles = self.find_unresolved_transitive_constraint_cycles(db);
         }
+        // Some cycles have no bounds at all. In that case we need to "invent" type variables that
+        // will take the place of the cycles.
         if let Err(m) = self.add_free_type_var_likes_to_cycles(db, &mut cycles) {
             return (self, Err(m));
         }
@@ -1394,6 +1404,7 @@ impl<'a> Matcher<'a> {
     }
 
     fn find_unresolved_transitive_constraint_cycles(&self, db: &Database) -> TypeVarCycles {
+        // To find cycles we run `add_cycles`, which recursively finds type var cycles.
         let mut cycles = TypeVarCycles::default();
         for (i, tv_matcher) in self.type_var_matchers.iter().enumerate() {
             for (k, tv) in tv_matcher.calculating_type_args.iter().enumerate() {
@@ -1413,7 +1424,7 @@ impl<'a> Matcher<'a> {
                 }
             }
         }
-        // Add all the remaining type var that are not actually a cycle to the list of cycles, so
+        // Add all the remaining type vars that are not actually a cycle to the list of cycles, so
         // we can just iterate over all distinct "cycles".
         for (i, tv_matcher) in self.type_var_matchers.iter().enumerate() {
             for (k, tv) in tv_matcher.calculating_type_args.iter().enumerate() {
