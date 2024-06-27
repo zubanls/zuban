@@ -1315,6 +1315,7 @@ impl<'a> Matcher<'a> {
                     return Err(err);
                 }
                 if !is_in_cycle {
+                    // This means we hit a cycle and are now just trying to merge.
                     let m = current.merge(db, replaced_unresolved);
                     if !m.bool() {
                         return Err(m);
