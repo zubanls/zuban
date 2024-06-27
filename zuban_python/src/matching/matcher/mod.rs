@@ -1415,7 +1415,7 @@ impl<'a> Matcher<'a> {
                 let already_seen = AlreadySeen::new(current);
                 if !tv.calculated() && tv.unresolved_transitive_constraints.is_empty() {
                     // Create a cycle for a type var that is not part of a cycle
-                    cycles.add(already_seen.append(current));
+                    cycles.add(already_seen);
                 } else {
                     let has_bound = self.add_cycles(&mut cycles, tv, already_seen);
                     if has_bound {
