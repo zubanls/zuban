@@ -8,7 +8,6 @@ use super::{
 };
 use crate::{
     inference_state::InferenceState,
-    matching::{matches_params, Matcher},
     type_::{Tuple, TupleArgs, TupleUnpack},
 };
 

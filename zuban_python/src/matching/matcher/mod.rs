@@ -1069,7 +1069,7 @@ impl<'a> Matcher<'a> {
                         let t1 = match wanted_constraint {
                             Bound::Invariant(t) => t,
                             Bound::Upper(t) => t,
-                            Bound::UpperAndLower(_, _) => todo!(),
+                            Bound::UpperAndLower(_, _) => todo!("Maybe unreachable?"),
                             Bound::Lower(t) => t,
                             Bound::Uncalculated { .. } => unreachable!(),
                         };
@@ -1085,7 +1085,7 @@ impl<'a> Matcher<'a> {
                         };
                         let m = t1.matches(i_s, self, &t2, variance);
                         debug!(
-                            "Secondary constraint match for {} against {}: {m:?}",
+                            "Secondary constraint match {variance:?} for {} against {}: {m:?}",
                             t1.format_short(db),
                             t2.format_short(db)
                         );

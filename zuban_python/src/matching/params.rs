@@ -7,6 +7,7 @@ use crate::{
     arguments::{Arg, ArgKind},
     database::Database,
     debug,
+    format_data::ParamsStyle,
     inference_state::InferenceState,
     matching::FormatData,
     type_::{
@@ -46,14 +47,20 @@ pub fn matches_params(
     params1: &CallableParams,
     params2: &CallableParams,
 ) -> Match {
-    matches_params_detailed(
+    let result = matches_params_detailed(
         i_s,
         matcher,
         params1,
         params2,
         Variance::Contravariant,
         false,
-    )
+    );
+    debug!(
+        "Matched params {} against {}: {result:?}",
+        params1.format(&FormatData::new_short(i_s.db), ParamsStyle::CallableParams),
+        params2.format(&FormatData::new_short(i_s.db), ParamsStyle::CallableParams),
+    );
+    result
 }
 
 fn matches_params_detailed(
@@ -206,7 +213,10 @@ pub fn matches_simple_params<
                             continue;
                         }
                         WrappedStar::ParamSpecArgs(u) => todo!(),
-                        WrappedStar::UnpackedTuple(_) => return Match::new_false(),
+                        WrappedStar::UnpackedTuple(_) => {
+                            debug!("Params mismatch because PositionalOnly vs. UnpackedTuple");
+                            return Match::new_false();
+                        }
                     },
                     _ => {
                         debug!(
@@ -233,17 +243,26 @@ pub fn matches_simple_params<
                                     .iter()
                                     .any(|p2| p2.name(i_s.db) == name1)
                                 {
+                                    debug!(
+                                        "Params mismatch because of name {name1:?} != {name2:?} \
+                                            (ignored positional param names #1)"
+                                    );
                                     return Match::new_false();
                                 }
                                 if mismatched_name_pos_params1
                                     .iter()
                                     .any(|p1| p1.name(i_s.db) == name2)
                                 {
+                                    debug!(
+                                        "Params mismatch because of name {name1:?} != {name2:?} \
+                                            (ignored positional param names #2)"
+                                    );
                                     return Match::new_false();
                                 }
                                 mismatched_name_pos_params1.push(param1);
                                 mismatched_name_pos_params2.push(param2);
                             } else {
+                                debug!("Params mismatch because of name {name1:?} != {name2:?}");
                                 return Match::new_false();
                             }
                         }
@@ -289,7 +308,12 @@ pub fn matches_simple_params<
                                 }
                                 return matches;
                             }
-                            _ => return Match::new_false(),
+                            _ => {
+                                debug!(
+                                    "PositionalOrKeyword that could be matched by *args, **kwargs"
+                                );
+                                return Match::new_false();
+                            }
                         }
                     }
                     WrappedParamType::PositionalOnly(t2)
@@ -326,7 +350,14 @@ pub fn matches_simple_params<
                             return Match::new_false();
                         }
                     }
-                    WrappedParamType::StarStar(_) => return Match::new_false(),
+                    WrappedParamType::StarStar(_) => {
+                        debug!(
+                            "Params mismatch, because had {:?} vs {:?}",
+                            param1.kind(i_s.db),
+                            param2.kind(i_s.db)
+                        );
+                        return Match::new_false();
+                    }
                     _ => {
                         let mut found = false;
                         for (i, p2) in unused_keyword_params.iter().enumerate() {
@@ -369,6 +400,7 @@ pub fn matches_simple_params<
                                 }
                             }
                             if !found {
+                                debug!("Params mismatch, because keyword was not found");
                                 return Match::new_false();
                             }
                         }
@@ -453,7 +485,14 @@ pub fn matches_simple_params<
                                 i_s, matcher, &tup1.args, &tup2_args, variance,
                             )
                         }
-                        _ => return Match::new_false(),
+                        _ => {
+                            debug!(
+                                "Params mismatch, because had {:?} vs {:?}",
+                                param1.kind(i_s.db),
+                                param2.kind(i_s.db)
+                            );
+                            return Match::new_false();
+                        }
                     },
                 },
                 WrappedParamType::StarStar(d1) => match specific2 {
@@ -499,9 +538,23 @@ pub fn matches_simple_params<
                                 variance,
                             )
                         }
-                        _ => return Match::new_false(),
+                        _ => {
+                            debug!(
+                                "Params mismatch, because had {:?} vs {:?}",
+                                param1.kind(i_s.db),
+                                param2.kind(i_s.db)
+                            );
+                            return Match::new_false();
+                        }
                     },
-                    _ => return Match::new_false(),
+                    _ => {
+                        debug!(
+                            "Params mismatch, because had {:?} vs {:?}",
+                            param1.kind(i_s.db),
+                            param2.kind(i_s.db)
+                        );
+                        return Match::new_false();
+                    }
                 },
             };
             params2.next();
@@ -528,6 +581,7 @@ pub fn matches_simple_params<
     }
     for unused in unused_keyword_params {
         if !unused.has_default() {
+            debug!("Params mismatch, because had unused keyword params");
             return Match::new_false();
         }
     }
@@ -543,6 +597,7 @@ pub fn matches_simple_params<
         if !param2.has_default()
             && !matches!(param2.kind(i_s.db), ParamKind::Star | ParamKind::StarStar)
         {
+            debug!("Params mismatch, because the other side had an additional param");
             return Match::new_false();
         }
     }
