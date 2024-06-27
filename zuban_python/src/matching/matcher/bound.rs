@@ -1,6 +1,7 @@
 use super::{super::Match, Matcher, MatcherFormatResult};
 use crate::{
     database::Database,
+    debug,
     format_data::{FormatData, ParamsStyle},
     inference_state::InferenceState,
     matching::matches_params_with_variance,
@@ -288,6 +289,11 @@ impl BoundKind {
             )),
             (Self::TypeVarTuple(tup1), Self::TypeVarTuple(tup2)) => todo!(),
             (Self::ParamSpec(params1), Self::ParamSpec(params2)) => {
+                debug!(
+                    "Common subtype for ParamSpec '{}' and '{}'",
+                    params1.format(&FormatData::new_short(i_s.db), ParamsStyle::Unreachable),
+                    params2.format(&FormatData::new_short(i_s.db), ParamsStyle::Unreachable),
+                );
                 params1.common_sub_type(i_s, params2).map(Self::ParamSpec)
             }
             _ => unreachable!(),

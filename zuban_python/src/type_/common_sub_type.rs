@@ -8,6 +8,7 @@ use super::{
 };
 use crate::{
     inference_state::InferenceState,
+    matching::{matches_params, Matcher},
     type_::{Tuple, TupleArgs, TupleUnpack},
 };
 
@@ -82,6 +83,14 @@ impl CallableParams {
         i_s: &InferenceState,
         other: &CallableParams,
     ) -> Option<CallableParams> {
+        /*
+        let m = &mut Matcher::default().with_ignore_positional_param_names();
+        if matches_params(i_s, m, self, other).bool() {
+            Some(other.clone())
+        } else if matches_params(i_s, m, other, self).bool() {
+            Some(self.clone())
+        } else {
+        */
         match &self {
             CallableParams::Simple(params1) => match &other {
                 CallableParams::Simple(params2) => common_sub_type_params(i_s, params1, params2),
@@ -157,7 +166,7 @@ fn common_sub_type_params(
         }
         Some(CallableParams::Simple(new_params.into()))
     } else {
-        todo!()
+        None
     }
 }
 
