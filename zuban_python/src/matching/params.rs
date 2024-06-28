@@ -304,6 +304,11 @@ pub fn matches_simple_params<
                                 }
                             }
                         }
+                        debug!(
+                            "Params mismatch because we did not find a kwarg \
+                                that fits the variadic param"
+                        );
+                        return Match::new_false();
                     }
                     WrappedParamType::PositionalOnly(t2)
                         if matcher.ignore_positional_param_names() =>
