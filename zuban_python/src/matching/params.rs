@@ -187,7 +187,7 @@ pub fn matches_simple_params<
                 return Match::new_false();
             }
             let specific1 = param1.specific(i_s.db);
-            let specific2 = param2.specific(i_s.db);
+            let mut specific2 = param2.specific(i_s.db);
 
             if let Some(m) =
                 match_unpack_from_other_side(i_s, matcher, &specific2, variance, || {
@@ -287,13 +287,7 @@ pub fn matches_simple_params<
                                 WrappedParamType::KeywordOnly(ref d2) => {
                                     if p2.name(i_s.db) == param1.name(i_s.db) {
                                         if p2.has_default() {
-                                            matches &= match_with_variance(
-                                                i_s,
-                                                matcher,
-                                                s2,
-                                                d2,
-                                                Variance::Invariant,
-                                            );
+                                            matches &= match_(i_s, matcher, t1, d2);
                                             continue 'p1_iter;
                                         } else {
                                             debug!("Params mismatch because keyword param is not default");
@@ -317,7 +311,6 @@ pub fn matches_simple_params<
                         matches &= match_(i_s, matcher, t1, t2)
                     }
                     _ => {
-                        dbg!(param1.name(i_s.db), param2.name(i_s.db));
                         debug!(
                             "Params mismatch, because had {:?} vs {:?}",
                             param1.kind(i_s.db),
@@ -326,82 +319,90 @@ pub fn matches_simple_params<
                         return Match::new_false();
                     }
                 },
-                WrappedParamType::KeywordOnly(t1) => match &specific2 {
-                    WrappedParamType::StarStar(WrappedStarStar::ValueType(t2)) => {
-                        matches &= match_(i_s, matcher, t1, t2);
-                        continue;
+                WrappedParamType::KeywordOnly(t1) => {
+                    if matches!(specific2, WrappedParamType::Star(_)) {
+                        params2.next();
+                        if let Some(p2) = params2.peek() {
+                            param2 = *p2;
+                            specific2 = param2.specific(i_s.db);
+                        }
                     }
-                    WrappedParamType::StarStar(WrappedStarStar::UnpackTypedDict(u)) => {
-                        if let Some(member2) = param1
-                            .name(i_s.db)
-                            .and_then(|name1| u.find_member(i_s.db, name1))
-                        {
-                            // TODO check if param can be optional
-                            if let Some(t1) = t1 {
-                                matches &= t1.matches(i_s, matcher, &member2.type_, variance);
-                            }
+                    match &specific2 {
+                        WrappedParamType::StarStar(WrappedStarStar::ValueType(t2)) => {
+                            matches &= match_(i_s, matcher, t1, t2);
                             continue;
-                        } else {
-                            debug!("Param mismatch because kw name was not found in unpack");
-                            return Match::new_false();
                         }
-                    }
-                    WrappedParamType::StarStar(_) => {
-                        debug!(
-                            "Params mismatch, because had {:?} vs {:?}",
-                            param1.kind(i_s.db),
-                            param2.kind(i_s.db)
-                        );
-                        return Match::new_false();
-                    }
-                    _ => {
-                        let mut found = false;
-                        for (i, p2) in unused_keyword_params.iter().enumerate() {
-                            if param1.name(i_s.db) == p2.name(i_s.db) {
-                                match unused_keyword_params.remove(i).specific(i_s.db) {
-                                    WrappedParamType::KeywordOnly(t2)
-                                    | WrappedParamType::PositionalOrKeyword(t2) => {
-                                        matches &= match_(i_s, matcher, t1, &t2);
-                                    }
-                                    _ => unreachable!(),
-                                }
-                                found = true;
-                                break;
-                            }
-                        }
-                        if !found {
-                            while params2
-                                .peek()
-                                .is_some_and(|p2| !matches!(p2.kind(i_s.db), ParamKind::StarStar))
+                        WrappedParamType::StarStar(WrappedStarStar::UnpackTypedDict(u)) => {
+                            if let Some(member2) = param1
+                                .name(i_s.db)
+                                .and_then(|name1| u.find_member(i_s.db, name1))
                             {
-                                param2 = *params2.peek().unwrap();
-                                if param1.name(i_s.db) == param2.name(i_s.db) {
-                                    match &param2.specific(i_s.db) {
-                                        WrappedParamType::PositionalOrKeyword(t2)
-                                        | WrappedParamType::KeywordOnly(t2) => {
-                                            matches &= match_(i_s, matcher, t1, t2);
-                                            found = true;
-                                            break;
-                                        }
-                                        _ => continue,
-                                    }
-                                } else {
-                                    params2.next();
-                                    if matches!(
-                                        param2.kind(i_s.db),
-                                        ParamKind::PositionalOrKeyword | ParamKind::KeywordOnly
-                                    ) {
-                                        unused_keyword_params.push(param2);
-                                    }
+                                // TODO check if param can be optional
+                                if let Some(t1) = t1 {
+                                    matches &= t1.matches(i_s, matcher, &member2.type_, variance);
                                 }
-                            }
-                            if !found {
-                                debug!("Params mismatch, because keyword was not found");
+                                continue;
+                            } else {
+                                debug!("Param mismatch because kw name was not found in unpack");
                                 return Match::new_false();
                             }
                         }
+                        WrappedParamType::StarStar(_) => {
+                            debug!(
+                                "Params mismatch, because had {:?} vs {:?}",
+                                param1.kind(i_s.db),
+                                param2.kind(i_s.db)
+                            );
+                            return Match::new_false();
+                        }
+                        _ => {
+                            let mut found = false;
+                            for (i, p2) in unused_keyword_params.iter().enumerate() {
+                                if param1.name(i_s.db) == p2.name(i_s.db) {
+                                    match unused_keyword_params.remove(i).specific(i_s.db) {
+                                        WrappedParamType::KeywordOnly(t2)
+                                        | WrappedParamType::PositionalOrKeyword(t2) => {
+                                            matches &= match_(i_s, matcher, t1, &t2);
+                                        }
+                                        _ => unreachable!(),
+                                    }
+                                    found = true;
+                                    break;
+                                }
+                            }
+                            if !found {
+                                while params2.peek().is_some_and(|p2| {
+                                    !matches!(p2.kind(i_s.db), ParamKind::StarStar)
+                                }) {
+                                    param2 = *params2.peek().unwrap();
+                                    if param1.name(i_s.db) == param2.name(i_s.db) {
+                                        match &param2.specific(i_s.db) {
+                                            WrappedParamType::PositionalOrKeyword(t2)
+                                            | WrappedParamType::KeywordOnly(t2) => {
+                                                matches &= match_(i_s, matcher, t1, t2);
+                                                found = true;
+                                                break;
+                                            }
+                                            _ => continue,
+                                        }
+                                    } else {
+                                        params2.next();
+                                        if matches!(
+                                            param2.kind(i_s.db),
+                                            ParamKind::PositionalOrKeyword | ParamKind::KeywordOnly
+                                        ) {
+                                            unused_keyword_params.push(param2);
+                                        }
+                                    }
+                                }
+                                if !found {
+                                    debug!("Params mismatch, because keyword was not found");
+                                    return Match::new_false();
+                                }
+                            }
+                        }
                     }
-                },
+                }
                 WrappedParamType::Star(s1) => match &specific2 {
                     WrappedParamType::Star(s2) => match (s1, s2) {
                         (WrappedStar::ArbitraryLen(t1), WrappedStar::ArbitraryLen(t2)) => {

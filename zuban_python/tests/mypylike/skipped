@@ -291,13 +291,9 @@ testExpandNonBareParamSpecAgainstCallable
 # param spec new tests
 testParamSpecApplyPosVsNamedOptional
 testParamSpecConcatenateSelfType
-testParamSpecGenericWithNamedArg1
 testParamSpecGenericWithNamedArg2
 # Weird overload interaction with type vars
 testDictWithKeywordArgsOnly
-# regressions
-testSubtypingFunctionsArgsKwargs
-testUnionOfSimilarCallablesCrash
 
 # Are generics in self types always bound to the function?
 # https://github.com/python/typing/discussions/1340

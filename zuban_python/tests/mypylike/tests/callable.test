@@ -266,7 +266,9 @@ z: Callable[[DefaultArg(int, "foo"), Arg(int, "bar")], int]  # E: Required posit
 a: Callable[[NamedArg(int, "foo"), Arg(int, "bar")], int]  # E: Required positional args may not appear after default, named or var args
 
 [case match_args_kwargs_callable]
-# flags: --mypy-compatible
+# This is a bit special and probably debatable behavior. In theory the code
+# below should probably not return an error. However Mypy currently gives an
+# error here, because it feels wrong to expect different types for args/kwargs.
 def x(*args: int, **kwargs: object): ...
 def y(*args: object, **kwargs: int): ...
 def z(*args: int, **kwargs: int): ...
