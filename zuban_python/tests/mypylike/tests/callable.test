@@ -326,3 +326,50 @@ if bool():
     foo = bar
 if bool():
     bar = foo # E: Incompatible types in assignment (expression has type "Callable[[NamedArg(str, 'y')], None]", variable has type "Callable[[int, VarArg(bytes), NamedArg(str, 'y')], None]")
+
+[case function_subtyping_positional_or_keyword_vs_variadic_and_kw_only]
+def foo1(y: str) -> None: ...
+def bar1(*z: str, y: str = "") -> None: ...
+def bar2(*z: int, y: str = "") -> None: ...
+def bar3(*z: str, y: int = 1) -> None: ...
+def bar4(*z: str, y: str) -> None: ...
+
+if bool():
+    foo1 = bar1
+if bool():
+    foo1 = bar2  # E: Incompatible types in assignment (expression has type "Callable[[VarArg(int), DefaultNamedArg(str, 'y')], None]", variable has type "Callable[[str], None]")
+if bool():
+    foo1 = bar3  # E: Incompatible types in assignment (expression has type "Callable[[VarArg(str), DefaultNamedArg(int, 'y')], None]", variable has type "Callable[[str], None]")
+if bool():
+    foo1 = bar4  # E: Incompatible types in assignment (expression has type "Callable[[VarArg(str), NamedArg(str, 'y')], None]", variable has type "Callable[[str], None]")
+
+def foo2(y: str, z: str) -> None: ...
+def baz1(*args: str, y: str = '', z: str = "") -> None: ...
+def baz2(*args: str, y: str = '', z: str) -> None: ...
+def baz3(*args: str, y: str, z: int) -> None: ...
+
+if bool():
+    foo2 = baz1
+if bool():
+    foo2 = baz2  # E: Incompatible types in assignment (expression has type "Callable[[VarArg(str), DefaultNamedArg(str, 'y'), NamedArg(str, 'z')], None]", variable has type "Callable[[str, str], None]")
+if bool():
+    foo2 = baz3  # E: Incompatible types in assignment (expression has type "Callable[[VarArg(str), NamedArg(str, 'y'), NamedArg(int, 'z')], None]", variable has type "Callable[[str, str], None]")
+
+[case function_subtyping_positional_or_keyword_vs_variadic_and_kwargs_after_kw_only]
+def foo1(y: str) -> None: ...
+def foo2(y: str, z: str) -> None: ...
+def bar1(*args: str, y: str = '', **kwargs: str) -> None: ...
+def bar2(*args: str, y: str, **kwargs: str) -> None: ...
+def bar3(*args: str, y: str = '', **kwargs: int) -> None: ...
+def bar4(*args: str, z: str = '', **kwargs: int) -> None: ...
+
+if bool():
+    foo1 = bar1
+    foo2 = bar1
+if bool():
+    foo1 = bar2  # E: Incompatible types in assignment (expression has type "Callable[[VarArg(str), NamedArg(str, 'y'), KwArg(str)], None]", variable has type "Callable[[str], None]")
+if bool():
+    foo1 = bar3
+    foo2 = bar3  # E: Incompatible types in assignment (expression has type "Callable[[VarArg(str), DefaultNamedArg(str, 'y'), KwArg(int)], None]", variable has type "Callable[[str, str], None]")
+if bool():
+    foo1 = bar4  # E: Incompatible types in assignment (expression has type "Callable[[VarArg(str), DefaultNamedArg(str, 'z'), KwArg(int)], None]", variable has type "Callable[[str], None]")

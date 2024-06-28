@@ -149,7 +149,7 @@ pub fn matches_simple_params<
     i_s: &InferenceState<'db, '_>,
     matcher: &mut Matcher,
     params1: I1,
-    mut params2: Peekable<impl Iterator<Item = P2>>,
+    mut params2: Peekable<impl Iterator<Item = P2> + Clone>,
     variance: Variance,
 ) -> Match {
     let match_with_variance =
@@ -172,7 +172,7 @@ pub fn matches_simple_params<
 
     let mut matches = Match::new_true();
     let mut params1 = params1.peekable();
-    while let Some(param1) = params1.next() {
+    'p1_iter: while let Some(param1) = params1.next() {
         if let Some(mut param2) = params2
             .peek()
             .or_else(|| unused_keyword_params.first())
@@ -269,50 +269,45 @@ pub fn matches_simple_params<
                         matches &= match_(i_s, matcher, t1, t2)
                     }
                     WrappedParamType::Star(WrappedStar::ArbitraryLen(s2)) => {
-                        params2.next();
-                        match params2.next().map(|p| p.specific(i_s.db)) {
-                            Some(WrappedParamType::StarStar(WrappedStarStar::ValueType(
-                                ref d2,
-                            ))) => {
-                                matches &=
-                                    match_with_variance(i_s, matcher, s2, d2, Variance::Invariant);
-                                matches &= match_(i_s, matcher, t1, s2);
-                                for param1 in params1 {
-                                    match &param1.specific(i_s.db) {
-                                        WrappedParamType::PositionalOnly(t1)
-                                        | WrappedParamType::PositionalOrKeyword(t1)
-                                        | WrappedParamType::KeywordOnly(t1)
-                                        | WrappedParamType::Star(WrappedStar::ArbitraryLen(t1))
-                                        | WrappedParamType::StarStar(WrappedStarStar::ValueType(
-                                            t1,
-                                        )) => {
-                                            // Since this is a *args, **kwargs signature we
-                                            // just check that all annotations are matching.
-                                            // TODO do we need to check both?
-                                            matches &= match_(i_s, matcher, t1, d2);
-                                            matches &= match_(i_s, matcher, t1, s2);
+                        matches &= match_(i_s, matcher, t1, s2);
+                        let mut cloned_params2 = params2.clone();
+                        cloned_params2.next();
+                        for p2 in cloned_params2 {
+                            match p2.specific(i_s.db) {
+                                WrappedParamType::StarStar(WrappedStarStar::ValueType(ref d2)) => {
+                                    matches &= match_with_variance(
+                                        i_s,
+                                        matcher,
+                                        s2,
+                                        d2,
+                                        Variance::Invariant,
+                                    );
+                                    continue 'p1_iter;
+                                }
+                                WrappedParamType::KeywordOnly(ref d2) => {
+                                    if p2.name(i_s.db) == param1.name(i_s.db) {
+                                        if p2.has_default() {
+                                            matches &= match_with_variance(
+                                                i_s,
+                                                matcher,
+                                                s2,
+                                                d2,
+                                                Variance::Invariant,
+                                            );
+                                            continue 'p1_iter;
+                                        } else {
+                                            debug!("Params mismatch because keyword param is not default");
+                                            return Match::new_false();
                                         }
-                                        WrappedParamType::Star(WrappedStar::UnpackedTuple(u)) => {
-                                            todo!()
-                                        }
-                                        WrappedParamType::Star(WrappedStar::ParamSpecArgs(u)) => {
-                                            todo!()
-                                        }
-                                        WrappedParamType::StarStar(
-                                            WrappedStarStar::ParamSpecKwargs(u),
-                                        ) => todo!(),
-                                        WrappedParamType::StarStar(
-                                            WrappedStarStar::UnpackTypedDict(u),
-                                        ) => todo!(),
                                     }
                                 }
-                                return matches;
-                            }
-                            _ => {
-                                debug!(
-                                    "PositionalOrKeyword that could be matched by *args, **kwargs"
-                                );
-                                return Match::new_false();
+                                _ => {
+                                    debug!(
+                                        "Params mismatch because PositionalOrKeyword \
+                                            that could not be matched by *args, **kwargs"
+                                    );
+                                    return Match::new_false();
+                                }
                             }
                         }
                     }
@@ -322,6 +317,7 @@ pub fn matches_simple_params<
                         matches &= match_(i_s, matcher, t1, t2)
                     }
                     _ => {
+                        dbg!(param1.name(i_s.db), param2.name(i_s.db));
                         debug!(
                             "Params mismatch, because had {:?} vs {:?}",
                             param1.kind(i_s.db),

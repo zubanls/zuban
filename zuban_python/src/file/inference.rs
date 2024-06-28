@@ -1081,6 +1081,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 );
             };
             if matches!(assign_kind, AssignKind::Normal) {
+                // TODO on errors this should not be run and then narrow_or_widen_name_target
+                // doesn't need to recheck
                 if !self.narrow_or_widen_name_target(
                     first_name_link,
                     &original_t,
