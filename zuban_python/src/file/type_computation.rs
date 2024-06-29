@@ -349,7 +349,7 @@ macro_rules! compute_type_application {
                 }
             }
             if $from_alias_definition || current_callable.is_some(){
-                TypeVarCallbackReturn::NotFound { allow_late_bound_callables: true }
+                TypeVarCallbackReturn::NotFound { allow_late_bound_callables: !$from_alias_definition }
             } else {
                 TypeVarCallbackReturn::UnboundTypeVar
             }
@@ -3129,15 +3129,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     } => {
                         let index = self.type_var_manager.add(
                             type_var_like.clone(),
-                            self.current_callable.filter(|_| {
-                                allow_late_bound_callables && matches!(
-                                    self.origin,
-                                    TypeComputationOrigin::ParamTypeCommentOrAnnotation
-                                        | TypeComputationOrigin::AssignmentTypeCommentOrAnnotation { .. }
-                                        | TypeComputationOrigin::CastTarget
-                                        | TypeComputationOrigin::TypeApplication
-                                )
-                            }),
+                            self.current_callable.filter(|_| allow_late_bound_callables),
                         );
                         match type_var_like {
                             TypeVarLike::TypeVar(type_var) => TypeContent::Type(Type::TypeVar(
