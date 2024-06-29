@@ -291,7 +291,6 @@ testExpandNonBareParamSpecAgainstCallable
 # param spec new tests
 testParamSpecApplyPosVsNamedOptional
 testParamSpecConcatenateSelfType
-testParamSpecGenericWithNamedArg2
 # Weird overload interaction with type vars
 testDictWithKeywordArgsOnly
 

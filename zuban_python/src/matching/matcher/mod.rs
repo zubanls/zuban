@@ -1665,7 +1665,7 @@ fn infer_params_from_args<'db>(
                     unreachable!()
                 };
                 CallableParam {
-                    type_: ParamType::PositionalOrKeyword(t),
+                    type_: ParamType::KeywordOnly(t),
                     name: Some(DbString::RcStr(key.into())),
                     has_default: false,
                 }
