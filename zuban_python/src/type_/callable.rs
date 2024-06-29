@@ -418,14 +418,14 @@ impl CallableParams {
                         ParamType::Star(StarParamType::UnpackedTuple(u)) => {
                             u.args.search_type_vars(found_type_var)
                         }
-                        ParamType::Star(StarParamType::ParamSpecArgs(_)) => {
-                            unreachable!()
+                        ParamType::Star(StarParamType::ParamSpecArgs(u)) => {
+                            found_type_var(TypeVarLikeUsage::ParamSpec(u.clone()))
                         }
                         ParamType::StarStar(StarStarParamType::UnpackTypedDict(t)) => {
                             todo!()
                         }
                         ParamType::StarStar(StarStarParamType::ParamSpecKwargs(_)) => {
-                            todo!()
+                            // Do nothing here, because we already found it above.
                         }
                     }
                 }
@@ -895,15 +895,17 @@ pub fn format_callable_params<'db: 'x, 'x, P: Param<'x>>(
             | WrappedParamType::StarStar(WrappedStarStar::ValueType(t)) => {
                 t.as_ref().map(|t| t.format(format_data))
             }
-            WrappedParamType::Star(WrappedStar::ParamSpecArgs(u)) => todo!(),
+            WrappedParamType::Star(WrappedStar::ParamSpecArgs(u)) => {
+                Some(format!("{}.args", u.param_spec.name(db)).into())
+            }
             WrappedParamType::Star(WrappedStar::UnpackedTuple(tup)) => {
                 Some(tup.format_with_simplified_unpack(format_data))
             }
             WrappedParamType::StarStar(WrappedStarStar::UnpackTypedDict(td)) => {
                 Some(format!("Unpack[{}]", td.format(format_data)).into())
             }
-            WrappedParamType::StarStar(WrappedStarStar::ParamSpecKwargs(_)) => {
-                todo!()
+            WrappedParamType::StarStar(WrappedStarStar::ParamSpecKwargs(u)) => {
+                Some(format!("{}.kwargs", u.param_spec.name(db)).into())
             }
         };
         let current_kind = p.kind(db);

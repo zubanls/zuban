@@ -790,7 +790,7 @@ impl<'a> Matcher<'a> {
                     }
                 }
             }
-            CallableParams::Never(_) => todo!(),
+            CallableParams::Never(_) => todo!(), //SignatureMatch::False { similar: false },
         }
     }
 

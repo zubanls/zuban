@@ -401,7 +401,9 @@ impl CallableParam {
                     StarParamType::UnpackedTuple(tup) => StarParamType::UnpackedTuple(Tuple::new(
                         tup.args.rewrite_late_bound_callables(manager),
                     )),
-                    StarParamType::ParamSpecArgs(_) => todo!(),
+                    StarParamType::ParamSpecArgs(usage) => {
+                        StarParamType::ParamSpecArgs(usage.clone())
+                    }
                 }),
                 ParamType::StarStar(d) => ParamType::StarStar(match d {
                     StarStarParamType::ValueType(t) => {
@@ -410,8 +412,8 @@ impl CallableParam {
                     StarStarParamType::UnpackTypedDict(_) => {
                         todo!()
                     }
-                    StarStarParamType::ParamSpecKwargs(_) => {
-                        todo!()
+                    StarStarParamType::ParamSpecKwargs(usage) => {
+                        StarStarParamType::ParamSpecKwargs(usage.clone())
                     }
                 }),
             },
@@ -485,7 +487,68 @@ impl CallableParams {
                                     }
                                 }
                             }
-                            StarParamType::ParamSpecArgs(_) => todo!(),
+                            StarParamType::ParamSpecArgs(u) => {
+                                let result = callable(TypeVarLikeUsage::ParamSpec(u.clone()));
+                                let GenericItem::ParamSpecArg(mut new) = result else {
+                                    unreachable!()
+                                };
+                                if let Some(new_spec_type_vars) = new.type_vars {
+                                    if let Some(in_definition) = in_definition {
+                                        let type_var_len =
+                                            type_vars.as_ref().map(|t| t.len()).unwrap_or(0);
+                                        replace_data =
+                                            Some((new_spec_type_vars.in_definition, type_var_len));
+                                        let new_params =
+                                            new.params.replace_type_var_likes_and_self(
+                                                db,
+                                                &mut None,
+                                                None,
+                                                &mut |usage| {
+                                                    replace_param_spec_inner_type_var_likes(
+                                                        usage,
+                                                        in_definition,
+                                                        replace_data.unwrap(),
+                                                    )
+                                                },
+                                                replace_self,
+                                            );
+                                        if let Some(type_vars) = type_vars.as_mut() {
+                                            type_vars.extend(new_spec_type_vars.type_vars.as_vec());
+                                        } else {
+                                            *type_vars =
+                                                Some(new_spec_type_vars.type_vars.as_vec());
+                                        }
+                                        new.params = new_params.0;
+                                    } else {
+                                        debug_assert!(type_vars.is_none());
+                                    }
+                                }
+                                match new.params {
+                                    CallableParams::Simple(params) => {
+                                        new_params.extend_from_slice(&params);
+                                    }
+                                    CallableParams::Any(cause) => todo!(), //CallableParams::Any(cause),
+                                    CallableParams::WithParamSpec(new_types, p) => {
+                                        new_params.extend(new_types.iter().map(|t| {
+                                            CallableParam::new_anonymous(ParamType::PositionalOnly(
+                                                t.clone(),
+                                            ))
+                                        }));
+                                        new_params.push(CallableParam::new_anonymous(
+                                            ParamType::Star(StarParamType::ParamSpecArgs(
+                                                p.clone(),
+                                            )),
+                                        ));
+                                        new_params.push(CallableParam::new_anonymous(
+                                            ParamType::StarStar(
+                                                StarStarParamType::ParamSpecKwargs(p),
+                                            ),
+                                        ));
+                                    }
+                                    CallableParams::Never(cause) => todo!(), //CallableParams::Never(cause),
+                                };
+                                continue;
+                            }
                         }),
                         ParamType::StarStar(d) => ParamType::StarStar(match d {
                             StarStarParamType::ValueType(t) => StarStarParamType::ValueType(
@@ -495,7 +558,8 @@ impl CallableParams {
                                 todo!()
                             }
                             StarStarParamType::ParamSpecKwargs(_) => {
-                                todo!()
+                                // Was already handled in ParamSpecArgs
+                                continue;
                             }
                         }),
                     };

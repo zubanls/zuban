@@ -1479,7 +1479,6 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         };
 
         let mut new_params = vec![];
-        let mut had_param_spec_args = false;
         let file_index = self.node_ref.file_index();
         while let Some(p) = params.next() {
             if p.param.kind() == ParamKind::Star {
@@ -1551,15 +1550,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     })
                 }
                 WrappedParamType::Star(WrappedStar::ParamSpecArgs(u1)) => {
-                    match params.peek().map(|p| p.specific(i_s.db)) {
-                        Some(WrappedParamType::StarStar(WrappedStarStar::ParamSpecKwargs(u2)))
-                            if u1 == u2 =>
-                        {
-                            had_param_spec_args = true;
-                            continue;
-                        }
-                        _ => todo!(),
-                    }
+                    ParamType::Star(StarParamType::ParamSpecArgs(u1.clone()))
                 }
                 WrappedParamType::StarStar(WrappedStarStar::ValueType(t)) => {
                     ParamType::StarStar(StarStarParamType::ValueType(as_t(t)))
@@ -1568,7 +1559,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     ParamType::StarStar(StarStarParamType::UnpackTypedDict(u))
                 }
                 WrappedParamType::StarStar(WrappedStarStar::ParamSpecKwargs(u)) => {
-                    return return_result(self.remap_param_spec(i_s, new_params, u));
+                    ParamType::StarStar(StarStarParamType::ParamSpecKwargs(u.clone()))
                 }
             };
             new_params.push(CallableParam {

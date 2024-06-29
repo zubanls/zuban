@@ -412,7 +412,10 @@ pub fn matches_simple_params<
                             matches &= match_(i_s, matcher, t1, t2)
                         }
                         (WrappedStar::ParamSpecArgs(u1), WrappedStar::ParamSpecArgs(u2)) => {
-                            todo!()
+                            if u1 != u2 {
+                                debug!("Params mismatch, because ParamSpec was different");
+                                return Match::new_false();
+                            }
                         }
                         (WrappedStar::ArbitraryLen(_), WrappedStar::ParamSpecArgs(_))
                         | (WrappedStar::ParamSpecArgs(_), WrappedStar::ArbitraryLen(_)) => {
@@ -503,7 +506,9 @@ pub fn matches_simple_params<
                         (
                             WrappedStarStar::ParamSpecKwargs(u1),
                             WrappedStarStar::ParamSpecKwargs(u2),
-                        ) => todo!(),
+                        ) => {
+                            //debug_assert!(*u1 != u2, "Args should have been checked earlier")
+                        }
                         (
                             WrappedStarStar::UnpackTypedDict(td1),
                             WrappedStarStar::UnpackTypedDict(td2),
