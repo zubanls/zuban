@@ -45,7 +45,7 @@ pub(super) const ANNOTATION_TO_EXPR_DIFFERENCE: u32 = 2;
 pub enum TypeVarCallbackReturn {
     TypeVarLike(TypeVarLikeUsage),
     UnboundTypeVar,
-    NotFound,
+    NotFound { allow_late_bound_callables: bool },
 }
 
 type MapAnnotationTypeCallback<'a> = Option<&'a dyn Fn(&mut TypeComputation, TypeContent) -> Type>;
@@ -349,7 +349,7 @@ macro_rules! compute_type_application {
                 }
             }
             if $from_alias_definition || current_callable.is_some(){
-                TypeVarCallbackReturn::NotFound
+                TypeVarCallbackReturn::NotFound { allow_late_bound_callables: true }
             } else {
                 TypeVarCallbackReturn::UnboundTypeVar
             }
@@ -417,7 +417,9 @@ fn type_computation_for_variable_annotation(
         }
     }
     match current_callable {
-        Some(_) => TypeVarCallbackReturn::NotFound,
+        Some(_) => TypeVarCallbackReturn::NotFound {
+            allow_late_bound_callables: true,
+        },
         None => TypeVarCallbackReturn::UnboundTypeVar,
     }
 }
@@ -3122,11 +3124,13 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         );
                         TypeContent::Unknown(UnknownCause::ReportedIssue)
                     }
-                    TypeVarCallbackReturn::NotFound => {
+                    TypeVarCallbackReturn::NotFound {
+                        allow_late_bound_callables,
+                    } => {
                         let index = self.type_var_manager.add(
                             type_var_like.clone(),
                             self.current_callable.filter(|_| {
-                                matches!(
+                                allow_late_bound_callables && matches!(
                                     self.origin,
                                     TypeComputationOrigin::ParamTypeCommentOrAnnotation
                                         | TypeComputationOrigin::AssignmentTypeCommentOrAnnotation { .. }

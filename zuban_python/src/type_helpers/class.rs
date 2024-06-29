@@ -712,7 +712,9 @@ impl<'db: 'a, 'a> Class<'a> {
                                     TypeVarCallbackReturn::TypeVarLike(usage)
                                 } else {
                                     // This can happen if two type var likes are used.
-                                    TypeVarCallbackReturn::NotFound
+                                    TypeVarCallbackReturn::NotFound {
+                                        allow_late_bound_callables: false,
+                                    }
                                 }
                             },
                             TypeComputationOrigin::BaseClass,

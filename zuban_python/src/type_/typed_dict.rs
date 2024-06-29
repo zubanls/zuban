@@ -577,7 +577,9 @@ fn new_typed_dict_internal<'db>(
             return None;
         }
     };
-    let on_type_var = &mut |i_s: &InferenceState, _: &_, _, _| TypeVarCallbackReturn::NotFound;
+    let on_type_var = &mut |i_s: &InferenceState, _: &_, _, _| TypeVarCallbackReturn::NotFound {
+        allow_late_bound_callables: true,
+    };
     let inference = first.node_ref.file.inference(i_s);
     let mut comp = TypeComputation::new(
         &inference,

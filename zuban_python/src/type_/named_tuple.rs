@@ -433,7 +433,9 @@ pub(crate) fn new_typing_named_tuple(
     };
     let on_type_var = &mut |i_s: &InferenceState, _: &_, type_var_like, _| {
         i_s.find_parent_type_var(&type_var_like)
-            .unwrap_or(TypeVarCallbackReturn::NotFound)
+            .unwrap_or(TypeVarCallbackReturn::NotFound {
+                allow_late_bound_callables: true,
+            })
     };
     let inference = second_node_ref.file.inference(i_s);
     let mut comp = TypeComputation::new(

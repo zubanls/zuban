@@ -462,7 +462,9 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     {
                         unbound_type_vars.push(type_var);
                     }
-                    TypeVarCallbackReturn::NotFound
+                    TypeVarCallbackReturn::NotFound {
+                        allow_late_bound_callables: in_result_type.get(),
+                    }
                 })
         };
         let mut type_computation = TypeComputation::new(

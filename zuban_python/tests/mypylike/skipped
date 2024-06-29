@@ -217,13 +217,6 @@ testTypeVarTuplePep646TypeVarStarArgs
 testClassChangedIntoFunction2
 testChangeTypeVarToFunction
 
-# function type vars are not late bound in Mypy in params
-testTypeVarTupleParamSpecInteraction
-testParamSpecSubtypeChecking2
-testParamSpecNestedApplyPosVsNamed
-testTypeGuardAsGenericFunctionArg
-testTypeIsAsGenericFunctionArg
-testTrivialParametersHandledCorrectly
 # Callable remapping over overload leads to a mapped overload (this is special cased for only one arg and decorator like behavior, see also is_generic_decorator_overload_call)
 testRegularGenericDecoratorOverload
 testParamSpecDecoratorOverload
@@ -288,9 +281,10 @@ testInvalidParamSpecAndConcatenateDefinitionsWithArgsKwargs
 testParamSpecInvalidCalls
 # Class function Foo.bar something like a BoundFunction
 testExpandNonBareParamSpecAgainstCallable
-# param spec new tests
-testParamSpecApplyPosVsNamedOptional
+# param spec tests
 testParamSpecConcatenateSelfType
+testTypeVarTupleParamSpecInteraction
+testParamSpecNestedApplyPosVsNamed
 # Weird overload interaction with type vars
 testDictWithKeywordArgsOnly
 
