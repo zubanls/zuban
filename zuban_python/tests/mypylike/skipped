@@ -283,7 +283,6 @@ testParamSpecInvalidCalls
 testExpandNonBareParamSpecAgainstCallable
 # param spec tests
 testParamSpecConcatenateSelfType
-testTypeVarTupleParamSpecInteraction
 testParamSpecNestedApplyPosVsNamed
 # Weird overload interaction with type vars
 testDictWithKeywordArgsOnly

@@ -764,7 +764,7 @@ pub(crate) fn match_arguments_against_params<
                             with_unpack,
                             &actual,
                             Variance::Covariant,
-                            Some(&|error_types: ErrorTypes, index: isize| {
+                            Some(&|mut error_types: ErrorTypes, index: isize| {
                                 let Some(on_type_error) = on_type_error else {
                                     return;
                                 };
@@ -773,6 +773,9 @@ pub(crate) fn match_arguments_against_params<
                                 } else {
                                     todo!()
                                 };
+                                if let Some(star_t) = argument.maybe_star_type(i_s) {
+                                    error_types.got = GotType::Starred(star_t)
+                                }
                                 (on_type_error.callback)(
                                     i_s,
                                     &diagnostic_string,
