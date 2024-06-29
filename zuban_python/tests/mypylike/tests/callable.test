@@ -375,3 +375,14 @@ if bool():
     foo2 = bar3  # E: Incompatible types in assignment (expression has type "Callable[[VarArg(str), DefaultNamedArg(str, 'y'), KwArg(int)], None]", variable has type "Callable[[str, str], None]")
 if bool():
     foo1 = bar4  # E: Incompatible types in assignment (expression has type "Callable[[VarArg(str), DefaultNamedArg(str, 'z'), KwArg(int)], None]", variable has type "Callable[[str], None]")
+
+[case func_subtyping_kw_against_normal_params]
+def x(x: int, y: int, z: int): ...
+def y(y: int, x: int, z: int): ...
+def z(y: str, x: int, z: int): ...
+
+def foo(*, x: int, y: int, z: int): ...
+
+foo = x
+foo = y
+foo = z  # E: Incompatible types in assignment (expression has type "Callable[[str, int, int], Any]", variable has type "Callable[[NamedArg(int, 'x'), NamedArg(int, 'y'), NamedArg(int, 'z')], Any]")

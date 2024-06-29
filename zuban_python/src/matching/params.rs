@@ -361,7 +361,6 @@ pub fn matches_simple_params<
                             return Match::new_false();
                         }
                         _ => {
-                            let mut found = false;
                             for (i, p2) in unused_keyword_params.iter().enumerate() {
                                 if param1.name(i_s.db) == p2.name(i_s.db) {
                                     match unused_keyword_params.remove(i).specific(i_s.db) {
@@ -371,39 +370,38 @@ pub fn matches_simple_params<
                                         }
                                         _ => unreachable!(),
                                     }
-                                    found = true;
-                                    break;
+                                    continue 'p1_iter;
+                                }
+                            }
+                            let mut found = false;
+                            while params2
+                                .peek()
+                                .is_some_and(|p2| !matches!(p2.kind(i_s.db), ParamKind::StarStar))
+                            {
+                                param2 = *params2.peek().unwrap();
+                                if param1.name(i_s.db) == param2.name(i_s.db) {
+                                    match &param2.specific(i_s.db) {
+                                        WrappedParamType::PositionalOrKeyword(t2)
+                                        | WrappedParamType::KeywordOnly(t2) => {
+                                            matches &= match_(i_s, matcher, t1, t2);
+                                            found = true;
+                                            break;
+                                        }
+                                        _ => continue,
+                                    }
+                                } else {
+                                    params2.next();
+                                    if matches!(
+                                        param2.kind(i_s.db),
+                                        ParamKind::PositionalOrKeyword | ParamKind::KeywordOnly
+                                    ) {
+                                        unused_keyword_params.push(param2);
+                                    }
                                 }
                             }
                             if !found {
-                                while params2.peek().is_some_and(|p2| {
-                                    !matches!(p2.kind(i_s.db), ParamKind::StarStar)
-                                }) {
-                                    param2 = *params2.peek().unwrap();
-                                    if param1.name(i_s.db) == param2.name(i_s.db) {
-                                        match &param2.specific(i_s.db) {
-                                            WrappedParamType::PositionalOrKeyword(t2)
-                                            | WrappedParamType::KeywordOnly(t2) => {
-                                                matches &= match_(i_s, matcher, t1, t2);
-                                                found = true;
-                                                break;
-                                            }
-                                            _ => continue,
-                                        }
-                                    } else {
-                                        params2.next();
-                                        if matches!(
-                                            param2.kind(i_s.db),
-                                            ParamKind::PositionalOrKeyword | ParamKind::KeywordOnly
-                                        ) {
-                                            unused_keyword_params.push(param2);
-                                        }
-                                    }
-                                }
-                                if !found {
-                                    debug!("Params mismatch, because keyword was not found");
-                                    return Match::new_false();
-                                }
+                                debug!("Params mismatch, because keyword was not found");
+                                return Match::new_false();
                             }
                         }
                     }
@@ -575,7 +573,10 @@ pub fn matches_simple_params<
                     break;
                 }
                 _ => {
-                    debug!("Params mismatch, because one side had less params: {param1:?}");
+                    debug!(
+                        "Params mismatch, because one side had fewer params: {:?}",
+                        param1.name(i_s.db)
+                    );
                     return Match::new_false();
                 }
             }
