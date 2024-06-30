@@ -987,8 +987,9 @@ pub fn format_params_as_param_spec(format_data: &FormatData, params: &[CallableP
         unreachable!()
     };
     if params.len() == 2 {
-        let name = format_data.format_param_spec(p, ParamsStyle::CallableParams);
-        name.into()
+        format_data
+            .format_param_spec(p, ParamsStyle::CallableParams)
+            .into()
     } else {
         let name = format_data.format_param_spec(p, ParamsStyle::CallableParamsInner);
         let ps = join_with_commas(params_iter.map(|p| {
@@ -997,6 +998,10 @@ pub fn format_params_as_param_spec(format_data: &FormatData, params: &[CallableP
                 .format(format_data)
                 .into()
         }));
-        format!("[{ps}, {}]", name).into()
+        if name.is_empty() {
+            format!("[{ps}]").into()
+        } else {
+            format!("[{ps}, {name}]").into()
+        }
     }
 }

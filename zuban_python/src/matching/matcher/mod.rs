@@ -831,7 +831,9 @@ impl<'a> Matcher<'a> {
         ) {
             let current =
                 &self.type_var_matchers[i].calculating_type_args[usage.index().as_usize()];
-            return current.type_.format(usage, format_data, params_style);
+            return current
+                .type_
+                .format(usage, &format_data.remove_matcher(), params_style);
         }
         if !self.match_reverse {
             if let Some(class) = self.class {

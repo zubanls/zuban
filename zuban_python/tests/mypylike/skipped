@@ -293,11 +293,9 @@ testInferenceAgainstGenericParamSpecSecondOrder
 testParamSpecDecorator
 testParamSpecLiteralEllipsis
 testParamSpecJoin
-testParamSpecInTypeAliasConcatenate
 #
 testInferenceAgainstGenericParamSpecVsParamSpecConcatenate
 testConstraintsBetweenConcatenatePrefixes
-alias_applying_param_spec
 
 # Are generics in self types always bound to the function?
 # https://github.com/python/typing/discussions/1340

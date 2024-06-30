@@ -114,5 +114,5 @@ reveal_type(test(z))  # N: Revealed type is "def () -> float"
 
 f: Callable[[str], bool]
 g: Callable[[int], str]
-test(f)  # E: Argument 1 to "test" has incompatible type "Callable[[str], bool]"; expected "Callable[[int, Never], bool]"
+test(f)  # E: Argument 1 to "test" has incompatible type "Callable[[str], bool]"; expected "Callable[[int], bool]"
 test(g)  # E: Argument 1 to "test" has incompatible type "Callable[[int], str]"; expected "Callable[[int], bool]"
