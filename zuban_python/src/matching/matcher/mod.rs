@@ -560,7 +560,7 @@ impl<'a> Matcher<'a> {
         (matches & m).or(|| reverse_m)
     }
 
-    pub fn match_or_add_param_spec_against_param_spec_internal<'x>(
+    fn match_or_add_param_spec_against_param_spec_internal<'x>(
         &mut self,
         i_s: &InferenceState,
         p1: &ParamSpecUsage,
@@ -638,39 +638,37 @@ impl<'a> Matcher<'a> {
                 return matches;
             }
         }
-        let new_params = CallableParams::new_simple(
-            params2_iterator
-                .clone()
-                .map(|p| p.into_callable_param())
-                .collect(),
-        );
+        let new_params = || {
+            CallableParams::new_simple(
+                params2_iterator
+                    .clone()
+                    .map(|p| p.into_callable_param())
+                    .collect(),
+            )
+        };
         if let Some(matcher_index) =
             self.find_responsible_type_var_matcher_index(p1.in_definition, p1.temporary_matcher_id)
         {
-            let type_var_index = p1.index.as_usize();
-            if self.check_if_unresolved_transitive_constraint(
-                TypeVarIndexed {
-                    matcher_index,
-                    type_var_index: p1.index.as_usize(),
-                },
-                |found_type_var| new_params.search_type_vars(found_type_var),
-                || Bound::new_param_spec(new_params.clone(), variance.invert()),
-            ) {
-                return matches;
-            }
-            let tv_matcher = &mut self.type_var_matchers[matcher_index];
-            // It feels weird that we invert the variance here. However we have inverted the
-            // variance to match params and we just invert it back.
             return matches
-                & tv_matcher.calculating_type_args[type_var_index]
-                    .merge(i_s.db, Bound::new_param_spec(new_params, variance.invert()));
+                & self.match_or_add_param_spec_internal(
+                    i_s,
+                    matcher_index,
+                    p1,
+                    new_params(),
+                    variance,
+                );
         }
         if !self.match_reverse {
             if let Some(class) = self.class {
                 if class.node_ref.as_link() == p1.in_definition {
                     let usage = class.generics().nth_param_spec_usage(i_s.db, p1);
                     return matches
-                        & matches_params(i_s, &mut Matcher::default(), &usage.params, &new_params);
+                        & matches_params(
+                            i_s,
+                            &mut Matcher::default(),
+                            &usage.params,
+                            &new_params(),
+                        );
                 }
             }
         }
@@ -680,15 +678,48 @@ impl<'a> Matcher<'a> {
                 WrappedParamType::Star(WrappedStar::ParamSpecArgs(p2)) => {
                     // Nothing comes after *args: P2.args except the kwargs part that will be
                     // checked earlier, so we can safely return.
-                    return (p1 == p2).into();
+                    let result = p1 == p2;
+                    if !result {
+                        debug!("ParamSpec mismatch, because the two specs did not match")
+                    }
+                    return result.into();
                 }
                 WrappedParamType::Star(WrappedStar::ArbitraryLen(t))
                 | WrappedParamType::StarStar(WrappedStarStar::ValueType(t)) => t,
-                _ => return Match::new_false(),
+                _ => {
+                    debug!("ParamSpec mismatch, because no match found");
+                    return Match::new_false();
+                }
             };
             star_count += !t.is_some_and(|t| !matches!(t.as_ref(), Type::Any(_))) as usize;
         }
         (star_count == 2).into()
+    }
+
+    fn match_or_add_param_spec_internal(
+        &mut self,
+        i_s: &InferenceState,
+        matcher_index: usize,
+        usage: &ParamSpecUsage,
+        new_params: CallableParams,
+        variance: Variance,
+    ) -> Match {
+        let type_var_index = usage.index.as_usize();
+        if self.check_if_unresolved_transitive_constraint(
+            TypeVarIndexed {
+                matcher_index,
+                type_var_index: usage.index.as_usize(),
+            },
+            |found_type_var| new_params.search_type_vars(found_type_var),
+            || Bound::new_param_spec(new_params.clone(), variance.invert()),
+        ) {
+            return Match::new_true();
+        }
+        let tv_matcher = &mut self.type_var_matchers[matcher_index];
+        // It feels weird that we invert the variance here. However we have inverted the
+        // variance to match params and we just invert it back.
+        tv_matcher.calculating_type_args[type_var_index]
+            .merge(i_s.db, Bound::new_param_spec(new_params, variance.invert()))
     }
 
     pub(crate) fn match_param_spec_arguments<'db>(
