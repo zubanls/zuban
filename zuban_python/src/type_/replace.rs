@@ -3,8 +3,8 @@ use std::rc::Rc;
 use super::{
     simplified_union_from_iterators_with_format_index, type_var_likes::CallableId, CallableContent,
     CallableParam, CallableParams, ClassGenerics, Dataclass, GenericClass, GenericItem,
-    GenericsList, NamedTuple, ParamSpecArg, ParamType, RecursiveType, StarParamType,
-    StarStarParamType, Tuple, TupleArgs, Type, TypeArgs, TypeGuardInfo, TypeVarLike,
+    GenericsList, NamedTuple, ParamSpecArg, ParamSpecUsage, ParamType, RecursiveType,
+    StarParamType, StarStarParamType, Tuple, TupleArgs, Type, TypeArgs, TypeGuardInfo, TypeVarLike,
     TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypedDictGenerics, UnionEntry, UnionType,
 };
 use crate::{
@@ -488,66 +488,19 @@ impl CallableParams {
                                 }
                             }
                             StarParamType::ParamSpecArgs(u) => {
-                                let result = callable(TypeVarLikeUsage::ParamSpec(u.clone()));
-                                let GenericItem::ParamSpecArg(mut new) = result else {
-                                    unreachable!()
-                                };
-                                if let Some(new_spec_type_vars) = new.type_vars {
-                                    if let Some(in_definition) = in_definition {
-                                        let type_var_len =
-                                            type_vars.as_ref().map(|t| t.len()).unwrap_or(0);
-                                        replace_data =
-                                            Some((new_spec_type_vars.in_definition, type_var_len));
-                                        let new_params =
-                                            new.params.replace_type_var_likes_and_self(
-                                                db,
-                                                &mut None,
-                                                None,
-                                                &mut |usage| {
-                                                    replace_param_spec_inner_type_var_likes(
-                                                        usage,
-                                                        in_definition,
-                                                        replace_data.unwrap(),
-                                                    )
-                                                },
-                                                replace_self,
-                                            );
-                                        if let Some(type_vars) = type_vars.as_mut() {
-                                            type_vars.extend(new_spec_type_vars.type_vars.as_vec());
-                                        } else {
-                                            *type_vars =
-                                                Some(new_spec_type_vars.type_vars.as_vec());
-                                        }
-                                        new.params = new_params.0;
-                                    } else {
-                                        debug_assert!(type_vars.is_none());
-                                    }
-                                }
-                                match new.params {
-                                    CallableParams::Simple(params) => {
-                                        new_params.extend_from_slice(&params);
-                                    }
-                                    CallableParams::Any(cause) => todo!(), //CallableParams::Any(cause),
-                                    CallableParams::WithParamSpec(new_types, p) => {
-                                        new_params.extend(new_types.iter().map(|t| {
-                                            CallableParam::new_anonymous(ParamType::PositionalOnly(
-                                                t.clone(),
-                                            ))
-                                        }));
-                                        new_params.push(CallableParam::new_anonymous(
-                                            ParamType::Star(StarParamType::ParamSpecArgs(
-                                                p.clone(),
-                                            )),
-                                        ));
-                                        new_params.push(CallableParam::new_anonymous(
-                                            ParamType::StarStar(
-                                                StarStarParamType::ParamSpecKwargs(p),
-                                            ),
-                                        ));
-                                    }
-                                    CallableParams::Never(cause) => todo!(), //CallableParams::Never(cause),
-                                };
-                                continue;
+                                return (
+                                    remap_param_spec(
+                                        db,
+                                        new_params,
+                                        type_vars,
+                                        in_definition,
+                                        callable,
+                                        replace_self,
+                                        &mut replace_data,
+                                        u,
+                                    ),
+                                    replace_data,
+                                );
                             }
                         }),
                         ParamType::StarStar(d) => ParamType::StarStar(match d {
@@ -559,7 +512,7 @@ impl CallableParams {
                             }
                             StarStarParamType::ParamSpecKwargs(_) => {
                                 // Was already handled in ParamSpecArgs
-                                continue;
+                                unreachable!()
                             }
                         }),
                     };
@@ -667,6 +620,70 @@ impl CallableParams {
             CallableParams::Never(cause) => CallableParams::Never(*cause),
         }
     }
+}
+
+fn remap_param_spec(
+    db: &Database,
+    mut new_params: Vec<CallableParam>,
+    type_vars: &mut Option<Vec<TypeVarLike>>,
+    in_definition: Option<PointLink>,
+    callable: ReplaceTypeVarLike,
+    replace_self: ReplaceSelf,
+    replace_data: &mut Option<(PointLink, usize)>,
+    u: &ParamSpecUsage,
+) -> CallableParams {
+    let result = callable(TypeVarLikeUsage::ParamSpec(u.clone()));
+    let GenericItem::ParamSpecArg(mut new) = result else {
+        unreachable!()
+    };
+    if let Some(new_spec_type_vars) = new.type_vars {
+        if let Some(in_definition) = in_definition {
+            let type_var_len = type_vars.as_ref().map(|t| t.len()).unwrap_or(0);
+            *replace_data = Some((new_spec_type_vars.in_definition, type_var_len));
+            let new_params = new.params.replace_type_var_likes_and_self(
+                db,
+                &mut None,
+                None,
+                &mut |usage| {
+                    replace_param_spec_inner_type_var_likes(
+                        usage,
+                        in_definition,
+                        replace_data.unwrap(),
+                    )
+                },
+                replace_self,
+            );
+            if let Some(type_vars) = type_vars.as_mut() {
+                type_vars.extend(new_spec_type_vars.type_vars.as_vec());
+            } else {
+                *type_vars = Some(new_spec_type_vars.type_vars.as_vec());
+            }
+            new.params = new_params.0;
+        } else {
+            debug_assert!(type_vars.is_none());
+        }
+    }
+    match new.params {
+        CallableParams::Simple(params) => {
+            new_params.extend_from_slice(&params);
+        }
+        CallableParams::Any(cause) => todo!(), //CallableParams::Any(cause),
+        CallableParams::WithParamSpec(new_types, p) => {
+            new_params.extend(
+                new_types
+                    .iter()
+                    .map(|t| CallableParam::new_anonymous(ParamType::PositionalOnly(t.clone()))),
+            );
+            new_params.push(CallableParam::new_anonymous(ParamType::Star(
+                StarParamType::ParamSpecArgs(p.clone()),
+            )));
+            new_params.push(CallableParam::new_anonymous(ParamType::StarStar(
+                StarStarParamType::ParamSpecKwargs(p),
+            )));
+        }
+        CallableParams::Never(cause) => todo!(), //CallableParams::Never(cause),
+    };
+    CallableParams::Simple(new_params.into())
 }
 
 fn replace_param_spec_inner_type_var_likes(
