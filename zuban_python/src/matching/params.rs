@@ -633,7 +633,6 @@ pub fn matches_simple_params<
         }
         if let WrappedParamType::Star(WrappedStar::ParamSpecArgs(u2)) = param2.specific(i_s.db) {
             matches &= matcher.match_or_add_param_spec(i_s, &[], u2, params1, variance.invert());
-            todo!();
             return matches;
         }
         if !param2.has_default()
