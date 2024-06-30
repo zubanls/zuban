@@ -7,8 +7,8 @@ use crate::{
     matching::matches_params_with_variance,
     type_::{
         match_tuple_type_arguments, AnyCause, CallableParams, GenericItem, NeverCause,
-        ParamSpecArg, TupleArgs, Type, TypeArgs, TypeVar, TypeVarKind, TypeVarLike,
-        TypeVarLikeUsage, Variance,
+        ParamSpecArg, ParamType, StarStarParamType, TupleArgs, Type, TypeArgs, TypeVar,
+        TypeVarKind, TypeVarLike, TypeVarLikeUsage, Variance,
     },
     type_helpers::Class,
 };
@@ -203,6 +203,9 @@ impl Bound {
                     if pre.is_empty() && class.node_ref.as_link() == p2.in_definition =>
                 {
                     true
+                }
+                BoundKind::ParamSpec(CallableParams::Simple { params, .. }) => {
+                    params.last().is_some_and(|p| matches!(&p.type_, ParamType::StarStar(StarStarParamType::ParamSpecKwargs(u)) if u.in_definition == class.node_ref.as_link()))
                 }
                 _ => false,
             },
