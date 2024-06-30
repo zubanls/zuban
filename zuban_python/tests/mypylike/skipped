@@ -291,7 +291,6 @@ testInferenceAgainstGenericParamSpecVsParamSpec
 testInferenceAgainstGenericParamSpecSecondOrder
 #
 testParamSpecDecorator
-testParamSpecJoin
 #
 testInferenceAgainstGenericParamSpecVsParamSpecConcatenate
 testConstraintsBetweenConcatenatePrefixes

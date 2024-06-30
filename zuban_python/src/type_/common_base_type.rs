@@ -380,6 +380,14 @@ fn common_params_by_iterable<'x>(
                     }
                     _ => return None,
                 },
+                ParamTypeDetails::ParamSpecUsage(u1) => {
+                    if p1.type_ == p2.type_ {
+                        new_params.push(p1.clone());
+                        continue;
+                    } else {
+                        return None;
+                    }
+                }
                 _ => return None,
             };
             let t2 = p2.type_.maybe_type()?;
