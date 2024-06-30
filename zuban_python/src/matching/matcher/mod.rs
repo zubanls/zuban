@@ -678,6 +678,19 @@ impl<'a> Matcher<'a> {
                 WrappedParamType::Star(WrappedStar::ParamSpecArgs(p2)) => {
                     // Nothing comes after *args: P2.args except the kwargs part that will be
                     // checked earlier, so we can safely return.
+                    if let Some(matcher_index) = self.find_responsible_type_var_matcher_index(
+                        p2.in_definition,
+                        p2.temporary_matcher_id,
+                    ) {
+                        return matches
+                            & self.match_or_add_param_spec_internal(
+                                i_s,
+                                matcher_index,
+                                p2,
+                                CallableParams::new_param_spec(p1.clone(), false),
+                                variance,
+                            );
+                    }
                     let result = p1 == p2;
                     if !result {
                         debug!("ParamSpec mismatch, because the two specs did not match")

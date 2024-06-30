@@ -300,6 +300,20 @@ impl CallableParams {
         }
     }
 
+    pub fn new_param_spec(p: ParamSpecUsage, format_as_param_spec: bool) -> Self {
+        Self::Simple {
+            params: Rc::new([
+                CallableParam::new_anonymous(ParamType::Star(StarParamType::ParamSpecArgs(
+                    p.clone(),
+                ))),
+                CallableParam::new_anonymous(ParamType::StarStar(
+                    StarStarParamType::ParamSpecKwargs(p),
+                )),
+            ]),
+            format_as_param_spec,
+        }
+    }
+
     pub fn format(&self, format_data: &FormatData, style: ParamsStyle) -> Box<str> {
         let parts = match self {
             Self::Simple {
