@@ -622,7 +622,7 @@ impl CallableParams {
     }
 }
 
-fn remap_param_spec(
+pub fn remap_param_spec(
     db: &Database,
     mut new_params: Vec<CallableParam>,
     type_vars: &mut Option<Vec<TypeVarLike>>,

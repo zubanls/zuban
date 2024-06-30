@@ -25,20 +25,20 @@ use crate::{
     matching::{
         calculate_function_type_vars_and_return, maybe_class_usage,
         params::{InferrableParamIterator, Param, WrappedParamType, WrappedStar, WrappedStarStar},
-        CalculatedTypeArgs, ErrorStrs, Generic, LookupResult, OnTypeError, ResultContext,
+        CalculatedTypeArgs, ErrorStrs, LookupResult, OnTypeError, ResultContext,
     },
     new_class,
     node_ref::NodeRef,
     python_state::NAME_TO_FUNCTION_DIFF,
     type_::{
-        AnyCause, CallableContent, CallableLike, CallableParam, CallableParams, ClassGenerics,
-        DbString, FunctionKind, FunctionOverload, GenericClass, GenericItem, ParamSpecUsage,
+        remap_param_spec, AnyCause, CallableContent, CallableLike, CallableParam, CallableParams,
+        ClassGenerics, DbString, FunctionKind, FunctionOverload, GenericClass, GenericItem,
         ParamType, ReplaceSelf, StarParamType, StarStarParamType, StringSlice, TupleArgs, Type,
-        TypeGuardInfo, TypeVar, TypeVarKind, TypeVarLike, TypeVarLikeUsage, TypeVarLikes,
-        TypeVarManager, TypeVarName, TypeVarUsage, Variance, WrongPositionalCount,
+        TypeGuardInfo, TypeVar, TypeVarKind, TypeVarLike, TypeVarLikes, TypeVarManager,
+        TypeVarName, TypeVarUsage, Variance, WrongPositionalCount,
     },
     type_helpers::Class,
-    utils::{rc_slice_into_vec, rc_unwrap_or_clone},
+    utils::rc_unwrap_or_clone,
 };
 
 #[derive(Clone, Copy)]
@@ -552,46 +552,6 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             }
         }
         (type_vars, type_guard, star_annotation)
-    }
-
-    fn remap_param_spec(
-        &self,
-        i_s: &InferenceState,
-        mut pre_params: Vec<CallableParam>,
-        usage: &ParamSpecUsage,
-    ) -> CallableParams {
-        let into_types = |mut types: Vec<_>, pre_params: Vec<CallableParam>| {
-            types.extend(
-                pre_params
-                    .into_iter()
-                    .map(|p| p.type_.expect_positional_type()),
-            );
-            Rc::from(types)
-        };
-        match self.class {
-            Some(c) if c.node_ref.as_link() == usage.in_definition => match c
-                .generics()
-                .nth_usage(i_s.db, &TypeVarLikeUsage::ParamSpec(usage.clone()))
-            {
-                Generic::ParamSpecArg(p) => match p.into_owned().params {
-                    CallableParams::Any(cause) => CallableParams::Any(cause),
-                    CallableParams::Simple(params) => {
-                        pre_params.append(&mut rc_slice_into_vec(params));
-                        CallableParams::Simple(Rc::from(pre_params))
-                    }
-                    CallableParams::WithParamSpec(pre, p) => {
-                        let types = rc_slice_into_vec(pre);
-                        CallableParams::WithParamSpec(into_types(types, pre_params), p)
-                    }
-                    CallableParams::Never(cause) => CallableParams::Never(cause),
-                },
-                _ => unreachable!(),
-            },
-            _ => {
-                let types = vec![];
-                CallableParams::WithParamSpec(into_types(types, pre_params), usage.clone())
-            }
-        }
     }
 
     pub fn cache_func(&self, i_s: &InferenceState) {
@@ -1550,6 +1510,24 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     })
                 }
                 WrappedParamType::Star(WrappedStar::ParamSpecArgs(u1)) => {
+                    if let Some(c) = self.class {
+                        if c.node_ref.as_link() == u1.in_definition {
+                            return return_result(remap_param_spec(
+                                i_s.db,
+                                new_params,
+                                &mut None,
+                                None,
+                                &mut |usage| {
+                                    c.generics()
+                                        .nth_usage(i_s.db, &usage)
+                                        .into_generic_item(i_s.db)
+                                },
+                                &|| Type::Self_,
+                                &mut None,
+                                u1,
+                            ));
+                        }
+                    }
                     ParamType::Star(StarParamType::ParamSpecArgs(u1.clone()))
                 }
                 WrappedParamType::StarStar(WrappedStarStar::ValueType(t)) => {
