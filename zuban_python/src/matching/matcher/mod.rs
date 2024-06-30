@@ -20,8 +20,10 @@ use self::{
 };
 
 use super::{
-    params::{matches_params, InferrableParamIterator},
-    Match, OnTypeError, ResultContext, SignatureMatch,
+    params::{
+        matches_params, InferrableParamIterator, WrappedParamType, WrappedStar, WrappedStarStar,
+    },
+    Match, OnTypeError, Param, ResultContext, SignatureMatch,
 };
 use crate::{
     arguments::{Arg, ArgKind, InferredArg},
@@ -33,9 +35,9 @@ use crate::{
     type_::{
         match_tuple_type_arguments, AnyCause, CallableContent, CallableParam, CallableParams,
         DbString, GenericItem, GenericsList, NeverCause, ParamSpecArg, ParamSpecUsage, ParamType,
-        ReplaceSelf, StarParamType, StarStarParamType, TupleArgs, TupleUnpack, Type, TypeArgs,
-        TypeVarKind, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarTupleUsage, TypeVarUsage,
-        TypedDict, TypedDictGenerics, Variance, WithUnpack,
+        ReplaceSelf, StarParamType, TupleArgs, TupleUnpack, Type, TypeArgs, TypeVarKind,
+        TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarTupleUsage, TypeVarUsage, TypedDict,
+        TypedDictGenerics, Variance, WithUnpack,
     },
     type_helpers::{Callable, Class, Function},
     utils::{join_with_commas, AlreadySeen},
@@ -608,31 +610,40 @@ impl<'a> Matcher<'a> {
         None
     }
 
-    pub fn match_or_add_param_spec(
+    pub fn match_or_add_param_spec<'db: 'x, 'x, P2: Param<'x>>(
         &mut self,
-        i_s: &InferenceState,
+        i_s: &InferenceState<'db, '_>,
         pre_param_spec_types: &[Type],
         p1: &ParamSpecUsage,
-        params2_iterator: std::slice::Iter<CallableParam>,
+        params2_iterator: impl Iterator<Item = P2> + Clone,
         variance: Variance,
     ) -> Match {
         let mut params2_iterator = params2_iterator.peekable();
         let mut matches = Match::new_true();
         for pre in pre_param_spec_types {
-            let t = match params2_iterator.peek().map(|p| &p.type_) {
-                Some(ParamType::PositionalOnly(t) | ParamType::PositionalOrKeyword(t)) => {
+            let t = match params2_iterator.peek().map(|p| p.specific(i_s.db)) {
+                Some(
+                    WrappedParamType::PositionalOnly(t) | WrappedParamType::PositionalOrKeyword(t),
+                ) => {
                     params2_iterator.next();
                     t
                 }
-                Some(ParamType::Star(StarParamType::ArbitraryLen(t))) => t,
+                Some(WrappedParamType::Star(WrappedStar::ArbitraryLen(t))) => t,
                 _ => return Match::new_false(),
             };
-            matches &= pre.matches(i_s, self, t, variance);
+            if let Some(t) = t {
+                matches &= pre.matches(i_s, self, &t, variance);
+            }
             if !matches.bool() {
                 return matches;
             }
         }
-        let new_params = CallableParams::Simple(params2_iterator.clone().cloned().collect());
+        let new_params = CallableParams::Simple(
+            params2_iterator
+                .clone()
+                .map(|p| p.into_callable_param())
+                .collect(),
+        );
         if let Some(matcher_index) =
             self.find_responsible_type_var_matcher_index(p1.in_definition, p1.temporary_matcher_id)
         {
@@ -665,11 +676,17 @@ impl<'a> Matcher<'a> {
         }
         let mut star_count = 0;
         for p in params2_iterator {
-            match p.type_ {
-                ParamType::Star(StarParamType::ArbitraryLen(Type::Any(_))) => star_count += 1,
-                ParamType::StarStar(StarStarParamType::ValueType(Type::Any(_))) => star_count += 1,
+            let t = match p.specific(i_s.db) {
+                WrappedParamType::Star(WrappedStar::ParamSpecArgs(p2)) => {
+                    // Nothing comes after *args: P2.args except the kwargs part that will be
+                    // checked earlier, so we can safely return.
+                    return (p1 == p2).into();
+                }
+                WrappedParamType::Star(WrappedStar::ArbitraryLen(t))
+                | WrappedParamType::StarStar(WrappedStarStar::ValueType(t)) => t,
                 _ => return Match::new_false(),
-            }
+            };
+            star_count += !t.is_some_and(|t| !matches!(t.as_ref(), Type::Any(_))) as usize;
         }
         (star_count == 2).into()
     }
@@ -717,7 +734,13 @@ impl<'a> Matcher<'a> {
             param_spec_usage = class.generics().nth_param_spec_usage(i_s.db, usage);
             &param_spec_usage.params
         } else {
-            todo!("When does this even happen?")
+            if args.len() == 1
+                && matches!(&args[0].kind, ArgKind::ParamSpec { usage: u2, .. } if usage == u2)
+            {
+                return SignatureMatch::new_true();
+            } else {
+                todo!("implement on_type_error?")
+            }
         };
         match params {
             CallableParams::Simple(params) => {

@@ -22,6 +22,7 @@ pub trait Param<'x>: Copy + std::fmt::Debug {
     fn name(&self, db: &'x Database) -> Option<&str>;
     fn specific<'db: 'x>(&self, db: &'db Database) -> WrappedParamType<'x>;
     fn kind(&self, db: &Database) -> ParamKind;
+    fn into_callable_param(self) -> CallableParam;
 }
 
 pub fn matches_params_with_variance(
@@ -406,19 +407,16 @@ pub fn matches_simple_params<
                         }
                     }
                 }
+                WrappedParamType::Star(WrappedStar::ParamSpecArgs(u1)) => {
+                    matches &= matcher.match_or_add_param_spec(i_s, &[], u1, params2, variance);
+                    return matches;
+                }
                 WrappedParamType::Star(s1) => match &specific2 {
                     WrappedParamType::Star(s2) => match (s1, s2) {
                         (WrappedStar::ArbitraryLen(t1), WrappedStar::ArbitraryLen(t2)) => {
                             matches &= match_(i_s, matcher, t1, t2)
                         }
-                        (WrappedStar::ParamSpecArgs(u1), WrappedStar::ParamSpecArgs(u2)) => {
-                            if u1 != u2 {
-                                debug!("Params mismatch, because ParamSpec was different");
-                                return Match::new_false();
-                            }
-                        }
-                        (WrappedStar::ArbitraryLen(_), WrappedStar::ParamSpecArgs(_))
-                        | (WrappedStar::ParamSpecArgs(_), WrappedStar::ArbitraryLen(_)) => {
+                        (WrappedStar::ArbitraryLen(_), WrappedStar::ParamSpecArgs(_)) => {
                             todo!()
                         }
                         (WrappedStar::UnpackedTuple(tup1), WrappedStar::UnpackedTuple(tup2)) => {
@@ -904,6 +902,10 @@ impl<'x> Param<'x> for &'x CallableParam {
     fn kind(&self, db: &Database) -> ParamKind {
         self.type_.param_kind()
     }
+
+    fn into_callable_param(self) -> CallableParam {
+        self.clone()
+    }
 }
 
 pub enum UnpackTypedDictState {
@@ -1244,6 +1246,10 @@ impl<'member> Param<'member> for TypedDictMemberParam<'member> {
 
     fn kind(&self, db: &Database) -> ParamKind {
         ParamKind::KeywordOnly
+    }
+
+    fn into_callable_param(self) -> CallableParam {
+        todo!()
     }
 }
 

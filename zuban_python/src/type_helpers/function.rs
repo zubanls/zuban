@@ -1933,6 +1933,10 @@ impl<'x> Param<'x> for FunctionParam<'x> {
         }
         t
     }
+
+    fn into_callable_param(self) -> CallableParam {
+        todo!()
+    }
 }
 
 pub fn is_private(name: &str) -> bool {

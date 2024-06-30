@@ -2523,7 +2523,14 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             }
             Some(AtomContent::Ellipsis) => CallableParams::Any(AnyCause::Explicit),
             _ => match self.compute_type(expr) {
-                TypeContent::ParamSpec(p) => CallableParams::WithParamSpec(Rc::new([]), p),
+                TypeContent::ParamSpec(p) => CallableParams::Simple(Rc::new([
+                    CallableParam::new_anonymous(ParamType::Star(StarParamType::ParamSpecArgs(
+                        p.clone(),
+                    ))),
+                    CallableParam::new_anonymous(ParamType::StarStar(
+                        StarStarParamType::ParamSpecKwargs(p),
+                    )),
+                ])),
                 TypeContent::SpecialType(SpecialType::Any) if from_class_generics => {
                     CallableParams::Any(AnyCause::Explicit)
                 }

@@ -681,7 +681,7 @@ pub fn remap_param_spec(
                 StarStarParamType::ParamSpecKwargs(p),
             )));
         }
-        CallableParams::Never(cause) => todo!(), //CallableParams::Never(cause),
+        CallableParams::Never(cause) => return CallableParams::Never(cause),
     };
     CallableParams::Simple(new_params.into())
 }
