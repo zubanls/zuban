@@ -294,7 +294,6 @@ testParamSpecDecorator
 testParamSpecLiteralEllipsis
 testParamSpecJoin
 testParamSpecInTypeAliasConcatenate
-testParamSpecInTypeAliasRecursive
 #
 testInferenceAgainstGenericParamSpecVsParamSpecConcatenate
 testConstraintsBetweenConcatenatePrefixes
