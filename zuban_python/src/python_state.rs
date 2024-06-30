@@ -608,7 +608,7 @@ impl PythonState {
             None,
             PointLink::new(FileIndex(0), 0),
             s.empty_type_var_likes.clone(),
-            CallableParams::Simple(Rc::new([
+            CallableParams::new_simple(Rc::new([
                 CallableParam::new_anonymous(ParamType::PositionalOnly(Type::Any(
                     AnyCause::Internal,
                 ))),

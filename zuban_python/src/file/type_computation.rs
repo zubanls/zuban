@@ -2259,7 +2259,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         if had_issue {
             CallableParams::Any(AnyCause::FromError)
         } else {
-            CallableParams::Simple(Rc::from(params))
+            CallableParams::new_simple(Rc::from(params))
         }
     }
 
@@ -2519,24 +2519,27 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         _ => unreachable!(),
                     }
                 }
-                CallableParams::Simple(Rc::from(params))
+                CallableParams::new_simple(Rc::from(params))
             }
             Some(AtomContent::Ellipsis) => CallableParams::Any(AnyCause::Explicit),
             _ => match self.compute_type(expr) {
-                TypeContent::ParamSpec(p) => CallableParams::Simple(Rc::new([
-                    CallableParam::new_anonymous(ParamType::Star(StarParamType::ParamSpecArgs(
-                        p.clone(),
-                    ))),
-                    CallableParam::new_anonymous(ParamType::StarStar(
-                        StarStarParamType::ParamSpecKwargs(p),
-                    )),
-                ])),
+                TypeContent::ParamSpec(p) => CallableParams::Simple {
+                    params: Rc::new([
+                        CallableParam::new_anonymous(ParamType::Star(
+                            StarParamType::ParamSpecArgs(p.clone()),
+                        )),
+                        CallableParam::new_anonymous(ParamType::StarStar(
+                            StarStarParamType::ParamSpecKwargs(p),
+                        )),
+                    ]),
+                    format_as_param_spec: true,
+                },
                 TypeContent::SpecialType(SpecialType::Any) if from_class_generics => {
                     CallableParams::Any(AnyCause::Explicit)
                 }
                 TypeContent::Unknown(cause) => CallableParams::Any(cause.into()),
                 TypeContent::Concatenate(p) => p,
-                t if allow_aesthetic_class_simplification => CallableParams::Simple(Rc::new([
+                t if allow_aesthetic_class_simplification => CallableParams::new_simple(Rc::new([
                     self.check_param(t, NodeRef::new(self.inference.file, expr.index())),
                 ])),
                 _ => return None,
@@ -2768,7 +2771,10 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 params.push(CallableParam::new_anonymous(ParamType::StarStar(
                     StarStarParamType::ParamSpecKwargs(p),
                 )));
-                TypeContent::Concatenate(CallableParams::Simple(params.into()))
+                TypeContent::Concatenate(CallableParams::Simple {
+                    params: params.into(),
+                    format_as_param_spec: true,
+                })
             }
             TypeContent::Concatenate(_) => {
                 self.add_issue(slice_type.as_node_ref(), IssueKind::NestedConcatenate);
@@ -2782,7 +2788,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 params.push(CallableParam::new_anonymous(ParamType::StarStar(
                     StarStarParamType::ValueType(Type::Any(AnyCause::Explicit)),
                 )));
-                TypeContent::Concatenate(CallableParams::Simple(params.into()))
+                TypeContent::Concatenate(CallableParams::new_simple(params.into()))
             }
             _ => {
                 self.add_issue(

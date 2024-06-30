@@ -151,7 +151,7 @@ impl Type {
             }
             Type::NamedTuple(nt) => {
                 let mut constructor = nt.__new__.as_ref().clone();
-                constructor.params = CallableParams::Simple(
+                constructor.params = CallableParams::new_simple(
                     constructor
                         .expect_simple_params()
                         .iter()
@@ -434,7 +434,10 @@ impl CallableParams {
     ) -> (CallableParams, Option<(PointLink, usize)>) {
         let mut replace_data = None;
         let new_params = match self {
-            CallableParams::Simple(params) => CallableParams::Simple({
+            CallableParams::Simple {
+                params,
+                format_as_param_spec,
+            } => {
                 let mut new_params = vec![];
                 for p in params.iter() {
                     let new_param_type = match &p.type_ {
@@ -497,6 +500,7 @@ impl CallableParams {
                                         callable,
                                         replace_self,
                                         &mut replace_data,
+                                        *format_as_param_spec,
                                         u,
                                     ),
                                     replace_data,
@@ -522,8 +526,8 @@ impl CallableParams {
                         name: p.name.clone(),
                     })
                 }
-                new_params.into()
-            }),
+                CallableParams::new_simple(new_params.into())
+            }
             CallableParams::Any(cause) => CallableParams::Any(*cause),
             CallableParams::WithParamSpec(types, param_spec) => {
                 let result = callable(TypeVarLikeUsage::ParamSpec(param_spec.clone()));
@@ -563,7 +567,7 @@ impl CallableParams {
                     new.params
                 } else {
                     match new.params {
-                        CallableParams::Simple(params) => {
+                        CallableParams::Simple { params, .. } => {
                             let mut params = rc_slice_into_vec(params);
                             params.splice(
                                 0..0,
@@ -579,7 +583,7 @@ impl CallableParams {
                                     has_default: false,
                                 }),
                             );
-                            CallableParams::Simple(Rc::from(params))
+                            CallableParams::new_simple(Rc::from(params))
                         }
                         CallableParams::Any(cause) => CallableParams::Any(cause),
                         CallableParams::WithParamSpec(new_types, p) => {
@@ -603,12 +607,16 @@ impl CallableParams {
 
     fn rewrite_late_bound_callables<T: CallableId>(&self, manager: &TypeVarManager<T>) -> Self {
         match &self {
-            CallableParams::Simple(params) => CallableParams::Simple(
-                params
+            CallableParams::Simple {
+                params,
+                format_as_param_spec,
+            } => CallableParams::Simple {
+                params: params
                     .iter()
                     .map(|p| p.rewrite_late_bound_callables(manager))
                     .collect(),
-            ),
+                format_as_param_spec: *format_as_param_spec,
+            },
             CallableParams::Any(cause) => CallableParams::Any(*cause),
             CallableParams::WithParamSpec(types, param_spec) => CallableParams::WithParamSpec(
                 types
@@ -630,6 +638,7 @@ pub fn remap_param_spec(
     callable: ReplaceTypeVarLike,
     replace_self: ReplaceSelf,
     replace_data: &mut Option<(PointLink, usize)>,
+    mut format_as_param_spec: bool,
     u: &ParamSpecUsage,
 ) -> CallableParams {
     let result = callable(TypeVarLikeUsage::ParamSpec(u.clone()));
@@ -664,7 +673,11 @@ pub fn remap_param_spec(
         }
     }
     match new.params {
-        CallableParams::Simple(params) => {
+        CallableParams::Simple {
+            params,
+            format_as_param_spec: format_new,
+        } => {
+            format_as_param_spec &= format_new;
             new_params.extend_from_slice(&params);
         }
         CallableParams::Any(cause) => return CallableParams::Any(cause),
@@ -683,7 +696,10 @@ pub fn remap_param_spec(
         }
         CallableParams::Never(cause) => return CallableParams::Never(cause),
     };
-    CallableParams::Simple(new_params.into())
+    CallableParams::Simple {
+        params: new_params.into(),
+        format_as_param_spec,
+    }
 }
 
 fn replace_param_spec_inner_type_var_likes(

@@ -638,7 +638,7 @@ impl<'a> Matcher<'a> {
                 return matches;
             }
         }
-        let new_params = CallableParams::Simple(
+        let new_params = CallableParams::new_simple(
             params2_iterator
                 .clone()
                 .map(|p| p.into_callable_param())
@@ -743,7 +743,7 @@ impl<'a> Matcher<'a> {
             }
         };
         match params {
-            CallableParams::Simple(params) => {
+            CallableParams::Simple { params, .. } => {
                 let iter = InferrableParamIterator::new(
                     i_s.db,
                     params.as_ref().iter(),
@@ -1700,7 +1700,7 @@ fn infer_params_from_args<'db>(
         };
         params.push(p);
     }
-    CallableParams::Simple(params.into())
+    CallableParams::new_simple(params.into())
 }
 
 pub enum MatcherFormatResult {

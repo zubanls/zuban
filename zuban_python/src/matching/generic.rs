@@ -48,7 +48,10 @@ impl<'a> Generic<'a> {
             Self::TypeArg(t) => Some(t.format(format_data)),
             Self::TypeArgs(ts) => ts.format(format_data),
             Self::ParamSpecArg(args) => Some(match &args.params {
-                CallableParams::Simple(params) => format!(
+                CallableParams::Simple {
+                    params,
+                    format_as_param_spec,
+                } => format!(
                     "[{}]",
                     &format_callable_params(format_data, false, params.iter(), false)
                 )

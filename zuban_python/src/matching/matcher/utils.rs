@@ -464,7 +464,7 @@ fn calculate_type_vars<'db: 'a, 'a>(
             function.iter_args_with_params(i_s.db, args, skip_first_param),
         ),
         FunctionOrCallable::Callable(callable) => match &callable.content.params {
-            CallableParams::Simple(params) => match_arguments_against_params(
+            CallableParams::Simple { params, .. } => match_arguments_against_params(
                 i_s,
                 &mut matcher,
                 func_or_callable,

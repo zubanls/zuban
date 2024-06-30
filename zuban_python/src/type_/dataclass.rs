@@ -389,7 +389,7 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> Init
                 ClassGenerics::NotDefinedYet => cls.use_cached_type_vars(db).clone(),
                 _ => i_s.db.python_state.empty_type_var_likes.clone(),
             },
-            CallableParams::Simple(params.into()),
+            CallableParams::new_simple(params.into()),
             Type::Any(AnyCause::Todo),
         ),
         __post_init__: CallableContent::new_simple(
@@ -397,7 +397,7 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> Init
             None,
             cls.node_ref.as_link(),
             i_s.db.python_state.empty_type_var_likes.clone(),
-            CallableParams::Simple(post_init_params.into()),
+            CallableParams::new_simple(post_init_params.into()),
             Type::None,
         ),
     }
@@ -559,7 +559,7 @@ pub(crate) fn dataclasses_replace<'db>(
                             has_default: false,
                         },
                     );
-                    replace_func.params = CallableParams::Simple(params.into());
+                    replace_func.params = CallableParams::new_simple(params.into());
                     Callable::new(&replace_func, Some(dataclass.class(i_s.db))).execute_internal(
                         i_s,
                         args,
@@ -827,7 +827,7 @@ fn order_func(self_: Rc<Dataclass>, i_s: &InferenceState) -> LookupResult {
             None,
             self_.class.link,
             i_s.db.python_state.empty_type_var_likes.clone(),
-            CallableParams::Simple(Rc::new([CallableParam {
+            CallableParams::new_simple(Rc::new([CallableParam {
                 type_: ParamType::PositionalOnly(Type::Dataclass(self_)),
                 name: None,
                 has_default: false,
@@ -851,7 +851,7 @@ fn type_order_func(self_: Rc<Dataclass>, i_s: &InferenceState) -> LookupResult {
             None,
             self_.class.link,
             TypeVarLikes::new(Rc::new([TypeVarLike::TypeVar(type_var)])),
-            CallableParams::Simple(Rc::new([
+            CallableParams::new_simple(Rc::new([
                 CallableParam {
                     type_: ParamType::PositionalOnly(Type::TypeVar(tv_usage.clone())),
                     name: Some(DbString::Static("self")),

@@ -1524,6 +1524,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                                 },
                                 &|| Type::Self_,
                                 &mut None,
+                                false,
                                 u1,
                             ));
                         }
@@ -1549,7 +1550,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 }),
             });
         }
-        return_result(CallableParams::Simple(Rc::from(new_params)))
+        return_result(CallableParams::new_simple(Rc::from(new_params)))
     }
 
     fn as_callable_content_internal(

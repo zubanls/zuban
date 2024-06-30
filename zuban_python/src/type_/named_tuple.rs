@@ -170,7 +170,7 @@ impl NamedTuple {
                     Some(self.name),
                     PointLink::new(FileIndex(0), 0),
                     i_s.db.python_state.empty_type_var_likes.clone(),
-                    CallableParams::Simple(params.into()),
+                    CallableParams::new_simple(params.into()),
                     as_self.map(|as_self| as_self()).unwrap_or(Type::Self_),
                 ))
             })
@@ -194,7 +194,7 @@ impl NamedTuple {
                     Some(self.name),
                     PointLink::new(FileIndex(0), 0),
                     i_s.db.python_state.empty_type_var_likes.clone(),
-                    CallableParams::Simple(params.into()),
+                    CallableParams::new_simple(params.into()),
                     new_class!(
                         i_s.db.python_state.dict_node_ref().as_link(),
                         i_s.db.python_state.str_type(),
@@ -230,7 +230,7 @@ impl NamedTuple {
                     is_abstract: false,
                     is_final: false,
                     no_type_check: false,
-                    params: CallableParams::Simple(params.into()),
+                    params: CallableParams::new_simple(params.into()),
                     return_type: as_self.map(|as_self| as_self()).unwrap_or(Type::Self_),
                 })
             }),
@@ -456,7 +456,7 @@ pub(crate) fn new_typing_named_tuple(
             None,
             second_node_ref.as_link(),
             type_var_likes,
-            CallableParams::Simple(Rc::from(params)),
+            CallableParams::new_simple(Rc::from(params)),
             Type::Self_,
         );
         Some(Rc::new(NamedTuple::new(name, callable)))
@@ -571,7 +571,7 @@ pub(crate) fn new_collections_named_tuple<'db>(
         None,
         second_node_ref.as_link(),
         i_s.db.python_state.empty_type_var_likes.clone(),
-        CallableParams::Simple(Rc::from(params)),
+        CallableParams::new_simple(Rc::from(params)),
         Type::Self_,
     );
     Some(Rc::new(NamedTuple::new(name, callable)))

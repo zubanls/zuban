@@ -2215,7 +2215,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     let mut c = (**c).clone();
                     let params = params.map(to_callable_param);
                     match &c.params {
-                        CallableParams::Simple(expected_params) => {
+                        CallableParams::Simple {
+                            params: expected_params,
+                            ..
+                        } => {
                             let params: Vec<_> = params.collect();
                             if !matches_simple_params(
                                 self.i_s,
@@ -2227,11 +2230,11 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             .bool()
                             {
                                 self.add_issue(lambda.index(), IssueKind::CannotInferLambdaParams);
-                                c.params = CallableParams::Simple(params.into());
+                                c.params = CallableParams::new_simple(params.into());
                             }
                         }
                         _ => {
-                            c.params = CallableParams::Simple(params.collect());
+                            c.params = CallableParams::new_simple(params.collect());
                         }
                     }
                     c.return_type = result.as_type(&i_s);
@@ -2251,7 +2254,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     None,
                     PointLink::new(self.file.file_index(), lambda.index()),
                     self.i_s.db.python_state.empty_type_var_likes.clone(),
-                    CallableParams::Simple(params.map(to_callable_param).collect()),
+                    CallableParams::new_simple(params.map(to_callable_param).collect()),
                     result.as_type(self.i_s),
                 );
                 Inferred::from_type(Type::Callable(Rc::new(c)))
@@ -3182,8 +3185,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                             self.i_s.current_lambda_callable()
                                         {
                                             return match &current_callable.params {
-                                                CallableParams::Simple(ps) => {
-                                                    if let Some(p2) = ps.get(i) {
+                                                CallableParams::Simple { params, .. } => {
+                                                    if let Some(p2) = params.get(i) {
                                                         if let ParamType::PositionalOnly(t) =
                                                             &p2.type_
                                                         {

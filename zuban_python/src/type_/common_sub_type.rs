@@ -91,8 +91,12 @@ impl CallableParams {
         } else {
         */
         match &self {
-            CallableParams::Simple(params1) => match &other {
-                CallableParams::Simple(params2) => common_sub_type_params(i_s, params1, params2),
+            CallableParams::Simple {
+                params: params1, ..
+            } => match &other {
+                CallableParams::Simple {
+                    params: params2, ..
+                } => common_sub_type_params(i_s, params1, params2),
                 CallableParams::WithParamSpec(_, _) => todo!(),
                 CallableParams::Any(_) | CallableParams::Never(_) => todo!(),
             },
@@ -163,7 +167,7 @@ fn common_sub_type_params(
                 has_default: p1.has_default,
             });
         }
-        Some(CallableParams::Simple(new_params.into()))
+        Some(CallableParams::new_simple(new_params.into()))
     } else {
         None
     }

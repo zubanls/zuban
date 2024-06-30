@@ -1811,7 +1811,7 @@ impl<'db: 'a, 'a> Class<'a> {
             None,
             self.node_ref.as_link(),
             self.use_cached_type_vars(i_s.db).clone(),
-            CallableParams::Simple(Rc::from(vec)),
+            CallableParams::new_simple(Rc::from(vec)),
             Type::Self_,
         )
     }

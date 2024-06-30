@@ -230,8 +230,12 @@ impl CallableParams {
         other: &CallableParams,
     ) -> Option<CallableParams> {
         match self {
-            CallableParams::Simple(params1) => match other {
-                CallableParams::Simple(params2) => common_params(i_s, params1, params2),
+            CallableParams::Simple {
+                params: params1, ..
+            } => match other {
+                CallableParams::Simple {
+                    params: params2, ..
+                } => common_params(i_s, params1, params2),
                 CallableParams::WithParamSpec(_, _) => None,
                 CallableParams::Any(_) | CallableParams::Never(_) => todo!(),
             },
@@ -388,7 +392,7 @@ fn common_params_by_iterable<'x>(
                 ParamKind::StarStar => ParamType::StarStar(StarStarParamType::ValueType(new_t)),
             }));
         }
-        Some(CallableParams::Simple(new_params.into()))
+        Some(CallableParams::new_simple(new_params.into()))
     } else {
         None
     }

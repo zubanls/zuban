@@ -1983,10 +1983,16 @@ fn check_override(
                 let supertype = original_class_name(db, &original_class);
 
                 // First check params
-                let CallableParams::Simple(params1) = &got_c.params else {
+                let CallableParams::Simple {
+                    params: params1, ..
+                } = &got_c.params
+                else {
                     unreachable!()
                 };
-                let CallableParams::Simple(params2) = &expected_c.params else {
+                let CallableParams::Simple {
+                    params: params2, ..
+                } = &expected_c.params
+                else {
                     unreachable!()
                 };
                 for (i, (param1, mut param2)) in params1.iter().zip(params2.iter()).enumerate() {
@@ -2197,9 +2203,10 @@ fn override_func_infos<'t1, 't2>(
 ) -> Option<OverrideFuncInfos<'t1, 't2>> {
     match (t1, t2) {
         (Type::Callable(c1), Type::Callable(c2)) => Some(match (&c1.params, &c2.params) {
-            (CallableParams::Simple(p1), CallableParams::Simple(p2)) if p1.len() == p2.len() => {
-                OverrideFuncInfos::CallablesSameParamLen(c1, c2)
-            }
+            (
+                CallableParams::Simple { params: p1, .. },
+                CallableParams::Simple { params: p2, .. },
+            ) if p1.len() == p2.len() => OverrideFuncInfos::CallablesSameParamLen(c1, c2),
             _ => OverrideFuncInfos::Mixed,
         }),
         (Type::FunctionOverload(o1), Type::FunctionOverload(o2)) => {
