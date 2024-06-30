@@ -145,7 +145,7 @@ pub fn matches_simple_params<
     'y,
     P1: Param<'x>,
     P2: Param<'y>,
-    I1: Iterator<Item = P1>,
+    I1: Iterator<Item = P1> + Clone,
 >(
     i_s: &InferenceState<'db, '_>,
     matcher: &mut Matcher,
@@ -179,6 +179,17 @@ pub fn matches_simple_params<
             .or_else(|| unused_keyword_params.first())
             .copied()
         {
+            let mut specific2 = param2.specific(i_s.db);
+            if let WrappedParamType::Star(WrappedStar::ParamSpecArgs(u2)) = specific2 {
+                matches &= matcher.match_or_add_param_spec(
+                    i_s,
+                    &[],
+                    u2,
+                    std::iter::once(param1).chain(params1),
+                    variance.invert(),
+                );
+                return matches;
+            }
             if param1.has_default() && !param2.has_default() {
                 debug!(
                     "Mismatch callable, because {:?} has default and {:?} hasn't",
@@ -188,7 +199,6 @@ pub fn matches_simple_params<
                 return Match::new_false();
             }
             let specific1 = param1.specific(i_s.db);
-            let mut specific2 = param2.specific(i_s.db);
 
             if let Some(m) =
                 match_unpack_from_other_side(i_s, matcher, &specific2, variance, || {

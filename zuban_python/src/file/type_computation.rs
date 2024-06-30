@@ -2753,14 +2753,22 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
     ) -> TypeContent<'db, 'db> {
         let count = slice_type.iter().count();
         let mut iterator = slice_type.iter();
-        let types: Vec<_> = iterator
+        let mut params: Vec<_> = iterator
             .by_ref()
             .take(count - 1)
-            .map(|s| self.compute_slice_type(s))
+            .map(|s| {
+                CallableParam::new_anonymous(ParamType::PositionalOnly(self.compute_slice_type(s)))
+            })
             .collect();
         match self.compute_slice_type_content(iterator.next().unwrap()) {
             TypeContent::ParamSpec(p) => {
-                TypeContent::Concatenate(CallableParams::WithParamSpec(types.into(), p))
+                params.push(CallableParam::new_anonymous(ParamType::Star(
+                    StarParamType::ParamSpecArgs(p.clone()),
+                )));
+                params.push(CallableParam::new_anonymous(ParamType::StarStar(
+                    StarStarParamType::ParamSpecKwargs(p),
+                )));
+                TypeContent::Concatenate(CallableParams::Simple(params.into()))
             }
             TypeContent::Concatenate(_) => {
                 self.add_issue(slice_type.as_node_ref(), IssueKind::NestedConcatenate);
@@ -2768,10 +2776,6 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             }
             TypeContent::Unknown(cause) => TypeContent::Unknown(cause),
             TypeContent::InvalidVariable(InvalidVariableType::Ellipsis) => {
-                let mut params: Vec<_> = types
-                    .into_iter()
-                    .map(|t| CallableParam::new_anonymous(ParamType::PositionalOnly(t)))
-                    .collect();
                 params.push(CallableParam::new_anonymous(ParamType::Star(
                     StarParamType::ArbitraryLen(Type::Any(AnyCause::Explicit)),
                 )));
