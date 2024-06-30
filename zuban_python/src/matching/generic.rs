@@ -6,10 +6,10 @@ use crate::{
     format_data::{FormatData, ParamsStyle},
     inference_state::InferenceState,
     type_::{
-        format_callable_params, match_tuple_type_arguments, CallableParams, GenericItem,
-        ParamSpecArg, ParamType, StarParamType, TupleArgs, Type, TypeArgs, TypeVarLike, Variance,
+        format_callable_params, format_params_as_param_spec, match_tuple_type_arguments,
+        CallableParams, GenericItem, ParamSpecArg, TupleArgs, Type, TypeArgs, TypeVarLike,
+        Variance,
     },
-    utils::join_with_commas,
 };
 
 #[derive(Debug)]
@@ -54,25 +54,7 @@ impl<'a> Generic<'a> {
                     format_as_param_spec,
                 } => {
                     if *format_as_param_spec {
-                        let mut params_iter = params.iter();
-                        params_iter.next_back();
-                        let variadic = params_iter.next_back().unwrap();
-                        let ParamType::Star(StarParamType::ParamSpecArgs(p)) = &variadic.type_
-                        else {
-                            unreachable!()
-                        };
-                        let name = p.param_spec.name(format_data.db);
-                        if params.len() == 2 {
-                            name.into()
-                        } else {
-                            let ps = join_with_commas(params_iter.map(|p| {
-                                p.type_
-                                    .expect_positional_type_as_ref()
-                                    .format(format_data)
-                                    .into()
-                            }));
-                            format!("[{ps}, **{}]", name).into()
-                        }
+                        format_params_as_param_spec(format_data, params)
                     } else {
                         format!(
                             "[{}]",

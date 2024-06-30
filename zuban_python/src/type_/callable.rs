@@ -306,6 +306,9 @@ impl CallableParams {
                 params,
                 format_as_param_spec,
             } => {
+                if *format_as_param_spec {
+                    return format_params_as_param_spec(format_data, params);
+                }
                 let mut out_params = Vec::with_capacity(params.len());
                 // Display a star only if we are displaying a "normal" function signature
                 let mut had_param_spec_args = false;
@@ -974,4 +977,25 @@ pub fn format_callable_params<'db: 'x, 'x, P: Param<'x>>(
         args += ", /";
     }
     args
+}
+
+pub fn format_params_as_param_spec(format_data: &FormatData, params: &[CallableParam]) -> Box<str> {
+    let mut params_iter = params.iter();
+    params_iter.next_back();
+    let variadic = params_iter.next_back().unwrap();
+    let ParamType::Star(StarParamType::ParamSpecArgs(p)) = &variadic.type_ else {
+        unreachable!()
+    };
+    let name = p.param_spec.name(format_data.db);
+    if params.len() == 2 {
+        name.into()
+    } else {
+        let ps = join_with_commas(params_iter.map(|p| {
+            p.type_
+                .expect_positional_type_as_ref()
+                .format(format_data)
+                .into()
+        }));
+        format!("[{ps}, **{}]", name).into()
+    }
 }

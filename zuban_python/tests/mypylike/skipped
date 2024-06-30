@@ -292,7 +292,6 @@ testParamSpecCorrectParameterNameInference
 #
 testParamSpecDecorator
 testParamSpecLiteralEllipsis
-testParamSpecSubtypeChecking2
 testParamSpecJoin
 testParamSpecLiteralsTypeApplication
 testParamSpecVariance
