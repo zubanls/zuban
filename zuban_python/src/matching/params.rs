@@ -602,6 +602,10 @@ pub fn matches_simple_params<
                     );
                     break;
                 }
+                WrappedParamType::Star(WrappedStar::ParamSpecArgs(u1)) => {
+                    matches &= matcher.match_or_add_param_spec(i_s, &[], u1, params2, variance);
+                    return matches;
+                }
                 _ => {
                     debug!(
                         "Params mismatch, because one side had fewer params: {:?}",
@@ -626,6 +630,11 @@ pub fn matches_simple_params<
         {
             matches &= m;
             continue;
+        }
+        if let WrappedParamType::Star(WrappedStar::ParamSpecArgs(u2)) = param2.specific(i_s.db) {
+            matches &= matcher.match_or_add_param_spec(i_s, &[], u2, params1, variance.invert());
+            todo!();
+            return matches;
         }
         if !param2.has_default()
             && !matches!(param2.kind(i_s.db), ParamKind::Star | ParamKind::StarStar)
