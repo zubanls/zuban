@@ -986,16 +986,17 @@ pub fn format_params_as_param_spec(format_data: &FormatData, params: &[CallableP
     let ParamType::Star(StarParamType::ParamSpecArgs(p)) = &variadic.type_ else {
         unreachable!()
     };
-    let name = p.param_spec.name(format_data.db);
     if params.len() == 2 {
+        let name = format_data.format_param_spec(p, ParamsStyle::CallableParams);
         name.into()
     } else {
+        let name = format_data.format_param_spec(p, ParamsStyle::CallableParamsInner);
         let ps = join_with_commas(params_iter.map(|p| {
             p.type_
                 .expect_positional_type_as_ref()
                 .format(format_data)
                 .into()
         }));
-        format!("[{ps}, **{}]", name).into()
+        format!("[{ps}, {}]", name).into()
     }
 }
