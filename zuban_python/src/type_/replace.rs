@@ -667,7 +667,7 @@ pub fn remap_param_spec(
         CallableParams::Simple(params) => {
             new_params.extend_from_slice(&params);
         }
-        CallableParams::Any(cause) => todo!(), //CallableParams::Any(cause),
+        CallableParams::Any(cause) => return CallableParams::Any(cause),
         CallableParams::WithParamSpec(new_types, p) => {
             new_params.extend(
                 new_types
