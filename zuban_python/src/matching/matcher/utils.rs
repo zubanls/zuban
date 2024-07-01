@@ -552,9 +552,9 @@ pub(crate) fn match_arguments_against_params<
             );
             continue;
         }
-        let mut match_arg = |argument: &Arg<'db, '_>, expected: Cow<Type>| {
+        let mut match_arg = |arg: &Arg<'db, '_>, expected: Cow<Type>| {
             let value = if matcher.might_have_defined_type_vars() {
-                argument.infer(
+                arg.infer(
                     i_s,
                     &mut ResultContext::WithMatcher {
                         type_: &expected,
@@ -562,10 +562,24 @@ pub(crate) fn match_arguments_against_params<
                     },
                 )
             } else {
-                argument.infer(i_s, &mut ResultContext::Known(&expected))
+                arg.infer(i_s, &mut ResultContext::Known(&expected))
             };
-            let InferredArg::Inferred(value) = value else {
-                todo!("not sure if reachable")
+            let value = match value {
+                InferredArg::Inferred(value) => value,
+                InferredArg::StarredWithUnpack(_) => todo!(),
+                InferredArg::ParamSpec(param_spec) => {
+                    let e = &expected.format_short(i_s.db);
+                    let n = param_spec.param_spec.name(i_s.db);
+                    arg.add_argument_issue(i_s, &format!("\"*{n}.args\""), e, &diagnostic_string);
+                    arg.add_argument_issue(
+                        i_s,
+                        &format!("\"**{n}.kwargs\""),
+                        e,
+                        &diagnostic_string,
+                    );
+                    matches &= Match::new_false();
+                    return;
+                }
             };
             let value_t = value.as_cow_type(i_s);
             let m = expected.is_super_type_of(i_s, matcher, &value_t);
@@ -577,10 +591,10 @@ pub(crate) fn match_arguments_against_params<
                     &matches
                 );
                 if let Some(on_type_error) = on_type_error {
-                    let got = GotType::from_arg(i_s, argument, &value_t);
+                    let got = GotType::from_arg(i_s, arg, &value_t);
                     match reason {
                         MismatchReason::ConstraintMismatch { expected, type_var } => {
-                            argument.add_issue(
+                            arg.add_issue(
                                 i_s,
                                 IssueKind::InvalidTypeVarValue {
                                     type_var_name: Box::from(type_var.name(i_s.db)),
@@ -596,7 +610,7 @@ pub(crate) fn match_arguments_against_params<
                                 got,
                                 expected: &expected,
                             };
-                            (on_type_error.callback)(i_s, &diagnostic_string, argument, error_types)
+                            (on_type_error.callback)(i_s, &diagnostic_string, arg, error_types)
                         }
                     };
                 }
@@ -622,7 +636,7 @@ pub(crate) fn match_arguments_against_params<
             }
             if matches!(m, Match::True { with_any: true }) {
                 argument_indices_with_any.push(ArgumentIndexWithParam {
-                    argument_index: argument.index,
+                    argument_index: arg.index,
                     type_: expected.into_owned(),
                 })
             }
@@ -667,6 +681,7 @@ pub(crate) fn match_arguments_against_params<
                     func_or_callable,
                     add_issue,
                     on_type_error,
+                    &diagnostic_string,
                 ) {
                     SignatureMatch::True { .. } => Match::new_true(),
                     SignatureMatch::TrueWithAny { .. } => todo!(),

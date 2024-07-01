@@ -490,7 +490,7 @@ pub fn on_argument_type_error(
         "ModuleType" => "Module".to_string(),
         got => format!("\"{got}\""),
     };
-    arg.add_argument_issue(i_s, &got, &strings.expected, error_text(" to ").as_deref());
+    arg.add_argument_issue(i_s, &got, &strings.expected, error_text);
     types.add_mismatch_notes(|issue| arg.add_issue(i_s, issue))
 }
 

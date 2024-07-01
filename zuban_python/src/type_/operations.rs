@@ -318,7 +318,10 @@ impl Type {
                     add_issue,
                     callable,
                 ),
-            _ => todo!("{self:?}, {name}"),
+            Type::ParamSpecArgs(_) | Type::ParamSpecKwargs(_) => {
+                callable(self, LookupDetails::none())
+            }
+            Type::CustomBehavior(_) => todo!(),
         }
     }
 

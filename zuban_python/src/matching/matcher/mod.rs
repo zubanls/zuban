@@ -618,6 +618,7 @@ impl<'a> Matcher<'a> {
         func_or_callable: FunctionOrCallable,
         add_issue: &dyn Fn(IssueKind),
         on_type_error: Option<OnTypeError>,
+        of_function: &dyn Fn(&str) -> Option<Box<str>>,
     ) -> SignatureMatch {
         let func_class = self.func_or_callable.and_then(|f| f.class());
         let param_spec_usage;
@@ -670,7 +671,7 @@ impl<'a> Matcher<'a> {
                         _ => format!("{param_spec_name}.args"),
                     };
                     let got = &format!("\"{}\"", got.format(&FormatData::new_short(i_s.db)));
-                    arg.add_argument_issue(i_s, got, &expected, None);
+                    arg.add_argument_issue(i_s, got, &expected, of_function);
                 }
                 return SignatureMatch::False { similar: false };
             }

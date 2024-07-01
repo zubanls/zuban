@@ -492,7 +492,7 @@ impl<'db, 'a> Arg<'db, 'a> {
         i_s: &InferenceState,
         got: &str,
         expected: &str,
-        from: Option<&str>,
+        error_text: &dyn Fn(&str) -> Option<Box<str>>,
     ) {
         self.add_issue(
             i_s,
@@ -500,7 +500,7 @@ impl<'db, 'a> Arg<'db, 'a> {
                 format!(
                     "Argument {}{} has incompatible type {got}; expected \"{expected}\"",
                     self.human_readable_index(i_s.db),
-                    from.unwrap_or(""),
+                    error_text(" to ").as_deref().unwrap_or(""),
                 )
                 .into(),
             ),
