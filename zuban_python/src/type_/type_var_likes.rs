@@ -835,7 +835,7 @@ impl TypeVarLikeUsage {
                 }),
             }),
             TypeVarLikeUsage::ParamSpec(usage) => GenericItem::ParamSpecArg(ParamSpecArg::new(
-                CallableParams::new_param_spec(usage, true),
+                CallableParams::new_param_spec(usage),
                 None,
             )),
         }
@@ -860,7 +860,7 @@ impl TypeVarLikeUsage {
             TypeVarLikeUsage::ParamSpec(mut usage) => {
                 usage.index = index;
                 GenericItem::ParamSpecArg(ParamSpecArg::new(
-                    CallableParams::new_param_spec(usage, true),
+                    CallableParams::new_param_spec(usage),
                     None,
                 ))
             }

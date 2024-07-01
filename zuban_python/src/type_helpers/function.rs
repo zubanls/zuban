@@ -1524,7 +1524,6 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                                 },
                                 &|| Type::Self_,
                                 &mut None,
-                                false,
                                 u1,
                             ));
                         }

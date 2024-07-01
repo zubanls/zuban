@@ -291,23 +291,17 @@ impl CallableParam {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum CallableParams {
-    Simple {
-        params: Rc<[CallableParam]>,
-        format_as_param_spec: bool,
-    },
+    Simple { params: Rc<[CallableParam]> },
     Any(AnyCause),
     Never(NeverCause),
 }
 
 impl CallableParams {
     pub fn new_simple(params: Rc<[CallableParam]>) -> Self {
-        Self::Simple {
-            params,
-            format_as_param_spec: false,
-        }
+        Self::Simple { params }
     }
 
-    pub fn new_param_spec(p: ParamSpecUsage, format_as_param_spec: bool) -> Self {
+    pub fn new_param_spec(p: ParamSpecUsage) -> Self {
         Self::Simple {
             params: Rc::new([
                 CallableParam::new_anonymous(ParamType::Star(StarParamType::ParamSpecArgs(
@@ -317,16 +311,12 @@ impl CallableParams {
                     StarStarParamType::ParamSpecKwargs(p),
                 )),
             ]),
-            format_as_param_spec,
         }
     }
 
     pub fn format(&self, format_data: &FormatData, style: ParamsStyle) -> Box<str> {
         let parts = match self {
-            Self::Simple {
-                params,
-                format_as_param_spec,
-            } => {
+            Self::Simple { params } => {
                 if let Some(result) = format_params_as_param_spec(format_data, params) {
                     return result;
                 }
@@ -420,11 +410,7 @@ impl CallableParams {
     }
 
     pub fn maybe_param_spec(&self) -> Option<&ParamSpecUsage> {
-        let Self::Simple {
-            params,
-            format_as_param_spec,
-        } = self
-        else {
+        let Self::Simple { params } = self else {
             return None;
         };
         params.last()?.type_.maybe_param_spec()
@@ -585,10 +571,7 @@ impl CallableContent {
     pub fn remove_first_param(&self) -> Option<Self> {
         let mut c = self.clone();
         c.params = match &self.params {
-            CallableParams::Simple {
-                params,
-                format_as_param_spec,
-            } => {
+            CallableParams::Simple { params } => {
                 if params.len() == 0 {
                     todo!()
                 }
@@ -596,7 +579,6 @@ impl CallableContent {
                 params.remove(0);
                 CallableParams::Simple {
                     params: params.into(),
-                    format_as_param_spec: *format_as_param_spec,
                 }
             }
             CallableParams::Any(cause) => CallableParams::Any(*cause),

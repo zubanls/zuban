@@ -586,7 +586,7 @@ impl<'a> Matcher<'a> {
                                 i_s,
                                 matcher_index,
                                 p2,
-                                CallableParams::new_param_spec(p1.clone(), false),
+                                CallableParams::new_param_spec(p1.clone()),
                                 variance,
                             );
                     }
@@ -1130,7 +1130,7 @@ impl<'a> Matcher<'a> {
                             in_definition,
                             temporary_matcher_id: 0,
                         };
-                        BoundKind::ParamSpec(CallableParams::new_param_spec(usage, true))
+                        BoundKind::ParamSpec(CallableParams::new_param_spec(usage))
                     }
                 },
             )
@@ -1205,15 +1205,12 @@ impl<'a> Matcher<'a> {
                                 }
                                 TypeVarLike::ParamSpec(param_spec) => {
                                     GenericItem::ParamSpecArg(ParamSpecArg {
-                                        params: CallableParams::new_param_spec(
-                                            ParamSpecUsage {
-                                                param_spec,
-                                                index: free_type_var_index.into(),
-                                                in_definition,
-                                                temporary_matcher_id: 0,
-                                            },
-                                            true,
-                                        ),
+                                        params: CallableParams::new_param_spec(ParamSpecUsage {
+                                            param_spec,
+                                            index: free_type_var_index.into(),
+                                            in_definition,
+                                            temporary_matcher_id: 0,
+                                        }),
                                         type_vars: None,
                                     })
                                 }
