@@ -5,7 +5,8 @@ use parsa_python_cst::{
 };
 
 use super::{
-    AnyCause, CallableLike, DbString, FormatStyle, Literal, LiteralKind, StringSlice, Type,
+    AnyCause, CallableLike, DbString, FormatStyle, Literal, LiteralKind, LookupResult, StringSlice,
+    Type,
 };
 use crate::{
     arguments::{ArgKind, Args},
@@ -15,7 +16,7 @@ use crate::{
     format_data::FormatData,
     inference_state::InferenceState,
     inferred::{AttributeKind, Inferred},
-    matching::{LookupKind, LookupResult, ResultContext},
+    matching::{LookupKind, ResultContext},
     node_ref::NodeRef,
     type_helpers::{
         Class, ClassLookupOptions, Instance, InstanceLookupOptions, LookupDetails, TypeOrClass,

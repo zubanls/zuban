@@ -4,8 +4,8 @@ use parsa_python_cst::{AtomContent, DictElement};
 
 use super::{
     replace::ReplaceTypeVarLike, utils::method_with_fallback, AnyCause, CallableParam,
-    CustomBehavior, DbString, FormatStyle, GenericsList, NeverCause, ParamType, ReplaceSelf,
-    StringSlice, Type, TypeVarLikes,
+    CustomBehavior, DbString, FormatStyle, GenericsList, LookupResult, NeverCause, ParamType,
+    ReplaceSelf, StringSlice, Type, TypeVarLikes,
 };
 use crate::{
     arguments::{ArgKind, Args},
@@ -16,10 +16,7 @@ use crate::{
     getitem::{SliceType, SliceTypeContent},
     inference_state::InferenceState,
     inferred::{AttributeKind, Inferred},
-    matching::{
-        ErrorStrs, LookupKind, LookupResult, Match, Matcher, MismatchReason, OnTypeError,
-        ResultContext,
-    },
+    matching::{ErrorStrs, LookupKind, Match, Matcher, MismatchReason, OnTypeError, ResultContext},
     node_ref::NodeRef,
     type_helpers::{Class, Instance, InstanceLookupOptions, LookupDetails},
     utils::join_with_commas,

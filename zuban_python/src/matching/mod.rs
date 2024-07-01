@@ -1,6 +1,5 @@
 mod generic;
 mod generics;
-mod lookup_result;
 mod match_;
 mod matcher;
 mod result_context;
@@ -10,7 +9,6 @@ use std::{borrow::Cow, cell::RefCell, rc::Rc};
 
 pub use generic::Generic;
 pub use generics::Generics;
-pub use lookup_result::LookupResult;
 pub use match_::{ArgumentIndexWithParam, Match, MismatchReason, SignatureMatch};
 pub(crate) use matcher::{
     calculate_callable_init_type_vars_and_return, calculate_callable_type_vars_and_return,

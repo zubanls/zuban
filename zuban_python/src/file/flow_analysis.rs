@@ -20,12 +20,13 @@ use crate::{
     getitem::SliceType,
     inference_state::InferenceState,
     inferred::{Inferred, UnionValue},
-    matching::{Generic, LookupKind, LookupResult, Match, Matcher, OnTypeError, ResultContext},
+    matching::{Generic, LookupKind, Match, Matcher, OnTypeError, ResultContext},
     node_ref::NodeRef,
     type_::{
         simplified_union_from_iterators, AnyCause, CallableContent, CallableLike, CallableParams,
-        ClassGenerics, DbString, EnumMember, Literal, LiteralKind, NamedTuple, NeverCause,
-        StringSlice, Tuple, TupleArgs, TupleUnpack, Type, TypeVarKind, UnionType, WithUnpack,
+        ClassGenerics, DbString, EnumMember, Literal, LiteralKind, LookupResult, NamedTuple,
+        NeverCause, StringSlice, Tuple, TupleArgs, TupleUnpack, Type, TypeVarKind, UnionType,
+        WithUnpack,
     },
     type_helpers::{Callable, Class, ClassLookupOptions, Function},
 };

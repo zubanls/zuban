@@ -20,8 +20,7 @@ use crate::{
     matching::{
         calculate_property_return, create_signature_without_self_for_callable, match_self_type,
         maybe_class_usage, replace_class_type_vars, ErrorStrs, ErrorTypes, Generics, GotType,
-        IteratorContent, LookupKind, LookupResult, Match, Matcher, OnLookupError, OnTypeError,
-        ResultContext,
+        IteratorContent, LookupKind, Match, Matcher, OnLookupError, OnTypeError, ResultContext,
     },
     new_class,
     node_ref::NodeRef,
@@ -29,8 +28,8 @@ use crate::{
         execute_collections_named_tuple, execute_type_of_type, execute_typing_named_tuple,
         new_typed_dict, AnyCause, CallableContent, CallableLike, CallableParams, ClassGenerics,
         DbString, FunctionKind, FunctionOverload, GenericClass, GenericItem, GenericsList,
-        Literal as DbLiteral, LiteralKind, LiteralValue, NeverCause, Type, TypeVarKind,
-        TypeVarLike, TypeVarLikes,
+        Literal as DbLiteral, LiteralKind, LiteralValue, LookupResult, NeverCause, Type,
+        TypeVarKind, TypeVarLike, TypeVarLikes,
     },
     type_helpers::{
         execute_assert_type, execute_isinstance, execute_issubclass, execute_super, execute_type,

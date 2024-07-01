@@ -7,8 +7,9 @@ use parsa_python_cst::{
 
 use super::{
     AnyCause, CallableContent, CallableParam, CallableParams, ClassGenerics, DbString,
-    GenericClass, Literal, LiteralKind, ParamType, StringSlice, Tuple, Type, TypeVar, TypeVarKind,
-    TypeVarLike, TypeVarLikes, TypeVarName, TypeVarUsage, Variance,
+    GenericClass, Literal, LiteralKind, LookupResult, ParamType, StarParamType, StarStarParamType,
+    StringSlice, Tuple, Type, TypeVar, TypeVarKind, TypeVarLike, TypeVarLikes, TypeVarName,
+    TypeVarUsage, Variance,
 };
 use crate::{
     arguments::{Arg, ArgKind, Args, SimpleArgs},
@@ -18,12 +19,11 @@ use crate::{
     inference_state::InferenceState,
     inferred::{AttributeKind, Inferred},
     matching::{
-        calculate_callable_type_vars_and_return, replace_class_type_vars, LookupKind, LookupResult,
-        OnTypeError, ResultContext,
+        calculate_callable_type_vars_and_return, replace_class_type_vars, LookupKind, OnTypeError,
+        ResultContext,
     },
     node_ref::NodeRef,
     python_state::NAME_TO_FUNCTION_DIFF,
-    type_::{StarParamType, StarStarParamType},
     type_helpers::{Callable, Class, ClassLookupOptions, Instance, LookupDetails, TypeOrClass},
 };
 

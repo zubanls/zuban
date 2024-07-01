@@ -2,7 +2,8 @@ use std::{cell::OnceCell, rc::Rc};
 
 use super::{
     common_base_type, simplified_union_from_iterators, utils::method_with_fallback, CustomBehavior,
-    FormatStyle, GenericItem, GenericsList, RecursiveType, TypeVarLikeUsage, TypeVarTupleUsage,
+    FormatStyle, GenericItem, GenericsList, LookupResult, RecursiveType, TypeVarLikeUsage,
+    TypeVarTupleUsage,
 };
 use crate::{
     arguments::Args,
@@ -13,7 +14,7 @@ use crate::{
     getitem::{SliceType, SliceTypeContent},
     inference_state::InferenceState,
     inferred::{AttributeKind, Inferred},
-    matching::{IteratorContent, LookupResult, OnTypeError, ResultContext},
+    matching::{IteratorContent, OnTypeError, ResultContext},
     node_ref::NodeRef,
     type_::{AnyCause, Type},
     type_helpers::{Instance, LookupDetails, TypeOrClass},

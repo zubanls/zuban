@@ -4,7 +4,8 @@ use parsa_python_cst::{keywords_contain, AtomContent, CodeIndex, StarLikeExpress
 
 use super::{
     tuple::lookup_tuple_magic_methods, AnyCause, CallableContent, CallableParam, CallableParams,
-    DbString, FormatStyle, FunctionKind, Literal, LiteralKind, ParamType, StringSlice, Tuple, Type,
+    DbString, FormatStyle, FunctionKind, Literal, LiteralKind, LookupResult, ParamType,
+    StringSlice, Tuple, Type,
 };
 use crate::{
     arguments::{ArgIterator, ArgKind, Args, KeywordArg},
@@ -15,7 +16,7 @@ use crate::{
     getitem::SliceType,
     inference_state::InferenceState,
     inferred::{AttributeKind, Inferred},
-    matching::{Generics, IteratorContent, LookupKind, LookupResult, OnTypeError, ResultContext},
+    matching::{Generics, IteratorContent, LookupKind, OnTypeError, ResultContext},
     new_class,
     node_ref::NodeRef,
     type_helpers::{start_namedtuple_params, LookupDetails},

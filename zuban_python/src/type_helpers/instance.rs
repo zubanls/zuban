@@ -12,10 +12,11 @@ use crate::{
     getitem::SliceType,
     inference_state::InferenceState,
     inferred::{add_attribute_error, AttributeKind, Inferred},
-    matching::{ErrorStrs, IteratorContent, LookupKind, LookupResult, OnTypeError, ResultContext},
+    matching::{ErrorStrs, IteratorContent, LookupKind, OnTypeError, ResultContext},
     node_ref::NodeRef,
     type_::{
-        AnyCause, CallableLike, CallableParams, FunctionKind, GenericClass, Type, TypeVarKind,
+        AnyCause, CallableLike, CallableParams, FunctionKind, GenericClass, LookupResult, Type,
+        TypeVarKind,
     },
 };
 

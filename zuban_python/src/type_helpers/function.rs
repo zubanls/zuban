@@ -24,7 +24,7 @@ use crate::{
     inferred::Inferred,
     matching::{
         calculate_function_type_vars_and_return, maybe_class_usage, CalculatedTypeArgs, ErrorStrs,
-        LookupResult, OnTypeError, ResultContext,
+        OnTypeError, ResultContext,
     },
     new_class,
     node_ref::NodeRef,
@@ -33,9 +33,9 @@ use crate::{
     type_::{
         remap_param_spec, AnyCause, CallableContent, CallableLike, CallableParam, CallableParams,
         ClassGenerics, DbString, FunctionKind, FunctionOverload, GenericClass, GenericItem,
-        ParamType, ReplaceSelf, StarParamType, StarStarParamType, StringSlice, TupleArgs, Type,
-        TypeGuardInfo, TypeVar, TypeVarKind, TypeVarLike, TypeVarLikes, TypeVarManager,
-        TypeVarName, TypeVarUsage, Variance, WrongPositionalCount,
+        LookupResult, ParamType, ReplaceSelf, StarParamType, StarStarParamType, StringSlice,
+        TupleArgs, Type, TypeGuardInfo, TypeVar, TypeVarKind, TypeVarLike, TypeVarLikes,
+        TypeVarManager, TypeVarName, TypeVarUsage, Variance, WrongPositionalCount,
     },
     type_helpers::Class,
     utils::rc_unwrap_or_clone,

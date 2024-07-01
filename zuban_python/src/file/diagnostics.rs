@@ -24,15 +24,13 @@ use crate::{
     imports::ImportResult,
     inference_state::InferenceState,
     inferred::{infer_class_method, AttributeKind, Inferred},
-    matching::{
-        ErrorStrs, Generics, LookupKind, LookupResult, Match, Matcher, OnTypeError, ResultContext,
-    },
+    matching::{ErrorStrs, Generics, LookupKind, Match, Matcher, OnTypeError, ResultContext},
     node_ref::NodeRef,
     params::{has_overlapping_params, matches_params, Param, WrappedParamType, WrappedStar},
     type_::{
         format_callable_params, AnyCause, CallableContent, CallableParams, ClassGenerics, DbString,
         FunctionKind, FunctionOverload, GenericItem, GenericsList, Literal, LiteralKind,
-        NeverCause, ParamType, TupleArgs, Type, TypeVarLike, Variance,
+        LookupResult, NeverCause, ParamType, TupleArgs, Type, TypeVarLike, Variance,
     },
     type_helpers::{
         cache_class_name, is_private, Class, ClassLookupOptions, FirstParamProperties, Function,

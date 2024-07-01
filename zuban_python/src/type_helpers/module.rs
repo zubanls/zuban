@@ -11,9 +11,8 @@ use crate::{
     imports::{python_import, python_import_with_needs_exact_case, ImportResult},
     inference_state::InferenceState,
     inferred::Inferred,
-    matching::LookupResult,
     node_ref::NodeRef,
-    type_::{Namespace, Type},
+    type_::{LookupResult, Namespace, Type},
     workspaces::{FileEntry, Parent},
 };
 

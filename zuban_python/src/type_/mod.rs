@@ -3,6 +3,7 @@ mod common_base_type;
 mod common_sub_type;
 mod dataclass;
 mod enum_;
+mod lookup_result;
 mod matching;
 mod named_tuple;
 mod operations;
@@ -36,6 +37,7 @@ pub(crate) use self::{
         lookup_on_enum_instance, lookup_on_enum_member_instance, Enum, EnumMember,
         EnumMemberDefinition,
     },
+    lookup_result::LookupResult,
     matching::{match_tuple_type_arguments, match_unpack},
     named_tuple::{
         add_named_tuple_param, execute_collections_named_tuple, execute_typing_named_tuple,

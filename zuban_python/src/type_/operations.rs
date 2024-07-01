@@ -5,7 +5,7 @@ use super::{
     lookup_on_dataclass_type, lookup_on_enum_class, lookup_on_enum_instance,
     lookup_on_enum_member_instance, lookup_on_typed_dict,
     tuple::{lookup_on_tuple, lookup_tuple_magic_methods},
-    AnyCause, Type, TypeVarKind,
+    AnyCause, LookupResult, Type, TypeVarKind,
 };
 use crate::{
     arguments::{Args, NoArgs},
@@ -16,8 +16,8 @@ use crate::{
     inference_state::InferenceState,
     inferred::{AttributeKind, Inferred},
     matching::{
-        calculate_callable_type_vars_and_return, IteratorContent, LookupKind, LookupResult,
-        OnLookupError, OnTypeError, ResultContext,
+        calculate_callable_type_vars_and_return, IteratorContent, LookupKind, OnLookupError,
+        OnTypeError, ResultContext,
     },
     node_ref::NodeRef,
     type_::NamedTuple,

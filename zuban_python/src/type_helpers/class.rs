@@ -32,8 +32,8 @@ use crate::{
     matching::{
         calculate_callable_init_type_vars_and_return, calculate_callable_type_vars_and_return,
         calculate_class_init_type_vars_and_return, format_got_expected, maybe_class_usage,
-        ErrorStrs, FunctionOrCallable, Generics, LookupKind, LookupResult, Match, Matcher,
-        MismatchReason, OnTypeError, ResultContext,
+        ErrorStrs, FunctionOrCallable, Generics, LookupKind, Match, Matcher, MismatchReason,
+        OnTypeError, ResultContext,
     },
     node_ref::NodeRef,
     python_state::{NAME_TO_CLASS_DIFF, NAME_TO_FUNCTION_DIFF},
@@ -42,9 +42,9 @@ use crate::{
         infer_typed_dict_total_argument, infer_value_on_member, AnyCause, CallableContent,
         CallableLike, CallableParam, CallableParams, ClassGenerics, Dataclass, DataclassOptions,
         DbString, Enum, EnumMemberDefinition, FormatStyle, FunctionOverload, GenericClass,
-        GenericsList, NamedTuple, ParamType, StringSlice, Tuple, TupleArgs, Type, TypeVarLike,
-        TypeVarLikeUsage, TypeVarLikes, TypedDict, TypedDictMember, TypedDictMemberGatherer,
-        Variance,
+        GenericsList, LookupResult, NamedTuple, ParamType, StringSlice, Tuple, TupleArgs, Type,
+        TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypedDict, TypedDictMember,
+        TypedDictMemberGatherer, Variance,
     },
     utils::join_with_commas,
 };
