@@ -3,12 +3,11 @@ use std::borrow::Cow;
 use super::{matches_params_with_variance, Match, Matcher};
 use crate::{
     database::Database,
-    format_data::{FormatData, ParamsStyle},
+    format_data::FormatData,
     inference_state::InferenceState,
     type_::{
         format_callable_params, format_params_as_param_spec, match_tuple_type_arguments,
-        CallableParams, GenericItem, ParamSpecArg, TupleArgs, Type, TypeArgs, TypeVarLike,
-        Variance,
+        CallableParams, GenericItem, ParamSpecArg, TupleArgs, Type, TypeArgs, Variance,
     },
 };
 
@@ -65,9 +64,6 @@ impl<'a> Generic<'a> {
                 }
                 CallableParams::Any(_) => Box::from("Any"),
                 CallableParams::Never(_) => Box::from("Never"),
-                CallableParams::WithParamSpec(..) => {
-                    args.params.format(format_data, ParamsStyle::CallableParams)
-                }
             }),
         }
     }
@@ -132,22 +128,6 @@ impl<'a> Generic<'a> {
         match self {
             Self::TypeArgs(ts) => ts,
             _ => unreachable!(),
-        }
-    }
-
-    pub fn maybe_simple_type_var_like(&self) -> Option<TypeVarLike> {
-        match self {
-            Self::TypeArg(t) => match t.as_ref() {
-                Type::TypeVar(t) => Some(TypeVarLike::TypeVar(t.type_var.clone())),
-                _ => None,
-            },
-            Self::TypeArgs(ts) => todo!(),
-            Self::ParamSpecArg(params) => match &params.params {
-                CallableParams::WithParamSpec(_, p) => {
-                    Some(TypeVarLike::ParamSpec(p.param_spec.clone()))
-                }
-                _ => None,
-            },
         }
     }
 

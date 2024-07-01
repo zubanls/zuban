@@ -529,77 +529,6 @@ impl CallableParams {
                 CallableParams::new_simple(new_params.into())
             }
             CallableParams::Any(cause) => CallableParams::Any(*cause),
-            CallableParams::WithParamSpec(types, param_spec) => {
-                let result = callable(TypeVarLikeUsage::ParamSpec(param_spec.clone()));
-                let GenericItem::ParamSpecArg(mut new) = result else {
-                    unreachable!()
-                };
-                if let Some(new_spec_type_vars) = new.type_vars {
-                    if let Some(in_definition) = in_definition {
-                        let type_var_len = type_vars.as_ref().map(|t| t.len()).unwrap_or(0);
-                        replace_data = Some((new_spec_type_vars.in_definition, type_var_len));
-                        let new_params = new.params.replace_type_var_likes_and_self(
-                            db,
-                            &mut None,
-                            None,
-                            &mut |usage| {
-                                replace_param_spec_inner_type_var_likes(
-                                    usage,
-                                    in_definition,
-                                    replace_data.unwrap(),
-                                )
-                            },
-                            replace_self,
-                        );
-                        if let Some(type_vars) = type_vars.as_mut() {
-                            type_vars.extend(new_spec_type_vars.type_vars.as_vec());
-                        } else {
-                            *type_vars = Some(new_spec_type_vars.type_vars.as_vec());
-                        }
-                        new.params = new_params.0;
-                    } else {
-                        debug_assert!(type_vars.is_none());
-                        *type_vars = Some(new_spec_type_vars.type_vars.as_vec());
-                        todo!("Can probably just be removed")
-                    }
-                }
-                if types.is_empty() {
-                    new.params
-                } else {
-                    match new.params {
-                        CallableParams::Simple { params, .. } => {
-                            let mut params = rc_slice_into_vec(params);
-                            params.splice(
-                                0..0,
-                                types.iter().map(|t| CallableParam {
-                                    type_: ParamType::PositionalOnly(
-                                        t.replace_type_var_likes_and_self(
-                                            db,
-                                            callable,
-                                            replace_self,
-                                        ),
-                                    ),
-                                    name: None,
-                                    has_default: false,
-                                }),
-                            );
-                            CallableParams::new_simple(Rc::from(params))
-                        }
-                        CallableParams::Any(cause) => CallableParams::Any(cause),
-                        CallableParams::WithParamSpec(new_types, p) => {
-                            let mut types: Vec<Type> = types
-                                .iter()
-                                .map(|t| {
-                                    t.replace_type_var_likes_and_self(db, callable, replace_self)
-                                })
-                                .collect();
-                            types.append(&mut rc_slice_into_vec(new_types));
-                            CallableParams::WithParamSpec(types.into(), p)
-                        }
-                        CallableParams::Never(cause) => CallableParams::Never(cause),
-                    }
-                }
-            }
             CallableParams::Never(cause) => CallableParams::Never(*cause),
         };
         (new_params, replace_data)
@@ -618,13 +547,6 @@ impl CallableParams {
                 format_as_param_spec: *format_as_param_spec,
             },
             CallableParams::Any(cause) => CallableParams::Any(*cause),
-            CallableParams::WithParamSpec(types, param_spec) => CallableParams::WithParamSpec(
-                types
-                    .iter()
-                    .map(|t| t.rewrite_late_bound_callables(manager))
-                    .collect(),
-                manager.remap_param_spec(param_spec),
-            ),
             CallableParams::Never(cause) => CallableParams::Never(*cause),
         }
     }
@@ -681,19 +603,6 @@ pub fn remap_param_spec(
             new_params.extend_from_slice(&params);
         }
         CallableParams::Any(cause) => return CallableParams::Any(cause),
-        CallableParams::WithParamSpec(new_types, p) => {
-            new_params.extend(
-                new_types
-                    .iter()
-                    .map(|t| CallableParam::new_anonymous(ParamType::PositionalOnly(t.clone()))),
-            );
-            new_params.push(CallableParam::new_anonymous(ParamType::Star(
-                StarParamType::ParamSpecArgs(p.clone()),
-            )));
-            new_params.push(CallableParam::new_anonymous(ParamType::StarStar(
-                StarStarParamType::ParamSpecKwargs(p),
-            )));
-        }
         CallableParams::Never(cause) => return CallableParams::Never(cause),
     };
     CallableParams::Simple {

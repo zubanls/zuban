@@ -236,21 +236,7 @@ impl CallableParams {
                 CallableParams::Simple {
                     params: params2, ..
                 } => common_params(i_s, params1, params2),
-                CallableParams::WithParamSpec(_, _) => None,
                 CallableParams::Any(_) | CallableParams::Never(_) => todo!(),
-            },
-            CallableParams::WithParamSpec(pre1, spec1) => match other {
-                CallableParams::WithParamSpec(pre2, spec2) => {
-                    if spec1 == spec2 {
-                        if !pre1.is_empty() || !pre2.is_empty() {
-                            todo!()
-                        }
-                        Some(CallableParams::WithParamSpec(pre1.clone(), spec1.clone()))
-                    } else {
-                        None
-                    }
-                }
-                _ => None,
             },
             CallableParams::Any(_) | CallableParams::Never(_) => todo!(),
         }

@@ -101,19 +101,6 @@ fn matches_params_detailed(
                 )
             }
         }
-        (WithParamSpec(pre1, usage1), WithParamSpec(pre2, usage2)) => {
-            if skip_first_of_params2 {
-                todo!()
-            }
-            matcher.match_or_add_param_spec_against_param_spec(
-                i_s,
-                pre1,
-                usage1,
-                pre2,
-                usage2,
-                inner_variance,
-            )
-        }
         (Any(cause), _) => {
             matcher.set_all_contained_type_vars_to_any_in_callable_params(i_s, params2, *cause);
             Match::new_true()
@@ -121,35 +108,6 @@ fn matches_params_detailed(
         (_, Any(cause)) => {
             matcher.set_all_contained_type_vars_to_any_in_callable_params(i_s, params1, *cause);
             Match::new_true()
-        }
-        (
-            WithParamSpec(types, param_spec),
-            Simple {
-                params: params2, ..
-            },
-        ) => {
-            let mut params2 = params2.iter();
-            if skip_first_of_params2 {
-                params2.next();
-            }
-            matcher.match_or_add_param_spec(i_s, types, param_spec, params2, inner_variance)
-        }
-        (
-            Simple {
-                params: params1, ..
-            },
-            WithParamSpec(types, param_spec),
-        ) => {
-            if skip_first_of_params2 {
-                todo!()
-            }
-            matcher.match_or_add_param_spec(
-                i_s,
-                types,
-                param_spec,
-                params1.iter(),
-                inner_variance.invert(),
-            )
         }
         (_, Never(cause)) => Match::new_true(),
         (Never(cause), _) => Match::new_false(),
@@ -727,24 +685,8 @@ pub fn has_overlapping_params(
                 params: params2, ..
             },
         ) => overload_has_overlapping_params(i_s, params1.iter(), params2.iter()),
-        (CallableParams::WithParamSpec(pre1, _), CallableParams::WithParamSpec(pre2, _)) => {
-            pre1.len() == pre2.len()
-                && pre1
-                    .iter()
-                    .zip(pre2.iter())
-                    .all(|(t1, t2)| t1.overlaps(i_s, matcher, t2))
-        }
         (CallableParams::Any(_), _) | (_, CallableParams::Any(_)) => true,
         (CallableParams::Never(_), _) | (_, CallableParams::Never(_)) => true,
-        (CallableParams::WithParamSpec(pre, _), CallableParams::Simple { params, .. })
-        | (CallableParams::Simple { params, .. }, CallableParams::WithParamSpec(pre, _)) => {
-            pre.len() <= params.len()
-                && params.iter().zip(pre.iter()).all(|(p1, t2)| {
-                    p1.type_
-                        .maybe_positional_type()
-                        .is_some_and(|t1| t1.overlaps(i_s, matcher, t2))
-                })
-        }
     }
 }
 

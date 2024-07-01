@@ -14,7 +14,7 @@ use super::{
     type_var_matcher::{FunctionOrCallable, TypeVarMatcher},
 };
 use crate::{
-    arguments::{Arg, ArgKind, InferredArg},
+    arguments::{Arg, InferredArg},
     database::{Database, PointLink},
     debug,
     diagnostics::IssueKind,
@@ -360,7 +360,7 @@ fn calculate_type_vars<'db: 'a, 'a>(
     mut matcher: Matcher,
     func_or_callable: FunctionOrCallable<'a>,
     return_class: Option<&Class>,
-    mut args: impl Iterator<Item = Arg<'db, 'a>>,
+    args: impl Iterator<Item = Arg<'db, 'a>>,
     add_issue: impl Fn(IssueKind),
     skip_first_param: bool,
     match_in_definition: PointLink,
@@ -477,27 +477,6 @@ fn calculate_type_vars<'db: 'a, 'a>(
                 ),
             ),
             CallableParams::Any(_) | CallableParams::Never(_) => SignatureMatch::new_true(),
-            CallableParams::WithParamSpec(pre_types, param_spec) => {
-                if !pre_types.is_empty() {
-                    //dbg!(pre_types, args.collect::<Vec<_>>());
-                    //todo!()
-                    debug!("TODO we should match param spec pre types?");
-                }
-                if let Some(arg) = args.next() {
-                    if let ArgKind::ParamSpec { usage, .. } = &arg.kind {
-                        if usage.in_definition == param_spec.in_definition {
-                            SignatureMatch::new_true()
-                        } else {
-                            SignatureMatch::False { similar: false }
-                        }
-                    } else {
-                        debug!("TODO is this ok param spec false?");
-                        SignatureMatch::False { similar: false }
-                    }
-                } else {
-                    todo!()
-                }
-            }
         },
     };
     let (m, type_arguments, type_var_likes) = matcher.into_type_arguments(i_s.db);

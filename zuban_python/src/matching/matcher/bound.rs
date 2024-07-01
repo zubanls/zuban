@@ -199,11 +199,6 @@ impl Bound {
                     true
                 }
                 BoundKind::TypeVarTuple(_) => todo!(),
-                BoundKind::ParamSpec(CallableParams::WithParamSpec(pre, p2))
-                    if pre.is_empty() && class.node_ref.as_link() == p2.in_definition =>
-                {
-                    true
-                }
                 BoundKind::ParamSpec(CallableParams::Simple { params, .. }) => {
                     params.last().is_some_and(|p| matches!(&p.type_, ParamType::StarStar(StarStarParamType::ParamSpecKwargs(u)) if u.in_definition == class.node_ref.as_link()))
                 }

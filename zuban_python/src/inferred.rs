@@ -2283,7 +2283,6 @@ fn proper_classmethod_callable(
                 format_as_param_spec: *format_as_param_spec,
             };
         }
-        CallableParams::WithParamSpec(_, _) => todo!(),
         CallableParams::Any(_) | CallableParams::Never(_) => (),
     };
 

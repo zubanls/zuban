@@ -287,7 +287,6 @@ pub enum CallableParams {
         params: Rc<[CallableParam]>,
         format_as_param_spec: bool,
     },
-    WithParamSpec(Rc<[Type]>, ParamSpecUsage),
     Any(AnyCause),
     Never(NeverCause),
 }
@@ -349,24 +348,6 @@ impl CallableParams {
                 }
                 out_params
             }
-            Self::WithParamSpec(pre_types, usage) => {
-                let style = match style {
-                    ParamsStyle::CallableParams if !pre_types.is_empty() => {
-                        ParamsStyle::CallableParamsInner
-                    }
-                    _ => style,
-                };
-                let spec = format_data.format_param_spec(usage, style);
-                if pre_types.len() == 0 {
-                    return spec;
-                }
-                let parts = pre_types.iter().map(|t| t.format(format_data));
-                if spec.is_empty() {
-                    parts.collect()
-                } else {
-                    parts.chain(std::iter::once(spec)).collect()
-                }
-            }
             Self::Any(_) => return Box::from("..."),
             Self::Never(_) => return Box::from("Never"),
         };
@@ -402,9 +383,6 @@ impl CallableParams {
                     todo!()
                 }
             }),
-            Self::WithParamSpec(pre_types, usage) => pre_types
-                .iter()
-                .any(|t| t.has_any_internal(i_s, already_checked)),
             Self::Any(_) => true,
             Self::Never(_) => false,
         }
@@ -461,12 +439,6 @@ impl CallableParams {
                 }
             }
             Self::Any(_) | Self::Never(_) => (),
-            Self::WithParamSpec(pre, spec) => {
-                for t in pre.iter() {
-                    t.search_type_vars(found_type_var)
-                }
-                found_type_var(TypeVarLikeUsage::ParamSpec(spec.clone()))
-            }
         }
     }
 
@@ -486,9 +458,6 @@ impl CallableParams {
                 }
             }),
             Self::Any(_) | Self::Never(_) => false,
-            Self::WithParamSpec(types, param_spec) => {
-                types.iter().any(|t| t.find_in_type(db, check))
-            }
         }
     }
 }
@@ -611,12 +580,6 @@ impl CallableContent {
                     format_as_param_spec: *format_as_param_spec,
                 }
             }
-            CallableParams::WithParamSpec(pre, usage) => {
-                if pre.is_empty() {
-                    return None;
-                }
-                CallableParams::WithParamSpec(pre.iter().skip(1).cloned().collect(), usage.clone())
-            }
             CallableParams::Any(cause) => CallableParams::Any(*cause),
             CallableParams::Never(cause) => CallableParams::Never(*cause),
         };
@@ -630,7 +593,6 @@ impl CallableContent {
                 ParamType::Star(_) => todo!(),
                 _ => None,
             }),
-            CallableParams::WithParamSpec(pre, usage) => pre.first().cloned(),
             CallableParams::Any(cause) => Some(Type::Any(*cause)),
             CallableParams::Never(cause) => Some(Type::Never(*cause)),
         }
@@ -651,9 +613,6 @@ impl CallableContent {
                     | ParamType::Star(StarParamType::ArbitraryLen(t)) => Some(t.clone()),
                     _ => None,
                 })
-            }
-            CallableParams::WithParamSpec(pre, usage) => {
-                todo!()
             }
             CallableParams::Any(cause) => Some(Type::Any(*cause)),
             CallableParams::Never(cause) => Some(Type::Never(*cause)),
@@ -676,7 +635,6 @@ impl CallableContent {
                     None
                 }
             },
-            CallableParams::WithParamSpec(_, _) => Some(WrongPositionalCount::TooMany),
             CallableParams::Any(_) | CallableParams::Never(_) => None,
         }
     }
@@ -767,21 +725,6 @@ impl CallableContent {
                     }
                 }
                 self.format_pretty_function_with_params(format_data, &params)
-            }
-            CallableParams::WithParamSpec(pre_types, usage) => {
-                let prefix = if pre_types.is_empty() {
-                    "".into()
-                } else {
-                    format!(
-                        "{}, ",
-                        join_with_commas(pre_types.iter().map(|t| t.format(format_data).into()))
-                    )
-                };
-                let spec = usage.param_spec.name(format_data.db);
-                self.format_pretty_function_with_params(
-                    format_data,
-                    &format!("{prefix}*{spec}.args, **{spec}.kwargs"),
-                )
             }
             CallableParams::Any(_) => {
                 self.format_pretty_function_with_params(format_data, "*Any, **Any")
@@ -902,7 +845,7 @@ impl CallableContent {
                 .all(|t| t.type_.maybe_type().is_some_and(has_unannotated)),
             CallableParams::Any(cause) => !matches!(cause, AnyCause::Unannotated),
             // Should probably never happen?!
-            CallableParams::WithParamSpec(..) | CallableParams::Never(_) => true,
+            CallableParams::Never(_) => true,
         }
     }
 }
