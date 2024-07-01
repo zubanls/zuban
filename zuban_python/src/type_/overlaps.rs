@@ -1,7 +1,8 @@
 use crate::{
     debug,
     inference_state::InferenceState,
-    matching::{params::has_overlapping_params, Matcher},
+    matching::Matcher,
+    params::has_overlapping_params,
     type_::{TupleArgs, TupleUnpack},
     type_helpers::{Class, TypeOrClass},
 };

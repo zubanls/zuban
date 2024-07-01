@@ -3,7 +3,6 @@ mod generics;
 mod lookup_result;
 mod match_;
 mod matcher;
-pub mod params;
 mod result_context;
 mod utils;
 
@@ -18,7 +17,6 @@ pub(crate) use matcher::{
     calculate_class_init_type_vars_and_return, calculate_function_type_vars_and_return,
     CalculatedTypeArgs, FunctionOrCallable, Matcher, MatcherFormatResult,
 };
-pub use params::{matches_params, matches_params_with_variance, matches_simple_params, Param};
 pub use result_context::{CouldBeALiteral, ResultContext};
 pub use utils::{
     calculate_property_return, create_signature_without_self_for_callable, match_self_type,

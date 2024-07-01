@@ -4,7 +4,7 @@ use crate::{
     debug,
     format_data::{FormatData, ParamsStyle},
     inference_state::InferenceState,
-    matching::matches_params_with_variance,
+    params::matches_params_with_variance,
     type_::{
         match_tuple_type_arguments, AnyCause, CallableParams, GenericItem, NeverCause,
         ParamSpecArg, ParamType, StarStarParamType, TupleArgs, Type, TypeArgs, TypeVar,

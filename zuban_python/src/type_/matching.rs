@@ -9,10 +9,11 @@ use crate::{
     debug,
     inference_state::InferenceState,
     matching::{
-        avoid_protocol_mismatch, format_got_expected, matches_params, ErrorStrs, ErrorTypes,
-        GotType, Match, Matcher, MismatchReason,
+        avoid_protocol_mismatch, format_got_expected, ErrorStrs, ErrorTypes, GotType, Match,
+        Matcher, MismatchReason,
     },
     node_ref::NodeRef,
+    params::matches_params,
     type_::{CallableLike, CallableParams, TupleArgs, TupleUnpack, Variance},
     type_helpers::{Class, TypeOrClass},
 };

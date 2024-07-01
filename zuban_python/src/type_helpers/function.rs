@@ -23,12 +23,12 @@ use crate::{
     inference_state::InferenceState,
     inferred::Inferred,
     matching::{
-        calculate_function_type_vars_and_return, maybe_class_usage,
-        params::{InferrableParamIterator, Param, WrappedParamType, WrappedStar, WrappedStarStar},
-        CalculatedTypeArgs, ErrorStrs, LookupResult, OnTypeError, ResultContext,
+        calculate_function_type_vars_and_return, maybe_class_usage, CalculatedTypeArgs, ErrorStrs,
+        LookupResult, OnTypeError, ResultContext,
     },
     new_class,
     node_ref::NodeRef,
+    params::{InferrableParamIterator, Param, WrappedParamType, WrappedStar, WrappedStarStar},
     python_state::NAME_TO_FUNCTION_DIFF,
     type_::{
         remap_param_spec, AnyCause, CallableContent, CallableLike, CallableParam, CallableParams,

@@ -4,10 +4,6 @@ use parsa_python_cst::ParamKind;
 
 use super::{
     super::{
-        params::{
-            InferrableParamIterator, Param, ParamArgument, WrappedParamType, WrappedStar,
-            WrappedStarStar,
-        },
         ArgumentIndexWithParam, FormatData, Generics, Match, Matcher, MismatchReason, OnTypeError,
         ResultContext, SignatureMatch,
     },
@@ -22,6 +18,10 @@ use crate::{
     inferred::Inferred,
     matching::{matcher::bound::Bound, maybe_class_usage, ErrorTypes, GotType},
     node_ref::NodeRef,
+    params::{
+        InferrableParamIterator, Param, ParamArgument, WrappedParamType, WrappedStar,
+        WrappedStarStar,
+    },
     type_::{
         match_unpack, CallableContent, CallableParams, CallableWithParent, ClassGenerics,
         GenericItem, GenericsList, NeverCause, ParamSpecTypeVars, ReplaceSelf, TupleArgs,

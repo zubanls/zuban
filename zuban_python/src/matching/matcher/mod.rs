@@ -19,12 +19,7 @@ use self::{
     type_var_matcher::CalculatingTypeArg,
 };
 
-use super::{
-    params::{
-        matches_params, InferrableParamIterator, WrappedParamType, WrappedStar, WrappedStarStar,
-    },
-    GotType, Match, OnTypeError, Param, ResultContext, SignatureMatch,
-};
+use super::{GotType, Match, OnTypeError, ResultContext, SignatureMatch};
 use crate::{
     arguments::{Arg, ArgKind, InferredArg},
     database::{Database, PointLink},
@@ -32,6 +27,10 @@ use crate::{
     diagnostics::IssueKind,
     format_data::{FormatData, ParamsStyle},
     inference_state::InferenceState,
+    params::{
+        matches_params, InferrableParamIterator, Param, WrappedParamType, WrappedStar,
+        WrappedStarStar,
+    },
     type_::{
         match_tuple_type_arguments, AnyCause, CallableContent, CallableParam, CallableParams,
         DbString, GenericItem, GenericsList, NeverCause, ParamSpecArg, ParamSpecUsage, ParamType,

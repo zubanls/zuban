@@ -22,12 +22,12 @@ use crate::{
     inference_state::InferenceState,
     inferred::{add_attribute_error, specific_to_type, AttributeKind, Inferred, UnionValue},
     matching::{
-        format_got_expected, matches_simple_params, CouldBeALiteral, ErrorStrs, ErrorTypes,
-        IteratorContent, LookupKind, LookupResult, Matcher, OnTypeError, ResultContext,
-        TupleLenInfos,
+        format_got_expected, CouldBeALiteral, ErrorStrs, ErrorTypes, IteratorContent, LookupKind,
+        LookupResult, Matcher, OnTypeError, ResultContext, TupleLenInfos,
     },
     new_class,
     node_ref::NodeRef,
+    params::matches_simple_params,
     type_::{
         AnyCause, CallableContent, CallableParam, CallableParams, Literal, LiteralKind, Namespace,
         NeverCause, ParamType, StarParamType, StarStarParamType, StringSlice, Tuple, TupleArgs,

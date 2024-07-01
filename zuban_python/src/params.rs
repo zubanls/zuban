@@ -2,14 +2,13 @@ use std::{borrow::Cow, iter::Peekable, rc::Rc};
 
 use parsa_python_cst::ParamKind;
 
-use super::{Match, Matcher};
 use crate::{
     arguments::{Arg, ArgKind},
     database::Database,
     debug,
-    format_data::ParamsStyle,
+    format_data::{FormatData, ParamsStyle},
     inference_state::InferenceState,
-    matching::FormatData,
+    matching::{Match, Matcher},
     type_::{
         empty_types, match_tuple_type_arguments, AnyCause, CallableParam, CallableParams,
         ParamSpecUsage, ParamType, StarParamType, StarStarParamType, StringSlice, Tuple, TupleArgs,

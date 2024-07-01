@@ -9,7 +9,7 @@ use super::{
 use crate::{
     database::{Database, PointLink},
     inference_state::InferenceState,
-    matching::Param,
+    params::Param,
     type_::{
         AnyCause, CallableParams, GenericItem, GenericsList, NeverCause, ParamType, Type, TypeVar,
         TypeVarKind, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarUsage, Variance,

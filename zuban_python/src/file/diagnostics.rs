@@ -25,12 +25,10 @@ use crate::{
     inference_state::InferenceState,
     inferred::{infer_class_method, AttributeKind, Inferred},
     matching::{
-        matches_params,
-        params::{has_overlapping_params, WrappedParamType, WrappedStar},
-        ErrorStrs, Generics, LookupKind, LookupResult, Match, Matcher, OnTypeError, Param,
-        ResultContext,
+        ErrorStrs, Generics, LookupKind, LookupResult, Match, Matcher, OnTypeError, ResultContext,
     },
     node_ref::NodeRef,
+    params::{has_overlapping_params, matches_params, Param, WrappedParamType, WrappedStar},
     type_::{
         format_callable_params, AnyCause, CallableContent, CallableParams, ClassGenerics, DbString,
         FunctionKind, FunctionOverload, GenericItem, GenericsList, Literal, LiteralKind,

@@ -11,11 +11,8 @@ use crate::{
     database::{Database, FileIndex, PointLink},
     format_data::{FormatData, ParamsStyle},
     inference_state::InferenceState,
-    matching::{
-        maybe_class_usage,
-        params::{WrappedParamType, WrappedStar, WrappedStarStar},
-        Param,
-    },
+    matching::maybe_class_usage,
+    params::{Param, WrappedParamType, WrappedStar, WrappedStarStar},
     type_::{FormatStyle, TupleArgs, TypeVarLikeUsage},
     type_helpers::Class,
     utils::join_with_commas,
