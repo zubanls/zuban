@@ -512,31 +512,10 @@ impl<'a> Matcher<'a> {
     pub fn match_or_add_param_spec<'db: 'x, 'x, P2: Param<'x>>(
         &mut self,
         i_s: &InferenceState<'db, '_>,
-        pre_param_spec_types: &[Type],
         p1: &ParamSpecUsage,
         params2_iterator: impl Iterator<Item = P2> + Clone,
         variance: Variance,
     ) -> Match {
-        let mut params2_iterator = params2_iterator.peekable();
-        let mut matches = Match::new_true();
-        for pre in pre_param_spec_types {
-            let t = match params2_iterator.peek().map(|p| p.specific(i_s.db)) {
-                Some(
-                    WrappedParamType::PositionalOnly(t) | WrappedParamType::PositionalOrKeyword(t),
-                ) => {
-                    params2_iterator.next();
-                    t
-                }
-                Some(WrappedParamType::Star(WrappedStar::ArbitraryLen(t))) => t,
-                _ => return Match::new_false(),
-            };
-            if let Some(t) = t {
-                matches &= pre.matches(i_s, self, &t, variance);
-            }
-            if !matches.bool() {
-                return matches;
-            }
-        }
         let new_params = || {
             CallableParams::new_simple(
                 params2_iterator
@@ -548,26 +527,24 @@ impl<'a> Matcher<'a> {
         if let Some(matcher_index) =
             self.find_responsible_type_var_matcher_index(p1.in_definition, p1.temporary_matcher_id)
         {
-            return matches
-                & self.match_or_add_param_spec_internal(
-                    i_s,
-                    matcher_index,
-                    p1,
-                    new_params(),
-                    variance,
-                );
+            return self.match_or_add_param_spec_internal(
+                i_s,
+                matcher_index,
+                p1,
+                new_params(),
+                variance,
+            );
         }
         if !self.match_reverse {
             if let Some(class) = self.class {
                 if class.node_ref.as_link() == p1.in_definition {
                     let usage = class.generics().nth_param_spec_usage(i_s.db, p1);
-                    return matches
-                        & matches_params(
-                            i_s,
-                            &mut Matcher::default(),
-                            &usage.params,
-                            &new_params(),
-                        );
+                    return matches_params(
+                        i_s,
+                        &mut Matcher::default(),
+                        &usage.params,
+                        &new_params(),
+                    );
                 }
             }
         }
@@ -581,14 +558,13 @@ impl<'a> Matcher<'a> {
                         p2.in_definition,
                         p2.temporary_matcher_id,
                     ) {
-                        return matches
-                            & self.match_or_add_param_spec_internal(
-                                i_s,
-                                matcher_index,
-                                p2,
-                                CallableParams::new_param_spec(p1.clone()),
-                                variance,
-                            );
+                        return self.match_or_add_param_spec_internal(
+                            i_s,
+                            matcher_index,
+                            p2,
+                            CallableParams::new_param_spec(p1.clone()),
+                            variance,
+                        );
                     }
                     let result = p1 == p2;
                     if !result {

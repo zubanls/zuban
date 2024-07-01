@@ -151,7 +151,6 @@ pub fn matches_simple_params<
             if let WrappedParamType::Star(WrappedStar::ParamSpecArgs(u2)) = specific2 {
                 matches &= matcher.match_or_add_param_spec(
                     i_s,
-                    &[],
                     u2,
                     std::iter::once(param1).chain(params1),
                     variance.invert(),
@@ -386,7 +385,7 @@ pub fn matches_simple_params<
                     }
                 }
                 WrappedParamType::Star(WrappedStar::ParamSpecArgs(u1)) => {
-                    matches &= matcher.match_or_add_param_spec(i_s, &[], u1, params2, variance);
+                    matches &= matcher.match_or_add_param_spec(i_s, u1, params2, variance);
                     return matches;
                 }
                 WrappedParamType::Star(s1) => match &specific2 {
@@ -554,7 +553,7 @@ pub fn matches_simple_params<
                     break;
                 }
                 WrappedParamType::Star(WrappedStar::ParamSpecArgs(u1)) => {
-                    matches &= matcher.match_or_add_param_spec(i_s, &[], u1, params2, variance);
+                    matches &= matcher.match_or_add_param_spec(i_s, u1, params2, variance);
                     return matches;
                 }
                 _ => {
@@ -583,7 +582,7 @@ pub fn matches_simple_params<
             continue;
         }
         if let WrappedParamType::Star(WrappedStar::ParamSpecArgs(u2)) = param2.specific(i_s.db) {
-            matches &= matcher.match_or_add_param_spec(i_s, &[], u2, params1, variance.invert());
+            matches &= matcher.match_or_add_param_spec(i_s, u2, params1, variance.invert());
             return matches;
         }
         if !param2.has_default()
