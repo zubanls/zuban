@@ -290,7 +290,6 @@ impl<'db> PositionalArg<'db, '_> {
     ) -> Inferred {
         self.node_ref
             .file
-            // TODO this execution is wrong
             .inference(&self.i_s.use_mode_of(func_i_s))
             .infer_named_expression_with_context(
                 self.node_ref.as_named_expression(),
