@@ -116,3 +116,12 @@ f: Callable[[str], bool]
 g: Callable[[int], str]
 test(f)  # E: Argument 1 to "test" has incompatible type "Callable[[str], bool]"; expected "Callable[[int], bool]"
 test(g)  # E: Argument 1 to "test" has incompatible type "Callable[[int], str]"; expected "Callable[[int], bool]"
+
+[case more_invalid_param_spec_calls]
+from typing import Callable, TypeVar, ParamSpec
+
+P = ParamSpec("P")
+
+def test(f: Callable[P, int], *args: P.args, **kwargs: P.kwargs) -> None:
+    test(f, *args)  # E: ParamSpec arguments must be of types "*P.args, **P.kwargs"
+    test(f, **args)  # E: Argument 2 to "test" has incompatible type "**P.args"; expected "P.kwargs"

@@ -272,8 +272,6 @@ testParamSpecConcatenateFromPep
 testNestedGenericFunctionTypeApplication
 testIncrementalInnerClassAttrInMethodReveal
 
-# Param spec invalid calls
-testParamSpecInvalidCalls
 # Class function Foo.bar something like a BoundFunction
 testExpandNonBareParamSpecAgainstCallable
 # param spec tests

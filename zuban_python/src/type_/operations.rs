@@ -319,7 +319,9 @@ impl Type {
                     callable,
                 ),
             Type::ParamSpecArgs(_) | Type::ParamSpecKwargs(_) => {
-                callable(self, LookupDetails::none())
+                // TODO this is not correct, some things should probably work on dict[str, object]
+                // for example
+                callable(self, LookupDetails::any(AnyCause::FromError))
             }
             Type::CustomBehavior(_) => todo!(),
         }

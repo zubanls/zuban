@@ -32,6 +32,15 @@ impl SignatureMatch {
     }
 }
 
+impl From<bool> for SignatureMatch {
+    fn from(item: bool) -> Self {
+        match item {
+            true => Self::new_true(),
+            _ => Self::False { similar: false },
+        }
+    }
+}
+
 #[derive(Debug)]
 pub enum Match {
     False {
@@ -173,8 +182,8 @@ impl BitAndAssign for Match {
 impl From<bool> for Match {
     fn from(item: bool) -> Self {
         match item {
-            true => Match::new_true(),
-            _ => Match::new_false(),
+            true => Self::new_true(),
+            _ => Self::new_false(),
         }
     }
 }

@@ -765,16 +765,28 @@ impl<'db, 'a> Iterator for ArgIteratorBase<'db, 'a> {
                             }
                         }
                         CSTArgument::Star(starred_expr) => {
-                            let inf = file
-                                .inference(i_s)
-                                .infer_expression(starred_expr.expression());
+                            let inference = file.inference(i_s);
+                            let inf = inference.infer_expression(starred_expr.expression());
                             let node_ref = NodeRef::new(file, starred_expr.index());
                             return match inf.as_cow_type(i_s).as_ref() {
-                                Type::ParamSpecArgs(usage) => {
-                                    // TODO check for the next arg being **P.kwargs
-                                    iterator.next();
+                                Type::ParamSpecArgs(u1) => {
+                                    let next_is_kwargs = iterator.next().is_some_and(|p| {
+                                        let CSTArgument::StarStar(next) = p.1 else {
+                                            return false
+                                        };
+                                        let inf = inference.infer_expression(next.expression());
+                                        matches!(inf.as_cow_type(i_s).as_ref(), Type::ParamSpecKwargs(u2) if u1 == u2)
+                                    });
+                                    if !next_is_kwargs {
+                                        node_ref.add_issue(
+                                            i_s,
+                                            IssueKind::ParamSpecArgumentsNeedsBothStarAndStarStar {
+                                                name: u1.param_spec.name(i_s.db).into(),
+                                            },
+                                        )
+                                    }
                                     Some(BaseArgReturn::Arg(ArgKind::ParamSpec {
-                                        usage: usage.clone(),
+                                        usage: u1.clone(),
                                         node_ref: NodeRef::new(file, starred_expr.index()),
                                         position: i + 1,
                                     }))

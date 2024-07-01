@@ -10,7 +10,7 @@ use super::{
     type_var_matcher::{FunctionOrCallable, TypeVarMatcher},
 };
 use crate::{
-    arguments::{Arg, InferredArg},
+    arguments::{Arg, ArgKind, InferredArg},
     database::{Database, PointLink},
     debug,
     diagnostics::IssueKind,
@@ -571,7 +571,17 @@ pub(crate) fn match_arguments_against_params<
                     let e = &expected.format_short(i_s.db);
                     let n = param_spec.param_spec.name(i_s.db);
                     arg.add_argument_issue(i_s, &format!("\"*{n}.args\""), e, &diagnostic_string);
-                    arg.add_argument_issue(
+                    let mut kwarg = arg.clone();
+                    let ArgKind::ParamSpec {
+                        usage,
+                        node_ref,
+                        position,
+                    } = &mut kwarg.kind
+                    else {
+                        unreachable!()
+                    };
+                    *position += 1;
+                    kwarg.add_argument_issue(
                         i_s,
                         &format!("\"**{n}.kwargs\""),
                         e,

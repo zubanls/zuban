@@ -653,26 +653,59 @@ impl<'a> Matcher<'a> {
             param_spec_usage = class.generics().nth_param_spec_usage(i_s.db, usage);
             &param_spec_usage.params
         } else {
-            if args.len() == 1 && matches!(&args[0].kind, ArgKind::ParamSpec { usage: u2, .. }) {
-                return SignatureMatch::new_true();
-            } else {
-                for arg in args.iter() {
-                    let InferredArg::Inferred(inferred) =
-                        arg.infer(i_s, &mut ResultContext::Unknown)
-                    else {
-                        todo!()
-                    };
-                    let got_t = inferred.as_cow_type(i_s);
-                    let got = GotType::from_arg(i_s, arg, &got_t);
-                    let param_spec_name = usage.param_spec.name(i_s.db);
-                    let expected = match &got {
-                        GotType::DoubleStarred(_) => format!("{param_spec_name}.kwargs"),
-                        _ => format!("{param_spec_name}.args"),
-                    };
-                    let got = &format!("\"{}\"", got.format(&FormatData::new_short(i_s.db)));
-                    arg.add_argument_issue(i_s, got, &expected, of_function);
+            match args.as_ref() {
+                [arg @ Arg {
+                    kind: ArgKind::ParamSpec { usage: u2, .. },
+                    ..
+                }] => {
+                    let matches = usage == u2;
+                    if !matches {
+                        let expected_name = usage.param_spec.name(i_s.db);
+                        let got_name = u2.param_spec.name(i_s.db);
+                        arg.add_argument_issue(
+                            i_s,
+                            &format!("\"*{got_name}.args\""),
+                            &format!("{expected_name}.args"),
+                            of_function,
+                        );
+                        let mut kwarg = arg.clone();
+                        let ArgKind::ParamSpec {
+                            usage,
+                            node_ref,
+                            position,
+                        } = &mut kwarg.kind
+                        else {
+                            unreachable!()
+                        };
+                        *position += 1;
+                        kwarg.add_argument_issue(
+                            i_s,
+                            &format!("\"**{got_name}.kwargs\""),
+                            &format!("{expected_name}.kwargs"),
+                            of_function,
+                        );
+                    }
+                    return matches.into();
                 }
-                return SignatureMatch::False { similar: false };
+                _ => {
+                    for arg in args.iter() {
+                        let inferred = match arg.infer(i_s, &mut ResultContext::Unknown) {
+                            InferredArg::Inferred(inferred) => inferred,
+                            InferredArg::ParamSpec(_) => unreachable!(), // Handled above
+                            InferredArg::StarredWithUnpack(_) => todo!(),
+                        };
+                        let got_t = inferred.as_cow_type(i_s);
+                        let got = GotType::from_arg(i_s, arg, &got_t);
+                        let param_spec_name = usage.param_spec.name(i_s.db);
+                        let expected = match &got {
+                            GotType::DoubleStarred(_) => format!("{param_spec_name}.kwargs"),
+                            _ => format!("{param_spec_name}.args"),
+                        };
+                        let got = &format!("\"{}\"", got.format(&FormatData::new_short(i_s.db)));
+                        arg.add_argument_issue(i_s, got, &expected, of_function);
+                    }
+                    return SignatureMatch::False { similar: false };
+                }
             }
         };
         match params {
