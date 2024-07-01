@@ -319,8 +319,8 @@ impl CallableParams {
                 params,
                 format_as_param_spec,
             } => {
-                if *format_as_param_spec {
-                    return format_params_as_param_spec(format_data, params);
+                if let Some(result) = format_params_as_param_spec(format_data, params) {
+                    return result;
                 }
                 let mut out_params = Vec::with_capacity(params.len());
                 // Display a star only if we are displaying a "normal" function signature
@@ -936,17 +936,18 @@ pub fn format_callable_params<'db: 'x, 'x, P: Param<'x>>(
     args
 }
 
-pub fn format_params_as_param_spec(format_data: &FormatData, params: &[CallableParam]) -> Box<str> {
+pub fn format_params_as_param_spec(
+    format_data: &FormatData,
+    params: &[CallableParam],
+) -> Option<Box<str>> {
     let mut params_iter = params.iter();
-    params_iter.next_back();
-    let variadic = params_iter.next_back().unwrap();
-    let ParamType::Star(StarParamType::ParamSpecArgs(p)) = &variadic.type_ else {
-        unreachable!()
+    let last = params_iter.next_back()?;
+    let ParamType::StarStar(StarStarParamType::ParamSpecKwargs(p)) = &last.type_ else {
+        return None;
     };
-    if params.len() == 2 {
-        format_data
-            .format_param_spec(p, ParamsStyle::CallableParams)
-            .into()
+    params_iter.next_back()?;
+    Some(if params.len() == 2 {
+        format_data.format_param_spec(p, ParamsStyle::CallableParams)
     } else {
         let name = format_data.format_param_spec(p, ParamsStyle::CallableParamsInner);
         let ps = join_with_commas(params_iter.map(|p| {
@@ -960,5 +961,5 @@ pub fn format_params_as_param_spec(format_data: &FormatData, params: &[CallableP
         } else {
             format!("[{ps}, {name}]").into()
         }
-    }
+    })
 }

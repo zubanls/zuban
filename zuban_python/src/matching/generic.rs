@@ -51,17 +51,13 @@ impl<'a> Generic<'a> {
                 CallableParams::Simple {
                     params,
                     format_as_param_spec,
-                } => {
-                    if *format_as_param_spec {
-                        format_params_as_param_spec(format_data, params)
-                    } else {
-                        format!(
-                            "[{}]",
-                            &format_callable_params(format_data, false, params.iter(), false)
-                        )
-                        .into()
-                    }
-                }
+                } => format_params_as_param_spec(format_data, params).unwrap_or_else(|| {
+                    format!(
+                        "[{}]",
+                        &format_callable_params(format_data, false, params.iter(), false)
+                    )
+                    .into()
+                }),
                 CallableParams::Any(_) => Box::from("Any"),
                 CallableParams::Never(_) => Box::from("Never"),
             }),
