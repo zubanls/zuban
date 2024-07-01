@@ -3,7 +3,7 @@ mod type_var_matcher;
 mod utils;
 
 use core::fmt;
-use std::{borrow::Cow, collections::HashSet, rc::Rc};
+use std::{borrow::Cow, collections::HashSet};
 
 pub use type_var_matcher::FunctionOrCallable;
 use type_var_matcher::TypeVarMatcher;
@@ -1279,15 +1279,13 @@ impl<'a> Matcher<'a> {
                         )),
                     ),
                     TypeVarLike::ParamSpec(param_spec) => {
-                        BoundKind::ParamSpec(CallableParams::WithParamSpec(
-                            Rc::from([]),
-                            ParamSpecUsage {
-                                param_spec,
-                                index: free_type_var_index.into(),
-                                in_definition,
-                                temporary_matcher_id: 0,
-                            },
-                        ))
+                        let usage = ParamSpecUsage {
+                            param_spec,
+                            index: free_type_var_index.into(),
+                            in_definition,
+                            temporary_matcher_id: 0,
+                        };
+                        BoundKind::ParamSpec(CallableParams::new_param_spec(usage, true))
                     }
                 },
             )
@@ -1362,14 +1360,14 @@ impl<'a> Matcher<'a> {
                                 }
                                 TypeVarLike::ParamSpec(param_spec) => {
                                     GenericItem::ParamSpecArg(ParamSpecArg {
-                                        params: CallableParams::WithParamSpec(
-                                            Rc::from([]),
+                                        params: CallableParams::new_param_spec(
                                             ParamSpecUsage {
                                                 param_spec,
                                                 index: free_type_var_index.into(),
                                                 in_definition,
                                                 temporary_matcher_id: 0,
                                             },
+                                            true,
                                         ),
                                         type_vars: None,
                                     })

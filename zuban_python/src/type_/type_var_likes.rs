@@ -835,7 +835,7 @@ impl TypeVarLikeUsage {
                 }),
             }),
             TypeVarLikeUsage::ParamSpec(usage) => GenericItem::ParamSpecArg(ParamSpecArg::new(
-                CallableParams::WithParamSpec(Rc::new([]), usage),
+                CallableParams::new_param_spec(usage, true),
                 None,
             )),
         }
@@ -849,12 +849,18 @@ impl TypeVarLikeUsage {
             }
             TypeVarLikeUsage::TypeVarTuple(mut usage) => {
                 usage.index = index;
-                todo!()
+                GenericItem::TypeArgs(TypeArgs {
+                    args: TupleArgs::WithUnpack(WithUnpack {
+                        before: Rc::from([]),
+                        unpack: TupleUnpack::TypeVarTuple(usage),
+                        after: Rc::from([]),
+                    }),
+                })
             }
             TypeVarLikeUsage::ParamSpec(mut usage) => {
                 usage.index = index;
                 GenericItem::ParamSpecArg(ParamSpecArg::new(
-                    CallableParams::WithParamSpec(Rc::new([]), usage),
+                    CallableParams::new_param_spec(usage, true),
                     None,
                 ))
             }
