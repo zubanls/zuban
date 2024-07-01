@@ -425,10 +425,10 @@ fn calculate_type_vars<'db: 'a, 'a>(
                     } else {
                         for tv_matcher in &mut matcher.type_var_matchers {
                             for calc in tv_matcher.calculating_type_args.iter_mut() {
-                                calc.type_ = Bound::default()
+                                *calc = Default::default();
                             }
                         }
-                        add_init_generics(&mut matcher, return_class)
+                        add_init_generics(&mut matcher, return_class);
                     }
                 }
             } else {
@@ -444,8 +444,7 @@ fn calculate_type_vars<'db: 'a, 'a>(
                             || !calc.calculated()
                             || calc.uninferrable
                         {
-                            calc.uninferrable = false;
-                            calc.type_ = Bound::default();
+                            *calc = Default::default();
                         } else {
                             calc.defined_by_result_context = true;
                         }

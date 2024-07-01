@@ -252,6 +252,7 @@ testInferenceAgainstGenericLambdas
 testGenericLambdaGenericMethodNoCrash
 testUninferableLambda
 testUninferableLambdaWithTypeError
+testExpandNonBareParamSpecAgainstCallable
 # lambda context recursion
 testRejectCovariantArgumentInLambda
 # i_s missing current class
@@ -272,13 +273,9 @@ testParamSpecConcatenateFromPep
 testNestedGenericFunctionTypeApplication
 testIncrementalInnerClassAttrInMethodReveal
 
-# Class function Foo.bar something like a BoundFunction
-testExpandNonBareParamSpecAgainstCallable
 # param spec tests
 testParamSpecConcatenateSelfType
 testParamSpecNestedApplyPosVsNamed
-# Weird overload interaction with type vars
-testDictWithKeywordArgsOnly
 
 # Are generics in self types always bound to the function?
 # https://github.com/python/typing/discussions/1340
