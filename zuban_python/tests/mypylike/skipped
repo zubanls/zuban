@@ -289,9 +289,6 @@ testDictWithKeywordArgsOnly
 # regressions
 testInferenceAgainstGenericParamSpecVsParamSpec
 testInferenceAgainstGenericParamSpecSecondOrder
-#
-testParamSpecDecorator
-#
 testInferenceAgainstGenericParamSpecVsParamSpecConcatenate
 
 # Are generics in self types always bound to the function?

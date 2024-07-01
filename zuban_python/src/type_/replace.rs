@@ -402,7 +402,7 @@ impl CallableParam {
                         tup.args.rewrite_late_bound_callables(manager),
                     )),
                     StarParamType::ParamSpecArgs(usage) => {
-                        StarParamType::ParamSpecArgs(usage.clone())
+                        StarParamType::ParamSpecArgs(manager.remap_param_spec(usage))
                     }
                 }),
                 ParamType::StarStar(d) => ParamType::StarStar(match d {
@@ -413,7 +413,7 @@ impl CallableParam {
                         todo!()
                     }
                     StarStarParamType::ParamSpecKwargs(usage) => {
-                        StarStarParamType::ParamSpecKwargs(usage.clone())
+                        StarStarParamType::ParamSpecKwargs(manager.remap_param_spec(usage))
                     }
                 }),
             },
