@@ -230,12 +230,8 @@ impl CallableParams {
         other: &CallableParams,
     ) -> Option<CallableParams> {
         match self {
-            CallableParams::Simple {
-                params: params1, ..
-            } => match other {
-                CallableParams::Simple {
-                    params: params2, ..
-                } => common_params(i_s, params1, params2),
+            CallableParams::Simple(params1) => match other {
+                CallableParams::Simple(params2) => common_params(i_s, params1, params2),
                 CallableParams::Any(_) | CallableParams::Never(_) => todo!(),
             },
             CallableParams::Any(_) | CallableParams::Never(_) => todo!(),

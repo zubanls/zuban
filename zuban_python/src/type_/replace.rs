@@ -434,7 +434,7 @@ impl CallableParams {
     ) -> (CallableParams, Option<(PointLink, usize)>) {
         let mut replace_data = None;
         let new_params = match self {
-            CallableParams::Simple { params } => {
+            CallableParams::Simple(params) => {
                 let mut new_params = vec![];
                 for p in params.iter() {
                     let new_param_type = match &p.type_ {
@@ -532,12 +532,12 @@ impl CallableParams {
 
     fn rewrite_late_bound_callables<T: CallableId>(&self, manager: &TypeVarManager<T>) -> Self {
         match &self {
-            CallableParams::Simple { params } => CallableParams::Simple {
-                params: params
+            CallableParams::Simple(params) => CallableParams::Simple(
+                params
                     .iter()
                     .map(|p| p.rewrite_late_bound_callables(manager))
                     .collect(),
-            },
+            ),
             CallableParams::Any(cause) => CallableParams::Any(*cause),
             CallableParams::Never(cause) => CallableParams::Never(*cause),
         }
@@ -586,15 +586,13 @@ pub fn remap_param_spec(
         }
     }
     match new.params {
-        CallableParams::Simple { params } => {
+        CallableParams::Simple(params) => {
             new_params.extend_from_slice(&params);
         }
         CallableParams::Any(cause) => return CallableParams::Any(cause),
         CallableParams::Never(cause) => return CallableParams::Never(cause),
     };
-    CallableParams::Simple {
-        params: new_params.into(),
-    }
+    CallableParams::Simple(new_params.into())
 }
 
 fn replace_param_spec_inner_type_var_likes(

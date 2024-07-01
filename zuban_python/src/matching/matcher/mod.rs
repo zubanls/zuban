@@ -686,7 +686,7 @@ impl<'a> Matcher<'a> {
             }
         };
         match params {
-            CallableParams::Simple { params, .. } => {
+            CallableParams::Simple(params) => {
                 let iter = InferrableParamIterator::new(
                     i_s.db,
                     params.as_ref().iter(),

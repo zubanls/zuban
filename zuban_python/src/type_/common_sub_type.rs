@@ -91,12 +91,8 @@ impl CallableParams {
         } else {
         */
         match &self {
-            CallableParams::Simple {
-                params: params1, ..
-            } => match &other {
-                CallableParams::Simple {
-                    params: params2, ..
-                } => common_sub_type_params(i_s, params1, params2),
+            CallableParams::Simple(params1) => match &other {
+                CallableParams::Simple(params2) => common_sub_type_params(i_s, params1, params2),
                 CallableParams::Any(_) | CallableParams::Never(_) => todo!(),
             },
             CallableParams::Any(_) | CallableParams::Never(_) => todo!(),

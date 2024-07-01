@@ -2215,10 +2215,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     let mut c = (**c).clone();
                     let params = params.map(to_callable_param);
                     match &c.params {
-                        CallableParams::Simple {
-                            params: expected_params,
-                            ..
-                        } => {
+                        CallableParams::Simple(expected_params) => {
                             let params: Vec<_> = params.collect();
                             if !matches_simple_params(
                                 self.i_s,
@@ -3185,7 +3182,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                             self.i_s.current_lambda_callable()
                                         {
                                             return match &current_callable.params {
-                                                CallableParams::Simple { params, .. } => {
+                                                CallableParams::Simple(params) => {
                                                     if let Some(p2) = params.get(i) {
                                                         if let ParamType::PositionalOnly(t) =
                                                             &p2.type_

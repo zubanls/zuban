@@ -75,14 +75,7 @@ fn matches_params_detailed(
 ) -> Match {
     use CallableParams::*;
     match (params1, params2) {
-        (
-            Simple {
-                params: params1, ..
-            },
-            Simple {
-                params: params2, ..
-            },
-        ) => {
+        (Simple(params1), Simple(params2)) => {
             if skip_first_of_params2 {
                 matches_simple_params(
                     i_s,
@@ -677,14 +670,9 @@ pub fn has_overlapping_params(
     params2: &CallableParams,
 ) -> bool {
     match (params1, params2) {
-        (
-            CallableParams::Simple {
-                params: params1, ..
-            },
-            CallableParams::Simple {
-                params: params2, ..
-            },
-        ) => overload_has_overlapping_params(i_s, params1.iter(), params2.iter()),
+        (CallableParams::Simple(params1), CallableParams::Simple(params2)) => {
+            overload_has_overlapping_params(i_s, params1.iter(), params2.iter())
+        }
         (CallableParams::Any(_), _) | (_, CallableParams::Any(_)) => true,
         (CallableParams::Never(_), _) | (_, CallableParams::Never(_)) => true,
     }

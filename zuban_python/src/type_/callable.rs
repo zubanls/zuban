@@ -291,32 +291,28 @@ impl CallableParam {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum CallableParams {
-    Simple { params: Rc<[CallableParam]> },
+    Simple(Rc<[CallableParam]>),
     Any(AnyCause),
     Never(NeverCause),
 }
 
 impl CallableParams {
     pub fn new_simple(params: Rc<[CallableParam]>) -> Self {
-        Self::Simple { params }
+        Self::Simple(params)
     }
 
     pub fn new_param_spec(p: ParamSpecUsage) -> Self {
-        Self::Simple {
-            params: Rc::new([
-                CallableParam::new_anonymous(ParamType::Star(StarParamType::ParamSpecArgs(
-                    p.clone(),
-                ))),
-                CallableParam::new_anonymous(ParamType::StarStar(
-                    StarStarParamType::ParamSpecKwargs(p),
-                )),
-            ]),
-        }
+        Self::Simple(Rc::new([
+            CallableParam::new_anonymous(ParamType::Star(StarParamType::ParamSpecArgs(p.clone()))),
+            CallableParam::new_anonymous(ParamType::StarStar(StarStarParamType::ParamSpecKwargs(
+                p,
+            ))),
+        ]))
     }
 
     pub fn format(&self, format_data: &FormatData, style: ParamsStyle) -> Box<str> {
         let parts = match self {
-            Self::Simple { params } => {
+            Self::Simple(params) => {
                 if let Some(result) = format_params_as_param_spec(format_data, params) {
                     return result;
                 }
@@ -366,7 +362,7 @@ impl CallableParams {
         already_checked: &mut Vec<Rc<RecursiveType>>,
     ) -> bool {
         match self {
-            Self::Simple { params, .. } => params.iter().any(|param| match &param.type_ {
+            Self::Simple(params) => params.iter().any(|param| match &param.type_ {
                 ParamType::PositionalOnly(t)
                 | ParamType::PositionalOrKeyword(t)
                 | ParamType::KeywordOnly(t)
@@ -387,7 +383,7 @@ impl CallableParams {
     }
 
     pub fn is_any_args_and_kwargs(&self) -> bool {
-        let Self::Simple { params, .. } = self else {
+        let Self::Simple(params) = self else {
             return false;
         };
         let mut iterator = params.iter();
@@ -410,7 +406,7 @@ impl CallableParams {
     }
 
     pub fn maybe_param_spec(&self) -> Option<&ParamSpecUsage> {
-        let Self::Simple { params } = self else {
+        let Self::Simple(params) = self else {
             return None;
         };
         params.last()?.type_.maybe_param_spec()
@@ -418,7 +414,7 @@ impl CallableParams {
 
     pub fn search_type_vars<C: FnMut(TypeVarLikeUsage) + ?Sized>(&self, found_type_var: &mut C) {
         match self {
-            Self::Simple { params, .. } => {
+            Self::Simple(params) => {
                 for param in params.iter() {
                     match &param.type_ {
                         ParamType::PositionalOnly(t)
@@ -449,7 +445,7 @@ impl CallableParams {
 
     pub fn find_in_type(&self, db: &Database, check: &mut impl FnMut(&Type) -> bool) -> bool {
         match self {
-            Self::Simple { params, .. } => params.iter().any(|param| match &param.type_ {
+            Self::Simple(params) => params.iter().any(|param| match &param.type_ {
                 ParamType::PositionalOnly(t)
                 | ParamType::PositionalOrKeyword(t)
                 | ParamType::KeywordOnly(t)
@@ -562,7 +558,7 @@ impl CallableContent {
     }
 
     pub fn expect_simple_params(&self) -> &[CallableParam] {
-        let CallableParams::Simple { params, .. } = &self.params else {
+        let CallableParams::Simple(params) = &self.params else {
             unreachable!()
         };
         params
@@ -571,15 +567,13 @@ impl CallableContent {
     pub fn remove_first_param(&self) -> Option<Self> {
         let mut c = self.clone();
         c.params = match &self.params {
-            CallableParams::Simple { params } => {
+            CallableParams::Simple(params) => {
                 if params.len() == 0 {
                     todo!()
                 }
                 let mut params = params.to_vec();
                 params.remove(0);
-                CallableParams::Simple {
-                    params: params.into(),
-                }
+                CallableParams::Simple(params.into())
             }
             CallableParams::Any(cause) => CallableParams::Any(*cause),
             CallableParams::Never(cause) => CallableParams::Never(*cause),
@@ -589,7 +583,7 @@ impl CallableContent {
 
     pub fn first_positional_type(&self) -> Option<Type> {
         match &self.params {
-            CallableParams::Simple { params, .. } => params.first().and_then(|p| match &p.type_ {
+            CallableParams::Simple(params) => params.first().and_then(|p| match &p.type_ {
                 ParamType::PositionalOnly(t) | ParamType::PositionalOrKeyword(t) => Some(t.clone()),
                 ParamType::Star(_) => todo!(),
                 _ => None,
@@ -601,7 +595,7 @@ impl CallableContent {
 
     pub fn second_positional_type(&self) -> Option<Type> {
         match &self.params {
-            CallableParams::Simple { params, .. } => {
+            CallableParams::Simple(params) => {
                 let mut iterator = params.iter();
                 if let Some(first) = iterator.next() {
                     if let ParamType::Star(StarParamType::ArbitraryLen(t)) = &first.type_ {
@@ -622,7 +616,7 @@ impl CallableContent {
 
     pub fn has_exactly_one_positional_parameter(&self) -> Option<WrongPositionalCount> {
         match &self.params {
-            CallableParams::Simple { params, .. } => match params.len() {
+            CallableParams::Simple(params) => match params.len() {
                 0 => Some(WrongPositionalCount::TooFew),
                 1 => None,
                 _ => {
@@ -707,7 +701,7 @@ impl CallableContent {
         add_classmethod_param: bool,
     ) -> Box<str> {
         match &self.params {
-            CallableParams::Simple { params, .. } => {
+            CallableParams::Simple(params) => {
                 let not_reveal_type = format_data.style != FormatStyle::MypyRevealType;
                 let mut params = format_callable_params(
                     format_data,
@@ -840,7 +834,7 @@ impl CallableContent {
             return true;
         }
         match &self.params {
-            CallableParams::Simple { params, .. } => !params
+            CallableParams::Simple(params) => !params
                 .iter()
                 .skip(skip_first_param.into())
                 .all(|t| t.type_.maybe_type().is_some_and(has_unannotated)),

@@ -2253,7 +2253,7 @@ fn proper_classmethod_callable(
     let mut callable = callable.clone();
     let mut type_vars = callable.type_vars.as_vec();
     match &callable.params {
-        CallableParams::Simple { params } => {
+        CallableParams::Simple(params) => {
             let mut vec = params.to_vec();
             // The first argument in a class param is not relevant if we execute descriptors.
             let first_param = vec.remove(0);
@@ -2275,9 +2275,7 @@ fn proper_classmethod_callable(
                     }
                 }
             }
-            callable.params = CallableParams::Simple {
-                params: Rc::from(vec),
-            };
+            callable.params = CallableParams::Simple(Rc::from(vec));
         }
         CallableParams::Any(_) | CallableParams::Never(_) => (),
     };

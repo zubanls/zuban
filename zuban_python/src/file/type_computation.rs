@@ -2761,9 +2761,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 params.push(CallableParam::new_anonymous(ParamType::StarStar(
                     StarStarParamType::ParamSpecKwargs(p),
                 )));
-                TypeContent::Concatenate(CallableParams::Simple {
-                    params: params.into(),
-                })
+                TypeContent::Concatenate(CallableParams::Simple(params.into()))
             }
             TypeContent::Concatenate(_) => {
                 self.add_issue(slice_type.as_node_ref(), IssueKind::NestedConcatenate);

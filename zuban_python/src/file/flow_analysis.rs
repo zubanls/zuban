@@ -1756,10 +1756,7 @@ impl Inference<'_, '_, '_> {
     ) -> Option<FramesWithParentUnions> {
         let guard = callable.guard.as_ref()?;
         let find_arg = || {
-            let CallableParams::Simple {
-                params: c_params, ..
-            } = &callable.params
-            else {
+            let CallableParams::Simple(c_params) = &callable.params else {
                 return None;
             };
             let first_param = c_params.iter().next()?;
