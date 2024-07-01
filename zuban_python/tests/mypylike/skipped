@@ -286,8 +286,6 @@ testParamSpecConcatenateSelfType
 testParamSpecNestedApplyPosVsNamed
 # Weird overload interaction with type vars
 testDictWithKeywordArgsOnly
-# regressions
-testInferenceAgainstGenericParamSpecSecondOrder
 
 # Are generics in self types always bound to the function?
 # https://github.com/python/typing/discussions/1340
