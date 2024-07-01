@@ -577,12 +577,7 @@ pub(crate) fn match_arguments_against_params<
                     &matches
                 );
                 if let Some(on_type_error) = on_type_error {
-                    let mut got = GotType::Type(&value_t);
-                    if let Some(star_t) = argument.maybe_star_type(i_s) {
-                        got = GotType::Starred(star_t)
-                    } else if let Some(double_star_t) = argument.maybe_star_star_type(i_s) {
-                        got = GotType::DoubleStarred(double_star_t)
-                    }
+                    let got = GotType::from_arg(i_s, argument, &value_t);
                     match reason {
                         MismatchReason::ConstraintMismatch { expected, type_var } => {
                             argument.add_issue(

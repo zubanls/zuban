@@ -132,13 +132,23 @@ fn func_or_callable_diagnostic_string(f: &FunctionOrCallable, db: &Database) -> 
     f.diagnostic_string(db)
 }
 
-pub enum GotType<'a> {
-    Type(&'a Type),
+pub enum GotType<'t> {
+    Type(&'t Type),
     Starred(Type),
     DoubleStarred(Type),
 }
 
-impl GotType<'_> {
+impl<'t> GotType<'t> {
+    pub fn from_arg(i_s: &InferenceState, arg: &Arg, value_t: &'t Type) -> Self {
+        if let Some(star_t) = arg.maybe_star_type(i_s) {
+            Self::Starred(star_t)
+        } else if let Some(double_star_t) = arg.maybe_star_star_type(i_s) {
+            Self::DoubleStarred(double_star_t)
+        } else {
+            Self::Type(&value_t)
+        }
+    }
+
     pub fn format(&self, format_data: &FormatData) -> String {
         match self {
             GotType::Type(t) => t.format(format_data).into(),

@@ -487,6 +487,26 @@ impl<'db, 'a> Arg<'db, 'a> {
         }
     }
 
+    pub(crate) fn add_argument_issue(
+        &self,
+        i_s: &InferenceState,
+        got: &str,
+        expected: &str,
+        from: Option<&str>,
+    ) {
+        self.add_issue(
+            i_s,
+            IssueKind::ArgumentTypeIssue(
+                format!(
+                    "Argument {}{} has incompatible type {got}; expected \"{expected}\"",
+                    self.human_readable_index(i_s.db),
+                    from.unwrap_or(""),
+                )
+                .into(),
+            ),
+        );
+    }
+
     pub(crate) fn add_issue(&self, i_s: &InferenceState, issue: IssueKind) {
         match self.as_node_ref() {
             Ok(node_ref) => node_ref.add_issue(i_s, issue),

@@ -490,18 +490,7 @@ pub fn on_argument_type_error(
         "ModuleType" => "Module".to_string(),
         got => format!("\"{got}\""),
     };
-    arg.add_issue(
-        i_s,
-        IssueKind::ArgumentTypeIssue(
-            format!(
-                "Argument {}{} has incompatible type {got}; expected \"{}\"",
-                arg.human_readable_index(i_s.db),
-                error_text(" to ").as_deref().unwrap_or(""),
-                strings.expected,
-            )
-            .into(),
-        ),
-    );
+    arg.add_argument_issue(i_s, &got, &strings.expected, error_text(" to ").as_deref());
     types.add_mismatch_notes(|issue| arg.add_issue(i_s, issue))
 }
 
