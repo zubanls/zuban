@@ -4285,19 +4285,7 @@ fn detect_diverging_alias(db: &Database, type_var_likes: &TypeVarLikes, t: &Type
                         let has_direct_type_var_like = generics.iter().any(|g| match g {
                             GenericItem::TypeArg(t) => matches!(t, Type::TypeVar(_)),
                             GenericItem::TypeArgs(ts) => todo!(),
-                            GenericItem::ParamSpecArg(p) => {
-                                // Normally format_as_param_spec should probably not be reliable
-                                // and we should work the last params. But since we are only
-                                // dealing with types that are defined rather than inferred, it
-                                // should probably be fine.
-                                matches!(
-                                    p.params,
-                                    CallableParams::Simple {
-                                        format_as_param_spec: true,
-                                        ..
-                                    }
-                                )
-                            }
+                            GenericItem::ParamSpecArg(p) => p.params.maybe_param_spec().is_some(),
                         });
                         !has_direct_type_var_like && generics.has_type_vars()
                     })

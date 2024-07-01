@@ -88,6 +88,14 @@ impl ParamType {
         }
     }
 
+    pub fn maybe_param_spec(&self) -> Option<&ParamSpecUsage> {
+        match self {
+            Self::Star(StarParamType::ParamSpecArgs(p)) => Some(p),
+            Self::StarStar(StarStarParamType::ParamSpecKwargs(p)) => Some(p),
+            _ => None,
+        }
+    }
+
     pub fn details(&self) -> ParamTypeDetails {
         match self {
             Self::PositionalOnly(t)
@@ -409,6 +417,17 @@ impl CallableParams {
             &second.type_,
             ParamType::StarStar(StarStarParamType::ValueType(Type::Any(_)))
         )
+    }
+
+    pub fn maybe_param_spec(&self) -> Option<&ParamSpecUsage> {
+        let Self::Simple {
+            params,
+            format_as_param_spec,
+        } = self
+        else {
+            return None;
+        };
+        params.last()?.type_.maybe_param_spec()
     }
 
     pub fn search_type_vars<C: FnMut(TypeVarLikeUsage) + ?Sized>(&self, found_type_var: &mut C) {
@@ -942,9 +961,7 @@ pub fn format_params_as_param_spec(
 ) -> Option<Box<str>> {
     let mut params_iter = params.iter();
     let last = params_iter.next_back()?;
-    let ParamType::StarStar(StarStarParamType::ParamSpecKwargs(p)) = &last.type_ else {
-        return None;
-    };
+    let p = last.type_.maybe_param_spec()?;
     params_iter.next_back()?;
     Some(if params.len() == 2 {
         format_data.format_param_spec(p, ParamsStyle::CallableParams)
