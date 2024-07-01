@@ -191,8 +191,6 @@ testStrEnumCreation
 testRegression12258
 testDerivedEnumIterable
 testEnumIterMetaInference
-# Callable matching
-testParamSpecNoCrashOnUnificationPrefix
 # Callable matching positional names ignored, but kwargs is there; mypy wrong?
 testProtocolIncompatibilityWithUnionType
 # dict questionable decisions
@@ -210,12 +208,12 @@ testGenericClassAlternativeConstructorPreciseOverloaded
 # current_class in i_s should probably be a type and not a class
 testEnumNameWorkCorrectlyOn311
 # Class/Function is still set in InferenceState/i_s
-testAsyncForComprehensionErrors
 testUnusedTargetNotImport
 testFunctionForwardRefAlias
 testTypeVarTuplePep646TypeVarStarArgs
 testClassChangedIntoFunction2
 testChangeTypeVarToFunction
+testAsyncForComprehensionErrors
 
 # Callable remapping over overload leads to a mapped overload (this is special cased for only one arg and decorator like behavior, see also is_generic_decorator_overload_call)
 testRegularGenericDecoratorOverload
