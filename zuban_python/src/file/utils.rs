@@ -83,7 +83,7 @@ impl<'db> Inference<'db, '_, '_> {
                     new_class!(
                         i_s.db.python_state.list_node_ref().as_link(),
                         generic_t.replace_type_var_likes(self.i_s.db, &mut |tv| {
-                            tv.as_type_var_like().as_any_generic_item()
+                            tv.as_any_generic_item()
                         }),
                     )
                 }))
@@ -566,12 +566,8 @@ pub fn infer_dict_like(
             Inferred::from_type(found.unwrap_or_else(|| {
                 new_class!(
                     i_s.db.python_state.dict_node_ref().as_link(),
-                    key_t.replace_type_var_likes(i_s.db, &mut |tv| {
-                        tv.as_type_var_like().as_any_generic_item()
-                    }),
-                    value_t.replace_type_var_likes(i_s.db, &mut |tv| {
-                        tv.as_type_var_like().as_any_generic_item()
-                    }),
+                    key_t.replace_type_var_likes(i_s.db, &mut |tv| tv.as_any_generic_item()),
+                    value_t.replace_type_var_likes(i_s.db, &mut |tv| tv.as_any_generic_item()),
                 )
             }))
         },

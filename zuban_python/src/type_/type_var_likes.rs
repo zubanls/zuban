@@ -824,6 +824,10 @@ impl TypeVarLikeUsage {
         }
     }
 
+    pub fn as_any_generic_item(&self) -> GenericItem {
+        self.as_type_var_like().as_any_generic_item()
+    }
+
     pub fn into_generic_item(self) -> GenericItem {
         match self {
             TypeVarLikeUsage::TypeVar(usage) => GenericItem::TypeArg(Type::TypeVar(usage)),

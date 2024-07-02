@@ -1028,7 +1028,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         let defined_at = nt.__new__.defined_at;
                         Type::NamedTuple(nt).replace_type_var_likes(db, &mut |usage| {
                             if usage.in_definition() == defined_at {
-                                usage.as_type_var_like().as_any_generic_item()
+                                usage.as_any_generic_item()
                             } else {
                                 usage.into_generic_item()
                             }
@@ -1050,7 +1050,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         }
                         Some(
                             Type::TypedDict(td).replace_type_var_likes(db, &mut |usage| {
-                                usage.as_type_var_like().as_any_generic_item()
+                                usage.as_any_generic_item()
                             }),
                         )
                     }
