@@ -30,7 +30,7 @@ use crate::{
     type_::{
         format_callable_params, AnyCause, CallableContent, CallableParams, ClassGenerics, DbString,
         FunctionKind, FunctionOverload, GenericItem, GenericsList, Literal, LiteralKind,
-        LookupResult, NeverCause, ParamType, TupleArgs, Type, TypeVarLike, Variance,
+        LookupResult, NeverCause, ParamType, TupleArgs, Type, TypeVarKind, TypeVarLike, Variance,
     },
     type_helpers::{
         cache_class_name, is_private, Class, ClassLookupOptions, FirstParamKind,
@@ -1024,7 +1024,22 @@ impl<'db> Inference<'db, '_, '_> {
                         let undefined_generics_class =
                             Class::with_undefined_generics(class.node_ref);
                         let mut class_t = undefined_generics_class.as_type(i_s.db);
-                        let original = self.use_cached_param_annotation_type(annotation);
+                        let mut original = self.use_cached_param_annotation_type(annotation);
+                        match original.as_ref() {
+                            Type::TypeVar(tv) => {
+                                if let TypeVarKind::Bound(b) = &tv.type_var.kind {
+                                    original = Cow::Owned(b.clone());
+                                }
+                            }
+                            Type::Type(t) => {
+                                if let Type::TypeVar(tv) = t.as_ref() {
+                                    if let TypeVarKind::Bound(b) = &tv.type_var.kind {
+                                        original = Cow::Owned(Type::Type(Rc::new(b.clone())));
+                                    }
+                                }
+                            }
+                            _ => (),
+                        };
                         let erased = original.replace_type_var_likes_and_self(
                             i_s.db,
                             &mut |u| u.as_any_generic_item(),
@@ -1046,7 +1061,7 @@ impl<'db> Inference<'db, '_, '_> {
                                 let issue = if ["self", "cls"].contains(&param_name) {
                                     let format_data = &FormatData::new_reveal_type(i_s.db);
                                     IssueKind::TypeOfSelfIsNotASupertypeOfItsClass {
-                                        self_type: original.format(format_data),
+                                        self_type: erased.format(format_data),
                                         class: class_t.format(format_data),
                                     }
                                 } else {

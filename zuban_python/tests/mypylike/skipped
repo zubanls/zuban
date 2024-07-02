@@ -139,6 +139,7 @@ testRecursiveTypedDictWithList
 # dataclass circles with bound
 testDataclassGenericWithBound
 testNoCrashOnSelfWithForwardRefGenericDataclass
+testDataclassFactory
 
 # Module attributes
 testModuleImplicitAttributes
@@ -289,7 +290,6 @@ testVariadicClassNewStyleSelf
 testTypingSelfConflict
 # "Self argument missing for a non-static method"
 # "The erased type of self "None" is not a supertype of its class "__main__.A""
-testSelfTypeNonsensical
 testSelfTypeNew
 testSelfTypeNew_explicit
 testOverloadWithSwappedDecorators2
