@@ -1,6 +1,8 @@
 use std::{borrow::Cow, cell::RefCell, rc::Rc};
 
-use parsa_python_cst::{NodeIndex, PrimaryContent, PythonString, SliceType as CSTSliceType};
+use parsa_python_cst::{
+    NodeIndex, ParamKind, PrimaryContent, PythonString, SliceType as CSTSliceType,
+};
 
 use crate::{
     arguments::{Args, CombinedArgs, InferredArg, KnownArgs, KnownArgsWithCustomAddIssue},
@@ -827,6 +829,22 @@ impl<'db: 'slf, 'slf> Inferred {
                         Specific::Function => {
                             let func = prepare_func(i_s, *definition, attribute_class);
                             let attr_kind = AttributeKind::DefMethod;
+                            if !func.node().params().iter().next().is_some_and(|p| {
+                                matches!(
+                                    p.kind(),
+                                    ParamKind::PositionalOnly
+                                        | ParamKind::PositionalOrKeyword
+                                        | ParamKind::Star
+                                )
+                            }) {
+                                add_issue(IssueKind::NotAcceptingSelfArgument {
+                                    function_name: Box::from(func.name()),
+                                    callable: func
+                                        .as_callable(i_s, FirstParamProperties::None)
+                                        .format(&FormatData::new_short(i_s.db))
+                                        .into(),
+                                })
+                            }
                             return if let Some(first_type) = func.first_param_annotation_type(i_s) {
                                 let as_instance = || instance.clone();
                                 let mut matcher = Matcher::new_function_matcher(

@@ -1,4 +1,4 @@
-use std::{borrow::Cow, rc::Rc};
+use std::{borrow::Cow, cell::Cell, rc::Rc};
 
 use parsa_python_cst::Name;
 
@@ -80,8 +80,20 @@ impl<'a> Instance<'a> {
         });
         let Some(inf) = lookup_details.lookup.into_maybe_inferred() else {
             let t = self.class.as_type(i_s.db);
-            let l = self.lookup_with_details(i_s, add_issue, "__setattr__", LookupKind::OnlyType);
-            if let Some(setattr) = l.lookup.into_maybe_inferred() {
+            let had_setattr_issue = Cell::new(false);
+            let l = self.lookup_with_details(
+                i_s,
+                |_| had_setattr_issue.set(true),
+                "__setattr__",
+                LookupKind::OnlyType,
+            );
+            // setattr issues were probably caused by invalid functions and should have caused an
+            // error earlier
+            if let Some(setattr) = l
+                .lookup
+                .into_maybe_inferred()
+                .filter(|_| !had_setattr_issue.get())
+            {
                 // object defines a __getattribute__ that returns Any
                 if !l.class.is_object(i_s.db) {
                     // If it's not a callable with the correct signature, diagnostics will be raised

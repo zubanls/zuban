@@ -1597,7 +1597,23 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
     }
 
     pub fn first_param_annotation_type(&self, i_s: &InferenceState<'db, '_>) -> Option<Cow<Type>> {
-        self.iter_params().next().and_then(|p| p.annotation(i_s.db))
+        self.iter_params().next().and_then(|p| {
+            let t = p.annotation(i_s.db);
+            if let Some(t) = &t {
+                match p.param.kind() {
+                    ParamKind::PositionalOnly | ParamKind::PositionalOrKeyword => (),
+                    ParamKind::Star => match t.as_ref() {
+                        Type::Tuple(tup) => match &tup.args {
+                            TupleArgs::ArbitraryLen(t) => return Some(Cow::Owned((**t).clone())),
+                            _ => return None,
+                        },
+                        _ => return None,
+                    },
+                    ParamKind::KeywordOnly | ParamKind::StarStar => return None,
+                }
+            }
+            t
+        })
     }
 
     pub(super) fn execute_internal(

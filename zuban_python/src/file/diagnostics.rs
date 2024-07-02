@@ -1882,11 +1882,17 @@ fn find_and_check_override(
 ) {
     let override_class_infos = override_class.use_cached_class_infos(i_s.db);
     let instance = Instance::new(override_class, None);
+    let add_lookup_issue = |issue| {
+        // This is issue is only relevant for actual lookups
+        if !matches!(issue, IssueKind::NotAcceptingSelfArgument { .. }) {
+            from.add_issue(i_s, issue)
+        }
+    };
     let original_details = instance.lookup(
         i_s,
         name,
         // NamedTuple / Tuple are special, because they insert an additional type of themselves.
-        InstanceLookupOptions::new(&|issue| from.add_issue(i_s, issue)).with_super_count(
+        InstanceLookupOptions::new(&add_lookup_issue).with_super_count(
             1 + matches!(
                 override_class_infos.class_kind,
                 ClassKind::Tuple | ClassKind::NamedTuple
@@ -1894,12 +1900,8 @@ fn find_and_check_override(
         ),
     );
     if original_details.lookup.is_some() {
-        let override_details = instance.lookup_with_details(
-            i_s,
-            |issue| from.add_issue(i_s, issue),
-            name,
-            LookupKind::Normal,
-        );
+        let override_details =
+            instance.lookup_with_details(i_s, &add_lookup_issue, name, LookupKind::Normal);
         if !has_override_decorator
             && from
                 .file

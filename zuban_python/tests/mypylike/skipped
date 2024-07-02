@@ -278,8 +278,6 @@ testIncrementalInnerClassAttrInMethodReveal
 testParamSpecConcatenateSelfType
 testParamSpecNestedApplyPosVsNamed
 
-# Attribute function "foo" with type "Callable[[], None]" does not accept self argument
-no_self
 # Self in bound method shouldn't probably be there
 testFunctionAssignedAsCallback
 
