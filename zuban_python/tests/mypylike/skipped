@@ -278,21 +278,13 @@ testIncrementalInnerClassAttrInMethodReveal
 testParamSpecConcatenateSelfType
 testParamSpecNestedApplyPosVsNamed
 
-# Are generics in self types always bound to the function?
-# https://github.com/python/typing/discussions/1340
-# https://github.com/python/mypy/issues/14729
-testSelfTypeRestrictedMethodOverloadInit
 # Self tests
-testTypingSelfAttrOldVsNewStyle
 testSelfTypeOnGenericClassObjectNewStyleBound
 testVariadicClassNewStyleSelf
-# "Method cannot have explicit self annotation and Self type"
-testTypingSelfConflict
 # Attribute function "foo" with type "Callable[[], None]" does not accept self argument
 no_self
 # Self in bound method shouldn't probably be there
 testFunctionAssignedAsCallback
-testErrorSettingCallbackWithDifferentFutureType
 
 # Class argument and __init__ as overloaded DbType
 testOverloadedToGeneric
@@ -1531,6 +1523,9 @@ testTruthyIterable
 # flags: --disable-error-code truthy-bool
 testDisableEnableErrorCodesIncremental
 
+# "Method cannot have explicit self annotation and Self type"
+testTypingSelfConflict
+
 # ------------------- start of low-prio/won't do tests -----------------------
 
 # "Name "C" is used before definition"
@@ -1705,10 +1700,6 @@ testOverloadedNormalAndInplaceOperatorMethod
 
 # Mypy is probably wrong here, but we might need to revisit
 testConstructorJoinsWithCustomMetaclass
-
-# Callable override https://github.com/python/mypy/issues/16549
-testClassSpec
-testClassSpecError
 
 # Final Literal[str] = "foo" is suddenly a Literal['foo']?
 testEnumCreatedFromFinalValue
@@ -2009,6 +2000,13 @@ testOptionalErrorSyntax
 testLiteralUnionErrorSyntax
 testLiteralOptionalErrorSyntax
 
+# Are generics in self types always bound to the function?
+# https://github.com/python/typing/discussions/1340
+# https://github.com/python/mypy/issues/14729
+testSelfTypeRestrictedMethodOverloadInit
+# Callable override https://github.com/python/mypy/issues/16549
+testClassSpec
+testClassSpecError
 # Mypy test case issues
 # https://github.com/python/mypy/issues/13102
 testNewAnalyzerMoreInvalidTypeVarArgumentsDeferred
