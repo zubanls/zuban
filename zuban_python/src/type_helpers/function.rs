@@ -1324,9 +1324,16 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     }
                 }
                 if needs_self_type_variable {
+                    // We have to erase the type vars, because they will be part of the bound and
+                    // only defined later.
+                    let t = self
+                        .class
+                        .unwrap()
+                        .as_type(i_s.db)
+                        .replace_type_var_likes(i_s.db, &mut |u| u.as_any_generic_item());
                     let self_type_var = Rc::new(TypeVar {
                         name_string: TypeVarName::Self_,
-                        kind: TypeVarKind::Bound(self.class.unwrap().as_type(i_s.db)),
+                        kind: TypeVarKind::Bound(t),
                         variance: Variance::Invariant,
                         default: None,
                     });

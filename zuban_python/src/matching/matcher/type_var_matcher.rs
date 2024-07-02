@@ -8,6 +8,7 @@ use super::{
 };
 use crate::{
     database::{Database, PointLink},
+    debug,
     inference_state::InferenceState,
     params::Param,
     type_::{
@@ -350,6 +351,13 @@ pub fn check_constraints(
         TypeVarKind::Unrestricted => (),
         TypeVarKind::Bound(bound) => {
             mismatch_constraints |= !bound.is_simple_super_type_of(i_s, value_type).bool();
+            if mismatch_constraints {
+                debug!(
+                    "Mismatched constraint {} :> {}",
+                    bound.format_short(i_s.db),
+                    value_type.format_short(i_s.db)
+                );
+            }
         }
         TypeVarKind::Constraints(constraints) => {
             if let Type::TypeVar(t2) = value_type {
