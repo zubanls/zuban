@@ -33,8 +33,9 @@ use crate::{
         LookupResult, NeverCause, ParamType, TupleArgs, Type, TypeVarLike, Variance,
     },
     type_helpers::{
-        cache_class_name, is_private, Class, ClassLookupOptions, FirstParamProperties, Function,
-        Instance, InstanceLookupOptions, LookupDetails, TypeOrClass,
+        cache_class_name, is_private, Class, ClassLookupOptions, FirstParamKind,
+        FirstParamProperties, Function, Instance, InstanceLookupOptions, LookupDetails,
+        TypeOrClass,
     },
 };
 
@@ -1000,14 +1001,66 @@ impl<'db> Inference<'db, '_, '_> {
         }
         let flags = self.flags();
         let mut had_missing_annotation = false;
-        let mut params_iterator = params.iter();
-        if class.is_some() && func_kind != FunctionKind::Staticmethod {
-            if let Some(first_param) = params_iterator.next() {
-                // TODO check self type
-            } else {
-                function
-                    .node_ref
-                    .add_issue(i_s, IssueKind::MethodWithoutArguments)
+        let mut params_iterator = params.iter().peekable();
+        if let Some(class) = class {
+            if func_kind != FunctionKind::Staticmethod {
+                let mut was_star = false;
+                let first_param = params_iterator
+                    .peek()
+                    .copied()
+                    .and_then(|p| match p.kind() {
+                        ParamKind::PositionalOnly | ParamKind::PositionalOrKeyword => {
+                            params_iterator.next();
+                            Some(p)
+                        }
+                        ParamKind::KeywordOnly | ParamKind::StarStar => None,
+                        ParamKind::Star => {
+                            was_star = true;
+                            None
+                        }
+                    });
+                if let Some(first_param) = first_param {
+                    if let Some(annotation) = first_param.annotation() {
+                        let undefined_generics_class =
+                            Class::with_undefined_generics(class.node_ref);
+                        let mut class_t = undefined_generics_class.as_type(i_s.db);
+                        let original = self.use_cached_param_annotation_type(annotation);
+                        let erased = original.replace_type_var_likes_and_self(
+                            i_s.db,
+                            &mut |u| u.as_any_generic_item(),
+                            &|| class_t.clone(),
+                        );
+                        let erased_is_protocol = match &erased {
+                            Type::Class(c) => c.class(i_s.db).is_protocol(i_s.db),
+                            Type::Type(t) => {
+                                t.maybe_class(i_s.db).is_some_and(|c| c.is_protocol(i_s.db))
+                            }
+                            _ => false,
+                        };
+                        if !erased_is_protocol {
+                            if function.first_param_kind(i_s) == FirstParamKind::ClassOfSelf {
+                                class_t = Type::Type(Rc::new(class_t));
+                            };
+                            if !erased.is_simple_super_type_of(i_s, &class_t).bool() {
+                                let param_name = first_param.name_definition().as_code();
+                                let issue = if ["self", "cls"].contains(&param_name) {
+                                    let format_data = &FormatData::new_reveal_type(i_s.db);
+                                    IssueKind::TypeOfSelfIsNotASupertypeOfItsClass {
+                                        self_type: original.format(format_data),
+                                        class: class_t.format(format_data),
+                                    }
+                                } else {
+                                    IssueKind::SelfArgumentMissing
+                                };
+                                self.add_issue(annotation.index(), issue);
+                            }
+                        }
+                    }
+                } else if !was_star {
+                    function
+                        .node_ref
+                        .add_issue(i_s, IssueKind::MethodWithoutArguments)
+                }
             }
         }
         for param in params_iterator {
@@ -1122,37 +1175,36 @@ impl<'db> Inference<'db, '_, '_> {
             let mut class = class.unwrap();
             // Here we do not want self generics, we actually want Any generics.
             class.generics = Generics::NotDefinedYet;
-            let Some(callable) = infer_class_method(
+            if let Some(callable) = infer_class_method(
                 i_s,
                 class,
                 class,
                 &function.as_callable(i_s, FirstParamProperties::None),
                 None,
-            ) else {
-                todo!()
-            };
-            match &callable.return_type {
-                Type::Class(_) => {
-                    let t = &callable.return_type;
-                    if !class.as_type(i_s.db).is_simple_super_type_of(i_s, t).bool() {
-                        function.expect_return_annotation_node_ref().add_issue(
-                            i_s,
-                            IssueKind::NewIncompatibleReturnType {
-                                returns: t.format_short(i_s.db),
-                                must_return: class.format_short(i_s.db),
-                            },
-                        )
+            ) {
+                match &callable.return_type {
+                    Type::Class(_) => {
+                        let t = &callable.return_type;
+                        if !class.as_type(i_s.db).is_simple_super_type_of(i_s, t).bool() {
+                            function.expect_return_annotation_node_ref().add_issue(
+                                i_s,
+                                IssueKind::NewIncompatibleReturnType {
+                                    returns: t.format_short(i_s.db),
+                                    must_return: class.format_short(i_s.db),
+                                },
+                            )
+                        }
                     }
+                    Type::Type(_) => (),
+                    Type::Any(_) => (),
+                    Type::Enum(e) if e.class == class.node_ref.as_link() => (),
+                    t => function.expect_return_annotation_node_ref().add_issue(
+                        i_s,
+                        IssueKind::NewMustReturnAnInstance {
+                            got: t.format_short(i_s.db),
+                        },
+                    ),
                 }
-                Type::Type(_) => (),
-                Type::Any(_) => (),
-                Type::Enum(e) if e.class == class.node_ref.as_link() => (),
-                t => function.expect_return_annotation_node_ref().add_issue(
-                    i_s,
-                    IssueKind::NewMustReturnAnInstance {
-                        got: t.format_short(i_s.db),
-                    },
-                ),
             }
         }
 

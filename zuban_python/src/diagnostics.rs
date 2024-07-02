@@ -344,6 +344,8 @@ pub(crate) enum IssueKind {
     PropertyIsReadOnly { class_name: Box<str>, property_name: Box<str> },
 
     MethodWithoutArguments,
+    TypeOfSelfIsNotASupertypeOfItsClass { self_type: Box<str>, class: Box<str> },
+    SelfArgumentMissing,
     MultipleStarredExpressionsInAssignment,
 
     EnumFirstArgMustBeString,
@@ -636,6 +638,8 @@ impl<'db> Diagnostic<'db> {
                 | InvalidAssertType { .. }
                 | BaseExceptionExpected
                 | BaseExceptionExpectedForRaise
+                | TypeOfSelfIsNotASupertypeOfItsClass { .. }
+                | SelfArgumentMissing
         )
     }
 
@@ -903,6 +907,11 @@ impl<'db> Diagnostic<'db> {
             MethodWithoutArguments => {
                 "Method must have at least one argument. Did you forget the \"self\" argument?".to_string()
             }
+            TypeOfSelfIsNotASupertypeOfItsClass { self_type, class } => format!(
+                r#"The erased type of self "{self_type}" is not a supertype of its class "{class}""#
+            ),
+            SelfArgumentMissing =>
+                "Self argument missing for a non-static method (or an invalid type for self)".to_string(),
             MultipleStarredExpressionsInAssignment =>
                 "Two starred expressions in assignment".to_string(),
 

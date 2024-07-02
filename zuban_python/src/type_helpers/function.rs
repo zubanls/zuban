@@ -2058,6 +2058,7 @@ enum PropertyModifier {
     Deleter,
 }
 
+#[derive(PartialEq)]
 pub enum FirstParamKind {
     Self_,
     ClassOfSelf,

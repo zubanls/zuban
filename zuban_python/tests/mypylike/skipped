@@ -289,7 +289,6 @@ testVariadicClassNewStyleSelf
 testTypingSelfConflict
 # "Self argument missing for a non-static method"
 # "The erased type of self "None" is not a supertype of its class "__main__.A""
-testSelfTypeNotSelfType
 testSelfTypeNonsensical
 testSelfTypeNew
 testSelfTypeNew_explicit
@@ -299,6 +298,11 @@ testOverloadWithInconsistentStaticMethods
 # Self in bound method shouldn't probably be there
 testFunctionAssignedAsCallback
 testErrorSettingCallbackWithDifferentFutureType
+# self param checking regressions
+testMetaclassSelfType
+testMetaclassStrictSupertypeOfTypeWithClassmethods
+testInferringLvarTypesUnpackedFromIterableClassObjectWithGenericIter
+testSelfTypeProtocolMetaclassMatch
 
 # Class argument and __init__ as overloaded DbType
 testOverloadedToGeneric
