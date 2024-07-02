@@ -259,6 +259,7 @@ impl<'a> Matcher<'a> {
     ) -> Match {
         match value_type {
             Type::Self_ => Match::new_true(),
+            _ if self.is_matching_reverse() => Match::new_false(),
             _ => {
                 if matches!(self.func_or_callable, Some(FunctionOrCallable::Function(_))) {
                     // In case we are working within a function, Self is bound already.

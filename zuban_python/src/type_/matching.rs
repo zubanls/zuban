@@ -115,16 +115,7 @@ impl Type {
                     }
                 }
             }
-            Type::Self_ => {
-                if matcher.is_matching_reverse() {
-                    match value_type {
-                        Type::Self_ => Match::new_true(),
-                        _ => Match::new_false(),
-                    }
-                } else {
-                    matcher.match_self(i_s, value_type, variance)
-                }
-            }
+            Type::Self_ => matcher.match_self(i_s, value_type, variance),
             Type::ParamSpecArgs(usage1) => match value_type {
                 Type::ParamSpecArgs(usage2) => (usage1 == usage2).into(),
                 _ => Match::new_false(),
