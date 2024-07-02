@@ -36,7 +36,18 @@ impl Type {
             ),
             Type::Type(t1) => match value_type {
                 Type::Type(t2) => t1.matches(i_s, matcher, t2, variance).similar_if_false(),
-                _ => Match::new_false(),
+                _ => match t1.as_ref() {
+                    Type::Any(_)
+                        if value_type
+                            .maybe_class(i_s.db)
+                            .is_some_and(|c| c.is_metaclass(i_s.db)) =>
+                    {
+                        Match::True {
+                            with_any: matcher.is_matching_reverse(),
+                        }
+                    }
+                    _ => Match::new_false(),
+                },
             },
             Type::TypeVar(t1) => matcher.match_or_add_type_var(i_s, t1, value_type, variance),
             Type::Callable(c1) => {

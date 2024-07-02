@@ -293,10 +293,6 @@ no_self
 # Self in bound method shouldn't probably be there
 testFunctionAssignedAsCallback
 testErrorSettingCallbackWithDifferentFutureType
-# self param checking regressions
-testMetaclassSelfType
-testMetaclassStrictSupertypeOfTypeWithClassmethods
-testInferringLvarTypesUnpackedFromIterableClassObjectWithGenericIter
 
 # Class argument and __init__ as overloaded DbType
 testOverloadedToGeneric
