@@ -124,14 +124,14 @@ class Foo(Generic[T]):
 from typing import Any, overload
 class C:
     def foo() -> None: ... # E: Method must have at least one argument. Did you forget the "self" argument?
-    def foo2(*, bar: C) -> None: ...
+    def foo2(*, bar: C) -> None: ... # E: Method must have at least one argument. Did you forget the "self" argument?
     def foo3(*bar: C) -> None: ...
-    def foo4(**bar: C) -> None: ...
+    def foo4(**bar: C) -> None: ...  # E: Method must have at least one argument. Did you forget the "self" argument?
 
     @overload
     def bar() -> None: ... # E: Method must have at least one argument. Did you forget the "self" argument? 
     @overload
-    def bar(*, a: int) -> None: ... # E: Self argument missing for a non-static method (or an invalid type for self)
+    def bar(*, a: int) -> None: ...  # E: Method must have at least one argument. Did you forget the "self" argument?
     @overload
     def bar(self) -> None: ...
     def bar(*args: Any, **kwargs: Any) -> None: ...

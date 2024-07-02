@@ -288,13 +288,8 @@ testSelfTypeOnGenericClassObjectNewStyleBound
 testVariadicClassNewStyleSelf
 # "Method cannot have explicit self annotation and Self type"
 testTypingSelfConflict
-# "Self argument missing for a non-static method"
-# "The erased type of self "None" is not a supertype of its class "__main__.A""
-testSelfTypeNew
-testSelfTypeNew_explicit
-testOverloadWithSwappedDecorators2
+# Attribute function "foo" with type "Callable[[], None]" does not accept self argument
 no_self
-testOverloadWithInconsistentStaticMethods
 # Self in bound method shouldn't probably be there
 testFunctionAssignedAsCallback
 testErrorSettingCallbackWithDifferentFutureType
@@ -302,7 +297,6 @@ testErrorSettingCallbackWithDifferentFutureType
 testMetaclassSelfType
 testMetaclassStrictSupertypeOfTypeWithClassmethods
 testInferringLvarTypesUnpackedFromIterableClassObjectWithGenericIter
-testSelfTypeProtocolMetaclassMatch
 
 # Class argument and __init__ as overloaded DbType
 testOverloadedToGeneric

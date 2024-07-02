@@ -1003,7 +1003,7 @@ impl<'db> Inference<'db, '_, '_> {
         let mut had_missing_annotation = false;
         let mut params_iterator = params.iter().peekable();
         if let Some(class) = class {
-            if func_kind != FunctionKind::Staticmethod {
+            if func_kind != FunctionKind::Staticmethod || function.is_dunder_new() {
                 let mut was_star = false;
                 let first_param = params_iterator
                     .peek()
