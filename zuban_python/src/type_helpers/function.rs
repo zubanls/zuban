@@ -510,7 +510,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 {
                     NodeRef::new(self.node_ref.file, annotation.index()).add_issue(
                         i_s,
-                        IssueKind::ParamSpecArgsNeedsBothStarAndStarStar {
+                        IssueKind::ParamSpecParamsNeedBothStarAndStarStar {
                             name: usage.param_spec.name(i_s.db).into(),
                         },
                     );

@@ -730,7 +730,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         let param_spec_error = |usage: &ParamSpecUsage, name| {
             let n = usage.param_spec.name(self.inference.i_s.db).into();
             let issue = if name == "kwargs" {
-                IssueKind::ParamSpecArgsNeedsBothStarAndStarStar { name: n }
+                IssueKind::ParamSpecParamsNeedBothStarAndStarStar { name: n }
             } else {
                 IssueKind::UseParamSpecKwargs { name: n }
             };
