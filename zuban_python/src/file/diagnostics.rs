@@ -965,15 +965,6 @@ impl<'db> Inference<'db, '_, '_> {
 
         let func_kind = function.kind();
 
-        if class.is_some()
-            && function.node().params().iter().next().is_none()
-            && func_kind != FunctionKind::Staticmethod
-        {
-            function
-                .node_ref
-                .add_issue(i_s, IssueKind::MethodWithoutArguments)
-        }
-
         let (name, params, return_annotation, block) = f.unpack();
         if !is_overload_member {
             // Check defaults here.
@@ -1009,10 +1000,17 @@ impl<'db> Inference<'db, '_, '_> {
         }
         let flags = self.flags();
         let mut had_missing_annotation = false;
-        for param in params
-            .iter()
-            .skip((class.is_some() && func_kind != FunctionKind::Staticmethod).into())
-        {
+        let mut params_iterator = params.iter();
+        if class.is_some() && func_kind != FunctionKind::Staticmethod {
+            if let Some(first_param) = params_iterator.next() {
+                // TODO check self type
+            } else {
+                function
+                    .node_ref
+                    .add_issue(i_s, IssueKind::MethodWithoutArguments)
+            }
+        }
+        for param in params_iterator {
             if let Some(annotation) = param.annotation() {
                 let t = self.use_cached_param_annotation_type(annotation);
                 if matches!(t.as_ref(), Type::TypeVar(tv) if tv.type_var.variance == Variance::Covariant)
