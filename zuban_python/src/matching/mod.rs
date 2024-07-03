@@ -295,7 +295,7 @@ impl IteratorContent {
                 unpack,
                 before_index,
                 after_index,
-            } => Inferred::gather_base_types(i_s, |add| match unpack.unpack {
+            } => Inferred::gather_simplified_union(i_s, |add| match unpack.unpack {
                 TupleUnpack::TypeVarTuple(_) => add(Inferred::new_object(i_s.db)),
                 TupleUnpack::ArbitraryLen(t) => {
                     for entry in unpack.before.iter().skip(before_index) {

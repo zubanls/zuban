@@ -57,10 +57,11 @@ impl Tuple {
 
     pub fn tuple_class_generics(&self, db: &Database) -> &GenericsList {
         self.tuple_class_generics.get_or_init(|| {
-            GenericsList::new_generics(Rc::new([GenericItem::TypeArg(
-                self.args
-                    .simplified_union_of_tuple_entries(&InferenceState::new(db)),
-            )]))
+            let t = self
+                .args
+                .simplified_union_of_tuple_entries(&InferenceState::new(db));
+            debug!("Calculated tuple class generics: {}", t.format_short(db));
+            GenericsList::new_generics(Rc::new([GenericItem::TypeArg(t)]))
         })
     }
 
