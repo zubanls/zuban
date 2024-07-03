@@ -321,19 +321,11 @@ impl CallableParams {
                     use StarParamType::ParamSpecArgs;
                     use StarStarParamType::ParamSpecKwargs;
                     match &param.type_ {
-                        Star(ParamSpecArgs(usage1)) => match params.get(i + 1).map(|p| &p.type_) {
-                            Some(StarStar(ParamSpecKwargs(usage2))) if usage1 == usage2 => {
-                                had_param_spec_args = true;
-                            }
-                            _ => todo!(),
-                        },
-                        StarStar(ParamSpecKwargs(usage)) => match had_param_spec_args {
-                            true => out_params.push(format_data.format_param_spec(
-                                // TODO is this even reachable?
-                                usage, style,
-                            )),
-                            false => todo!(),
-                        },
+                        Star(ParamSpecArgs(usage)) => {
+                            out_params.push(format_data.format_param_spec(usage, style));
+                            // ParamSpecs are are always at the end
+                            break;
+                        }
                         _ => out_params.push(param.format(format_data)),
                     }
                 }
