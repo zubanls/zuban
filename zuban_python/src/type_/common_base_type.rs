@@ -414,7 +414,7 @@ fn common_base_for_tuples(i_s: &InferenceState, tup1: &Tuple, tup2: &Tuple) -> R
 }
 
 impl TupleArgs {
-    pub fn common_base_type(&self, i_s: &InferenceState, tup2: &TupleArgs) -> TupleArgs {
+    fn common_base_type(&self, i_s: &InferenceState, tup2: &TupleArgs) -> TupleArgs {
         match &tup2 {
             TupleArgs::FixedLen(ts2) => {
                 let mut new_args = self.clone();

@@ -13,7 +13,6 @@ testMultilineQuotedAnnotation
 testGenericNamedTupleJoin
 testAccessingSelfClassVarInClassMethodTuple
 testNonliteralTupleIndex
-testTypeVarTupleBasic
 testTupleWithUnpackIterator
 # regressions
 testGenericTupleTypeCreation

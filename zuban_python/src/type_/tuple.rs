@@ -58,7 +58,8 @@ impl Tuple {
     pub fn tuple_class_generics(&self, db: &Database) -> &GenericsList {
         self.tuple_class_generics.get_or_init(|| {
             GenericsList::new_generics(Rc::new([GenericItem::TypeArg(
-                self.simplified_union_of_tuple_entries(&InferenceState::new(db)),
+                self.args
+                    .simplified_union_of_tuple_entries(&InferenceState::new(db)),
             )]))
         })
     }
@@ -222,7 +223,9 @@ impl Tuple {
                                 TupleArgs::ArbitraryLen(_) => unreachable!(),
                             })
                             .unwrap_or_else(|| {
-                                Inferred::from_type(self.simplified_union_of_tuple_entries(i_s))
+                                Inferred::from_type(
+                                    self.args.simplified_union_of_tuple_entries(i_s),
+                                )
                             })
                     }
                 }
@@ -357,7 +360,7 @@ impl Tuple {
                 })
                 .unwrap_or_else(|| {
                     Inferred::from_type(Type::Tuple(Tuple::new_arbitrary_length(
-                        self.simplified_union_of_tuple_entries(i_s),
+                        self.args.simplified_union_of_tuple_entries(i_s),
                     )))
                 }),
         }
@@ -368,27 +371,6 @@ impl Tuple {
             TupleArgs::FixedLen(ts) => ts.iter().any(|t| t.find_in_type(db, check)),
             TupleArgs::ArbitraryLen(t) => t.find_in_type(db, check),
             TupleArgs::WithUnpack(with_unpack) => with_unpack.find_in_type(db, check),
-        }
-    }
-
-    fn simplified_union_of_tuple_entries(&self, i_s: &InferenceState) -> Type {
-        match &self.args {
-            TupleArgs::FixedLen(ts) => simplified_union_from_iterators(
-                i_s,
-                ts.iter().cloned().map(|t| t.avoid_implicit_literal(i_s.db)),
-            ),
-            TupleArgs::WithUnpack(with_unpack) => match &with_unpack.unpack {
-                TupleUnpack::TypeVarTuple(tvt) => i_s.db.python_state.object_type(),
-                TupleUnpack::ArbitraryLen(t) => simplified_union_from_iterators(
-                    i_s,
-                    with_unpack
-                        .before
-                        .iter()
-                        .chain(std::iter::once(t))
-                        .chain(with_unpack.after.iter()),
-                ),
-            },
-            TupleArgs::ArbitraryLen(t) => (**t).clone(),
         }
     }
 }
@@ -582,6 +564,27 @@ impl TupleArgs {
                     })
                 }
             }
+        }
+    }
+
+    pub fn simplified_union_of_tuple_entries(&self, i_s: &InferenceState) -> Type {
+        match self {
+            TupleArgs::FixedLen(ts) => simplified_union_from_iterators(
+                i_s,
+                ts.iter().cloned().map(|t| t.avoid_implicit_literal(i_s.db)),
+            ),
+            TupleArgs::WithUnpack(with_unpack) => match &with_unpack.unpack {
+                TupleUnpack::TypeVarTuple(tvt) => i_s.db.python_state.object_type(),
+                TupleUnpack::ArbitraryLen(t) => simplified_union_from_iterators(
+                    i_s,
+                    with_unpack
+                        .before
+                        .iter()
+                        .chain(std::iter::once(t))
+                        .chain(with_unpack.after.iter()),
+                ),
+            },
+            TupleArgs::ArbitraryLen(t) => (**t).clone(),
         }
     }
 }

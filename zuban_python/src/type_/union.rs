@@ -4,13 +4,13 @@ use std::{
     rc::Rc,
 };
 
-use super::{FormatStyle, LiteralKind, NeverCause, Type};
+use super::{FormatStyle, LiteralKind, NeverCause, TupleArgs, Type};
 use crate::{
     database::Database, format_data::FormatData, inference_state::InferenceState, matching::Matcher,
 };
 
 impl Type {
-    pub fn simplified_union(&self, i_s: &InferenceState, other: &Self) -> Type {
+    pub fn simplified_union(&self, i_s: &InferenceState, other: &Self) -> Self {
         // Check out how mypy does it:
         // https://github.com/python/mypy/blob/ff81a1c7abc91d9984fc73b9f2b9eab198001c8e/mypy/typeops.py#L413-L486
         let highest_union_format_index = self
@@ -22,6 +22,27 @@ impl Type {
             highest_union_format_index,
             false,
         )
+    }
+}
+
+impl TupleArgs {
+    pub fn simplified_union(&self, i_s: &InferenceState, other: &Self) -> Self {
+        if self == other {
+            return self.clone();
+        }
+        match (self, other) {
+            (TupleArgs::FixedLen(ts1), TupleArgs::FixedLen(ts2)) if ts1.len() == ts2.len() => {
+                TupleArgs::FixedLen(
+                    ts1.iter()
+                        .zip(ts2.iter())
+                        .map(|(t1, t2)| t1.simplified_union(i_s, t2))
+                        .collect(),
+                )
+            }
+            (_, _) => {
+                TupleArgs::ArbitraryLen(Box::new(self.simplified_union_of_tuple_entries(i_s)))
+            }
+        }
     }
 }
 
