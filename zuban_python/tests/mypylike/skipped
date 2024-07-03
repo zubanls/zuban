@@ -25,11 +25,10 @@ testRecursiveTupleClassesNewType
 testRecursiveTupleFallback2
 testRecursiveTupleFallback3
 testMutuallyRecursiveNamedTuplesJoin
-# ternary expressions are now simplified unions
-testConditionalExpressionUnion
-testConditionalExpressionUnionWithAny
-testUnknownFunctionNotCallable
-testLambdaJoinWithDynamicConstructor
+# ternary regressions
+testErrorCodeTypedDict
+testSimpleConditionalExpression
+testConditionalExpressionAndTypeContext
 
 # TypeAliasType
 testTypeAliasType
@@ -108,7 +107,6 @@ testUnificationEmptyDictLeft
 testUnificationEmptyDictRight
 testUnificationDictWithEmptyListLeft
 testUnificationDictWithEmptyListRight
-testTernaryWithNone
 testOptionalTypeNarrowedByGenericCall5
 testNoneListTernary
 testIsinstanceInInferredLambda
