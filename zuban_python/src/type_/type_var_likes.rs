@@ -1,8 +1,9 @@
 use std::{ops::AddAssign, rc::Rc};
 
 use super::{
-    replace::ReplaceTypeVarLike, AnyCause, CallableContent, CallableParams, GenericItem,
-    GenericsList, NeverCause, ReplaceSelf, TupleArgs, TupleUnpack, Type, TypeArgs, WithUnpack,
+    replace::ReplaceTypeVarLike, AnyCause, CallableContent, CallableParams, FormatStyle,
+    GenericItem, GenericsList, NeverCause, ReplaceSelf, TupleArgs, TupleUnpack, Type, TypeArgs,
+    WithUnpack,
 };
 use crate::{
     database::{Database, PointLink},
@@ -560,11 +561,21 @@ impl TypeVar {
         match &self.kind {
             TypeVarKind::Unrestricted => (),
             TypeVarKind::Bound(bound) => {
-                s += &format!(" <: {}", bound.format(format_data));
+                if format_data.style == FormatStyle::MypyRevealType {
+                    s += " <: ";
+                } else {
+                    s += ": ";
+                }
+                s += &bound.format(format_data);
             }
             TypeVarKind::Constraints(constraints) => {
+                if format_data.style == FormatStyle::MypyRevealType {
+                    s += " in ";
+                } else {
+                    s += ": ";
+                }
                 s += &format!(
-                    " in ({})",
+                    "({})",
                     join_with_commas(constraints.iter().map(|t| t.format(format_data).into()))
                 );
             }

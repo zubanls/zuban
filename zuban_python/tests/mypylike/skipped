@@ -4,8 +4,30 @@
 testNoCrashOnNestedGenericCallable
 
 # mypy upgrade
+testImplicitAsyncGenerator
+testTypeVarTupleAgainstParamSpecActualSuccess
+testTypeVarTupleAgainstParamSpecActualFailedNoCrash
+testTypeVarTupleAgainstParamSpecActualPrefix
+testMixingTypeVarTupleAndParamSpec
+testUnsafeOverlappingNotWithAny
+testTypeUsingTypeCTypeAnyMemberFallback
 # multiline annotations
 testMultilineQuotedAnnotation
+# tuple fallback is now simplified union not join
+testYieldFromTupleExpression
+testGenericNamedTupleMethods
+testGenericNamedTupleJoin
+testNewAnalyzerTupleIteration
+testAccessingSelfClassVarInClassMethodTuple
+testYieldFromTupleStatement
+testNonliteralTupleIndex
+testTypeVarTupleBasic
+testTupleWithUnpackIterator
+# ternary expressions are now simplified unions
+testConditionalExpressionUnion
+testConditionalExpressionUnionWithAny
+testUnknownFunctionNotCallable
+testLambdaJoinWithDynamicConstructor
 
 # TypeAliasType
 testTypeAliasType
@@ -288,6 +310,7 @@ testOverloadedNewAndInitNoReturn
 
 # Self type classmethod access with type vars(no Self)
 testSelfTypesWithParamSpecInfer
+testAccessingSelfClassVarInClassMethod
 # Error for staticmethod: "Overloaded function implementation does not accept all possible arguments of signature 1"
 testTypeVarTupleNewSyntaxCallables
 # "Static methods cannot use Self type"
@@ -395,6 +418,7 @@ testVariadicStarArgsCallNoCrash
 testImportStarWithinFunction
 # Star import check what we override
 testAssignAndConditionalStarImport
+testStarImportOverlappingMismatch
 
 # Metaclass descriptor
 metaclass_descriptor
@@ -798,10 +822,14 @@ testStrictEqualityNoPromotePy3
 testStrictEqualityAllowlist
 testNarrowingEqualityDisabledForCustomEqualityChain
 testNarrowingEqualityFlipFlop
+testStrictEqualitywithParamSpec
 # lambda unreachable raise
 testLambdaNoReturn
+# unreachability around isinstance(..., Callable[...])
+testCallableInstanceOverlapAllowed
 # isinstance with union literals `isinstance(x, A | B)`
 testTypeAliasWithNewUnionIsInstance
+testIsInstanceUnionNone
 
 # None late binding, because it's None (x = None; x = 3)
 testLocalPartialTypesWithInheritance3
@@ -961,8 +989,6 @@ testNewAnalyzerIdentityAssignment*
 testProhibitReassigningAliases
 testProhibitReassigningSubscriptedAliases
 testProhibitReassigningGenericAliases
-testStarImportOverlappingMismatch
-testStarImportOverridingLocalImports
 testImportOnTopOfAlias1
 testMemberRedefinition
 testMemberRedefinitionDefinedInClass
@@ -1108,6 +1134,12 @@ testFunctoolsPartialTypeVarTuple
 testFunctoolsPartialUnion
 testFunctoolsPartialTypeObject
 testIncrementalFunctoolsPartial
+testFunctoolsPartialTypedDictUnpack
+testFunctoolsPartialExplicitType
+testFunctoolsPartialNestedPartial
+testFunctoolsPartialNestedGeneric
+testFunctoolsPartialClassObjectMatchingPartial
+testFineGrainedFunctoolsPartial
 
 # 3.12 type var syntax
 test695TypeAlias
@@ -1116,6 +1148,7 @@ test695Function
 test695TypeVar
 test695TypeAliasType
 testPEP695*
+testCurrentClassWorksAsBound
 
 # enum.member / enum.nonmember
 testEnumNonMemberSupport
@@ -1161,6 +1194,10 @@ testCallableFastParseBadArgArgName
 testIncompatibleAssignmentAmbiguousShortnames
 # for long tuples: "Expression tuple item 8 has type "str"; "int" expected;"
 testAssigningWithLongTupleInitializer
+# large union formatting like "Incompatible types in assignment (expression has type "C1 | C2 | C3 | C4 | C5 | <6 more items>", variable has type "int")"
+testLargeUnionsShort
+testLargeUnionsLongIfNeeded
+testLargeUnionsNoneShown
 
 # "Call to abstract method "meth" of "Proto" with trivial body via super() is unsafe"
 testEmptyBodyUnsafeAbstractSuper
@@ -1330,6 +1367,11 @@ testContinueOutsideLoop
 #testOverloadWithNonGenericDescriptorLookalike
 #testOverloadWithGenericDescriptor
 #testUnpackIterableClassWithOverloadedIter2
+testOverloadOverlapWithTypeVarsWithValues
+testOverloadPossibleOverlapMixingNamedArgsWithKwargs3
+testOverloadWithPartiallyOverlappingUnionsNested
+testOverloadedPartiallyOverlappingTypeVarsAndUnion
+testTypeCheckOverloadImplementationTypeVarDifferingUsage2
 
 # ------------------- priority? tests -----------------------
 
