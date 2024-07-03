@@ -7,8 +7,6 @@ testNoCrashOnNestedGenericCallable
 testTypeVarTupleAgainstParamSpecActualSuccess
 testTypeVarTupleAgainstParamSpecActualFailedNoCrash
 testTypeVarTupleAgainstParamSpecActualPrefix
-testUnsafeOverlappingNotWithAny
-testTypeUsingTypeCTypeAnyMemberFallback
 # multiline annotations
 testMultilineQuotedAnnotation
 # tuple fallback is now simplified union not join
@@ -1371,6 +1369,7 @@ testOverloadPossibleOverlapMixingNamedArgsWithKwargs3
 testOverloadWithPartiallyOverlappingUnionsNested
 testOverloadedPartiallyOverlappingTypeVarsAndUnion
 testTypeCheckOverloadImplementationTypeVarDifferingUsage2
+testUnsafeOverlappingNotWithAny
 
 # ------------------- priority? tests -----------------------
 
