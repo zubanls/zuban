@@ -1138,14 +1138,15 @@ impl Type {
     }
 
     pub fn is_subclassable(&self, db: &Database) -> bool {
-        matches!(
-            self,
+        match self {
             Self::Class(_)
-                | Self::Tuple(_)
-                | Self::NewType(_)
-                | Self::NamedTuple(_)
-                | Self::Dataclass(_)
-        )
+            | Self::Tuple(_)
+            | Self::NewType(_)
+            | Self::NamedTuple(_)
+            | Self::Dataclass(_) => true,
+            Self::RecursiveType(r) => matches!(r.origin(db), RecursiveTypeOrigin::Class(_)),
+            _ => false,
+        }
     }
 
     pub fn maybe_avoid_implicit_literal(&self, db: &Database) -> Option<Self> {

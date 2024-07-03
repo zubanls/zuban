@@ -9,10 +9,6 @@ testTypeVarTupleAgainstParamSpecActualFailedNoCrash
 testTypeVarTupleAgainstParamSpecActualPrefix
 # multiline annotations
 testMultilineQuotedAnnotation
-# regressions
-testRecursiveTupleClassesNewType
-testRecursiveTupleFallback2
-testRecursiveTupleFallback3
 
 # TypeAliasType
 testTypeAliasType
@@ -109,6 +105,8 @@ testGenericJoinRecursiveTypes
 testRecursiveAliasWithRecursiveInstance
 testTypeAliasUpdateNonRecursiveToRecursiveFine
 testTypeAliasUpdateNonRecursiveToRecursiveCoarse
+testRecursiveTupleFallback2
+testRecursiveTupleFallback3
 # Recursive Alias wrong type var inference
 testRecursiveAliasesJoins
 # Recursive alias union type var inference
