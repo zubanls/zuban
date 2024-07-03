@@ -1,4 +1,8 @@
-use std::{borrow::Cow, collections::HashMap, rc::Rc};
+use std::{
+    borrow::{Borrow, Cow},
+    collections::HashMap,
+    rc::Rc,
+};
 
 use super::{FormatStyle, LiteralKind, NeverCause, Type};
 use crate::{
@@ -21,18 +25,18 @@ impl Type {
     }
 }
 
-pub fn simplified_union_from_iterators<'x>(
+pub fn simplified_union_from_iterators<'x, T: Borrow<Type>>(
     i_s: &InferenceState,
-    types: impl Iterator<Item = &'x Type> + Clone,
+    types: impl Iterator<Item = T> + Clone,
 ) -> Type {
     let highest_union_format_index = types
         .clone()
-        .map(|t| t.highest_union_format_index())
+        .map(|t| t.borrow().highest_union_format_index())
         .max()
         .unwrap_or(0);
     simplified_union_from_iterators_with_format_index(
         i_s,
-        types.cloned().enumerate(),
+        types.map(|t| t.borrow().clone()).enumerate(),
         highest_union_format_index,
         false,
     )

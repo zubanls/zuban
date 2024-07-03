@@ -1,9 +1,8 @@
 use std::{cell::OnceCell, rc::Rc};
 
 use super::{
-    common_base_type, simplified_union_from_iterators, utils::method_with_fallback, CustomBehavior,
-    FormatStyle, GenericItem, GenericsList, LookupResult, RecursiveType, TypeVarLikeUsage,
-    TypeVarTupleUsage,
+    simplified_union_from_iterators, utils::method_with_fallback, CustomBehavior, FormatStyle,
+    GenericItem, GenericsList, LookupResult, RecursiveType, TypeVarLikeUsage, TypeVarTupleUsage,
 };
 use crate::{
     arguments::Args,
@@ -59,8 +58,7 @@ impl Tuple {
     pub fn tuple_class_generics(&self, db: &Database) -> &GenericsList {
         self.tuple_class_generics.get_or_init(|| {
             GenericsList::new_generics(Rc::new([GenericItem::TypeArg(
-                self.args
-                    .common_base_for_all_items(&InferenceState::new(db)),
+                self.simplified_union_of_tuple_entries(&InferenceState::new(db)),
             )]))
         })
     }
@@ -375,7 +373,10 @@ impl Tuple {
 
     fn simplified_union_of_tuple_entries(&self, i_s: &InferenceState) -> Type {
         match &self.args {
-            TupleArgs::FixedLen(ts) => simplified_union_from_iterators(i_s, ts.iter()),
+            TupleArgs::FixedLen(ts) => simplified_union_from_iterators(
+                i_s,
+                ts.iter().cloned().map(|t| t.avoid_implicit_literal(i_s.db)),
+            ),
             TupleArgs::WithUnpack(with_unpack) => match &with_unpack.unpack {
                 TupleUnpack::TypeVarTuple(tvt) => i_s.db.python_state.object_type(),
                 TupleUnpack::ArbitraryLen(t) => simplified_union_from_iterators(
@@ -499,13 +500,13 @@ impl TupleArgs {
         }
     }
 
-    fn common_base_for_all_items(&self, i_s: &InferenceState) -> Type {
+    fn simplified_union_for_all_items(&self, i_s: &InferenceState) -> Type {
         match self {
-            Self::FixedLen(ts) => common_base_type(i_s, ts.iter()),
+            Self::FixedLen(ts) => simplified_union_from_iterators(i_s, ts.iter()),
             Self::ArbitraryLen(t) => t.as_ref().clone(),
             Self::WithUnpack(with_unpack) => match &with_unpack.unpack {
                 TupleUnpack::TypeVarTuple(tvt) => i_s.db.python_state.object_type(),
-                TupleUnpack::ArbitraryLen(t) => common_base_type(
+                TupleUnpack::ArbitraryLen(t) => simplified_union_from_iterators(
                     i_s,
                     with_unpack
                         .before

@@ -26,7 +26,6 @@ pub(crate) use self::{
         CallableParams, ParamType, ParamTypeDetails, StarParamType, StarStarParamType,
         TypeGuardInfo, WrongPositionalCount,
     },
-    common_base_type::common_base_type,
     dataclass::{
         check_dataclass_options, dataclass_init_func, dataclass_initialize, dataclasses_replace,
         lookup_dataclass_symbol, lookup_on_dataclass, lookup_on_dataclass_type, Dataclass,

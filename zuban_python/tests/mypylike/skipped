@@ -14,15 +14,17 @@ testTypeUsingTypeCTypeAnyMemberFallback
 # multiline annotations
 testMultilineQuotedAnnotation
 # tuple fallback is now simplified union not join
-testYieldFromTupleExpression
-testGenericNamedTupleMethods
 testGenericNamedTupleJoin
-testNewAnalyzerTupleIteration
 testAccessingSelfClassVarInClassMethodTuple
-testYieldFromTupleStatement
 testNonliteralTupleIndex
 testTypeVarTupleBasic
 testTupleWithUnpackIterator
+# regressions
+testGenericTupleTypeCreation
+testRecursiveTupleClassesNewType
+testRecursiveTupleFallback2
+testRecursiveTupleFallback3
+testMutuallyRecursiveNamedTuplesJoin
 # ternary expressions are now simplified unions
 testConditionalExpressionUnion
 testConditionalExpressionUnionWithAny

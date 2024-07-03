@@ -15,7 +15,7 @@ reveal_type(x.index(0)) # N: Revealed type is "int"
 
 [case tuple_methods_multiple]
 x: tuple[int, str]
-reveal_type(x.__getitem__(0)) # N: Revealed type is "object"
+reveal_type(x.__getitem__(0)) # N: Revealed type is "int | str"
 reveal_type(x.index(0)) # N: Revealed type is "int"
 
 [case tuple_none_arbitrary]
