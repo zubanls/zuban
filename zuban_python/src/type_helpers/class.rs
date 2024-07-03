@@ -42,8 +42,8 @@ use crate::{
         infer_typed_dict_total_argument, infer_value_on_member, AnyCause, CallableContent,
         CallableLike, CallableParam, CallableParams, ClassGenerics, Dataclass, DataclassOptions,
         DbString, Enum, EnumMemberDefinition, FormatStyle, FunctionOverload, GenericClass,
-        GenericsList, LookupResult, NamedTuple, ParamType, StringSlice, Tuple, TupleArgs, Type,
-        TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypedDict, TypedDictMember,
+        GenericItem, GenericsList, LookupResult, NamedTuple, ParamType, StringSlice, Tuple,
+        TupleArgs, Type, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypedDict, TypedDictMember,
         TypedDictMemberGatherer, Variance,
     },
     utils::join_with_commas,
@@ -2398,22 +2398,28 @@ fn linearize_mro(i_s: &InferenceState, class: &Class, bases: &[Type]) -> Box<[Ba
             add_inconsistency_issue(i_s, class)
         }
     }
-    let mut add_to_mro =
-        |base_index: usize, is_direct_base, new_base: &Type, allowed_to_use: &mut usize| {
-            if new_base != &object {
-                mro.push(BaseClass {
-                    type_: if is_direct_base {
-                        *allowed_to_use += 1;
-                        new_base.clone()
-                    } else {
-                        new_base.replace_type_var_likes(i_s.db, &mut |t| {
-                            bases[base_index].expect_class_generics()[t.index()].clone()
-                        })
-                    },
-                    is_direct_base,
-                })
-            }
-        };
+    let mut add_to_mro = |base_index: usize,
+                          is_direct_base,
+                          new_base: &Type,
+                          allowed_to_use: &mut usize| {
+        if new_base != &object {
+            mro.push(BaseClass {
+                type_: if is_direct_base {
+                    *allowed_to_use += 1;
+                    new_base.clone()
+                } else {
+                    new_base.replace_type_var_likes(i_s.db, &mut |t| match &bases[base_index] {
+                        Type::Tuple(tup) => {
+                            debug_assert!(matches!(t.as_type_var_like(), TypeVarLike::TypeVar(_)));
+                            GenericItem::TypeArg(i_s.db.python_state.object_type())
+                        }
+                        base => base.expect_class_generics()[t.index()].clone(),
+                    })
+                },
+                is_direct_base,
+            })
+        }
+    };
 
     let mut base_iterators: Vec<_> = bases
         .iter()
