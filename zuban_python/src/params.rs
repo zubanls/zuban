@@ -647,7 +647,8 @@ fn gather_unpack_args<'db: 'x, 'x, P: Param<'x>>(
             WrappedParamType::Star(WrappedStar::UnpackedTuple(tup)) => {
                 unpacked_tup = Some(tup);
             }
-            WrappedParamType::Star(_) => todo!(),
+            WrappedParamType::Star(WrappedStar::ArbitraryLen(t)) => todo!(),
+            WrappedParamType::Star(WrappedStar::ParamSpecArgs(t)) => todo!(),
             _ => break,
         }
         params.next();

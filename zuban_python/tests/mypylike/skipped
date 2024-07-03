@@ -4,11 +4,9 @@
 testNoCrashOnNestedGenericCallable
 
 # mypy upgrade
-testImplicitAsyncGenerator
 testTypeVarTupleAgainstParamSpecActualSuccess
 testTypeVarTupleAgainstParamSpecActualFailedNoCrash
 testTypeVarTupleAgainstParamSpecActualPrefix
-testMixingTypeVarTupleAndParamSpec
 testUnsafeOverlappingNotWithAny
 testTypeUsingTypeCTypeAnyMemberFallback
 # multiline annotations
@@ -1022,6 +1020,7 @@ testForwardRefToBadAsyncShouldNotCrash_newsemanal
 # async await when is a generator comprehension becoming an asyncgenerator?
 testAsyncGeneratorExpressionAwait
 testAsyncForComprehension
+testImplicitAsyncGenerator
 # Crazy types.coroutine types
 testFullCoroutineMatrix
 # ""async for" outside async function"

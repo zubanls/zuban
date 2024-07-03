@@ -2135,7 +2135,17 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                                 }
                             }
                             TypeVarLike::ParamSpec(param_spec) => {
-                                todo!()
+                                if let Some(spec) = type_args.next_param_spec_back(self) {
+                                    given += 1;
+                                    GenericItem::ParamSpecArg(spec)
+                                } else if let Some(default) = &param_spec.default {
+                                    GenericItem::ParamSpecArg(ParamSpecArg::new(
+                                        default.clone(),
+                                        None,
+                                    ))
+                                } else {
+                                    break 'outer;
+                                }
                             }
                             TypeVarLike::TypeVarTuple(_) => unreachable!(),
                         };
@@ -4435,6 +4445,26 @@ impl<'a, I: Clone + Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
         &mut self,
         type_computation: &mut TypeComputation,
     ) -> Option<(NodeRef<'a>, Type)> {
+        let (from, result) = self.next_back(type_computation)?;
+        match result {
+            Ok(t) => Some((from, t)),
+            Err(s) => {
+                let t = type_computation.compute_slice_type_content(s);
+                match type_computation.convert_slice_type_or_tuple_unpack(t, from) {
+                    TuplePart::Type(t) => Some((from, t)),
+                    TuplePart::TupleUnpack(u) => {
+                        self.current_unpack_reverse = Some(u);
+                        return self.next_type_argument_back(type_computation);
+                    }
+                }
+            }
+        }
+    }
+
+    fn next_back(
+        &mut self,
+        type_computation: &mut TypeComputation,
+    ) -> Option<(NodeRef<'a>, Result<Type, SliceOrSimple>)> {
         if let Some(unpack) = self.current_unpack_reverse.as_mut() {
             let from = self.reverse_already_analyzed.unwrap();
             match unpack {
@@ -4443,17 +4473,17 @@ impl<'a, I: Clone + Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
                         self.reverse_already_analyzed.unwrap(),
                         IssueKind::TypeVarTupleCannotBeSplit,
                     );
-                    return Some((from, Type::Any(AnyCause::FromError)));
+                    return Some((from, Ok(Type::Any(AnyCause::FromError))));
                 }
                 TypeCompTupleUnpack::WithUnpack(with_unpack) => todo!(),
                 TypeCompTupleUnpack::FixedLen(ts) => {
                     if let Some(result) = ts.pop() {
-                        return Some((from, result));
+                        return Some((from, Ok(result)));
                     } else {
                         self.current_unpack_reverse = None;
                     }
                 }
-                TypeCompTupleUnpack::ArbitraryLen(t) => return Some((from, (**t).clone())),
+                TypeCompTupleUnpack::ArbitraryLen(t) => return Some((from, Ok((**t).clone()))),
             }
         }
         let mut current = None;
@@ -4474,28 +4504,21 @@ impl<'a, I: Clone + Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
                     TypeCompTupleUnpack::WithUnpack(with_unpack) => todo!(),
                     TypeCompTupleUnpack::FixedLen(ts) => {
                         if let Some(result) = ts.pop() {
-                            return Some((*from, result));
+                            return Some((*from, Ok(result)));
                         } else {
                             self.current_unpack = None;
                         }
                     }
-                    TypeCompTupleUnpack::ArbitraryLen(t) => return Some((*from, (**t).clone())),
+                    TypeCompTupleUnpack::ArbitraryLen(t) => {
+                        return Some((*from, Ok((**t).clone())))
+                    }
                 }
             }
             return None;
         };
         let from = current_slice_part.as_node_ref();
         self.reverse_already_analyzed = Some(from);
-        let t = type_computation.compute_slice_type_content(current_slice_part);
-        match type_computation
-            .convert_slice_type_or_tuple_unpack(t, current_slice_part.as_node_ref())
-        {
-            TuplePart::Type(t) => Some((from, t)),
-            TuplePart::TupleUnpack(u) => {
-                self.current_unpack_reverse = Some(u);
-                self.next_type_argument_back(type_computation)
-            }
-        }
+        Some((from, Err(current_slice_part)))
     }
 
     fn next_param_spec(
@@ -4508,6 +4531,16 @@ impl<'a, I: Clone + Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
             true,
             allow_aesthetic_class_simplification,
         );
+        Some(ParamSpecArg::new(params, None))
+    }
+
+    fn next_param_spec_back(
+        &mut self,
+        type_computation: &mut TypeComputation,
+    ) -> Option<ParamSpecArg> {
+        let (from, result) = self.next_back(type_computation)?;
+        let slice = result.err()?;
+        let params = type_computation.calculate_callable_params(slice, true, false);
         Some(ParamSpecArg::new(params, None))
     }
 
