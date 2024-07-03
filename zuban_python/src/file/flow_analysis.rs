@@ -821,7 +821,9 @@ impl Inference<'_, '_, '_> {
                 return if_inf;
             };
 
-            if_inf.simplified_union(self.i_s, else_inf)
+            if_inf
+                .avoid_implicit_literal(self.i_s)
+                .simplified_union(self.i_s, else_inf.avoid_implicit_literal(self.i_s))
         })
     }
 
