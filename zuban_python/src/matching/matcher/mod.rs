@@ -848,6 +848,14 @@ impl<'a> Matcher<'a> {
         t.replace_type_var_likes(db, &mut self.as_usage_closure(db, on_uncalculated))
     }
 
+    pub fn replace_usage_if_calculated(
+        &self,
+        db: &Database,
+        usage: TypeVarLikeUsage,
+    ) -> GenericItem {
+        self.as_usage_closure(db, |usage| usage.into_generic_item())(usage)
+    }
+
     pub fn as_usage_closure<'b>(
         &'b self,
         db: &'b Database,

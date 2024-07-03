@@ -216,6 +216,8 @@ testClassChangedIntoFunction2
 testChangeTypeVarToFunction
 testAsyncForComprehensionErrors
 
+# param spec complex nested transitive tests
+testParamSpecNestedApplyPosVsNamed
 # Callable remapping over overload leads to a mapped overload (this is special cased for only one arg and decorator like behavior, see also is_generic_decorator_overload_call)
 testRegularGenericDecoratorOverload
 testParamSpecDecoratorOverload
@@ -273,10 +275,6 @@ testUnpackingParamsSpecArgsAndKwargs
 testParamSpecConcatenateFromPep
 testNestedGenericFunctionTypeApplication
 testIncrementalInnerClassAttrInMethodReveal
-
-# param spec tests
-testParamSpecConcatenateSelfType
-testParamSpecNestedApplyPosVsNamed
 
 # Class argument and __init__ as overloaded DbType
 testOverloadedToGeneric

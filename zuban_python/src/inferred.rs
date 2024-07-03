@@ -2259,15 +2259,14 @@ pub fn infer_class_method<'db: 'class, 'class>(
 
 fn proper_classmethod_callable(
     i_s: &InferenceState,
-    callable: &CallableContent,
+    original_callable: &CallableContent,
     class: &Class,
     func_class: &Class,
     class_generics_not_defined_yet: bool,
     as_type_type: Option<&dyn Fn() -> Type>,
 ) -> Option<CallableContent> {
     let mut class_method_type_var_usage = None;
-    // TODO performance this clone might not be necessary.
-    let mut callable = callable.clone();
+    let mut callable = original_callable.clone();
     let mut type_vars = callable.type_vars.as_vec();
     match &callable.params {
         CallableParams::Simple(params) => {
@@ -2275,8 +2274,9 @@ fn proper_classmethod_callable(
             // The first argument in a class param is not relevant if we execute descriptors.
             let first_param = vec.remove(0);
 
+            callable.params = CallableParams::Simple(Rc::from(vec));
             if let Some(t) = first_param.type_.maybe_positional_type() {
-                let mut matcher = Matcher::new_callable_matcher(&callable);
+                let mut matcher = Matcher::new_callable_matcher(&original_callable);
                 let instance_t = match as_type_type {
                     Some(as_type_type) => as_type_type(),
                     None => class.as_type_type(i_s),
@@ -2291,8 +2291,14 @@ fn proper_classmethod_callable(
                         type_vars.remove(0);
                     }
                 }
+                if matcher.has_type_var_matcher() && class_method_type_var_usage.is_none() {
+                    callable = callable.replace_type_var_likes_and_self(
+                        i_s.db,
+                        &mut |usage| matcher.replace_usage_if_calculated(i_s.db, usage),
+                        &|| Type::Self_,
+                    )
+                }
             }
-            callable.params = CallableParams::Simple(Rc::from(vec));
         }
         CallableParams::Any(_) | CallableParams::Never(_) => (),
     };
