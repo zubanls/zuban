@@ -278,9 +278,6 @@ testIncrementalInnerClassAttrInMethodReveal
 testParamSpecConcatenateSelfType
 testParamSpecNestedApplyPosVsNamed
 
-# Self in bound method shouldn't probably be there
-testFunctionAssignedAsCallback
-
 # Class argument and __init__ as overloaded DbType
 testOverloadedToGeneric
 # Class __init__ like `def __init__(self: C[Int[S]], x: int, y: S) -> None: ...`
@@ -291,8 +288,6 @@ testOverride__new__AndCallObject
 testNewAndInitNoReturn
 testOverloadedNewAndInitNoReturn
 
-# Enum classmethod instance binding
-testNewSetsUnexpectedValueType
 # Self type classmethod access with type vars(no Self)
 testSelfTypesWithParamSpecInfer
 # Error for staticmethod: "Overloaded function implementation does not accept all possible arguments of signature 1"

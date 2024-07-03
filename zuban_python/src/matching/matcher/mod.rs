@@ -49,7 +49,7 @@ pub struct Matcher<'a> {
     type_var_matchers: Vec<TypeVarMatcher>,
     checking_type_recursion: Option<CheckedTypeRecursion<'a>>,
     class: Option<&'a Class<'a>>,
-    func_or_callable: Option<FunctionOrCallable<'a>>,
+    pub func_or_callable: Option<FunctionOrCallable<'a>>,
     ignore_promotions: bool,
     replace_self: Option<ReplaceSelf<'a>>,
     pub ignore_positional_param_names: bool, // Matches `ignore_pos_arg_names` in Mypy
