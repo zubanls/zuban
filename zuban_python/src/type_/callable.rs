@@ -315,13 +315,9 @@ impl CallableParams {
                 }
                 let mut out_params = Vec::with_capacity(params.len());
                 // Display a star only if we are displaying a "normal" function signature
-                let mut had_param_spec_args = false;
                 for (i, param) in params.iter().enumerate() {
-                    use ParamType::{Star, StarStar};
-                    use StarParamType::ParamSpecArgs;
-                    use StarStarParamType::ParamSpecKwargs;
                     match &param.type_ {
-                        Star(ParamSpecArgs(usage)) => {
+                        ParamType::Star(StarParamType::ParamSpecArgs(usage)) => {
                             out_params.push(format_data.format_param_spec(usage, style));
                             // ParamSpecs are are always at the end
                             break;

@@ -128,6 +128,7 @@ fn func_or_callable_diagnostic_string(f: &FunctionOrCallable, db: &Database) -> 
     f.diagnostic_string(db)
 }
 
+#[derive(Debug)]
 pub enum GotType<'t> {
     Type(&'t Type),
     Starred(Type),

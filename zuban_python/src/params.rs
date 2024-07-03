@@ -457,7 +457,10 @@ pub fn matches_simple_params<
                     },
                     _ => match s1 {
                         WrappedStar::UnpackedTuple(tup1) => {
-                            let tup2_args = gather_unpack_args(i_s.db, &mut params2);
+                            let Some(tup2_args) = gather_unpack_args(i_s.db, &mut params2) else {
+                                debug!("Params mismatch, because tuple args");
+                                return Match::new_false();
+                            };
                             matches &= match_tuple_type_arguments(
                                 i_s, matcher, &tup1.args, &tup2_args, variance,
                             )
@@ -611,7 +614,7 @@ fn match_unpack_from_other_side<'db: 'x, 'x, P: Param<'x>, IT: Iterator<Item = P
                 // TODO making params1 peekable is not possible in this way and will always
                 // fetch a param too much.
                 let mut params1 = as_params();
-                let tup1_args = gather_unpack_args(i_s.db, &mut params1);
+                let tup1_args = gather_unpack_args(i_s.db, &mut params1)?;
                 return Some(match_tuple_type_arguments(
                     i_s,
                     matcher,
@@ -628,7 +631,7 @@ fn match_unpack_from_other_side<'db: 'x, 'x, P: Param<'x>, IT: Iterator<Item = P
 fn gather_unpack_args<'db: 'x, 'x, P: Param<'x>>(
     db: &'db Database,
     params: &mut Peekable<impl Iterator<Item = P>>,
-) -> TupleArgs {
+) -> Option<TupleArgs> {
     let mut before = vec![];
     let mut unpacked_tup = None;
     let mut after = vec![];
@@ -648,18 +651,18 @@ fn gather_unpack_args<'db: 'x, 'x, P: Param<'x>>(
                 unpacked_tup = Some(tup);
             }
             WrappedParamType::Star(WrappedStar::ArbitraryLen(t)) => todo!(),
-            WrappedParamType::Star(WrappedStar::ParamSpecArgs(t)) => todo!(),
+            WrappedParamType::Star(WrappedStar::ParamSpecArgs(t)) => return None,
             _ => break,
         }
         params.next();
     }
-    if let Some(unpacked_tup) = &unpacked_tup {
+    Some(if let Some(unpacked_tup) = &unpacked_tup {
         let new_args = unpacked_tup.args.clone();
         new_args.add_before_and_after(before, after)
     } else {
         debug_assert!(after.is_empty());
         TupleArgs::FixedLen(before.into())
-    }
+    })
 }
 
 pub fn has_overlapping_params(

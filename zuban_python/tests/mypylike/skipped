@@ -4,9 +4,6 @@
 testNoCrashOnNestedGenericCallable
 
 # mypy upgrade
-testTypeVarTupleAgainstParamSpecActualSuccess
-testTypeVarTupleAgainstParamSpecActualFailedNoCrash
-testTypeVarTupleAgainstParamSpecActualPrefix
 # multiline annotations
 testMultilineQuotedAnnotation
 
