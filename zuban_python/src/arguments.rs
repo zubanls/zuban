@@ -296,10 +296,6 @@ impl<'db> PositionalArg<'db, '_> {
                 result_context,
             )
     }
-
-    pub(crate) fn add_issue(&self, i_s: &InferenceState, issue: IssueKind) {
-        self.node_ref.add_issue(i_s, issue)
-    }
 }
 
 #[derive(Debug, Clone)]

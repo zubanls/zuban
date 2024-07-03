@@ -151,15 +151,21 @@ impl RevealTypeFunction {
     ) -> Inferred {
         let mut iterator = args.iter();
         let arg = iterator.next().unwrap_or_else(|| todo!());
-        let ArgKind::Positional(pos) = arg.kind else {
+        if !matches!(
+            &arg.kind,
+            ArgKind::Positional(_) | ArgKind::Comprehension { .. }
+        ) {
             todo!()
-        };
+        }
 
         let inferred = if matches!(result_context, ResultContext::ExpectUnused) {
             // For some reason mypy wants to generate a literal here if possible.
-            pos.infer(i_s, &mut ResultContext::RevealType)
+            arg.infer(i_s, &mut ResultContext::RevealType)
         } else {
-            pos.infer(i_s, result_context)
+            arg.infer(i_s, result_context)
+        };
+        let InferredArg::Inferred(inferred) = inferred else {
+            unreachable!() // Not reachable, because we only allow positional args above
         };
         let t = inferred.as_cow_type(i_s);
         let s = reveal_type_info(
@@ -177,7 +183,7 @@ impl RevealTypeFunction {
             }
             .as_ref(),
         );
-        pos.add_issue(
+        arg.add_issue(
             i_s,
             IssueKind::Note(format!("Revealed type is \"{s}\"").into()),
         );
