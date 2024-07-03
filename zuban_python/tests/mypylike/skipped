@@ -9,8 +9,6 @@ testTypeVarTupleAgainstParamSpecActualFailedNoCrash
 testTypeVarTupleAgainstParamSpecActualPrefix
 # multiline annotations
 testMultilineQuotedAnnotation
-# tuple fallback is now simplified union not join
-testGenericNamedTupleJoin
 # regressions
 testRecursiveTupleClassesNewType
 testRecursiveTupleFallback2

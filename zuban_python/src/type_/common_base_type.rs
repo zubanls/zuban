@@ -1,11 +1,11 @@
-use std::{borrow::Cow, rc::Rc};
+use std::rc::Rc;
 
 use parsa_python_cst::ParamKind;
 
 use super::{
     CallableContent, CallableParam, CallableParams, ClassGenerics, GenericItem, GenericsList,
-    NeverCause, ParamType, ParamTypeDetails, StarParamType, StarStarParamType, Tuple, TupleArgs,
-    TupleUnpack, Type, TypeGuardInfo, TypeVarLike, Variance, WithUnpack,
+    ParamType, ParamTypeDetails, StarParamType, StarStarParamType, Tuple, Type, TypeGuardInfo,
+    TypeVarLike, Variance,
 };
 use crate::{
     database::Database,
@@ -85,18 +85,6 @@ impl Type {
         }
         // Needed for protocols, because they don't inherit from object.
         i_s.db.python_state.object_type()
-    }
-}
-
-pub fn common_base_type<'x, I: Iterator<Item = &'x Type>>(i_s: &InferenceState, mut ts: I) -> Type {
-    if let Some(first) = ts.next() {
-        let mut result = Cow::Borrowed(first);
-        for t in ts {
-            result = Cow::Owned(result.common_base_type(i_s, t));
-        }
-        result.into_owned()
-    } else {
-        Type::Never(NeverCause::Other)
     }
 }
 
@@ -410,105 +398,5 @@ fn common_base_for_tuple_against_type(
 }
 
 fn common_base_for_tuples(i_s: &InferenceState, tup1: &Tuple, tup2: &Tuple) -> Rc<Tuple> {
-    Tuple::new(tup1.args.common_base_type(i_s, &tup2.args))
-}
-
-impl TupleArgs {
-    fn common_base_type(&self, i_s: &InferenceState, tup2: &TupleArgs) -> TupleArgs {
-        match &tup2 {
-            TupleArgs::FixedLen(ts2) => {
-                let mut new_args = self.clone();
-                common_base_type_of_type_var_tuple_with_items(&mut new_args, i_s, ts2.iter());
-                new_args
-            }
-            TupleArgs::ArbitraryLen(t2) => match self {
-                TupleArgs::FixedLen(ts1) => {
-                    let mut new_args = tup2.clone();
-                    common_base_type_of_type_var_tuple_with_items(&mut new_args, i_s, ts1.iter());
-                    new_args
-                }
-                TupleArgs::ArbitraryLen(t1) => todo!(),
-                TupleArgs::WithUnpack(_) => todo!(),
-            },
-            TupleArgs::WithUnpack(w1) => match self {
-                TupleArgs::FixedLen(ts1) => todo!(),
-                TupleArgs::ArbitraryLen(t1) => todo!(),
-                TupleArgs::WithUnpack(w2) => {
-                    if w1.before.len() != w2.before.len() || w1.after.len() != w2.after.len() {
-                        todo!()
-                    }
-                    let new_unpack = match (&w1.unpack, &w2.unpack) {
-                        (TupleUnpack::ArbitraryLen(t1), TupleUnpack::ArbitraryLen(t2)) => {
-                            TupleUnpack::ArbitraryLen(
-                                t1.common_sub_type(i_s, t2)
-                                    .unwrap_or(Type::Never(NeverCause::Other)),
-                            )
-                        }
-                        (TupleUnpack::TypeVarTuple(tvt1), TupleUnpack::TypeVarTuple(tvt2)) => {
-                            if tvt1.in_definition == tvt2.in_definition && tvt1.index == tvt2.index
-                            {
-                                TupleUnpack::TypeVarTuple(tvt1.clone())
-                            } else {
-                                todo!()
-                            }
-                        }
-                        _ => todo!("{w1:?} {w2:?}"),
-                    };
-                    TupleArgs::WithUnpack(WithUnpack {
-                        before: w1
-                            .before
-                            .iter()
-                            .zip(w2.before.iter())
-                            .map(|(t1, t2)| {
-                                t1.common_sub_type(i_s, t2)
-                                    .unwrap_or(Type::Never(NeverCause::Other))
-                            })
-                            .collect(),
-                        unpack: new_unpack,
-                        after: w1
-                            .after
-                            .iter()
-                            .zip(w2.after.iter())
-                            .map(|(t1, t2)| {
-                                t1.common_sub_type(i_s, t2)
-                                    .unwrap_or(Type::Never(NeverCause::Other))
-                            })
-                            .collect(),
-                    })
-                }
-            },
-        }
-    }
-}
-
-pub fn common_base_type_of_type_var_tuple_with_items<'x, I: ExactSizeIterator<Item = &'x Type>>(
-    args: &mut TupleArgs,
-    i_s: &InferenceState,
-    items: I,
-) {
-    match args {
-        TupleArgs::FixedLen(calc_ts) => {
-            if items.len() == calc_ts.len() {
-                let mut new = vec![];
-                for (t1, t2) in calc_ts.iter().zip(items) {
-                    new.push(t1.common_base_type(i_s, t2));
-                }
-                *calc_ts = new.into();
-            } else {
-                // We use map to make an iterator with covariant lifetimes.
-                #[allow(clippy::map_identity)]
-                let t = common_base_type(i_s, calc_ts.iter().chain(items.map(|x| x)));
-                *args = TupleArgs::ArbitraryLen(Box::new(t));
-            }
-        }
-        TupleArgs::WithUnpack(_) => todo!(),
-        TupleArgs::ArbitraryLen(calc_t) => {
-            if items.len() == 0 {
-                // args is already ok, because we have an empty tuple here that can be anything.
-                return;
-            }
-            let base = common_base_type(i_s, items).common_base_type(i_s, calc_t);
-            *args = TupleArgs::ArbitraryLen(Box::new(base));
-        }
-    }
+    Tuple::new(tup1.args.simplified_union(i_s, &tup2.args))
 }
