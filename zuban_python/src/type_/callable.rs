@@ -569,8 +569,10 @@ impl CallableContent {
     pub fn first_positional_type(&self) -> Option<Type> {
         match &self.params {
             CallableParams::Simple(params) => params.first().and_then(|p| match &p.type_ {
-                ParamType::PositionalOnly(t) | ParamType::PositionalOrKeyword(t) => Some(t.clone()),
-                ParamType::Star(_) => todo!(),
+                ParamType::PositionalOnly(t)
+                | ParamType::PositionalOrKeyword(t)
+                | ParamType::Star(StarParamType::ArbitraryLen(t)) => Some(t.clone()),
+                ParamType::Star(StarParamType::UnpackedTuple(_)) => todo!(),
                 _ => None,
             }),
             CallableParams::Any(cause) => Some(Type::Any(*cause)),

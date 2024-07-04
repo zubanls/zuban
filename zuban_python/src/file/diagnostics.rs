@@ -927,7 +927,50 @@ impl<'db> Inference<'db, '_, '_> {
             is_overload_member = true;
             for (i, c1) in o.iter_functions().enumerate() {
                 if let Some(implementation) = &o.implementation {
-                    self.calc_overload_implementation_diagnostics(c1, implementation, i + 1)
+                    let mut c1 = Cow::Borrowed(c1.as_ref());
+                    let mut c_impl = Cow::Borrowed(&implementation.callable);
+                    if let Some(class) = class {
+                        let needs_remap = |c: &CallableContent| {
+                            matches!(
+                                c.kind,
+                                FunctionKind::Function {
+                                    had_first_self_or_class_annotation: true
+                                }
+                            )
+                        };
+                        if needs_remap(&c1) || needs_remap(&c_impl) {
+                            let remap = |c: &CallableContent| {
+                                let mut matcher = Matcher::new_callable_matcher(c);
+                                let first_type = c.first_positional_type()?;
+                                if !first_type
+                                    .is_super_type_of(
+                                        i_s,
+                                        &mut matcher,
+                                        &Class::with_undefined_generics(class.node_ref)
+                                            .as_type(i_s.db),
+                                    )
+                                    .bool()
+                                {
+                                    return None;
+                                }
+                                let c = c.remove_first_param()?;
+                                Some(matcher.remove_self_from_callable(i_s, c))
+                            };
+                            // Try to remove the self signatures and if it doesn't work, we just
+                            // don't remove the signatures. We assume that if we cannot remap that
+                            // an error was raised in a different place.
+                            if let Some((new_c1, new_c2)) = remap(&c1).zip(remap(&c_impl)) {
+                                c1 = Cow::Owned(new_c1);
+                                c_impl = Cow::Owned(new_c2);
+                            }
+                        }
+                    }
+                    self.calc_overload_implementation_diagnostics(
+                        &c1,
+                        &c_impl,
+                        implementation,
+                        i + 1,
+                    )
                 }
                 for (k, c2) in o.iter_functions().skip(i + 1).enumerate() {
                     if is_overload_unmatchable(i_s, c1, c2) {
@@ -1294,11 +1337,12 @@ impl<'db> Inference<'db, '_, '_> {
     fn calc_overload_implementation_diagnostics(
         &self,
         overload_item: &CallableContent,
+        implementation_callable: &CallableContent,
         implementation: &OverloadImplementation,
         signature_index: usize,
     ) {
-        let matcher = &mut Matcher::new_reverse_callable_matcher(&implementation.callable);
-        let implementation_result = &implementation.callable.return_type;
+        let matcher = &mut Matcher::new_reverse_callable_matcher(&implementation_callable);
+        let implementation_result = &implementation_callable.return_type;
         let item_result = &overload_item.return_type;
         // This is bivariant matching. This is how Mypy allows subtyping.
         if !item_result
@@ -1320,7 +1364,7 @@ impl<'db> Inference<'db, '_, '_> {
             self.i_s,
             matcher,
             &overload_item.params,
-            &implementation.callable.params,
+            &implementation_callable.params,
         );
         if !match_.bool() {
             implementation

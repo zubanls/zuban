@@ -44,9 +44,6 @@ testTotalOrderingReturnNotBool
 testTotalOrderingAllowsAny
 testTotalOrderingWithForwardReference
 
-# Overload class self variable matching (__init__ against __init__)
-testUnpackIterableClassWithOverloadedIter
-testUnpackIterableClassWithOverloadedIter2
 # Overload union math for __init__
 overload_union_math_on_class_init_constrained
 # union math vs. type var
@@ -290,11 +287,6 @@ testOverride__new__AndCallObject
 # __new__ return types with Never
 testNewAndInitNoReturn
 testOverloadedNewAndInitNoReturn
-
-# Error for staticmethod: "Overloaded function implementation does not accept all possible arguments of signature 1"
-testTypeVarTupleNewSyntaxCallables
-# "Static methods cannot use Self type"
-testTypingSelfClassMethod
 
 # dataclasses __slots__
 testDataclassWithSlotsArg
@@ -1313,6 +1305,9 @@ testColumnsAssignment
 
 # --enable-error-code explicit-override "Method "prop" is not using @override but is overriding a method in class "__main__.A""
 requireExplicitOverrideOverload
+
+# "Static methods cannot use Self type"
+testTypingSelfClassMethod
 
 # "Incompatible types in string interpolation (expression has type "str", placeholder has type "int")"
 testErrorCodeFormatCall
