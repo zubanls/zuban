@@ -1161,8 +1161,6 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                                 },
                             )
                     }
-                } else {
-                    todo!()
                 }
             }
         }

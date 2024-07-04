@@ -52,20 +52,6 @@ testOverloadsAndNoReturnNarrowWhenBlacklistingSubtype2
 testTypeVarTupleOverloadMatch
 # overload x should be preferred over an *x alternative
 testTupleOverloadZipAny
-# - Condition cannot be inferred, unable to merge overloads
-testOverloadIfSplitFunctionDef
-testOverloadIfMixed
-testOverloadIfUnconditionalFuncDef
-testOverloadIfBasic
-testOverloadIfNotMerging
-testOverloadIfElse
-testOverloadIfElse2
-testOverloadIfElse3
-testOverloadIfSkipUnknownExecution
-testOverloadIfDontSkipUnrelatedOverload
-testOverloadIfNotMergingDifferentNames
-testOverloadIfNestedOk
-testOverloadIfNestedFailure
 
 # Union/addition of empty lists dicts sets with used ones
 testOrOperationWithGenericOperands
@@ -1247,6 +1233,20 @@ testInconsistentOverload2
 testNonconsecutiveOverloads
 testNonconsecutiveOverloadsMissingFirstOverload
 testNonconsecutiveOverloadsMissingLaterOverload
+# @overload: "Condition cannot be inferred, unable to merge overloads"
+testOverloadIfSplitFunctionDef
+testOverloadIfMixed
+testOverloadIfUnconditionalFuncDef
+testOverloadIfBasic
+testOverloadIfNotMerging
+testOverloadIfElse
+testOverloadIfElse2
+testOverloadIfElse3
+testOverloadIfSkipUnknownExecution
+testOverloadIfDontSkipUnrelatedOverload
+testOverloadIfNotMergingDifferentNames
+testOverloadIfNestedOk
+testOverloadIfNestedFailure
 
 # type ignore leads to "Revealed type is "A?""
 testSerializeIgnoredInvalidType
