@@ -404,21 +404,17 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                 }
                 match calculated_type_args.matches {
                     SignatureMatch::True { .. } => {
-                        if search_init {
-                            todo!()
-                        } else {
-                            return UnionMathResult::Match {
-                                result: calculated_type_args
-                                    .into_return_type(
-                                        i_s,
-                                        &callable.content.return_type,
-                                        self.class.as_ref(),
-                                        &|| class.map(|c| c.as_type(i_s.db)).unwrap_or(Type::Self_),
-                                    )
-                                    .as_type(i_s),
-                                first_similar_index: i,
-                            };
-                        }
+                        return UnionMathResult::Match {
+                            result: calculated_type_args
+                                .into_return_type(
+                                    i_s,
+                                    &callable.content.return_type,
+                                    self.class.as_ref(),
+                                    &|| class.map(|c| c.as_type(i_s.db)).unwrap_or(Type::Self_),
+                                )
+                                .as_type(i_s),
+                            first_similar_index: i,
+                        };
                     }
                     SignatureMatch::TrueWithAny { argument_indices } => todo!(),
                     SignatureMatch::False { similar: true } if first_similar.is_none() => {

@@ -161,7 +161,7 @@ impl<'db: 'a, 'a> Class<'a> {
         result_context: &mut ResultContext,
         on_type_error: OnTypeError,
         from_type_type: bool, // Errors are different for Cls() vs. Type[Cls] that is instantiated
-    ) -> Option<ClassGenerics> {
+    ) -> ClassExecutionResult {
         let Some(inf) = __init__.into_maybe_inferred() else {
             if self.is_protocol(i_s.db) {
                 if !from_type_type {
@@ -176,7 +176,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 debug_assert!(self.incomplete_mro(i_s.db));
             }
             let type_var_likes = self.type_vars(i_s);
-            return Some(match type_var_likes.is_empty() {
+            return ClassExecutionResult::ClassGenerics(match type_var_likes.is_empty() {
                 false => ClassGenerics::List(type_var_likes.as_any_generic_list()),
                 true => ClassGenerics::None,
             });
@@ -192,7 +192,9 @@ impl<'db: 'a, 'a> Class<'a> {
                     result_context,
                     Some(on_type_error),
                 );
-                Some(calculated_type_args.type_arguments_into_class_generics())
+                ClassExecutionResult::ClassGenerics(
+                    calculated_type_args.type_arguments_into_class_generics(),
+                )
             }
             Some(FunctionOrOverload::Callable(callable_content)) => {
                 let calculated_type_args = match init_class {
@@ -216,7 +218,9 @@ impl<'db: 'a, 'a> Class<'a> {
                         Some(on_type_error),
                     ),
                 };
-                Some(calculated_type_args.type_arguments_into_class_generics())
+                ClassExecutionResult::ClassGenerics(
+                    calculated_type_args.type_arguments_into_class_generics(),
+                )
             }
             Some(FunctionOrOverload::Overload(overloaded_function)) => match overloaded_function
                 .find_matching_function(
@@ -239,10 +243,25 @@ impl<'db: 'a, 'a> Class<'a> {
                         result_context,
                         Some(on_type_error),
                     );
-                    Some(result.type_arguments_into_class_generics())
+                    ClassExecutionResult::ClassGenerics(result.type_arguments_into_class_generics())
                 }
-                OverloadResult::Union(t) => todo!(),
-                OverloadResult::NotFound => None,
+                OverloadResult::Union(t) => {
+                    dbg!(&t);
+                    /*
+                    if t.has_self_type(i_s.db) {
+                        t = t.replace_self(i_s.db, replace_self_type)
+                    }
+                    Some(Inferred::from_type(t))
+                    match {
+                        Some(generics) => ClassExecutionResult::ClassGenerics(generics),
+                        None => ClassExecutionResult::Inferred(Inferred::new_any_from_error()),
+                    }
+                    */
+                    ClassExecutionResult::Inferred(Inferred::new_any_from_error())
+                }
+                OverloadResult::NotFound => {
+                    ClassExecutionResult::Inferred(Inferred::new_any_from_error())
+                }
             },
             None => unreachable!("Should never happen, because there's always object.__init__"),
         }
@@ -2165,7 +2184,7 @@ impl<'db: 'a, 'a> Class<'a> {
             };
         }
 
-        match self.type_check_init_func(
+        self.type_check_init_func(
             i_s,
             constructor.constructor,
             constructor.init_class,
@@ -2173,10 +2192,7 @@ impl<'db: 'a, 'a> Class<'a> {
             result_context,
             on_type_error,
             from_type_type,
-        ) {
-            Some(generics) => ClassExecutionResult::ClassGenerics(generics),
-            None => ClassExecutionResult::Inferred(Inferred::new_any_from_error()),
-        }
+        )
     }
 
     pub(crate) fn simple_lookup(
