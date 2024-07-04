@@ -1256,19 +1256,10 @@ impl<'db: 'slf, 'slf> Inferred {
                             {
                                 add_issue(IssueKind::AmbigousClassVariableAccess);
                             }
-                            let mut t = use_cached_annotation_or_type_comment(
+                            let t = use_cached_annotation_or_type_comment(
                                 i_s,
                                 NodeRef::from_link(i_s.db, *definition),
                             );
-                            let has_explicit_self = t.has_self_type(i_s.db);
-                            if has_explicit_self {
-                                t = Cow::Owned(replace_class_type_vars(
-                                    i_s.db,
-                                    &t,
-                                    &attribute_class,
-                                    &|| class.as_type(i_s.db),
-                                ));
-                            }
                             if specific == Specific::AnnotationOrTypeCommentClassVar {
                                 attr_kind = AttributeKind::ClassVar
                             } else if specific == Specific::AnnotationOrTypeCommentFinal {
@@ -1286,9 +1277,6 @@ impl<'db: 'slf, 'slf> Inferred {
                                 as_type_type,
                             ) {
                                 return r.map(|inf| (inf, attr_kind));
-                            }
-                            if has_explicit_self {
-                                return Some((Inferred::from_type(t.into_owned()), attr_kind));
                             }
                         }
                         _ => (),
