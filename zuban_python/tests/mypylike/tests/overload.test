@@ -402,3 +402,24 @@ class C:
     @overload
     def bar(self) -> None: ...
     def bar(*args: C) -> None: ...
+
+[case overload_class_type_vars_properly_applied_in_implementation_check]
+from typing import Generic, overload, TypeVar
+
+T1 = TypeVar("T1")
+T2 = TypeVar("T2")
+T3 = TypeVar("T3")
+class MyClass(Generic[T1, T2]):
+    @overload
+    def __init__(self: MyClass[None, None], t: None, u: None) -> None: ...
+
+    @overload
+    def __init__(self: MyClass[T1, None], t: T1, u: None) -> None: ...
+
+    @overload
+    def __init__(self: MyClass[T1, T3], t: T1, u: T2) -> None: ...
+
+    # These errors are wrong, but Mypy also works like that
+    def __init__(self, t: T1, u: T2) -> None:  # E: Overloaded function implementation does not accept all possible arguments of signature 1 \
+                                               # E: Overloaded function implementation does not accept all possible arguments of signature 2
+        pass
