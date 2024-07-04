@@ -291,8 +291,6 @@ testOverride__new__AndCallObject
 testNewAndInitNoReturn
 testOverloadedNewAndInitNoReturn
 
-# Accessing ClassVar[Self] type in classmethod
-testAccessingSelfClassVarInClassMethod
 # Error for staticmethod: "Overloaded function implementation does not accept all possible arguments of signature 1"
 testTypeVarTupleNewSyntaxCallables
 # "Static methods cannot use Self type"

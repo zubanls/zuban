@@ -1404,7 +1404,10 @@ impl<'db: 'slf, 'slf> Inferred {
             }
         }
         let needs_remapping = match attribute_class.generics {
-            Generics::Self_ { .. } => !attribute_class.has_simple_self_generics(),
+            Generics::Self_ { .. } => {
+                !attribute_class.has_simple_self_generics()
+                    || as_type_type.is_some() && t.has_self_type(i_s.db)
+            }
             _ => !attribute_class.type_vars(i_s).is_empty() || t.has_self_type(i_s.db),
         };
         let mut new = None;
@@ -1413,7 +1416,18 @@ impl<'db: 'slf, 'slf> Inferred {
                 i_s.db,
                 t,
                 &attribute_class,
-                &|| class.as_type(i_s.db),
+                &|| {
+                    if let Some(as_type_type) = as_type_type {
+                        let Type::Type(t) = as_type_type() else {
+                            unreachable!()
+                        };
+                        (*t).clone()
+                    } else if attribute_class.has_simple_self_generics() {
+                        Type::Self_
+                    } else {
+                        class.as_type(i_s.db)
+                    }
+                },
             ));
             t = new.as_ref().unwrap();
         }
