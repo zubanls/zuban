@@ -149,7 +149,7 @@ impl<'db> Inference<'db, '_, '_> {
                 unreachable!();
             };
 
-            if !Type::Callable(Rc::new(callable.remove_first_param().unwrap()))
+            if !Type::Callable(Rc::new(callable.remove_first_positional_param().unwrap()))
                 .is_simple_super_type_of(self.i_s, &actual)
                 .bool()
             {
@@ -953,7 +953,7 @@ impl<'db> Inference<'db, '_, '_> {
                                 {
                                     return None;
                                 }
-                                let c = c.remove_first_param()?;
+                                let c = c.remove_first_positional_param()?;
                                 Some(matcher.remove_self_from_callable(i_s, c))
                             };
                             // Try to remove the self signatures and if it doesn't work, we just

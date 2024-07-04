@@ -660,7 +660,7 @@ impl Type {
                 todo!("Once this is implemented remove the reveal_type formatting")
             }
             Type::NamedTuple(nt) => {
-                let mut callable = nt.__new__.remove_first_param().unwrap();
+                let mut callable = nt.__new__.remove_first_positional_param().unwrap();
                 callable.return_type = self.clone();
                 Some(CallableLike::Callable(Rc::new(callable)))
             }

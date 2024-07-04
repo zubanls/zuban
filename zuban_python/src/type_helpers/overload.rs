@@ -483,7 +483,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     .map(|callable| {
                         let mut callable = replace_class_type_vars_in_callable(
                             i_s.db,
-                            &callable.remove_first_param().unwrap(),
+                            &callable.remove_first_positional_param().unwrap(),
                             self.class.as_ref(),
                             replace_self_type,
                         );

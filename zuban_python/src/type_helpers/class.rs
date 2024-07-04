@@ -2900,7 +2900,7 @@ impl NewOrInitConstructor<'_> {
             let to_callable = |c: &CallableContent| {
                 // Since __init__ does not have a return, We need to check the params
                 // of the __init__ functions and the class as a return type separately.
-                c.remove_first_param().map(|mut c| {
+                c.remove_first_positional_param().map(|mut c| {
                     let self_ = cls.as_type(i_s.db);
                     let needs_type_var_remap = self.init_class.is_some_and(|c| {
                         !c.type_vars(i_s).is_empty() && c.node_ref != cls.node_ref

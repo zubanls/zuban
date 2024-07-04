@@ -185,7 +185,7 @@ reveal_type(case_b)           # N: Revealed type is "def (x: Any)"
 reveal_type(wrapper(case_b))  # N: Revealed type is "def (x: Any)"
 
 [case overload_union_math_on_class_init_constrained]
-from typing import Callable, Union, overload, Generic
+from typing import Callable, Union, overload, Generic, TypeVar
 T = TypeVar("T", str, int)
 
 class Foo(Generic[T]):
@@ -393,3 +393,12 @@ def foo_something_else(x: Type[A[list[int]]]) -> None:
     y = x()
     reveal_type(y.delete)  # E: Invalid self argument "Type[A[list[int]]]" to class attribute function "delete" with type "Callable[[Type[A[int]], int], int]" \
                            # N: Revealed type is "Any"
+
+[case overload_star_args_as_self_works]
+from typing import Any, overload
+class C:
+    @overload
+    def bar(self, x: C, /) -> None: ...
+    @overload
+    def bar(self) -> None: ...
+    def bar(*args: C) -> None: ...

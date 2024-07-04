@@ -549,16 +549,22 @@ impl CallableContent {
         params
     }
 
-    pub fn remove_first_param(&self) -> Option<Self> {
+    pub fn remove_first_positional_param(&self) -> Option<Self> {
         let mut c = self.clone();
         c.params = match &self.params {
             CallableParams::Simple(params) => {
                 if params.len() == 0 {
-                    todo!()
+                    return None;
                 }
-                let mut params = params.to_vec();
-                params.remove(0);
-                CallableParams::Simple(params.into())
+                match &params[0].type_ {
+                    ParamType::PositionalOnly(_) | ParamType::PositionalOrKeyword(_) => {
+                        let mut params = params.to_vec();
+                        params.remove(0);
+                        CallableParams::Simple(params.into())
+                    }
+                    ParamType::Star(_) => return Some(c),
+                    _ => return None,
+                }
             }
             CallableParams::Any(cause) => CallableParams::Any(*cause),
             CallableParams::Never(cause) => CallableParams::Never(*cause),

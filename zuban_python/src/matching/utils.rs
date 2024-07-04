@@ -64,7 +64,7 @@ pub fn create_signature_without_self_for_callable(
         return None;
     }
     let c = callable
-        .remove_first_param()
+        .remove_first_positional_param()
         .expect("Signatures without any params should have been filtered before");
     let c = replace_class_type_vars_in_callable(i_s.db, &c, Some(func_class), &|| instance.clone());
     Some(matcher.remove_self_from_callable(i_s, c))
