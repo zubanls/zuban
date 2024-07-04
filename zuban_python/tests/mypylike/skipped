@@ -44,8 +44,6 @@ testTotalOrderingReturnNotBool
 testTotalOrderingAllowsAny
 testTotalOrderingWithForwardReference
 
-# Overload union math for __init__
-overload_union_math_on_class_init_constrained
 # union math vs. type var
 testOverloadDetectsPossibleMatchesWithGenerics
 testOverloadsAndNoReturnNarrowWhenBlacklistingSubtype

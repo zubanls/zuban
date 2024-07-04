@@ -231,6 +231,12 @@ impl<'db: 'a, 'a> Class<'a> {
                     true,
                     result_context,
                     on_type_error,
+                    &|_, calculated_type_args| {
+                        Type::new_class(
+                            self.node_ref.as_link(),
+                            calculated_type_args.type_arguments_into_class_generics(),
+                        )
+                    },
                 ) {
                 OverloadResult::Single(callable) => {
                     // Execute the found function to create the diagnostics.
@@ -245,20 +251,7 @@ impl<'db: 'a, 'a> Class<'a> {
                     );
                     ClassExecutionResult::ClassGenerics(result.type_arguments_into_class_generics())
                 }
-                OverloadResult::Union(t) => {
-                    dbg!(&t);
-                    /*
-                    if t.has_self_type(i_s.db) {
-                        t = t.replace_self(i_s.db, replace_self_type)
-                    }
-                    Some(Inferred::from_type(t))
-                    match {
-                        Some(generics) => ClassExecutionResult::ClassGenerics(generics),
-                        None => ClassExecutionResult::Inferred(Inferred::new_any_from_error()),
-                    }
-                    */
-                    ClassExecutionResult::Inferred(Inferred::new_any_from_error())
-                }
+                OverloadResult::Union(t) => ClassExecutionResult::Inferred(Inferred::from_type(t)),
                 OverloadResult::NotFound => {
                     ClassExecutionResult::Inferred(Inferred::new_any_from_error())
                 }

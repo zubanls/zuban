@@ -11,8 +11,8 @@ use crate::{
     inferred::Inferred,
     matching::{
         calculate_callable_init_type_vars_and_return, calculate_callable_type_vars_and_return,
-        replace_class_type_vars_in_callable, ArgumentIndexWithParam, FunctionOrCallable,
-        OnTypeError, ResultContext, SignatureMatch,
+        replace_class_type_vars_in_callable, ArgumentIndexWithParam, CalculatedTypeArgs,
+        FunctionOrCallable, OnTypeError, ResultContext, SignatureMatch,
     },
     type_::{AnyCause, FunctionOverload, NeverCause, ReplaceSelf, Type},
 };
@@ -53,6 +53,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         search_init: bool, // TODO this feels weird, maybe use a callback?
         result_context: &mut ResultContext,
         on_type_error: OnTypeError,
+        as_union_math_type: &impl Fn(&Callable, CalculatedTypeArgs) -> Type,
     ) -> OverloadResult<'a> {
         let match_signature = |i_s: &InferenceState<'db, '_>,
                                result_context: &mut ResultContext,
@@ -196,6 +197,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                 &|issue| args.add_issue(i_s, issue),
                 search_init,
                 class,
+                as_union_math_type,
             ) {
                 UnionMathResult::Match { result, .. } => {
                     debug!(
@@ -229,6 +231,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                 search_init,
                 &mut ResultContext::Unknown,
                 on_type_error,
+                as_union_math_type,
             );
         }
         if let Some(callable) = first_similar {
@@ -279,6 +282,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         add_issue: &impl Fn(IssueKind),
         search_init: bool,
         class: Option<&Class>,
+        as_union_math_type: &impl Fn(&Callable, CalculatedTypeArgs) -> Type,
     ) -> UnionMathResult {
         if let Some(next_arg) = args.next() {
             let InferredArg::Inferred(inf) = next_arg.infer(i_s, result_context) else {
@@ -292,6 +296,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     add_issue,
                     search_init,
                     class,
+                    as_union_math_type,
                 );
             };
             if inf.is_union(i_s) {
@@ -325,6 +330,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                         add_issue,
                         search_init,
                         class,
+                        as_union_math_type,
                     );
                     if let UnionMathResult::Match {
                         first_similar_index,
@@ -370,6 +376,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     add_issue,
                     search_init,
                     class,
+                    as_union_math_type,
                 )
             }
         } else {
@@ -405,14 +412,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                 match calculated_type_args.matches {
                     SignatureMatch::True { .. } => {
                         return UnionMathResult::Match {
-                            result: calculated_type_args
-                                .into_return_type(
-                                    i_s,
-                                    &callable.content.return_type,
-                                    self.class.as_ref(),
-                                    &|| class.map(|c| c.as_type(i_s.db)).unwrap_or(Type::Self_),
-                                )
-                                .as_type(i_s),
+                            result: as_union_math_type(&callable, calculated_type_args),
                             first_similar_index: i,
                         };
                     }
@@ -525,6 +525,16 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             false,
             result_context,
             on_type_error,
+            &|callable, calculated_type_args| {
+                calculated_type_args
+                    .into_return_type(
+                        i_s,
+                        &callable.content.return_type,
+                        self.class.as_ref(),
+                        replace_self_type,
+                    )
+                    .as_type(i_s)
+            },
         ) {
             OverloadResult::Single(callable) => callable.execute_internal(
                 i_s,
@@ -534,12 +544,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                 result_context,
                 Some(replace_self_type),
             ),
-            OverloadResult::Union(mut t) => {
-                if t.has_self_type(i_s.db) {
-                    t = t.replace_self(i_s.db, replace_self_type)
-                }
-                Inferred::from_type(t)
-            }
+            OverloadResult::Union(t) => Inferred::from_type(t),
             OverloadResult::NotFound => self.fallback_type(i_s),
         }
     }
