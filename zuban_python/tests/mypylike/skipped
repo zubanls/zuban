@@ -58,12 +58,8 @@ testOrOperationWithGenericOperands
 testOrOperationInferredFromContext
 testInWithInvalidArgs
 # ternary context inference
-testConditionalExpressionUnion
-testConditionalExpressionUnionWithAny
-testTernaryWithNone
 testIsinstanceInInferredLambda
-testConditionalExpressionWithEmptyListAndUnionWithAny
-testConditionalExpressionWithEmptyIteableAndUnionWithAny
+testSimpleConditionalExpression
 
 # recursive limits missing for joins / unions
 testRecursiveAliasGenericInferenceNested

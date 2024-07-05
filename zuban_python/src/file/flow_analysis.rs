@@ -834,9 +834,12 @@ impl Inference<'_, '_, '_> {
                         .as_ref()
                         .filter(|_| !use_else_context && !result_context.has_explicit_type())
                     {
+                        // Mypy passes the context without literals here.
                         self.infer_expression_with_context(
                             else_,
-                            &mut ResultContext::Known(&if_inf.as_cow_type(self.i_s)),
+                            &mut ResultContext::Known(
+                                &if_inf.as_type(self.i_s).avoid_implicit_literal(self.i_s.db),
+                            ),
                         )
                     } else {
                         self.infer_expression_with_context(else_, result_context)
@@ -847,10 +850,15 @@ impl Inference<'_, '_, '_> {
                 self.file.points.reset_from_backup(&if_backup);
                 true_frame = fa.with_frame(self.i_s.db, true_frame_backup, || {
                     if_inf = Some(
-                        if let Some(if_inf) = else_inf.as_ref().filter(|_| use_else_context) {
+                        if let Some(else_inf) = else_inf.as_ref().filter(|_| use_else_context) {
+                            // Mypy passes the context without literals here.
                             self.infer_expression_part_with_context(
                                 if_,
-                                &mut ResultContext::Known(&if_inf.as_cow_type(self.i_s)),
+                                &mut ResultContext::Known(
+                                    &else_inf
+                                        .as_type(self.i_s)
+                                        .avoid_implicit_literal(self.i_s.db),
+                                ),
                             )
                         } else {
                             self.infer_expression_part_with_context(if_, result_context)
@@ -867,9 +875,7 @@ impl Inference<'_, '_, '_> {
                 return if_inf;
             };
 
-            if_inf
-                .avoid_implicit_literal(self.i_s)
-                .simplified_union(self.i_s, else_inf.avoid_implicit_literal(self.i_s))
+            if_inf.simplified_union(self.i_s, else_inf)
         })
     }
 

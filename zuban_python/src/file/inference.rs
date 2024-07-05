@@ -2769,7 +2769,6 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             is_arbitrary_length: false,
         };
 
-        let is_definition = matches!(result_context, ResultContext::AssignmentNewDefinition);
         result_context.with_tuple_context_iterator(self.i_s, |tuple_context_iterator| {
             let add_from_stars = |gatherer: &mut TupleGatherer, inferred: Inferred, from_index| {
                 match inferred.iter(self.i_s, NodeRef::new(self.file, from_index)) {
