@@ -105,7 +105,7 @@ struct Entry {
     widens: bool, // e.g. if a type is defined as None and later made an optional.
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 struct Frame {
     entries: Entries,
     unreachable: bool,
@@ -806,16 +806,55 @@ impl Inference<'_, '_, '_> {
         FLOW_ANALYSIS.with(|fa| {
             let mut if_inf = None;
             let mut else_inf = None;
-            let true_frame = fa.with_frame(self.i_s.db, true_frame, || {
-                if_inf = Some(self.infer_expression_part_with_context(if_, result_context));
+            let if_backup = self.file.points.backup(if_.index()..condition.index());
+            let true_frame_backup = true_frame.clone();
+
+            let mut use_else_context = false;
+            let mut needs_recalculation = false;
+            let mut true_frame = fa.with_frame(self.i_s.db, true_frame, || {
+                let (inf, had_error) = self.i_s.do_overload_check(|i_s| {
+                    self.file
+                        .inference(i_s)
+                        .infer_expression_part_with_context(if_, result_context)
+                });
+                use_else_context = inf
+                    .as_cow_type(self.i_s)
+                    .has_never_from_inference(self.i_s.db);
+                needs_recalculation = use_else_context || had_error;
+                if_inf = Some(inf);
             });
+
             let false_frame = fa.with_frame(self.i_s.db, false_frame, || {
-                else_inf = Some(self.infer_expression_with_context(else_, result_context));
+                else_inf = Some(
+                    if let Some(if_inf) = if_inf.as_ref().filter(|_| !use_else_context) {
+                        self.infer_expression_with_context(
+                            else_,
+                            &mut ResultContext::Known(&if_inf.as_cow_type(self.i_s)),
+                        )
+                    } else {
+                        self.infer_expression_with_context(else_, result_context)
+                    },
+                );
             });
+            if needs_recalculation {
+                self.file.points.reset_from_backup(&if_backup);
+                true_frame = fa.with_frame(self.i_s.db, true_frame_backup, || {
+                    if_inf = Some(
+                        if let Some(if_inf) = else_inf.as_ref().filter(|_| use_else_context) {
+                            self.infer_expression_part_with_context(
+                                if_,
+                                &mut ResultContext::Known(&if_inf.as_cow_type(self.i_s)),
+                            )
+                        } else {
+                            self.infer_expression_part_with_context(if_, result_context)
+                        },
+                    );
+                });
+            }
 
             fa.merge_conditional(self.i_s, true_frame, false_frame);
             let Some(if_inf) = if_inf else {
-                return else_inf.unwrap_or_else(|| todo!());
+                return else_inf.unwrap_or_else(|| todo!("This is probably unlikely to happen"));
             };
             let Some(else_inf) = else_inf else {
                 return if_inf;
