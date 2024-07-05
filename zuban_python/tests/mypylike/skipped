@@ -58,8 +58,6 @@ testOrOperationWithGenericOperands
 testOrOperationInferredFromContext
 testInWithInvalidArgs
 # ternary context inference
-testOptionalTypeNarrowedByGenericCall5
-testAssignUnionWithTenaryExprWithEmptyCollection
 testConditionalExpressionUnion
 testConditionalExpressionUnionWithAny
 testTernaryWithNone

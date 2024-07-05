@@ -812,6 +812,10 @@ impl Inference<'_, '_, '_> {
             let mut use_else_context = false;
             let mut needs_recalculation = false;
             let mut true_frame = fa.with_frame(self.i_s.db, true_frame, || {
+                if result_context.has_explicit_type() {
+                    if_inf = Some(self.infer_expression_part_with_context(if_, result_context));
+                    return;
+                }
                 let (inf, had_error) = self.i_s.do_overload_check(|i_s| {
                     self.file
                         .inference(i_s)
@@ -826,7 +830,10 @@ impl Inference<'_, '_, '_> {
 
             let false_frame = fa.with_frame(self.i_s.db, false_frame, || {
                 else_inf = Some(
-                    if let Some(if_inf) = if_inf.as_ref().filter(|_| !use_else_context) {
+                    if let Some(if_inf) = if_inf
+                        .as_ref()
+                        .filter(|_| !use_else_context && !result_context.has_explicit_type())
+                    {
                         self.infer_expression_with_context(
                             else_,
                             &mut ResultContext::Known(&if_inf.as_cow_type(self.i_s)),
