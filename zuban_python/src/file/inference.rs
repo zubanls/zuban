@@ -2214,6 +2214,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         &mut ResultContext::Known(&c.return_type),
                     );
                     let mut c = (**c).clone();
+                    c.guard = None;
+
                     let params = params.map(to_callable_param);
                     match &c.params {
                         CallableParams::Simple(expected_params) => {
