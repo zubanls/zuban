@@ -148,8 +148,6 @@ testInWithInvalidArgs
 testListLiteralWithNameOnlyArgsDoesNotEraseNames
 # join of {1, *some_str_tuple} leads to int | str???
 testUnpackInExpression2-only_when_nocache
-# slightly different argument errors
-testCallerVarArgsListWithTypeInference
 # Self is confused. matcher needs to know Self from both sides.
 testOverloadWithDerivedFromAny
 testTypingSelfOverrideVarMulti
