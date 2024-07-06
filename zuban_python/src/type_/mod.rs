@@ -1155,11 +1155,11 @@ impl Type {
             Type::EnumMember(m) if m.implicit => Some(Type::Enum(m.enum_.clone())),
             Type::Tuple(tup) => {
                 if let TupleArgs::FixedLen(ts) = &tup.args {
-                    let mut gathered = vec![];
                     if ts
                         .iter()
                         .any(|t| t.maybe_avoid_implicit_literal(db).is_some())
                     {
+                        let mut gathered = vec![];
                         for t in ts.iter() {
                             if let Some(new_t) = t.maybe_avoid_implicit_literal(db) {
                                 gathered.push(new_t);
@@ -1168,6 +1168,34 @@ impl Type {
                             gathered.push(t.clone())
                         }
                         return Some(Type::Tuple(Tuple::new_fixed_length(gathered.into())));
+                    }
+                }
+                None
+            }
+            Type::Union(union) => {
+                if union
+                    .iter()
+                    .any(|t| t.maybe_avoid_implicit_literal(db).is_some())
+                {
+                    let mut gathered: Vec<UnionEntry> = vec![];
+                    for entry in union.entries.iter() {
+                        if let Some(type_) = entry.type_.maybe_avoid_implicit_literal(db) {
+                            if !gathered.iter().any(|e| e.type_ == type_) {
+                                gathered.push(UnionEntry {
+                                    type_,
+                                    format_index: entry.format_index,
+                                });
+                            }
+                        } else {
+                            if !gathered.iter().any(|e| e.type_ == entry.type_) {
+                                gathered.push(entry.clone())
+                            }
+                        }
+                    }
+                    if gathered.len() == 1 {
+                        return Some(gathered.into_iter().next().unwrap().type_);
+                    } else {
+                        return Some(Type::Union(UnionType::new(gathered)));
                     }
                 }
                 None
