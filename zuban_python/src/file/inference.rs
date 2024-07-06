@@ -2220,7 +2220,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     c.guard = None;
 
                     let c_params = params.clone().map(to_callable_param);
-                    match &c.params {
+                    match &mut c.params {
                         CallableParams::Simple(expected_params) => {
                             let c_params: Vec<_> = c_params.collect();
                             if matches_simple_params(
@@ -2238,37 +2238,11 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 {
                                     // In the case of keyword only arguments we can sometimes
                                     // return a more general lambda.
-                                    c.params = CallableParams::new_simple(
-                                        expected_params
-                                            .iter()
-                                            .map(|p| {
-                                                if let ParamType::KeywordOnly(t) = &p.type_ {
-                                                    let search =
-                                                        p.name.as_ref().unwrap().as_str(i_s.db);
-                                                    for lambda_p in params.clone() {
-                                                        if lambda_p.kind()
-                                                            == ParamKind::PositionalOrKeyword
-                                                            && lambda_p.name_definition().as_code()
-                                                                == search
-                                                        {
-                                                            return CallableParam {
-                                                                type_:
-                                                                    ParamType::PositionalOrKeyword(
-                                                                        t.clone(),
-                                                                    ),
-                                                                name: p.name.clone(),
-                                                                has_default: p.has_default,
-                                                            };
-                                                        }
-                                                    }
-                                                }
-                                                p.clone()
-                                            })
-                                            .collect(),
-                                    );
-                                    for p in params {
-                                        if p.kind() == ParamKind::PositionalOrKeyword {}
-                                    }
+                                    move_lambda_context_keyword_to_positional_or_keyword(
+                                        i_s.db,
+                                        expected_params,
+                                        params,
+                                    )
                                 }
                             } else {
                                 self.add_issue(lambda.index(), IssueKind::CannotInferLambdaParams);
@@ -3839,4 +3813,31 @@ impl StarImportResult {
             StarImportResult::AnyDueToError => LookupResult::UnknownName(inf),
         }
     }
+}
+
+fn move_lambda_context_keyword_to_positional_or_keyword(
+    db: &Database,
+    context_params: &mut Rc<[CallableParam]>,
+    params: ParamIterator,
+) {
+    *context_params = context_params
+        .iter()
+        .map(|p| {
+            if let ParamType::KeywordOnly(t) = &p.type_ {
+                let search = p.name.as_ref().unwrap().as_str(db);
+                for lambda_p in params.clone() {
+                    if lambda_p.kind() == ParamKind::PositionalOrKeyword
+                        && lambda_p.name_definition().as_code() == search
+                    {
+                        return CallableParam {
+                            type_: ParamType::PositionalOrKeyword(t.clone()),
+                            name: p.name.clone(),
+                            has_default: p.has_default,
+                        };
+                    }
+                }
+            }
+            p.clone()
+        })
+        .collect();
 }

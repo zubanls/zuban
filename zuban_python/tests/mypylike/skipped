@@ -223,12 +223,6 @@ testUninferableLambda
 testUninferableLambdaWithTypeError
 # lambda context recursion
 testRejectCovariantArgumentInLambda
-# "Duplicate argument "x" in function definition"
-testFastParserDuplicateNames
-# Lambda inferred like (lambda x: x)(1)
-testInferLambdaTypeUsingContext
-# Generator in lambda
-testNoCrashOnLambdaGenerator
 
 # Nested type vars
 testFunctionInGenericInnerClassTypeVariable-skip
@@ -1285,6 +1279,13 @@ testTypingSelfClassMethod
 
 # "Incompatible types in string interpolation (expression has type "str", placeholder has type "int")"
 testErrorCodeFormatCall
+
+# "Duplicate argument "x" in function definition"
+testFastParserDuplicateNames
+# Lambda inferred like (lambda x: x)(1)
+testInferLambdaTypeUsingContext
+# Generator in lambda
+testNoCrashOnLambdaGenerator
 
 # tuple type is not initializable (though it probably should)
 testTypeUsingTypeCErrorUnsupportedType
