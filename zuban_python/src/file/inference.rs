@@ -3197,58 +3197,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 }
                             }
                             FunctionOrLambda::Lambda(lambda) => {
-                                for (i, p) in lambda.params().enumerate() {
-                                    if p.name_definition().index() == node_index {
-                                        if let Some(current_callable) =
-                                            self.i_s.current_lambda_callable()
-                                        {
-                                            return match &current_callable.params {
-                                                CallableParams::Simple(c_params) => {
-                                                    for p2 in c_params.iter() {
-                                                        if let Some(n) = &p2.name {
-                                                            if n.as_str(self.i_s.db)
-                                                                == p.name_definition().as_code()
-                                                            {
-                                                                if let Some(t) =
-                                                                    p2.type_.maybe_type()
-                                                                {
-                                                                    return Inferred::from_type(
-                                                                        t.clone(),
-                                                                    );
-                                                                }
-                                                            }
-                                                        }
-                                                    }
-                                                    if let Some(p2) = c_params.get(i) {
-                                                        if let ParamType::PositionalOnly(t) =
-                                                            &p2.type_
-                                                        {
-                                                            if p.kind()
-                                                                == ParamKind::PositionalOrKeyword
-                                                            {
-                                                                Inferred::from_type(t.clone())
-                                                            } else {
-                                                                todo!()
-                                                            }
-                                                        } else {
-                                                            Inferred::new_any(AnyCause::FromError)
-                                                        }
-                                                    } else {
-                                                        // Error is raise later
-                                                        Inferred::new_any(AnyCause::FromError)
-                                                    }
-                                                }
-                                                CallableParams::Any(cause) => {
-                                                    Inferred::new_any(*cause)
-                                                }
-                                                CallableParams::Never(_) => todo!(),
-                                            };
-                                        } else {
-                                            return Inferred::new_any(AnyCause::Todo);
-                                        }
-                                    }
-                                }
-                                unreachable!()
+                                lookup_lambda_param(self.i_s, lambda, node_index)
                             }
                         }
                     }
@@ -3840,4 +3789,49 @@ fn move_lambda_context_keyword_to_positional_or_keyword(
             p.clone()
         })
         .collect();
+}
+
+fn lookup_lambda_param(
+    i_s: &InferenceState,
+    lambda: Lambda,
+    name_node_index: NodeIndex,
+) -> Inferred {
+    for (i, p) in lambda.params().enumerate() {
+        if p.name_definition().index() == name_node_index {
+            if let Some(current_callable) = i_s.current_lambda_callable() {
+                return match &current_callable.params {
+                    CallableParams::Simple(c_params) => {
+                        for p2 in c_params.iter() {
+                            if let Some(n) = &p2.name {
+                                if n.as_str(i_s.db) == p.name_definition().as_code() {
+                                    if let Some(t) = p2.type_.maybe_type() {
+                                        return Inferred::from_type(t.clone());
+                                    }
+                                }
+                            }
+                        }
+                        if let Some(p2) = c_params.get(i) {
+                            if let ParamType::PositionalOnly(t) = &p2.type_ {
+                                if p.kind() == ParamKind::PositionalOrKeyword {
+                                    Inferred::from_type(t.clone())
+                                } else {
+                                    todo!()
+                                }
+                            } else {
+                                Inferred::new_any(AnyCause::FromError)
+                            }
+                        } else {
+                            // Error is raise later
+                            Inferred::new_any(AnyCause::FromError)
+                        }
+                    }
+                    CallableParams::Any(cause) => Inferred::new_any(*cause),
+                    CallableParams::Never(_) => todo!(),
+                };
+            } else {
+                return Inferred::new_any(AnyCause::Todo);
+            }
+        }
+    }
+    unreachable!()
 }
