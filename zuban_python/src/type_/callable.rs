@@ -888,8 +888,7 @@ pub fn format_callable_params<'db: 'x, 'x, P: Param<'x>>(
                 annotation_str.unwrap_or_else(|| Box::from("Any")).into()
             } else if let Some(name) = p.name(db) {
                 format!(
-                    "{stars}{}: {}",
-                    name,
+                    "{stars}{name}: {}",
                     annotation_str.as_deref().unwrap_or("Any")
                 )
             } else {

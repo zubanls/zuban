@@ -221,7 +221,6 @@ testInferenceAgainstGenericLambdas
 testGenericLambdaGenericMethodNoCrash
 testUninferableLambda
 testUninferableLambdaWithTypeError
-testExpandNonBareParamSpecAgainstCallable
 # lambda context recursion
 testRejectCovariantArgumentInLambda
 # i_s missing current class
