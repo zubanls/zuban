@@ -217,7 +217,6 @@ testTypeIsOverload
 testTypeVarTupleTypeApplicationOverload
 testIsinstanceInInferredLambda
 # lambda --new-type-inference
-testPartialTypeContextWithTwoLambdas
 testInferenceAgainstGenericLambdas
 testGenericLambdaGenericMethodNoCrash
 testUninferableLambda

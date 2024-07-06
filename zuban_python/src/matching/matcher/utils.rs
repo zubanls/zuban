@@ -536,7 +536,14 @@ pub(crate) fn match_arguments_against_params<
     let mut missing_unpacked_typed_dict_names: Option<Vec<_>> = None;
     let mut argument_indices_with_any = vec![];
     let mut matches = Match::new_true();
-    for (i, p) in args_with_params.by_ref().enumerate() {
+    // lambdas are analyzed at the end to improve type inference.
+    let mut delayed_lambdas = vec![];
+    let mut params_iterator = args_with_params.by_ref().enumerate();
+    while let Some(((i, p), from_lambda)) = params_iterator
+        .next()
+        .map(|x| (x, false))
+        .or_else(|| delayed_lambdas.pop().map(|x| (x, true)))
+    {
         if matches!(p.argument, ParamArgument::None) && !p.param.has_default() {
             matches = Match::new_false();
             if should_generate_errors {
@@ -549,6 +556,9 @@ pub(crate) fn match_arguments_against_params<
                     .map(|s| s.to_string())
                     .unwrap_or_else(|| format!("#{i}"))
             );
+            continue;
+        } else if p.argument.is_lambda_argument() && !from_lambda {
+            delayed_lambdas.push((i, p));
             continue;
         }
         let mut match_arg = |arg: &Arg<'db, '_>, expected: Cow<Type>| {

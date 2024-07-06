@@ -805,6 +805,11 @@ impl<'db> Expression<'db> {
         }
     }
 
+    pub fn is_lambda(&self) -> bool {
+        let node = self.node.nth_child(0);
+        node.is_type(Nonterminal(lambda))
+    }
+
     pub fn search_names(&self) -> NameIterator<'db> {
         NameIterator(self.node.search(&[Terminal(TerminalType::Name)], false))
     }

@@ -1266,3 +1266,16 @@ pub enum WrappedStarStar<'a> {
     ParamSpecKwargs(&'a ParamSpecUsage),
     UnpackTypedDict(Rc<TypedDict>),
 }
+
+impl ParamArgument<'_, '_> {
+    pub fn is_lambda_argument(&self) -> bool {
+        match self {
+            Self::Argument(arg) => match &arg.kind {
+                ArgKind::Positional(pos_arg) => pos_arg.named_expr.expression().is_lambda(),
+                ArgKind::Keyword(kw) => kw.expression.is_lambda(),
+                _ => false,
+            },
+            _ => false,
+        }
+    }
+}

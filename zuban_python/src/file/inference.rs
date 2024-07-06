@@ -2236,6 +2236,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         }
                     }
                     c.return_type = result.as_type(&i_s);
+                    debug!(
+                        "Inferred lambda from context as '{}'",
+                        c.format(&FormatData::new_short(i_s.db))
+                    );
                     Some(Inferred::from_type(Type::Callable(Rc::new(c))))
                 } else {
                     None
@@ -3182,8 +3186,23 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                             self.i_s.current_lambda_callable()
                                         {
                                             return match &current_callable.params {
-                                                CallableParams::Simple(params) => {
-                                                    if let Some(p2) = params.get(i) {
+                                                CallableParams::Simple(c_params) => {
+                                                    for p2 in c_params.iter() {
+                                                        if let Some(n) = &p2.name {
+                                                            if n.as_str(self.i_s.db)
+                                                                == p.name_definition().as_code()
+                                                            {
+                                                                if let Some(t) =
+                                                                    p2.type_.maybe_type()
+                                                                {
+                                                                    return Inferred::from_type(
+                                                                        t.clone(),
+                                                                    );
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                    if let Some(p2) = c_params.get(i) {
                                                         if let ParamType::PositionalOnly(t) =
                                                             &p2.type_
                                                         {
@@ -3195,10 +3214,11 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                                                 todo!()
                                                             }
                                                         } else {
-                                                            todo!()
+                                                            Inferred::new_any(AnyCause::FromError)
                                                         }
                                                     } else {
-                                                        todo!()
+                                                        // Error is raise later
+                                                        Inferred::new_any(AnyCause::FromError)
                                                     }
                                                 }
                                                 CallableParams::Any(cause) => {
