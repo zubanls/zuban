@@ -53,13 +53,6 @@ testTypeVarTupleOverloadMatch
 # overload x should be preferred over an *x alternative
 testTupleOverloadZipAny
 
-# Union/addition of empty lists dicts sets with used ones
-testOrOperationWithGenericOperands
-testOrOperationInferredFromContext
-testInWithInvalidArgs
-# ternary context inference
-testIsinstanceInInferredLambda
-
 # recursive limits missing for joins / unions
 testRecursiveAliasGenericInferenceNested
 testRecursiveAliasTopUnion
@@ -146,6 +139,10 @@ testWideOuterContextEmptyError
 testWideOuterContextNoArgsError
 testInferenceWorksWithEmptyCollectionsNested
 testCallerVarargsAndComplexTypeInference
+# Union/addition of empty lists dicts sets with used ones
+testOrOperationWithGenericOperands
+testOrOperationInferredFromContext
+testInWithInvalidArgs
 
 # WTF why is this base type not object/function?
 testListLiteralWithNameOnlyArgsDoesNotEraseNames
@@ -220,6 +217,7 @@ testParamSpecInferredFromLambda
 testTypeGuardOverload
 testTypeIsOverload
 testTypeVarTupleTypeApplicationOverload
+testIsinstanceInInferredLambda
 # lambda --new-type-inference
 testPartialTypeContextWithTwoLambdas
 testInferenceAgainstGenericLambdas
