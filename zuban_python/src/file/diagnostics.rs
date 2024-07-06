@@ -1200,7 +1200,7 @@ impl<'db> Inference<'db, '_, '_> {
         }
 
         let args = NoArgs::new(NodeRef::new(self.file, f.index()));
-        let function_i_s = &mut i_s.with_diagnostic_func_and_args(&function, &args);
+        let function_i_s = &mut i_s.with_diagnostic_func_and_args(&function);
         let inference = self.file.inference(function_i_s);
         if function.is_typed() || flags.check_untyped_defs {
             inference.calc_block_diagnostics(block, None, Some(&function))

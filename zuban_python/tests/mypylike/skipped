@@ -181,6 +181,9 @@ testTypeVarTuplePep646TypeVarStarArgs
 testClassChangedIntoFunction2
 testChangeTypeVarToFunction
 testAsyncForComprehensionErrors
+# i_s missing current class
+testLambdaDeferredSpecialCase
+testLambdaDeferredCrash
 
 # param spec complex nested transitive tests
 testParamSpecNestedApplyPosVsNamed
@@ -221,9 +224,6 @@ testUninferableLambda
 testUninferableLambdaWithTypeError
 # lambda context recursion
 testRejectCovariantArgumentInLambda
-# i_s missing current class
-testLambdaDeferredSpecialCase
-testLambdaDeferredCrash
 # "Duplicate argument "x" in function definition"
 testFastParserDuplicateNames
 # Lambda inferred like (lambda x: x)(1)

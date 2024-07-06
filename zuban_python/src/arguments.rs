@@ -714,7 +714,7 @@ impl<'db, 'a> ArgIteratorBase<'db, 'a> {
     }
 }
 
-impl<'db, 'a> Iterator for ArgIteratorBase<'db, 'a> {
+impl<'db: 'a, 'a> Iterator for ArgIteratorBase<'db, 'a> {
     type Item = BaseArgReturn<'db, 'a>;
 
     fn next(&mut self) -> Option<Self::Item> {

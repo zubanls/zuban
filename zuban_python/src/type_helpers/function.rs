@@ -221,7 +221,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         if self.is_generator() {
             todo!("Maybe not check here, because this could be precalculated and cached");
         }
-        let inner_i_s = i_s.with_func_and_args(self, args);
+        let inner_i_s = i_s.with_func_and_args(self);
         for return_or_yield in self.iter_return_or_yield() {
             match return_or_yield {
                 ReturnOrYield::Return(ret) =>

@@ -3141,8 +3141,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
 
                                 if let Some(annotation) = name_def.maybe_param_annotation() {
                                     self.use_cached_param_annotation(annotation)
-                                } else if let Some((function, args)) = self.i_s.current_execution()
-                                {
+                                } else if let Some(function) = self.i_s.current_function() {
                                     if specific == Specific::MaybeSelfParam {
                                         match func.first_param_kind(self.i_s) {
                                             FirstParamKind::Self_ => {

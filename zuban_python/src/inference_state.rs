@@ -1,7 +1,6 @@
 use std::cell::Cell;
 
 use crate::{
-    arguments::Args,
     database::{Database, ParentScope},
     file::TypeVarCallbackReturn,
     type_::{CallableContent, TypeVarLike},
@@ -10,12 +9,12 @@ use crate::{
 };
 
 #[derive(Debug, Copy, Clone)]
-enum Context<'db, 'a> {
+enum Context<'a> {
     None,
     DiagnosticClass(&'a Class<'a>),
     Class(&'a Class<'a>),
-    DiagnosticExecution(&'a Function<'a, 'a>, &'a dyn Args<'db>),
-    Execution(&'a Function<'a, 'a>, &'a dyn Args<'db>),
+    DiagnosticExecution(&'a Function<'a, 'a>),
+    Execution(&'a Function<'a, 'a>),
     LambdaCallable(&'a CallableContent),
 }
 
@@ -29,7 +28,7 @@ enum Mode<'a> {
 #[derive(Clone, Copy, Debug)]
 pub struct InferenceState<'db, 'a> {
     pub db: &'db Database,
-    context: Context<'db, 'a>,
+    context: Context<'a>,
     mode: Mode<'a>,
 }
 
@@ -42,26 +41,18 @@ impl<'db, 'a> InferenceState<'db, 'a> {
         }
     }
 
-    pub(crate) fn with_func_and_args(
-        &self,
-        func: &'a Function<'a, 'a>,
-        args: &'a dyn Args<'db>,
-    ) -> Self {
+    pub(crate) fn with_func_and_args(&self, func: &'a Function<'a, 'a>) -> Self {
         Self {
             db: self.db,
-            context: Context::Execution(func, args),
+            context: Context::Execution(func),
             mode: self.mode,
         }
     }
 
-    pub(crate) fn with_diagnostic_func_and_args(
-        &self,
-        func: &'a Function<'a, 'a>,
-        args: &'a dyn Args<'db>,
-    ) -> Self {
+    pub(crate) fn with_diagnostic_func_and_args(&self, func: &'a Function<'a, 'a>) -> Self {
         Self {
             db: self.db,
-            context: Context::DiagnosticExecution(func, args),
+            context: Context::DiagnosticExecution(func),
             mode: self.mode,
         }
     }
@@ -130,14 +121,7 @@ impl<'db, 'a> InferenceState<'db, 'a> {
 
     pub fn current_function(&self) -> Option<&'a Function<'a, 'a>> {
         match &self.context {
-            Context::DiagnosticExecution(func, _) | Context::Execution(func, _) => Some(func),
-            _ => None,
-        }
-    }
-
-    pub(crate) fn current_execution(&self) -> Option<(&'a Function<'a, 'a>, &'a dyn Args<'db>)> {
-        match &self.context {
-            Context::DiagnosticExecution(f, a) | Context::Execution(f, a) => Some((f, *a)),
+            Context::DiagnosticExecution(func) | Context::Execution(func) => Some(func),
             _ => None,
         }
     }
@@ -145,9 +129,7 @@ impl<'db, 'a> InferenceState<'db, 'a> {
     pub fn current_class(&self) -> Option<&'a Class<'a>> {
         match &self.context {
             Context::DiagnosticClass(c) | Context::Class(c) => Some(c),
-            Context::DiagnosticExecution(func, _) | Context::Execution(func, _) => {
-                func.class.as_ref()
-            }
+            Context::DiagnosticExecution(func) | Context::Execution(func) => func.class.as_ref(),
             _ => None,
         }
     }
