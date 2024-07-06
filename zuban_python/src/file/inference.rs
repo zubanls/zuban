@@ -2211,7 +2211,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     check_defaults();
                     let result = inference.infer_expression_without_cache(
                         expr,
-                        &mut ResultContext::Known(&c.return_type),
+                        // This cannot be ResultContext::Known, because that would imply that a
+                        // value is expected and there would be an error:
+                        //     `does not return a value (it only ever returns None`
+                        &mut ResultContext::KnownLambdaReturn(&c.return_type),
                     );
                     let mut c = (**c).clone();
                     c.guard = None;

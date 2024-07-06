@@ -10,6 +10,7 @@ use crate::{
 
 pub enum ResultContext<'a, 'b> {
     Known(&'a Type),
+    KnownLambdaReturn(&'a Type),
     WithMatcher {
         matcher: &'a mut Matcher<'b>,
         type_: &'a Type,
@@ -27,7 +28,7 @@ impl<'a> ResultContext<'a, '_> {
         callable: impl FnOnce(&Type) -> T,
     ) -> Option<T> {
         match self {
-            Self::Known(type_) => Some(callable(type_)),
+            Self::Known(type_) | Self::KnownLambdaReturn(type_) => Some(callable(type_)),
             Self::WithMatcher { matcher, type_ } => {
                 let t = matcher.replace_type_var_likes_for_nested_context(i_s.db, type_);
                 Some(callable(&t))
@@ -44,7 +45,9 @@ impl<'a> ResultContext<'a, '_> {
         callable: impl FnOnce(&Type, &mut Matcher) -> T,
     ) -> Option<T> {
         match self {
-            Self::Known(type_) => Some(callable(type_, &mut Matcher::default())),
+            Self::Known(type_) | Self::KnownLambdaReturn(type_) => {
+                Some(callable(type_, &mut Matcher::default()))
+            }
             Self::WithMatcher { matcher, type_ } => Some(callable(type_, matcher)),
             Self::Unknown
             | Self::AssignmentNewDefinition
@@ -107,7 +110,9 @@ impl<'a> ResultContext<'a, '_> {
 
     pub fn expects_union(&self, i_s: &InferenceState) -> bool {
         match self {
-            Self::Known(type_) | Self::WithMatcher { type_, .. } => {
+            Self::Known(type_)
+            | Self::KnownLambdaReturn(type_)
+            | Self::WithMatcher { type_, .. } => {
                 matches!(type_, Type::Union(_))
             }
             Self::Unknown
@@ -118,8 +123,11 @@ impl<'a> ResultContext<'a, '_> {
     }
 
     pub fn expect_not_none(&mut self, i_s: &InferenceState) -> bool {
-        self.with_type_if_exists(|type_, matcher| !matches!(type_, Type::None))
-            .unwrap_or_else(|| !matches!(self, Self::ExpectUnused | Self::RevealType))
+        match self {
+            Self::ExpectUnused | Self::RevealType | Self::KnownLambdaReturn(_) => false,
+            Self::Known(type_) | Self::WithMatcher { type_, .. } => !matches!(type_, Type::None),
+            Self::AssignmentNewDefinition | Self::Unknown => true,
+        }
     }
 
     pub fn with_tuple_context_iterator<T>(
@@ -160,6 +168,7 @@ impl fmt::Debug for ResultContext<'_, '_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Self::Known(t) => write!(f, "Known({t:?})"),
+            Self::KnownLambdaReturn(t) => write!(f, "KnownLambdaReturn({t:?})"),
             Self::WithMatcher { type_, .. } => write!(f, "WithMatcher(_, {type_:?})"),
             Self::Unknown => write!(f, "Unknown"),
             Self::ExpectUnused => write!(f, "ExpectUnused"),
