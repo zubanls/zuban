@@ -214,7 +214,6 @@ testTypeVarDefaultsTypeAliasRecursive1
 testTypeVarDefaultsTypeAliasRecursive2
 
 # lambda infer callable after type params after it.
-testParamSpecInferredFromLambda
 testTypeVarTupleTypeApplicationOverload
 testIsinstanceInInferredLambda
 # lambda --new-type-inference

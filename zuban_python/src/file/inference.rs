@@ -2219,25 +2219,64 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     let mut c = (**c).clone();
                     c.guard = None;
 
-                    let params = params.map(to_callable_param);
+                    let c_params = params.clone().map(to_callable_param);
                     match &c.params {
                         CallableParams::Simple(expected_params) => {
-                            let params: Vec<_> = params.collect();
-                            if !matches_simple_params(
+                            let c_params: Vec<_> = c_params.collect();
+                            if matches_simple_params(
                                 self.i_s,
                                 &mut Matcher::default(),
                                 expected_params.iter(),
-                                params.iter().peekable(),
+                                c_params.iter().peekable(),
                                 Variance::Invariant,
                             )
                             .bool()
                             {
+                                if expected_params
+                                    .iter()
+                                    .any(|p| matches!(p.type_, ParamType::KeywordOnly(_)))
+                                {
+                                    // In the case of keyword only arguments we can sometimes
+                                    // return a more general lambda.
+                                    c.params = CallableParams::new_simple(
+                                        expected_params
+                                            .iter()
+                                            .map(|p| {
+                                                if let ParamType::KeywordOnly(t) = &p.type_ {
+                                                    let search =
+                                                        p.name.as_ref().unwrap().as_str(i_s.db);
+                                                    for lambda_p in params.clone() {
+                                                        if lambda_p.kind()
+                                                            == ParamKind::PositionalOrKeyword
+                                                            && lambda_p.name_definition().as_code()
+                                                                == search
+                                                        {
+                                                            return CallableParam {
+                                                                type_:
+                                                                    ParamType::PositionalOrKeyword(
+                                                                        t.clone(),
+                                                                    ),
+                                                                name: p.name.clone(),
+                                                                has_default: p.has_default,
+                                                            };
+                                                        }
+                                                    }
+                                                }
+                                                p.clone()
+                                            })
+                                            .collect(),
+                                    );
+                                    for p in params {
+                                        if p.kind() == ParamKind::PositionalOrKeyword {}
+                                    }
+                                }
+                            } else {
                                 self.add_issue(lambda.index(), IssueKind::CannotInferLambdaParams);
-                                c.params = CallableParams::new_simple(params.into());
+                                c.params = CallableParams::new_simple(c_params.into());
                             }
                         }
                         _ => {
-                            c.params = CallableParams::new_simple(params.collect());
+                            c.params = CallableParams::new_simple(c_params.collect());
                         }
                     }
                     c.return_type = result.as_type(&i_s);

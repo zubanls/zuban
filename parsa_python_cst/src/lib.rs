@@ -2014,6 +2014,7 @@ impl<'db> FunctionDefParameters<'db> {
     }
 }
 
+#[derive(Clone)]
 pub enum ParamIterator<'db> {
     Iterator(SiblingIterator<'db>, bool),
     Finished,
