@@ -1,8 +1,8 @@
 use std::{mem, rc::Rc};
 
 use parsa_python_cst::{
-    ArgsIterator, Argument as CSTArgument, ArgumentsDetails, Comprehension, Expression, NodeIndex,
-    Primary, PrimaryContent,
+    ArgsIterator, Argument as CSTArgument, ArgumentsDetails, Comprehension, Expression,
+    NamedExpression, NodeIndex, Primary, PrimaryContent,
 };
 
 use crate::{
@@ -280,6 +280,7 @@ pub struct PositionalArg<'db, 'a> {
     i_s: InferenceState<'db, 'a>,
     pub position: usize, // The position as a 1-based index
     pub node_ref: NodeRef<'a>,
+    pub named_expr: NamedExpression<'a>,
 }
 
 impl<'db> PositionalArg<'db, '_> {
@@ -291,10 +292,7 @@ impl<'db> PositionalArg<'db, '_> {
         self.node_ref
             .file
             .inference(&self.i_s.use_mode_of(func_i_s))
-            .infer_named_expression_with_context(
-                self.node_ref.as_named_expression(),
-                result_context,
-            )
+            .infer_named_expression_with_context(self.named_expr, result_context)
     }
 }
 
@@ -370,12 +368,16 @@ impl<'db, 'a> ArgKind<'db, 'a> {
         i_s: InferenceState<'db, 'a>,
         position: usize,
         file: &'a PythonFile,
-        node_index: NodeIndex,
+        named_expr: NamedExpression<'a>,
     ) -> BaseArgReturn<'db, 'a> {
         BaseArgReturn::Arg(ArgKind::Positional(PositionalArg {
             i_s,
             position,
-            node_ref: NodeRef { file, node_index },
+            named_expr,
+            node_ref: NodeRef {
+                file,
+                node_index: named_expr.index(),
+            },
         }))
     }
 
@@ -743,7 +745,7 @@ impl<'db, 'a> Iterator for ArgIteratorBase<'db, 'a> {
                                 *i_s,
                                 i + 1,
                                 file,
-                                named_expr.index(),
+                                named_expr,
                             ))
                         }
                         CSTArgument::Keyword(kwarg) => {
@@ -886,12 +888,7 @@ impl<'db, 'a> Iterator for ArgIteratorBase<'db, 'a> {
                     SliceTypeContent::Simple(s) => {
                         let file = s.file;
                         let named_expr = s.named_expr;
-                        Some(ArgKind::new_positional_return(
-                            i_s,
-                            1,
-                            file,
-                            named_expr.index(),
-                        ))
+                        Some(ArgKind::new_positional_return(i_s, 1, file, named_expr))
                     }
                     SliceTypeContent::Slices(slices) => {
                         Some(BaseArgReturn::Arg(ArgKind::SlicesTuple { i_s, slices }))
