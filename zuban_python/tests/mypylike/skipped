@@ -1,4 +1,5 @@
 # Next up
+testTypeVarTupleTypeApplicationOverload
 
 # callable matching regression
 testNoCrashOnNestedGenericCallable
@@ -213,9 +214,6 @@ testTypeVarDefaultsClassRecursiveMultipleFiles
 testTypeVarDefaultsTypeAliasRecursive1
 testTypeVarDefaultsTypeAliasRecursive2
 
-# lambda infer callable after type params after it.
-testTypeVarTupleTypeApplicationOverload
-testIsinstanceInInferredLambda
 # lambda --new-type-inference
 testInferenceAgainstGenericLambdas
 testGenericLambdaGenericMethodNoCrash

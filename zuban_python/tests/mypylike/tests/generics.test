@@ -1119,3 +1119,17 @@ class Foo(Generic[T]):
 
 reveal_type(Foo[Callable[[int], str]]().x(1))  # N: Revealed type is "str"
 reveal_type(Foo[Callable[[T], T]]().x(1))  # N: Revealed type is "int"
+
+[case infer_lambda_invariant_generics]
+# Like testIsinstanceInInferredLambda but with invariant generics (lists)
+from typing import TypeVar, Callable, Optional, List
+T = TypeVar('T')
+S = TypeVar('S')
+class A: pass
+class B(A): pass
+class C(A): pass
+def f(func: Callable[[T], S], *z: T, r: Optional[List[S]] = None) -> S: pass
+f(
+    lambda x:  # E: Argument 1 to "f" has incompatible type "Callable[[A], A]"; expected "Callable[[A], B]"
+        B() if isinstance(x, B) else x,
+    A(), r=[B()])
