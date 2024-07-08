@@ -3810,23 +3810,18 @@ fn lookup_lambda_param(
                                 }
                             }
                         }
-                        if let Some(p2) = c_params.get(i) {
-                            if let ParamType::PositionalOnly(t) = &p2.type_ {
-                                if p.kind() == ParamKind::PositionalOrKeyword {
-                                    Inferred::from_type(t.clone())
-                                } else {
-                                    todo!()
+                        if p.kind() == ParamKind::PositionalOrKeyword {
+                            if let Some(p2) = c_params.get(i) {
+                                if let ParamType::PositionalOnly(t) = &p2.type_ {
+                                    return Inferred::from_type(t.clone());
                                 }
-                            } else {
-                                Inferred::new_any(AnyCause::FromError)
                             }
-                        } else {
-                            // Error is raise later
-                            Inferred::new_any(AnyCause::FromError)
                         }
+                        // TODO here we should do proper matching for lambda params.
+                        Inferred::new_any(AnyCause::FromError)
                     }
                     CallableParams::Any(cause) => Inferred::new_any(*cause),
-                    CallableParams::Never(_) => todo!(),
+                    CallableParams::Never(_) => Inferred::new_any(AnyCause::Todo),
                 };
             } else {
                 return Inferred::new_any(AnyCause::Todo);
