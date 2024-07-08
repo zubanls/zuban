@@ -1676,6 +1676,12 @@ impl<'db> SimpleStmt<'db> {
             .then(|| StarExpressions::new(child).maybe_simple_expression())
             .flatten()
     }
+
+    pub fn is_string(&self) -> bool {
+        self.maybe_simple_expression()
+            .and_then(|expr| expr.maybe_unpacked_atom())
+            .is_some_and(|atom_content| matches!(atom_content, AtomContent::Strings(_)))
+    }
 }
 
 pub enum SimpleStmtContent<'db> {
@@ -1866,6 +1872,21 @@ impl<'db> ClassDef<'db> {
         } else {
             debug_assert_eq!(parent.type_(), Nonterminal(stmt));
             None
+        }
+    }
+
+    pub fn has_docstr(&self) -> bool {
+        match self.block().unpack() {
+            BlockContent::OneLine(simple) => simple
+                .maybe_single_simple_stmt()
+                .is_some_and(|s| s.is_string()),
+            BlockContent::Indented(mut stmts) => {
+                let StmtOrError::Stmt(s) = stmts.next().unwrap() else {
+                    return false;
+                };
+                s.maybe_single_simple_stmt()
+                    .is_some_and(|simple| simple.is_string())
+            }
         }
     }
 }

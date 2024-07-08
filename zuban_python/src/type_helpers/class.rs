@@ -1501,6 +1501,18 @@ impl<'db: 'a, 'a> Class<'a> {
         name: &str,
         ignore_self: bool,
     ) -> (LookupResult, TypeOrClass<'a>, MroIndex) {
+        if name == "__doc__" {
+            let t = if self.node().has_docstr() {
+                i_s.db.python_state.str_type()
+            } else {
+                Type::None
+            };
+            return (
+                LookupResult::UnknownName(Inferred::from_type(t)),
+                TypeOrClass::Class(*self),
+                0.into(),
+            );
+        }
         for (mro_index, c) in self
             .mro_maybe_without_object(i_s.db, self.incomplete_mro(i_s.db))
             .skip(ignore_self as usize)

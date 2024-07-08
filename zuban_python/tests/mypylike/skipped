@@ -230,8 +230,6 @@ testReplaceIsDataclass
 
 # namedtuple unsure if we refactor it
 testNamedTupleWithBoolNarrowsToBool
-# __doc__ definitions
-testNewNamedTupleDocString
 
 # enum member gathering
 testFinalWithMethodAssignment
