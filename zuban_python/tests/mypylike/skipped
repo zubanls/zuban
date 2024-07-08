@@ -211,25 +211,14 @@ testOverride__new__AndCallObject
 testNewAndInitNoReturn
 testOverloadedNewAndInitNoReturn
 
-# dataclasses __slots__
-testDataclassWithSlotsArg
 # dataclass classmethod
 testDataclassesClassmethods
 testClassmethodShadowingFieldDoesNotCrash
 testDeferredDataclassInitSignature
 # InitVar set default
 testDataclassInitVarCannotBeSet
-# dataclass transform
-updateDataclassTransformParameterViaDecorator
-updateDataclassTransformParameterViaParentClass
-updateBaseClassToUseDataclassTransform
-frozenInheritanceViaDefault
-testDataclassReplaceOptional
 # dataclass weird replace case
 testReplaceIsDataclass
-
-# enum member gathering
-testFinalWithMethodAssignment
 
 # TypedDict Recursive definitions
 testRecursiveNamedTupleTypedDict
@@ -998,6 +987,18 @@ testTypedDictWith__ror__method
 testTypedDictWith__ior__method
 # Functional TypedDict in class def
 testCanCreateClassWithFunctionBasedTypedDictBase
+
+# enum member gathering
+testFinalWithMethodAssignment
+
+# dataclasses __slots__
+testDataclassWithSlotsArg
+# dataclass transform
+updateDataclassTransformParameterViaDecorator
+updateDataclassTransformParameterViaParentClass
+updateBaseClassToUseDataclassTransform
+frozenInheritanceViaDefault
+testDataclassReplaceOptional
 
 # multiline annotations
 testMultilineQuotedAnnotation
