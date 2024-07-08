@@ -669,20 +669,21 @@ fn split_truthy_and_falsey(i_s: &InferenceState, t: &Type) -> Option<(Type, Type
             Type::Class(c) => maybe_split_bool_from_literal(i_s.db, t, &LiteralKind::Bool(true))
                 .or_else(|| {
                     let class = c.class(i_s.db);
-                    if let Some(nt) = class.use_cached_class_infos(i_s.db).maybe_named_tuple() {
-                        if nt.params().is_empty() {
-                            todo!()
-                        } else {
-                            return Some((t.clone(), Type::Never(NeverCause::Other)));
-                        }
-                    }
-                    let Some(CallableLike::Callable(callable)) = class
-                        .lookup(i_s, "__bool__", ClassLookupOptions::new(&|_| ()))
+                    let class_lookup =
+                        class.lookup(i_s, "__bool__", ClassLookupOptions::new(&|_| ()));
+                    let Some(CallableLike::Callable(callable)) = class_lookup
                         .lookup
-                        .into_inferred()
-                        .as_cow_type(i_s)
-                        .maybe_callable(i_s)
+                        .into_maybe_inferred()
+                        .filter(|_| !class_lookup.class.is_object(i_s.db))
+                        .and_then(|inf| inf.as_cow_type(i_s).maybe_callable(i_s))
                     else {
+                        if let Some(nt) = class.use_cached_class_infos(i_s.db).maybe_named_tuple() {
+                            if nt.params().is_empty() {
+                                todo!()
+                            } else {
+                                return Some((t.clone(), Type::Never(NeverCause::Other)));
+                            }
+                        }
                         return None;
                     };
                     match &callable.return_type {

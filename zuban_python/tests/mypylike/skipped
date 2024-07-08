@@ -228,9 +228,6 @@ testDataclassReplaceOptional
 # dataclass weird replace case
 testReplaceIsDataclass
 
-# namedtuple unsure if we refactor it
-testNamedTupleWithBoolNarrowsToBool
-
 # enum member gathering
 testFinalWithMethodAssignment
 
