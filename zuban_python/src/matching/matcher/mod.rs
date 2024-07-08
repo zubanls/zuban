@@ -485,20 +485,20 @@ impl<'a> Matcher<'a> {
                 }
             }
             // If we're in a class context, we must also be in a method.
-            if let Some(func_class) = self.func_or_callable.as_ref().and_then(|f| f.class()) {
-                if tvt.in_definition == func_class.node_ref.as_link() {
-                    let ts1 = func_class
-                        .generics()
-                        .nth_usage(i_s.db, &TypeVarLikeUsage::TypeVarTuple(tvt.clone()))
-                        .expect_type_arguments();
-                    return match_tuple_type_arguments(
-                        i_s,
-                        &mut Matcher::default(),
-                        &ts1.args,
-                        &args2,
-                        variance,
-                    );
-                }
+            if let Some(func_class) =
+                self.maybe_func_class_for_usage(&TypeVarLikeUsage::TypeVarTuple(tvt.clone()))
+            {
+                let ts1 = func_class
+                    .generics()
+                    .nth_usage(i_s.db, &TypeVarLikeUsage::TypeVarTuple(tvt.clone()))
+                    .expect_type_arguments();
+                return match_tuple_type_arguments(
+                    i_s,
+                    &mut Matcher::default(),
+                    &ts1.args,
+                    &args2,
+                    variance,
+                );
             }
         }
         matches!(
@@ -620,7 +620,7 @@ impl<'a> Matcher<'a> {
         on_type_error: Option<OnTypeError>,
         of_function: &dyn Fn(&str) -> Option<Box<str>>,
     ) -> SignatureMatch {
-        let func_class = self.func_or_callable.and_then(|f| f.class());
+        let func_class;
         let param_spec_usage;
         let params = if let Some(type_var_matcher) = self.type_var_matchers.first_mut() {
             if type_var_matcher.match_in_definition == usage.in_definition {
@@ -650,11 +650,17 @@ impl<'a> Matcher<'a> {
             } else {
                 todo!("why?")
             }
-        } else if let Some(class) = self.class.or(func_class.as_ref()) {
+        } else if let Some(class) = self.class {
             param_spec_usage = class.generics().nth_param_spec_usage(i_s.db, usage);
             &param_spec_usage.params
+        } else if let Some(fc) =
+            self.maybe_func_class_for_usage(&TypeVarLikeUsage::ParamSpec(usage.clone()))
+        {
+            func_class = fc;
+            param_spec_usage = func_class.generics().nth_param_spec_usage(i_s.db, usage);
+            &param_spec_usage.params
         } else {
-            match args.as_ref() {
+            return match args.as_ref() {
                 [arg @ Arg {
                     kind: ArgKind::ParamSpec { usage: u2, .. },
                     ..
@@ -686,7 +692,7 @@ impl<'a> Matcher<'a> {
                             of_function,
                         );
                     }
-                    return matches.into();
+                    matches.into()
                 }
                 _ => {
                     for arg in args.iter() {
@@ -705,9 +711,9 @@ impl<'a> Matcher<'a> {
                         let got = &format!("\"{}\"", got.format(&FormatData::new_short(i_s.db)));
                         arg.add_argument_issue(i_s, got, &expected, of_function);
                     }
-                    return SignatureMatch::False { similar: false };
+                    SignatureMatch::False { similar: false }
                 }
-            }
+            };
         };
         match params {
             CallableParams::Simple(params) => {
