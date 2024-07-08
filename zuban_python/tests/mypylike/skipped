@@ -231,43 +231,24 @@ testReplaceIsDataclass
 # enum member gathering
 testFinalWithMethodAssignment
 
-# Recursive definitions
+# TypedDict Recursive definitions
 testRecursiveNamedTupleTypedDict
-# Unpack
+# TypedDict Unpack
 testUnpackKwargsInference
 testUnpackKwargsParamSpec
-# dict unpacking
+# TypedDict dict unpacking
 testTypedDictUnpackFromUnion
 testTypedDictUnpackUnionRequiredMissing
 testTypedDictUnpackIncompatible
-# Lookups
+# TypedDict Lookups
 testTypedDictMappingMethods
 testTypedDictAsStarStarArgCalleeKwargs
 testTypedDictAsStarStarAndDictAsStarStar
 testTypedDictNonMappingMethods
 # Nested typed dict formatting
 testSerializeTypedDictInMethod
-# --extra-checks
-testTypedDictUnpackStrictMode
-testTypedDictStrictUpdate
-testTypedDictFlexibleUpdateUnionStrict
-testParamSpecConcatenateNamedArgs
-testParamSpecPrefixSubtypingInvalidStrict
-# unions
+# TypedDict unions
 testTypedDictChainedGetWithEmptyDictDefault
-# "Type of TypedDict is ambiguous, none of ("A", "B") matches cleanly"
-testUnionOfEquivalentTypedDictsDistinct
-testUnionOfEquivalentTypedDictsNested
-testTypedDictUnionAmbiguousCaseNoMatch
-# slightly different TypedDict.get signature than in mypy Is this relevant?
-testTypedDictGetMethodInvalidArgs
-# TypedDict |
-testTypedDictWith__or__method
-testTypedDictWith__or__method_error
-testTypedDictWith__ror__method
-testTypedDictWith__ior__method
-# Functional TypedDict in class def
-testCanCreateClassWithFunctionBasedTypedDictBase
 
 # Protocol invariant matching for attributes
 testPartialAttributeNoneTypeStrictOptional
@@ -999,6 +980,24 @@ testClassLevelTypeAliasesInUnusualContexts
 testMalformedTypeAliasRuntimeReassignments
 
 # --------------------------- Not first release ---------------------------
+
+# "Type of TypedDict is ambiguous, none of ("A", "B") matches cleanly"
+testUnionOfEquivalentTypedDictsDistinct
+testUnionOfEquivalentTypedDictsNested
+testTypedDictUnionAmbiguousCaseNoMatch
+# TypedDict --extra-checks
+testTypedDictUnpackStrictMode
+testTypedDictStrictUpdate
+testTypedDictFlexibleUpdateUnionStrict
+testParamSpecConcatenateNamedArgs
+testParamSpecPrefixSubtypingInvalidStrict
+# TypedDict |
+testTypedDictWith__or__method
+testTypedDictWith__or__method_error
+testTypedDictWith__ror__method
+testTypedDictWith__ior__method
+# Functional TypedDict in class def
+testCanCreateClassWithFunctionBasedTypedDictBase
 
 # multiline annotations
 testMultilineQuotedAnnotation
