@@ -412,17 +412,9 @@ fn calculate_type_vars<'db: 'a, 'a>(
                         .is_sub_type_of(i_s, &mut matcher, expected)
                         .bool()
                     {
-                        for tv_matcher in &mut matcher.type_var_matchers {
-                            for calc in tv_matcher.calculating_type_args.iter_mut() {
-                                // Make sure that the fallback is never used from a context.
-                                if calc.type_.has_any(i_s) || !calc.calculated() {
-                                    calc.type_ = Bound::default()
-                                } else {
-                                    calc.defined_by_result_context = true;
-                                }
-                            }
-                        }
+                        matcher.reset_invalid_bounds_of_context(i_s)
                     } else {
+                        // Here we reset all bounds, because it did not match.
                         for tv_matcher in &mut matcher.type_var_matchers {
                             for calc in tv_matcher.calculating_type_args.iter_mut() {
                                 *calc = Default::default();
@@ -435,21 +427,7 @@ fn calculate_type_vars<'db: 'a, 'a>(
                 let return_type = func_or_callable.return_type(i_s);
                 // Fill the type var arguments from context
                 return_type.is_sub_type_of(i_s, &mut matcher, expected);
-                for tv_matcher in &mut matcher.type_var_matchers {
-                    for calc in tv_matcher.calculating_type_args.iter_mut() {
-                        // Make sure that the fallback is never used from a context.
-                        // Also None as a type is a partial type, so don't use that either.
-                        if calc.type_.has_any(i_s)
-                            || calc.type_.is_none()
-                            || !calc.calculated()
-                            || calc.uninferrable
-                        {
-                            *calc = Default::default();
-                        } else {
-                            calc.defined_by_result_context = true;
-                        }
-                    }
-                }
+                matcher.reset_invalid_bounds_of_context(i_s)
             }
         });
     }

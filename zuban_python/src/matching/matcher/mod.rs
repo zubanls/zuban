@@ -1416,6 +1416,24 @@ impl<'a> Matcher<'a> {
         has_bound
     }
 
+    pub fn reset_invalid_bounds_of_context(&mut self, i_s: &InferenceState) {
+        for tv_matcher in &mut self.type_var_matchers {
+            for calc in tv_matcher.calculating_type_args.iter_mut() {
+                // Make sure that the fallback is never used from a context.
+                // Also None as a type is a partial type, so don't use that either.
+                if calc.type_.has_any(i_s)
+                    || calc.type_.is_none()
+                    || !calc.calculated()
+                    || calc.uninferrable
+                {
+                    *calc = Default::default();
+                } else {
+                    calc.defined_by_result_context = true;
+                }
+            }
+        }
+    }
+
     pub fn into_type_arg_iterator_or_any(self, db: &Database) -> impl Iterator<Item = Type> + '_ {
         debug_assert!(self
             .type_var_matchers
