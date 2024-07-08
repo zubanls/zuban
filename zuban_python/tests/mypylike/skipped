@@ -113,10 +113,6 @@ testImplicitClassScopedNames
 # type.__init__ where self is implicitly Any
 testTypeEquivalentTypeAnyEdgeCase
 
-# Type var constraints not enforced in type alias
-testValidTypeAliasValues
-testValidTypeAliasValuesMoreRestrictive
-
 # Tuple type comment definitions with list assignment
 testMultipleAssignmentWithListsInInitialization
 testAssignmentToStarAnnotation
@@ -1048,6 +1044,9 @@ testUninferableLambdaWithTypeError
 testRejectCovariantArgumentInLambda
 
 # ------------- Additional unimportant, but would be nice -----------------
+
+# Type var constraints not enforced in type alias
+testValidTypeAliasValues
 
 # functools.partial
 testFunctoolsPartialBasic
