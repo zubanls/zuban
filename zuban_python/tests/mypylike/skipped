@@ -206,14 +206,6 @@ testMatchProtocolAgainstOverloadWithAmbiguity
 # type var with unions and fallback in case solving is not possible
 testTypeVarTupleInvariant
 
-# TypeVar defaults
-testTypeVarDefaultsValid
-testTypeVarDefaultsInvalid3
-testTypeVarDefaultsClassRecursive1
-testTypeVarDefaultsClassRecursiveMultipleFiles
-testTypeVarDefaultsTypeAliasRecursive1
-testTypeVarDefaultsTypeAliasRecursive2
-
 # Nested type vars
 testFunctionInGenericInnerClassTypeVariable-skip
 testTupleAndDictOperationsOnParamSpecArgsAndKwargs
@@ -1039,6 +1031,13 @@ testClassLevelTypeAliasesInUnusualContexts
 testMalformedTypeAliasRuntimeReassignments
 
 # --------------------------- Not first release ---------------------------
+
+# TypeVar defaults
+testTypeVarDefaultsInvalid3
+testTypeVarDefaultsClassRecursive1
+testTypeVarDefaultsClassRecursiveMultipleFiles
+testTypeVarDefaultsTypeAliasRecursive1
+testTypeVarDefaultsTypeAliasRecursive2
 
 # lambda with generics
 testInferenceAgainstGenericLambdas
