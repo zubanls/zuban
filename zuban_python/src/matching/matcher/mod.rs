@@ -19,7 +19,7 @@ use self::{
     type_var_matcher::CalculatingTypeArg,
 };
 
-use super::{GotType, Match, OnTypeError, ResultContext, SignatureMatch};
+use super::{Generics, GotType, Match, OnTypeError, ResultContext, SignatureMatch};
 use crate::{
     arguments::{Arg, ArgKind, InferredArg},
     database::{Database, PointLink},
@@ -321,7 +321,10 @@ impl<'a> Matcher<'a> {
             }
             // If we're in a class context, we must also be in a method.
             if let Some(func_class) = self.func_or_callable.as_ref().and_then(|f| f.class()) {
-                if t1.in_definition == func_class.node_ref.as_link() {
+                if t1.in_definition == func_class.node_ref.as_link()
+                    && !(matches!(func_class.generics, Generics::Self_ { .. })
+                        && func_class.type_var_remap.is_none())
+                {
                     let g = func_class
                         .generics()
                         .nth_usage(i_s.db, &TypeVarLikeUsage::TypeVar(t1.clone()))
@@ -761,7 +764,10 @@ impl<'a> Matcher<'a> {
                 }
             }
             if let Some(func_class) = self.func_or_callable.as_ref().and_then(|f| f.class()) {
-                if usage.in_definition() == func_class.node_ref.as_link() {
+                if usage.in_definition() == func_class.node_ref.as_link()
+                    && !(matches!(func_class.generics, Generics::Self_ { .. })
+                        && func_class.type_var_remap.is_none())
+                {
                     return MatcherFormatResult::Str(
                         func_class
                             .generics()
@@ -879,7 +885,10 @@ impl<'a> Matcher<'a> {
                 }
             }
             if let Some(func_class) = self.func_or_callable.as_ref().and_then(|f| f.class()) {
-                if usage.in_definition() == func_class.node_ref.as_link() {
+                if usage.in_definition() == func_class.node_ref.as_link()
+                    && !(matches!(func_class.generics, Generics::Self_ { .. })
+                        && func_class.type_var_remap.is_none())
+                {
                     let g = func_class
                         .generics()
                         .nth_usage(db, &usage)

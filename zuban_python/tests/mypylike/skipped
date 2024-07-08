@@ -214,14 +214,6 @@ testTypeVarDefaultsClassRecursiveMultipleFiles
 testTypeVarDefaultsTypeAliasRecursive1
 testTypeVarDefaultsTypeAliasRecursive2
 
-# lambda --new-type-inference
-testInferenceAgainstGenericLambdas
-testGenericLambdaGenericMethodNoCrash
-testUninferableLambda
-testUninferableLambdaWithTypeError
-# lambda context recursion
-testRejectCovariantArgumentInLambda
-
 # Nested type vars
 testFunctionInGenericInnerClassTypeVariable-skip
 testTupleAndDictOperationsOnParamSpecArgsAndKwargs
@@ -1045,6 +1037,16 @@ testNewAnalyzerDisallowAnyGenericsMessages
 # Weird and unsound mypy cases for x: typing.TypeAlias = ...
 testClassLevelTypeAliasesInUnusualContexts
 testMalformedTypeAliasRuntimeReassignments
+
+# --------------------------- Not first release ---------------------------
+
+# lambda with generics
+testInferenceAgainstGenericLambdas
+testGenericLambdaGenericMethodNoCrash
+testUninferableLambda
+testUninferableLambdaWithTypeError
+# lambda inferred: Cannot use a covariant type variable as a parameter
+testRejectCovariantArgumentInLambda
 
 # ------------- Additional unimportant, but would be nice -----------------
 

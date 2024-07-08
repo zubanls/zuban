@@ -1133,3 +1133,23 @@ f(
     lambda x:  # E: Argument 1 to "f" has incompatible type "Callable[[A], A]"; expected "Callable[[A], B]"
         B() if isinstance(x, B) else x,
     A(), r=[B()])
+
+[case avoid_recursive_self_type_var_lookup]
+# Partially copied from testRejectCovariantArgumentInLambda
+from typing import TypeVar, Generic, Callable, List, Set
+
+t = TypeVar('t', covariant=True)
+class Thing(Generic[t]):
+    def chain(self, l: List[t]) -> None: pass
+    def end(self) -> None:
+        return self.chain(1)  # E: Argument 1 to "chain" of "Thing" has incompatible type "int"; expected "list[t]"
+
+class Other(Thing[Set[t]]):
+    def end2(self) -> None:
+        self.chain([1])  # E: List item 0 has incompatible type "int"; expected "set[t]"
+        return self.chain(1)  # E: Argument 1 to "chain" of "Thing" has incompatible type "int"; expected "list[set[t]]"
+
+class Other2(Thing[t]):
+    def end2(self) -> None:
+        self.chain([1])  # E: List item 0 has incompatible type "int"; expected "t"
+        return self.chain(1)  # E: Argument 1 to "chain" of "Thing" has incompatible type "int"; expected "list[t]"
