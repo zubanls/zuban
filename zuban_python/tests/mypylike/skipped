@@ -5,15 +5,6 @@ testTypeVarTupleTypeApplicationOverload
 testNoCrashOnNestedGenericCallable
 
 # mypy upgrade
-# multiline annotations
-testMultilineQuotedAnnotation
-
-# TypeAliasType
-testTypeAliasType
-testTypeAliasTypeInvalid
-testTypeAliasTypeGeneric
-testTypeAliasTypeInvalidGeneric
-testTypeAliasTypeNoUnpackInTypeParams311
 
 # super with Type[...]
 testSuperWithAny
@@ -317,20 +308,6 @@ testTypeVarTuplePep646CallableStarArgs
 testVariadicTupleInProtocol
 # TypeVarTuple as unpacked varargs
 testVariadicStarArgsCallNoCrash
-
-# Star import override of local scope
-testImportStarWithinFunction
-# Star import check what we override
-testAssignAndConditionalStarImport
-testStarImportOverlappingMismatch
-
-# Metaclass descriptor
-metaclass_descriptor
-# Metaclass iter/getitem/addition
-testIterableProtocolOnMetaclass
-# Metaclass instance vs. class members
-testMetaclassConflictingInstanceVars
-testInferenceOfDunderDictOnClassObjects
 
 # More information needed
 # "Read-only property cannot override read-write property"
@@ -1027,6 +1004,30 @@ testClassLevelTypeAliasesInUnusualContexts
 testMalformedTypeAliasRuntimeReassignments
 
 # --------------------------- Not first release ---------------------------
+
+# multiline annotations
+testMultilineQuotedAnnotation
+
+# TypeAliasType
+testTypeAliasType
+testTypeAliasTypeInvalid
+testTypeAliasTypeGeneric
+testTypeAliasTypeInvalidGeneric
+testTypeAliasTypeNoUnpackInTypeParams311
+
+# Metaclass descriptor
+metaclass_descriptor
+# Metaclass iter/getitem/addition
+testIterableProtocolOnMetaclass
+# Metaclass instance vs. class members
+testMetaclassConflictingInstanceVars
+testInferenceOfDunderDictOnClassObjects
+
+# Star import override of local scope
+testImportStarWithinFunction
+# Star import check what we override
+testAssignAndConditionalStarImport
+testStarImportOverlappingMismatch
 
 # TypeVar defaults
 testTypeVarDefaultsInvalid3
