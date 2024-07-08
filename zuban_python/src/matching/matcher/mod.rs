@@ -320,22 +320,19 @@ impl<'a> Matcher<'a> {
                 }
             }
             // If we're in a class context, we must also be in a method.
-            if let Some(func_class) = self.func_or_callable.as_ref().and_then(|f| f.class()) {
-                if t1.in_definition == func_class.node_ref.as_link()
-                    && !(matches!(func_class.generics, Generics::Self_ { .. })
-                        && func_class.type_var_remap.is_none())
-                {
-                    let g = func_class
-                        .generics()
-                        .nth_usage(i_s.db, &TypeVarLikeUsage::TypeVar(t1.clone()))
-                        .expect_type_argument();
-                    return Some(g.matches(i_s, self, value_type, variance));
-                }
-                // The case that the if does not hit happens e.g. for
-                // testInvalidNumberOfTypeArgs:
-                // class C:  # Forgot to add type params here
-                //     def __init__(self, t: T) -> None: pass
+            if let Some(func_class) =
+                self.maybe_func_class_for_usage(&TypeVarLikeUsage::TypeVar(t1.clone()))
+            {
+                let g = func_class
+                    .generics()
+                    .nth_usage(i_s.db, &TypeVarLikeUsage::TypeVar(t1.clone()))
+                    .expect_type_argument();
+                return Some(g.matches(i_s, self, value_type, variance));
             }
+            // The case that the if does not hit happens e.g. for
+            // testInvalidNumberOfTypeArgs:
+            // class C:  # Forgot to add type params here
+            //     def __init__(self, t: T) -> None: pass
         }
         None
     }
@@ -763,19 +760,14 @@ impl<'a> Matcher<'a> {
                     );
                 }
             }
-            if let Some(func_class) = self.func_or_callable.as_ref().and_then(|f| f.class()) {
-                if usage.in_definition() == func_class.node_ref.as_link()
-                    && !(matches!(func_class.generics, Generics::Self_ { .. })
-                        && func_class.type_var_remap.is_none())
-                {
-                    return MatcherFormatResult::Str(
-                        func_class
-                            .generics()
-                            .nth_usage(format_data.db, usage)
-                            .format(format_data)
-                            .unwrap_or("()".into()),
-                    );
-                }
+            if let Some(func_class) = self.maybe_func_class_for_usage(&usage) {
+                return MatcherFormatResult::Str(
+                    func_class
+                        .generics()
+                        .nth_usage(format_data.db, usage)
+                        .format(format_data)
+                        .unwrap_or("()".into()),
+                );
             }
         }
         format_data
@@ -884,26 +876,32 @@ impl<'a> Matcher<'a> {
                     return c.generics().nth_usage(db, &usage).into_generic_item(db);
                 }
             }
-            if let Some(func_class) = self.func_or_callable.as_ref().and_then(|f| f.class()) {
-                if usage.in_definition() == func_class.node_ref.as_link()
-                    && !(matches!(func_class.generics, Generics::Self_ { .. })
-                        && func_class.type_var_remap.is_none())
-                {
-                    let g = func_class
-                        .generics()
-                        .nth_usage(db, &usage)
-                        .into_generic_item(db);
-                    return match g {
-                        GenericItem::TypeArg(t) => GenericItem::TypeArg(
-                            self.replace_type_var_likes_for_nested_context(db, &t),
-                        ),
-                        GenericItem::TypeArgs(_) => todo!(),
-                        GenericItem::ParamSpecArg(_) => todo!(),
-                    };
-                }
+            if let Some(func_class) = self.maybe_func_class_for_usage(&usage) {
+                let g = func_class
+                    .generics()
+                    .nth_usage(db, &usage)
+                    .into_generic_item(db);
+                return match g {
+                    GenericItem::TypeArg(t) => {
+                        GenericItem::TypeArg(self.replace_type_var_likes_for_nested_context(db, &t))
+                    }
+                    GenericItem::TypeArgs(_) => todo!(),
+                    GenericItem::ParamSpecArg(_) => todo!(),
+                };
             }
             usage.into_generic_item()
         }
+    }
+
+    fn maybe_func_class_for_usage(&self, usage: &TypeVarLikeUsage) -> Option<Class<'a>> {
+        self.func_or_callable
+            .as_ref()
+            .and_then(|f| f.class())
+            .filter(|func_class| {
+                usage.in_definition() == func_class.node_ref.as_link()
+                    && !(matches!(func_class.generics, Generics::Self_ { .. })
+                        && func_class.type_var_remap.is_none())
+            })
     }
 
     pub fn set_all_contained_type_vars_to_any(

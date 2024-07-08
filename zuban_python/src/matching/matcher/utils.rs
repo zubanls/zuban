@@ -16,7 +16,7 @@ use crate::{
     diagnostics::IssueKind,
     inference_state::InferenceState,
     inferred::Inferred,
-    matching::{matcher::bound::Bound, maybe_class_usage, ErrorTypes, GotType},
+    matching::{maybe_class_usage, ErrorTypes, GotType},
     node_ref::NodeRef,
     params::{
         InferrableParamIterator, Param, ParamArgument, WrappedParamType, WrappedStar,
