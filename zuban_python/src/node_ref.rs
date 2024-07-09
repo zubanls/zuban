@@ -82,7 +82,11 @@ impl<'file> NodeRef<'file> {
     }
 
     pub fn accumulate_types(&self, i_s: &InferenceState, add: &Inferred) {
-        if self.point().calculated() {
+        let point = self.point();
+        if point.calculated() {
+            if point.maybe_specific() == Some(Specific::Cycle) {
+                return;
+            }
             let new = self
                 .file
                 .inference(i_s)

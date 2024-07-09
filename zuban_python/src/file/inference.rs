@@ -1481,7 +1481,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         // iterate over the different possibilities and end up with name definitions
                         // that are already set. In those cases we use the "old" types and merge them.
                         // In Mypy that is called "accumulate_type_assignments".
-                        NodeRef::new(self.file, index).accumulate_types(self.i_s, value)
+                        NodeRef::new(self.file, index).accumulate_types(self.i_s, value);
                     },
                 )
             }

@@ -78,15 +78,9 @@ testRecursiveAliasImported
 # cycle for self.a = self.f(self.a) where f(T) -> T
 testGenericTypeBody1
 # C = C Cycle
-testOverrideByIdemAliasCorrectType
-testOverrideByIdemAliasCorrectTypeReversed
-testConditionalExceptionAlias
-testListAssignmentUnequalAmountToUnpack
-testSelfReferentialSubscriptExpression
 testNewAnalyzerMemberNameMatchesNamedTuple
 testVariableTypeWithQualifiedName
 testNewAnalyzerMemberNameMatchesTypedDict
-testConditionalExceptionAliasOverride
 testWalrusRedefined
 # TypedDict definition circle: A = TypedDict('A', {'a': 'A'})
 testCrashOnSelfRecursiveTypedDictVar
@@ -969,6 +963,11 @@ testClassLevelTypeAliasesInUnusualContexts
 testMalformedTypeAliasRuntimeReassignments
 
 # --------------------------- Not first release ---------------------------
+
+# Name defined in parent scope
+testListAssignmentUnequalAmountToUnpack
+# Builtin overrides (Exception = Exception)
+testConditionalExceptionAliasOverride
 
 # "Type of TypedDict is ambiguous, none of ("A", "B") matches cleanly"
 testUnionOfEquivalentTypedDictsDistinct

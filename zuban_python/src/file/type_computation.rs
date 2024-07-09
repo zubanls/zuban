@@ -3720,6 +3720,9 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                             .add_issue(self.i_s, IssueKind::DisallowedAnyExplicit)
                     }
                 }
+                Some(Specific::Cycle) => {
+                    return TypeNameLookup::Unknown(UnknownCause::ReportedIssue)
+                }
                 _ => {
                     let node_ref = NodeRef::new(file, name.index());
                     debug_assert!(node_ref.point().calculated());
