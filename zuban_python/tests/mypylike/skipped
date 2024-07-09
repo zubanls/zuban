@@ -79,6 +79,7 @@ testRecursiveAliasImported
 testGenericTypeBody1
 # C = C Cycle
 testNewAnalyzerMemberNameMatchesNamedTuple
+testVariableTypeWithQualifiedName
 testNewAnalyzerMemberNameMatchesTypedDict
 testWalrusRedefined
 # TypedDict definition circle: A = TypedDict('A', {'a': 'A'})
