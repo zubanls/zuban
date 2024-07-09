@@ -347,9 +347,10 @@ class Foo:
     baz += baz  # E: Name "baz" is not defined   # E: Name "baz" is not defined
     bla: baz  # E: Invalid type comment or annotation
 
-    x = x
-    y: x
-    a = list[a]
+    x = x  # E: Name "x" is not defined
+    y: x  # E: Variable "__main__.x" is not valid as a type \
+          # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+    a = list[a]  # E: Name "a" is not defined
     b: a
 
 [case avoid_type_cycle_in_assignment_expr]

@@ -79,7 +79,6 @@ check-recursive-types:testRecursiveAliasImported
 # C = C Cycle
 testVariableTypeWithQualifiedName
 testWalrusRedefined
-avoid_type_cycle
 # TypedDict definition circle: A = TypedDict('A', {'a': 'A'})
 testCrashOnSelfRecursiveTypedDictVar
 testBasicRecursiveTypedDictCall

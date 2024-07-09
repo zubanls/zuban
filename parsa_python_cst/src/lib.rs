@@ -459,6 +459,9 @@ impl<'db> Name<'db> {
         if node.is_type(Nonterminal(class_def)) {
             TypeLike::ClassDef(ClassDef::new(node))
         } else if node.is_type(Nonterminal(assignment)) {
+            if self.name_definition().is_none() {
+                return TypeLike::Other;
+            }
             TypeLike::Assignment(Assignment::new(node))
         } else if node.is_type(Nonterminal(function_def)) {
             TypeLike::Function(FunctionDef::new(node))
