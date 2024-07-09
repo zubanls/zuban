@@ -2940,6 +2940,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         )
                         .save_name(self.i_s, self.file, save_to_index)
                     {
+                        if matches!(name_str, "__package__" | "__file__") {
+                            return inf.remove_none(self.i_s);
+                        }
                         return inf;
                     }
                     // TODO check star imports

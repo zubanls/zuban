@@ -2150,6 +2150,10 @@ impl<'db: 'slf, 'slf> Inferred {
         self.maybe_saved_specific(db)
             .is_some_and(|specific| specific.is_partial())
     }
+
+    pub fn remove_none(&self, i_s: &InferenceState) -> Self {
+        Inferred::from_type(self.as_type(i_s).remove_none(i_s.db).into_owned())
+    }
 }
 
 fn load_bound_method<'db: 'a, 'a, 'b>(

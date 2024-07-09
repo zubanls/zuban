@@ -172,19 +172,14 @@ impl<'a> Module<'a> {
                 .python_state
                 .module_instance()
                 .type_lookup(i_s, add_issue, name);
-            if name == "__spec__" {
+            if matches!(name, "__spec__" | "__file__" | "__package__") {
                 // __spec__ is special, because it always has a ModuleSpec and only if the module
                 // is __main__ it sometimes doesn't. But since __main__ is only ever known to Mypy
                 // as a static file it will also have a ModuleSpec and never be None, therefore we
                 // simply remove the None here.
+                // Also do the same for __file__ / __package__
                 // https://docs.python.org/3/reference/import.html#main-spec
-                result = result
-                    .and_then(|inf| {
-                        Some(Inferred::from_type(
-                            inf.as_type(i_s).remove_none(i_s.db).into_owned(),
-                        ))
-                    })
-                    .unwrap()
+                result = result.and_then(|inf| Some(inf.remove_none(i_s))).unwrap()
             }
             result
         }

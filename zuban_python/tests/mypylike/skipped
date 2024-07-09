@@ -84,8 +84,6 @@ testRecursiveTypedDictWithList
 testDataclassGenericWithBound
 testDataclassFactory
 
-# Module attributes
-testModuleImplicitAttributes
 # class attributes
 testImplicitClassScopedNames
 # type.__init__ where self is implicitly Any
