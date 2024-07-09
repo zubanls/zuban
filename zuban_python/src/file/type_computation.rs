@@ -3734,6 +3734,14 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
             assignment.maybe_simple_type_expression_assignment()
         {
             debug!("Started type alias calculation: {}", name_def.as_code());
+            if file
+                .points
+                .get(name_def.index())
+                .maybe_calculated_and_specific()
+                == Some(Specific::Cycle)
+            {
+                return TypeNameLookup::Unknown(UnknownCause::ReportedIssue);
+            }
             if let Some(type_comment) = self.check_for_type_comment(assignment) {
                 // This case is a bit weird in Mypy, but it makes it possible to use a type
                 // definition like:
