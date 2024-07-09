@@ -206,8 +206,9 @@ impl<'db> NameBinder<'db> {
             // Walrus `:=` operators are available outside of comprehensions and therefore need to
             // be added to the parent.
             unsafe { &mut *self.parent.unwrap() }.add_new_walrus_definition(name_def)
+        } else {
+            self.add_new_definition(name_def, Point::new_uncalculated())
         }
-        self.add_new_definition(name_def, Point::new_uncalculated())
     }
 
     fn add_new_definition(&mut self, name_def: NameDefinition<'db>, point: Point) {
