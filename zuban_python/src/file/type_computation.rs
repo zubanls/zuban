@@ -3734,7 +3734,12 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
             assignment.maybe_simple_type_expression_assignment()
         {
             debug!("Started type alias calculation: {}", name_def.as_code());
-            if let Some(type_comment) = self.check_for_type_comment(assignment) {
+            if let Some(type_comment) = self.check_for_type_comment_internal(assignment, || {
+                file.points
+                    .get(name_def.index())
+                    .maybe_calculated_and_specific()
+                    == Some(Specific::Cycle)
+            }) {
                 // This case is a bit weird in Mypy, but it makes it possible to use a type
                 // definition like:
                 //
@@ -4118,6 +4123,14 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
         &self,
         assignment: Assignment,
     ) -> Option<TypeCommentDetails<'db>> {
+        self.check_for_type_comment_internal(assignment, || false)
+    }
+
+    fn check_for_type_comment_internal(
+        &self,
+        assignment: Assignment,
+        is_cycle: impl Fn() -> bool,
+    ) -> Option<TypeCommentDetails<'db>> {
         let suffix = assignment.suffix();
         if let Some(start) = suffix.find('#') {
             let mut start = start + 1;
@@ -4128,6 +4141,9 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                 // Use only the part before the comment after the type definition.
                 let s = full_rest.split('#').next().unwrap();
                 start += after_hash.len() - full_rest.len();
+                if is_cycle() {
+                    return None;
+                }
                 debug!("Infer type comment {s:?} on {:?}", assignment.as_code());
                 if maybe_type_ignore(s).is_none() {
                     return Some(self.compute_type_comment(

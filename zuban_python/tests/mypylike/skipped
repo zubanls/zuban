@@ -76,8 +76,6 @@ testTypeVarIdsNested
 # Type var finder recursion is not handled, because imports are involved.
 check-incremental:testRecursiveAliasImported
 check-recursive-types:testRecursiveAliasImported
-# C = C Cycle
-testVariableTypeWithQualifiedName
 # TypedDict definition circle: A = TypedDict('A', {'a': 'A'})
 testCrashOnSelfRecursiveTypedDictVar
 testBasicRecursiveTypedDictCall
