@@ -351,3 +351,12 @@ class Foo:
     y: x
     a = list[a]
     b: a
+
+[case avoid_type_cycle_in_assignment_expr]
+class Foo:
+    l = (x := x)  # E: Name "x" is not defined
+    y: x  # E: Variable "__main__.x" is not valid as a type \
+          # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+    l = (a := list[a])  # E: Name "a" is not defined
+    b: a  # E: Variable "__main__.a" is not valid as a type \
+          # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases

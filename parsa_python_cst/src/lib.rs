@@ -450,6 +450,7 @@ impl<'db> Name<'db> {
                 Nonterminal(import_from_as_name),
                 Nonterminal(dotted_as_name),
                 Nonterminal(stmt),
+                Nonterminal(walrus),
                 Nonterminal(param_no_default),
                 Nonterminal(param_with_default),
                 Nonterminal(param_maybe_default),
@@ -461,13 +462,19 @@ impl<'db> Name<'db> {
             TypeLike::Assignment(Assignment::new(node))
         } else if node.is_type(Nonterminal(function_def)) {
             TypeLike::Function(FunctionDef::new(node))
-        } else if node.is_type(Nonterminal(stmt)) {
+        } else if node.is_type(Nonterminal(stmt)) | node.is_type(Nonterminal(walrus)) {
             TypeLike::Other
         } else if node.is_type(Nonterminal(import_from_as_name)) {
             TypeLike::ImportFromAsName(ImportFromAsName::new(node))
         } else if node.is_type(Nonterminal(dotted_as_name)) {
             TypeLike::DottedAsName(DottedAsName::new(node))
         } else {
+            debug_assert!(matches!(
+                node.type_(),
+                Nonterminal(param_no_default)
+                    | Nonterminal(param_with_default)
+                    | Nonterminal(param_maybe_default)
+            ));
             TypeLike::ParamName(node.iter_children().nth(1).map(Annotation::new))
         }
     }
