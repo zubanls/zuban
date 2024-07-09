@@ -3905,6 +3905,24 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
             debug!("Finished type alias calculation: {}", name_def.as_code());
             result
         } else {
+            let is_calculating = |target| match target {
+                Target::Name(n) => {
+                    self.file
+                        .points
+                        .get(n.index())
+                        .maybe_calculated_and_specific()
+                        == Some(Specific::Cycle)
+                }
+                _ => false,
+            };
+            let calculating = match assignment.unpack() {
+                AssignmentContent::Normal(mut targets, _) => targets.any(is_calculating),
+                AssignmentContent::WithAnnotation(target, _, _)
+                | AssignmentContent::AugAssign(target, _, _) => is_calculating(target),
+            };
+            if calculating {
+                return TypeNameLookup::Unknown(UnknownCause::ReportedIssue);
+            }
             if let Some(annotation) = assignment.maybe_annotation() {
                 self.cache_assignment(assignment);
                 if let Type::Any(cause) = self.use_cached_annotation_type(annotation).as_ref() {

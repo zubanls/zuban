@@ -339,3 +339,15 @@ class Foo:
 [case any_getitem]
 from typing import Any
 x: Any[int]  # E: Invalid type comment or annotation
+
+[case avoid_type_cycle]
+class Foo:
+    foo: foo
+    bar: list[bar]
+    baz += baz  # E: Name "baz" is not defined   # E: Name "baz" is not defined
+    bla: baz  # E: Invalid type comment or annotation
+
+    x = x
+    y: x
+    a = list[a]
+    b: a

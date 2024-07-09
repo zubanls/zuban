@@ -74,21 +74,18 @@ testGenericUnionFunctionJoin
 testTypeVarIdsNested
 
 # Type var finder recursion is not handled, because imports are involved.
-testRecursiveAliasImported
-# cycle for self.a = self.f(self.a) where f(T) -> T
-testGenericTypeBody1
+check-incremental:testRecursiveAliasImported
+check-recursive-types:testRecursiveAliasImported
 # C = C Cycle
-testNewAnalyzerMemberNameMatchesNamedTuple
 testVariableTypeWithQualifiedName
-testNewAnalyzerMemberNameMatchesTypedDict
 testWalrusRedefined
+avoid_type_cycle
 # TypedDict definition circle: A = TypedDict('A', {'a': 'A'})
 testCrashOnSelfRecursiveTypedDictVar
 testBasicRecursiveTypedDictCall
 testRecursiveTypedDictWithList
 # dataclass circles with bound
 testDataclassGenericWithBound
-testNoCrashOnSelfWithForwardRefGenericDataclass
 testDataclassFactory
 
 # Module attributes
