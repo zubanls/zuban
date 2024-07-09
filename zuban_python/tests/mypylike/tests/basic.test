@@ -361,3 +361,7 @@ class Foo:
     l = (a := list[a])  # E: Name "a" is not defined
     b: a  # E: Variable "__main__.a" is not valid as a type \
           # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+
+[case avoid_type_cycle_in_lambda]
+class Foo:
+    x = lambda x=x: x  # E: Name "x" is not defined
