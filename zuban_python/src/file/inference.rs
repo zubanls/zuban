@@ -2886,6 +2886,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     fn infer_name_by_str(&self, name_str: &str, save_to_index: NodeIndex) -> Inferred {
         // If it's not inferred already through the name binder, it's either a star import, a
         // builtin or really missing.
+        let i_s = self.i_s;
         if let Some(star_imp) = self.lookup_from_star_import(name_str, true) {
             return match star_imp {
                 StarImportResult::Link(link) => {
@@ -2897,12 +2898,12 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 }
                 StarImportResult::AnyDueToError => {
                     star_imp
-                        .as_inferred(self.i_s)
-                        .save_redirect(self.i_s, self.file, save_to_index)
+                        .as_inferred(i_s)
+                        .save_redirect(i_s, self.file, save_to_index)
                 }
             };
         }
-        let builtins = self.i_s.db.python_state.builtins();
+        let builtins = i_s.db.python_state.builtins();
         let point = match name_str {
             "reveal_type" => {
                 if self
@@ -2918,7 +2919,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             "__builtins__" => Point::new_file_reference(builtins.file_index(), Locality::Todo),
             _ => {
                 if let Some(link) = builtins.lookup_global(name_str).filter(|link| {
-                    !name_str.starts_with('_') && !is_private_import(self.i_s.db, (*link).into())
+                    !name_str.starts_with('_') && !is_private_import(i_s.db, (*link).into())
                 }) {
                     debug_assert!(link.file != self.file_index || link.node_index != save_to_index);
                     link.into_point_redirect()
@@ -2928,22 +2929,27 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         self.file_index != builtins.file_index(),
                         "{name_str}; {save_to_index}"
                     );
-                    if let Some(inf) = self
-                        .i_s
-                        .db
-                        .python_state
-                        .module_instance()
-                        .type_lookup(
-                            self.i_s,
-                            |issue| self.add_issue(save_to_index, issue),
-                            name_str,
-                        )
-                        .save_name(self.i_s, self.file, save_to_index)
-                    {
-                        if matches!(name_str, "__package__" | "__file__") {
-                            return inf.remove_none(self.i_s);
+                    if i_s.in_class_scope() {
+                        if matches!(name_str, "__name__" | "__module__" | "__qualname__") {
+                            return Inferred::from_type(i_s.db.python_state.str_type());
                         }
-                        return inf;
+                    } else if i_s.in_module_context() {
+                        if let Some(inf) = i_s
+                            .db
+                            .python_state
+                            .module_instance()
+                            .type_lookup(
+                                i_s,
+                                |issue| self.add_issue(save_to_index, issue),
+                                name_str,
+                            )
+                            .save_name(i_s, self.file, save_to_index)
+                        {
+                            if matches!(name_str, "__package__" | "__file__") {
+                                return inf.remove_none(i_s);
+                            }
+                            return inf;
+                        }
                     }
                     // TODO check star imports
                     self.add_issue(
@@ -2953,8 +2959,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         },
                     );
                     if !name_str.starts_with('_')
-                        && self
-                            .i_s
+                        && i_s
                             .db
                             .python_state
                             .typing()

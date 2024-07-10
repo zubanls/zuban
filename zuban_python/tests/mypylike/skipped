@@ -77,11 +77,6 @@ testTypeVarIdsNested
 check-incremental:testRecursiveAliasImported
 check-recursive-types:testRecursiveAliasImported
 
-# class attributes
-testImplicitClassScopedNames
-# type.__init__ where self is implicitly Any
-testTypeEquivalentTypeAnyEdgeCase
-
 # Tuple type comment definitions with list assignment
 testMultipleAssignmentWithListsInInitialization
 testAssignmentToStarAnnotation
@@ -1164,6 +1159,8 @@ testInitReturnTypeError
 testAccessingInit
 # "Unsupported decorated constructor type"
 testDecoratedConstructorsBad
+# type.__init__ where self is implicitly Any
+testTypeEquivalentTypeAnyEdgeCase
 
 # __init_subclass__
 testOverride__init_subclass__WithDifferentSignature

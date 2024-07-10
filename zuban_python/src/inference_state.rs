@@ -141,6 +141,17 @@ impl<'db, 'a> InferenceState<'db, 'a> {
         }
     }
 
+    pub fn in_class_scope(&self) -> bool {
+        matches!(
+            self.context,
+            Context::DiagnosticClass(c) | Context::Class(c)
+        )
+    }
+
+    pub fn in_module_context(&self) -> bool {
+        matches!(self.context, Context::None)
+    }
+
     pub fn find_parent_type_var(&self, searched: &TypeVarLike) -> Option<TypeVarCallbackReturn> {
         if let Some(class) = self.current_class() {
             for (index, type_var) in class.type_vars(self).iter().enumerate() {
