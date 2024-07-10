@@ -119,3 +119,9 @@ y: Bar[str]  # E: Type argument "str" of "Bar" must be a subtype of "int"
 from typing import TypedDict
 Bar = TypedDict("Bar", {'x': int})
 x: Bar[int]  # E: "Bar" expects no type arguments, but 1 given
+
+[case invalid_class_type_application]
+from typing import Generic, TypeVar
+T = TypeVar("T")
+class Foo(Generic[T]): ...
+Foo[int][int]  # E: Invalid type comment or annotation

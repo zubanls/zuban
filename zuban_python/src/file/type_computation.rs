@@ -276,6 +276,7 @@ enum ClassGetItemResult<'db> {
         class_link: PointLink,
         generics: ClassGenerics,
     },
+    Invalid,
 }
 
 #[derive(Debug)]
@@ -389,6 +390,14 @@ macro_rules! compute_type_application {
                 }
             },
             TypeContent::Unknown(cause) => Inferred::new_any(cause.into()),
+            TypeContent::InvalidVariable(var) => {
+                var.add_issue(
+                    $self.i_s.db,
+                    |issue| $slice_type.as_node_ref().add_issue($self.i_s, issue),
+                    tcomp.origin
+                );
+                Inferred::new_any_from_error()
+            }
             _ => todo!("type application: {t:?}"),
         }
     }}
@@ -1843,6 +1852,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 link: node_ref.as_link(),
                 generics,
             },
+            ClassGetItemResult::Invalid => {
+                return TypeContent::InvalidVariable(InvalidVariableType::Other)
+            }
         };
         TypeContent::Type(Type::Dataclass(Dataclass::new(c, dataclass.options)))
     }
@@ -1939,6 +1951,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 class_link,
                 generics,
             },
+            ClassGetItemResult::Invalid => TypeContent::InvalidVariable(InvalidVariableType::Other),
         }
     }
 
@@ -1949,8 +1962,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         primary: Option<Primary>,
     ) -> ClassGetItemResult<'db> {
         if !matches!(class.generics(), Generics::None | Generics::NotDefinedYet) {
-            todo!();
-            //return TypeContent::InvalidVariable(InvalidVariableType::Other);
+            return ClassGetItemResult::Invalid;
         }
         let type_var_likes = class.type_vars(self.inference.i_s);
 
