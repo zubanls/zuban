@@ -243,13 +243,6 @@ testSimpleRuntimeProtocolCheck
 # Protocol nested class matching
 testProtocolWithNestedClass
 
-# subtyping arbitrary length unpacks
-testVariadicTupleSubtyping
-# TypeVarTuple kind of works correctly, but mypy checks args first before callables
-testVariadicTupleInProtocol
-# TypeVarTuple as unpacked varargs
-testVariadicStarArgsCallNoCrash
-
 # More information needed
 # "Read-only property cannot override read-write property"
 testDataclassIncompatibleOverrides
@@ -945,6 +938,11 @@ testClassLevelTypeAliasesInUnusualContexts
 testMalformedTypeAliasRuntimeReassignments
 
 # --------------------------- Not first release ---------------------------
+
+# subtyping arbitrary length unpacks
+testVariadicTupleSubtyping
+# TypeVarTuple as unpacked varargs
+testVariadicStarArgsCallNoCrash
 
 # Name defined in parent scope
 testListAssignmentUnequalAmountToUnpack

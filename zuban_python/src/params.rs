@@ -463,7 +463,8 @@ pub fn matches_simple_params<
                             };
                             matches &= match_tuple_type_arguments(
                                 i_s, matcher, &tup1.args, &tup2_args, variance,
-                            )
+                            );
+                            continue;
                         }
                         _ => {
                             debug!(
