@@ -93,6 +93,16 @@ from foo.bar import baz
 [file foo/bar/baz.py]
 class X: ...
 
+[case namedtuple_additional_invalid_definitions]
+from typing import NamedTuple
+
+Bar1 = NamedTuple("Bar1", [('x', *int)])  # E: Star args are not supported
+Bar2 = NamedTuple("Bar2", [(*'x', int)])  # E: Invalid "NamedTuple()" field name
+Bar3 = NamedTuple("Bar3", [*int])  # E: Tuple expected as "NamedTuple()" field
+Bar4 = NamedTuple("Bar4", [()])  # E: NamedTuple field should be a tuple of a string literal and a type
+Bar5 = NamedTuple("Bar5", [(*int,)])  # E: NamedTuple field should be a tuple of a string literal and a type
+Bar5 = NamedTuple("Bar5", [('x',)])  # E: NamedTuple field should be a tuple of a string literal and a type
+
 [case namedtuple_invalid_bound]
 from typing import NamedTuple, Generic, TypeVar
 T = TypeVar("T", bound=int)

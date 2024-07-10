@@ -684,6 +684,17 @@ pub enum StarLikeExpression<'db> {
     StarNamedExpression(StarNamedExpression<'db>),
 }
 
+impl<'db> StarLikeExpression<'db> {
+    pub fn index(&self) -> NodeIndex {
+        match self {
+            Self::Expression(expr) => expr.index(),
+            Self::NamedExpression(n) => n.index(),
+            Self::StarExpression(s) => s.index(),
+            Self::StarNamedExpression(s) => s.index(),
+        }
+    }
+}
+
 impl<'db> Tuple<'db> {
     pub fn iter(&self) -> StarLikeExpressionIterator<'db> {
         let n = self.node.nth_child(1);

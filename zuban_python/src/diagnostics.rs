@@ -277,6 +277,7 @@ pub(crate) enum IssueKind {
     StringLiteralExpectedAsNamedTupleItem,
     InvalidStmtInNamedTuple,
     NamedTupleNonDefaultFieldFollowsDefault,
+    NamedTupleFieldExpectsTupleOfStrAndType,
     InvalidSecondArgumentToNamedTuple { name: &'static str },
     UnexpectedArgumentsTo { name: &'static str },
     UnexpectedArgumentTo { name: &'static str },
@@ -1478,6 +1479,8 @@ impl<'db> Diagnostic<'db> {
                 "Invalid statement in NamedTuple definition; expected \"field_name: field_type [= default]\"".to_string(),
             NamedTupleNonDefaultFieldFollowsDefault =>
                 "Non-default NamedTuple fields cannot follow default fields".to_string(),
+            NamedTupleFieldExpectsTupleOfStrAndType =>
+                "NamedTuple field should be a tuple of a string literal and a type".to_string(),
             InvalidSecondArgumentToNamedTuple{name} =>
                 format!("List or tuple literal expected as the second argument to \"{name}()\""),
             UnexpectedArgumentsTo{name} =>

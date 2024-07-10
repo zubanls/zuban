@@ -3314,7 +3314,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         let mut params = start_namedtuple_params(self.inference.i_s.db);
         for element in list {
             let StarLikeExpression::NamedExpression(ne) = element else {
-                todo!()
+                self.inference
+                    .add_issue(element.index(), IssueKind::TupleExpectedAsNamedTupleField);
+                return None;
             };
             let mut parts = match ne.expression().maybe_unpacked_atom() {
                 Some(AtomContent::Tuple(tup)) => tup.iter(),
@@ -3324,13 +3326,31 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     return None;
                 }
             };
-            let Some(first) = parts.next() else { todo!() };
-            let Some(second) = parts.next() else { todo!() };
+            let Some(first) = parts.next() else {
+                self.inference.add_issue(
+                    ne.index(),
+                    IssueKind::NamedTupleFieldExpectsTupleOfStrAndType,
+                );
+                return None;
+            };
+            let Some(second) = parts.next() else {
+                self.inference.add_issue(
+                    ne.index(),
+                    IssueKind::NamedTupleFieldExpectsTupleOfStrAndType,
+                );
+                return None;
+            };
             let StarLikeExpression::NamedExpression(name_expr) = first else {
-                todo!()
+                self.inference
+                    .add_issue(ne.index(), IssueKind::NamedTupleInvalidFieldName);
+                return None;
             };
             let StarLikeExpression::NamedExpression(type_expr) = second else {
-                todo!()
+                self.inference.add_issue(
+                    name_expr.index(),
+                    IssueKind::InvalidType("Star args are not supported".into()),
+                );
+                return None;
             };
             let Some(name) =
                 StringSlice::from_string_in_expression(file_index, name_expr.expression())
