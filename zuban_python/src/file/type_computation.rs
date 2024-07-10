@@ -2478,7 +2478,11 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         allow_aesthetic_class_simplification: bool,
     ) -> CallableParams {
         let SliceOrSimple::Simple(n) = first else {
-            todo!();
+            self.add_issue(
+                first.as_node_ref(),
+                IssueKind::InvalidType("Invalid callable params".into()),
+            );
+            return CallableParams::Any(AnyCause::FromError);
         };
         self.calculate_callable_params_for_expr(
             n.named_expr.expression(),

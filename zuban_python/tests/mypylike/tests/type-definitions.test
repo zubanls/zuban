@@ -125,3 +125,10 @@ from typing import Generic, TypeVar
 T = TypeVar("T")
 class Foo(Generic[T]): ...
 Foo[int][int]  # E: Invalid type comment or annotation
+
+[case invalid_callable]
+from typing import Callable
+
+c1: Callable[int:str, int]  # E: Invalid callable params
+
+reveal_type(c1)  # N: Revealed type is "def (*Any, **Any) -> int"
