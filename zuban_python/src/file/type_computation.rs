@@ -1860,7 +1860,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             &mut generics,
             slice_type.iter(),
             &named_tuple.__new__.type_vars,
-            &|| todo!(), //Box::from("TODO type name"),
+            &|| named_tuple.name(db).into(),
             |slf: &mut Self, counts| {
                 slf.add_issue(
                     slice_type.as_node_ref(),

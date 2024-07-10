@@ -92,3 +92,14 @@ x: foo.bar.baz.X
 from foo.bar import baz
 [file foo/bar/baz.py]
 class X: ...
+
+[case namedtuple_invalid_bound]
+from typing import NamedTuple, Generic, TypeVar
+T = TypeVar("T", bound=int)
+class Foo(NamedTuple, Generic[T]):
+    t: T
+
+Bar = NamedTuple("Bar", [('x', T)])
+
+x: Foo[str]  # E: Type argument "str" of "Foo" must be a subtype of "int"
+y: Bar[str]  # E: Type argument "str" of "Bar" must be a subtype of "int"
