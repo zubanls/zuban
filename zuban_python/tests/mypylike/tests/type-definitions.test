@@ -152,3 +152,8 @@ x: Type[int, str]  # E: Invalid type comment or annotation
 
 [case fstring_forward_reference]
 x: f'int'  # E: Invalid type comment or annotation
+
+[case invalid_type_application]
+from typing import Protocol, Generic
+Generic[int]  # E: Invalid type application
+Protocol[int]  # E: Invalid type application
