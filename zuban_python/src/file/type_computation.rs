@@ -1301,7 +1301,13 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     ),
                 );
             }
-            TypeContent::ParamSpecAttr { .. } => todo!(),
+            TypeContent::ParamSpecAttr { usage, name } => {
+                match name {
+                    "args" => return Some(Type::ParamSpecArgs(usage)),
+                    "kwargs" => return Some(Type::ParamSpecKwargs(usage)),
+                    _ => (), // Error was added earlier
+                }
+            }
         }
         None
     }

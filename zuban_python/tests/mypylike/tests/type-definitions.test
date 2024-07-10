@@ -66,9 +66,20 @@ def oneline2() -> None: cast(undefined, x)  # E: Name "undefined" is not defined
 def default_param_cast1(z: int = cast(undefined, 1)) -> None: ...  # E: Name "undefined" is not defined
 def default_param_cast2(z: int = cast(default_param_cast2, 1)) -> None: ...  # E: Name "default_param_cast2" is used before definition \
                                                                              # E: Function "__main__.default_param_cast2" is not valid as a type \
-                                                                             # N: Perhaps you need "Callable[...]" or a callback protocol?
-
 [case avoid_type_cycle_in_class_def]
 from typing import List
 class Foo(Foo): ...  # E: Name "Foo" is used before definition  # E: Cannot resolve name "Foo" (possible cyclic definition)
 class Bar(List[Bar]): ...  # E: Name "Bar" is used before definition
+
+[case invalid_usage_of_param_spec_attr]
+from typing import ParamSpec
+P = ParamSpec("P")
+def foo(*args: P.args, **kwargs: P.kwargs) -> None:
+    x: P.args
+    y: P.kwargs
+    z: P.undefined  # E: Name "P.undefined" is not defined
+    x = args
+    y = kwargs
+    if bool():
+        x = y  # E: Incompatible types in assignment (expression has type "P.kwargs", variable has type "P.args")
+    y = x  # E: Incompatible types in assignment (expression has type "P.args", variable has type "P.kwargs")

@@ -117,8 +117,6 @@ impl Type {
             Type::Module(file_index) => Type::Module(*file_index),
             Type::Namespace(namespace) => Type::Namespace(namespace.clone()),
             Type::Self_ => replace_self(),
-            Type::ParamSpecArgs(usage) => todo!(),
-            Type::ParamSpecKwargs(usage) => todo!(),
             Type::Dataclass(d) => Type::Dataclass({
                 if matches!(d.class.generics, ClassGenerics::List(_)) {
                     Dataclass::new(
@@ -172,8 +170,10 @@ impl Type {
                 Type::NamedTuple(Rc::new(NamedTuple::new(nt.name, constructor)))
             }
             t @ (Type::Enum(_) | Type::EnumMember(_)) => t.clone(),
-            Type::Super { .. } => todo!(),
-            Type::CustomBehavior(_) => todo!(),
+            Type::Super { .. }
+            | Type::CustomBehavior(_)
+            | Type::ParamSpecArgs(_)
+            | Type::ParamSpecKwargs(_) => self.clone(),
         }
     }
 
