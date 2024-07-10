@@ -478,8 +478,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             let compute_type =
                 |comp: &mut TypeComputation<'db, '_, '_, '_>| match star_exprs.unpack() {
                     StarExpressionContent::Expression(expr) => comp.compute_type(expr),
-                    StarExpressionContent::Tuple(t) => todo!(),
-                    StarExpressionContent::StarExpression(s) => todo!(),
+                    _ => TypeContent::InvalidVariable(InvalidVariableType::Other),
                 };
             let old_manager = std::mem::take(&mut self.type_var_manager);
             let mut comp = TypeComputation {
@@ -1315,8 +1314,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
     fn compute_type(&mut self, expr: Expression<'x>) -> TypeContent<'db, 'x> {
         let type_content = match expr.unpack() {
             ExpressionContent::ExpressionPart(n) => self.compute_type_expression_part(n),
-            ExpressionContent::Lambda(_) => todo!(),
-            ExpressionContent::Ternary(t) => todo!(),
+            _ => TypeContent::InvalidVariable(InvalidVariableType::Other),
         };
         if !self.inference.file.points.get(expr.index()).calculated() {
             match &type_content {
