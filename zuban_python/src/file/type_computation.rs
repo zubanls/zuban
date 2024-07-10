@@ -1891,35 +1891,35 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
     ) -> TypeContent<'db, 'db> {
         let db = self.inference.i_s.db;
         let mut generics = vec![];
-        if let TypedDictGenerics::NotDefinedYet(type_var_likes) = &typed_dict.generics {
-            self.calculate_type_arguments(
-                slice_type,
-                &mut generics,
-                slice_type.iter(),
-                type_var_likes,
-                &|| {
-                    typed_dict
-                        .name_or_fallback(&FormatData::new_short(db))
-                        .into()
-                },
-                |slf: &mut Self, counts| {
-                    slf.add_issue(
-                        slice_type.as_node_ref(),
-                        IssueKind::TypeArgumentIssue {
-                            class: typed_dict
-                                .name_or_fallback(&FormatData::new_short(db))
-                                .into(),
-                            counts,
-                        },
-                    );
-                },
-            );
-            let generics = GenericsList::generics_from_vec(generics);
-            let new_td = typed_dict.apply_generics(db, generics);
-            TypeContent::Type(Type::TypedDict(new_td))
-        } else {
-            todo!()
-        }
+        let type_var_likes = match &typed_dict.generics {
+            TypedDictGenerics::NotDefinedYet(type_var_likes) => type_var_likes,
+            _ => &db.python_state.empty_type_var_likes,
+        };
+        self.calculate_type_arguments(
+            slice_type,
+            &mut generics,
+            slice_type.iter(),
+            type_var_likes,
+            &|| {
+                typed_dict
+                    .name_or_fallback(&FormatData::new_short(db))
+                    .into()
+            },
+            |slf: &mut Self, counts| {
+                slf.add_issue(
+                    slice_type.as_node_ref(),
+                    IssueKind::TypeArgumentIssue {
+                        class: typed_dict
+                            .name_or_fallback(&FormatData::new_short(db))
+                            .into(),
+                        counts,
+                    },
+                );
+            },
+        );
+        let generics = GenericsList::generics_from_vec(generics);
+        let new_td = typed_dict.apply_generics(db, generics);
+        TypeContent::Type(Type::TypedDict(new_td))
     }
 
     fn compute_type_get_item_on_class(

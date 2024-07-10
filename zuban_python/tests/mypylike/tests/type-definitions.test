@@ -114,3 +114,8 @@ Bar = TypedDict("Bar", {'x': T})
 
 x: Foo[str]  # E: Type argument "str" of "Foo" must be a subtype of "int"
 y: Bar[str]  # E: Type argument "str" of "Bar" must be a subtype of "int"
+
+[case typed_dict_non_generic_getitem]
+from typing import TypedDict
+Bar = TypedDict("Bar", {'x': int})
+x: Bar[int]  # E: "Bar" expects no type arguments, but 1 given
