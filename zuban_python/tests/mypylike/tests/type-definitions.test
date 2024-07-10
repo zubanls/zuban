@@ -132,3 +132,16 @@ from typing import Callable
 c1: Callable[int:str, int]  # E: Invalid callable params
 
 reveal_type(c1)  # N: Revealed type is "def (*Any, **Any) -> int"
+
+[case never_in_unions]
+from typing import Union, Never
+
+u1: Union[Never, Never]
+u2: Union[Never]
+u3: Union[Never, int]
+u4: Union[Never, int, str, Never]
+
+reveal_type(u1)  # N: Revealed type is "Never"
+reveal_type(u2)  # N: Revealed type is "Never"
+reveal_type(u3)  # N: Revealed type is "int"
+reveal_type(u4)  # N: Revealed type is "int | str"
