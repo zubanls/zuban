@@ -2695,7 +2695,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         let mut iterator = slice_type.iter();
         let content = iterator.next().unwrap();
         if iterator.count() > 0 {
-            todo!()
+            return TypeContent::InvalidVariable(InvalidVariableType::Other);
         }
         let mut t = match self.compute_slice_type_content(content) {
             TypeContent::SpecialType(SpecialType::Type) => {

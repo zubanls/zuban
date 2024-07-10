@@ -145,3 +145,7 @@ reveal_type(u1)  # N: Revealed type is "Never"
 reveal_type(u2)  # N: Revealed type is "Never"
 reveal_type(u3)  # N: Revealed type is "int"
 reveal_type(u4)  # N: Revealed type is "int | str"
+
+[case invalid_type_type]
+from typing import Type
+x: Type[int, str]  # E: Invalid type comment or annotation
