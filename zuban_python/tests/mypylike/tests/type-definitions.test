@@ -103,3 +103,14 @@ Bar = NamedTuple("Bar", [('x', T)])
 
 x: Foo[str]  # E: Type argument "str" of "Foo" must be a subtype of "int"
 y: Bar[str]  # E: Type argument "str" of "Bar" must be a subtype of "int"
+
+[case typed_dict_invalid_bound]
+from typing import TypedDict, Generic, TypeVar
+T = TypeVar("T", bound=int)
+class Foo(TypedDict, Generic[T]):
+    t: T
+
+Bar = TypedDict("Bar", {'x': T})
+
+x: Foo[str]  # E: Type argument "str" of "Foo" must be a subtype of "int"
+y: Bar[str]  # E: Type argument "str" of "Bar" must be a subtype of "int"

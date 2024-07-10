@@ -1897,7 +1897,11 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 &mut generics,
                 slice_type.iter(),
                 type_var_likes,
-                &|| todo!(), //Box::from("TODO type name"),
+                &|| {
+                    typed_dict
+                        .name_or_fallback(&FormatData::new_short(db))
+                        .into()
+                },
                 |slf: &mut Self, counts| {
                     slf.add_issue(
                         slice_type.as_node_ref(),
