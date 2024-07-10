@@ -3105,7 +3105,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             AtomContent::Strings(s_o_b) => match s_o_b.as_python_string() {
                 PythonString::Ref(start, s) => self.compute_forward_reference(start, s.into()),
                 PythonString::String(start, s) => self.compute_forward_reference(start, s.into()),
-                PythonString::FString => todo!(),
+                PythonString::FString => TypeContent::InvalidVariable(InvalidVariableType::Other),
             },
             AtomContent::NoneLiteral => TypeContent::Type(Type::None),
             AtomContent::List(_) => TypeContent::InvalidVariable(InvalidVariableType::List),

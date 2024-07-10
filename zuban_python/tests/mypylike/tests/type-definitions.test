@@ -149,3 +149,6 @@ reveal_type(u4)  # N: Revealed type is "int | str"
 [case invalid_type_type]
 from typing import Type
 x: Type[int, str]  # E: Invalid type comment or annotation
+
+[case fstring_forward_reference]
+x: f'int'  # E: Invalid type comment or annotation
