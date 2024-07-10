@@ -246,8 +246,6 @@ testProtocolWithNestedClass
 # subtyping arbitrary length unpacks
 testVariadicTupleSubtyping
 # TypeVarTuple kind of works correctly, but mypy checks args first before callables
-testTypeVarTuplePep646Callable
-testTypeVarTuplePep646CallableStarArgs
 testVariadicTupleInProtocol
 # TypeVarTuple as unpacked varargs
 testVariadicStarArgsCallNoCrash

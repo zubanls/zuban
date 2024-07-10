@@ -755,7 +755,12 @@ pub(crate) fn match_arguments_against_params<
                                     return;
                                 };
                                 let argument = if index >= 0 {
-                                    &args[(index as usize).min(args.len() - 1)]
+                                    let arg_len = args.len();
+                                    if arg_len == 0 {
+                                        too_few_arguments();
+                                        return;
+                                    }
+                                    &args[(index as usize).min(arg_len - 1)]
                                 } else {
                                     todo!()
                                 };
