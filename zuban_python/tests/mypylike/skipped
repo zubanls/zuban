@@ -76,13 +76,6 @@ testTypeVarIdsNested
 # Type var finder recursion is not handled, because imports are involved.
 check-incremental:testRecursiveAliasImported
 check-recursive-types:testRecursiveAliasImported
-# TypedDict definition circle: A = TypedDict('A', {'a': 'A'})
-testCrashOnSelfRecursiveTypedDictVar
-testBasicRecursiveTypedDictCall
-testRecursiveTypedDictWithList
-# dataclass circles with bound
-testDataclassGenericWithBound
-testDataclassFactory
 
 # class attributes
 testImplicitClassScopedNames
@@ -977,6 +970,10 @@ testTypedDictWith__ror__method
 testTypedDictWith__ior__method
 # Functional TypedDict in class def
 testCanCreateClassWithFunctionBasedTypedDictBase
+# TypedDict definition circle: A = TypedDict('A', {'a': 'A'})
+testCrashOnSelfRecursiveTypedDictVar
+testBasicRecursiveTypedDictCall
+testRecursiveTypedDictWithList
 
 # enum member gathering
 testFinalWithMethodAssignment
@@ -1020,6 +1017,9 @@ testTypeVarDefaultsClassRecursive1
 testTypeVarDefaultsClassRecursiveMultipleFiles
 testTypeVarDefaultsTypeAliasRecursive1
 testTypeVarDefaultsTypeAliasRecursive2
+# dataclass circles with bound
+testDataclassGenericWithBound
+testDataclassFactory
 
 # lambda with generics
 testInferenceAgainstGenericLambdas
