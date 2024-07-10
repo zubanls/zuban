@@ -4135,8 +4135,8 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                 let expr = match star_like {
                     StarLikeExpression::NamedExpression(named_expr) => named_expr.expression(),
                     StarLikeExpression::Expression(expr) => expr,
-                    StarLikeExpression::StarNamedExpression(x) => todo!("{x:?}"),
-                    StarLikeExpression::StarExpression(x) => todo!("{x:?}"),
+                    StarLikeExpression::StarNamedExpression(_)
+                    | StarLikeExpression::StarExpression(_) => unreachable!(),
                 };
                 if let Some(tuple) = expr.maybe_tuple() {
                     self.calc_type_comment_tuple(assignment_node_ref, tuple.iter())
