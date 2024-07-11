@@ -49,8 +49,6 @@ testTupleOverloadZipAny
 testGenericJoinRecursiveTypes
 testRecursiveTupleFallback2
 testRecursiveTupleFallback3
-# Recursive Alias wrong type var inference
-testRecursiveAliasesJoins
 # Recursive alias union type var inference
 testRecursiveAliasWithRecursiveInstanceInference
 

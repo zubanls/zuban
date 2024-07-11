@@ -110,6 +110,7 @@ fn common_base_class(i_s: &InferenceState, c1: Class, c2: Class) -> Option<Type>
         .or_else(|| check_promotion(i_s.db, c1, c2))
         .or_else(|| check_promotion(i_s.db, c2, c1))
 }
+
 fn common_base_class_basic(i_s: &InferenceState, c1: Class, c2: Class) -> Option<Type> {
     if c1.node_ref != c2.node_ref {
         return None;
@@ -168,6 +169,11 @@ fn common_base_class_basic(i_s: &InferenceState, c1: Class, c2: Class) -> Option
 }
 
 fn class_against_non_class(i_s: &InferenceState, c1: Class, t2: &Type) -> Option<Type> {
+    if let Type::RecursiveType(r2) = t2 {
+        if let Type::Class(c2) = r2.calculated_type(i_s.db) {
+            return common_base_class(i_s, c1, c2.class(i_s.db));
+        }
+    }
     None
 }
 
@@ -193,6 +199,15 @@ fn common_base_type_for_non_class(
         }
         Type::Type(t1) => match type2 {
             Type::Type(t2) => return Some(Type::Type(Rc::new(t1.common_base_type(i_s, t2)))),
+            _ => (),
+        },
+        Type::RecursiveType(r1) => match type2 {
+            Type::RecursiveType(r2) => {
+                return Some(
+                    r1.calculated_type(i_s.db)
+                        .common_base_type(i_s, r2.calculated_type(i_s.db)),
+                )
+            }
             _ => (),
         },
         _ => {
