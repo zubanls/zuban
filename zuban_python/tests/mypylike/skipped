@@ -64,8 +64,6 @@ testRecursiveClassLevelAlias
 testAliasInstanceNameClash
 # better meet/join
 testJoinProtocolCallback
-testMeetOfIncompatibleProtocols
-testMeetProtocolCallback
 # join with matcher
 testGenericUnionFunctionJoin
 testTypeVarIdsNested
@@ -1715,6 +1713,7 @@ testNamedTupleAsConditionalStrictOptionalDisabled
 testPartialAttributeNoneType
 testOptionalIterator
 testDescriptorAccessForUnionOfTypesWithNoStrictOptional
+testMeetOfIncompatibleProtocols
 
 # --untyped-calls-exclude=bar.A
 testDisallowUntypedCallsAllowListFlags

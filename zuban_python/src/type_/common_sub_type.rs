@@ -3,8 +3,8 @@ use std::rc::Rc;
 use parsa_python_cst::ParamKind;
 
 use super::{
-    AnyCause, CallableContent, CallableParam, CallableParams, ParamType, StarParamType,
-    StarStarParamType, Type, TypeGuardInfo, UnionType,
+    AnyCause, CallableContent, CallableLike, CallableParam, CallableParams, ParamType,
+    StarParamType, StarStarParamType, Type, TypeGuardInfo, UnionType,
 };
 use crate::{
     inference_state::InferenceState,
@@ -58,9 +58,8 @@ impl Type {
                 })
             }
             (Type::TypedDict(td1), Type::TypedDict(td2)) => Some(td1.union(i_s, td2)),
-            (Type::Callable(c1), Type::Callable(c2)) => {
-                Some(Type::Callable(common_sub_type_for_callables(i_s, c1, c2)))
-            }
+            (Type::Callable(c1), _) => common_sub_type_for_callable_against_type(i_s, c1, other),
+            (_, Type::Callable(c2)) => common_sub_type_for_callable_against_type(i_s, c2, self),
             (Type::Any(_), _) => Some(other.clone()),
             (_, Type::Any(_)) => Some(self.clone()),
             _ => {
@@ -98,6 +97,21 @@ impl CallableParams {
             CallableParams::Any(_) | CallableParams::Never(_) => todo!(),
         }
     }
+}
+
+fn common_sub_type_for_callable_against_type(
+    i_s: &InferenceState,
+    c1: &CallableContent,
+    other: &Type,
+) -> Option<Type> {
+    other
+        .maybe_callable(i_s)
+        .and_then(|callable_like| match callable_like {
+            CallableLike::Callable(c2) => {
+                Some(Type::Callable(common_sub_type_for_callables(i_s, c1, &c2)))
+            }
+            CallableLike::Overload(_) => None, // TODO we should probably implement this
+        })
 }
 
 fn common_sub_type_for_callables(
@@ -140,10 +154,13 @@ fn common_sub_type_params(
     if params1.len() == params2.len() {
         let mut new_params = vec![];
         for (p1, p2) in params1.iter().zip(params2.iter()) {
-            if p1.name != p2.name || p1.has_default != p2.has_default {
+            let k1 = p1.type_.param_kind();
+            if k1 != p2.type_.param_kind() {
                 return None;
             }
-            if p1.type_.param_kind() != p2.type_.param_kind() {
+            if p1.name != p2.name && !matches!(k1, ParamKind::PositionalOnly)
+                || p1.has_default != p2.has_default
+            {
                 return None;
             }
             let t1 = p1.type_.maybe_positional_type()?;
