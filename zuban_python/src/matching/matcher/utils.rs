@@ -230,6 +230,12 @@ impl CalculatedTypeArgs {
                                 defined_at: c.clone(),
                                 parent_callable: parent_callable.clone(),
                             });
+                            // The old type vars of the function are still relevant and should stay
+                            // there!
+                            for already_late_bound_tv in c.type_vars.iter() {
+                                manager.add(already_late_bound_tv.clone(), Some(c.clone()));
+                            }
+                            // Try to add the new type vars if they match.
                             c.params.search_type_vars(&mut |u| {
                                 let found = u.as_type_var_like();
                                 if type_var_likes.iter().any(|tvl| tvl == &found) {
