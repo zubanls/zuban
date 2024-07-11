@@ -416,8 +416,6 @@ fn check_list_with_context<'db>(
         ));
     }
 
-    let mut new_result_context = ResultContext::Known(generic_t);
-
     // Since it's a list, now check all the entries if they match the given
     // result generic;
     let mut had_error = false;
@@ -425,7 +423,7 @@ fn check_list_with_context<'db>(
     let out_pointer = &mut out;
     let context_has_any = generic_t.is_any_or_any_in_union(i_s.db);
     for (item, element) in iterator.enumerate() {
-        let mut check_item = |i_s: &InferenceState<'db, '_>, inferred: Inferred, index| {
+        let mut check_item = |i_s: &InferenceState<'db, '_>, matcher, inferred: Inferred, index| {
             generic_t.error_if_not_matches_with_matcher(
                 i_s,
                 matcher,
@@ -451,15 +449,20 @@ fn check_list_with_context<'db>(
         let inference = file.inference(i_s);
         match element {
             StarLikeExpression::NamedExpression(e) => {
+                let mut new_result_context = ResultContext::WithMatcher {
+                    matcher,
+                    type_: generic_t,
+                };
                 let inferred =
                     inference.infer_named_expression_with_context(e, &mut new_result_context);
-                check_item(i_s, inferred, e.index())
+                check_item(i_s, matcher, inferred, e.index())
             }
             StarLikeExpression::StarNamedExpression(starred) => {
                 let inferred = inference.infer_expression_part(starred.expression_part());
                 let from = NodeRef::new(file, starred.index());
                 check_item(
                     i_s,
+                    matcher,
                     inferred.iter(i_s, from).infer_all(i_s),
                     starred.index(),
                 )

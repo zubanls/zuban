@@ -46,17 +46,13 @@ testTypeVarTupleOverloadMatch
 testTupleOverloadZipAny
 
 # recursive limits missing for joins / unions
-testRecursiveAliasGenericInferenceNested
-testRecursiveAliasTopUnion
 testGenericJoinRecursiveTypes
-testRecursiveAliasWithRecursiveInstance
 testRecursiveTupleFallback2
 testRecursiveTupleFallback3
 # Recursive Alias wrong type var inference
 testRecursiveAliasesJoins
 # Recursive alias union type var inference
 testRecursiveAliasWithRecursiveInstanceInference
-testRecursiveAliasBasicGenericInference
 
 # Recursive aliases that fail to resolve because imports are calculating
 check-incremental:testRecursiveAliasImported
