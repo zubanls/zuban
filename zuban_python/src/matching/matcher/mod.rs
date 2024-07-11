@@ -200,6 +200,12 @@ impl<'a> Matcher<'a> {
                 }
             );
         }
+        debug!(
+            "Match callable {} :> {}: {:?}",
+            c1.format(&FormatData::new_short(i_s.db)),
+            c2.format(&FormatData::new_short(i_s.db)),
+            result,
+        );
         result
     }
 

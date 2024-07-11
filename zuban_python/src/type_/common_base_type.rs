@@ -236,7 +236,7 @@ fn common_base_for_callables(
     c2: &CallableContent,
 ) -> Type {
     if !c1.kind.is_same_base_kind(c2.kind) {
-        todo!("{:?} {:?}", c1.kind, c2.kind)
+        return i_s.db.python_state.function_type();
     }
     if let Some(params) = c1.params.common_base_type(i_s, &c2.params) {
         Type::Callable(Rc::new(CallableContent {
@@ -254,6 +254,12 @@ fn common_base_for_callables(
             no_type_check: false,
         }))
     } else {
+        if Matcher::default().matches_callable(i_s, c1, c2).bool() {
+            return Type::Callable(Rc::new(c2.clone()));
+        }
+        if Matcher::default().matches_callable(i_s, c2, c1).bool() {
+            return Type::Callable(Rc::new(c1.clone()));
+        }
         i_s.db.python_state.function_type()
     }
 }

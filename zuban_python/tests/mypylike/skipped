@@ -59,7 +59,6 @@ testRecursiveAliasWithRecursiveInstanceInference
 testTypeshedRecursiveTypesExample
 testRecursiveAliasBasicGenericInference
 # join with matcher
-testGenericUnionFunctionJoin
 testTypeVarIdsNested
 
 # Recursive aliases that fail to resolve because imports are calculating
