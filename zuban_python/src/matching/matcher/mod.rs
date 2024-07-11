@@ -163,11 +163,10 @@ impl<'a> Matcher<'a> {
                 .push(TypeVarMatcher::new(c2.defined_at, c2.type_vars.clone()))
         }
 
-        let mut result = c1.return_type.is_super_type_of(i_s, self, &c2.return_type)
-            & matches_params(i_s, self, &c1.params, &c2.params).or(|| {
-                // Mypy treats *args/**kwargs special
-                c1.params.is_any_args_and_kwargs().into()
-            });
+        let mut result = matches_params(i_s, self, &c1.params, &c2.params).or(|| {
+            // Mypy treats *args/**kwargs special
+            c1.params.is_any_args_and_kwargs().into()
+        }) & c1.return_type.is_super_type_of(i_s, self, &c2.return_type);
 
         if let Some(guard1) = &c1.guard {
             if let Some(guard2) = c2

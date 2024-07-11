@@ -156,7 +156,7 @@ T = TypeVar('T')
 def add(c: Callable[[T], T | list[T]]) -> T: ...
 
 c: Callable[[str], int | list[str]]
-a: int = add(c) # E: Argument 1 to "add" has incompatible type "Callable[[str], int | list[str]]"; expected "Callable[[int], int | list[int]]"
+a: int = add(c) # E: Argument 1 to "add" has incompatible type "Callable[[str], int | list[str]]"; expected "Callable[[Never], Never | list[Never]]"
 
 [case nested_generic_mismatch_class_and_callable]
 from typing import TypeVar, Generic, Callable
@@ -909,7 +909,7 @@ def same_wrong(x: str, y: str) -> str: ...
 def other(x: int, y: str) -> object: ...
 foo(1.0, same)
 foo(1.0, same_wrong)  # E: Value of type variable "B" of "foo" cannot be "str"
-foo(1.0, other)  # E: Value of type variable "B" of "foo" cannot be "object"
+foo(1.0, other)  # E: Argument 2 to "foo" has incompatible type "Callable[[int, str], object]"; expected "Callable[[Never, Never], Never]"
 
 def tv1(x: B, y: B2) -> B2: ...
 def tv2(x: B2, y: B2) -> B2: ...
