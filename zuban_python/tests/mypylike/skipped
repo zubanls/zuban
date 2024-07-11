@@ -56,7 +56,6 @@ testRecursiveTupleFallback3
 testRecursiveAliasesJoins
 # Recursive alias union type var inference
 testRecursiveAliasWithRecursiveInstanceInference
-testTypeshedRecursiveTypesExample
 testRecursiveAliasBasicGenericInference
 
 # Recursive aliases that fail to resolve because imports are calculating
