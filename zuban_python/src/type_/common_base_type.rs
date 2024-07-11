@@ -26,6 +26,7 @@ impl Type {
             Type::None | Type::Union(_) => Some(self.simplified_union(i_s, other)),
             Type::Any(cause) => Some(Type::Any(*cause)),
             Type::Never(_) => Some(t2.clone()),
+            Type::Callable(c1) => common_base_for_callable_against_type(i_s, c1, t2),
             _ => None,
         };
 
@@ -176,13 +177,6 @@ fn common_base_type_for_non_class(
     type2: &Type,
 ) -> Option<Type> {
     match type1 {
-        Type::Callable(c1) => {
-            // TODO this should also be done for function/callable and callable/function and
-            // not only callable/callable
-            if let Some(CallableLike::Callable(c2)) = type2.maybe_callable(i_s) {
-                return Some(common_base_for_callables(i_s, c1, &c2));
-            }
-        }
         Type::Tuple(tup1) => return common_base_for_tuple_against_type(i_s, tup1, type2),
         Type::NamedTuple(nt1) => {
             if let Type::NamedTuple(nt2) = type2 {
@@ -199,7 +193,6 @@ fn common_base_type_for_non_class(
         }
         Type::Type(t1) => match type2 {
             Type::Type(t2) => return Some(Type::Type(Rc::new(t1.common_base_type(i_s, t2)))),
-            Type::Callable(c2) => return common_base_type_for_non_class(i_s, type2, type1),
             _ => (),
         },
         _ => {
@@ -227,6 +220,16 @@ impl CallableParams {
     }
 }
 
+fn common_base_for_callable_against_type(
+    i_s: &InferenceState,
+    c1: &CallableContent,
+    other: &Type,
+) -> Option<Type> {
+    match other.maybe_callable(i_s)? {
+        CallableLike::Callable(c2) => Some(common_base_for_callables(i_s, c1, &c2)),
+        CallableLike::Overload(_) => None,
+    }
+}
 fn common_base_for_callables(
     i_s: &InferenceState,
     c1: &CallableContent,

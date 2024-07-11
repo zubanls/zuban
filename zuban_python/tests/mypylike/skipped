@@ -62,8 +62,6 @@ testRecursiveAliasBasicGenericInference
 testRecursiveClassLevelAlias
 # used before def wrong error in recursive type definition
 testAliasInstanceNameClash
-# better meet/join
-testJoinProtocolCallback
 # join with matcher
 testGenericUnionFunctionJoin
 testTypeVarIdsNested

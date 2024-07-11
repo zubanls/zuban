@@ -104,14 +104,12 @@ fn common_sub_type_for_callable_against_type(
     c1: &CallableContent,
     other: &Type,
 ) -> Option<Type> {
-    other
-        .maybe_callable(i_s)
-        .and_then(|callable_like| match callable_like {
-            CallableLike::Callable(c2) => {
-                Some(Type::Callable(common_sub_type_for_callables(i_s, c1, &c2)))
-            }
-            CallableLike::Overload(_) => None, // TODO we should probably implement this
-        })
+    match other.maybe_callable(i_s)? {
+        CallableLike::Callable(c2) => {
+            Some(Type::Callable(common_sub_type_for_callables(i_s, c1, &c2)))
+        }
+        CallableLike::Overload(_) => None, // TODO we should probably implement this
+    }
 }
 
 fn common_sub_type_for_callables(
