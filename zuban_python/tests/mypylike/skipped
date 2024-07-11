@@ -58,10 +58,6 @@ testRecursiveAliasesJoins
 testRecursiveAliasWithRecursiveInstanceInference
 testTypeshedRecursiveTypesExample
 testRecursiveAliasBasicGenericInference
-# Recursive alias class type aliases
-testRecursiveClassLevelAlias
-# used before def wrong error in recursive type definition
-testAliasInstanceNameClash
 # join with matcher
 testGenericUnionFunctionJoin
 testTypeVarIdsNested
@@ -1066,6 +1062,8 @@ testDeclarationReferenceToNestedClass
 testNewAnalyzerNamedTupleCallNestedMethod
 testGenericClassWithinFunction
 testGenericClassWithInvalidTypevarUseWithinFunction
+# Recursive alias forward reference in class scope
+testRecursiveClassLevelAlias
 
 # Assignment like ac[b] += c with both __getitem__ and __setitem__ has same error twice
 testOperatorAssignmentWithIndexLvalue1
