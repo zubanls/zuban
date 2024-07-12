@@ -147,20 +147,20 @@ fn merge_simplified_union_type(
             }
             continue;
         }
+        if new_types
+            .iter()
+            .any(|entry| entry.type_ == additional.type_)
+        {
+            // Just do a quick check if the types are exactly the same. This might happen quite
+            // often in simple cases and will probably be a minor speed boost and catch some
+            // recursive types that we don't handle otherwise.
+            continue;
+        }
         match &additional.type_ {
             Type::RecursiveType(r1) if r1.generics.is_some() => {
                 // Recursive aliases need special handling, because the normal subtype
                 // checking will call this function again if generics are available to
-                // cache the type. In that case we just avoid complex matching and use
-                // a simple heuristic. This won't affect correctness, it might just
-                // display a bigger union than necessary.
-                for entry in new_types.iter() {
-                    if let Type::RecursiveType(r2) = &entry.type_ {
-                        if r1 == r2 {
-                            continue 'outer;
-                        }
-                    }
-                }
+                // cache the type.
             }
             additional_t => {
                 for (i, current) in new_types.iter().enumerate() {

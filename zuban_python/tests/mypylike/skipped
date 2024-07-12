@@ -47,7 +47,6 @@ testTupleOverloadZipAny
 
 # recursive limits missing for joins / unions
 testGenericJoinRecursiveTypes
-testRecursiveTupleFallback2
 testRecursiveTupleFallback3
 # Recursive alias union type var inference
 testRecursiveAliasWithRecursiveInstanceInference
