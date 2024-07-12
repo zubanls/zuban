@@ -1248,7 +1248,7 @@ impl Type {
             ),
             Type::Class(c) => c.class(db).mro(db),
             Type::Tuple(tup) => {
-                let tuple_class = db.python_state.tuple_class(db, tup);
+                let tuple_class = tup.class(db);
                 MroIterator::new(
                     db,
                     TypeOrClass::Type(Cow::Borrowed(self)),

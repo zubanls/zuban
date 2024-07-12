@@ -723,12 +723,6 @@ impl PythonState {
     }
 
     #[inline]
-    pub fn tuple_class<'db: 'a, 'a>(&'db self, db: &'db Database, tuple: &'a Tuple) -> Class<'a> {
-        let generics = tuple.tuple_class_generics(db);
-        Class::from_position(self.tuple_node_ref(), Generics::List(generics, None), None)
-    }
-
-    #[inline]
     pub fn tuple_class_with_generics_to_be_defined(&self) -> Class {
         Class::from_position(self.tuple_node_ref(), Generics::NotDefinedYet, None)
     }
@@ -736,7 +730,7 @@ impl PythonState {
     attribute_node_ref!(builtins, pub object_node_ref, builtins_object_index);
     attribute_node_ref!(builtins, pub bare_type_node_ref, builtins_type_index);
     attribute_node_ref!(builtins, pub list_node_ref, builtins_list_index);
-    attribute_node_ref!(builtins, tuple_node_ref, builtins_tuple_index);
+    attribute_node_ref!(builtins, pub tuple_node_ref, builtins_tuple_index);
     attribute_node_ref!(builtins, pub dict_node_ref, builtins_dict_index);
     attribute_node_ref!(builtins, pub set_node_ref, builtins_set_index);
     attribute_node_ref!(builtins, pub bool_node_ref, builtins_bool_index);

@@ -104,7 +104,7 @@ impl Type {
                             g.matches_internal(i_s, matcher, value_type, variance)
                         })
                     }
-                    t @ Type::RecursiveType(rec2) => matcher.avoid_recursion(t1, t, |matcher| {
+                    t2 @ Type::RecursiveType(rec2) => matcher.avoid_recursion(t1, t2, |matcher| {
                         let t1 = rec1.calculated_type(i_s.db);
                         let t2 = rec2.calculated_type(i_s.db);
                         t1.matches_internal(i_s, matcher, t2, variance)

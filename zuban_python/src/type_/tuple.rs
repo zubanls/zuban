@@ -13,10 +13,10 @@ use crate::{
     getitem::{SliceType, SliceTypeContent},
     inference_state::InferenceState,
     inferred::{AttributeKind, Inferred},
-    matching::{IteratorContent, OnTypeError, ResultContext},
+    matching::{Generics, IteratorContent, OnTypeError, ResultContext},
     node_ref::NodeRef,
     type_::{AnyCause, Type},
-    type_helpers::{Instance, LookupDetails, TypeOrClass},
+    type_helpers::{Class, Instance, LookupDetails, TypeOrClass},
     utils::{join_with_commas, rc_slice_into_vec},
 };
 
@@ -127,7 +127,7 @@ impl Tuple {
                     .is_simple_sub_type_of(i_s, &i_s.db.python_state.int_type())
                     .bool()
                 {
-                    Instance::new(i_s.db.python_state.tuple_class(i_s.db, self), None)
+                    Instance::new(self.class(i_s.db), None)
                         .type_lookup(
                             i_s,
                             |issue| slice_type.as_node_ref().add_issue(i_s, issue),
@@ -374,6 +374,15 @@ impl Tuple {
             TupleArgs::WithUnpack(with_unpack) => with_unpack.find_in_type(db, check),
         }
     }
+
+    pub fn class<'db: 'a, 'a>(&'a self, db: &'db Database) -> Class<'a> {
+        let generics = self.tuple_class_generics(db);
+        Class::from_position(
+            db.python_state.tuple_node_ref(),
+            Generics::List(generics, None),
+            None,
+        )
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -608,7 +617,7 @@ pub(crate) fn lookup_on_tuple<'x>(
     name: &str,
 ) -> LookupDetails<'x> {
     lookup_tuple_magic_methods(tuple.clone(), name).or_else(|| {
-        let tuple_cls = i_s.db.python_state.tuple_class(i_s.db, tuple);
+        let tuple_cls = tuple.class(i_s.db);
         let tuple_instance = Instance::new(tuple_cls, None);
         for (mro_index, class_or_type) in tuple_cls.mro(i_s.db) {
             let (cls, lookup) = class_or_type.lookup_symbol(i_s, name);
@@ -678,7 +687,7 @@ fn tuple_add<'db>(
         tuple.clone(),
         "__add__",
         tuple_add_internal,
-        || Instance::new(i_s.db.python_state.tuple_class(i_s.db, tuple), None),
+        || Instance::new(tuple.class(i_s.db), None),
     )
 }
 
@@ -738,7 +747,7 @@ fn tuple_mul<'db>(
         tuple.clone(),
         "__mul__",
         tuple_mul_internal,
-        || Instance::new(i_s.db.python_state.tuple_class(i_s.db, tuple), None),
+        || Instance::new(tuple.class(i_s.db), None),
     )
 }
 

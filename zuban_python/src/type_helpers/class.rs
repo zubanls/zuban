@@ -2449,13 +2449,13 @@ fn linearize_mro(i_s: &InferenceState, class: &Class, bases: &[Type]) -> Box<[Ba
             let generic_class = match &t {
                 Type::Class(c) => Some(c.class(i_s.db)),
                 Type::Dataclass(d) => Some(d.class.class(i_s.db)),
-                Type::Tuple(content) => {
-                    let cls = i_s.db.python_state.tuple_class(i_s.db, content);
+                Type::Tuple(tup) => {
+                    let cls = tup.class(i_s.db);
                     additional_type = Some(cls.as_type(i_s.db));
                     Some(cls)
                 }
                 Type::NamedTuple(nt) => {
-                    let cls = i_s.db.python_state.tuple_class(i_s.db, nt.as_tuple_ref());
+                    let cls = nt.as_tuple_ref().class(i_s.db);
                     additional_type = Some(cls.as_type(i_s.db));
                     Some(cls)
                 }

@@ -653,7 +653,7 @@ pub(crate) fn attribute_access_of_type(
             ClassLookupOptions::new(&add_issue).with_kind(kind),
         ),
         Type::NamedTuple(nt) => nt.type_lookup(i_s, name, Some(&|| (*in_type).clone())),
-        Type::Tuple(tup) => i_s.db.python_state.tuple_class(i_s.db, tup).lookup(
+        Type::Tuple(tup) => tup.class(i_s.db).lookup(
             i_s,
             name,
             ClassLookupOptions::new(&add_issue).with_kind(kind),
