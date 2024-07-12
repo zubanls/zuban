@@ -13,7 +13,7 @@ pub use match_::{ArgumentIndexWithParam, Match, MismatchReason, SignatureMatch};
 pub(crate) use matcher::{
     calculate_callable_init_type_vars_and_return, calculate_callable_type_vars_and_return,
     calculate_class_init_type_vars_and_return, calculate_function_type_vars_and_return,
-    CalculatedTypeArgs, FunctionOrCallable, Matcher, MatcherFormatResult,
+    CalculatedTypeArgs, CheckedTypeRecursion, FunctionOrCallable, Matcher, MatcherFormatResult,
 };
 pub use result_context::{CouldBeALiteral, ResultContext};
 pub use utils::{

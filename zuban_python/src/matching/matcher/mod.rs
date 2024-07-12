@@ -42,12 +42,12 @@ use crate::{
     utils::{join_with_commas, AlreadySeen},
 };
 
-type CheckedTypeRecursion<'a> = AlreadySeen<'a, (&'a Type, &'a Type)>;
+pub type CheckedTypeRecursion<'a> = AlreadySeen<'a, (&'a Type, &'a Type)>;
 
 #[derive(Default)]
 pub struct Matcher<'a> {
     type_var_matchers: Vec<TypeVarMatcher>,
-    checking_type_recursion: Option<CheckedTypeRecursion<'a>>,
+    pub checking_type_recursion: Option<CheckedTypeRecursion<'a>>,
     class: Option<&'a Class<'a>>,
     pub func_or_callable: Option<FunctionOrCallable<'a>>,
     ignore_promotions: bool,

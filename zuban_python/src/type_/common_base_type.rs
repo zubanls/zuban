@@ -10,13 +10,22 @@ use super::{
 use crate::{
     database::Database,
     inference_state::InferenceState,
-    matching::{Match, Matcher},
+    matching::{CheckedTypeRecursion, Match, Matcher},
     type_::CallableLike,
     type_helpers::{Class, TypeOrClass},
 };
 
 impl Type {
     pub fn common_base_type(&self, i_s: &InferenceState, other: &Self) -> Type {
+        self.common_base_type_internal(i_s, other, None)
+    }
+
+    fn common_base_type_internal(
+        &self,
+        i_s: &InferenceState,
+        other: &Self,
+        checked_recursions: Option<CheckedTypeRecursion>,
+    ) -> Type {
         let check_both_sides = |t1: &_, t2: &Type| match t1 {
             /*
             Type::Union(u) if u.iter().any(|t| matches!(t, Type::None)) => {
@@ -30,6 +39,14 @@ impl Type {
             _ => None,
         };
 
+        let checked_recursions = CheckedTypeRecursion {
+            current: (self, other),
+            previous: checked_recursions.as_ref(),
+        };
+        if checked_recursions.is_cycle() {
+            return i_s.db.python_state.object_type();
+        }
+
         if let Some(new) = check_both_sides(self, other) {
             return new;
         }
@@ -41,24 +58,30 @@ impl Type {
                 match &c1 {
                     TypeOrClass::Type(t1) => match c2 {
                         TypeOrClass::Class(c2) => {
-                            if let Some(base) = class_against_non_class(i_s, c2, t1) {
+                            if let Some(base) =
+                                class_against_non_class(i_s, c2, t1, checked_recursions)
+                            {
                                 return base;
                             }
                         }
                         TypeOrClass::Type(t2) => {
-                            if let Some(base) = common_base_type_for_non_class(i_s, t1, &t2) {
+                            if let Some(base) =
+                                common_base_type_for_non_class(i_s, t1, &t2, checked_recursions)
+                            {
                                 return base;
                             }
                         }
                     },
                     TypeOrClass::Class(c1) => match c2 {
                         TypeOrClass::Class(c2) => {
-                            if let Some(t) = common_base_class(i_s, *c1, c2) {
+                            if let Some(t) = common_base_class(i_s, *c1, c2, checked_recursions) {
                                 return t;
                             }
                         }
                         TypeOrClass::Type(t2) => {
-                            if let Some(base) = class_against_non_class(i_s, *c1, &t2) {
+                            if let Some(base) =
+                                class_against_non_class(i_s, *c1, &t2, checked_recursions)
+                            {
                                 return base;
                             }
                         }
@@ -105,13 +128,23 @@ fn check_promotion(db: &Database, promote: Class, other: Class) -> Option<Type> 
     }
 }
 
-fn common_base_class(i_s: &InferenceState, c1: Class, c2: Class) -> Option<Type> {
-    common_base_class_basic(i_s, c1, c2)
+fn common_base_class(
+    i_s: &InferenceState,
+    c1: Class,
+    c2: Class,
+    checked_recursions: CheckedTypeRecursion,
+) -> Option<Type> {
+    common_base_class_basic(i_s, c1, c2, checked_recursions)
         .or_else(|| check_promotion(i_s.db, c1, c2))
         .or_else(|| check_promotion(i_s.db, c2, c1))
 }
 
-fn common_base_class_basic(i_s: &InferenceState, c1: Class, c2: Class) -> Option<Type> {
+fn common_base_class_basic(
+    i_s: &InferenceState,
+    c1: Class,
+    c2: Class,
+    checked_recursions: CheckedTypeRecursion,
+) -> Option<Type> {
     if c1.node_ref != c2.node_ref {
         return None;
     }
@@ -142,9 +175,11 @@ fn common_base_class_basic(i_s: &InferenceState, c1: Class, c2: Class) -> Option
                         }
                     }
                     Variance::Covariant => {
-                        generics.push(GenericItem::TypeArg(
-                            inner_t1.common_base_type(i_s, &inner_t2),
-                        ));
+                        generics.push(GenericItem::TypeArg(inner_t1.common_base_type_internal(
+                            i_s,
+                            &inner_t2,
+                            Some(checked_recursions),
+                        )));
                     }
                     Variance::Contravariant => {
                         if let Some(t) = inner_t1.common_sub_type(i_s, &inner_t2) {
@@ -168,10 +203,15 @@ fn common_base_class_basic(i_s: &InferenceState, c1: Class, c2: Class) -> Option
     ))
 }
 
-fn class_against_non_class(i_s: &InferenceState, c1: Class, t2: &Type) -> Option<Type> {
+fn class_against_non_class(
+    i_s: &InferenceState,
+    c1: Class,
+    t2: &Type,
+    checked_recursions: CheckedTypeRecursion,
+) -> Option<Type> {
     if let Type::RecursiveType(r2) = t2 {
         if let Type::Class(c2) = r2.calculated_type(i_s.db) {
-            return common_base_class(i_s, c1, c2.class(i_s.db));
+            return common_base_class(i_s, c1, c2.class(i_s.db), checked_recursions);
         }
     }
     None
@@ -181,6 +221,7 @@ fn common_base_type_for_non_class(
     i_s: &InferenceState,
     type1: &Type,
     type2: &Type,
+    checked_recursions: CheckedTypeRecursion,
 ) -> Option<Type> {
     match type1 {
         Type::Tuple(tup1) => return common_base_for_tuple_against_type(i_s, tup1, type2),
@@ -198,15 +239,22 @@ fn common_base_type_for_non_class(
             }
         }
         Type::Type(t1) => match type2 {
-            Type::Type(t2) => return Some(Type::Type(Rc::new(t1.common_base_type(i_s, t2)))),
+            Type::Type(t2) => {
+                return Some(Type::Type(Rc::new(t1.common_base_type_internal(
+                    i_s,
+                    t2,
+                    Some(checked_recursions),
+                ))))
+            }
             _ => (),
         },
         Type::RecursiveType(r1) => match type2 {
             Type::RecursiveType(r2) => {
-                return Some(
-                    r1.calculated_type(i_s.db)
-                        .common_base_type(i_s, r2.calculated_type(i_s.db)),
-                )
+                return Some(r1.calculated_type(i_s.db).common_base_type_internal(
+                    i_s,
+                    r2.calculated_type(i_s.db),
+                    Some(checked_recursions),
+                ))
             }
             _ => (),
         },
