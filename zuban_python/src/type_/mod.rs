@@ -832,6 +832,12 @@ impl Type {
                     }
                 }
 
+                if rec.calculating(format_data.db) {
+                    // Happens only in weird cases like MRO calculation and will probably mostly
+                    // appear when debugging.
+                    return rec.name(format_data.db).into();
+                }
+
                 let avoid = AvoidRecursionFor::RecursiveType(rec);
                 match format_data.with_seen_recursive_type(avoid) {
                     Ok(format_data) => rec.calculated_type(format_data.db).format(&format_data),

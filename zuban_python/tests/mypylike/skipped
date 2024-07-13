@@ -45,8 +45,6 @@ testTypeVarTupleOverloadMatch
 # overload x should be preferred over an *x alternative
 testTupleOverloadZipAny
 
-# recursive limits missing for joins / unions
-testRecursiveTupleFallback3
 # Recursive alias union type var inference
 testRecursiveAliasWithRecursiveInstanceInference
 

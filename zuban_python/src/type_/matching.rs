@@ -100,6 +100,11 @@ impl Type {
                     t2 @ Type::Class(_) => {
                         // Classes like aliases can also be recursive in mypy, like `class B(List[B])`.
                         matcher.avoid_recursion(t1, t2, |matcher| {
+                            if rec1.calculating(i_s.db) {
+                                // Happens for example when creating the MRO of a class with a
+                                // tuple base class.
+                                return Match::new_false();
+                            }
                             let g = rec1.calculated_type(i_s.db);
                             g.matches_internal(i_s, matcher, value_type, variance)
                         })
