@@ -1264,8 +1264,7 @@ impl<'db: 'a, 'a> Class<'a> {
                             let lookup = lookup_details.lookup.into_inferred();
                             let t2 = lookup.as_cow_type(i_s);
                             let m = t1.matches(i_s, matcher, &t2, protocol_member.variance);
-                            if m.bool() && !(is_call && !matches!(other, Type::Class(_))) {
-                            } else {
+                            if !m.bool() || (is_call && !matches!(other, Type::Class(_))) {
                                 if !had_conflict_note {
                                     had_conflict_note = true;
                                     notes.push(protocol_conflict_note(i_s.db, other));
