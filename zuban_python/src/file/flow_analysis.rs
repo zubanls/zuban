@@ -14,7 +14,7 @@ use parsa_python_cst::{
 
 use crate::{
     arguments::SimpleArgs,
-    database::{Database, PointKind, PointLink, Specific},
+    database::{ClassKind, Database, PointKind, PointLink, Specific},
     debug,
     diagnostics::IssueKind,
     getitem::SliceType,
@@ -1604,6 +1604,14 @@ impl Inference<'_, '_, '_> {
                         with: "TypedDict",
                     },
                 )
+            }
+            if let Some(cls) = t.maybe_class(self.i_s.db) {
+                let class_infos = cls.use_cached_class_infos(self.i_s.db);
+                if matches!(class_infos.class_kind, ClassKind::Protocol) {
+                    if !class_infos.is_runtime_checkable {
+                        self.add_issue(arg.index(), IssueKind::ProtocolNotRuntimeCheckable)
+                    }
+                }
             }
         }
         Some(isinstance_type)

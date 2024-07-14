@@ -45,9 +45,6 @@ testTypeVarTupleOverloadMatch
 # overload x should be preferred over an *x alternative
 testTupleOverloadZipAny
 
-# Recursive alias union type var inference
-testRecursiveAliasWithRecursiveInstanceInference
-
 # Recursive aliases that fail to resolve because imports are calculating
 check-incremental:testRecursiveAliasImported
 check-recursive-types:testRecursiveAliasImported
@@ -115,6 +112,8 @@ testParamSpecDecoratorOverload
 testDefaultDict
 # list element context inference should probably ignore type vars
 testInferenceAgainstGenericCallableGenericNonLinear
+# Recursive alias union type var inference where Nested[T] is checked before T
+testRecursiveAliasWithRecursiveInstanceInference
 # type var backtracking
 testGenericFunctionSubtypingWithUnions
 testUnionInference
@@ -192,9 +191,6 @@ testTypeAliasInProtocolBody
 testParamSpecPrefixSubtypingProtocolInvalid
 # Protocols mypy might be wrong?
 testMutuallyRecursiveProtocolsTypesWithSubteMismatchWriteable
-# typing_extensions.runtime_checkable
-testOverloadOnProtocol
-testSimpleRuntimeProtocolCheck
 # Protocol nested class matching
 testProtocolWithNestedClass
 
@@ -1324,6 +1320,8 @@ testErrorFromGoogleCloud
 # typing.assert_type in untyped functions
 testAssertTypeUncheckedFunction
 testAssertTypeUncheckedFunctionWithUntypedCheck
+# "Only @runtime_checkable protocols can be used with instance and class checks" in untyped functions
+testOverloadOnProtocol
 # function type mismatch when untyped
 testSubtypingFunctionsImplicitNames
 

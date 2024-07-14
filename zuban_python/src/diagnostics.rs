@@ -152,6 +152,8 @@ pub(crate) enum IssueKind {
     InvalidRecursiveTypeAliasUnionOfItself { target: &'static str },
     InvalidRecursiveTypeAliasTypeVarNesting,
     RecursiveTypesNotAllowedInFunctionScope { alias_name: Box<str> },
+    RuntimeCheckableCanOnlyBeUsedWithProtocolClasses,
+    ProtocolNotRuntimeCheckable,
 
     FinalTooManyArguments,
     FinalNameMustBeInitializedWithValue,
@@ -1165,6 +1167,10 @@ impl<'db> Diagnostic<'db> {
                 additional_notes.push("Recursive types are not allowed at function scope".to_string());
                 format!(r#"Cannot resolve name "{alias_name}" (possible cyclic definition)"#)
             }
+            RuntimeCheckableCanOnlyBeUsedWithProtocolClasses =>
+                "@runtime_checkable can only be used with protocol classes".to_string(),
+            ProtocolNotRuntimeCheckable =>
+                "Only @runtime_checkable protocols can be used with instance and class checks".to_string(),
 
             FinalTooManyArguments => "Final[...] takes at most one type argument".to_string(),
             FinalNameMustBeInitializedWithValue => "Final name must be initialized with a value".to_string(),

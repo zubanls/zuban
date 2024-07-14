@@ -151,6 +151,8 @@ pub struct PythonState {
     typing_final_index: NodeIndex,
     typing_typed_dict_index: NodeIndex,
     typing_mapping_index: NodeIndex,
+    typing_runtime_checkable_index: NodeIndex,
+    typing_extensions_runtime_checkable_index: NodeIndex,
     typing_container_index: NodeIndex,
     typing_mapping_get_index: NodeIndex,
     typing_special_form_index: NodeIndex,
@@ -257,6 +259,8 @@ impl PythonState {
             typing_typed_dict_index: 0,
             typing_container_index: 0,
             typing_mapping_index: 0,
+            typing_runtime_checkable_index: 0,
+            typing_extensions_runtime_checkable_index: 0,
             typing_mapping_get_index: 0,
             typing_special_form_index: 0,
             typing_no_type_check_index: 0,
@@ -475,6 +479,18 @@ impl PythonState {
 
         // This first block
         cache_index!(typing_no_type_check_index, typing, "no_type_check", true);
+        cache_index!(
+            typing_runtime_checkable_index,
+            typing,
+            "runtime_checkable",
+            true
+        );
+        cache_index!(
+            typing_extensions_runtime_checkable_index,
+            typing_extensions,
+            "runtime_checkable",
+            true
+        );
         cache_index!(builtins_object_index, builtins, "object");
         cache_index!(builtins_type_index, builtins, "type");
         cache_index!(typing_final_index, typing, "final", true);
@@ -814,6 +830,8 @@ impl PythonState {
     attribute_link!(typing, pub async_iterator_link, typing_async_iterator_index);
     attribute_link!(typing, pub async_iterable_link, typing_async_iterable_index);
     attribute_link!(typing, pub mapping_link, typing_mapping_index);
+    attribute_link!(typing, pub runtime_checkable_link, typing_runtime_checkable_index);
+    attribute_link!(typing_extensions, pub typing_extensions_runtime_checkable_link, typing_extensions_runtime_checkable_index);
     attribute_link!(typing, pub no_type_check_link, typing_no_type_check_index);
     optional_attribute_link!(types, ellipsis_type_link, types_ellipsis_type_index);
     optional_attribute_link!(

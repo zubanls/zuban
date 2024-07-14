@@ -368,6 +368,7 @@ impl<'db: 'a, 'a> Class<'a> {
         let mut was_dataclass = None;
         let maybe_decorated = self.node().maybe_decorated();
         let mut is_final = false;
+        let mut is_runtime_checkable = false;
         if let Some(decorated) = maybe_decorated {
             let inference = self.node_ref.file.inference(i_s);
 
@@ -395,6 +396,15 @@ impl<'db: 'a, 'a> Class<'a> {
                 if let Some(maybe_link) = inf.maybe_saved_link() {
                     if maybe_link == i_s.db.python_state.typing_final().as_link() {
                         is_final = true;
+                    } else if maybe_link == i_s.db.python_state.runtime_checkable_link() {
+                        is_runtime_checkable = true;
+                    } else if maybe_link
+                        == i_s
+                            .db
+                            .python_state
+                            .typing_extensions_runtime_checkable_link()
+                    {
+                        is_runtime_checkable = true;
                     }
                 }
 
@@ -435,6 +445,17 @@ impl<'db: 'a, 'a> Class<'a> {
                 .unwrap();
         }
         class_infos.is_final |= is_final;
+        if class_infos.class_kind == ClassKind::Protocol {
+            class_infos.is_runtime_checkable = is_runtime_checkable;
+        } else {
+            if is_runtime_checkable {
+                self.add_issue_on_name(
+                    i_s,
+                    IssueKind::RuntimeCheckableCanOnlyBeUsedWithProtocolClasses,
+                );
+            }
+            class_infos.is_runtime_checkable = true;
+        }
 
         if is_final && !class_infos.abstract_attributes.is_empty() {
             self.add_issue_on_name(
@@ -502,13 +523,6 @@ impl<'db: 'a, 'a> Class<'a> {
             // TODO we pretty much just ignore the fact that a decorated class can also be an enum.
             let mut inferred = Inferred::from_saved_node_ref(self.node_ref);
             for decorator in decorated.decorators().iter_reverse() {
-                if matches!(
-                    decorator.as_code(),
-                    "@type_check_only\n" | "@runtime_checkable\n"
-                ) {
-                    // TODO this branch should not be here!
-                    continue;
-                }
                 let decorate = self
                     .node_ref
                     .file
@@ -981,6 +995,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 has_slots,
                 protocol_members,
                 is_final,
+                is_runtime_checkable: true,
                 abstract_attributes,
                 undefined_generics_type: OnceCell::new(),
             }),
