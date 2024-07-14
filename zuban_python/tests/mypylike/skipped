@@ -173,8 +173,6 @@ testTypedDictChainedGetWithEmptyDictDefault
 
 # Protocol invariant matching for attributes
 testPartialAttributeNoneTypeStrictOptional
-# Protocol NamedTuple field issues
-testTypingNamedTupleAttributesAreReadOnly
 # Protocol Self binding
 testSelfTypesWithProtocolsBehaveAsWithNominal
 testInferenceViaTypeTypeMetaclass

@@ -300,6 +300,16 @@ impl<'a> Instance<'a> {
             // First check class infos
             let result = lookup.and_then(|inf| {
                 if let Some(c) = class_of_lookup {
+                    if c.node_ref == self.class.node_ref {
+                        if let Some(named_tuple) = self.class.maybe_named_tuple_base(i_s.db) {
+                            if let Some(param) = named_tuple.search_param(i_s.db, name) {
+                                attr_kind = AttributeKind::Property { writable: false };
+                                return Some(Inferred::from_type(
+                                    param.type_.expect_positional_type_as_ref().clone(),
+                                ));
+                            }
+                        }
+                    }
                     let i_s = i_s.with_class_context(&self.class);
                     let instance = if let Some(as_self_instance) = options.as_self_instance {
                         as_self_instance()
