@@ -187,8 +187,6 @@ testRecursiveSelfTypeCallMethodNoCrash
 testTypeVarInProtocolBody
 # "Type aliases are prohibited in protocol bodies"
 testTypeAliasInProtocolBody
-# small protocol formatting issues
-testParamSpecPrefixSubtypingProtocolInvalid
 # Protocols mypy might be wrong?
 testMutuallyRecursiveProtocolsTypesWithSubteMismatchWriteable
 # Protocol nested class matching
