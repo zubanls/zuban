@@ -356,7 +356,9 @@ impl CallableParams {
                     t.has_any_internal(i_s, already_checked)
                 }
                 ParamType::Star(StarParamType::ParamSpecArgs(_)) => false,
-                ParamType::Star(StarParamType::UnpackedTuple(tup)) => todo!(),
+                ParamType::Star(StarParamType::UnpackedTuple(tup)) => {
+                    tup.args.has_any_internal(i_s, already_checked)
+                }
                 ParamType::StarStar(StarStarParamType::ParamSpecKwargs(_)) => false,
                 ParamType::StarStar(StarStarParamType::UnpackTypedDict(_)) => {
                     todo!()
