@@ -1736,7 +1736,7 @@ impl<'db: 'a, 'a> Class<'a> {
         if let Some(class_infos) = self.maybe_cached_class_infos(format_data.db) {
             match &class_infos.class_kind {
                 ClassKind::NamedTuple => {
-                    let named_tuple = class_infos.maybe_named_tuple().unwrap();
+                    let named_tuple = self.maybe_named_tuple_base(format_data.db).unwrap();
                     return named_tuple.format_with_name(format_data, &result, self.generics);
                 }
                 ClassKind::Tuple if format_data.style == FormatStyle::MypyRevealType => {
@@ -2352,6 +2352,20 @@ impl<'db: 'a, 'a> Class<'a> {
             }
         }
         self.check_slots(i_s, add_issue, name)
+    }
+
+    pub fn maybe_named_tuple_base(&self, db: &'a Database) -> Option<Rc<NamedTuple>> {
+        if self.use_cached_class_infos(db).class_kind == ClassKind::NamedTuple {
+            for (_, base) in self.mro(db) {
+                if let TypeOrClass::Type(base) = base {
+                    if let Type::NamedTuple(named_tuple) = base.as_ref() {
+                        return Some(named_tuple.clone());
+                    }
+                }
+            }
+            unreachable!()
+        }
+        None
     }
 
     pub fn maybe_dataclass(&self, db: &Database) -> Option<Rc<Dataclass>> {

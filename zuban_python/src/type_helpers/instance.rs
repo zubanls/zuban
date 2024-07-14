@@ -56,8 +56,7 @@ impl<'a> Instance<'a> {
                 property_name: name_str.into(),
             });
         };
-        let cached_class_infos = self.class.use_cached_class_infos(i_s.db);
-        if let Some(nt) = cached_class_infos.maybe_named_tuple() {
+        if let Some(nt) = self.class.maybe_named_tuple_base(i_s.db) {
             if nt.search_param(i_s.db, name_str).is_some() {
                 property_is_read_only(nt.name(i_s.db).into());
                 return;
@@ -480,11 +479,7 @@ impl<'a> Instance<'a> {
         result_context: &mut ResultContext,
         as_instance: &Type,
     ) -> Inferred {
-        if let Some(named_tuple) = self
-            .class
-            .use_cached_class_infos(i_s.db)
-            .maybe_named_tuple()
-        {
+        if let Some(named_tuple) = self.class.maybe_named_tuple_base(i_s.db) {
             // TODO this doesn't take care of the mro and could not be the first __getitem__
             return named_tuple.get_item(i_s, slice_type, result_context);
         }

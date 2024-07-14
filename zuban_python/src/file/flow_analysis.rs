@@ -677,7 +677,7 @@ fn split_truthy_and_falsey(i_s: &InferenceState, t: &Type) -> Option<(Type, Type
                         .filter(|_| !class_lookup.class.is_object(i_s.db))
                         .and_then(|inf| inf.as_cow_type(i_s).maybe_callable(i_s))
                     else {
-                        if let Some(nt) = class.use_cached_class_infos(i_s.db).maybe_named_tuple() {
+                        if let Some(nt) = class.maybe_named_tuple_base(i_s.db) {
                             if nt.params().is_empty() {
                                 todo!()
                             } else {
@@ -2347,8 +2347,7 @@ fn stdlib_container_item(db: &Database, t: &Type) -> Option<Type> {
     let item = match t {
         Type::Class(c) => {
             let class = c.class(db);
-            let infos = class.use_cached_class_infos(db);
-            if let Some(nt) = infos.maybe_named_tuple() {
+            if let Some(nt) = class.maybe_named_tuple_base(db) {
                 return stdlib_container_item(db, &Type::Tuple(nt.as_tuple()));
             } else {
                 let n = class.node_ref;
@@ -2558,12 +2557,8 @@ fn narrow_len(
                             }
                         }
                         Type::Class(c) => {
-                            if let Some(nt) = c
-                                .class(i_s.db)
-                                .use_cached_class_infos(i_s.db)
-                                .maybe_named_tuple()
-                            {
-                                if matches_fixed_len_namedtuple_len(nt, n, kind) == negative {
+                            if let Some(nt) = c.class(i_s.db).maybe_named_tuple_base(i_s.db) {
+                                if matches_fixed_len_namedtuple_len(&nt, n, kind) == negative {
                                     continue;
                                 }
                             }

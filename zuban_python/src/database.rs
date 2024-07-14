@@ -1390,18 +1390,6 @@ impl ClassInfos {
         }
     }
 
-    pub fn maybe_named_tuple(&self) -> Option<&NamedTuple> {
-        if self.class_kind == ClassKind::NamedTuple {
-            for base in self.mro.iter() {
-                if let Type::NamedTuple(named_tuple) = &base.type_ {
-                    return Some(named_tuple);
-                }
-            }
-            unreachable!()
-        }
-        None
-    }
-
     pub fn maybe_tuple(&self) -> Option<Rc<Tuple>> {
         match self.class_kind {
             ClassKind::NamedTuple | ClassKind::Tuple => {
