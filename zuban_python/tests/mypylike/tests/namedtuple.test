@@ -90,3 +90,14 @@ A = NamedTuple("A", [('x', str)])
 a: HasX = A("foo")  # E: Incompatible types in assignment (expression has type "A", variable has type "HasX") \
                     # N: Protocol member HasX.x expected settable variable, got read-only attribute
 a.x = "bar"
+
+[case namedtuple_iter_of_generic]
+from typing import NamedTuple, Generic, TypeVar
+
+T = TypeVar("T")
+class A(NamedTuple, Generic[T]):
+    val: T
+
+a: A[int]
+for x in a:
+    reveal_type(x)  # N: Revealed type is "int"

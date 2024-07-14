@@ -241,7 +241,7 @@ impl<'a> Instance<'a> {
     }
 
     pub fn iter(&self, i_s: &InferenceState, from: NodeRef) -> IteratorContent {
-        if let Some(tup) = self.class.use_cached_class_infos(i_s.db).maybe_tuple() {
+        if let Some(tup) = self.class.maybe_tuple_base(i_s.db) {
             // TODO this doesn't take care of the mro and could not be the first __iter__
             return tup.iter(i_s, from);
         }

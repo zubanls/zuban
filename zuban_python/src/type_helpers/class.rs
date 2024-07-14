@@ -2368,6 +2368,24 @@ impl<'db: 'a, 'a> Class<'a> {
         None
     }
 
+    pub fn maybe_tuple_base(&self, db: &Database) -> Option<Rc<Tuple>> {
+        match self.use_cached_class_infos(db).class_kind {
+            ClassKind::NamedTuple | ClassKind::Tuple => {
+                for (_, base) in self.mro(db) {
+                    if let TypeOrClass::Type(base) = base {
+                        return Some(match base.as_ref() {
+                            Type::NamedTuple(named_tuple) => named_tuple.as_tuple(),
+                            Type::Tuple(tup) => tup.clone(),
+                            _ => continue,
+                        });
+                    }
+                }
+                unreachable!()
+            }
+            _ => None,
+        }
+    }
+
     pub fn maybe_dataclass(&self, db: &Database) -> Option<Rc<Dataclass>> {
         // TODO this should probably not be needed.
         match self

@@ -21,9 +21,9 @@ use crate::{
     node_ref::NodeRef,
     python_state::PythonState,
     type_::{
-        CallableContent, FunctionKind, FunctionOverload, GenericItem, GenericsList, NamedTuple,
-        NewType, ParamSpecUsage, RecursiveType, StringSlice, Tuple, Type, TypeVarLike,
-        TypeVarLikeUsage, TypeVarLikes, TypeVarTupleUsage, TypeVarUsage, TypedDict, Variance,
+        CallableContent, FunctionKind, FunctionOverload, GenericItem, GenericsList, NewType,
+        ParamSpecUsage, RecursiveType, StringSlice, Type, TypeVarLike, TypeVarLikeUsage,
+        TypeVarLikes, TypeVarTupleUsage, TypeVarUsage, TypedDict, Variance,
     },
     type_helpers::{Class, Function},
     utils::{InsertOnlyVec, SymbolTable},
@@ -1389,22 +1389,6 @@ impl ClassInfos {
             _ => db.python_state.bare_type_class(),
         }
     }
-
-    pub fn maybe_tuple(&self) -> Option<Rc<Tuple>> {
-        match self.class_kind {
-            ClassKind::NamedTuple | ClassKind::Tuple => {
-                for base in self.mro.iter() {
-                    return Some(match &base.type_ {
-                        Type::NamedTuple(named_tuple) => named_tuple.as_tuple(),
-                        Type::Tuple(tup) => tup.clone(),
-                        _ => continue,
-                    });
-                }
-                unreachable!()
-            }
-            _ => None,
-        }
-    }
 }
 
 impl std::cmp::PartialEq for ClassStorage {
@@ -1420,7 +1404,7 @@ mod tests {
         use std::mem::size_of;
 
         use super::*;
-        use crate::type_::{ClassGenerics, StringSlice, UnionType};
+        use crate::type_::{ClassGenerics, StringSlice, Tuple, UnionType};
         assert_eq!(size_of::<ClassGenerics>(), 24);
         assert_eq!(size_of::<UnionType>(), 24);
         assert_eq!(size_of::<Tuple>(), 88);
