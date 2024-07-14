@@ -175,7 +175,6 @@ testTypedDictChainedGetWithEmptyDictDefault
 testPartialAttributeNoneTypeStrictOptional
 # Protocol NamedTuple field issues
 testTypingNamedTupleAttributesAreReadOnly
-testNamedTupleWithNoArgsCallableField
 testVariadicNamedTuple
 # Protocol Self binding
 testSelfTypesWithProtocolsBehaveAsWithNominal

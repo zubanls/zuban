@@ -268,6 +268,7 @@ impl NamedTuple {
             }
             _ => {
                 if let Some(param) = self.search_param(i_s.db, name) {
+                    attr_kind = AttributeKind::Property { writable: false };
                     param.type_.expect_positional_type_as_ref().clone()
                 } else {
                     return LookupDetails::none();

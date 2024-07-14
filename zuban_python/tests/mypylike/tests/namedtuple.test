@@ -77,3 +77,16 @@ class Foo(Generic[S]):
 
         NT[int](key=1, value=1)  # E: Argument "key" to "NT" has incompatible type "int"; expected "S"
         NT[int](key=s, value=1)
+
+[case functional_namedtuple_attributes_are_readonly]
+# Like testTypingNamedTupleAttributesAreReadOnly but with functional namedtuples
+from typing import NamedTuple, Protocol
+
+class HasX(Protocol):
+    x: str
+
+A = NamedTuple("A", [('x', str)])
+
+a: HasX = A("foo")  # E: Incompatible types in assignment (expression has type "A", variable has type "HasX") \
+                    # N: Protocol member HasX.x expected settable variable, got read-only attribute
+a.x = "bar"
