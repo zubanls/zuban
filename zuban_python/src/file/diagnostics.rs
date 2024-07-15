@@ -203,6 +203,18 @@ impl<'db> Inference<'db, '_, '_> {
                                         {
                                             false
                                         }
+                                        Target::Name(n)
+                                            if self.check_point_cache(n.index()).is_some_and(
+                                                |inf| {
+                                                    matches!(
+                                                        inf.maybe_complex_point(self.i_s.db),
+                                                        Some(ComplexPoint::TypeVarLike(_))
+                                                    )
+                                                },
+                                            ) =>
+                                        {
+                                            false
+                                        }
                                         _ => self.check_for_type_comment(assignment).is_none(),
                                     }
                                 }

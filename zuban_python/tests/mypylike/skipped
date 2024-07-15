@@ -171,15 +171,12 @@ testSerializeTypedDictInMethod
 # TypedDict unions
 testTypedDictChainedGetWithEmptyDictDefault
 
-# Protocol invariant matching for attributes
-testPartialAttributeNoneTypeStrictOptional
-# Protocol Self binding
+# Protocol Self binding for metaclasses
 testInferenceViaTypeTypeMetaclass
+# weird self binding issue
 testProtocolVarianceAfterDecorators
 # Protocol Self binding recursion error
 testRecursiveSelfTypeCallMethodNoCrash
-# TypeVar in Protocol Body
-testTypeVarInProtocolBody
 # "Type aliases are prohibited in protocol bodies"
 testTypeAliasInProtocolBody
 # Protocols mypy might be wrong?
@@ -589,6 +586,8 @@ testCallableInstanceOverlapAllowed
 # isinstance with union literals `isinstance(x, A | B)`
 testTypeAliasWithNewUnionIsInstance
 testIsInstanceUnionNone
+# Never for isinstance leads to other side being unreachable
+testPartialAttributeNoneTypeStrictOptional
 
 # None late binding, because it's None (x = None; x = 3)
 testLocalPartialTypesWithInheritance3
