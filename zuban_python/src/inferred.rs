@@ -855,13 +855,19 @@ impl<'db: 'slf, 'slf> Inferred {
                                     func.type_vars(i_s),
                                     &as_instance,
                                 );
-                                if !match_self_type(
-                                    i_s,
-                                    &mut matcher,
-                                    &instance,
-                                    &attribute_class,
-                                    &first_type,
-                                ) {
+                                // If __call__ has a self type that is a Callable, just ignore it,
+                                // because that causes a recursion. It is how Mypy does it in
+                                // c68bd7ae2cffe8f0377ea9aab54b963b9fac3231.
+                                if !(matches!(first_type.as_ref(), Type::Callable(_))
+                                    && func.name() == "__call__")
+                                    && !match_self_type(
+                                        i_s,
+                                        &mut matcher,
+                                        &instance,
+                                        &attribute_class,
+                                        &first_type,
+                                    )
+                                {
                                     add_issue(IssueKind::InvalidSelfArgument {
                                         argument_type: instance.format_short(i_s.db),
                                         function_name: Box::from(func.name()),

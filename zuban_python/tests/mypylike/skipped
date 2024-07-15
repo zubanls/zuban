@@ -175,8 +175,6 @@ testTypedDictChainedGetWithEmptyDictDefault
 testInferenceViaTypeTypeMetaclass
 # weird self binding issue
 testProtocolVarianceAfterDecorators
-# Protocol Self binding recursion error
-testRecursiveSelfTypeCallMethodNoCrash
 # "Type aliases are prohibited in protocol bodies"
 testTypeAliasInProtocolBody
 # Protocols mypy might be wrong?
