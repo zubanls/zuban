@@ -985,7 +985,9 @@ impl<'db: 'slf, 'slf> Inferred {
                                                         inst_c.class(i_s.db),
                                                         attribute_class,
                                                         &callable,
-                                                        None,
+                                                        Some(&|| {
+                                                            Type::Type(Rc::new(instance.clone()))
+                                                        }),
                                                     )
                                                 }
                                                 FunctionKind::Staticmethod
@@ -2259,7 +2261,10 @@ pub fn infer_class_method<'db: 'class, 'class>(
         &class,
         &func_class,
         class_generics_not_defined_yet,
-        as_type_type,
+        || match as_type_type {
+            Some(as_type_type) => as_type_type(),
+            None => class.as_type_type(i_s),
+        },
     )
 }
 
@@ -2269,7 +2274,7 @@ fn proper_classmethod_callable(
     class: &Class,
     func_class: &Class,
     class_generics_not_defined_yet: bool,
-    as_type_type: Option<&dyn Fn() -> Type>,
+    as_type_type: impl Fn() -> Type,
 ) -> Option<CallableContent> {
     let mut class_method_type_var_usage = None;
     let mut callable = original_callable.clone();
@@ -2283,12 +2288,11 @@ fn proper_classmethod_callable(
             callable.params = CallableParams::Simple(Rc::from(vec));
             if let Some(t) = first_param.type_.maybe_positional_type() {
                 let mut matcher = Matcher::new_callable_matcher(&original_callable);
-                let instance_t = match as_type_type {
-                    Some(as_type_type) => as_type_type(),
-                    None => class.as_type_type(i_s),
-                };
                 let t = replace_class_type_vars(i_s.db, t, func_class, &|| class.as_type(i_s.db));
-                if !t.is_super_type_of(i_s, &mut matcher, &instance_t).bool() {
+                if !t
+                    .is_super_type_of(i_s, &mut matcher, &as_type_type())
+                    .bool()
+                {
                     return None;
                 }
                 if let Type::Type(t) = t {
@@ -2336,12 +2340,9 @@ fn proper_classmethod_callable(
                 },
             )
         } else {
-            match as_type_type {
-                Some(as_type_type) => match as_type_type() {
-                    Type::Type(t) => (*t).clone(),
-                    _ => unreachable!(),
-                },
-                None => class.as_type(i_s.db),
+            match as_type_type() {
+                Type::Type(t) => (*t).clone(),
+                _ => unreachable!(),
             }
         }
     };
