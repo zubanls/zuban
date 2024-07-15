@@ -2253,7 +2253,13 @@ pub fn infer_class_method<'db: 'class, 'class>(
         callable,
         &func_class,
         class_generics_not_defined_yet.then_some(class),
-        || class.as_type(i_s.db),
+        || match as_type_type {
+            Some(as_type_type) => match as_type_type() {
+                Type::Type(t) => (*t).clone(),
+                _ => unreachable!(),
+            },
+            None => class.as_type(i_s.db),
+        },
         || match as_type_type {
             Some(as_type_type) => as_type_type(),
             None => class.as_type_type(i_s),
@@ -2333,10 +2339,7 @@ fn proper_classmethod_callable(
                 },
             )
         } else {
-            match as_type_type() {
-                Type::Type(t) => (*t).clone(),
-                _ => unreachable!(),
-            }
+            as_type()
         }
     };
     let mut new_callable = callable.replace_type_var_likes_and_self(
