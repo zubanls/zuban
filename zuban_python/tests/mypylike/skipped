@@ -175,7 +175,6 @@ testTypedDictChainedGetWithEmptyDictDefault
 testPartialAttributeNoneTypeStrictOptional
 # Protocol Self binding
 testInferenceViaTypeTypeMetaclass
-testBasicNamedTupleStructuralSubtyping
 testProtocolVarianceAfterDecorators
 # Protocol Self binding recursion error
 testRecursiveSelfTypeCallMethodNoCrash
