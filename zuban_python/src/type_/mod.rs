@@ -444,7 +444,11 @@ pub enum Type {
     EnumMember(EnumMember),
     Module(FileIndex),
     Namespace(Rc<Namespace>),
-    Super { type_: Rc<Type>, mro_index: usize },
+    Super {
+        class: Rc<GenericClass>,
+        bound_to: Rc<Type>,
+        mro_index: usize,
+    },
     CustomBehavior(CustomBehavior),
     Self_,
     None,

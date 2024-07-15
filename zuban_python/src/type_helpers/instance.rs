@@ -658,7 +658,8 @@ fn execute_super_internal<'db>(
             return Ok(Inferred::new_any(AnyCause::Todo));
         }
         Ok(Inferred::from_type(Type::Super {
-            type_: Rc::new(t),
+            class: Rc::new(c.as_generic_class(i_s.db)),
+            bound_to: Rc::new(t),
             mro_index,
         }))
     };
