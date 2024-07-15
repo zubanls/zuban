@@ -2,7 +2,7 @@ use std::{borrow::Cow, cell::Cell, rc::Rc};
 
 use parsa_python_cst::Name;
 
-use super::{class::TypeOrClass, Class, Function, MroIterator};
+use super::{class::TypeOrClass, Class, FirstParamKind, Function, MroIterator};
 use crate::{
     arguments::{Args, CombinedArgs, InferredArg, KnownArgs, KnownArgsWithCustomAddIssue, NoArgs},
     database::{Database, PointLink, Specific},
@@ -686,13 +686,22 @@ fn execute_super_internal<'db>(
             // method.
             if let Some(func) = i_s.current_function() {
                 if let Some(cls) = func.class {
-                    if let Some(first_annotation) =
+                    let first_param_kind = func.first_param_kind(i_s);
+                    if first_param_kind == FirstParamKind::InStaticmethod {
+                        todo!()
+                    }
+                    let t = if let Some(first_annotation) =
                         func.iter_params().next().and_then(|p| p.annotation(i_s.db))
                     {
-                        return success(&cls, first_annotation.into_owned(), 0);
+                        first_annotation.into_owned()
                     } else {
-                        return success(&cls, Type::Self_, 0);
-                    }
+                        match first_param_kind {
+                            FirstParamKind::Self_ => Type::Self_,
+                            FirstParamKind::ClassOfSelf => Type::Type(Rc::new(Type::Self_)),
+                            FirstParamKind::InStaticmethod => unreachable!(),
+                        }
+                    };
+                    return success(&cls, t, 0);
                 }
             }
             return Err(IssueKind::SuperUsedOutsideClass);

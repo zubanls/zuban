@@ -226,6 +226,11 @@ impl<'db: 'slf, 'slf> Inferred {
                     }
                     _ => unreachable!(),
                 },
+                Type::Self_ => i_s
+                    .current_class()
+                    .unwrap()
+                    .use_cached_class_infos(i_s.db)
+                    .metaclass(i_s.db),
                 _ => unreachable!(),
             },
             Type::Self_ => *i_s.current_class().unwrap(),

@@ -268,15 +268,26 @@ impl Type {
                 mro_index,
             } => {
                 let class = class.class(i_s.db);
-                let instance = Instance::new(class, None);
-                let l = instance.lookup(
-                    i_s,
-                    name,
-                    InstanceLookupOptions::new(add_issue)
-                        .with_kind(LookupKind::OnlyType)
-                        .with_super_count(mro_index + 1)
-                        .with_as_self_instance(&|| (**bound_to).clone()),
-                );
+                let l = if let Type::Type(t) = bound_to.as_ref() {
+                    class.lookup(
+                        i_s,
+                        name,
+                        ClassLookupOptions::new(add_issue)
+                            .with_kind(LookupKind::OnlyType)
+                            .with_super_count(mro_index + 1)
+                            .with_as_type_type(&|| (**bound_to).clone()),
+                    )
+                } else {
+                    let instance = Instance::new(class, None);
+                    instance.lookup(
+                        i_s,
+                        name,
+                        InstanceLookupOptions::new(add_issue)
+                            .with_kind(LookupKind::OnlyType)
+                            .with_super_count(mro_index + 1)
+                            .with_as_self_instance(&|| (**bound_to).clone()),
+                    )
+                };
                 if matches!(&l.lookup, LookupResult::None) {
                     add_issue(IssueKind::UndefinedInSuperclass { name: name.into() });
                     callable(self, LookupDetails::any(AnyCause::FromError));

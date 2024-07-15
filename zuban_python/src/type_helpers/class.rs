@@ -1533,7 +1533,7 @@ impl<'db: 'a, 'a> Class<'a> {
         &self,
         i_s: &InferenceState<'db, '_>,
         name: &str,
-        ignore_self: bool,
+        super_count: usize,
     ) -> (LookupResult, TypeOrClass<'a>, MroIndex) {
         if name == "__doc__" {
             let t = if self.node().has_docstr() {
@@ -1549,7 +1549,7 @@ impl<'db: 'a, 'a> Class<'a> {
         }
         for (mro_index, c) in self
             .mro_maybe_without_object(i_s.db, self.incomplete_mro(i_s.db))
-            .skip(ignore_self as usize)
+            .skip(super_count)
         {
             let (_, result) = c.lookup_symbol(i_s, name);
             if !matches!(result, LookupResult::None) {
@@ -1603,7 +1603,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 };
             }
             let (lookup_result, in_class, _) = self
-                .lookup_and_class_and_maybe_ignore_self_internal(i_s, name, options.ignore_self);
+                .lookup_and_class_and_maybe_ignore_self_internal(i_s, name, options.super_count);
             let mut attr_kind = AttributeKind::Attribute;
             let result = lookup_result.and_then(|inf| {
                 if let TypeOrClass::Class(in_class) = in_class {
@@ -2089,9 +2089,9 @@ impl<'db: 'a, 'a> Class<'a> {
         i_s: &InferenceState<'db, '_>,
     ) -> NewOrInitConstructor<'_> {
         let (__init__, init_class, init_mro_index) =
-            self.lookup_and_class_and_maybe_ignore_self_internal(i_s, "__init__", false);
+            self.lookup_and_class_and_maybe_ignore_self_internal(i_s, "__init__", 0);
         let (__new__, new_class, new_mro_index) =
-            self.lookup_and_class_and_maybe_ignore_self_internal(i_s, "__new__", false);
+            self.lookup_and_class_and_maybe_ignore_self_internal(i_s, "__new__", 0);
         // This is just a weird heuristic Mypy uses, because the type system itself is very unclear
         // what to do if both __new__ and __init__ are present. So just only use __new__ if it's in
         // a lower MRO than an __init__.
@@ -2362,7 +2362,7 @@ impl<'db: 'a, 'a> Class<'a> {
         add_issue: impl Fn(IssueKind),
         name: &str,
     ) {
-        let (lookup, _, _) = self.lookup_and_class_and_maybe_ignore_self_internal(i_s, name, false);
+        let (lookup, _, _) = self.lookup_and_class_and_maybe_ignore_self_internal(i_s, name, 0);
         if let Some(inf) = lookup.into_maybe_inferred() {
             if inf.maybe_saved_specific(i_s.db) == Some(Specific::AnnotationOrTypeCommentClassVar) {
                 add_issue(IssueKind::CannotAssignToClassVarViaInstance { name: name.into() })
@@ -3108,7 +3108,7 @@ pub struct ClassLookupOptions<'x> {
     add_issue: &'x dyn Fn(IssueKind),
     kind: LookupKind,
     use_descriptors: bool,
-    ignore_self: bool,
+    super_count: usize,
     as_type_type: Option<&'x dyn Fn() -> Type>,
 }
 
@@ -3118,13 +3118,13 @@ impl<'x> ClassLookupOptions<'x> {
             add_issue,
             kind: LookupKind::Normal,
             use_descriptors: true,
-            ignore_self: false,
+            super_count: 0,
             as_type_type: None,
         }
     }
 
     pub fn with_ignore_self(mut self) -> Self {
-        self.ignore_self = true;
+        self.super_count = 1;
         self
     }
 
@@ -3140,6 +3140,11 @@ impl<'x> ClassLookupOptions<'x> {
 
     pub fn with_kind(mut self, kind: LookupKind) -> Self {
         self.kind = kind;
+        self
+    }
+
+    pub fn with_super_count(mut self, super_count: usize) -> Self {
+        self.super_count = super_count;
         self
     }
 }
