@@ -342,15 +342,11 @@ impl Type {
         // 2. Check if it is a class with a protocol
         if let Some(class1) = self.maybe_class(i_s.db) {
             if class1.is_protocol(i_s.db) && variance == Variance::Covariant {
-                m = matcher.avoid_recursion(self, value_type, |matcher| {
-                    // TODO we probably don't need to avoid recursions twice here.
-
-                    // We need to avoid protocols recursions in a different way than
-                    // Matcher::avoid_recursion, because the matcher is not always passed when
-                    // checking protocol members (e.g. for self types).
-                    avoid_protocol_mismatch(i_s.db, self, value_type, || {
-                        class1.check_protocol_match(i_s, matcher, value_type)
-                    })
+                // We need to avoid protocols recursions in a different way than
+                // Matcher::avoid_recursion, because the matcher is not always passed when
+                // checking protocol members (e.g. for self types).
+                m = avoid_protocol_mismatch(i_s.db, self, value_type, || {
+                    class1.check_protocol_match(i_s, matcher, value_type)
                 });
                 if m.bool() {
                     return m;
