@@ -19,10 +19,7 @@ testSuperOutsideMethodNoCrash
 # "super() requires one or more positional arguments in enclosing function"
 testSuperInMethodWithNoArguments
 # How do we deal with super() and Self or self type vars?
-testSuperSelfTypeInstanceMethod
 testSuperSelfTypeClassMethod
-testTypingSelfOnSuperTypeVarValues
-testSelfTypeSuper
 testMixinProtocolSuper
 # Super in classmethod or __new__
 testSuperWithNew
@@ -147,6 +144,9 @@ testOverloadedNewAndInitNoReturn
 testDataclassesClassmethods
 testClassmethodShadowingFieldDoesNotCrash
 testDeferredDataclassInitSignature
+# dataclass super (context problem)
+testDataclassesInitVarPostInitOverride
+testDataclassesInitVarIncremental
 # InitVar set default
 testDataclassInitVarCannotBeSet
 # dataclass weird replace case

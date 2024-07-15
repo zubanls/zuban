@@ -1859,7 +1859,7 @@ pub struct FunctionParam<'x> {
 }
 
 impl<'db: 'x, 'x> FunctionParam<'x> {
-    fn annotation(&self, db: &'db Database) -> Option<Cow<'x, Type>> {
+    pub fn annotation(&self, db: &'db Database) -> Option<Cow<'x, Type>> {
         self.param
             .annotation()
             .map(|annotation| use_cached_param_annotation_type(db, self.file, annotation))

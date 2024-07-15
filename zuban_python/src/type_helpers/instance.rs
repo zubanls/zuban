@@ -684,11 +684,18 @@ fn execute_super_internal<'db>(
         None => {
             // This is the branch where we use super(), which is very much supported while in a
             // method.
-            if let Some(cls) = i_s.current_class() {
-                return success(cls, cls.as_type(i_s.db), 0);
-            } else {
-                return Err(IssueKind::SuperUsedOutsideClass);
+            if let Some(func) = i_s.current_function() {
+                if let Some(cls) = func.class {
+                    if let Some(first_annotation) =
+                        func.iter_params().next().and_then(|p| p.annotation(i_s.db))
+                    {
+                        return success(&cls, first_annotation.into_owned(), 0);
+                    } else {
+                        return success(&cls, Type::Self_, 0);
+                    }
+                }
             }
+            return Err(IssueKind::SuperUsedOutsideClass);
         }
     };
     let instance = match next_arg() {
