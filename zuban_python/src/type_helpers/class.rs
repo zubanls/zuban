@@ -1238,11 +1238,12 @@ impl<'db: 'a, 'a> Class<'a> {
                     }
                 }
 
+                let had_binding_error = Cell::new(false);
                 let mut had_lookup_error = false;
                 let protocol_lookup_details = Instance::new(c, None).lookup(
                     i_s,
                     name,
-                    InstanceLookupOptions::new(&|issue| ())
+                    InstanceLookupOptions::new(&|issue| had_binding_error.set(true))
                         .with_as_self_instance(&|| match other {
                             _ => other.clone(),
                             //Type::Class(c) if !c.class(i_s.db).is_protocol(i_s.db) => other.clone(),
@@ -1278,7 +1279,7 @@ impl<'db: 'a, 'a> Class<'a> {
                             let lookup = lookup_details.lookup.into_inferred();
                             let t2 = lookup.as_cow_type(i_s);
                             let m = t1.matches(i_s, matcher, &t2, protocol_member.variance);
-                            if !m.bool() || (is_call && !matches!(other, Type::Class(_))) {
+                            if !m.bool() || (is_call && !matches!(other, Type::Class(_))) || had_binding_error.get() {
                                 if !had_conflict_note {
                                     had_conflict_note = true;
                                     notes.push(protocol_conflict_note(i_s.db, other));

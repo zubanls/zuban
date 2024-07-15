@@ -171,9 +171,6 @@ testSerializeTypedDictInMethod
 # TypedDict unions
 testTypedDictChainedGetWithEmptyDictDefault
 
-# weird self binding issue
-testProtocolVarianceAfterDecorators
-
 # More information needed
 # "Read-only property cannot override read-write property"
 testDataclassIncompatibleOverrides
