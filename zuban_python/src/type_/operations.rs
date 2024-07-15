@@ -273,7 +273,6 @@ impl Type {
                         i_s,
                         name,
                         ClassLookupOptions::new(add_issue)
-                            .with_kind(LookupKind::OnlyType)
                             .with_super_count(mro_index + 1)
                             .with_as_type_type(&|| (**bound_to).clone()),
                     )

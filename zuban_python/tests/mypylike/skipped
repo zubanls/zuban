@@ -14,17 +14,12 @@ testInvalidFirstSuperArg
 testWrongSuperOutsideMethodNoCrash
 testSuperWithTypeObjects
 testSuperWithTypeTypeAsSecondArgument
+testInitSubclassOK
+testSuperInInitSubclass
 # "super() outside of a method is not supported"
 testSuperOutsideMethodNoCrash
 # "super() requires one or more positional arguments in enclosing function"
 testSuperInMethodWithNoArguments
-# How do we deal with super() and Self or self type vars?
-testSuperSelfTypeClassMethod
-testMixinProtocolSuper
-# Super in classmethod or __new__
-testSuperWithNew
-testSuperNew
-testMetaclassAndSuper
 
 # functools.total_ordering
 testTotalOrderingEqLt
@@ -1070,6 +1065,7 @@ testSuperWithAbstractProperty
 testEmptyBodyNoSuperWarningWithoutStrict
 testEmptyBodyNoSuperWarningOptionalReturn
 testIgnoreErrorsWithUnsafeSuperCall_no_empty
+testMixinProtocolSuper
 # "Only concrete class can be given where "Type[C]" is expected"
 testDedicatedErrorCodeTypeAbstract
 testAbstractTypeInADict
