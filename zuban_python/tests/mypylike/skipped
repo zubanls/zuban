@@ -174,9 +174,10 @@ testTypedDictChainedGetWithEmptyDictDefault
 # Protocol invariant matching for attributes
 testPartialAttributeNoneTypeStrictOptional
 # Protocol Self binding
-testSelfTypesWithProtocolsBehaveAsWithNominal
 testInferenceViaTypeTypeMetaclass
 testSelfTypeProtocolClassmethodMatch
+testBasicNamedTupleStructuralSubtyping
+testProtocolVarianceAfterDecorators
 # Protocol Self binding recursion error
 testRecursiveSelfTypeCallMethodNoCrash
 # TypeVar in Protocol Body

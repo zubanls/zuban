@@ -1253,11 +1253,16 @@ impl<'db: 'a, 'a> Class<'a> {
                         } else {
                             had_at_least_one_member_with_same_name = true;
                             let protocol_lookup_details = Instance::new(c, None)
-                                .lookup_with_details(
+                                .lookup(
                                     i_s,
-                                    |issue| todo!(),
                                     name,
-                                    LookupKind::Normal,
+                                    InstanceLookupOptions::new(&|issue| ()).with_as_self_instance(
+                                        &|| match other {
+                                            _ => other.clone(),
+                                            //Type::Class(c) if !c.class(i_s.db).is_protocol(i_s.db) => other.clone(),
+                                            //_ => c.as_type(i_s.db),
+                                        }
+                                    ).with_disallowed_lazy_bound_method(),
                                 );
                             let inf1 = protocol_lookup_details.lookup.into_inferred();
                             let t1 = inf1.as_cow_type(i_s);

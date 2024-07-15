@@ -1050,7 +1050,17 @@ impl<'db: 'slf, 'slf> Inferred {
                                     }
                                 }
                                 return Some((
-                                    Self::new_bound_method(instance, mro_index, *definition),
+                                    if disallow_lazy_bound_method {
+                                        Self::from_type(
+                                            OverloadedFunction::new(
+                                                &o.functions,
+                                                Some(attribute_class),
+                                            )
+                                            .as_type(i_s, Some(&|| instance.clone())),
+                                        )
+                                    } else {
+                                        Self::new_bound_method(instance, mro_index, *definition)
+                                    },
                                     attr_kind,
                                 ));
                             }
