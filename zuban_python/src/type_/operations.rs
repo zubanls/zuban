@@ -262,8 +262,12 @@ impl Type {
                 let l = inst.lookup_on_self(i_s, &add_issue, name, kind);
                 callable(self, l)
             }
-            Type::Super { class, mro_index } => {
-                let instance = Instance::new(class.class(i_s.db), None);
+            Type::Super { type_, mro_index } => {
+                let class = match type_.as_ref() {
+                    Type::Class(c) => c.class(i_s.db),
+                    _ => todo!("{type_:?}"),
+                };
+                let instance = Instance::new(class, None);
                 let l = instance.lookup(
                     i_s,
                     name,

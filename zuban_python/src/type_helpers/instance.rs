@@ -15,8 +15,7 @@ use crate::{
     matching::{ErrorStrs, IteratorContent, LookupKind, OnTypeError, ResultContext},
     node_ref::NodeRef,
     type_::{
-        AnyCause, CallableLike, CallableParams, FunctionKind, GenericClass, LookupResult, Type,
-        TypeVarKind,
+        AnyCause, CallableLike, CallableParams, FunctionKind, LookupResult, Type, TypeVarKind,
     },
 };
 
@@ -653,13 +652,13 @@ fn execute_super_internal<'db>(
             true => Err(IssueKind::SuperOnlyAcceptsPositionalArguments),
         })
     };
-    let success = |c: GenericClass, mro_index| {
-        if c.class(i_s.db).incomplete_mro(i_s.db) {
+    let success = |c: &Class, t, mro_index| {
+        if c.incomplete_mro(i_s.db) {
             debug!("super() with incomplete base class leads to any");
             return Ok(Inferred::new_any(AnyCause::Todo));
         }
         Ok(Inferred::from_type(Type::Super {
-            class: Rc::new(c),
+            type_: Rc::new(t),
             mro_index,
         }))
     };
@@ -685,7 +684,7 @@ fn execute_super_internal<'db>(
             // This is the branch where we use super(), which is very much supported while in a
             // method.
             if let Some(cls) = i_s.current_class() {
-                return success(cls.as_generic_class(i_s.db), 0);
+                return success(cls, cls.as_type(i_s.db), 0);
             } else {
                 return Err(IssueKind::SuperUsedOutsideClass);
             }
@@ -695,10 +694,14 @@ fn execute_super_internal<'db>(
         Some(result) => result?,
         None => return Err(IssueKind::SuperWithSingleArgumentNotSupported),
     };
-    let cls = match get_relevant_type_for_super(i_s.db, &instance.as_cow_type(i_s)) {
-        Type::Self_ => i_s.current_class().unwrap().as_generic_class(i_s.db),
-        Type::Class(g) => g,
-        Type::Any(cause) => return Ok(Inferred::new_any(cause)),
+    let relevant = get_relevant_type_for_super(i_s.db, &instance.as_cow_type(i_s));
+    let (cls, t) = match &relevant {
+        Type::Self_ => {
+            let cls = i_s.current_class().unwrap();
+            (*cls, cls.as_type(i_s.db))
+        }
+        Type::Class(c) => (c.class(i_s.db), relevant.clone()),
+        Type::Any(cause) => return Ok(Inferred::new_any(*cause)),
         _ => return Err(IssueKind::SuperUnsupportedArgument { argument_index: 2 }),
     };
     if !first_type
@@ -710,7 +713,7 @@ fn execute_super_internal<'db>(
     if iterator.next().is_some() {
         return Err(IssueKind::TooManyArguments(" for \"super\"".into()));
     }
-    success(cls, 0)
+    success(&cls, t, 0)
 }
 
 pub(crate) fn execute_isinstance<'db>(
