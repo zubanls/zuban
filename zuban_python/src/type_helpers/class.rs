@@ -2070,6 +2070,7 @@ impl<'db: 'a, 'a> Class<'a> {
                     );
                     Variance::Invariant
                 }
+                TypeLike::ClassDef(_) => Variance::Covariant,
                 _ => Variance::Invariant,
             };
             protocol_members.push(ProtocolMember {

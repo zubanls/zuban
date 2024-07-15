@@ -179,8 +179,6 @@ testProtocolVarianceAfterDecorators
 testTypeAliasInProtocolBody
 # Protocols mypy might be wrong?
 testMutuallyRecursiveProtocolsTypesWithSubteMismatchWriteable
-# Protocol nested class matching
-testProtocolWithNestedClass
 
 # More information needed
 # "Read-only property cannot override read-write property"
