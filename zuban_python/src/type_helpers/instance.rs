@@ -323,6 +323,7 @@ impl<'a> Instance<'a> {
                         c,
                         options.add_issue,
                         mro_index,
+                        options.disallow_lazy_bound_method,
                     )
                     .map(|inf| {
                         attr_kind = inf.1;
@@ -606,6 +607,7 @@ impl<'db: 'a, 'a> Iterator for ClassMroFinder<'db, 'a, '_> {
                                 class,
                                 |issue| self.from.add_issue(self.i_s, issue),
                                 mro_index,
+                                false,
                             )
                             .map(|inf| inf.0)
                         })
@@ -806,6 +808,7 @@ pub struct InstanceLookupOptions<'x> {
     super_count: usize,
     as_self_instance: Option<&'x dyn Fn() -> Type>,
     check_dunder_getattr: bool,
+    disallow_lazy_bound_method: bool,
 }
 
 impl<'x> InstanceLookupOptions<'x> {
@@ -816,6 +819,7 @@ impl<'x> InstanceLookupOptions<'x> {
             super_count: 0,
             as_self_instance: None,
             check_dunder_getattr: true,
+            disallow_lazy_bound_method: false,
         }
     }
 
@@ -838,6 +842,11 @@ impl<'x> InstanceLookupOptions<'x> {
 
     pub fn with_kind(mut self, kind: LookupKind) -> Self {
         self.kind = kind;
+        self
+    }
+
+    pub fn with_disallowed_lazy_bound_method(mut self) -> Self {
+        self.disallow_lazy_bound_method = true;
         self
     }
 }

@@ -632,6 +632,7 @@ pub(crate) fn lookup_on_tuple<'x>(
                     cls,
                     add_issue,
                     mro_index,
+                    false,
                 ) else {
                     return LookupDetails::none();
                 };

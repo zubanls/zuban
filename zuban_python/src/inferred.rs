@@ -798,6 +798,7 @@ impl<'db: 'slf, 'slf> Inferred {
         func_class: Class,
         add_issue: impl Fn(IssueKind),
         mro_index: MroIndex,
+        disallow_lazy_bound_method: bool,
     ) -> Option<(Self, AttributeKind)> {
         self.bind_instance_descriptors_internal(
             i_s,
@@ -807,6 +808,7 @@ impl<'db: 'slf, 'slf> Inferred {
             add_issue,
             mro_index,
             ApplyDescriptorsKind::All,
+            disallow_lazy_bound_method,
         )
     }
 
@@ -819,6 +821,7 @@ impl<'db: 'slf, 'slf> Inferred {
         add_issue: impl Fn(IssueKind),
         mro_index: MroIndex,
         apply_descriptors_kind: ApplyDescriptorsKind,
+        disallow_lazy_bound_method: bool,
     ) -> Option<(Self, AttributeKind)> {
         match &self.state {
             InferredState::Saved(definition) => {
@@ -881,6 +884,17 @@ impl<'db: 'slf, 'slf> Inferred {
                                     )),
                                     attr_kind,
                                 ))
+                            } else if disallow_lazy_bound_method {
+                                Some((
+                                    Self::from_type(
+                                        BoundMethod::new(
+                                            &instance,
+                                            BoundMethodFunction::Function(func),
+                                        )
+                                        .as_type(i_s),
+                                    ),
+                                    attr_kind,
+                                ))
                             } else {
                                 Some((
                                     Self::new_bound_method(instance, mro_index, *definition),
@@ -905,6 +919,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 add_issue,
                                 mro_index,
                                 ApplyDescriptorsKind::NoBoundMethod,
+                                disallow_lazy_bound_method,
                             );
                         }
                         specific @ (Specific::AnnotationOrTypeCommentWithTypeVars
