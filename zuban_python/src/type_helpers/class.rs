@@ -1283,7 +1283,12 @@ impl<'db: 'a, 'a> Class<'a> {
                                             name,
                                             &t1,
                                             &t2,
-                                            &c.simple_lookup(i_s, |_| (), name)
+                                            &c.lookup(i_s, name, ClassLookupOptions::new(&|_| ()).with_as_type_type(&|| if other.is_subclassable(i_s.db) {
+                                                Type::Type(Rc::new(other.clone()))
+                                            } else {
+                                                self.as_type_type(i_s)
+                                            }))
+                                                .lookup
                                                 .into_inferred()
                                                 .as_cow_type(i_s),
                                             &cls.simple_lookup(i_s, |_| (), name)
