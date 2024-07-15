@@ -171,14 +171,8 @@ testSerializeTypedDictInMethod
 # TypedDict unions
 testTypedDictChainedGetWithEmptyDictDefault
 
-# Protocol Self binding for metaclasses
-testInferenceViaTypeTypeMetaclass
 # weird self binding issue
 testProtocolVarianceAfterDecorators
-# "Type aliases are prohibited in protocol bodies"
-testTypeAliasInProtocolBody
-# Protocols mypy might be wrong?
-testMutuallyRecursiveProtocolsTypesWithSubteMismatchWriteable
 
 # More information needed
 # "Read-only property cannot override read-write property"
@@ -931,7 +925,11 @@ testTypeAliasTypeInvalid
 testTypeAliasTypeGeneric
 testTypeAliasTypeInvalidGeneric
 testTypeAliasTypeNoUnpackInTypeParams311
+# "Type aliases are prohibited in protocol bodies"
+testTypeAliasInProtocolBody
 
+# Protocol Self binding for metaclasses
+testInferenceViaTypeTypeMetaclass
 # Metaclass descriptor
 metaclass_descriptor
 # Metaclass iter/getitem/addition

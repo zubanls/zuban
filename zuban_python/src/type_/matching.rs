@@ -341,8 +341,7 @@ impl Type {
         let mut m = Match::new_false();
         // 2. Check if it is a class with a protocol
         if let Some(class1) = self.maybe_class(i_s.db) {
-            // TODO this should probably be checked before normal mro checking?!
-            if class1.is_protocol(i_s.db) {
+            if class1.is_protocol(i_s.db) && variance == Variance::Covariant {
                 m = matcher.avoid_recursion(self, value_type, |matcher| {
                     // TODO we probably don't need to avoid recursions twice here.
 
