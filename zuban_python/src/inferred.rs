@@ -979,15 +979,11 @@ impl<'db: 'slf, 'slf> Inferred {
                                                     }
                                                 }
                                                 FunctionKind::Classmethod { .. } => {
-                                                    let inst_c = instance_cls(i_s, &instance);
-                                                    infer_class_method(
+                                                    infer_class_method_on_instance(
                                                         i_s,
-                                                        inst_c.class(i_s.db),
+                                                        &instance,
                                                         attribute_class,
                                                         &callable,
-                                                        Some(&|| {
-                                                            Type::Type(Rc::new(instance.clone()))
-                                                        }),
                                                     )
                                                 }
                                                 FunctionKind::Staticmethod
@@ -1163,14 +1159,7 @@ impl<'db: 'slf, 'slf> Inferred {
                     ));
                 }
                 FunctionKind::Classmethod { .. } => {
-                    let inst_c = instance_cls(i_s, &instance);
-                    let result = infer_class_method(
-                        i_s,
-                        inst_c.class(i_s.db),
-                        attribute_class,
-                        c,
-                        Some(&|| Type::Type(Rc::new(instance.clone()))),
-                    );
+                    let result = infer_class_method_on_instance(i_s, &instance, attribute_class, c);
                     if result.is_none() {
                         let t = IssueKind::InvalidClassMethodFirstArgument {
                             argument_type: Type::Type(Rc::new(instance)).format_short(i_s.db),
@@ -2223,16 +2212,20 @@ fn infer_overloaded_class_method(
     }))
 }
 
-fn instance_cls<'x>(i_s: &InferenceState, instance_t: &'x Type) -> Cow<'x, GenericClass> {
-    match instance_t {
-        Type::Class(c) => Cow::Borrowed(c),
-        Type::Self_ => Cow::Owned(i_s.current_class().unwrap().as_generic_class(i_s.db)),
-        Type::TypeVar(tv) => match &tv.type_var.kind {
-            TypeVarKind::Bound(t) => instance_cls(i_s, t),
-            _ => unreachable!(),
-        },
-        _ => todo!("Is this always the case?"),
-    }
+pub fn infer_class_method_on_instance<'db: 'class, 'class>(
+    i_s: &InferenceState<'db, '_>,
+    instance: &Type,
+    func_class: Class,
+    callable: &CallableContent,
+) -> Option<CallableContent> {
+    proper_classmethod_callable(
+        i_s,
+        callable,
+        &func_class,
+        None,
+        || instance.clone(),
+        || Type::Type(Rc::new(instance.clone())),
+    )
 }
 
 pub fn infer_class_method<'db: 'class, 'class>(
@@ -2258,9 +2251,9 @@ pub fn infer_class_method<'db: 'class, 'class>(
     proper_classmethod_callable(
         i_s,
         callable,
-        &class,
         &func_class,
-        class_generics_not_defined_yet,
+        class_generics_not_defined_yet.then_some(class),
+        || class.as_type(i_s.db),
         || match as_type_type {
             Some(as_type_type) => as_type_type(),
             None => class.as_type_type(i_s),
@@ -2271,9 +2264,9 @@ pub fn infer_class_method<'db: 'class, 'class>(
 fn proper_classmethod_callable(
     i_s: &InferenceState,
     original_callable: &CallableContent,
-    class: &Class,
     func_class: &Class,
-    class_generics_not_defined_yet: bool,
+    class_generics_not_defined_yet: Option<Class>,
+    as_type: impl Fn() -> Type,
     as_type_type: impl Fn() -> Type,
 ) -> Option<CallableContent> {
     let mut class_method_type_var_usage = None;
@@ -2288,7 +2281,7 @@ fn proper_classmethod_callable(
             callable.params = CallableParams::Simple(Rc::from(vec));
             if let Some(t) = first_param.type_.maybe_positional_type() {
                 let mut matcher = Matcher::new_callable_matcher(&original_callable);
-                let t = replace_class_type_vars(i_s.db, t, func_class, &|| class.as_type(i_s.db));
+                let t = replace_class_type_vars(i_s.db, t, func_class, &as_type);
                 if !t
                     .is_super_type_of(i_s, &mut matcher, &as_type_type())
                     .bool()
@@ -2325,7 +2318,7 @@ fn proper_classmethod_callable(
             .into_generic_item()
     };
     let get_class_method_class = || {
-        if class_generics_not_defined_yet {
+        if let Some(class) = class_generics_not_defined_yet {
             let type_var_likes = class.use_cached_type_vars(i_s.db);
             Type::new_class(
                 class.node_ref.as_link(),
@@ -2354,7 +2347,7 @@ fn proper_classmethod_callable(
                 // We need to remap again, because in generics of classes will be
                 // generic in the function of the classmethod, see for example
                 // `testGenericClassMethodUnboundOnClass`.
-                if class_generics_not_defined_yet {
+                if let Some(class) = class_generics_not_defined_yet {
                     return result.replace_type_var_likes_and_self(
                         i_s.db,
                         &mut |usage| {
