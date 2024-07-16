@@ -687,7 +687,7 @@ fn execute_super_internal<'db>(
                         FirstParamKind::InStaticmethod => unreachable!(),
                     }
                 };
-                success(&cls, t, 0)
+                success(&cls, t, 1)
             } else {
                 Err(IssueKind::SuperUsedOutsideClass)
             }
@@ -699,25 +699,23 @@ fn execute_super_internal<'db>(
             }
         }
     };
-    let first_type = match next_arg() {
+    let first_class = match next_arg() {
         Some(result) => {
             match get_relevant_type_for_super(i_s.db, result?.as_cow_type(i_s).as_ref()) {
-                Type::Type(t) => {
+                Type::Type(t) => Some({
                     if matches!(t.as_ref(), Type::Self_) {
-                        i_s.current_class().unwrap().as_type(i_s.db)
+                        i_s.current_class().unwrap().node_ref.as_link()
                     } else {
-                        if !matches!(t.as_ref(), Type::Class(..)) {
+                        let Type::Class(c) = t.as_ref() else {
                             return Err(IssueKind::SuperUnsupportedArgument { argument_index: 1 });
-                        }
-                        if matches!(t.as_ref(), Type::Class(c)
-                                if c.link == i_s.db.python_state.object_node_ref().as_link())
-                        {
+                        };
+                        if c.link == i_s.db.python_state.object_node_ref().as_link() {
                             return Err(IssueKind::SuperTargetClassHasNoBaseClass);
                         }
-                        t.as_ref().clone()
+                        c.link
                     }
-                }
-                Type::Any(cause) => Type::Any(cause),
+                }),
+                Type::Any(cause) => None,
                 t => {
                     return Err(IssueKind::SuperArgument1MustBeTypeObject {
                         got: match t {
@@ -741,6 +739,10 @@ fn execute_super_internal<'db>(
         Some(result) => result?,
         None => return Err(IssueKind::SuperWithSingleArgumentNotSupported),
     };
+    if iterator.next().is_some() {
+        return Err(IssueKind::TooManyArguments(" for \"super\"".into()));
+    }
+
     let relevant = get_relevant_type_for_super(i_s.db, &instance.as_cow_type(i_s));
     let (cls, bound_to) = match &relevant {
         Type::Self_ => {
@@ -768,20 +770,26 @@ fn execute_super_internal<'db>(
         },
         _ => return Err(IssueKind::SuperUnsupportedArgument { argument_index: 2 }),
     };
-    let mut check_second = &bound_to;
-    if let Type::Type(t) = check_second {
-        check_second = t.as_ref()
-    }
-    if !first_type
-        .is_simple_super_type_of(i_s, &check_second)
-        .bool()
-    {
-        return Err(IssueKind::SuperArgument2MustBeAnInstanceOfArgument1);
-    }
-    if iterator.next().is_some() {
-        return Err(IssueKind::TooManyArguments(" for \"super\"".into()));
-    }
-    success(&cls, bound_to, 0)
+    let mro_index = if let Some(first_class) = first_class {
+        let mut mro_index = None;
+        for (index, type_or_class) in cls.mro(i_s.db) {
+            if match type_or_class {
+                TypeOrClass::Class(c) => first_class == c.node_ref.as_link(),
+                TypeOrClass::Type(t) => todo!(),
+            } {
+                mro_index = Some(index);
+                break;
+            }
+        }
+        let Some(mro_index) = mro_index else {
+            return Err(IssueKind::SuperArgument2MustBeAnInstanceOfArgument1);
+        };
+        // The found class is not the class where super is working on.
+        mro_index.0 as usize + 1
+    } else {
+        1
+    };
+    success(&cls, bound_to, mro_index)
 }
 
 pub(crate) fn execute_isinstance<'db>(

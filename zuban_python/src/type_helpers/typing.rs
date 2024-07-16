@@ -33,7 +33,9 @@ pub(crate) fn execute_type<'db>(
         let mut type_part = Type::Never(NeverCause::Other);
         for t in inf.as_cow_type(i_s).iter_with_unpacked_unions(i_s.db) {
             match t {
-                Type::Class(_) | Type::None | Type::Any(_) => type_part.union_in_place(t.clone()),
+                Type::Class(_) | Type::None | Type::Any(_) | Type::Self_ => {
+                    type_part.union_in_place(t.clone())
+                }
                 Type::Literal(l) => type_part.union_in_place(l.fallback_type(i_s.db)),
                 Type::Type(type_) => match type_.as_ref() {
                     Type::Class(c) => {

@@ -273,7 +273,7 @@ impl Type {
                         i_s,
                         name,
                         ClassLookupOptions::new(add_issue)
-                            .with_super_count(mro_index + 1)
+                            .with_super_count(*mro_index)
                             .with_as_type_type(&|| (**bound_to).clone()),
                     )
                 } else {
@@ -283,7 +283,7 @@ impl Type {
                         name,
                         InstanceLookupOptions::new(add_issue)
                             .with_kind(LookupKind::OnlyType)
-                            .with_super_count(mro_index + 1)
+                            .with_super_count(*mro_index)
                             .with_as_self_instance(&|| (**bound_to).clone()),
                     )
                 };
