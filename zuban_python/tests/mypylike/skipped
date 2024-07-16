@@ -7,7 +7,6 @@ testNoCrashOnNestedGenericCallable
 # mypy upgrade
 
 # super with Type[...]
-testSuperWithAny
 testSuperClassGetItem
 testSuperWithTypeObjects
 testInitSubclassOK

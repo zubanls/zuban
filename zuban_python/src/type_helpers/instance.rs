@@ -663,6 +663,41 @@ fn execute_super_internal<'db>(
             mro_index,
         }))
     };
+    let fallback = || {
+        if let Some(func) = i_s.current_function() {
+            if let Some(cls) = func.class {
+                let first_param_kind = func.first_param_kind(i_s);
+                if first_param_kind == FirstParamKind::InStaticmethod {
+                    return Err(
+                        IssueKind::SuperRequiresOneOrTwoPositionalArgumentsInEnclosingFunction,
+                    );
+                }
+                let Some(first_param) = func.iter_params().next() else {
+                    return Err(
+                        IssueKind::SuperRequiresOneOrTwoPositionalArgumentsInEnclosingFunction,
+                    );
+                };
+                let t = if let Some(first_annotation) = first_param.annotation(i_s.db) {
+                    first_annotation.into_owned()
+                } else {
+                    match first_param_kind {
+                        FirstParamKind::Self_ => Type::Self_,
+                        FirstParamKind::ClassOfSelf => Type::Type(Rc::new(Type::Self_)),
+                        FirstParamKind::InStaticmethod => unreachable!(),
+                    }
+                };
+                success(&cls, t, 0)
+            } else {
+                Err(IssueKind::SuperUsedOutsideClass)
+            }
+        } else {
+            if i_s.in_class_scope() {
+                Err(IssueKind::SuperOutsideOfAMethod)
+            } else {
+                Err(IssueKind::SuperUsedOutsideClass)
+            }
+        }
+    };
     let first_type = match next_arg() {
         Some(result) => {
             match get_relevant_type_for_super(i_s.db, result?.as_cow_type(i_s).as_ref()) {
@@ -698,38 +733,7 @@ fn execute_super_internal<'db>(
         None => {
             // This is the branch where we use super(), which is very much supported while in a
             // method.
-            if let Some(func) = i_s.current_function() {
-                if let Some(cls) = func.class {
-                    let first_param_kind = func.first_param_kind(i_s);
-                    if first_param_kind == FirstParamKind::InStaticmethod {
-                        return Err(
-                            IssueKind::SuperRequiresOneOrTwoPositionalArgumentsInEnclosingFunction,
-                        );
-                    }
-                    let Some(first_param) = func.iter_params().next() else {
-                        return Err(
-                            IssueKind::SuperRequiresOneOrTwoPositionalArgumentsInEnclosingFunction,
-                        );
-                    };
-                    let t = if let Some(first_annotation) = first_param.annotation(i_s.db) {
-                        first_annotation.into_owned()
-                    } else {
-                        match first_param_kind {
-                            FirstParamKind::Self_ => Type::Self_,
-                            FirstParamKind::ClassOfSelf => Type::Type(Rc::new(Type::Self_)),
-                            FirstParamKind::InStaticmethod => unreachable!(),
-                        }
-                    };
-                    return success(&cls, t, 0);
-                }
-                return Err(IssueKind::SuperUsedOutsideClass);
-            } else {
-                if i_s.in_class_scope() {
-                    return Err(IssueKind::SuperOutsideOfAMethod);
-                } else {
-                    return Err(IssueKind::SuperUsedOutsideClass);
-                }
-            }
+            return fallback();
         }
     };
     let instance = match next_arg() {
@@ -743,17 +747,19 @@ fn execute_super_internal<'db>(
             (*cls, Type::Self_)
         }
         Type::Class(c) => (c.class(i_s.db), relevant.clone()),
-        Type::Any(cause) => return Ok(Inferred::new_any(*cause)),
-        Type::Type(t) => {
-            if matches!(t.as_ref(), Type::Self_) {
+        Type::Any(cause) => return fallback(),
+        Type::Type(t) => match t.as_ref() {
+            Type::Self_ => {
                 let cls = i_s.current_class().unwrap();
                 (*cls, relevant.clone())
-            } else if let Some(cls) = t.maybe_class(i_s.db) {
-                (cls, relevant.clone())
-            } else {
-                return Err(IssueKind::SuperUnsupportedArgument { argument_index: 2 });
             }
-        }
+            Type::Class(c) => (c.class(i_s.db), relevant.clone()),
+            Type::Any(_) => {
+                let cls = i_s.current_class().unwrap();
+                (*cls, Type::Type(Rc::new(Type::Self_)))
+            }
+            _ => return Err(IssueKind::SuperUnsupportedArgument { argument_index: 2 }),
+        },
         _ => return Err(IssueKind::SuperUnsupportedArgument { argument_index: 2 }),
     };
     let mut check_second = &bound_to;
