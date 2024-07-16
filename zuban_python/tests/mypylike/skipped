@@ -28,12 +28,6 @@ testTypeVarTupleOverloadMatch
 # overload x should be preferred over an *x alternative
 testTupleOverloadZipAny
 
-# Recursive aliases that fail to resolve because imports are calculating
-check-incremental:testRecursiveAliasImported
-check-recursive-types:testRecursiveAliasImported
-testTypeAliasUpdateNonRecursiveToRecursiveFine
-testTypeAliasUpdateNonRecursiveToRecursiveCoarse
-
 # Special-case type inference of empty collections https://github.com/python/mypy/pull/16122
 testInferenceWorksWithEmptyCollectionsUnion
 testWideOuterContextEmptyError
@@ -1256,6 +1250,12 @@ testEnumTypeCompatibleWithLiteralUnion
 testFunctionalEnumListOfPairs
 # Enum access merging leads to int | Any instead of Any
 testEnumValueUnionSimplification
+
+# Recursive aliases that fail to resolve because imports are calculating
+check-incremental:testRecursiveAliasImported
+check-recursive-types:testRecursiveAliasImported
+testTypeAliasUpdateNonRecursiveToRecursiveFine
+testTypeAliasUpdateNonRecursiveToRecursiveCoarse
 
 # future imports (future is not part of stubs)
 testNewAnalyzerMetaclassFuture1
