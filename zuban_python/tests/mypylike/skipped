@@ -8,9 +8,6 @@ testNoCrashOnNestedGenericCallable
 
 # super with Type[...]
 testSuperClassGetItem
-testSuperWithTypeObjects
-testInitSubclassOK
-testSuperInInitSubclass
 
 # functools.total_ordering
 testTotalOrderingEqLt
@@ -1102,6 +1099,8 @@ testTypeEquivalentTypeAnyEdgeCase
 
 # __init_subclass__
 testOverride__init_subclass__WithDifferentSignature
+testInitSubclassOK
+testSuperInInitSubclass
 testInitSubclassWrongType
 testInitSubclassTooFewArgs
 testInitSubclassTooFewArgs2

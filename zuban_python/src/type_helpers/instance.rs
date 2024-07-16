@@ -663,7 +663,7 @@ fn execute_super_internal<'db>(
             mro_index,
         }))
     };
-    let fallback = || {
+    let fallback = |assume_instance| {
         if let Some(func) = i_s.current_function() {
             if let Some(cls) = func.class {
                 let first_param_kind = func.first_param_kind(i_s);
@@ -682,6 +682,7 @@ fn execute_super_internal<'db>(
                 } else {
                     match first_param_kind {
                         FirstParamKind::Self_ => Type::Self_,
+                        FirstParamKind::ClassOfSelf if assume_instance => Type::Self_,
                         FirstParamKind::ClassOfSelf => Type::Type(Rc::new(Type::Self_)),
                         FirstParamKind::InStaticmethod => unreachable!(),
                     }
@@ -733,7 +734,7 @@ fn execute_super_internal<'db>(
         None => {
             // This is the branch where we use super(), which is very much supported while in a
             // method.
-            return fallback();
+            return fallback(false);
         }
     };
     let instance = match next_arg() {
@@ -747,7 +748,7 @@ fn execute_super_internal<'db>(
             (*cls, Type::Self_)
         }
         Type::Class(c) => (c.class(i_s.db), relevant.clone()),
-        Type::Any(cause) => return fallback(),
+        Type::Any(cause) => return fallback(true),
         Type::Type(t) => match t.as_ref() {
             Type::Self_ => {
                 let cls = i_s.current_class().unwrap();
