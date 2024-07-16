@@ -12,8 +12,6 @@ testSuperClassGetItem
 testSuperWithTypeObjects
 testInitSubclassOK
 testSuperInInitSubclass
-# "super() requires one or more positional arguments in enclosing function"
-testSuperInMethodWithNoArguments
 
 # functools.total_ordering
 testTotalOrderingEqLt

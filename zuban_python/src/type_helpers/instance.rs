@@ -702,11 +702,16 @@ fn execute_super_internal<'db>(
                 if let Some(cls) = func.class {
                     let first_param_kind = func.first_param_kind(i_s);
                     if first_param_kind == FirstParamKind::InStaticmethod {
-                        todo!()
+                        return Err(
+                            IssueKind::SuperRequiresOneOrTwoPositionalArgumentsInEnclosingFunction,
+                        );
                     }
-                    let t = if let Some(first_annotation) =
-                        func.iter_params().next().and_then(|p| p.annotation(i_s.db))
-                    {
+                    let Some(first_param) = func.iter_params().next() else {
+                        return Err(
+                            IssueKind::SuperRequiresOneOrTwoPositionalArgumentsInEnclosingFunction,
+                        );
+                    };
+                    let t = if let Some(first_annotation) = first_param.annotation(i_s.db) {
                         first_annotation.into_owned()
                     } else {
                         match first_param_kind {

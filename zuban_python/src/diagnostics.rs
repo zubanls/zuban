@@ -230,6 +230,7 @@ pub(crate) enum IssueKind {
 
     SuperUsedOutsideClass,
     SuperOutsideOfAMethod,
+    SuperRequiresOneOrTwoPositionalArgumentsInEnclosingFunction,
     SuperWithSingleArgumentNotSupported,
     SuperVarargsNotSupported,
     SuperOnlyAcceptsPositionalArguments,
@@ -1338,6 +1339,9 @@ impl<'db> Diagnostic<'db> {
 
             SuperUsedOutsideClass => r#""super" used outside class"#.to_string(),
             SuperOutsideOfAMethod => r#""super()" outside of a method is not supported"#.to_string(),
+            SuperRequiresOneOrTwoPositionalArgumentsInEnclosingFunction => format!(
+                r#""super()" requires one or two positional arguments in enclosing function"#
+            ),
             SuperWithSingleArgumentNotSupported => "\"super\" with a single argument not supported".to_string(),
             SuperVarargsNotSupported => "Varargs not supported with \"super\"".to_string(),
             SuperOnlyAcceptsPositionalArguments =>
