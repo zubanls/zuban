@@ -8,12 +8,8 @@ testNoCrashOnNestedGenericCallable
 
 # super with Type[...]
 testSuperWithAny
-testSuperInClassMethod
 testSuperClassGetItem
-testInvalidFirstSuperArg
-testWrongSuperOutsideMethodNoCrash
 testSuperWithTypeObjects
-testSuperWithTypeTypeAsSecondArgument
 testInitSubclassOK
 testSuperInInitSubclass
 # "super() outside of a method is not supported"

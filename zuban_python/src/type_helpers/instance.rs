@@ -678,7 +678,17 @@ fn execute_super_internal<'db>(
                     t.as_ref().clone()
                 }
                 Type::Any(cause) => Type::Any(cause),
-                _ => return Err(IssueKind::SuperArgument1MustBeTypeObject),
+                t => {
+                    return Err(IssueKind::SuperArgument1MustBeTypeObject {
+                        got: match t {
+                            Type::Self_
+                            | Type::Class(_)
+                            | Type::Dataclass(_)
+                            | Type::NamedTuple(_) => "a non-type instance".into(),
+                            _ => format!("\"{}\"", t.format_short(i_s.db)).into(),
+                        },
+                    })
+                }
             }
         }
         None => {
@@ -712,17 +722,31 @@ fn execute_super_internal<'db>(
         None => return Err(IssueKind::SuperWithSingleArgumentNotSupported),
     };
     let relevant = get_relevant_type_for_super(i_s.db, &instance.as_cow_type(i_s));
-    let (cls, t) = match &relevant {
+    let (cls, bound_to) = match &relevant {
         Type::Self_ => {
             let cls = i_s.current_class().unwrap();
-            (*cls, cls.as_type(i_s.db))
+            (*cls, Type::Self_)
         }
         Type::Class(c) => (c.class(i_s.db), relevant.clone()),
         Type::Any(cause) => return Ok(Inferred::new_any(*cause)),
+        Type::Type(t) => {
+            if matches!(t.as_ref(), Type::Self_) {
+                let cls = i_s.current_class().unwrap();
+                (*cls, relevant.clone())
+            } else if let Some(cls) = t.maybe_class(i_s.db) {
+                (cls, relevant.clone())
+            } else {
+                return Err(IssueKind::SuperUnsupportedArgument { argument_index: 2 });
+            }
+        }
         _ => return Err(IssueKind::SuperUnsupportedArgument { argument_index: 2 }),
     };
+    let mut check_second = &bound_to;
+    if let Type::Type(t) = check_second {
+        check_second = t.as_ref()
+    }
     if !first_type
-        .is_simple_super_type_of(i_s, &instance.as_cow_type(i_s))
+        .is_simple_super_type_of(i_s, &check_second)
         .bool()
     {
         return Err(IssueKind::SuperArgument2MustBeAnInstanceOfArgument1);
@@ -730,7 +754,7 @@ fn execute_super_internal<'db>(
     if iterator.next().is_some() {
         return Err(IssueKind::TooManyArguments(" for \"super\"".into()));
     }
-    success(&cls, t, 0)
+    success(&cls, bound_to, 0)
 }
 
 pub(crate) fn execute_isinstance<'db>(

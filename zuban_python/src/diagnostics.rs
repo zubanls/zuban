@@ -232,7 +232,7 @@ pub(crate) enum IssueKind {
     SuperWithSingleArgumentNotSupported,
     SuperVarargsNotSupported,
     SuperOnlyAcceptsPositionalArguments,
-    SuperArgument1MustBeTypeObject,
+    SuperArgument1MustBeTypeObject { got: Box<str> },
     SuperArgument2MustBeAnInstanceOfArgument1,
     SuperUnsupportedArgument{argument_index: usize},
     SuperTargetClassHasNoBaseClass,
@@ -427,7 +427,7 @@ impl IssueKind {
             Redefinition { .. } => "no-redef",
             NameUsedBeforeDefinition { .. } => "used-before-def",
             UnionAttributeError { .. } | UnionAttributeErrorOfUpperBound(..) => "union-attr",
-            ArgumentTypeIssue(_) | SuperArgument1MustBeTypeObject => "arg-type",
+            ArgumentTypeIssue(_) | SuperArgument1MustBeTypeObject { .. } => "arg-type",
             ArgumentIssue { .. } | TooManyArguments { .. } | TooFewArguments { .. } => "call-arg",
             InvalidType(_) => "valid-type",
             IncompatibleReturn { .. }
@@ -1340,8 +1340,9 @@ impl<'db> Diagnostic<'db> {
             SuperVarargsNotSupported => "Varargs not supported with \"super\"".to_string(),
             SuperOnlyAcceptsPositionalArguments =>
                 "\"super\" only accepts positional arguments".to_string(),
-            SuperArgument1MustBeTypeObject =>
-                "Argument 1 for \"super\" must be a type object; got a non-type instance".to_string(),
+            SuperArgument1MustBeTypeObject { got } => format!(
+                "Argument 1 for \"super\" must be a type object; got {got}"
+            ),
             SuperArgument2MustBeAnInstanceOfArgument1 =>
                 "Argument 2 for \"super\" not an instance of argument 1".to_string(),
             SuperUnsupportedArgument{argument_index} =>
