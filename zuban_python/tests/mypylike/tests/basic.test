@@ -314,3 +314,8 @@ reveal_type(a.no_such_export)  # N: Revealed type is "Any"
 from b import no_such_export  # E: Module "b" has no attribute "no_such_export"
 [file b.py]
 from a import no_such_export
+
+[case super_with_any_do_not_error]
+from typing import Any
+x: Any
+super(x, x).z

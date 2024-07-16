@@ -748,7 +748,12 @@ fn execute_super_internal<'db>(
             (*cls, Type::Self_)
         }
         Type::Class(c) => (c.class(i_s.db), relevant.clone()),
-        Type::Any(cause) => return fallback(true),
+        Type::Any(cause) => {
+            return match fallback(true) {
+                ok @ Ok(_) => ok,
+                Err(_) => Ok(Inferred::new_any(*cause)),
+            }
+        }
         Type::Type(t) => match t.as_ref() {
             Type::Self_ => {
                 let cls = i_s.current_class().unwrap();
