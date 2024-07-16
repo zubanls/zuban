@@ -667,15 +667,19 @@ fn execute_super_internal<'db>(
         Some(result) => {
             match get_relevant_type_for_super(i_s.db, result?.as_cow_type(i_s).as_ref()) {
                 Type::Type(t) => {
-                    if !matches!(t.as_ref(), Type::Class(..)) {
-                        return Err(IssueKind::SuperUnsupportedArgument { argument_index: 1 });
+                    if matches!(t.as_ref(), Type::Self_) {
+                        i_s.current_class().unwrap().as_type(i_s.db)
+                    } else {
+                        if !matches!(t.as_ref(), Type::Class(..)) {
+                            return Err(IssueKind::SuperUnsupportedArgument { argument_index: 1 });
+                        }
+                        if matches!(t.as_ref(), Type::Class(c)
+                                if c.link == i_s.db.python_state.object_node_ref().as_link())
+                        {
+                            return Err(IssueKind::SuperTargetClassHasNoBaseClass);
+                        }
+                        t.as_ref().clone()
                     }
-                    if matches!(t.as_ref(), Type::Class(c)
-                            if c.link == i_s.db.python_state.object_node_ref().as_link())
-                    {
-                        return Err(IssueKind::SuperTargetClassHasNoBaseClass);
-                    }
-                    t.as_ref().clone()
                 }
                 Type::Any(cause) => Type::Any(cause),
                 t => {
@@ -713,8 +717,14 @@ fn execute_super_internal<'db>(
                     };
                     return success(&cls, t, 0);
                 }
+                return Err(IssueKind::SuperUsedOutsideClass);
+            } else {
+                if i_s.in_class_scope() {
+                    return Err(IssueKind::SuperOutsideOfAMethod);
+                } else {
+                    return Err(IssueKind::SuperUsedOutsideClass);
+                }
             }
-            return Err(IssueKind::SuperUsedOutsideClass);
         }
     };
     let instance = match next_arg() {

@@ -12,8 +12,6 @@ testSuperClassGetItem
 testSuperWithTypeObjects
 testInitSubclassOK
 testSuperInInitSubclass
-# "super() outside of a method is not supported"
-testSuperOutsideMethodNoCrash
 # "super() requires one or more positional arguments in enclosing function"
 testSuperInMethodWithNoArguments
 

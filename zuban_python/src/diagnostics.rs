@@ -229,6 +229,7 @@ pub(crate) enum IssueKind {
     AssertionAlwaysTrueBecauseOfParentheses,
 
     SuperUsedOutsideClass,
+    SuperOutsideOfAMethod,
     SuperWithSingleArgumentNotSupported,
     SuperVarargsNotSupported,
     SuperOnlyAcceptsPositionalArguments,
@@ -1335,7 +1336,8 @@ impl<'db> Diagnostic<'db> {
             ),
             AssertionAlwaysTrueBecauseOfParentheses => "Assertion is always true, perhaps remove parentheses?".to_string(),
 
-            SuperUsedOutsideClass => "\"super\" used outside class".to_string(),
+            SuperUsedOutsideClass => r#""super" used outside class"#.to_string(),
+            SuperOutsideOfAMethod => r#""super()" outside of a method is not supported"#.to_string(),
             SuperWithSingleArgumentNotSupported => "\"super\" with a single argument not supported".to_string(),
             SuperVarargsNotSupported => "Varargs not supported with \"super\"".to_string(),
             SuperOnlyAcceptsPositionalArguments =>
