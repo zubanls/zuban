@@ -1610,12 +1610,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 .lookup_and_class_and_maybe_ignore_self_internal(i_s, name, options.super_count);
             let mut attr_kind = AttributeKind::Attribute;
             let result = lookup_result.and_then(|inf| {
-                if let TypeOrClass::Class(in_class) = in_class {
-                    if class_infos.has_slots && self.in_slots(i_s.db, name) {
-                        (options.add_issue)(IssueKind::SlotsConflictWithClassVariableAccess {
-                            name: name.into(),
-                        })
-                    }
+                let mut bind_class_descriptors = |in_class, inf: Inferred| {
                     let i_s = i_s.with_class_context(&in_class);
                     let result = inf.bind_class_descriptors(
                         &i_s,
@@ -1629,8 +1624,20 @@ impl<'db: 'a, 'a> Class<'a> {
                         attr_kind = *k;
                     }
                     result.map(|inf| inf.0)
-                } else {
-                    Some(inf)
+                };
+                match &in_class {
+                    TypeOrClass::Class(in_class) => {
+                        if class_infos.has_slots && self.in_slots(i_s.db, name) {
+                            (options.add_issue)(IssueKind::SlotsConflictWithClassVariableAccess {
+                                name: name.into(),
+                            })
+                        }
+                        bind_class_descriptors(*in_class, inf)
+                    }
+                    TypeOrClass::Type(t) => match t.as_ref() {
+                        Type::Dataclass(d) => bind_class_descriptors(d.class(i_s.db), inf),
+                        _ => Some(inf),
+                    },
                 }
             });
             result.map(|lookup| LookupDetails {

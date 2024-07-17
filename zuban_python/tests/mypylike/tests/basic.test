@@ -370,5 +370,26 @@ class C(B):
         reveal_type(super(A, self).bar)  # E: "bar" undefined in superclass # N: Revealed type is "Any"
 
         reveal_type(super(C, type(self)).bar)  # N: Revealed type is "def (self: __main__.B, x: int | str)"
-        reveal_type(super(B, type(self)).bar)  # N: Revealed type is "def (self: __main__.C, x: int)"
+        reveal_type(super(B, type(self)).bar)  # N: Revealed type is "def (self: __main__.A, x: int)"
+        reveal_type(super(A, type(self)).bar)  # E: "bar" undefined in superclass # N: Revealed type is "Any"
+
+[case super_with_dataclass_inheritance2]
+from dataclasses import dataclass
+
+@dataclass
+class A:
+    def bar(self, x: int) -> None: ...
+@dataclass
+class B(A):
+    def bar(self, x: int | str) -> None: ...
+@dataclass
+class C(B):
+    def bar(self, x: int | str | bytes) -> None:
+        reveal_type(super().bar)  # N: Revealed type is "def (x: int | str)"
+        reveal_type(super(C, self).bar)  # N: Revealed type is "def (x: int | str)"
+        reveal_type(super(B, self).bar)  # N: Revealed type is "def (x: int)"
+        reveal_type(super(A, self).bar)  # E: "bar" undefined in superclass # N: Revealed type is "Any"
+
+        reveal_type(super(C, type(self)).bar)  # N: Revealed type is "def (self: __main__.B, x: int | str)"
+        reveal_type(super(B, type(self)).bar)  # N: Revealed type is "def (self: __main__.A, x: int)"
         reveal_type(super(A, type(self)).bar)  # E: "bar" undefined in superclass # N: Revealed type is "Any"
