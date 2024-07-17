@@ -349,6 +349,11 @@ class Y(X):
     def bar(self) -> None:
         reveal_type(super().foo)  # N: Revealed type is "int"
 
+[case super_with_any_in_second_place]
+a: x  # E: Name "x" is not defined
+reveal_type(super(int, a))  # N: Revealed type is "Any"
+reveal_type(super(int, type(a)))  # N: Revealed type is "Any"
+
 [case super_with_dataclass_inheritance1]
 from dataclasses import dataclass
 

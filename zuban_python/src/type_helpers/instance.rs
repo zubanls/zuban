@@ -760,9 +760,9 @@ fn execute_super_internal<'db>(
                 (*cls, relevant.clone())
             }
             Type::Class(c) => (c.class(i_s.db), relevant.clone()),
-            Type::Any(_) => {
+            Type::Any(cause) => {
                 let Some(cls) = i_s.current_class() else {
-                    todo!() //return Err(IssueKind::SuperUsedOutsideClass)
+                    return Ok(Inferred::new_any(*cause));
                 };
                 (*cls, Type::Type(Rc::new(Type::Self_)))
             }
