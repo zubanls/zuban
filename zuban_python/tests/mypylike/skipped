@@ -121,9 +121,6 @@ testOverloadedNewAndInitNoReturn
 testDataclassesClassmethods
 testClassmethodShadowingFieldDoesNotCrash
 testDeferredDataclassInitSignature
-# dataclass super (context problem)
-testDataclassesInitVarPostInitOverride
-testDataclassesInitVarIncremental
 # InitVar set default
 testDataclassInitVarCannotBeSet
 # dataclass weird replace case
