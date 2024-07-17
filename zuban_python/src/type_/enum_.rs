@@ -153,6 +153,7 @@ impl Enum {
 pub(crate) fn lookup_on_enum_class<'a>(
     i_s: &InferenceState<'a, '_>,
     add_issue: impl Fn(IssueKind),
+    in_type: &Rc<Type>,
     enum_: &Rc<Enum>,
     name: &str,
     result_context: &mut ResultContext,
@@ -169,7 +170,7 @@ pub(crate) fn lookup_on_enum_class<'a>(
                 i_s,
                 name,
                 ClassLookupOptions::new(&add_issue)
-                    .with_as_type_type(&|| Type::Type(Rc::new(Type::Enum(enum_.clone())))),
+                    .with_as_type_type(&|| Type::Type(in_type.clone())),
             )
         }),
     }

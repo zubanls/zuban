@@ -691,7 +691,8 @@ pub fn dataclass_init_func<'a>(self_: &'a Rc<Dataclass>, db: &Database) -> &'a C
 }
 
 pub(crate) fn lookup_on_dataclass_type<'a>(
-    self_: &'a Rc<Dataclass>,
+    in_type: &Rc<Type>,
+    dataclass: &'a Rc<Dataclass>,
     i_s: &'a InferenceState,
     add_issue: impl Fn(IssueKind),
     name: &str,
@@ -699,27 +700,27 @@ pub(crate) fn lookup_on_dataclass_type<'a>(
 ) -> LookupDetails<'a> {
     if name == "__dataclass_fields__" && kind == LookupKind::Normal {
         return LookupDetails::new(
-            Type::Dataclass(self_.clone()),
+            Type::Dataclass(dataclass.clone()),
             LookupResult::UnknownName(Inferred::from_type(
                 i_s.db.python_state.dataclass_fields_type.clone(),
             )),
             AttributeKind::Attribute,
         );
     }
-    if self_.options.order && ORDER_METHOD_NAMES.contains(&name) && kind == LookupKind::Normal {
+    if dataclass.options.order && ORDER_METHOD_NAMES.contains(&name) && kind == LookupKind::Normal {
         return LookupDetails::new(
-            Type::Dataclass(self_.clone()),
-            type_order_func(self_.clone(), i_s),
+            Type::Dataclass(dataclass.clone()),
+            type_order_func(dataclass.clone(), i_s),
             AttributeKind::Attribute,
         );
     }
-    if name == "__slots__" && self_.options.slots {
+    if name == "__slots__" && dataclass.options.slots {
         return LookupDetails::new(
-            Type::Dataclass(self_.clone()),
+            Type::Dataclass(dataclass.clone()),
             LookupResult::UnknownName(Inferred::from_type(Type::Tuple(Tuple::new_fixed_length(
                 repeat_with(|| i_s.db.python_state.str_type())
                     .take(
-                        dataclass_init_func(self_, i_s.db)
+                        dataclass_init_func(dataclass, i_s.db)
                             .expect_simple_params()
                             .len(),
                     )
@@ -728,12 +729,12 @@ pub(crate) fn lookup_on_dataclass_type<'a>(
             AttributeKind::Attribute,
         );
     }
-    self_.class(i_s.db).lookup(
+    dataclass.class(i_s.db).lookup(
         i_s,
         name,
         ClassLookupOptions::new(&add_issue)
             .with_kind(kind)
-            .with_as_type_type(&|| Type::Type(Rc::new(Type::Dataclass(self_.clone())))),
+            .with_as_type_type(&|| Type::Type(in_type.clone())),
     )
 }
 

@@ -647,7 +647,9 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
     }
 
     pub fn first_param_kind(&self, i_s: &InferenceState<'db, '_>) -> FirstParamKind {
-        if self.class.is_some() && ["__new__", "__init_subclass__"].contains(&self.name()) {
+        if self.class.is_some()
+            && ["__new__", "__init_subclass__", "__class_getitem__"].contains(&self.name())
+        {
             return FirstParamKind::ClassOfSelf;
         }
         match self.kind() {
