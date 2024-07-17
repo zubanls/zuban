@@ -109,3 +109,21 @@ class B(Enum):
 from enum import Enum
 class B(Enum):
     b = 10
+
+[case enum_method_binding]
+from enum import Enum
+from typing import Self
+
+class A(Enum):
+    x = "x"
+
+    def foo(self) -> Self:
+        return self
+
+x = A("x").foo()
+reveal_type(x)  # N: Revealed type is "__main__.A"
+type(x)("x")
+
+y = A("x").foo()
+reveal_type(y)  # N: Revealed type is "__main__.A"
+type(y)("x")
