@@ -741,25 +741,34 @@ fn execute_super_internal<'db>(
         return Err(IssueKind::TooManyArguments(" for \"super\"".into()));
     }
 
-    let relevant = get_relevant_type_for_super(i_s.db, &instance.as_cow_type(i_s));
-    let (cls, bound_to) = match &relevant {
+    let mut relevant = instance.as_cow_type(i_s);
+    if let Type::Literal(l) = relevant.as_ref() {
+        relevant = Cow::Owned(l.fallback_type(i_s.db));
+    };
+    let (cls, bound_to) = match relevant.as_ref() {
         Type::Self_ => {
             let cls = i_s.current_class().unwrap();
             (*cls, Type::Self_)
         }
-        Type::Class(c) => (c.class(i_s.db), relevant.clone()),
+        t @ Type::Class(c) => (c.class(i_s.db), t.clone()),
+        t @ Type::TypeVar(tv) => {
+            let Some(cls) = i_s.current_class() else {
+                todo!()
+            };
+            (*cls, t.clone())
+        }
         Type::Any(cause) => {
             return match fallback(true) {
                 ok @ Ok(_) => ok,
                 Err(_) => Ok(Inferred::new_any(*cause)),
             }
         }
-        Type::Type(t) => match t.as_ref() {
+        full @ Type::Type(t) => match t.as_ref() {
             Type::Self_ => {
                 let cls = i_s.current_class().unwrap();
-                (*cls, relevant.clone())
+                (*cls, full.clone())
             }
-            Type::Class(c) => (c.class(i_s.db), relevant.clone()),
+            Type::Class(c) => (c.class(i_s.db), full.clone()),
             Type::Any(cause) => {
                 let Some(cls) = i_s.current_class() else {
                     return Ok(Inferred::new_any(*cause));
