@@ -1570,7 +1570,7 @@ impl<'db: 'a, 'a> Class<'a> {
         }
         (
             LookupResult::None,
-            TypeOrClass::Type(Cow::Owned(Type::Any(AnyCause::Internal))),
+            TypeOrClass::Type(Cow::Borrowed(&Type::Any(AnyCause::Internal))),
             0.into(),
         )
     }
