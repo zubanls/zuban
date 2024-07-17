@@ -1257,6 +1257,7 @@ impl<'db: 'slf, 'slf> Inferred {
         i_s: &InferenceState,
         class: &Class,
         attribute_class: Class, // The (sub-)class in which an attribute is defined
+        func_class_type: &TypeOrClass,
         add_issue: impl Fn(IssueKind),
         apply_descriptor: bool,
         as_type_type: Option<&dyn Fn() -> Type>,
@@ -1270,7 +1271,10 @@ impl<'db: 'slf, 'slf> Inferred {
                     PointKind::Specific => match point.specific() {
                         Specific::Function => {
                             let func = Function::new(node_ref, Some(attribute_class));
-                            let t = func.as_type(i_s, FirstParamProperties::MethodAccessedOnClass);
+                            let t = func.as_type(
+                                i_s,
+                                FirstParamProperties::MethodAccessedOnClass { func_class_type },
+                            );
                             return Some((Inferred::from_type(t), AttributeKind::Attribute));
                         }
                         specific @ (Specific::AnnotationOrTypeCommentWithoutTypeVars

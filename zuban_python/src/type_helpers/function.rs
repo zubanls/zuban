@@ -41,6 +41,8 @@ use crate::{
     utils::rc_unwrap_or_clone,
 };
 
+use super::TypeOrClass;
+
 #[derive(Clone, Copy)]
 pub struct Function<'a, 'class> {
     pub node_ref: NodeRef<'a>,
@@ -1314,7 +1316,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         let defined_at = self.node_ref.as_link();
         let mut type_vars = self.type_vars(i_s).as_vec();
         match options.first_param {
-            FirstParamProperties::MethodAccessedOnClass => {
+            FirstParamProperties::MethodAccessedOnClass { func_class_type } => {
                 let mut needs_self_type_variable = self.return_type(i_s).has_self_type(i_s.db);
                 for param in self.iter_params().skip(1) {
                     if let Some(t) = param.annotation(i_s.db) {
@@ -1324,11 +1326,11 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 if needs_self_type_variable {
                     // We have to erase the type vars, because they will be part of the bound and
                     // only defined later.
-                    let t = self
-                        .class
-                        .unwrap()
-                        .as_type(i_s.db)
-                        .replace_type_var_likes(i_s.db, &mut |u| u.as_any_generic_item());
+                    let t = match func_class_type {
+                        TypeOrClass::Class(c) => c.as_type(i_s.db),
+                        TypeOrClass::Type(t) => t.to_owned().into_owned(),
+                    }
+                    .replace_type_var_likes(i_s.db, &mut |u| u.as_any_generic_item());
                     let self_type_var = Rc::new(TypeVar {
                         name_string: TypeVarName::Self_,
                         kind: TypeVarKind::Bound(t),
@@ -1822,7 +1824,9 @@ pub enum FirstParamProperties<'a> {
     Skip {
         to_self_instance: &'a dyn Fn() -> Type,
     },
-    MethodAccessedOnClass,
+    MethodAccessedOnClass {
+        func_class_type: &'a TypeOrClass<'a>,
+    },
     None,
 }
 

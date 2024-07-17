@@ -15,3 +15,50 @@ reveal_type(C) # N: Revealed type is "def (a: int, b: str, *Any, **Any) -> __mai
 C(a=1, b="", c=2)
 C(1, 1)  # E: Argument 2 to "C" has incompatible type "int"; expected "str"
 C(a="foo", b="")  # E: Argument "a" to "C" has incompatible type "str"; expected "int"
+
+[case dataclass_method_binding1]
+from dataclasses import dataclass
+from typing import Self
+
+@dataclass
+class A:
+    x: int
+
+    def foo(self) -> Self:
+        return self
+
+class B(A):
+    y: int
+
+x = B(1).foo()
+reveal_type(x)  # N: Revealed type is "__main__.B"
+type(x)(x=3)
+
+y = B.foo(A(1))
+type(y)(x=3)
+z = B.foo(B(1))
+type(z)(x=3)
+
+[case dataclass_method_binding2]
+from dataclasses import dataclass
+from typing import Self
+
+@dataclass
+class A:
+    x: int
+
+    def foo(self) -> Self:
+        return self
+
+@dataclass
+class B(A):
+    y: int
+
+x = B(1, 2).foo()
+reveal_type(x)  # N: Revealed type is "__main__.B"
+type(x)(x=3)
+
+y = B.foo(A(1))
+type(y)(x=3)
+z = B.foo(B(1, 2))
+type(z)(x=3, y=2)

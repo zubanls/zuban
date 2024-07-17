@@ -1611,7 +1611,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 i_s,
                 name,
                 options.super_count,
-                |lookup_result, in_class, _| {
+                |lookup_result, class, _| {
                     let mut attr_kind = AttributeKind::Attribute;
                     let result = lookup_result.and_then(|inf| {
                         let mut bind_class_descriptors = |in_class, inf: Inferred| {
@@ -1620,6 +1620,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                 &i_s,
                                 self,
                                 in_class,
+                                &class,
                                 options.add_issue,
                                 options.use_descriptors,
                                 options.as_type_type,
@@ -1629,7 +1630,7 @@ impl<'db: 'a, 'a> Class<'a> {
                             }
                             result.map(|inf| inf.0)
                         };
-                        match &in_class {
+                        match &class {
                             TypeOrClass::Class(in_class) => {
                                 if class_infos.has_slots && self.in_slots(i_s.db, name) {
                                     (options.add_issue)(
@@ -1647,7 +1648,7 @@ impl<'db: 'a, 'a> Class<'a> {
                         }
                     });
                     result.map(|lookup| LookupDetails {
-                        class: in_class,
+                        class,
                         lookup,
                         attr_kind,
                     })
