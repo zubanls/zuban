@@ -652,7 +652,9 @@ pub(crate) fn attribute_access_of_type(
         Type::Self_ => i_s.current_class().unwrap().lookup(
             i_s,
             name,
-            ClassLookupOptions::new(&add_issue).with_kind(kind),
+            ClassLookupOptions::new(&add_issue)
+                .with_kind(kind)
+                .with_as_type_type(&|| Type::Type(in_type.clone())),
         ),
         Type::Any(cause) => i_s
             .db

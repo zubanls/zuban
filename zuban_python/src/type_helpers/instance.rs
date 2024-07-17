@@ -702,18 +702,16 @@ fn execute_super_internal<'db>(
     let first_class = match next_arg() {
         Some(result) => {
             match get_relevant_type_for_super(i_s.db, result?.as_cow_type(i_s).as_ref()) {
-                Type::Type(t) => Some({
-                    if matches!(t.as_ref(), Type::Self_) {
-                        i_s.current_class().unwrap().node_ref.as_link()
-                    } else {
-                        let Type::Class(c) = t.as_ref() else {
-                            return Err(IssueKind::SuperUnsupportedArgument { argument_index: 1 });
-                        };
+                Type::Type(t) => Some(match t.as_ref() {
+                    Type::Self_ => i_s.current_class().unwrap().node_ref.as_link(),
+                    Type::Class(c) => {
                         if c.link == i_s.db.python_state.object_node_ref().as_link() {
                             return Err(IssueKind::SuperTargetClassHasNoBaseClass);
                         }
                         c.link
                     }
+                    Type::Dataclass(d) => d.class.link,
+                    _ => return Err(IssueKind::SuperUnsupportedArgument { argument_index: 1 }),
                 }),
                 Type::Any(cause) => None,
                 t => {
@@ -763,7 +761,9 @@ fn execute_super_internal<'db>(
             }
             Type::Class(c) => (c.class(i_s.db), relevant.clone()),
             Type::Any(_) => {
-                let cls = i_s.current_class().unwrap();
+                let Some(cls) = i_s.current_class() else {
+                    todo!() //return Err(IssueKind::SuperUsedOutsideClass)
+                };
                 (*cls, Type::Type(Rc::new(Type::Self_)))
             }
             _ => return Err(IssueKind::SuperUnsupportedArgument { argument_index: 2 }),
@@ -773,10 +773,14 @@ fn execute_super_internal<'db>(
     let mro_index = if let Some(first_class) = first_class {
         let mut mro_index = None;
         for (index, type_or_class) in cls.mro(i_s.db) {
-            if match type_or_class {
-                TypeOrClass::Class(c) => first_class == c.node_ref.as_link(),
-                TypeOrClass::Type(t) => todo!(),
-            } {
+            let found_link = match type_or_class {
+                TypeOrClass::Class(c) => c.node_ref.as_link(),
+                TypeOrClass::Type(t) => match t.as_ref() {
+                    Type::Dataclass(d) => d.class.link,
+                    _ => unreachable!(),
+                },
+            };
+            if first_class == found_link {
                 mro_index = Some(index);
                 break;
             }

@@ -138,11 +138,15 @@ impl<'db: 'a, 'a> Class<'a> {
     }
 
     pub fn with_self_generics(db: &'a Database, node_ref: NodeRef<'a>) -> Self {
+        let type_var_likes = Self::with_undefined_generics(node_ref).use_cached_type_vars(db);
         Self::from_position(
             node_ref,
-            Generics::Self_ {
-                class_definition: node_ref.as_link(),
-                type_var_likes: Self::with_undefined_generics(node_ref).use_cached_type_vars(db),
+            match type_var_likes.len() {
+                0 => Generics::None,
+                _ => Generics::Self_ {
+                    class_definition: node_ref.as_link(),
+                    type_var_likes,
+                },
             },
             None,
         )
