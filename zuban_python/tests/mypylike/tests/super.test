@@ -96,7 +96,7 @@ class C(B):
         reveal_type(super(B, type(self)).bar)  # N: Revealed type is "def (self: __main__.A, x: int)"
         reveal_type(super(A, type(self)).bar)  # E: "bar" undefined in superclass # N: Revealed type is "Any"
 
-[case test_super_explicit_type_var]
+[case super_explicit_type_var_method]
 from typing import TypeVar, Type
 
 T = TypeVar("T")
@@ -114,3 +114,32 @@ class B(A):
     def bar(self: U) -> U:
         reveal_type(super(B, self).bar())  # N: Revealed type is "U`-1"
         return super(B, self).bar()
+
+def foo(t: T) -> None:
+    super(B, t)  # E: Unsupported argument 2 for "super"
+
+[case super_explicit_type_var_classmethod]
+from typing import TypeVar, Type
+
+T = TypeVar("T")
+U = TypeVar("U", bound="A")
+
+class A:
+    @classmethod
+    def foo(cls: Type[T]) -> T: ...
+    @classmethod
+    def bar(cls: Type[U]) -> U: ...
+
+class B(A):
+    @classmethod
+    def foo(cls: Type[T]) -> T:
+        reveal_type(super(B, cls).foo())  # N: Revealed type is "T`-1"
+        return super(B, cls).foo()
+
+    @classmethod
+    def bar(cls: Type[U]) -> U:
+        reveal_type(super(B, cls).foo())  # N: Revealed type is "U`-1"
+        return super(B, cls).foo()
+
+def foo(t: Type[T]) -> None:
+    super(B, t)  # E: Unsupported argument 2 for "super"

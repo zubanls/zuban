@@ -753,7 +753,7 @@ fn execute_super_internal<'db>(
         t @ Type::Class(c) => (c.class(i_s.db), t.clone()),
         t @ Type::TypeVar(tv) => {
             let Some(cls) = i_s.current_class() else {
-                todo!()
+                return Err(IssueKind::SuperUnsupportedArgument { argument_index: 2 });
             };
             (*cls, t.clone())
         }
@@ -769,6 +769,12 @@ fn execute_super_internal<'db>(
                 (*cls, full.clone())
             }
             Type::Class(c) => (c.class(i_s.db), full.clone()),
+            Type::TypeVar(tv) => {
+                let Some(cls) = i_s.current_class() else {
+                    return Err(IssueKind::SuperUnsupportedArgument { argument_index: 2 });
+                };
+                (*cls, full.clone())
+            }
             Type::Any(cause) => {
                 let Some(cls) = i_s.current_class() else {
                     return Ok(Inferred::new_any(*cause));
