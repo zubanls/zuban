@@ -1533,19 +1533,20 @@ impl<'db: 'a, 'a> Class<'a> {
         }
     }
 
-    fn lookup_and_class_and_maybe_ignore_self_internal(
+    fn lookup_and_class_and_maybe_ignore_self_internal<T>(
         &self,
         i_s: &InferenceState<'db, '_>,
         name: &str,
         super_count: usize,
-    ) -> (LookupResult, TypeOrClass<'a>, MroIndex) {
+        bind: impl FnOnce(LookupResult, TypeOrClass<'a>, MroIndex) -> T,
+    ) -> T {
         if name == "__doc__" {
             let t = if self.node().has_docstr() {
                 i_s.db.python_state.str_type()
             } else {
                 Type::None
             };
-            return (
+            return bind(
                 LookupResult::UnknownName(Inferred::from_type(t)),
                 TypeOrClass::Class(*self),
                 0.into(),
@@ -1559,16 +1560,16 @@ impl<'db: 'a, 'a> Class<'a> {
             if !matches!(result, LookupResult::None) {
                 return match c {
                     // TODO why?
-                    TypeOrClass::Type(t) if matches!(t.as_ref(), Type::NamedTuple(_)) => (
+                    TypeOrClass::Type(t) if matches!(t.as_ref(), Type::NamedTuple(_)) => bind(
                         result,
                         TypeOrClass::Class(i_s.db.python_state.typing_named_tuple_class()),
                         mro_index,
                     ),
-                    _ => (result, c, mro_index),
+                    _ => bind(result, c, mro_index),
                 };
             }
         }
-        (
+        bind(
             LookupResult::None,
             TypeOrClass::Type(Cow::Borrowed(&Type::Any(AnyCause::Internal))),
             0.into(),
@@ -1606,45 +1607,52 @@ impl<'db: 'a, 'a> Class<'a> {
                     attr_kind: AttributeKind::Attribute,
                 };
             }
-            let (lookup_result, in_class, _) = self
-                .lookup_and_class_and_maybe_ignore_self_internal(i_s, name, options.super_count);
-            let mut attr_kind = AttributeKind::Attribute;
-            let result = lookup_result.and_then(|inf| {
-                let mut bind_class_descriptors = |in_class, inf: Inferred| {
-                    let i_s = i_s.with_class_context(&in_class);
-                    let result = inf.bind_class_descriptors(
-                        &i_s,
-                        self,
-                        in_class,
-                        options.add_issue,
-                        options.use_descriptors,
-                        options.as_type_type,
-                    );
-                    if let Some((_, k)) = &result {
-                        attr_kind = *k;
-                    }
-                    result.map(|inf| inf.0)
-                };
-                match &in_class {
-                    TypeOrClass::Class(in_class) => {
-                        if class_infos.has_slots && self.in_slots(i_s.db, name) {
-                            (options.add_issue)(IssueKind::SlotsConflictWithClassVariableAccess {
-                                name: name.into(),
-                            })
+            self.lookup_and_class_and_maybe_ignore_self_internal(
+                i_s,
+                name,
+                options.super_count,
+                |lookup_result, in_class, _| {
+                    let mut attr_kind = AttributeKind::Attribute;
+                    let result = lookup_result.and_then(|inf| {
+                        let mut bind_class_descriptors = |in_class, inf: Inferred| {
+                            let i_s = i_s.with_class_context(&in_class);
+                            let result = inf.bind_class_descriptors(
+                                &i_s,
+                                self,
+                                in_class,
+                                options.add_issue,
+                                options.use_descriptors,
+                                options.as_type_type,
+                            );
+                            if let Some((_, k)) = &result {
+                                attr_kind = *k;
+                            }
+                            result.map(|inf| inf.0)
+                        };
+                        match &in_class {
+                            TypeOrClass::Class(in_class) => {
+                                if class_infos.has_slots && self.in_slots(i_s.db, name) {
+                                    (options.add_issue)(
+                                        IssueKind::SlotsConflictWithClassVariableAccess {
+                                            name: name.into(),
+                                        },
+                                    )
+                                }
+                                bind_class_descriptors(*in_class, inf)
+                            }
+                            TypeOrClass::Type(t) => match t.as_ref() {
+                                Type::Dataclass(d) => bind_class_descriptors(d.class(i_s.db), inf),
+                                _ => Some(inf),
+                            },
                         }
-                        bind_class_descriptors(*in_class, inf)
-                    }
-                    TypeOrClass::Type(t) => match t.as_ref() {
-                        Type::Dataclass(d) => bind_class_descriptors(d.class(i_s.db), inf),
-                        _ => Some(inf),
-                    },
-                }
-            });
-            result.map(|lookup| LookupDetails {
-                class: in_class,
-                lookup,
-                attr_kind,
-            })
+                    });
+                    result.map(|lookup| LookupDetails {
+                        class: in_class,
+                        lookup,
+                        attr_kind,
+                    })
+                },
+            )
         } else {
             None
         };
@@ -2099,27 +2107,41 @@ impl<'db: 'a, 'a> Class<'a> {
         &self,
         i_s: &InferenceState<'db, '_>,
     ) -> NewOrInitConstructor<'_> {
-        let (__init__, init_class, init_mro_index) =
-            self.lookup_and_class_and_maybe_ignore_self_internal(i_s, "__init__", 0);
-        let (__new__, new_class, new_mro_index) =
-            self.lookup_and_class_and_maybe_ignore_self_internal(i_s, "__new__", 0);
-        // This is just a weird heuristic Mypy uses, because the type system itself is very unclear
-        // what to do if both __new__ and __init__ are present. So just only use __new__ if it's in
-        // a lower MRO than an __init__.
-        let is_new = new_mro_index < init_mro_index;
-        NewOrInitConstructor {
-            is_new,
-            // TODO this should not be bound if is_new = false
-            constructor: match is_new {
-                false => __init__,
-                true => __new__
-                    .and_then(|inf| {
-                        Some(inf.bind_new_descriptors(i_s, self, new_class.into_maybe_class()))
-                    })
-                    .unwrap(),
+        let (__init__, init_class, init_mro_index) = self
+            .lookup_and_class_and_maybe_ignore_self_internal(
+                i_s,
+                "__init__",
+                0,
+                |lookup, cls, mro_index| (lookup, cls.into_maybe_class(), mro_index),
+            );
+        self.lookup_and_class_and_maybe_ignore_self_internal(
+            i_s,
+            "__new__",
+            0,
+            |__new__, new_class, new_mro_index| {
+                // This is just a weird heuristic Mypy uses, because the type system itself is very unclear
+                // what to do if both __new__ and __init__ are present. So just only use __new__ if it's in
+                // a lower MRO than an __init__.
+                let is_new = new_mro_index < init_mro_index;
+                NewOrInitConstructor {
+                    is_new,
+                    // TODO this should not be bound if is_new = false
+                    constructor: match is_new {
+                        false => __init__,
+                        true => __new__
+                            .and_then(|inf| {
+                                Some(inf.bind_new_descriptors(
+                                    i_s,
+                                    self,
+                                    new_class.into_maybe_class(),
+                                ))
+                            })
+                            .unwrap(),
+                    },
+                    init_class,
+                }
             },
-            init_class: init_class.into_maybe_class(),
-        }
+        )
     }
 
     pub(crate) fn execute(
@@ -2373,15 +2395,18 @@ impl<'db: 'a, 'a> Class<'a> {
         add_issue: impl Fn(IssueKind),
         name: &str,
     ) {
-        let (lookup, _, _) = self.lookup_and_class_and_maybe_ignore_self_internal(i_s, name, 0);
-        if let Some(inf) = lookup.into_maybe_inferred() {
-            if inf.maybe_saved_specific(i_s.db) == Some(Specific::AnnotationOrTypeCommentClassVar) {
-                add_issue(IssueKind::CannotAssignToClassVarViaInstance { name: name.into() })
-            } else if inf.as_cow_type(i_s).is_func_or_overload_not_any_callable() {
-                // See testSlotsAssignmentWithMethodReassign
-                //add_issue(IssueType::CannotAssignToAMethod);
+        self.lookup_and_class_and_maybe_ignore_self_internal(i_s, name, 0, |lookup, _, _| {
+            if let Some(inf) = lookup.into_maybe_inferred() {
+                if inf.maybe_saved_specific(i_s.db)
+                    == Some(Specific::AnnotationOrTypeCommentClassVar)
+                {
+                    add_issue(IssueKind::CannotAssignToClassVarViaInstance { name: name.into() })
+                } else if inf.as_cow_type(i_s).is_func_or_overload_not_any_callable() {
+                    // See testSlotsAssignmentWithMethodReassign
+                    //add_issue(IssueType::CannotAssignToAMethod);
+                }
             }
-        }
+        });
         self.check_slots(i_s, add_issue, name)
     }
 
