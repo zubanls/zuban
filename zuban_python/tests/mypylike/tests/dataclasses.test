@@ -62,3 +62,7 @@ y = B.foo(A(1))
 type(y)(x=3)
 z = B.foo(B(1, 2))
 type(z)(x=3, y=2)
+
+a = A.foo(A(1))
+reveal_type(a)  # N: Revealed type is "__main__.A"
+type(a)(x=3)

@@ -1611,16 +1611,16 @@ impl<'db: 'a, 'a> Class<'a> {
                 i_s,
                 name,
                 options.super_count,
-                |lookup_result, class, _| {
+                |lookup_result, class, mro_index| {
                     let mut attr_kind = AttributeKind::Attribute;
                     let result = lookup_result.and_then(|inf| {
-                        let mut bind_class_descriptors = |in_class, inf: Inferred| {
+                        let mut bind_class_descriptors = |in_class, class_t, inf: Inferred| {
                             let i_s = i_s.with_class_context(&in_class);
                             let result = inf.bind_class_descriptors(
                                 &i_s,
                                 self,
                                 in_class,
-                                &class,
+                                class_t,
                                 options.add_issue,
                                 options.use_descriptors,
                                 options.as_type_type,
@@ -1639,10 +1639,25 @@ impl<'db: 'a, 'a> Class<'a> {
                                         },
                                     )
                                 }
-                                bind_class_descriptors(*in_class, inf)
+                                if let Some(as_type_type) =
+                                    options.as_type_type.filter(|_| mro_index.0 == 0)
+                                {
+                                    let Type::Type(t) = as_type_type() else {
+                                        unreachable!()
+                                    };
+                                    bind_class_descriptors(
+                                        *in_class,
+                                        &TypeOrClass::Type(Cow::Owned((*t).clone())),
+                                        inf,
+                                    )
+                                } else {
+                                    bind_class_descriptors(*in_class, &class, inf)
+                                }
                             }
                             TypeOrClass::Type(t) => match t.as_ref() {
-                                Type::Dataclass(d) => bind_class_descriptors(d.class(i_s.db), inf),
+                                Type::Dataclass(d) => {
+                                    bind_class_descriptors(d.class(i_s.db), &class, inf)
+                                }
                                 _ => Some(inf),
                             },
                         }

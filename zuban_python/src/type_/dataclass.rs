@@ -731,7 +731,9 @@ pub(crate) fn lookup_on_dataclass_type<'a>(
     self_.class(i_s.db).lookup(
         i_s,
         name,
-        ClassLookupOptions::new(&add_issue).with_kind(kind),
+        ClassLookupOptions::new(&add_issue)
+            .with_kind(kind)
+            .with_as_type_type(&|| Type::Type(Rc::new(Type::Dataclass(self_.clone())))),
     )
 }
 
