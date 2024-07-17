@@ -1,0 +1,97 @@
+[case super_with_any_do_not_error]
+from typing import Any
+x: Any
+super(x, x).z
+
+[case super_with_args_inheritance]
+class A:
+    def bar(self, x: int) -> None: ...
+class B(A):
+    def bar(self, x: int | str) -> None: ...
+class C(B):
+    def bar(self, x: int | str | bytes) -> None:
+        reveal_type(super().bar)  # N: Revealed type is "def (x: int | str)"
+        reveal_type(super(C, self).bar)  # N: Revealed type is "def (x: int | str)"
+        reveal_type(super(B, self).bar)  # N: Revealed type is "def (x: int)"
+        reveal_type(super(A, self).bar)  # E: "bar" undefined in superclass # N: Revealed type is "Any"
+
+        reveal_type(super(C, type(self)).bar)  # N: Revealed type is "def (self: __main__.B, x: int | str)"
+        reveal_type(super(B, type(self)).bar)  # N: Revealed type is "def (self: __main__.A, x: int)"
+        reveal_type(super(A, type(self)).bar)  # E: "bar" undefined in superclass # N: Revealed type is "Any"
+
+[case super_with_namedtuple_inheritance]
+from typing import NamedTuple
+class A(NamedTuple):
+    foo: int
+class B(A):
+    def bar(self) -> None:
+        reveal_type(super().foo)  # N: Revealed type is "int"
+
+X = NamedTuple("X", [('foo', int)])
+class Y(X):
+    def bar(self) -> None:
+        reveal_type(super().foo)  # N: Revealed type is "int"
+
+[case super_with_any_in_second_place]
+a: x  # E: Name "x" is not defined
+reveal_type(super(int, a))  # N: Revealed type is "Any"
+reveal_type(super(int, type(a)))  # N: Revealed type is "Any"
+
+[case super_with_dataclass_inheritance1]
+from dataclasses import dataclass
+
+@dataclass
+class A:
+    def bar(self, x: int) -> None: ...
+class B(A):
+    def bar(self, x: int | str) -> None: ...
+class C(B):
+    def bar(self, x: int | str | bytes) -> None:
+        reveal_type(super().bar)  # N: Revealed type is "def (x: int | str)"
+        reveal_type(super(C, self).bar)  # N: Revealed type is "def (x: int | str)"
+        reveal_type(super(B, self).bar)  # N: Revealed type is "def (x: int)"
+        reveal_type(super(A, self).bar)  # E: "bar" undefined in superclass # N: Revealed type is "Any"
+
+        reveal_type(super(C, type(self)).bar)  # N: Revealed type is "def (self: __main__.B, x: int | str)"
+        reveal_type(super(B, type(self)).bar)  # N: Revealed type is "def (self: __main__.A, x: int)"
+        reveal_type(super(A, type(self)).bar)  # E: "bar" undefined in superclass # N: Revealed type is "Any"
+
+[case super_with_dataclass_inheritance2]
+from dataclasses import dataclass
+
+@dataclass
+class A:
+    def bar(self, x: int) -> None: ...
+@dataclass
+class B(A):
+    def bar(self, x: int | str) -> None: ...
+@dataclass
+class C(B):
+    def bar(self, x: int | str | bytes) -> None:
+        reveal_type(super().bar)  # N: Revealed type is "def (x: int | str)"
+        reveal_type(super(C, self).bar)  # N: Revealed type is "def (x: int | str)"
+        reveal_type(super(B, self).bar)  # N: Revealed type is "def (x: int)"
+        reveal_type(super(A, self).bar)  # E: "bar" undefined in superclass # N: Revealed type is "Any"
+
+        reveal_type(super(C, type(self)).bar)  # N: Revealed type is "def (self: __main__.B, x: int | str)"
+        reveal_type(super(B, type(self)).bar)  # N: Revealed type is "def (self: __main__.A, x: int)"
+        reveal_type(super(A, type(self)).bar)  # E: "bar" undefined in superclass # N: Revealed type is "Any"
+
+
+[case super_with_enum_inheritance]
+from enum import Enum
+
+class A(Enum):
+    def bar(self, x: int) -> None: ...
+class B(A):
+    def bar(self, x: int | str) -> None: ...
+class C(B):
+    def bar(self, x: int | str | bytes) -> None:
+        reveal_type(super().bar)  # N: Revealed type is "def (x: int | str)"
+        reveal_type(super(C, self).bar)  # N: Revealed type is "def (x: int | str)"
+        reveal_type(super(B, self).bar)  # N: Revealed type is "def (x: int)"
+        reveal_type(super(A, self).bar)  # E: "bar" undefined in superclass # N: Revealed type is "Any"
+
+        reveal_type(super(C, type(self)).bar)  # N: Revealed type is "def (self: __main__.B, x: int | str)"
+        reveal_type(super(B, type(self)).bar)  # N: Revealed type is "def (self: __main__.A, x: int)"
+        reveal_type(super(A, type(self)).bar)  # E: "bar" undefined in superclass # N: Revealed type is "Any"
