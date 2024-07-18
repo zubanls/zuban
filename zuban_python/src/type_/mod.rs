@@ -1845,6 +1845,15 @@ impl CallableLike {
     }
 }
 
+impl From<CallableLike> for Type {
+    fn from(callable: CallableLike) -> Self {
+        match callable {
+            CallableLike::Callable(c) => Type::Callable(c),
+            CallableLike::Overload(o) => Type::FunctionOverload(o),
+        }
+    }
+}
+
 #[derive(Debug)]
 enum UniqueInUnpackedUnionError {
     None,

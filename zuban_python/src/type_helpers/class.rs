@@ -3183,10 +3183,7 @@ impl NewOrInitConstructor<'_> {
     }
 
     fn into_type(self, i_s: &InferenceState, cls: Class) -> Option<Type> {
-        self.maybe_callable(i_s, cls).map(|x| match x {
-            CallableLike::Callable(c) => Type::Callable(c),
-            CallableLike::Overload(o) => Type::FunctionOverload(o),
-        })
+        self.maybe_callable(i_s, cls).map(|c| c.into())
     }
 }
 
