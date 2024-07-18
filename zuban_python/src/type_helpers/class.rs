@@ -30,10 +30,10 @@ use crate::{
     inference_state::InferenceState,
     inferred::{AttributeKind, FunctionOrOverload, Inferred, MroIndex},
     matching::{
-        calculate_callable_init_type_vars_and_return, calculate_callable_type_vars_and_return,
-        calculate_class_init_type_vars_and_return, format_got_expected, maybe_class_usage,
-        ErrorStrs, FunctionOrCallable, Generics, LookupKind, Match, Matcher, MismatchReason,
-        OnTypeError, ResultContext,
+        calculate_callable_dunder_init_type_vars_and_return,
+        calculate_callable_type_vars_and_return, calculate_class_dunder_init_type_vars_and_return,
+        format_got_expected, maybe_class_usage, ErrorStrs, FunctionOrCallable, Generics,
+        LookupKind, Match, Matcher, MismatchReason, OnTypeError, ResultContext,
     },
     node_ref::NodeRef,
     python_state::{NAME_TO_CLASS_DIFF, NAME_TO_FUNCTION_DIFF},
@@ -157,11 +157,11 @@ impl<'db: 'a, 'a> Class<'a> {
         Instance::new(self, None)
     }
 
-    fn type_check_init_func(
+    fn type_check_dunder_init_func(
         &self,
         i_s: &InferenceState<'db, '_>,
         __init__: LookupResult,
-        init_class: Option<Class>,
+        dunder_init_class: Option<Class>,
         args: &dyn Args<'db>,
         result_context: &mut ResultContext,
         on_type_error: OnTypeError,
@@ -186,9 +186,9 @@ impl<'db: 'a, 'a> Class<'a> {
                 true => ClassGenerics::None,
             });
         };
-        match inf.init_as_function(i_s, init_class) {
+        match inf.init_as_function(i_s, dunder_init_class) {
             Some(FunctionOrOverload::Function(func)) => {
-                let calculated_type_args = calculate_class_init_type_vars_and_return(
+                let calculated_type_args = calculate_class_dunder_init_type_vars_and_return(
                     i_s,
                     self,
                     func,
@@ -202,8 +202,8 @@ impl<'db: 'a, 'a> Class<'a> {
                 )
             }
             Some(FunctionOrOverload::Callable(callable_content)) => {
-                let calculated_type_args = match init_class {
-                    Some(class) => calculate_callable_init_type_vars_and_return(
+                let calculated_type_args = match dunder_init_class {
+                    Some(class) => calculate_callable_dunder_init_type_vars_and_return(
                         i_s,
                         &class,
                         Callable::new(&callable_content, Some(*self)),
@@ -245,7 +245,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 ) {
                 OverloadResult::Single(callable) => {
                     // Execute the found function to create the diagnostics.
-                    let result = calculate_callable_init_type_vars_and_return(
+                    let result = calculate_callable_dunder_init_type_vars_and_return(
                         i_s,
                         self,
                         callable,
@@ -2328,7 +2328,7 @@ impl<'db: 'a, 'a> Class<'a> {
             };
         }
 
-        self.type_check_init_func(
+        self.type_check_dunder_init_func(
             i_s,
             constructor.constructor,
             constructor.init_class,

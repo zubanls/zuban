@@ -11,8 +11,8 @@ pub use generic::Generic;
 pub use generics::Generics;
 pub use match_::{ArgumentIndexWithParam, Match, MismatchReason, SignatureMatch};
 pub(crate) use matcher::{
-    calculate_callable_init_type_vars_and_return, calculate_callable_type_vars_and_return,
-    calculate_class_init_type_vars_and_return, calculate_function_type_vars_and_return,
+    calculate_callable_dunder_init_type_vars_and_return, calculate_callable_type_vars_and_return,
+    calculate_class_dunder_init_type_vars_and_return, calculate_function_type_vars_and_return,
     CalculatedTypeArgs, CheckedTypeRecursion, FunctionOrCallable, Matcher, MatcherFormatResult,
 };
 pub use result_context::{CouldBeALiteral, ResultContext};

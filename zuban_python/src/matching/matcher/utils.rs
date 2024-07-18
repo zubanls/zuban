@@ -30,7 +30,7 @@ use crate::{
     type_helpers::{Callable, Class, Function},
 };
 
-pub(crate) fn calculate_callable_init_type_vars_and_return<'db: 'a, 'a>(
+pub(crate) fn calculate_callable_dunder_init_type_vars_and_return<'db: 'a, 'a>(
     i_s: &InferenceState<'db, '_>,
     class: &Class,
     callable: Callable<'a>,
@@ -39,7 +39,7 @@ pub(crate) fn calculate_callable_init_type_vars_and_return<'db: 'a, 'a>(
     result_context: &mut ResultContext,
     on_type_error: Option<OnTypeError>,
 ) -> CalculatedTypeArgs {
-    calculate_init_type_vars_and_return(
+    calculate_dunder_init_type_vars_and_return(
         i_s,
         class,
         FunctionOrCallable::Callable(callable),
@@ -50,7 +50,7 @@ pub(crate) fn calculate_callable_init_type_vars_and_return<'db: 'a, 'a>(
     )
 }
 
-pub(crate) fn calculate_class_init_type_vars_and_return<'db: 'a, 'a>(
+pub(crate) fn calculate_class_dunder_init_type_vars_and_return<'db: 'a, 'a>(
     i_s: &InferenceState<'db, '_>,
     class: &Class,
     function: Function<'a, 'a>,
@@ -59,7 +59,7 @@ pub(crate) fn calculate_class_init_type_vars_and_return<'db: 'a, 'a>(
     result_context: &mut ResultContext,
     on_type_error: Option<OnTypeError>,
 ) -> CalculatedTypeArgs {
-    calculate_init_type_vars_and_return(
+    calculate_dunder_init_type_vars_and_return(
         i_s,
         class,
         FunctionOrCallable::Function(function),
@@ -70,7 +70,7 @@ pub(crate) fn calculate_class_init_type_vars_and_return<'db: 'a, 'a>(
     )
 }
 
-fn calculate_init_type_vars_and_return<'db: 'a, 'a>(
+fn calculate_dunder_init_type_vars_and_return<'db: 'a, 'a>(
     i_s: &InferenceState<'db, '_>,
     class: &Class,
     func_or_callable: FunctionOrCallable<'a>,

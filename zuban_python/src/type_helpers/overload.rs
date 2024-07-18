@@ -10,9 +10,10 @@ use crate::{
     inference_state::InferenceState,
     inferred::Inferred,
     matching::{
-        calculate_callable_init_type_vars_and_return, calculate_callable_type_vars_and_return,
-        replace_class_type_vars_in_callable, ArgumentIndexWithParam, CalculatedTypeArgs,
-        FunctionOrCallable, OnTypeError, ResultContext, SignatureMatch,
+        calculate_callable_dunder_init_type_vars_and_return,
+        calculate_callable_type_vars_and_return, replace_class_type_vars_in_callable,
+        ArgumentIndexWithParam, CalculatedTypeArgs, FunctionOrCallable, OnTypeError, ResultContext,
+        SignatureMatch,
     },
     type_::{AnyCause, FunctionOverload, NeverCause, ReplaceSelf, Type},
 };
@@ -59,7 +60,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                                result_context: &mut ResultContext,
                                callable: Callable| {
             if search_init {
-                calculate_callable_init_type_vars_and_return(
+                calculate_callable_dunder_init_type_vars_and_return(
                     i_s,
                     class.unwrap(),
                     callable,
@@ -385,7 +386,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                 let callable = Callable::new(callable, self.class);
                 let (calculated_type_args, had_error) = i_s.do_overload_check(|i_s| {
                     if search_init {
-                        calculate_callable_init_type_vars_and_return(
+                        calculate_callable_dunder_init_type_vars_and_return(
                             i_s,
                             class.unwrap(),
                             callable,
