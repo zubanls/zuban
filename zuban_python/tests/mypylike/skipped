@@ -122,6 +122,7 @@ testOverloadedNewAndInitNoReturn
 testDataclassesClassmethods
 testClassmethodShadowingFieldDoesNotCrash
 testDeferredDataclassInitSignature
+dataclass_inheritance_method_generics
 # InitVar set default
 testDataclassInitVarCannotBeSet
 # dataclass weird replace case

@@ -1580,7 +1580,7 @@ impl<'db: 'a, 'a> Class<'a> {
         i_s: &InferenceState<'db, '_>,
         name: &str,
         super_count: usize,
-        bind: impl FnOnce(LookupResult, TypeOrClass<'a>, MroIndex) -> T,
+        bind: impl FnOnce(LookupResult, TypeOrClass<'a>, Option<Class>, MroIndex) -> T,
     ) -> T {
         if name == "__doc__" {
             let t = if self.node().has_docstr() {
@@ -1591,6 +1591,7 @@ impl<'db: 'a, 'a> Class<'a> {
             return bind(
                 LookupResult::UnknownName(Inferred::from_type(t)),
                 TypeOrClass::Class(*self),
+                None,
                 0.into(),
             );
         }
@@ -1598,22 +1599,24 @@ impl<'db: 'a, 'a> Class<'a> {
             .mro_maybe_without_object(i_s.db, self.incomplete_mro(i_s.db))
             .skip(super_count)
         {
-            let (_, result) = c.lookup_symbol(i_s, name);
+            let (defined_in, result) = c.lookup_symbol(i_s, name);
             if !matches!(result, LookupResult::None) {
-                return match c {
+                return match &c {
                     // TODO why?
                     TypeOrClass::Type(t) if matches!(t.as_ref(), Type::NamedTuple(_)) => bind(
                         result,
                         TypeOrClass::Class(i_s.db.python_state.typing_named_tuple_class()),
+                        defined_in,
                         mro_index,
                     ),
-                    _ => bind(result, c, mro_index),
+                    _ => bind(result, c.clone(), defined_in, mro_index),
                 };
             }
         }
         bind(
             LookupResult::None,
             TypeOrClass::Type(Cow::Borrowed(&Type::Any(AnyCause::Internal))),
+            None,
             0.into(),
         )
     }
@@ -1653,7 +1656,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 i_s,
                 name,
                 options.super_count,
-                |lookup_result, class, mro_index| {
+                |lookup_result, class, _, mro_index| {
                     let mut attr_kind = AttributeKind::Attribute;
                     let result = lookup_result.and_then(|inf| {
                         let mut bind_class_descriptors = |in_class, class_t, inf: Inferred| {
@@ -2170,13 +2173,27 @@ impl<'db: 'a, 'a> Class<'a> {
                 i_s,
                 "__init__",
                 0,
-                |lookup, cls, mro_index| (lookup, cls.into_maybe_class(), mro_index),
+                |lookup, cls, init_cls, mro_index| {
+                    if let TypeOrClass::Type(t) = &cls {
+                        if let Some(init_cls) = init_cls {
+                            /*
+                            // We need to remap now
+                            return (
+                                lookup.and_then(|inf| init_as_callable(i_s, cls, inf, Some(init_cls)).map(|c| Inferred::from_type(c.into()))).expect("__init__ from a type should probably always be a useful type"),
+                                None,
+                                mro_index
+                            )
+                            */
+                        }
+                    }
+                    (lookup, cls.into_maybe_class(), mro_index)
+                },
             );
         self.lookup_and_class_and_maybe_ignore_self_internal(
             i_s,
             "__new__",
             0,
-            |__new__, new_class, new_mro_index| {
+            |__new__, cls, defined_in, new_mro_index| {
                 // This is just a weird heuristic Mypy uses, because the type system itself is very unclear
                 // what to do if both __new__ and __init__ are present. So just only use __new__ if it's in
                 // a lower MRO than an __init__.
@@ -2188,11 +2205,7 @@ impl<'db: 'a, 'a> Class<'a> {
                         false => __init__,
                         true => __new__
                             .and_then(|inf| {
-                                Some(inf.bind_new_descriptors(
-                                    i_s,
-                                    self,
-                                    new_class.into_maybe_class(),
-                                ))
+                                Some(inf.bind_new_descriptors(i_s, self, cls.into_maybe_class()))
                             })
                             .unwrap(),
                     },
@@ -2453,7 +2466,7 @@ impl<'db: 'a, 'a> Class<'a> {
         add_issue: impl Fn(IssueKind),
         name: &str,
     ) {
-        self.lookup_and_class_and_maybe_ignore_self_internal(i_s, name, 0, |lookup, _, _| {
+        self.lookup_and_class_and_maybe_ignore_self_internal(i_s, name, 0, |lookup, _, _, _| {
             if let Some(inf) = lookup.into_maybe_inferred() {
                 if inf.maybe_saved_specific(i_s.db)
                     == Some(Specific::AnnotationOrTypeCommentClassVar)
@@ -3076,6 +3089,99 @@ fn format_callable_like(
     }
 }
 
+fn init_as_callable(
+    i_s: &InferenceState,
+    cls: Class,
+    inf: Inferred,
+    init_class: Option<Class>,
+) -> Option<CallableLike> {
+    let cls = if matches!(cls.generics(), Generics::NotDefinedYet) {
+        Class::with_self_generics(i_s.db, cls.node_ref)
+    } else {
+        cls
+    };
+    let callable = if let Some(c) = init_class {
+        let i_s = &i_s.with_class_context(&c);
+        inf.as_cow_type(i_s).maybe_callable(i_s)
+    } else {
+        inf.as_cow_type(i_s).maybe_callable(i_s)
+    };
+    let to_callable = |c: &CallableContent| {
+        // Since __init__ does not have a return, We need to check the params
+        // of the __init__ functions and the class as a return type separately.
+        c.remove_first_positional_param().map(|mut c| {
+            let self_ = cls.as_type(i_s.db);
+            let needs_type_var_remap = init_class
+                .is_some_and(|c| !c.type_vars(i_s).is_empty() && c.node_ref != cls.node_ref);
+
+            // If the __init__ comes from a super class, we need to fetch the generics that
+            // are relevant for our class.
+            if c.has_self_type(i_s.db) || needs_type_var_remap {
+                c = c.replace_type_var_likes_and_self(
+                    i_s.db,
+                    &mut |usage| {
+                        if needs_type_var_remap {
+                            if let Some(func_class) = init_class {
+                                if let Some(result) = maybe_class_usage(i_s.db, &func_class, &usage)
+                                {
+                                    return result;
+                                }
+                            }
+                        }
+                        usage.into_generic_item()
+                    },
+                    &|| self_.clone(),
+                )
+            }
+            c.return_type = self_;
+
+            // Now we have two sets of generics, the generics for the class and the
+            // generics for the __init__ function. We merge those and then set the proper
+            // ids for the type vars.
+            let class_type_vars = cls.type_vars(i_s);
+            if class_type_vars.is_empty() {
+                c.type_vars = class_type_vars.clone();
+            } else {
+                let mut tv_vec = class_type_vars.as_vec();
+                tv_vec.extend(c.type_vars.iter().cloned());
+                c.type_vars = TypeVarLikes::from_vec(tv_vec);
+            }
+            if !c.type_vars.is_empty() {
+                c = c.replace_type_var_likes_and_self(
+                    i_s.db,
+                    &mut |mut usage| {
+                        let in_def = usage.in_definition();
+                        if cls.node_ref.as_link() == in_def {
+                            usage.update_in_definition_and_index(c.defined_at, usage.index());
+                        } else if c.defined_at == in_def {
+                            usage.update_in_definition_and_index(
+                                c.defined_at,
+                                (class_type_vars.len() + usage.index().as_usize()).into(),
+                            )
+                        }
+                        usage.into_generic_item()
+                    },
+                    &|| unreachable!("was already replaced above"),
+                );
+            }
+            Rc::new(c)
+        })
+    };
+    callable.and_then(|callable_like| match callable_like {
+        CallableLike::Callable(c) => to_callable(&c).map(CallableLike::Callable),
+        CallableLike::Overload(callables) => {
+            let funcs: Box<_> = callables
+                .iter_functions()
+                .filter_map(|c| to_callable(c))
+                .collect();
+            match funcs.len() {
+                0 | 1 => todo!(),
+                _ => Some(CallableLike::Overload(FunctionOverload::new(funcs))),
+            }
+        }
+    })
+}
+
 pub struct NewOrInitConstructor<'a> {
     // A data structure to show wheter __init__ or __new__ is the relevant constructor for a class
     constructor: LookupResult,
@@ -3089,96 +3195,7 @@ impl NewOrInitConstructor<'_> {
         if self.is_new {
             inf.as_cow_type(i_s).maybe_callable(i_s)
         } else {
-            let cls = if matches!(cls.generics(), Generics::NotDefinedYet) {
-                Class::with_self_generics(i_s.db, cls.node_ref)
-            } else {
-                cls
-            };
-            let callable = if let Some(c) = self.init_class {
-                let i_s = &i_s.with_class_context(&c);
-                inf.as_cow_type(i_s).maybe_callable(i_s)
-            } else {
-                inf.as_cow_type(i_s).maybe_callable(i_s)
-            };
-            let to_callable = |c: &CallableContent| {
-                // Since __init__ does not have a return, We need to check the params
-                // of the __init__ functions and the class as a return type separately.
-                c.remove_first_positional_param().map(|mut c| {
-                    let self_ = cls.as_type(i_s.db);
-                    let needs_type_var_remap = self.init_class.is_some_and(|c| {
-                        !c.type_vars(i_s).is_empty() && c.node_ref != cls.node_ref
-                    });
-
-                    // If the __init__ comes from a super class, we need to fetch the generics that
-                    // are relevant for our class.
-                    if c.has_self_type(i_s.db) || needs_type_var_remap {
-                        c = c.replace_type_var_likes_and_self(
-                            i_s.db,
-                            &mut |usage| {
-                                if needs_type_var_remap {
-                                    if let Some(func_class) = self.init_class {
-                                        if let Some(result) =
-                                            maybe_class_usage(i_s.db, &func_class, &usage)
-                                        {
-                                            return result;
-                                        }
-                                    }
-                                }
-                                usage.into_generic_item()
-                            },
-                            &|| self_.clone(),
-                        )
-                    }
-                    c.return_type = self_;
-
-                    // Now we have two sets of generics, the generics for the class and the
-                    // generics for the __init__ function. We merge those and then set the proper
-                    // ids for the type vars.
-                    let class_type_vars = cls.type_vars(i_s);
-                    if class_type_vars.is_empty() {
-                        c.type_vars = class_type_vars.clone();
-                    } else {
-                        let mut tv_vec = class_type_vars.as_vec();
-                        tv_vec.extend(c.type_vars.iter().cloned());
-                        c.type_vars = TypeVarLikes::from_vec(tv_vec);
-                    }
-                    if !c.type_vars.is_empty() {
-                        c = c.replace_type_var_likes_and_self(
-                            i_s.db,
-                            &mut |mut usage| {
-                                let in_def = usage.in_definition();
-                                if cls.node_ref.as_link() == in_def {
-                                    usage.update_in_definition_and_index(
-                                        c.defined_at,
-                                        usage.index(),
-                                    );
-                                } else if c.defined_at == in_def {
-                                    usage.update_in_definition_and_index(
-                                        c.defined_at,
-                                        (class_type_vars.len() + usage.index().as_usize()).into(),
-                                    )
-                                }
-                                usage.into_generic_item()
-                            },
-                            &|| unreachable!("was already replaced above"),
-                        );
-                    }
-                    Rc::new(c)
-                })
-            };
-            callable.and_then(|callable_like| match callable_like {
-                CallableLike::Callable(c) => to_callable(&c).map(CallableLike::Callable),
-                CallableLike::Overload(callables) => {
-                    let funcs: Box<_> = callables
-                        .iter_functions()
-                        .filter_map(|c| to_callable(c))
-                        .collect();
-                    match funcs.len() {
-                        0 | 1 => todo!(),
-                        _ => Some(CallableLike::Overload(FunctionOverload::new(funcs))),
-                    }
-                }
-            })
+            init_as_callable(i_s, cls, inf, self.init_class)
         }
     }
 

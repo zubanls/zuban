@@ -322,7 +322,8 @@ impl<'a> Instance<'a> {
                         c,
                         options.add_issue,
                         mro_index,
-                        options.disallow_lazy_bound_method,
+                        options.disallow_lazy_bound_method
+                            || matches!(class, TypeOrClass::Type(Cow::Owned(_))),
                     )
                     .map(|inf| {
                         attr_kind = inf.1;

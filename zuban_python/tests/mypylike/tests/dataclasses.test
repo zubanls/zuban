@@ -66,3 +66,28 @@ type(z)(x=3, y=2)
 a = A.foo(A(1))
 reveal_type(a)  # N: Revealed type is "__main__.A"
 type(a)(x=3)
+
+[case dataclass_inheritance_method_generics]
+from typing import TypeVar, Generic, List
+from dataclasses import dataclass
+
+T = TypeVar("T")
+
+@dataclass
+class A(Generic[T]):
+    x: T
+
+    def foo(self) -> T: return self.x
+
+class B(A[T]): ...
+
+b: B[str]
+reveal_type(b.foo())  # N: Revealed type is "str"
+x = B(1)
+reveal_type(x.foo())  # N: Revealed type is "int"
+
+class C(A[List[T]]): ...
+
+#C(1)
+#x = C([1])
+#reveal_type(x.foo())  # N: Revealed type is "List[int]"
