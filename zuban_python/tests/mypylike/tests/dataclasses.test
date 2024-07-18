@@ -84,10 +84,11 @@ class B(A[T]): ...
 b: B[str]
 reveal_type(b.foo())  # N: Revealed type is "str"
 x = B(1)
+reveal_type(x)  # N: Revealed type is "__main__.B[int]"
 reveal_type(x.foo())  # N: Revealed type is "int"
 
 class C(A[List[T]]): ...
 
 #C(1)
 #x = C([1])
-#reveal_type(x.foo())  # N: Revealed type is "List[int]"
+-- reveal_type(x.foo())  # N: Revealed type is "List[int]"

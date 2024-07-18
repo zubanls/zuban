@@ -19,8 +19,8 @@ use crate::{
     inference_state::InferenceState,
     inferred::{AttributeKind, Inferred},
     matching::{
-        calculate_callable_type_vars_and_return, replace_class_type_vars, LookupKind, OnTypeError,
-        ResultContext,
+        calculate_callable_type_vars_and_return, replace_class_type_vars, Generics, LookupKind,
+        OnTypeError, ResultContext,
     },
     node_ref::NodeRef,
     python_state::NAME_TO_FUNCTION_DIFF,
@@ -74,6 +74,15 @@ impl Dataclass {
 
     pub fn class<'a>(&'a self, db: &'a Database) -> Class<'a> {
         self.class.class(db)
+    }
+
+    pub fn as_base_class<'a>(&'a self, db: &'a Database, generics: Generics<'a>) -> Class<'a> {
+        let remap = match &self.class.generics {
+            ClassGenerics::List(list) => Some(list),
+            ClassGenerics::None => None,
+            _ => unreachable!(),
+        };
+        Class::from_position(NodeRef::from_link(db, self.class.link), generics, remap)
     }
 
     pub fn has_defined_generics(&self) -> bool {

@@ -36,6 +36,7 @@ pub(crate) fn calculate_callable_dunder_init_type_vars_and_return<'db: 'a, 'a>(
     callable: Callable<'a>,
     args: impl Iterator<Item = Arg<'db, 'a>>,
     add_issue: impl Fn(IssueKind),
+    skip_first_param: bool,
     result_context: &mut ResultContext,
     on_type_error: Option<OnTypeError>,
 ) -> CalculatedTypeArgs {
@@ -45,6 +46,7 @@ pub(crate) fn calculate_callable_dunder_init_type_vars_and_return<'db: 'a, 'a>(
         FunctionOrCallable::Callable(callable),
         args,
         add_issue,
+        skip_first_param,
         result_context,
         on_type_error,
     )
@@ -65,6 +67,7 @@ pub(crate) fn calculate_class_dunder_init_type_vars_and_return<'db: 'a, 'a>(
         FunctionOrCallable::Function(function),
         args,
         add_issue,
+        true,
         result_context,
         on_type_error,
     )
@@ -76,6 +79,7 @@ fn calculate_dunder_init_type_vars_and_return<'db: 'a, 'a>(
     func_or_callable: FunctionOrCallable<'a>,
     args: impl Iterator<Item = Arg<'db, 'a>>,
     add_issue: impl Fn(IssueKind),
+    skip_first_param: bool,
     result_context: &mut ResultContext,
     on_type_error: Option<OnTypeError>,
 ) -> CalculatedTypeArgs {
@@ -107,7 +111,7 @@ fn calculate_dunder_init_type_vars_and_return<'db: 'a, 'a>(
         Some(class),
         args,
         add_issue,
-        true,
+        skip_first_param,
         match_in_definition,
         result_context,
         on_type_error,
@@ -377,28 +381,37 @@ fn calculate_type_vars<'db: 'a, 'a>(
     if matcher.has_type_var_matcher() {
         let mut add_init_generics = |matcher: &mut _, return_class: &Class| {
             if let Some(t) = func_or_callable.first_self_or_class_annotation(i_s) {
-                // When an __init__ has a self annotation, it's a bit special, because it influences
-                // the generics.
-                let func_class = func_or_callable.class().unwrap();
-                let m = Class::with_self_generics(i_s.db, return_class.node_ref)
-                    .as_type(i_s.db)
-                    .is_sub_type_of(i_s, matcher, &t);
-                for entry in &mut matcher
-                    .type_var_matchers
-                    .first_mut()
-                    .unwrap()
-                    .calculating_type_args
-                {
-                    entry
-                        .type_
-                        .avoid_type_vars_from_class_self_arguments(func_class);
-                }
-                if !m.bool() {
-                    had_wrong_init_type_var = true;
-                    if on_type_error.is_some() {
-                        add_issue(IssueKind::ArgumentIssue(
-                            "Invalid self type in __init__".into(),
-                        ))
+                if let Some(func_class) = func_or_callable.class() {
+                    // When an __init__ has a self annotation, it's a bit special, because it influences
+                    // the generics.
+                    let m = Class::with_self_generics(i_s.db, return_class.node_ref)
+                        .as_type(i_s.db)
+                        .is_sub_type_of(i_s, matcher, &t);
+                    for entry in &mut matcher
+                        .type_var_matchers
+                        .first_mut()
+                        .unwrap()
+                        .calculating_type_args
+                    {
+                        entry
+                            .type_
+                            .avoid_type_vars_from_class_self_arguments(func_class);
+                    }
+                    if !m.bool() {
+                        had_wrong_init_type_var = true;
+                        if on_type_error.is_some() {
+                            add_issue(IssueKind::ArgumentIssue(
+                                "Invalid self type in __init__".into(),
+                            ))
+                        }
+                    }
+                    if cfg!(debug_assertions) {
+                        let args = &matcher
+                            .type_var_matchers
+                            .first()
+                            .unwrap()
+                            .debug_format(i_s.db);
+                        debug!("Added __init__ generics as [{args}]");
                     }
                 }
             }
@@ -435,6 +448,7 @@ fn calculate_type_vars<'db: 'a, 'a>(
                 return_type.is_sub_type_of(i_s, &mut matcher, expected);
                 matcher.reset_invalid_bounds_of_context(i_s)
             }
+            debug!("Finished trying to infer context type arguments");
         });
     }
     let mut matches = match func_or_callable {

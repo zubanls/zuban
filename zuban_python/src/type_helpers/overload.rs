@@ -66,6 +66,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     callable,
                     args.iter(),
                     |issue| args.add_issue(i_s, issue),
+                    true,
                     result_context,
                     None,
                 )
@@ -392,6 +393,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                             callable,
                             non_union_args.clone().into_iter(),
                             add_issue,
+                            true,
                             result_context,
                             None,
                         )

@@ -161,7 +161,7 @@ impl<'db: 'a, 'a> Class<'a> {
         &self,
         i_s: &InferenceState<'db, '_>,
         __init__: LookupResult,
-        dunder_init_class: Option<Class>,
+        dunder_init_class: TypeOrClass,
         args: &dyn Args<'db>,
         result_context: &mut ResultContext,
         on_type_error: OnTypeError,
@@ -186,7 +186,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 true => ClassGenerics::None,
             });
         };
-        match inf.init_as_function(i_s, dunder_init_class) {
+        match inf.init_as_function(i_s, dunder_init_class.as_maybe_class()) {
             Some(FunctionOrOverload::Function(func)) => {
                 let calculated_type_args = calculate_class_dunder_init_type_vars_and_return(
                     i_s,
@@ -202,16 +202,20 @@ impl<'db: 'a, 'a> Class<'a> {
                 )
             }
             Some(FunctionOrOverload::Callable(callable_content)) => {
-                let calculated_type_args = match dunder_init_class {
-                    Some(class) => calculate_callable_dunder_init_type_vars_and_return(
-                        i_s,
-                        &class,
-                        Callable::new(&callable_content, Some(*self)),
-                        args.iter(),
-                        |issue| args.add_issue(i_s, issue),
-                        result_context,
-                        Some(on_type_error),
-                    ),
+                let calculated_type_args = match dunder_init_class.as_base_class(i_s.db, self) {
+                    Some(class) => {
+                        let from_class = matches!(dunder_init_class, TypeOrClass::Class(_));
+                        calculate_callable_dunder_init_type_vars_and_return(
+                            i_s,
+                            &class,
+                            Callable::new(&callable_content, from_class.then_some(*self)),
+                            args.iter(),
+                            |issue| args.add_issue(i_s, issue),
+                            from_class,
+                            result_context,
+                            Some(on_type_error),
+                        )
+                    }
                     // Happens for example when NamedTuples are involved.
                     None => calculate_callable_type_vars_and_return(
                         i_s,
@@ -251,6 +255,7 @@ impl<'db: 'a, 'a> Class<'a> {
                         callable,
                         args.iter(),
                         |issue| args.add_issue(i_s, issue),
+                        true,
                         result_context,
                         Some(on_type_error),
                     );
@@ -2186,7 +2191,7 @@ impl<'db: 'a, 'a> Class<'a> {
                             */
                         }
                     }
-                    (lookup, cls.into_maybe_class(), mro_index)
+                    (lookup, cls, mro_index)
                 },
             );
         self.lookup_and_class_and_maybe_ignore_self_internal(
@@ -2205,7 +2210,7 @@ impl<'db: 'a, 'a> Class<'a> {
                         false => __init__,
                         true => __new__
                             .and_then(|inf| {
-                                Some(inf.bind_new_descriptors(i_s, self, cls.into_maybe_class()))
+                                Some(inf.bind_new_descriptors(i_s, self, cls.as_maybe_class()))
                             })
                             .unwrap(),
                     },
@@ -2803,10 +2808,21 @@ impl<'a> TypeOrClass<'a> {
         }
     }
 
-    pub fn into_maybe_class(self) -> Option<Class<'a>> {
+    #[inline]
+    pub fn as_maybe_class(&self) -> Option<Class<'a>> {
         match self {
-            TypeOrClass::Class(c) => Some(c),
+            TypeOrClass::Class(c) => Some(*c),
             TypeOrClass::Type(_) => None,
+        }
+    }
+
+    pub fn as_base_class<'x>(&'x self, db: &'x Database, cls: &Class<'x>) -> Option<Class> {
+        match self {
+            TypeOrClass::Class(c) => Some(*c),
+            TypeOrClass::Type(t) => match t.as_ref() {
+                Type::Dataclass(d) => Some(d.as_base_class(db, cls.generics)),
+                _ => None,
+            },
         }
     }
 
@@ -3093,13 +3109,14 @@ fn init_as_callable(
     i_s: &InferenceState,
     cls: Class,
     inf: Inferred,
-    init_class: Option<Class>,
+    init_class: TypeOrClass,
 ) -> Option<CallableLike> {
     let cls = if matches!(cls.generics(), Generics::NotDefinedYet) {
         Class::with_self_generics(i_s.db, cls.node_ref)
     } else {
         cls
     };
+    let init_class = init_class.as_maybe_class();
     let callable = if let Some(c) = init_class {
         let i_s = &i_s.with_class_context(&c);
         inf.as_cow_type(i_s).maybe_callable(i_s)
@@ -3107,7 +3124,7 @@ fn init_as_callable(
         inf.as_cow_type(i_s).maybe_callable(i_s)
     };
     let to_callable = |c: &CallableContent| {
-        // Since __init__ does not have a return, We need to check the params
+        // Since __init__ does not have a return, we need to check the params
         // of the __init__ functions and the class as a return type separately.
         c.remove_first_positional_param().map(|mut c| {
             let self_ = cls.as_type(i_s.db);
@@ -3185,7 +3202,7 @@ fn init_as_callable(
 pub struct NewOrInitConstructor<'a> {
     // A data structure to show wheter __init__ or __new__ is the relevant constructor for a class
     constructor: LookupResult,
-    init_class: Option<Class<'a>>,
+    init_class: TypeOrClass<'a>,
     is_new: bool,
 }
 

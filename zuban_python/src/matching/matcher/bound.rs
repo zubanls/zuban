@@ -73,25 +73,32 @@ impl Bound {
         format_data: &FormatData,
         style: ParamsStyle,
     ) -> MatcherFormatResult {
-        MatcherFormatResult::Str(match self {
-            Self::Invariant(t) | Self::Upper(t) | Self::Lower(t) | Self::UpperAndLower(t, _) => {
-                t.format(format_data, style)
-            }
-            Self::Uncalculated { fallback } => {
-                match usage.as_type_var_like() {
-                    TypeVarLike::TypeVar(type_var) => {
-                        if let TypeVarKind::Bound(bound) = &type_var.kind {
-                            return MatcherFormatResult::Str(bound.format(format_data));
-                        }
+        self.format_with_fallback(format_data, style, |fallback| {
+            match usage.as_type_var_like() {
+                TypeVarLike::TypeVar(type_var) => {
+                    if let TypeVarKind::Bound(bound) = &type_var.kind {
+                        return MatcherFormatResult::Str(bound.format(format_data));
                     }
-                    TypeVarLike::TypeVarTuple(_) => {
-                        return MatcherFormatResult::TypeVarTupleUnknown
-                    }
-                    _ => (),
                 }
-                Type::Never(NeverCause::Other).format(format_data)
+                TypeVarLike::TypeVarTuple(_) => return MatcherFormatResult::TypeVarTupleUnknown,
+                _ => (),
             }
+            MatcherFormatResult::Str(Type::Never(NeverCause::Other).format(format_data))
         })
+    }
+
+    pub fn format_with_fallback(
+        &self,
+        format_data: &FormatData,
+        style: ParamsStyle,
+        on_fallback: impl FnOnce(&Option<Type>) -> MatcherFormatResult,
+    ) -> MatcherFormatResult {
+        match self {
+            Self::Invariant(t) | Self::Upper(t) | Self::Lower(t) | Self::UpperAndLower(t, _) => {
+                MatcherFormatResult::Str(t.format(format_data, style))
+            }
+            Self::Uncalculated { fallback } => on_fallback(fallback),
+        }
     }
 
     pub(super) fn update_upper_bound(&mut self, i_s: &InferenceState, upper: BoundKind) {

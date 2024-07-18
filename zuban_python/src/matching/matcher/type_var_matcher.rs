@@ -9,13 +9,16 @@ use super::{
 use crate::{
     database::{Database, PointLink},
     debug,
+    format_data::{FormatData, ParamsStyle},
     inference_state::InferenceState,
+    matching::MatcherFormatResult,
     params::Param,
     type_::{
         AnyCause, CallableParams, GenericItem, GenericsList, NeverCause, ParamType, Type, TypeVar,
         TypeVarKind, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarUsage, Variance,
     },
     type_helpers::{Callable, Class, Function},
+    utils::join_with_commas,
 };
 
 #[derive(Debug, Clone, Copy)]
@@ -321,6 +324,20 @@ impl TypeVarMatcher {
                 m
             }
         }
+    }
+
+    pub fn debug_format(&self, db: &Database) -> String {
+        join_with_commas(self.calculating_type_args.iter().map(|arg| {
+            let formatted = arg.type_.format_with_fallback(
+                &FormatData::new_short(db),
+                ParamsStyle::CallableParams,
+                |_| MatcherFormatResult::Str("?".into()),
+            );
+            let MatcherFormatResult::Str(s) = formatted else {
+                unreachable!()
+            };
+            s.into()
+        }))
     }
 
     pub fn into_generics_list(self, db: &Database) -> GenericsList {

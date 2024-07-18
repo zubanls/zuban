@@ -1526,7 +1526,7 @@ impl Type {
                 Type::NamedTuple(named_tup) => todo!(),
                 _ => {
                     for (_, base) in t.mro(db) {
-                        if let Some(cls) = base.into_maybe_class() {
+                        if let Some(cls) = base.as_maybe_class() {
                             if cls.node_ref == db.python_state.container_node_ref() {
                                 result.union_in_place(cls.nth_type_argument(db, 0));
                             }
