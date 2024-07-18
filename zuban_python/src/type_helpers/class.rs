@@ -41,11 +41,12 @@ use crate::{
         check_dataclass_options, dataclass_init_func, execute_functional_enum,
         infer_typed_dict_total_argument, infer_value_on_member, AnyCause, CallableContent,
         CallableLike, CallableParam, CallableParams, ClassGenerics, Dataclass, DataclassOptions,
-        DbString, Enum, EnumMemberDefinition, FormatStyle, FunctionOverload, GenericClass,
-        GenericItem, GenericsList, LookupResult, NamedTuple, ParamType, StringSlice, Tuple,
-        TupleArgs, Type, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypedDict, TypedDictMember,
-        TypedDictMemberGatherer, Variance,
+        DbString, Enum, EnumMemberDefinition, FormatStyle, FunctionKind, FunctionOverload,
+        GenericClass, GenericItem, GenericsList, LookupResult, NamedTuple, ParamType, StringSlice,
+        Tuple, TupleArgs, Type, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypedDict,
+        TypedDictMember, TypedDictMemberGatherer, Variance,
     },
+    type_helpers::{FirstParamProperties, Function},
     utils::join_with_commas,
 };
 
@@ -610,6 +611,47 @@ impl<'db: 'a, 'a> Class<'a> {
                                 enum_spotted = Some(*c);
                             }
                         }
+                    }
+                }
+            }
+        }
+        // Change the methods that are actually changed by Python to be classmethods.
+        for name in ["__init_subclass__", "__class_getitem__"] {
+            if let Some(node_index) = self.class_storage.class_symbol_table.lookup_symbol(name) {
+                let file = self.node_ref.file;
+                if let Some(func_def) = NodeRef::new(file, node_index).maybe_name_of_function() {
+                    let node_ref = NodeRef::new(file, func_def.index());
+                    let func = Function::new(node_ref, Some(*self));
+                    func.ensure_cached_func(i_s);
+                    let mut c = func.as_callable(i_s, FirstParamProperties::None);
+                    if func_def.maybe_decorated().is_some() {
+                        debug!("Make method a classmethod: {name}");
+                    } else {
+                        if !c.kind.had_first_self_or_class_annotation() {
+                            let CallableParams::Simple(ps) = &mut c.params else {
+                                unreachable!()
+                            };
+                            *ps = ps
+                                .iter()
+                                .enumerate()
+                                .map(|(i, p)| {
+                                    let mut p = p.clone();
+                                    if i == 0 {
+                                        p.type_ = ParamType::PositionalOnly(Type::Type(Rc::new(
+                                            p.type_.expect_positional_type(),
+                                        )));
+                                    }
+                                    p
+                                })
+                                .collect();
+                        }
+                        c.kind = FunctionKind::Classmethod {
+                            had_first_self_or_class_annotation: true,
+                        };
+                        node_ref.insert_complex(
+                            ComplexPoint::TypeInstance(Type::Callable(Rc::new(c))),
+                            Locality::Todo,
+                        );
                     }
                 }
             }

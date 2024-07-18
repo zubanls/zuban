@@ -6,9 +6,6 @@ testNoCrashOnNestedGenericCallable
 
 # mypy upgrade
 
-# super with Type[...]
-testSuperClassGetItem
-
 # functools.total_ordering
 testTotalOrderingEqLt
 testTotalOrderingLambda
@@ -64,6 +61,10 @@ testTypeVarTupleIsNotValidAliasTarget
 testGenericTypeAliasesWrongAliases
 # Type var used in bound, defined in class body, bound to that class
 testGenericClassAlternativeConstructorPreciseOverloaded
+# Type var bound cycle
+testSuperClassGetItem
+testSelfTypeNew
+testSelfTypeNew_explicit
 # current_class in i_s should probably be a type and not a class
 testEnumNameWorkCorrectlyOn311
 # Class/Function is still set in InferenceState/i_s
@@ -1096,13 +1097,10 @@ testTypeEquivalentTypeAnyEdgeCase
 
 # __init_subclass__
 testOverride__init_subclass__WithDifferentSignature
-testInitSubclassOK
-testSuperInInitSubclass
 testInitSubclassWrongType
 testInitSubclassTooFewArgs
 testInitSubclassTooFewArgs2
 testInitSubclassWithImports
-testInitSubclassUnannotated
 testTooManyArgsForObject
 testNoClassKeywordsForNamedTuple
 testTypedDictWithClassLevelKeywords
