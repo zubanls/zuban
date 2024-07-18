@@ -81,8 +81,8 @@ fn calculate_init_type_vars_and_return<'db: 'a, 'a>(
 ) -> CalculatedTypeArgs {
     debug!("Calculate __init__ type vars for class {}", class.name());
     let type_vars = class.type_vars(i_s);
-    let has_generics =
-        !matches!(class.generics, Generics::None | Generics::NotDefinedYet) || type_vars.is_empty();
+    let class_matcher_needed =
+        matches!(class.generics, Generics::NotDefinedYet) && !type_vars.is_empty();
     // Function type vars need to be calculated, so annotations are used.
     let func_type_vars = func_or_callable.type_vars(i_s);
 
@@ -94,7 +94,7 @@ fn calculate_init_type_vars_and_return<'db: 'a, 'a>(
             func_type_vars.clone(),
         ));
     }
-    if !has_generics {
+    if class_matcher_needed {
         match_in_definition = class.node_ref.as_link();
         tv_matchers.push(TypeVarMatcher::new(match_in_definition, type_vars.clone()));
     }
@@ -112,7 +112,7 @@ fn calculate_init_type_vars_and_return<'db: 'a, 'a>(
         result_context,
         on_type_error,
     );
-    if has_generics {
+    if !class_matcher_needed {
         type_arguments.type_arguments = match class.generics_as_list(i_s.db) {
             ClassGenerics::List(generics_list) => Some(generics_list),
             class_generics @ (ClassGenerics::ExpressionWithClassType(_)

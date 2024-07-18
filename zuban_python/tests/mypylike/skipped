@@ -1864,7 +1864,7 @@ testGenericCollectionsWarning
 testNoSubcriptionOfStdlibCollections
 # Won't support: Python 3.8 specialties
 testTupleWithDifferentArgsPy38
-# Won't support Pyhton 3.9 specialities
+# Won't support Python 3.9 specialities
 testDataclassWithMatchArgsOldVersion
 testUnionOrSyntaxInIsinstanceNotSupported
 # "Subscripting classes that are not generic at runtime may require escaping"
