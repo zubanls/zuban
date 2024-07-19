@@ -67,7 +67,7 @@ a = A.foo(A(1))
 reveal_type(a)  # N: Revealed type is "__main__.A"
 type(a)(x=3)
 
-[case dataclass_inheritance_method_generics]
+[case dataclass_inheritance_method_generics_with_normal_class]
 from typing import TypeVar, Generic, List
 from dataclasses import dataclass
 
@@ -79,7 +79,8 @@ class A(Generic[T]):
 
     def foo(self) -> T: return self.x
 
-class B(A[T]): ...
+class B(A[T]):
+    y: str
 
 b: B[str]
 reveal_type(b.foo())  # N: Revealed type is "str"
@@ -89,6 +90,66 @@ reveal_type(x.foo())  # N: Revealed type is "int"
 
 class C(A[List[T]]): ...
 
-#C(1)
-#x = C([1])
--- reveal_type(x.foo())  # N: Revealed type is "List[int]"
+C(1)  # E: Argument 1 to "C" has incompatible type "int"; expected "list[Never]"
+y = C([1])
+reveal_type(y.foo())  # N: Revealed type is "List[int]"
+
+[case dataclass_inheritance_method_generics_with_dataclass]
+from typing import TypeVar, Generic, List
+from dataclasses import dataclass
+
+T = TypeVar("T")
+
+@dataclass
+class A(Generic[T]):
+    x: T
+
+    def foo(self) -> T: return self.x
+
+@dataclass
+class B(A[T]):
+    y: str
+
+b: B[str]
+reveal_type(b.foo())  # N: Revealed type is "str"
+x = B(1, "")
+reveal_type(x)  # N: Revealed type is "__main__.B[int]"
+reveal_type(x.foo())  # N: Revealed type is "int"
+
+@dataclass
+class C(A[List[T]]):
+    y: str
+
+C(1, "")  # E: Argument 1 to "C" has incompatible type "int"; expected "list[Never]"
+y = C([1], "")
+reveal_type(y.foo())  # N: Revealed type is "list[int]"
+
+[case dataclass_inheritance_method_generics_with_dataclass_no_init]
+from typing import TypeVar, Generic, List
+from dataclasses import dataclass
+
+T = TypeVar("T")
+
+@dataclass
+class A(Generic[T]):
+    x: T
+
+    def foo(self) -> T: return self.x
+
+@dataclass(init=False)
+class B(A[T]):
+    y: str
+
+b: B[str]
+reveal_type(b.foo())  # N: Revealed type is "str"
+x = B(1, "")
+reveal_type(x)  # N: Revealed type is "__main__.B[int]"
+reveal_type(x.foo())  # N: Revealed type is "int"
+
+@dataclass(init=False)
+class C(A[List[T]]):
+    y: str
+
+C(1, "")  # E: Argument 1 to "C" has incompatible type "int"; expected "list[Never]"
+y = C([1], "")
+reveal_type(y.foo())  # N: Revealed type is "list[int]"

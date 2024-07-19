@@ -19,8 +19,8 @@ use crate::{
     inference_state::InferenceState,
     inferred::{AttributeKind, Inferred},
     matching::{
-        calculate_callable_type_vars_and_return, replace_class_type_vars, Generics, LookupKind,
-        OnTypeError, ResultContext,
+        calculate_callable_type_vars_and_return, maybe_class_usage, replace_class_type_vars,
+        Generics, LookupKind, OnTypeError, ResultContext,
     },
     node_ref::NodeRef,
     python_state::NAME_TO_FUNCTION_DIFF,
@@ -111,8 +111,26 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> Init
     let mut params: Vec<CallableParam> = vec![];
     let mut post_init_params: Vec<CallableParam> = vec![];
 
-    let add_param = |params: &mut Vec<CallableParam>, new_param: CallableParam| {
+    let add_param = |params: &mut Vec<CallableParam>, mut new_param: CallableParam| {
         let mut first_kwarg = None;
+        if !matches!(
+            dataclass.class.generics,
+            ClassGenerics::None | ClassGenerics::NotDefinedYet
+        ) {
+            // We need to remap generics in case of inheritance or more complex types.
+            let replace = |t: &Type| {
+                t.replace_type_var_likes(i_s.db, &mut |usage| {
+                    dbg!(usage.clone().into_generic_item());
+                    dbg!(maybe_class_usage(db, &cls, &usage)
+                        .unwrap_or_else(|| usage.into_generic_item()))
+                })
+            };
+            match &mut new_param.type_ {
+                ParamType::PositionalOrKeyword(t) => *t = replace(t),
+                ParamType::KeywordOnly(t) => *t = replace(t),
+                _ => unreachable!(),
+            }
+        }
         for (i, param) in params.iter_mut().enumerate() {
             if first_kwarg.is_none()
                 && param.type_.param_kind() == ParamKind::KeywordOnly
@@ -692,7 +710,7 @@ pub(crate) fn dataclass_initialize<'db>(
 
 pub fn dataclass_init_func<'a>(self_: &'a Rc<Dataclass>, db: &Database) -> &'a CallableContent {
     if self_.inits.get().is_none() {
-        // Cannot use get_or_init, because this might cycle ones for some reasons (see for
+        // Cannot use get_or_init, because this might recurse for some reasons (check for
         // example the test testDeferredDataclassInitSignatureSubclass)
         self_.inits.set(calculate_init_of_dataclass(db, self_)).ok();
     }

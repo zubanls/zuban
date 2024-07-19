@@ -118,6 +118,8 @@ testOverride__new__AndCallObject
 testNewAndInitNoReturn
 testOverloadedNewAndInitNoReturn
 
+# dataclass inheritance
+dataclass_inheritance_method_generics_with_dataclass_no_init
 # dataclass classmethod
 testDataclassesClassmethods
 testClassmethodShadowingFieldDoesNotCrash

@@ -207,8 +207,8 @@ impl<'db: 'a, 'a> Class<'a> {
                         let from_class = matches!(dunder_init_class, TypeOrClass::Class(_));
                         calculate_callable_dunder_init_type_vars_and_return(
                             i_s,
-                            &class,
-                            Callable::new(&callable_content, from_class.then_some(*self)),
+                            self,
+                            Callable::new(&callable_content, from_class.then_some(class)),
                             args.iter(),
                             |issue| args.add_issue(i_s, issue),
                             from_class,
@@ -2910,7 +2910,6 @@ fn apply_generics_to_base_class<'a>(
         }
         // TODO is this needed?
         //Type::RecursiveType(r) if matches!(r.origin(db), RecursiveTypeOrigin::Class(_)) => TypeOrClass::Class(Class::from_position(NodeRef::from_link(db, r.link), generics, r.generics.as_ref())),
-        // TODO this is wrong, because it does not use generics.
         _ if matches!(generics, Generics::None | Generics::NotDefinedYet) => {
             TypeOrClass::Type(Cow::Borrowed(t))
         }
