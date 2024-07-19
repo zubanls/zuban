@@ -142,7 +142,7 @@ class B(A[T]):
 
 b: B[str]
 reveal_type(b.foo())  # N: Revealed type is "str"
-x = B(1, "")
+x = B(1)
 reveal_type(x)  # N: Revealed type is "__main__.B[int]"
 reveal_type(x.foo())  # N: Revealed type is "int"
 
@@ -150,8 +150,8 @@ reveal_type(x.foo())  # N: Revealed type is "int"
 class C(A[List[T]]):
     y: str
 
-C(1, "")  # E: Argument 1 to "C" has incompatible type "int"; expected "list[Never]"
-y = C([1], "")
+C(1)  # E: Argument 1 to "C" has incompatible type "int"; expected "list[Never]"
+y = C([1])
 reveal_type(y.foo())  # N: Revealed type is "list[int]"
 
 [case dataclass_self_in_inheritance]
