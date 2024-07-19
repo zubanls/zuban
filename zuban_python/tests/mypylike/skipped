@@ -118,15 +118,6 @@ testOverride__new__AndCallObject
 testNewAndInitNoReturn
 testOverloadedNewAndInitNoReturn
 
-# dataclass classmethod
-testDataclassesClassmethods
-testClassmethodShadowingFieldDoesNotCrash
-testDeferredDataclassInitSignature
-# InitVar set default
-testDataclassInitVarCannotBeSet
-# dataclass weird replace case
-testReplaceIsDataclass
-
 # TypedDict Recursive definitions
 testRecursiveNamedTupleTypedDict
 # TypedDict Unpack
@@ -879,8 +870,16 @@ testRecursiveTypedDictWithList
 # enum member gathering
 testFinalWithMethodAssignment
 
+# dataclass classmethod
+testDataclassesClassmethods
+testClassmethodShadowingFieldDoesNotCrash
+testDeferredDataclassInitSignature
 # dataclasses __slots__
 testDataclassWithSlotsArg
+# InitVar set default
+testDataclassInitVarCannotBeSet
+# dataclass weird replace case
+testReplaceIsDataclass
 # dataclass transform
 updateDataclassTransformParameterViaDecorator
 updateDataclassTransformParameterViaParentClass
