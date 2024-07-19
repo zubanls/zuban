@@ -24,7 +24,10 @@ use crate::{
     },
     node_ref::NodeRef,
     python_state::NAME_TO_FUNCTION_DIFF,
-    type_helpers::{Callable, Class, ClassLookupOptions, Instance, LookupDetails, TypeOrClass},
+    type_helpers::{
+        Callable, Class, ClassLookupOptions, Instance, InstanceLookupOptions, LookupDetails,
+        TypeOrClass,
+    },
 };
 
 const ORDER_METHOD_NAMES: [&str; 4] = ["__lt__", "__gt__", "__le__", "__ge__"];
@@ -832,11 +835,11 @@ pub(crate) fn lookup_on_dataclass<'a>(
     if result.is_some() {
         return LookupDetails::new(Type::Dataclass(self_.clone()), result, attr_kind);
     }
-    let mut lookup_details = Instance::new(self_.class(i_s.db), None).lookup_with_details(
+    let mut lookup_details = Instance::new(self_.class(i_s.db), None).lookup(
         i_s,
-        add_issue,
         name,
-        LookupKind::Normal,
+        InstanceLookupOptions::new(&add_issue)
+            .with_as_self_instance(&|| Type::Dataclass(self_.clone())),
     );
     lookup_details.lookup = lookup_details
         .lookup

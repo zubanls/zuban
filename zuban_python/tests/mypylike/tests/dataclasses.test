@@ -56,7 +56,7 @@ class B(A):
 
 x = B(1, 2).foo()
 reveal_type(x)  # N: Revealed type is "__main__.B"
-type(x)(x=3)
+type(x)(x=3, y=4)
 
 y = B.foo(A(1))
 type(y)(x=3)
@@ -153,3 +153,30 @@ class C(A[List[T]]):
 C(1, "")  # E: Argument 1 to "C" has incompatible type "int"; expected "list[Never]"
 y = C([1], "")
 reveal_type(y.foo())  # N: Revealed type is "list[int]"
+
+[case dataclass_self_in_inheritance]
+from typing import Self
+from dataclasses import dataclass
+
+@dataclass
+class A:
+    x: int
+
+    def foo(self) -> Self: return self
+
+@dataclass()
+class B(A):
+    y: str
+
+x = B(1, "").foo()
+reveal_type(x)  # N: Revealed type is "__main__.B"
+type(x)(2, "")
+type(x)(2, 2)  # E: Argument 2 to "B" has incompatible type "int"; expected "str"
+
+class C(A):
+    y: str
+
+y = C(1)
+reveal_type(y)  # N: Revealed type is "__main__.C"
+type(y)("")  # E: Argument 1 to "C" has incompatible type "str"; expected "int"
+type(y)(1)

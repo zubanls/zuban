@@ -240,6 +240,7 @@ impl<'db: 'slf, 'slf> Inferred {
                 TypeVarKind::Bound(t) => Self::load_bound_method_class(i_s, t, mro_index),
                 _ => unreachable!(),
             },
+            Type::Dataclass(d) => d.class(i_s.db),
             _ => unreachable!(),
         };
         let class_t = instance_class
