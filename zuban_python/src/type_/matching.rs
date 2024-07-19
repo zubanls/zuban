@@ -168,6 +168,7 @@ impl Type {
             Type::Namespace(file_index) => todo!(),
             Type::Super { .. } => todo!(),
             Type::CustomBehavior(_) => Match::new_false(),
+            Self::Intersection(_) => todo!(),
         }
     }
 

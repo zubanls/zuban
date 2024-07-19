@@ -174,6 +174,7 @@ impl Type {
             | Type::CustomBehavior(_)
             | Type::ParamSpecArgs(_)
             | Type::ParamSpecKwargs(_) => self.clone(),
+            Type::Intersection(_) => todo!(),
         }
     }
 
@@ -260,6 +261,7 @@ impl Type {
             t @ (Type::Module(_) | Type::Namespace(_) | Type::Self_ | Type::CustomBehavior(_)) => {
                 t.clone()
             }
+            Type::Intersection(_) => todo!(),
         }
     }
 }

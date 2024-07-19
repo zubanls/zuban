@@ -3,6 +3,7 @@ mod common_base_type;
 mod common_sub_type;
 mod dataclass;
 mod enum_;
+mod intersection;
 mod lookup_result;
 mod matching;
 mod named_tuple;
@@ -36,6 +37,7 @@ pub(crate) use self::{
         lookup_on_enum_instance, lookup_on_enum_member_instance, Enum, EnumMember,
         EnumMemberDefinition,
     },
+    intersection::Intersection,
     lookup_result::LookupResult,
     matching::{match_tuple_type_arguments, match_unpack},
     named_tuple::{
@@ -427,6 +429,7 @@ impl<'a, Iter: Iterator<Item = &'a Type>> Iterator for TypeRefIterator<'a, Iter>
 pub enum Type {
     Class(GenericClass),
     Union(UnionType),
+    Intersection(Intersection),
     FunctionOverload(Rc<FunctionOverload>),
     TypeVar(TypeVarUsage),
     Type(Rc<Type>),
@@ -883,6 +886,7 @@ impl Type {
                 .python_state
                 .module_type()
                 .format(format_data),
+            Self::Intersection(intersection) => intersection.format(format_data),
             Self::Namespace(_) => "ModuleType".into(),
             Self::Super { .. } => "TODO super".into(),
             Self::CustomBehavior(_) => "TODO custombehavior".into(),
@@ -978,6 +982,7 @@ impl Type {
             Self::NamedTuple(_) => {
                 debug!("TODO do we need to support namedtuple searching for type vars?");
             }
+            Self::Intersection(_) => todo!(),
         }
     }
 
@@ -1077,6 +1082,7 @@ impl Type {
             Self::NamedTuple(nt) => nt.__new__.has_any_internal(i_s, already_checked),
             Self::EnumMember(_) => false,
             Self::Super { .. } => todo!(),
+            Self::Intersection(_) => todo!(),
         }
     }
 

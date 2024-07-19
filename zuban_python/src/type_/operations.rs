@@ -340,6 +340,7 @@ impl Type {
                 callable(self, LookupDetails::any(AnyCause::FromError))
             }
             Type::CustomBehavior(_) => todo!(),
+            Self::Intersection(_) => todo!(),
         }
     }
 
