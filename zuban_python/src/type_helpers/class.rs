@@ -1585,7 +1585,7 @@ impl<'db: 'a, 'a> Class<'a> {
         i_s: &InferenceState<'db, '_>,
         name: &str,
         super_count: usize,
-        bind: impl FnOnce(LookupResult, TypeOrClass<'a>, Option<Class>, MroIndex) -> T,
+        bind: impl FnOnce(LookupResult, TypeOrClass<'a>, MroIndex) -> T,
     ) -> T {
         if name == "__doc__" {
             let t = if self.node().has_docstr() {
@@ -1596,7 +1596,6 @@ impl<'db: 'a, 'a> Class<'a> {
             return bind(
                 LookupResult::UnknownName(Inferred::from_type(t)),
                 TypeOrClass::Class(*self),
-                None,
                 0.into(),
             );
         }
@@ -1604,24 +1603,22 @@ impl<'db: 'a, 'a> Class<'a> {
             .mro_maybe_without_object(i_s.db, self.incomplete_mro(i_s.db))
             .skip(super_count)
         {
-            let (defined_in, result) = c.lookup_symbol(i_s, name);
+            let (_, result) = c.lookup_symbol(i_s, name);
             if !matches!(result, LookupResult::None) {
                 return match &c {
                     // TODO why?
                     TypeOrClass::Type(t) if matches!(t.as_ref(), Type::NamedTuple(_)) => bind(
                         result,
                         TypeOrClass::Class(i_s.db.python_state.typing_named_tuple_class()),
-                        defined_in,
                         mro_index,
                     ),
-                    _ => bind(result, c.clone(), defined_in, mro_index),
+                    _ => bind(result, c.clone(), mro_index),
                 };
             }
         }
         bind(
             LookupResult::None,
             TypeOrClass::Type(Cow::Borrowed(&Type::Any(AnyCause::Internal))),
-            None,
             0.into(),
         )
     }
@@ -1661,7 +1658,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 i_s,
                 name,
                 options.super_count,
-                |lookup_result, class, _, mro_index| {
+                |lookup_result, class, mro_index| {
                     let mut attr_kind = AttributeKind::Attribute;
                     let result = lookup_result.and_then(|inf| {
                         let mut bind_class_descriptors = |in_class, class_t, inf: Inferred| {
@@ -2178,27 +2175,13 @@ impl<'db: 'a, 'a> Class<'a> {
                 i_s,
                 "__init__",
                 0,
-                |lookup, cls, init_cls, mro_index| {
-                    if let TypeOrClass::Type(t) = &cls {
-                        if let Some(init_cls) = init_cls {
-                            /*
-                            // We need to remap now
-                            return (
-                                lookup.and_then(|inf| init_as_callable(i_s, cls, inf, Some(init_cls)).map(|c| Inferred::from_type(c.into()))).expect("__init__ from a type should probably always be a useful type"),
-                                None,
-                                mro_index
-                            )
-                            */
-                        }
-                    }
-                    (lookup, cls, mro_index)
-                },
+                |lookup, cls, mro_index| (lookup, cls, mro_index),
             );
         self.lookup_and_class_and_maybe_ignore_self_internal(
             i_s,
             "__new__",
             0,
-            |__new__, cls, defined_in, new_mro_index| {
+            |__new__, cls, new_mro_index| {
                 // This is just a weird heuristic Mypy uses, because the type system itself is very unclear
                 // what to do if both __new__ and __init__ are present. So just only use __new__ if it's in
                 // a lower MRO than an __init__.
@@ -2471,7 +2454,7 @@ impl<'db: 'a, 'a> Class<'a> {
         add_issue: impl Fn(IssueKind),
         name: &str,
     ) {
-        self.lookup_and_class_and_maybe_ignore_self_internal(i_s, name, 0, |lookup, _, _, _| {
+        self.lookup_and_class_and_maybe_ignore_self_internal(i_s, name, 0, |lookup, _, _| {
             if let Some(inf) = lookup.into_maybe_inferred() {
                 if inf.maybe_saved_specific(i_s.db)
                     == Some(Specific::AnnotationOrTypeCommentClassVar)
