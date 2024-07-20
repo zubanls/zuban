@@ -1551,11 +1551,8 @@ impl Inference<'_, '_, '_> {
         let mut other_side = Type::Never(NeverCause::Other);
         let matcher = &mut Matcher::with_ignored_promotions();
         let db = self.i_s.db;
-        for t in input
-            .inf
-            .as_cow_type(self.i_s)
-            .iter_with_unpacked_unions(db)
-        {
+        let input_t = input.inf.as_cow_type(self.i_s);
+        for t in input_t.iter_with_unpacked_unions(db) {
             /*
             if matches!(t, Type::Any(_)) {
                 true_type.union_in_place(t.clone());
@@ -1567,20 +1564,21 @@ impl Inference<'_, '_, '_> {
                 Match::True {
                     with_any: false, ..
                 } => true_type.union_in_place(t.clone()),
-                Match::False { .. } => {
-                    if isinstance_type.is_sub_type_of(self.i_s, matcher, t).bool() {
-                        true_type.union_in_place(isinstance_type.clone());
-                    } else {
-                        true_type.union_in_place(Intersection::from_types(
-                            t.clone(),
-                            isinstance_type.clone(),
-                        ));
-                    }
-                    other_side.union_in_place(t.clone())
-                }
+                Match::False { .. } => other_side.union_in_place(t.clone()),
             }
         }
-        if matches!(true_type, Type::Never(_)) || isinstance_type.is_any_or_any_in_union(db) {
+        if matches!(true_type, Type::Never(_)) {
+            for t in input_t.iter_with_unpacked_unions(db) {
+                if isinstance_type.is_sub_type_of(self.i_s, matcher, t).bool() {
+                    true_type.union_in_place(isinstance_type.clone());
+                } else {
+                    true_type.union_in_place(Intersection::from_types(
+                        t.clone(),
+                        isinstance_type.clone(),
+                    ));
+                }
+            }
+        } else if isinstance_type.is_any_or_any_in_union(db) {
             true_type = isinstance_type;
         }
         debug!(
