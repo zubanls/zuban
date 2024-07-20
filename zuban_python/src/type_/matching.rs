@@ -168,7 +168,10 @@ impl Type {
             Type::Namespace(file_index) => todo!(),
             Type::Super { .. } => todo!(),
             Type::CustomBehavior(_) => Match::new_false(),
-            Self::Intersection(_) => todo!(),
+            Self::Intersection(intersection1) => match value_type {
+                Self::Intersection(intersection2) => todo!(),
+                _ => Match::new_false(),
+            },
         }
     }
 
@@ -411,6 +414,11 @@ impl Type {
                     }
                 }
                 return result.unwrap();
+            }
+            Type::Intersection(intersection2) => {
+                return Match::any(intersection2.iter(), |t| {
+                    self.matches(i_s, matcher, t, variance)
+                })
             }
             Type::NewType(n2) => {
                 let t = n2.type_(i_s);

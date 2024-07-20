@@ -982,7 +982,11 @@ impl Type {
             Self::NamedTuple(_) => {
                 debug!("TODO do we need to support namedtuple searching for type vars?");
             }
-            Self::Intersection(_) => todo!(),
+            Self::Intersection(i) => {
+                for t in i.iter() {
+                    t.search_type_vars(found_type_var)
+                }
+            }
         }
     }
 
@@ -1082,7 +1086,9 @@ impl Type {
             Self::NamedTuple(nt) => nt.__new__.has_any_internal(i_s, already_checked),
             Self::EnumMember(_) => false,
             Self::Super { .. } => todo!(),
-            Self::Intersection(_) => todo!(),
+            Self::Intersection(intersection) => intersection
+                .iter()
+                .any(|t| t.has_any_internal(i_s, already_checked)),
         }
     }
 

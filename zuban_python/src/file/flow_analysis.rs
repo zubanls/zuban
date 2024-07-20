@@ -1568,10 +1568,14 @@ impl Inference<'_, '_, '_> {
                     with_any: false, ..
                 } => true_type.union_in_place(t.clone()),
                 Match::False { .. } => {
-                    true_type.union_in_place(Intersection::from_types(
-                        t.clone(),
-                        isinstance_type.clone(),
-                    ));
+                    if isinstance_type.is_sub_type_of(self.i_s, matcher, t).bool() {
+                        true_type.union_in_place(isinstance_type.clone());
+                    } else {
+                        true_type.union_in_place(Intersection::from_types(
+                            t.clone(),
+                            isinstance_type.clone(),
+                        ));
+                    }
                     other_side.union_in_place(t.clone())
                 }
             }
