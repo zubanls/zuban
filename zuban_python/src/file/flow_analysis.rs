@@ -1569,8 +1569,10 @@ impl Inference<'_, '_, '_> {
         }
         if matches!(true_type, Type::Never(_)) {
             for t in input_t.iter_with_unpacked_unions(db) {
-                if isinstance_type.is_sub_type_of(self.i_s, matcher, t).bool() {
+                if isinstance_type.is_simple_sub_type_of(self.i_s, t).bool() {
                     true_type.union_in_place(isinstance_type.clone());
+                } else if isinstance_type.is_simple_super_type_of(self.i_s, t).bool() {
+                    true_type.union_in_place(t.clone());
                 } else {
                     true_type.union_in_place(Intersection::from_types(
                         t.clone(),
