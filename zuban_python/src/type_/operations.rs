@@ -340,7 +340,16 @@ impl Type {
                 callable(self, LookupDetails::any(AnyCause::FromError))
             }
             Type::CustomBehavior(_) => todo!(),
-            Self::Intersection(_) => todo!(),
+            Self::Intersection(i) => i.run_after_lookup_on_each_union_member(
+                i_s,
+                from_inferred,
+                from_file,
+                name,
+                kind,
+                result_context,
+                add_issue,
+                callable,
+            ),
         }
     }
 

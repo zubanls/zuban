@@ -73,6 +73,7 @@ lazy_static::lazy_static! {
     static ref REPLACE_MYPY: Regex = Regex::new(r"`-?\d+").unwrap();
     static ref REPLACE_MYPY_ELLIPSIS: Regex = Regex::new(r#""ellipsis""#).unwrap();
     static ref REPLACE_MYPY_NO_RETURN: Regex = Regex::new(r"\bNoReturn\b").unwrap();
+    static ref REPLACE_MYPY_SUBTYPE: Regex = Regex::new(r"\w+\.<subclass").unwrap();
     static ref REPLACE_ESCAPES: Regex = Regex::new(r"(?m)^\\\[").unwrap();
 }
 
@@ -721,6 +722,7 @@ fn cleanup_mypy_issues(mut s: &str) -> Option<String> {
     // Mypy has a bit of a different handling for ellipsis when reading it from typeshed.
     let s = REPLACE_MYPY_ELLIPSIS.replace_all(&s, "\"EllipsisType\"");
     let s = REPLACE_MYPY_NO_RETURN.replace_all(&s, "Never");
+    let s = REPLACE_MYPY_SUBTYPE.replace_all(&s, "<subclass");
     let s = REPLACE_ESCAPES.replace_all(&s, "[");
     Some(replace_annoyances(s.replace("tmp/", "")))
 }

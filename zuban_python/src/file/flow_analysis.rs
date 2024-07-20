@@ -24,9 +24,9 @@ use crate::{
     node_ref::NodeRef,
     type_::{
         simplified_union_from_iterators, AnyCause, CallableContent, CallableLike, CallableParams,
-        ClassGenerics, DbString, EnumMember, Literal, LiteralKind, LookupResult, NamedTuple,
-        NeverCause, StringSlice, Tuple, TupleArgs, TupleUnpack, Type, TypeVarKind, UnionType,
-        WithUnpack,
+        ClassGenerics, DbString, EnumMember, Intersection, Literal, LiteralKind, LookupResult,
+        NamedTuple, NeverCause, StringSlice, Tuple, TupleArgs, TupleUnpack, Type, TypeVarKind,
+        UnionType, WithUnpack,
     },
     type_helpers::{Callable, Class, ClassLookupOptions, Function},
 };
@@ -1525,8 +1525,8 @@ impl Inference<'_, '_, '_> {
         let Argument::Positional(arg) = iterator.next()? else {
             return None;
         };
-        let result = self.key_from_namedexpression(arg);
-        let key = result.key?;
+        let input = self.key_from_namedexpression(arg);
+        let key = input.key?;
         let Argument::Positional(type_arg) = iterator.next()? else {
             return None;
         };
@@ -1551,7 +1551,7 @@ impl Inference<'_, '_, '_> {
         let mut other_side = Type::Never(NeverCause::Other);
         let matcher = &mut Matcher::with_ignored_promotions();
         let db = self.i_s.db;
-        for t in result
+        for t in input
             .inf
             .as_cow_type(self.i_s)
             .iter_with_unpacked_unions(db)
@@ -1567,7 +1567,13 @@ impl Inference<'_, '_, '_> {
                 Match::True {
                     with_any: false, ..
                 } => true_type.union_in_place(t.clone()),
-                Match::False { .. } => other_side.union_in_place(t.clone()),
+                Match::False { .. } => {
+                    true_type.union_in_place(Intersection::from_types(
+                        t.clone(),
+                        isinstance_type.clone(),
+                    ));
+                    other_side.union_in_place(t.clone())
+                }
             }
         }
         if matches!(true_type, Type::Never(_)) || isinstance_type.is_any_or_any_in_union(db) {
@@ -1582,7 +1588,7 @@ impl Inference<'_, '_, '_> {
         Some(FramesWithParentUnions {
             truthy: Frame::from_type(key.clone(), true_type),
             falsey: Frame::from_type(key, other_side),
-            parent_unions: result.parent_unions,
+            parent_unions: input.parent_unions,
         })
     }
 

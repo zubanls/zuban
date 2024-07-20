@@ -2624,7 +2624,7 @@ pub fn add_attribute_error(
             }
             return;
         }
-        _ => format!("{:?}", t.format_short(i_s.db)).into(),
+        _ => format!("\"{}\"", t.format_short(i_s.db)).into(),
     };
     let name = Box::from(name);
     if let Type::TypeVar(usage) = full_type {
