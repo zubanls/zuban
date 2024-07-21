@@ -2408,13 +2408,11 @@ fn check_multiple_inheritance(i_s: &InferenceState, c: Class, add_issue: impl Fn
                     if !first
                         .is_sub_type_of(
                             i_s,
-                            &mut Matcher::new_class_matcher(i_s, c)
-                                .with_ignore_positional_param_names(),
+                            &mut Matcher::default().with_ignore_positional_param_names(),
                             &second,
                         )
                         .bool()
                     {
-                        let index = c.node().arguments().unwrap().iter().nth(i).unwrap().index();
                         add_issue(IssueKind::MultipleInheritanceIncompatibility {
                             name: name.into(),
                             class1: base1.name(db).into(),
