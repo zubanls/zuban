@@ -273,6 +273,7 @@ pub(crate) enum IssueKind {
 
     IntersectionCannotExistDueToIncompatibleMethodSignatures { intersection: Box<str> },
     IntersectionCannotExistDueToFinalClass { intersection: Box<str>, final_class: Box<str> },
+    IntersectionCannotExistDueToInconsistentMro { intersection: Box<str> },
 
     TypeGuardFunctionsMustHaveArgument { name: &'static str },
     TypeIsNarrowedTypeIsNotSubtypeOfInput { narrowed_t: Box<str>, input_t: Box<str> },
@@ -1477,6 +1478,9 @@ impl<'db> Diagnostic<'db> {
             ),
             IntersectionCannotExistDueToFinalClass { intersection, final_class } => format!(
                 r#"Subclass of {intersection} cannot exist: "{final_class}" is final"#
+            ),
+            IntersectionCannotExistDueToInconsistentMro { intersection } => format!(
+                r#"Subclass of {intersection} cannot exist: would have inconsistent method resolution order"#
             ),
 
             TypeGuardFunctionsMustHaveArgument { name } => format!(

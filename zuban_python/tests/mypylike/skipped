@@ -313,6 +313,9 @@ testModuleAliasRepeatedWithAnnotation
 # intersection regressions
 testIsInstanceThreeUnion3
 testIsinstanceAndNarrowTypeVariable
+# mro calculation special types
+testCorrectIsinstanceInForwardRefToNewType
+testTypeGuardNestedRestrictionUnionIsInstance
 # isinstance Intersection types
 testIsInstanceAdHocIntersectionReversed
 testIsInstanceAdHocIntersectionWithUnions

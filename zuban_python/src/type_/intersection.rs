@@ -14,7 +14,7 @@ use super::Type;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Intersection {
-    entries: Rc<[Type]>,
+    pub entries: Rc<[Type]>,
 }
 
 impl Intersection {

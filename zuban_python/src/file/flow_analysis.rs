@@ -30,7 +30,10 @@ use crate::{
         NamedTuple, NeverCause, StringSlice, Tuple, TupleArgs, TupleUnpack, Type, TypeVarKind,
         UnionType, WithUnpack,
     },
-    type_helpers::{Callable, Class, ClassLookupOptions, Function, TypeOrClass},
+    type_helpers::{
+        linearize_mro_and_return_linearizable, Callable, Class, ClassLookupOptions, Function,
+        TypeOrClass,
+    },
 };
 
 use super::{
@@ -2753,6 +2756,14 @@ fn intersect_instances(
         }
     }
     if had_issue {
+        return Err(());
+    }
+
+    let linearizable = linearize_mro_and_return_linearizable(i_s, &intersection.entries).1;
+    if !linearizable {
+        add_issue(IssueKind::IntersectionCannotExistDueToInconsistentMro {
+            intersection: fmt_intersection(),
+        });
         return Err(());
     }
 

@@ -2579,7 +2579,7 @@ struct BaseToBeAdded<'a> {
     needs_remapping: bool,
 }
 
-fn linearize_mro_and_return_linearizable(
+pub fn linearize_mro_and_return_linearizable(
     i_s: &InferenceState,
     bases: &[Type],
 ) -> (Box<[BaseClass]>, bool) {
