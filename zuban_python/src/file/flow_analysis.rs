@@ -1574,10 +1574,10 @@ impl Inference<'_, '_, '_> {
                 } else if isinstance_type.is_simple_super_type_of(self.i_s, t).bool() {
                     true_type.union_in_place(t.clone());
                 } else {
-                    true_type.union_in_place(Intersection::from_types(
-                        t.clone(),
-                        isinstance_type.clone(),
-                    ));
+                    match intersect_instances(self.i_s, t, &isinstance_type) {
+                        Ok(new_t) => true_type.union_in_place(new_t),
+                        Err(issue) => self.add_issue(args.index(), issue),
+                    }
                 }
             }
         } else if isinstance_type.is_any_or_any_in_union(db) {
@@ -2719,4 +2719,10 @@ fn narrow_len_for_tuples(
         }
     }
     false
+}
+
+fn intersect_instances(i_s: &InferenceState, t1: &Type, t2: &Type) -> Result<Type, IssueKind> {
+    //Subclass of "C", "B", and "A" cannot exist: would have incompatible method signatures
+    let intersection = Intersection::from_types(t1.clone(), t2.clone());
+    Ok(Type::Intersection(intersection))
 }

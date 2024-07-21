@@ -582,85 +582,9 @@ impl<'db> Inference<'db, '_, '_> {
         let inference = self.file.inference(&i_s);
         inference.calc_block_diagnostics(block, Some(c), None);
 
-        for (i, base1) in c.bases(db).enumerate() {
-            let cls1 = match base1 {
-                TypeOrClass::Class(c) => c,
-                TypeOrClass::Type(t) => {
-                    debug!("TODO check complex base types");
-                    continue;
-                }
-            };
-            for (type_var_like, arg) in cls1
-                .use_cached_type_vars(i_s.db)
-                .iter()
-                .zip(cls1.type_var_remap.map(|g| g.iter()).unwrap_or([].iter()))
-            {
-                if let GenericItem::TypeArg(Type::TypeVar(tv)) = arg {
-                    if let TypeVarLike::TypeVar(tv_def) = type_var_like {
-                        if tv.type_var.variance != Variance::Invariant
-                            && tv.type_var.variance != tv_def.variance
-                        {
-                            NodeRef::new(self.file, arguments.unwrap().index()).add_issue(
-                                &i_s,
-                                IssueKind::TypeVarVarianceIncompatibleWithParentType {
-                                    type_var_name: tv.type_var.name(i_s.db).into(),
-                                },
-                            );
-                        }
-                    }
-                }
-            }
-            let instance1 = Instance::new(cls1, None);
-            for base2 in c.bases(db).skip(i + 1) {
-                let instance2 = match base2 {
-                    TypeOrClass::Class(c) => Instance::new(c, None),
-                    TypeOrClass::Type(t) => continue,
-                };
-                instance1.run_on_symbols(|name| {
-                    if name.starts_with("__") {
-                        return;
-                    }
-                    let had_lookup_issue = Cell::new(false);
-                    let inst2_lookup = instance2.lookup(self.i_s, name, InstanceLookupOptions::new(&|_| had_lookup_issue.set(true)));
-                    if had_lookup_issue.get() {
-                        todo!()
-                    }
-                    if let Some(inf) = inst2_lookup.lookup.into_maybe_inferred()
-                    {
-                        if c.lookup_symbol(self.i_s, name).into_maybe_inferred().is_some() {
-                            // These checks happen elsewhere.
-                            debug!("TODO this check might omit the check between current class and c2?");
-                            return
-                        }
-                        let second = inf.as_cow_type(self.i_s);
-                        let first = instance1.lookup(self.i_s, name, InstanceLookupOptions::new(&|_| had_lookup_issue.set(true))).lookup.into_inferred();
-                        if had_lookup_issue.get() {
-                            todo!()
-                        }
-                        let first = first.as_cow_type(self.i_s);
-                        if !first
-                            .is_sub_type_of(
-                                self.i_s,
-                                &mut Matcher::new_class_matcher(self.i_s, c).with_ignore_positional_param_names(),
-                                &second,
-                            )
-                            .bool()
-                        {
-                            let index =
-                                c.node().arguments().unwrap().iter().nth(i).unwrap().index();
-                            NodeRef::new(self.file, index).add_issue(
-                                &i_s,
-                                IssueKind::MultipleInheritanceIncompatibility {
-                                    name: name.into(),
-                                    class1: base1.name(db).into(),
-                                    class2: base2.name(db).into(),
-                                },
-                            );
-                        }
-                    }
-                });
-            }
-        }
+        check_multiple_inheritance(self.i_s, c, |issue| {
+            NodeRef::new(self.file, arguments.unwrap().index()).add_issue(self.i_s, issue)
+        });
         for table in [
             &c.class_storage.class_symbol_table,
             &c.class_storage.self_symbol_table,
@@ -2410,6 +2334,95 @@ fn check_protocol_type_var_variances(i_s: &InferenceState, class: Class) {
                     expected_variance,
                 },
             )
+        }
+    }
+}
+
+fn check_multiple_inheritance(i_s: &InferenceState, c: Class, add_issue: impl Fn(IssueKind)) {
+    let db = i_s.db;
+    for (i, base1) in c.bases(db).enumerate() {
+        let cls1 = match base1 {
+            TypeOrClass::Class(c) => c,
+            TypeOrClass::Type(t) => {
+                debug!("TODO check complex base types");
+                continue;
+            }
+        };
+        for (type_var_like, arg) in cls1
+            .use_cached_type_vars(db)
+            .iter()
+            .zip(cls1.type_var_remap.map(|g| g.iter()).unwrap_or([].iter()))
+        {
+            if let GenericItem::TypeArg(Type::TypeVar(tv)) = arg {
+                if let TypeVarLike::TypeVar(tv_def) = type_var_like {
+                    if tv.type_var.variance != Variance::Invariant
+                        && tv.type_var.variance != tv_def.variance
+                    {
+                        add_issue(IssueKind::TypeVarVarianceIncompatibleWithParentType {
+                            type_var_name: tv.type_var.name(db).into(),
+                        });
+                    }
+                }
+            }
+        }
+        let instance1 = Instance::new(cls1, None);
+        for base2 in c.bases(db).skip(i + 1) {
+            let instance2 = match base2 {
+                TypeOrClass::Class(c) => Instance::new(c, None),
+                TypeOrClass::Type(t) => continue,
+            };
+            instance1.run_on_symbols(|name| {
+                if name.starts_with("__") {
+                    return;
+                }
+                let had_lookup_issue = Cell::new(false);
+                let inst2_lookup = instance2.lookup(
+                    i_s,
+                    name,
+                    InstanceLookupOptions::new(&|_| had_lookup_issue.set(true)),
+                );
+                if had_lookup_issue.get() {
+                    todo!()
+                }
+                if let Some(inf) = inst2_lookup.lookup.into_maybe_inferred() {
+                    if c.lookup_symbol(i_s, name).into_maybe_inferred().is_some() {
+                        // These checks happen elsewhere.
+                        debug!(
+                            "TODO this check might omit the check between current class and c2?"
+                        );
+                        return;
+                    }
+                    let second = inf.as_cow_type(i_s);
+                    let first = instance1
+                        .lookup(
+                            i_s,
+                            name,
+                            InstanceLookupOptions::new(&|_| had_lookup_issue.set(true)),
+                        )
+                        .lookup
+                        .into_inferred();
+                    if had_lookup_issue.get() {
+                        todo!()
+                    }
+                    let first = first.as_cow_type(i_s);
+                    if !first
+                        .is_sub_type_of(
+                            i_s,
+                            &mut Matcher::new_class_matcher(i_s, c)
+                                .with_ignore_positional_param_names(),
+                            &second,
+                        )
+                        .bool()
+                    {
+                        let index = c.node().arguments().unwrap().iter().nth(i).unwrap().index();
+                        add_issue(IssueKind::MultipleInheritanceIncompatibility {
+                            name: name.into(),
+                            class1: base1.name(db).into(),
+                            class2: base2.name(db).into(),
+                        });
+                    }
+                }
+            });
         }
     }
 }

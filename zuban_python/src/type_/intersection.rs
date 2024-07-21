@@ -96,7 +96,7 @@ impl Intersection {
         callable(&Type::Intersection(self.clone()), LookupDetails::none())
     }
 
-    pub(crate) fn from_types(t1: Type, t2: Type) -> Type {
+    pub(crate) fn from_types(t1: Type, t2: Type) -> Self {
         let mut entries = vec![];
         let mut add = |t| match t {
             Type::Intersection(i) => entries.extend(i.iter().cloned()),
@@ -104,6 +104,6 @@ impl Intersection {
         };
         add(t1);
         add(t2);
-        Type::Intersection(Intersection::new(Rc::from(entries)))
+        Self::new(Rc::from(entries))
     }
 }
