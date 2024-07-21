@@ -23,7 +23,22 @@ impl Intersection {
         Self { entries }
     }
 
+    pub(crate) fn from_types(t1: Type, t2: Type) -> Self {
+        let mut entries = vec![];
+        let mut add = |t| match t {
+            Type::Intersection(i) => entries.extend(i.iter().cloned()),
+            _ => entries.push(t),
+        };
+        add(t1);
+        add(t2);
+        Self::new(Rc::from(entries))
+    }
+
     pub fn format(&self, format_data: &FormatData) -> Box<str> {
+        format!("<subclass of {}>", self.format_names(format_data)).into()
+    }
+
+    pub(crate) fn format_names(&self, format_data: &FormatData) -> String {
         let iterator = self.entries.iter();
         let mut formatted_entries = iterator
             .map(|t| {
@@ -34,7 +49,7 @@ impl Intersection {
                 format!("\"{s}\"")
             })
             .collect::<Vec<_>>();
-        let formatted = match formatted_entries.as_slice() {
+        match formatted_entries.as_slice() {
             [a, b] => {
                 format!("{a} and {b}")
             }
@@ -42,8 +57,7 @@ impl Intersection {
                 formatted_entries.last_mut().unwrap().insert_str(0, "and ");
                 formatted_entries.join(", ")
             }
-        };
-        format!("<subclass of {formatted }>").into()
+        }
     }
 
     pub fn iter(&self) -> std::slice::Iter<Type> {
@@ -94,16 +108,5 @@ impl Intersection {
             add_issue(first_issue)
         }
         callable(&Type::Intersection(self.clone()), LookupDetails::none())
-    }
-
-    pub(crate) fn from_types(t1: Type, t2: Type) -> Self {
-        let mut entries = vec![];
-        let mut add = |t| match t {
-            Type::Intersection(i) => entries.extend(i.iter().cloned()),
-            _ => entries.push(t),
-        };
-        add(t1);
-        add(t2);
-        Self::new(Rc::from(entries))
     }
 }

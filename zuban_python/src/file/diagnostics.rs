@@ -2346,11 +2346,11 @@ fn check_protocol_type_var_variances(i_s: &InferenceState, class: Class) {
     }
 }
 
-fn check_multiple_inheritance<'x, BASES: Iterator<Item = TypeOrClass<'x>>>(
+pub fn check_multiple_inheritance<'x, BASES: Iterator<Item = TypeOrClass<'x>>>(
     i_s: &InferenceState,
     bases: impl Fn() -> BASES,
     should_check: impl Fn(&str) -> bool,
-    add_issue: impl Fn(IssueKind),
+    mut add_issue: impl FnMut(IssueKind),
 ) {
     let db = i_s.db;
     for (i, base1) in bases().enumerate() {

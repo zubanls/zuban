@@ -1,4 +1,5 @@
 use std::{
+    borrow::Cow,
     cell::{Cell, RefCell},
     rc::Rc,
 };
@@ -17,6 +18,7 @@ use crate::{
     database::{ClassKind, Database, PointKind, PointLink, Specific},
     debug,
     diagnostics::IssueKind,
+    format_data::FormatData,
     getitem::SliceType,
     inference_state::InferenceState,
     inferred::{Inferred, UnionValue},
@@ -28,10 +30,11 @@ use crate::{
         NamedTuple, NeverCause, StringSlice, Tuple, TupleArgs, TupleUnpack, Type, TypeVarKind,
         UnionType, WithUnpack,
     },
-    type_helpers::{Callable, Class, ClassLookupOptions, Function},
+    type_helpers::{Callable, Class, ClassLookupOptions, Function, TypeOrClass},
 };
 
 use super::{
+    diagnostics::check_multiple_inheritance,
     first_defined_name,
     inference::Inference,
     name_binder::{is_expr_part_reachable_for_name_binder, Truthiness},
@@ -2724,5 +2727,26 @@ fn narrow_len_for_tuples(
 fn intersect_instances(i_s: &InferenceState, t1: &Type, t2: &Type) -> Result<Type, IssueKind> {
     //Subclass of "C", "B", and "A" cannot exist: would have incompatible method signatures
     let intersection = Intersection::from_types(t1.clone(), t2.clone());
+    let mut had_issue = false;
+    check_multiple_inheritance(
+        i_s,
+        || {
+            intersection.iter().map(|t| match t.maybe_class(i_s.db) {
+                Some(c) => TypeOrClass::Class(c),
+                None => TypeOrClass::Type(Cow::Borrowed(t)),
+            })
+        },
+        |_| true,
+        |_| had_issue = true,
+    );
+    if had_issue {
+        return Err(
+            IssueKind::IntersectionCannotExistDueToIncompatibleMethodSignatures {
+                intersection: intersection
+                    .format_names(&FormatData::new_short(i_s.db))
+                    .into(),
+            },
+        );
+    }
     Ok(Type::Intersection(intersection))
 }
