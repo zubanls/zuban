@@ -8,7 +8,7 @@ mod type_computation;
 mod type_var_finder;
 mod utils;
 
-pub use diagnostics::OVERLAPPING_REVERSE_TO_NORMAL_METHODS;
+pub use diagnostics::{check_multiple_inheritance, OVERLAPPING_REVERSE_TO_NORMAL_METHODS};
 pub use file_state::{
     File, FileState, FileStateLoader, FileSystemReader, LanguageFileState, Leaf, PythonFileLoader,
     Vfs,

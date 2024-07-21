@@ -1,20 +1,21 @@
-use std::{cell::Cell, rc::Rc};
+use std::{borrow::Cow, cell::Cell, rc::Rc};
 
 use crate::{
     database::FileIndex,
     diagnostics::IssueKind,
+    file::check_multiple_inheritance,
     format_data::FormatData,
     inference_state::InferenceState,
     inferred::Inferred,
     matching::{LookupKind, ResultContext},
-    type_helpers::LookupDetails,
+    type_helpers::{linearize_mro_and_return_linearizable, LookupDetails, TypeOrClass},
 };
 
 use super::Type;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Intersection {
-    pub entries: Rc<[Type]>,
+    entries: Rc<[Type]>,
 }
 
 impl Intersection {
@@ -23,7 +24,7 @@ impl Intersection {
         Self { entries }
     }
 
-    pub(crate) fn from_types(t1: Type, t2: Type) -> Self {
+    fn from_types(t1: Type, t2: Type) -> Self {
         let mut entries = vec![];
         let mut add = |t| match t {
             Type::Intersection(i) => entries.extend(i.iter().cloned()),
@@ -32,6 +33,67 @@ impl Intersection {
         add(t1);
         add(t2);
         Self::new(Rc::from(entries))
+    }
+
+    pub(crate) fn new_instance_intersection(
+        i_s: &InferenceState,
+        t1: &Type,
+        t2: &Type,
+        add_issue: impl Fn(IssueKind),
+    ) -> Result<Self, ()> {
+        //Subclass of "C", "B", and "A" cannot exist: would have incompatible method signatures
+        let intersection = Self::from_types(t1.clone(), t2.clone());
+
+        let mut had_issue = false;
+        let fmt_intersection = || {
+            intersection
+                .format_names(&FormatData::new_short(i_s.db), true)
+                .into()
+        };
+        for t in intersection.iter() {
+            if let Some(cls) = t.maybe_class(i_s.db) {
+                if cls.use_cached_class_infos(i_s.db).is_final {
+                    add_issue(IssueKind::IntersectionCannotExistDueToFinalClass {
+                        intersection: fmt_intersection(),
+                        final_class: cls.name().into(),
+                    });
+                    had_issue = true;
+                }
+            }
+        }
+        if had_issue {
+            return Err(());
+        }
+
+        let linearizable = linearize_mro_and_return_linearizable(i_s, &intersection.entries).1;
+        if !linearizable {
+            add_issue(IssueKind::IntersectionCannotExistDueToInconsistentMro {
+                intersection: fmt_intersection(),
+            });
+            return Err(());
+        }
+
+        check_multiple_inheritance(
+            i_s,
+            || {
+                intersection.iter().map(|t| match t.maybe_class(i_s.db) {
+                    Some(c) => TypeOrClass::Class(c),
+                    None => TypeOrClass::Type(Cow::Borrowed(t)),
+                })
+            },
+            |_| true,
+            |_| had_issue = true,
+        );
+
+        if had_issue {
+            add_issue(
+                IssueKind::IntersectionCannotExistDueToIncompatibleMethodSignatures {
+                    intersection: fmt_intersection(),
+                },
+            );
+            return Err(());
+        }
+        Ok(intersection)
     }
 
     pub fn format(&self, format_data: &FormatData) -> Box<str> {

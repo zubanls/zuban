@@ -1,5 +1,4 @@
 use std::{
-    borrow::Cow,
     cell::{Cell, RefCell},
     rc::Rc,
 };
@@ -18,7 +17,6 @@ use crate::{
     database::{ClassKind, Database, PointKind, PointLink, Specific},
     debug,
     diagnostics::IssueKind,
-    format_data::FormatData,
     getitem::SliceType,
     inference_state::InferenceState,
     inferred::{Inferred, UnionValue},
@@ -30,14 +28,10 @@ use crate::{
         NamedTuple, NeverCause, StringSlice, Tuple, TupleArgs, TupleUnpack, Type, TypeVarKind,
         UnionType, WithUnpack,
     },
-    type_helpers::{
-        linearize_mro_and_return_linearizable, Callable, Class, ClassLookupOptions, Function,
-        TypeOrClass,
-    },
+    type_helpers::{Callable, Class, ClassLookupOptions, Function},
 };
 
 use super::{
-    diagnostics::check_multiple_inheritance,
     first_defined_name,
     inference::Inference,
     name_binder::{is_expr_part_reachable_for_name_binder, Truthiness},
@@ -1580,10 +1574,13 @@ impl Inference<'_, '_, '_> {
                 } else if isinstance_type.is_simple_super_type_of(self.i_s, t).bool() {
                     true_type.union_in_place(t.clone());
                 } else {
-                    match intersect_instances(self.i_s, t, &isinstance_type, |issue| {
-                        self.add_issue(args.index(), issue)
-                    }) {
-                        Ok(new_t) => true_type.union_in_place(new_t),
+                    match Intersection::new_instance_intersection(
+                        self.i_s,
+                        t,
+                        &isinstance_type,
+                        |issue| self.add_issue(args.index(), issue),
+                    ) {
+                        Ok(new_t) => true_type.union_in_place(Type::Intersection(new_t)),
                         Err(()) => (),
                     }
                 }
@@ -2727,65 +2724,4 @@ fn narrow_len_for_tuples(
         }
     }
     false
-}
-
-fn intersect_instances(
-    i_s: &InferenceState,
-    t1: &Type,
-    t2: &Type,
-    add_issue: impl Fn(IssueKind),
-) -> Result<Type, ()> {
-    //Subclass of "C", "B", and "A" cannot exist: would have incompatible method signatures
-    let intersection = Intersection::from_types(t1.clone(), t2.clone());
-
-    let mut had_issue = false;
-    let fmt_intersection = || {
-        intersection
-            .format_names(&FormatData::new_short(i_s.db), true)
-            .into()
-    };
-    for t in intersection.iter() {
-        if let Some(cls) = t.maybe_class(i_s.db) {
-            if cls.use_cached_class_infos(i_s.db).is_final {
-                add_issue(IssueKind::IntersectionCannotExistDueToFinalClass {
-                    intersection: fmt_intersection(),
-                    final_class: cls.name().into(),
-                });
-                had_issue = true;
-            }
-        }
-    }
-    if had_issue {
-        return Err(());
-    }
-
-    let linearizable = linearize_mro_and_return_linearizable(i_s, &intersection.entries).1;
-    if !linearizable {
-        add_issue(IssueKind::IntersectionCannotExistDueToInconsistentMro {
-            intersection: fmt_intersection(),
-        });
-        return Err(());
-    }
-
-    check_multiple_inheritance(
-        i_s,
-        || {
-            intersection.iter().map(|t| match t.maybe_class(i_s.db) {
-                Some(c) => TypeOrClass::Class(c),
-                None => TypeOrClass::Type(Cow::Borrowed(t)),
-            })
-        },
-        |_| true,
-        |_| had_issue = true,
-    );
-
-    if had_issue {
-        add_issue(
-            IssueKind::IntersectionCannotExistDueToIncompatibleMethodSignatures {
-                intersection: fmt_intersection(),
-            },
-        );
-        return Err(());
-    }
-    Ok(Type::Intersection(intersection))
 }
