@@ -1015,7 +1015,10 @@ impl<'db: 'a, 'a> Class<'a> {
                 .add_issue(i_s, IssueKind::NamedTupleShouldBeASingleBase);
         }
 
-        let mro = linearize_mro(i_s, self, &bases);
+        let (mro, linearizable) = linearize_mro_and_return_linearizable(i_s, &bases);
+        if !linearizable {
+            add_inconsistency_issue(i_s, self)
+        }
 
         let mut found_tuple_like = None;
         for base in mro.iter() {
@@ -2576,15 +2579,19 @@ struct BaseToBeAdded<'a> {
     needs_remapping: bool,
 }
 
-fn linearize_mro(i_s: &InferenceState, class: &Class, bases: &[Type]) -> Box<[BaseClass]> {
+fn linearize_mro_and_return_linearizable(
+    i_s: &InferenceState,
+    bases: &[Type],
+) -> (Box<[BaseClass]>, bool) {
     let mut mro = vec![];
 
     let object = i_s.db.python_state.object_type();
+    let mut linearizable = true;
     if let Some(index) = bases.iter().position(|base| base == &object) {
         // Instead of adding object to each iterator (because in our mro, object is not saved), we
         // just check for object in bases here. If it's not in the last position it's wrong.
         if index != bases.len() - 1 {
-            add_inconsistency_issue(i_s, class)
+            linearizable = false;
         }
     }
     let mut add_to_mro = |base_index: usize,
@@ -2656,7 +2663,6 @@ fn linearize_mro(i_s: &InferenceState, class: &Class, bases: &[Type]) -> Box<[Ba
             .peekable()
         })
         .collect();
-    let mut linearizable = true;
     let mut allowed_to_use = 1;
     'outer: loop {
         let mut had_entry = false;
@@ -2696,10 +2702,7 @@ fn linearize_mro(i_s: &InferenceState, class: &Class, bases: &[Type]) -> Box<[Ba
         }
         unreachable!()
     }
-    if !linearizable {
-        add_inconsistency_issue(i_s, class)
-    }
-    mro.into_boxed_slice()
+    (mro.into_boxed_slice(), linearizable)
 }
 
 fn add_inconsistency_issue(i_s: &InferenceState, class: &Class) {
