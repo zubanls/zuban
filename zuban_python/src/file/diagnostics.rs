@@ -582,9 +582,17 @@ impl<'db> Inference<'db, '_, '_> {
         let inference = self.file.inference(&i_s);
         inference.calc_block_diagnostics(block, Some(c), None);
 
-        check_multiple_inheritance(self.i_s, c, |issue| {
-            NodeRef::new(self.file, arguments.unwrap().index()).add_issue(self.i_s, issue)
-        });
+        check_multiple_inheritance(
+            self.i_s,
+            || c.bases(db),
+            // Don't check symbols if they are part of the instance that we are currently using.
+            |name| {
+                c.lookup_symbol(self.i_s, name)
+                    .into_maybe_inferred()
+                    .is_none()
+            },
+            |issue| NodeRef::new(self.file, arguments.unwrap().index()).add_issue(self.i_s, issue),
+        );
         for table in [
             &c.class_storage.class_symbol_table,
             &c.class_storage.self_symbol_table,
@@ -2338,9 +2346,14 @@ fn check_protocol_type_var_variances(i_s: &InferenceState, class: Class) {
     }
 }
 
-fn check_multiple_inheritance(i_s: &InferenceState, c: Class, add_issue: impl Fn(IssueKind)) {
+fn check_multiple_inheritance<'x, BASES: Iterator<Item = TypeOrClass<'x>>>(
+    i_s: &InferenceState,
+    bases: impl Fn() -> BASES,
+    should_check: impl Fn(&str) -> bool,
+    add_issue: impl Fn(IssueKind),
+) {
     let db = i_s.db;
-    for (i, base1) in c.bases(db).enumerate() {
+    for (i, base1) in bases().enumerate() {
         let cls1 = match base1 {
             TypeOrClass::Class(c) => c,
             TypeOrClass::Type(t) => {
@@ -2366,7 +2379,7 @@ fn check_multiple_inheritance(i_s: &InferenceState, c: Class, add_issue: impl Fn
             }
         }
         let instance1 = Instance::new(cls1, None);
-        for base2 in c.bases(db).skip(i + 1) {
+        for base2 in bases().skip(i + 1) {
             let instance2 = match base2 {
                 TypeOrClass::Class(c) => Instance::new(c, None),
                 TypeOrClass::Type(t) => continue,
@@ -2385,11 +2398,7 @@ fn check_multiple_inheritance(i_s: &InferenceState, c: Class, add_issue: impl Fn
                     todo!()
                 }
                 if let Some(inf) = inst2_lookup.lookup.into_maybe_inferred() {
-                    if c.lookup_symbol(i_s, name).into_maybe_inferred().is_some() {
-                        // These checks happen elsewhere.
-                        debug!(
-                            "TODO this check might omit the check between current class and c2?"
-                        );
+                    if !should_check(name) {
                         return;
                     }
                     let second = inf.as_cow_type(i_s);
