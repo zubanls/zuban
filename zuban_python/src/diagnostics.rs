@@ -272,6 +272,7 @@ pub(crate) enum IssueKind {
     ExceptStarIsNotAllowedToBeAnExceptionGroup,
 
     IntersectionCannotExistDueToIncompatibleMethodSignatures { intersection: Box<str> },
+    IntersectionCannotExistDueToFinalClass { intersection: Box<str>, final_class: Box<str> },
 
     TypeGuardFunctionsMustHaveArgument { name: &'static str },
     TypeIsNarrowedTypeIsNotSubtypeOfInput { narrowed_t: Box<str>, input_t: Box<str> },
@@ -1472,7 +1473,10 @@ impl<'db> Diagnostic<'db> {
                 "Exception type in except* cannot derive from BaseExceptionGroup".to_string(),
 
             IntersectionCannotExistDueToIncompatibleMethodSignatures { intersection } => format!(
-                r#"Subclass of {intersection} cannot exist: would have incompatible method signatures"#
+                "Subclass of {intersection} cannot exist: would have incompatible method signatures"
+            ),
+            IntersectionCannotExistDueToFinalClass { intersection, final_class } => format!(
+                r#"Subclass of {intersection} cannot exist: "{final_class}" is final"#
             ),
 
             TypeGuardFunctionsMustHaveArgument { name } => format!(

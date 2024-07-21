@@ -1577,9 +1577,11 @@ impl Inference<'_, '_, '_> {
                 } else if isinstance_type.is_simple_super_type_of(self.i_s, t).bool() {
                     true_type.union_in_place(t.clone());
                 } else {
-                    match intersect_instances(self.i_s, t, &isinstance_type) {
+                    match intersect_instances(self.i_s, t, &isinstance_type, |issue| {
+                        self.add_issue(args.index(), issue)
+                    }) {
                         Ok(new_t) => true_type.union_in_place(new_t),
-                        Err(issue) => self.add_issue(args.index(), issue),
+                        Err(()) => (),
                     }
                 }
             }
@@ -2724,10 +2726,36 @@ fn narrow_len_for_tuples(
     false
 }
 
-fn intersect_instances(i_s: &InferenceState, t1: &Type, t2: &Type) -> Result<Type, IssueKind> {
+fn intersect_instances(
+    i_s: &InferenceState,
+    t1: &Type,
+    t2: &Type,
+    add_issue: impl Fn(IssueKind),
+) -> Result<Type, ()> {
     //Subclass of "C", "B", and "A" cannot exist: would have incompatible method signatures
     let intersection = Intersection::from_types(t1.clone(), t2.clone());
+
     let mut had_issue = false;
+    let fmt_intersection = || {
+        intersection
+            .format_names(&FormatData::new_short(i_s.db))
+            .into()
+    };
+    for t in intersection.iter() {
+        if let Some(cls) = t.maybe_class(i_s.db) {
+            if cls.use_cached_class_infos(i_s.db).is_final {
+                add_issue(IssueKind::IntersectionCannotExistDueToFinalClass {
+                    intersection: fmt_intersection(),
+                    final_class: cls.name().into(),
+                });
+                had_issue = true;
+            }
+        }
+    }
+    if had_issue {
+        return Err(());
+    }
+
     check_multiple_inheritance(
         i_s,
         || {
@@ -2739,14 +2767,14 @@ fn intersect_instances(i_s: &InferenceState, t1: &Type, t2: &Type) -> Result<Typ
         |_| true,
         |_| had_issue = true,
     );
+
     if had_issue {
-        return Err(
+        add_issue(
             IssueKind::IntersectionCannotExistDueToIncompatibleMethodSignatures {
-                intersection: intersection
-                    .format_names(&FormatData::new_short(i_s.db))
-                    .into(),
+                intersection: fmt_intersection(),
             },
         );
+        return Err(());
     }
     Ok(Type::Intersection(intersection))
 }
