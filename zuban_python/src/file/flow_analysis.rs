@@ -2738,7 +2738,7 @@ fn intersect_instances(
     let mut had_issue = false;
     let fmt_intersection = || {
         intersection
-            .format_names(&FormatData::new_short(i_s.db))
+            .format_names(&FormatData::new_short(i_s.db), true)
             .into()
     };
     for t in intersection.iter() {

@@ -35,15 +35,15 @@ impl Intersection {
     }
 
     pub fn format(&self, format_data: &FormatData) -> Box<str> {
-        format!("<subclass of {}>", self.format_names(format_data)).into()
+        format!("<subclass of {}>", self.format_names(format_data, false)).into()
     }
 
-    pub(crate) fn format_names(&self, format_data: &FormatData) -> String {
+    pub(crate) fn format_names(&self, format_data: &FormatData, with_generics: bool) -> String {
         let iterator = self.entries.iter();
         let mut formatted_entries = iterator
             .map(|t| {
                 let s = match t {
-                    Type::Class(c) => c.class(format_data.db).name().into(),
+                    Type::Class(c) if !with_generics => c.class(format_data.db).name().into(),
                     _ => t.format(format_data),
                 };
                 format!("\"{s}\"")
