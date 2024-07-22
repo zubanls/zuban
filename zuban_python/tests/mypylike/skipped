@@ -317,13 +317,10 @@ testEnumBaseClassesOrder
 testMultipleInheritance_MethodDefinitionsCompatibleNoOverride
 testTypeIsNestedRestrictionUnionIsInstance
 # intersection regressions
-testIsInstanceThreeUnion3
 testIsinstanceAndNarrowTypeVariable
 # mro calculation special types
 testCorrectIsinstanceInForwardRefToNewType
 testTypeGuardNestedRestrictionUnionIsInstance
-# Intersection with unions
-testIsInstanceAdHocIntersectionWithUnions
 # intersection with None
 testNarrowingIsInstanceNoIntersectionWithFinalTypeAndNoneType
 # intersection reversed?

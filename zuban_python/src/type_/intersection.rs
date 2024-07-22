@@ -11,7 +11,7 @@ use crate::{
     type_helpers::{linearize_mro_and_return_linearizable, LookupDetails, TypeOrClass},
 };
 
-use super::Type;
+use super::{Type, UnionEntry, UnionType};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Intersection {
@@ -39,12 +39,29 @@ impl Intersection {
         i_s: &InferenceState,
         t1: &Type,
         t2: &Type,
-        add_issue: impl Fn(IssueKind),
+        add_issue: impl Fn(IssueKind) + Copy,
     ) -> Result<Type, ()> {
         match (t1, t2) {
             (Type::Type(t1), Type::Type(t2)) => {
                 return Self::new_instance_intersection(i_s, t1.as_ref(), t2.as_ref(), add_issue)
                     .map(|out| Type::Type(Rc::new(out)))
+            }
+            (Type::Union(u), _) => {
+                unreachable!("For now this branch should not be reachable")
+            }
+            (_, Type::Union(u)) => {
+                return u
+                    .entries
+                    .iter()
+                    .map(|entry| {
+                        Intersection::new_instance_intersection(i_s, t1, &entry.type_, add_issue)
+                            .map(|t| UnionEntry {
+                                type_: t,
+                                format_index: entry.format_index,
+                            })
+                    })
+                    .collect::<Result<Vec<_>, _>>()
+                    .map(|entries| Type::Union(UnionType::new(entries)))
             }
             _ => (),
         }

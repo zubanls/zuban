@@ -2409,6 +2409,14 @@ pub fn check_multiple_inheritance<'x, BASES: Iterator<Item = TypeOrClass<'x>>>(
                     InstanceLookupOptions::new(&|_| had_lookup_issue.set(true)),
                 );
                 if had_lookup_issue.get() {
+                    /*
+                    add_issue(IssueKind::MultipleInheritanceIncompatibility {
+                        name: name.into(),
+                        class1: base1.name(db).into(),
+                        class2: base2.name(db).into(),
+                    });
+                    return;
+                    */
                     todo!()
                 }
                 if let Some(inf) = inst2_lookup.lookup.into_maybe_inferred() {
