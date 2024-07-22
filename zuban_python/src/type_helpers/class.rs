@@ -2583,7 +2583,7 @@ pub fn linearize_mro_and_return_linearizable(
     i_s: &InferenceState,
     bases: &[Type],
 ) -> (Box<[BaseClass]>, bool) {
-    let mut mro = vec![];
+    let mut mro: Vec<BaseClass> = vec![];
 
     let object = i_s.db.python_state.object_type();
     let mut linearizable = true;
@@ -2594,10 +2594,11 @@ pub fn linearize_mro_and_return_linearizable(
             linearizable = false;
         }
     }
-    let mut add_to_mro = |base_index: usize,
-                          is_direct_base,
-                          new_base: &BaseToBeAdded,
-                          allowed_to_use: &mut usize| {
+    let add_to_mro = |mro: &mut Vec<BaseClass>,
+                      base_index: usize,
+                      is_direct_base,
+                      new_base: &BaseToBeAdded,
+                      allowed_to_use: &mut usize| {
         if new_base.t.as_ref() != &object {
             mro.push(BaseClass {
                 type_: if new_base.needs_remapping {
@@ -2681,7 +2682,13 @@ pub fn linearize_mro_and_return_linearizable(
                             to_base_kind(&candidate.t) == to_base_kind(&next.t)
                         });
                     }
-                    add_to_mro(base_index, i == 0, &candidate, &mut allowed_to_use);
+                    add_to_mro(
+                        &mut mro,
+                        base_index,
+                        i == 0,
+                        &candidate,
+                        &mut allowed_to_use,
+                    );
                     continue 'outer;
                 }
             }
@@ -2691,12 +2698,12 @@ pub fn linearize_mro_and_return_linearizable(
         }
         for (base_index, base_bases) in base_iterators.iter_mut().enumerate() {
             if let Some((i, type_)) = base_bases.next() {
-                // If it doesn't have to do with one of the first type, it is caused by
-                // inconsistencies earlier.
-                if bases.contains(&type_.t) {
-                    linearizable = false;
+                linearizable = false;
+                // Here we know that we have issues and only add the type if it's not already
+                // there.
+                if mro.iter().any(|b| &b.type_ == type_.t.as_ref()) {
+                    add_to_mro(&mut mro, base_index, i == 0, &type_, &mut allowed_to_use);
                 }
-                add_to_mro(base_index, i == 0, &type_, &mut allowed_to_use);
                 continue 'outer;
             }
         }
