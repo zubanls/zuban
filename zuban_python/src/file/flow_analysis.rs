@@ -1547,24 +1547,14 @@ impl Inference<'_, '_, '_> {
             isinstance_type = Type::Type(Rc::new(isinstance_type))
         }
 
-        let (true_type, other_side) = split_and_intersect(
+        split_and_intersect(
             self.i_s,
             &input.inf.as_cow_type(self.i_s),
+            key,
+            input.parent_unions,
             &isinstance_type,
             |issue| self.add_issue(args.index(), issue),
-        )?;
-
-        debug!(
-            "Narrowed {} because of isinstance to {} and other side to {}",
-            arg.as_code(),
-            true_type.format_short(self.i_s.db),
-            other_side.format_short(self.i_s.db)
-        );
-        Some(FramesWithParentUnions {
-            truthy: Frame::from_type(key.clone(), true_type),
-            falsey: Frame::from_type(key, other_side),
-            parent_unions: input.parent_unions,
-        })
+        )
     }
 
     pub fn check_isinstance_or_issubclass_type(
@@ -1841,17 +1831,14 @@ impl Inference<'_, '_, '_> {
         }
         let resolved_guard_t = resolved_guard_t.as_cow_type(self.i_s);
         if guard.from_type_is {
-            let (true_type, other_side) = split_and_intersect(
+            split_and_intersect(
                 self.i_s,
                 &infos.inf.as_cow_type(self.i_s),
+                key,
+                infos.parent_unions,
                 &resolved_guard_t,
                 |issue| self.add_issue(args.index(), issue),
-            )?;
-            Some(FramesWithParentUnions {
-                truthy: Frame::from_type(key.clone(), true_type),
-                falsey: Frame::from_type(key.clone(), other_side),
-                parent_unions: infos.parent_unions,
-            })
+            )
         } else {
             Some(FramesWithParentUnions {
                 truthy: Frame::from_type(key, resolved_guard_t.into_owned()),
@@ -2696,9 +2683,11 @@ fn narrow_len_for_tuples(
 fn split_and_intersect(
     i_s: &InferenceState,
     original_t: &Type,
+    key: FlowKey,
+    parent_unions: ParentUnions,
     isinstance_type: &Type,
     add_issue: impl Fn(IssueKind) + Copy,
-) -> Option<(Type, Type)> {
+) -> Option<FramesWithParentUnions> {
     // Please listen to "Red Hot Chili Peppers - Otherside" here.
     let mut true_type = Type::Never(NeverCause::Other);
     let mut other_side = Type::Never(NeverCause::Other);
@@ -2734,5 +2723,14 @@ fn split_and_intersect(
     } else if isinstance_type.is_any_or_any_in_union(i_s.db) {
         true_type = isinstance_type.clone();
     }
-    Some((true_type, other_side))
+    debug!(
+        "Narrowed because of isinstance or TypeIs to {} and other side to {}",
+        true_type.format_short(i_s.db),
+        other_side.format_short(i_s.db)
+    );
+    Some(FramesWithParentUnions {
+        truthy: Frame::from_type(key.clone(), true_type),
+        falsey: Frame::from_type(key, other_side),
+        parent_unions,
+    })
 }
