@@ -7,7 +7,7 @@ use crate::{
     type_helpers::{Class, TypeOrClass},
 };
 
-use super::{CallableContent, CallableLike, ClassGenerics, Tuple, Type, TypedDict};
+use super::{CallableContent, CallableLike, ClassGenerics, Tuple, Type, TypeVarKind, TypedDict};
 
 impl Type {
     pub fn simple_overlaps(&self, i_s: &InferenceState, other: &Self) -> bool {
@@ -45,6 +45,10 @@ impl Type {
                     _ => self.overlaps(i_s, matcher, &literal2.fallback_type(i_s.db)),
                 }
             }
+            Type::TypeVar(tv) => match &tv.type_var.kind {
+                TypeVarKind::Bound(b) => return self.overlaps(i_s, matcher, b),
+                _ => (),
+            },
             Type::Type(t2) => return t2.overlaps_type_of_type_against_other(i_s, matcher, self),
             _ => (),
         }
@@ -73,6 +77,10 @@ impl Type {
                     return t1.overlaps_tuple(i_s, matcher, t2);
                 }
             }
+            Type::TypeVar(tv) => match &tv.type_var.kind {
+                TypeVarKind::Bound(b) => return b.overlaps(i_s, matcher, other),
+                _ => (),
+            },
             Type::TypedDict(td) => return td.overlaps(i_s, matcher, self, other),
             _ => (),
         };

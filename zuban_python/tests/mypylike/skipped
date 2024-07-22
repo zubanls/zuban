@@ -316,8 +316,6 @@ testSubtypingIterableUnpacking2
 testEnumBaseClassesOrder
 testMultipleInheritance_MethodDefinitionsCompatibleNoOverride
 testTypeIsNestedRestrictionUnionIsInstance
-# intersection regressions
-testIsinstanceAndNarrowTypeVariable
 # mro calculation special types
 testTypeGuardNestedRestrictionUnionIsInstance
 # intersection reversed?
