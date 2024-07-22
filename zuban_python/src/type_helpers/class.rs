@@ -2560,7 +2560,7 @@ enum BaseKind {
     Enum,
 }
 
-fn to_base_kind(t: &Type) -> BaseKind {
+fn to_base_kind(i_s: &InferenceState, t: &Type) -> BaseKind {
     match t {
         Type::Class(c) => BaseKind::Class(c.link),
         Type::Type(_) => BaseKind::Type,
@@ -2569,6 +2569,7 @@ fn to_base_kind(t: &Type) -> BaseKind {
         Type::TypedDict(d) => BaseKind::TypedDict(d.clone()),
         Type::NamedTuple(nt) => BaseKind::NamedTuple(nt.clone()),
         Type::Enum(_) => BaseKind::Enum,
+        Type::NewType(n) => to_base_kind(i_s, n.type_(i_s)),
         _ => unreachable!("{t:?}"),
     }
 }
@@ -2671,15 +2672,14 @@ pub fn linearize_mro_and_return_linearizable(
             if let Some((i, candidate)) = base_iterators[base_index].peek().cloned() {
                 had_entry = true;
                 let conflicts = base_iterators.iter().any(|base_bases| {
-                    base_bases
-                        .clone()
-                        .skip(1)
-                        .any(|(_, other)| to_base_kind(&candidate.t) == to_base_kind(&other.t))
+                    base_bases.clone().skip(1).any(|(_, other)| {
+                        to_base_kind(i_s, &candidate.t) == to_base_kind(i_s, &other.t)
+                    })
                 });
                 if !conflicts {
                     for base_bases in base_iterators.iter_mut() {
                         base_bases.next_if(|(_, next)| {
-                            to_base_kind(&candidate.t) == to_base_kind(&next.t)
+                            to_base_kind(i_s, &candidate.t) == to_base_kind(i_s, &next.t)
                         });
                     }
                     add_to_mro(

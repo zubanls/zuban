@@ -170,3 +170,13 @@ if foo[0]:
     foo[0] + 1
     foo[1] + 1 # E: Unsupported operand types for + ("None" and "int") \
                # N: Left operand is of type "int | None"
+
+[case new_type_intersection]
+from typing import NewType
+class A: ...
+class B: ...
+N = NewType('N', A)
+
+def parse_ast(n: N) -> None:
+    if isinstance(n, B):
+        reveal_type(n)  # N: Revealed type is "<subclass of "N" and "B">"

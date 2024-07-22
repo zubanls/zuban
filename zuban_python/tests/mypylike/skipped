@@ -319,7 +319,6 @@ testTypeIsNestedRestrictionUnionIsInstance
 # intersection regressions
 testIsinstanceAndNarrowTypeVariable
 # mro calculation special types
-testCorrectIsinstanceInForwardRefToNewType
 testTypeGuardNestedRestrictionUnionIsInstance
 # intersection with None
 testNarrowingIsInstanceNoIntersectionWithFinalTypeAndNoneType
