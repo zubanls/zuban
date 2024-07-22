@@ -2698,7 +2698,7 @@ fn split_and_intersect(
     key: FlowKey,
     parent_unions: ParentUnions,
     isinstance_type: &Type,
-    add_issue: impl Fn(IssueKind) + Copy,
+    mut add_issue: impl Fn(IssueKind),
 ) -> Option<FramesWithParentUnions> {
     // Please listen to "Red Hot Chili Peppers - Otherside" here.
     let mut true_type = Type::Never(NeverCause::Other);
@@ -2726,7 +2726,12 @@ fn split_and_intersect(
             } else if isinstance_type.is_simple_super_type_of(i_s, t).bool() {
                 true_type.union_in_place(t.clone());
             } else {
-                match Intersection::new_instance_intersection(i_s, t, &isinstance_type, add_issue) {
+                match Intersection::new_instance_intersection(
+                    i_s,
+                    t,
+                    &isinstance_type,
+                    &mut add_issue,
+                ) {
                     Ok(new_t) => true_type.union_in_place(new_t),
                     Err(()) => (),
                 }

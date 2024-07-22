@@ -320,8 +320,6 @@ testTypeIsNestedRestrictionUnionIsInstance
 testIsinstanceAndNarrowTypeVariable
 # mro calculation special types
 testTypeGuardNestedRestrictionUnionIsInstance
-# intersection with None
-testNarrowingIsInstanceNoIntersectionWithFinalTypeAndNoneType
 # intersection reversed?
 testIsInstanceAdHocIntersectionReversed
 # Intersection protocols?

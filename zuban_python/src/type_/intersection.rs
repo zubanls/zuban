@@ -11,7 +11,7 @@ use crate::{
     type_helpers::{linearize_mro_and_return_linearizable, LookupDetails, TypeOrClass},
 };
 
-use super::{Type, UnionEntry, UnionType};
+use super::{Type, UnionEntry};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Intersection {
@@ -39,7 +39,7 @@ impl Intersection {
         i_s: &InferenceState,
         t1: &Type,
         t2: &Type,
-        add_issue: impl Fn(IssueKind) + Copy,
+        add_issue: &mut dyn FnMut(IssueKind),
     ) -> Result<Type, ()> {
         match (t1, t2) {
             (Type::Type(t1), Type::Type(t2)) => {
@@ -50,18 +50,29 @@ impl Intersection {
                 unreachable!("For now this branch should not be reachable")
             }
             (_, Type::Union(u)) => {
-                return u
-                    .entries
-                    .iter()
-                    .map(|entry| {
-                        Intersection::new_instance_intersection(i_s, t1, &entry.type_, add_issue)
-                            .map(|t| UnionEntry {
-                                type_: t,
-                                format_index: entry.format_index,
-                            })
-                    })
-                    .collect::<Result<Vec<_>, _>>()
-                    .map(|entries| Type::Union(UnionType::new(entries)))
+                let mut found_issues = vec![];
+                let mut new_entries = vec![];
+                for entry in u.entries.iter() {
+                    if let Ok(type_) = Intersection::new_instance_intersection(
+                        i_s,
+                        t1,
+                        &entry.type_,
+                        &mut |issue| found_issues.push(issue),
+                    ) {
+                        new_entries.push(UnionEntry {
+                            type_,
+                            format_index: entry.format_index,
+                        });
+                    }
+                }
+                return if new_entries.is_empty() {
+                    for issue in found_issues {
+                        add_issue(issue)
+                    }
+                    Err(())
+                } else {
+                    Ok(Type::from_union_entries(new_entries))
+                };
             }
             _ => (),
         }
