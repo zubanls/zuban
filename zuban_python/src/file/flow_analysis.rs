@@ -1546,53 +1546,19 @@ impl Inference<'_, '_, '_> {
         if issubclass && !matches!(isinstance_type, Type::Never(_)) {
             isinstance_type = Type::Type(Rc::new(isinstance_type))
         }
-        // Please listen to "Red Hot Chili Peppers - Otherside" here.
-        let mut true_type = Type::Never(NeverCause::Other);
-        let mut other_side = Type::Never(NeverCause::Other);
-        let matcher = &mut Matcher::with_ignored_promotions();
-        let db = self.i_s.db;
-        let input_t = input.inf.as_cow_type(self.i_s);
-        for t in input_t.iter_with_unpacked_unions(db) {
-            /*
-            if matches!(t, Type::Any(_)) {
-                true_type.union_in_place(t.clone());
-                other_side.union_in_place(t.clone());
-            }
-            */
-            match isinstance_type.is_super_type_of(self.i_s, matcher, t) {
-                Match::True { with_any: true, .. } => other_side.union_in_place(t.clone()),
-                Match::True {
-                    with_any: false, ..
-                } => true_type.union_in_place(t.clone()),
-                Match::False { .. } => other_side.union_in_place(t.clone()),
-            }
-        }
-        if matches!(true_type, Type::Never(_)) {
-            for t in input_t.iter_with_unpacked_unions(db) {
-                if isinstance_type.is_simple_sub_type_of(self.i_s, t).bool() {
-                    true_type.union_in_place(isinstance_type.clone());
-                } else if isinstance_type.is_simple_super_type_of(self.i_s, t).bool() {
-                    true_type.union_in_place(t.clone());
-                } else {
-                    match Intersection::new_instance_intersection(
-                        self.i_s,
-                        t,
-                        &isinstance_type,
-                        |issue| self.add_issue(args.index(), issue),
-                    ) {
-                        Ok(new_t) => true_type.union_in_place(new_t),
-                        Err(()) => (),
-                    }
-                }
-            }
-        } else if isinstance_type.is_any_or_any_in_union(db) {
-            true_type = isinstance_type;
-        }
+
+        let (true_type, other_side) = split_and_intersect(
+            self.i_s,
+            &input.inf.as_cow_type(self.i_s),
+            isinstance_type,
+            |issue| self.add_issue(args.index(), issue),
+        )?;
+
         debug!(
             "Narrowed {} because of isinstance to {} and other side to {}",
             arg.as_code(),
-            true_type.format_short(db),
-            other_side.format_short(db)
+            true_type.format_short(self.i_s.db),
+            other_side.format_short(self.i_s.db)
         );
         Some(FramesWithParentUnions {
             truthy: Frame::from_type(key.clone(), true_type),
@@ -2729,4 +2695,48 @@ fn narrow_len_for_tuples(
         }
     }
     false
+}
+
+fn split_and_intersect(
+    i_s: &InferenceState,
+    original_t: &Type,
+    isinstance_type: Type,
+    add_issue: impl Fn(IssueKind) + Copy,
+) -> Option<(Type, Type)> {
+    // Please listen to "Red Hot Chili Peppers - Otherside" here.
+    let mut true_type = Type::Never(NeverCause::Other);
+    let mut other_side = Type::Never(NeverCause::Other);
+    let matcher = &mut Matcher::with_ignored_promotions();
+    for t in original_t.iter_with_unpacked_unions(i_s.db) {
+        /*
+        if matches!(t, Type::Any(_)) {
+            true_type.union_in_place(t.clone());
+            other_side.union_in_place(t.clone());
+        }
+        */
+        match isinstance_type.is_super_type_of(i_s, matcher, t) {
+            Match::True { with_any: true, .. } => other_side.union_in_place(t.clone()),
+            Match::True {
+                with_any: false, ..
+            } => true_type.union_in_place(t.clone()),
+            Match::False { .. } => other_side.union_in_place(t.clone()),
+        }
+    }
+    if matches!(true_type, Type::Never(_)) {
+        for t in original_t.iter_with_unpacked_unions(i_s.db) {
+            if isinstance_type.is_simple_sub_type_of(i_s, t).bool() {
+                true_type.union_in_place(isinstance_type.clone());
+            } else if isinstance_type.is_simple_super_type_of(i_s, t).bool() {
+                true_type.union_in_place(t.clone());
+            } else {
+                match Intersection::new_instance_intersection(i_s, t, &isinstance_type, add_issue) {
+                    Ok(new_t) => true_type.union_in_place(new_t),
+                    Err(()) => (),
+                }
+            }
+        }
+    } else if isinstance_type.is_any_or_any_in_union(i_s.db) {
+        true_type = isinstance_type;
+    }
+    Some((true_type, other_side))
 }
