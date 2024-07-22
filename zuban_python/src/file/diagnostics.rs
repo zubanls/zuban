@@ -40,6 +40,13 @@ use crate::{
 };
 
 const ENUM_NAMES_OVERRIDABLE: [&str; 2] = ["value", "name"];
+const IGNORED_INHERITANCE_NAMES: [&str; 5] = [
+    "__init__",
+    "__new__",
+    "__init_subclass__",
+    "__slots__",
+    "__class_getitem__",
+];
 
 lazy_static::lazy_static! {
     static ref FORWARD_OP_METHODS: HashSet<&'static str> = HashSet::from([
@@ -645,7 +652,7 @@ impl<'db> Inference<'db, '_, '_> {
                     }
                 }
 
-                if ["__init__", "__new__", "__init_subclass__", "__slots__"].contains(&name) {
+                if IGNORED_INHERITANCE_NAMES.contains(&name) {
                     continue;
                 }
                 let mut node_ref = NodeRef::new(self.file, *index - NAME_DEF_TO_NAME_DIFFERENCE);
@@ -2385,8 +2392,15 @@ pub fn check_multiple_inheritance<'x, BASES: Iterator<Item = TypeOrClass<'x>>>(
                 TypeOrClass::Type(t) => continue,
             };
             instance1.run_on_symbols(|name| {
-                if name.starts_with("__") {
-                    return;
+                if let Some(inner) = name.strip_prefix("__") {
+                    if let Some(inner) = inner.strip_suffix("__") {
+                        if IGNORED_INHERITANCE_NAMES.contains(&name) {
+                            return;
+                        }
+                    } else {
+                        // This is a private name
+                        return;
+                    }
                 }
                 let had_lookup_issue = Cell::new(false);
                 let inst2_lookup = instance2.lookup(

@@ -1045,10 +1045,12 @@ impl Inference<'_, '_, '_> {
         let mut right_infos = None;
         let had_first_left_entry = !left_frames.falsey.entries.is_empty();
         if left_frames.truthy.unreachable {
-            self.add_issue(
-                and.index(),
-                IssueKind::RightOperandIsNeverOperated { right: "and" },
-            )
+            if self.flags().warn_unreachable {
+                self.add_issue(
+                    and.index(),
+                    IssueKind::RightOperandIsNeverOperated { right: "and" },
+                )
+            }
         } else {
             //if !matches!(is_expr_part_reachable_for_name_binder(&self.flags(), left), Truthiness::False) {
             left_frames.truthy = FLOW_ANALYSIS.with(|fa| {
@@ -1098,10 +1100,12 @@ impl Inference<'_, '_, '_> {
         let (left_inf, mut left_frames) = self.find_guards_in_expression_parts(left);
         let mut right_infos = None;
         if left_frames.falsey.unreachable {
-            self.add_issue(
-                or.index(),
-                IssueKind::RightOperandIsNeverOperated { right: "or" },
-            )
+            if self.flags().warn_unreachable {
+                self.add_issue(
+                    or.index(),
+                    IssueKind::RightOperandIsNeverOperated { right: "or" },
+                )
+            }
         } else {
             left_frames.falsey = FLOW_ANALYSIS.with(|fa| {
                 fa.with_frame(self.i_s.db, left_frames.falsey, || {
