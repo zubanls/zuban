@@ -1553,7 +1553,11 @@ impl Inference<'_, '_, '_> {
             key,
             input.parent_unions,
             &isinstance_type,
-            |issue| self.add_issue(args.index(), issue),
+            |issue| {
+                if self.flags().warn_unreachable {
+                    self.add_issue(args.index(), issue)
+                }
+            },
         )
     }
 
@@ -1837,7 +1841,11 @@ impl Inference<'_, '_, '_> {
                 key,
                 infos.parent_unions,
                 &resolved_guard_t,
-                |issue| self.add_issue(args.index(), issue),
+                |issue| {
+                    if self.flags().warn_unreachable {
+                        self.add_issue(args.index(), issue)
+                    }
+                },
             )
         } else {
             Some(FramesWithParentUnions {

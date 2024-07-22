@@ -494,7 +494,11 @@ impl IssueKind {
             | TypedDictHasNoKeyForGet { .. } => "typeddict-item",
             TypedDictExtraKey { .. } | TypedDictHasNoKey { .. } => "typeddict-unknown-key",
 
-            UnreachableStatement | RightOperandIsNeverOperated { .. } => "unreachable",
+            UnreachableStatement
+            | RightOperandIsNeverOperated { .. }
+            | IntersectionCannotExistDueToFinalClass { .. }
+            | IntersectionCannotExistDueToIncompatibleMethodSignatures { .. }
+            | IntersectionCannotExistDueToInconsistentMro { .. } => "unreachable",
             RedundantCast { .. } => "redundant-cast",
             ReturnedAnyWarning { .. } => "no-any-return",
             NonOverlappingEqualityCheck { .. }

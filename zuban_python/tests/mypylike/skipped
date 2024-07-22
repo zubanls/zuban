@@ -336,7 +336,6 @@ testNarrowingIsInstanceNoIntersectionWithFinalTypeAndNoneType
 # intersection reversed?
 testIsInstanceAdHocIntersectionReversed
 # Intersection protocols?
-testConcreteClassesInProtocolsIsInstance
 testSpecialTypingProtocols
 # overwriting with def as a target
 testNarrowingWithDef
