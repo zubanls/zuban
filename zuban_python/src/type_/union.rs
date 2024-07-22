@@ -23,6 +23,11 @@ impl Type {
             false,
         )
     }
+
+    pub fn simplified_union_in_place(&mut self, i_s: &InferenceState, other: &Type) {
+        *self =
+            std::mem::replace(self, Self::Never(NeverCause::Other)).simplified_union(i_s, other);
+    }
 }
 
 impl TupleArgs {

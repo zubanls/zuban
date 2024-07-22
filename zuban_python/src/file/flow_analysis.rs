@@ -2705,14 +2705,11 @@ fn split_and_intersect(
     let mut other_side = Type::Never(NeverCause::Other);
     let matcher = &mut Matcher::with_ignored_promotions();
     for t in original_t.iter_with_unpacked_unions(i_s.db) {
-        /*
-        if matches!(t, Type::Any(_)) {
-            true_type.union_in_place(t.clone());
-            other_side.union_in_place(t.clone());
-        }
-        */
         match isinstance_type.is_super_type_of(i_s, matcher, t) {
-            Match::True { with_any: true, .. } => other_side.union_in_place(t.clone()),
+            Match::True { with_any: true, .. } => {
+                true_type.simplified_union_in_place(i_s, isinstance_type);
+                other_side.union_in_place(t.clone());
+            }
             Match::True {
                 with_any: false, ..
             } => true_type.union_in_place(t.clone()),
@@ -2722,9 +2719,9 @@ fn split_and_intersect(
     if matches!(true_type, Type::Never(_)) {
         for t in original_t.iter_with_unpacked_unions(i_s.db) {
             if isinstance_type.is_simple_sub_type_of(i_s, t).bool() {
-                true_type.union_in_place(isinstance_type.clone());
+                true_type.simplified_union_in_place(i_s, isinstance_type);
             } else if isinstance_type.is_simple_super_type_of(i_s, t).bool() {
-                true_type.union_in_place(t.clone());
+                true_type.simplified_union_in_place(i_s, t);
             } else {
                 match Intersection::new_instance_intersection(
                     i_s,
@@ -2732,7 +2729,7 @@ fn split_and_intersect(
                     &isinstance_type,
                     &mut add_issue,
                 ) {
-                    Ok(new_t) => true_type.union_in_place(new_t),
+                    Ok(new_t) => true_type.simplified_union_in_place(i_s, &new_t),
                     Err(()) => (),
                 }
             }
