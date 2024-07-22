@@ -1580,7 +1580,7 @@ impl Inference<'_, '_, '_> {
                         &isinstance_type,
                         |issue| self.add_issue(args.index(), issue),
                     ) {
-                        Ok(new_t) => true_type.union_in_place(Type::Intersection(new_t)),
+                        Ok(new_t) => true_type.union_in_place(new_t),
                         Err(()) => (),
                     }
                 }

@@ -40,7 +40,15 @@ impl Intersection {
         t1: &Type,
         t2: &Type,
         add_issue: impl Fn(IssueKind),
-    ) -> Result<Self, ()> {
+    ) -> Result<Type, ()> {
+        match (t1, t2) {
+            (Type::Type(t1), Type::Type(t2)) => {
+                return Self::new_instance_intersection(i_s, t1.as_ref(), t2.as_ref(), add_issue)
+                    .map(|out| Type::Type(Rc::new(out)))
+            }
+            _ => (),
+        }
+
         //Subclass of "C", "B", and "A" cannot exist: would have incompatible method signatures
         let intersection = Self::from_types(t1.clone(), t2.clone());
 
@@ -93,7 +101,7 @@ impl Intersection {
             );
             return Err(());
         }
-        Ok(intersection)
+        Ok(Type::Intersection(intersection))
     }
 
     pub fn format(&self, format_data: &FormatData) -> Box<str> {
