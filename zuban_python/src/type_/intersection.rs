@@ -114,6 +114,7 @@ impl Intersection {
             .map(|t| {
                 let s = match t {
                     Type::Class(c) if !with_generics => c.class(format_data.db).name().into(),
+                    Type::Tuple(_) if !with_generics => "tuple".into(),
                     _ => t.format(format_data),
                 };
                 format!("\"{s}\"")
