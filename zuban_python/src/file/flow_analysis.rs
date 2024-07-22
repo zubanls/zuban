@@ -1550,7 +1550,7 @@ impl Inference<'_, '_, '_> {
         let (true_type, other_side) = split_and_intersect(
             self.i_s,
             &input.inf.as_cow_type(self.i_s),
-            isinstance_type,
+            &isinstance_type,
             |issue| self.add_issue(args.index(), issue),
         )?;
 
@@ -1840,29 +1840,25 @@ impl Inference<'_, '_, '_> {
             return None;
         }
         let resolved_guard_t = resolved_guard_t.as_cow_type(self.i_s);
-        Some(FramesWithParentUnions {
-            falsey: if guard.from_type_is {
-                let t = Type::gather_union(|gather| {
-                    for t in infos
-                        .inf
-                        .as_cow_type(self.i_s)
-                        .iter_with_unpacked_unions(self.i_s.db)
-                    {
-                        if !resolved_guard_t
-                            .is_simple_super_type_of(self.i_s, t)
-                            .non_any_match()
-                        {
-                            gather(t.clone())
-                        }
-                    }
-                });
-                Frame::from_type(key.clone(), t)
-            } else {
-                Frame::default()
-            },
-            truthy: Frame::from_type(key, resolved_guard_t.into_owned()),
-            parent_unions: infos.parent_unions,
-        })
+        if guard.from_type_is {
+            let (true_type, other_side) = split_and_intersect(
+                self.i_s,
+                &infos.inf.as_cow_type(self.i_s),
+                &resolved_guard_t,
+                |issue| self.add_issue(args.index(), issue),
+            )?;
+            Some(FramesWithParentUnions {
+                truthy: Frame::from_type(key.clone(), true_type),
+                falsey: Frame::from_type(key.clone(), other_side),
+                parent_unions: infos.parent_unions,
+            })
+        } else {
+            Some(FramesWithParentUnions {
+                truthy: Frame::from_type(key, resolved_guard_t.into_owned()),
+                falsey: Frame::default(),
+                parent_unions: infos.parent_unions,
+            })
+        }
     }
 
     fn guard_of_in_operator(
@@ -2700,7 +2696,7 @@ fn narrow_len_for_tuples(
 fn split_and_intersect(
     i_s: &InferenceState,
     original_t: &Type,
-    isinstance_type: Type,
+    isinstance_type: &Type,
     add_issue: impl Fn(IssueKind) + Copy,
 ) -> Option<(Type, Type)> {
     // Please listen to "Red Hot Chili Peppers - Otherside" here.
@@ -2736,7 +2732,7 @@ fn split_and_intersect(
             }
         }
     } else if isinstance_type.is_any_or_any_in_union(i_s.db) {
-        true_type = isinstance_type;
+        true_type = isinstance_type.clone();
     }
     Some((true_type, other_side))
 }

@@ -330,11 +330,7 @@ testIsInstanceAdHocIntersectionFineGrainedIncrementalUnreachaableToIntersection
 # intersection should not be possible
 testIsinstanceMultiAndSpecialCase
 # intersection for merging and/or
-testAssignToTypeIsedVariable3
-testTypeIsNonzeroFloat
 testIsinstanceOrIsinstance
-testTypeIsMultipleCondition
-testTypeGuardMultipleCondition-xfail
 # Intersection with unions
 testIsInstanceAdHocIntersectionWithUnions
 # intersection with None
@@ -1916,6 +1912,7 @@ testInvalidateCachePart
 testDivmod
 # xfail
 testOpWithInheritedFromAny-xfail
+testTypeGuardMultipleCondition-xfail
 # Skips
 testSubtypingWithTypeImplementingGenericABCViaInheritance2-skip
 testOverloadInferringArgumentsUsingContext2-skip
