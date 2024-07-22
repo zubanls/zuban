@@ -2605,15 +2605,32 @@ pub fn linearize_mro_and_return_linearizable(
                 type_: if new_base.needs_remapping {
                     new_base
                         .t
-                        .replace_type_var_likes(i_s.db, &mut |t| match &bases[base_index] {
-                            Type::Tuple(tup) => {
+                        .replace_type_var_likes(i_s.db, &mut |usage| match &bases[base_index] {
+                            Type::Tuple(_) | Type::NamedTuple(_) => {
                                 debug_assert!(matches!(
-                                    t.as_type_var_like(),
+                                    usage.as_type_var_like(),
                                     TypeVarLike::TypeVar(_)
                                 ));
                                 GenericItem::TypeArg(i_s.db.python_state.object_type())
                             }
-                            base => base.expect_class_generics()[t.index()].clone(),
+                            Type::Class(GenericClass {
+                                generics: ClassGenerics::List(generics),
+                                ..
+                            }) => generics[usage.index()].clone(),
+                            // Very rare and therefore a separate case.
+                            Type::Class(c) => c
+                                .class(i_s.db)
+                                .generics
+                                .nth_usage(i_s.db, &usage)
+                                .into_generic_item(i_s.db),
+                            Type::Dataclass(d) => match &d.class.generics {
+                                ClassGenerics::List(generics) => generics[usage.index()].clone(),
+                                _ => unreachable!(),
+                            },
+                            Type::TypedDict(d) => todo!("Maybe this should be implemented?"),
+                            // If we expect class generics and tuples are involved, the tuple was already
+                            // calculated.
+                            _ => unreachable!(),
                         })
                 } else {
                     *allowed_to_use += 1;

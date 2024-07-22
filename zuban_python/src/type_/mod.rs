@@ -893,25 +893,6 @@ impl Type {
         }
     }
 
-    pub fn expect_class_generics(&self) -> &GenericsList {
-        match self {
-            Self::Class(GenericClass {
-                generics: ClassGenerics::List(generics),
-                ..
-            }) => generics,
-            Self::Dataclass(d) => match &d.class.generics {
-                ClassGenerics::List(generics) => generics,
-                _ => unreachable!(),
-            },
-            Self::TypedDict(d) => todo!("Maybe this should be implemented?"),
-            // If we expect class generics and tuples are involved, the tuple was already
-            // calculated.
-            Self::Tuple(t) => t.tuple_class_generics.get().unwrap(),
-            Self::NamedTuple(nt) => nt.as_tuple_ref().tuple_class_generics.get().unwrap(),
-            _ => unreachable!(),
-        }
-    }
-
     pub fn search_type_vars<C: FnMut(TypeVarLikeUsage) + ?Sized>(&self, found_type_var: &mut C) {
         match self {
             Self::Class(GenericClass {
