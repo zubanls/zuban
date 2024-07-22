@@ -1608,7 +1608,7 @@ impl Inference<'_, '_, '_> {
     ) -> Option<Type> {
         let isinstance_type = self.isinstance_or_issubclass_type(arg, issubclass)?;
         for t in isinstance_type.iter_with_unpacked_unions(self.i_s.db) {
-            if matches!(t, Type::TypedDict(_)) {
+            let cannot_use_with = |with| {
                 self.add_issue(
                     arg.index(),
                     IssueKind::CannotUseIsinstanceWith {
@@ -1616,9 +1616,14 @@ impl Inference<'_, '_, '_> {
                             false => "isinstance",
                             true => "issubclass",
                         },
-                        with: "TypedDict",
+                        with,
                     },
                 )
+            };
+            match t {
+                Type::TypedDict(_) => cannot_use_with("TypedDict"),
+                Type::NewType(_) => cannot_use_with("NewType"),
+                _ => (),
             }
             if let Some(cls) = t.maybe_class(self.i_s.db) {
                 let class_infos = cls.use_cached_class_infos(self.i_s.db);

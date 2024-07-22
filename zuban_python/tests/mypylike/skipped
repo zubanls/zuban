@@ -314,8 +314,6 @@ testTypeEqualsMultipleTypesShouldntNarrow
 # intersection regressions
 testIsInstanceThreeUnion3
 testIsinstanceAndNarrowTypeVariable
-# NewType isinstance
-testNewTypeWithIsInstanceAndIsSubclass
 # mro calculation special types
 testCorrectIsinstanceInForwardRefToNewType
 testTypeGuardNestedRestrictionUnionIsInstance
