@@ -1,7 +1,5 @@
 # Next up
 testTypeVarTupleTypeApplicationOverload
-testAssertionLazilyWithIsNone
-testAssertionLazilyWithIsInstance
 
 # callable matching regression
 testNoCrashOnNestedGenericCallable

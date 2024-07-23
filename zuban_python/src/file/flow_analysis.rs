@@ -745,10 +745,27 @@ impl Inference<'_, '_, '_> {
         self.maybe_has_primary_entry(primary).map(|x| x.1)
     }
 
-    pub fn flow_analysis_for_assert(&self, assert_stmt: AssertStmt, expr: Expression) {
-        let (_, true_frame, _) = self.find_guards_in_expr(expr);
+    pub fn flow_analysis_for_assert(&self, assert_stmt: AssertStmt) {
+        let (expr, message_expr) = assert_stmt.unpack();
+        if expr
+            .maybe_tuple()
+            .is_some_and(|tup| tup.iter().next().is_some())
+        {
+            self.add_issue(
+                expr.index(),
+                IssueKind::AssertionAlwaysTrueBecauseOfParentheses,
+            );
+        }
+
+        let (_, true_frame, false_frame) = self.find_guards_in_expr(expr);
 
         FLOW_ANALYSIS.with(|fa| {
+            if let Some(message_expr) = message_expr {
+                fa.with_frame(self.i_s.db, false_frame, || {
+                    self.infer_expression(message_expr);
+                });
+            }
+
             let assert_point = self.file.points.get(assert_stmt.index());
             if assert_point.calculated() && assert_point.specific() == Specific::AssertAlwaysFails {
                 fa.mark_current_frame_unreachable()

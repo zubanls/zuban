@@ -305,20 +305,7 @@ impl<'db> Inference<'db, '_, '_> {
                 SimpleStmtContent::GlobalStmt(x) => {}
                 SimpleStmtContent::NonlocalStmt(x) => {}
                 SimpleStmtContent::AssertStmt(assert_stmt) => {
-                    let (expr, message_expr) = assert_stmt.unpack();
-                    if expr
-                        .maybe_tuple()
-                        .is_some_and(|tup| tup.iter().next().is_some())
-                    {
-                        self.add_issue(
-                            expr.index(),
-                            IssueKind::AssertionAlwaysTrueBecauseOfParentheses,
-                        );
-                    }
-                    self.flow_analysis_for_assert(assert_stmt, expr);
-                    if let Some(message_expr) = message_expr {
-                        self.infer_expression(message_expr);
-                    }
+                    self.flow_analysis_for_assert(assert_stmt);
                 }
                 SimpleStmtContent::BreakStmt(b) => self.flow_analysis_for_break_stmt(b),
                 SimpleStmtContent::ContinueStmt(c) => self.flow_analysis_for_continue_stmt(c),

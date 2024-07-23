@@ -482,6 +482,7 @@ impl<'db> NameBinder<'db> {
                 SimpleStmtContent::AssertStmt(assert_stmt) => {
                     let (assert_expr, error_expr) = assert_stmt.unpack();
                     let latest = self.index_non_block_node_full(&assert_expr, ordered, false);
+                    self.references_need_flow_analysis = true;
                     if let Some(error_expr) = error_expr {
                         self.index_non_block_node_full(&error_expr, ordered, false);
                     }
@@ -497,7 +498,6 @@ impl<'db> NameBinder<'db> {
                             true,
                         );
                     }
-                    self.references_need_flow_analysis = true;
                     latest
                 }
                 SimpleStmtContent::ImportFrom(import) => {
