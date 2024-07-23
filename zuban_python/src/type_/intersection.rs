@@ -74,6 +74,22 @@ impl Intersection {
                     Ok(Type::from_union_entries(new_entries))
                 };
             }
+            (Type::Self_, _) => {
+                return Intersection::new_instance_intersection(
+                    i_s,
+                    &i_s.current_class().unwrap().as_type(i_s.db),
+                    t2,
+                    add_issue,
+                )
+            }
+            (_, Type::Self_) => {
+                return Intersection::new_instance_intersection(
+                    i_s,
+                    t1,
+                    &i_s.current_class().unwrap().as_type(i_s.db),
+                    add_issue,
+                )
+            }
             _ => (),
         }
 
