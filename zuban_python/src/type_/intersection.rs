@@ -199,6 +199,24 @@ impl Intersection {
         self.entries.iter()
     }
 
+    fn wrap_first_non_failing<T>(
+        &self,
+        mut callable: impl FnMut(&Type, &dyn Fn(IssueKind)) -> T,
+    ) -> Result<T, IssueKind> {
+        let first_issue = Cell::new(None);
+        for t in self.iter() {
+            let had_issue = Cell::new(false);
+            let result = callable(t, &|issue| {
+                first_issue.set(first_issue.take().or(Some(issue)));
+                had_issue.set(true);
+            });
+            if !had_issue.get() {
+                return Ok(result);
+            }
+        }
+        Err(first_issue.into_inner().unwrap())
+    }
+
     pub(crate) fn get_item(
         &self,
         i_s: &InferenceState,
@@ -206,19 +224,13 @@ impl Intersection {
         result_context: &mut ResultContext,
         add_issue: &dyn Fn(IssueKind),
     ) -> Inferred {
-        let first_issue = Cell::new(None);
-        for t in self.iter() {
-            let had_issue = Cell::new(false);
-            let result = t.get_item_internal(i_s, None, slice_type, result_context, &|issue| {
-                first_issue.set(first_issue.take().or(Some(issue)));
-                had_issue.set(true);
-            });
-            if !had_issue.get() {
-                return result;
-            }
-        }
-        add_issue(first_issue.into_inner().unwrap());
-        Inferred::new_any_from_error()
+        self.wrap_first_non_failing(|t, add_issue| {
+            t.get_item_internal(i_s, None, slice_type, result_context, add_issue)
+        })
+        .unwrap_or_else(|first_issue| {
+            add_issue(first_issue);
+            Inferred::new_any_from_error()
+        })
     }
 
     pub(crate) fn run_after_lookup_on_each_union_member(
