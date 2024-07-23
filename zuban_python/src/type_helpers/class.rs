@@ -1776,7 +1776,7 @@ impl<'db: 'a, 'a> Class<'a> {
             .into_owned()
     }
 
-    fn mro_maybe_without_object(
+    pub fn mro_maybe_without_object(
         &self,
         db: &'db Database,
         without_object: bool,

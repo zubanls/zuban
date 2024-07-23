@@ -2406,7 +2406,9 @@ pub fn check_multiple_inheritance<'x, BASES: Iterator<Item = TypeOrClass<'x>>>(
                 let inst2_lookup = instance2.lookup(
                     i_s,
                     name,
-                    InstanceLookupOptions::new(&|_| had_lookup_issue.set(true)),
+                    // Everything can inherit from object and it should therefore be fine to ignore
+                    // it.
+                    InstanceLookupOptions::new(&|_| had_lookup_issue.set(true)).without_object(),
                 );
                 if had_lookup_issue.get() {
                     /*

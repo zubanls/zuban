@@ -294,7 +294,11 @@ impl<'a> Instance<'a> {
         options: InstanceLookupOptions,
     ) -> LookupDetails<'a> {
         let mut attr_kind = AttributeKind::Attribute;
-        for (mro_index, class) in self.class.mro(i_s.db).skip(options.super_count) {
+        for (mro_index, class) in self
+            .class
+            .mro_maybe_without_object(i_s.db, options.without_object)
+            .skip(options.super_count)
+        {
             let (class_of_lookup, lookup) = class.lookup_symbol(i_s, name);
             // First check class infos
             let result = lookup.and_then(|inf| {
@@ -908,6 +912,7 @@ pub struct InstanceLookupOptions<'x> {
     as_self_instance: Option<&'x dyn Fn() -> Type>,
     check_dunder_getattr: bool,
     disallow_lazy_bound_method: bool,
+    without_object: bool,
 }
 
 impl<'x> InstanceLookupOptions<'x> {
@@ -919,6 +924,7 @@ impl<'x> InstanceLookupOptions<'x> {
             as_self_instance: None,
             check_dunder_getattr: true,
             disallow_lazy_bound_method: false,
+            without_object: false,
         }
     }
 
@@ -946,6 +952,11 @@ impl<'x> InstanceLookupOptions<'x> {
 
     pub fn with_disallowed_lazy_bound_method(mut self) -> Self {
         self.disallow_lazy_bound_method = true;
+        self
+    }
+
+    pub fn without_object(mut self) -> Self {
+        self.without_object = true;
         self
     }
 }

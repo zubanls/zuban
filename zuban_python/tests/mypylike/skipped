@@ -315,8 +315,6 @@ testIntersectionUsingPromotion6
 testModuleAliasRepeatedWithAnnotation
 testTypeEqualsMultipleTypesShouldntNarrow
 # Intersection why?
-testTypeGuardNestedRestrictionUnionIsInstance
-testTypeIsNestedRestrictionUnionIsInstance
 testSpecialTypingProtocols
 # overwriting with def as a target
 testNarrowingWithDef
