@@ -305,6 +305,7 @@ testNarrowingEqualityDisabledForCustomEquality
 assign_bool_to_false_true_literal
 testBoolInTuplesRegression
 
+tuple_intersection_with_getitem
 # isinstance error conditions
 testLiteralErrorsWithIsInstanceAndIsSubclass
 # unsorted narrowing tests

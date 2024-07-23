@@ -11,7 +11,7 @@ use crate::{
     type_helpers::{linearize_mro_and_return_linearizable, LookupDetails, TypeOrClass},
 };
 
-use super::{Type, UnionEntry};
+use super::{AnyCause, Type, UnionEntry};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Intersection {
@@ -198,6 +198,10 @@ impl Intersection {
         self.entries.iter()
     }
 
+    pub fn get_item(&self) -> std::slice::Iter<Type> {
+        self.entries.iter()
+    }
+
     pub(crate) fn run_after_lookup_on_each_union_member(
         &self,
         i_s: &InferenceState,
@@ -224,9 +228,6 @@ impl Intersection {
                     first_issue.set(first_issue.take().or(Some(issue)));
                 },
                 &mut |on_t, l| {
-                    if had_issue.get() {
-                        todo!()
-                    }
                     if l.lookup.is_some() {
                         callable(on_t, l)
                     } else {
@@ -239,8 +240,13 @@ impl Intersection {
             }
         }
         if let Some(first_issue) = first_issue.into_inner() {
-            add_issue(first_issue)
+            add_issue(first_issue);
+            callable(
+                &Type::Intersection(self.clone()),
+                LookupDetails::any(AnyCause::FromError),
+            )
+        } else {
+            callable(&Type::Intersection(self.clone()), LookupDetails::none())
         }
-        callable(&Type::Intersection(self.clone()), LookupDetails::none())
     }
 }
