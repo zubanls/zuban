@@ -314,3 +314,6 @@ reveal_type(a.no_such_export)  # N: Revealed type is "Any"
 from b import no_such_export  # E: Module "b" has no attribute "no_such_export"
 [file b.py]
 from a import no_such_export
+
+[case none_getitem]
+None[1]  # E: Value of type "None" is not indexable

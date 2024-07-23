@@ -373,8 +373,14 @@ impl Type {
         result_context: &mut ResultContext,
         add_issue: &dyn Fn(IssueKind),
     ) -> Inferred {
-        let not_possible = || {
-            add_issue(IssueKind::OnlyClassTypeApplication);
+        let not_possible = |is_class_like| {
+            if is_class_like {
+                add_issue(IssueKind::OnlyClassTypeApplication);
+            } else {
+                add_issue(IssueKind::NotIndexable {
+                    type_: self.format_short(i_s.db),
+                });
+            }
             slice_type.infer(i_s);
             Inferred::new_any_from_error()
         };
@@ -443,7 +449,7 @@ impl Type {
                         *slice_type,
                         matches!(result_context, ResultContext::AssignmentNewDefinition),
                     ),
-                _ => not_possible(),
+                _ => not_possible(true),
             },
             Type::NewType(new_type) => new_type.type_(i_s).get_item_internal(
                 i_s,
@@ -460,16 +466,6 @@ impl Type {
                 add_issue,
             ),
             Type::TypedDict(d) => d.get_item(i_s, slice_type, result_context, true, add_issue),
-            Type::Callable(_) => not_possible(),
-            Type::FunctionOverload(_) => {
-                not_possible();
-                todo!("Please write a test that checks this");
-            }
-            Type::None => {
-                debug!("TODO None[...]");
-                slice_type.infer(i_s);
-                Inferred::new_any(AnyCause::Todo)
-            }
             Type::Literal(l) => l.fallback_type(i_s.db).get_item_internal(
                 i_s,
                 None,
@@ -485,7 +481,8 @@ impl Type {
                 add_issue,
             ),
             Type::Intersection(i) => i.get_item(i_s, slice_type, result_context, add_issue),
-            _ => todo!("get_item not implemented for {self:?}"),
+            Type::Callable(_) => not_possible(true),
+            _ => not_possible(false),
         }
     }
 
