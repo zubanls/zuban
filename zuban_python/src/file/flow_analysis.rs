@@ -1801,15 +1801,18 @@ impl Inference<'_, '_, '_> {
                 other_side.union_in_place(t.clone());
             }
         }
-        if matches!(callable_t, Type::Never(_)) {
+        let falsey = if matches!(callable_t, Type::Never(_)) {
             callable_t = Type::Intersection(Intersection::new(Rc::new([
                 Type::Callable(self.i_s.db.python_state.any_callable_from_error.clone()),
                 input_t.into_owned(),
-            ])))
-        }
+            ])));
+            Frame::default()
+        } else {
+            Frame::from_type(key.clone(), other_side)
+        };
         Some(FramesWithParentUnions {
-            truthy: Frame::from_type(key.clone(), callable_t),
-            falsey: Frame::from_type(key, other_side),
+            truthy: Frame::from_type(key, callable_t),
+            falsey,
             parent_unions: ParentUnions::default(),
         })
     }
