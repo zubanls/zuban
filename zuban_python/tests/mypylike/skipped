@@ -278,25 +278,16 @@ testFinalInvalidDefinitions
 
 # callable()
 testSerializeDummyType
-testCallableNotCallable
-testCallableCallableClasses
-testCallableTypeVarEmpty
 testCallableTypeVarUnion
 testCallableObject2
 testCallableObjectGeneric
-testCallablePromote
 testCallableTuple
-testCallableWithNoneArgs
-#
-testCallableAnd
 testAnyCallable
 testDecoratedCallMethods
-testCallableObject
-testCallableNoArgs
-testBuiltinsTypeAsCallable
-testErrorMessageAboutSelf
-testClassMethodAliasStub
+check-callable:testCallableObject
 testCallableSubtypingTrivialSuffix
+testCallableTypeVarBound
+testCallableUnionOfTypes
 
 # Except Foo as bar where bar is bound over its existence as a variable
 testTryStarMultiple
@@ -1472,6 +1463,8 @@ testLocalPartialTypesWithNestedFunction3
 
 # "note: "f" is implicitly abstract because it has an empty function body. If it is not meant to be abstract, explicitly `return` or `return None`."
 testEmptyBodyNoneCompatibleProtocol
+# "note: Looks like the first special argument in a method is not named "self", "cls", or "mcs", maybe it is missing?"
+testErrorMessageAboutSelf
 
 # "unknown encoding: uft-8"
 testInvalidEncoding

@@ -1,6 +1,7 @@
 use std::{borrow::Cow, cell::Cell, rc::Rc};
 
 use crate::{
+    arguments::Args,
     database::FileIndex,
     diagnostics::IssueKind,
     file::check_multiple_inheritance,
@@ -8,7 +9,7 @@ use crate::{
     getitem::SliceType,
     inference_state::InferenceState,
     inferred::Inferred,
-    matching::{LookupKind, ResultContext},
+    matching::{LookupKind, OnTypeError, ResultContext},
     type_helpers::{linearize_mro_and_return_linearizable, LookupDetails, TypeOrClass},
 };
 
@@ -229,6 +230,22 @@ impl Intersection {
         })
         .unwrap_or_else(|first_issue| {
             add_issue(first_issue);
+            Inferred::new_any_from_error()
+        })
+    }
+
+    pub(crate) fn execute<'db>(
+        &self,
+        i_s: &InferenceState<'db, '_>,
+        args: &dyn Args<'db>,
+        result_context: &mut ResultContext,
+        on_type_error: OnTypeError,
+    ) -> Inferred {
+        self.wrap_first_non_failing(|t, add_issue| {
+            t.execute(i_s, None, args, result_context, on_type_error)
+        })
+        .unwrap_or_else(|first_issue| {
+            args.add_issue(i_s, first_issue);
             Inferred::new_any_from_error()
         })
     }

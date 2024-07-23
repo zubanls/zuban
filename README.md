@@ -75,3 +75,4 @@ Debugging:
   - foo: str
   - dataclasses `__init__` is overwritten and therefore members are not necessarily initialized.
 - hasattr narrowing uses `Any` instead of `object`
+- `a: int; callable(a)` will narrow a to be a callable that returns Any and takes any paramaters

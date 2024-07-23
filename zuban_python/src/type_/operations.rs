@@ -546,6 +546,9 @@ impl Type {
             Type::CustomBehavior(custom) => {
                 custom.execute(i_s, args, result_context, on_type_error)
             }
+            Type::Intersection(intersection) => {
+                intersection.execute(i_s, args, result_context, on_type_error)
+            }
             _ => {
                 let t = self.format_short(i_s.db);
                 args.add_issue(

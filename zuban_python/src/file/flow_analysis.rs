@@ -1408,7 +1408,9 @@ impl Inference<'_, '_, '_> {
                         _ => {
                             if let Some(saved) = first.maybe_saved_link() {
                                 if saved == self.i_s.db.python_state.callable_node_ref().as_link() {
-                                    debug!("TODO callable narrowing")
+                                    if let Some(frames) = self.guard_callable(args) {
+                                        return Ok((Inferred::new_bool(self.i_s.db), frames));
+                                    }
                                 } else if saved
                                     == self.i_s.db.python_state.hasattr_node_ref().as_link()
                                 {
@@ -1776,6 +1778,38 @@ impl Inference<'_, '_, '_> {
         Some(FramesWithParentUnions {
             truthy: Frame::from_type(FlowKey::Member(Rc::new(key), attr), attr_t),
             falsey,
+            parent_unions: ParentUnions::default(),
+        })
+    }
+
+    fn guard_callable(&self, args: Arguments) -> Option<FramesWithParentUnions> {
+        // Guards the builtins `callable(foo)`
+        let mut iterator = args.iter();
+        let Argument::Positional(arg) = iterator.next()? else {
+            return None;
+        };
+        let result = self.key_from_namedexpression(arg);
+        let key = result.key?;
+
+        let mut callable_t = Type::Never(NeverCause::Other);
+        let mut other_side = Type::Never(NeverCause::Other);
+        let input_t = result.inf.as_cow_type(self.i_s);
+        for t in input_t.iter_with_unpacked_unions(self.i_s.db) {
+            if t.maybe_callable(self.i_s).is_some() {
+                callable_t.union_in_place(t.clone());
+            } else {
+                other_side.union_in_place(t.clone());
+            }
+        }
+        if matches!(callable_t, Type::Never(_)) {
+            callable_t = Type::Intersection(Intersection::new(Rc::new([
+                Type::Callable(self.i_s.db.python_state.any_callable_from_error.clone()),
+                input_t.into_owned(),
+            ])))
+        }
+        Some(FramesWithParentUnions {
+            truthy: Frame::from_type(key.clone(), callable_t),
+            falsey: Frame::from_type(key, other_side),
             parent_unions: ParentUnions::default(),
         })
     }
