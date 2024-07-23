@@ -198,3 +198,17 @@ if isinstance(x, A):
 a: A
 if isinstance(a, B):
     a[0]  # E: Value of type "A" is not indexable
+
+[case intersection_with_getitem_of_classes]
+from typing import Tuple
+class A:
+    def __getitem__(self, other: int) -> str: ...
+class B: ...
+
+a: A
+b: B
+if isinstance(a, B):
+    reveal_type(a[0])  # N: Revealed type is "str"
+
+if isinstance(b, A):
+    reveal_type(b[0]) # N: Revealed type is "str"

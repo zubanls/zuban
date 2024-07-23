@@ -108,11 +108,12 @@ impl Tuple {
         }
     }
 
-    pub fn get_item(
+    pub(crate) fn get_item(
         &self,
         i_s: &InferenceState,
         slice_type: &SliceType,
         result_context: &mut ResultContext,
+        add_issue: &dyn Fn(IssueKind),
     ) -> Inferred {
         // Make sure the get_item part is inferred.
         slice_type.infer(i_s);
@@ -128,11 +129,7 @@ impl Tuple {
                     .bool()
                 {
                     Instance::new(self.class(i_s.db), None)
-                        .type_lookup(
-                            i_s,
-                            |issue| slice_type.as_node_ref().add_issue(i_s, issue),
-                            "__getitem__",
-                        )
+                        .type_lookup(i_s, add_issue, "__getitem__")
                         .into_inferred()
                         .execute(i_s, &slice_type.as_args(*i_s));
                     return Inferred::new_any(AnyCause::Todo);
@@ -141,10 +138,7 @@ impl Tuple {
                     TupleArgs::ArbitraryLen(t) => Inferred::from_type(t.as_ref().clone()),
                     _ => {
                         let out_of_range = |variadic_max_len| {
-                            slice_type.as_argument_node_ref().add_issue(
-                                i_s,
-                                IssueKind::TupleIndexOutOfRange { variadic_max_len },
-                            );
+                            add_issue(IssueKind::TupleIndexOutOfRange { variadic_max_len });
                             Some(Inferred::new_any_from_error())
                         };
                         index_inf
@@ -237,9 +231,7 @@ impl Tuple {
             SliceTypeContent::Slice(slice) => slice
                 .callback_on_tuple_indexes(i_s, |start, end, step| {
                     if step == 0 {
-                        slice_type
-                            .as_node_ref()
-                            .add_issue(i_s, IssueKind::TupleSliceStepCannotBeZero);
+                        add_issue(IssueKind::TupleSliceStepCannotBeZero);
                         return Inferred::from_type(Type::Tuple(
                             Self::new_arbitrary_length_with_any_from_error(),
                         ));
@@ -296,9 +288,7 @@ impl Tuple {
                         TupleArgs::WithUnpack(with_unpack) => {
                             Inferred::from_type(Type::Tuple(Tuple::new(TupleArgs::WithUnpack({
                                 let ambiguous = || {
-                                    slice_type
-                                        .as_node_ref()
-                                        .add_issue(i_s, IssueKind::AmbigousSliceOfVariadicTuple);
+                                    add_issue(IssueKind::AmbigousSliceOfVariadicTuple);
                                     Inferred::from_type(Type::Tuple(
                                         Self::new_arbitrary_length_with_any_from_error(),
                                     ))

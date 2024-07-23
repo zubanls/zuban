@@ -360,10 +360,21 @@ impl Type {
         slice_type: &SliceType,
         result_context: &mut ResultContext,
     ) -> Inferred {
+        self.get_item_internal(i_s, from_inferred, slice_type, result_context, &|issue| {
+            slice_type.as_node_ref().add_issue(i_s, issue)
+        })
+    }
+
+    pub(super) fn get_item_internal(
+        &self,
+        i_s: &InferenceState,
+        from_inferred: Option<&Inferred>,
+        slice_type: &SliceType,
+        result_context: &mut ResultContext,
+        add_issue: &dyn Fn(IssueKind),
+    ) -> Inferred {
         let not_possible = || {
-            slice_type
-                .as_node_ref()
-                .add_issue(i_s, IssueKind::OnlyClassTypeApplication);
+            add_issue(IssueKind::OnlyClassTypeApplication);
             slice_type.infer(i_s);
             Inferred::new_any_from_error()
         };
@@ -373,32 +384,34 @@ impl Type {
                 slice_type,
                 result_context,
                 self,
+                add_issue,
             ),
             Type::Any(cause) => {
                 // Make sure the slices are inferred
                 slice_type.infer(i_s);
                 Inferred::new_any(*cause)
             }
-            Type::Tuple(tup) => tup.get_item(i_s, slice_type, result_context),
-            Type::NamedTuple(nt) => nt.get_item(i_s, slice_type, result_context),
+            Type::Tuple(tup) => tup.get_item(i_s, slice_type, result_context, add_issue),
+            Type::NamedTuple(nt) => nt.get_item(i_s, slice_type, result_context, add_issue),
             Type::Union(union) => Inferred::gather_simplified_union(i_s, |callable| {
                 for t in union.iter() {
-                    callable(t.get_item(i_s, None, slice_type, result_context))
+                    callable(t.get_item_internal(i_s, None, slice_type, result_context, add_issue))
                 }
             }),
-            t @ Type::TypeVar(tv) => {
-                match &tv.type_var.kind {
-                    TypeVarKind::Bound(bound) => {
-                        match bound {
-                            Type::Class(c) => Instance::new(c.class(i_s.db), from_inferred)
-                                .get_item(i_s, slice_type, result_context, self),
-                            _ => bound.get_item(i_s, None, slice_type, result_context),
-                        }
-                    }
-                    TypeVarKind::Constraints(constraints) => todo!(),
-                    TypeVarKind::Unrestricted => todo!(),
-                }
-            }
+            t @ Type::TypeVar(tv) => match &tv.type_var.kind {
+                TypeVarKind::Bound(bound) => match bound {
+                    Type::Class(c) => Instance::new(c.class(i_s.db), from_inferred).get_item(
+                        i_s,
+                        slice_type,
+                        result_context,
+                        self,
+                        add_issue,
+                    ),
+                    _ => bound.get_item_internal(i_s, None, slice_type, result_context, add_issue),
+                },
+                TypeVarKind::Constraints(constraints) => todo!(),
+                TypeVarKind::Unrestricted => todo!(),
+            },
             Type::Type(t) => match t.as_ref() {
                 Type::Class(c) => c.class(i_s.db).get_item(i_s, slice_type, result_context),
                 Type::Dataclass(d) => slice_type
@@ -416,12 +429,9 @@ impl Type {
                         .is_simple_sub_type_of(i_s, &i_s.db.python_state.str_type())
                         .bool()
                     {
-                        slice_type.as_node_ref().add_issue(
-                            i_s,
-                            IssueKind::EnumIndexShouldBeAString {
-                                actual: enum_index.format_short(i_s),
-                            },
-                        );
+                        add_issue(IssueKind::EnumIndexShouldBeAString {
+                            actual: enum_index.format_short(i_s),
+                        });
                     }
                     Inferred::from_type(t.clone())
                 }
@@ -435,16 +445,21 @@ impl Type {
                     ),
                 _ => not_possible(),
             },
-            Type::NewType(new_type) => {
-                new_type
-                    .type_(i_s)
-                    .get_item(i_s, None, slice_type, result_context)
-            }
-            Type::RecursiveType(r) => {
-                r.calculated_type(i_s.db)
-                    .get_item(i_s, None, slice_type, result_context)
-            }
-            Type::TypedDict(d) => d.get_item(i_s, slice_type, result_context, true),
+            Type::NewType(new_type) => new_type.type_(i_s).get_item_internal(
+                i_s,
+                None,
+                slice_type,
+                result_context,
+                add_issue,
+            ),
+            Type::RecursiveType(r) => r.calculated_type(i_s.db).get_item_internal(
+                i_s,
+                None,
+                slice_type,
+                result_context,
+                add_issue,
+            ),
+            Type::TypedDict(d) => d.get_item(i_s, slice_type, result_context, true, add_issue),
             Type::Callable(_) => not_possible(),
             Type::FunctionOverload(_) => {
                 not_possible();
@@ -455,17 +470,21 @@ impl Type {
                 slice_type.infer(i_s);
                 Inferred::new_any(AnyCause::Todo)
             }
-            Type::Literal(l) => {
-                l.fallback_type(i_s.db)
-                    .get_item(i_s, None, slice_type, result_context)
-            }
+            Type::Literal(l) => l.fallback_type(i_s.db).get_item_internal(
+                i_s,
+                None,
+                slice_type,
+                result_context,
+                add_issue,
+            ),
             Type::Self_ => i_s.current_class().unwrap().instance().get_item(
                 i_s,
                 slice_type,
                 result_context,
                 self,
+                add_issue,
             ),
-            Type::Intersection(i) => i.get_item(i_s, slice_type, result_context),
+            Type::Intersection(i) => i.get_item(i_s, slice_type, result_context, add_issue),
             _ => todo!("get_item not implemented for {self:?}"),
         }
     }
@@ -477,7 +496,7 @@ impl Type {
     ) -> Option<Inferred> {
         match self {
             Type::TypedDict(td) => {
-                Some(td.get_item(i_s, slice_type, &mut ResultContext::Unknown, false))
+                Some(td.get_item(i_s, slice_type, &mut ResultContext::Unknown, false, &|_| ()))
             }
             _ => None,
         }

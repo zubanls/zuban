@@ -133,13 +133,15 @@ impl NamedTuple {
         self.as_tuple().iter(i_s, from)
     }
 
-    pub fn get_item(
+    pub(crate) fn get_item(
         &self,
         i_s: &InferenceState,
         slice_type: &SliceType,
         result_context: &mut ResultContext,
+        add_issue: &dyn Fn(IssueKind),
     ) -> Inferred {
-        self.as_tuple().get_item(i_s, slice_type, result_context)
+        self.as_tuple()
+            .get_item(i_s, slice_type, result_context, add_issue)
     }
 
     fn lookup_internal(

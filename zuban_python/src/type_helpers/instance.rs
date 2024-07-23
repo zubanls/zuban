@@ -249,7 +249,7 @@ impl<'a> Instance<'a> {
             i_s,
             instance: self,
             mro_iterator,
-            from,
+            add_issue: &|issue| from.add_issue(i_s, issue),
             name: "__iter__",
             as_instance: None,
         };
@@ -487,24 +487,24 @@ impl<'a> Instance<'a> {
             }
         }
     }
-    pub fn get_item(
+    pub(crate) fn get_item(
         &self,
         i_s: &InferenceState,
         slice_type: &SliceType,
         result_context: &mut ResultContext,
         as_instance: &Type,
+        add_issue: &dyn Fn(IssueKind),
     ) -> Inferred {
         if let Some(named_tuple) = self.class.maybe_named_tuple_base(i_s.db) {
             // TODO this doesn't take care of the mro and could not be the first __getitem__
-            return named_tuple.get_item(i_s, slice_type, result_context);
+            return named_tuple.get_item(i_s, slice_type, result_context, add_issue);
         }
         let mro_iterator = self.class.mro(i_s.db);
-        let from = slice_type.as_node_ref();
         let finder = ClassMroFinder {
             i_s,
             instance: self,
             mro_iterator,
-            from,
+            add_issue,
             name: "__getitem__",
             as_instance: Some(as_instance),
         };
@@ -518,31 +518,25 @@ impl<'a> Instance<'a> {
                         &mut ResultContext::Unknown,
                         OnTypeError::new(&|i_s, function, arg, types| {
                             let strs = types.as_boxed_strs(i_s.db);
-                            arg.add_issue(
-                                i_s,
-                                IssueKind::InvalidGetItem {
-                                    type_: self.class.format_short(i_s.db),
-                                    actual: strs.got,
-                                    expected: strs.expected,
-                                },
-                            )
+                            add_issue(IssueKind::InvalidGetItem {
+                                type_: self.class.format_short(i_s.db),
+                                actual: strs.got,
+                                expected: strs.expected,
+                            })
                         }),
                     );
                 }
                 FoundOnClass::UnresolvedType(t) => match t.as_ref() {
                     Type::Tuple(t) => {
-                        return t.get_item(i_s, slice_type, result_context);
+                        return t.get_item(i_s, slice_type, result_context, add_issue);
                     }
                     _ => (),
                 },
             }
         }
-        from.add_issue(
-            i_s,
-            IssueKind::NotIndexable {
-                type_: self.class.format_short(i_s.db),
-            },
-        );
+        add_issue(IssueKind::NotIndexable {
+            type_: self.class.format_short(i_s.db),
+        });
         Inferred::new_any_from_error()
     }
 }
@@ -587,7 +581,7 @@ struct ClassMroFinder<'db, 'a, 'd> {
     i_s: &'d InferenceState<'db, 'd>,
     instance: &'d Instance<'d>,
     mro_iterator: MroIterator<'db, 'a>,
-    from: NodeRef<'d>,
+    add_issue: &'d dyn Fn(IssueKind),
     name: &'d str,
     as_instance: Option<&'a Type>,
 }
@@ -609,7 +603,7 @@ impl<'db: 'a, 'a> Iterator for ClassMroFinder<'db, 'a, '_> {
                                     .cloned()
                                     .unwrap_or_else(|| self.instance.class.as_type(self.i_s.db)),
                                 class,
-                                |issue| self.from.add_issue(self.i_s, issue),
+                                |issue| (self.add_issue)(issue),
                                 mro_index,
                                 false,
                             )

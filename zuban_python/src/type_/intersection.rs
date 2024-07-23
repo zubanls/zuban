@@ -199,19 +199,25 @@ impl Intersection {
         self.entries.iter()
     }
 
-    pub fn get_item(
+    pub(crate) fn get_item(
         &self,
         i_s: &InferenceState,
         slice_type: &SliceType,
         result_context: &mut ResultContext,
+        add_issue: &dyn Fn(IssueKind),
     ) -> Inferred {
+        let first_issue = Cell::new(None);
         for t in self.iter() {
             let had_issue = Cell::new(false);
-            let result = t.get_item(i_s, None, slice_type, result_context);
+            let result = t.get_item_internal(i_s, None, slice_type, result_context, &|issue| {
+                first_issue.set(first_issue.take().or(Some(issue)));
+                had_issue.set(true);
+            });
             if !had_issue.get() {
                 return result;
             }
         }
+        add_issue(first_issue.into_inner().unwrap());
         Inferred::new_any_from_error()
     }
 

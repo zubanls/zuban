@@ -317,12 +317,13 @@ impl TypedDict {
         }
     }
 
-    pub fn get_item(
+    pub(crate) fn get_item(
         &self,
         i_s: &InferenceState,
         slice_type: &SliceType,
         result_context: &mut ResultContext,
         add_errors: bool,
+        add_issue: &dyn Fn(IssueKind),
     ) -> Inferred {
         match slice_type.unpack() {
             SliceTypeContent::Simple(simple) => infer_string_index(
@@ -334,15 +335,10 @@ impl TypedDict {
                             Inferred::from_type(member.type_.clone())
                         } else {
                             if add_errors {
-                                simple.as_node_ref().add_issue(
-                                    i_s,
-                                    IssueKind::TypedDictHasNoKeyForGet {
-                                        typed_dict: self
-                                            .format(&FormatData::new_short(i_s.db))
-                                            .into(),
-                                        key: key.into(),
-                                    },
-                                );
+                                add_issue(IssueKind::TypedDictHasNoKeyForGet {
+                                    typed_dict: self.format(&FormatData::new_short(i_s.db)).into(),
+                                    key: key.into(),
+                                });
                             }
                             Inferred::new_any_from_error()
                         }
@@ -350,9 +346,7 @@ impl TypedDict {
                 },
                 || {
                     if add_errors {
-                        add_access_key_must_be_string_literal_issue(i_s.db, self, |issue| {
-                            slice_type.as_node_ref().add_issue(i_s, issue)
-                        })
+                        add_access_key_must_be_string_literal_issue(i_s.db, self, add_issue)
                     }
                 },
             ),
