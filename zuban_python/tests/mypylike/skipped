@@ -277,8 +277,26 @@ testFinalNotInLoops
 testFinalInvalidDefinitions
 
 # callable()
-testFineGrainedCallable
 testSerializeDummyType
+testCallableNotCallable
+testCallableCallableClasses
+testCallableTypeVarEmpty
+testCallableTypeVarUnion
+testCallableObject2
+testCallableObjectGeneric
+testCallablePromote
+testCallableTuple
+testCallableWithNoneArgs
+#
+testCallableAnd
+testAnyCallable
+testDecoratedCallMethods
+testCallableObject
+testCallableNoArgs
+testBuiltinsTypeAsCallable
+testErrorMessageAboutSelf
+testClassMethodAliasStub
+testCallableSubtypingTrivialSuffix
 
 # Except Foo as bar where bar is bound over its existence as a variable
 testTryStarMultiple
