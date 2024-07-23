@@ -224,6 +224,7 @@ testNarrowOnSelfInGeneric
 testStrictEqualityDisabledWithTypeVarRestrictions
 testIsInstanceAdHocIntersectionGenericsWithValues
 testIsInstanceAdHocIntersectionGenericsWithValuesDirectReturn
+testCallableTypeVarUnion
 
 # literal final details
 testLiteralWithFinalPropagation
@@ -278,7 +279,6 @@ testFinalInvalidDefinitions
 
 # callable()
 testSerializeDummyType
-testCallableTypeVarUnion
 testCallableObject2
 testCallableObjectGeneric
 testCallableTuple
@@ -286,7 +286,6 @@ testAnyCallable
 testDecoratedCallMethods
 check-callable:testCallableObject
 testCallableSubtypingTrivialSuffix
-testCallableTypeVarBound
 testCallableUnionOfTypes
 
 # Except Foo as bar where bar is bound over its existence as a variable

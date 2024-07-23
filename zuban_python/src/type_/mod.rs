@@ -631,6 +631,10 @@ impl Type {
                     .and_then(|i| i.as_cow_type(i_s).maybe_callable(i_s))
             }
             Type::FunctionOverload(overload) => Some(CallableLike::Overload(overload.clone())),
+            Type::TypeVar(t) => match &t.type_var.kind {
+                TypeVarKind::Bound(bound) => bound.maybe_callable(i_s),
+                _ => None,
+            },
             _ => None,
         }
     }
