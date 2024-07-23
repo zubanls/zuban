@@ -3,7 +3,7 @@ use std::rc::Rc;
 use super::{
     simplified_union_from_iterators_with_format_index, type_var_likes::CallableId, CallableContent,
     CallableParam, CallableParams, ClassGenerics, Dataclass, GenericClass, GenericItem,
-    GenericsList, NamedTuple, ParamSpecArg, ParamSpecUsage, ParamType, RecursiveType,
+    GenericsList, Intersection, NamedTuple, ParamSpecArg, ParamSpecUsage, ParamType, RecursiveType,
     StarParamType, StarStarParamType, Tuple, TupleArgs, Type, TypeArgs, TypeGuardInfo, TypeVarLike,
     TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypedDictGenerics, UnionEntry, UnionType,
 };
@@ -170,11 +170,16 @@ impl Type {
                 Type::NamedTuple(Rc::new(NamedTuple::new(nt.name, constructor)))
             }
             t @ (Type::Enum(_) | Type::EnumMember(_)) => t.clone(),
+            Type::Intersection(intersection) => Type::Intersection(Intersection::new(
+                intersection
+                    .iter()
+                    .map(|t| t.replace_type_var_likes_and_self(db, callable, replace_self))
+                    .collect(),
+            )),
             Type::Super { .. }
             | Type::CustomBehavior(_)
             | Type::ParamSpecArgs(_)
             | Type::ParamSpecKwargs(_) => self.clone(),
-            Type::Intersection(_) => todo!(),
         }
     }
 
@@ -261,7 +266,12 @@ impl Type {
             t @ (Type::Module(_) | Type::Namespace(_) | Type::Self_ | Type::CustomBehavior(_)) => {
                 t.clone()
             }
-            Type::Intersection(_) => todo!(),
+            Type::Intersection(intersection) => Type::Intersection(Intersection::new(
+                intersection
+                    .iter()
+                    .map(|t| t.rewrite_late_bound_callables(manager))
+                    .collect(),
+            )),
         }
     }
 }
