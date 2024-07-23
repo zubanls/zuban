@@ -284,7 +284,6 @@ testCallableTuple
 testDecoratedCallMethods
 check-callable:testCallableObject
 testCallableSubtypingTrivialSuffix
-testCallableUnionOfTypes
 
 # Except Foo as bar where bar is bound over its existence as a variable
 testTryStarMultiple

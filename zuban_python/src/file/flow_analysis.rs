@@ -1795,13 +1795,27 @@ impl Inference<'_, '_, '_> {
         let mut other_side = Type::Never(NeverCause::Other);
         let input_t = result.inf.as_cow_type(self.i_s);
         for t in input_t.iter_with_unpacked_unions(self.i_s.db) {
-            if t.is_any() {
-                callable_t.union_in_place(t.clone());
-                other_side.union_in_place(t.clone());
-            } else if t.maybe_callable(self.i_s).is_some() {
-                callable_t.union_in_place(t.clone());
-            } else {
-                other_side.union_in_place(t.clone());
+            let mut add_t = |t: &Type| {
+                if t.is_any() {
+                    callable_t.union_in_place(t.clone());
+                    other_side.union_in_place(t.clone());
+                } else if let Some(callable_like) = t.maybe_callable(self.i_s) {
+                    //if matches!(callable_like, CallableLike::Callable(c))
+                    callable_t.union_in_place(t.clone());
+                } else {
+                    other_side.union_in_place(t.clone());
+                }
+            };
+            match t {
+                Type::Type(inner) => match inner.as_ref() {
+                    Type::Union(union) => {
+                        for inner in union.iter() {
+                            add_t(&Type::Type(Rc::new(inner.clone())));
+                        }
+                    }
+                    _ => add_t(t),
+                },
+                _ => add_t(t),
             }
         }
         let falsey = if matches!(callable_t, Type::Never(_)) {
