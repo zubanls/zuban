@@ -5,6 +5,7 @@ use crate::{
     diagnostics::IssueKind,
     file::check_multiple_inheritance,
     format_data::FormatData,
+    getitem::SliceType,
     inference_state::InferenceState,
     inferred::Inferred,
     matching::{LookupKind, ResultContext},
@@ -198,8 +199,20 @@ impl Intersection {
         self.entries.iter()
     }
 
-    pub fn get_item(&self) -> std::slice::Iter<Type> {
-        self.entries.iter()
+    pub fn get_item(
+        &self,
+        i_s: &InferenceState,
+        slice_type: &SliceType,
+        result_context: &mut ResultContext,
+    ) -> Inferred {
+        for t in self.iter() {
+            let had_issue = Cell::new(false);
+            let result = t.get_item(i_s, None, slice_type, result_context);
+            if !had_issue.get() {
+                return result;
+            }
+        }
+        Inferred::new_any_from_error()
     }
 
     pub(crate) fn run_after_lookup_on_each_union_member(

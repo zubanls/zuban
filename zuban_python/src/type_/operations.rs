@@ -465,7 +465,7 @@ impl Type {
                 result_context,
                 self,
             ),
-            Type::Intersection(intersection) => todo!(),
+            Type::Intersection(i) => i.get_item(i_s, slice_type, result_context),
             _ => todo!("get_item not implemented for {self:?}"),
         }
     }
