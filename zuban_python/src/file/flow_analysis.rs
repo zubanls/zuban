@@ -1795,7 +1795,10 @@ impl Inference<'_, '_, '_> {
         let mut other_side = Type::Never(NeverCause::Other);
         let input_t = result.inf.as_cow_type(self.i_s);
         for t in input_t.iter_with_unpacked_unions(self.i_s.db) {
-            if t.maybe_callable(self.i_s).is_some() {
+            if t.is_any() {
+                callable_t.union_in_place(t.clone());
+                other_side.union_in_place(t.clone());
+            } else if t.maybe_callable(self.i_s).is_some() {
                 callable_t.union_in_place(t.clone());
             } else {
                 other_side.union_in_place(t.clone());

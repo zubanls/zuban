@@ -278,11 +278,9 @@ testFinalNotInLoops
 testFinalInvalidDefinitions
 
 # callable()
-testSerializeDummyType
 testCallableObject2
 testCallableObjectGeneric
 testCallableTuple
-testAnyCallable
 testDecoratedCallMethods
 check-callable:testCallableObject
 testCallableSubtypingTrivialSuffix
@@ -561,6 +559,7 @@ testInferAttributeInitializedToEmpty*
 testInferAttributeInitializedToNoneAndAssigned
 testInferAttributeInitializedToNoneAndAssignedOtherMethod
 testInferAttributeInitializedToNoneAndAssignedClassBody
+testSerializeDummyType
 testPartialTypeInNestedClass
 testRefreshPartialTypeInClass
 testRefreshPartialTypeInferredAttributeIndex
