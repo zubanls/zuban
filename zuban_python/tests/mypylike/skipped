@@ -137,7 +137,6 @@ testSerializeTypedDictInMethod
 # TypedDict unions
 testTypedDictChainedGetWithEmptyDictDefault
 
-# More information needed
 # "Read-only property cannot override read-write property"
 testDataclassIncompatibleOverrides
 testMixinTypedPropertyReversed
@@ -159,6 +158,10 @@ testCovariantMutableOverride
 # __hash__ None overrides
 testOverrideAttributeWithMethod
 testPartialTypeProtocolHashable
+# dunder operator override checks
+testSubtypingIterableUnpacking2
+testEnumBaseClassesOrder
+testMultipleInheritance_MethodDefinitionsCompatibleNoOverride
 # Inheritance multiple issues?
 testOverrideClassVarManyBases
 testOverrideIncompatibleWithMultipleSupertypes
@@ -311,16 +314,9 @@ testIntersectionUsingPromotion5
 testIntersectionUsingPromotion6
 testModuleAliasRepeatedWithAnnotation
 testTypeEqualsMultipleTypesShouldntNarrow
-# Multi inheritance dunder checks regressions
-testSubtypingIterableUnpacking2
-testEnumBaseClassesOrder
-testMultipleInheritance_MethodDefinitionsCompatibleNoOverride
-testTypeIsNestedRestrictionUnionIsInstance
-# mro calculation special types
+# Intersection why?
 testTypeGuardNestedRestrictionUnionIsInstance
-# intersection reversed?
-testIsInstanceAdHocIntersectionReversed
-# Intersection protocols?
+testTypeIsNestedRestrictionUnionIsInstance
 testSpecialTypingProtocols
 # overwriting with def as a target
 testNarrowingWithDef
