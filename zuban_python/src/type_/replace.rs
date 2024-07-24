@@ -172,7 +172,7 @@ impl Type {
             t @ (Type::Enum(_) | Type::EnumMember(_)) => t.clone(),
             Type::Intersection(intersection) => Type::Intersection(Intersection::new(
                 intersection
-                    .iter()
+                    .iter_entries()
                     .map(|t| t.replace_type_var_likes_and_self(db, callable, replace_self))
                     .collect(),
             )),
@@ -268,7 +268,7 @@ impl Type {
             }
             Type::Intersection(intersection) => Type::Intersection(Intersection::new(
                 intersection
-                    .iter()
+                    .iter_entries()
                     .map(|t| t.rewrite_late_bound_callables(manager))
                     .collect(),
             )),

@@ -419,7 +419,7 @@ impl Type {
                 return result.unwrap();
             }
             Type::Intersection(intersection2) => {
-                return Match::any(intersection2.iter(), |t| {
+                return Match::any(intersection2.iter_entries(), |t| {
                     self.matches(i_s, matcher, t, variance)
                 })
             }

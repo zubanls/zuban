@@ -29,7 +29,7 @@ impl Intersection {
     fn from_types(t1: Type, t2: Type) -> Self {
         let mut entries = vec![];
         let mut add = |t| match t {
-            Type::Intersection(i) => entries.extend(i.iter().cloned()),
+            Type::Intersection(i) => entries.extend(i.iter_entries().cloned()),
             _ => entries.push(t),
         };
         add(t1);
@@ -104,7 +104,7 @@ impl Intersection {
                 .format_names(&FormatData::new_short(i_s.db), true)
                 .into()
         };
-        for t in intersection.iter() {
+        for t in intersection.iter_entries() {
             if let Some(cls) = t.maybe_class(i_s.db) {
                 if cls.use_cached_class_infos(i_s.db).is_final {
                     add_issue(IssueKind::IntersectionCannotExistDueToFinalClass {
@@ -131,10 +131,12 @@ impl Intersection {
             check_multiple_inheritance(
                 i_s,
                 || {
-                    intersection.iter().map(|t| match t.maybe_class(i_s.db) {
-                        Some(c) => TypeOrClass::Class(c),
-                        None => TypeOrClass::Type(Cow::Borrowed(t)),
-                    })
+                    intersection
+                        .iter_entries()
+                        .map(|t| match t.maybe_class(i_s.db) {
+                            Some(c) => TypeOrClass::Class(c),
+                            None => TypeOrClass::Type(Cow::Borrowed(t)),
+                        })
                 },
                 |_| true,
                 |_| *had_issue = true,
@@ -207,7 +209,7 @@ impl Intersection {
         }
     }
 
-    pub fn iter(&self) -> std::slice::Iter<Type> {
+    pub fn iter_entries(&self) -> std::slice::Iter<Type> {
         self.entries.iter()
     }
 
@@ -216,7 +218,7 @@ impl Intersection {
         mut callable: impl FnMut(&Type, &dyn Fn(IssueKind)) -> T,
     ) -> Result<T, IssueKind> {
         let first_issue = Cell::new(None);
-        for t in self.iter() {
+        for t in self.iter_entries() {
             let had_issue = Cell::new(false);
             let result = callable(t, &|issue| {
                 first_issue.set(first_issue.take().or(Some(issue)));
@@ -273,7 +275,7 @@ impl Intersection {
         callable: &mut dyn FnMut(&Type, LookupDetails),
     ) {
         let first_issue = Cell::new(None);
-        for t in self.iter() {
+        for t in self.iter_entries() {
             let had_issue = Cell::new(false);
             t.run_after_lookup_on_each_union_member(
                 i_s,

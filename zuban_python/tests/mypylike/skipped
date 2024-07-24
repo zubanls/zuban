@@ -278,7 +278,6 @@ testFinalNotInLoops
 testFinalInvalidDefinitions
 
 # callable()
-testCallableObjectGeneric
 testCallableTuple
 testDecoratedCallMethods
 
@@ -404,6 +403,7 @@ testUnionMultiassignPacked
 testUnpackUnionNoCrashOnPartialNoneBinder
 testNestedUnionUnpackingFromNestedTuplesBinder
 testUnionUnpackingDoubleBinder
+testCallableObjectGeneric
 # narrowing with dict keys
 testNarrowTypeForDictKeys
 # try/except/finally
