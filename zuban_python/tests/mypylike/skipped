@@ -317,10 +317,7 @@ testNarrowingWithDef
 testIsInstanceWithUnknownType
 testNarrowingWithTupleOfTypes
 testNarrowingWithTupleOfTypesPy310Plus
-# issubclass narrowing
-testIssubclassWithMetaclassesStrictOptional
 # narrowing if with literals
-testConditionalBoolLiteralUnionNarrowing
 testRecursiveAliasTuple
 # narrowing with Any troubles
 testSubtypingWithAny
@@ -341,8 +338,6 @@ testUnreachableWhenSuperclassIsAny
 testUnreachableWhenSuperclassIsAnyNoStrictOptional
 testTypeGuardNestedRestrictionAny
 testTypeIsNestedRestrictionAny
-# questionable implicit literal?
-testEnumReachabilityChecksIndirect
 # or/and boolean logic over multiple terms
 testAndOr
 testRestrictedBoolAndOrWithGenerics
@@ -354,8 +349,6 @@ testFinalWithoutBoolButWithLen
 testNarrowingLenTypeVarTupleGreaterThan
 testNarrowingLenBareExpressionTypeVarTuple
 testNarrowingLenUnionWithUnreachable
-# narrowing `in` weird overlapping. Mypy correct?
-testTupleOverlapDifferentTuples
 # narrowing assignments regressions after `foo =` narrowing
 testAwaitOverloadSpecialCase
 testCompatibilityOfDynamicWithOtherTypes
@@ -778,6 +771,13 @@ testClassLevelTypeAliasesInUnusualContexts
 testMalformedTypeAliasRuntimeReassignments
 
 # --------------------------- Not first release ---------------------------
+
+# issubclass narrowing leads to Never entries instead of unreachable?
+testIssubclassWithMetaclassesStrictOptional
+# questionable implicit literal?
+testEnumReachabilityChecksIndirect
+# narrowing `in` weird overlapping. Mypy correct?
+testTupleOverlapDifferentTuples
 
 # subtyping arbitrary length unpacks
 testVariadicTupleSubtyping
