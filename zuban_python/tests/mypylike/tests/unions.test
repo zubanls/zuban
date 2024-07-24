@@ -29,3 +29,17 @@ zz: str | bytes
 from typing import Never
 zz: Never
 1.0 in zz
+
+[case type_union_assignments]
+from typing import Type
+x: Type[int | str]
+y: Type[str] | Type[int]
+a: Type[int | bytes]
+b: Type[int] | Type[bytes]
+
+if bool():
+    x = y
+    a = y  # E: Incompatible types in assignment (expression has type "Type[str] | Type[int]", variable has type "Type[int | bytes]")
+    b = x  # E: Incompatible types in assignment (expression has type "Type[str] | Type[int]", variable has type "Type[int] | Type[bytes]")
+if bool():
+    y = x

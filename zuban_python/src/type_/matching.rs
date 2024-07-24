@@ -36,6 +36,15 @@ impl Type {
             ),
             Type::Type(t1) => match value_type {
                 Type::Type(t2) => t1.matches(i_s, matcher, t2, variance).similar_if_false(),
+                Type::Union(u2) => match t1.as_ref() {
+                    Type::Union(u) => {
+                        let repacked = Type::Union(UnionType::from_types(
+                            u.iter().map(|t| Type::Type(Rc::new(t.clone()))).collect(),
+                        ));
+                        repacked.matches_internal(i_s, matcher, value_type, variance)
+                    }
+                    _ => Match::new_false(),
+                },
                 _ => match t1.as_ref() {
                     Type::Any(_)
                         if value_type
@@ -492,6 +501,15 @@ impl Type {
                 }
                 Variance::Contravariant => unreachable!(),
             },
+            Type::Type(t) if matches!(t.as_ref(), Type::Union(_)) => {
+                let Type::Union(u) = t.as_ref() else {
+                    unreachable!();
+                };
+                let repacked = Type::Union(UnionType::from_types(
+                    u.iter().map(|t| Type::Type(Rc::new(t.clone()))).collect(),
+                ));
+                self.matches_union(i_s, matcher, u1, &repacked, variance)
+            }
             _ => match variance {
                 Variance::Covariant => {
                     Match::any(u1.iter(), |g| g.matches(i_s, matcher, value_type, variance))

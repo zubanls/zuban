@@ -318,7 +318,6 @@ testIsInstanceWithUnknownType
 testNarrowingWithTupleOfTypes
 testNarrowingWithTupleOfTypesPy310Plus
 # issubclass narrowing
-testIsInstanceTypeVsUnionOfType
 testIssubclassTuple
 testIssubclassWithMetaclasses
 testIssubclassWithMetaclassesStrictOptional
