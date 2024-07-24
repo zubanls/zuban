@@ -855,7 +855,7 @@ pub(crate) fn execute_type_of_type<'db>(
             debug!("TODO did not check arguments in execution of enum");
             Inferred::from_type(type_.clone())
         }
-        Type::Union(union) => Inferred::gather_base_types(i_s, |gather| {
+        Type::Union(union) => Inferred::gather_simplified_union(i_s, |gather| {
             for t in union.iter() {
                 gather(execute_type_of_type(
                     i_s,

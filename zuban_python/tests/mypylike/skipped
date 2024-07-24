@@ -319,8 +319,6 @@ testNarrowingWithTupleOfTypes
 testNarrowingWithTupleOfTypesPy310Plus
 # issubclass narrowing
 testIsInstanceTypeVsUnionOfType
-testIssubclasDestructuringUnions2
-testIssubclasDestructuringUnions3
 testIssubclassTuple
 testIssubclassWithMetaclasses
 testIssubclassWithMetaclassesStrictOptional
