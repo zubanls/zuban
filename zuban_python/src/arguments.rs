@@ -23,11 +23,7 @@ pub(crate) trait Args<'db>: std::fmt::Debug {
     // This is not the case in the grammar, but here we want that.
     fn iter(&self) -> ArgIterator<'db, '_>;
     fn as_node_ref(&self) -> Option<NodeRef>;
-    fn add_issue(&self, i_s: &InferenceState, issue: IssueKind) {
-        self.as_node_ref()
-            .expect("Otherwise add_issue should be implemented")
-            .add_issue(i_s, issue)
-    }
+    fn add_issue(&self, i_s: &InferenceState, issue: IssueKind);
     fn starting_line(&self) -> String {
         let Some(node_ref) = self.as_node_ref() else {
             return "<unkown line>".into();
@@ -128,6 +124,10 @@ impl<'db: 'a, 'a> Args<'db> for SimpleArgs<'db, 'a> {
         })
     }
 
+    fn add_issue(&self, i_s: &InferenceState, issue: IssueKind) {
+        NodeRef::new(self.file, self.primary_node_index).add_issue(i_s, issue)
+    }
+
     fn as_node_ref(&self) -> Option<NodeRef> {
         Some(NodeRef::new(self.file, self.primary_node_index))
     }
@@ -191,6 +191,10 @@ impl<'db, 'a> Args<'db> for KnownArgs<'a> {
 
     fn as_node_ref(&self) -> Option<NodeRef> {
         Some(self.node_ref)
+    }
+
+    fn add_issue(&self, i_s: &InferenceState, issue: IssueKind) {
+        self.node_ref.add_issue(i_s, issue)
     }
 }
 
@@ -1160,6 +1164,10 @@ impl<'db, 'a> Args<'db> for NoArgs<'a> {
 
     fn as_node_ref(&self) -> Option<NodeRef> {
         Some(self.0)
+    }
+
+    fn add_issue(&self, i_s: &InferenceState, issue: IssueKind) {
+        self.0.add_issue(i_s, issue)
     }
 }
 
