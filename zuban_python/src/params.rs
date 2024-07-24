@@ -467,7 +467,9 @@ pub fn matches_simple_params<
                             continue;
                         }
                         _ => {
-                            if is_trivial_suffix(i_s.db, specific1, params1.next()) {
+                            if !matcher.precise_matching
+                                && is_trivial_suffix(i_s.db, specific1, params1.next())
+                            {
                                 debug!("Matched because of trivial suffix");
                                 return matches;
                             }
@@ -564,7 +566,9 @@ pub fn matches_simple_params<
                     return matches;
                 }
                 specific1 => {
-                    if is_trivial_suffix(i_s.db, specific1, params1.next()) {
+                    if !matcher.precise_matching
+                        && is_trivial_suffix(i_s.db, specific1, params1.next())
+                    {
                         debug!("Matched because of trivial suffix (too few params)");
                         return matches;
                     }

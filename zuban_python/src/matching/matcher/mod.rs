@@ -51,6 +51,7 @@ pub struct Matcher<'a> {
     class: Option<&'a Class<'a>>,
     pub func_or_callable: Option<FunctionOrCallable<'a>>,
     ignore_promotions: bool,
+    pub precise_matching: bool, // This is what Mypy does with proper_subtype=True
     replace_self: Option<ReplaceSelf<'a>>,
     pub ignore_positional_param_names: bool, // Matches `ignore_pos_arg_names` in Mypy
     match_reverse: bool,                     // For contravariance subtypes
@@ -102,6 +103,11 @@ impl<'a> Matcher<'a> {
         let mut m = Self::new_callable_matcher(callable);
         m.match_reverse = true;
         m
+    }
+
+    pub fn without_precise_matching(mut self) -> Self {
+        self.precise_matching = true;
+        self
     }
 
     pub fn new_function_matcher(
@@ -966,6 +972,7 @@ impl<'a> Matcher<'a> {
             class: self.class,
             func_or_callable: self.func_or_callable,
             ignore_promotions: self.ignore_promotions,
+            precise_matching: self.precise_matching,
             ignore_positional_param_names: self.ignore_positional_param_names,
             replace_self: self.replace_self,
             match_reverse: self.match_reverse,

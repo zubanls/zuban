@@ -1850,7 +1850,7 @@ fn is_overload_unmatchable(
     c1: &CallableContent,
     c2: &CallableContent,
 ) -> bool {
-    let mut matcher = Matcher::new_reverse_callable_matcher(c1);
+    let mut matcher = Matcher::new_reverse_callable_matcher(c1).without_precise_matching();
     let result = matches_params(i_s, &mut matcher, &c2.params, &c1.params);
     matches!(result, Match::True { with_any: false })
 }
