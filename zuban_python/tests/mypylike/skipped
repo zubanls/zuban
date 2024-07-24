@@ -353,8 +353,6 @@ testAssignAnyToUnion
 testUnionOfVariableLengthTupleUnpacking
 # statement narrowing regressions after `foo.bar =` narrowing
 testDescriptorGetSetDifferentTypes
-testTypeVariableAsTypeArgument
-testUnionMultiassignIndexedWithError
 # narrowing assignments
 testTupleCompatibleWithSequence
 testAugmentedAssignmentIntFloat
@@ -364,7 +362,6 @@ testUnionMultiassignPacked
 testUnpackUnionNoCrashOnPartialNoneBinder
 testNestedUnionUnpackingFromNestedTuplesBinder
 testUnionUnpackingDoubleBinder
-testCallableObjectGeneric
 # narrowing with dict keys
 testNarrowTypeForDictKeys
 # try/except/finally

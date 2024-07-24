@@ -46,7 +46,7 @@ impl<'a> Instance<'a> {
         from: NodeRef,
         name: Name,
         value: &Inferred,
-    ) {
+    ) -> Result<(), ()> {
         let add_issue = |issue| from.add_issue(i_s, issue);
 
         let name_str = name.as_str();
@@ -55,18 +55,25 @@ impl<'a> Instance<'a> {
                 class_name,
                 property_name: name_str.into(),
             });
+            Err(())
         };
         if let Some(nt) = self.class.maybe_named_tuple_base(i_s.db) {
             if nt.search_param(i_s.db, name_str).is_some() {
-                property_is_read_only(nt.name(i_s.db).into());
-                return;
+                return property_is_read_only(nt.name(i_s.db).into());
             }
         }
         let check_compatible = |t: &Type, value: &_| {
+            let mut had_errors = false;
             t.error_if_not_matches(i_s, value, add_issue, |error_types| {
                 let ErrorStrs { expected, got } = error_types.as_boxed_strs(i_s.db);
+                had_errors = true;
                 Some(IssueKind::IncompatibleAssignment { got, expected })
-            })
+            });
+            if had_errors {
+                Err(())
+            } else {
+                Ok(())
+            }
         };
 
         let lookup_details = self.class.lookup_without_descriptors(i_s, from, name_str);
@@ -100,8 +107,7 @@ impl<'a> Instance<'a> {
                     match setattr.as_cow_type(i_s).maybe_callable(i_s) {
                         Some(CallableLike::Callable(c)) => {
                             if let Some(second) = c.second_positional_type() {
-                                check_compatible(&second, value);
-                                return;
+                                return check_compatible(&second, value);
                             }
                         }
                         Some(CallableLike::Overload(_)) => todo!(),
@@ -110,7 +116,7 @@ impl<'a> Instance<'a> {
                 }
             }
             add_attribute_error(i_s, from, &t, &t, name_str);
-            return;
+            return Err(());
         };
         if inf.maybe_saved_specific(i_s.db) == Some(Specific::AnnotationOrTypeCommentClassVar) {
             add_issue(IssueKind::CannotAssignToClassVarViaInstance {
@@ -125,7 +131,7 @@ impl<'a> Instance<'a> {
                     name: name_str.into(),
                 },
             );
-            return;
+            return Err(());
         }
 
         let assign_to = inf.as_cow_type(i_s);
@@ -137,8 +143,7 @@ impl<'a> Instance<'a> {
                     .into_maybe_inferred()
                 {
                     let inst = self.as_inferred(i_s);
-                    calculate_descriptor(i_s, from, __set__, inst, value);
-                    return;
+                    return calculate_descriptor(i_s, from, __set__, inst, value);
                 } else if let Some(inf) = Instance::new(descriptor, None).bind_dunder_get(
                     i_s,
                     add_issue,
@@ -151,12 +156,11 @@ impl<'a> Instance<'a> {
                     // the class attribute Foo.bar.
                     // Here we ensure that the contract that the __get__ descriptor gives us is
                     // not violated.
-                    check_compatible(&inf.as_cow_type(i_s), value);
-                    return;
+                    return check_compatible(&inf.as_cow_type(i_s), value);
                 }
             }
             Type::Callable(c) if matches!(c.kind, FunctionKind::Property { .. }) => {
-                match c.kind {
+                return match c.kind {
                     FunctionKind::Property {
                         writable: false, ..
                     } => {
@@ -167,11 +171,10 @@ impl<'a> Instance<'a> {
                         }
                     }
                     FunctionKind::Property { writable: true, .. } => {
-                        check_compatible(&c.return_type, value);
+                        check_compatible(&c.return_type, value)
                     }
                     _ => unreachable!(),
                 }
-                return;
             }
             Type::Callable(c) => {
                 if !matches!(&c.params, CallableParams::Any(_)) {
@@ -545,7 +548,8 @@ fn calculate_descriptor(
     set_method: Inferred,
     instance: Inferred,
     value: &Inferred,
-) {
+) -> Result<(), ()> {
+    let had_error = Cell::new(false);
     set_method.execute_with_details(
         i_s,
         &CombinedArgs::new(
@@ -554,6 +558,7 @@ fn calculate_descriptor(
         ),
         &mut ResultContext::ExpectUnused,
         OnTypeError::new(&|i_s, error_text, argument, types| {
+            had_error.set(true);
             if argument.index == 2 {
                 let strs = types.as_boxed_strs(i_s.db);
                 from.add_issue(
@@ -568,6 +573,11 @@ fn calculate_descriptor(
             }
         }),
     );
+    if had_error.get() {
+        Err(())
+    } else {
+        Ok(())
+    }
 }
 
 enum FoundOnClass<'a> {

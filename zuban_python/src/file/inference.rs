@@ -1273,12 +1273,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     let mut had_error = false;
                     for t in base.iter_with_unpacked_unions(i_s.db) {
                         if let Some(cls) = t.maybe_class(i_s.db) {
-                            Instance::new(cls, None).check_set_descriptor(
-                                i_s,
-                                node_ref,
-                                name_definition.name(),
-                                value,
-                            );
+                            had_error |= Instance::new(cls, None)
+                                .check_set_descriptor(i_s, node_ref, name_definition.name(), value)
+                                .is_err();
                             continue;
                         }
                         let property_is_read_only = |class_name| {
@@ -1296,12 +1293,14 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                     had_error = true;
                                     property_is_read_only(d.class(i_s.db).name().into())
                                 }
-                                Instance::new(d.class(i_s.db), None).check_set_descriptor(
-                                    i_s,
-                                    node_ref,
-                                    name_definition.name(),
-                                    value,
-                                );
+                                had_error |= Instance::new(d.class(i_s.db), None)
+                                    .check_set_descriptor(
+                                        i_s,
+                                        node_ref,
+                                        name_definition.name(),
+                                        value,
+                                    )
+                                    .is_err();
                                 continue;
                             }
                             Type::NamedTuple(nt) => {
