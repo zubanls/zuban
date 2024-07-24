@@ -94,6 +94,22 @@ impl Intersection {
             }
             _ => (),
         }
+        let mut error_if_not_intersectable = |t: &Type| {
+            match t {
+                Type::None => add_issue(IssueKind::IntersectionCannotExistDueToFinalClass {
+                    intersection: format!(r#""{}" and "NoneType""#, t1.format_short(i_s.db)).into(),
+                    final_class: "NoneType".into(),
+                }),
+                _ => (),
+            }
+            Err(())
+        };
+        if !t1.is_intersectable(i_s.db) {
+            return error_if_not_intersectable(t1);
+        }
+        if !t2.is_intersectable(i_s.db) {
+            return error_if_not_intersectable(t2);
+        }
 
         //Subclass of "C", "B", and "A" cannot exist: would have incompatible method signatures
         let mut intersection = Self::from_types(t1.clone(), t2.clone());

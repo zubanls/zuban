@@ -1153,6 +1153,10 @@ impl Type {
         }
     }
 
+    pub fn is_intersectable(&self, db: &Database) -> bool {
+        self.is_subclassable(db) || matches!(self, Type::Intersection(_))
+    }
+
     pub fn maybe_avoid_implicit_literal(&self, db: &Database) -> Option<Self> {
         match self {
             Type::Literal(l) if l.implicit => Some(l.fallback_type(db)),

@@ -144,7 +144,6 @@ pub(crate) enum IssueKind {
     ParamSpecArgumentsNeedsBothStarAndStarStar { name: Box<str> },
     NewTypeInvalidType,
     NewTypeMustBeSubclassable { got: Box<str> },
-    SubclassOfFinalCannotExist { final_class: Box<str>, other_class: Box<str> },
     NewTypeCannotUseProtocols,
     BasesOfProtocolMustBeProtocol,
     MustHaveOneArgument { name: &'static str },
@@ -1158,9 +1157,6 @@ impl<'db> Diagnostic<'db> {
             NewTypeInvalidType => "Argument 2 to NewType(...) must be a valid type".to_string(),
             NewTypeMustBeSubclassable{got} => format!(
                 "Argument 2 to NewType(...) must be subclassable (got \"{got}\")"
-            ),
-            SubclassOfFinalCannotExist { final_class, other_class } => format!(
-                r#"Subclass of "{final_class}" and "{other_class}" cannot exist: "{final_class}" is final"#
             ),
             NewTypeCannotUseProtocols => "NewType cannot be used with protocol classes".to_string(),
             BasesOfProtocolMustBeProtocol => "All bases of a protocol must be protocols".to_string(),

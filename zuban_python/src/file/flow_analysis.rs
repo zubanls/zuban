@@ -2831,7 +2831,7 @@ fn split_and_intersect(
                     match Intersection::new_instance_intersection(
                         i_s,
                         t,
-                        &isinstance_type,
+                        isinstance_type,
                         &mut add_issue,
                     ) {
                         Ok(new_t) => true_type.simplified_union_in_place(i_s, &new_t),
