@@ -2217,9 +2217,8 @@ impl<'db: 'a, 'a> Class<'a> {
         if self.node_ref == original_i_s.db.python_state.dict_node_ref() {
             // This is a special case where we intercept the call to dict(..) when used with
             // TypedDict.
-            if let Some(args_node_ref) = args.as_node_ref() {
-                if let Some(inf) = args_node_ref
-                    .file
+            if let Some(file) = args.in_file() {
+                if let Some(inf) = file
                     .inference(original_i_s)
                     .infer_dict_call_from_context(args, result_context)
                 {

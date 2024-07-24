@@ -1918,8 +1918,8 @@ impl<'db: 'slf, 'slf> Inferred {
                             }
                             ComplexPoint::TypeAlias(alias) => {
                                 if !alias.type_vars.is_empty() {
-                                    if let Some(node_ref) = args.as_node_ref() {
-                                        if node_ref.file.flags(i_s.db).disallow_any_generics {
+                                    if let Some(file) = args.in_file() {
+                                        if file.flags(i_s.db).disallow_any_generics {
                                             node_ref.add_issue(
                                                 i_s,
                                                 IssueKind::MissingTypeParameters {

@@ -23,6 +23,9 @@ pub(crate) trait Args<'db>: std::fmt::Debug {
     // This is not the case in the grammar, but here we want that.
     fn iter(&self) -> ArgIterator<'db, '_>;
     fn as_node_ref(&self) -> Option<NodeRef>;
+    fn in_file(&self) -> Option<&PythonFile> {
+        Some(self.as_node_ref()?.file)
+    }
     fn add_issue(&self, i_s: &InferenceState, issue: IssueKind) {
         self.as_node_ref()
             .expect("Otherwise add_issue should be implemented")

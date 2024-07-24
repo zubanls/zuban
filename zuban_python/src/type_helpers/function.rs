@@ -1651,8 +1651,8 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             )
         } else {
             if args
-                .as_node_ref()
-                .is_some_and(|n| n.file.flags(i_s.db).disallow_untyped_calls)
+                .in_file()
+                .is_some_and(|file| file.flags(i_s.db).disallow_untyped_calls)
                 && !self.is_typed()
             {
                 args.add_issue(
