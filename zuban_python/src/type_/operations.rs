@@ -574,7 +574,7 @@ impl Type {
             });
         };
         match self {
-            Type::Class(c) => Instance::new(c.class(i_s.db), None).iter(i_s, from),
+            Type::Class(c) => Instance::new(c.class(i_s.db), None).iter(i_s, from, add_issue),
             Type::Tuple(tuple) => tuple.iter(i_s),
             Type::NamedTuple(nt) => nt.iter(i_s),
             Type::Union(union) => {
@@ -593,7 +593,9 @@ impl Type {
                 }
             },
             Type::NewType(n) => n.type_(i_s).iter(i_s, from, add_issue),
-            Type::Self_ => Instance::new(*i_s.current_class().unwrap(), None).iter(i_s, from),
+            Type::Self_ => {
+                Instance::new(*i_s.current_class().unwrap(), None).iter(i_s, from, add_issue)
+            }
             Type::RecursiveType(rec) => rec.calculated_type(i_s.db).iter(i_s, from, add_issue),
             Type::Intersection(i) => i.iter(i_s, from, add_issue),
             _ => IteratorContent::Inferred(

@@ -239,7 +239,12 @@ impl<'a> Instance<'a> {
         }
     }
 
-    pub fn iter(&self, i_s: &InferenceState, from: NodeRef) -> IteratorContent {
+    pub(crate) fn iter(
+        &self,
+        i_s: &InferenceState,
+        from: NodeRef,
+        add_issue: &dyn Fn(IssueKind),
+    ) -> IteratorContent {
         if let Some(tup) = self.class.maybe_tuple_base(i_s.db) {
             // TODO this doesn't take care of the mro and could not be the first __iter__
             return tup.iter(i_s);
@@ -249,7 +254,7 @@ impl<'a> Instance<'a> {
             i_s,
             instance: self,
             mro_iterator,
-            add_issue: &|issue| from.add_issue(i_s, issue),
+            add_issue,
             name: "__iter__",
             as_instance: None,
         };
@@ -257,12 +262,12 @@ impl<'a> Instance<'a> {
             match found_on_class {
                 FoundOnClass::Attribute(inf) => {
                     return IteratorContent::Inferred(
-                        inf.execute(i_s, &NoArgs::new(from))
+                        inf.execute(i_s, &NoArgs::new_with_custom_add_issue(from, add_issue))
                             .type_lookup_and_execute(
                                 i_s,
                                 from.file,
                                 "__next__",
-                                &NoArgs::new(from),
+                                &NoArgs::new_with_custom_add_issue(from, add_issue),
                                 &|_| todo!(),
                             ),
                     );
@@ -277,12 +282,9 @@ impl<'a> Instance<'a> {
             }
         }
         if !self.class.incomplete_mro(i_s.db) {
-            from.add_issue(
-                i_s,
-                IssueKind::NotIterable {
-                    type_: format!("{:?}", self.class.format_short(i_s.db)).into(),
-                },
-            );
+            add_issue(IssueKind::NotIterable {
+                type_: format!("{:?}", self.class.format_short(i_s.db)).into(),
+            });
         }
         IteratorContent::Any(AnyCause::Todo)
     }
