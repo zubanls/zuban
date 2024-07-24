@@ -1801,6 +1801,9 @@ impl Inference<'_, '_, '_> {
                     other_side.union_in_place(t.clone());
                 } else if let Some(callable_like) = t.maybe_callable(self.i_s) {
                     //if matches!(callable_like, CallableLike::Callable(c))
+                    if !callable_like.is_typed(false) {
+                        other_side.union_in_place(t.clone());
+                    }
                     callable_t.union_in_place(t.clone());
                 } else {
                     other_side.union_in_place(t.clone());
