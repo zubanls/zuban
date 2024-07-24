@@ -328,7 +328,7 @@ impl<'db> Args<'db> for SliceArguments<'db, '_> {
         ArgIterator::new_slice(*self.slice_type, self.i_s)
     }
 
-    fn as_node_ref(&self) -> Option<NodeRef> {
+    fn as_node_ref_internal(&self) -> Option<NodeRef> {
         Some(self.slice_type.as_argument_node_ref())
     }
 

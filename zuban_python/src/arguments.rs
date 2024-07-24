@@ -22,17 +22,17 @@ pub(crate) trait Args<'db>: std::fmt::Debug {
     // Returns an iterator of arguments, where args are returned before kw args.
     // This is not the case in the grammar, but here we want that.
     fn iter(&self) -> ArgIterator<'db, '_>;
-    fn as_node_ref(&self) -> Option<NodeRef>;
+    fn as_node_ref_internal(&self) -> Option<NodeRef>;
     fn in_file(&self) -> Option<&PythonFile> {
-        Some(self.as_node_ref()?.file)
+        Some(self.as_node_ref_internal()?.file)
     }
     fn add_issue(&self, i_s: &InferenceState, issue: IssueKind) {
-        self.as_node_ref()
+        self.as_node_ref_internal()
             .expect("Otherwise add_issue should be implemented")
             .add_issue(i_s, issue)
     }
     fn starting_line(&self) -> String {
-        let Some(node_ref) = self.as_node_ref() else {
+        let Some(node_ref) = self.as_node_ref_internal() else {
             return "<unkown line>".into();
         };
         node_ref.line().to_string()
@@ -131,7 +131,7 @@ impl<'db: 'a, 'a> Args<'db> for SimpleArgs<'db, 'a> {
         })
     }
 
-    fn as_node_ref(&self) -> Option<NodeRef> {
+    fn as_node_ref_internal(&self) -> Option<NodeRef> {
         Some(NodeRef::new(self.file, self.primary_node_index))
     }
 
@@ -192,7 +192,7 @@ impl<'db, 'a> Args<'db> for KnownArgs<'a> {
         })
     }
 
-    fn as_node_ref(&self) -> Option<NodeRef> {
+    fn as_node_ref_internal(&self) -> Option<NodeRef> {
         Some(self.node_ref)
     }
 }
@@ -230,7 +230,7 @@ impl<'db, 'a> Args<'db> for KnownArgsWithCustomAddIssue<'a> {
         self.add_issue.0(issue)
     }
 
-    fn as_node_ref(&self) -> Option<NodeRef> {
+    fn as_node_ref_internal(&self) -> Option<NodeRef> {
         None
     }
 }
@@ -249,8 +249,8 @@ impl<'db, 'a> Args<'db> for CombinedArgs<'db, 'a> {
         iterator
     }
 
-    fn as_node_ref(&self) -> Option<NodeRef> {
-        self.args2.as_node_ref()
+    fn as_node_ref_internal(&self) -> Option<NodeRef> {
+        self.args2.as_node_ref_internal()
     }
 
     fn starting_line(&self) -> String {
@@ -1184,7 +1184,7 @@ impl<'db, 'a> Args<'db> for NoArgs<'a> {
         ArgIterator::new(ArgIteratorBase::Finished)
     }
 
-    fn as_node_ref(&self) -> Option<NodeRef> {
+    fn as_node_ref_internal(&self) -> Option<NodeRef> {
         Some(self.node_ref)
     }
 }
