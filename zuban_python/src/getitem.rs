@@ -332,10 +332,6 @@ impl<'db> Args<'db> for SliceArguments<'db, '_> {
         Some(self.slice_type.as_argument_node_ref())
     }
 
-    fn add_issue(&self, i_s: &InferenceState, issue: IssueKind) {
-        self.slice_type.as_argument_node_ref().add_issue(i_s, issue)
-    }
-
     fn points_backup(&self) -> Option<PointsBackup> {
         debug!("TODO implement points_backup for SliceArguments");
         None
