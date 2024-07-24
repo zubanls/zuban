@@ -212,3 +212,18 @@ if isinstance(a, B):
 
 if isinstance(b, A):
     reveal_type(b[0]) # N: Revealed type is "str"
+
+[case issubclass_and_isinstance_with_generics]
+from typing import Generic, TypeVar, Type
+T = TypeVar('T')
+
+class A(Generic[T]): ...
+
+a1: Type[A[int]]
+a2: A[int]
+
+if issubclass(a1, A):
+    reveal_type(a1)  # N: Revealed type is "Type[__main__.A[int]]"
+
+if isinstance(a2, A):
+    reveal_type(a2) # N: Revealed type is "__main__.A[int]"
