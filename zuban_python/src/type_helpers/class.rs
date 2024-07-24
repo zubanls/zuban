@@ -1540,6 +1540,21 @@ impl<'db: 'a, 'a> Class<'a> {
         }
     }
 
+    pub fn non_method_protocol_members(&self, db: &Database) -> Vec<String> {
+        let mut members = vec![];
+        for (mro_index, c) in self.mro_maybe_without_object(db, true) {
+            let TypeOrClass::Class(c) = c else { continue };
+            let protocol_members = &c.use_cached_class_infos(db).protocol_members;
+            for protocol_member in protocol_members.iter() {
+                let name_node_ref = NodeRef::new(self.node_ref.file, protocol_member.name_index);
+                if !matches!(name_node_ref.as_name().expect_type(), TypeLike::Function(_)) {
+                    members.push(name_node_ref.as_code().into())
+                }
+            }
+        }
+        members
+    }
+
     pub fn has_customized_enum_new(&self, i_s: &InferenceState) -> bool {
         for (_, c) in self.mro_maybe_without_object(i_s.db, true) {
             let (c, lookup) = c.lookup_symbol(i_s, "__new__");

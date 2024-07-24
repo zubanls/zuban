@@ -29,6 +29,7 @@ use crate::{
         UnionType, WithUnpack,
     },
     type_helpers::{Callable, Class, ClassLookupOptions, Function},
+    utils::join_with_commas,
 };
 
 use super::{
@@ -1613,6 +1614,22 @@ impl Inference<'_, '_, '_> {
                 if matches!(class_infos.class_kind, ClassKind::Protocol) {
                     if !class_infos.is_runtime_checkable {
                         self.add_issue(arg.index(), IssueKind::ProtocolNotRuntimeCheckable)
+                    }
+                    if issubclass {
+                        let non_method_protocol_members =
+                            cls.non_method_protocol_members(self.i_s.db);
+                        if !non_method_protocol_members.is_empty() {
+                            self.add_issue(
+                                arg.index(),
+                                IssueKind::IssubcclassWithProtocolNonMethodMembers {
+                                    protocol: cls.name().into(),
+                                    non_method_members: join_with_commas(
+                                        non_method_protocol_members.into_iter(),
+                                    )
+                                    .into(),
+                                },
+                            )
+                        }
                     }
                 }
             }

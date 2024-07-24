@@ -322,7 +322,6 @@ testIsInstanceTypeVsUnionOfType
 testIssubclassTuple
 testIssubclassWithMetaclasses
 testIssubclassWithMetaclassesStrictOptional
-testOnlyMethodProtocolUsableWithIsSubclass
 testNarrowingIsSubclassNoneType4
 # narrowing if with literals
 testConditionalBoolLiteralUnionNarrowing

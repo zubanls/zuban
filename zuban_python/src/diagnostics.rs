@@ -154,6 +154,7 @@ pub(crate) enum IssueKind {
     RecursiveTypesNotAllowedInFunctionScope { alias_name: Box<str> },
     RuntimeCheckableCanOnlyBeUsedWithProtocolClasses,
     ProtocolNotRuntimeCheckable,
+    IssubcclassWithProtocolNonMethodMembers { protocol: Box<str>, non_method_members: Box<str> },
 
     FinalTooManyArguments,
     FinalNameMustBeInitializedWithValue,
@@ -1181,6 +1182,12 @@ impl<'db> Diagnostic<'db> {
                 "@runtime_checkable can only be used with protocol classes".to_string(),
             ProtocolNotRuntimeCheckable =>
                 "Only @runtime_checkable protocols can be used with instance and class checks".to_string(),
+            IssubcclassWithProtocolNonMethodMembers { protocol, non_method_members }=> {
+                additional_notes.push(format!(
+                    r#"Protocol "{protocol}" has non-method member(s): {non_method_members}"#
+                ));
+                "Only protocols that don't have non-method members can be used with issubclass()".to_string()
+            }
 
             FinalTooManyArguments => "Final[...] takes at most one type argument".to_string(),
             FinalNameMustBeInitializedWithValue => "Final name must be initialized with a value".to_string(),
