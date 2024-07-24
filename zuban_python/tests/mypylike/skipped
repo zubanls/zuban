@@ -318,8 +318,6 @@ testIsInstanceWithUnknownType
 testNarrowingWithTupleOfTypes
 testNarrowingWithTupleOfTypesPy310Plus
 # issubclass narrowing
-testIssubclassTuple
-testIssubclassWithMetaclasses
 testIssubclassWithMetaclassesStrictOptional
 testNarrowingIsSubclassNoneType4
 # narrowing if with literals
@@ -1606,6 +1604,7 @@ testPartialAttributeNoneType
 testOptionalIterator
 testDescriptorAccessForUnionOfTypesWithNoStrictOptional
 testMeetOfIncompatibleProtocols
+testIssubclassWithMetaclasses
 
 # --untyped-calls-exclude=bar.A
 testDisallowUntypedCallsAllowListFlags
