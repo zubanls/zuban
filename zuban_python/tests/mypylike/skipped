@@ -331,9 +331,6 @@ testInferredTypeIsSimpleNestedIterable
 testInferredTypeIsSimpleNestedListLoop
 testInferredTypeIsSimpleNestedIterableLoop
 testNarrowingWithAnyOps
-testNarrowingLenAnyListElseNotAffected
-testNarrowingLenMixWithAnyPrecise
-testNarrowingLenMixWithAnyImprecise
 testUnreachableWhenSuperclassIsAny
 testTypeGuardNestedRestrictionAny
 testTypeIsNestedRestrictionAny
@@ -344,10 +341,6 @@ testOrCases
 testAndCases
 testFinalWithoutBool
 testFinalWithoutBoolButWithLen
-# Narrowing len()
-testNarrowingLenTypeVarTupleGreaterThan
-testNarrowingLenBareExpressionTypeVarTuple
-testNarrowingLenUnionWithUnreachable
 # narrowing assignments regressions after `foo =` narrowing
 testAwaitOverloadSpecialCase
 testCompatibilityOfDynamicWithOtherTypes
@@ -777,6 +770,13 @@ testIssubclassWithMetaclassesStrictOptional
 testEnumReachabilityChecksIndirect
 # narrowing `in` weird overlapping. Mypy correct?
 testTupleOverlapDifferentTuples
+# Narrowing len()
+testNarrowingLenTypeVarTupleGreaterThan
+testNarrowingLenBareExpressionTypeVarTuple
+testNarrowingLenUnionWithUnreachable
+testNarrowingLenAnyListElseNotAffected
+testNarrowingLenMixWithAnyPrecise
+testNarrowingLenMixWithAnyImprecise
 
 # subtyping arbitrary length unpacks
 testVariadicTupleSubtyping
