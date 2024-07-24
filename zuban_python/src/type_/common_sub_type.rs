@@ -8,6 +8,7 @@ use super::{
 };
 use crate::{
     inference_state::InferenceState,
+    type_,
     type_::{Tuple, TupleArgs, TupleUnpack},
 };
 
@@ -54,7 +55,25 @@ impl Type {
                         }
                         Type::Tuple(Tuple::new_fixed_length(entries.into()))
                     }
-                    (x, y) => todo!("{x:?} {y:?}"),
+                    (WithUnpack(w), ArbitraryLen(t)) | (ArbitraryLen(t), WithUnpack(w)) => {
+                        Type::Tuple(Tuple::new(TupleArgs::WithUnpack(type_::WithUnpack {
+                            before: w
+                                .before
+                                .iter()
+                                .map(|t2| t2.common_sub_type(i_s, t))
+                                .collect::<Option<_>>()?,
+                            unpack: TupleUnpack::ArbitraryLen(match &w.unpack {
+                                TupleUnpack::TypeVarTuple(_) => todo!(),
+                                TupleUnpack::ArbitraryLen(t2) => t2.common_sub_type(i_s, t)?,
+                            }),
+                            after: w
+                                .after
+                                .iter()
+                                .map(|t2| t2.common_sub_type(i_s, t))
+                                .collect::<Option<_>>()?,
+                        })))
+                    }
+                    (WithUnpack(w1), WithUnpack(w2)) => todo!(),
                 })
             }
             (Type::TypedDict(td1), Type::TypedDict(td2)) => Some(td1.union(i_s, td2)),

@@ -335,7 +335,6 @@ testNarrowingLenAnyListElseNotAffected
 testNarrowingLenMixWithAnyPrecise
 testNarrowingLenMixWithAnyImprecise
 testUnreachableWhenSuperclassIsAny
-testUnreachableWhenSuperclassIsAnyNoStrictOptional
 testTypeGuardNestedRestrictionAny
 testTypeIsNestedRestrictionAny
 # or/and boolean logic over multiple terms
@@ -1595,6 +1594,7 @@ testFinalReassignModuleVar
 testFinalReassignModuleVar2
 
 # --no-strict-optional details
+testUnreachableWhenSuperclassIsAnyNoStrictOptional
 testUnreachableWithStdlibContextManagersNoStrictOptional
 testInitializationWithMultipleValues
 testNoneAndGenericTypesOverlapNoStrictOptional
