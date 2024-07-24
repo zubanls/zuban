@@ -354,12 +354,10 @@ testUnionOfVariableLengthTupleUnpacking
 # statement narrowing regressions after `foo.bar =` narrowing
 testDescriptorGetSetDifferentTypes
 testTypeVariableAsTypeArgument
-testImportWithinBlock
 testUnionMultiassignIndexedWithError
 # narrowing assignments
 testTupleCompatibleWithSequence
 testAugmentedAssignmentIntFloat
-testAugmentedAssignmentIntFloatMember
 testUnionMultiassignRebind
 testUnionMultiassignAlreadyDeclared
 testUnionMultiassignPacked
@@ -569,6 +567,7 @@ testOptionalDescriptorsBinder
 testUnionDescriptorsBinder
 testSubclassDescriptorsBinder
 testPropertyGetterBody
+testAugmentedAssignmentIntFloatMember
 # self assignment validation
 testSlotsAssignmentWithMethodReassign
 testTypeVarTupleNewSyntaxGenerics

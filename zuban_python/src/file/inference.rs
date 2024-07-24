@@ -1267,15 +1267,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     if matches!(assign_kind, AssignKind::Annotation(_)) {
                         self.add_issue(primary_target.index(), IssueKind::InvalidTypeDeclaration);
                     }
-                    if matches!(assign_kind, AssignKind::Normal) {
-                        self.save_narrowed_primary_target(
-                            primary_target,
-                            &value.as_cow_type(self.i_s),
-                        );
-                    }
                     let base = base.as_cow_type(i_s);
                     let node_ref = NodeRef::new(self.file, primary_target.index());
                     let name_str = name_definition.as_code();
+                    let mut had_error = false;
                     for t in base.iter_with_unpacked_unions(i_s.db) {
                         if let Some(cls) = t.maybe_class(i_s.db) {
                             Instance::new(cls, None).check_set_descriptor(
@@ -1298,6 +1293,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         match t {
                             Type::Dataclass(d) => {
                                 if d.options.frozen {
+                                    had_error = true;
                                     property_is_read_only(d.class(i_s.db).name().into())
                                 }
                                 Instance::new(d.class(i_s.db), None).check_set_descriptor(
@@ -1310,6 +1306,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             }
                             Type::NamedTuple(nt) => {
                                 if nt.search_param(i_s.db, name_definition.as_code()).is_some() {
+                                    had_error = true;
                                     property_is_read_only(nt.name(i_s.db).into());
                                     continue;
                                 }
@@ -1321,6 +1318,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                         .iter()
                                         .any(|member| member.name(i_s.db) == name_str) =>
                                 {
+                                    had_error = true;
                                     from.add_issue(
                                         i_s,
                                         IssueKind::CannotAssignToFinal {
@@ -1333,6 +1331,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 _ => (),
                             },
                             Type::Super { .. } => {
+                                had_error = true;
                                 from.add_issue(i_s, IssueKind::InvalidAssignmentTarget);
                                 continue;
                             }
@@ -1376,6 +1375,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                     name: name_str.into(),
                                 },
                             );
+                            had_error = true;
                             continue;
                         }
                         inf.as_cow_type(i_s).error_if_not_matches(
@@ -1383,9 +1383,16 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             value,
                             |issue| from.add_issue(i_s, issue),
                             |error_types| {
+                                had_error = true;
                                 let ErrorStrs { expected, got } = error_types.as_boxed_strs(i_s.db);
                                 Some(IssueKind::IncompatibleAssignment { got, expected })
                             },
+                        );
+                    }
+                    if matches!(assign_kind, AssignKind::Normal) && !had_error {
+                        self.save_narrowed_primary_target(
+                            primary_target,
+                            &value.as_cow_type(self.i_s),
                         );
                     }
                 }
