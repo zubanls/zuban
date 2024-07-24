@@ -143,7 +143,9 @@ impl<'a> Instance<'a> {
                     .into_maybe_inferred()
                 {
                     let inst = self.as_inferred(i_s);
-                    return calculate_descriptor(i_s, from, __set__, inst, value);
+                    calculate_descriptor(i_s, from, __set__, inst, value);
+                    // Return an error regardless so it does not get narrowed.
+                    return Err(());
                 } else if let Some(inf) = Instance::new(descriptor, None).bind_dunder_get(
                     i_s,
                     add_issue,
@@ -548,8 +550,7 @@ fn calculate_descriptor(
     set_method: Inferred,
     instance: Inferred,
     value: &Inferred,
-) -> Result<(), ()> {
-    let had_error = Cell::new(false);
+) {
     set_method.execute_with_details(
         i_s,
         &CombinedArgs::new(
@@ -558,7 +559,6 @@ fn calculate_descriptor(
         ),
         &mut ResultContext::ExpectUnused,
         OnTypeError::new(&|i_s, error_text, argument, types| {
-            had_error.set(true);
             if argument.index == 2 {
                 let strs = types.as_boxed_strs(i_s.db);
                 from.add_issue(
@@ -573,11 +573,6 @@ fn calculate_descriptor(
             }
         }),
     );
-    if had_error.get() {
-        Err(())
-    } else {
-        Ok(())
-    }
 }
 
 enum FoundOnClass<'a> {

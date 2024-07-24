@@ -351,8 +351,6 @@ testParamSpecSubtypeChecking1
 testMultipleAssignmentWithNonTupleRvalue
 testAssignAnyToUnion
 testUnionOfVariableLengthTupleUnpacking
-# statement narrowing regressions after `foo.bar =` narrowing
-testDescriptorGetSetDifferentTypes
 # narrowing assignments
 testTupleCompatibleWithSequence
 testAugmentedAssignmentIntFloat
