@@ -278,11 +278,9 @@ testFinalNotInLoops
 testFinalInvalidDefinitions
 
 # callable()
-testCallableObject2
 testCallableObjectGeneric
 testCallableTuple
 testDecoratedCallMethods
-check-callable:testCallableObject
 
 # Except Foo as bar where bar is bound over its existence as a variable
 testTryStarMultiple

@@ -13,7 +13,7 @@ use crate::{
     type_helpers::{linearize_mro_and_return_linearizable, LookupDetails, TypeOrClass},
 };
 
-use super::{AnyCause, Type, UnionEntry};
+use super::{AnyCause, CallableParams, Type, UnionEntry};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Intersection {
@@ -169,7 +169,18 @@ impl Intersection {
     }
 
     pub fn format(&self, format_data: &FormatData) -> Box<str> {
-        format!("<subclass of {}>", self.format_names(format_data, false)).into()
+        if self.entries.len() == 2
+            && matches!(&self.entries[0], Type::Callable(c) if matches!(c.params, CallableParams::Any(_)))
+        {
+            // Mypy special formatting
+            format!(
+                "<callable subtype of {}>",
+                self.entries[1].format_short(format_data.db)
+            )
+            .into()
+        } else {
+            format!("<subclass of {}>", self.format_names(format_data, false)).into()
+        }
     }
 
     pub(crate) fn format_names(&self, format_data: &FormatData, with_generics: bool) -> String {
