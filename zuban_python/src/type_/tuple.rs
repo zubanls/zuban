@@ -14,7 +14,6 @@ use crate::{
     inference_state::InferenceState,
     inferred::{AttributeKind, Inferred},
     matching::{Generics, IteratorContent, OnTypeError, ResultContext},
-    node_ref::NodeRef,
     type_::{AnyCause, Type},
     type_helpers::{Class, Instance, LookupDetails, TypeOrClass},
     utils::{join_with_commas, rc_slice_into_vec},
@@ -84,7 +83,7 @@ impl Tuple {
         format!("{base}[{}{fallback}]", self.args.format(format_data)).into()
     }
 
-    pub fn iter(&self, i_s: &InferenceState, from: NodeRef) -> IteratorContent {
+    pub fn iter(&self, i_s: &InferenceState) -> IteratorContent {
         match &self.args {
             TupleArgs::FixedLen(ts) => IteratorContent::new_tuple(ts.clone()),
             TupleArgs::ArbitraryLen(t) => {

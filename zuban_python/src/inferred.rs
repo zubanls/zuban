@@ -2175,7 +2175,8 @@ impl<'db: 'slf, 'slf> Inferred {
     }
 
     pub fn iter(self, i_s: &InferenceState, from: NodeRef) -> IteratorContent {
-        self.as_cow_type(i_s).iter(i_s, from)
+        self.as_cow_type(i_s)
+            .iter(i_s, from, &|issue| from.add_issue(i_s, issue))
     }
 
     pub fn is_saved_partial(&self, db: &Database) -> bool {

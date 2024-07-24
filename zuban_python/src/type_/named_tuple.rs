@@ -129,8 +129,8 @@ impl NamedTuple {
         }
     }
 
-    pub fn iter(&self, i_s: &InferenceState, from: NodeRef) -> IteratorContent {
-        self.as_tuple().iter(i_s, from)
+    pub fn iter(&self, i_s: &InferenceState) -> IteratorContent {
+        self.as_tuple().iter(i_s)
     }
 
     pub(crate) fn get_item(

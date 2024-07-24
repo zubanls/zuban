@@ -1144,12 +1144,35 @@ pub fn unpack_star_star(i_s: &InferenceState, t: &Type) -> Option<(Type, Type)> 
     })
 }
 
-#[derive(Debug)]
-pub struct NoArgs<'a>(NodeRef<'a>);
+pub struct NoArgs<'a> {
+    node_ref: NodeRef<'a>,
+    add_issue: Option<&'a dyn Fn(IssueKind)>,
+}
 
 impl<'a> NoArgs<'a> {
     pub fn new(node_ref: NodeRef<'a>) -> Self {
-        Self(node_ref)
+        Self {
+            node_ref,
+            add_issue: None,
+        }
+    }
+    pub fn new_with_custom_add_issue(
+        node_ref: NodeRef<'a>,
+        add_issue: &'a dyn Fn(IssueKind),
+    ) -> Self {
+        Self {
+            node_ref,
+            add_issue: Some(add_issue),
+        }
+    }
+}
+
+impl std::fmt::Debug for NoArgs<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        f.debug_struct("NoArgs")
+            .field("node_ref", &self.node_ref)
+            .field("has_add_issue", &self.add_issue.is_some())
+            .finish()
     }
 }
 
@@ -1159,7 +1182,7 @@ impl<'db, 'a> Args<'db> for NoArgs<'a> {
     }
 
     fn as_node_ref(&self) -> Option<NodeRef> {
-        Some(self.0)
+        Some(self.node_ref)
     }
 }
 

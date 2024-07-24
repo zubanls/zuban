@@ -1440,7 +1440,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     if union_part == &self.i_s.db.python_state.str_type() {
                         value_node_ref.add_issue(self.i_s, IssueKind::UnpackingAStringIsDisallowed)
                     }
-                    let value_iterator = union_part.iter(self.i_s, value_node_ref);
+                    let value_iterator = union_part.iter(self.i_s, value_node_ref, &|issue| {
+                        value_node_ref.add_issue(self.i_s, issue)
+                    });
                     match value_iterator {
                         IteratorContent::Union(iterators) => {
                             for it in iterators {

@@ -9,7 +9,8 @@ use crate::{
     getitem::SliceType,
     inference_state::InferenceState,
     inferred::Inferred,
-    matching::{LookupKind, OnTypeError, ResultContext},
+    matching::{IteratorContent, LookupKind, OnTypeError, ResultContext},
+    node_ref::NodeRef,
     type_helpers::{linearize_mro_and_return_linearizable, LookupDetails, TypeOrClass},
 };
 
@@ -261,6 +262,19 @@ impl Intersection {
             args.add_issue(i_s, first_issue);
             Inferred::new_any_from_error()
         })
+    }
+
+    pub(crate) fn iter(
+        &self,
+        i_s: &InferenceState,
+        from: NodeRef,
+        add_issue: &dyn Fn(IssueKind),
+    ) -> IteratorContent {
+        self.wrap_first_non_failing(|t, add_issue| t.iter(i_s, from, add_issue))
+            .unwrap_or_else(|first_issue| {
+                add_issue(first_issue);
+                IteratorContent::Inferred(Inferred::new_any_from_error())
+            })
     }
 
     pub(crate) fn run_after_lookup_on_each_union_member(

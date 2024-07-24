@@ -562,37 +562,40 @@ impl Type {
         }
     }
 
-    pub fn iter(&self, i_s: &InferenceState, from: NodeRef) -> IteratorContent {
+    pub(crate) fn iter(
+        &self,
+        i_s: &InferenceState,
+        from: NodeRef,
+        add_issue: &dyn Fn(IssueKind),
+    ) -> IteratorContent {
         let on_error = |t: &Type| {
-            from.add_issue(
-                i_s,
-                IssueKind::NotIterable {
-                    type_: format!("\"{}\"", t.format_short(i_s.db)).into(),
-                },
-            );
+            add_issue(IssueKind::NotIterable {
+                type_: format!("\"{}\"", t.format_short(i_s.db)).into(),
+            });
         };
         match self {
             Type::Class(c) => Instance::new(c.class(i_s.db), None).iter(i_s, from),
-            Type::Tuple(tuple) => tuple.iter(i_s, from),
-            Type::NamedTuple(nt) => nt.iter(i_s, from),
+            Type::Tuple(tuple) => tuple.iter(i_s),
+            Type::NamedTuple(nt) => nt.iter(i_s),
             Type::Union(union) => {
                 let mut items = vec![];
                 for t in union.iter() {
-                    items.push(t.iter(i_s, from));
+                    items.push(t.iter(i_s, from, add_issue));
                 }
                 IteratorContent::Union(items)
             }
             Type::TypeVar(tv) => match &tv.type_var.kind {
-                TypeVarKind::Bound(bound) => bound.iter(i_s, from),
+                TypeVarKind::Bound(bound) => bound.iter(i_s, from, add_issue),
                 TypeVarKind::Constraints(_) => todo!(),
                 TypeVarKind::Unrestricted => {
                     on_error(self);
                     IteratorContent::Any(AnyCause::FromError)
                 }
             },
-            Type::NewType(n) => n.type_(i_s).iter(i_s, from),
+            Type::NewType(n) => n.type_(i_s).iter(i_s, from, add_issue),
             Type::Self_ => Instance::new(*i_s.current_class().unwrap(), None).iter(i_s, from),
-            Type::RecursiveType(rec) => rec.calculated_type(i_s.db).iter(i_s, from),
+            Type::RecursiveType(rec) => rec.calculated_type(i_s.db).iter(i_s, from, add_issue),
+            Type::Intersection(i) => i.iter(i_s, from, add_issue),
             _ => IteratorContent::Inferred(
                 self.lookup(
                     i_s,
@@ -600,18 +603,18 @@ impl Type {
                     "__iter__",
                     LookupKind::OnlyType,
                     &mut ResultContext::Unknown,
-                    &|issue| from.add_issue(i_s, issue),
+                    add_issue,
                     &|t| {
                         on_error(t);
                     },
                 )
                 .into_inferred()
-                .execute(i_s, &NoArgs::new(from))
+                .execute(i_s, &NoArgs::new_with_custom_add_issue(from, add_issue))
                 .type_lookup_and_execute(
                     i_s,
                     from,
                     "__next__",
-                    &NoArgs::new(from),
+                    &NoArgs::new_with_custom_add_issue(from, add_issue),
                     &|_| todo!(),
                 ),
             ),

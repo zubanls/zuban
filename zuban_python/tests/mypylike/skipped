@@ -278,7 +278,6 @@ testFinalNotInLoops
 testFinalInvalidDefinitions
 
 # callable()
-testCallableTuple
 testDecoratedCallMethods
 
 # Except Foo as bar where bar is bound over its existence as a variable
