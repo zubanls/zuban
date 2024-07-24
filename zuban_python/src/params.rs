@@ -467,8 +467,12 @@ pub fn matches_simple_params<
                             continue;
                         }
                         _ => {
+                            if is_trivial_suffix(i_s.db, specific1, params1.next()) {
+                                debug!("Matched because of trivial suffix");
+                                return matches;
+                            }
                             debug!(
-                                "Params mismatch, because had {:?} vs {:?}",
+                                "Params mismatch, because of {:?} vs {:?}",
                                 param1.kind(i_s.db),
                                 param2.kind(i_s.db)
                             );
@@ -559,7 +563,11 @@ pub fn matches_simple_params<
                     matches &= matcher.match_or_add_param_spec(i_s, u1, params2, variance);
                     return matches;
                 }
-                _ => {
+                specific1 => {
+                    if is_trivial_suffix(i_s.db, specific1, params1.next()) {
+                        debug!("Matched because of trivial suffix (too few params)");
+                        return matches;
+                    }
                     debug!(
                         "Params mismatch, because one side had fewer params: {:?}",
                         param1.name(i_s.db)
@@ -596,6 +604,32 @@ pub fn matches_simple_params<
         }
     }
     matches
+}
+
+fn is_trivial_suffix<'x, P1: Param<'x>>(
+    db: &'x Database,
+    p1: WrappedParamType,
+    p2: Option<P1>,
+) -> bool {
+    // Mypy allows matching anything if the function ends with *args: Any, **kwargs: Any
+    // This is described in Mypy's commit f41e24c8b31a110c2f01a753acba458977e41bfc
+    let WrappedParamType::Star(WrappedStar::ArbitraryLen(star_t)) = p1 else {
+        return false;
+    };
+    let Some(p2) = p2 else {
+        return false;
+    };
+    let WrappedParamType::StarStar(WrappedStarStar::ValueType(star_star_t)) = p2.specific(db)
+    else {
+        return false;
+    };
+
+    let is_any = |t: &Option<Cow<Type>>| match t {
+        Some(t) => matches!(t.as_ref(), Type::Any(_)),
+        None => true,
+    };
+
+    is_any(&star_t) && is_any(&star_star_t)
 }
 
 fn match_unpack_from_other_side<'db: 'x, 'x, P: Param<'x>, IT: Iterator<Item = P>>(

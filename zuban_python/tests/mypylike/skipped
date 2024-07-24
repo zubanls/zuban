@@ -283,7 +283,7 @@ testCallableObjectGeneric
 testCallableTuple
 testDecoratedCallMethods
 check-callable:testCallableObject
-testCallableSubtypingTrivialSuffix
+testOverloadWithStarAnyFallback
 
 # Except Foo as bar where bar is bound over its existence as a variable
 testTryStarMultiple
