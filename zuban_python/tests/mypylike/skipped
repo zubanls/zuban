@@ -319,7 +319,7 @@ testNarrowingWithTupleOfTypes
 testNarrowingWithTupleOfTypesPy310Plus
 # issubclass narrowing
 testIssubclassWithMetaclassesStrictOptional
-testNarrowingIsSubclassNoneType4
+testNarrowingIsInstanceNoIntersectionWithFinalTypeAndNoneType
 # narrowing if with literals
 testConditionalBoolLiteralUnionNarrowing
 testRecursiveAliasTuple

@@ -346,6 +346,7 @@ impl PythonState {
             s.typing(),
             s.builtins(),
             s.collections(),
+            s.types(),
             s.dataclasses_file(),
             s.typing_extensions(),
             s.mypy_extensions(),
@@ -960,6 +961,7 @@ fn typing_changes(
     typing: &PythonFile,
     builtins: &PythonFile,
     collections: &PythonFile,
+    types: &PythonFile,
     dataclasses: &PythonFile,
     typing_extensions: &PythonFile,
     mypy_extensions: &PythonFile,
@@ -1014,6 +1016,13 @@ fn typing_changes(
         CustomBehavior::new_function(dataclasses_replace),
     );
     set_typing_inference(collections, "namedtuple", Specific::CollectionsNamedTuple);
+    if let Some(none_type_index) = types.symbol_table().lookup_symbol("NoneType") {
+        // Making NoneType Type[None] just makes type checking way easier.
+        NodeRef::new(types, none_type_index).insert_complex(
+            ComplexPoint::TypeInstance(Type::Type(Rc::new(Type::None))),
+            Locality::File,
+        );
+    }
 
     setup_type_alias(typing, "Tuple", builtins, "tuple");
     setup_type_alias(typing, "List", builtins, "list");
