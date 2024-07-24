@@ -794,7 +794,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 let had_lookup_error = Cell::new(false);
                 let mut result = left.type_lookup_and_execute(
                     self.i_s,
-                    node_ref,
+                    node_ref.file,
                     inplace_method,
                     &KnownArgs::new(&right, node_ref),
                     &|type_| had_lookup_error.set(true),
@@ -904,7 +904,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 let added_iter_issue = Cell::new(false);
                 let iter_result = expr_result.type_lookup_and_execute(
                     i_s,
-                    from,
+                    from.file,
                     "__iter__",
                     &NoArgs::new(from),
                     &|_| {
@@ -921,7 +921,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 );
                 let yields = iter_result.type_lookup_and_execute(
                     i_s,
-                    from,
+                    from.file,
                     "__next__",
                     &NoArgs::new(from),
                     &|_| todo!(),
@@ -1886,7 +1886,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 let node_ref = NodeRef::new(self.file, f.index());
                 inf.type_lookup_and_execute(
                     self.i_s,
-                    node_ref,
+                    node_ref.file,
                     method_name,
                     &NoArgs::new(node_ref),
                     &|type_| {
@@ -1967,7 +1967,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 let from = NodeRef::new(self.file, op.index());
                 left_inf.type_lookup_and_execute(
                     self.i_s,
-                    from,
+                    from.file,
                     "__eq__",
                     &KnownArgs::new(right_inf, from),
                     &|_| todo!(),
@@ -2106,7 +2106,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         let i_s = self.i_s;
         right_inf.run_after_lookup_on_each_union_member(
             i_s,
-            from,
+            from.file,
             "__contains__",
             LookupKind::OnlyType,
             &mut |r_type, lookup_result| {
@@ -2144,7 +2144,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             .execute(i_s, &NoArgs::new(from))
                             .type_lookup_and_execute(
                                 i_s,
-                                from,
+                                from.file,
                                 "__next__",
                                 &NoArgs::new(from),
                                 &|_| todo!(),
@@ -2308,7 +2308,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         let result = Inferred::gather_simplified_union(i_s, |add_to_union| {
             left.run_after_lookup_on_each_union_member(
                 i_s,
-                from,
+                from.file,
                 op_infos.magic_method,
                 LookupKind::OnlyType,
                 &mut |l_type, lookup_result| {
@@ -3696,7 +3696,7 @@ pub fn await_(
 ) -> Inferred {
     let t = get_generator_return_type(
         i_s.db,
-        inf.type_lookup_and_execute(i_s, from, "__await__", &NoArgs::new(from), &|t| {
+        inf.type_lookup_and_execute(i_s, from.file, "__await__", &NoArgs::new(from), &|t| {
             from.add_issue(
                 i_s,
                 IssueKind::IncompatibleTypes {

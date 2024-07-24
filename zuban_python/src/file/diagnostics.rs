@@ -1778,7 +1778,7 @@ fn except_type(i_s: &InferenceState, t: &Type, allow_tuple: bool) -> ExceptType 
 pub fn await_aiter_and_next(i_s: &InferenceState, base: Inferred, from: NodeRef) -> Inferred {
     await_(
         i_s,
-        base.type_lookup_and_execute(i_s, from, "__aiter__", &NoArgs::new(from), &|t| {
+        base.type_lookup_and_execute(i_s, from.file, "__aiter__", &NoArgs::new(from), &|t| {
             from.add_issue(
                 i_s,
                 IssueKind::AsyncNotIterable {

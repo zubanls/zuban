@@ -1631,7 +1631,7 @@ impl<'db: 'slf, 'slf> Inferred {
     pub fn run_after_lookup_on_each_union_member(
         &self,
         i_s: &InferenceState,
-        from: NodeRef,
+        in_file: &PythonFile,
         name: &str,
         kind: LookupKind,
         callable: &mut impl FnMut(&Type, LookupDetails),
@@ -1639,7 +1639,7 @@ impl<'db: 'slf, 'slf> Inferred {
         self.as_cow_type(i_s).run_after_lookup_on_each_union_member(
             i_s,
             Some(self),
-            from.file_index(),
+            in_file.file_index(),
             name,
             kind,
             &mut ResultContext::Unknown,
@@ -1681,14 +1681,14 @@ impl<'db: 'slf, 'slf> Inferred {
     pub(crate) fn type_lookup_and_execute(
         &self,
         i_s: &InferenceState<'db, '_>,
-        from: NodeRef,
+        in_file: &PythonFile,
         name: &str,
         args: &dyn Args<'db>,
         on_lookup_error: OnLookupError,
     ) -> Self {
         self.type_lookup_and_execute_with_details(
             i_s,
-            from,
+            in_file,
             name,
             args,
             on_lookup_error,
@@ -1703,7 +1703,7 @@ impl<'db: 'slf, 'slf> Inferred {
         name: &str,
         args: &dyn Args<'db>,
     ) -> Self {
-        self.type_lookup_and_execute(i_s, from, name, args, &|t| {
+        self.type_lookup_and_execute(i_s, from.file, name, args, &|t| {
             add_attribute_error(i_s, from, &self.as_cow_type(i_s), t, name)
         })
     }
@@ -1711,7 +1711,7 @@ impl<'db: 'slf, 'slf> Inferred {
     pub(crate) fn type_lookup_and_execute_with_details(
         &self,
         i_s: &InferenceState<'db, '_>,
-        from: NodeRef,
+        in_file: &PythonFile,
         name: &str,
         args: &dyn Args<'db>,
         on_lookup_error: OnLookupError,
@@ -1720,7 +1720,7 @@ impl<'db: 'slf, 'slf> Inferred {
         let mut result: Option<Inferred> = None;
         self.run_after_lookup_on_each_union_member(
             i_s,
-            from,
+            in_file,
             name,
             LookupKind::OnlyType,
             &mut |_, lookup_result| {
@@ -2120,7 +2120,7 @@ impl<'db: 'slf, 'slf> Inferred {
         let args = slice_type.as_args(*i_s);
         self.type_lookup_and_execute_with_details(
             i_s,
-            from,
+            from.file,
             "__setitem__",
             &CombinedArgs::new(&args, &KnownArgs::new(value, from)),
             &|_| {

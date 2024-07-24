@@ -260,7 +260,7 @@ impl<'a> Instance<'a> {
                         inf.execute(i_s, &NoArgs::new(from))
                             .type_lookup_and_execute(
                                 i_s,
-                                from,
+                                from.file,
                                 "__next__",
                                 &NoArgs::new(from),
                                 &|_| todo!(),

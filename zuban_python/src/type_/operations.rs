@@ -612,7 +612,7 @@ impl Type {
                 .execute(i_s, &NoArgs::new_with_custom_add_issue(from, add_issue))
                 .type_lookup_and_execute(
                     i_s,
-                    from,
+                    from.file,
                     "__next__",
                     &NoArgs::new_with_custom_add_issue(from, add_issue),
                     &|_| todo!(),
