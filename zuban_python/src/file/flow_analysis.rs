@@ -2779,7 +2779,7 @@ fn split_and_intersect(
     let mut other_side = Type::Never(NeverCause::Other);
     let matcher = &mut Matcher::with_ignored_promotions();
     for t in original_t.iter_with_unpacked_unions(i_s.db) {
-        match isinstance_type.is_super_type_of(i_s, matcher, t) {
+        let mut split = |t: &Type| match isinstance_type.is_super_type_of(i_s, matcher, t) {
             Match::True { with_any: true, .. } => {
                 true_type.simplified_union_in_place(i_s, isinstance_type);
                 other_side.union_in_place(t.clone());
@@ -2788,6 +2788,17 @@ fn split_and_intersect(
                 with_any: false, ..
             } => true_type.union_in_place(t.clone()),
             Match::False { .. } => other_side.union_in_place(t.clone()),
+        };
+        match t {
+            Type::Type(inner) => match inner.as_ref() {
+                Type::Union(union) => {
+                    for inner in union.iter() {
+                        split(&Type::Type(Rc::new(inner.clone())))
+                    }
+                }
+                _ => split(t),
+            },
+            _ => split(t),
         }
     }
     if matches!(true_type, Type::Never(_)) {
