@@ -30,7 +30,7 @@ use crate::{
         execute_collections_named_tuple, execute_type_of_type, execute_typing_named_tuple,
         new_typed_dict, AnyCause, CallableContent, CallableLike, CallableParams, ClassGenerics,
         DbString, FunctionKind, FunctionOverload, GenericClass, GenericItem, GenericsList,
-        Literal as DbLiteral, LiteralKind, LiteralValue, LookupResult, NeverCause, Type,
+        IterInfos, Literal as DbLiteral, LiteralKind, LiteralValue, LookupResult, NeverCause, Type,
         TypeVarKind, TypeVarLike, TypeVarLikes,
     },
     type_helpers::{
@@ -2175,8 +2175,10 @@ impl<'db: 'slf, 'slf> Inferred {
     }
 
     pub fn iter(self, i_s: &InferenceState, from: NodeRef) -> IteratorContent {
-        self.as_cow_type(i_s)
-            .iter(i_s, from, &|issue| from.add_issue(i_s, issue))
+        self.as_cow_type(i_s).iter(
+            i_s,
+            IterInfos::new(from, &|issue| from.add_issue(i_s, issue)),
+        )
     }
 
     pub fn is_saved_partial(&self, db: &Database) -> bool {

@@ -10,11 +10,10 @@ use crate::{
     inference_state::InferenceState,
     inferred::Inferred,
     matching::{IteratorContent, LookupKind, OnTypeError, ResultContext},
-    node_ref::NodeRef,
     type_helpers::{linearize_mro_and_return_linearizable, LookupDetails, TypeOrClass},
 };
 
-use super::{AnyCause, CallableParams, Type, UnionEntry};
+use super::{AnyCause, CallableParams, IterInfos, Type, UnionEntry};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Intersection {
@@ -264,17 +263,14 @@ impl Intersection {
         })
     }
 
-    pub(crate) fn iter(
-        &self,
-        i_s: &InferenceState,
-        from: NodeRef,
-        add_issue: &dyn Fn(IssueKind),
-    ) -> IteratorContent {
-        self.wrap_first_non_failing(|t, add_issue| t.iter(i_s, from, add_issue))
-            .unwrap_or_else(|first_issue| {
-                add_issue(first_issue);
-                IteratorContent::Inferred(Inferred::new_any_from_error())
-            })
+    pub(crate) fn iter(&self, i_s: &InferenceState, infos: IterInfos) -> IteratorContent {
+        self.wrap_first_non_failing(|t, add_issue| {
+            t.iter(i_s, infos.with_different_add_issue(add_issue))
+        })
+        .unwrap_or_else(|first_issue| {
+            infos.add_issue(first_issue);
+            IteratorContent::Inferred(Inferred::new_any_from_error())
+        })
     }
 
     pub(crate) fn run_after_lookup_on_each_union_member(

@@ -4,7 +4,7 @@ use parsa_python_cst::Name;
 
 use super::{class::TypeOrClass, Class, FirstParamKind, Function, MroIterator};
 use crate::{
-    arguments::{Args, CombinedArgs, InferredArg, KnownArgs, KnownArgsWithCustomAddIssue, NoArgs},
+    arguments::{Args, CombinedArgs, InferredArg, KnownArgs, KnownArgsWithCustomAddIssue},
     database::{Database, PointLink, Specific},
     debug,
     diagnostics::IssueKind,
@@ -15,7 +15,8 @@ use crate::{
     matching::{ErrorStrs, IteratorContent, LookupKind, OnTypeError, ResultContext},
     node_ref::NodeRef,
     type_::{
-        AnyCause, CallableLike, CallableParams, FunctionKind, LookupResult, Type, TypeVarKind,
+        AnyCause, CallableLike, CallableParams, FunctionKind, IterInfos, LookupResult, Type,
+        TypeVarKind,
     },
 };
 
@@ -239,12 +240,7 @@ impl<'a> Instance<'a> {
         }
     }
 
-    pub(crate) fn iter(
-        &self,
-        i_s: &InferenceState,
-        from: NodeRef,
-        add_issue: &dyn Fn(IssueKind),
-    ) -> IteratorContent {
+    pub(crate) fn iter(&self, i_s: &InferenceState, infos: IterInfos) -> IteratorContent {
         if let Some(tup) = self.class.maybe_tuple_base(i_s.db) {
             // TODO this doesn't take care of the mro and could not be the first __iter__
             return tup.iter(i_s);
@@ -254,7 +250,7 @@ impl<'a> Instance<'a> {
             i_s,
             instance: self,
             mro_iterator,
-            add_issue,
+            add_issue: infos.add_issue,
             name: "__iter__",
             as_instance: None,
         };
@@ -262,12 +258,12 @@ impl<'a> Instance<'a> {
             match found_on_class {
                 FoundOnClass::Attribute(inf) => {
                     return IteratorContent::Inferred(
-                        inf.execute(i_s, &NoArgs::new_with_custom_add_issue(from, add_issue))
+                        inf.execute(i_s, &infos.as_no_args())
                             .type_lookup_and_execute(
                                 i_s,
-                                from.file,
+                                infos.file(),
                                 "__next__",
-                                &NoArgs::new_with_custom_add_issue(from, add_issue),
+                                &infos.as_no_args(),
                                 &|_| todo!(),
                             ),
                     );
@@ -282,7 +278,7 @@ impl<'a> Instance<'a> {
             }
         }
         if !self.class.incomplete_mro(i_s.db) {
-            add_issue(IssueKind::NotIterable {
+            infos.add_issue(IssueKind::NotIterable {
                 type_: format!("{:?}", self.class.format_short(i_s.db)).into(),
             });
         }

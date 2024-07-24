@@ -12,6 +12,7 @@ use crate::{
     database::{FileIndex, Specific},
     debug,
     diagnostics::IssueKind,
+    file::{File, PythonFile},
     getitem::SliceType,
     inference_state::InferenceState,
     inferred::{AttributeKind, Inferred},
@@ -562,65 +563,92 @@ impl Type {
         }
     }
 
-    pub(crate) fn iter(
-        &self,
-        i_s: &InferenceState,
-        from: NodeRef,
-        add_issue: &dyn Fn(IssueKind),
-    ) -> IteratorContent {
+    pub(crate) fn iter(&self, i_s: &InferenceState, infos: IterInfos) -> IteratorContent {
         let on_error = |t: &Type| {
-            add_issue(IssueKind::NotIterable {
+            infos.add_issue(IssueKind::NotIterable {
                 type_: format!("\"{}\"", t.format_short(i_s.db)).into(),
             });
         };
         match self {
-            Type::Class(c) => Instance::new(c.class(i_s.db), None).iter(i_s, from, add_issue),
+            Type::Class(c) => Instance::new(c.class(i_s.db), None).iter(i_s, infos),
             Type::Tuple(tuple) => tuple.iter(i_s),
             Type::NamedTuple(nt) => nt.iter(i_s),
             Type::Union(union) => {
                 let mut items = vec![];
                 for t in union.iter() {
-                    items.push(t.iter(i_s, from, add_issue));
+                    items.push(t.iter(i_s, infos));
                 }
                 IteratorContent::Union(items)
             }
             Type::TypeVar(tv) => match &tv.type_var.kind {
-                TypeVarKind::Bound(bound) => bound.iter(i_s, from, add_issue),
+                TypeVarKind::Bound(bound) => bound.iter(i_s, infos),
                 TypeVarKind::Constraints(_) => todo!(),
                 TypeVarKind::Unrestricted => {
                     on_error(self);
                     IteratorContent::Any(AnyCause::FromError)
                 }
             },
-            Type::NewType(n) => n.type_(i_s).iter(i_s, from, add_issue),
-            Type::Self_ => {
-                Instance::new(*i_s.current_class().unwrap(), None).iter(i_s, from, add_issue)
-            }
-            Type::RecursiveType(rec) => rec.calculated_type(i_s.db).iter(i_s, from, add_issue),
-            Type::Intersection(i) => i.iter(i_s, from, add_issue),
+            Type::NewType(n) => n.type_(i_s).iter(i_s, infos),
+            Type::Self_ => Instance::new(*i_s.current_class().unwrap(), None).iter(i_s, infos),
+            Type::RecursiveType(rec) => rec.calculated_type(i_s.db).iter(i_s, infos),
+            Type::Intersection(i) => i.iter(i_s, infos),
             _ => IteratorContent::Inferred(
                 self.lookup(
                     i_s,
-                    from.file_index(),
+                    infos.file().file_index(),
                     "__iter__",
                     LookupKind::OnlyType,
                     &mut ResultContext::Unknown,
-                    add_issue,
+                    infos.add_issue,
                     &|t| {
                         on_error(t);
                     },
                 )
                 .into_inferred()
-                .execute(i_s, &NoArgs::new_with_custom_add_issue(from, add_issue))
+                .execute(i_s, &infos.as_no_args())
                 .type_lookup_and_execute(
                     i_s,
-                    from.file,
+                    infos.file(),
                     "__next__",
-                    &NoArgs::new_with_custom_add_issue(from, add_issue),
+                    &infos.as_no_args(),
                     &|_| todo!(),
                 ),
             ),
         }
+    }
+}
+
+#[derive(Copy, Clone)]
+pub(crate) struct IterInfos<'x> {
+    from: NodeRef<'x>,
+    pub add_issue: &'x dyn Fn(IssueKind),
+}
+
+impl<'x> IterInfos<'x> {
+    pub(crate) fn new(from: NodeRef<'x>, add_issue: &'x dyn Fn(IssueKind)) -> IterInfos<'x> {
+        Self { from, add_issue }
+    }
+
+    pub(crate) fn with_different_add_issue<'y: 'x>(
+        &'y self,
+        add_issue: &'y dyn Fn(IssueKind),
+    ) -> IterInfos<'y> {
+        Self {
+            from: self.from,
+            add_issue,
+        }
+    }
+
+    pub fn file(&self) -> &'x PythonFile {
+        self.from.file
+    }
+
+    pub fn as_no_args(&self) -> NoArgs<'x> {
+        NoArgs::new_with_custom_add_issue(self.from, self.add_issue)
+    }
+
+    pub fn add_issue(&self, issue: IssueKind) {
+        (self.add_issue)(issue)
     }
 }
 
