@@ -2432,7 +2432,15 @@ fn stdlib_container_item(db: &Database, t: &Type) -> Option<Type> {
             } else {
                 let n = class.node_ref;
                 let s = &db.python_state;
-                if n == s.list_node_ref() || n == s.dict_node_ref() || n == s.set_node_ref() {
+                if [
+                    s.list_node_ref(),
+                    s.dict_node_ref(),
+                    s.set_node_ref(),
+                    s.frozenset_node_ref(),
+                    s.keys_view_node_ref(),
+                ]
+                .contains(&n)
+                {
                     let generics = class.generics();
                     let Some(Generic::TypeArg(item)) = generics.iter(db).next() else {
                         unreachable!()

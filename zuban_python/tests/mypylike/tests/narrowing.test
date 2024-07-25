@@ -227,3 +227,11 @@ if issubclass(a1, A):
 
 if isinstance(a2, A):
     reveal_type(a2) # N: Revealed type is "__main__.A[int]"
+
+[case narrow_frozenset_contains]
+d: frozenset[str]
+key: str | None
+if key in d:
+    reveal_type(key)  # N: Revealed type is "str"
+else:
+    reveal_type(key)  # N: Revealed type is "str | None"

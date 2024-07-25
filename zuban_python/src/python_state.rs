@@ -108,6 +108,7 @@ pub struct PythonState {
     builtins_tuple_index: NodeIndex,
     builtins_dict_index: NodeIndex,
     builtins_set_index: NodeIndex,
+    builtins_frozenset_index: NodeIndex,
     builtins_bool_index: NodeIndex,
     builtins_int_index: NodeIndex,
     builtins_float_index: NodeIndex,
@@ -151,6 +152,7 @@ pub struct PythonState {
     typing_final_index: NodeIndex,
     typing_typed_dict_index: NodeIndex,
     typing_mapping_index: NodeIndex,
+    typing_keys_view_index: NodeIndex,
     typing_runtime_checkable_index: NodeIndex,
     typing_extensions_runtime_checkable_index: NodeIndex,
     typing_container_index: NodeIndex,
@@ -219,6 +221,7 @@ impl PythonState {
             builtins_tuple_index: 0,
             builtins_dict_index: 0,
             builtins_set_index: 0,
+            builtins_frozenset_index: 0,
             builtins_bool_index: 0,
             builtins_int_index: 0,
             builtins_float_index: 0,
@@ -259,6 +262,7 @@ impl PythonState {
             typing_typed_dict_index: 0,
             typing_container_index: 0,
             typing_mapping_index: 0,
+            typing_keys_view_index: 0,
             typing_runtime_checkable_index: 0,
             typing_extensions_runtime_checkable_index: 0,
             typing_mapping_get_index: 0,
@@ -506,6 +510,7 @@ impl PythonState {
         cache_index!(builtins_list_index, builtins, "list");
         cache_index!(builtins_dict_index, builtins, "dict");
         cache_index!(builtins_set_index, builtins, "set");
+        cache_index!(builtins_frozenset_index, builtins, "frozenset");
         cache_index!(builtins_bool_index, builtins, "bool");
         cache_index!(builtins_int_index, builtins, "int");
         cache_index!(builtins_float_index, builtins, "float");
@@ -550,6 +555,7 @@ impl PythonState {
         cache_index!(typing_typed_dict_index, typing, "_TypedDict");
         cache_index!(typing_container_index, typing, "Container");
         cache_index!(typing_mapping_index, typing, "Mapping");
+        cache_index!(typing_keys_view_index, typing, "KeysView");
         cache_index!(typing_special_form_index, typing, "_SpecialForm");
         cache_optional_index!(types_none_type_index, types, "NoneType");
         cache_optional_index!(types_ellipsis_type_index, types, "EllipsisType");
@@ -750,6 +756,7 @@ impl PythonState {
     attribute_node_ref!(builtins, pub tuple_node_ref, builtins_tuple_index);
     attribute_node_ref!(builtins, pub dict_node_ref, builtins_dict_index);
     attribute_node_ref!(builtins, pub set_node_ref, builtins_set_index);
+    attribute_node_ref!(builtins, pub frozenset_node_ref, builtins_frozenset_index);
     attribute_node_ref!(builtins, pub bool_node_ref, builtins_bool_index);
     attribute_node_ref!(builtins, pub int_node_ref, builtins_int_index);
     attribute_node_ref!(builtins, float_node_ref, builtins_float_index);
@@ -789,6 +796,7 @@ impl PythonState {
     attribute_node_ref!(typing, typed_dict_node_ref, typing_typed_dict_index);
     attribute_node_ref!(typing, pub container_node_ref, typing_container_index);
     attribute_node_ref!(typing, pub mapping_node_ref, typing_mapping_index);
+    attribute_node_ref!(typing, pub keys_view_node_ref, typing_keys_view_index);
     attribute_node_ref!(typing, mapping_get_node_ref, typing_mapping_get_index);
     attribute_node_ref!(typing, pub typing_overload, typing_overload_index);
     optional_attribute_node_ref!(typing, pub typing_override, typing_override_index);
