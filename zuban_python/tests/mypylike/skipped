@@ -331,7 +331,6 @@ testInferredTypeIsSimpleNestedIterable
 testInferredTypeIsSimpleNestedListLoop
 testInferredTypeIsSimpleNestedIterableLoop
 testNarrowingWithAnyOps
-testUnreachableWhenSuperclassIsAny
 testTypeGuardNestedRestrictionAny
 testTypeIsNestedRestrictionAny
 testCompatibilityOfDynamicWithOtherTypes
@@ -344,11 +343,8 @@ testFinalWithoutBool
 testFinalWithoutBoolButWithLen
 # narrowing assignments regressions after `foo =` narrowing
 testAwaitOverloadSpecialCase
-testGenericFunctionAsOverloadItem
 testImportAndAssignToModule
 testParamSpecSubtypeChecking1
-testMultipleAssignmentWithNonTupleRvalue
-testAssignAnyToUnion
 testUnionOfVariableLengthTupleUnpacking
 # narrowing assignments
 testTupleCompatibleWithSequence

@@ -784,6 +784,9 @@ impl Inference<'_, '_, '_> {
         let mut widens = false;
         if matches!(declaration_t, Type::None) && !matches!(current_t, Type::None) {
             widens = true;
+        } else if current_t.is_any() && !declaration_t.is_any_or_any_in_union(self.i_s.db) {
+            // Any should not be narrowed if it is not part of a union with any.
+            return true;
         } else if !declaration_t
             .is_simple_super_type_of(self.i_s, current_t)
             .bool()
