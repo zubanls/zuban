@@ -835,7 +835,7 @@ impl Inference<'_, '_, '_> {
                     if_inf = Some(self.infer_expression_part_with_context(if_, result_context));
                     return;
                 }
-                let (inf, had_error) = self.i_s.do_overload_check(|i_s| {
+                let (inf, had_error) = self.i_s.avoid_errors_within(|i_s| {
                     self.file
                         .inference(i_s)
                         .infer_expression_part_with_context(if_, result_context)

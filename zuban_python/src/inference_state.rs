@@ -22,7 +22,7 @@ enum Context<'a> {
 enum Mode<'a> {
     Normal,
     EnumMemberCalculation,
-    OverloadCheck { had_error: &'a Cell<bool> },
+    AvoidErrors { had_error: &'a Cell<bool> },
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -101,7 +101,7 @@ impl<'db, 'a> InferenceState<'db, 'a> {
         new
     }
 
-    pub fn do_overload_check<T>(
+    pub fn avoid_errors_within<T>(
         &self,
         mut callable: impl FnMut(&InferenceState<'db, '_>) -> T,
     ) -> (T, bool) {
@@ -109,7 +109,7 @@ impl<'db, 'a> InferenceState<'db, 'a> {
         let i_s = &InferenceState {
             db: self.db,
             context: self.context,
-            mode: Mode::OverloadCheck { had_error },
+            mode: Mode::AvoidErrors { had_error },
         };
         let result = callable(i_s);
         (result, had_error.get())
@@ -193,7 +193,7 @@ impl<'db, 'a> InferenceState<'db, 'a> {
 
     pub fn should_add_issue(&self) -> bool {
         match self.mode {
-            Mode::OverloadCheck { had_error } => {
+            Mode::AvoidErrors { had_error } => {
                 had_error.set(true);
                 false
             }

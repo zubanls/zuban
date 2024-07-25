@@ -91,7 +91,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             debug!("Checking overload item #{i}");
             let callable = Callable::new(callable, self.class);
             let (calculated_type_args, had_error) =
-                i_s.do_overload_check(|i_s| match_signature(i_s, result_context, callable));
+                i_s.avoid_errors_within(|i_s| match_signature(i_s, result_context, callable));
             if had_error && had_error_in_func.is_none() {
                 had_error_in_func = Some(callable);
             }
@@ -385,7 +385,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             let mut first_similar = None;
             for (i, callable) in self.overload.iter_functions().enumerate() {
                 let callable = Callable::new(callable, self.class);
-                let (calculated_type_args, had_error) = i_s.do_overload_check(|i_s| {
+                let (calculated_type_args, had_error) = i_s.avoid_errors_within(|i_s| {
                     if search_init {
                         calculate_callable_dunder_init_type_vars_and_return(
                             i_s,
