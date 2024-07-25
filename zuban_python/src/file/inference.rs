@@ -1069,8 +1069,32 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 return;
             }
 
-            let original_t = original.as_cow_type(i_s);
-            self.narrow_or_widen_name_target(from, assign_kind, first_name_link, &original_t, value)
+            let declaration_t = original.as_cow_type(i_s);
+            let check_for_error = || {
+                let mut had_error = false;
+                declaration_t.error_if_not_matches(
+                    self.i_s,
+                    value,
+                    |issue| from.add_issue(self.i_s, issue),
+                    |error_types| {
+                        had_error = true;
+                        let ErrorStrs { expected, got } = error_types.as_boxed_strs(self.i_s.db);
+                        Some(IssueKind::IncompatibleAssignment { got, expected })
+                    },
+                );
+                had_error
+            };
+            if matches!(assign_kind, AssignKind::Normal) {
+                let current_t = value.as_cow_type(self.i_s);
+                self.narrow_or_widen_name_target(
+                    first_name_link,
+                    &declaration_t,
+                    &current_t,
+                    check_for_error,
+                )
+            } else {
+                check_for_error();
+            }
         };
         if let Some(first_index) = first_defined_name_of_multi_def(self.file, current_index) {
             let special_def = self.is_special_definition(first_index);

@@ -777,45 +777,21 @@ impl Inference<'_, '_, '_> {
 
     pub fn narrow_or_widen_name_target(
         &self,
-        from: NodeRef,
-        assign_kind: AssignKind,
         first_name_link: PointLink,
         declaration_t: &Type,
-        value: &Inferred,
+        current_t: &Type,
+        check_for_error: impl FnOnce() -> bool,
     ) {
-        let check_for_error = || {
-            let mut had_error = false;
-            declaration_t.error_if_not_matches(
-                self.i_s,
-                value,
-                |issue| from.add_issue(self.i_s, issue),
-                |error_types| {
-                    had_error = true;
-                    let ErrorStrs { expected, got } = error_types.as_boxed_strs(self.i_s.db);
-                    Some(IssueKind::IncompatibleAssignment { got, expected })
-                },
-            );
-            had_error
-        };
-        if matches!(assign_kind, AssignKind::Normal) {
-            let current_t = value.as_cow_type(self.i_s);
-            let mut widens = false;
-            if matches!(declaration_t, Type::None) && !matches!(current_t.as_ref(), Type::None) {
-                widens = true;
-            } else if current_t.is_any() && !declaration_t.is_any_or_any_in_union(self.i_s.db) {
-                // Any should not be narrowed if it is not part of a union with any.
-                return;
-            } else if !declaration_t
-                .is_simple_super_type_of(self.i_s, &current_t)
-                .bool()
-            {
-                check_for_error();
-                return;
-            }
-            self.save_narrowed(FlowKey::Name(first_name_link), &current_t, widens);
-        } else {
-            check_for_error();
+        let mut widens = false;
+        if matches!(declaration_t, Type::None) && !matches!(current_t, Type::None) {
+            widens = true;
+        } else if current_t.is_any() && !declaration_t.is_any_or_any_in_union(self.i_s.db) {
+            // Any should not be narrowed if it is not part of a union with any.
+            return;
+        } else if check_for_error() {
+            return; // There was an error so return and don't narrow.
         }
+        self.save_narrowed(FlowKey::Name(first_name_link), current_t, widens);
     }
 
     pub fn save_narrowed_primary_target(&self, primary_target: PrimaryTarget, t: &Type) {
