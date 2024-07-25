@@ -68,6 +68,15 @@ reveal_type(foo.v)  # N: Revealed type is "int"
 undefined += 1  # E: Name "undefined" is not defined
 undefined *= 1
 
+[case operator_return_in_failure_case]
+a: A
+b: B
+x = a & a  # E: Unsupported operand types for & ("A" and "A")
+reveal_type(x)  # N: Revealed type is "__main__.B"
+class A:
+    def __and__(self, x: 'B') -> 'B': pass
+class B: pass
+
 [case alias_of_classes]
 class A: ...
 class B: ...

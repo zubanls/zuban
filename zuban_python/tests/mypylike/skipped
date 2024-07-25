@@ -334,6 +334,7 @@ testNarrowingWithAnyOps
 testUnreachableWhenSuperclassIsAny
 testTypeGuardNestedRestrictionAny
 testTypeIsNestedRestrictionAny
+testCompatibilityOfDynamicWithOtherTypes
 # or/and boolean logic over multiple terms
 testAndOr
 testRestrictedBoolAndOrWithGenerics
@@ -343,8 +344,6 @@ testFinalWithoutBool
 testFinalWithoutBoolButWithLen
 # narrowing assignments regressions after `foo =` narrowing
 testAwaitOverloadSpecialCase
-testCompatibilityOfDynamicWithOtherTypes
-testMiscBinaryOperators
 testGenericFunctionAsOverloadItem
 testImportAndAssignToModule
 testParamSpecSubtypeChecking1

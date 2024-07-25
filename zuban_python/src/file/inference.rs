@@ -2378,7 +2378,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         };
                         let strategy = get_strategy();
 
-                        let run = |first: &Inferred, second_type: &Type| {
+                        let mut result_backup = None;
+                        let mut run = |first: &Inferred, second_type: &Type| {
                             let second = Inferred::from_type(second_type.clone());
                             let local_error = Cell::new(false);
                             let result = first.execute_with_details(
@@ -2390,7 +2391,19 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                     Some(&|| local_error.set(true)),
                                 ),
                             );
-                            (!local_error.get()).then_some(result)
+                            if local_error.get() {
+                                if result_backup.is_none() {
+                                    result_backup = Some(result);
+                                } else {
+                                    // If this is called multiple times we always return Any,
+                                    // because it's unclear what type there should be and an error
+                                    // has been raised.
+                                    result_backup = Some(Inferred::new_any_from_error())
+                                }
+                                None
+                            } else {
+                                Some(result)
+                            }
                         };
 
                         let result = match strategy {
@@ -2430,7 +2443,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 }
                             };
                             from.add_issue(i_s, issue);
-                            Inferred::new_any_from_error()
+                            result_backup.unwrap_or_else(Inferred::new_any_from_error)
                         }))
                     }
                 },
