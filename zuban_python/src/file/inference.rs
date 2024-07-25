@@ -1070,30 +1070,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             }
 
             let original_t = original.as_cow_type(i_s);
-            let check_for_error = || {
-                original_t.error_if_not_matches(
-                    i_s,
-                    value,
-                    |issue| from.add_issue(i_s, issue),
-                    |error_types| {
-                        let ErrorStrs { expected, got } = error_types.as_boxed_strs(i_s.db);
-                        Some(IssueKind::IncompatibleAssignment { got, expected })
-                    },
-                );
-            };
-            if matches!(assign_kind, AssignKind::Normal) {
-                // TODO on errors this should not be run and then narrow_or_widen_name_target
-                // doesn't need to recheck
-                if !self.narrow_or_widen_name_target(
-                    first_name_link,
-                    &original_t,
-                    &value.as_cow_type(i_s),
-                ) {
-                    check_for_error()
-                }
-            } else {
-                check_for_error()
-            }
+            self.narrow_or_widen_name_target(from, assign_kind, first_name_link, &original_t, value)
         };
         if let Some(first_index) = first_defined_name_of_multi_def(self.file, current_index) {
             let special_def = self.is_special_definition(first_index);
