@@ -599,55 +599,57 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         let original_t = original.as_cow_type(i_s);
         let redefinition = Inferred::from_saved_node_ref(self.node_ref);
 
-        let mut had_error = false;
-        if self.node().maybe_decorated().is_none()
-            && NodeRef::new(self.node_ref.file, first)
-                .maybe_name_of_function()
-                .is_some_and(|func| func.maybe_decorated().is_none())
-        {
-            let redefinition_t = redefinition.as_cow_type(i_s);
-            if !original_t
-                .is_simple_same_type(i_s, &redefinition_t)
-                .non_any_match()
-            {
-                let Type::Callable(original) = original_t.as_ref() else {
-                    unreachable!()
-                };
-                let Type::Callable(redefinition) = redefinition_t.as_ref() else {
-                    unreachable!()
-                };
-                had_error = true;
-                self.add_issue_for_declaration(
-                    i_s,
-                    IssueKind::IncompatibleConditionalFunctionSignaturePretty {
-                        original: original.format_pretty(&FormatData::new_short(i_s.db)),
-                        redefinition: redefinition.format_pretty(&FormatData::new_short(i_s.db)),
-                    },
-                )
-            }
-        } else {
-            original_t.error_if_not_matches(
-                i_s,
-                &redefinition,
-                |issue| self.add_issue_for_declaration(i_s, issue),
-                |error_types| {
-                    had_error = true;
-                    let ErrorStrs { expected, got } = error_types.as_boxed_strs(i_s.db);
-                    Some(IssueKind::IncompatibleConditionalFunctionSignature {
-                        original: expected,
-                        redefinition: got,
-                    })
-                },
-            )
-        }
-        if !had_error {
-            inference.narrow_or_widen_name_target(
-                PointLink::new(self.node_ref.file_index(), first),
-                &original_t,
-                &redefinition.as_cow_type(i_s),
-                || false,
-            )
-        }
+        let redefinition_t = redefinition.as_cow_type(i_s);
+        inference.narrow_or_widen_name_target(
+            PointLink::new(self.node_ref.file_index(), first),
+            &original_t,
+            &redefinition_t,
+            // This checks whether there is an error or not
+            || {
+                let mut had_error = false;
+                if self.node().maybe_decorated().is_none()
+                    && NodeRef::new(self.node_ref.file, first)
+                        .maybe_name_of_function()
+                        .is_some_and(|func| func.maybe_decorated().is_none())
+                {
+                    if !original_t
+                        .is_simple_same_type(i_s, &redefinition_t)
+                        .non_any_match()
+                    {
+                        let Type::Callable(original) = original_t.as_ref() else {
+                            unreachable!()
+                        };
+                        let Type::Callable(redefinition) = redefinition_t.as_ref() else {
+                            unreachable!()
+                        };
+                        had_error = true;
+                        self.add_issue_for_declaration(
+                            i_s,
+                            IssueKind::IncompatibleConditionalFunctionSignaturePretty {
+                                original: original.format_pretty(&FormatData::new_short(i_s.db)),
+                                redefinition: redefinition
+                                    .format_pretty(&FormatData::new_short(i_s.db)),
+                            },
+                        )
+                    }
+                } else {
+                    original_t.error_if_not_matches(
+                        i_s,
+                        &Inferred::from_type(redefinition_t.as_ref().clone()),
+                        |issue| self.add_issue_for_declaration(i_s, issue),
+                        |error_types| {
+                            had_error = true;
+                            let ErrorStrs { expected, got } = error_types.as_boxed_strs(i_s.db);
+                            Some(IssueKind::IncompatibleConditionalFunctionSignature {
+                                original: expected,
+                                redefinition: got,
+                            })
+                        },
+                    )
+                }
+                had_error
+            },
+        );
     }
 
     pub fn is_dunder_new(&self) -> bool {

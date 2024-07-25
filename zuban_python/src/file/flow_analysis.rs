@@ -20,7 +20,7 @@ use crate::{
     getitem::SliceType,
     inference_state::InferenceState,
     inferred::{Inferred, UnionValue},
-    matching::{ErrorStrs, Generic, LookupKind, Match, Matcher, OnTypeError, ResultContext},
+    matching::{Generic, LookupKind, Match, Matcher, OnTypeError, ResultContext},
     node_ref::NodeRef,
     type_::{
         simplified_union_from_iterators, AnyCause, CallableContent, CallableLike, CallableParams,
@@ -34,7 +34,7 @@ use crate::{
 
 use super::{
     first_defined_name,
-    inference::{AssignKind, Inference},
+    inference::Inference,
     name_binder::{is_expr_part_reachable_for_name_binder, Truthiness},
     on_argument_type_error, PythonFile,
 };
