@@ -302,12 +302,7 @@ testNarrowingEqualityDisabledForCustomEquality
 assign_bool_to_false_true_literal
 testBoolInTuplesRegression
 
-# isinstance error conditions
-testLiteralErrorsWithIsInstanceAndIsSubclass
-# unsorted narrowing tests
-testIntersectionUsingPromotion2
-testIntersectionUsingPromotion5
-testIntersectionUsingPromotion6
+# aug assignments can widen types
 testAugmentedAssignmentIntFloat
 # type[any] issues
 testIsInstanceWithUnknownType
@@ -744,12 +739,6 @@ testMalformedTypeAliasRuntimeReassignments
 
 # --------------------------- Not first release ---------------------------
 
-# issubclass narrowing leads to Never entries instead of unreachable?
-testIssubclassWithMetaclassesStrictOptional
-# questionable implicit literal?
-testEnumReachabilityChecksIndirect
-# narrowing `in` weird overlapping. Mypy correct?
-testTupleOverlapDifferentTuples
 # Narrowing len()
 testNarrowingLenTypeVarTupleGreaterThan
 testNarrowingLenBareExpressionTypeVarTuple
@@ -757,6 +746,18 @@ testNarrowingLenUnionWithUnreachable
 testNarrowingLenAnyListElseNotAffected
 testNarrowingLenMixWithAnyPrecise
 testNarrowingLenMixWithAnyImprecise
+# issubclass narrowing leads to Never entries instead of unreachable?
+testIssubclassWithMetaclassesStrictOptional
+# questionable implicit literal?
+testEnumReachabilityChecksIndirect
+# narrowing `in` weird overlapping. Mypy correct?
+testTupleOverlapDifferentTuples
+# isinstance error conditions
+testLiteralErrorsWithIsInstanceAndIsSubclass
+# isinstance with promotions will change outer types
+testIntersectionUsingPromotion2
+testIntersectionUsingPromotion5
+testIntersectionUsingPromotion6
 
 # subtyping arbitrary length unpacks
 testVariadicTupleSubtyping
