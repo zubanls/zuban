@@ -309,7 +309,6 @@ testNarrowingParentWithParentMixtures
 testIntersectionUsingPromotion2
 testIntersectionUsingPromotion5
 testIntersectionUsingPromotion6
-testModuleAliasRepeatedWithAnnotation
 testTypeEqualsMultipleTypesShouldntNarrow
 testAugmentedAssignmentIntFloat
 # type[any] issues
