@@ -1155,26 +1155,34 @@ impl Inference<'_, '_, '_> {
         base_union: &UnionType,
         child_entry: &Entry,
     ) -> Option<Type> {
-        let replay = |t: &Type| match &child_entry.key {
-            FlowKey::Member(_, name) => {
-                self.check_attr(t, name.as_str(self.i_s.db)).into_inferred()
-            }
-            FlowKey::Index { node_index, .. } => t.get_item(
-                self.i_s,
-                None,
-                &SliceType::new(
-                    self.file,
-                    *node_index,
-                    CSTSliceType::from_index(&self.file.tree, *node_index),
+        let replay = |t: &Type| {
+            self.i_s.avoid_errors_within(|i_s| match &child_entry.key {
+                FlowKey::Member(_, name) => self
+                    .file
+                    .inference(i_s)
+                    .check_attr(t, name.as_str(i_s.db))
+                    .into_inferred(),
+                FlowKey::Index { node_index, .. } => t.get_item(
+                    i_s,
+                    None,
+                    &SliceType::new(
+                        self.file,
+                        *node_index,
+                        CSTSliceType::from_index(&self.file.tree, *node_index),
+                    ),
+                    &mut ResultContext::Unknown,
                 ),
-                &mut ResultContext::Unknown,
-            ),
-            FlowKey::Name(_) => unreachable!(),
+                FlowKey::Name(_) => unreachable!(),
+            })
         };
 
         let mut matching_entries = vec![];
         for union_entry in base_union.entries.iter() {
-            if replay(&union_entry.type_)
+            let (inf, had_error) = replay(&union_entry.type_);
+            if had_error {
+                return None;
+            }
+            if inf
                 .as_cow_type(self.i_s)
                 .simple_overlaps(self.i_s, &child_entry.type_)
             {

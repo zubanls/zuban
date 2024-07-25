@@ -305,7 +305,6 @@ testBoolInTuplesRegression
 # isinstance error conditions
 testLiteralErrorsWithIsInstanceAndIsSubclass
 # unsorted narrowing tests
-testNarrowingParentWithParentMixtures
 testIntersectionUsingPromotion2
 testIntersectionUsingPromotion5
 testIntersectionUsingPromotion6
