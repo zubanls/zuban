@@ -311,6 +311,7 @@ testIntersectionUsingPromotion5
 testIntersectionUsingPromotion6
 testModuleAliasRepeatedWithAnnotation
 testTypeEqualsMultipleTypesShouldntNarrow
+testAugmentedAssignmentIntFloat
 # overwriting with def as a target
 testNarrowingWithDef
 # type[any] issues
@@ -334,6 +335,8 @@ testNarrowingWithAnyOps
 testTypeGuardNestedRestrictionAny
 testTypeIsNestedRestrictionAny
 testCompatibilityOfDynamicWithOtherTypes
+testParamSpecSubtypeChecking1
+testAwaitOverloadSpecialCase
 # or/and boolean logic over multiple terms
 testAndOr
 testRestrictedBoolAndOrWithGenerics
@@ -341,20 +344,13 @@ testOrCases
 testAndCases
 testFinalWithoutBool
 testFinalWithoutBoolButWithLen
-# narrowing assignments regressions after `foo =` narrowing
-testAwaitOverloadSpecialCase
-testImportAndAssignToModule
-testParamSpecSubtypeChecking1
-testUnionOfVariableLengthTupleUnpacking
-# narrowing assignments
-testTupleCompatibleWithSequence
-testAugmentedAssignmentIntFloat
+# multi assign narrowing
 testUnionMultiassignRebind
 testUnionMultiassignAlreadyDeclared
 testUnionMultiassignPacked
-testUnpackUnionNoCrashOnPartialNoneBinder
 testNestedUnionUnpackingFromNestedTuplesBinder
 testUnionUnpackingDoubleBinder
+testUnpackUnionNoCrashOnPartialNoneBinder
 # narrowing with dict keys
 testNarrowTypeForDictKeys
 # try/except/finally
@@ -882,6 +878,8 @@ testAssignmentToStarFromTupleType
 # empty tuple as iterator ("Need type annotation for "x"")
 testAssignmentToStarMissingAnnotation
 testForLoopOverEmptyTuple
+# tuple call tuple() leads to tuple[Any, ..] in Mypy, but is probably not technically wrong here
+testTupleCompatibleWithSequence
 
 # Type var constraints not enforced in type alias
 testValidTypeAliasValues
@@ -1593,6 +1591,7 @@ testOptionalIterator
 testDescriptorAccessForUnionOfTypesWithNoStrictOptional
 testMeetOfIncompatibleProtocols
 testIssubclassWithMetaclasses
+testImportAndAssignToModule
 
 # --untyped-calls-exclude=bar.A
 testDisallowUntypedCallsAllowListFlags
