@@ -1331,7 +1331,6 @@ impl Type {
         i_s: &InferenceState,
         matcher: &mut Matcher,
         value: &Inferred,
-        //callback: Option<impl FnOnce(Box<str>, Box<str>, &MismatchReason) -> NodeRef<'x>>,
         add_issue: impl Fn(IssueKind),
         mut on_error: impl FnMut(&ErrorTypes, &MismatchReason) -> Option<IssueKind>,
     ) {

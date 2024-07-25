@@ -594,14 +594,12 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         };
         // At this point we know it's a conditional redefinition and not just a singular def in an
         // if.
-        let original = self
-            .node_ref
-            .file
-            .inference(i_s)
-            .infer_name_of_definition_by_index(first);
+        let inference = self.node_ref.file.inference(i_s);
+        let original = inference.infer_name_of_definition_by_index(first);
         let original_t = original.as_cow_type(i_s);
         let redefinition = Inferred::from_saved_node_ref(self.node_ref);
 
+        let mut had_error = false;
         if self.node().maybe_decorated().is_none()
             && NodeRef::new(self.node_ref.file, first)
                 .maybe_name_of_function()
@@ -618,6 +616,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 let Type::Callable(redefinition) = redefinition_t.as_ref() else {
                     unreachable!()
                 };
+                had_error = true;
                 self.add_issue_for_declaration(
                     i_s,
                     IssueKind::IncompatibleConditionalFunctionSignaturePretty {
@@ -632,12 +631,21 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 &redefinition,
                 |issue| self.add_issue_for_declaration(i_s, issue),
                 |error_types| {
+                    had_error = true;
                     let ErrorStrs { expected, got } = error_types.as_boxed_strs(i_s.db);
                     Some(IssueKind::IncompatibleConditionalFunctionSignature {
                         original: expected,
                         redefinition: got,
                     })
                 },
+            )
+        }
+        if !had_error {
+            inference.narrow_or_widen_name_target(
+                PointLink::new(self.node_ref.file_index(), first),
+                &original_t,
+                &redefinition.as_cow_type(i_s),
+                || false,
             )
         }
     }
