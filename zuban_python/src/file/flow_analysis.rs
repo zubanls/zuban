@@ -2481,7 +2481,9 @@ fn find_comparison_chain_guards(
     is_eq: bool,
 ) -> Option<FramesWithParentUnions> {
     let mut frames = None;
+    let mut type_of_count = 0;
     'outer: for (i, part1) in chain.iter().enumerate() {
+        type_of_count += matches!(part1.key, Some(ComparisonKey::TypeOf { .. })) as usize;
         for (k, part2) in chain.iter().enumerate() {
             if i == k {
                 continue;
@@ -2491,6 +2493,9 @@ fn find_comparison_chain_guards(
                 continue 'outer;
             }
         }
+    }
+    if type_of_count > 0 && type_of_count + 1 != chain.len() {
+        return None;
     }
     frames
 }

@@ -309,7 +309,6 @@ testNarrowingParentWithParentMixtures
 testIntersectionUsingPromotion2
 testIntersectionUsingPromotion5
 testIntersectionUsingPromotion6
-testTypeEqualsMultipleTypesShouldntNarrow
 testAugmentedAssignmentIntFloat
 # type[any] issues
 testIsInstanceWithUnknownType
