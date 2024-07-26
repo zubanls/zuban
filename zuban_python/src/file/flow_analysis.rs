@@ -184,6 +184,7 @@ pub struct FlowAnalysis {
     current_break_index: Cell<Option<usize>>,
     partials_in_module: RefCell<Vec<PointLink>>,
     in_type_checking_only_block: Cell<bool>, // For stuff like if TYPE_CHECKING:
+    accumulating_types: Cell<usize>, // Can accumulate nested and thereore use this counter like a stack
 }
 
 impl FlowAnalysis {
@@ -247,7 +248,7 @@ impl FlowAnalysis {
                         // Assign false to make sure it is not handled again from the other side.
                         other_entry.from_assignment = false;
                         self.overwrite_entry(
-                            i_s.db,
+                            i_s,
                             Entry {
                                 key: first_entry.key.clone(),
                                 type_: other_entry.type_.simplified_union(i_s, &first_entry.type_),
@@ -266,18 +267,23 @@ impl FlowAnalysis {
                         from_assignment: first_entry.from_assignment,
                         widens: first_entry.widens,
                     };
-                    self.overwrite_entry(i_s.db, entry)
+                    self.overwrite_entry(i_s, entry)
                 }
             }
         }
     }
 
-    fn overwrite_entry(&self, db: &Database, new_entry: Entry) {
+    fn overwrite_entry(&self, i_s: &InferenceState, new_entry: Entry) {
         let mut frames = self.frames.borrow_mut();
         let entries = &mut frames.last_mut().unwrap().entries;
         for entry in &mut *entries {
-            if entry.key.equals(db, &new_entry.key) {
-                *entry = new_entry;
+            if entry.key.equals(i_s.db, &new_entry.key) {
+                if self.accumulating_types.get() > 0 {
+                    entry.type_ = entry.type_.simplified_union(i_s, &new_entry.type_);
+                    entry.widens |= new_entry.widens;
+                } else {
+                    *entry = new_entry;
+                }
                 return;
             }
         }
@@ -351,6 +357,16 @@ impl FlowAnalysis {
             }
         }
         partials.clear()
+    }
+
+    pub fn start_accumulating_types(&self) {
+        self.accumulating_types
+            .set(self.accumulating_types.get() + 1);
+    }
+
+    pub fn stop_accumulating_types(&self) {
+        self.accumulating_types
+            .set(self.accumulating_types.get() - 1);
     }
 }
 
@@ -804,7 +820,7 @@ impl Inference<'_, '_, '_> {
         FLOW_ANALYSIS.with(|fa| {
             fa.invalidate_child_entries_in_last_frame(self.i_s.db, &key);
             fa.overwrite_entry(
-                self.i_s.db,
+                self.i_s,
                 Entry {
                     key,
                     type_: t.clone(),

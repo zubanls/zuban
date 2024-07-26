@@ -328,13 +328,6 @@ testOrCases
 testAndCases
 testFinalWithoutBool
 testFinalWithoutBoolButWithLen
-# multi assign narrowing
-testUnionMultiassignRebind
-testUnionMultiassignAlreadyDeclared
-testUnionMultiassignPacked
-testNestedUnionUnpackingFromNestedTuplesBinder
-testUnionUnpackingDoubleBinder
-testUnpackUnionNoCrashOnPartialNoneBinder
 # try/except/finally
 testTryExceptFlow
 testRedefinedFunctionInTryWithElse
