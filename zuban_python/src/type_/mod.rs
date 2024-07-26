@@ -484,7 +484,17 @@ impl Type {
     pub fn maybe_union_like<'x>(&'x self, db: &'x Database) -> Option<Cow<UnionType>> {
         match self {
             Type::Union(u) => Some(Cow::Borrowed(u)),
-            Type::Type(t) => t.maybe_union_like(db).map(|u| todo!()),
+            Type::Type(t) => t.maybe_union_like(db).map(|u| {
+                Cow::Owned(UnionType::new(
+                    u.entries
+                        .iter()
+                        .map(|e| UnionEntry {
+                            type_: Type::Type(Rc::new(e.type_.clone())),
+                            format_index: e.format_index,
+                        })
+                        .collect(),
+                ))
+            }),
             Type::RecursiveType(r) => r.calculated_type(db).maybe_union_like(db),
             _ => None,
         }

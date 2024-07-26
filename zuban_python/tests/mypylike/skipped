@@ -304,10 +304,6 @@ testBoolInTuplesRegression
 
 # aug assignments can widen types
 testAugmentedAssignmentIntFloat
-# type[any] issues
-testIsInstanceWithUnknownType
-testNarrowingWithTupleOfTypes
-testNarrowingWithTupleOfTypesPy310Plus
 # narrowing with Any troubles
 testSubtypingWithAny
 testIsinstanceNarrowAny
@@ -754,6 +750,10 @@ testLiteralErrorsWithIsInstanceAndIsSubclass
 testIntersectionUsingPromotion2
 testIntersectionUsingPromotion5
 testIntersectionUsingPromotion6
+# type[any] issues
+testIsInstanceWithUnknownType
+testNarrowingWithTupleOfTypes
+testNarrowingWithTupleOfTypesPy310Plus
 
 # subtyping arbitrary length unpacks
 testVariadicTupleSubtyping

@@ -235,3 +235,22 @@ if key in d:
     reveal_type(key)  # N: Revealed type is "str"
 else:
     reveal_type(key)  # N: Revealed type is "str | None"
+
+[case narrow_type_type_parent_unions]
+from typing import ClassVar, Type, Literal
+class Foo:
+    baz: ClassVar[Literal[1]] = 1
+class Bar:
+    baz: ClassVar[Literal[2]] = 2
+
+def foo(x: Type[Foo | Bar]) -> None:
+    if x.baz == 1:
+        reveal_type(x)  # N: Revealed type is "Type[__main__.Foo]"
+    else:
+        reveal_type(x)  # N: Revealed type is "Type[__main__.Bar]"
+
+def bar(x: Type[Foo] | Type[Bar]) -> None:
+    if x.baz == 2:
+        reveal_type(x)  # N: Revealed type is "Type[__main__.Bar]"
+    else:
+        reveal_type(x)  # N: Revealed type is "Type[__main__.Foo]"
