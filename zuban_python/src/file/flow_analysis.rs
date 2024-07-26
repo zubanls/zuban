@@ -2108,7 +2108,7 @@ impl Inference<'_, '_, '_> {
         let old_base_key = base.key.take();
         let maybe_union = || {
             old_inf
-                .is_union(self.i_s)
+                .is_union_like(self.i_s)
                 .then(|| match old_inf.as_type(self.i_s) {
                     Type::Union(u) => u,
                     Type::RecursiveType(r) => todo!(),

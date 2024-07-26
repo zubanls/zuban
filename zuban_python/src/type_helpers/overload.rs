@@ -301,7 +301,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     as_union_math_type,
                 );
             };
-            if inf.is_union(i_s) {
+            if inf.is_union_like(i_s) {
                 // TODO this is shit
                 let nxt_arg: &'x Arg<'db, 'x> = unsafe { std::mem::transmute(&next_arg) };
                 non_union_args.push(Arg {

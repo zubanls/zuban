@@ -2452,7 +2452,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             )
         });
         if had_error {
-            let note = match (left.is_union(self.i_s), right.is_union(self.i_s)) {
+            let note = match (left.is_union_like(self.i_s), right.is_union_like(self.i_s)) {
                 (false, false) => return result,
                 (true, false) => {
                     format!("Left operand is of type {:?}", left.format_short(self.i_s),).into()

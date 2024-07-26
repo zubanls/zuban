@@ -48,7 +48,7 @@ pub(crate) trait Args<'db>: std::fmt::Debug {
     fn has_a_union_argument(&self, i_s: &InferenceState<'db, '_>) -> bool {
         for arg in self.iter() {
             if let InferredArg::Inferred(inf) = arg.infer(i_s, &mut ResultContext::Unknown) {
-                if inf.is_union(i_s) {
+                if inf.is_union_like(i_s) {
                     return true;
                 }
             }

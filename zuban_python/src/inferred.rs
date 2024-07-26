@@ -1597,34 +1597,8 @@ impl<'db: 'slf, 'slf> Inferred {
         }
     }
 
-    pub fn is_union(&self, i_s: &InferenceState) -> bool {
-        let check_complex_point = |c: &_| match c {
-            ComplexPoint::TypeInstance(t) => t.is_union_like(i_s.db),
-            _ => false,
-        };
-        match &self.state {
-            InferredState::Saved(reference) => {
-                let node_ref = NodeRef::from_link(i_s.db, *reference);
-                let point = node_ref.point();
-                if point.kind() == PointKind::Specific {
-                    if matches!(
-                        point.specific(),
-                        Specific::AnnotationOrTypeCommentWithTypeVars
-                            | Specific::AnnotationOrTypeCommentWithoutTypeVars
-                            | Specific::AnnotationOrTypeCommentSimpleClassInstance
-                    ) {
-                        use_cached_annotation_or_type_comment(i_s, node_ref).is_union_like(i_s.db)
-                    } else {
-                        // TODO the node_ref may not be an annotation.
-                        false
-                    }
-                } else {
-                    node_ref.complex().is_some_and(check_complex_point)
-                }
-            }
-            InferredState::UnsavedComplex(c) => check_complex_point(c),
-            _ => false,
-        }
+    pub fn is_union_like(&self, i_s: &InferenceState) -> bool {
+        self.as_cow_type(i_s).is_union_like(i_s.db)
     }
 
     #[inline]
