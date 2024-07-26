@@ -63,14 +63,6 @@ pub fn global_import<'a>(
     from_file: FileIndex,
     name: &'a str,
 ) -> Option<ImportResult> {
-    if match_case(&db.project.flags, name, "typing_extensions") {
-        return Some(ImportResult::File(
-            db.python_state.typing_extensions().file_index(),
-        ));
-    }
-    if match_case(&db.project.flags, name, "functools") {
-        return Some(ImportResult::File(db.python_state.functools().file_index()));
-    }
     global_import_without_stubs_first(db, from_file, &format!("{name}{STUBS_SUFFIX}"))
         .or_else(|| global_import_without_stubs_first(db, from_file, name))
 }
