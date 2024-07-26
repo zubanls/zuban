@@ -802,7 +802,7 @@ pub struct Database {
     in_use: bool,
     pub vfs: Box<dyn Vfs>,
     file_state_loaders: FileStateLoaders,
-    files: InsertOnlyVec<dyn FileState>,
+    pub files: InsertOnlyVec<dyn FileState>,
     pub workspaces: Workspaces,
     in_memory_files: HashMap<Box<str>, FileIndex>,
 
@@ -937,7 +937,7 @@ impl Database {
                         .as_any()
                         .downcast_ref()
                         .unwrap();
-                    debug_assert!(i < 11);
+                    debug_assert!(i < 12);
                     return;
                 }
             }
@@ -949,6 +949,11 @@ impl Database {
         // first __init__.pyi will automaticall be the typeshed module
         set_pointer(&mut python_state.typeshed, "_typeshed", true);
         set_pointer(&mut python_state.collections, "collections", true);
+        set_pointer(
+            &mut python_state._collections_abc,
+            "_collections_abc.pyi",
+            false,
+        );
         set_pointer(&mut python_state.types, "types.pyi", false);
         set_pointer(&mut python_state.abc, "abc.pyi", false);
         set_pointer(&mut python_state.functools, "functools.pyi", false);
@@ -1239,6 +1244,7 @@ impl Database {
             .file_index
             .get()
             .unwrap_or_else(|| self.load_file_from_workspace(file_entry.clone(), true));
+        debug!("Preloaded typeshed stub {file_name} as #{}", file_index.0);
         self.loaded_python_file(file_index)
     }
 
@@ -1276,6 +1282,8 @@ impl Database {
             self.preload_typeshed_stub(&mypy_extensions_dir, "mypy_extensions.pyi") as *const _;
 
         let collections = self.preload_typeshed_stub(&collections_dir, "__init__.pyi") as *const _;
+        let _collections_abc =
+            self.preload_typeshed_stub(&stdlib_dir, "_collections_abc.pyi") as *const _;
 
         PythonState::initialize(
             self,
@@ -1283,6 +1291,7 @@ impl Database {
             typing,
             typeshed,
             collections,
+            _collections_abc,
             types,
             abc,
             functools,

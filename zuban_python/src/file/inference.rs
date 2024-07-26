@@ -399,7 +399,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         let result = global_import(self.i_s.db, self.file.file_index(), name.as_str());
         if let Some(result) = &result {
             debug!(
-                "Global import {name:?}: {:?}",
+                "Global import '{}': {:?}",
+                name.as_code(),
                 result.debug_path(self.i_s.db),
             );
         }

@@ -341,8 +341,6 @@ testUnionMultiassignPacked
 testNestedUnionUnpackingFromNestedTuplesBinder
 testUnionUnpackingDoubleBinder
 testUnpackUnionNoCrashOnPartialNoneBinder
-# narrowing with dict keys
-testNarrowTypeForDictKeys
 # try/except/finally
 testTryExceptFlow
 testRedefinedFunctionInTryWithElse

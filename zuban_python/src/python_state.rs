@@ -94,6 +94,7 @@ pub struct PythonState {
     pub typing: *const PythonFile,
     pub typeshed: *const PythonFile,
     pub collections: *const PythonFile,
+    pub _collections_abc: *const PythonFile,
     pub types: *const PythonFile,
     pub abc: *const PythonFile,
     pub functools: *const PythonFile,
@@ -165,6 +166,7 @@ pub struct PythonState {
     types_ellipsis_type_index: Option<NodeIndex>,
     typing_ellipsis_fallback_index: Option<NodeIndex>,
     collections_namedtuple_index: NodeIndex,
+    _collections_abc_dict_keys_index: NodeIndex,
     abc_abc_meta_index: NodeIndex,
     abc_abstractmethod_index: NodeIndex,
     abc_abstractproperty_index: NodeIndex,
@@ -208,6 +210,7 @@ impl PythonState {
             typing: null(),
             typeshed: null(),
             collections: null(),
+            _collections_abc: null(),
             types: null(),
             abc: null(),
             functools: null(),
@@ -278,6 +281,7 @@ impl PythonState {
             typing_supports_index_index: 0,
             typing_typed_dict_bases: Box::new([]), // Will be set later
             collections_namedtuple_index: 0,
+            _collections_abc_dict_keys_index: 0,
             abc_abc_meta_index: 0,
             abc_abstractmethod_index: 0,
             abc_abstractproperty_index: 0,
@@ -325,6 +329,7 @@ impl PythonState {
         typing: *const PythonFile,
         typeshed: *const PythonFile,
         collections: *const PythonFile,
+        _collections_abc: *const PythonFile,
         types: *const PythonFile,
         abc: *const PythonFile,
         functools: *const PythonFile,
@@ -338,6 +343,7 @@ impl PythonState {
         s.typing = typing;
         s.typeshed = typeshed;
         s.collections = collections;
+        s._collections_abc = _collections_abc;
         s.types = types;
         s.abc = abc;
         s.functools = functools;
@@ -582,12 +588,18 @@ impl PythonState {
         cache_index!(dataclasses_replace_index, dataclasses_file, "replace", true);
 
         cache_index!(abc_abstractmethod_index, abc, "abstractmethod", true);
+        cache_index!(abc_abstractmethod_index, abc, "abstractmethod", true);
 
         cache_index!(
             collections_namedtuple_index,
             collections,
             "namedtuple",
             true
+        );
+        cache_index!(
+            _collections_abc_dict_keys_index,
+            _collections_abc,
+            "dict_keys"
         );
 
         db.python_state.typing_mapping_get_index = db
@@ -702,6 +714,12 @@ impl PythonState {
     pub fn collections(&self) -> &PythonFile {
         debug_assert!(!self.collections.is_null());
         unsafe { &*self.collections }
+    }
+
+    #[inline]
+    pub fn _collections_abc(&self) -> &PythonFile {
+        debug_assert!(!self._collections_abc.is_null());
+        unsafe { &*self._collections_abc }
     }
 
     #[inline]
@@ -822,6 +840,7 @@ impl PythonState {
         collections_named_tuple_node_ref,
         collections_namedtuple_index
     );
+    attribute_node_ref!(_collections_abc, pub _collections_abc_dict_keys_node_ref, _collections_abc_dict_keys_index);
 
     attribute_link!(builtins, pub notimplementederror, builtins_notimplementederror);
     attribute_link!(abc, pub abc_meta_link, abc_abc_meta_index);

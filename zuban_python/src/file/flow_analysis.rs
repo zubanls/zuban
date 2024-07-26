@@ -2430,7 +2430,6 @@ fn stdlib_container_item(db: &Database, t: &Type) -> Option<Type> {
             if let Some(nt) = class.maybe_named_tuple_base(db) {
                 return stdlib_container_item(db, &Type::Tuple(nt.as_tuple()));
             } else {
-                let n = class.node_ref;
                 let s = &db.python_state;
                 if [
                     s.list_node_ref(),
@@ -2438,8 +2437,9 @@ fn stdlib_container_item(db: &Database, t: &Type) -> Option<Type> {
                     s.set_node_ref(),
                     s.frozenset_node_ref(),
                     s.keys_view_node_ref(),
+                    s._collections_abc_dict_keys_node_ref(),
                 ]
-                .contains(&n)
+                .contains(&class.node_ref)
                 {
                     let generics = class.generics();
                     let Some(Generic::TypeArg(item)) = generics.iter(db).next() else {
