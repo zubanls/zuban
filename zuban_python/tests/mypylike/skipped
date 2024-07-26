@@ -308,8 +308,6 @@ testAugmentedAssignmentIntFloat
 testIsInstanceWithUnknownType
 testNarrowingWithTupleOfTypes
 testNarrowingWithTupleOfTypesPy310Plus
-# narrowing if with literals
-testRecursiveAliasTuple
 # narrowing with Any troubles
 testSubtypingWithAny
 testIsinstanceNarrowAny

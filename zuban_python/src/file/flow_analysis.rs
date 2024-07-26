@@ -2108,13 +2108,9 @@ impl Inference<'_, '_, '_> {
         let old_base_key = base.key.take();
         let maybe_union = || {
             old_inf
-                .is_union_like(self.i_s)
-                .then(|| match old_inf.as_type(self.i_s) {
-                    Type::Union(u) => u,
-                    Type::RecursiveType(r) => todo!(),
-                    Type::Type(_) => todo!(),
-                    _ => unreachable!(),
-                })
+                .as_cow_type(self.i_s)
+                .maybe_union_like(self.i_s.db)
+                .map(|u| u.into_owned())
         };
 
         if let Some((key, inf)) = self.maybe_has_primary_entry(primary) {
