@@ -421,8 +421,6 @@ testNarrowingEqualityFlipFlop
 testStrictEqualitywithParamSpec
 # lambda unreachable raise
 testLambdaNoReturn
-# unreachability around isinstance(..., Callable[...])
-testCallableInstanceOverlapAllowed
 # isinstance with union literals `isinstance(x, A | B)`
 testTypeAliasWithNewUnionIsInstance
 testIsInstanceUnionNone
