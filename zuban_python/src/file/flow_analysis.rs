@@ -2107,12 +2107,14 @@ impl Inference<'_, '_, '_> {
         let old_inf = base.inf;
         let old_base_key = base.key.take();
         let maybe_union = || {
-            old_inf.is_union(self.i_s).then(|| {
-                let Type::Union(union_type) = old_inf.as_type(self.i_s) else {
-                    unreachable!()
-                };
-                union_type
-            })
+            old_inf
+                .is_union(self.i_s)
+                .then(|| match old_inf.as_type(self.i_s) {
+                    Type::Union(u) => u,
+                    Type::RecursiveType(r) => todo!(),
+                    Type::Type(_) => todo!(),
+                    _ => unreachable!(),
+                })
         };
 
         if let Some((key, inf)) = self.maybe_has_primary_entry(primary) {

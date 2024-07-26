@@ -472,10 +472,11 @@ impl Type {
         }
     }
 
-    pub fn is_union_like(&self) -> bool {
+    pub fn is_union_like(&self, db: &Database) -> bool {
         match self {
             Type::Union(_) => true,
-            Type::Type(t) if t.as_ref().is_union_like() => true,
+            Type::Type(t) if t.as_ref().is_union_like(db) => true,
+            Type::RecursiveType(r) => r.calculated_type(db).is_union_like(db),
             _ => false,
         }
     }

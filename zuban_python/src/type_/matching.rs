@@ -409,7 +409,7 @@ impl Type {
             Type::Union(u2)
                 if variance == Variance::Covariant
                 // Union matching was already done.
-                && !self.is_union_like() =>
+                && !self.is_union_like(i_s.db) =>
             {
                 if matcher.is_matching_reverse() {
                     debug!("TODO matching reverse?");

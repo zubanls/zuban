@@ -1599,7 +1599,7 @@ impl<'db: 'slf, 'slf> Inferred {
 
     pub fn is_union(&self, i_s: &InferenceState) -> bool {
         let check_complex_point = |c: &_| match c {
-            ComplexPoint::TypeInstance(t) => t.is_union_like(),
+            ComplexPoint::TypeInstance(t) => t.is_union_like(i_s.db),
             _ => false,
         };
         match &self.state {
@@ -1613,7 +1613,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             | Specific::AnnotationOrTypeCommentWithoutTypeVars
                             | Specific::AnnotationOrTypeCommentSimpleClassInstance
                     ) {
-                        use_cached_annotation_or_type_comment(i_s, node_ref).is_union_like()
+                        use_cached_annotation_or_type_comment(i_s, node_ref).is_union_like(i_s.db)
                     } else {
                         // TODO the node_ref may not be an annotation.
                         false
@@ -2632,7 +2632,7 @@ pub fn add_attribute_error(
     let name = Box::from(name);
     if let Type::TypeVar(usage) = full_type {
         if let TypeVarKind::Bound(bound) = &usage.type_var.kind {
-            if bound.is_union_like() {
+            if bound.is_union_like(i_s.db) {
                 let bound = bound.format_short(i_s.db);
                 let type_var_name = usage.type_var.name(i_s.db);
                 node_ref.add_issue(
@@ -2647,7 +2647,7 @@ pub fn add_attribute_error(
     }
     node_ref.add_issue(
         i_s,
-        match full_type.is_union_like() {
+        match full_type.is_union_like(i_s.db) {
             false => IssueKind::AttributeError { object, name },
             true => IssueKind::UnionAttributeError {
                 object,

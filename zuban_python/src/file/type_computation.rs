@@ -2683,7 +2683,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             );
         }
         let t = self.compute_slice_type(first);
-        let format_as_optional = !t.is_union_like();
+        let format_as_optional = !matches!(t, Type::Union(_));
         let mut t = t.union_with_details(Type::None, format_as_optional);
         if let Type::Union(union_type) = &mut t {
             union_type.sort_for_priority();
