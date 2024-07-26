@@ -290,6 +290,12 @@ impl FlowAnalysis {
         entries.push(new_entry)
     }
 
+    fn remove_entry_if_from_assignment(&self, i_s: &InferenceState, key: &FlowKey) {
+        let mut frames = self.frames.borrow_mut();
+        let entries = &mut frames.last_mut().unwrap().entries;
+        entries.retain(|entry| !entry.from_assignment || !entry.key.equals(i_s.db, key))
+    }
+
     fn overwrite_entries(&self, db: &Database, new_entries: Entries) {
         let mut frames = self.frames.borrow_mut();
         let entries = &mut frames.last_mut().unwrap().entries;
@@ -799,15 +805,17 @@ impl Inference<'_, '_, '_> {
         check_for_error: impl FnOnce() -> bool,
     ) {
         let mut widens = false;
+        let key = FlowKey::Name(first_name_link);
         if matches!(declaration_t, Type::None) && !matches!(current_t, Type::None) {
             widens = true;
         } else if current_t.is_any() && !declaration_t.is_any_or_any_in_union(self.i_s.db) {
             // Any should not be narrowed if it is not part of a union with any.
+            FLOW_ANALYSIS.with(|fa| fa.remove_entry_if_from_assignment(self.i_s, &key));
             return;
         } else if check_for_error() {
             return; // There was an error so return and don't narrow.
         }
-        self.save_narrowed(FlowKey::Name(first_name_link), current_t, widens);
+        self.save_narrowed(key, current_t, widens);
     }
 
     pub fn save_narrowed_primary_target(&self, primary_target: PrimaryTarget, t: &Type) {

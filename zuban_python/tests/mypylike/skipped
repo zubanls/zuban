@@ -305,7 +305,6 @@ testBoolInTuplesRegression
 # aug assignments can widen types
 testAugmentedAssignmentIntFloat
 # narrowing with Any troubles
-testSubtypingWithAny
 testIsinstanceNarrowAny
 testOptionalAssignAny1
 testOptionalAssignAny2
