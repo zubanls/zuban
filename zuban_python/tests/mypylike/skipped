@@ -314,7 +314,6 @@ testInferredTypeIsSimpleNestedList
 testInferredTypeIsSimpleNestedIterable
 testInferredTypeIsSimpleNestedListLoop
 testInferredTypeIsSimpleNestedIterableLoop
-testNarrowingWithAnyOps
 testTypeGuardNestedRestrictionAny
 testTypeIsNestedRestrictionAny
 # or/and boolean logic over multiple terms

@@ -30,7 +30,9 @@ impl Type {
                         }
                         Type::Tuple(Tuple::new_fixed_length(entries.into()))
                     }
-                    (ArbitraryLen(t1), ArbitraryLen(t2)) => t1.common_sub_type(i_s, t2)?,
+                    (ArbitraryLen(t1), ArbitraryLen(t2)) => {
+                        Type::Tuple(Tuple::new_arbitrary_length(t1.common_sub_type(i_s, t2)?))
+                    }
                     (ArbitraryLen(t2), FixedLen(ts1)) | (FixedLen(ts1), ArbitraryLen(t2)) => {
                         let mut entries = vec![];
                         for t1 in ts1.iter() {
