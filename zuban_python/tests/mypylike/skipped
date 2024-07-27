@@ -304,16 +304,17 @@ testBoolInTuplesRegression
 
 # aug assignments can widen types
 testAugmentedAssignmentIntFloat
-# narrowing with Any troubles
-testIsinstanceNarrowAny
+# any overwrites of None
 testOptionalAssignAny1
 testOptionalAssignAny2
 testOptionalAssignAny3
+# list[Any] should not be narrowed to e.g. list[int]
 testNewAnalyzerBuiltinAliasesFixed
 testInferredTypeIsSimpleNestedList
 testInferredTypeIsSimpleNestedIterable
 testInferredTypeIsSimpleNestedListLoop
 testInferredTypeIsSimpleNestedIterableLoop
+# TypeGuard/TypeIs narrowing with Any
 testTypeGuardNestedRestrictionAny
 testTypeIsNestedRestrictionAny
 # or/and boolean logic over multiple terms
@@ -740,6 +741,8 @@ testIntersectionUsingPromotion6
 testIsInstanceWithUnknownType
 testNarrowingWithTupleOfTypes
 testNarrowingWithTupleOfTypesPy310Plus
+# narrowing with Any weird cases
+testIsinstanceNarrowAny
 
 # subtyping arbitrary length unpacks
 testVariadicTupleSubtyping
