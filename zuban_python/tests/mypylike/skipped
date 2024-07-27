@@ -317,9 +317,6 @@ testInferredTypeIsSimpleNestedIterableLoop
 testNarrowingWithAnyOps
 testTypeGuardNestedRestrictionAny
 testTypeIsNestedRestrictionAny
-testCompatibilityOfDynamicWithOtherTypes
-testParamSpecSubtypeChecking1
-testAwaitOverloadSpecialCase
 # or/and boolean logic over multiple terms
 testAndOr
 testRestrictedBoolAndOrWithGenerics
@@ -1139,11 +1136,13 @@ testContinueOutsideLoop
 #testOverloadWithGenericDescriptor
 #testUnpackIterableClassWithOverloadedIter2
 testOverloadOverlapWithTypeVarsWithValues
-testOverloadPossibleOverlapMixingNamedArgsWithKwargs3
-testOverloadWithPartiallyOverlappingUnionsNested
-testOverloadedPartiallyOverlappingTypeVarsAndUnion
-testTypeCheckOverloadImplementationTypeVarDifferingUsage2
 testUnsafeOverlappingNotWithAny
+# Overlap + "N: Flipping the order of overloads will fix this error"
+#testTypeCheckOverloadImplementationTypeVarDifferingUsage2
+#testOverloadPossibleOverlapMixingNamedArgsWithKwargs3
+#testOverloadWithPartiallyOverlappingUnionsNested
+#testOverloadedPartiallyOverlappingTypeVarsAndUnion
+#testAwaitOverloadSpecialCase
 
 # ------------------- priority? tests -----------------------
 

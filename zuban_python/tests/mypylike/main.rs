@@ -710,7 +710,9 @@ fn cleanup_mypy_issues(mut s: &str) -> Option<String> {
     if s.contains("See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports") {
         return None;
     }
-    if s.contains("\" defined here") {
+    if s.contains("\" defined here")
+        || s.contains("Flipping the order of overloads will fix this error")
+    {
         // TODO we might not want to skip this note in the future.
         return None;
     }
