@@ -325,7 +325,6 @@ testAndCases
 testFinalWithoutBool
 testFinalWithoutBoolButWithLen
 # try/except/finally
-testTryExceptFlow
 testRedefinedFunctionInTryWithElse
 testRedefineImportedFunctionViaImport
 testExceptionVariableReuseInDeferredNode4
@@ -339,10 +338,6 @@ testUnionTryFinally2
 testUnionTryFinally4
 testUnionTryFinally5
 testUnionTryFinally6
-testUnreachableTryExcept
-testUnreachableTryExceptElse
-testUnreachableTryReturnFinally1
-testUnreachableTryReturnFinally2
 testUnreachableFlagTryBlocks
 testNoReturnExcept
 # while/for

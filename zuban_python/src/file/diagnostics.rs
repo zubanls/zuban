@@ -1406,6 +1406,13 @@ impl<'db> Inference<'db, '_, '_> {
         func: Option<&Function>,
     ) {
         for b in try_stmt.iter_blocks() {
+            let check_block = |block| {
+                FLOW_ANALYSIS.with(|fa| {
+                    fa.with_new_frame_and_return_unreachable(|| {
+                        self.calc_block_diagnostics(block, class, func)
+                    })
+                })
+            };
             match b {
                 TryBlockType::Try(block) => self.calc_block_diagnostics(block, class, func),
                 TryBlockType::Except(b) => {
@@ -1421,7 +1428,7 @@ impl<'db> Inference<'db, '_, '_> {
                                 .add_issue(self.i_s, IssueKind::BaseExceptionExpected);
                         }
                     }
-                    self.calc_block_diagnostics(block, class, func)
+                    check_block(block);
                 }
                 TryBlockType::ExceptStar(except_star) => {
                     let (except_expression, block) = except_star.unpack();
@@ -1440,7 +1447,7 @@ impl<'db> Inference<'db, '_, '_> {
                                 .add_issue(self.i_s, IssueKind::BaseExceptionExpected);
                         }
                     }
-                    self.calc_block_diagnostics(block, class, func)
+                    check_block(block);
                 }
                 TryBlockType::Else(b) => self.calc_block_diagnostics(b.block(), class, func),
                 TryBlockType::Finally(b) => self.calc_block_diagnostics(b.block(), class, func),
