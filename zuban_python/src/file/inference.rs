@@ -3557,7 +3557,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     }
 }
 
-fn instantiate_except(i_s: &InferenceState, t: &Type) -> Type {
+pub fn instantiate_except(i_s: &InferenceState, t: &Type) -> Type {
     match t {
         // No need to check these here, this is done when calculating diagnostics
         Type::Type(t) => match t.as_ref() {
@@ -3590,7 +3590,7 @@ fn instantiate_except(i_s: &InferenceState, t: &Type) -> Type {
     }
 }
 
-fn instantiate_except_star(i_s: &InferenceState, t: &Type) -> Type {
+pub fn instantiate_except_star(i_s: &InferenceState, t: &Type) -> Type {
     let result = gather_except_star(i_s, t);
     // When BaseException is used, we need a BaseExceptionGroup. Otherwise when every exception
     // inherits from Exception, ExceptionGroup is used.

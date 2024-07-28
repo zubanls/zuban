@@ -805,33 +805,38 @@ impl Inference<'_, '_, '_> {
         check_for_error: impl FnOnce() -> bool,
     ) {
         let mut widens = false;
-        let key = FlowKey::Name(first_name_link);
         if matches!(declaration_t, Type::None) && !matches!(current_t, Type::None) {
             widens = true;
         } else if current_t.is_any() && !declaration_t.is_any_or_any_in_union(self.i_s.db) {
             // Any should not be narrowed if it is not part of a union with any.
-            FLOW_ANALYSIS.with(|fa| fa.remove_entry_if_from_assignment(self.i_s, &key));
+            FLOW_ANALYSIS.with(|fa| {
+                fa.remove_entry_if_from_assignment(self.i_s, &FlowKey::Name(first_name_link))
+            });
             return;
         } else if check_for_error() {
             return; // There was an error so return and don't narrow.
         }
-        self.save_narrowed(key, current_t, widens);
+        self.assign_type_for_node_index(first_name_link, current_t.clone(), widens)
     }
 
     pub fn save_narrowed_primary_target(&self, primary_target: PrimaryTarget, t: &Type) {
         if let Some(key) = self.key_from_primary_target(primary_target) {
-            self.save_narrowed(key, t, false)
+            self.save_narrowed(key, t.clone(), false)
         }
     }
 
-    fn save_narrowed(&self, key: FlowKey, t: &Type, widens: bool) {
+    pub fn assign_type_for_node_index(&self, first_name_link: PointLink, t: Type, widens: bool) {
+        self.save_narrowed(FlowKey::Name(first_name_link), t, widens);
+    }
+
+    fn save_narrowed(&self, key: FlowKey, type_: Type, widens: bool) {
         FLOW_ANALYSIS.with(|fa| {
             fa.invalidate_child_entries_in_last_frame(self.i_s.db, &key);
             fa.overwrite_entry(
                 self.i_s,
                 Entry {
                     key,
-                    type_: t.clone(),
+                    type_,
                     from_assignment: true,
                     widens,
                 },

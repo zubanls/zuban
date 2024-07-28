@@ -8,13 +8,16 @@ use std::{
 use parsa_python_cst::*;
 
 use super::{
-    first_defined_name, flow_analysis::FLOW_ANALYSIS, inference::await_, on_argument_type_error,
+    first_defined_name,
+    flow_analysis::FLOW_ANALYSIS,
+    inference::{await_, instantiate_except, instantiate_except_star},
+    on_argument_type_error,
 };
 use crate::{
     arguments::{CombinedArgs, KnownArgs, NoArgs},
     database::{
         ClassKind, ComplexPoint, Database, Locality, OverloadImplementation, Point, PointKind,
-        Specific,
+        PointLink, Specific,
     },
     debug,
     diagnostics::{Issue, IssueKind},
@@ -1407,9 +1410,32 @@ impl<'db> Inference<'db, '_, '_> {
     ) {
         for b in try_stmt.iter_blocks() {
             let check_block = |except_expr: Option<ExceptExpression>, block, is_star| {
-                let except_type = if let Some(except_expression) = except_expr {
-                    let expression = except_expression.expression();
-                    let inf = self.infer_expression(expression);
+                let except_type = if let Some(except_expr) = except_expr {
+                    let (expr, name_def) = except_expr.unpack();
+                    let inf = self.infer_expression(expr);
+                    if let Some(name_def) = name_def {
+                        let t = inf.as_cow_type(self.i_s);
+                        let instantiated = match is_star {
+                            false => instantiate_except(self.i_s, &t),
+                            true => instantiate_except_star(self.i_s, &t),
+                        };
+                        let name_index = name_def.name_index();
+                        let first = first_defined_name(self.file, name_index);
+                        if first == name_index {
+                            Inferred::from_type(instantiated).maybe_save_redirect(
+                                self.i_s,
+                                self.file,
+                                name_def.index(),
+                                false,
+                            );
+                        } else {
+                            self.assign_type_for_node_index(
+                                PointLink::new(self.file_index, first),
+                                instantiated,
+                                false,
+                            )
+                        }
+                    }
                     Some(except_type(self.i_s, &inf.as_cow_type(self.i_s), true))
                 } else {
                     None

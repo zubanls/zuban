@@ -324,12 +324,12 @@ testOrCases
 testAndCases
 testFinalWithoutBool
 testFinalWithoutBoolButWithLen
+# try regressions
+testExceptWithMultipleTypes4
+testInvalidExceptionCallable
 # try/except/finally
 testRedefinedFunctionInTryWithElse
 testRedefineImportedFunctionViaImport
-testExceptionVariableReuseInDeferredNode4
-testExceptionVariableReuseInDeferredNode5
-testExceptionVariableReuseInDeferredNode6
 testUnionTryExcept
 testUnionTryExcept2
 testUnionTryExcept3
