@@ -3562,7 +3562,7 @@ pub fn instantiate_except(i_s: &InferenceState, t: &Type) -> Type {
         // No need to check these here, this is done when calculating diagnostics
         Type::Type(t) => match t.as_ref() {
             inner @ Type::Class(..) => inner.clone(),
-            _ => todo!(),
+            _ => Type::Any(AnyCause::FromError),
         },
         Type::Any(cause) => Type::Any(*cause),
         Type::Tuple(content) => Inferred::gather_simplified_union(i_s, |add| match &content.args {
@@ -3572,7 +3572,7 @@ pub fn instantiate_except(i_s: &InferenceState, t: &Type) -> Type {
                 }
             }
             TupleArgs::ArbitraryLen(t) => add(Inferred::from_type(instantiate_except(i_s, t))),
-            TupleArgs::WithUnpack(_) => todo!(),
+            TupleArgs::WithUnpack(_) => add(Inferred::new_any_from_error()),
         })
         .as_cow_type(i_s)
         .into_owned(),
@@ -3586,7 +3586,7 @@ pub fn instantiate_except(i_s: &InferenceState, t: &Type) -> Type {
                 })
                 .collect(),
         )),
-        _ => todo!("{t:?}"),
+        _ => Type::Any(AnyCause::FromError),
     }
 }
 
@@ -3638,7 +3638,7 @@ fn gather_except_star(i_s: &InferenceState, t: &Type) -> Type {
                     Type::Any(AnyCause::FromError)
                 }
             }
-            _ => todo!(),
+            _ => Type::Any(AnyCause::FromError),
         },
         Type::Any(cause) => Type::Any(*cause),
         Type::Tuple(content) => Inferred::gather_simplified_union(i_s, |add| match &content.args {
@@ -3648,7 +3648,7 @@ fn gather_except_star(i_s: &InferenceState, t: &Type) -> Type {
                 }
             }
             TupleArgs::ArbitraryLen(t) => add(Inferred::from_type(gather_except_star(i_s, t))),
-            TupleArgs::WithUnpack(_) => todo!(),
+            TupleArgs::WithUnpack(_) => add(Inferred::new_any_from_error()),
         })
         .as_cow_type(i_s)
         .into_owned(),
@@ -3662,7 +3662,7 @@ fn gather_except_star(i_s: &InferenceState, t: &Type) -> Type {
                 })
                 .collect(),
         )),
-        _ => todo!("{t:?}"),
+        _ => Type::Any(AnyCause::FromError),
     }
 }
 

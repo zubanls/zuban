@@ -324,9 +324,6 @@ testOrCases
 testAndCases
 testFinalWithoutBool
 testFinalWithoutBoolButWithLen
-# try regressions
-testExceptWithMultipleTypes4
-testInvalidExceptionCallable
 # try/except/finally
 testRedefinedFunctionInTryWithElse
 testRedefineImportedFunctionViaImport
