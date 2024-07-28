@@ -435,6 +435,7 @@ impl<'db> Inference<'db, '_, '_> {
         is_async: bool,
     ) {
         let (with_items, block) = with_stmt.unpack();
+        let mut exceptions_maybe_suppressed = false;
         for with_item in with_items.iter() {
             let (expr, target) = with_item.unpack();
             let from = NodeRef::new(self.file, expr.index());
@@ -457,7 +458,7 @@ impl<'db> Inference<'db, '_, '_> {
                     false,
                 );
             }
-            let exit_result = result.type_lookup_and_execute_with_attribute_error(
+            let mut exit_result = result.type_lookup_and_execute_with_attribute_error(
                 self.i_s,
                 from,
                 match is_async {
@@ -474,7 +475,7 @@ impl<'db> Inference<'db, '_, '_> {
                 ),
             );
             if is_async {
-                await_(
+                exit_result = await_(
                     self.i_s,
                     exit_result,
                     from,
@@ -482,6 +483,18 @@ impl<'db> Inference<'db, '_, '_> {
                     false,
                 );
             }
+            // Mypy comments about this:
+            // Based on the return type, determine if this context manager 'swallows'
+            // exceptions or not. We determine this using a heuristic based on the
+            // return type of the __exit__ method -- see the discussion in
+            // https://github.com/python/mypy/issues/7214 and the section about context managers
+            // in https://github.com/python/typeshed/blob/main/CONTRIBUTING.md#conventions
+            // for more details.
+            exceptions_maybe_suppressed |= match exit_result.as_cow_type(self.i_s).as_ref() {
+                Type::Class(c) if c.link == self.i_s.db.python_state.bool_link() => true,
+                Type::Literal(l) if matches!(l.kind, LiteralKind::Bool(true)) => true,
+                _ => false,
+            };
             if let Some(target) = target {
                 self.assign_targets(
                     target,
@@ -491,7 +504,16 @@ impl<'db> Inference<'db, '_, '_> {
                 )
             }
         }
-        self.calc_block_diagnostics(block, class, func);
+        if exceptions_maybe_suppressed {
+            // We create a new frame to swallow unreachability.
+            FLOW_ANALYSIS.with(|fa| {
+                fa.with_new_frame_and_return_unreachable(|| {
+                    self.calc_block_diagnostics(block, class, func);
+                })
+            });
+        } else {
+            self.calc_block_diagnostics(block, class, func);
+        }
     }
 
     fn calc_untyped_block_diagnostics(&self, block: Block) {

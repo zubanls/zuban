@@ -337,6 +337,7 @@ testUnionTryFinally5
 testUnionTryFinally6
 testUnreachableFlagTryBlocks
 testNoReturnExcept
+# with: add test for with like testUnionTryExcept and check if Mypy does it that way as well
 # while/for
 testModifyLoop
 testModifyLoop2
@@ -352,12 +353,6 @@ testComplicatedBlocks
 testIsInstanceSubClassMemberHard
 testUnreachableFlagWithBadControlFlow2
 testNoReturnWhile
-# with
-testUnreachableFlagContextManagersSuppressed
-testUnreachableFlagContextManagersSuppressedNoStrictOptional
-testUnreachableFlagContextAsyncManagersSuppressed
-testUnreachableFlagContextAsyncManagersAbnormal
-testUnreachableWithStdlibContextManagers
 # narowing for comprehensions if
 testComprehensionIsInstance
 testTypeIsComprehensionSubtype
