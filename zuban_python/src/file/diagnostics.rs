@@ -1406,48 +1406,50 @@ impl<'db> Inference<'db, '_, '_> {
         func: Option<&Function>,
     ) {
         for b in try_stmt.iter_blocks() {
-            let check_block = |block| {
+            let check_block = |except_expr: Option<ExceptExpression>, block, is_star| {
+                let except_type = if let Some(except_expression) = except_expr {
+                    let expression = except_expression.expression();
+                    let inf = self.infer_expression(expression);
+                    Some(except_type(self.i_s, &inf.as_cow_type(self.i_s), true))
+                } else {
+                    None
+                };
                 FLOW_ANALYSIS.with(|fa| {
                     fa.with_new_frame_and_return_unreachable(|| {
                         self.calc_block_diagnostics(block, class, func)
                     })
-                })
+                });
+                except_type
             };
             match b {
                 TryBlockType::Try(block) => self.calc_block_diagnostics(block, class, func),
                 TryBlockType::Except(b) => {
-                    let (except_expression, block) = b.unpack();
-                    if let Some(except_expression) = except_expression {
-                        let expression = except_expression.expression();
-                        let inf = self.infer_expression(expression);
-                        if !matches!(
-                            except_type(self.i_s, &inf.as_cow_type(self.i_s), true),
-                            ExceptType::ContainsOnlyBaseExceptions
-                        ) {
-                            NodeRef::new(self.file, expression.index())
-                                .add_issue(self.i_s, IssueKind::BaseExceptionExpected);
-                        }
+                    let (except_expr, block) = b.unpack();
+                    let except_type = check_block(except_expr, block, false);
+                    if !matches!(
+                        except_type,
+                        None | Some(ExceptType::ContainsOnlyBaseExceptions)
+                    ) {
+                        NodeRef::new(self.file, except_expr.unwrap().index())
+                            .add_issue(self.i_s, IssueKind::BaseExceptionExpected);
                     }
-                    check_block(block);
                 }
                 TryBlockType::ExceptStar(except_star) => {
-                    let (except_expression, block) = except_star.unpack();
-                    let expression = except_expression.expression();
-                    let inf = self.infer_expression(expression);
-                    match except_type(self.i_s, &inf.as_cow_type(self.i_s), true) {
-                        ExceptType::ContainsOnlyBaseExceptions => (),
-                        ExceptType::HasExceptionGroup => {
+                    let (except_expr, block) = except_star.unpack();
+                    let except_type = check_block(Some(except_expr), block, true);
+                    match except_type {
+                        None | Some(ExceptType::ContainsOnlyBaseExceptions) => (),
+                        Some(ExceptType::HasExceptionGroup) => {
                             self.add_issue(
-                                expression.index(),
+                                except_expr.index(),
                                 IssueKind::ExceptStarIsNotAllowedToBeAnExceptionGroup,
                             );
                         }
-                        ExceptType::Invalid => {
-                            NodeRef::new(self.file, expression.index())
+                        Some(ExceptType::Invalid) => {
+                            NodeRef::new(self.file, except_expr.index())
                                 .add_issue(self.i_s, IssueKind::BaseExceptionExpected);
                         }
                     }
-                    check_block(block);
                 }
                 TryBlockType::Else(b) => self.calc_block_diagnostics(b.block(), class, func),
                 TryBlockType::Finally(b) => self.calc_block_diagnostics(b.block(), class, func),
