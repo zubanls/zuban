@@ -1413,11 +1413,11 @@ impl<'db> Inference<'db, '_, '_> {
                 let except_type = if let Some(except_expr) = except_expr {
                     let (expr, name_def) = except_expr.unpack();
                     let inf = self.infer_expression(expr);
+                    let inf_t = inf.as_cow_type(self.i_s);
                     if let Some(name_def) = name_def {
-                        let t = inf.as_cow_type(self.i_s);
                         let instantiated = match is_star {
-                            false => instantiate_except(self.i_s, &t),
-                            true => instantiate_except_star(self.i_s, &t),
+                            false => instantiate_except(self.i_s, &inf_t),
+                            true => instantiate_except_star(self.i_s, &inf_t),
                         };
                         let name_index = name_def.name_index();
                         let first = first_defined_name(self.file, name_index);
@@ -1436,7 +1436,7 @@ impl<'db> Inference<'db, '_, '_> {
                             )
                         }
                     }
-                    Some(except_type(self.i_s, &inf.as_cow_type(self.i_s), true))
+                    Some(except_type(self.i_s, &inf_t, true))
                 } else {
                     None
                 };
@@ -1456,8 +1456,10 @@ impl<'db> Inference<'db, '_, '_> {
                         except_type,
                         None | Some(ExceptType::ContainsOnlyBaseExceptions)
                     ) {
-                        NodeRef::new(self.file, except_expr.unwrap().index())
-                            .add_issue(self.i_s, IssueKind::BaseExceptionExpected);
+                        self.add_issue(
+                            except_expr.unwrap().index(),
+                            IssueKind::BaseExceptionExpected,
+                        );
                     }
                 }
                 TryBlockType::ExceptStar(except_star) => {
@@ -1472,8 +1474,7 @@ impl<'db> Inference<'db, '_, '_> {
                             );
                         }
                         Some(ExceptType::Invalid) => {
-                            NodeRef::new(self.file, except_expr.index())
-                                .add_issue(self.i_s, IssueKind::BaseExceptionExpected);
+                            self.add_issue(except_expr.index(), IssueKind::BaseExceptionExpected);
                         }
                     }
                 }
