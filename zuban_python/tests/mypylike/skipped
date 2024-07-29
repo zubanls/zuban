@@ -319,6 +319,12 @@ testUnreachableFlagTryBlocks
 testUnreachableTryExcept
 testUnreachableTryReturnFinally1
 testUnreachableTryReturnExceptRaise
+#
+testUnionTryExcept2
+testUnionTryExcept4
+testUnreachableCode2
+testUnreachableTryExceptElse
+testNoReturnExcept
 # with: add test for with like testUnionTryExcept and check if Mypy does it that way as well
 # while/for
 testModifyLoop

@@ -254,3 +254,27 @@ def bar(x: Type[Foo] | Type[Bar]) -> None:
         reveal_type(x)  # N: Revealed type is "Type[__main__.Bar]"
     else:
         reveal_type(x)  # N: Revealed type is "Type[__main__.Foo]"
+
+[case try_stmt_else_narrowing]
+class A: ...
+class B(A): ...
+a: A = A()
+try:
+    a = B()
+except Exception:
+    reveal_type(a)  # N: Revealed type is "__main__.A"
+else:
+    reveal_type(a)  # N: Revealed type is "__main__.B"
+finally:
+    reveal_type(a)  # N: Revealed type is "__main__.A"
+
+[case try_stmt_else_unreachable]
+# flags: --warn-unreachable
+try:
+    raise NotImplementedError
+except Exception:
+    1
+else:
+    1  # E: Statement is unreachable
+finally:
+    1

@@ -1184,6 +1184,7 @@ impl Inference<'_, '_, '_> {
         class: Option<Class>,
         func: Option<&Function>,
     ) {
+        let mut try_frame = None;
         for b in try_stmt.iter_blocks() {
             let check_block = |except_expr: Option<ExceptExpression>, block, is_star| {
                 let mut name_def = None;
@@ -1231,9 +1232,9 @@ impl Inference<'_, '_, '_> {
             match b {
                 TryBlockType::Try(block) => {
                     FLOW_ANALYSIS.with(|fa| {
-                        fa.with_new_frame_and_return_unreachable(|| {
+                        try_frame = Some(fa.with_frame(Frame::default(), || {
                             self.calc_block_diagnostics(block, class, func)
-                        })
+                        }))
                     });
                 }
                 TryBlockType::Except(b) => {
@@ -1265,7 +1266,21 @@ impl Inference<'_, '_, '_> {
                         }
                     }
                 }
-                TryBlockType::Else(b) => self.calc_block_diagnostics(b.block(), class, func),
+                TryBlockType::Else(b) => {
+                    FLOW_ANALYSIS.with(|fa| {
+                        let try_frame = try_frame.take().unwrap();
+                        let mut else_frame = if try_frame.unreachable {
+                            Frame::new_unreachable()
+                        } else {
+                            Frame::default()
+                        };
+                        fa.with_frame(try_frame, || {
+                            else_frame = fa.with_frame(else_frame, || {
+                                self.calc_block_diagnostics(b.block(), class, func)
+                            });
+                        });
+                    });
+                }
                 TryBlockType::Finally(b) => self.calc_block_diagnostics(b.block(), class, func),
             }
         }
