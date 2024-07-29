@@ -1025,7 +1025,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     )
                 })
         };
-        first_defined_name_of_multi_def(self.file, name_def.name_index())
+        let name_index = name_def.name_index();
+        first_defined_name_of_multi_def(self.file, name_index)
             .and_then(|first_index| {
                 // The first definition is always responsible for how a name is defined.
                 // So we try to look up active narrowings first or we try to lookup the first
@@ -1042,9 +1043,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     return None;
                 }
                 if from_aug_assign {
-                    if let Some(result) = self
-                        .maybe_lookup_narrowed_name(PointLink::new(self.file_index, first_index))
-                    {
+                    if let Some(result) = self.maybe_lookup_narrowed_name(
+                        name_index,
+                        PointLink::new(self.file_index, first_index),
+                    ) {
                         return Some(result);
                     }
                 }
@@ -3139,9 +3141,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     let next_node_index = point.node_index();
                     if point.needs_flow_analysis() {
                         debug_assert!(Name::maybe_by_index(&self.file.tree, node_index).is_some());
-                        if let Some(result) = self
-                            .maybe_lookup_narrowed_name(PointLink::new(file_index, next_node_index))
-                        {
+                        if let Some(result) = self.maybe_lookup_narrowed_name(
+                            node_index,
+                            PointLink::new(file_index, next_node_index),
+                        ) {
                             return result;
                         }
                     }

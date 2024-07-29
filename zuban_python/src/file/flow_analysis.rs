@@ -188,10 +188,14 @@ pub struct FlowAnalysis {
 }
 
 impl FlowAnalysis {
-    fn lookup_narrowed_key(&self, db: &Database, lookup_key: FlowKey) -> Option<Inferred> {
+    fn lookup_narrowed_key_and_deleted(
+        &self,
+        db: &Database,
+        lookup_key: FlowKey,
+    ) -> Option<(Inferred, bool)> {
         for frame in self.frames.borrow().iter().rev() {
             if let Some(entry) = frame.lookup_entry(db, &lookup_key) {
-                return Some(Inferred::from_type(entry.type_.clone()));
+                return Some((Inferred::from_type(entry.type_.clone()), entry.deleted));
             }
         }
         None
@@ -754,18 +758,22 @@ impl Inference<'_, '_, '_> {
         FLOW_ANALYSIS.with(|fa| fa.mark_current_frame_unreachable())
     }
 
-    pub fn maybe_lookup_narrowed_name(&self, name_link: PointLink) -> Option<Inferred> {
-        let result =
-            FLOW_ANALYSIS.with(|fa| fa.lookup_narrowed_key(self.i_s.db, FlowKey::Name(name_link)));
-
-        if let Some(result) = &result {
-            debug!(
-                "Use narrowed {} as {}",
-                NodeRef::from_link(self.i_s.db, name_link).as_code(),
-                result.format_short(self.i_s)
-            );
+    pub fn maybe_lookup_narrowed_name(
+        &self,
+        original_name_index: NodeIndex,
+        name_link: PointLink,
+    ) -> Option<Inferred> {
+        let (result, deleted) = FLOW_ANALYSIS
+            .with(|fa| fa.lookup_narrowed_key_and_deleted(self.i_s.db, FlowKey::Name(name_link)))?;
+        if deleted {
+            self.add_issue(original_name_index, IssueKind::ReadingDeletedVariable)
         }
-        result
+        debug!(
+            "Use narrowed {} as {}",
+            NodeRef::from_link(self.i_s.db, name_link).as_code(),
+            result.format_short(self.i_s)
+        );
+        Some(result)
     }
 
     pub fn maybe_lookup_narrowed_primary(&self, primary: Primary) -> Option<Inferred> {
@@ -1102,7 +1110,18 @@ impl Inference<'_, '_, '_> {
 
     pub fn flow_analysis_for_del_stmt(&self, target: Target) {
         match target {
-            Target::Name(name_def) => debug!("TODO del name"),
+            Target::Name(name_def) => FLOW_ANALYSIS.with(|fa| {
+                fa.overwrite_entry(
+                    self.i_s,
+                    Entry {
+                        key: self.key_from_name_def(name_def),
+                        type_: Type::Any(AnyCause::FromError),
+                        from_assignment: true,
+                        deleted: true,
+                        widens: true,
+                    },
+                )
+            }),
             Target::NameExpression(primary_target, name_def) => {
                 // TODO this should still be implemented
                 //self.infer_single_target(target);

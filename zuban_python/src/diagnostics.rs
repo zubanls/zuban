@@ -32,6 +32,7 @@ pub(crate) enum IssueKind {
     UnsupportedClassScopedImport,
     UnimportedRevealType,  // From --enable-error-code=unimported-reveal
     NameError { name: Box<str> },
+    ReadingDeletedVariable,
     ArgumentIssue(Box<str>),
     ArgumentTypeIssue(Box<str>),
     TooFewArguments(Box<str>),
@@ -698,9 +699,13 @@ impl<'db> Diagnostic<'db> {
             ),
             UnsupportedClassScopedImport =>
                 "Unsupported class scoped import".to_string(),
-            NameError{name} => format!("Name {name:?} is not defined"),
+            NameError{name} => format!(r#"Name "{name}" is not defined"#),
+            ReadingDeletedVariable => format!(
+                r#"Trying to read deleted variable "{}""#,
+                self.code_under_issue()
+            ),
             IncompatibleReturn{got, expected} => {
-                format!("Incompatible return value type (got {got:?}, expected {expected:?})")
+                format!(r#"Incompatible return value type (got "{got}", expected "{expected}")"#)
             }
             IncompatibleImplicitReturn { expected } => format!(
                 r#"Incompatible return value type (implicitly returns "None", expected "{expected}")"#

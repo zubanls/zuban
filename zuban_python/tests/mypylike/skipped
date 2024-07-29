@@ -611,15 +611,11 @@ testAwaitMissingNote
 testAsyncForErrorNote
 
 # "Trying to read deleted variable "Foo""
-testDelStmtWithTypeInfo
-testDelStatementWithAssignmentSimple
 testDelStatementWithAssignmentTuple
 testDelStatementWithAssignmentList
-testDelStatementWithConditions
 testDel
 testReuseTryExceptionVariable
 testReuseDefinedTryExceptionVariable
-testRaiseFromStatement
 testInvalidDel3
 
 # match statement
