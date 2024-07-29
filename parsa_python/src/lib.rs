@@ -437,8 +437,8 @@ create_grammar!(
     // Targets for del statements
     // --------------------------
 
-    del_targets: ",".(t_primary | del_t_atom)+ [","]
-    del_t_atom:? name_definition | "(" [del_targets] ")" | "[" [del_targets] "]"
+    del_targets: ",".(t_primary | name_definition | del_t_atom)+ [","]
+    del_t_atom: "(" [del_targets] ")" | "[" [del_targets] "]"
 
 );
 

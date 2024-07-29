@@ -310,7 +310,7 @@ impl<'db> Inference<'db, '_, '_> {
                 }
                 SimpleStmtContent::BreakStmt(b) => self.flow_analysis_for_break_stmt(b),
                 SimpleStmtContent::ContinueStmt(c) => self.flow_analysis_for_continue_stmt(c),
-                SimpleStmtContent::DelStmt(d) => self.flow_analysis_for_del_stmt(d.target()),
+                SimpleStmtContent::DelStmt(d) => self.flow_analysis_for_del_stmt(d.targets()),
             }
         }
     }

@@ -5,11 +5,12 @@ use std::{
 
 use parsa_python_cst::{
     Argument, Arguments, ArgumentsDetails, AssertStmt, Atom, AtomContent, Block, BreakStmt,
-    CompIfIterator, ComparisonContent, Comparisons, Conjunction, ContinueStmt, Disjunction,
-    ElseBlock, Expression, ExpressionContent, ExpressionPart, ForIfClauseIterator, ForStmt,
-    IfBlockIterator, IfBlockType, IfStmt, Name, NameDefinition, NamedExpression,
-    NamedExpressionContent, NodeIndex, Operand, Primary, PrimaryContent, PrimaryOrAtom,
-    PrimaryTarget, PrimaryTargetOrAtom, SliceType as CSTSliceType, Target, Ternary, WhileStmt,
+    CompIfIterator, ComparisonContent, Comparisons, Conjunction, ContinueStmt, DelTarget,
+    DelTargets, Disjunction, ElseBlock, Expression, ExpressionContent, ExpressionPart,
+    ForIfClauseIterator, ForStmt, IfBlockIterator, IfBlockType, IfStmt, Name, NameDefinition,
+    NamedExpression, NamedExpressionContent, NodeIndex, Operand, Primary, PrimaryContent,
+    PrimaryOrAtom, PrimaryTarget, PrimaryTargetOrAtom, SliceType as CSTSliceType, Target, Ternary,
+    WhileStmt,
 };
 
 use crate::{
@@ -1108,7 +1109,16 @@ impl Inference<'_, '_, '_> {
         self.check_conjunction(and).0
     }
 
-    pub fn flow_analysis_for_del_stmt(&self, target: Target) {
+    pub fn flow_analysis_for_del_stmt(&self, del_targets: DelTargets) {
+        for del_target in del_targets.iter() {
+            match del_target {
+                DelTarget::Target(target) => self.flow_analysis_for_del_target(target),
+                DelTarget::DelTargets(del_targets) => self.flow_analysis_for_del_stmt(del_targets),
+            }
+        }
+    }
+
+    pub fn flow_analysis_for_del_target(&self, target: Target) {
         match target {
             Target::Name(name_def) => FLOW_ANALYSIS.with(|fa| {
                 fa.overwrite_entry(
@@ -1146,12 +1156,7 @@ impl Inference<'_, '_, '_> {
                         OnTypeError::new(&on_argument_type_error),
                     );
             }
-            Target::Tuple(targets) => {
-                for target in targets {
-                    self.flow_analysis_for_del_stmt(target)
-                }
-            }
-            Target::Starred(_) => unreachable!(),
+            Target::Tuple(_) | Target::Starred(_) => unreachable!(),
         }
     }
 

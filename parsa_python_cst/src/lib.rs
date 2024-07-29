@@ -354,6 +354,7 @@ create_nonterminal_structs!(
 
     PrimaryTarget: t_primary
     StarTarget: star_target
+    DelTargets: del_targets
 
     Arguments: arguments
     Kwarg: kwarg
@@ -3373,8 +3374,29 @@ impl<'db> StarStarExpression<'db> {
 }
 
 impl<'db> DelStmt<'db> {
-    pub fn target(&self) -> Target<'db> {
-        Target::new(self.node.nth_child(1))
+    pub fn targets(&self) -> DelTargets<'db> {
+        DelTargets::new(self.node.nth_child(1))
+    }
+}
+
+pub enum DelTarget<'db> {
+    Target(Target<'db>),
+    DelTargets(DelTargets<'db>),
+}
+
+impl<'db> DelTargets<'db> {
+    pub fn iter(&self) -> impl Iterator<Item = DelTarget<'db>> {
+        self.node.iter_children().step_by(2).filter_map(|node| {
+            if node.is_type(Nonterminal(del_t_atom)) {
+                let targets = node.nth_child(1);
+                // If it's not del_targets, it's a closing (and empty) `)` or `]`.
+                targets
+                    .is_type(Nonterminal(del_targets))
+                    .then(|| DelTarget::DelTargets(DelTargets::new(targets)))
+            } else {
+                Some(DelTarget::Target(Target::new_non_iterator(node)))
+            }
+        })
     }
 }
 

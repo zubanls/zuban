@@ -333,3 +333,17 @@ reveal_type(a)  # N: Revealed type is "dict[int, int]"
 
 [case dict_implicit_literals_with_context]
 a: dict[int, int] = {1: 2 for x in [1]}
+
+[case weird_del_usages]
+a = 3
+del [], ()
+a
+del [], (a)
+a # E: Trying to read deleted variable "a"
+a = 3
+del [], (a,)
+a # E: Trying to read deleted variable "a"
+
+a = 3
+del [a], (a,)
+a # E: Trying to read deleted variable "a"

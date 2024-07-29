@@ -611,8 +611,6 @@ testAwaitMissingNote
 testAsyncForErrorNote
 
 # "Trying to read deleted variable "Foo""
-testDelStatementWithAssignmentTuple
-testDelStatementWithAssignmentList
 testDel
 testReuseTryExceptionVariable
 testReuseDefinedTryExceptionVariable
