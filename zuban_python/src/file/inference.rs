@@ -3405,11 +3405,11 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         let i_s = self.i_s;
         let (key_value, for_if_clauses) = dict_comp.unpack();
         self.infer_comprehension_recursively(for_if_clauses.iter(), || {
-            let to_dict = |key, value| {
+            let to_dict = |key: Type, value: Type| {
                 new_class!(
                     self.i_s.db.python_state.dict_node_ref().as_link(),
-                    key,
-                    value,
+                    key.avoid_implicit_literal(i_s.db),
+                    value.avoid_implicit_literal(i_s.db),
                 )
             };
             let found = infer_dict_like(i_s, result_context, |matcher, key_t, value_t| {
@@ -3418,7 +3418,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         .infer_expression_with_context(expr, &mut ResultContext::Known(expected_t));
                     let t = inf.as_cow_type(i_s);
                     if expected_t.is_super_type_of(i_s, matcher, &t).bool() {
-                        Some(t.into_owned().avoid_implicit_literal(i_s.db))
+                        Some(t.into_owned())
                     } else {
                         self.add_issue(
                             expr.index(),
@@ -3436,14 +3436,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 key_result.zip(value_result).map(|(k, v)| to_dict(k, v))
             });
             found.unwrap_or_else(|| {
-                let key = self
-                    .infer_expression(key_value.key())
-                    .as_type(i_s)
-                    .avoid_implicit_literal(i_s.db);
-                let value = self
-                    .infer_expression(key_value.value())
-                    .as_type(i_s)
-                    .avoid_implicit_literal(i_s.db);
+                let key = self.infer_expression(key_value.key()).as_type(i_s);
+                let value = self.infer_expression(key_value.value()).as_type(i_s);
                 Inferred::from_type(to_dict(key, value))
             })
         })
