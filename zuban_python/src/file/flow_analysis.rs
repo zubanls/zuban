@@ -1118,9 +1118,24 @@ impl Inference<'_, '_, '_> {
         }
     }
 
+    pub fn delete_name(&self, name_def: NameDefinition) {
+        FLOW_ANALYSIS.with(|fa| {
+            fa.overwrite_entry(
+                self.i_s,
+                Entry {
+                    key: self.key_from_name_def(name_def),
+                    type_: Type::Any(AnyCause::FromError),
+                    from_assignment: true,
+                    deleted: true,
+                    widens: true,
+                },
+            )
+        })
+    }
+
     pub fn flow_analysis_for_del_target(&self, target: Target) {
         match target {
-            Target::Name(name_def) => FLOW_ANALYSIS.with(|fa| {
+            Target::Name(name_def) => {
                 if let Some(first_index) =
                     first_defined_name_of_multi_def(self.file, name_def.name_index())
                 {
@@ -1133,17 +1148,8 @@ impl Inference<'_, '_, '_> {
                         },
                     );
                 }
-                fa.overwrite_entry(
-                    self.i_s,
-                    Entry {
-                        key: self.key_from_name_def(name_def),
-                        type_: Type::Any(AnyCause::FromError),
-                        from_assignment: true,
-                        deleted: true,
-                        widens: true,
-                    },
-                )
-            }),
+                self.delete_name(name_def)
+            }
             Target::NameExpression(primary_target, name_def) => {
                 // TODO this should still be implemented
                 //self.infer_single_target(target);

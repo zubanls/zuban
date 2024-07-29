@@ -1428,8 +1428,10 @@ impl<'db> Inference<'db, '_, '_> {
     ) {
         for b in try_stmt.iter_blocks() {
             let check_block = |except_expr: Option<ExceptExpression>, block, is_star| {
+                let mut name_def = None;
                 let except_type = if let Some(except_expr) = except_expr {
-                    let (expr, name_def) = except_expr.unpack();
+                    let expr;
+                    (expr, name_def) = except_expr.unpack();
                     let inf = self.infer_expression(expr);
                     let inf_t = inf.as_cow_type(self.i_s);
                     if let Some(name_def) = name_def {
@@ -1463,6 +1465,9 @@ impl<'db> Inference<'db, '_, '_> {
                         self.calc_block_diagnostics(block, class, func)
                     })
                 });
+                if let Some(name_def) = name_def {
+                    self.delete_name(name_def)
+                }
                 except_type
             };
             match b {

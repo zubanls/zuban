@@ -610,10 +610,6 @@ testErrorOneLessFutureInReturnType
 testAwaitMissingNote
 testAsyncForErrorNote
 
-# "Trying to read deleted variable "Foo""
-testReuseTryExceptionVariable
-testReuseDefinedTryExceptionVariable
-
 # match statement
 testValuePattern
 testCapturePattern
