@@ -605,10 +605,6 @@ testFullCoroutineMatrix
 # ""async for" outside async function"
 testAsyncForOutsideCoroutine
 testAsyncWithOutsideCoroutine
-# "Maybe you forgot to use "await"?"
-testErrorOneLessFutureInReturnType
-testAwaitMissingNote
-testAsyncForErrorNote
 
 # match statement
 testValuePattern
@@ -1086,6 +1082,11 @@ testBreakOutsideLoop
 testNoCrashOnBreakOutsideLoopFunction
 testNoCrashOnBreakOutsideLoopClass
 testContinueOutsideLoop
+
+# "Maybe you forgot to use "await"?" (currently ignored)
+#testAsyncForErrorNote
+#testAwaitMissingNote
+#testAsyncForErrorNote
 
 # - (with type vars) Overloaded function signatures 2 and 3 overlap with incompatible return types
 #testOverloadMultipleVarargDefinitionComplex

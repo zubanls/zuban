@@ -712,6 +712,7 @@ fn cleanup_mypy_issues(mut s: &str) -> Option<String> {
     }
     if s.contains("\" defined here")
         || s.contains("Flipping the order of overloads will fix this error")
+        || s.contains("Maybe you forgot to use \"await\"?")
     {
         // TODO we might not want to skip this note in the future.
         return None;
