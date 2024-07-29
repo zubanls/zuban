@@ -347,3 +347,7 @@ a # E: Trying to read deleted variable "a"
 a = 3
 del [a], (a,)  # E: Trying to read deleted variable "a"
 a # E: Trying to read deleted variable "a"
+
+[case del_name_as_a_source]
+del a  # E: Name "a" is not defined
+a + 1  # E: Trying to read deleted variable "a"

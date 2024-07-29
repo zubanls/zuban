@@ -524,6 +524,10 @@ impl<'db> NameBinder<'db> {
                 SimpleStmtContent::BreakStmt(_) | SimpleStmtContent::ContinueStmt(_) => {
                     return (latest_return_or_yield, true)
                 }
+                SimpleStmtContent::DelStmt(del_stmt) => {
+                    self.references_need_flow_analysis = true;
+                    self.index_non_block_node(&del_stmt, ordered)
+                }
                 _ => self.index_non_block_node(&simple_stmt, ordered),
             };
             latest_return_or_yield = self.merge_latest_return_or_yield(latest_return_or_yield, r);
