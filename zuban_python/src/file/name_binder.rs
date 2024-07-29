@@ -153,6 +153,7 @@ impl<'db> NameBinder<'db> {
         func: impl FnOnce(&mut NameBinder<'db>),
     ) -> SymbolTable {
         let mut name_binder = NameBinder::new(self.db_infos, kind, scope_node, Some(self));
+        name_binder.references_need_flow_analysis = self.references_need_flow_analysis;
         func(&mut name_binder);
         name_binder.close();
         let NameBinder {
@@ -958,6 +959,7 @@ impl<'db> NameBinder<'db> {
                 InterestingNode::Comprehension(comp) => {
                     // Index the first expression of a comprehension, which is always executed
                     // in the current scope.
+                    self.references_need_flow_analysis = true;
                     if comp.is_generator() {
                         self.unresolved_nodes.push(Unresolved::Comprehension(comp));
                     } else {
@@ -965,6 +967,7 @@ impl<'db> NameBinder<'db> {
                     }
                 }
                 InterestingNode::DictComprehension(comp) => {
+                    self.references_need_flow_analysis = true;
                     self.index_dict_comprehension(comp, ordered);
                 }
                 InterestingNode::Ternary(ternary) => {

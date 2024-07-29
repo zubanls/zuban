@@ -5,11 +5,11 @@ use std::{
 
 use parsa_python_cst::{
     Argument, Arguments, ArgumentsDetails, AssertStmt, Atom, AtomContent, Block, BreakStmt,
-    ComparisonContent, Comparisons, Conjunction, ContinueStmt, Disjunction, ElseBlock, Expression,
-    ExpressionContent, ExpressionPart, ForStmt, IfBlockIterator, IfBlockType, IfStmt, Name,
-    NameDefinition, NamedExpression, NamedExpressionContent, NodeIndex, Operand, Primary,
-    PrimaryContent, PrimaryOrAtom, PrimaryTarget, PrimaryTargetOrAtom, SliceType as CSTSliceType,
-    Ternary, WhileStmt,
+    CompIfIterator, ComparisonContent, Comparisons, Conjunction, ContinueStmt, Disjunction,
+    ElseBlock, Expression, ExpressionContent, ExpressionPart, ForIfClauseIterator, ForStmt,
+    IfBlockIterator, IfBlockType, IfStmt, Name, NameDefinition, NamedExpression,
+    NamedExpressionContent, NodeIndex, Operand, Primary, PrimaryContent, PrimaryOrAtom,
+    PrimaryTarget, PrimaryTargetOrAtom, SliceType as CSTSliceType, Ternary, WhileStmt,
 };
 
 use crate::{
@@ -331,7 +331,13 @@ impl FlowAnalysis {
         frame.unreachable
     }
 
-    fn with_frame(&self, db: &Database, frame: Frame, callable: impl FnOnce()) -> Frame {
+    fn with_frame_and_result<T>(&self, frame: Frame, callable: impl FnOnce() -> T) -> (Frame, T) {
+        self.frames.borrow_mut().push(frame);
+        let result = callable();
+        (self.frames.borrow_mut().pop().unwrap(), result)
+    }
+
+    fn with_frame(&self, frame: Frame, callable: impl FnOnce()) -> Frame {
         self.frames.borrow_mut().push(frame);
         callable();
         self.frames.borrow_mut().pop().unwrap()
@@ -784,7 +790,7 @@ impl Inference<'_, '_, '_> {
 
         FLOW_ANALYSIS.with(|fa| {
             if let Some(message_expr) = message_expr {
-                fa.with_frame(self.i_s.db, false_frame, || {
+                fa.with_frame(false_frame, || {
                     self.infer_expression(message_expr);
                 });
             }
@@ -859,7 +865,7 @@ impl Inference<'_, '_, '_> {
 
             let mut use_else_context = false;
             let mut needs_recalculation = false;
-            let mut true_frame = fa.with_frame(self.i_s.db, true_frame, || {
+            let mut true_frame = fa.with_frame(true_frame, || {
                 if result_context.has_explicit_type() {
                     if_inf = Some(self.infer_expression_part_with_context(if_, result_context));
                     return;
@@ -876,7 +882,7 @@ impl Inference<'_, '_, '_> {
                 if_inf = Some(inf);
             });
 
-            let false_frame = fa.with_frame(self.i_s.db, false_frame, || {
+            let false_frame = fa.with_frame(false_frame, || {
                 else_inf = Some(
                     if let Some(if_inf) = if_inf
                         .as_ref()
@@ -896,7 +902,7 @@ impl Inference<'_, '_, '_> {
             });
             if needs_recalculation {
                 self.file.points.reset_from_backup(&if_backup);
-                true_frame = fa.with_frame(self.i_s.db, true_frame_backup, || {
+                true_frame = fa.with_frame(true_frame_backup, || {
                     if_inf = Some(
                         if let Some(else_inf) = else_inf.as_ref().filter(|_| use_else_context) {
                             // Mypy passes the context without literals here.
@@ -961,7 +967,7 @@ impl Inference<'_, '_, '_> {
             } else {
                 (Frame::default(), Frame::default())
             };
-            let after_while = fa.with_frame(self.i_s.db, true_frame, || {
+            let after_while = fa.with_frame(true_frame, || {
                 let old = fa.current_break_index.take();
                 fa.current_break_index.set(Some(0));
                 self.calc_block_diagnostics(block, class, func);
@@ -970,7 +976,7 @@ impl Inference<'_, '_, '_> {
             if let Some(else_block) = else_block {
                 //let else_frame = merge_or(self.i_s, false_frame, after_while);
                 let else_frame = false_frame;
-                let after_else = fa.with_frame(self.i_s.db, else_frame, || {
+                let after_else = fa.with_frame(else_frame, || {
                     self.calc_block_diagnostics(else_block.block(), class, func)
                 });
                 //fa.overwrite_frame(self.i_s.db, after_else);
@@ -1049,10 +1055,10 @@ impl Inference<'_, '_, '_> {
                     }
                     _ => {
                         FLOW_ANALYSIS.with(|fa| {
-                            let true_frame = fa.with_frame(self.i_s.db, true_frame, || {
+                            let true_frame = fa.with_frame(true_frame, || {
                                 self.calc_block_diagnostics(block, class, func)
                             });
-                            let false_frame = fa.with_frame(self.i_s.db, false_frame, || {
+                            let false_frame = fa.with_frame(false_frame, || {
                                 self.process_ifs(if_blocks, class, func)
                             });
 
@@ -1064,6 +1070,30 @@ impl Inference<'_, '_, '_> {
             IfBlockType::Else(else_block) => {
                 self.calc_block_diagnostics(else_block.block(), class, func)
             }
+        }
+    }
+
+    pub fn flow_analysis_for_comprehension_with_comp_ifs<T>(
+        &self,
+        for_if_clauses: ForIfClauseIterator,
+        mut comp_ifs: CompIfIterator,
+        item_callable: impl FnOnce() -> T,
+    ) -> T {
+        if let Some(comp_if) = comp_ifs.next() {
+            let (_, true_frame, _) = self
+                .find_guards_in_expr_part(comp_if.expression_part(), &mut ResultContext::Unknown);
+            FLOW_ANALYSIS.with(|fa| {
+                fa.with_frame_and_result(true_frame, || {
+                    self.flow_analysis_for_comprehension_with_comp_ifs(
+                        for_if_clauses,
+                        comp_ifs,
+                        item_callable,
+                    )
+                })
+                .1
+            })
+        } else {
+            self.infer_comprehension_recursively(for_if_clauses, item_callable)
         }
     }
 
@@ -1101,7 +1131,7 @@ impl Inference<'_, '_, '_> {
         } else {
             //if !matches!(is_expr_part_reachable_for_name_binder(&self.flags(), left), Truthiness::False) {
             left_frames.truthy = FLOW_ANALYSIS.with(|fa| {
-                fa.with_frame(self.i_s.db, left_frames.truthy, || {
+                fa.with_frame(left_frames.truthy, || {
                     right_infos = Some(self.find_guards_in_expression_parts(right));
                 })
             });
@@ -1155,7 +1185,7 @@ impl Inference<'_, '_, '_> {
             }
         } else {
             left_frames.falsey = FLOW_ANALYSIS.with(|fa| {
-                fa.with_frame(self.i_s.db, left_frames.falsey, || {
+                fa.with_frame(left_frames.falsey, || {
                     right_infos = Some(self.find_guards_in_expression_parts(right));
                 })
             });
@@ -1293,8 +1323,11 @@ impl Inference<'_, '_, '_> {
             ExpressionContent::ExpressionPart(part) => {
                 self.find_guards_in_expr_part(part, result_context)
             }
-            ExpressionContent::Ternary(_) => todo!(),
-            ExpressionContent::Lambda(_) => todo!(),
+            _ => (
+                self.infer_expression(expr),
+                Frame::default(),
+                Frame::default(),
+            ),
         }
     }
 

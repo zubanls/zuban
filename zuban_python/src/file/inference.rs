@@ -3359,17 +3359,21 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         self.infer_name_definition(name_def)
     }
 
-    fn infer_for_if_clauses(&self, for_if_clauses: ForIfClauses) {
-        for clause in for_if_clauses.iter() {
+    pub fn infer_comprehension_recursively<T>(
+        &self,
+        mut for_if_clauses: ForIfClauseIterator,
+        item_callable: impl FnOnce() -> T,
+    ) -> T {
+        if let Some(for_if_clause) = for_if_clauses.next() {
             let mut needs_await = false;
-            let (targets, expr_part, comp_ifs) = match clause {
+            let (targets, expr_part, comp_ifs) = match for_if_clause {
                 ForIfClause::Sync(sync) => sync.unpack(),
                 ForIfClause::Async(async_) => {
                     needs_await = true;
                     async_.unpack()
                 }
             };
-            let clause_node_ref = NodeRef::new(self.file, clause.index());
+            let clause_node_ref = NodeRef::new(self.file, for_if_clause.index());
             let base = self.infer_expression_part(expr_part);
             let inf = if needs_await {
                 await_aiter_and_next(self.i_s, base, clause_node_ref)
@@ -3383,9 +3387,13 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 clause_node_ref,
                 AssignKind::Normal,
             );
-            for comp_if in comp_ifs {
-                self.infer_expression_part(comp_if.expression_part());
-            }
+            self.flow_analysis_for_comprehension_with_comp_ifs(
+                for_if_clauses,
+                comp_ifs,
+                item_callable,
+            )
+        } else {
+            item_callable()
         }
     }
 
@@ -3396,42 +3404,45 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     ) -> Inferred {
         let i_s = self.i_s;
         let (key_value, for_if_clauses) = dict_comp.unpack();
-        self.infer_for_if_clauses(for_if_clauses);
-
-        let to_dict = |key, value| {
-            new_class!(
-                self.i_s.db.python_state.dict_node_ref().as_link(),
-                key,
-                value,
-            )
-        };
-        let found = infer_dict_like(i_s, result_context, |matcher, key_t, value_t| {
-            let mut check = |expected_t: &Type, expr, part| {
-                let inf =
-                    self.infer_expression_with_context(expr, &mut ResultContext::Known(expected_t));
-                let t = inf.as_cow_type(i_s);
-                if expected_t.is_super_type_of(i_s, matcher, &t).bool() {
-                    Some(t.into_owned())
-                } else {
-                    self.add_issue(
-                        expr.index(),
-                        IssueKind::DictComprehensionMismatch {
-                            part,
-                            got: t.format_short(i_s.db),
-                            expected: expected_t.format_short(i_s.db),
-                        },
-                    );
-                    None
-                }
+        self.infer_comprehension_recursively(for_if_clauses.iter(), || {
+            let to_dict = |key, value| {
+                new_class!(
+                    self.i_s.db.python_state.dict_node_ref().as_link(),
+                    key,
+                    value,
+                )
             };
-            let key_result = check(key_t, key_value.key(), "Key");
-            let value_result = check(value_t, key_value.value(), "Value");
-            key_result.zip(value_result).map(|(k, v)| to_dict(k, v))
-        });
-        found.unwrap_or_else(|| {
-            let key = self.infer_expression(key_value.key()).as_type(i_s);
-            let value = self.infer_expression(key_value.value()).as_type(i_s);
-            Inferred::from_type(to_dict(key, value))
+            let found = infer_dict_like(i_s, result_context, |matcher, key_t, value_t| {
+                let mut check = |expected_t: &Type, expr, part| {
+                    let inf = self
+                        .infer_expression_with_context(expr, &mut ResultContext::Known(expected_t));
+                    let t = inf.as_cow_type(i_s);
+                    if expected_t.is_super_type_of(i_s, matcher, &t).bool() {
+                        Some(t.into_owned())
+                    } else {
+                        self.add_issue(
+                            expr.index(),
+                            IssueKind::DictComprehensionMismatch {
+                                part,
+                                got: t.format_short(i_s.db),
+                                expected: expected_t.format_short(i_s.db),
+                            },
+                        );
+                        None
+                    }
+                };
+                let key_result = check(key_t, key_value.key(), "Key");
+                let value_result = check(value_t, key_value.value(), "Value");
+                key_result.zip(value_result).map(|(k, v)| to_dict(k, v))
+            });
+            found.unwrap_or_else(|| {
+                let key = self
+                    .infer_expression(key_value.key())
+                    .as_type(i_s)
+                    .avoid_implicit_literal(i_s.db);
+                let value = self.infer_expression(key_value.value()).as_type(i_s);
+                Inferred::from_type(to_dict(key, value))
+            })
         })
     }
 
@@ -3444,32 +3455,32 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     ) -> Type {
         let i_s = self.i_s;
         let (comp_expr, for_if_clauses) = comp.unpack();
-        self.infer_for_if_clauses(for_if_clauses);
-
-        result_context
-            .on_unique_type_in_unpacked_union(i_s, class, |matcher, cls_matcher| {
-                let inner_expected = cls_matcher
-                    .into_type_arg_iterator_or_any(i_s.db)
-                    .next()
-                    .unwrap();
-                let inf = self.infer_named_expression_with_context(
-                    comp_expr,
-                    &mut ResultContext::WithMatcher {
+        self.infer_comprehension_recursively(for_if_clauses.iter(), || {
+            result_context
+                .on_unique_type_in_unpacked_union(i_s, class, |matcher, cls_matcher| {
+                    let inner_expected = cls_matcher
+                        .into_type_arg_iterator_or_any(i_s.db)
+                        .next()
+                        .unwrap();
+                    let inf = self.infer_named_expression_with_context(
+                        comp_expr,
+                        &mut ResultContext::WithMatcher {
+                            matcher,
+                            type_: &inner_expected,
+                        },
+                    );
+                    inner_expected.error_if_not_matches_with_matcher(
+                        i_s,
                         matcher,
-                        type_: &inner_expected,
-                    },
-                );
-                inner_expected.error_if_not_matches_with_matcher(
-                    i_s,
-                    matcher,
-                    &inf,
-                    |issue| self.add_issue(comp_expr.index(), issue),
-                    |error_types, _: &_| Some(on_mismatch(error_types)),
-                );
-                matcher.replace_type_var_likes_for_unknown_type_vars(i_s.db, &inner_expected)
-            })
-            .unwrap_or_else(|| self.infer_named_expression(comp_expr).as_type(i_s))
-            .avoid_implicit_literal(i_s.db)
+                        &inf,
+                        |issue| self.add_issue(comp_expr.index(), issue),
+                        |error_types, _: &_| Some(on_mismatch(error_types)),
+                    );
+                    matcher.replace_type_var_likes_for_unknown_type_vars(i_s.db, &inner_expected)
+                })
+                .unwrap_or_else(|| self.infer_named_expression(comp_expr).as_type(i_s))
+                .avoid_implicit_literal(i_s.db)
+        })
     }
 
     fn infer_list_comprehension(
