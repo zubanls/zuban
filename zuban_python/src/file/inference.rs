@@ -3418,7 +3418,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         .infer_expression_with_context(expr, &mut ResultContext::Known(expected_t));
                     let t = inf.as_cow_type(i_s);
                     if expected_t.is_super_type_of(i_s, matcher, &t).bool() {
-                        Some(t.into_owned())
+                        Some(t.into_owned().avoid_implicit_literal(i_s.db))
                     } else {
                         self.add_issue(
                             expr.index(),
