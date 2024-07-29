@@ -9,7 +9,7 @@ use parsa_python_cst::{
     ElseBlock, Expression, ExpressionContent, ExpressionPart, ForIfClauseIterator, ForStmt,
     IfBlockIterator, IfBlockType, IfStmt, Name, NameDefinition, NamedExpression,
     NamedExpressionContent, NodeIndex, Operand, Primary, PrimaryContent, PrimaryOrAtom,
-    PrimaryTarget, PrimaryTargetOrAtom, SliceType as CSTSliceType, Ternary, WhileStmt,
+    PrimaryTarget, PrimaryTargetOrAtom, SliceType as CSTSliceType, Target, Ternary, WhileStmt,
 };
 
 use crate::{
@@ -1099,6 +1099,42 @@ impl Inference<'_, '_, '_> {
 
     pub fn flow_analysis_for_conjunction(&self, and: Conjunction) -> Inferred {
         self.check_conjunction(and).0
+    }
+
+    pub fn flow_analysis_for_del_stmt(&self, target: Target) {
+        match target {
+            Target::Name(name_def) => debug!("TODO del name"),
+            Target::NameExpression(primary_target, name_def) => {
+                // TODO this should still be implemented
+                //self.infer_single_target(target);
+                let node_ref = NodeRef::new(self.file, name_def.index());
+                // We do a normal lookup to check that the attribute is there.
+                self.infer_primary_target_or_atom(primary_target.first())
+                    .lookup(self.i_s, node_ref, name_def.as_code(), LookupKind::Normal);
+            }
+            Target::IndexExpression(primary_target) => {
+                let base = self.infer_primary_target_or_atom(primary_target.first());
+                let PrimaryContent::GetItem(s) = primary_target.second() else {
+                    unreachable!()
+                };
+                let slice_type = SliceType::new(self.file, primary_target.index(), s);
+                let node_ref = slice_type.as_node_ref();
+                base.lookup(self.i_s, node_ref, "__delitem__", LookupKind::OnlyType)
+                    .into_inferred()
+                    .execute_with_details(
+                        self.i_s,
+                        &slice_type.as_args(*self.i_s),
+                        &mut ResultContext::ExpectUnused,
+                        OnTypeError::new(&on_argument_type_error),
+                    );
+            }
+            Target::Tuple(targets) => {
+                for target in targets {
+                    self.flow_analysis_for_del_stmt(target)
+                }
+            }
+            Target::Starred(_) => unreachable!(),
+        }
     }
 
     fn check_conjunction(
