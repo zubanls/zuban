@@ -1471,7 +1471,13 @@ impl<'db> Inference<'db, '_, '_> {
                 except_type
             };
             match b {
-                TryBlockType::Try(block) => self.calc_block_diagnostics(block, class, func),
+                TryBlockType::Try(block) => {
+                    FLOW_ANALYSIS.with(|fa| {
+                        fa.with_new_frame_and_return_unreachable(|| {
+                            self.calc_block_diagnostics(block, class, func)
+                        })
+                    });
+                }
                 TryBlockType::Except(b) => {
                     let (except_expr, block) = b.unpack();
                     let except_type = check_block(except_expr, block, false);

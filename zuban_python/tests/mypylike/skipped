@@ -311,15 +311,14 @@ testFinalWithoutBoolButWithLen
 testRedefinedFunctionInTryWithElse
 testRedefineImportedFunctionViaImport
 testUnionTryExcept
-testUnionTryExcept2
 testUnionTryExcept3
 testUnionTryFinally
 testUnionTryFinally2
 testUnionTryFinally4
-testUnionTryFinally5
-testUnionTryFinally6
 testUnreachableFlagTryBlocks
-testNoReturnExcept
+testUnreachableTryExcept
+testUnreachableTryReturnFinally1
+testUnreachableTryReturnExceptRaise
 # with: add test for with like testUnionTryExcept and check if Mypy does it that way as well
 # while/for
 testModifyLoop
