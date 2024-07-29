@@ -103,7 +103,20 @@ struct Entry {
     key: FlowKey,
     type_: Type,
     from_assignment: bool,
-    widens: bool, // e.g. if a type is defined as None and later made an optional.
+    deleted: bool, // e.g. after a `del foo`
+    widens: bool,  // e.g. if a type is defined as None and later made an optional.
+}
+
+impl Entry {
+    fn new(key: FlowKey, type_: Type) -> Self {
+        Entry {
+            key,
+            type_,
+            from_assignment: false,
+            deleted: false,
+            widens: false,
+        }
+    }
 }
 
 #[derive(Debug, Default, Clone)]
@@ -143,15 +156,7 @@ impl Frame {
     }
 
     fn add_entry_from_type(&mut self, i_s: &InferenceState, key: FlowKey, type_: Type) {
-        self.add_entry(
-            i_s,
-            Entry {
-                key,
-                type_,
-                from_assignment: false,
-                widens: false,
-            },
-        )
+        self.add_entry(i_s, Entry::new(key, type_))
     }
 
     fn from_type_without_entry(t: Type) -> Self {
@@ -168,12 +173,7 @@ impl Frame {
     fn from_type(key: FlowKey, type_: Type) -> Self {
         match type_ {
             Type::Never(_) => Self::new_unreachable(),
-            type_ => Self::new(vec![Entry {
-                key,
-                type_,
-                from_assignment: false,
-                widens: false,
-            }]),
+            type_ => Self::new(vec![Entry::new(key, type_)]),
         }
     }
 }
@@ -253,6 +253,7 @@ impl FlowAnalysis {
                                 key: first_entry.key.clone(),
                                 type_: other_entry.type_.simplified_union(i_s, &first_entry.type_),
                                 from_assignment: true,
+                                deleted: first_entry.deleted || other_entry.deleted,
                                 widens: first_entry.widens || other_entry.widens,
                             },
                         );
@@ -261,12 +262,8 @@ impl FlowAnalysis {
                 }
                 if first_entry.widens {
                     let declaration_t = Type::None;
-                    let entry = Entry {
-                        key: first_entry.key.clone(),
-                        type_: first_entry.type_.clone().union(declaration_t),
-                        from_assignment: first_entry.from_assignment,
-                        widens: first_entry.widens,
-                    };
+                    let mut entry = first_entry.clone();
+                    entry.type_ = entry.type_.union(declaration_t);
                     self.overwrite_entry(i_s, entry)
                 }
             }
@@ -424,6 +421,7 @@ fn merge_or(i_s: &InferenceState, x: Frame, y: Frame) -> Frame {
                     key: x_entry.key,
                     type_: x_entry.type_.simplified_union(i_s, &y_entry.type_),
                     from_assignment: x_entry.from_assignment || y_entry.from_assignment,
+                    deleted: x_entry.deleted | y_entry.deleted,
                     widens: x_entry.widens | y_entry.widens,
                 });
                 break;
@@ -844,6 +842,7 @@ impl Inference<'_, '_, '_> {
                     key,
                     type_,
                     from_assignment: true,
+                    deleted: false,
                     widens,
                 },
             )
@@ -1297,15 +1296,7 @@ impl Inference<'_, '_, '_> {
                 };
                 if key.equals(self.i_s.db, base_key) {
                     if let Some(type_) = self.maybe_propagate_parent_union(parent_union, entry) {
-                        frame.add_entry(
-                            self.i_s,
-                            Entry {
-                                key: key.clone(),
-                                type_,
-                                from_assignment: false,
-                                widens: false,
-                            },
-                        );
+                        frame.add_entry(self.i_s, Entry::new(key.clone(), type_));
                         break;
                     }
                 }
