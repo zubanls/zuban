@@ -614,7 +614,6 @@ testAsyncForErrorNote
 testDel
 testReuseTryExceptionVariable
 testReuseDefinedTryExceptionVariable
-testInvalidDel3
 
 # match statement
 testValuePattern

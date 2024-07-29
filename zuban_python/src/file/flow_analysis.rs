@@ -34,7 +34,7 @@ use crate::{
 };
 
 use super::{
-    first_defined_name,
+    first_defined_name, first_defined_name_of_multi_def,
     inference::Inference,
     name_binder::{is_expr_part_reachable_for_name_binder, Truthiness},
     on_argument_type_error, PythonFile,
@@ -1121,6 +1121,18 @@ impl Inference<'_, '_, '_> {
     pub fn flow_analysis_for_del_target(&self, target: Target) {
         match target {
             Target::Name(name_def) => FLOW_ANALYSIS.with(|fa| {
+                if let Some(first_index) =
+                    first_defined_name_of_multi_def(self.file, name_def.name_index())
+                {
+                    self.infer_name_target(name_def, true);
+                } else {
+                    self.add_issue(
+                        name_def.index(),
+                        IssueKind::NameError {
+                            name: name_def.as_code().into(),
+                        },
+                    );
+                }
                 fa.overwrite_entry(
                     self.i_s,
                     Entry {

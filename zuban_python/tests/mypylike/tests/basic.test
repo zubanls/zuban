@@ -345,5 +345,5 @@ del [], (a,)
 a # E: Trying to read deleted variable "a"
 
 a = 3
-del [a], (a,)
+del [a], (a,)  # E: Trying to read deleted variable "a"
 a # E: Trying to read deleted variable "a"

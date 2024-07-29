@@ -995,11 +995,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         }
     }
 
-    pub fn infer_name_target(
-        &self,
-        name_def: NameDefinition,
-        from_aug_assign: bool,
-    ) -> Option<Inferred> {
+    pub fn infer_name_target(&self, name_def: NameDefinition, narrow: bool) -> Option<Inferred> {
         if name_def.as_code() == "__slots__" {
             return None;
         }
@@ -1042,7 +1038,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 {
                     return None;
                 }
-                if from_aug_assign {
+                if narrow {
                     if let Some(result) = self.maybe_lookup_narrowed_name(
                         name_index,
                         PointLink::new(self.file_index, first_index),
@@ -3352,7 +3348,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 StmtLike::Walrus(walrus) => {
                     self.infer_walrus(walrus, None);
                 }
-                _ => todo!("{stmt_like:?}"),
+                StmtLike::Lambda(_)
+                | StmtLike::Comprehension(_)
+                | StmtLike::DictComprehension(_) => unreachable!(),
             }
         }
         debug_assert!(
