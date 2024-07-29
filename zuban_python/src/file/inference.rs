@@ -3440,7 +3440,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     .infer_expression(key_value.key())
                     .as_type(i_s)
                     .avoid_implicit_literal(i_s.db);
-                let value = self.infer_expression(key_value.value()).as_type(i_s);
+                let value = self
+                    .infer_expression(key_value.value())
+                    .as_type(i_s)
+                    .avoid_implicit_literal(i_s.db);
                 Inferred::from_type(to_dict(key, value))
             })
         })
