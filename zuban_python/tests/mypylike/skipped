@@ -277,23 +277,6 @@ testFinalNotInLoops
 # "Unexpected type declaration"
 testFinalInvalidDefinitions
 
-# Except Foo as bar where bar is bound over its existence as a variable
-testTryStarMultiple
-testExceptWithAnyTypes
-testExceptionVariableReuseInDeferredNode1
-testExceptionVariableReuseInDeferredNode2
-testExceptionVariableReuseInDeferredNode3
-# with scoping is special
-testWithStmtScopeBasics
-testWithStmtScopeNestedWith1
-testWithStmtScopeNestedWith2
-testWithStmtScopeInnerAndOuterScopes
-testWithStmtScopeMultipleContextManagers
-testWithStmtScopeMultipleAssignment
-testWithStmtScopeComplexAssignments
-testWithStmtScopeAndClass
-testWithStmtScopeAndLambda
-
 # [''] + [1] does not generate an error
 testAssignmentSubtypes
 # union order issues
@@ -679,11 +662,17 @@ testDisallowAnyGenericsForAliasesInRuntimeContext
 testGenericTypedDictAlias
 testNewAnalyzerDisallowAnyGenericsMessages
 
-# Weird and unsound mypy cases for x: typing.TypeAlias = ...
-testClassLevelTypeAliasesInUnusualContexts
-testMalformedTypeAliasRuntimeReassignments
-
 # --------------------------- Not first release ---------------------------
+
+# with scoping is special (Does it need to be??)
+testWithStmtScopeBasics
+testWithStmtScopeNestedWith1
+testWithStmtScopeNestedWith2
+testWithStmtScopeInnerAndOuterScopes
+testWithStmtScopeMultipleContextManagers
+testWithStmtScopeMultipleAssignment
+testWithStmtScopeAndClass
+testWithStmtScopeAndLambda
 
 # Narrowing len()
 testNarrowingLenTypeVarTupleGreaterThan
@@ -774,6 +763,9 @@ testTypeAliasTypeInvalidGeneric
 testTypeAliasTypeNoUnpackInTypeParams311
 # "Type aliases are prohibited in protocol bodies"
 testTypeAliasInProtocolBody
+# Weird and unsound mypy cases for x: typing.TypeAlias = ...
+testClassLevelTypeAliasesInUnusualContexts
+testMalformedTypeAliasRuntimeReassignments
 
 # Protocol Self binding for metaclasses
 testInferenceViaTypeTypeMetaclass
