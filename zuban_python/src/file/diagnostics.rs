@@ -7,16 +7,12 @@ use std::{
 
 use parsa_python_cst::*;
 
-use super::{
-    first_defined_name,
-    flow_analysis::FLOW_ANALYSIS,
-    inference::{await_, instantiate_except, instantiate_except_star},
-};
+use super::{first_defined_name, flow_analysis::FLOW_ANALYSIS, inference::await_};
 use crate::{
     arguments::{CombinedArgs, KnownArgs, NoArgs},
     database::{
         ClassKind, ComplexPoint, Database, Locality, OverloadImplementation, Point, PointKind,
-        PointLink, Specific,
+        Specific,
     },
     debug,
     diagnostics::{Issue, IssueKind},
@@ -31,7 +27,7 @@ use crate::{
     type_::{
         format_callable_params, AnyCause, CallableContent, CallableParams, ClassGenerics, DbString,
         FunctionKind, FunctionOverload, GenericItem, GenericsList, Literal, LiteralKind,
-        LookupResult, NeverCause, ParamType, TupleArgs, Type, TypeVarKind, TypeVarLike, Variance,
+        LookupResult, NeverCause, ParamType, Type, TypeVarKind, TypeVarLike, Variance,
     },
     type_helpers::{
         cache_class_name, is_private, Class, ClassLookupOptions, FirstParamKind,
@@ -393,7 +389,7 @@ impl<'db> Inference<'db, '_, '_> {
                     self.flow_analysis_for_for_stmt(for_stmt, class, func, false)
                 }
                 StmtContent::TryStmt(try_stmt) => {
-                    self.calc_try_stmt_diagnostics(try_stmt, class, func)
+                    self.flow_analysis_for_try_stmt(try_stmt, class, func)
                 }
                 StmtContent::WhileStmt(while_stmt) => {
                     self.flow_analysis_for_while_stmt(while_stmt, class, func)
@@ -1420,99 +1416,6 @@ impl<'db> Inference<'db, '_, '_> {
         );
     }
 
-    fn calc_try_stmt_diagnostics(
-        &self,
-        try_stmt: TryStmt,
-        class: Option<Class>,
-        func: Option<&Function>,
-    ) {
-        for b in try_stmt.iter_blocks() {
-            let check_block = |except_expr: Option<ExceptExpression>, block, is_star| {
-                let mut name_def = None;
-                let except_type = if let Some(except_expr) = except_expr {
-                    let expr;
-                    (expr, name_def) = except_expr.unpack();
-                    let inf = self.infer_expression(expr);
-                    let inf_t = inf.as_cow_type(self.i_s);
-                    if let Some(name_def) = name_def {
-                        let instantiated = match is_star {
-                            false => instantiate_except(self.i_s, &inf_t),
-                            true => instantiate_except_star(self.i_s, &inf_t),
-                        };
-                        let name_index = name_def.name_index();
-                        let first = first_defined_name(self.file, name_index);
-                        if first == name_index {
-                            Inferred::from_type(instantiated).maybe_save_redirect(
-                                self.i_s,
-                                self.file,
-                                name_def.index(),
-                                false,
-                            );
-                        } else {
-                            self.assign_type_for_node_index(
-                                PointLink::new(self.file_index, first),
-                                instantiated,
-                                false,
-                            )
-                        }
-                    }
-                    Some(except_type(self.i_s, &inf_t, true))
-                } else {
-                    None
-                };
-                FLOW_ANALYSIS.with(|fa| {
-                    fa.with_new_frame_and_return_unreachable(|| {
-                        self.calc_block_diagnostics(block, class, func)
-                    })
-                });
-                if let Some(name_def) = name_def {
-                    self.delete_name(name_def)
-                }
-                except_type
-            };
-            match b {
-                TryBlockType::Try(block) => {
-                    FLOW_ANALYSIS.with(|fa| {
-                        fa.with_new_frame_and_return_unreachable(|| {
-                            self.calc_block_diagnostics(block, class, func)
-                        })
-                    });
-                }
-                TryBlockType::Except(b) => {
-                    let (except_expr, block) = b.unpack();
-                    let except_type = check_block(except_expr, block, false);
-                    if !matches!(
-                        except_type,
-                        None | Some(ExceptType::ContainsOnlyBaseExceptions)
-                    ) {
-                        self.add_issue(
-                            except_expr.unwrap().index(),
-                            IssueKind::BaseExceptionExpected,
-                        );
-                    }
-                }
-                TryBlockType::ExceptStar(except_star) => {
-                    let (except_expr, block) = except_star.unpack();
-                    let except_type = check_block(Some(except_expr), block, true);
-                    match except_type {
-                        None | Some(ExceptType::ContainsOnlyBaseExceptions) => (),
-                        Some(ExceptType::HasExceptionGroup) => {
-                            self.add_issue(
-                                except_expr.index(),
-                                IssueKind::ExceptStarIsNotAllowedToBeAnExceptionGroup,
-                            );
-                        }
-                        Some(ExceptType::Invalid) => {
-                            self.add_issue(except_expr.index(), IssueKind::BaseExceptionExpected);
-                        }
-                    }
-                }
-                TryBlockType::Else(b) => self.calc_block_diagnostics(b.block(), class, func),
-                TryBlockType::Finally(b) => self.calc_block_diagnostics(b.block(), class, func),
-            }
-        }
-    }
-
     pub fn calc_fstring_diagnostics(&self, fstring: FString) {
         self.calc_fstring_content_diagnostics(fstring.iter_content())
     }
@@ -1751,56 +1654,6 @@ fn valid_raise_type(i_s: &InferenceState, from: NodeRef, t: &Type, allow_none: b
             .all(|t| valid_raise_type(i_s, from, t, allow_none)),
         Type::None if allow_none => true,
         _ => false,
-    }
-}
-
-enum ExceptType {
-    ContainsOnlyBaseExceptions,
-    HasExceptionGroup,
-    Invalid,
-}
-
-fn except_type(i_s: &InferenceState, t: &Type, allow_tuple: bool) -> ExceptType {
-    match t {
-        Type::Type(t) => {
-            let db = i_s.db;
-            if let Some(cls) = t.maybe_class(i_s.db) {
-                if cls.is_base_exception_group(i_s.db) {
-                    return ExceptType::HasExceptionGroup;
-                } else if cls.is_base_exception(i_s.db) {
-                    return ExceptType::ContainsOnlyBaseExceptions;
-                }
-            }
-            ExceptType::Invalid
-        }
-        Type::Any(_) => ExceptType::ContainsOnlyBaseExceptions,
-        Type::Tuple(content) if allow_tuple => match &content.args {
-            TupleArgs::FixedLen(ts) => {
-                let mut result = ExceptType::ContainsOnlyBaseExceptions;
-                for t in ts.iter() {
-                    match except_type(i_s, t, false) {
-                        ExceptType::ContainsOnlyBaseExceptions => (),
-                        x @ ExceptType::HasExceptionGroup => result = x,
-                        ExceptType::Invalid => return ExceptType::Invalid,
-                    }
-                }
-                result
-            }
-            TupleArgs::ArbitraryLen(t) => except_type(i_s, t, false),
-            TupleArgs::WithUnpack(_) => todo!(),
-        },
-        Type::Union(union) => {
-            let mut result = ExceptType::ContainsOnlyBaseExceptions;
-            for t in union.iter() {
-                match except_type(i_s, t, allow_tuple) {
-                    ExceptType::ContainsOnlyBaseExceptions => (),
-                    x @ ExceptType::HasExceptionGroup => result = x,
-                    ExceptType::Invalid => return ExceptType::Invalid,
-                }
-            }
-            result
-        }
-        _ => ExceptType::Invalid,
     }
 }
 

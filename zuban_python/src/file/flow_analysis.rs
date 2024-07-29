@@ -6,11 +6,11 @@ use std::{
 use parsa_python_cst::{
     Argument, Arguments, ArgumentsDetails, AssertStmt, Atom, AtomContent, Block, BreakStmt,
     CompIfIterator, ComparisonContent, Comparisons, Conjunction, ContinueStmt, DelTarget,
-    DelTargets, Disjunction, ElseBlock, Expression, ExpressionContent, ExpressionPart,
-    ForIfClauseIterator, ForStmt, IfBlockIterator, IfBlockType, IfStmt, Name, NameDefinition,
-    NamedExpression, NamedExpressionContent, NodeIndex, Operand, Primary, PrimaryContent,
-    PrimaryOrAtom, PrimaryTarget, PrimaryTargetOrAtom, SliceType as CSTSliceType, Target, Ternary,
-    WhileStmt,
+    DelTargets, Disjunction, ElseBlock, ExceptExpression, Expression, ExpressionContent,
+    ExpressionPart, ForIfClauseIterator, ForStmt, IfBlockIterator, IfBlockType, IfStmt, Name,
+    NameDefinition, NamedExpression, NamedExpressionContent, NodeIndex, Operand, Primary,
+    PrimaryContent, PrimaryOrAtom, PrimaryTarget, PrimaryTargetOrAtom, SliceType as CSTSliceType,
+    Target, Ternary, TryBlockType, TryStmt, WhileStmt,
 };
 
 use crate::{
@@ -35,7 +35,7 @@ use crate::{
 
 use super::{
     first_defined_name, first_defined_name_of_multi_def,
-    inference::Inference,
+    inference::{instantiate_except, instantiate_except_star, Inference},
     name_binder::{is_expr_part_reachable_for_name_binder, Truthiness},
     on_argument_type_error, PythonFile,
 };
@@ -1175,6 +1175,99 @@ impl Inference<'_, '_, '_> {
                     );
             }
             Target::Tuple(_) | Target::Starred(_) => unreachable!(),
+        }
+    }
+
+    pub fn flow_analysis_for_try_stmt(
+        &self,
+        try_stmt: TryStmt,
+        class: Option<Class>,
+        func: Option<&Function>,
+    ) {
+        for b in try_stmt.iter_blocks() {
+            let check_block = |except_expr: Option<ExceptExpression>, block, is_star| {
+                let mut name_def = None;
+                let except_type = if let Some(except_expr) = except_expr {
+                    let expr;
+                    (expr, name_def) = except_expr.unpack();
+                    let inf = self.infer_expression(expr);
+                    let inf_t = inf.as_cow_type(self.i_s);
+                    if let Some(name_def) = name_def {
+                        let instantiated = match is_star {
+                            false => instantiate_except(self.i_s, &inf_t),
+                            true => instantiate_except_star(self.i_s, &inf_t),
+                        };
+                        let name_index = name_def.name_index();
+                        let first = first_defined_name(self.file, name_index);
+                        if first == name_index {
+                            Inferred::from_type(instantiated).maybe_save_redirect(
+                                self.i_s,
+                                self.file,
+                                name_def.index(),
+                                false,
+                            );
+                        } else {
+                            self.assign_type_for_node_index(
+                                PointLink::new(self.file_index, first),
+                                instantiated,
+                                false,
+                            )
+                        }
+                    }
+                    Some(except_type(self.i_s, &inf_t, true))
+                } else {
+                    None
+                };
+                FLOW_ANALYSIS.with(|fa| {
+                    fa.with_new_frame_and_return_unreachable(|| {
+                        self.calc_block_diagnostics(block, class, func)
+                    })
+                });
+                if let Some(name_def) = name_def {
+                    self.delete_name(name_def)
+                }
+                except_type
+            };
+            match b {
+                TryBlockType::Try(block) => {
+                    FLOW_ANALYSIS.with(|fa| {
+                        fa.with_new_frame_and_return_unreachable(|| {
+                            self.calc_block_diagnostics(block, class, func)
+                        })
+                    });
+                }
+                TryBlockType::Except(b) => {
+                    let (except_expr, block) = b.unpack();
+                    let except_type = check_block(except_expr, block, false);
+                    if !matches!(
+                        except_type,
+                        None | Some(ExceptType::ContainsOnlyBaseExceptions)
+                    ) {
+                        self.add_issue(
+                            except_expr.unwrap().index(),
+                            IssueKind::BaseExceptionExpected,
+                        );
+                    }
+                }
+                TryBlockType::ExceptStar(except_star) => {
+                    let (except_expr, block) = except_star.unpack();
+                    let except_type = check_block(Some(except_expr), block, true);
+                    match except_type {
+                        None | Some(ExceptType::ContainsOnlyBaseExceptions) => (),
+                        Some(ExceptType::HasExceptionGroup) => {
+                            self.add_issue(
+                                except_expr.index(),
+                                IssueKind::ExceptStarIsNotAllowedToBeAnExceptionGroup,
+                            );
+                        }
+                        Some(ExceptType::Invalid) => {
+                            self.add_issue(except_expr.index(), IssueKind::BaseExceptionExpected);
+                        }
+                    }
+                }
+                TryBlockType::Else(b) => self.calc_block_diagnostics(b.block(), class, func),
+                TryBlockType::Finally(b) => self.calc_block_diagnostics(b.block(), class, func),
+            }
         }
     }
 
@@ -3003,4 +3096,54 @@ fn split_and_intersect(
         falsey: Frame::from_type(key, other_side),
         parent_unions,
     })
+}
+
+enum ExceptType {
+    ContainsOnlyBaseExceptions,
+    HasExceptionGroup,
+    Invalid,
+}
+
+fn except_type(i_s: &InferenceState, t: &Type, allow_tuple: bool) -> ExceptType {
+    match t {
+        Type::Type(t) => {
+            let db = i_s.db;
+            if let Some(cls) = t.maybe_class(i_s.db) {
+                if cls.is_base_exception_group(i_s.db) {
+                    return ExceptType::HasExceptionGroup;
+                } else if cls.is_base_exception(i_s.db) {
+                    return ExceptType::ContainsOnlyBaseExceptions;
+                }
+            }
+            ExceptType::Invalid
+        }
+        Type::Any(_) => ExceptType::ContainsOnlyBaseExceptions,
+        Type::Tuple(content) if allow_tuple => match &content.args {
+            TupleArgs::FixedLen(ts) => {
+                let mut result = ExceptType::ContainsOnlyBaseExceptions;
+                for t in ts.iter() {
+                    match except_type(i_s, t, false) {
+                        ExceptType::ContainsOnlyBaseExceptions => (),
+                        x @ ExceptType::HasExceptionGroup => result = x,
+                        ExceptType::Invalid => return ExceptType::Invalid,
+                    }
+                }
+                result
+            }
+            TupleArgs::ArbitraryLen(t) => except_type(i_s, t, false),
+            TupleArgs::WithUnpack(_) => todo!(),
+        },
+        Type::Union(union) => {
+            let mut result = ExceptType::ContainsOnlyBaseExceptions;
+            for t in union.iter() {
+                match except_type(i_s, t, allow_tuple) {
+                    ExceptType::ContainsOnlyBaseExceptions => (),
+                    x @ ExceptType::HasExceptionGroup => result = x,
+                    ExceptType::Invalid => return ExceptType::Invalid,
+                }
+            }
+            result
+        }
+        _ => ExceptType::Invalid,
+    }
 }
