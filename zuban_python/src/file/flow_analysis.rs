@@ -1185,6 +1185,8 @@ impl Inference<'_, '_, '_> {
         func: Option<&Function>,
     ) {
         let mut try_frame = None;
+        let mut finally_block = None;
+        let mut after_frame = Frame::new_unreachable();
         for b in try_stmt.iter_blocks() {
             let check_block = |except_expr: Option<ExceptExpression>, block, is_star| {
                 let mut name_def = None;
@@ -1269,21 +1271,35 @@ impl Inference<'_, '_, '_> {
                 TryBlockType::Else(b) => {
                     FLOW_ANALYSIS.with(|fa| {
                         let try_frame = try_frame.take().unwrap();
-                        let mut else_frame = if try_frame.unreachable {
+                        let else_frame = if try_frame.unreachable {
                             Frame::new_unreachable()
                         } else {
                             Frame::default()
                         };
+                        let new_after = std::mem::take(&mut after_frame);
                         fa.with_frame(try_frame, || {
-                            else_frame = fa.with_frame(else_frame, || {
-                                self.calc_block_diagnostics(b.block(), class, func)
-                            });
+                            after_frame = merge_or(
+                                self.i_s,
+                                new_after,
+                                fa.with_frame(else_frame, || {
+                                    self.calc_block_diagnostics(b.block(), class, func)
+                                }),
+                            );
                         });
                     });
                 }
-                TryBlockType::Finally(b) => self.calc_block_diagnostics(b.block(), class, func),
+                TryBlockType::Finally(b) => finally_block = Some(b),
             }
         }
+        if let Some(try_frame) = try_frame {
+            after_frame = merge_or(self.i_s, try_frame, after_frame);
+        }
+        FLOW_ANALYSIS.with(|fa| {
+            fa.overwrite_frame(self.i_s.db, after_frame);
+            if let Some(finally_block) = finally_block {
+                self.calc_block_diagnostics(finally_block.block(), class, func)
+            }
+        })
     }
 
     fn check_conjunction(
