@@ -1188,7 +1188,7 @@ impl Inference<'_, '_, '_> {
         let mut finally_block = None;
         let mut after_frame = Frame::new_unreachable();
         for b in try_stmt.iter_blocks() {
-            let check_block = |except_expr: Option<ExceptExpression>, block, is_star| {
+            let mut check_block = |except_expr: Option<ExceptExpression>, block, is_star| {
                 let mut name_def = None;
                 let except_type = if let Some(except_expr) = except_expr {
                     let expr;
@@ -1222,9 +1222,11 @@ impl Inference<'_, '_, '_> {
                     None
                 };
                 FLOW_ANALYSIS.with(|fa| {
-                    fa.with_new_frame_and_return_unreachable(|| {
+                    let exception_frame = fa.with_frame(Frame::default(), || {
                         self.calc_block_diagnostics(block, class, func)
-                    })
+                    });
+                    let new_after = std::mem::take(&mut after_frame);
+                    after_frame = merge_or(self.i_s, exception_frame, new_after);
                 });
                 if let Some(name_def) = name_def {
                     self.delete_name(name_def)
@@ -1276,8 +1278,8 @@ impl Inference<'_, '_, '_> {
                         } else {
                             Frame::default()
                         };
-                        let new_after = std::mem::take(&mut after_frame);
                         fa.with_frame(try_frame, || {
+                            let new_after = std::mem::take(&mut after_frame);
                             after_frame = merge_or(
                                 self.i_s,
                                 new_after,

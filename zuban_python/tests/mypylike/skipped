@@ -307,20 +307,16 @@ testOrCases
 testAndCases
 testFinalWithoutBool
 testFinalWithoutBoolButWithLen
-# try/except/finally
-testRedefineImportedFunctionViaImport
+# try branch can only be partially executed
 testUnionTryExcept
 testUnionTryExcept3
 testUnionTryFinally
 testUnionTryFinally2
 testUnionTryFinally4
-testUnreachableFlagTryBlocks
-#
-try_stmt_else_unreachable
-testUnreachableCode2
-testNoReturnExcept
+# finally must be checked twice
 testUnionTryFinally5
 testUnionTryFinally6
+testUnreachableFlagTryBlocks
 # with: add test for with like testUnionTryExcept and check if Mypy does it that way as well
 # while/for
 testModifyLoop
