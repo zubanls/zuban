@@ -1209,10 +1209,40 @@ impl Inference<'_, '_, '_> {
         class: Option<Class>,
         func: Option<&Function>,
     ) {
+        let mut except_bodies = 0;
+        let mut finally_block = None;
+        for b in try_stmt.iter_blocks() {
+            match b {
+                TryBlockType::Except(_) => except_bodies += 1,
+                TryBlockType::Finally(block) => {
+                    finally_block = Some(block);
+                }
+                _ => (),
+            }
+        }
+
+        let after_frame =
+            self.flow_analysis_for_try_stmt_without_finally(try_stmt, class, func, except_bodies);
+
+        FLOW_ANALYSIS.with(|fa| {
+            fa.overwrite_frame(self.i_s.db, after_frame);
+            if let Some(finally_block) = finally_block {
+                self.calc_block_diagnostics(finally_block.block(), class, func)
+            }
+        })
+    }
+
+    fn flow_analysis_for_try_stmt_without_finally(
+        &self,
+        try_stmt: TryStmt,
+        class: Option<Class>,
+        func: Option<&Function>,
+        except_bodies: usize,
+    ) -> Frame {
         let mut try_frame_for_except = Frame::default();
         let mut try_frame = None;
-        let mut finally_block = None;
         let mut after_frame = Frame::new_unreachable();
+        let mut nth_except_body = 0;
         for b in try_stmt.iter_blocks() {
             let mut check_block = |except_expr: Option<ExceptExpression>, block, is_star| {
                 let mut name_def = None;
@@ -1247,14 +1277,16 @@ impl Inference<'_, '_, '_> {
                 } else {
                     None
                 };
+                nth_except_body += 1;
                 FLOW_ANALYSIS.with(|fa| {
-                    let mut exception_frame = Frame::default();
-                    try_frame_for_except =
-                        fa.with_frame(std::mem::take(&mut try_frame_for_except), || {
-                            exception_frame = fa.with_frame(Frame::default(), || {
-                                self.calc_block_diagnostics(block, class, func)
-                            });
-                        });
+                    let mut exception_frame = if nth_except_body == except_bodies {
+                        std::mem::take(&mut try_frame_for_except)
+                    } else {
+                        try_frame_for_except.clone()
+                    };
+                    exception_frame = fa.with_frame(exception_frame, || {
+                        self.calc_block_diagnostics(block, class, func)
+                    });
                     let new_after = std::mem::take(&mut after_frame);
                     after_frame = merge_or(self.i_s, exception_frame, new_after);
                 });
@@ -1322,18 +1354,13 @@ impl Inference<'_, '_, '_> {
                         });
                     });
                 }
-                TryBlockType::Finally(b) => finally_block = Some(b),
+                TryBlockType::Finally(b) => (),
             }
         }
         if let Some(try_frame) = try_frame {
             after_frame = merge_or(self.i_s, try_frame, after_frame);
         }
-        FLOW_ANALYSIS.with(|fa| {
-            fa.overwrite_frame(self.i_s.db, after_frame);
-            if let Some(finally_block) = finally_block {
-                self.calc_block_diagnostics(finally_block.block(), class, func)
-            }
-        })
+        after_frame
     }
 
     fn check_conjunction(
