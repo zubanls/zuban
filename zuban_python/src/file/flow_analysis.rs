@@ -320,7 +320,7 @@ impl FlowAnalysis {
         i_s: &InferenceState,
         search_for: &Entry,
     ) -> Option<Entry> {
-        self.frames.borrow().iter().find_map(|frame| {
+        self.frames.borrow().iter().rev().find_map(|frame| {
             frame.entries.iter().find_map(|e| {
                 if e.key.equals(i_s.db, &search_for.key) {
                     if !e
@@ -331,9 +331,10 @@ impl FlowAnalysis {
                         return Some(Entry {
                             type_: e.type_.simplified_union(i_s, &search_for.type_),
                             key: e.key.clone(),
-                            modifies_ancestors: e.modifies_ancestors,
-                            deleted: e.deleted,
-                            widens: e.widens,
+                            modifies_ancestors: e.modifies_ancestors
+                                | search_for.modifies_ancestors,
+                            deleted: e.deleted | search_for.deleted,
+                            widens: e.widens | search_for.widens,
                         });
                     }
                 }
@@ -1649,8 +1650,8 @@ impl Inference<'_, '_, '_> {
                         ..Default::default()
                     };
                     let as_s = |frame: &Frame| match frame.unreachable {
-                        true => "reachable",
-                        false => "unreachable",
+                        true => "unreachable",
+                        false => "reachable",
                     };
                     debug!(
                         "Split reachability for {} into true: {} and false: {}",

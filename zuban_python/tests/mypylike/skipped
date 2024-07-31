@@ -310,7 +310,6 @@ testFinalWithoutBoolButWithLen
 # try branch can only be partially executed
 try_stmt_else_narrowing
 testUnionTryExcept3
-if_widening_statement2
 # finally must be checked twice
 testUnionTryFinally
 testUnionTryFinally5
