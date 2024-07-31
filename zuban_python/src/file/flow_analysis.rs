@@ -297,6 +297,23 @@ impl FlowAnalysis {
     }
 
     fn overwrite_entry(&self, i_s: &InferenceState, new_entry: Entry) {
+        for entries in self.try_frames.borrow_mut().iter_mut() {
+            let mut add_entry_to_try_frame = |new_entry: &Entry| {
+                for entry in &mut *entries {
+                    if entry.key.equals(i_s.db, &new_entry.key) {
+                        entry.union(i_s, new_entry);
+                        return;
+                    }
+                }
+                entries.push(new_entry.clone())
+            };
+            if let Some(new) = self.key_has_maybe_wider_assignment(i_s, &new_entry) {
+                add_entry_to_try_frame(&new)
+            } else {
+                add_entry_to_try_frame(&new_entry)
+            }
+        }
+
         let mut frames = self.frames.borrow_mut();
         let entries = &mut frames.last_mut().unwrap().entries;
         for entry in &mut *entries {
@@ -309,18 +326,6 @@ impl FlowAnalysis {
                 }
                 return;
             }
-        }
-        for entries in self.try_frames.borrow_mut().iter_mut() {
-            let mut add_entry_to_try_frame = || {
-                for entry in &mut *entries {
-                    if entry.key.equals(i_s.db, &new_entry.key) {
-                        entry.union(i_s, &new_entry);
-                        return;
-                    }
-                }
-                entries.push(new_entry.clone())
-            };
-            add_entry_to_try_frame()
         }
         entries.push(new_entry)
     }
