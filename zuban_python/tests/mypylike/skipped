@@ -308,6 +308,7 @@ testAndCases
 testFinalWithoutBool
 testFinalWithoutBoolButWithLen
 # try branch can only be partially executed
+try_stmt_else_narrowing
 testUnionTryExcept
 testUnionTryExcept3
 testUnionTryFinally

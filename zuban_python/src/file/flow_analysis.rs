@@ -118,6 +118,14 @@ impl Entry {
             widens: false,
         }
     }
+
+    #[inline]
+    fn union(&mut self, i_s: &InferenceState, other: &Self) {
+        self.type_ = self.type_.simplified_union(i_s, &other.type_);
+        self.from_assignment |= other.from_assignment;
+        self.deleted |= other.deleted;
+        self.widens |= other.widens;
+    }
 }
 
 #[derive(Debug, Default, Clone)]
@@ -182,6 +190,7 @@ impl Frame {
 #[derive(Debug, Default)]
 pub struct FlowAnalysis {
     frames: RefCell<Vec<Frame>>,
+    try_frames: RefCell<Vec<Entries>>,
     current_break_index: Cell<Option<usize>>,
     partials_in_module: RefCell<Vec<PointLink>>,
     in_type_checking_only_block: Cell<bool>, // For stuff like if TYPE_CHECKING:
@@ -289,6 +298,18 @@ impl FlowAnalysis {
                 return;
             }
         }
+        for entries in self.try_frames.borrow_mut().iter_mut() {
+            let mut add_entry_to_try_frame = || {
+                for entry in &mut *entries {
+                    if entry.key.equals(i_s.db, &new_entry.key) {
+                        entry.union(i_s, &new_entry);
+                        return;
+                    }
+                }
+                entries.push(new_entry.clone())
+            };
+            add_entry_to_try_frame()
+        }
         entries.push(new_entry)
     }
 
@@ -350,6 +371,15 @@ impl FlowAnalysis {
         self.in_type_checking_only_block.set(true);
         callable();
         self.in_type_checking_only_block.set(old);
+    }
+
+    fn with_new_try_frame(&self, callable: impl FnOnce()) -> Frame {
+        self.try_frames.borrow_mut().push(vec![]);
+        callable();
+        Frame {
+            entries: self.try_frames.borrow_mut().pop().unwrap(),
+            ..Frame::default()
+        }
     }
 
     pub fn mark_current_frame_unreachable(&self) {
@@ -417,18 +447,13 @@ fn merge_or(i_s: &InferenceState, x: Frame, y: Frame) -> Frame {
         return x;
     }
     let mut new_entries = vec![];
-    for x_entry in x.entries {
+    for mut x_entry in x.entries {
         for y_entry in &y.entries {
             // Only when both sides narrow the same type we actually have learned anything about
             // the expression.
             if x_entry.key.equals(i_s.db, &y_entry.key) {
-                new_entries.push(Entry {
-                    key: x_entry.key,
-                    type_: x_entry.type_.simplified_union(i_s, &y_entry.type_),
-                    from_assignment: x_entry.from_assignment || y_entry.from_assignment,
-                    deleted: x_entry.deleted | y_entry.deleted,
-                    widens: x_entry.widens | y_entry.widens,
-                });
+                x_entry.union(i_s, y_entry);
+                new_entries.push(x_entry);
                 break;
             }
         }
@@ -1184,6 +1209,7 @@ impl Inference<'_, '_, '_> {
         class: Option<Class>,
         func: Option<&Function>,
     ) {
+        let mut try_frame_for_except = Frame::default();
         let mut try_frame = None;
         let mut finally_block = None;
         let mut after_frame = Frame::new_unreachable();
@@ -1222,9 +1248,13 @@ impl Inference<'_, '_, '_> {
                     None
                 };
                 FLOW_ANALYSIS.with(|fa| {
-                    let exception_frame = fa.with_frame(Frame::default(), || {
-                        self.calc_block_diagnostics(block, class, func)
-                    });
+                    let mut exception_frame = Frame::default();
+                    try_frame_for_except =
+                        fa.with_frame(std::mem::take(&mut try_frame_for_except), || {
+                            exception_frame = fa.with_frame(Frame::default(), || {
+                                self.calc_block_diagnostics(block, class, func)
+                            });
+                        });
                     let new_after = std::mem::take(&mut after_frame);
                     after_frame = merge_or(self.i_s, exception_frame, new_after);
                 });
@@ -1236,9 +1266,11 @@ impl Inference<'_, '_, '_> {
             match b {
                 TryBlockType::Try(block) => {
                     FLOW_ANALYSIS.with(|fa| {
-                        try_frame = Some(fa.with_frame(Frame::default(), || {
-                            self.calc_block_diagnostics(block, class, func)
-                        }))
+                        try_frame_for_except = fa.with_new_try_frame(|| {
+                            try_frame = Some(fa.with_frame(Frame::default(), || {
+                                self.calc_block_diagnostics(block, class, func)
+                            }))
+                        })
                     });
                 }
                 TryBlockType::Except(b) => {
