@@ -1214,10 +1214,8 @@ impl Type {
                                     format_index: entry.format_index,
                                 });
                             }
-                        } else {
-                            if !gathered.iter().any(|e| e.type_ == entry.type_) {
-                                gathered.push(entry.clone())
-                            }
+                        } else if !gathered.iter().any(|e| e.type_ == entry.type_) {
+                            gathered.push(entry.clone())
                         }
                     }
                     if gathered.len() == 1 {

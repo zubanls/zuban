@@ -693,12 +693,10 @@ fn execute_super_internal<'db>(
             } else {
                 Err(IssueKind::SuperUsedOutsideClass)
             }
+        } else if i_s.in_class_scope() {
+            Err(IssueKind::SuperOutsideOfAMethod)
         } else {
-            if i_s.in_class_scope() {
-                Err(IssueKind::SuperOutsideOfAMethod)
-            } else {
-                Err(IssueKind::SuperUsedOutsideClass)
-            }
+            Err(IssueKind::SuperUsedOutsideClass)
         }
     };
     let first_class = match next_arg() {

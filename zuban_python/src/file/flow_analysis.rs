@@ -332,14 +332,13 @@ impl FlowAnalysis {
     ) -> Option<Entry> {
         self.frames.borrow().iter().rev().find_map(|frame| {
             frame.entries.iter().find_map(|e| {
-                if e.key.equals(i_s.db, &search_for.key) {
-                    if !e
+                if e.key.equals(i_s.db, &search_for.key)
+                    && !e
                         .type_
                         .is_simple_super_type_of(i_s, &search_for.type_)
                         .bool()
-                    {
-                        return Some(e.union_of_refs(i_s, search_for));
-                    }
+                {
+                    return Some(e.union_of_refs(i_s, search_for));
                 }
                 None
             })

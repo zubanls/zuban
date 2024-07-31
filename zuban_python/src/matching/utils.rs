@@ -89,10 +89,10 @@ pub fn calculate_property_return(
 ) -> Option<Type> {
     let first_type = callable.first_positional_type().unwrap();
     let mut matcher = Matcher::new_callable_matcher(callable);
-    if callable.kind.had_first_self_or_class_annotation() {
-        if !match_self_type(i_s, &mut matcher, instance, func_class, &first_type) {
-            return None;
-        }
+    if callable.kind.had_first_self_or_class_annotation()
+        && !match_self_type(i_s, &mut matcher, instance, func_class, &first_type)
+    {
+        return None;
     }
 
     let t = replace_class_type_vars(i_s.db, &callable.return_type, func_class, &|| {

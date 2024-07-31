@@ -81,7 +81,7 @@ impl TupleArgs {
     }
 }
 
-pub fn simplified_union_from_iterators<'x, T: Borrow<Type>>(
+pub fn simplified_union_from_iterators<T: Borrow<Type>>(
     i_s: &InferenceState,
     types: impl Iterator<Item = T> + Clone,
 ) -> Type {

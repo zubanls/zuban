@@ -777,7 +777,7 @@ impl<'a> Matcher<'a> {
                     );
                 }
             }
-            if let Some(func_class) = self.maybe_func_class_for_usage(&usage) {
+            if let Some(func_class) = self.maybe_func_class_for_usage(usage) {
                 return MatcherFormatResult::Str(
                     func_class
                         .generics()
@@ -1192,8 +1192,10 @@ impl<'a> Matcher<'a> {
         } else {
             Bound::default()
         };
-        let mut current = CalculatingTypeArg::default();
-        current.type_ = bound;
+        let mut current = CalculatingTypeArg {
+            type_: bound,
+            ..Default::default()
+        };
         for tv_in_cycle in &cycle.set {
             // Use normal bound
             let used = &mut self.type_var_matchers[tv_in_cycle.matcher_index].calculating_type_args

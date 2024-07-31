@@ -925,18 +925,15 @@ impl TypeVarLikeUsage {
                     s += " = ";
                     s += &default.format_short(db);
                 }
-                s.into()
+                s
             }
             Self::TypeVarTuple(t) => format!(
                 "Unpack[{}]",
                 t.type_var_tuple.format(&FormatData::new_short(db))
-            )
-            .into(),
+            ),
             Self::ParamSpec(p) => match params_style {
-                ParamsStyle::CallableParams => {
-                    p.param_spec.format(&FormatData::new_short(db)).into()
-                }
-                ParamsStyle::CallableParamsInner => format!("**{}", p.param_spec.name(db)).into(),
+                ParamsStyle::CallableParams => p.param_spec.format(&FormatData::new_short(db)),
+                ParamsStyle::CallableParamsInner => format!("**{}", p.param_spec.name(db)),
                 ParamsStyle::Unreachable => unreachable!(),
             },
         }

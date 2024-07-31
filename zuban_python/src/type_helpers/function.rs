@@ -506,8 +506,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 let iterator = func_node.params().iter();
                 if !iterator
                     .skip_while(|p| p.kind() != ParamKind::Star)
-                    .skip(1)
-                    .next()
+                    .nth(1)
                     .is_some_and(|p| p.annotation().is_some())
                 {
                     NodeRef::new(self.node_ref.file, annotation.index()).add_issue(
@@ -1340,7 +1339,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     // only defined later.
                     let t = match func_class_type {
                         TypeOrClass::Class(c) => c.as_type(i_s.db),
-                        TypeOrClass::Type(t) => t.to_owned().into_owned(),
+                        TypeOrClass::Type(t) => t.clone().into_owned(),
                     }
                     .replace_type_var_likes(i_s.db, &mut |u| u.as_any_generic_item());
                     let self_type_var = Rc::new(TypeVar {
@@ -1459,7 +1458,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
 
         let mut new_params = vec![];
         let file_index = self.node_ref.file_index();
-        while let Some(p) = params.next() {
+        for p in params {
             if p.param.kind() == ParamKind::Star {
                 if let Some(ts) = p
                     .annotation(i_s.db)

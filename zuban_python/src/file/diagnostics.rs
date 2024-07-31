@@ -1296,7 +1296,7 @@ impl<'db> Inference<'db, '_, '_> {
         implementation: &OverloadImplementation,
         signature_index: usize,
     ) {
-        let matcher = &mut Matcher::new_reverse_callable_matcher(&implementation_callable);
+        let matcher = &mut Matcher::new_reverse_callable_matcher(implementation_callable);
         let implementation_result = &implementation_callable.return_type;
         let item_result = &overload_item.return_type;
         // This is bivariant matching. This is how Mypy allows subtyping.
@@ -1765,7 +1765,7 @@ fn find_and_check_override(
     );
     if original_details.lookup.is_some() {
         let override_details =
-            instance.lookup_with_details(i_s, &add_lookup_issue, name, LookupKind::Normal);
+            instance.lookup_with_details(i_s, add_lookup_issue, name, LookupKind::Normal);
         if !has_override_decorator
             && from
                 .file

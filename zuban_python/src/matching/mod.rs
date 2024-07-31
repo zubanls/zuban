@@ -142,7 +142,7 @@ impl<'t> GotType<'t> {
         } else if let Some(double_star_t) = arg.maybe_star_star_type(i_s) {
             Self::DoubleStarred(double_star_t)
         } else {
-            Self::Type(&value_t)
+            Self::Type(value_t)
         }
     }
 

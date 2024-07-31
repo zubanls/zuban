@@ -1010,7 +1010,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                                         i_s,
                                                         &instance,
                                                         attribute_class,
-                                                        &callable,
+                                                        callable,
                                                     )
                                                 }
                                                 FunctionKind::Staticmethod
@@ -1146,7 +1146,7 @@ impl<'db: 'slf, 'slf> Inferred {
                     c.name
                         .as_ref()
                         .map(|n| n.as_str(i_s.db))
-                        .unwrap_or(for_name.into()),
+                        .unwrap_or(for_name),
                 ),
                 callable: c.format(&FormatData::new_short(i_s.db)).into(),
             })
@@ -1165,7 +1165,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             &attribute_class,
                             &f,
                         )
-                        .map(|c| Rc::new(c))
+                        .map(Rc::new)
                         .unwrap_or_else(|| {
                             add_invalid_self_arg(c);
                             i_s.db.python_state.any_callable_from_error.clone()
@@ -2304,7 +2304,7 @@ fn proper_classmethod_callable(
 
             callable.params = CallableParams::Simple(Rc::from(vec));
             if let Some(t) = first_param.type_.maybe_positional_type() {
-                let mut matcher = Matcher::new_callable_matcher(&original_callable);
+                let mut matcher = Matcher::new_callable_matcher(original_callable);
                 let t = replace_class_type_vars(i_s.db, t, func_class, &as_type);
                 if !t
                     .is_super_type_of(i_s, &mut matcher, &as_type_type())

@@ -3546,7 +3546,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
             Specific::TypingGeneric | Specific::TypingProtocol => {
                 self.add_issue(
                     slice_type.cst_node.index(),
-                    IssueKind::InvalidType(format!("Invalid type application").into()),
+                    IssueKind::InvalidType("Invalid type application".to_string().into()),
                 );
                 Inferred::new_any_from_error()
             }

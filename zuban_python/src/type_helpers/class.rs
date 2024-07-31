@@ -406,13 +406,12 @@ impl<'db: 'a, 'a> Class<'a> {
                 if let Some(maybe_link) = inf.maybe_saved_link() {
                     if maybe_link == i_s.db.python_state.typing_final().as_link() {
                         is_final = true;
-                    } else if maybe_link == i_s.db.python_state.runtime_checkable_link() {
-                        is_runtime_checkable = true;
-                    } else if maybe_link
-                        == i_s
-                            .db
-                            .python_state
-                            .typing_extensions_runtime_checkable_link()
+                    } else if maybe_link == i_s.db.python_state.runtime_checkable_link()
+                        || maybe_link
+                            == i_s
+                                .db
+                                .python_state
+                                .typing_extensions_runtime_checkable_link()
                     {
                         is_runtime_checkable = true;
                     }
@@ -1298,11 +1297,7 @@ impl<'db: 'a, 'a> Class<'a> {
                     i_s,
                     name,
                     InstanceLookupOptions::new(&|issue| had_binding_error.set(true))
-                        .with_as_self_instance(&|| match other {
-                            _ => other.clone(),
-                            //Type::Class(c) if !c.class(i_s.db).is_protocol(i_s.db) => other.clone(),
-                            //_ => c.as_type(i_s.db),
-                        })
+                        .with_as_self_instance(&|| other.clone())
                         .with_disallowed_lazy_bound_method(),
                 );
                 let inf1 = protocol_lookup_details.lookup.into_inferred();
