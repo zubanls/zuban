@@ -302,15 +302,21 @@ impl FlowAnalysis {
                 for entry in &mut *entries {
                     if entry.key.equals(i_s.db, &new_entry.key) {
                         entry.union(i_s, new_entry);
-                        return;
+                        return true;
                     }
                 }
-                entries.push(new_entry.clone())
+                false
             };
             if let Some(new) = self.key_has_maybe_wider_assignment(i_s, &new_entry) {
-                add_entry_to_try_frame(&new)
+                // If we have a key that narrows in our ancestors, we either add it to an existing
+                // one or push a new one.
+                if !add_entry_to_try_frame(&new) {
+                    entries.push(new)
+                }
             } else {
-                add_entry_to_try_frame(&new_entry)
+                // If we have no key that narrows in our ancestors, we try to merge with the same
+                // key that currently exists within this try frame.
+                add_entry_to_try_frame(&new_entry);
             }
         }
 
