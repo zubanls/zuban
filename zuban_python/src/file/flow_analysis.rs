@@ -126,6 +126,16 @@ impl Entry {
         self.deleted |= other.deleted;
         self.widens |= other.widens;
     }
+
+    fn union_of_refs(&self, i_s: &InferenceState, other: &Self) -> Self {
+        Self {
+            key: self.key.clone(),
+            type_: self.type_.simplified_union(i_s, &other.type_),
+            modifies_ancestors: self.modifies_ancestors | other.modifies_ancestors,
+            deleted: self.deleted | other.deleted,
+            widens: self.widens | other.widens,
+        }
+    }
 }
 
 #[derive(Debug, Default, Clone)]
@@ -328,14 +338,7 @@ impl FlowAnalysis {
                         .is_simple_super_type_of(i_s, &search_for.type_)
                         .bool()
                     {
-                        return Some(Entry {
-                            type_: e.type_.simplified_union(i_s, &search_for.type_),
-                            key: e.key.clone(),
-                            modifies_ancestors: e.modifies_ancestors
-                                | search_for.modifies_ancestors,
-                            deleted: e.deleted | search_for.deleted,
-                            widens: e.widens | search_for.widens,
-                        });
+                        return Some(e.union_of_refs(i_s, search_for));
                     }
                 }
                 None
