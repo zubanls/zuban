@@ -103,7 +103,7 @@ enum FlowKeyIndex {
 struct Entry {
     key: FlowKey,
     type_: Type,
-    from_assignment: bool,
+    modifies_ancestors: bool,
     deleted: bool, // e.g. after a `del foo`
     widens: bool,  // e.g. if a type is defined as None and later made an optional.
 }
@@ -113,7 +113,7 @@ impl Entry {
         Entry {
             key,
             type_,
-            from_assignment: false,
+            modifies_ancestors: false,
             deleted: false,
             widens: false,
         }
@@ -122,7 +122,7 @@ impl Entry {
     #[inline]
     fn union(&mut self, i_s: &InferenceState, other: &Self) {
         self.type_ = self.type_.simplified_union(i_s, &other.type_);
-        self.from_assignment |= other.from_assignment;
+        self.modifies_ancestors |= other.modifies_ancestors;
         self.deleted |= other.deleted;
         self.widens |= other.widens;
     }
@@ -256,17 +256,17 @@ impl FlowAnalysis {
         other_frame: &mut Frame,
     ) {
         'outer: for first_entry in &first_frame.entries {
-            if first_entry.from_assignment {
+            if first_entry.modifies_ancestors {
                 for other_entry in &mut other_frame.entries {
                     if first_entry.key.equals(i_s.db, &other_entry.key) {
                         // Assign false to make sure it is not handled again from the other side.
-                        other_entry.from_assignment = false;
+                        other_entry.modifies_ancestors = false;
                         self.overwrite_entry(
                             i_s,
                             Entry {
                                 key: first_entry.key.clone(),
                                 type_: other_entry.type_.simplified_union(i_s, &first_entry.type_),
-                                from_assignment: true,
+                                modifies_ancestors: true,
                                 deleted: first_entry.deleted || other_entry.deleted,
                                 widens: first_entry.widens || other_entry.widens,
                             },
@@ -313,10 +313,10 @@ impl FlowAnalysis {
         entries.push(new_entry)
     }
 
-    fn remove_entry_if_from_assignment(&self, i_s: &InferenceState, key: &FlowKey) {
+    fn remove_key_if_modifies_ancestors(&self, i_s: &InferenceState, key: &FlowKey) {
         let mut frames = self.frames.borrow_mut();
         let entries = &mut frames.last_mut().unwrap().entries;
-        entries.retain(|entry| !entry.from_assignment || !entry.key.equals(i_s.db, key))
+        entries.retain(|entry| !entry.modifies_ancestors || !entry.key.equals(i_s.db, key))
     }
 
     fn overwrite_entries(&self, db: &Database, new_entries: Entries) {
@@ -848,7 +848,7 @@ impl Inference<'_, '_, '_> {
         } else if current_t.is_any() && !declaration_t.is_any_or_any_in_union(self.i_s.db) {
             // Any should not be narrowed if it is not part of a union with any.
             FLOW_ANALYSIS.with(|fa| {
-                fa.remove_entry_if_from_assignment(self.i_s, &FlowKey::Name(first_name_link))
+                fa.remove_key_if_modifies_ancestors(self.i_s, &FlowKey::Name(first_name_link))
             });
             return;
         } else if check_for_error() {
@@ -875,7 +875,7 @@ impl Inference<'_, '_, '_> {
                 Entry {
                     key,
                     type_,
-                    from_assignment: true,
+                    modifies_ancestors: true,
                     deleted: false,
                     widens,
                 },
@@ -1150,7 +1150,7 @@ impl Inference<'_, '_, '_> {
                 Entry {
                     key: self.key_from_name_def(name_def),
                     type_: Type::Any(AnyCause::FromError),
-                    from_assignment: true,
+                    modifies_ancestors: true,
                     deleted: true,
                     widens: true,
                 },
