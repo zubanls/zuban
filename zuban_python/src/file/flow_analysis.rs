@@ -1253,11 +1253,11 @@ impl Inference<'_, '_, '_> {
             }
         }
 
-        let after_frame =
+        let (after_ok, after_exception) =
             self.flow_analysis_for_try_stmt_without_finally(try_stmt, class, func, except_bodies);
 
         FLOW_ANALYSIS.with(|fa| {
-            fa.overwrite_frame(self.i_s.db, after_frame);
+            fa.merge_conditional(self.i_s, after_ok, after_exception);
             if let Some(finally_block) = finally_block {
                 self.calc_block_diagnostics(finally_block.block(), class, func)
             }
@@ -1270,10 +1270,11 @@ impl Inference<'_, '_, '_> {
         class: Option<Class>,
         func: Option<&Function>,
         except_bodies: usize,
-    ) -> Frame {
+    ) -> (Frame, Frame) {
         let mut try_frame_for_except = Frame::default();
         let mut try_frame = None;
-        let mut after_frame = Frame::new_unreachable();
+        let mut after_ok = Frame::new_unreachable();
+        let mut after_exception = Frame::new_unreachable();
         let mut nth_except_body = 0;
         for b in try_stmt.iter_blocks() {
             let mut check_block = |except_expr: Option<ExceptExpression>, block, is_star| {
@@ -1319,8 +1320,8 @@ impl Inference<'_, '_, '_> {
                     exception_frame = fa.with_frame(exception_frame, || {
                         self.calc_block_diagnostics(block, class, func)
                     });
-                    let new_after = std::mem::take(&mut after_frame);
-                    after_frame = merge_or(self.i_s, exception_frame, new_after);
+                    let new_after = std::mem::take(&mut after_exception);
+                    after_exception = merge_or(self.i_s, exception_frame, new_after);
                 });
                 if let Some(name_def) = name_def {
                     self.delete_name(name_def)
@@ -1375,8 +1376,8 @@ impl Inference<'_, '_, '_> {
                             Frame::default()
                         };
                         fa.with_frame(try_frame, || {
-                            let new_after = std::mem::take(&mut after_frame);
-                            after_frame = merge_or(
+                            let new_after = std::mem::take(&mut after_ok);
+                            after_ok = merge_or(
                                 self.i_s,
                                 new_after,
                                 fa.with_frame(else_frame, || {
@@ -1390,9 +1391,9 @@ impl Inference<'_, '_, '_> {
             }
         }
         if let Some(try_frame) = try_frame {
-            after_frame = merge_or(self.i_s, try_frame, after_frame);
+            after_ok = merge_or(self.i_s, try_frame, after_ok);
         }
-        after_frame
+        (after_ok, after_exception)
     }
 
     fn check_conjunction(
