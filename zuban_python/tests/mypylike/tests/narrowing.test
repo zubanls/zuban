@@ -298,3 +298,35 @@ except TypeError:
     pass
 reveal_type(x)  # N: Revealed type is "__main__.A"
 reveal_type(y)  # N: Revealed type is "__main__.A"
+
+[case if_widening_statement1]
+# flags: --warn-unreachable
+class A: ...
+class B(A): ...
+class C(B): ...
+
+x: A = A()
+x = C()
+
+if bool():
+    x = B()
+
+reveal_type(x)  # N: Revealed type is "__main__.B"
+
+[case if_widening_statement2]
+# flags: --warn-unreachable
+class A: ...
+class B: ...
+class C: ...
+
+x: A | B | C = A()
+x = A()
+
+if bool():
+    if bool():
+        x = B()
+
+    reveal_type(x)  # N: Revealed type is "__main__.A | __main__.B"
+    if bool():
+        x = C()
+reveal_type(x)  # N: Revealed type is "__main__.A | __main__.B | __main__.C"

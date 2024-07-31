@@ -279,6 +279,8 @@ impl FlowAnalysis {
                     let mut entry = first_entry.clone();
                     entry.type_ = entry.type_.union(declaration_t);
                     self.overwrite_entry(i_s, entry)
+                } else if let Some(new) = self.key_has_maybe_wider_assignment(i_s, first_entry) {
+                    self.overwrite_entry(i_s, new)
                 }
             }
         }
@@ -311,6 +313,33 @@ impl FlowAnalysis {
             add_entry_to_try_frame()
         }
         entries.push(new_entry)
+    }
+
+    fn key_has_maybe_wider_assignment(
+        &self,
+        i_s: &InferenceState,
+        search_for: &Entry,
+    ) -> Option<Entry> {
+        self.frames.borrow().iter().find_map(|frame| {
+            frame.entries.iter().find_map(|e| {
+                if e.key.equals(i_s.db, &search_for.key) {
+                    if !e
+                        .type_
+                        .is_simple_super_type_of(i_s, &search_for.type_)
+                        .bool()
+                    {
+                        return Some(Entry {
+                            type_: e.type_.simplified_union(i_s, &search_for.type_),
+                            key: e.key.clone(),
+                            modifies_ancestors: e.modifies_ancestors,
+                            deleted: e.deleted,
+                            widens: e.widens,
+                        });
+                    }
+                }
+                None
+            })
+        })
     }
 
     fn remove_key_if_modifies_ancestors(&self, i_s: &InferenceState, key: &FlowKey) {
