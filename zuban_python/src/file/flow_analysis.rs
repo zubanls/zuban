@@ -1258,8 +1258,16 @@ impl Inference<'_, '_, '_> {
 
         FLOW_ANALYSIS.with(|fa| {
             fa.merge_conditional(self.i_s, after_ok, after_exception);
+            let old_unreachable = fa.is_unreachable();
+            // TODO this if is wrong and should not be here. Please remove once we recheck finally
+            if old_unreachable {
+                fa.frames.borrow_mut().last_mut().unwrap().unreachable = false;
+            }
             if let Some(finally_block) = finally_block {
                 self.calc_block_diagnostics(finally_block.block(), class, func)
+            }
+            if old_unreachable {
+                fa.frames.borrow_mut().last_mut().unwrap().unreachable = old_unreachable;
             }
         })
     }

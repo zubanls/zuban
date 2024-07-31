@@ -313,7 +313,6 @@ try_stmt_else_narrowing
 testUnionTryFinally
 testUnionTryFinally5
 testUnionTryFinally6
-testUnreachableFlagTryBlocks
 # with: add test for with like testUnionTryExcept and check if Mypy does it that way as well
 # while/for
 testModifyLoop
