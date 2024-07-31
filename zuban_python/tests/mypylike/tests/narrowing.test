@@ -278,3 +278,23 @@ else:
     1  # E: Statement is unreachable
 finally:
     1
+
+[case try_multiple_excepts_narrowing]
+# flags: --warn-unreachable
+class A: ...
+class B(A): ...
+
+x: A = A()
+y: A = A()
+x = B()
+y = B()
+
+try:
+    x = A()
+    y = A()
+except ValueError:
+    pass
+except TypeError:
+    pass
+reveal_type(x)  # N: Revealed type is "__main__.A"
+reveal_type(y)  # N: Revealed type is "__main__.A"

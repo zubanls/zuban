@@ -326,7 +326,7 @@ impl FlowAnalysis {
             for entry in &mut *entries {
                 if entry.key.equals(db, &new_entry.key) {
                     *entry = new_entry;
-                    break 'outer;
+                    continue 'outer;
                 }
             }
             entries.push(new_entry)
