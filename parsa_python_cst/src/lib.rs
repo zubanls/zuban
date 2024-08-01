@@ -642,6 +642,10 @@ impl<'db> File<'db> {
     pub fn iter_stmts(&self) -> StmtIterator<'db> {
         StmtIterator(self.node.iter_children())
     }
+
+    pub fn iter_stmt_likes(&self) -> StmtLikeIterator<'db> {
+        StmtLikeIterator::from_stmt_iterator(self.node, self.node.iter_children())
+    }
 }
 
 impl<'db> List<'db> {
@@ -1168,6 +1172,20 @@ impl<'db> Block<'db> {
         }
     }
 
+    pub fn iter_stmt_likes(&self) -> StmtLikeIterator<'db> {
+        let mut iterator = self.node.iter_children();
+        let first = iterator.next().unwrap();
+        if first.is_type(Nonterminal(simple_stmts)) {
+            StmtLikeIterator {
+                stmts: SiblingIterator::new_empty(&first),
+                simple_stmts: first.iter_children().step_by(2),
+            }
+        } else {
+            iterator.next(); // get rid of indent leaf
+            StmtLikeIterator::from_stmt_iterator(first, iterator)
+        }
+    }
+
     pub fn search_relevant_untyped_nodes(&self) -> RelevantUntypedNodes<'db> {
         const SEARCH: &[PyNodeType] = &[
             Nonterminal(primary),
@@ -1538,6 +1556,145 @@ pub enum StmtContent<'db> {
     WithStmt(WithStmt<'db>),
     MatchStmt(MatchStmt<'db>),
     Newline,
+}
+
+pub enum StmtLikeContent<'db> {
+    // From SimpleStmtContent
+    Assignment(Assignment<'db>),
+    StarExpressions(StarExpressions<'db>),
+    ReturnStmt(ReturnStmt<'db>),
+    YieldExpr(YieldExpr<'db>),
+    RaiseStmt(RaiseStmt<'db>),
+    ImportFrom(ImportFrom<'db>),
+    ImportName(ImportName<'db>),
+    PassStmt(PassStmt<'db>),
+    GlobalStmt(GlobalStmt<'db>),
+    NonlocalStmt(NonlocalStmt<'db>),
+    AssertStmt(AssertStmt<'db>),
+    BreakStmt(BreakStmt<'db>),
+    ContinueStmt(ContinueStmt<'db>),
+    DelStmt(DelStmt<'db>),
+    // From StmtContent
+    FunctionDef(FunctionDef<'db>),
+    ClassDef(ClassDef<'db>),
+    Decorated(Decorated<'db>),
+    AsyncStmt(AsyncStmt<'db>),
+    IfStmt(IfStmt<'db>),
+    WhileStmt(WhileStmt<'db>),
+    ForStmt(ForStmt<'db>),
+    TryStmt(TryStmt<'db>),
+    WithStmt(WithStmt<'db>),
+    MatchStmt(MatchStmt<'db>),
+    Error(Error<'db>),
+    Newline,
+}
+
+impl<'db> StmtLikeContent<'db> {
+    fn from_simple_stmt(simple: PyNode<'db>) -> Self {
+        let simple_child = simple.nth_child(0);
+        if simple_child.is_type(Nonterminal(assignment)) {
+            Self::Assignment(Assignment::new(simple_child))
+        } else if simple_child.is_type(Nonterminal(star_expressions)) {
+            Self::StarExpressions(StarExpressions::new(simple_child))
+        } else if simple_child.is_type(Nonterminal(return_stmt)) {
+            Self::ReturnStmt(ReturnStmt::new(simple_child))
+        } else if simple_child.is_type(Nonterminal(yield_expr)) {
+            Self::YieldExpr(YieldExpr::new(simple_child))
+        } else if simple_child.is_type(Nonterminal(raise_stmt)) {
+            Self::RaiseStmt(RaiseStmt::new(simple_child))
+        } else if simple_child.is_type(Nonterminal(import_from)) {
+            Self::ImportFrom(ImportFrom::new(simple_child))
+        } else if simple_child.is_type(Nonterminal(import_name)) {
+            Self::ImportName(ImportName::new(simple_child))
+        } else if simple_child.is_type(Nonterminal(pass_stmt)) {
+            Self::PassStmt(PassStmt::new(simple_child))
+        } else if simple_child.is_type(Nonterminal(global_stmt)) {
+            Self::GlobalStmt(GlobalStmt::new(simple_child))
+        } else if simple_child.is_type(Nonterminal(nonlocal_stmt)) {
+            Self::NonlocalStmt(NonlocalStmt::new(simple_child))
+        } else if simple_child.is_type(Nonterminal(assert_stmt)) {
+            Self::AssertStmt(AssertStmt::new(simple_child))
+        } else if simple_child.is_type(Nonterminal(break_stmt)) {
+            Self::BreakStmt(BreakStmt::new(simple_child))
+        } else if simple_child.is_type(Nonterminal(continue_stmt)) {
+            Self::ContinueStmt(ContinueStmt::new(simple_child))
+        } else if simple_child.is_type(Nonterminal(del_stmt)) {
+            Self::DelStmt(DelStmt::new(simple_child))
+        } else {
+            unreachable!()
+        }
+    }
+
+    fn from_stmt_child(child: PyNode<'db>) -> Self {
+        if child.is_type(Nonterminal(function_def)) {
+            Self::FunctionDef(FunctionDef::new(child))
+        } else if child.is_type(Nonterminal(class_def)) {
+            Self::ClassDef(ClassDef::new(child))
+        } else if child.is_type(Nonterminal(decorated)) {
+            Self::Decorated(Decorated::new(child))
+        } else if child.is_type(Nonterminal(if_stmt)) {
+            Self::IfStmt(IfStmt::new(child))
+        } else if child.is_type(Nonterminal(try_stmt)) {
+            Self::TryStmt(TryStmt::new(child))
+        } else if child.is_type(Nonterminal(for_stmt)) {
+            Self::ForStmt(ForStmt::new(child))
+        } else if child.is_type(Nonterminal(while_stmt)) {
+            Self::WhileStmt(WhileStmt::new(child))
+        } else if child.is_type(Nonterminal(with_stmt)) {
+            Self::WithStmt(WithStmt::new(child))
+        } else if child.is_type(Nonterminal(match_stmt)) {
+            Self::MatchStmt(MatchStmt::new(child))
+        } else if child.is_type(Nonterminal(async_stmt)) {
+            Self::AsyncStmt(AsyncStmt::new(child))
+        } else {
+            debug_assert_eq!(child.type_(), Terminal(TerminalType::Newline));
+            Self::Newline
+        }
+    }
+}
+
+pub struct StmtLikeIterator<'db> {
+    stmts: SiblingIterator<'db>,
+    simple_stmts: StepBy<SiblingIterator<'db>>,
+}
+
+impl<'db> StmtLikeIterator<'db> {
+    #[inline]
+    fn from_stmt_iterator(base_node: PyNode<'db>, iterator: SiblingIterator<'db>) -> Self {
+        Self {
+            stmts: iterator,
+            simple_stmts: SiblingIterator::new_empty(&base_node).step_by(1),
+        }
+    }
+}
+
+impl<'db> Iterator for StmtLikeIterator<'db> {
+    type Item = StmtLikeContent<'db>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some(node) = self.simple_stmts.next() {
+            return Some(StmtLikeContent::from_simple_stmt(node));
+        }
+        let s = self.stmts.next()?;
+        if s.is_type(Nonterminal(stmt)) {
+            let child = s.nth_child(0);
+            if child.is_type(Nonterminal(simple_stmts)) {
+                self.simple_stmts = child.iter_children().step_by(2);
+                self.next()
+            } else {
+                Some(StmtLikeContent::from_stmt_child(s))
+            }
+        } else if s.is_error_recovery_node() {
+            Some(StmtLikeContent::Error(Error::new(s)))
+        } else {
+            debug_assert!(
+                s.is_type(Terminal(TerminalType::Dedent))
+                    || s.is_type(Terminal(TerminalType::Endmarker)),
+                "{s:?}",
+            );
+            None
+        }
+    }
 }
 
 impl<'db> Decorated<'db> {
