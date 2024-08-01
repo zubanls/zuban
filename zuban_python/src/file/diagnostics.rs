@@ -185,55 +185,7 @@ impl<'db> Inference<'db, '_, '_> {
             }
             match simple_stmt.unpack() {
                 SimpleStmtContent::Assignment(assignment) => {
-                    self.cache_assignment(assignment);
-
-                    // Check if protocol assignment is invalid
-                    if class.is_some_and(|cls| {
-                        cls.is_protocol(self.i_s.db)
-                            && match assignment.unpack() {
-                                AssignmentContent::WithAnnotation(_, annotation, _) => {
-                                    if self.file.points.get(annotation.index()).maybe_specific()
-                                        == Some(Specific::AnnotationOrTypeCommentFinal)
-                                    {
-                                        self.add_issue(
-                                            annotation.index(),
-                                            IssueKind::ProtocolMemberCannotBeFinal,
-                                        )
-                                    }
-                                    false
-                                }
-                                AssignmentContent::Normal(mut targets, _) => {
-                                    let first_target = targets.next().unwrap();
-                                    match first_target {
-                                        Target::Name(n)
-                                            if targets.next().is_none()
-                                                && n.as_code() == "__slots__" =>
-                                        {
-                                            false
-                                        }
-                                        Target::Name(n)
-                                            if self.check_point_cache(n.index()).is_some_and(
-                                                |inf| {
-                                                    matches!(
-                                                        inf.maybe_complex_point(self.i_s.db),
-                                                        Some(ComplexPoint::TypeVarLike(_))
-                                                    )
-                                                },
-                                            ) =>
-                                        {
-                                            false
-                                        }
-                                        _ => self.check_for_type_comment(assignment).is_none(),
-                                    }
-                                }
-                                AssignmentContent::AugAssign(..) => true,
-                            }
-                    }) {
-                        self.add_issue(
-                            assignment.index(),
-                            IssueKind::ProtocolMembersMustHaveExplicitlyDeclaredTypes,
-                        );
-                    }
+                    self.check_assignment(assignment, class)
                 }
                 SimpleStmtContent::StarExpressions(star_exprs) => {
                     self.infer_star_expressions(star_exprs, &mut ResultContext::ExpectUnused);
@@ -255,49 +207,7 @@ impl<'db> Inference<'db, '_, '_> {
                     self.mark_current_frame_unreachable()
                 }
                 SimpleStmtContent::ImportFrom(import_from) => {
-                    self.cache_import_from(import_from);
-                    if class.is_some() && func.is_none() {
-                        match import_from.unpack_targets() {
-                            ImportFromTargets::Star(_) => {
-                                if let Some(ImportResult::File(file)) =
-                                    self.import_from_first_part(import_from)
-                                {
-                                    let imported = self.i_s.db.loaded_python_file(file);
-                                    if imported.has_unsupported_class_scoped_import(self.i_s) {
-                                        self.add_issue(
-                                            import_from.index(),
-                                            IssueKind::UnsupportedClassScopedImport,
-                                        );
-                                    }
-                                }
-                            }
-                            ImportFromTargets::Iterator(iter) => {
-                                for target in iter {
-                                    let name_def = target.name_definition();
-                                    let name_index = name_def.name_index();
-                                    if first_defined_name(self.file, name_index) != name_index {
-                                        // Apparently Mypy only checks the first name...
-                                        continue;
-                                    }
-                                    if self
-                                        .infer_name_definition(name_def)
-                                        .as_cow_type(self.i_s)
-                                        .is_func_or_overload()
-                                    {
-                                        let from = NodeRef::new(self.file, name_def.index());
-                                        from.add_issue(
-                                            self.i_s,
-                                            IssueKind::UnsupportedClassScopedImport,
-                                        );
-                                        from.set_point(Point::new_specific(
-                                            Specific::AnyDueToError,
-                                            from.point().locality(),
-                                        ))
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    self.check_import_from(import_from, class, func)
                 }
                 SimpleStmtContent::ImportName(import_name) => {
                     self.cache_import_name(import_name);
@@ -311,6 +221,102 @@ impl<'db> Inference<'db, '_, '_> {
                 SimpleStmtContent::BreakStmt(b) => self.flow_analysis_for_break_stmt(b),
                 SimpleStmtContent::ContinueStmt(c) => self.flow_analysis_for_continue_stmt(c),
                 SimpleStmtContent::DelStmt(d) => self.flow_analysis_for_del_stmt(d.targets()),
+            }
+        }
+    }
+
+    fn check_assignment(&self, assignment: Assignment, class: Option<Class>) {
+        self.cache_assignment(assignment);
+
+        // Check if protocol assignment is invalid
+        if class.is_some_and(|cls| {
+            cls.is_protocol(self.i_s.db)
+                && match assignment.unpack() {
+                    AssignmentContent::WithAnnotation(_, annotation, _) => {
+                        if self.file.points.get(annotation.index()).maybe_specific()
+                            == Some(Specific::AnnotationOrTypeCommentFinal)
+                        {
+                            self.add_issue(
+                                annotation.index(),
+                                IssueKind::ProtocolMemberCannotBeFinal,
+                            )
+                        }
+                        false
+                    }
+                    AssignmentContent::Normal(mut targets, _) => {
+                        let first_target = targets.next().unwrap();
+                        match first_target {
+                            Target::Name(n)
+                                if targets.next().is_none() && n.as_code() == "__slots__" =>
+                            {
+                                false
+                            }
+                            Target::Name(n)
+                                if self.check_point_cache(n.index()).is_some_and(|inf| {
+                                    matches!(
+                                        inf.maybe_complex_point(self.i_s.db),
+                                        Some(ComplexPoint::TypeVarLike(_))
+                                    )
+                                }) =>
+                            {
+                                false
+                            }
+                            _ => self.check_for_type_comment(assignment).is_none(),
+                        }
+                    }
+                    AssignmentContent::AugAssign(..) => true,
+                }
+        }) {
+            self.add_issue(
+                assignment.index(),
+                IssueKind::ProtocolMembersMustHaveExplicitlyDeclaredTypes,
+            );
+        }
+    }
+
+    fn check_import_from(
+        &self,
+        import_from: ImportFrom,
+        class: Option<Class>,
+        func: Option<&Function>,
+    ) {
+        self.cache_import_from(import_from);
+        if class.is_some() && func.is_none() {
+            match import_from.unpack_targets() {
+                ImportFromTargets::Star(_) => {
+                    if let Some(ImportResult::File(file)) = self.import_from_first_part(import_from)
+                    {
+                        let imported = self.i_s.db.loaded_python_file(file);
+                        if imported.has_unsupported_class_scoped_import(self.i_s) {
+                            self.add_issue(
+                                import_from.index(),
+                                IssueKind::UnsupportedClassScopedImport,
+                            );
+                        }
+                    }
+                }
+                ImportFromTargets::Iterator(iter) => {
+                    for target in iter {
+                        let name_def = target.name_definition();
+                        let name_index = name_def.name_index();
+                        if first_defined_name(self.file, name_index) != name_index {
+                            // Apparently Mypy only checks the first name...
+                            continue;
+                        }
+                        if self
+                            .infer_name_definition(name_def)
+                            .as_cow_type(self.i_s)
+                            .is_func_or_overload()
+                        {
+                            let from = NodeRef::new(self.file, name_def.index());
+                            from.add_issue(self.i_s, IssueKind::UnsupportedClassScopedImport);
+                            from.set_point(Point::new_specific(
+                                Specific::AnyDueToError,
+                                from.point().locality(),
+                            ))
+                        }
+                    }
+                }
             }
         }
     }
