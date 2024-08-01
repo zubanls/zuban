@@ -3,10 +3,11 @@ use crate::{
     arguments::Args,
     database::Database,
     diagnostics::IssueKind,
+    file::FLOW_ANALYSIS,
     inference_state::InferenceState,
     inferred::Inferred,
     matching::{calculate_callable_type_vars_and_return, OnTypeError, ResultContext},
-    type_::{CallableContent, ReplaceSelf, Type},
+    type_::{CallableContent, NeverCause, ReplaceSelf, Type},
 };
 
 #[derive(Debug, Copy, Clone)]
@@ -40,7 +41,11 @@ impl<'a> Callable<'a> {
         on_type_error: OnTypeError,
         result_context: &mut ResultContext,
     ) -> Inferred {
-        self.execute_internal(i_s, args, false, on_type_error, result_context, None)
+        let result = self.execute_internal(i_s, args, false, on_type_error, result_context, None);
+        if matches!(self.content.return_type, Type::Never(NeverCause::Explicit)) {
+            FLOW_ANALYSIS.with(|fa| fa.mark_current_frame_unreachable())
+        }
+        result
     }
 
     pub(crate) fn execute_internal<'db>(

@@ -549,7 +549,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     result_context,
                     Some(replace_self_type),
                 );
-                if matches!(&callable.content.return_type, Type::Never(_)) {
+                if callable.content.return_type.is_never() {
                     FLOW_ANALYSIS.with(|fa| fa.mark_current_frame_unreachable())
                 }
                 result

@@ -386,3 +386,11 @@ def foo(*, x: int, y: int, z: int): ...
 foo = x
 foo = y
 foo = z  # E: Incompatible types in assignment (expression has type "Callable[[str, int, int], Any]", variable has type "Callable[[NamedArg(int, 'x'), NamedArg(int, 'y'), NamedArg(int, 'z')], Any]")
+
+[case callable_never_return]
+# flags: --warn-unreachable
+from typing import Callable, Never
+
+def foo(x: Callable[[], Never]) -> None:
+    x()
+    undefined  # E: Statement is unreachable
