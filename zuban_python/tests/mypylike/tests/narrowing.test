@@ -345,3 +345,12 @@ if bool():
     if bool():
         x = C()
 reveal_type(x)  # N: Revealed type is "__main__.A | __main__.B | __main__.C"
+
+[case unreachable_for_simple_stmt_but_some_simple_stmts_are_ok]
+# flags: --warn-unreachable
+
+a: str | None
+a = ""
+if a is None:
+    raise NotImplementedError; \
+        bool()  # E: Statement is unreachable

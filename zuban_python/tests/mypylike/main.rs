@@ -678,11 +678,13 @@ impl Iterator for ErrorCommentsOnCode<'_> {
             let was_exception = line.find("# E:");
             if let Some(pos) = was_exception.or_else(|| line.find("# N:")) {
                 let mut backslashes = 0;
-                for i in (0..i).rev() {
-                    if !self.0[i].ends_with('\\') {
-                        break;
+                if line.trim_start().starts_with("#") {
+                    for i in (0..i).rev() {
+                        if !(self.0[i].ends_with('\\')) {
+                            break;
+                        }
+                        backslashes += 1;
                     }
-                    backslashes += 1;
                 }
                 // Get rid of # E:25: Foo
                 let mut rest = &line[pos + 4..];

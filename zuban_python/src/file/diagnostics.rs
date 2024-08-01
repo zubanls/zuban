@@ -176,8 +176,7 @@ impl<'db> Inference<'db, '_, '_> {
     ) {
         for simple_stmt in simple_stmts.iter() {
             if self.is_unreachable() {
-                if false {
-                    //self.stmt_is_allowed_when_unreachable(simple_stmt) {
+                if self.simple_stmt_is_allowed_when_unreachable(simple_stmt) {
                     continue;
                 } else {
                     self.add_unreachable_error(simple_stmt.start(), simple_stmt.end());
@@ -362,9 +361,7 @@ impl<'db> Inference<'db, '_, '_> {
                 continue;
             }
             if self.is_unreachable() {
-                if self.stmt_is_allowed_when_unreachable(stmt) {
-                    continue;
-                } else {
+                if !self.stmt_is_allowed_when_unreachable(stmt) {
                     self.add_unreachable_error(stmt.start(), stmt.end());
                     /*
                     if self.flags().mypy_compatible {
@@ -430,12 +427,8 @@ impl<'db> Inference<'db, '_, '_> {
 
     fn stmt_is_allowed_when_unreachable(&self, stmt: Stmt) -> bool {
         // In Mypy this is called is_noop_for_reachability
-        match stmt.unpack() {
-            StmtContent::SimpleStmts(simple_stmts) => simple_stmts
-                .iter()
-                .all(|s| self.simple_stmt_is_allowed_when_unreachable(s)),
-            _ => false,
-        }
+        // Simple statements check for unreachable themselves.
+        matches!(stmt.unpack(), StmtContent::SimpleStmts(_))
     }
 
     fn simple_stmt_is_allowed_when_unreachable(&self, s: SimpleStmt) -> bool {
