@@ -6,6 +6,7 @@ use crate::{
     database::Database,
     debug,
     diagnostics::IssueKind,
+    file::FLOW_ANALYSIS,
     format_data::FormatData,
     inference_state::InferenceState,
     inferred::Inferred,
@@ -539,14 +540,20 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     .as_type(i_s)
             },
         ) {
-            OverloadResult::Single(callable) => callable.execute_internal(
-                i_s,
-                args,
-                skip_first_argument,
-                on_type_error,
-                result_context,
-                Some(replace_self_type),
-            ),
+            OverloadResult::Single(callable) => {
+                let result = callable.execute_internal(
+                    i_s,
+                    args,
+                    skip_first_argument,
+                    on_type_error,
+                    result_context,
+                    Some(replace_self_type),
+                );
+                if matches!(&callable.content.return_type, Type::Never(_)) {
+                    FLOW_ANALYSIS.with(|fa| fa.mark_current_frame_unreachable())
+                }
+                result
+            }
             OverloadResult::Union(t) => Inferred::from_type(t),
             OverloadResult::NotFound => self.fallback_type(i_s),
         }
