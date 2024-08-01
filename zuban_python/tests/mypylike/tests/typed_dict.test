@@ -1,0 +1,8 @@
+[case single_line_typed_dict]
+from typing import TypedDict
+
+class A(TypedDict): x = 1  # E: Invalid statement in TypedDict definition; expected "field_name: field_type"
+class B(TypedDict): x: str
+
+reveal_type(A)  # N: Revealed type is "def (*, x: Any) -> TypedDict('__main__.A', {'x': Any})"
+reveal_type(B)  # N: Revealed type is "def (*, x: str) -> TypedDict('__main__.B', {'x': str})"

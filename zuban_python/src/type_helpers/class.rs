@@ -2026,7 +2026,13 @@ impl<'db: 'a, 'a> Class<'a> {
                     }
                 }
             }
-            BlockContent::OneLine(simple) => todo!(), //find_stmt_typed_dict_types(i_s, file, &mut vec, simple),
+            BlockContent::OneLine(simple) => find_stmt_typed_dict_types(
+                i_s,
+                file,
+                &mut typed_dict_members,
+                simple,
+                typed_dict_definition.total,
+            ),
         }
         debug!("End TypedDict members calculation for {:?}", self.name());
         typed_dict.late_initialization_of_members(typed_dict_members.into_boxed_slice());
