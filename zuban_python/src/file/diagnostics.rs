@@ -176,8 +176,13 @@ impl<'db> Inference<'db, '_, '_> {
     ) {
         for simple_stmt in simple_stmts.iter() {
             if self.is_unreachable() {
-                self.add_unreachable_error(simple_stmt.start(), simple_stmt.end());
-                break;
+                if false {
+                    //self.stmt_is_allowed_when_unreachable(simple_stmt) {
+                    continue;
+                } else {
+                    self.add_unreachable_error(simple_stmt.start(), simple_stmt.end());
+                    break;
+                }
             }
             match simple_stmt.unpack() {
                 SimpleStmtContent::Assignment(assignment) => {
@@ -357,16 +362,20 @@ impl<'db> Inference<'db, '_, '_> {
                 continue;
             }
             if self.is_unreachable() {
-                self.add_unreachable_error(stmt.start(), stmt.end());
-                break;
-                /*
-                if self.flags().mypy_compatible {
-                    // Mypy does not analyze frames that are not reachable. However for normal interaction
-                    // in an IDE you typically want to analyze those parts of code, even if they are
-                    // unreachable.
+                if self.stmt_is_allowed_when_unreachable(stmt) {
+                    continue;
+                } else {
+                    self.add_unreachable_error(stmt.start(), stmt.end());
+                    /*
+                    if self.flags().mypy_compatible {
+                        // Mypy does not analyze frames that are not reachable. However for normal interaction
+                        // in an IDE you typically want to analyze those parts of code, even if they are
+                        // unreachable.
+                        break;
+                    }
+                    */
                     break;
                 }
-                */
             }
 
             match stmt.unpack() {
@@ -416,6 +425,54 @@ impl<'db> Inference<'db, '_, '_> {
             self.file
                 .points
                 .set(stmt.index(), Point::new_node_analysis(Locality::Todo));
+        }
+    }
+
+    fn stmt_is_allowed_when_unreachable(&self, stmt: Stmt) -> bool {
+        // In Mypy this is called is_noop_for_reachability
+        match stmt.unpack() {
+            StmtContent::SimpleStmts(simple_stmts) => simple_stmts
+                .iter()
+                .all(|s| self.simple_stmt_is_allowed_when_unreachable(s)),
+            _ => false,
+        }
+    }
+
+    fn simple_stmt_is_allowed_when_unreachable(&self, s: SimpleStmt) -> bool {
+        // In Mypy this is called is_noop_for_reachability
+        match s.unpack() {
+            SimpleStmtContent::RaiseStmt(_) | SimpleStmtContent::PassStmt(_) => true,
+            SimpleStmtContent::AssertStmt(assert_stmt) => {
+                match assert_stmt.unpack().0.maybe_unpacked_atom() {
+                    Some(AtomContent::Bool(b)) if b.as_code() == "False" => true,
+                    Some(AtomContent::Int(i)) if i.parse() == Some(0) => true,
+                    _ => false,
+                }
+            }
+            SimpleStmtContent::StarExpressions(star_expr) => {
+                star_expr.maybe_simple_expression().is_some_and(|expr| {
+                    let ExpressionContent::ExpressionPart(ExpressionPart::Primary(primary)) =
+                        expr.unpack()
+                    else {
+                        return false;
+                    };
+                    matches!(primary.second(), PrimaryContent::Execution(_))
+                        && self
+                            .i_s
+                            .avoid_errors_within(|i_s| {
+                                matches!(
+                                    self.file
+                                        .inference(i_s)
+                                        .infer_primary(primary, &mut ResultContext::Unknown)
+                                        .as_cow_type(self.i_s)
+                                        .as_ref(),
+                                    Type::Never(NeverCause::Explicit)
+                                )
+                            })
+                            .0
+                })
+            }
+            _ => false,
         }
     }
 
