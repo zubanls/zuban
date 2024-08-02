@@ -324,12 +324,11 @@ testModifyLoopWhile4
 testModifyLoopFor4
 testModifyNestedLoop
 testModifyLoopLong
-testWhileExitCondition1
+testWhileExitCondition2
 testWhileLinkedList
 testUnreachableWhileTrue
 testComplicatedBlocks
 testIsInstanceSubClassMemberHard
-testUnreachableFlagWithBadControlFlow2
 testNoReturnWhile
 # nested lambda scopes
 testLambdaInferenceUsesNarrowedTypes

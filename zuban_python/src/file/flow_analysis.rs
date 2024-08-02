@@ -1049,14 +1049,16 @@ impl Inference<'_, '_, '_> {
                 self.calc_block_diagnostics(block, class, func);
                 fa.current_break_index.set(old);
             });
+            let mut after_else = Frame::default();
             if let Some(else_block) = else_block {
                 //let else_frame = merge_or(self.i_s, false_frame, after_while);
                 let else_frame = false_frame;
-                let after_else = fa.with_frame(else_frame, || {
+                after_else = fa.with_frame(else_frame, || {
                     self.calc_block_diagnostics(else_block.block(), class, func)
                 });
                 //fa.overwrite_frame(self.i_s.db, after_else);
             }
+            fa.merge_conditional(self.i_s, after_while, after_else);
         })
     }
 
