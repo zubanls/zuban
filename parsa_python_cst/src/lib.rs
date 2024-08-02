@@ -836,6 +836,11 @@ impl<'db> Expression<'db> {
         node.is_type(Nonterminal(lambda))
     }
 
+    fn is_string(&self) -> bool {
+        self.maybe_unpacked_atom()
+            .is_some_and(|atom_content| matches!(atom_content, AtomContent::Strings(_)))
+    }
+
     pub fn search_names(&self) -> NameIterator<'db> {
         NameIterator(self.node.search(&[Terminal(TerminalType::Name)], false))
     }
@@ -1651,6 +1656,13 @@ impl<'db> StmtLikeContent<'db> {
             Self::Newline(Keyword::new(child))
         }
     }
+
+    pub fn maybe_simple_expr(&self) -> Option<Expression<'db>> {
+        match self {
+            StmtLikeContent::StarExpressions(star_exprs) => star_exprs.maybe_simple_expression(),
+            _ => None,
+        }
+    }
 }
 
 pub struct StmtLikeIterator<'db> {
@@ -1869,12 +1881,6 @@ impl<'db> SimpleStmt<'db> {
             .then(|| StarExpressions::new(child).maybe_simple_expression())
             .flatten()
     }
-
-    pub fn is_string(&self) -> bool {
-        self.maybe_simple_expression()
-            .and_then(|expr| expr.maybe_unpacked_atom())
-            .is_some_and(|atom_content| matches!(atom_content, AtomContent::Strings(_)))
-    }
 }
 
 pub enum SimpleStmtContent<'db> {
@@ -2069,18 +2075,12 @@ impl<'db> ClassDef<'db> {
     }
 
     pub fn has_docstr(&self) -> bool {
-        match self.block().unpack() {
-            BlockContent::OneLine(simple) => simple
-                .maybe_single_simple_stmt()
-                .is_some_and(|s| s.is_string()),
-            BlockContent::Indented(mut stmts) => {
-                let StmtOrError::Stmt(s) = stmts.next().unwrap() else {
-                    return false;
-                };
-                s.maybe_single_simple_stmt()
-                    .is_some_and(|simple| simple.is_string())
-            }
-        }
+        self.block().iter_stmt_likes().next().is_some_and(|first| {
+            let Some(expr) = first.node.maybe_simple_expr() else {
+                return false;
+            };
+            expr.is_string()
+        })
     }
 }
 
