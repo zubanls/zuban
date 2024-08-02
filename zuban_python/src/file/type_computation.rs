@@ -505,8 +505,8 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             type_
         } else {
             debug!("Found non-expression in annotation: {}", f.tree.code());
-            for stmt_or_error in f.tree.root().iter_stmts() {
-                if let StmtOrError::Error(node_index) = stmt_or_error {
+            for s in f.tree.root().iter_stmt_likes() {
+                if let StmtLikeContent::Error(node_index) = s.node {
                     // There is invalid syntax (issue added previously)
                     return TypeContent::Unknown(UnknownCause::ReportedIssue);
                 }
@@ -4097,8 +4097,8 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                 StarExpressionContent::StarExpression(s) => todo!(),
             }
         } else {
-            for stmt_or_error in f.tree.root().iter_stmts() {
-                if let StmtOrError::Error(node_index) = stmt_or_error {
+            for s in f.tree.root().iter_stmt_likes() {
+                if let StmtLikeContent::Error(node_index) = s.node {
                     return TypeCommentDetails {
                         inferred: Inferred::new_any_from_error(),
                         type_: TypeCommentState::Type(Cow::Borrowed(&Type::Any(
