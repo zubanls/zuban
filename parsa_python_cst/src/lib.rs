@@ -1155,27 +1155,6 @@ impl<'db> Iterator for TargetIterator<'db> {
 }
 
 impl<'db> Block<'db> {
-    pub fn statements_start_and_end(&self) -> (NodeIndex, NodeIndex) {
-        // simple_stmts | Newline Indent stmt+ Dedent
-        let mut iterator = self.node.iter_children();
-        let first = iterator.next().unwrap();
-        if first.is_type(Nonterminal(simple_stmts)) {
-            (first.start(), first.end())
-        } else {
-            iterator.next(); // get rid of indent leaf
-            let first = iterator.next().unwrap();
-            let mut last_index = first.index;
-            for current in iterator {
-                if current.is_type(Terminal(TerminalType::Dedent)) {
-                    break;
-                } else {
-                    last_index = current.index
-                }
-            }
-            (first.start(), last_index)
-        }
-    }
-
     pub fn unpack(&self) -> BlockContent<'db> {
         // simple_stmts | Newline Indent stmt+ Dedent
         let mut iterator = self.node.iter_children();
@@ -1377,15 +1356,6 @@ pub enum IfBlockType<'db> {
 }
 
 impl<'db> IfBlockType<'db> {
-    fn start_of_first_block_stmt(&self) -> CodeIndex {
-        match self {
-            Self::If(_, block_) => *block_,
-            Self::Else(else_) => else_.block(),
-        }
-        .statements_start_and_end()
-        .0
-    }
-
     pub fn first_leaf_index(&self) -> NodeIndex {
         match self {
             Self::If(named_expr, _) => named_expr.index() - 1, // The if/elif
@@ -1396,15 +1366,6 @@ impl<'db> IfBlockType<'db> {
 
 #[derive(Clone)]
 pub struct IfBlockIterator<'db>(SiblingIterator<'db>);
-
-impl<'db> IfBlockIterator<'db> {
-    pub fn next_block_start_and_last_block_end(&self) -> Option<(NodeIndex, NodeIndex)> {
-        Some((
-            self.clone().next()?.start_of_first_block_stmt(),
-            self.0.last()?.end(),
-        ))
-    }
-}
 
 impl<'db> Iterator for IfBlockIterator<'db> {
     type Item = IfBlockType<'db>;
@@ -1683,6 +1644,7 @@ impl<'db> StmtLikeContent<'db> {
     }
 }
 
+#[derive(Clone)]
 pub struct StmtLikeIterator<'db> {
     stmts: SiblingIterator<'db>,
     simple_stmts: StepBy<SiblingIterator<'db>>,
