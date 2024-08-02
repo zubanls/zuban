@@ -325,7 +325,6 @@ create_nonterminal_structs!(
     Walrus: walrus
 
     SimpleStmts: simple_stmts
-    SimpleStmt: simple_stmt
     Assignment: assignment
     SingleTarget: single_target
     AugAssign: augassign
@@ -1458,7 +1457,7 @@ pub enum StmtContent<'db> {
 
 #[derive(Debug, Copy, Clone)]
 pub enum StmtLikeContent<'db> {
-    // From SimpleStmtContent
+    // From simple_stmt
     Assignment(Assignment<'db>),
     StarExpressions(StarExpressions<'db>),
     ReturnStmt(ReturnStmt<'db>),
@@ -1473,7 +1472,7 @@ pub enum StmtLikeContent<'db> {
     BreakStmt(BreakStmt<'db>),
     ContinueStmt(ContinueStmt<'db>),
     DelStmt(DelStmt<'db>),
-    // From StmtContent
+    // From stmt
     FunctionDef(FunctionDef<'db>),
     ClassDef(ClassDef<'db>),
     Decorated(Decorated<'db>),
@@ -1714,84 +1713,6 @@ pub enum AsyncStmtContent<'db> {
     FunctionDef(FunctionDef<'db>),
     ForStmt(ForStmt<'db>),
     WithStmt(WithStmt<'db>),
-}
-
-pub struct SimpleStmtIterator<'db>(StepBy<SiblingIterator<'db>>);
-
-impl<'db> Iterator for SimpleStmtIterator<'db> {
-    type Item = SimpleStmt<'db>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let next = self.0.next()?;
-        if next.is_type(Nonterminal(simple_stmt)) {
-            Some(Self::Item::new(next))
-        } else {
-            debug_assert_eq!(next.as_code(), "\n");
-            None
-        }
-    }
-}
-
-impl<'db> SimpleStmt<'db> {
-    pub fn unpack(&self) -> SimpleStmtContent<'db> {
-        let simple_child = self.node.nth_child(0);
-        if simple_child.is_type(Nonterminal(assignment)) {
-            SimpleStmtContent::Assignment(Assignment::new(simple_child))
-        } else if simple_child.is_type(Nonterminal(star_expressions)) {
-            SimpleStmtContent::StarExpressions(StarExpressions::new(simple_child))
-        } else if simple_child.is_type(Nonterminal(return_stmt)) {
-            SimpleStmtContent::ReturnStmt(ReturnStmt::new(simple_child))
-        } else if simple_child.is_type(Nonterminal(yield_expr)) {
-            SimpleStmtContent::YieldExpr(YieldExpr::new(simple_child))
-        } else if simple_child.is_type(Nonterminal(raise_stmt)) {
-            SimpleStmtContent::RaiseStmt(RaiseStmt::new(simple_child))
-        } else if simple_child.is_type(Nonterminal(import_from)) {
-            SimpleStmtContent::ImportFrom(ImportFrom::new(simple_child))
-        } else if simple_child.is_type(Nonterminal(import_name)) {
-            SimpleStmtContent::ImportName(ImportName::new(simple_child))
-        } else if simple_child.is_type(Nonterminal(pass_stmt)) {
-            SimpleStmtContent::PassStmt(PassStmt::new(simple_child))
-        } else if simple_child.is_type(Nonterminal(global_stmt)) {
-            SimpleStmtContent::GlobalStmt(GlobalStmt::new(simple_child))
-        } else if simple_child.is_type(Nonterminal(nonlocal_stmt)) {
-            SimpleStmtContent::NonlocalStmt(NonlocalStmt::new(simple_child))
-        } else if simple_child.is_type(Nonterminal(assert_stmt)) {
-            SimpleStmtContent::AssertStmt(AssertStmt::new(simple_child))
-        } else if simple_child.is_type(Nonterminal(break_stmt)) {
-            SimpleStmtContent::BreakStmt(BreakStmt::new(simple_child))
-        } else if simple_child.is_type(Nonterminal(continue_stmt)) {
-            SimpleStmtContent::ContinueStmt(ContinueStmt::new(simple_child))
-        } else if simple_child.is_type(Nonterminal(del_stmt)) {
-            SimpleStmtContent::DelStmt(DelStmt::new(simple_child))
-        } else {
-            unreachable!()
-        }
-    }
-
-    pub fn maybe_simple_expression(&self) -> Option<Expression<'db>> {
-        let child = self.node.nth_child(0);
-        child
-            .is_type(Nonterminal(star_expressions))
-            .then(|| StarExpressions::new(child).maybe_simple_expression())
-            .flatten()
-    }
-}
-
-pub enum SimpleStmtContent<'db> {
-    Assignment(Assignment<'db>),
-    StarExpressions(StarExpressions<'db>),
-    ReturnStmt(ReturnStmt<'db>),
-    YieldExpr(YieldExpr<'db>),
-    RaiseStmt(RaiseStmt<'db>),
-    ImportFrom(ImportFrom<'db>),
-    ImportName(ImportName<'db>),
-    PassStmt(PassStmt<'db>),
-    GlobalStmt(GlobalStmt<'db>),
-    NonlocalStmt(NonlocalStmt<'db>),
-    AssertStmt(AssertStmt<'db>),
-    BreakStmt(BreakStmt<'db>),
-    ContinueStmt(ContinueStmt<'db>),
-    DelStmt(DelStmt<'db>),
 }
 
 impl<'db> StarExpressions<'db> {
