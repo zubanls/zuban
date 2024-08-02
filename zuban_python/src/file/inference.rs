@@ -88,87 +88,6 @@ macro_rules! check_point_cache_with {
 }
 
 impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
-    fn cache_stmt_name(&self, stmt: Stmt, name_def: NodeRef) {
-        debug!(
-            "Infer stmt (#{}, {}:{}): {:?}",
-            self.file.byte_to_line_column(stmt.start()).0,
-            self.file.file_index(),
-            stmt.index(),
-            stmt.short_debug().trim()
-        );
-        let cache_func_def = |func_def: FunctionDef| {
-            Function::new(
-                NodeRef::new(self.file, func_def.index()),
-                self.i_s.current_class().copied(),
-            )
-            .cache_func_with_name_def(self.i_s, name_def);
-        };
-        match stmt.unpack() {
-            StmtContent::ForStmt(for_stmt) => {
-                name_def.set_point(Point::new_calculating());
-                let (star_targets, star_exprs, _, _) = for_stmt.unpack();
-                // Performance: We probably do not need to calculate diagnostics just for
-                // calculating the names.
-                self.cache_for_stmt_names(star_targets, star_exprs, false);
-                // TODO do the async case as well
-            }
-            StmtContent::ClassDef(cls) => cache_class_name(name_def, cls),
-            StmtContent::FunctionDef(func_def) => cache_func_def(func_def),
-            StmtContent::Decorated(decorated) => match decorated.decoratee() {
-                Decoratee::ClassDef(cls) => cache_class_name(name_def, cls),
-                Decoratee::FunctionDef(func_def) => cache_func_def(func_def),
-                Decoratee::AsyncFunctionDef(func_def) => cache_func_def(func_def),
-            },
-            StmtContent::TryStmt(try_stmt) => {
-                for block in try_stmt.iter_blocks() {
-                    match block {
-                        TryBlockType::Except(except) => {
-                            if let (Some(except_expr), _) = except.unpack() {
-                                let (expr, name_def) = except_expr.unpack();
-                                if let Some(name_def) = name_def {
-                                    let inf = self.infer_expression(expr);
-                                    Inferred::from_type(instantiate_except(
-                                        self.i_s,
-                                        &inf.as_cow_type(self.i_s),
-                                    ))
-                                    .maybe_save_redirect(
-                                        self.i_s,
-                                        self.file,
-                                        name_def.index(),
-                                        false,
-                                    );
-                                }
-                            }
-                        }
-                        TryBlockType::ExceptStar(except_star) => {
-                            let (except_expr, _) = except_star.unpack();
-                            let (expr, name_def) = except_expr.unpack();
-                            if let Some(name_def) = name_def {
-                                let inf = self.infer_expression(expr);
-                                Inferred::from_type(instantiate_except_star(
-                                    self.i_s,
-                                    &inf.as_cow_type(self.i_s),
-                                ))
-                                .maybe_save_redirect(
-                                    self.i_s,
-                                    self.file,
-                                    name_def.index(),
-                                    false,
-                                );
-                            }
-                        }
-                        _ => (),
-                    }
-                }
-            }
-            StmtContent::AsyncStmt(async_stmt) => match async_stmt.unpack() {
-                AsyncStmtContent::FunctionDef(func_def) => cache_func_def(func_def),
-                _ => unreachable!(),
-            },
-            _ => unreachable!("Found type {:?}", stmt.short_debug()),
-        }
-    }
-
     pub(super) fn cache_import_name(&self, imp: ImportName) {
         if self.file.points.get(imp.index()).calculated() {
             return;
@@ -3310,35 +3229,97 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
 
     check_point_cache_with!(pub infer_name_definition, Self::_infer_name_definition, NameDefinition);
     fn _infer_name_definition(&self, name_def: NameDefinition) -> Inferred {
-        let stmt_like = name_def.expect_defining_stmt();
-
-        if !self.file.points.get(stmt_like.index()).calculated() {
-            match stmt_like {
-                DefiningStmt::Assignment(assignment) => {
-                    self.cache_assignment(assignment);
-                }
-                DefiningStmt::ImportName(import_name) => {
-                    self.cache_import_name(import_name);
-                }
-                DefiningStmt::ImportFromAsName(as_name) => {
-                    self.cache_import_from_only_particular_name_def(as_name)
-                }
-                DefiningStmt::Stmt(stmt) => {
-                    self.cache_stmt_name(stmt, NodeRef::new(self.file, name_def.index()));
-                }
-                DefiningStmt::Walrus(walrus) => {
-                    self.infer_walrus(walrus, None);
-                }
-                DefiningStmt::Lambda(_)
-                | DefiningStmt::Comprehension(_)
-                | DefiningStmt::DictComprehension(_) => unreachable!(),
-            }
-        }
+        let defining_stmt = name_def.expect_defining_stmt();
+        self.cache_defining_stmt(defining_stmt, NodeRef::new(self.file, name_def.index()));
         debug_assert!(
             self.file.points.get(name_def.index()).calculated(),
             "{name_def:?}",
         );
         self.infer_name_definition(name_def)
+    }
+
+    fn cache_defining_stmt(&self, defining_stmt: DefiningStmt, name_def: NodeRef) {
+        debug!(
+            "Infer name of stmt (#{}, {}:{})",
+            name_def.line(),
+            self.file.file_index(),
+            defining_stmt.index(),
+        );
+        match defining_stmt {
+            DefiningStmt::FunctionDef(func_def) => {
+                Function::new(
+                    NodeRef::new(self.file, func_def.index()),
+                    self.i_s.current_class().copied(),
+                )
+                .cache_func_with_name_def(self.i_s, name_def);
+            }
+            DefiningStmt::ClassDef(cls) => cache_class_name(name_def, cls),
+            DefiningStmt::Assignment(assignment) => {
+                self.cache_assignment(assignment);
+            }
+            DefiningStmt::ImportName(import_name) => {
+                self.cache_import_name(import_name);
+            }
+            DefiningStmt::ImportFromAsName(as_name) => {
+                self.cache_import_from_only_particular_name_def(as_name)
+            }
+            DefiningStmt::Walrus(walrus) => {
+                self.infer_walrus(walrus, None);
+            }
+            DefiningStmt::Lambda(_)
+            | DefiningStmt::Comprehension(_)
+            | DefiningStmt::DictComprehension(_) => unreachable!(),
+            DefiningStmt::ForStmt(for_stmt) => {
+                name_def.set_point(Point::new_calculating());
+                let (star_targets, star_exprs, _, _) = for_stmt.unpack();
+                // Performance: We probably do not need to calculate diagnostics just for
+                // calculating the names.
+                self.cache_for_stmt_names(star_targets, star_exprs, false);
+                // TODO do the async case as well
+            }
+            DefiningStmt::TryStmt(try_stmt) => {
+                for block in try_stmt.iter_blocks() {
+                    match block {
+                        TryBlockType::Except(except) => {
+                            if let (Some(except_expr), _) = except.unpack() {
+                                let (expr, name_def) = except_expr.unpack();
+                                if let Some(name_def) = name_def {
+                                    let inf = self.infer_expression(expr);
+                                    Inferred::from_type(instantiate_except(
+                                        self.i_s,
+                                        &inf.as_cow_type(self.i_s),
+                                    ))
+                                    .maybe_save_redirect(
+                                        self.i_s,
+                                        self.file,
+                                        name_def.index(),
+                                        false,
+                                    );
+                                }
+                            }
+                        }
+                        TryBlockType::ExceptStar(except_star) => {
+                            let (except_expr, _) = except_star.unpack();
+                            let (expr, name_def) = except_expr.unpack();
+                            if let Some(name_def) = name_def {
+                                let inf = self.infer_expression(expr);
+                                Inferred::from_type(instantiate_except_star(
+                                    self.i_s,
+                                    &inf.as_cow_type(self.i_s),
+                                ))
+                                .maybe_save_redirect(
+                                    self.i_s,
+                                    self.file,
+                                    name_def.index(),
+                                    false,
+                                );
+                            }
+                        }
+                        _ => (),
+                    }
+                }
+            }
+        }
     }
 
     pub fn infer_comprehension_recursively<T>(

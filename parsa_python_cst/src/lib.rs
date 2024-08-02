@@ -586,28 +586,34 @@ impl<'db> Int<'db> {
 
 #[derive(Debug)]
 pub enum DefiningStmt<'db> {
+    FunctionDef(FunctionDef<'db>),
+    ClassDef(ClassDef<'db>),
     Assignment(Assignment<'db>),
     ImportName(ImportName<'db>),
     ImportFromAsName(ImportFromAsName<'db>),
-    Stmt(Stmt<'db>),
     Lambda(Lambda<'db>),
     Comprehension(Comprehension<'db>),
     DictComprehension(DictComprehension<'db>),
     Walrus(Walrus<'db>),
+    TryStmt(TryStmt<'db>),
+    ForStmt(ForStmt<'db>),
 }
 
 impl<'db> DefiningStmt<'db> {
     #[inline]
     pub fn index(&self) -> NodeIndex {
         match self {
+            DefiningStmt::FunctionDef(n) => n.index(),
+            DefiningStmt::ClassDef(n) => n.index(),
             DefiningStmt::Assignment(n) => n.index(),
             DefiningStmt::ImportName(n) => n.index(),
             DefiningStmt::ImportFromAsName(imp) => imp.index(),
-            DefiningStmt::Stmt(n) => n.index(),
             DefiningStmt::Lambda(n) => n.index(),
             DefiningStmt::Comprehension(n) => n.index(),
             DefiningStmt::DictComprehension(n) => n.index(),
             DefiningStmt::Walrus(n) => n.index(),
+            DefiningStmt::TryStmt(n) => n.index(),
+            DefiningStmt::ForStmt(n) => n.index(),
         }
     }
 }
@@ -3528,6 +3534,8 @@ impl<'db> NameDefinition<'db> {
         let stmt_node = self
             .node
             .parent_until(&[
+                Nonterminal(function_def),
+                Nonterminal(class_def),
                 Nonterminal(assignment),
                 Nonterminal(import_from_as_name),
                 Nonterminal(import_name),
@@ -3536,16 +3544,20 @@ impl<'db> NameDefinition<'db> {
                 Nonterminal(comprehension),
                 Nonterminal(dict_comprehension),
                 Nonterminal(walrus),
+                Nonterminal(for_stmt),
+                Nonterminal(try_stmt),
             ])
             .expect("There should always be a stmt");
-        if stmt_node.is_type(Nonterminal(assignment)) {
+        if stmt_node.is_type(Nonterminal(function_def)) {
+            DefiningStmt::FunctionDef(FunctionDef::new(stmt_node))
+        } else if stmt_node.is_type(Nonterminal(class_def)) {
+            DefiningStmt::ClassDef(ClassDef::new(stmt_node))
+        } else if stmt_node.is_type(Nonterminal(assignment)) {
             DefiningStmt::Assignment(Assignment::new(stmt_node))
         } else if stmt_node.is_type(Nonterminal(import_from_as_name)) {
             DefiningStmt::ImportFromAsName(ImportFromAsName::new(stmt_node))
         } else if stmt_node.is_type(Nonterminal(import_name)) {
             DefiningStmt::ImportName(ImportName::new(stmt_node))
-        } else if stmt_node.is_type(Nonterminal(stmt)) {
-            DefiningStmt::Stmt(Stmt::new(stmt_node))
         } else if stmt_node.is_type(Nonterminal(lambda)) {
             DefiningStmt::Lambda(Lambda::new(stmt_node))
         } else if stmt_node.is_type(Nonterminal(comprehension)) {
@@ -3554,6 +3566,10 @@ impl<'db> NameDefinition<'db> {
             DefiningStmt::DictComprehension(DictComprehension::new(stmt_node))
         } else if stmt_node.is_type(Nonterminal(walrus)) {
             DefiningStmt::Walrus(Walrus::new(stmt_node))
+        } else if stmt_node.is_type(Nonterminal(try_stmt)) {
+            DefiningStmt::TryStmt(TryStmt::new(stmt_node))
+        } else if stmt_node.is_type(Nonterminal(for_stmt)) {
+            DefiningStmt::ForStmt(ForStmt::new(stmt_node))
         } else {
             unreachable!()
         }
