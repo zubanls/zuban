@@ -131,7 +131,7 @@ impl<'db> Inference<'db, '_, '_> {
     pub fn calculate_diagnostics(&self) {
         FLOW_ANALYSIS.with(|fa| {
             fa.with_new_frame_and_return_unreachable(|| {
-                self.calc_stmts_diagnostics(self.file.tree.root().iter_stmts(), None, None);
+                self.calc_stmts_diagnostics(self.file.tree.root().iter_stmt_likes(), None, None);
             });
             fa.check_for_unfinished_partials(self.i_s)
         });
@@ -164,63 +164,6 @@ impl<'db> Inference<'db, '_, '_> {
                         special_method: "__getattr__",
                     },
                 )
-            }
-        }
-    }
-
-    fn calc_simple_stmts_diagnostics(
-        &self,
-        simple_stmts: SimpleStmts,
-        class: Option<Class>,
-        func: Option<&Function>,
-    ) {
-        for simple_stmt in simple_stmts.iter() {
-            if self.is_unreachable() {
-                if self.simple_stmt_is_allowed_when_unreachable(simple_stmt) {
-                    continue;
-                } else {
-                    self.add_unreachable_error(simple_stmt.start(), simple_stmt.end());
-                    break;
-                }
-            }
-            match simple_stmt.unpack() {
-                SimpleStmtContent::Assignment(assignment) => {
-                    self.check_assignment(assignment, class)
-                }
-                SimpleStmtContent::StarExpressions(star_exprs) => {
-                    self.infer_star_expressions(star_exprs, &mut ResultContext::ExpectUnused);
-                }
-                SimpleStmtContent::ReturnStmt(return_stmt) => {
-                    self.calc_return_stmt_diagnostics(func, return_stmt);
-                    self.mark_current_frame_unreachable()
-                }
-                SimpleStmtContent::YieldExpr(yield_expr) => {
-                    self.infer_yield_expr(yield_expr, &mut ResultContext::ExpectUnused);
-                }
-                SimpleStmtContent::RaiseStmt(raise_stmt) => {
-                    if let Some((expr, from_expr)) = raise_stmt.unpack() {
-                        self.check_valid_raise_type(expr, false);
-                        if let Some(from_expr) = from_expr {
-                            self.check_valid_raise_type(from_expr, true)
-                        }
-                    }
-                    self.mark_current_frame_unreachable()
-                }
-                SimpleStmtContent::ImportFrom(import_from) => {
-                    self.check_import_from(import_from, class, func)
-                }
-                SimpleStmtContent::ImportName(import_name) => {
-                    self.cache_import_name(import_name);
-                }
-                SimpleStmtContent::PassStmt(x) => {}
-                SimpleStmtContent::GlobalStmt(x) => {}
-                SimpleStmtContent::NonlocalStmt(x) => {}
-                SimpleStmtContent::AssertStmt(assert_stmt) => {
-                    self.flow_analysis_for_assert(assert_stmt);
-                }
-                SimpleStmtContent::BreakStmt(b) => self.flow_analysis_for_break_stmt(b),
-                SimpleStmtContent::ContinueStmt(c) => self.flow_analysis_for_continue_stmt(c),
-                SimpleStmtContent::DelStmt(d) => self.flow_analysis_for_del_stmt(d.targets()),
             }
         }
     }
@@ -352,23 +295,24 @@ impl<'db> Inference<'db, '_, '_> {
 
     fn calc_stmts_diagnostics(
         &self,
-        stmts: StmtIterator,
+        stmts: StmtLikeIterator,
         class: Option<Class>,
         func: Option<&Function>,
     ) {
         // TODO In general all {} blocks are todos
-        for stmt in stmts {
-            let StmtOrError::Stmt(stmt) = stmt else {
-                continue;
-            };
-            let point = self.file.points.get(stmt.index());
+        for stmt_like in stmts {
+            let point = self.file.points.get(stmt_like.parent_index);
             if point.calculated() {
                 debug_assert_eq!(point.kind(), PointKind::NodeAnalysis);
                 continue;
             }
             if self.is_unreachable() {
-                if !self.stmt_is_allowed_when_unreachable(stmt) {
-                    self.add_unreachable_error(stmt.start(), stmt.end());
+                if self.stmt_is_allowed_when_unreachable(stmt_like.node) {
+                    continue;
+                } else {
+                    let start = self.file.tree.node_start_position(stmt_like.parent_index);
+                    let end = self.file.tree.node_end_position(stmt_like.parent_index);
+                    self.add_unreachable_error(start, end);
                     /*
                     if self.flags().mypy_compatible {
                         // Mypy does not analyze frames that are not reachable. However for normal interaction
@@ -381,38 +325,70 @@ impl<'db> Inference<'db, '_, '_> {
                 }
             }
 
-            match stmt.unpack() {
-                StmtContent::SimpleStmts(simple_stmts) => {
-                    self.calc_simple_stmts_diagnostics(simple_stmts, class, func)
+            match stmt_like.node {
+                StmtLikeContent::Assignment(assignment) => self.check_assignment(assignment, class),
+                StmtLikeContent::StarExpressions(star_exprs) => {
+                    self.infer_star_expressions(star_exprs, &mut ResultContext::ExpectUnused);
                 }
-                StmtContent::FunctionDef(f) => self.calc_function_diagnostics(f, class),
-                StmtContent::ClassDef(class) => self.calc_class_diagnostics(class),
-                StmtContent::Decorated(decorated) => match decorated.decoratee() {
+                StmtLikeContent::ReturnStmt(return_stmt) => {
+                    self.calc_return_stmt_diagnostics(func, return_stmt);
+                    self.mark_current_frame_unreachable()
+                }
+                StmtLikeContent::YieldExpr(yield_expr) => {
+                    self.infer_yield_expr(yield_expr, &mut ResultContext::ExpectUnused);
+                }
+                StmtLikeContent::RaiseStmt(raise_stmt) => {
+                    if let Some((expr, from_expr)) = raise_stmt.unpack() {
+                        self.check_valid_raise_type(expr, false);
+                        if let Some(from_expr) = from_expr {
+                            self.check_valid_raise_type(from_expr, true)
+                        }
+                    }
+                    self.mark_current_frame_unreachable()
+                }
+                StmtLikeContent::ImportFrom(import_from) => {
+                    self.check_import_from(import_from, class, func)
+                }
+                StmtLikeContent::ImportName(import_name) => {
+                    self.cache_import_name(import_name);
+                }
+                StmtLikeContent::PassStmt(x) => {}
+                StmtLikeContent::GlobalStmt(x) => {}
+                StmtLikeContent::NonlocalStmt(x) => {}
+                StmtLikeContent::AssertStmt(assert_stmt) => {
+                    self.flow_analysis_for_assert(assert_stmt);
+                }
+                StmtLikeContent::BreakStmt(b) => self.flow_analysis_for_break_stmt(b),
+                StmtLikeContent::ContinueStmt(c) => self.flow_analysis_for_continue_stmt(c),
+                StmtLikeContent::DelStmt(d) => self.flow_analysis_for_del_stmt(d.targets()),
+                StmtLikeContent::FunctionDef(f) => self.calc_function_diagnostics(f, class),
+                StmtLikeContent::ClassDef(class) => self.calc_class_diagnostics(class),
+                StmtLikeContent::Decorated(decorated) => match decorated.decoratee() {
                     Decoratee::FunctionDef(f) => self.calc_function_diagnostics(f, class),
                     Decoratee::ClassDef(class) => self.calc_class_diagnostics(class),
                     Decoratee::AsyncFunctionDef(func) => {
                         self.calc_function_diagnostics(func, class)
                     }
                 },
-                StmtContent::IfStmt(if_stmt) => {
+                StmtLikeContent::IfStmt(if_stmt) => {
                     self.flow_analysis_for_if_stmt(if_stmt, class, func)
                 }
-                StmtContent::ForStmt(for_stmt) => {
+                StmtLikeContent::ForStmt(for_stmt) => {
                     self.flow_analysis_for_for_stmt(for_stmt, class, func, false)
                 }
-                StmtContent::TryStmt(try_stmt) => {
+                StmtLikeContent::TryStmt(try_stmt) => {
                     self.flow_analysis_for_try_stmt(try_stmt, class, func)
                 }
-                StmtContent::WhileStmt(while_stmt) => {
+                StmtLikeContent::WhileStmt(while_stmt) => {
                     self.flow_analysis_for_while_stmt(while_stmt, class, func)
                 }
-                StmtContent::WithStmt(with_stmt) => {
+                StmtLikeContent::WithStmt(with_stmt) => {
                     self.calc_with_stmt(with_stmt, class, func, false)
                 }
-                StmtContent::MatchStmt(match_stmt) => {
+                StmtLikeContent::MatchStmt(match_stmt) => {
                     debug!("TODO match_stmt diagnostics");
                 }
-                StmtContent::AsyncStmt(async_stmt) => match async_stmt.unpack() {
+                StmtLikeContent::AsyncStmt(async_stmt) => match async_stmt.unpack() {
                     AsyncStmtContent::FunctionDef(func) => {
                         self.calc_function_diagnostics(func, class)
                     }
@@ -423,32 +399,27 @@ impl<'db> Inference<'db, '_, '_> {
                         self.calc_with_stmt(with_stmt, class, func, true)
                     }
                 },
-                StmtContent::Newline => {}
+                StmtLikeContent::Error(_) | StmtLikeContent::Newline => {}
             };
-            self.file
-                .points
-                .set(stmt.index(), Point::new_node_analysis(Locality::Todo));
+            self.file.points.set(
+                stmt_like.parent_index,
+                Point::new_node_analysis(Locality::Todo),
+            );
         }
     }
 
-    fn stmt_is_allowed_when_unreachable(&self, stmt: Stmt) -> bool {
+    fn stmt_is_allowed_when_unreachable(&self, s: StmtLikeContent) -> bool {
         // In Mypy this is called is_noop_for_reachability
-        // Simple statements check for unreachable themselves.
-        matches!(stmt.unpack(), StmtContent::SimpleStmts(_))
-    }
-
-    fn simple_stmt_is_allowed_when_unreachable(&self, s: SimpleStmt) -> bool {
-        // In Mypy this is called is_noop_for_reachability
-        match s.unpack() {
-            SimpleStmtContent::RaiseStmt(_) | SimpleStmtContent::PassStmt(_) => true,
-            SimpleStmtContent::AssertStmt(assert_stmt) => {
+        match s {
+            StmtLikeContent::RaiseStmt(_) | StmtLikeContent::PassStmt(_) => true,
+            StmtLikeContent::AssertStmt(assert_stmt) => {
                 match assert_stmt.unpack().0.maybe_unpacked_atom() {
                     Some(AtomContent::Bool(b)) if b.as_code() == "False" => true,
                     Some(AtomContent::Int(i)) if i.parse() == Some(0) => true,
                     _ => false,
                 }
             }
-            SimpleStmtContent::StarExpressions(star_expr) => {
+            StmtLikeContent::StarExpressions(star_expr) => {
                 star_expr.maybe_simple_expression().is_some_and(|expr| {
                     let ExpressionContent::ExpressionPart(ExpressionPart::Primary(primary)) =
                         expr.unpack()
@@ -621,12 +592,7 @@ impl<'db> Inference<'db, '_, '_> {
         class: Option<Class>,
         func: Option<&Function>,
     ) {
-        match block.unpack() {
-            BlockContent::Indented(stmts) => self.calc_stmts_diagnostics(stmts, class, func),
-            BlockContent::OneLine(simple_stmts) => {
-                self.calc_simple_stmts_diagnostics(simple_stmts, class, func)
-            }
-        }
+        self.calc_stmts_diagnostics(block.iter_stmt_likes(), class, func)
     }
 
     fn calc_class_diagnostics(&self, class: ClassDef) {

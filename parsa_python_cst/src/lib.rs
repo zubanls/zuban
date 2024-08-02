@@ -1241,22 +1241,6 @@ pub enum StmtOrError<'db> {
     Error(Error<'db>),
 }
 
-impl<'db> StmtOrError<'db> {
-    fn start(&self) -> NodeIndex {
-        match self {
-            Self::Stmt(stmt_) => stmt_.start(),
-            Self::Error(error) => error.start(),
-        }
-    }
-
-    fn end(&self) -> NodeIndex {
-        match self {
-            Self::Stmt(stmt_) => stmt_.end(),
-            Self::Error(error) => error.end(),
-        }
-    }
-}
-
 impl<'db> Iterator for StmtIterator<'db> {
     type Item = StmtOrError<'db>;
 
@@ -1535,6 +1519,7 @@ pub enum StmtContent<'db> {
     Newline,
 }
 
+#[derive(Debug, Copy, Clone)]
 pub enum StmtLikeContent<'db> {
     // From SimpleStmtContent
     Assignment(Assignment<'db>),
@@ -1660,6 +1645,7 @@ impl<'db> StmtLikeIterator<'db> {
     }
 }
 
+#[derive(Copy, Clone)]
 pub struct StmtLikeIteratorItem<'db> {
     pub parent_index: NodeIndex,
     pub node: StmtLikeContent<'db>,
@@ -4250,6 +4236,7 @@ impl<'db> NameOrKeywordLookup<'db> {
     }
 }
 
+#[derive(Debug, Copy, Clone)]
 pub struct Error<'db> {
     node: PyNode<'db>,
 }
