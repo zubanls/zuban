@@ -639,10 +639,6 @@ impl<'db> Keyword<'db> {
 }
 
 impl<'db> File<'db> {
-    pub fn iter_stmts(&self) -> StmtIterator<'db> {
-        StmtIterator(self.node.iter_children())
-    }
-
     pub fn iter_stmt_likes(&self) -> StmtLikeIterator<'db> {
         StmtLikeIterator::from_stmt_iterator(self.node, self.node.iter_children())
     }
@@ -1155,18 +1151,6 @@ impl<'db> Iterator for TargetIterator<'db> {
 }
 
 impl<'db> Block<'db> {
-    pub fn unpack(&self) -> BlockContent<'db> {
-        // simple_stmts | Newline Indent stmt+ Dedent
-        let mut iterator = self.node.iter_children();
-        let first = iterator.next().unwrap();
-        if first.is_type(Nonterminal(simple_stmts)) {
-            BlockContent::OneLine(SimpleStmts::new(first))
-        } else {
-            iterator.next(); // get rid of indent leaf
-            BlockContent::Indented(StmtIterator(iterator))
-        }
-    }
-
     pub fn iter_stmt_likes(&self) -> StmtLikeIterator<'db> {
         let mut iterator = self.node.iter_children();
         let first = iterator.next().unwrap();
@@ -1192,11 +1176,6 @@ impl<'db> Block<'db> {
         ];
         RelevantUntypedNodes(self.node.search(SEARCH, false))
     }
-}
-
-pub enum BlockContent<'db> {
-    OneLine(SimpleStmts<'db>),
-    Indented(StmtIterator<'db>),
 }
 
 // A bit special, since this does not make much sense except for zuban's NameBinder.
@@ -1230,37 +1209,6 @@ impl<'db> Iterator for RelevantUntypedNodes<'db> {
                 RelevantUntypedNode::ImportName(ImportName::new(n))
             }
         })
-    }
-}
-
-#[derive(Clone)]
-pub struct StmtIterator<'db>(SiblingIterator<'db>);
-
-pub enum StmtOrError<'db> {
-    Stmt(Stmt<'db>),
-    Error(Error<'db>),
-}
-
-impl<'db> Iterator for StmtIterator<'db> {
-    type Item = StmtOrError<'db>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if let Some(n) = self.0.next() {
-            if n.is_type(Nonterminal(stmt)) {
-                Some(Self::Item::Stmt(Stmt::new(n)))
-            } else if n.is_error_recovery_node() {
-                Some(StmtOrError::Error(Error::new(n)))
-            } else {
-                debug_assert!(
-                    n.is_type(Terminal(TerminalType::Dedent))
-                        || n.is_type(Terminal(TerminalType::Endmarker)),
-                    "{n:?}",
-                );
-                None
-            }
-        } else {
-            None
-        }
     }
 }
 
