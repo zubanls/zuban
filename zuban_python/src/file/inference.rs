@@ -3332,25 +3332,25 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
 
     check_point_cache_with!(pub infer_name_definition, Self::_infer_name_definition, NameDefinition);
     fn _infer_name_definition(&self, name_def: NameDefinition) -> Inferred {
-        let stmt_like = name_def.expect_stmt_like_ancestor();
+        let stmt_like = name_def.expect_defining_stmt();
 
         if !self.file.points.get(stmt_like.index()).calculated() {
             match stmt_like {
-                StmtLike::SimpleStmts(s) => {
+                DefiningStmt::SimpleStmts(s) => {
                     self.cache_simple_stmts_name(s, NodeRef::new(self.file, name_def.index()));
                 }
-                StmtLike::ImportFromAsName(as_name) => {
+                DefiningStmt::ImportFromAsName(as_name) => {
                     self.cache_import_from_only_particular_name_def(as_name)
                 }
-                StmtLike::Stmt(stmt) => {
+                DefiningStmt::Stmt(stmt) => {
                     self.cache_stmt_name(stmt, NodeRef::new(self.file, name_def.index()));
                 }
-                StmtLike::Walrus(walrus) => {
+                DefiningStmt::Walrus(walrus) => {
                     self.infer_walrus(walrus, None);
                 }
-                StmtLike::Lambda(_)
-                | StmtLike::Comprehension(_)
-                | StmtLike::DictComprehension(_) => unreachable!(),
+                DefiningStmt::Lambda(_)
+                | DefiningStmt::Comprehension(_)
+                | DefiningStmt::DictComprehension(_) => unreachable!(),
             }
         }
         debug_assert!(

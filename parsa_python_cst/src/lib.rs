@@ -586,7 +586,7 @@ impl<'db> Int<'db> {
 }
 
 #[derive(Debug)]
-pub enum StmtLike<'db> {
+pub enum DefiningStmt<'db> {
     SimpleStmts(SimpleStmts<'db>),
     ImportFromAsName(ImportFromAsName<'db>),
     Stmt(Stmt<'db>),
@@ -596,17 +596,17 @@ pub enum StmtLike<'db> {
     Walrus(Walrus<'db>),
 }
 
-impl<'db> StmtLike<'db> {
+impl<'db> DefiningStmt<'db> {
     #[inline]
     pub fn index(&self) -> NodeIndex {
         match self {
-            StmtLike::SimpleStmts(n) => n.index(),
-            StmtLike::ImportFromAsName(imp) => imp.index(),
-            StmtLike::Stmt(n) => n.index(),
-            StmtLike::Lambda(n) => n.index(),
-            StmtLike::Comprehension(n) => n.index(),
-            StmtLike::DictComprehension(n) => n.index(),
-            StmtLike::Walrus(n) => n.index(),
+            DefiningStmt::SimpleStmts(n) => n.index(),
+            DefiningStmt::ImportFromAsName(imp) => imp.index(),
+            DefiningStmt::Stmt(n) => n.index(),
+            DefiningStmt::Lambda(n) => n.index(),
+            DefiningStmt::Comprehension(n) => n.index(),
+            DefiningStmt::DictComprehension(n) => n.index(),
+            DefiningStmt::Walrus(n) => n.index(),
         }
     }
 }
@@ -3626,7 +3626,7 @@ impl<'db> NameDefinition<'db> {
         }
     }
 
-    pub fn expect_stmt_like_ancestor(&self) -> StmtLike<'db> {
+    pub fn expect_defining_stmt(&self) -> DefiningStmt<'db> {
         let stmt_node = self
             .node
             .parent_until(&[
@@ -3640,19 +3640,19 @@ impl<'db> NameDefinition<'db> {
             ])
             .expect("There should always be a stmt");
         if stmt_node.is_type(Nonterminal(simple_stmts)) {
-            StmtLike::SimpleStmts(SimpleStmts::new(stmt_node))
+            DefiningStmt::SimpleStmts(SimpleStmts::new(stmt_node))
         } else if stmt_node.is_type(Nonterminal(import_from_as_name)) {
-            StmtLike::ImportFromAsName(ImportFromAsName::new(stmt_node))
+            DefiningStmt::ImportFromAsName(ImportFromAsName::new(stmt_node))
         } else if stmt_node.is_type(Nonterminal(stmt)) {
-            StmtLike::Stmt(Stmt::new(stmt_node))
+            DefiningStmt::Stmt(Stmt::new(stmt_node))
         } else if stmt_node.is_type(Nonterminal(lambda)) {
-            StmtLike::Lambda(Lambda::new(stmt_node))
+            DefiningStmt::Lambda(Lambda::new(stmt_node))
         } else if stmt_node.is_type(Nonterminal(comprehension)) {
-            StmtLike::Comprehension(Comprehension::new(stmt_node))
+            DefiningStmt::Comprehension(Comprehension::new(stmt_node))
         } else if stmt_node.is_type(Nonterminal(dict_comprehension)) {
-            StmtLike::DictComprehension(DictComprehension::new(stmt_node))
+            DefiningStmt::DictComprehension(DictComprehension::new(stmt_node))
         } else if stmt_node.is_type(Nonterminal(walrus)) {
-            StmtLike::Walrus(Walrus::new(stmt_node))
+            DefiningStmt::Walrus(Walrus::new(stmt_node))
         } else {
             unreachable!()
         }
