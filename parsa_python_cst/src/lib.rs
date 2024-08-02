@@ -836,7 +836,7 @@ impl<'db> Expression<'db> {
         node.is_type(Nonterminal(lambda))
     }
 
-    fn is_string(&self) -> bool {
+    pub fn is_string(&self) -> bool {
         self.maybe_unpacked_atom()
             .is_some_and(|atom_content| matches!(atom_content, AtomContent::Strings(_)))
     }
@@ -1663,6 +1663,13 @@ impl<'db> StmtLikeContent<'db> {
             _ => None,
         }
     }
+
+    pub fn is_string(&self) -> bool {
+        let Some(expr) = self.maybe_simple_expr() else {
+            return false;
+        };
+        expr.is_string()
+    }
 }
 
 pub struct StmtLikeIterator<'db> {
@@ -2075,12 +2082,10 @@ impl<'db> ClassDef<'db> {
     }
 
     pub fn has_docstr(&self) -> bool {
-        self.block().iter_stmt_likes().next().is_some_and(|first| {
-            let Some(expr) = first.node.maybe_simple_expr() else {
-                return false;
-            };
-            expr.is_string()
-        })
+        self.block()
+            .iter_stmt_likes()
+            .next()
+            .is_some_and(|first| first.node.is_string())
     }
 }
 

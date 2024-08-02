@@ -1,10 +1,9 @@
 use std::{borrow::Cow, cell::Cell, fmt, rc::Rc};
 
 use parsa_python_cst::{
-    BlockContent, Decorated, Decorator, ExpressionContent, ExpressionPart, FunctionDef,
-    FunctionParent, NodeIndex, Param as CSTParam, ParamAnnotation, ParamIterator, ParamKind,
-    PrimaryContent, PrimaryOrAtom, ReturnAnnotation, ReturnOrYield, SimpleStmt, SimpleStmtContent,
-    StmtOrError,
+    Decorated, Decorator, ExpressionContent, ExpressionPart, FunctionDef, FunctionParent,
+    NodeIndex, Param as CSTParam, ParamAnnotation, ParamIterator, ParamKind, PrimaryContent,
+    PrimaryOrAtom, ReturnAnnotation, ReturnOrYield, StmtLikeContent,
 };
 
 use crate::{
@@ -122,71 +121,43 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
 
     pub fn has_trivial_body(&self, i_s: &InferenceState) -> bool {
         // In Mypy this is called "is_trivial_body"
-        let check_simple_stmt = |simple_stmt: Option<SimpleStmt>| {
-            let Some(simple_stmt) = simple_stmt else {
-                return false;
+        let mut stmts = self.node().body().iter_stmt_likes();
+        let mut stmt_like = stmts.next().unwrap();
+        // Skip the first docstring
+        if stmt_like.node.is_string() {
+            let Some(s) = stmts.next() else {
+                return true; // It was simply a docstring
             };
-            match simple_stmt.unpack() {
-                SimpleStmtContent::PassStmt(_) => true,
-                SimpleStmtContent::StarExpressions(star_exprs) => star_exprs
-                    .maybe_simple_expression()
-                    .is_some_and(|expr| expr.is_ellipsis_literal()),
-                SimpleStmtContent::RaiseStmt(raise_stmt) => {
-                    raise_stmt.unpack().is_some_and(|(expr, _)| {
-                        match self
-                            .node_ref
-                            .file
-                            .inference(i_s)
-                            .infer_expression(expr)
-                            .as_cow_type(i_s)
-                            .as_ref()
-                        {
+            stmt_like = s
+        }
+
+        match stmt_like.node {
+            StmtLikeContent::PassStmt(_) => true,
+            StmtLikeContent::StarExpressions(star_exprs) => star_exprs
+                .maybe_simple_expression()
+                .is_some_and(|expr| expr.is_string() || expr.is_ellipsis_literal()),
+            StmtLikeContent::RaiseStmt(raise_stmt) => {
+                raise_stmt.unpack().is_some_and(|(expr, _)| {
+                    match self
+                        .node_ref
+                        .file
+                        .inference(i_s)
+                        .infer_expression(expr)
+                        .as_cow_type(i_s)
+                        .as_ref()
+                    {
+                        Type::Class(cls) => cls.link == i_s.db.python_state.notimplementederror(),
+                        Type::Type(t) => match t.as_ref() {
                             Type::Class(cls) => {
                                 cls.link == i_s.db.python_state.notimplementederror()
                             }
-                            Type::Type(t) => match t.as_ref() {
-                                Type::Class(cls) => {
-                                    cls.link == i_s.db.python_state.notimplementederror()
-                                }
-                                _ => false,
-                            },
                             _ => false,
-                        }
-                    })
-                }
-                _ => false,
-            }
-        };
-        match self.node().body().unpack() {
-            BlockContent::OneLine(simple_stmts) => {
-                let simple_stmt = simple_stmts.maybe_single_simple_stmt();
-                if simple_stmt.is_some_and(|simple_stmt| {
-                    simple_stmt
-                        .maybe_simple_expression()
-                        .is_some_and(|expr| expr.maybe_single_string_literal().is_some())
-                }) {
-                    // Basically a docstring
-                    return true;
-                }
-                check_simple_stmt(simple_stmt)
-            }
-            BlockContent::Indented(mut stmts) => {
-                let StmtOrError::Stmt(mut first_stmt) = stmts.next().unwrap() else {
-                    return false;
-                };
-                if first_stmt.maybe_single_string_literal().is_some() {
-                    // Is a docstr, skip.
-                    match stmts.next() {
-                        Some(StmtOrError::Stmt(s)) => first_stmt = s,
-                        Some(_) => return false,
-                        None => return true,
+                        },
+                        _ => false,
                     }
-                }
-                if stmts.next().is_some() {
-                    return false;
-                }
-                check_simple_stmt(first_stmt.maybe_single_simple_stmt())
+                })
             }
+            _ => false,
         }
     }
 
