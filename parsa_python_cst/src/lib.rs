@@ -290,7 +290,6 @@ create_nonterminal_structs!(
     File: file
     Block: block
 
-    Stmt: stmt
     ForStmt: for_stmt
     WhileStmt: while_stmt
     WithStmt: with_stmt
@@ -324,7 +323,6 @@ create_nonterminal_structs!(
     NamedExpression: named_expression
     Walrus: walrus
 
-    SimpleStmts: simple_stmts
     Assignment: assignment
     SingleTarget: single_target
     AugAssign: augassign
@@ -1410,55 +1408,6 @@ impl<'db> ExceptExpression<'db> {
     pub fn expression(&self) -> Expression<'db> {
         Expression::new(self.node.nth_child(0))
     }
-}
-
-impl<'db> Stmt<'db> {
-    #[inline]
-    pub fn unpack(&self) -> StmtContent<'db> {
-        let child = self.node.nth_child(0);
-        if child.is_type(Nonterminal(simple_stmts)) {
-            StmtContent::SimpleStmts(SimpleStmts::new(child))
-        } else if child.is_type(Nonterminal(function_def)) {
-            StmtContent::FunctionDef(FunctionDef::new(child))
-        } else if child.is_type(Nonterminal(class_def)) {
-            StmtContent::ClassDef(ClassDef::new(child))
-        } else if child.is_type(Nonterminal(decorated)) {
-            StmtContent::Decorated(Decorated::new(child))
-        } else if child.is_type(Nonterminal(if_stmt)) {
-            StmtContent::IfStmt(IfStmt::new(child))
-        } else if child.is_type(Nonterminal(try_stmt)) {
-            StmtContent::TryStmt(TryStmt::new(child))
-        } else if child.is_type(Nonterminal(for_stmt)) {
-            StmtContent::ForStmt(ForStmt::new(child))
-        } else if child.is_type(Nonterminal(while_stmt)) {
-            StmtContent::WhileStmt(WhileStmt::new(child))
-        } else if child.is_type(Nonterminal(with_stmt)) {
-            StmtContent::WithStmt(WithStmt::new(child))
-        } else if child.is_type(Nonterminal(match_stmt)) {
-            StmtContent::MatchStmt(MatchStmt::new(child))
-        } else if child.is_type(Nonterminal(async_stmt)) {
-            StmtContent::AsyncStmt(AsyncStmt::new(child))
-        } else {
-            debug_assert_eq!(child.type_(), Terminal(TerminalType::Newline));
-            StmtContent::Newline
-        }
-    }
-}
-
-#[derive(Debug)]
-pub enum StmtContent<'db> {
-    SimpleStmts(SimpleStmts<'db>),
-    FunctionDef(FunctionDef<'db>),
-    ClassDef(ClassDef<'db>),
-    Decorated(Decorated<'db>),
-    AsyncStmt(AsyncStmt<'db>),
-    IfStmt(IfStmt<'db>),
-    WhileStmt(WhileStmt<'db>),
-    ForStmt(ForStmt<'db>),
-    TryStmt(TryStmt<'db>),
-    WithStmt(WithStmt<'db>),
-    MatchStmt(MatchStmt<'db>),
-    Newline,
 }
 
 #[derive(Debug, Copy, Clone)]
