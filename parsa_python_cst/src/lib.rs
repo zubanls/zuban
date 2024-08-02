@@ -1156,12 +1156,23 @@ impl<'db> Iterator for TargetIterator<'db> {
 
 impl<'db> Block<'db> {
     pub fn statements_start_and_end(&self) -> (NodeIndex, NodeIndex) {
-        match self.unpack() {
-            BlockContent::Indented(stmts) => (
-                stmts.clone().next().unwrap().start(),
-                stmts.last().unwrap().end(),
-            ),
-            BlockContent::OneLine(s) => (s.start(), s.end()),
+        // simple_stmts | Newline Indent stmt+ Dedent
+        let mut iterator = self.node.iter_children();
+        let first = iterator.next().unwrap();
+        if first.is_type(Nonterminal(simple_stmts)) {
+            (first.start(), first.end())
+        } else {
+            iterator.next(); // get rid of indent leaf
+            let first = iterator.next().unwrap();
+            let mut last_index = first.index;
+            for current in iterator {
+                if current.is_type(Terminal(TerminalType::Dedent)) {
+                    break;
+                } else {
+                    last_index = current.index
+                }
+            }
+            (first.start(), last_index)
         }
     }
 
