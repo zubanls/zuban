@@ -1933,31 +1933,7 @@ impl<'db: 'a, 'a> Class<'a> {
     ) -> CallableContent {
         let mut vec = start_namedtuple_params(i_s.db);
         let file = self.node_ref.file;
-        match self.node().block().unpack() {
-            BlockContent::Indented(stmts) => {
-                for stmt in stmts {
-                    let StmtOrError::Stmt(stmt) = stmt else {
-                        continue;
-                    };
-                    match stmt.unpack() {
-                        StmtContent::SimpleStmts(simple) => {
-                            find_stmt_named_tuple_types(i_s, file, &mut vec, simple)
-                        }
-                        StmtContent::FunctionDef(_) => (),
-                        StmtContent::AsyncStmt(async_stmt)
-                            if matches!(async_stmt.unpack(), AsyncStmtContent::FunctionDef(_)) => {}
-                        StmtContent::Decorated(dec)
-                            if matches!(
-                                dec.decoratee(),
-                                Decoratee::FunctionDef(_) | Decoratee::AsyncFunctionDef(_)
-                            ) => {}
-                        _ => NodeRef::new(file, stmt.index())
-                            .add_issue(i_s, IssueKind::InvalidStmtInNamedTuple),
-                    }
-                }
-            }
-            BlockContent::OneLine(simple) => todo!(), //find_stmt_named_tuple_types(i_s, file, &mut vec, simple),
-        }
+        find_stmt_named_tuple_types(i_s, file, &mut vec, self.node().block().iter_stmt_likes());
         let tvls = self.use_cached_type_vars(i_s.db);
         CallableContent::new_simple(
             Some(DbString::StringSlice(name)),
@@ -2930,11 +2906,11 @@ fn find_stmt_named_tuple_types(
     i_s: &InferenceState,
     file: &PythonFile,
     vec: &mut Vec<CallableParam>,
-    simple_stmts: SimpleStmts,
+    stmts: StmtLikeIterator,
 ) {
-    for simple in simple_stmts.iter() {
-        match simple.unpack() {
-            SimpleStmtContent::Assignment(assignment) => match assignment.unpack() {
+    for stmt_like in stmts {
+        match stmt_like.node {
+            StmtLikeContent::Assignment(assignment) => match assignment.unpack() {
                 AssignmentContent::WithAnnotation(Target::Name(name), annot, default) => {
                     if default.is_none() && vec.last().is_some_and(|last| last.has_default) {
                         NodeRef::new(file, assignment.index())
@@ -2964,7 +2940,18 @@ fn find_stmt_named_tuple_types(
                 _ => NodeRef::new(file, assignment.index())
                     .add_issue(i_s, IssueKind::InvalidStmtInNamedTuple),
             },
-            _ => (),
+            StmtLikeContent::AsyncStmt(async_stmt)
+                if matches!(async_stmt.unpack(), AsyncStmtContent::FunctionDef(_)) => {}
+            StmtLikeContent::Decorated(dec)
+                if matches!(
+                    dec.decoratee(),
+                    Decoratee::FunctionDef(_) | Decoratee::AsyncFunctionDef(_)
+                ) => {}
+            StmtLikeContent::FunctionDef(_)
+            | StmtLikeContent::PassStmt(_)
+            | StmtLikeContent::StarExpressions(_) => (),
+            _ => NodeRef::new(file, stmt_like.parent_index)
+                .add_issue(i_s, IssueKind::InvalidStmtInNamedTuple),
         }
     }
 }
