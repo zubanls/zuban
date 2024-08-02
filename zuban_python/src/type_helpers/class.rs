@@ -2977,7 +2977,7 @@ fn find_stmt_typed_dict_types(
     total: bool,
 ) {
     for stmt_like in stmt_likes {
-        match stmt_like {
+        match stmt_like.node {
             StmtLikeContent::Assignment(assignment) => match assignment.unpack() {
                 AssignmentContent::WithAnnotation(Target::Name(name_def), annot, right_side) => {
                     if right_side.is_some() {
@@ -3022,7 +3022,8 @@ fn find_stmt_typed_dict_types(
             StmtLikeContent::Error(_)
             | StmtLikeContent::PassStmt(_)
             | StmtLikeContent::StarExpressions(_) => (),
-            s => NodeRef::new(file, s.index()).add_issue(i_s, IssueKind::TypedDictInvalidMember),
+            s => NodeRef::new(file, stmt_like.parent_index)
+                .add_issue(i_s, IssueKind::TypedDictInvalidMember),
         }
     }
 }

@@ -1651,37 +1651,6 @@ impl<'db> StmtLikeContent<'db> {
             Self::Newline(Keyword::new(child))
         }
     }
-
-    pub fn index(&self) -> NodeIndex {
-        match self {
-            Self::Assignment(n) => n.index(),
-            Self::StarExpressions(n) => n.index(),
-            Self::ReturnStmt(n) => n.index(),
-            Self::YieldExpr(n) => n.index(),
-            Self::RaiseStmt(n) => n.index(),
-            Self::ImportFrom(n) => n.index(),
-            Self::ImportName(n) => n.index(),
-            Self::PassStmt(n) => n.index(),
-            Self::GlobalStmt(n) => n.index(),
-            Self::NonlocalStmt(n) => n.index(),
-            Self::AssertStmt(n) => n.index(),
-            Self::BreakStmt(n) => n.index(),
-            Self::ContinueStmt(n) => n.index(),
-            Self::DelStmt(n) => n.index(),
-            Self::FunctionDef(n) => n.index(),
-            Self::ClassDef(n) => n.index(),
-            Self::Decorated(n) => n.index(),
-            Self::AsyncStmt(n) => n.index(),
-            Self::IfStmt(n) => n.index(),
-            Self::WhileStmt(n) => n.index(),
-            Self::ForStmt(n) => n.index(),
-            Self::TryStmt(n) => n.index(),
-            Self::WithStmt(n) => n.index(),
-            Self::MatchStmt(n) => n.index(),
-            Self::Error(n) => n.index(),
-            Self::Newline(n) => n.index(),
-        }
-    }
 }
 
 pub struct StmtLikeIterator<'db> {
@@ -1699,12 +1668,20 @@ impl<'db> StmtLikeIterator<'db> {
     }
 }
 
+pub struct StmtLikeIteratorItem<'db> {
+    pub parent_index: NodeIndex,
+    pub node: StmtLikeContent<'db>,
+}
+
 impl<'db> Iterator for StmtLikeIterator<'db> {
-    type Item = StmtLikeContent<'db>;
+    type Item = StmtLikeIteratorItem<'db>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(node) = self.simple_stmts.next() {
-            return Some(StmtLikeContent::from_simple_stmt(node));
+            return Some(StmtLikeIteratorItem {
+                parent_index: node.index,
+                node: StmtLikeContent::from_simple_stmt(node),
+            });
         }
         let s = self.stmts.next()?;
         if s.is_type(Nonterminal(stmt)) {
@@ -1713,10 +1690,16 @@ impl<'db> Iterator for StmtLikeIterator<'db> {
                 self.simple_stmts = child.iter_children().step_by(2);
                 self.next()
             } else {
-                Some(StmtLikeContent::from_stmt_child(child))
+                Some(StmtLikeIteratorItem {
+                    parent_index: s.index,
+                    node: StmtLikeContent::from_stmt_child(child),
+                })
             }
         } else if s.is_error_recovery_node() {
-            Some(StmtLikeContent::Error(Error::new(s)))
+            Some(StmtLikeIteratorItem {
+                parent_index: s.index,
+                node: StmtLikeContent::Error(Error::new(s)),
+            })
         } else {
             debug_assert!(
                 s.is_type(Terminal(TerminalType::Dedent))
