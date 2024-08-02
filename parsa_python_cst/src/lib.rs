@@ -1591,7 +1591,7 @@ pub enum StmtLikeContent<'db> {
     WithStmt(WithStmt<'db>),
     MatchStmt(MatchStmt<'db>),
     Error(Error<'db>),
-    Newline(Keyword<'db>),
+    Newline,
 }
 
 impl<'db> StmtLikeContent<'db> {
@@ -1653,7 +1653,7 @@ impl<'db> StmtLikeContent<'db> {
             Self::AsyncStmt(AsyncStmt::new(child))
         } else {
             debug_assert_eq!(child.type_(), Terminal(TerminalType::Newline));
-            Self::Newline(Keyword::new(child))
+            Self::Newline
         }
     }
 
@@ -1682,7 +1682,7 @@ impl<'db> StmtLikeIterator<'db> {
     fn from_stmt_iterator(base_node: PyNode<'db>, iterator: SiblingIterator<'db>) -> Self {
         Self {
             stmts: iterator,
-            simple_stmts: SiblingIterator::new_empty(&base_node).step_by(1),
+            simple_stmts: SiblingIterator::new_empty(&base_node).step_by(2),
         }
     }
 }
@@ -1697,6 +1697,9 @@ impl<'db> Iterator for StmtLikeIterator<'db> {
 
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(node) = self.simple_stmts.next() {
+            if node.is_type(Terminal(TerminalType::Newline)) {
+                return None;
+            }
             return Some(StmtLikeIteratorItem {
                 parent_index: node.index,
                 node: StmtLikeContent::from_simple_stmt(node),

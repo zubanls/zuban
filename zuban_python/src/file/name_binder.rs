@@ -250,7 +250,7 @@ impl<'db> NameBinder<'db> {
     }
 
     pub(crate) fn index_file(&mut self, file_node: File<'db>) {
-        self.index_stmts(file_node.iter_stmts(), true);
+        self.index_stmts(file_node.iter_stmt_likes(), true);
     }
 
     fn index_block(&mut self, block: Block<'db>, ordered: bool) -> NodeIndex {
@@ -261,48 +261,134 @@ impl<'db> NameBinder<'db> {
         // - sync_for_if_clause: reversed order and only in scope
         // - lambda: only in scope
         // - function_def, class_def: ignore
-        match block.unpack() {
-            BlockContent::OneLine(simple) => self.index_simple_stmts(simple, ordered).0,
-            BlockContent::Indented(stmts) => self.index_stmts(stmts, ordered),
-        }
+        self.index_stmts(block.iter_stmt_likes(), ordered)
     }
 
-    fn index_stmts(&mut self, stmts: StmtIterator<'db>, ordered: bool) -> NodeIndex {
+    fn index_stmts(&mut self, stmts: StmtLikeIterator<'db>, ordered: bool) -> NodeIndex {
         let mut latest_return_or_yield = 0;
         let mut last_was_an_error = false;
-        for stmt_or_error in stmts {
-            let stmt = match stmt_or_error {
-                StmtOrError::Stmt(stmt) => stmt,
-                StmtOrError::Error(error) => {
-                    if !last_was_an_error {
-                        last_was_an_error = true;
-                        self.add_issue(error.index(), IssueKind::InvalidSyntax);
+        for stmt_like in stmts {
+            let return_or_yield = match stmt_like.node {
+                StmtLikeContent::Assignment(assignment) => {
+                    let unpacked = assignment.unpack_with_simple_targets();
+                    // First we have to index the right side, before we can begin indexing the left
+                    // side.
+                    match &unpacked {
+                        AssignmentContentWithSimpleTargets::Normal(_, right)
+                        | AssignmentContentWithSimpleTargets::WithAnnotation(_, _, Some(right))
+                        | AssignmentContentWithSimpleTargets::AugAssign(_, _, right) => {
+                            let latest = match right {
+                                AssignmentRightSide::YieldExpr(yield_expr) => {
+                                    self.index_non_block_node(yield_expr, ordered)
+                                }
+                                AssignmentRightSide::StarExpressions(star_exprs) => {
+                                    self.index_non_block_node(star_exprs, ordered)
+                                }
+                            };
+                            latest_return_or_yield =
+                                self.merge_latest_return_or_yield(latest_return_or_yield, latest);
+                        }
+                        _ => (),
+                    };
+                    match unpacked {
+                        AssignmentContentWithSimpleTargets::Normal(targets, _) => {
+                            for target in targets {
+                                let l = self.index_non_block_node(&target, ordered);
+                                latest_return_or_yield =
+                                    self.merge_latest_return_or_yield(latest_return_or_yield, l);
+                            }
+                            0
+                        }
+                        AssignmentContentWithSimpleTargets::WithAnnotation(
+                            target,
+                            annotation,
+                            _,
+                        ) => {
+                            self.index_annotation_expression(&annotation.expression());
+                            self.index_non_block_node(&target, ordered)
+                        }
+                        AssignmentContentWithSimpleTargets::AugAssign(target, _, _) => {
+                            self.index_non_block_node(&target, ordered)
+                        }
                     }
-                    continue;
                 }
-            };
-            last_was_an_error = false;
-            let return_or_yield = match stmt.unpack() {
-                StmtContent::SimpleStmts(s) => {
-                    let (return_or_yield, unreachable_after) = self.index_simple_stmts(s, ordered);
-                    if unreachable_after {
-                        return self
-                            .merge_latest_return_or_yield(latest_return_or_yield, return_or_yield);
+                StmtLikeContent::ReturnStmt(return_stmt) => {
+                    if !matches!(self.kind, NameBinderKind::Function { .. }) {
+                        self.add_issue(
+                            return_stmt.index(),
+                            IssueKind::StmtOutsideFunction { keyword: "return" },
+                        )
                     }
-                    return_or_yield
+                    if let Some(return_expr) = return_stmt.star_expressions() {
+                        let l = self.index_non_block_node_full(&return_expr, ordered, false);
+                        latest_return_or_yield =
+                            self.merge_latest_return_or_yield(latest_return_or_yield, l);
+                    }
+                    self.index_return_or_yield(&mut latest_return_or_yield, return_stmt.index());
+                    return latest_return_or_yield;
                 }
-                StmtContent::FunctionDef(func) => {
+                StmtLikeContent::AssertStmt(assert_stmt) => {
+                    let (assert_expr, error_expr) = assert_stmt.unpack();
+                    let latest = self.index_non_block_node_full(&assert_expr, ordered, false);
+                    self.references_need_flow_analysis = true;
+                    if let Some(error_expr) = error_expr {
+                        self.index_non_block_node_full(&error_expr, ordered, false);
+                    }
+                    if is_expr_reachable_for_name_binder(self.db_infos.flags, assert_expr)
+                        == Truthiness::False
+                    {
+                        self.db_infos.points.set(
+                            assert_stmt.index(),
+                            Point::new_specific(Specific::AssertAlwaysFails, Locality::File),
+                        );
+                        return self.merge_latest_return_or_yield(latest_return_or_yield, latest);
+                    }
+                    latest
+                }
+                StmtLikeContent::ImportFrom(import) => {
+                    match import.unpack_targets() {
+                        ImportFromTargets::Star(star) => {
+                            self.db_infos.star_imports.borrow_mut().push(StarImport {
+                                scope: self.scope_node,
+                                import_from_node: import.index(),
+                                star_node: star.index(),
+                            })
+                        }
+                        ImportFromTargets::Iterator(targets) => {
+                            for target in targets {
+                                self.index_non_block_node(&target, ordered);
+                            }
+                        }
+                    };
+                    0
+                }
+                StmtLikeContent::RaiseStmt(raise_stmt) => {
+                    return self.index_non_block_node(&raise_stmt, ordered)
+                }
+                StmtLikeContent::BreakStmt(_) | StmtLikeContent::ContinueStmt(_) => {
+                    return latest_return_or_yield
+                }
+                StmtLikeContent::DelStmt(del_stmt) => {
+                    self.references_need_flow_analysis = true;
+                    self.index_non_block_node(&del_stmt, ordered)
+                }
+                StmtLikeContent::StarExpressions(s) => self.index_non_block_node(&s, ordered),
+                StmtLikeContent::YieldExpr(y) => self.index_non_block_node(&y, ordered),
+                StmtLikeContent::ImportName(i) => self.index_non_block_node(&i, ordered),
+                StmtLikeContent::GlobalStmt(g) => self.index_non_block_node(&g, ordered),
+                StmtLikeContent::NonlocalStmt(n) => self.index_non_block_node(&n, ordered),
+                StmtLikeContent::FunctionDef(func) => {
                     self.index_function_name_and_param_defaults(
                         func, ordered, false, // decorators
                         false, // is_async
                     );
                     0
                 }
-                StmtContent::ClassDef(class) => {
+                StmtLikeContent::ClassDef(class) => {
                     self.index_class(class, false);
                     0
                 }
-                StmtContent::Decorated(decorated) => {
+                StmtLikeContent::Decorated(decorated) => {
                     for decorator in decorated.decorators().iter() {
                         self.index_non_block_node(&decorator, ordered);
                     }
@@ -323,13 +409,17 @@ impl<'db> NameBinder<'db> {
                     }
                     0
                 }
-                StmtContent::IfStmt(if_stmt) => self.index_if_stmt(if_stmt, ordered),
-                StmtContent::ForStmt(for_stmt) => self.index_for_stmt(for_stmt, ordered),
-                StmtContent::TryStmt(try_stmt) => self.index_try_stmt(try_stmt, ordered),
-                StmtContent::WhileStmt(while_stmt) => self.index_while_stmt(while_stmt, ordered),
-                StmtContent::WithStmt(with_stmt) => self.index_with_stmt(with_stmt, ordered),
-                StmtContent::MatchStmt(match_stmt) => self.index_match_stmt(match_stmt, ordered),
-                StmtContent::AsyncStmt(async_stmt) => match async_stmt.unpack() {
+                StmtLikeContent::IfStmt(if_stmt) => self.index_if_stmt(if_stmt, ordered),
+                StmtLikeContent::ForStmt(for_stmt) => self.index_for_stmt(for_stmt, ordered),
+                StmtLikeContent::TryStmt(try_stmt) => self.index_try_stmt(try_stmt, ordered),
+                StmtLikeContent::WhileStmt(while_stmt) => {
+                    self.index_while_stmt(while_stmt, ordered)
+                }
+                StmtLikeContent::WithStmt(with_stmt) => self.index_with_stmt(with_stmt, ordered),
+                StmtLikeContent::MatchStmt(match_stmt) => {
+                    self.index_match_stmt(match_stmt, ordered)
+                }
+                StmtLikeContent::AsyncStmt(async_stmt) => match async_stmt.unpack() {
                     AsyncStmtContent::FunctionDef(function_def) => {
                         self.index_function_name_and_param_defaults(
                             function_def,
@@ -344,8 +434,16 @@ impl<'db> NameBinder<'db> {
                         self.index_with_stmt(with_stmt, ordered)
                     }
                 },
-                StmtContent::Newline => 0,
+                StmtLikeContent::Error(error) => {
+                    if !last_was_an_error {
+                        last_was_an_error = true;
+                        self.add_issue(error.index(), IssueKind::InvalidSyntax);
+                    }
+                    continue;
+                }
+                StmtLikeContent::Newline | StmtLikeContent::PassStmt(_) => 0,
             };
+            last_was_an_error = false;
             latest_return_or_yield =
                 self.merge_latest_return_or_yield(latest_return_or_yield, return_or_yield);
         }
@@ -412,127 +510,6 @@ impl<'db> NameBinder<'db> {
         }
         self.index_unordered_references();
         debug_assert_eq!(self.unordered_references.len(), 0);
-    }
-
-    fn index_simple_stmts(
-        &mut self,
-        simple_stmts: SimpleStmts<'db>,
-        ordered: bool,
-    ) -> (NodeIndex, bool) {
-        let mut latest_return_or_yield = 0;
-        for simple_stmt in simple_stmts.iter() {
-            let r = match simple_stmt.unpack() {
-                SimpleStmtContent::Assignment(assignment) => {
-                    let unpacked = assignment.unpack_with_simple_targets();
-                    // First we have to index the right side, before we can begin indexing the left
-                    // side.
-                    match &unpacked {
-                        AssignmentContentWithSimpleTargets::Normal(_, right)
-                        | AssignmentContentWithSimpleTargets::WithAnnotation(_, _, Some(right))
-                        | AssignmentContentWithSimpleTargets::AugAssign(_, _, right) => {
-                            let latest = match right {
-                                AssignmentRightSide::YieldExpr(yield_expr) => {
-                                    self.index_non_block_node(yield_expr, ordered)
-                                }
-                                AssignmentRightSide::StarExpressions(star_exprs) => {
-                                    self.index_non_block_node(star_exprs, ordered)
-                                }
-                            };
-                            latest_return_or_yield =
-                                self.merge_latest_return_or_yield(latest_return_or_yield, latest);
-                        }
-                        _ => (),
-                    };
-                    match unpacked {
-                        AssignmentContentWithSimpleTargets::Normal(targets, _) => {
-                            for target in targets {
-                                let l = self.index_non_block_node(&target, ordered);
-                                latest_return_or_yield =
-                                    self.merge_latest_return_or_yield(latest_return_or_yield, l);
-                            }
-                            0
-                        }
-                        AssignmentContentWithSimpleTargets::WithAnnotation(
-                            target,
-                            annotation,
-                            _,
-                        ) => {
-                            self.index_annotation_expression(&annotation.expression());
-                            self.index_non_block_node(&target, ordered)
-                        }
-                        AssignmentContentWithSimpleTargets::AugAssign(target, _, _) => {
-                            self.index_non_block_node(&target, ordered)
-                        }
-                    }
-                }
-                SimpleStmtContent::ReturnStmt(return_stmt) => {
-                    if !matches!(self.kind, NameBinderKind::Function { .. }) {
-                        self.add_issue(
-                            return_stmt.index(),
-                            IssueKind::StmtOutsideFunction { keyword: "return" },
-                        )
-                    }
-                    if let Some(return_expr) = return_stmt.star_expressions() {
-                        let l = self.index_non_block_node_full(&return_expr, ordered, false);
-                        latest_return_or_yield =
-                            self.merge_latest_return_or_yield(latest_return_or_yield, l);
-                    }
-                    self.index_return_or_yield(&mut latest_return_or_yield, return_stmt.index());
-                    return (latest_return_or_yield, true);
-                }
-                SimpleStmtContent::AssertStmt(assert_stmt) => {
-                    let (assert_expr, error_expr) = assert_stmt.unpack();
-                    let latest = self.index_non_block_node_full(&assert_expr, ordered, false);
-                    self.references_need_flow_analysis = true;
-                    if let Some(error_expr) = error_expr {
-                        self.index_non_block_node_full(&error_expr, ordered, false);
-                    }
-                    if is_expr_reachable_for_name_binder(self.db_infos.flags, assert_expr)
-                        == Truthiness::False
-                    {
-                        self.db_infos.points.set(
-                            assert_stmt.index(),
-                            Point::new_specific(Specific::AssertAlwaysFails, Locality::File),
-                        );
-                        return (
-                            self.merge_latest_return_or_yield(latest_return_or_yield, latest),
-                            true,
-                        );
-                    }
-                    latest
-                }
-                SimpleStmtContent::ImportFrom(import) => {
-                    match import.unpack_targets() {
-                        ImportFromTargets::Star(star) => {
-                            self.db_infos.star_imports.borrow_mut().push(StarImport {
-                                scope: self.scope_node,
-                                import_from_node: import.index(),
-                                star_node: star.index(),
-                            })
-                        }
-                        ImportFromTargets::Iterator(targets) => {
-                            for target in targets {
-                                self.index_non_block_node(&target, ordered);
-                            }
-                        }
-                    };
-                    0
-                }
-                SimpleStmtContent::RaiseStmt(raise_stmt) => {
-                    return (self.index_non_block_node(&raise_stmt, ordered), true)
-                }
-                SimpleStmtContent::BreakStmt(_) | SimpleStmtContent::ContinueStmt(_) => {
-                    return (latest_return_or_yield, true)
-                }
-                SimpleStmtContent::DelStmt(del_stmt) => {
-                    self.references_need_flow_analysis = true;
-                    self.index_non_block_node(&del_stmt, ordered)
-                }
-                _ => self.index_non_block_node(&simple_stmt, ordered),
-            };
-            latest_return_or_yield = self.merge_latest_return_or_yield(latest_return_or_yield, r);
-        }
-        (latest_return_or_yield, false)
     }
 
     fn index_for_stmt(&mut self, for_stmt: ForStmt<'db>, ordered: bool) -> NodeIndex {

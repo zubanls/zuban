@@ -6,9 +6,9 @@ use std::{
 };
 
 use parsa_python_cst::{
-    Argument, Arguments as CSTArguments, AssignmentContent, AsyncStmtContent, BlockContent,
-    ClassDef, Decoratee, ExpressionContent, ExpressionPart, PrimaryContent, SimpleStmtContent,
-    SimpleStmts, StmtContent, StmtLikeContent, StmtLikeIterator, StmtOrError, Target, TypeLike,
+    Argument, Arguments as CSTArguments, AssignmentContent, AsyncStmtContent, ClassDef, Decoratee,
+    ExpressionContent, ExpressionPart, PrimaryContent, StmtLikeContent, StmtLikeIterator, Target,
+    TypeLike,
 };
 
 use super::{overload::OverloadResult, Callable, Instance, InstanceLookupOptions, LookupDetails};
