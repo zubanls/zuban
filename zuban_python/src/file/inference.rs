@@ -88,28 +88,6 @@ macro_rules! check_point_cache_with {
 }
 
 impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
-    fn cache_simple_stmts_name(&self, simple_stmts: SimpleStmts, name_def: NodeRef) {
-        debug!(
-            "Infer simple_stmt (#{}, {}:{}): {:?}",
-            self.file.byte_to_line_column(simple_stmts.start()).0,
-            self.file.file_index(),
-            simple_stmts.index(),
-            simple_stmts.short_debug().trim()
-        );
-        name_def.set_point(Point::new_calculating());
-        for simple_stmt in simple_stmts.iter() {
-            match simple_stmt.unpack() {
-                SimpleStmtContent::Assignment(assignment) => {
-                    self.cache_assignment(assignment);
-                }
-                SimpleStmtContent::ImportName(import_name) => {
-                    self.cache_import_name(import_name);
-                }
-                _ => unreachable!("Found {simple_stmt:?}"),
-            }
-        }
-    }
-
     fn cache_stmt_name(&self, stmt: Stmt, name_def: NodeRef) {
         debug!(
             "Infer stmt (#{}, {}:{}): {:?}",
@@ -3336,8 +3314,11 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
 
         if !self.file.points.get(stmt_like.index()).calculated() {
             match stmt_like {
-                DefiningStmt::SimpleStmts(s) => {
-                    self.cache_simple_stmts_name(s, NodeRef::new(self.file, name_def.index()));
+                DefiningStmt::Assignment(assignment) => {
+                    self.cache_assignment(assignment);
+                }
+                DefiningStmt::ImportName(import_name) => {
+                    self.cache_import_name(import_name);
                 }
                 DefiningStmt::ImportFromAsName(as_name) => {
                     self.cache_import_from_only_particular_name_def(as_name)

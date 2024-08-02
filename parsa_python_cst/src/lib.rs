@@ -587,7 +587,8 @@ impl<'db> Int<'db> {
 
 #[derive(Debug)]
 pub enum DefiningStmt<'db> {
-    SimpleStmts(SimpleStmts<'db>),
+    Assignment(Assignment<'db>),
+    ImportName(ImportName<'db>),
     ImportFromAsName(ImportFromAsName<'db>),
     Stmt(Stmt<'db>),
     Lambda(Lambda<'db>),
@@ -600,7 +601,8 @@ impl<'db> DefiningStmt<'db> {
     #[inline]
     pub fn index(&self) -> NodeIndex {
         match self {
-            DefiningStmt::SimpleStmts(n) => n.index(),
+            DefiningStmt::Assignment(n) => n.index(),
+            DefiningStmt::ImportName(n) => n.index(),
             DefiningStmt::ImportFromAsName(imp) => imp.index(),
             DefiningStmt::Stmt(n) => n.index(),
             DefiningStmt::Lambda(n) => n.index(),
@@ -1436,19 +1438,6 @@ impl<'db> Stmt<'db> {
             StmtContent::Newline
         }
     }
-
-    pub fn maybe_single_string_literal(&self) -> Option<StringLiteral<'db>> {
-        self.maybe_single_simple_stmt()?
-            .maybe_simple_expression()?
-            .maybe_single_string_literal()
-    }
-
-    pub fn maybe_single_simple_stmt(&self) -> Option<SimpleStmt<'db>> {
-        match self.unpack() {
-            StmtContent::SimpleStmts(simple) => simple.maybe_single_simple_stmt(),
-            _ => None,
-        }
-    }
 }
 
 #[derive(Debug)]
@@ -1725,18 +1714,6 @@ pub enum AsyncStmtContent<'db> {
     FunctionDef(FunctionDef<'db>),
     ForStmt(ForStmt<'db>),
     WithStmt(WithStmt<'db>),
-}
-
-impl<'db> SimpleStmts<'db> {
-    pub fn iter(&self) -> SimpleStmtIterator<'db> {
-        SimpleStmtIterator(self.node.iter_children().step_by(2))
-    }
-
-    pub fn maybe_single_simple_stmt(&self) -> Option<SimpleStmt<'db>> {
-        let mut iterator = self.iter();
-        let first_stmt = iterator.next().unwrap();
-        iterator.next().is_none().then_some(first_stmt)
-    }
 }
 
 pub struct SimpleStmtIterator<'db>(StepBy<SiblingIterator<'db>>);
@@ -3630,8 +3607,9 @@ impl<'db> NameDefinition<'db> {
         let stmt_node = self
             .node
             .parent_until(&[
-                Nonterminal(simple_stmts),
+                Nonterminal(assignment),
                 Nonterminal(import_from_as_name),
+                Nonterminal(import_name),
                 Nonterminal(stmt),
                 Nonterminal(lambda),
                 Nonterminal(comprehension),
@@ -3639,10 +3617,12 @@ impl<'db> NameDefinition<'db> {
                 Nonterminal(walrus),
             ])
             .expect("There should always be a stmt");
-        if stmt_node.is_type(Nonterminal(simple_stmts)) {
-            DefiningStmt::SimpleStmts(SimpleStmts::new(stmt_node))
+        if stmt_node.is_type(Nonterminal(assignment)) {
+            DefiningStmt::Assignment(Assignment::new(stmt_node))
         } else if stmt_node.is_type(Nonterminal(import_from_as_name)) {
             DefiningStmt::ImportFromAsName(ImportFromAsName::new(stmt_node))
+        } else if stmt_node.is_type(Nonterminal(import_name)) {
+            DefiningStmt::ImportName(ImportName::new(stmt_node))
         } else if stmt_node.is_type(Nonterminal(stmt)) {
             DefiningStmt::Stmt(Stmt::new(stmt_node))
         } else if stmt_node.is_type(Nonterminal(lambda)) {
