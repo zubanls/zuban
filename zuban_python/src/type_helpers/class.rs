@@ -8,7 +8,7 @@ use std::{
 use parsa_python_cst::{
     Argument, Arguments as CSTArguments, AssignmentContent, AsyncStmtContent, BlockContent,
     ClassDef, Decoratee, ExpressionContent, ExpressionPart, PrimaryContent, SimpleStmtContent,
-    SimpleStmts, StmtContent, StmtOrError, Target, TypeLike,
+    SimpleStmts, StmtContent, StmtLikeContent, StmtLikeIterator, StmtOrError, Target, TypeLike,
 };
 
 use super::{overload::OverloadResult, Callable, Instance, InstanceLookupOptions, LookupDetails};
@@ -2007,33 +2007,13 @@ impl<'db: 'a, 'a> Class<'a> {
         }
         debug!("Start TypedDict members calculation for {:?}", self.name());
         let file = self.node_ref.file;
-        match self.node().block().unpack() {
-            BlockContent::Indented(stmts) => {
-                for stmt in stmts {
-                    let StmtOrError::Stmt(stmt) = stmt else {
-                        continue;
-                    };
-                    match stmt.unpack() {
-                        StmtContent::SimpleStmts(simple) => find_stmt_typed_dict_types(
-                            i_s,
-                            file,
-                            &mut typed_dict_members,
-                            simple,
-                            typed_dict_definition.total,
-                        ),
-                        _ => NodeRef::new(file, stmt.index())
-                            .add_issue(i_s, IssueKind::TypedDictInvalidMember),
-                    }
-                }
-            }
-            BlockContent::OneLine(simple) => find_stmt_typed_dict_types(
-                i_s,
-                file,
-                &mut typed_dict_members,
-                simple,
-                typed_dict_definition.total,
-            ),
-        }
+        find_stmt_typed_dict_types(
+            i_s,
+            file,
+            &mut typed_dict_members,
+            self.node().block().iter_stmt_likes(),
+            typed_dict_definition.total,
+        );
         debug!("End TypedDict members calculation for {:?}", self.name());
         typed_dict.late_initialization_of_members(typed_dict_members.into_boxed_slice());
         loop {
@@ -2993,12 +2973,12 @@ fn find_stmt_typed_dict_types(
     i_s: &InferenceState,
     file: &PythonFile,
     vec: &mut TypedDictMemberGatherer,
-    simple_stmts: SimpleStmts,
+    stmt_likes: StmtLikeIterator,
     total: bool,
 ) {
-    for simple in simple_stmts.iter() {
-        match simple.unpack() {
-            SimpleStmtContent::Assignment(assignment) => match assignment.unpack() {
+    for stmt_like in stmt_likes {
+        match stmt_like {
+            StmtLikeContent::Assignment(assignment) => match assignment.unpack() {
                 AssignmentContent::WithAnnotation(Target::Name(name_def), annot, right_side) => {
                     if right_side.is_some() {
                         NodeRef::new(file, assignment.index())
@@ -3039,7 +3019,10 @@ fn find_stmt_typed_dict_types(
                 _ => NodeRef::new(file, assignment.index())
                     .add_issue(i_s, IssueKind::TypedDictInvalidMember),
             },
-            _ => (),
+            StmtLikeContent::Error(_)
+            | StmtLikeContent::PassStmt(_)
+            | StmtLikeContent::StarExpressions(_) => (),
+            s => NodeRef::new(file, s.index()).add_issue(i_s, IssueKind::TypedDictInvalidMember),
         }
     }
 }
