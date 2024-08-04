@@ -487,70 +487,71 @@ impl FlowAnalysis {
         self.accumulating_types
             .set(self.accumulating_types.get() - 1);
     }
-}
 
-fn merge_and(i_s: &InferenceState, mut x: Frame, y: Frame) -> Frame {
-    if x.unreachable {
-        // TODO shouldn't we still merge here?
-        return x;
-    }
-    if y.unreachable {
-        return y;
-    }
-    'outer: for y_entry in y.entries {
-        for x_entry in &mut x.entries {
-            if x_entry.key.equals(i_s.db, &y_entry.key) {
-                if let Some(t) = x_entry.type_.common_sub_type(i_s, &y_entry.type_) {
-                    x_entry.type_ = t
-                } else {
-                    x_entry.type_ = Type::Never(NeverCause::Other);
-                    x.unreachable = true;
+    fn merge_and(&self, i_s: &InferenceState, mut x: Frame, y: Frame) -> Frame {
+        if x.unreachable {
+            // TODO shouldn't we still merge here?
+            return x;
+        }
+        if y.unreachable {
+            return y;
+        }
+        'outer: for y_entry in y.entries {
+            for x_entry in &mut x.entries {
+                if x_entry.key.equals(i_s.db, &y_entry.key) {
+                    if let Some(t) = x_entry.type_.common_sub_type(i_s, &y_entry.type_) {
+                        x_entry.type_ = t
+                    } else {
+                        x_entry.type_ = Type::Never(NeverCause::Other);
+                        x.unreachable = true;
+                    }
+                    continue 'outer;
                 }
-                continue 'outer;
+            }
+            x.entries.push(y_entry)
+        }
+        x
+    }
+
+    fn merge_or(&self, i_s: &InferenceState, x: Frame, y: Frame) -> Frame {
+        if x.unreachable {
+            return y;
+        }
+        if y.unreachable {
+            return x;
+        }
+        let mut new_entries = vec![];
+        for mut x_entry in x.entries {
+            for y_entry in &y.entries {
+                // Only when both sides narrow the same type we actually have learned anything about
+                // the expression.
+                if x_entry.key.equals(i_s.db, &y_entry.key) {
+                    x_entry.union(i_s, y_entry);
+                    new_entries.push(x_entry);
+                    break;
+                }
             }
         }
-        x.entries.push(y_entry)
+        Frame::new(new_entries)
     }
-    x
-}
 
-fn merge_or(i_s: &InferenceState, x: Frame, y: Frame) -> Frame {
-    if x.unreachable {
-        return y;
-    }
-    if y.unreachable {
-        return x;
-    }
-    let mut new_entries = vec![];
-    for mut x_entry in x.entries {
-        for y_entry in &y.entries {
-            // Only when both sides narrow the same type we actually have learned anything about
-            // the expression.
-            if x_entry.key.equals(i_s.db, &y_entry.key) {
-                x_entry.union(i_s, y_entry);
-                new_entries.push(x_entry);
-                break;
+    fn merge_conjunction(
+        &self,
+        i_s: &InferenceState,
+        old: Option<FramesWithParentUnions>,
+        new: FramesWithParentUnions,
+    ) -> FramesWithParentUnions {
+        if let Some(old) = old {
+            let mut parent_unions = old.parent_unions;
+            parent_unions.extend(new.parent_unions);
+            FramesWithParentUnions {
+                truthy: self.merge_and(i_s, old.truthy, new.truthy),
+                falsey: self.merge_or(i_s, old.falsey, new.falsey),
+                parent_unions,
             }
+        } else {
+            new
         }
-    }
-    Frame::new(new_entries)
-}
-
-fn merge_conjunction(
-    i_s: &InferenceState,
-    old: Option<FramesWithParentUnions>,
-    new: FramesWithParentUnions,
-) -> FramesWithParentUnions {
-    if let Some(old) = old {
-        let mut parent_unions = old.parent_unions;
-        parent_unions.extend(new.parent_unions);
-        FramesWithParentUnions {
-            truthy: merge_and(i_s, old.truthy, new.truthy),
-            falsey: merge_or(i_s, old.falsey, new.falsey),
-            parent_unions,
-        }
-    } else {
-        new
     }
 }
 
@@ -1329,47 +1330,47 @@ impl Inference<'_, '_, '_> {
         func: Option<&Function>,
         except_bodies: usize,
     ) -> (Frame, Frame) {
-        let mut try_frame_for_except = Frame::default();
-        let mut try_frame = None;
-        let mut after_ok = Frame::new_unreachable();
-        let mut after_exception = Frame::new_unreachable();
-        let mut nth_except_body = 0;
-        for b in try_stmt.iter_blocks() {
-            let mut check_block = |except_expr: Option<ExceptExpression>, block, is_star| {
-                let mut name_def = None;
-                let except_type = if let Some(except_expr) = except_expr {
-                    let expr;
-                    (expr, name_def) = except_expr.unpack();
-                    let inf = self.infer_expression(expr);
-                    let inf_t = inf.as_cow_type(self.i_s);
-                    if let Some(name_def) = name_def {
-                        let instantiated = match is_star {
-                            false => instantiate_except(self.i_s, &inf_t),
-                            true => instantiate_except_star(self.i_s, &inf_t),
-                        };
-                        let name_index = name_def.name_index();
-                        let first = first_defined_name(self.file, name_index);
-                        if first == name_index {
-                            Inferred::from_type(instantiated).maybe_save_redirect(
-                                self.i_s,
-                                self.file,
-                                name_def.index(),
-                                false,
-                            );
-                        } else {
-                            self.assign_type_for_node_index(
-                                PointLink::new(self.file_index, first),
-                                instantiated,
-                                false,
-                            )
+        FLOW_ANALYSIS.with(|fa| {
+            let mut try_frame_for_except = Frame::default();
+            let mut try_frame = None;
+            let mut after_ok = Frame::new_unreachable();
+            let mut after_exception = Frame::new_unreachable();
+            let mut nth_except_body = 0;
+            for b in try_stmt.iter_blocks() {
+                let mut check_block = |except_expr: Option<ExceptExpression>, block, is_star| {
+                    let mut name_def = None;
+                    let except_type = if let Some(except_expr) = except_expr {
+                        let expr;
+                        (expr, name_def) = except_expr.unpack();
+                        let inf = self.infer_expression(expr);
+                        let inf_t = inf.as_cow_type(self.i_s);
+                        if let Some(name_def) = name_def {
+                            let instantiated = match is_star {
+                                false => instantiate_except(self.i_s, &inf_t),
+                                true => instantiate_except_star(self.i_s, &inf_t),
+                            };
+                            let name_index = name_def.name_index();
+                            let first = first_defined_name(self.file, name_index);
+                            if first == name_index {
+                                Inferred::from_type(instantiated).maybe_save_redirect(
+                                    self.i_s,
+                                    self.file,
+                                    name_def.index(),
+                                    false,
+                                );
+                            } else {
+                                self.assign_type_for_node_index(
+                                    PointLink::new(self.file_index, first),
+                                    instantiated,
+                                    false,
+                                )
+                            }
                         }
-                    }
-                    Some(except_type(self.i_s, &inf_t, true))
-                } else {
-                    None
-                };
-                nth_except_body += 1;
-                FLOW_ANALYSIS.with(|fa| {
+                        Some(except_type(self.i_s, &inf_t, true))
+                    } else {
+                        None
+                    };
+                    nth_except_body += 1;
                     let mut exception_frame = if nth_except_body == except_bodies {
                         std::mem::take(&mut try_frame_for_except)
                     } else {
@@ -1379,54 +1380,53 @@ impl Inference<'_, '_, '_> {
                         self.calc_block_diagnostics(block, class, func)
                     });
                     let new_after = std::mem::take(&mut after_exception);
-                    after_exception = merge_or(self.i_s, exception_frame, new_after);
-                });
-                if let Some(name_def) = name_def {
-                    self.delete_name(name_def)
-                }
-                except_type
-            };
-            match b {
-                TryBlockType::Try(block) => {
-                    FLOW_ANALYSIS.with(|fa| {
+                    after_exception = fa.merge_or(self.i_s, exception_frame, new_after);
+                    if let Some(name_def) = name_def {
+                        self.delete_name(name_def)
+                    }
+                    except_type
+                };
+                match b {
+                    TryBlockType::Try(block) => {
                         try_frame_for_except = fa.with_new_try_frame(|| {
                             try_frame = Some(fa.with_frame(Frame::default(), || {
                                 self.calc_block_diagnostics(block, class, func)
                             }))
                         })
-                    });
-                }
-                TryBlockType::Except(b) => {
-                    let (except_expr, block) = b.unpack();
-                    let except_type = check_block(except_expr, block, false);
-                    if !matches!(
-                        except_type,
-                        None | Some(ExceptType::ContainsOnlyBaseExceptions)
-                    ) {
-                        self.add_issue(
-                            except_expr.unwrap().index(),
-                            IssueKind::BaseExceptionExpected,
-                        );
                     }
-                }
-                TryBlockType::ExceptStar(except_star) => {
-                    let (except_expr, block) = except_star.unpack();
-                    let except_type = check_block(Some(except_expr), block, true);
-                    match except_type {
-                        None | Some(ExceptType::ContainsOnlyBaseExceptions) => (),
-                        Some(ExceptType::HasExceptionGroup) => {
+                    TryBlockType::Except(b) => {
+                        let (except_expr, block) = b.unpack();
+                        let except_type = check_block(except_expr, block, false);
+                        if !matches!(
+                            except_type,
+                            None | Some(ExceptType::ContainsOnlyBaseExceptions)
+                        ) {
                             self.add_issue(
-                                except_expr.index(),
-                                IssueKind::ExceptStarIsNotAllowedToBeAnExceptionGroup,
+                                except_expr.unwrap().index(),
+                                IssueKind::BaseExceptionExpected,
                             );
                         }
-                        Some(ExceptType::Invalid) => {
-                            self.add_issue(except_expr.index(), IssueKind::BaseExceptionExpected);
+                    }
+                    TryBlockType::ExceptStar(except_star) => {
+                        let (except_expr, block) = except_star.unpack();
+                        let except_type = check_block(Some(except_expr), block, true);
+                        match except_type {
+                            None | Some(ExceptType::ContainsOnlyBaseExceptions) => (),
+                            Some(ExceptType::HasExceptionGroup) => {
+                                self.add_issue(
+                                    except_expr.index(),
+                                    IssueKind::ExceptStarIsNotAllowedToBeAnExceptionGroup,
+                                );
+                            }
+                            Some(ExceptType::Invalid) => {
+                                self.add_issue(
+                                    except_expr.index(),
+                                    IssueKind::BaseExceptionExpected,
+                                );
+                            }
                         }
                     }
-                }
-                TryBlockType::Else(b) => {
-                    FLOW_ANALYSIS.with(|fa| {
+                    TryBlockType::Else(b) => {
                         let try_frame = try_frame.take().unwrap();
                         let else_frame = if try_frame.unreachable {
                             Frame::new_unreachable()
@@ -1435,7 +1435,7 @@ impl Inference<'_, '_, '_> {
                         };
                         fa.with_frame(try_frame, || {
                             let new_after = std::mem::take(&mut after_ok);
-                            after_ok = merge_or(
+                            after_ok = fa.merge_or(
                                 self.i_s,
                                 new_after,
                                 fa.with_frame(else_frame, || {
@@ -1443,15 +1443,15 @@ impl Inference<'_, '_, '_> {
                                 }),
                             );
                         });
-                    });
+                    }
+                    TryBlockType::Finally(b) => (),
                 }
-                TryBlockType::Finally(b) => (),
             }
-        }
-        if let Some(try_frame) = try_frame {
-            after_ok = merge_or(self.i_s, try_frame, after_ok);
-        }
-        (after_ok, after_exception)
+            if let Some(try_frame) = try_frame {
+                after_ok = fa.merge_or(self.i_s, try_frame, after_ok);
+            }
+            (after_ok, after_exception)
+        })
     }
 
     fn check_conjunction(
@@ -1783,7 +1783,8 @@ impl Inference<'_, '_, '_> {
             ExpressionPart::Conjunction(and) => {
                 let (inf, left, right) = self.check_conjunction(and);
 
-                return Ok((inf, merge_conjunction(self.i_s, Some(left), right)));
+                return FLOW_ANALYSIS
+                    .with(|fa| Ok((inf, fa.merge_conjunction(self.i_s, Some(left), right))));
             }
             ExpressionPart::Disjunction(or) => {
                 let (inf, left_frames, right_frames) = self.check_disjunction(or);
@@ -1791,11 +1792,11 @@ impl Inference<'_, '_, '_> {
                 parent_unions.extend(right_frames.parent_unions);
                 return Ok((
                     inf,
-                    FramesWithParentUnions {
-                        truthy: merge_or(self.i_s, left_frames.truthy, right_frames.truthy),
-                        falsey: merge_and(self.i_s, left_frames.falsey, right_frames.falsey),
+                    FLOW_ANALYSIS.with(|fa| FramesWithParentUnions {
+                        truthy: fa.merge_or(self.i_s, left_frames.truthy, right_frames.truthy),
+                        falsey: fa.merge_and(self.i_s, left_frames.falsey, right_frames.falsey),
                         parent_unions,
-                    },
+                    }),
                 ));
             }
             ExpressionPart::Inversion(inv) => {
@@ -1854,105 +1855,111 @@ impl Inference<'_, '_, '_> {
     }
 
     fn find_guards_in_comparisons(&self, comps: Comparisons) -> Option<FramesWithParentUnions> {
-        let mut frames: Option<FramesWithParentUnions> = None;
-        let mut iterator = comps.iter().peekable();
-        let mut left_infos = self.comparison_part_infos(iterator.peek().unwrap().left());
-        while let Some(comparison) = iterator.next() {
-            let mut invert = false;
-            let right = comparison.right();
-            let mut right_infos = self.comparison_part_infos(right);
-            let new = match comparison {
-                ComparisonContent::Equals(..) => {
-                    let mut eq_chain = vec![];
-                    // `foo == bar == None` needs special handling
-                    while let Some(ComparisonContent::Equals(_, _, r)) = iterator.peek() {
+        FLOW_ANALYSIS.with(|fa| {
+            let mut frames: Option<FramesWithParentUnions> = None;
+            let mut iterator = comps.iter().peekable();
+            let mut left_infos = self.comparison_part_infos(iterator.peek().unwrap().left());
+            while let Some(comparison) = iterator.next() {
+                let mut invert = false;
+                let right = comparison.right();
+                let mut right_infos = self.comparison_part_infos(right);
+                let new = match comparison {
+                    ComparisonContent::Equals(..) => {
+                        let mut eq_chain = vec![];
+                        // `foo == bar == None` needs special handling
+                        while let Some(ComparisonContent::Equals(_, _, r)) = iterator.peek() {
+                            if eq_chain.is_empty() {
+                                eq_chain.push(left_infos.clone());
+                                eq_chain.push(right_infos.clone());
+                            }
+                            eq_chain.push(self.comparison_part_infos(*r));
+                            iterator.next();
+                        }
                         if eq_chain.is_empty() {
-                            eq_chain.push(left_infos.clone());
-                            eq_chain.push(right_infos.clone());
+                            find_comparison_guards(self.i_s, &left_infos, &right_infos, true)
+                        } else {
+                            let result = find_comparison_chain_guards(self.i_s, &eq_chain, true);
+                            right_infos = eq_chain.into_iter().last().unwrap();
+                            result
                         }
-                        eq_chain.push(self.comparison_part_infos(*r));
-                        iterator.next();
                     }
-                    if eq_chain.is_empty() {
+                    ComparisonContent::NotEquals(..) => {
+                        invert = true;
                         find_comparison_guards(self.i_s, &left_infos, &right_infos, true)
-                    } else {
-                        let result = find_comparison_chain_guards(self.i_s, &eq_chain, true);
-                        right_infos = eq_chain.into_iter().last().unwrap();
-                        result
                     }
-                }
-                ComparisonContent::NotEquals(..) => {
-                    invert = true;
-                    find_comparison_guards(self.i_s, &left_infos, &right_infos, true)
-                }
-                ComparisonContent::Is(..) => {
-                    let mut is_chain = vec![];
-                    // `foo is bar is None` needs special handling
-                    while let Some(ComparisonContent::Is(_, _, r)) = iterator.peek() {
-                        if is_chain.is_empty() {
-                            is_chain.push(left_infos.clone());
-                            is_chain.push(right_infos.clone());
+                    ComparisonContent::Is(..) => {
+                        let mut is_chain = vec![];
+                        // `foo is bar is None` needs special handling
+                        while let Some(ComparisonContent::Is(_, _, r)) = iterator.peek() {
+                            if is_chain.is_empty() {
+                                is_chain.push(left_infos.clone());
+                                is_chain.push(right_infos.clone());
+                            }
+                            is_chain.push(self.comparison_part_infos(*r));
+                            iterator.next();
                         }
-                        is_chain.push(self.comparison_part_infos(*r));
-                        iterator.next();
+                        if is_chain.is_empty() {
+                            find_comparison_guards(self.i_s, &left_infos, &right_infos, false)
+                        } else {
+                            let result = find_comparison_chain_guards(self.i_s, &is_chain, false);
+                            right_infos = is_chain.into_iter().last().unwrap();
+                            result
+                        }
                     }
-                    if is_chain.is_empty() {
+                    ComparisonContent::IsNot(..) => {
+                        invert = true;
                         find_comparison_guards(self.i_s, &left_infos, &right_infos, false)
-                    } else {
-                        let result = find_comparison_chain_guards(self.i_s, &is_chain, false);
-                        right_infos = is_chain.into_iter().last().unwrap();
-                        result
                     }
-                }
-                ComparisonContent::IsNot(..) => {
-                    invert = true;
-                    find_comparison_guards(self.i_s, &left_infos, &right_infos, false)
-                }
-                ComparisonContent::In(left, op, _) | ComparisonContent::NotIn(left, op, _) => {
-                    self.guard_of_in_operator(op, &mut left_infos, &right_infos)
-                }
-                ComparisonContent::Ordering(operation) => {
-                    let mut result = None;
-                    if let Some(ComparisonKey::Len { key, inf }) = &left_infos.key {
-                        result = narrow_len(
-                            self.i_s,
-                            key,
-                            inf,
-                            &left_infos.parent_unions,
-                            &right_infos.inf,
-                            LenNarrowing::from_operand(operation.infos.operand),
-                        );
-                    } else if let Some(ComparisonKey::Len { key, inf }) = &right_infos.key {
-                        result = narrow_len(
-                            self.i_s,
-                            key,
-                            inf,
-                            &right_infos.parent_unions,
-                            &left_infos.inf,
-                            LenNarrowing::from_operand(operation.infos.operand).invert(),
-                        );
+                    ComparisonContent::In(left, op, _) | ComparisonContent::NotIn(left, op, _) => {
+                        self.guard_of_in_operator(op, &mut left_infos, &right_infos)
                     }
+                    ComparisonContent::Ordering(operation) => {
+                        let mut result = None;
+                        if let Some(ComparisonKey::Len { key, inf }) = &left_infos.key {
+                            result = narrow_len(
+                                self.i_s,
+                                key,
+                                inf,
+                                &left_infos.parent_unions,
+                                &right_infos.inf,
+                                LenNarrowing::from_operand(operation.infos.operand),
+                            );
+                        } else if let Some(ComparisonKey::Len { key, inf }) = &right_infos.key {
+                            result = narrow_len(
+                                self.i_s,
+                                key,
+                                inf,
+                                &right_infos.parent_unions,
+                                &left_infos.inf,
+                                LenNarrowing::from_operand(operation.infos.operand).invert(),
+                            );
+                        }
 
-                    if result.is_some() {
-                        result
-                    } else {
-                        self.infer_comparison_part(comparison, left_infos.inf, &right_infos.inf);
-                        left_infos = right_infos;
-                        continue;
+                        if result.is_some() {
+                            result
+                        } else {
+                            self.infer_comparison_part(
+                                comparison,
+                                left_infos.inf,
+                                &right_infos.inf,
+                            );
+                            left_infos = right_infos;
+                            continue;
+                        }
                     }
+                };
+                if let Some(mut new) = new {
+                    if invert {
+                        (new.falsey, new.truthy) = (new.truthy, new.falsey);
+                    }
+                    frames = Some(fa.merge_conjunction(self.i_s, frames, new));
+                } else {
+                    self.infer_comparison_part(comparison, left_infos.inf, &right_infos.inf);
                 }
-            };
-            if let Some(mut new) = new {
-                if invert {
-                    (new.falsey, new.truthy) = (new.truthy, new.falsey);
-                }
-                frames = Some(merge_conjunction(self.i_s, frames, new));
-            } else {
-                self.infer_comparison_part(comparison, left_infos.inf, &right_infos.inf);
+                left_infos = right_infos
             }
-            left_infos = right_infos
-        }
-        frames
+            frames
+        })
     }
 
     fn find_isinstance_or_issubclass_frames(
@@ -2901,24 +2908,26 @@ fn find_comparison_chain_guards(
     chain: &[ComparisonPartInfos],
     is_eq: bool,
 ) -> Option<FramesWithParentUnions> {
-    let mut frames = None;
-    let mut type_of_count = 0;
-    'outer: for (i, part1) in chain.iter().enumerate() {
-        type_of_count += matches!(part1.key, Some(ComparisonKey::TypeOf { .. })) as usize;
-        for (k, part2) in chain.iter().enumerate() {
-            if i == k {
-                continue;
-            }
-            if let Some(new) = check_for_comparison_guard(i_s, part1, &part2.inf, is_eq) {
-                frames = Some(merge_conjunction(i_s, frames, new));
-                continue 'outer;
+    FLOW_ANALYSIS.with(|fa| {
+        let mut frames = None;
+        let mut type_of_count = 0;
+        'outer: for (i, part1) in chain.iter().enumerate() {
+            type_of_count += matches!(part1.key, Some(ComparisonKey::TypeOf { .. })) as usize;
+            for (k, part2) in chain.iter().enumerate() {
+                if i == k {
+                    continue;
+                }
+                if let Some(new) = check_for_comparison_guard(i_s, part1, &part2.inf, is_eq) {
+                    frames = Some(fa.merge_conjunction(i_s, frames, new));
+                    continue 'outer;
+                }
             }
         }
-    }
-    if type_of_count > 0 && type_of_count + 1 != chain.len() {
-        return None;
-    }
-    frames
+        if type_of_count > 0 && type_of_count + 1 != chain.len() {
+            return None;
+        }
+        frames
+    })
 }
 
 fn check_for_comparison_guard(
