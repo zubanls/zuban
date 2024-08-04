@@ -197,10 +197,11 @@ impl Frame {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 struct LoopDetails {
     break_frames: Vec<Frame>,
     continue_frames: Vec<Frame>,
+    loop_frame_index: usize,
 }
 
 #[derive(Debug, Default)]
@@ -432,12 +433,28 @@ impl FlowAnalysis {
     }
 
     fn with_new_loop_frame(&self, frame: Frame, callable: impl FnOnce()) -> (Frame, LoopDetails) {
-        let old = self.loop_details.borrow_mut().replace(Default::default());
+        let old = self.loop_details.borrow_mut().replace(LoopDetails {
+            break_frames: vec![],
+            continue_frames: vec![],
+            loop_frame_index: self.frames.borrow().len(),
+        });
         let after_frame = self.with_frame(frame, || callable());
         let mut loop_details = self.loop_details.borrow_mut();
         let result = loop_details.take().unwrap();
         *loop_details = old;
         (after_frame, result)
+    }
+
+    fn merge_frames_for_index(&self, db: &Database, frame_index: usize) -> Frame {
+        let mut result = Frame::default();
+        for check_frame in self.frames.borrow().iter().skip(frame_index - 1).rev() {
+            for entry in &check_frame.entries {
+                if result.lookup_entry(db, &entry.key).is_none() {
+                    result.entries.push(entry.clone())
+                }
+            }
+        }
+        result
     }
 
     pub fn mark_current_frame_unreachable(&self) {
@@ -1076,22 +1093,28 @@ impl Inference<'_, '_, '_> {
 
     pub fn flow_analysis_for_break_stmt(&self, while_stmt: BreakStmt) {
         FLOW_ANALYSIS.with(|fa| {
-            let loop_details = fa.loop_details.borrow_mut();
-            let Some(loop_details) = loop_details.as_ref() else {
+            let mut loop_details = fa.loop_details.borrow_mut();
+            let Some(loop_details) = loop_details.as_mut() else {
                 self.add_issue(while_stmt.index(), IssueKind::BreakOutsideLoop);
                 return;
             };
+            loop_details
+                .break_frames
+                .push(fa.merge_frames_for_index(self.i_s.db, loop_details.loop_frame_index));
             fa.mark_current_frame_unreachable();
         });
     }
 
     pub fn flow_analysis_for_continue_stmt(&self, while_stmt: ContinueStmt) {
         FLOW_ANALYSIS.with(|fa| {
-            let loop_details = fa.loop_details.borrow_mut();
-            let Some(loop_details) = loop_details.as_ref() else {
+            let mut loop_details = fa.loop_details.borrow_mut();
+            let Some(loop_details) = loop_details.as_mut() else {
                 self.add_issue(while_stmt.index(), IssueKind::ContinueOutsideLoop);
                 return;
             };
+            loop_details
+                .continue_frames
+                .push(fa.merge_frames_for_index(self.i_s.db, loop_details.loop_frame_index));
             fa.mark_current_frame_unreachable();
         });
     }
