@@ -314,6 +314,39 @@ except TypeError:
 reveal_type(x)  # N: Revealed type is "__main__.A"
 reveal_type(y)  # N: Revealed type is "__main__.A"
 
+[case try_walrus_widening]
+class A: ...
+class B: ...
+class C: ...
+a: A | B | C
+b: A | B | C
+c: A | B | C
+d: A | B | C
+a = A()
+b = A()
+c = A()
+d = A()
+
+try:
+    if (a := B()) and bool():
+        pass
+    if bool() and (b := B()):
+        pass
+    if (c := B()):
+        pass
+    (d := B())
+except ValueError:
+    pass
+else:
+    a = A()
+    b = A()
+    c = A()
+    d = A()
+reveal_type(a)  # N: Revealed type is "__main__.A | __main__.B"
+reveal_type(b)  # N: Revealed type is "__main__.A | __main__.B"
+reveal_type(c)  # N: Revealed type is "__main__.A | __main__.B"
+reveal_type(d)  # N: Revealed type is "__main__.A | __main__.B"
+
 [case if_widening_statement1]
 # flags: --warn-unreachable
 class A: ...
