@@ -198,10 +198,16 @@ impl Frame {
 }
 
 #[derive(Debug, Default)]
+struct LoopDetails {
+    break_frames: Vec<Frame>,
+    continue_frames: Vec<Frame>,
+}
+
+#[derive(Debug, Default)]
 pub struct FlowAnalysis {
     frames: RefCell<Vec<Frame>>,
     try_frames: RefCell<Vec<Entries>>,
-    current_break_index: Cell<Option<usize>>,
+    loop_details: RefCell<Option<LoopDetails>>,
     partials_in_module: RefCell<Vec<PointLink>>,
     in_type_checking_only_block: Cell<bool>, // For stuff like if TYPE_CHECKING:
     accumulating_types: Cell<usize>, // Can accumulate nested and thereore use this counter like a stack
@@ -423,6 +429,15 @@ impl FlowAnalysis {
             entries: self.try_frames.borrow_mut().pop().unwrap(),
             ..Frame::default()
         }
+    }
+
+    fn with_new_loop_frame(&self, frame: Frame, callable: impl FnOnce()) -> (Frame, LoopDetails) {
+        let old = self.loop_details.borrow_mut().replace(Default::default());
+        let after_frame = self.with_frame(frame, || callable());
+        let mut loop_details = self.loop_details.borrow_mut();
+        let result = loop_details.take().unwrap();
+        *loop_details = old;
+        (after_frame, result)
     }
 
     pub fn mark_current_frame_unreachable(&self) {
@@ -1043,28 +1058,26 @@ impl Inference<'_, '_, '_> {
             } else {
                 (Frame::default(), Frame::default())
             };
-            let after_while = fa.with_frame(true_frame, || {
-                let old = fa.current_break_index.take();
-                fa.current_break_index.set(Some(0));
+            let (after_frame, loop_details) = fa.with_new_loop_frame(true_frame, || {
                 self.calc_block_diagnostics(block, class, func);
-                fa.current_break_index.set(old);
             });
             let mut after_else = Frame::default();
             if let Some(else_block) = else_block {
-                //let else_frame = merge_or(self.i_s, false_frame, after_while);
+                //let else_frame = merge_or(self.i_s, false_frame, after_frame);
                 let else_frame = false_frame;
                 after_else = fa.with_frame(else_frame, || {
                     self.calc_block_diagnostics(else_block.block(), class, func)
                 });
                 //fa.overwrite_frame(self.i_s.db, after_else);
             }
-            fa.merge_conditional(self.i_s, after_while, after_else);
+            fa.merge_conditional(self.i_s, after_frame, after_else);
         })
     }
 
     pub fn flow_analysis_for_break_stmt(&self, while_stmt: BreakStmt) {
         FLOW_ANALYSIS.with(|fa| {
-            let Some(index) = fa.current_break_index.get() else {
+            let loop_details = fa.loop_details.borrow_mut();
+            let Some(loop_details) = loop_details.as_ref() else {
                 self.add_issue(while_stmt.index(), IssueKind::BreakOutsideLoop);
                 return;
             };
@@ -1074,7 +1087,8 @@ impl Inference<'_, '_, '_> {
 
     pub fn flow_analysis_for_continue_stmt(&self, while_stmt: ContinueStmt) {
         FLOW_ANALYSIS.with(|fa| {
-            let Some(index) = fa.current_break_index.get() else {
+            let loop_details = fa.loop_details.borrow_mut();
+            let Some(loop_details) = loop_details.as_ref() else {
                 self.add_issue(while_stmt.index(), IssueKind::ContinueOutsideLoop);
                 return;
             };
