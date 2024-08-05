@@ -410,8 +410,8 @@ def bar() -> None:
     if y == 1 and (x := B()):
         reveal_type(x)  # N: Revealed type is "__main__.B"
     else:
-        reveal_type(x)  # N: Revealed type is "__main__.B | __main__.A"
-    reveal_type(x)  # N: Revealed type is "__main__.B | __main__.A"
+        reveal_type(x)  # N: Revealed type is "__main__.A | __main__.B"
+    reveal_type(x)  # N: Revealed type is "__main__.A | __main__.B"
 
 [case walrus_in_disjunction]
 class A: ...
@@ -433,7 +433,7 @@ def bar() -> None:
     x: A | B | C
     x = A()
     if y == 1 or (x := B()):
-        reveal_type(x)  # N: Revealed type is "__main__.B | __main__.A"
+        reveal_type(x)  # N: Revealed type is "__main__.A | __main__.B"
     else:
         reveal_type(x)  # N: Revealed type is "__main__.B"
     reveal_type(x)  # N: Revealed type is "__main__.B | __main__.A"

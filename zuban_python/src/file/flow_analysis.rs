@@ -120,8 +120,12 @@ impl Entry {
     }
 
     #[inline]
-    fn union(&mut self, i_s: &InferenceState, other: &Self) {
-        self.type_ = self.type_.simplified_union(i_s, &other.type_);
+    fn union(&mut self, i_s: &InferenceState, other: &Self, invert_type: bool) {
+        if invert_type {
+            self.type_ = other.type_.simplified_union(i_s, &self.type_);
+        } else {
+            self.type_ = self.type_.simplified_union(i_s, &other.type_);
+        }
         self.modifies_ancestors |= other.modifies_ancestors;
         self.deleted |= other.deleted;
         self.widens |= other.widens;
@@ -324,7 +328,7 @@ impl FlowAnalysis {
             let mut add_entry_to_try_frame = |new_entry: &Entry| {
                 for entry in &mut *entries {
                     if entry.key.equals(i_s.db, &new_entry.key) {
-                        entry.union(i_s, new_entry);
+                        entry.union(i_s, new_entry, false);
                         return true;
                     }
                 }
@@ -518,7 +522,7 @@ impl FlowAnalysis {
                 // Only when both sides narrow the same type we actually have learned anything about
                 // the expression.
                 if x_entry.key.equals(i_s.db, &y_entry.key) {
-                    x_entry.union(i_s, y_entry);
+                    x_entry.union(i_s, y_entry, false);
                     new_entries.push(x_entry);
                     continue 'outer;
                 }
@@ -541,7 +545,7 @@ impl FlowAnalysis {
             // where u is known to always be B(), this is why we just assign it in (1).
             if y_entry.modifies_ancestors {
                 if let Some(entry_in_parent) = self.lookup_entry(i_s.db, &y_entry.key) {
-                    y_entry.union(i_s, &entry_in_parent);
+                    y_entry.union(i_s, &entry_in_parent, true);
                     new_entries.push(y_entry);
                 }
             }
@@ -1129,12 +1133,11 @@ impl Inference<'_, '_, '_> {
                 after_frame = fa.merge_or(self.i_s, after_frame, continue_frame);
             }
             if if_expr.is_some() {
-                after_frame = merge_and(self.i_s, after_frame, false_frame);
-            } else {
-                // When we have a for loop we need to merge with the statements before, because the
-                // for loop is not guaranteed to execute.
-                after_frame = fa.merge_or(self.i_s, Frame::default(), after_frame);
+                after_frame = merge_and(self.i_s, after_frame, false_frame.clone());
             }
+            // When we have a loop we need to merge with the statements before, because the
+            // loop is not guaranteed to start.
+            after_frame = fa.merge_or(self.i_s, false_frame, after_frame);
             if let Some(else_block) = else_block {
                 after_frame = fa.with_frame(after_frame, || {
                     self.calc_block_diagnostics(else_block.block(), class, func)
