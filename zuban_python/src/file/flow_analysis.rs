@@ -504,31 +504,6 @@ impl FlowAnalysis {
             .set(self.accumulating_types.get() - 1);
     }
 
-    fn merge_and(&self, i_s: &InferenceState, mut x: Frame, y: Frame) -> Frame {
-        if x.unreachable {
-            // TODO shouldn't we still merge here?
-            return x;
-        }
-        if y.unreachable {
-            return y;
-        }
-        'outer: for y_entry in y.entries {
-            for x_entry in &mut x.entries {
-                if x_entry.key.equals(i_s.db, &y_entry.key) {
-                    if let Some(t) = x_entry.type_.common_sub_type(i_s, &y_entry.type_) {
-                        x_entry.type_ = t
-                    } else {
-                        x_entry.type_ = Type::Never(NeverCause::Other);
-                        x.unreachable = true;
-                    }
-                    continue 'outer;
-                }
-            }
-            x.entries.push(y_entry)
-        }
-        x
-    }
-
     fn merge_or(&self, i_s: &InferenceState, x: Frame, y: Frame) -> Frame {
         if x.unreachable {
             return y;
@@ -573,7 +548,7 @@ impl FlowAnalysis {
             let mut parent_unions = old.parent_unions;
             parent_unions.extend(new.parent_unions);
             FramesWithParentUnions {
-                truthy: self.merge_and(i_s, old.truthy, new.truthy),
+                truthy: merge_and(i_s, old.truthy, new.truthy),
                 falsey: self.merge_or(i_s, old.falsey, new.falsey),
                 parent_unions,
             }
@@ -581,6 +556,31 @@ impl FlowAnalysis {
             new
         }
     }
+}
+
+fn merge_and(i_s: &InferenceState, mut x: Frame, y: Frame) -> Frame {
+    if x.unreachable {
+        // TODO shouldn't we still merge here?
+        return x;
+    }
+    if y.unreachable {
+        return y;
+    }
+    'outer: for y_entry in y.entries {
+        for x_entry in &mut x.entries {
+            if x_entry.key.equals(i_s.db, &y_entry.key) {
+                if let Some(t) = x_entry.type_.common_sub_type(i_s, &y_entry.type_) {
+                    x_entry.type_ = t
+                } else {
+                    x_entry.type_ = Type::Never(NeverCause::Other);
+                    x.unreachable = true;
+                }
+                continue 'outer;
+            }
+        }
+        x.entries.push(y_entry)
+    }
+    x
 }
 
 fn has_explicit_literal(db: &Database, t: &Type) -> bool {
@@ -1830,7 +1830,7 @@ impl Inference<'_, '_, '_> {
                     inf,
                     FLOW_ANALYSIS.with(|fa| FramesWithParentUnions {
                         truthy: fa.merge_or(self.i_s, left_frames.truthy, right_frames.truthy),
-                        falsey: fa.merge_and(self.i_s, left_frames.falsey, right_frames.falsey),
+                        falsey: merge_and(self.i_s, left_frames.falsey, right_frames.falsey),
                         parent_unions,
                     }),
                 ));
