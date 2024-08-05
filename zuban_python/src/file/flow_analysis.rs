@@ -527,6 +527,16 @@ impl FlowAnalysis {
             return x;
         }
         let mut new_entries = vec![];
+
+        let maybe_add_modifying_ancestor = |new_entries: &mut Vec<_>, mut e: Entry| {
+            if e.modifies_ancestors {
+                if let Some(entry_in_parent) = self.lookup_entry(i_s.db, &e.key) {
+                    e.union(i_s, &entry_in_parent);
+                    new_entries.push(e);
+                }
+            }
+        };
+
         'outer: for mut x_entry in x.entries {
             for y_entry in &y.entries {
                 // Only when both sides narrow the same type we actually have learned anything about
@@ -537,12 +547,10 @@ impl FlowAnalysis {
                     continue 'outer;
                 }
             }
-            if x_entry.modifies_ancestors {
-                if let Some(entry) = self.lookup_entry(i_s.db, &x_entry.key) {
-                    x_entry.union(i_s, &entry);
-                    new_entries.push(x_entry);
-                }
-            }
+            maybe_add_modifying_ancestor(&mut new_entries, x_entry)
+        }
+        for y_entry in y.entries {
+            maybe_add_modifying_ancestor(&mut new_entries, y_entry)
         }
         Frame::new(new_entries)
     }
@@ -1666,7 +1674,7 @@ impl Inference<'_, '_, '_> {
                         falsey.add_entry_from_type(self.i_s, key, walrus_falsey);
                     }
                     let truthy = fa.merge_and(self.i_s, truthy, walrus_frame.clone());
-                    let truthy = fa.merge_and(self.i_s, truthy, walrus_frame);
+                    let falsey = fa.merge_or(self.i_s, falsey, walrus_frame);
                     (inf, truthy, falsey)
                 })
             }
