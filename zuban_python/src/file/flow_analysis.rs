@@ -467,7 +467,7 @@ impl FlowAnalysis {
 
     fn merge_frames_for_index(&self, db: &Database, frame_index: usize) -> Frame {
         let mut result = Frame::default();
-        for check_frame in self.frames.borrow().iter().skip(frame_index - 1).rev() {
+        for check_frame in self.frames.borrow().iter().skip(frame_index).rev() {
             for entry in &check_frame.entries {
                 if result.lookup_entry(db, &entry.key).is_none() {
                     result.entries.push(entry.clone())

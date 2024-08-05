@@ -516,3 +516,16 @@ def bar(x: A | B | C) -> None:
             x = C()
             break
     reveal_type(x)  # N: Revealed type is "__main__.B | __main__.C"
+
+[case while_break_widening2]
+class A: ...
+class B: ...
+class C: ...
+
+def foo(x: A | B | C) -> None:
+    x = A()
+    while bool():
+        if bool():
+            break
+        x = B()
+    reveal_type(x)  # N: Revealed type is "__main__.A | __main__.B"
