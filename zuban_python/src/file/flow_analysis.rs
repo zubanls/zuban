@@ -174,6 +174,16 @@ impl Frame {
         self.entries.push(entry)
     }
 
+    fn overwrite_entry(&mut self, db: &Database, entry: Entry) {
+        for old_entry in &mut self.entries {
+            if old_entry.key.equals(db, &entry.key) {
+                *old_entry = entry;
+                return;
+            }
+        }
+        self.entries.push(entry)
+    }
+
     fn add_entry_from_type(&mut self, i_s: &InferenceState, key: FlowKey, type_: Type) {
         self.add_entry(i_s, Entry::new(key, type_))
     }
@@ -528,15 +538,6 @@ impl FlowAnalysis {
         }
         let mut new_entries = vec![];
 
-        let maybe_add_modifying_ancestor = |new_entries: &mut Vec<_>, mut e: Entry| {
-            if e.modifies_ancestors {
-                if let Some(entry_in_parent) = self.lookup_entry(i_s.db, &e.key) {
-                    e.union(i_s, &entry_in_parent);
-                    new_entries.push(e);
-                }
-            }
-        };
-
         'outer: for mut x_entry in x.entries {
             for y_entry in &y.entries {
                 // Only when both sides narrow the same type we actually have learned anything about
@@ -547,10 +548,17 @@ impl FlowAnalysis {
                     continue 'outer;
                 }
             }
-            maybe_add_modifying_ancestor(&mut new_entries, x_entry)
+            if x_entry.modifies_ancestors {
+                new_entries.push(x_entry)
+            }
         }
-        for y_entry in y.entries {
-            maybe_add_modifying_ancestor(&mut new_entries, y_entry)
+        for mut y_entry in y.entries {
+            if y_entry.modifies_ancestors {
+                if let Some(entry_in_parent) = self.lookup_entry(i_s.db, &y_entry.key) {
+                    y_entry.union(i_s, &entry_in_parent);
+                    new_entries.push(y_entry);
+                }
+            }
         }
         Frame::new(new_entries)
     }
@@ -1673,8 +1681,10 @@ impl Inference<'_, '_, '_> {
                         truthy.add_entry_from_type(self.i_s, key.clone(), walrus_truthy);
                         falsey.add_entry_from_type(self.i_s, key, walrus_falsey);
                     }
-                    let truthy = fa.merge_and(self.i_s, truthy, walrus_frame.clone());
-                    let falsey = fa.merge_or(self.i_s, falsey, walrus_frame);
+                    for entry in walrus_frame.entries {
+                        truthy.overwrite_entry(self.i_s.db, entry.clone());
+                        falsey.overwrite_entry(self.i_s.db, entry);
+                    }
                     (inf, truthy, falsey)
                 })
             }

@@ -330,7 +330,6 @@ testUnreachableWhileTrue
 testComplicatedBlocks
 testIsInstanceSubClassMemberHard
 testNoReturnWhile
-testWalrusConditionalTypeCheck
 # nested lambda scopes
 testLambdaInferenceUsesNarrowedTypes
 testNarrowOptionalOutsideLambda
