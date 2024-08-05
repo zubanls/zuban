@@ -1,5 +1,5 @@
 use std::{
-    cell::{Cell, RefCell},
+    cell::{Cell, Ref, RefCell},
     rc::Rc,
 };
 
@@ -215,17 +215,23 @@ pub struct FlowAnalysis {
 }
 
 impl FlowAnalysis {
+    fn lookup_entry(&self, db: &Database, lookup_key: &FlowKey) -> Option<Ref<Entry>> {
+        Ref::filter_map(self.frames.borrow(), |frames| {
+            frames
+                .iter()
+                .rev()
+                .find_map(|frame| frame.lookup_entry(db, &lookup_key))
+        })
+        .ok()
+    }
+
     fn lookup_narrowed_key_and_deleted(
         &self,
         db: &Database,
         lookup_key: FlowKey,
     ) -> Option<(Inferred, bool)> {
-        for frame in self.frames.borrow().iter().rev() {
-            if let Some(entry) = frame.lookup_entry(db, &lookup_key) {
-                return Some((Inferred::from_type(entry.type_.clone()), entry.deleted));
-            }
-        }
-        None
+        self.lookup_entry(db, &lookup_key)
+            .map(|entry| (Inferred::from_type(entry.type_.clone()), entry.deleted))
     }
 
     pub fn in_conditional(&self) -> bool {
@@ -521,14 +527,20 @@ impl FlowAnalysis {
             return x;
         }
         let mut new_entries = vec![];
-        for mut x_entry in x.entries {
+        'outer: for mut x_entry in x.entries {
             for y_entry in &y.entries {
                 // Only when both sides narrow the same type we actually have learned anything about
                 // the expression.
                 if x_entry.key.equals(i_s.db, &y_entry.key) {
                     x_entry.union(i_s, y_entry);
                     new_entries.push(x_entry);
-                    break;
+                    continue 'outer;
+                }
+            }
+            if x_entry.modifies_ancestors {
+                if let Some(entry) = self.lookup_entry(i_s.db, &x_entry.key) {
+                    x_entry.union(i_s, &entry);
+                    new_entries.push(x_entry);
                 }
             }
         }
@@ -1636,21 +1648,27 @@ impl Inference<'_, '_, '_> {
                     } else {
                         self.find_guards_in_expr(expr)
                     };
-                let inf = self.save_walrus(name_def, inf);
-                if let Some((walrus_truthy, walrus_falsey)) =
-                    split_truthy_and_falsey(self.i_s, &inf.as_cow_type(self.i_s))
-                {
-                    debug!(
-                        "Narrowed {} to true: {} and false: {}",
-                        named_expr.as_code(),
-                        walrus_truthy.format_short(self.i_s.db),
-                        walrus_falsey.format_short(self.i_s.db)
-                    );
-                    let key = self.key_from_name_def(name_def);
-                    truthy.add_entry_from_type(self.i_s, key.clone(), walrus_truthy);
-                    falsey.add_entry_from_type(self.i_s, key, walrus_falsey);
-                }
-                (inf, truthy, falsey)
+                FLOW_ANALYSIS.with(|fa| {
+                    let (walrus_frame, inf) = fa.with_frame_and_result(Frame::default(), || {
+                        self.save_walrus(name_def, inf)
+                    });
+                    if let Some((walrus_truthy, walrus_falsey)) =
+                        split_truthy_and_falsey(self.i_s, &inf.as_cow_type(self.i_s))
+                    {
+                        debug!(
+                            "Narrowed {} to true: {} and false: {}",
+                            named_expr.as_code(),
+                            walrus_truthy.format_short(self.i_s.db),
+                            walrus_falsey.format_short(self.i_s.db)
+                        );
+                        let key = self.key_from_name_def(name_def);
+                        truthy.add_entry_from_type(self.i_s, key.clone(), walrus_truthy);
+                        falsey.add_entry_from_type(self.i_s, key, walrus_falsey);
+                    }
+                    let truthy = fa.merge_and(self.i_s, truthy, walrus_frame.clone());
+                    let truthy = fa.merge_and(self.i_s, truthy, walrus_frame);
+                    (inf, truthy, falsey)
+                })
             }
         }
     }

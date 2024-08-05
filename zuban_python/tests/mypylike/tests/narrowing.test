@@ -387,3 +387,27 @@ a = ""
 if a is None:
     raise NotImplementedError; \
         bool()  # E: Statement is unreachable
+
+[case walrus_in_conjunction]
+class A: ...
+class B: ...
+
+y: int
+
+def foo() -> None:
+    x: A | B
+    x = A()
+    if (x := B()) and y == 1:
+        reveal_type(x)  # E: Revealed type is "__main__.B"
+    else:
+        reveal_type(x)  # E: Revealed type is "__main__.A | __main__.B"
+    reveal_type(x)  # E: Revealed type is "__main__.A | __main__.B"
+
+def bar() -> None:
+    x: A | B
+    x = A()
+    if y == 1 and (x := B()):
+        reveal_type(x)  # E: Revealed type is "__main__.B"
+    else:
+        reveal_type(x)  # E: Revealed type is "__main__.A | __main__.B"
+    reveal_type(x)  # E: Revealed type is "__main__.A | __main__.B"
