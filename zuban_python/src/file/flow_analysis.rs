@@ -1528,7 +1528,6 @@ impl Inference<'_, '_, '_> {
                 )
             }
         } else {
-            //if !matches!(is_expr_part_reachable_for_name_binder(&self.flags(), left), Truthiness::False) {
             left_frames.truthy = FLOW_ANALYSIS.with(|fa| {
                 fa.with_frame(left_frames.truthy, || {
                     right_infos = Some(self.find_guards_in_expression_parts(right));
@@ -2293,7 +2292,6 @@ impl Inference<'_, '_, '_> {
                     callable_t.union_in_place(t.clone());
                     other_side.union_in_place(t.clone());
                 } else if let Some(callable_like) = t.maybe_callable(self.i_s) {
-                    //if matches!(callable_like, CallableLike::Callable(c))
                     if !callable_like.is_typed(false) {
                         other_side.union_in_place(t.clone());
                     }
