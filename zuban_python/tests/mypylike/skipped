@@ -311,24 +311,17 @@ testOrCases
 testAndCases
 testFinalWithoutBool
 testFinalWithoutBoolButWithLen
-# finally must be checked twice
-testUnionTryFinally
-testUnionTryFinally5
-testUnionTryFinally6
 # with: add test for with like testUnionTryExcept and check if Mypy does it that way as well
-# while/for
-testModifyLoop
+# while loop
 testModifyLoop2
 testModifyLoop3
 testModifyLoopWhile4
 testModifyLoopFor4
 testModifyNestedLoop
 testModifyLoopLong
-testWhileLinkedList
-testUnreachableWhileTrue
 testComplicatedBlocks
 testIsInstanceSubClassMemberHard
-testNoReturnWhile
+testIsInstanceThreeUnion3
 # nested lambda scopes
 testLambdaInferenceUsesNarrowedTypes
 testNarrowOptionalOutsideLambda
@@ -657,6 +650,12 @@ testWithStmtScopeMultipleAssignment
 testWithStmtScopeAndClass
 testWithStmtScopeAndLambda
 
+# finally must be checked twice
+testUnionTryFinally
+testUnionTryFinally5
+testUnionTryFinally6
+# while must be rechecked if type widens
+testModifyLoop
 # Narrowing len()
 testNarrowingLenTypeVarTupleGreaterThan
 testNarrowingLenBareExpressionTypeVarTuple

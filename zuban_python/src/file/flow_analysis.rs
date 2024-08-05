@@ -1122,22 +1122,22 @@ impl Inference<'_, '_, '_> {
             } else {
                 (Frame::default(), Frame::default())
             };
-            let (after_frame, loop_details) = fa.with_new_loop_frame(true_frame, || {
+            let (mut after_frame, loop_details) = fa.with_new_loop_frame(true_frame, || {
                 self.calc_block_diagnostics(block, class, func);
             });
-            let mut after_else = Frame::default();
+            for continue_frame in loop_details.continue_frames {
+                after_frame = fa.merge_or(self.i_s, after_frame, continue_frame);
+            }
+            after_frame = merge_and(self.i_s, after_frame, false_frame);
             if let Some(else_block) = else_block {
-                //let else_frame = merge_or(self.i_s, false_frame, after_frame);
-                let else_frame = false_frame;
-                after_else = fa.with_frame(else_frame, || {
+                after_frame = fa.with_frame(after_frame, || {
                     self.calc_block_diagnostics(else_block.block(), class, func)
                 });
-                //fa.overwrite_frame(self.i_s.db, after_else);
             }
             for break_frame in loop_details.break_frames {
-                after_else = fa.merge_or(self.i_s, after_else, break_frame);
+                after_frame = fa.merge_or(self.i_s, after_frame, break_frame);
             }
-            fa.merge_conditional(self.i_s, after_frame, after_else);
+            fa.merge_conditional(self.i_s, after_frame, Frame::new_unreachable());
         })
     }
 
