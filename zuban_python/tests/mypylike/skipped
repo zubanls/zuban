@@ -1,5 +1,7 @@
 # Next up
 testTypeVarTupleTypeApplicationOverload
+testSuperWithReadWriteAbstractProperty
+testAssignToBaseClassMethod
 
 # callable matching regression
 testNoCrashOnNestedGenericCallable
@@ -311,8 +313,6 @@ testOrCases
 testAndCases
 testFinalWithoutBool
 testFinalWithoutBoolButWithLen
-# while loop
-testIsInstanceSubClassMemberHard
 # nested lambda scopes
 testLambdaInferenceUsesNarrowedTypes
 testNarrowOptionalOutsideLambda
@@ -651,6 +651,7 @@ testModifyLoopWhile4
 testModifyLoopFor4
 testModifyLoopLong
 testComplicatedBlocks
+testIsInstanceSubClassMemberHard
 # Narrowing len()
 testNarrowingLenTypeVarTupleGreaterThan
 testNarrowingLenBareExpressionTypeVarTuple

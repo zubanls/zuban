@@ -998,6 +998,18 @@ impl Inference<'_, '_, '_> {
         self.assign_type_for_node_index(first_name_link, current_t.clone(), widens)
     }
 
+    pub fn maybe_lookup_narrowed_primary_target(
+        &self,
+        primary_target: PrimaryTarget,
+    ) -> Option<Inferred> {
+        let key = self.key_from_primary_target(primary_target)?;
+        Some(
+            FLOW_ANALYSIS
+                .with(|fa| fa.lookup_narrowed_key_and_deleted(self.i_s.db, key))?
+                .0,
+        )
+    }
+
     pub fn save_narrowed_primary_target(&self, primary_target: PrimaryTarget, t: &Type) {
         if let Some(key) = self.key_from_primary_target(primary_target) {
             self.save_narrowed(key, t.clone(), false)

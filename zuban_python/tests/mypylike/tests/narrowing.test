@@ -589,3 +589,24 @@ def bar(x: A | B | C | D) -> None:
         x = C()
 
     reveal_type(x)  # N: Revealed type is "__main__.C"
+
+[case narrowing_primary_target]
+from typing import Union
+
+class Animal:
+    pass
+
+class Dog(Animal):
+    paws: int | str = 4
+
+class House:
+    pet: Animal | None = None
+
+h = House()
+h.pet = Dog()
+
+if isinstance(h.pet, Dog):
+    if isinstance(h.pet.paws, str):
+        h.pet.paws = 1
+        h.pet.paws + 1
+        h.pet.paws = 1.0  # E: Incompatible types in assignment (expression has type "float", variable has type "int | str")

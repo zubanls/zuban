@@ -2798,6 +2798,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         PrimaryTarget
     );
     fn _infer_primary_target(&self, primary_target: PrimaryTarget) -> Inferred {
+        if let Some(inf) = self.maybe_lookup_narrowed_primary_target(primary_target) {
+            return inf;
+        }
         let first = self.infer_primary_target_or_atom(primary_target.first());
         self.infer_primary_or_primary_t_content(
             &first,
