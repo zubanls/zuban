@@ -529,3 +529,32 @@ def foo(x: A | B | C) -> None:
             break
         x = B()
     reveal_type(x)  # N: Revealed type is "__main__.A | __main__.B"
+
+[case try_except_multi_widening]
+class A: ...
+class B: ...
+class C: ...
+
+def foo(x: A | B | C) -> None:
+    x = A()
+    try:
+        pass
+    except ValueError:
+        x = B()
+    except TypeError:
+        pass
+    else:
+        return
+    reveal_type(x)  # N: Revealed type is "__main__.A | __main__.B"
+
+def bar(x: A | B | C) -> None:
+    x = A()
+    try:
+        pass
+    except ValueError:
+        pass
+    except TypeError:
+        x = B()
+    else:
+        return
+    reveal_type(x)  # N: Revealed type is "__main__.A | __main__.B"

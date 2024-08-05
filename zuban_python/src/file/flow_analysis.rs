@@ -508,7 +508,13 @@ impl FlowAnalysis {
             .set(self.accumulating_types.get() - 1);
     }
 
-    fn merge_or(&self, i_s: &InferenceState, x: Frame, mut y: Frame) -> Frame {
+    fn merge_or(
+        &self,
+        i_s: &InferenceState,
+        x: Frame,
+        mut y: Frame,
+        second_frame_optional: bool,
+    ) -> Frame {
         if x.unreachable {
             return y;
         }
@@ -517,6 +523,12 @@ impl FlowAnalysis {
         }
         let mut new_entries = vec![];
 
+        let add_entry = |new_entries: &mut Vec<_>, mut e: Entry| {
+            if let Some(entry_in_parent) = self.lookup_entry(i_s.db, &e.key) {
+                e.union(i_s, &entry_in_parent, true);
+                new_entries.push(e);
+            }
+        };
         'outer: for mut x_entry in x.entries {
             for y_entry in &mut y.entries {
                 // Only when both sides narrow the same type we actually have learned anything about
@@ -531,10 +543,14 @@ impl FlowAnalysis {
             }
             // (1)
             if x_entry.modifies_ancestors {
-                new_entries.push(x_entry)
+                if second_frame_optional {
+                    new_entries.push(x_entry)
+                } else {
+                    add_entry(&mut new_entries, x_entry)
+                }
             }
         }
-        for mut y_entry in y.entries {
+        for y_entry in y.entries {
             // This works a bit different for the y frame (as opposed to the x frame). In case of
             //
             //     v == 1 and (u := B())
@@ -546,10 +562,7 @@ impl FlowAnalysis {
             //
             // where u is known to always be B(), this is why we just assign it in (1).
             if y_entry.modifies_ancestors {
-                if let Some(entry_in_parent) = self.lookup_entry(i_s.db, &y_entry.key) {
-                    y_entry.union(i_s, &entry_in_parent, true);
-                    new_entries.push(y_entry);
-                }
+                add_entry(&mut new_entries, y_entry)
             }
         }
         Frame::new(new_entries)
@@ -566,7 +579,7 @@ impl FlowAnalysis {
             parent_unions.extend(new.parent_unions);
             FramesWithParentUnions {
                 truthy: merge_and(i_s, old.truthy, new.truthy),
-                falsey: self.merge_or(i_s, old.falsey, new.falsey),
+                falsey: self.merge_or(i_s, old.falsey, new.falsey, true),
                 parent_unions,
             }
         } else {
@@ -1132,21 +1145,21 @@ impl Inference<'_, '_, '_> {
                 self.calc_block_diagnostics(block, class, func);
             });
             for continue_frame in loop_details.continue_frames {
-                after_frame = fa.merge_or(self.i_s, after_frame, continue_frame);
+                after_frame = fa.merge_or(self.i_s, after_frame, continue_frame, false);
             }
             if if_expr.is_some() {
                 after_frame = merge_and(self.i_s, after_frame, false_frame.clone());
             }
             // When we have a loop we need to merge with the statements before, because the
             // loop is not guaranteed to start.
-            after_frame = fa.merge_or(self.i_s, false_frame, after_frame);
+            after_frame = fa.merge_or(self.i_s, false_frame, after_frame, false);
             if let Some(else_block) = else_block {
                 after_frame = fa.with_frame(after_frame, || {
                     self.calc_block_diagnostics(else_block.block(), class, func)
                 });
             }
             for break_frame in loop_details.break_frames {
-                after_frame = fa.merge_or(self.i_s, after_frame, break_frame);
+                after_frame = fa.merge_or(self.i_s, after_frame, break_frame, false);
             }
             fa.merge_conditional(self.i_s, after_frame, Frame::new_unreachable());
         })
@@ -1440,7 +1453,7 @@ impl Inference<'_, '_, '_> {
                         self.calc_block_diagnostics(block, class, func)
                     });
                     let new_after = std::mem::take(&mut after_exception);
-                    after_exception = fa.merge_or(self.i_s, exception_frame, new_after);
+                    after_exception = fa.merge_or(self.i_s, exception_frame, new_after, false);
                     if let Some(name_def) = name_def {
                         self.delete_name(name_def)
                     }
@@ -1501,6 +1514,7 @@ impl Inference<'_, '_, '_> {
                                 fa.with_frame(else_frame, || {
                                     self.calc_block_diagnostics(b.block(), class, func)
                                 }),
+                                false,
                             );
                         });
                     }
@@ -1508,7 +1522,7 @@ impl Inference<'_, '_, '_> {
                 }
             }
             if let Some(try_frame) = try_frame {
-                after_ok = fa.merge_or(self.i_s, try_frame, after_ok);
+                after_ok = fa.merge_or(self.i_s, try_frame, after_ok, false);
             }
             (after_ok, after_exception)
         })
@@ -1860,7 +1874,12 @@ impl Inference<'_, '_, '_> {
                 return Ok((
                     inf,
                     FLOW_ANALYSIS.with(|fa| FramesWithParentUnions {
-                        truthy: fa.merge_or(self.i_s, left_frames.truthy, right_frames.truthy),
+                        truthy: fa.merge_or(
+                            self.i_s,
+                            left_frames.truthy,
+                            right_frames.truthy,
+                            true,
+                        ),
                         falsey: merge_and(self.i_s, left_frames.falsey, right_frames.falsey),
                         parent_unions,
                     }),
