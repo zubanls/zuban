@@ -437,3 +437,55 @@ def bar() -> None:
     else:
         reveal_type(x)  # N: Revealed type is "__main__.B"
     reveal_type(x)  # N: Revealed type is "__main__.B | __main__.A"
+
+[case walrus_isinstance_conjunction_joining]
+class A: ...
+class B: ...
+class BB(B): ...
+class C: ...
+
+y: int
+
+def foo() -> None:
+    x: A | B | C
+    x = A()
+    if (x := B()) and isinstance(x, BB):
+        reveal_type(x)  # N: Revealed type is "__main__.BB"
+    else:
+        reveal_type(x)  # N: Revealed type is "__main__.B"
+    reveal_type(x)  # N: Revealed type is "__main__.B"
+
+def bar() -> None:
+    x: A | B | C
+    x = A()
+    if isinstance(x, BB) and (x := B()):
+        reveal_type(x)  # N: Revealed type is "__main__.B"
+    else:
+        reveal_type(x)  # N: Revealed type is "__main__.A | __main__.B"
+    reveal_type(x)  # N: Revealed type is "__main__.B | __main__.A"
+
+[case walrus_isinstance_disjunction_joining]
+class A: ...
+class B: ...
+class BB(B): ...
+class C: ...
+
+y: int
+
+def foo() -> None:
+    x: A | B | C
+    x = A()
+    if (x := B()) or isinstance(x, BB):
+        reveal_type(x)  # N: Revealed type is "__main__.B"
+    else:
+        reveal_type(x)  # N: Revealed type is "__main__.B"
+    reveal_type(x)  # N: Revealed type is "__main__.B"
+
+def bar() -> None:
+    x: A | B | C
+    x = A()
+    if isinstance(x, BB) or (x := B()):
+        reveal_type(x)  # N: Revealed type is "__main__.B"
+    else:
+        reveal_type(x)  # N: Revealed type is "__main__.B"
+    reveal_type(x)  # N: Revealed type is "__main__.B | __main__.A"

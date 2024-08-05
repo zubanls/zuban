@@ -580,7 +580,14 @@ fn merge_and(i_s: &InferenceState, mut x: Frame, y: Frame) -> Frame {
     'outer: for y_entry in y.entries {
         for x_entry in &mut x.entries {
             if x_entry.key.equals(i_s.db, &y_entry.key) {
-                if let Some(t) = x_entry.type_.common_sub_type(i_s, &y_entry.type_) {
+                if y_entry.modifies_ancestors {
+                    // This is the case in walrus assignments with something like
+                    //
+                    //     isinstance(x, BSubclass) and (x := B())
+                    //
+                    // This means that the walrus overwrites the previous narrowing again.
+                    *x_entry = y_entry;
+                } else if let Some(t) = x_entry.type_.common_sub_type(i_s, &y_entry.type_) {
                     x_entry.type_ = t
                 } else {
                     x_entry.type_ = Type::Never(NeverCause::Other);
