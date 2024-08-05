@@ -1134,6 +1134,9 @@ impl Inference<'_, '_, '_> {
                 });
                 //fa.overwrite_frame(self.i_s.db, after_else);
             }
+            for break_frame in loop_details.break_frames {
+                after_else = fa.merge_or(self.i_s, after_else, break_frame);
+            }
             fa.merge_conditional(self.i_s, after_frame, after_else);
         })
     }

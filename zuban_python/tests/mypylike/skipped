@@ -324,7 +324,6 @@ testModifyLoopWhile4
 testModifyLoopFor4
 testModifyNestedLoop
 testModifyLoopLong
-testWhileExitCondition2
 testWhileLinkedList
 testUnreachableWhileTrue
 testComplicatedBlocks
