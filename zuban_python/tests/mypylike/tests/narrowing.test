@@ -462,7 +462,7 @@ def bar() -> None:
         reveal_type(x)  # N: Revealed type is "__main__.B"
     else:
         reveal_type(x)  # N: Revealed type is "__main__.A | __main__.B"
-    reveal_type(x)  # N: Revealed type is "__main__.B | __main__.A"
+    reveal_type(x)  # N: Revealed type is "__main__.A | __main__.B"
 
 [case walrus_isinstance_disjunction_joining]
 class A: ...
@@ -488,4 +488,4 @@ def bar() -> None:
         reveal_type(x)  # N: Revealed type is "__main__.B"
     else:
         reveal_type(x)  # N: Revealed type is "__main__.B"
-    reveal_type(x)  # N: Revealed type is "__main__.B | __main__.A"
+    reveal_type(x)  # N: Revealed type is "__main__.B"

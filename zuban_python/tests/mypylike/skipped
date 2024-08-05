@@ -313,8 +313,6 @@ testFinalWithoutBool
 testFinalWithoutBoolButWithLen
 # with: add test for with like testUnionTryExcept and check if Mypy does it that way as well
 # while loop
-testModifyLoopWhile4
-testModifyLoopFor4
 testIsInstanceSubClassMemberHard
 # nested lambda scopes
 testLambdaInferenceUsesNarrowedTypes
@@ -650,6 +648,8 @@ testUnionTryFinally5
 testUnionTryFinally6
 # while must be rechecked if type widens
 testModifyLoop
+testModifyLoopWhile4
+testModifyLoopFor4
 testModifyLoopLong
 testComplicatedBlocks
 # Narrowing len()

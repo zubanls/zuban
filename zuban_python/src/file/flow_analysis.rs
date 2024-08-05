@@ -508,7 +508,7 @@ impl FlowAnalysis {
             .set(self.accumulating_types.get() - 1);
     }
 
-    fn merge_or(&self, i_s: &InferenceState, x: Frame, y: Frame) -> Frame {
+    fn merge_or(&self, i_s: &InferenceState, x: Frame, mut y: Frame) -> Frame {
         if x.unreachable {
             return y;
         }
@@ -518,12 +518,14 @@ impl FlowAnalysis {
         let mut new_entries = vec![];
 
         'outer: for mut x_entry in x.entries {
-            for y_entry in &y.entries {
+            for y_entry in &mut y.entries {
                 // Only when both sides narrow the same type we actually have learned anything about
                 // the expression.
                 if x_entry.key.equals(i_s.db, &y_entry.key) {
                     x_entry.union(i_s, y_entry, false);
                     new_entries.push(x_entry);
+                    // Make sure we avoid adding another entry below.
+                    y_entry.modifies_ancestors = false;
                     continue 'outer;
                 }
             }
