@@ -523,11 +523,22 @@ impl FlowAnalysis {
                     continue 'outer;
                 }
             }
+            // (1)
             if x_entry.modifies_ancestors {
                 new_entries.push(x_entry)
             }
         }
         for mut y_entry in y.entries {
+            // This works a bit different for the y frame (as opposed to the x frame). In case of
+            //
+            //     v == 1 and (u := B())
+            //
+            // u is assigned only if the left frame is true, which is not known in merge_or. This
+            // is opposed to
+            //
+            //     (u := B()) and v == 1
+            //
+            // where u is known to always be B(), this is why we just assign it in (1).
             if y_entry.modifies_ancestors {
                 if let Some(entry_in_parent) = self.lookup_entry(i_s.db, &y_entry.key) {
                     y_entry.union(i_s, &entry_in_parent);
