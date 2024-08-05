@@ -1,7 +1,5 @@
 # Next up
 testTypeVarTupleTypeApplicationOverload
-testSuperWithReadWriteAbstractProperty
-testAssignToBaseClassMethod
 
 # callable matching regression
 testNoCrashOnNestedGenericCallable

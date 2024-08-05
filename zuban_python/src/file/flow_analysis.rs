@@ -2899,7 +2899,8 @@ fn name_definition_link(db: &Database, file: &PythonFile, name: Name) -> Option<
             first_defined_name(file, def),
         ))
     } else {
-        todo!()
+        // This happens for example with builtins
+        None
     }
 }
 
