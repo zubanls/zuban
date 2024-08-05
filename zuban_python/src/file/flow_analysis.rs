@@ -1128,7 +1128,13 @@ impl Inference<'_, '_, '_> {
             for continue_frame in loop_details.continue_frames {
                 after_frame = fa.merge_or(self.i_s, after_frame, continue_frame);
             }
-            after_frame = merge_and(self.i_s, after_frame, false_frame);
+            if if_expr.is_some() {
+                after_frame = merge_and(self.i_s, after_frame, false_frame);
+            } else {
+                // When we have a for loop we need to merge with the statements before, because the
+                // for loop is not guaranteed to execute.
+                after_frame = fa.merge_or(self.i_s, Frame::default(), after_frame);
+            }
             if let Some(else_block) = else_block {
                 after_frame = fa.with_frame(after_frame, || {
                     self.calc_block_diagnostics(else_block.block(), class, func)
