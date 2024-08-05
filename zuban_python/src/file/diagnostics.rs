@@ -525,11 +525,9 @@ impl<'db> Inference<'db, '_, '_> {
         }
         if exceptions_maybe_suppressed {
             // We create a new frame to swallow unreachability.
-            FLOW_ANALYSIS.with(|fa| {
-                fa.with_new_frame_and_return_unreachable(|| {
-                    self.calc_block_diagnostics(block, class, func);
-                })
-            });
+            self.flow_analysis_for_with_stmt_when_exceptions_maybe_suppressed(self.i_s.db, || {
+                self.calc_block_diagnostics(block, class, func);
+            })
         } else {
             self.calc_block_diagnostics(block, class, func);
         }

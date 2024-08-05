@@ -311,7 +311,6 @@ testOrCases
 testAndCases
 testFinalWithoutBool
 testFinalWithoutBoolButWithLen
-# with: add test for with like testUnionTryExcept and check if Mypy does it that way as well
 # while loop
 testIsInstanceSubClassMemberHard
 # nested lambda scopes

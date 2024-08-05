@@ -1528,6 +1528,18 @@ impl Inference<'_, '_, '_> {
         })
     }
 
+    pub fn flow_analysis_for_with_stmt_when_exceptions_maybe_suppressed(
+        &self,
+        db: &Database,
+        callable: impl FnOnce(),
+    ) {
+        FLOW_ANALYSIS.with(|fa| {
+            let try_frame_for_except = fa.with_new_try_frame(callable);
+            fa.overwrite_entries(db, try_frame_for_except.entries);
+            fa.frames.borrow_mut().last_mut().unwrap().unreachable = false;
+        })
+    }
+
     fn check_conjunction(
         &self,
         and: Conjunction,

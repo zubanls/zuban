@@ -558,3 +558,34 @@ def bar(x: A | B | C) -> None:
     else:
         return
     reveal_type(x)  # N: Revealed type is "__main__.A | __main__.B"
+
+[case with_widening]
+class A: ...
+class B: ...
+class C: ...
+class D: ...
+
+class Suppresses1:
+    def __enter__(self) -> int: ...
+    def __exit__(self, exctype: object, excvalue: object, traceback: object) -> bool: ...
+
+class DoesNotSuppress:
+    def __enter__(self) -> int: ...
+    def __exit__(self, exctype: object, excvalue: object, traceback: object) -> None: ...
+
+
+def foo(x: A | B | C | D) -> None:
+    x = A()
+    with Suppresses1():
+        x = B()
+        x = C()
+
+    reveal_type(x)  # N: Revealed type is "__main__.A | __main__.B | __main__.C"
+
+def bar(x: A | B | C | D) -> None:
+    x = A()
+    with DoesNotSuppress():
+        x = B()
+        x = C()
+
+    reveal_type(x)  # N: Revealed type is "__main__.C"
