@@ -489,3 +489,30 @@ def bar() -> None:
     else:
         reveal_type(x)  # N: Revealed type is "__main__.B"
     reveal_type(x)  # N: Revealed type is "__main__.B"
+
+[case multi_while_break_widening]
+class A: ...
+class B: ...
+class C: ...
+
+def foo(x: A | B | C) -> None:
+    x = A()
+    while bool():
+        if bool():
+            x = B()
+            break
+        if bool():
+            x = C()
+            break
+    reveal_type(x)  # N: Revealed type is "__main__.A | __main__.B | __main__.C"
+
+def bar(x: A | B | C) -> None:
+    x = A()
+    while True:
+        if bool():
+            x = B()
+            break
+        if bool():
+            x = C()
+            break
+    reveal_type(x)  # N: Revealed type is "__main__.B | __main__.C"
