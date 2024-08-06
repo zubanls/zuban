@@ -540,9 +540,19 @@ impl FlowAnalysis {
                     continue 'outer;
                 }
             }
-            // (1)
             if x_entry.modifies_ancestors {
                 if second_frame_optional {
+                    // This works a bit different for the y frame (as opposed to the x frame). In
+                    // case of
+                    //
+                    //     v == 1 and (u := B())
+                    //
+                    // u is assigned only if the left frame is true (2), which is not known in
+                    // merge_or. This is opposed to
+                    //
+                    //     (u := B()) and v == 1
+                    //
+                    // where u is known to always be B(), this is why we just assign it here.
                     new_entries.push(x_entry)
                 } else {
                     add_entry(&mut new_entries, x_entry)
@@ -550,17 +560,8 @@ impl FlowAnalysis {
             }
         }
         for y_entry in y.entries {
-            // This works a bit different for the y frame (as opposed to the x frame). In case of
-            //
-            //     v == 1 and (u := B())
-            //
-            // u is assigned only if the left frame is true, which is not known in merge_or. This
-            // is opposed to
-            //
-            //     (u := B()) and v == 1
-            //
-            // where u is known to always be B(), this is why we just assign it in (1).
             if y_entry.modifies_ancestors {
+                // (2)
                 add_entry(&mut new_entries, y_entry)
             }
         }
