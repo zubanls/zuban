@@ -610,3 +610,41 @@ if isinstance(h.pet, Dog):
         h.pet.paws = 1
         h.pet.paws + 1
         h.pet.paws = 1.0  # E: Incompatible types in assignment (expression has type "float", variable has type "int | str")
+
+[case try_invalidation]
+class Animal:
+    pass
+
+class Dog(Animal):
+    paws: int | str = 4
+
+def foo(x: Animal):
+    x = Dog()
+    x.paws = 4
+    try:
+        x.paws = 3
+    except:
+        x = Animal()
+    x.paws  # E: "Animal" has no attribute "paws"
+
+def bar(x: Animal):
+    x = Dog()
+    x.paws = 4
+    try:
+        pass
+    except:
+        x.paws = 3
+    else:
+        x = Animal()
+    x.paws  # E: "Animal" has no attribute "paws"
+
+def baz(x: Animal):
+    x = Dog()
+    x.paws = 4
+    try:
+        pass
+    except TypeError:
+        x.paws = 3
+    except:
+        x = Animal()
+    x.paws  # E: "Animal" has no attribute "paws"

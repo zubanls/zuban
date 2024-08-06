@@ -523,10 +523,9 @@ impl FlowAnalysis {
         }
         let mut new_entries = vec![];
 
-        let add_entry = |new_entries: &mut Vec<_>, mut e: Entry| {
-            if let Some(entry_in_parent) = self.lookup_entry(i_s.db, &e.key) {
-                e.union(i_s, &entry_in_parent, true);
-                new_entries.push(e);
+        let add_entry = |new_entries: &mut Vec<_>, e: Entry| {
+            if let Some(new) = self.key_has_maybe_wider_assignment(i_s, &e) {
+                new_entries.push(new);
             }
         };
         'outer: for mut x_entry in x.entries {
