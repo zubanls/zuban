@@ -178,10 +178,6 @@ impl Frame {
         self.entries.push(entry)
     }
 
-    fn invalidate_child_entries(&mut self, db: &Database, key: &FlowKey) {
-        self.entries.retain(|entry| !entry.key.is_child_of(db, key))
-    }
-
     fn overwrite_entry(&mut self, db: &Database, entry: Entry) {
         for old_entry in &mut self.entries {
             if old_entry.key.equals(db, &entry.key) {
@@ -213,6 +209,10 @@ impl Frame {
             type_ => Self::new(vec![Entry::new(key, type_)]),
         }
     }
+}
+
+fn invalidate_child_entries(entries: &mut Vec<Entry>, db: &Database, key: &FlowKey) {
+    entries.retain(|entry| !entry.key.is_child_of(db, key))
 }
 
 #[derive(Debug)]
@@ -335,6 +335,14 @@ impl FlowAnalysis {
 
     fn overwrite_entry(&self, i_s: &InferenceState, new_entry: Entry) {
         for entries in self.try_frames.borrow_mut().iter_mut() {
+            invalidate_child_entries(entries, i_s.db, &new_entry.key);
+            if entries
+                .iter()
+                .any(|e| new_entry.key.is_child_of(i_s.db, &e.key))
+            {
+                continue;
+            }
+
             let mut add_entry_to_try_frame = |new_entry: &Entry| {
                 for entry in &mut *entries {
                     if entry.key.equals(i_s.db, &new_entry.key) {
@@ -344,7 +352,7 @@ impl FlowAnalysis {
                 }
                 false
             };
-            if let Some(new) = self.key_has_maybe_wider_assignment(i_s, &new_entry) {
+            if let Some(new) = self.merge_key_with_ancestor_assignment(i_s, &new_entry) {
                 // If we have a key that narrows in our ancestors, we either add it to an existing
                 // one or push a new one.
                 if !add_entry_to_try_frame(&new) {
@@ -353,12 +361,14 @@ impl FlowAnalysis {
             } else {
                 // If we have no key that narrows in our ancestors, we try to merge with the same
                 // key that currently exists within this try frame.
-                add_entry_to_try_frame(&new_entry);
+                if !add_entry_to_try_frame(&new_entry) {
+                    //entries.push(new_entry.clone())
+                }
             }
         }
 
         let mut top_frame = self.top_frame();
-        top_frame.invalidate_child_entries(i_s.db, &new_entry.key);
+        invalidate_child_entries(&mut top_frame.entries, i_s.db, &new_entry.key);
         let entries = &mut top_frame.entries;
         for entry in &mut *entries {
             if entry.key.equals(i_s.db, &new_entry.key) {
@@ -374,18 +384,36 @@ impl FlowAnalysis {
         entries.push(new_entry)
     }
 
+    fn merge_key_with_ancestor_assignment(
+        &self,
+        i_s: &InferenceState,
+        search_for: &Entry,
+    ) -> Option<Entry> {
+        self.search_key_and_merge(i_s, search_for, true)
+    }
+
     fn key_has_maybe_wider_assignment(
         &self,
         i_s: &InferenceState,
         search_for: &Entry,
     ) -> Option<Entry> {
+        self.search_key_and_merge(i_s, search_for, false)
+    }
+
+    fn search_key_and_merge(
+        &self,
+        i_s: &InferenceState,
+        search_for: &Entry,
+        ignore_widen_check: bool,
+    ) -> Option<Entry> {
         self.frames.borrow().iter().rev().find_map(|frame| {
             frame.entries.iter().find_map(|e| {
                 if e.key.equals(i_s.db, &search_for.key)
-                    && !e
-                        .type_
-                        .is_simple_super_type_of(i_s, &search_for.type_)
-                        .bool()
+                    && (ignore_widen_check
+                        || !e
+                            .type_
+                            .is_simple_super_type_of(i_s, &search_for.type_)
+                            .bool())
                 {
                     return Some(e.union_of_refs(i_s, search_for));
                 }
@@ -402,6 +430,11 @@ impl FlowAnalysis {
 
     fn overwrite_entries(&self, db: &Database, new_entries: Entries) {
         let mut top_frame = self.top_frame();
+
+        for entry in &new_entries {
+            invalidate_child_entries(&mut top_frame.entries, db, &entry.key);
+        }
+
         let entries = &mut top_frame.entries;
         'outer: for new_entry in new_entries {
             for entry in &mut *entries {
@@ -1024,7 +1057,6 @@ impl Inference<'_, '_, '_> {
 
     fn save_narrowed(&self, key: FlowKey, type_: Type, widens: bool) {
         FLOW_ANALYSIS.with(|fa| {
-            fa.top_frame().invalidate_child_entries(self.i_s.db, &key);
             fa.overwrite_entry(
                 self.i_s,
                 Entry {
@@ -1548,9 +1580,12 @@ impl Inference<'_, '_, '_> {
         callable: impl FnOnce(),
     ) {
         FLOW_ANALYSIS.with(|fa| {
-            let try_frame_for_except = fa.with_new_try_frame(callable);
+            let try_frame_for_except = fa.with_new_try_frame(|| {
+                // Create a new frame that is then thrown away. This makes sense if we consider
+                // that the end of the with statement might never be reached.
+                fa.with_new_frame_and_return_unreachable(|| callable());
+            });
             fa.overwrite_entries(db, try_frame_for_except.entries);
-            fa.top_frame().unreachable = false;
         })
     }
 

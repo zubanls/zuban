@@ -698,3 +698,89 @@ def bar(x: Animal):
     else:
         x.paws = 3
     x.paws  # E: Trying to read deleted variable "x"  # E: Item "None" of "Any | None" has no attribute "paws"
+
+[case try_invalidation2]
+class Animal:
+    pass
+
+class Dog(Animal):
+    paws: int | str | bytes = 4
+
+def foo(x: Animal):
+    x = Dog()
+    x.paws = ""
+    try:
+        x.paws = 3
+        # Error can occur between these statements
+        x = Dog()
+    except:
+        reveal_type(x.paws)  # N: Revealed type is "str | int | bytes"
+
+def bar(x: Animal):
+    x = Dog()
+    x.paws = ""
+    try:
+        x.paws = 3
+        # Error can occur between these statements
+        x = Dog()
+        return
+    except:
+        reveal_type(x.paws)  # N: Revealed type is "str | int | bytes"
+
+def baz(x: Animal):
+    x = Dog()
+    x.paws = ""
+    try:
+        x = Dog()
+        # Error can occur between these statements
+        x.paws = 3
+    except:
+        reveal_type(x.paws)  # N: Revealed type is "str | int | bytes"
+
+
+[case with_invalidation]
+class Animal:
+    pass
+
+class Dog(Animal):
+    paws: int | str | bytes = 4
+
+class Suppresses:
+    def __enter__(self) -> int: ...
+    def __exit__(self, exctype: object, excvalue: object, traceback: object) -> bool: ...
+
+class DoesNotSuppress:
+    def __enter__(self) -> int: ...
+    def __exit__(self, exctype: object, excvalue: object, traceback: object) -> None: ...
+
+def foo(x: Animal):
+    x = Dog()
+    x.paws = ""
+    with DoesNotSuppress():
+        x = Dog()
+        x.paws = 3
+    reveal_type(x.paws)  # N: Revealed type is "int"
+
+def bar(x: Animal):
+    x = Dog()
+    x.paws = ""
+    with Suppresses():
+        x = Dog()
+        # Error can occur between these statements
+        x.paws = 3
+    reveal_type(x.paws)  # N: Revealed type is "int | str | bytes"
+
+def baz(x: Animal):
+    x = Dog()
+    x.paws = ""
+    with Suppresses():
+        x.paws = 3
+        x = Dog()
+    reveal_type(x.paws)  # N: Revealed type is "int | str | bytes"
+
+def bla(x: Animal):
+    x = Dog()
+    x.paws = ""
+    with Suppresses():
+        x.paws = 3
+    reveal_type(x.paws)  # N: Revealed type is "str | int"
