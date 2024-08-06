@@ -648,3 +648,53 @@ def baz(x: Animal):
     except:
         x = Animal()
     x.paws  # E: "Animal" has no attribute "paws"
+
+[case if_invalidation]
+class Animal:
+    pass
+
+class Dog(Animal):
+    paws: int | str = 4
+
+def foo(x: Animal):
+    x = Dog()
+    x.paws = ""
+    if bool():
+        x.paws = 3
+    else:
+        x = Animal()
+    x.paws  # E: "Animal" has no attribute "paws"
+
+def bar(x: Animal):
+    x = Dog()
+    x.paws = ""
+    if bool():
+        x = Animal()
+    else:
+        x.paws = 3
+    x.paws  # E: "Animal" has no attribute "paws"
+
+[case del_invalidation]
+class Animal:
+    pass
+
+class Dog(Animal):
+    paws: int | str = 4
+
+def foo(x: Animal):
+    x = Dog()
+    x.paws = ""
+    if bool():
+        del x
+    else:
+        x.paws = 3
+    x.paws  # E: Trying to read deleted variable "x"  # E: Item "None" of "Any | None" has no attribute "paws"
+
+def bar(x: Animal):
+    x = Dog()
+    x.paws = ""
+    if bool():
+        del x
+    else:
+        x.paws = 3
+    x.paws  # E: Trying to read deleted variable "x"  # E: Item "None" of "Any | None" has no attribute "paws"

@@ -289,7 +289,6 @@ testNarrowingEqualityDisabledForCustomEquality
 assign_bool_to_false_true_literal
 testBoolInTuplesRegression
 
-try_invalidation
 # aug assignments can widen types
 testAugmentedAssignmentIntFloat
 # any overwrites of None

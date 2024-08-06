@@ -178,6 +178,10 @@ impl Frame {
         self.entries.push(entry)
     }
 
+    fn invalidate_child_entries(&mut self, db: &Database, key: &FlowKey) {
+        self.entries.retain(|entry| !entry.key.is_child_of(db, key))
+    }
+
     fn overwrite_entry(&mut self, db: &Database, entry: Entry) {
         for old_entry in &mut self.entries {
             if old_entry.key.equals(db, &entry.key) {
@@ -354,6 +358,7 @@ impl FlowAnalysis {
         }
 
         let mut top_frame = self.top_frame();
+        top_frame.invalidate_child_entries(i_s.db, &new_entry.key);
         let entries = &mut top_frame.entries;
         for entry in &mut *entries {
             if entry.key.equals(i_s.db, &new_entry.key) {
@@ -412,12 +417,6 @@ impl FlowAnalysis {
     fn overwrite_frame(&self, db: &Database, new_frame: Frame) {
         self.overwrite_entries(db, new_frame.entries);
         self.top_frame().unreachable |= new_frame.unreachable;
-    }
-
-    fn invalidate_child_entries_in_last_frame(&self, db: &Database, key: &FlowKey) {
-        self.top_frame()
-            .entries
-            .retain(|entry| !entry.key.is_child_of(db, key))
     }
 
     pub fn with_new_frame_and_return_unreachable(&self, callable: impl FnOnce()) -> bool {
@@ -1025,7 +1024,7 @@ impl Inference<'_, '_, '_> {
 
     fn save_narrowed(&self, key: FlowKey, type_: Type, widens: bool) {
         FLOW_ANALYSIS.with(|fa| {
-            fa.invalidate_child_entries_in_last_frame(self.i_s.db, &key);
+            fa.top_frame().invalidate_child_entries(self.i_s.db, &key);
             fa.overwrite_entry(
                 self.i_s,
                 Entry {
