@@ -1,5 +1,5 @@
 use std::{
-    cell::{Cell, Ref, RefCell},
+    cell::{Cell, Ref, RefCell, RefMut},
     rc::Rc,
 };
 
@@ -256,9 +256,15 @@ impl FlowAnalysis {
         self.frames.borrow().last().unwrap().unreachable
     }
 
+    #[inline]
+    fn top_frame(&self) -> RefMut<Frame> {
+        RefMut::map(self.frames.borrow_mut(), |frames| {
+            frames.last_mut().unwrap()
+        })
+    }
+
     pub fn report_unreachable_if_not_reported_before(&self, callback: impl FnOnce()) {
-        let mut frames = self.frames.borrow_mut();
-        let top_frame = frames.last_mut().unwrap();
+        let mut top_frame = self.top_frame();
         if !top_frame.reported_unreachable {
             top_frame.reported_unreachable = true;
             callback()
@@ -347,8 +353,8 @@ impl FlowAnalysis {
             }
         }
 
-        let mut frames = self.frames.borrow_mut();
-        let entries = &mut frames.last_mut().unwrap().entries;
+        let mut top_frame = self.top_frame();
+        let entries = &mut top_frame.entries;
         for entry in &mut *entries {
             if entry.key.equals(i_s.db, &new_entry.key) {
                 if self.accumulating_types.get() > 0 {
@@ -384,14 +390,14 @@ impl FlowAnalysis {
     }
 
     fn remove_key_if_modifies_ancestors(&self, i_s: &InferenceState, key: &FlowKey) {
-        let mut frames = self.frames.borrow_mut();
-        let entries = &mut frames.last_mut().unwrap().entries;
-        entries.retain(|entry| !entry.modifies_ancestors || !entry.key.equals(i_s.db, key))
+        self.top_frame()
+            .entries
+            .retain(|entry| !entry.modifies_ancestors || !entry.key.equals(i_s.db, key))
     }
 
     fn overwrite_entries(&self, db: &Database, new_entries: Entries) {
-        let mut frames = self.frames.borrow_mut();
-        let entries = &mut frames.last_mut().unwrap().entries;
+        let mut top_frame = self.top_frame();
+        let entries = &mut top_frame.entries;
         'outer: for new_entry in new_entries {
             for entry in &mut *entries {
                 if entry.key.equals(db, &new_entry.key) {
@@ -405,14 +411,11 @@ impl FlowAnalysis {
 
     fn overwrite_frame(&self, db: &Database, new_frame: Frame) {
         self.overwrite_entries(db, new_frame.entries);
-        self.frames.borrow_mut().last_mut().unwrap().unreachable |= new_frame.unreachable;
+        self.top_frame().unreachable |= new_frame.unreachable;
     }
 
     fn invalidate_child_entries_in_last_frame(&self, db: &Database, key: &FlowKey) {
-        self.frames
-            .borrow_mut()
-            .last_mut()
-            .unwrap()
+        self.top_frame()
             .entries
             .retain(|entry| !entry.key.is_child_of(db, key))
     }
@@ -478,7 +481,7 @@ impl FlowAnalysis {
     }
 
     pub fn mark_current_frame_unreachable(&self) {
-        self.frames.borrow_mut().last_mut().unwrap().unreachable = true
+        self.top_frame().unreachable = true
     }
 
     pub fn add_partial(&self, defined_at: PointLink) {
@@ -1397,13 +1400,13 @@ impl Inference<'_, '_, '_> {
             let old_unreachable = fa.is_unreachable();
             // TODO this if is wrong and should not be here. Please remove once we recheck finally
             if old_unreachable {
-                fa.frames.borrow_mut().last_mut().unwrap().unreachable = false;
+                fa.top_frame().unreachable = false;
             }
             if let Some(finally_block) = finally_block {
                 self.calc_block_diagnostics(finally_block.block(), class, func)
             }
             if old_unreachable {
-                fa.frames.borrow_mut().last_mut().unwrap().unreachable = old_unreachable;
+                fa.top_frame().unreachable = old_unreachable;
             }
         })
     }
@@ -1548,7 +1551,7 @@ impl Inference<'_, '_, '_> {
         FLOW_ANALYSIS.with(|fa| {
             let try_frame_for_except = fa.with_new_try_frame(callable);
             fa.overwrite_entries(db, try_frame_for_except.entries);
-            fa.frames.borrow_mut().last_mut().unwrap().unreachable = false;
+            fa.top_frame().unreachable = false;
         })
     }
 

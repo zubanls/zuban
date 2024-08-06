@@ -620,7 +620,7 @@ class Dog(Animal):
 
 def foo(x: Animal):
     x = Dog()
-    x.paws = 4
+    x.paws = ""
     try:
         x.paws = 3
     except:
@@ -629,7 +629,7 @@ def foo(x: Animal):
 
 def bar(x: Animal):
     x = Dog()
-    x.paws = 4
+    x.paws = ""
     try:
         pass
     except:
@@ -640,7 +640,7 @@ def bar(x: Animal):
 
 def baz(x: Animal):
     x = Dog()
-    x.paws = 4
+    x.paws = ""
     try:
         pass
     except TypeError:
