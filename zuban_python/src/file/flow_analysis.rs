@@ -268,22 +268,16 @@ pub struct FlowAnalysis {
 }
 
 impl FlowAnalysis {
-    fn lookup_entry(&self, db: &Database, lookup_key: &FlowKey) -> Option<Ref<Entry>> {
-        Ref::filter_map(self.frames.borrow(), |frames| {
-            frames
-                .iter()
-                .rev()
-                .find_map(|frame| frame.lookup_entry(db, &lookup_key))
-        })
-        .ok()
-    }
-
     fn lookup_narrowed_key_and_deleted(
         &self,
         db: &Database,
         lookup_key: FlowKey,
     ) -> Option<(Inferred, bool)> {
-        let entry = self.lookup_entry(db, &lookup_key)?;
+        let frames = self.frames.borrow();
+        let entry = frames
+            .iter()
+            .rev()
+            .find_map(|frame| frame.lookup_entry(db, &lookup_key))?;
         Some((
             Inferred::from_type(entry.type_.as_ref()?.clone()),
             entry.deleted,
