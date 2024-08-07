@@ -366,6 +366,7 @@ impl FlowAnalysis {
     fn overwrite_entry(&self, i_s: &InferenceState, new_entry: Entry) {
         for entries in self.try_frames.borrow_mut().iter_mut() {
             invalidate_child_entries(entries, i_s.db, &new_entry.key);
+            // We don't want to add entries if they are already overwritten in the same frame.
             if entries
                 .iter()
                 .any(|e| new_entry.key.is_child_of(i_s.db, &e.key))
@@ -391,9 +392,7 @@ impl FlowAnalysis {
             } else {
                 // If we have no key that narrows in our ancestors, we try to merge with the same
                 // key that currently exists within this try frame.
-                if !add_entry_to_try_frame(&new_entry) {
-                    //entries.push(new_entry.clone())
-                }
+                add_entry_to_try_frame(&new_entry);
             }
         }
 
