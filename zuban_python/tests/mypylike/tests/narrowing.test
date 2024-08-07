@@ -714,7 +714,7 @@ def foo(x: Animal):
         # Error can occur between these statements
         x = Dog()
     except:
-        reveal_type(x.paws)  # N: Revealed type is "str | int | bytes"
+        reveal_type(x.paws)  # N: Revealed type is "int | str | bytes"
 
 def bar(x: Animal):
     x = Dog()
@@ -725,7 +725,7 @@ def bar(x: Animal):
         x = Dog()
         return
     except:
-        reveal_type(x.paws)  # N: Revealed type is "str | int | bytes"
+        reveal_type(x.paws)  # N: Revealed type is "int | str | bytes"
 
 def baz(x: Animal):
     x = Dog()
@@ -735,7 +735,7 @@ def baz(x: Animal):
         # Error can occur between these statements
         x.paws = 3
     except:
-        reveal_type(x.paws)  # N: Revealed type is "str | int | bytes"
+        reveal_type(x.paws)  # N: Revealed type is "int | str | bytes"
 
 def bla(x: Animal):
     x = Dog()
@@ -799,9 +799,34 @@ class Dog:
 
 x = Dog()
 x.paws = ""
-if x:
+if bool():
     x = Dog()
     reveal_type(x.paws)  # N: Revealed type is "int | str | bytes"
 else:
     reveal_type(x.paws)  # N: Revealed type is "str"
 reveal_type(x.paws)  # N: Revealed type is "int | str | bytes"
+
+[case if_invalidation_nested]
+class Dog:
+    paws: int | str | bytes = 4
+
+class House:
+    pet: Dog
+
+def foo(x: House):
+    x.pet.paws = ""
+    if bool():
+        x = House()
+        reveal_type(x.pet.paws)  # N: Revealed type is "int | str | bytes"
+    else:
+        reveal_type(x.pet.paws)  # N: Revealed type is "str"
+    reveal_type(x.pet.paws)  # N: Revealed type is "int | str | bytes"
+
+def bar(x: House):
+    x.pet.paws = ""
+    if bool():
+        x.pet = Dog()
+        reveal_type(x.pet.paws)  # N: Revealed type is "int | str | bytes"
+    else:
+        reveal_type(x.pet.paws)  # N: Revealed type is "str"
+    reveal_type(x.pet.paws)  # N: Revealed type is "int | str | bytes"

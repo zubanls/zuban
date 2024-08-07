@@ -2822,34 +2822,53 @@ impl Inference<'_, '_, '_> {
                         ));
                     }
                 }
+                // If an entry in the current frame overwrites entries further up the stack, it
+                // invalidates any further lookup and we need to return without narrowing.
+                if frame.entries.iter().any(|entry| {
+                    entry.modifies_ancestors && self.matches_ancestor(primary, &entry.key)
+                }) {
+                    return None;
+                }
             }
             None
         })
     }
 
-    fn matches_primary_entry(&self, primary: Primary, key: &FlowKey) -> bool {
-        // This method is only needed, because we want to avoid creating a FlowKey each time with
-        // Rc allocations.
-        let db = self.i_s.db;
-        let match_primary_first_part = |base_key: &Rc<_>| match primary.first() {
-            PrimaryOrAtom::Primary(primary) => self.matches_primary_entry(primary, base_key),
+    fn matches_ancestor(&self, p: Primary, key: &FlowKey) -> bool {
+        let first = p.first();
+        if let PrimaryOrAtom::Primary(earlier) = first {
+            if self.matches_ancestor(earlier, key) {
+                return true;
+            }
+        }
+        self.match_primary_first_part(first, key)
+    }
+
+    fn match_primary_first_part(&self, pr: PrimaryOrAtom, key: &FlowKey) -> bool {
+        match pr {
+            PrimaryOrAtom::Primary(primary) => self.matches_primary_entry(primary, key),
             PrimaryOrAtom::Atom(atom) => {
-                let FlowKey::Name(check_link) = base_key.as_ref() else {
+                let FlowKey::Name(check_link) = key else {
                     return false;
                 };
                 let AtomContent::Name(name) = atom.unpack() else {
                     return false;
                 };
-                name_definition_link(db, self.file, name) == Some(*check_link)
+                name_definition_link(self.i_s.db, self.file, name) == Some(*check_link)
             }
-        };
+        }
+    }
+
+    fn matches_primary_entry(&self, primary: Primary, key: &FlowKey) -> bool {
+        // This method is only needed, because we want to avoid creating a FlowKey each time with
+        // Rc allocations.
         match key {
             FlowKey::Member(base_key, right) => {
-                if !match_primary_first_part(base_key) {
+                if !self.match_primary_first_part(primary.first(), base_key) {
                     return false;
                 }
                 match primary.second() {
-                    PrimaryContent::Attribute(attr) => attr.as_code() == right.as_str(db),
+                    PrimaryContent::Attribute(attr) => attr.as_code() == right.as_str(self.i_s.db),
                     _ => false,
                 }
             }
@@ -2859,7 +2878,7 @@ impl Inference<'_, '_, '_> {
                 ..
             } => match primary.second() {
                 PrimaryContent::GetItem(slice_type) => {
-                    if !match_primary_first_part(base_key) {
+                    if !self.match_primary_first_part(primary.first(), base_key) {
                         return false;
                     }
                     self.key_from_slice_type(slice_type)
