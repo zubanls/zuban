@@ -355,9 +355,11 @@ impl FlowAnalysis {
                     let mut entry = first_entry.clone();
                     entry.type_ = Some(entry.type_.unwrap().union(declaration_t));
                     self.overwrite_entry(i_s, entry)
-                } else if let Some(new) = self.merge_key_with_ancestor_assignment(i_s, first_entry)
-                {
-                    self.overwrite_entry(i_s, new)
+                } else {
+                    self.overwrite_entry(
+                        i_s,
+                        self.merge_key_with_ancestor_assignment(i_s, first_entry),
+                    )
                 }
             }
         }
@@ -383,16 +385,11 @@ impl FlowAnalysis {
                 }
                 false
             };
-            if let Some(new) = self.merge_key_with_ancestor_assignment(i_s, &new_entry) {
-                // If we have a key that narrows in our ancestors, we either add it to an existing
-                // one or push a new one.
-                if !add_entry_to_try_frame(&new) {
-                    entries.push(new)
-                }
-            } else {
-                // If we have no key that narrows in our ancestors, we try to merge with the same
-                // key that currently exists within this try frame.
-                add_entry_to_try_frame(&new_entry);
+            let new = self.merge_key_with_ancestor_assignment(i_s, &new_entry);
+            // If we have a key that narrows in our ancestors, we either add it to an existing
+            // one or push a new one.
+            if !add_entry_to_try_frame(&new) {
+                entries.push(new)
             }
         }
 
@@ -417,7 +414,7 @@ impl FlowAnalysis {
         &self,
         i_s: &InferenceState,
         search_for: &Entry,
-    ) -> Option<Entry> {
+    ) -> Entry {
         self.frames
             .borrow()
             .iter()
@@ -430,7 +427,9 @@ impl FlowAnalysis {
                     None
                 })
             })
-            .or_else(|| Some(search_for.with_declaration()))
+            // The fallback just assigns an "empty" key. This is needed, because otherwise we would
+            // not be able to know if the entry would invalidate entries further up the stack.
+            .unwrap_or_else(|| search_for.with_declaration())
     }
 
     fn remove_key_if_modifies_ancestors(&self, i_s: &InferenceState, key: &FlowKey) {
@@ -570,9 +569,7 @@ impl FlowAnalysis {
         let mut new_entries = vec![];
 
         let add_entry = |new_entries: &mut Vec<_>, e: Entry| {
-            if let Some(new) = self.merge_key_with_ancestor_assignment(i_s, &e) {
-                new_entries.push(new);
-            }
+            new_entries.push(self.merge_key_with_ancestor_assignment(i_s, &e));
         };
         'outer: for mut x_entry in x.entries {
             for y_entry in &mut y.entries {
