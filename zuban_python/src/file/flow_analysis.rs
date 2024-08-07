@@ -140,6 +140,14 @@ impl Entry {
             widens: self.widens | other.widens,
         }
     }
+
+    fn common_sub_type(&self, i_s: &InferenceState, other: &Self) -> Option<Type> {
+        self.type_.common_sub_type(i_s, &other.type_)
+    }
+
+    fn debug_format_type(&self, db: &Database) -> Box<str> {
+        self.type_.format_short(db)
+    }
 }
 
 #[derive(Debug, Default, Clone)]
@@ -169,7 +177,7 @@ impl Frame {
     fn add_entry(&mut self, i_s: &InferenceState, entry: Entry) {
         for old_entry in &mut self.entries {
             if old_entry.key.equals(i_s.db, &entry.key) {
-                if let Some(new) = old_entry.type_.common_sub_type(i_s, &entry.type_) {
+                if let Some(new) = old_entry.common_sub_type(i_s, &entry) {
                     old_entry.type_ = new;
                 }
                 return;
@@ -633,7 +641,7 @@ fn merge_and(i_s: &InferenceState, mut x: Frame, y: Frame) -> Frame {
                     //
                     // This means that the walrus overwrites the previous narrowing again.
                     *x_entry = y_entry;
-                } else if let Some(t) = x_entry.type_.common_sub_type(i_s, &y_entry.type_) {
+                } else if let Some(t) = x_entry.common_sub_type(i_s, &y_entry) {
                     x_entry.type_ = t
                 } else {
                     x_entry.type_ = Type::Never(NeverCause::Other);
@@ -2793,7 +2801,7 @@ impl Inference<'_, '_, '_> {
                         debug!(
                             "Use narrowed {} as {}",
                             primary.as_code(),
-                            entry.type_.format_short(self.i_s.db)
+                            entry.debug_format_type(self.i_s.db)
                         );
                         return Some((entry.key.clone(), Inferred::from_type(entry.type_.clone())));
                     }
