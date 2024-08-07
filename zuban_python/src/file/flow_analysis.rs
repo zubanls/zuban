@@ -308,16 +308,8 @@ impl FlowAnalysis {
                     if first_entry.key.equals(i_s.db, &other_entry.key) {
                         // Assign false to make sure it is not handled again from the other side.
                         other_entry.modifies_ancestors = false;
-                        self.overwrite_entry(
-                            i_s,
-                            Entry {
-                                key: first_entry.key.clone(),
-                                type_: other_entry.type_.simplified_union(i_s, &first_entry.type_),
-                                modifies_ancestors: true,
-                                deleted: first_entry.deleted || other_entry.deleted,
-                                widens: first_entry.widens || other_entry.widens,
-                            },
-                        );
+
+                        self.overwrite_entry(i_s, other_entry.union_of_refs(i_s, first_entry));
                         continue 'outer;
                     }
                 }

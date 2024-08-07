@@ -291,6 +291,7 @@ testBoolInTuplesRegression
 
 # invalidation
 try_invalidation2
+if_invalidation2
 # aug assignments can widen types
 testAugmentedAssignmentIntFloat
 # any overwrites of None

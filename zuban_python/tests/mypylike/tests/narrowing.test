@@ -737,6 +737,13 @@ def baz(x: Animal):
     except:
         reveal_type(x.paws)  # N: Revealed type is "str | int | bytes"
 
+def bla(x: Animal):
+    x = Dog()
+    x.paws = ""
+    try:
+        x.paws = 3
+    except:
+        reveal_type(x.paws)  # N: Revealed type is "str | int"
 
 [case with_invalidation]
 class Animal:
@@ -784,3 +791,17 @@ def bla(x: Animal):
     with Suppresses():
         x.paws = 3
     reveal_type(x.paws)  # N: Revealed type is "str | int"
+
+
+[case if_invalidation2]
+class Dog:
+    paws: int | str | bytes = 4
+
+x = Dog()
+x.paws = ""
+if x:
+    x = Dog()
+    reveal_type(x.paws)  # N: Revealed type is "int | str | bytes"
+else:
+    reveal_type(x.paws)  # N: Revealed type is "str"
+reveal_type(x.paws)  # N: Revealed type is "int | str | bytes"
