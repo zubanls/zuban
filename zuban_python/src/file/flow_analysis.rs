@@ -1,5 +1,5 @@
 use std::{
-    cell::{Cell, Ref, RefCell, RefMut},
+    cell::{Cell, RefCell, RefMut},
     rc::Rc,
 };
 
@@ -2828,6 +2828,8 @@ impl Inference<'_, '_, '_> {
     }
 
     fn matches_primary_entry(&self, primary: Primary, key: &FlowKey) -> bool {
+        // This method is only needed, because we want to avoid creating a FlowKey each time with
+        // Rc allocations.
         let db = self.i_s.db;
         let match_primary_first_part = |base_key: &Rc<_>| match primary.first() {
             PrimaryOrAtom::Primary(primary) => self.matches_primary_entry(primary, base_key),
@@ -2843,15 +2845,13 @@ impl Inference<'_, '_, '_> {
         };
         match key {
             FlowKey::Member(base_key, right) => {
-                match primary.second() {
-                    PrimaryContent::Attribute(attr) => {
-                        if attr.as_code() != right.as_str(db) {
-                            return false;
-                        }
-                    }
-                    _ => return false,
+                if !match_primary_first_part(base_key) {
+                    return false;
                 }
-                match_primary_first_part(base_key)
+                match primary.second() {
+                    PrimaryContent::Attribute(attr) => attr.as_code() == right.as_str(db),
+                    _ => false,
+                }
             }
             FlowKey::Index {
                 base_key,
@@ -2862,10 +2862,8 @@ impl Inference<'_, '_, '_> {
                     if !match_primary_first_part(base_key) {
                         return false;
                     }
-                    if let Some(other_index_key) = self.key_from_slice_type(slice_type) {
-                        return match_index == &other_index_key;
-                    }
-                    false
+                    self.key_from_slice_type(slice_type)
+                        .is_some_and(|other_index_key| match_index == &other_index_key)
                 }
                 _ => false,
             },
