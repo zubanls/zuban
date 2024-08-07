@@ -326,7 +326,8 @@ impl FlowAnalysis {
                     let mut entry = first_entry.clone();
                     entry.type_ = entry.type_.union(declaration_t);
                     self.overwrite_entry(i_s, entry)
-                } else if let Some(new) = self.key_has_maybe_wider_assignment(i_s, first_entry) {
+                } else if let Some(new) = self.merge_key_with_ancestor_assignment(i_s, first_entry)
+                {
                     self.overwrite_entry(i_s, new)
                 }
             }
@@ -389,32 +390,9 @@ impl FlowAnalysis {
         i_s: &InferenceState,
         search_for: &Entry,
     ) -> Option<Entry> {
-        self.search_key_and_merge(i_s, search_for, true)
-    }
-
-    fn key_has_maybe_wider_assignment(
-        &self,
-        i_s: &InferenceState,
-        search_for: &Entry,
-    ) -> Option<Entry> {
-        self.search_key_and_merge(i_s, search_for, false)
-    }
-
-    fn search_key_and_merge(
-        &self,
-        i_s: &InferenceState,
-        search_for: &Entry,
-        ignore_widen_check: bool,
-    ) -> Option<Entry> {
         self.frames.borrow().iter().rev().find_map(|frame| {
             frame.entries.iter().find_map(|e| {
-                if e.key.equals(i_s.db, &search_for.key)
-                    && (ignore_widen_check
-                        || !e
-                            .type_
-                            .is_simple_super_type_of(i_s, &search_for.type_)
-                            .bool())
-                {
+                if e.key.equals(i_s.db, &search_for.key) {
                     return Some(e.union_of_refs(i_s, search_for));
                 }
                 None
@@ -559,7 +537,7 @@ impl FlowAnalysis {
         let mut new_entries = vec![];
 
         let add_entry = |new_entries: &mut Vec<_>, e: Entry| {
-            if let Some(new) = self.key_has_maybe_wider_assignment(i_s, &e) {
+            if let Some(new) = self.merge_key_with_ancestor_assignment(i_s, &e) {
                 new_entries.push(new);
             }
         };
