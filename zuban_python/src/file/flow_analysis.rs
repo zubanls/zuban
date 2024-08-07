@@ -62,11 +62,16 @@ enum FlowKey {
 
 impl FlowKey {
     fn is_child_of(&self, db: &Database, search_key: &FlowKey) -> bool {
+        let Some(base_key) = self.base_key() else {
+            return false;
+        };
+        base_key.equals(db, search_key) || base_key.is_child_of(db, search_key)
+    }
+
+    fn base_key(&self) -> Option<&FlowKey> {
         match self {
-            Self::Name(_) => false,
-            Self::Member(base_key, _) | Self::Index { base_key, .. } => {
-                base_key.equals(db, search_key) || base_key.is_child_of(db, search_key)
-            }
+            Self::Name(_) => None,
+            Self::Member(base_key, _) | Self::Index { base_key, .. } => Some(base_key.as_ref()),
         }
     }
 
