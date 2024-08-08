@@ -1022,3 +1022,17 @@ def bar(x: House):
     else:
         reveal_type(x.dog.paws)  # N: Revealed type is "int | str | bytes"
     reveal_type(x.dog.paws)  # N: Revealed type is "int | str | bytes"
+
+[case union_isinstance_with_any]
+from typing import Any
+
+def foo(x: int | str, y: Any):
+    if isinstance(x, int | y):
+        reveal_type(x)  # N: Revealed type is "int | Any"
+    else:
+        reveal_type(x)  # N: Revealed type is "str"
+
+    if isinstance(x, y | int):
+        reveal_type(x)  # N: Revealed type is "Any | int"
+    else:
+        reveal_type(x)  # N: Revealed type is "str"

@@ -344,6 +344,7 @@ testStrictEqualitywithParamSpec
 # isinstance with union literals `isinstance(x, A | B)`
 testTypeAliasWithNewUnionIsInstance
 testIsInstanceUnionNone
+
 # Never for isinstance leads to other side being unreachable
 testPartialAttributeNoneTypeStrictOptional
 

@@ -2161,6 +2161,7 @@ impl Inference<'_, '_, '_> {
         if isinstance_type.is_any() {
             // Parent unions are not narrowed, because with Any we know essentially nothing
             // about the type and its parents except that it can be anything.
+            debug!("The isinstance type is Any and there is therefore no narrowing");
             return Some(FramesWithParentUnions {
                 truthy: Frame::from_type(key, isinstance_type),
                 falsey: Frame::default(),
@@ -3429,15 +3430,49 @@ fn split_and_intersect(
     let mut other_side = Type::Never(NeverCause::Other);
     let matcher = &mut Matcher::with_ignored_promotions();
     for t in original_t.iter_with_unpacked_unions(i_s.db) {
-        let mut split = |t: &Type| match isinstance_type.is_super_type_of(i_s, matcher, t) {
-            Match::True { with_any: true, .. } => {
-                true_type.simplified_union_in_place(i_s, isinstance_type);
-                other_side.union_in_place(t.clone());
+        let mut split = |t: &Type| {
+            let mut matched = false;
+            let mut matched_with_any = true;
+            let mut had_any = None;
+            for (i, isinstance_t) in isinstance_type
+                .iter_with_unpacked_unions(i_s.db)
+                .enumerate()
+            {
+                if isinstance_t.is_any() {
+                    had_any = Some(isinstance_t.clone());
+                    continue;
+                }
+                match isinstance_t.is_super_type_of(i_s, matcher, t) {
+                    Match::True { with_any: true, .. } => {
+                        matched = true;
+                    }
+                    Match::True { .. } => {
+                        matched_with_any = false;
+                        matched = true;
+                    }
+                    Match::False { .. } => (),
+                }
             }
-            Match::True {
-                with_any: false, ..
-            } => true_type.union_in_place(t.clone()),
-            Match::False { .. } => other_side.union_in_place(t.clone()),
+            if matched {
+                if matched_with_any {
+                    true_type.simplified_union_in_place(i_s, isinstance_type);
+                    other_side.union_in_place(t.clone());
+                } else {
+                    true_type.union_in_place(t.clone());
+                }
+            } else {
+                other_side.union_in_place(t.clone())
+            }
+            if let Some(any) = had_any {
+                // This piece of code is completely weird and only needed because of the weird
+                // Any ordering.
+                if matches!(isinstance_type, Type::Union(u) if u.entries.first().unwrap().format_index > 0)
+                {
+                    true_type = any.union(true_type.clone());
+                } else {
+                    true_type.union_in_place(any);
+                }
+            }
         };
         match t {
             Type::Type(inner) => match inner.as_ref() {
@@ -3448,6 +3483,10 @@ fn split_and_intersect(
                 }
                 _ => split(t),
             },
+            Type::Any(_) => {
+                true_type = isinstance_type.clone();
+                other_side.union_in_place(t.clone())
+            }
             _ => split(t),
         }
     }
@@ -3473,8 +3512,6 @@ fn split_and_intersect(
                 }
             }
         }
-    } else if isinstance_type.is_any_or_any_in_union(i_s.db) {
-        true_type = isinstance_type.clone();
     }
     debug!(
         "Narrowed because of isinstance or TypeIs to {} and other side to {}",
