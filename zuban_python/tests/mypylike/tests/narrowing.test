@@ -934,12 +934,26 @@ def bar(x: Dog):
             x.paws = 3
             continue
         else:
-            x = Dog()
             x.paws = 3
+            x = Dog()
             continue
     else:
         reveal_type(x.paws)  # N: Revealed type is "str | int"
     reveal_type(x.paws)  # N: Revealed type is "str | int"
+
+def baz(x: Dog):
+    x.paws = ""
+    for _ in [1]:
+        if bool():
+            x.paws = 3
+            x = Dog()
+            continue
+        else:
+            x = Dog()
+            continue
+    else:
+        reveal_type(x.paws)  # N: Revealed type is "int | str | bytes"
+    reveal_type(x.paws)  # N: Revealed type is "int | str | bytes"
 
 [case loop_invalidation4]
 class Dog:
