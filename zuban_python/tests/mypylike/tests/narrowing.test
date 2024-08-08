@@ -911,6 +911,8 @@ def bar(x: Dog):
 class Dog:
     paws: int | str | bytes = 4
 
+# foo could theoretically narrow to int | str instead of not narrowing, because
+# there are so many edge cases and Mypy also doesn't narrow it.
 def foo(x: Dog):
     x.paws = ""
     for _ in [1]:
@@ -923,8 +925,8 @@ def foo(x: Dog):
             x.paws = 3
             continue
     else:
-        reveal_type(x.paws)  # N: Revealed type is "str | int"
-    reveal_type(x.paws)  # N: Revealed type is "str | int"
+        reveal_type(x.paws)  # N: Revealed type is "int | str | bytes"
+    reveal_type(x.paws)  # N: Revealed type is "int | str | bytes"
 
 def bar(x: Dog):
     x.paws = ""
@@ -938,8 +940,8 @@ def bar(x: Dog):
             x = Dog()
             continue
     else:
-        reveal_type(x.paws)  # N: Revealed type is "str | int"
-    reveal_type(x.paws)  # N: Revealed type is "str | int"
+        reveal_type(x.paws)  # N: Revealed type is "int | str | bytes"
+    reveal_type(x.paws)  # N: Revealed type is "int | str | bytes"
 
 def baz(x: Dog):
     x.paws = ""
@@ -950,6 +952,7 @@ def baz(x: Dog):
             continue
         else:
             x = Dog()
+            x.paws = 3
             continue
     else:
         reveal_type(x.paws)  # N: Revealed type is "int | str | bytes"
