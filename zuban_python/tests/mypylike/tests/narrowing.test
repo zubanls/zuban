@@ -1036,3 +1036,24 @@ def foo(x: int | str, y: Any):
         reveal_type(x)  # N: Revealed type is "Any | int"
     else:
         reveal_type(x)  # N: Revealed type is "str"
+
+[case type_is_restriction_with_reachability]
+# flags: --warn-unreachable
+# Like testTypeIsNestedRestrictionUnionIsInstance, but in a better way
+from typing_extensions import TypeIs
+from typing import Any, List
+
+class A: ...
+class B: ...
+def f(x: List[Any] | B) -> TypeIs[List[str]]: ...
+
+def test(x: List[Any]) -> None:
+    if not(f(x) or isinstance(x, A)):  # E: Right operand of "or" is never evaluated
+        return  # E: Statement is unreachable
+    reveal_type(x)  # N: Revealed type is "list[Any]"
+
+def test2(x: List[Any] | B) -> None:
+    if f(x) or isinstance(x, A):
+        reveal_type(x)  # N: Revealed type is "list[str] | <subclass of "B" and "A">"
+    else:
+        reveal_type(x)  # N: Revealed type is "__main__.B"

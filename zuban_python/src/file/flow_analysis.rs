@@ -3456,7 +3456,6 @@ fn split_and_intersect(
             if matched {
                 if matched_with_any {
                     true_type.simplified_union_in_place(i_s, isinstance_type);
-                    other_side.union_in_place(t.clone());
                 } else {
                     true_type.union_in_place(t.clone());
                 }
