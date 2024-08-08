@@ -304,6 +304,10 @@ impl FlowAnalysis {
         })
     }
 
+    pub fn enable_reported_unreachable_in_top_frame(&self) {
+        self.top_frame().reported_unreachable = true;
+    }
+
     pub fn report_unreachable_if_not_reported_before(&self, callback: impl FnOnce()) {
         let mut top_frame = self.top_frame();
         if !top_frame.reported_unreachable {

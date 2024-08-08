@@ -330,9 +330,6 @@ testNarrowedVariableInNestedFunctionBasic
 testNarrowedVariableInNestedModifiedInWalrus
 testNarrowedVariableInNestedFunctionMore1
 testNarrowedVariableInNestedFunctionMore2
-# yield after return is sometimes ok.
-testIntentionallyEmptyGeneratorFunction
-testIntentionallyEmptyGeneratorFunction_None
 # "Function "property_decorator_missing" could always be true in boolean context"
 testUnreachableFlagMiscTestCaseMissingMethod
 testWalrus

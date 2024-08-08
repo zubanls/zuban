@@ -264,10 +264,10 @@ impl<'db> NameBinder<'db> {
         self.index_stmts(block.iter_stmt_likes(), ordered)
     }
 
-    fn index_stmts(&mut self, stmts: StmtLikeIterator<'db>, ordered: bool) -> NodeIndex {
+    fn index_stmts(&mut self, mut stmts: StmtLikeIterator<'db>, ordered: bool) -> NodeIndex {
         let mut latest_return_or_yield = 0;
         let mut last_was_an_error = false;
-        for stmt_like in stmts {
+        for stmt_like in stmts.by_ref() {
             let return_or_yield = match stmt_like.node {
                 StmtLikeContent::Assignment(assignment) => {
                     let unpacked = assignment.unpack_with_simple_targets();
@@ -325,7 +325,7 @@ impl<'db> NameBinder<'db> {
                             self.merge_latest_return_or_yield(latest_return_or_yield, l);
                     }
                     self.index_return_or_yield(&mut latest_return_or_yield, return_stmt.index());
-                    return latest_return_or_yield;
+                    break;
                 }
                 StmtLikeContent::AssertStmt(assert_stmt) => {
                     let (assert_expr, error_expr) = assert_stmt.unpack();
@@ -341,7 +341,9 @@ impl<'db> NameBinder<'db> {
                             assert_stmt.index(),
                             Point::new_specific(Specific::AssertAlwaysFails, Locality::File),
                         );
-                        return self.merge_latest_return_or_yield(latest_return_or_yield, latest);
+                        latest_return_or_yield =
+                            self.merge_latest_return_or_yield(latest_return_or_yield, latest);
+                        break;
                     }
                     latest
                 }
@@ -363,11 +365,12 @@ impl<'db> NameBinder<'db> {
                     0
                 }
                 StmtLikeContent::RaiseStmt(raise_stmt) => {
-                    return self.index_non_block_node(&raise_stmt, ordered)
+                    let l = self.index_non_block_node(&raise_stmt, ordered);
+                    latest_return_or_yield =
+                        self.merge_latest_return_or_yield(latest_return_or_yield, l);
+                    break;
                 }
-                StmtLikeContent::BreakStmt(_) | StmtLikeContent::ContinueStmt(_) => {
-                    return latest_return_or_yield
-                }
+                StmtLikeContent::BreakStmt(_) | StmtLikeContent::ContinueStmt(_) => break,
                 StmtLikeContent::DelStmt(del_stmt) => {
                     self.references_need_flow_analysis = true;
                     self.index_non_block_node(&del_stmt, ordered)
@@ -446,6 +449,11 @@ impl<'db> NameBinder<'db> {
             last_was_an_error = false;
             latest_return_or_yield =
                 self.merge_latest_return_or_yield(latest_return_or_yield, return_or_yield);
+        }
+        for stmt_like in stmts {
+            if let StmtLikeContent::YieldExpr(y) = stmt_like.node {
+                self.index_return_or_yield(&mut latest_return_or_yield, y.index());
+            }
         }
         latest_return_or_yield
     }

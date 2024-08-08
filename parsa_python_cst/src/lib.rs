@@ -1691,6 +1691,11 @@ impl<'db> StarExpressions<'db> {
             _ => None,
         }
     }
+
+    pub fn is_none_literal(&self) -> bool {
+        self.maybe_simple_expression()
+            .is_some_and(|e| e.is_none_literal())
+    }
 }
 
 pub enum StarExpressionContent<'db> {
@@ -1971,6 +1976,37 @@ impl<'db> FunctionDef<'db> {
 
     pub fn body(&self) -> Block<'db> {
         self.unpack().3
+    }
+
+    pub fn is_empty_generator_function(&self) -> bool {
+        let mut iterator = self.body().iter_stmt_likes();
+        let Some(first) = iterator.next() else {
+            return false;
+        };
+        match first.node {
+            StmtLikeContent::ReturnStmt(r) => {
+                if let Some(star_exprs) = r.star_expressions() {
+                    if !star_exprs.is_none_literal() {
+                        return false;
+                    }
+                }
+            }
+            _ => return false,
+        }
+        let Some(second) = iterator.next() else {
+            return false;
+        };
+        if iterator.next().is_some() {
+            return false;
+        }
+        match second.node {
+            StmtLikeContent::YieldExpr(y) => match y.unpack() {
+                YieldExprContent::StarExpressions(s) => s.is_none_literal(),
+                YieldExprContent::YieldFrom(_) => false,
+                YieldExprContent::None => true,
+            },
+            _ => false,
+        }
     }
 }
 

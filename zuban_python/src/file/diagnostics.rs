@@ -819,6 +819,9 @@ impl<'db> Inference<'db, '_, '_> {
         FLOW_ANALYSIS.with(|fa| {
             let mut is_overload_member = false;
             let unreachable = fa.with_new_frame_and_return_unreachable(|| {
+                if f.is_empty_generator_function() {
+                    fa.enable_reported_unreachable_in_top_frame();
+                }
                 is_overload_member = self
                     .calc_function_diagnostics_internal_and_return_is_overload(function, f, class)
             });
