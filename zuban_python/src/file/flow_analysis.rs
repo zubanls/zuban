@@ -569,6 +569,7 @@ impl FlowAnalysis {
         let mut new_entries = vec![];
 
         let add_entry = |new_entries: &mut Vec<_>, e: Entry| {
+            invalidate_child_entries(new_entries, i_s.db, &e.key);
             new_entries.push(self.merge_key_with_ancestor_assignment(i_s, &e));
         };
         'outer: for mut x_entry in x.entries {
@@ -603,7 +604,12 @@ impl FlowAnalysis {
             }
         }
         for y_entry in y.entries {
-            if y_entry.modifies_ancestors {
+            // Filter out entries that are invalidated by the other side.
+            if y_entry.modifies_ancestors
+                && !new_entries
+                    .iter()
+                    .any(|e| y_entry.key.is_child_of(i_s.db, &e.key))
+            {
                 // (2)
                 add_entry(&mut new_entries, y_entry)
             }

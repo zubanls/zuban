@@ -806,6 +806,20 @@ else:
     reveal_type(x.paws)  # N: Revealed type is "str"
 reveal_type(x.paws)  # N: Revealed type is "int | str | bytes"
 
+[case if_invalidation3]
+class Dog:
+    paws: int | str | bytes = 4
+
+x = Dog()
+x.paws = ""
+if bool():
+    x = Dog()
+    reveal_type(x.paws)  # N: Revealed type is "int | str | bytes"
+else:
+    x.paws = 3
+    reveal_type(x.paws)  # N: Revealed type is "int"
+reveal_type(x.paws)  # N: Revealed type is "int | str | bytes"
+
 [case if_invalidation_nested]
 class Dog:
     paws: int | str | bytes = 4
@@ -830,3 +844,164 @@ def bar(x: House):
     else:
         reveal_type(x.pet.paws)  # N: Revealed type is "str"
     reveal_type(x.pet.paws)  # N: Revealed type is "int | str | bytes"
+
+[case loop_invalidation1]
+class Dog:
+    paws: int | str | bytes = 4
+
+def foo(x: Dog):
+    x.paws = ""
+    for _ in [1]:
+        if bool():
+            x.paws = 3
+            continue
+        else:
+            x = Dog()
+            continue
+    else:
+        reveal_type(x.paws)  # N: Revealed type is "int | str | bytes"
+    reveal_type(x.paws)  # N: Revealed type is "int | str | bytes"
+
+def bar(x: Dog):
+    x.paws = ""
+    for _ in [1]:
+        if bool():
+            x = Dog()
+            continue
+        else:
+            x.paws = 3
+            continue
+    else:
+        reveal_type(x.paws)  # N: Revealed type is "int | str | bytes"
+    reveal_type(x.paws)  # N: Revealed type is "int | str | bytes"
+
+[case loop_invalidation2]
+class Dog:
+    paws: int | str | bytes = 4
+
+def foo(x: Dog):
+    x.paws = ""
+    for _ in [1]:
+        if bool():
+            x.paws = 3
+            continue
+        else:
+            x = Dog()
+            x.paws = 3
+            continue
+    else:
+        reveal_type(x.paws)  # N: Revealed type is "int | str | bytes"
+    reveal_type(x.paws)  # N: Revealed type is "int | str | bytes"
+
+def bar(x: Dog):
+    x.paws = ""
+    for _ in [1]:
+        if bool():
+            x = Dog()
+            x.paws = 3
+            continue
+        else:
+            x.paws = 3
+            continue
+    else:
+        reveal_type(x.paws)  # N: Revealed type is "int | str | bytes"
+    reveal_type(x.paws)  # N: Revealed type is "int | str | bytes"
+
+[case loop_invalidation3]
+class Dog:
+    paws: int | str | bytes = 4
+
+def foo(x: Dog):
+    x.paws = ""
+    for _ in [1]:
+        if bool():
+            x = Dog()
+            x.paws = 3
+            continue
+        else:
+            x = Dog()
+            x.paws = 3
+            continue
+    else:
+        reveal_type(x.paws)  # N: Revealed type is "str | int"
+    reveal_type(x.paws)  # N: Revealed type is "str | int"
+
+def bar(x: Dog):
+    x.paws = ""
+    for _ in [1]:
+        if bool():
+            x = Dog()
+            x.paws = 3
+            continue
+        else:
+            x = Dog()
+            x.paws = 3
+            continue
+    else:
+        reveal_type(x.paws)  # N: Revealed type is "str | int"
+    reveal_type(x.paws)  # N: Revealed type is "str | int"
+
+[case loop_invalidation4]
+class Dog:
+    paws: int | str | bytes = 4
+
+def foo(x: Dog):
+    x.paws = ""
+    for _ in [1]:
+        if bool():
+            x.paws = 3
+            x = Dog()
+            continue
+        else:
+            x.paws = 3
+            continue
+    else:
+        reveal_type(x.paws)  # N: Revealed type is "int | str | bytes"
+    reveal_type(x.paws)  # N: Revealed type is "int | str | bytes"
+
+def bar(x: Dog):
+    x.paws = ""
+    for _ in [1]:
+        if bool():
+            x.paws = 3
+            continue
+        else:
+            x.paws = 3
+            x = Dog()
+            continue
+    else:
+        reveal_type(x.paws)  # N: Revealed type is "int | str | bytes"
+    reveal_type(x.paws)  # N: Revealed type is "int | str | bytes"
+
+[case loop_invalidation_nested]
+class Dog:
+    paws: int | str | bytes = 4
+
+class House:
+    dog: Dog
+
+def foo(x: House):
+    x.dog.paws = ""
+    for _ in [1]:
+        if bool():
+            x.dog.paws = 3
+            continue
+        else:
+            x = House()
+            continue
+    else:
+        reveal_type(x.dog.paws)  # N: Revealed type is "int | str | bytes"
+    reveal_type(x.dog.paws)  # N: Revealed type is "int | str | bytes"
+
+def bar(x: House):
+    x.dog.paws = ""
+    for _ in [1]:
+        if bool():
+            x.dog.paws = 3
+            continue
+        else:
+            x.dog = Dog()
+            continue
+    else:
+        reveal_type(x.dog.paws)  # N: Revealed type is "int | str | bytes"
+    reveal_type(x.dog.paws)  # N: Revealed type is "int | str | bytes"
