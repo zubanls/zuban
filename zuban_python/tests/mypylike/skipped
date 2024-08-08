@@ -335,8 +335,6 @@ testUnreachableFlagMiscTestCaseMissingMethod
 testWalrus
 # FlowAnalysis includes stack above nested function, instead of just the current
 testMultipleNestedFunctionDef
-# if right operand is Any, fallback to Any in operation
-testBinaryOperationsWithDynamicAsRightOperand
 # --strict-equality strict equality "Non-overlapping equality check (left operand type: "int", right operand type: "str")"
 testStrictEqualityNoPromotePy3
 testStrictEqualityAllowlist

@@ -351,3 +351,18 @@ a # E: Trying to read deleted variable "a"
 [case del_name_as_a_source]
 del a  # E: Name "a" is not defined
 a + 1  # E: Trying to read deleted variable "a"
+
+[case operator_any_add_result]
+# Tests parts of testBinaryOperationsWithDynamicAsRightOperand for both sides
+from typing import Any
+
+def foo(x: int, y: Any):
+    reveal_type(x + y)  # N: Revealed type is "Any"
+    reveal_type(y + x)  # N: Revealed type is "Any"
+
+class A:
+    def __radd__(self, a: int) -> str: ...
+
+def bar(x: Any, y: A):
+    reveal_type(x + y)  # N: Revealed type is "Any"
+    reveal_type(y + x)  # N: Revealed type is "Any"
