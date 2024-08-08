@@ -343,8 +343,6 @@ testStrictEqualityAllowlist
 testNarrowingEqualityDisabledForCustomEqualityChain
 testNarrowingEqualityFlipFlop
 testStrictEqualitywithParamSpec
-# lambda unreachable raise
-testLambdaNoReturn
 # isinstance with union literals `isinstance(x, A | B)`
 testTypeAliasWithNewUnionIsInstance
 testIsInstanceUnionNone

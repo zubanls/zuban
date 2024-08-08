@@ -1694,7 +1694,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         Expression,
         result_context
     );
-    fn infer_expression_without_cache(
+    pub fn infer_expression_without_cache(
         &self,
         expr: Expression,
         result_context: &mut ResultContext,
@@ -2134,7 +2134,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     let (params, expr) = lambda.unpack();
                     let inference = self.file.inference(&i_s);
                     check_defaults();
-                    let result = inference.infer_expression_without_cache(
+                    let result = inference.flow_analysis_for_lambda_body(
                         expr,
                         // This cannot be ResultContext::Known, because that would imply that a
                         // value is expected and there would be an error:
@@ -2193,7 +2193,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 let (params, expr) = lambda.unpack();
                 check_defaults();
                 let result =
-                    self.infer_expression_without_cache(expr, &mut ResultContext::ExpectUnused);
+                    self.flow_analysis_for_lambda_body(expr, &mut ResultContext::ExpectUnused);
                 let c = CallableContent::new_simple(
                     None,
                     None,

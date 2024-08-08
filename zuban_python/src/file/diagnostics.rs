@@ -525,7 +525,7 @@ impl<'db> Inference<'db, '_, '_> {
         }
         if exceptions_maybe_suppressed {
             // We create a new frame to swallow unreachability.
-            self.flow_analysis_for_with_stmt_when_exceptions_maybe_suppressed(self.i_s.db, || {
+            self.flow_analysis_for_with_stmt_when_exceptions_maybe_suppressed(|| {
                 self.calc_block_diagnostics(block, class, func);
             })
         } else {

@@ -1594,7 +1594,6 @@ impl Inference<'_, '_, '_> {
 
     pub fn flow_analysis_for_with_stmt_when_exceptions_maybe_suppressed(
         &self,
-        db: &Database,
         callable: impl FnOnce(),
     ) {
         FLOW_ANALYSIS.with(|fa| {
@@ -1603,7 +1602,20 @@ impl Inference<'_, '_, '_> {
                 // that the end of the with statement might never be reached.
                 fa.with_new_frame_and_return_unreachable(|| callable());
             });
-            fa.overwrite_entries(db, try_frame_for_except.entries);
+            fa.overwrite_entries(self.i_s.db, try_frame_for_except.entries);
+        })
+    }
+
+    pub fn flow_analysis_for_lambda_body(
+        &self,
+        expr: Expression,
+        result_context: &mut ResultContext,
+    ) -> Inferred {
+        FLOW_ANALYSIS.with(|fa| {
+            fa.with_frame_and_result(Frame::default(), || {
+                self.infer_expression_without_cache(expr, result_context)
+            })
+            .1
         })
     }
 
