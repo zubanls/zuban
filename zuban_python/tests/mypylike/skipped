@@ -340,7 +340,6 @@ testStrictEqualitywithParamSpec
 
 # None late binding, because it's None (x = None; x = 3)
 testLocalPartialTypesWithInheritance3
-testUnpackUnionNoCrashOnPartialNone2
 # partial types with untyped defs
 testCheckUntypedDefsSelf2
 # Make x an Optional if else contains `x = None`
@@ -367,12 +366,6 @@ testInferenceWithUninhabitedType
 # Needs error, because nested partial "Need type annotation for "X""
 testInferListInitializedToEmptyAndIncompleteTypeInAppend
 testInferDictInitializedToEmptyAndIncompleteTypeInUpdate
-# For loop
-testInferenceOfFor1
-testInferenceOfFor3
-testReusingInferredForIndex2
-testTwoStarExpressionsInGeneratorExpr
-testMultipleForIndexVars
 # operator narrowing
 testInferFromEmptyDictWhenUsingIn
 testInferListTypeFromInplaceAdd
@@ -607,6 +600,11 @@ testNeedAnnotationForCallable
 testTypeVarDefaultsClass1
 testTypeVarDefaultsClass2
 testTypeVarDefaultsClass3
+testInferenceOfFor1
+testInferenceOfFor3
+testReusingInferredForIndex2
+testTwoStarExpressionsInGeneratorExpr
+testMultipleForIndexVars
 # "Perhaps you need a type annotation for "x"? Suggestion: "List[str | int]""
 testInferredTypeSubTypeOfReturnType
 # --disallow-any-generics
