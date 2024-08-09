@@ -2255,7 +2255,7 @@ impl Inference<'_, '_, '_> {
 
         match expr.unpack() {
             ExpressionContent::ExpressionPart(part) => {
-                self.isinstance_or_issubclass_type_for_expr_part(part, issubclass)
+                self.isinstance_or_issubclass_type_for_expr_part(part, issubclass, false)
             }
             _ => None,
         }
@@ -2265,6 +2265,7 @@ impl Inference<'_, '_, '_> {
         &self,
         part: ExpressionPart,
         issubclass: bool,
+        from_union: bool,
     ) -> Option<Type> {
         let cannot_use_with = |with| {
             self.add_issue(
@@ -2282,8 +2283,10 @@ impl Inference<'_, '_, '_> {
         match part {
             ExpressionPart::BitwiseOr(disjunction) => {
                 let (first, second) = disjunction.unpack();
-                let t1 = self.isinstance_or_issubclass_type_for_expr_part(first, issubclass)?;
-                let t2 = self.isinstance_or_issubclass_type_for_expr_part(second, issubclass)?;
+                let t1 =
+                    self.isinstance_or_issubclass_type_for_expr_part(first, issubclass, true)?;
+                let t2 =
+                    self.isinstance_or_issubclass_type_for_expr_part(second, issubclass, true)?;
                 Some(t1.union(t2))
             }
             _ => {
@@ -2302,18 +2305,23 @@ impl Inference<'_, '_, '_> {
                     _ => (),
                 }
 
-                self.process_isinstance_type(part, &inf.as_cow_type(self.i_s))
+                self.process_isinstance_type(part, &inf.as_cow_type(self.i_s), from_union)
             }
         }
     }
 
-    fn process_isinstance_type(&self, part: ExpressionPart, t: &Type) -> Option<Type> {
+    fn process_isinstance_type(
+        &self,
+        part: ExpressionPart,
+        t: &Type,
+        from_union: bool,
+    ) -> Option<Type> {
         match t {
             Type::Tuple(tup) => match &tup.args {
                 TupleArgs::FixedLen(ts) => {
                     let ts: Option<Vec<Type>> = ts
                         .iter()
-                        .map(|t| self.process_isinstance_type(part, t))
+                        .map(|t| self.process_isinstance_type(part, t, true))
                         .collect();
                     let ts = ts?;
                     Some(match ts.len() {
@@ -2322,7 +2330,7 @@ impl Inference<'_, '_, '_> {
                         _ => simplified_union_from_iterators(self.i_s, ts.iter()),
                     })
                 }
-                TupleArgs::ArbitraryLen(t) => self.process_isinstance_type(part, t),
+                TupleArgs::ArbitraryLen(t) => self.process_isinstance_type(part, t, false),
                 TupleArgs::WithUnpack(_) => todo!(),
             },
             Type::Type(t) => {
@@ -2346,7 +2354,11 @@ impl Inference<'_, '_, '_> {
                 cannot_use_with(self, "Literal")
             }
             */
-            _ => None,
+            Type::None if from_union => Some(t.clone()),
+            _ => {
+                debug!("isinstance with bad type: {}", t.format_short(self.i_s.db));
+                None
+            }
         }
     }
 

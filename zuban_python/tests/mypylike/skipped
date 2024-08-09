@@ -341,9 +341,6 @@ testStrictEqualityAllowlist
 testNarrowingEqualityDisabledForCustomEqualityChain
 testNarrowingEqualityFlipFlop
 testStrictEqualitywithParamSpec
-# isinstance with union literals `isinstance(x, A | B)`
-testTypeAliasWithNewUnionIsInstance
-testIsInstanceUnionNone
 
 # Never for isinstance leads to other side being unreachable
 testPartialAttributeNoneTypeStrictOptional
@@ -669,6 +666,8 @@ testNarrowingWithTupleOfTypes
 testNarrowingWithTupleOfTypesPy310Plus
 # narrowing with Any weird cases
 testIsinstanceNarrowAny
+# isinstance with alias and union literals `isinstance(x, A | B)`
+testTypeAliasWithNewUnionIsInstance
 
 # subtyping arbitrary length unpacks
 testVariadicTupleSubtyping
