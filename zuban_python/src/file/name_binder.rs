@@ -213,35 +213,39 @@ impl<'db> NameBinder<'db> {
 
     fn add_new_definition(&mut self, name_def: NameDefinition<'db>, point: Point) {
         if let Some(first) = self.symbol_table.lookup_symbol(name_def.as_code()) {
-            let mut latest_name_index = first;
-            loop {
-                let point = self.db_infos.points.get(latest_name_index);
-                if point.calculated()
-                    && point.kind() == PointKind::MultiDefinition
-                    && point.node_index() > first
-                {
-                    debug_assert_ne!(latest_name_index, point.node_index());
-                    latest_name_index = point.node_index()
-                } else {
-                    let new_index = name_def.name().index();
-                    self.references_need_flow_analysis = true;
-                    self.db_infos.points.set(
-                        latest_name_index,
-                        Point::new_multi_definition(new_index, Locality::File),
-                    );
-                    // Here we create a loop, so it's easy to find the relevant definitions from
-                    // any point.
-                    self.db_infos.points.set(
-                        new_index,
-                        Point::new_multi_definition(first, Locality::File),
-                    );
-                    break;
-                }
-            }
+            self.ensure_multi_definition(name_def, first)
         } else {
             self.symbol_table.add_or_replace_symbol(name_def.name());
         }
         self.db_infos.points.set(name_def.index(), point);
+    }
+
+    fn ensure_multi_definition(&mut self, name_def: NameDefinition, first_index: NodeIndex) {
+        let mut latest_name_index = first_index;
+        loop {
+            let point = self.db_infos.points.get(latest_name_index);
+            if point.calculated()
+                && point.kind() == PointKind::MultiDefinition
+                && point.node_index() > first_index
+            {
+                debug_assert_ne!(latest_name_index, point.node_index());
+                latest_name_index = point.node_index()
+            } else {
+                let new_index = name_def.name().index();
+                self.references_need_flow_analysis = true;
+                self.db_infos.points.set(
+                    latest_name_index,
+                    Point::new_multi_definition(new_index, Locality::File),
+                );
+                // Here we create a loop, so it's easy to find the relevant definitions from
+                // any point.
+                self.db_infos.points.set(
+                    new_index,
+                    Point::new_multi_definition(first_index, Locality::File),
+                );
+                break;
+            }
+        }
     }
 
     fn add_point_definition(&mut self, name_def: NameDefinition<'db>, specific: Specific) {
@@ -705,8 +709,11 @@ impl<'db> NameBinder<'db> {
         let mut symbol_table = SymbolTable::default();
         for (self_name, name) in class.search_potential_self_assignments() {
             if self.is_self_param(self_name) {
-                // TODO shouldn't this be multi definitions as well?
-                symbol_table.add_or_replace_symbol(name);
+                if let Some(index) = symbol_table.lookup_symbol(name.as_code()) {
+                    self.ensure_multi_definition(name.name_definition().unwrap(), index)
+                } else {
+                    symbol_table.add_or_replace_symbol(name);
+                }
             }
         }
         symbol_table
