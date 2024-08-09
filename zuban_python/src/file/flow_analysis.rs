@@ -843,7 +843,7 @@ fn narrow_is_or_eq(
             ))
         }
         /* Originally enabled in 566ee94f6, but had issues...
-        Type::Literal(literal1) if is_eq && !has_custom_eq(i_s, left_t) => Some((
+        Type::Literal(_) if is_eq && !has_custom_eq(i_s, left_t) => Some((
             Frame::new_unreachable(),
             Frame::from_type(key, left_t.clone()),
         )),

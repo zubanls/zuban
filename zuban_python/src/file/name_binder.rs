@@ -489,7 +489,8 @@ impl<'db> NameBinder<'db> {
             while let Some(n) = self.unresolved_nodes.pop() {
                 match n {
                     Unresolved::Name(name) => {
-                        if !self.try_to_process_reference(name, false) {
+                        if !self.try_to_process_reference(name, self.references_need_flow_analysis)
+                        {
                             self.names_to_be_resolved_in_parent.push(name);
                         }
                     }

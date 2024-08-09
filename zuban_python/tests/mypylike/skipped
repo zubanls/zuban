@@ -311,10 +311,6 @@ testOrCases
 testAndCases
 testFinalWithoutBool
 testFinalWithoutBoolButWithLen
-# nested lambda scopes
-testLambdaInferenceUsesNarrowedTypes
-testNarrowOptionalOutsideLambda
-testNarrowOptionalOutsideLambdaWithDeferred
 # global/local lookup in func of narrowed value in different scope
 testLocalPartialTypesWithGlobalInitializedToNone4
 testAttributePartiallyInitializedToNoneWithMissingAnnotation
@@ -342,9 +338,6 @@ testNarrowingEqualityDisabledForCustomEqualityChain
 testNarrowingEqualityFlipFlop
 testStrictEqualitywithParamSpec
 
-# Never for isinstance leads to other side being unreachable
-testPartialAttributeNoneTypeStrictOptional
-
 # None late binding, because it's None (x = None; x = 3)
 testLocalPartialTypesWithInheritance3
 testUnpackUnionNoCrashOnPartialNone2
@@ -355,6 +348,8 @@ testOptionalBackwards1
 testOptionalBackwards2
 testOptionalBackwards3
 testOptionalBackwards4
+# Never for isinstance leads to other side being unreachable
+testPartialAttributeNoneTypeStrictOptional
 
 # list context is Never and should be something else
 testContextForAttributeDeclaredInInit
@@ -575,6 +570,7 @@ testCannotDetermineTypeFromOtherModule
 testColumnCannotDetermineType
 testUnionOfNonIterableUnpacking
 testWalrusUsedBeforeDef
+testNarrowOptionalOutsideLambdaWithDeferred
 # "Cannot determine type of "X" in base class"
 testCannotDetermineTypeInMultipleInheritance
 
