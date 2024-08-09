@@ -702,7 +702,7 @@ impl<'db> NameBinder<'db> {
         });
         // Need to first index the class, because the class body does not have access to
         // the class name.
-        self.add_new_definition(class_def.name_definition(), Point::new_uncalculated());
+        self.add_new_definition(class_def.name_def(), Point::new_uncalculated());
     }
 
     fn index_self_vars(&mut self, class: ClassDef<'db>) -> SymbolTable {
@@ -710,7 +710,7 @@ impl<'db> NameBinder<'db> {
         for (self_name, name) in class.search_potential_self_assignments() {
             if self.is_self_param(self_name) {
                 if let Some(index) = symbol_table.lookup_symbol(name.as_code()) {
-                    self.ensure_multi_definition(name.name_definition().unwrap(), index)
+                    self.ensure_multi_definition(name.name_def().unwrap(), index)
                 } else {
                     symbol_table.add_or_replace_symbol(name);
                 }
@@ -851,7 +851,7 @@ impl<'db> NameBinder<'db> {
                                             p,
                                         );
                                         self.add_point_definition(
-                                            name.name_definition().unwrap(),
+                                            name.name_def().unwrap(),
                                             Specific::GlobalVariable,
                                         );
                                     }
@@ -878,7 +878,7 @@ impl<'db> NameBinder<'db> {
                                             self.add_issue(name.index(), issue)
                                         } else {
                                             self.add_point_definition(
-                                                name.name_definition().unwrap(),
+                                                name.name_def().unwrap(),
                                                 Specific::NonlocalVariable,
                                             );
                                             self.db_infos.points.set(
@@ -1111,10 +1111,7 @@ impl<'db> NameBinder<'db> {
         // Function name was indexed already.
         let (_, params, _, block) = func.unpack();
 
-        self.index_param_name_defs(
-            params.iter().map(|param| param.name_definition()),
-            is_method,
-        );
+        self.index_param_name_defs(params.iter().map(|param| param.name_def()), is_method);
 
         let latest_return_index = self.index_block(block, true);
         // It's kind of hard to know where to store the latest reference statement.
@@ -1153,7 +1150,7 @@ impl<'db> NameBinder<'db> {
 
     fn index_lambda(&mut self, lambda: Lambda<'db>) {
         let (params, expr) = lambda.unpack();
-        self.index_param_name_defs(params.map(|param| param.name_definition()), false);
+        self.index_param_name_defs(params.map(|param| param.name_def()), false);
         self.index_non_block_node(&expr, true);
     }
 

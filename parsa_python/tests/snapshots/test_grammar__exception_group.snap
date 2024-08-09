@@ -47,7 +47,7 @@ file: 0-115
       atom: 49-57
        Name: 49-57 "FooError"
      Keyword: 58-60 "as"
-     name_definition: 61-62
+     name_def: 61-62
       Name: 61-62 "e"
     Keyword: 62-63 ":"
     block: 63-72
@@ -82,7 +82,7 @@ file: 0-115
             Name: 91-99 "BazError"
        Keyword: 99-100 ")"
      Keyword: 101-103 "as"
-     name_definition: 104-105
+     name_def: 104-105
       Name: 104-105 "e"
     Keyword: 105-106 ":"
     block: 106-115

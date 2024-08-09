@@ -19,7 +19,7 @@ file: 0-77
          sync_for_if_clause: 4-14
           Keyword: 4-7 "for"
           star_targets: 8-9
-           name_definition: 8-9
+           name_def: 8-9
             Name: 8-9 "a"
           Keyword: 10-12 "in"
           atom: 13-14
@@ -44,10 +44,10 @@ file: 0-77
           star_targets: 23-28
            star_target: 23-25
             Keyword: 23-24 "*"
-            name_definition: 24-25
+            name_def: 24-25
              Name: 24-25 "a"
            Keyword: 25-26 ","
-           name_definition: 27-28
+           name_def: 27-28
             Name: 27-28 "c"
           Keyword: 29-31 "in"
           atom: 32-33
@@ -85,7 +85,7 @@ file: 0-77
             star_targets: 56-68
              star_target: 56-58
               Keyword: 56-57 "*"
-              name_definition: 57-58
+              name_def: 57-58
                Name: 57-58 "a"
              Keyword: 58-59 ","
              star_target_brackets: 60-67
@@ -93,10 +93,10 @@ file: 0-77
               star_targets: 61-66
                star_target: 61-63
                 Keyword: 61-62 "*"
-                name_definition: 62-63
+                name_def: 62-63
                  Name: 62-63 "c"
                Keyword: 63-64 ","
-               name_definition: 65-66
+               name_def: 65-66
                 Name: 65-66 "b"
               Keyword: 66-67 ")"
              Keyword: 67-68 ","

@@ -14,7 +14,7 @@ file: 0-108
         lambda_star_etc: 8-16
          lambda_double_starred_param: 8-16
           Keyword: 8-10 "**"
-          name_definition: 10-16
+          name_def: 10-16
            Name: 10-16 "kwargs"
        Keyword: 16-17 ":"
        expression: 18-21
@@ -30,7 +30,7 @@ file: 0-108
        Keyword: 22-28 "lambda"
        lambda_parameters: 29-42
         lambda_param_with_default: 29-32
-         name_definition: 29-30
+         name_def: 29-30
           Name: 29-30 "a"
          Keyword: 30-31 "="
          expression: 31-32
@@ -40,7 +40,7 @@ file: 0-108
         lambda_star_etc: 34-42
          lambda_double_starred_param: 34-42
           Keyword: 34-36 "**"
-          name_definition: 36-42
+          name_def: 36-42
            Name: 36-42 "kwargs"
        Keyword: 42-43 ":"
        expression: 44-47
@@ -56,13 +56,13 @@ file: 0-108
        Keyword: 48-54 "lambda"
        lambda_parameters: 55-66
         lambda_param_no_default: 55-56
-         name_definition: 55-56
+         name_def: 55-56
           Name: 55-56 "a"
         Keyword: 56-57 ","
         lambda_star_etc: 58-66
          lambda_double_starred_param: 58-66
           Keyword: 58-60 "**"
-          name_definition: 60-66
+          name_def: 60-66
            Name: 60-66 "kwargs"
        Keyword: 66-67 ":"
        expression: 68-71
@@ -78,25 +78,25 @@ file: 0-108
        Keyword: 72-78 "lambda"
        lambda_parameters: 79-102
         lambda_param_no_default: 79-80
-         name_definition: 79-80
+         name_def: 79-80
           Name: 79-80 "a"
         Keyword: 80-81 ","
         Keyword: 82-83 "/"
         Keyword: 83-84 ","
         lambda_param_no_default: 85-86
-         name_definition: 85-86
+         name_def: 85-86
           Name: 85-86 "b"
         Keyword: 86-87 ","
         lambda_star_etc: 88-102
          Keyword: 88-89 "*"
          Keyword: 89-90 ","
          lambda_param_maybe_default: 91-92
-          name_definition: 91-92
+          name_def: 91-92
            Name: 91-92 "x"
          Keyword: 92-93 ","
          lambda_double_starred_param: 94-102
           Keyword: 94-96 "**"
-          name_definition: 96-102
+          name_def: 96-102
            Name: 96-102 "kwargs"
        Keyword: 102-103 ":"
        expression: 104-107

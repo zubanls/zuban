@@ -8,7 +8,7 @@ file: 0-53
    simple_stmt: 1-9
     assignment: 1-9
      single_target: 1-4
-      name_definition: 1-4
+      name_def: 1-4
        Name: 1-4 "foo"
      annotation: 4-9
       Keyword: 4-5 ":"
@@ -21,7 +21,7 @@ file: 0-53
    simple_stmt: 10-22
     assignment: 10-22
      single_target: 10-13
-      name_definition: 10-13
+      name_def: 10-13
        Name: 10-13 "foo"
      annotation: 13-18
       Keyword: 13-14 ":"
@@ -43,7 +43,7 @@ file: 0-53
        atom: 23-26
         Name: 23-26 "foo"
        Keyword: 26-27 "."
-       name_definition: 27-30
+       name_def: 27-30
         Name: 27-30 "bar"
      annotation: 30-35
       Keyword: 30-31 ":"
@@ -56,7 +56,7 @@ file: 0-53
    simple_stmt: 36-48
     assignment: 36-48
      single_target: 36-39
-      name_definition: 36-39
+      name_def: 36-39
        Name: 36-39 "foo"
      annotation: 39-44
       Keyword: 39-40 ":"

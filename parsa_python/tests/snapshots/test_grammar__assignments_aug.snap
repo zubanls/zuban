@@ -8,7 +8,7 @@ file: 0-37
    simple_stmt: 1-9
     assignment: 1-9
      single_target: 1-4
-      name_definition: 1-4
+      name_def: 1-4
        Name: 1-4 "foo"
      augassign: 5-7
       Keyword: 5-7 "+="
@@ -26,7 +26,7 @@ file: 0-37
        atom: 10-13
         Name: 10-13 "foo"
        Keyword: 13-14 "."
-       name_definition: 14-17
+       name_def: 14-17
         Name: 14-17 "bar"
      augassign: 18-20
       Keyword: 18-20 "|="

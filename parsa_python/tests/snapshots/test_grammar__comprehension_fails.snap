@@ -35,7 +35,7 @@ file: 0-52
                          Error(sync_for_if_clause): 12-20
                           Keyword: 12-15 "for"
                           star_targets: 16-17
-                           name_definition: 16-17
+                           name_def: 16-17
                             Name: 16-17 "a"
                           Keyword: 18-20 "in"
  Error(stmt): 21-23
@@ -81,7 +81,7 @@ file: 0-52
                         sync_for_if_clause: 28-43
                          Keyword: 28-31 "for"
                          star_targets: 32-33
-                          name_definition: 32-33
+                          name_def: 32-33
                            Name: 32-33 "a"
                          Keyword: 34-36 "in"
                          atom: 37-38

@@ -529,7 +529,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
     pub fn cache_func(&self, i_s: &InferenceState) {
         self.cache_func_with_name_def(
             i_s,
-            NodeRef::new(self.node_ref.file, self.node().name_definition().index()),
+            NodeRef::new(self.node_ref.file, self.node().name_def().index()),
         )
     }
 
@@ -1150,7 +1150,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         }
         let name_def_node_ref = |link| {
             let node_ref = NodeRef::from_link(i_s.db, link);
-            let name_def = node_ref.maybe_function().unwrap().name_definition();
+            let name_def = node_ref.maybe_function().unwrap().name_def();
             NodeRef::new(node_ref.file, name_def.index())
         };
         if let Some(kind) = inconsistent_function_kind {
@@ -1450,8 +1450,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             let specific = p.specific(i_s.db);
             let mut as_t = |t: Option<Cow<_>>| {
                 t.map(|t| as_type(&t)).unwrap_or({
-                    let name_ref =
-                        NodeRef::new(self.node_ref.file, p.param.name_definition().index());
+                    let name_ref = NodeRef::new(self.node_ref.file, p.param.name_def().index());
                     if name_ref.point().maybe_specific() == Some(Specific::MaybeSelfParam) {
                         if self.is_dunder_new() {
                             if let Some(type_var_usage) = self_type_var_usage {
@@ -1533,7 +1532,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 type_: param_specific,
                 has_default: p.has_default(),
                 name: Some({
-                    let n = p.param.name_definition();
+                    let n = p.param.name_def();
                     StringSlice::new(file_index, n.start(), n.end()).into()
                 }),
             });
@@ -1862,7 +1861,7 @@ impl<'x> Param<'x> for FunctionParam<'x> {
     }
 
     fn name(&self, db: &'x Database) -> Option<&str> {
-        Some(self.param.name_definition().as_code())
+        Some(self.param.name_def().as_code())
     }
 
     fn specific<'db: 'x>(&self, db: &'db Database) -> WrappedParamType<'x> {
@@ -1933,7 +1932,7 @@ impl<'x> Param<'x> for FunctionParam<'x> {
         let mut t = self.param.kind();
         if t == ParamKind::PositionalOrKeyword
             && self.file.flags(db).mypy_compatible
-            && is_private(self.param.name_definition().as_code())
+            && is_private(self.param.name_def().as_code())
         {
             // Mypy treats __ params as positional only
             t = ParamKind::PositionalOnly

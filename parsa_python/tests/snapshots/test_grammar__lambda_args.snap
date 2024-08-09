@@ -12,14 +12,14 @@ file: 0-124
        Keyword: 1-7 "lambda"
        lambda_parameters: 8-17
         lambda_param_no_default: 8-9
-         name_definition: 8-9
+         name_def: 8-9
           Name: 8-9 "a"
         Keyword: 9-10 ","
         lambda_star_etc: 11-17
          Keyword: 11-12 "*"
          Keyword: 12-13 ","
          lambda_param_maybe_default: 14-17
-          name_definition: 14-15
+          name_def: 14-15
            Name: 14-15 "b"
           Keyword: 15-16 "="
           expression: 16-17
@@ -39,7 +39,7 @@ file: 0-124
        Keyword: 23-29 "lambda"
        lambda_parameters: 30-39
         lambda_param_with_default: 30-33
-         name_definition: 30-31
+         name_def: 30-31
           Name: 30-31 "a"
          Keyword: 31-32 "="
          expression: 32-33
@@ -50,7 +50,7 @@ file: 0-124
          Keyword: 35-36 "*"
          Keyword: 36-37 ","
          lambda_param_maybe_default: 38-39
-          name_definition: 38-39
+          name_def: 38-39
            Name: 38-39 "c"
        Keyword: 39-40 ":"
        expression: 41-44
@@ -66,19 +66,19 @@ file: 0-124
        Keyword: 45-51 "lambda"
        lambda_parameters: 52-69
         lambda_param_no_default: 52-53
-         name_definition: 52-53
+         name_def: 52-53
           Name: 52-53 "a"
         Keyword: 53-54 ","
         lambda_star_etc: 55-69
          Keyword: 55-56 "*"
          Keyword: 56-57 ","
          lambda_param_maybe_default: 58-59
-          name_definition: 58-59
+          name_def: 58-59
            Name: 58-59 "x"
          Keyword: 59-60 ","
          lambda_double_starred_param: 61-69
           Keyword: 61-63 "**"
-          name_definition: 63-69
+          name_def: 63-69
            Name: 63-69 "kwargs"
        Keyword: 69-70 ":"
        expression: 71-74
@@ -94,18 +94,18 @@ file: 0-124
        Keyword: 75-81 "lambda"
        lambda_parameters: 82-100
         lambda_param_no_default: 82-83
-         name_definition: 82-83
+         name_def: 82-83
           Name: 82-83 "a"
         Keyword: 83-84 ","
         lambda_star_etc: 85-100
          lambda_starred_param: 85-90
           Keyword: 85-86 "*"
-          name_definition: 86-90
+          name_def: 86-90
            Name: 86-90 "args"
          Keyword: 90-91 ","
          lambda_double_starred_param: 92-98
           Keyword: 92-94 "**"
-          name_definition: 94-98
+          name_def: 94-98
            Name: 94-98 "fooo"
          Keyword: 99-100 ","
        Keyword: 100-101 ":"
@@ -124,7 +124,7 @@ file: 0-124
         lambda_star_etc: 113-118
          lambda_starred_param: 113-118
           Keyword: 113-114 "*"
-          name_definition: 114-118
+          name_def: 114-118
            Name: 114-118 "args"
        Keyword: 118-119 ":"
        expression: 120-123

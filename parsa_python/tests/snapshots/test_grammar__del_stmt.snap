@@ -9,7 +9,7 @@ file: 0-46
     del_stmt: 1-8
      Keyword: 1-4 "del"
      del_targets: 5-8
-      name_definition: 5-8
+      name_def: 5-8
        Name: 5-8 "foo"
    Newline: 8-9 "\n"
  stmt: 9-18
@@ -18,7 +18,7 @@ file: 0-46
     del_stmt: 9-17
      Keyword: 9-12 "del"
      del_targets: 13-17
-      name_definition: 13-16
+      name_def: 13-16
        Name: 13-16 "foo"
       Keyword: 16-17 ","
    Newline: 17-18 "\n"
@@ -28,14 +28,14 @@ file: 0-46
     del_stmt: 18-34
      Keyword: 18-21 "del"
      del_targets: 22-34
-      name_definition: 22-25
+      name_def: 22-25
        Name: 22-25 "foo"
       Keyword: 25-26 ","
       t_primary: 27-34
        atom: 27-30
         Name: 27-30 "bar"
        Keyword: 30-31 "."
-       name_definition: 31-34
+       name_def: 31-34
         Name: 31-34 "baz"
    Newline: 34-35 "\n"
  stmt: 35-46

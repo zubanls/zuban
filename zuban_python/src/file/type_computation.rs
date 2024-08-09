@@ -4864,10 +4864,7 @@ pub(super) fn check_type_name<'db: 'file, 'file>(
                 }
             }
             // At this point the class is not necessarily calculated and we therefore do this here.
-            let name_def = NodeRef::new(
-                name_node_ref.file,
-                new_name.name_definition().unwrap().index(),
-            );
+            let name_def = NodeRef::new(name_node_ref.file, new_name.name_def().unwrap().index());
             let from = NodeRef::new(name_node_ref.file, c.index());
             let class = Class::with_undefined_generics(from);
             if class.is_calculating_class_infos() {
@@ -4905,12 +4902,12 @@ pub(super) fn check_type_name<'db: 'file, 'file>(
             let def_point = name_node_ref
                 .file
                 .points
-                .get(new_name.name_definition().unwrap().index());
+                .get(new_name.name_def().unwrap().index());
             let inference = name_node_ref.file.inference(i_s);
             if !def_point.calculated() {
                 if def_point.calculating() {
                     name_node_ref.file.points.set(
-                        new_name.name_definition().unwrap().index(),
+                        new_name.name_def().unwrap().index(),
                         Point::new_specific(Specific::Cycle, Locality::Todo),
                     );
                 } else {

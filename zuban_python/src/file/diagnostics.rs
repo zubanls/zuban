@@ -240,14 +240,14 @@ impl<'db> Inference<'db, '_, '_> {
                 }
                 ImportFromTargets::Iterator(iter) => {
                     for target in iter {
-                        let name_def = target.name_definition();
+                        let name_def = target.name_def();
                         let name_index = name_def.name_index();
                         if first_defined_name(self.file, name_index) != name_index {
                             // Apparently Mypy only checks the first name...
                             continue;
                         }
                         if self
-                            .infer_name_definition(name_def)
+                            .infer_name_def(name_def)
                             .as_cow_type(self.i_s)
                             .is_func_or_overload()
                         {
@@ -595,10 +595,7 @@ impl<'db> Inference<'db, '_, '_> {
 
     fn calc_class_diagnostics(&self, class: ClassDef) {
         let (arguments, block) = class.unpack();
-        cache_class_name(
-            NodeRef::new(self.file, class.name_definition().index()),
-            class,
-        );
+        cache_class_name(NodeRef::new(self.file, class.name_def().index()), class);
         let class_node_ref = NodeRef::new(self.file, class.index());
         class_node_ref.ensure_cached_class_infos(self.i_s);
         let db = self.i_s.db;
@@ -1010,7 +1007,7 @@ impl<'db> Inference<'db, '_, '_> {
                                     return None;
                                 }
                                 Some(IssueKind::IncompatibleDefaultArgument {
-                                    argument_name: Box::from(param.name_definition().as_code()),
+                                    argument_name: Box::from(param.name_def().as_code()),
                                     got,
                                     expected,
                                 })
@@ -1078,7 +1075,7 @@ impl<'db> Inference<'db, '_, '_> {
                                 class_t = Type::Type(Rc::new(class_t));
                             };
                             if !erased.is_simple_super_type_of(i_s, &class_t).bool() {
-                                let param_name = first_param.name_definition().as_code();
+                                let param_name = first_param.name_def().as_code();
                                 let issue = if ["self", "cls"].contains(&param_name) {
                                     let format_data = &FormatData::new_reveal_type(i_s.db);
                                     IssueKind::TypeOfSelfIsNotASupertypeOfItsClass {
@@ -1118,7 +1115,7 @@ impl<'db> Inference<'db, '_, '_> {
                                 if matches!(
                                     p.kind(),
                                     ParamKind::PositionalOrKeyword | ParamKind::KeywordOnly
-                                ) && name == p.name_definition().as_code()
+                                ) && name == p.name_def().as_code()
                                 {
                                     overlapping_names.push(format!("\"{name}\""));
                                     break;
@@ -1858,7 +1855,7 @@ fn check_override(
             node_ref
                 .maybe_function()
                 .map(|func| Function::new(node_ref, None))
-                .filter(|func| func.node().name_definition().index() == from.node_index)
+                .filter(|func| func.node().name_def().index() == from.node_index)
         }
         _ => None,
     };

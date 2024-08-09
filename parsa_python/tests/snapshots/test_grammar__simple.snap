@@ -15,7 +15,7 @@ file: 0-36
        arguments: 3-16
         named_expression: 3-9
          walrus: 3-9
-          name_definition: 3-6
+          name_def: 3-6
            Name: 3-6 "bar"
           Keyword: 6-8 ":="
           expression: 8-9

@@ -297,7 +297,7 @@ fn follow_name<'db>(
         match name.expect_type() {
             TypeLike::ClassDef(c) => {
                 let name_def_node_ref =
-                    NodeRef::new(node_ref.file, name.name_definition().unwrap().index());
+                    NodeRef::new(node_ref.file, name.name_def().unwrap().index());
                 return Err(BaseLookup::Class(PointLink::new(
                     node_ref.file_index(),
                     c.index(),

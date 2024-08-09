@@ -453,7 +453,7 @@ impl<'db> PythonFile {
                     .and_then(|dunder_all_index| {
                         let name_def = NodeRef::new(self, dunder_all_index)
                             .as_name()
-                            .name_definition()
+                            .name_def()
                             .unwrap();
                         if let Some((_, _, expr)) =
                             name_def
@@ -469,12 +469,12 @@ impl<'db> PythonFile {
                         {
                             let i_s = InferenceState::new(db);
                             let inference = self.inference(&i_s);
-                            inference.infer_name_definition(name_def);
+                            inference.infer_name_def(name_def);
                             // Just take the __all__ from the now calculated file. The exact
                             // position doesn't matter anymore, because that is calculated by
                             // exactly this method.
                             let name_def_point =
-                                NodeRef::new(self, as_name.name_definition().index()).point();
+                                NodeRef::new(self, as_name.name_def().index()).point();
                             let base = name_def_point
                                 .as_redirected_node_ref(db)
                                 .file
@@ -496,7 +496,7 @@ impl<'db> PythonFile {
     ) -> Option<Box<[DbString]>> {
         let file_index = self.file_index();
         let check_multi_def = |dunder_all: Vec<DbString>, name: Name| -> Option<Vec<DbString>> {
-            let name_def = name.name_definition().unwrap();
+            let name_def = name.name_def().unwrap();
             let assignment = name_def.maybe_assignment_definition()?;
             if let AssignmentContent::AugAssign(_, _, right_side) = assignment.unpack() {
                 maybe_dunder_all_names(

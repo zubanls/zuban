@@ -13,7 +13,7 @@ file: 0-116
       atom: 7-10
        Name: 7-10 "foo"
      Keyword: 11-13 "as"
-     name_definition: 14-17
+     name_def: 14-17
       Name: 14-17 "bar"
     Keyword: 17-18 ")"
    Keyword: 18-19 ":"
@@ -35,7 +35,7 @@ file: 0-116
       atom: 30-33
        Name: 30-33 "foo"
      Keyword: 34-36 "as"
-     name_definition: 37-40
+     name_def: 37-40
       Name: 37-40 "bar"
     Keyword: 40-41 ","
     with_item: 42-45
@@ -93,7 +93,7 @@ file: 0-116
          sync_for_if_clause: 78-89
           Keyword: 78-81 "for"
           star_targets: 82-83
-           name_definition: 82-83
+           name_def: 82-83
             Name: 82-83 "i"
           Keyword: 84-86 "in"
           atom: 87-89

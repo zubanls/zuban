@@ -12,7 +12,7 @@ file: 0-44
      Keyword: 8-14 "import"
      Error(import_from_targets): 15-19
       import_from_as_name: 15-18
-       name_definition: 15-18
+       name_def: 15-18
         Name: 15-18 "foo"
       Keyword: 18-19 ","
  stmt: 19-20
@@ -26,11 +26,11 @@ file: 0-44
      Keyword: 27-33 "import"
      Error(import_from_targets): 34-43
       import_from_as_name: 34-37
-       name_definition: 34-37
+       name_def: 34-37
         Name: 34-37 "foo"
       Keyword: 37-38 ","
       import_from_as_name: 39-42
-       name_definition: 39-42
+       name_def: 39-42
         Name: 39-42 "bar"
       Keyword: 42-43 ","
  stmt: 43-44

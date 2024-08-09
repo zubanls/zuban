@@ -423,7 +423,7 @@ impl PythonState {
                 update(db, Some(class_index));
                 let class = Class::with_undefined_generics(NodeRef::new(module(db), class_index));
                 let name_def_ref =
-                    NodeRef::new(class.node_ref.file, class.node().name_definition().index());
+                    NodeRef::new(class.node_ref.file, class.node().name_def().index());
                 cache_class_name(
                     name_def_ref,
                     NodeRef::new(module(db), class_index).maybe_class().unwrap(),

@@ -364,11 +364,9 @@ impl<'db: 'a, 'a> Class<'a> {
             return;
         }
 
-        debug_assert!(
-            NodeRef::new(node_ref.file, self.node().name_definition().index())
-                .point()
-                .calculated()
-        );
+        debug_assert!(NodeRef::new(node_ref.file, self.node().name_def().index())
+            .point()
+            .calculated());
         debug!("Calculate class infos for {}", self.name());
 
         node_ref.set_point(Point::new_calculating());
@@ -518,7 +516,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 .undefined_generics_type
                 .set(Rc::new(Type::TypedDict(td.clone())))
                 .unwrap();
-            NodeRef::new(self.node_ref.file, self.node().name_definition().index()).insert_complex(
+            NodeRef::new(self.node_ref.file, self.node().name_def().index()).insert_complex(
                 ComplexPoint::TypedDictDefinition(TypedDictDefinition::new(td.clone(), total)),
                 Locality::ImplicitExtern,
             );
@@ -2494,7 +2492,7 @@ impl<'db: 'a, 'a> Class<'a> {
     }
 
     pub fn maybe_typed_dict_definition(&self) -> Option<&TypedDictDefinition> {
-        NodeRef::new(self.node_ref.file, self.node().name_definition().index())
+        NodeRef::new(self.node_ref.file, self.node().name_def().index())
             .complex()
             .and_then(|c| match c {
                 ComplexPoint::TypedDictDefinition(tdd) => Some(tdd),

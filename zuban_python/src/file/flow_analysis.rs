@@ -2676,11 +2676,7 @@ impl Inference<'_, '_, '_> {
     fn key_from_atom(&self, atom: Atom) -> Option<FlowKey> {
         match atom.unpack() {
             AtomContent::Name(name) => {
-                return Some(FlowKey::Name(name_definition_link(
-                    self.i_s.db,
-                    self.file,
-                    name,
-                )?))
+                return Some(FlowKey::Name(name_def_link(self.i_s.db, self.file, name)?))
             }
             AtomContent::NamedExpression(named_expr) => {
                 if let NamedExpressionContent::Walrus(walrus) = named_expr.unpack() {
@@ -2885,7 +2881,7 @@ impl Inference<'_, '_, '_> {
                 let AtomContent::Name(name) = atom.unpack() else {
                     return false;
                 };
-                name_definition_link(self.i_s.db, self.file, name) == Some(*check_link)
+                name_def_link(self.i_s.db, self.file, name) == Some(*check_link)
             }
         }
     }
@@ -2986,7 +2982,7 @@ impl Inference<'_, '_, '_> {
     }
 }
 
-fn name_definition_link(db: &Database, file: &PythonFile, name: Name) -> Option<PointLink> {
+fn name_def_link(db: &Database, file: &PythonFile, name: Name) -> Option<PointLink> {
     let p = file.points.get(name.index());
     if p.calculated() {
         if p.kind() != PointKind::Redirect {

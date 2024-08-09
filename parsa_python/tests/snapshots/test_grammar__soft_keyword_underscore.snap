@@ -75,7 +75,7 @@ file: 0-63
    simple_stmt: 53-62
     assignment: 53-62
      star_targets: 53-58
-      name_definition: 53-58
+      name_def: 53-58
        Name: 53-58 "match"
      Keyword: 59-60 "="
      star_expressions: 61-62

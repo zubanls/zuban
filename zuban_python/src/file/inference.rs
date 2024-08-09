@@ -136,7 +136,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             first_defined_name_of_multi_def(self.file, name_def.name().index())
         {
             let from = NodeRef::new(self.file, name_def.index());
-            let import_inferred = self.infer_name_definition(name_def);
+            let import_inferred = self.infer_name_def(name_def);
             self.infer_name_of_definition_by_index(original_name_index)
                 .as_cow_type(self.i_s)
                 .error_if_not_matches(
@@ -1145,7 +1145,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             Target::Name(name_def) => {
                 self.assign_to_name_def(name_def, from, value, assign_kind, save)
             }
-            Target::NameExpression(primary_target, name_definition) => {
+            Target::NameExpression(primary_target, name_def) => {
                 let base = self.infer_primary_target_or_atom(primary_target.first());
                 if base.maybe_saved_specific(i_s.db) == Some(Specific::MaybeSelfParam) {
                     // TODO we should probably check if we are in a staticmethod/classmethod
@@ -1166,12 +1166,12 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     }
                     let base = base.as_cow_type(i_s);
                     let node_ref = NodeRef::new(self.file, primary_target.index());
-                    let name_str = name_definition.as_code();
+                    let name_str = name_def.as_code();
                     let mut had_error = false;
                     for t in base.iter_with_unpacked_unions(i_s.db) {
                         if let Some(cls) = t.maybe_class(i_s.db) {
                             had_error |= Instance::new(cls, None)
-                                .check_set_descriptor(i_s, node_ref, name_definition.name(), value)
+                                .check_set_descriptor(i_s, node_ref, name_def.name(), value)
                                 .is_err();
                             continue;
                         }
@@ -1180,7 +1180,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 i_s,
                                 IssueKind::PropertyIsReadOnly {
                                     class_name,
-                                    property_name: name_definition.as_code().into(),
+                                    property_name: name_def.as_code().into(),
                                 },
                             )
                         };
@@ -1191,17 +1191,12 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                     property_is_read_only(d.class(i_s.db).name().into())
                                 }
                                 had_error |= Instance::new(d.class(i_s.db), None)
-                                    .check_set_descriptor(
-                                        i_s,
-                                        node_ref,
-                                        name_definition.name(),
-                                        value,
-                                    )
+                                    .check_set_descriptor(i_s, node_ref, name_def.name(), value)
                                     .is_err();
                                 continue;
                             }
                             Type::NamedTuple(nt) => {
-                                if nt.search_param(i_s.db, name_definition.as_code()).is_some() {
+                                if nt.search_param(i_s.db, name_def.as_code()).is_some() {
                                     had_error = true;
                                     property_is_read_only(nt.name(i_s.db).into());
                                     continue;
@@ -1293,7 +1288,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     }
                 }
                 // This mostly needs to be saved for self names
-                save(name_definition.index(), value);
+                save(name_def.index(), value);
             }
             Target::IndexExpression(primary_target) => {
                 let base = self.infer_primary_target_or_atom(primary_target.first());
@@ -1635,12 +1630,12 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 line = NodeRef::new(self.file, decorated.index()).line();
             }
         }
-        let first_name_def = first_ref.as_name().name_definition().unwrap();
+        let first_name_def = first_ref.as_name().name_def().unwrap();
         let suffix = match first_name_def.maybe_import() {
             Some(import_parent) => {
                 let mut s = "(possibly by an import)";
                 if matches!(
-                    self.infer_name_definition(first_name_def)
+                    self.infer_name_def(first_name_def)
                         .as_cow_type(i_s)
                         .as_ref(),
                     Type::Module(_)
@@ -2118,8 +2113,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 )),
             },
             name: Some(
-                StringSlice::from_name(self.file.file_index(), param.name_definition().name())
-                    .into(),
+                StringSlice::from_name(self.file.file_index(), param.name_def().name()).into(),
             ),
             has_default: param.default().is_some(),
         };
@@ -3119,7 +3113,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                         }
                                     } else {
                                         for param in func_node.params().iter() {
-                                            if param.name_definition().index() == name_def.index() {
+                                            if param.name_def().index() == name_def.index() {
                                                 return match param.kind() {
                                                     ParamKind::Star => todo!(),
                                                     ParamKind::StarStar => {
@@ -3187,7 +3181,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     // MultiDefinition means we are on a Name that has a NameDefinition as a
                     // parent.
                     let name = Name::by_index(&self.file.tree, node_index);
-                    self.infer_name_definition(name.name_definition().unwrap())
+                    self.infer_name_def(name.name_def().unwrap())
                 }
                 PointKind::Complex | PointKind::FileReference => {
                     Inferred::new_saved(self.file, node_index)
@@ -3226,18 +3220,18 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 return inf;
             }
         }
-        self.infer_name_definition(name.name_definition().unwrap())
+        self.infer_name_def(name.name_def().unwrap())
     }
 
-    check_point_cache_with!(pub infer_name_definition, Self::_infer_name_definition, NameDef);
-    fn _infer_name_definition(&self, name_def: NameDef) -> Inferred {
+    check_point_cache_with!(pub infer_name_def, Self::_infer_name_def, NameDef);
+    fn _infer_name_def(&self, name_def: NameDef) -> Inferred {
         let defining_stmt = name_def.expect_defining_stmt();
         self.cache_defining_stmt(defining_stmt, NodeRef::new(self.file, name_def.index()));
         debug_assert!(
             self.file.points.get(name_def.index()).calculated(),
             "{name_def:?}",
         );
-        self.infer_name_definition(name_def)
+        self.infer_name_def(name_def)
     }
 
     fn cache_defining_stmt(&self, defining_stmt: DefiningStmt, name_def: NodeRef) {
@@ -3800,7 +3794,7 @@ fn move_lambda_context_keyword_to_positional_or_keyword(
                 let search = p.name.as_ref().unwrap().as_str(db);
                 for lambda_p in params.clone() {
                     if lambda_p.kind() == ParamKind::PositionalOrKeyword
-                        && lambda_p.name_definition().as_code() == search
+                        && lambda_p.name_def().as_code() == search
                     {
                         return CallableParam {
                             type_: ParamType::PositionalOrKeyword(t.clone()),
@@ -3821,13 +3815,13 @@ fn lookup_lambda_param(
     name_node_index: NodeIndex,
 ) -> Inferred {
     for (i, p) in lambda.params().enumerate() {
-        if p.name_definition().index() == name_node_index {
+        if p.name_def().index() == name_node_index {
             if let Some(current_callable) = i_s.current_lambda_callable() {
                 return match &current_callable.params {
                     CallableParams::Simple(c_params) => {
                         for p2 in c_params.iter() {
                             if let Some(n) = &p2.name {
-                                if n.as_str(i_s.db) == p.name_definition().as_code() {
+                                if n.as_str(i_s.db) == p.name_def().as_code() {
                                     if let Some(t) = p2.type_.maybe_type() {
                                         return Inferred::from_type(t.clone());
                                     }

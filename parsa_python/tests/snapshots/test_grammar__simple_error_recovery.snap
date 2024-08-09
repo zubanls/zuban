@@ -32,7 +32,7 @@ file: 0-15
    simple_stmt: 9-14
     assignment: 9-14
      star_targets: 9-10
-      name_definition: 9-10
+      name_def: 9-10
        Name: 9-10 "b"
      Keyword: 11-12 "="
      star_expressions: 13-14

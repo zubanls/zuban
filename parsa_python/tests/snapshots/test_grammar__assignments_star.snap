@@ -10,13 +10,13 @@ file: 0-77
      star_targets: 1-5
       star_target: 1-5
        Keyword: 1-2 "*"
-       name_definition: 2-5
+       name_def: 2-5
         Name: 2-5 "foo"
      Keyword: 6-7 "="
      star_targets: 8-12
       star_target: 8-12
        Keyword: 8-9 "*"
-       name_definition: 9-12
+       name_def: 9-12
         Name: 9-12 "bar"
      Keyword: 13-14 "="
      star_expressions: 15-19
@@ -30,12 +30,12 @@ file: 0-77
    simple_stmt: 20-53
     assignment: 20-53
      star_targets: 20-27
-      name_definition: 20-21
+      name_def: 20-21
        Name: 20-21 "i"
       Keyword: 21-22 ","
       star_target: 23-27
        Keyword: 23-24 "*"
-       name_definition: 24-27
+       name_def: 24-27
         Name: 24-27 "foo"
      Keyword: 28-29 "="
      star_targets: 30-46
@@ -45,7 +45,7 @@ file: 0-77
         star_target_brackets: 31-45
          Keyword: 31-32 "("
          star_targets: 32-44
-          name_definition: 32-33
+          name_def: 32-33
            Name: 32-33 "j"
           Keyword: 33-34 ","
           star_target_brackets: 35-44
@@ -53,10 +53,10 @@ file: 0-77
            star_targets: 36-43
             star_target: 36-40
              Keyword: 36-37 "*"
-             name_definition: 37-40
+             name_def: 37-40
               Name: 37-40 "bar"
             Keyword: 40-41 ","
-            name_definition: 42-43
+            name_def: 42-43
              Name: 42-43 "k"
            Keyword: 43-44 "]"
          Keyword: 44-45 ")"
@@ -75,12 +75,12 @@ file: 0-77
      star_targets: 54-64
       star_target: 54-58
        Keyword: 54-55 "*"
-       name_definition: 55-58
+       name_def: 55-58
         Name: 55-58 "foo"
       Keyword: 58-59 ","
       star_target: 60-64
        Keyword: 60-61 "*"
-       name_definition: 61-64
+       name_def: 61-64
         Name: 61-64 "bar"
      Keyword: 65-66 "="
      yield_expr: 67-76

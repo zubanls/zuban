@@ -356,7 +356,7 @@ create_nonterminal_structs!(
     Arguments: arguments
     Kwarg: kwarg
 
-    NameDef: name_definition
+    NameDef: name_def
     Atom: atom
     Strings: strings
     Bytes: bytes
@@ -414,16 +414,12 @@ impl<'db> Name<'db> {
     }
 
     pub fn is_reference(&self) -> bool {
-        !self
-            .node
-            .parent()
-            .unwrap()
-            .is_type(Nonterminal(name_definition))
+        !self.node.parent().unwrap().is_type(Nonterminal(name_def))
     }
 
-    pub fn name_definition(&self) -> Option<NameDef<'db>> {
+    pub fn name_def(&self) -> Option<NameDef<'db>> {
         let parent = self.node.parent().unwrap();
-        if parent.is_type(Nonterminal(name_definition)) {
+        if parent.is_type(Nonterminal(name_def)) {
             Some(NameDef::new(parent))
         } else {
             None
@@ -432,7 +428,7 @@ impl<'db> Name<'db> {
 
     pub fn name_def_index(&self) -> NodeIndex {
         debug_assert_eq!(
-            self.name_definition().unwrap().index(),
+            self.name_def().unwrap().index(),
             self.index() - NAME_DEF_TO_NAME_DIFFERENCE
         );
         self.index() - NAME_DEF_TO_NAME_DIFFERENCE
@@ -457,7 +453,7 @@ impl<'db> Name<'db> {
         if node.is_type(Nonterminal(class_def)) {
             TypeLike::ClassDef(ClassDef::new(node))
         } else if node.is_type(Nonterminal(assignment)) {
-            if self.name_definition().is_none() {
+            if self.name_def().is_none() {
                 return TypeLike::Other;
             }
             TypeLike::Assignment(Assignment::new(node))
@@ -484,7 +480,7 @@ impl<'db> Name<'db> {
         let parent = self.node.parent().unwrap();
         if parent.is_type(Nonterminal(atom)) {
             NameParent::Atom
-        } else if parent.is_type(Nonterminal(name_definition)) {
+        } else if parent.is_type(Nonterminal(name_def)) {
             NameParent::NameDef(NameDef::new(parent))
         } else if parent.is_type(Nonterminal(primary)) {
             NameParent::Primary(Primary::new(parent))
@@ -1100,10 +1096,10 @@ impl<'db> Walrus<'db> {
 
     pub fn unpack(&self) -> (NameDef<'db>, Expression<'db>) {
         let mut iterator = self.node.iter_children();
-        let name_def = iterator.next().unwrap();
+        let name_d = iterator.next().unwrap();
         iterator.next();
         let expr = iterator.next().unwrap();
-        (NameDef::new(name_def), Expression::new(expr))
+        (NameDef::new(name_d), Expression::new(expr))
     }
 
     pub fn expression(&self) -> Expression<'db> {
@@ -1397,7 +1393,7 @@ impl<'db> ExceptStarBlock<'db> {
 
 impl<'db> ExceptExpression<'db> {
     pub fn unpack(&self) -> (Expression<'db>, Option<NameDef<'db>>) {
-        // except_expression: [expression ["as" name_definition]]
+        // except_expression: [expression ["as" name_def]]
         let mut clause_iterator = self.node.iter_children();
         let expr = clause_iterator.next().unwrap();
         clause_iterator.next();
@@ -1805,12 +1801,12 @@ impl<'db> CompIf<'db> {
 }
 
 impl<'db> ClassDef<'db> {
-    pub fn name_definition(&self) -> NameDef<'db> {
+    pub fn name_def(&self) -> NameDef<'db> {
         NameDef::new(self.node.nth_child(1))
     }
 
     pub fn name(&self) -> Name<'db> {
-        self.name_definition().name()
+        self.name_def().name()
     }
 
     pub fn arguments(&self) -> Option<Arguments<'db>> {
@@ -1863,13 +1859,13 @@ impl<'db> Iterator for PotentialSelfAssignments<'db> {
     type Item = (Name<'db>, Name<'db>);
     fn next(&mut self) -> Option<Self::Item> {
         for node in &mut self.0 {
-            let name_def = node.nth_child(2);
-            if name_def.is_type(Nonterminal(name_definition)) {
+            let name_d = node.nth_child(2);
+            if name_d.is_type(Nonterminal(name_def)) {
                 let atom_ = node.nth_child(0);
                 if atom_.is_type(Nonterminal(atom)) {
                     let self_name = atom_.nth_child(0);
                     if self_name.is_type(Terminal(TerminalType::Name)) {
-                        return Some((Name::new(self_name), NameDef::new(name_def).name()));
+                        return Some((Name::new(self_name), NameDef::new(name_d).name()));
                     }
                 }
             }
@@ -1879,12 +1875,12 @@ impl<'db> Iterator for PotentialSelfAssignments<'db> {
 }
 
 impl<'db> FunctionDef<'db> {
-    pub fn name_definition(&self) -> NameDef<'db> {
+    pub fn name_def(&self) -> NameDef<'db> {
         NameDef::new(self.node.nth_child(1))
     }
 
     pub fn name(&self) -> Name<'db> {
-        self.name_definition().name()
+        self.name_def().name()
     }
 
     pub fn end_position_of_colon(&self) -> CodeIndex {
@@ -1954,11 +1950,11 @@ impl<'db> FunctionDef<'db> {
         Option<ReturnAnnotation<'db>>,
         Block<'db>,
     ) {
-        // function_def: "def" name_definition function_def_parameters
+        // function_def: "def" name_def function_def_parameters
         //               return_annotation? ":" block
         let mut iterator = self.node.iter_children();
         iterator.next();
-        let name_def = NameDef::new(iterator.next().unwrap());
+        let name_d = NameDef::new(iterator.next().unwrap());
         let params = FunctionDefParameters::new(iterator.next().unwrap());
         let mut ret_annot = iterator.next();
         if ret_annot.unwrap().is_type(Nonterminal(return_annotation)) {
@@ -1967,7 +1963,7 @@ impl<'db> FunctionDef<'db> {
             ret_annot = None;
         }
         (
-            name_def,
+            name_d,
             params,
             ret_annot.map(ReturnAnnotation::new),
             Block::new(iterator.next().unwrap()),
@@ -2129,7 +2125,7 @@ impl<'db> ParamAnnotation<'db> {
 
 impl<'db> Param<'db> {
     fn new(param_children: &mut impl Iterator<Item = PyNode<'db>>, kind: ParamKind) -> Self {
-        let name_def = NameDef::new(param_children.next().unwrap());
+        let name_d = NameDef::new(param_children.next().unwrap());
         let annot = if let Some(annotation_node) = param_children.next() {
             if annotation_node.is_type(Nonterminal(annotation)) {
                 param_children.next(); // Make sure the next node is skipped for defaults
@@ -2150,7 +2146,7 @@ impl<'db> Param<'db> {
         let default_node = param_children.next();
         Self {
             kind,
-            name_def,
+            name_def: name_d,
             annotation: annot,
             default: default_node.map(Expression::new),
         }
@@ -2164,7 +2160,7 @@ impl<'db> Param<'db> {
         self.default
     }
 
-    pub fn name_definition(&self) -> NameDef<'db> {
+    pub fn name_def(&self) -> NameDef<'db> {
         self.name_def
     }
 
@@ -2331,27 +2327,27 @@ impl<'db> Assignment<'db> {
                     return None;
                 }
 
-                let name_def = if let Target::Name(name_def) = first_target {
-                    name_def
+                let name_d = if let Target::Name(name_d) = first_target {
+                    name_d
                 } else {
                     return None;
                 };
                 if let AssignmentRightSide::StarExpressions(star_exprs) = right {
                     if let StarExpressionContent::Expression(expr) = star_exprs.unpack() {
-                        return Some((name_def, None, expr));
+                        return Some((name_d, None, expr));
                     }
                 }
                 None
             }
             AssignmentContent::WithAnnotation(t, annotation_, right) => {
-                let name_def = if let Target::Name(name_def) = t {
-                    name_def
+                let name_d = if let Target::Name(name_d) = t {
+                    name_d
                 } else {
                     return None;
                 };
                 if let Some(AssignmentRightSide::StarExpressions(star_exprs)) = right {
                     if let StarExpressionContent::Expression(expr) = star_exprs.unpack() {
-                        return Some((name_def, Some(annotation_), expr));
+                        return Some((name_d, Some(annotation_), expr));
                     }
                 }
                 None
@@ -2503,7 +2499,7 @@ impl<'db> Iterator for ImportFromTargetsIterator<'db> {
     fn next(&mut self) -> Option<Self::Item> {
         for child in &mut self.0 {
             if child.is_type(Nonterminal(import_from_as_name)) {
-                // import_from_as_name: Name "as" name_definition | name_definition
+                // import_from_as_name: Name "as" name_def | name_def
                 return Some(ImportFromAsName::new(child));
             }
         }
@@ -2512,9 +2508,9 @@ impl<'db> Iterator for ImportFromTargetsIterator<'db> {
 }
 
 impl<'db> ImportFromAsName<'db> {
-    pub fn name_definition(&self) -> NameDef {
+    pub fn name_def(&self) -> NameDef {
         let first = self.node.nth_child(0);
-        if first.is_type(Nonterminal(name_definition)) {
+        if first.is_type(Nonterminal(name_def)) {
             NameDef::new(first)
         } else {
             NameDef::new(self.node.nth_child(2))
@@ -2523,9 +2519,9 @@ impl<'db> ImportFromAsName<'db> {
 
     pub fn unpack(&self) -> (Name<'db>, NameDef<'db>) {
         let first = self.node.nth_child(0);
-        if first.is_type(Nonterminal(name_definition)) {
-            let name_def = NameDef::new(first);
-            (name_def.name(), name_def)
+        if first.is_type(Nonterminal(name_def)) {
+            let name_d = NameDef::new(first);
+            (name_d.name(), name_d)
         } else {
             // foo as bar
             debug_assert_eq!(first.type_(), Terminal(TerminalType::Name));
@@ -2536,9 +2532,9 @@ impl<'db> ImportFromAsName<'db> {
 
     fn is_stub_reexport(&self) -> bool {
         // foo as foo
-        let (name, name_def) = self.unpack();
+        let (name, name_d) = self.unpack();
         // foo as bar is not a stub re-export
-        name.index() != name_def.name_index() && name.as_code() == name_def.as_code()
+        name.index() != name_d.name_index() && name.as_code() == name_d.as_code()
     }
 
     pub fn import_from(&self) -> ImportFrom<'db> {
@@ -2607,7 +2603,7 @@ impl<'db> DottedAsName<'db> {
     pub fn unpack(&self) -> DottedAsNameContent<'db> {
         let first = self.node.nth_child(0);
         let maybe_second = first.next_sibling();
-        if first.is_type(Nonterminal(name_definition)) {
+        if first.is_type(Nonterminal(name_def)) {
             DottedAsNameContent::Simple(
                 NameDef::new(first),
                 maybe_second.map(|s| DottedName::new(s.next_sibling().unwrap())),
@@ -2663,7 +2659,7 @@ impl<'db> PrimaryTarget<'db> {
 
     pub fn second(&self) -> PrimaryContent<'db> {
         let second = self.node.nth_child(2);
-        if second.is_type(Nonterminal(name_definition)) {
+        if second.is_type(Nonterminal(name_def)) {
             PrimaryContent::Attribute(Name::new(second.nth_child(0)))
         } else if second.is_type(Terminal(TerminalType::Name)) {
             PrimaryContent::Attribute(Name::new(second))
@@ -3613,9 +3609,7 @@ impl<'db> NameImportParent<'db> {
             Self::ImportFromAsName(imp) => imp.is_stub_reexport(),
             Self::DottedAsName(dotted) => match dotted.unpack() {
                 DottedAsNameContent::Simple(..) => false,
-                DottedAsNameContent::WithAs(dotted, name_def) => {
-                    dotted.as_code() == name_def.as_code()
-                }
+                DottedAsNameContent::WithAs(dotted, name_d) => dotted.as_code() == name_d.as_code(),
             },
         }
     }
@@ -3934,7 +3928,7 @@ pub enum Target<'db> {
 impl<'db> Target<'db> {
     fn new(node: PyNode<'db>) -> Self {
         // star_targets: ",".star_target+ [","]
-        // star_target:? "*"? (t_primary | star_target_brackets | name_definition)
+        // star_target:? "*"? (t_primary | star_target_brackets | name_def)
         let mut iterator = node.iter_children();
         let first = iterator.next().unwrap();
         if iterator.next().is_none() {
@@ -3949,7 +3943,7 @@ impl<'db> Target<'db> {
     }
 
     fn new_non_iterator(node: PyNode<'db>) -> Self {
-        if node.is_type(Nonterminal(name_definition)) {
+        if node.is_type(Nonterminal(name_def)) {
             Self::Name(NameDef::new(node))
         } else if node.is_type(Nonterminal(t_primary)) {
             Self::new_t_primary(node)
@@ -3979,19 +3973,17 @@ impl<'db> Target<'db> {
     fn new_t_primary(t_prim: PyNode<'db>) -> Self {
         t_prim
             .iter_children()
-            .find(|x| x.is_type(Nonterminal(name_definition)))
-            .map(|name_def| {
-                Self::NameExpression(PrimaryTarget::new(t_prim), NameDef::new(name_def))
-            })
+            .find(|x| x.is_type(Nonterminal(name_def)))
+            .map(|name_d| Self::NameExpression(PrimaryTarget::new(t_prim), NameDef::new(name_d)))
             .unwrap_or_else(|| Self::IndexExpression(PrimaryTarget::new(t_prim)))
     }
 
     fn new_single_target(node: PyNode<'db>) -> Self {
         debug_assert_eq!(node.type_(), Nonterminal(single_target));
 
-        // t_primary | name_definition | "(" single_target ")"
+        // t_primary | name_def | "(" single_target ")"
         let first = node.nth_child(0);
-        if first.is_type(Nonterminal(name_definition)) {
+        if first.is_type(Nonterminal(name_def)) {
             Self::Name(NameDef::new(first))
         } else if first.is_type(Nonterminal(t_primary)) {
             Self::new_t_primary(first)

@@ -6,20 +6,20 @@ file: 0-186
  stmt: 1-25
   function_def: 1-25
    Keyword: 1-4 "def"
-   name_definition: 5-8
+   name_def: 5-8
     Name: 5-8 "foo"
    function_def_parameters: 8-19
     Keyword: 8-9 "("
     parameters: 9-18
      param_no_default: 9-10
-      name_definition: 9-10
+      name_def: 9-10
        Name: 9-10 "a"
      Keyword: 10-11 ","
      star_etc: 12-18
       Keyword: 12-13 "*"
       Keyword: 13-14 ","
       param_maybe_default: 15-18
-       name_definition: 15-16
+       name_def: 15-16
         Name: 15-16 "b"
        Keyword: 16-17 "="
        expression: 17-18
@@ -38,13 +38,13 @@ file: 0-186
  stmt: 25-49
   function_def: 25-49
    Keyword: 25-28 "def"
-   name_definition: 29-32
+   name_def: 29-32
     Name: 29-32 "foo"
    function_def_parameters: 32-43
     Keyword: 32-33 "("
     parameters: 33-42
      param_with_default: 33-36
-      name_definition: 33-34
+      name_def: 33-34
        Name: 33-34 "a"
       Keyword: 34-35 "="
       expression: 35-36
@@ -55,7 +55,7 @@ file: 0-186
       Keyword: 38-39 "*"
       Keyword: 39-40 ","
       param_maybe_default: 41-42
-       name_definition: 41-42
+       name_def: 41-42
         Name: 41-42 "c"
     Keyword: 42-43 ")"
    Keyword: 43-44 ":"
@@ -70,25 +70,25 @@ file: 0-186
  stmt: 49-81
   function_def: 49-81
    Keyword: 49-52 "def"
-   name_definition: 53-56
+   name_def: 53-56
     Name: 53-56 "foo"
    function_def_parameters: 56-75
     Keyword: 56-57 "("
     parameters: 57-74
      param_no_default: 57-58
-      name_definition: 57-58
+      name_def: 57-58
        Name: 57-58 "a"
      Keyword: 58-59 ","
      star_etc: 60-74
       Keyword: 60-61 "*"
       Keyword: 61-62 ","
       param_maybe_default: 63-64
-       name_definition: 63-64
+       name_def: 63-64
         Name: 63-64 "x"
       Keyword: 64-65 ","
       double_starred_param: 66-74
        Keyword: 66-68 "**"
-       name_definition: 68-74
+       name_def: 68-74
         Name: 68-74 "kwargs"
     Keyword: 74-75 ")"
    Keyword: 75-76 ":"
@@ -103,19 +103,19 @@ file: 0-186
  stmt: 81-123
   function_def: 81-123
    Keyword: 81-84 "def"
-   name_definition: 85-88
+   name_def: 85-88
     Name: 85-88 "foo"
    function_def_parameters: 88-117
     Keyword: 88-89 "("
     parameters: 89-116
      param_no_default: 89-90
-      name_definition: 89-90
+      name_def: 89-90
        Name: 89-90 "a"
      Keyword: 90-91 ","
      star_etc: 92-116
       starred_param: 92-102
        Keyword: 92-93 "*"
-       name_definition: 93-97
+       name_def: 93-97
         Name: 93-97 "args"
        star_annotation: 97-102
         Keyword: 97-98 ":"
@@ -125,7 +125,7 @@ file: 0-186
       Keyword: 102-103 ","
       double_starred_param: 104-115
        Keyword: 104-106 "**"
-       name_definition: 106-110
+       name_def: 106-110
         Name: 106-110 "fooo"
        annotation: 110-115
         Keyword: 110-111 ":"
@@ -146,19 +146,19 @@ file: 0-186
  stmt: 123-166
   function_def: 123-166
    Keyword: 123-126 "def"
-   name_definition: 127-130
+   name_def: 127-130
     Name: 127-130 "foo"
    function_def_parameters: 130-160
     Keyword: 130-131 "("
     parameters: 131-159
      param_no_default: 131-132
-      name_definition: 131-132
+      name_def: 131-132
        Name: 131-132 "a"
      Keyword: 132-133 ","
      Keyword: 134-135 "/"
      Keyword: 135-136 ","
      param_no_default: 137-141
-      name_definition: 137-138
+      name_def: 137-138
        Name: 137-138 "b"
       annotation: 138-141
        Keyword: 138-139 ":"
@@ -167,7 +167,7 @@ file: 0-186
          Name: 140-141 "i"
      Keyword: 141-142 ","
      param_with_default: 143-149
-      name_definition: 143-144
+      name_def: 143-144
        Name: 143-144 "c"
       annotation: 144-147
        Keyword: 144-145 ":"
@@ -182,7 +182,7 @@ file: 0-186
      star_etc: 151-159
       double_starred_param: 151-159
        Keyword: 151-153 "**"
-       name_definition: 153-159
+       name_def: 153-159
         Name: 153-159 "kwargs"
     Keyword: 159-160 ")"
    Keyword: 160-161 ":"
@@ -197,7 +197,7 @@ file: 0-186
  stmt: 166-186
   function_def: 166-186
    Keyword: 166-169 "def"
-   name_definition: 170-173
+   name_def: 170-173
     Name: 170-173 "foo"
    function_def_parameters: 173-180
     Keyword: 173-174 "("
@@ -205,7 +205,7 @@ file: 0-186
      star_etc: 174-179
       starred_param: 174-179
        Keyword: 174-175 "*"
-       name_definition: 175-179
+       name_def: 175-179
         Name: 175-179 "args"
     Keyword: 179-180 ")"
    Keyword: 180-181 ":"

@@ -15,11 +15,11 @@ file: 0-106
       import_from_as_name: 16-26
        Name: 16-19 "foo"
        Keyword: 20-22 "as"
-       name_definition: 23-26
+       name_def: 23-26
         Name: 23-26 "baz"
       Keyword: 26-27 ","
       import_from_as_name: 28-31
-       name_definition: 28-31
+       name_def: 28-31
         Name: 28-31 "bar"
       Keyword: 31-32 ")"
    Newline: 32-33 "\n"
@@ -33,11 +33,11 @@ file: 0-106
      import_from_targets: 47-58
       Keyword: 47-48 "("
       import_from_as_name: 48-51
-       name_definition: 48-51
+       name_def: 48-51
         Name: 48-51 "foo"
       Keyword: 51-52 ","
       import_from_as_name: 53-56
-       name_definition: 53-56
+       name_def: 53-56
         Name: 53-56 "bar"
       Keyword: 56-57 ","
       Keyword: 57-58 ")"
@@ -56,7 +56,7 @@ file: 0-106
       import_from_as_name: 77-87
        Name: 77-80 "bar"
        Keyword: 81-83 "as"
-       name_definition: 84-87
+       name_def: 84-87
         Name: 84-87 "baz"
    Newline: 87-88 "\n"
  stmt: 88-106

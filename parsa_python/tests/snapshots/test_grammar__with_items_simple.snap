@@ -12,7 +12,7 @@ file: 0-48
       atom: 6-9
        Name: 6-9 "foo"
      Keyword: 10-12 "as"
-     name_definition: 13-16
+     name_def: 13-16
       Name: 13-16 "bar"
    Keyword: 16-17 ":"
    block: 18-22
@@ -32,7 +32,7 @@ file: 0-48
       atom: 27-30
        Name: 27-30 "foo"
      Keyword: 31-33 "as"
-     name_definition: 34-37
+     name_def: 34-37
       Name: 34-37 "bar"
     Keyword: 37-38 ","
     with_item: 39-42

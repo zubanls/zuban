@@ -48,8 +48,8 @@ create_grammar!(
                 "<<=" | ">>=" | "**=" | "//=")
     return_stmt: "return" [star_expressions]
     raise_stmt: "raise" [expression ["from" expression]]
-    global_stmt: "global" ",".name_definition+
-    nonlocal_stmt: "nonlocal" ",".name_definition+
+    global_stmt: "global" ",".name_def+
+    nonlocal_stmt: "nonlocal" ",".name_def+
     del_stmt: "del" del_targets
     assert_stmt: "assert" expression ["," expression]
     pass_stmt: "pass"
@@ -64,9 +64,9 @@ create_grammar!(
         | "from" ("." | "...")* dotted_name "import" import_from_targets
         | "from" ("." | "...")+ "import" import_from_targets
     import_from_targets: "*" | "(" ",".import_from_as_name+ ","? ")" | ",".import_from_as_name+
-    import_from_as_name: Name "as" name_definition | name_definition
+    import_from_as_name: Name "as" name_def | name_def
     dotted_as_names: ",".dotted_as_name+
-    dotted_as_name: dotted_name "as" name_definition | name_definition ["." dotted_name]
+    dotted_as_name: dotted_name "as" name_def | name_def ["." dotted_name]
     dotted_name: [dotted_name "."] Name
 
     // COMPOUND STATEMENTS
@@ -83,13 +83,13 @@ create_grammar!(
     // Class definitions
     // -----------------
 
-    class_def: "class" name_definition ["(" [arguments] ")"] ":" block
+    class_def: "class" name_def ["(" [arguments] ")"] ":" block
 
     // Function definitions
     // --------------------
 
     async_function_def: "async" function_def
-    function_def: "def" name_definition function_def_parameters return_annotation? ":" block
+    function_def: "def" name_def function_def_parameters return_annotation? ":" block
     return_annotation: "->" expression
 
     // Function parameters
@@ -136,11 +136,11 @@ create_grammar!(
         | starred_param ["," ",".param_maybe_default+] ["," [double_starred_param ","?]]
         | "*" "," ",".param_maybe_default+ ["," [double_starred_param ","?]]
         | double_starred_param [","]
-    param_no_default: name_definition annotation? !"="
-    param_with_default: name_definition annotation? "=" expression
-    param_maybe_default: name_definition annotation? ["=" expression ]
-    starred_param: "*" name_definition star_annotation?
-    double_starred_param: "**" name_definition annotation?
+    param_no_default: name_def annotation? !"="
+    param_with_default: name_def annotation? "=" expression
+    param_maybe_default: name_def annotation? ["=" expression ]
+    starred_param: "*" name_def star_annotation?
+    double_starred_param: "**" name_def annotation?
     annotation: ":" expression
     star_annotation: ":" (star_expression | expression)
 
@@ -177,7 +177,7 @@ create_grammar!(
 
     except_block: "except" [except_expression] ":" block
     except_star_block: "except" "*" except_expression ":" block
-    except_expression: expression ["as" name_definition]
+    except_expression: expression ["as" name_def]
     finally_block: "finally" ":" block
 
     // Match statement
@@ -205,7 +205,7 @@ create_grammar!(
     complex_number: signed_number ("+"|"-") Number
     signed_number: "-"? Number
 
-    pattern_capture_target: !"_" name_definition
+    pattern_capture_target: !"_" name_def
     wildcard_pattern: "_"
     value_pattern: dotted_name
 
@@ -270,7 +270,7 @@ create_grammar!(
     star_named_expression:? "*" disjunction | named_expression
 
     named_expression: walrus | expression
-    walrus: name_definition ":=" expression
+    walrus: name_def ":=" expression
 
     disjunction:? [disjunction "or"] conjunction
     conjunction:? [conjunction "and"] inversion
@@ -360,11 +360,11 @@ create_grammar!(
         | lambda_starred_param ["," ",".lambda_param_maybe_default+] ["," [lambda_double_starred_param ","?]]
         | "*" "," ",".lambda_param_maybe_default+ ["," [lambda_double_starred_param ","?]]
         | lambda_double_starred_param [","]
-    lambda_param_no_default: name_definition !"="
-    lambda_param_with_default: name_definition "=" expression
-    lambda_param_maybe_default: name_definition ["=" expression ]
-    lambda_starred_param: "*" name_definition
-    lambda_double_starred_param: "**" name_definition
+    lambda_param_no_default: name_def !"="
+    lambda_param_with_default: name_def "=" expression
+    lambda_param_maybe_default: name_def ["=" expression ]
+    lambda_starred_param: "*" name_def
+    lambda_double_starred_param: "**" name_def
 
     // LITERALS
     // ========
@@ -418,10 +418,10 @@ create_grammar!(
     // ---------------
 
     star_targets: ",".star_target+ [","]
-    star_target:? "*"? (t_primary | star_target_brackets | name_definition)
+    star_target:? "*"? (t_primary | star_target_brackets | name_def)
     star_target_brackets: "(" [star_targets] ")" | "[" [star_targets] "]"
 
-    single_target: t_primary | name_definition | "(" single_target ")"
+    single_target: t_primary | name_def | "(" single_target ")"
 
     t_primary:?
           (
@@ -430,14 +430,14 @@ create_grammar!(
             | atom
         ) &("."|"["|"(")
         | t_primary "[" slices "]"
-        | t_primary "." name_definition
+        | t_primary "." name_def
 
-    name_definition: Name
+    name_def: Name
 
     // Targets for del statements
     // --------------------------
 
-    del_targets: ",".(t_primary | name_definition | del_t_atom)+ [","]
+    del_targets: ",".(t_primary | name_def | del_t_atom)+ [","]
     del_t_atom: "(" [del_targets] ")" | "[" [del_targets] "]"
 
 );

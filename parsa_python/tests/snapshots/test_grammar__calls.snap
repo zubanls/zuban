@@ -50,7 +50,7 @@ file: 0-55
        arguments: 29-39
         named_expression: 29-39
          walrus: 29-39
-          name_definition: 29-36
+          name_def: 29-36
            Name: 29-36 "bar_baz"
           Keyword: 36-38 ":="
           expression: 38-39

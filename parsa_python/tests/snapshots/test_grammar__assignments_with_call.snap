@@ -15,7 +15,7 @@ file: 0-63
         Keyword: 4-5 "("
         Keyword: 5-6 ")"
        Keyword: 6-7 "."
-       name_definition: 7-10
+       name_def: 7-10
         Name: 7-10 "bar"
      Keyword: 11-12 "="
      star_expressions: 13-14
@@ -75,7 +75,7 @@ file: 0-63
            sync_for_if_clause: 40-50
             Keyword: 40-43 "for"
             star_targets: 44-45
-             name_definition: 44-45
+             name_def: 44-45
               Name: 44-45 "a"
             Keyword: 46-48 "in"
             atom: 49-50

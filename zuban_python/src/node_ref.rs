@@ -174,7 +174,7 @@ impl<'file> NodeRef<'file> {
     }
 
     pub fn maybe_import_of_name_in_symbol_table(&self) -> Option<NameImportParent> {
-        self.as_name().name_definition().unwrap().maybe_import()
+        self.as_name().name_def().unwrap().maybe_import()
     }
 
     pub fn file_index(&self) -> FileIndex {

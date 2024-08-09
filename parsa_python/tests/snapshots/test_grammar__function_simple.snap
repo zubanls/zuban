@@ -6,7 +6,7 @@ file: 0-106
  stmt: 1-16
   function_def: 1-16
    Keyword: 1-4 "def"
-   name_definition: 5-8
+   name_def: 5-8
     Name: 5-8 "foo"
    function_def_parameters: 8-10
     Keyword: 8-9 "("
@@ -23,13 +23,13 @@ file: 0-106
  stmt: 16-35
   function_def: 16-35
    Keyword: 16-19 "def"
-   name_definition: 20-23
+   name_def: 20-23
     Name: 20-23 "foo"
    function_def_parameters: 23-29
     Keyword: 23-24 "("
     parameters: 24-28
      param_no_default: 24-28
-      name_definition: 24-25
+      name_def: 24-25
        Name: 24-25 "a"
       annotation: 25-28
        Keyword: 25-26 ":"
@@ -49,17 +49,17 @@ file: 0-106
  stmt: 35-55
   function_def: 35-55
    Keyword: 35-38 "def"
-   name_definition: 39-42
+   name_def: 39-42
     Name: 39-42 "foo"
    function_def_parameters: 42-49
     Keyword: 42-43 "("
     parameters: 43-48
      param_no_default: 43-44
-      name_definition: 43-44
+      name_def: 43-44
        Name: 43-44 "a"
      Keyword: 44-45 ","
      param_no_default: 46-47
-      name_definition: 46-47
+      name_def: 46-47
        Name: 46-47 "b"
      Keyword: 47-48 ","
     Keyword: 48-49 ")"
@@ -75,13 +75,13 @@ file: 0-106
  stmt: 55-83
   function_def: 55-83
    Keyword: 55-58 "def"
-   name_definition: 59-62
+   name_def: 59-62
     Name: 59-62 "foo"
    function_def_parameters: 62-77
     Keyword: 62-63 "("
     parameters: 63-76
      param_with_default: 63-71
-      name_definition: 63-64
+      name_def: 63-64
        Name: 63-64 "a"
       annotation: 64-67
        Keyword: 64-65 ":"
@@ -94,7 +94,7 @@ file: 0-106
         Number: 70-71 "3"
      Keyword: 71-72 ","
      param_with_default: 73-76
-      name_definition: 73-74
+      name_def: 73-74
        Name: 73-74 "b"
       Keyword: 74-75 "="
       expression: 75-76
@@ -113,13 +113,13 @@ file: 0-106
  stmt: 83-106
   function_def: 83-106
    Keyword: 83-86 "def"
-   name_definition: 87-90
+   name_def: 87-90
     Name: 87-90 "foo"
    function_def_parameters: 90-100
     Keyword: 90-91 "("
     parameters: 91-99
      param_with_default: 91-94
-      name_definition: 91-92
+      name_def: 91-92
        Name: 91-92 "a"
       Keyword: 92-93 "="
       expression: 93-94
@@ -127,7 +127,7 @@ file: 0-106
         Number: 93-94 "3"
      Keyword: 94-95 ","
      param_with_default: 96-99
-      name_definition: 96-97
+      name_def: 96-97
        Name: 96-97 "b"
       Keyword: 97-98 "="
       expression: 98-99

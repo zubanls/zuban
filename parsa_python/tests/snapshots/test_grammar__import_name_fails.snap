@@ -10,7 +10,7 @@ file: 0-30
      Keyword: 1-7 "import"
      Error(dotted_as_names): 8-12
       dotted_as_name: 8-11
-       name_definition: 8-11
+       name_def: 8-11
         Name: 8-11 "foo"
       Keyword: 11-12 ","
  stmt: 12-13
@@ -22,11 +22,11 @@ file: 0-30
      Keyword: 13-19 "import"
      Error(dotted_as_names): 20-29
       dotted_as_name: 20-23
-       name_definition: 20-23
+       name_def: 20-23
         Name: 20-23 "foo"
       Keyword: 23-24 ","
       dotted_as_name: 25-28
-       name_definition: 25-28
+       name_def: 25-28
         Name: 25-28 "bar"
       Keyword: 28-29 ","
  stmt: 29-30

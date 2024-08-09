@@ -12,13 +12,13 @@ file: 0-185
        Keyword: 1-7 "lambda"
        lambda_parameters: 8-17
         lambda_param_no_default: 8-9
-         name_definition: 8-9
+         name_def: 8-9
           Name: 8-9 "a"
         Keyword: 9-10 ","
         Keyword: 11-12 "/"
         Keyword: 12-13 ","
         lambda_param_with_default: 14-17
-         name_definition: 14-15
+         name_def: 14-15
           Name: 14-15 "b"
          Keyword: 15-16 "="
          expression: 16-17
@@ -38,7 +38,7 @@ file: 0-185
        Keyword: 23-29 "lambda"
        lambda_parameters: 30-37
         lambda_param_with_default: 30-33
-         name_definition: 30-31
+         name_def: 30-31
           Name: 30-31 "a"
          Keyword: 31-32 "="
          expression: 32-33
@@ -61,7 +61,7 @@ file: 0-185
        Keyword: 43-49 "lambda"
        lambda_parameters: 50-56
         lambda_param_with_default: 50-53
-         name_definition: 50-51
+         name_def: 50-51
           Name: 50-51 "a"
          Keyword: 51-52 "="
          expression: 52-53
@@ -83,7 +83,7 @@ file: 0-185
        Keyword: 62-68 "lambda"
        lambda_parameters: 69-87
         lambda_param_with_default: 69-72
-         name_definition: 69-70
+         name_def: 69-70
           Name: 69-70 "a"
          Keyword: 70-71 "="
          expression: 71-72
@@ -95,11 +95,11 @@ file: 0-185
         lambda_star_etc: 77-87
          lambda_starred_param: 77-82
           Keyword: 77-78 "*"
-          name_definition: 78-82
+          name_def: 78-82
            Name: 78-82 "args"
          Keyword: 82-83 ","
          lambda_param_maybe_default: 84-87
-          name_definition: 84-85
+          name_def: 84-85
            Name: 84-85 "c"
           Keyword: 85-86 "="
           expression: 86-87
@@ -119,7 +119,7 @@ file: 0-185
        Keyword: 93-99 "lambda"
        lambda_parameters: 100-111
         lambda_param_with_default: 100-103
-         name_definition: 100-101
+         name_def: 100-101
           Name: 100-101 "a"
          Keyword: 101-102 "="
          expression: 102-103
@@ -129,7 +129,7 @@ file: 0-185
         Keyword: 105-106 "/"
         Keyword: 106-107 ","
         lambda_param_with_default: 108-111
-         name_definition: 108-109
+         name_def: 108-109
           Name: 108-109 "c"
          Keyword: 109-110 "="
          expression: 110-111
@@ -149,17 +149,17 @@ file: 0-185
        Keyword: 117-123 "lambda"
        lambda_parameters: 124-146
         lambda_param_no_default: 124-125
-         name_definition: 124-125
+         name_def: 124-125
           Name: 124-125 "a"
         Keyword: 125-126 ","
         Keyword: 127-128 "/"
         Keyword: 128-129 ","
         lambda_param_no_default: 130-131
-         name_definition: 130-131
+         name_def: 130-131
           Name: 130-131 "b"
         Keyword: 131-132 ","
         lambda_param_with_default: 133-136
-         name_definition: 133-134
+         name_def: 133-134
           Name: 133-134 "c"
          Keyword: 134-135 "="
          expression: 135-136
@@ -169,7 +169,7 @@ file: 0-185
         lambda_star_etc: 138-146
          lambda_double_starred_param: 138-146
           Keyword: 138-140 "**"
-          name_definition: 140-146
+          name_def: 140-146
            Name: 140-146 "kwargs"
        Keyword: 146-147 ":"
        expression: 148-151
@@ -185,11 +185,11 @@ file: 0-185
        Keyword: 152-158 "lambda"
        lambda_parameters: 159-179
         lambda_param_no_default: 159-160
-         name_definition: 159-160
+         name_def: 159-160
           Name: 159-160 "a"
         Keyword: 160-161 ","
         lambda_param_with_default: 162-165
-         name_definition: 162-163
+         name_def: 162-163
           Name: 162-163 "a"
          Keyword: 163-164 "="
          expression: 164-165
@@ -199,7 +199,7 @@ file: 0-185
         Keyword: 167-168 "/"
         Keyword: 168-169 ","
         lambda_param_with_default: 170-173
-         name_definition: 170-171
+         name_def: 170-171
           Name: 170-171 "c"
          Keyword: 171-172 "="
          expression: 172-173
@@ -210,7 +210,7 @@ file: 0-185
          Keyword: 175-176 "*"
          Keyword: 176-177 ","
          lambda_param_maybe_default: 178-179
-          name_definition: 178-179
+          name_def: 178-179
            Name: 178-179 "d"
        Keyword: 179-180 ":"
        expression: 181-184

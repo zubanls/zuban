@@ -12,7 +12,7 @@ file: 0-103
        Keyword: 1-7 "lambda"
        Error(lambda_parameters): 8-17
         lambda_param_with_default: 8-11
-         name_definition: 8-9
+         name_def: 8-9
           Name: 8-9 "a"
          Keyword: 9-10 "="
          expression: 10-11
@@ -22,7 +22,7 @@ file: 0-103
         Keyword: 13-14 "/"
         Keyword: 14-15 ","
         Error(lambda_param_with_default): 16-17
-         name_definition: 16-17
+         name_def: 16-17
           Name: 16-17 "b"
  Error(stmt): 17-18
   Error(Keyword): 17-18 ":"
@@ -43,7 +43,7 @@ file: 0-103
        Keyword: 23-29 "lambda"
        Error(lambda_parameters): 30-44
         lambda_param_with_default: 30-33
-         name_definition: 30-31
+         name_def: 30-31
           Name: 30-31 "a"
          Keyword: 31-32 "="
          expression: 32-33
@@ -53,7 +53,7 @@ file: 0-103
         Keyword: 35-36 "/"
         Keyword: 36-37 ","
         lambda_param_with_default: 38-41
-         name_definition: 38-39
+         name_def: 38-39
           Name: 38-39 "b"
          Keyword: 39-40 "="
          expression: 40-41
@@ -61,7 +61,7 @@ file: 0-103
            Number: 40-41 "3"
         Keyword: 41-42 ","
         Error(lambda_param_with_default): 43-44
-         name_definition: 43-44
+         name_def: 43-44
           Name: 43-44 "c"
  Error(stmt): 44-45
   Error(Keyword): 44-45 ":"
@@ -82,7 +82,7 @@ file: 0-103
        Keyword: 50-56 "lambda"
        Error(lambda_parameters): 57-58
         Error(lambda_param_with_default): 57-58
-         name_definition: 57-58
+         name_def: 57-58
           Name: 57-58 "a"
  Error(stmt): 58-59
   Error(Keyword): 58-59 ","
@@ -95,7 +95,7 @@ file: 0-103
    simple_stmt: 63-69
     assignment: 63-69
      star_targets: 63-64
-      name_definition: 63-64
+      name_def: 63-64
        Name: 63-64 "b"
      Keyword: 64-65 "="
      star_expressions: 65-69
@@ -125,7 +125,7 @@ file: 0-103
        Keyword: 75-81 "lambda"
        Error(lambda_parameters): 82-83
         Error(lambda_param_with_default): 82-83
-         name_definition: 82-83
+         name_def: 82-83
           Name: 82-83 "z"
  Error(stmt): 83-84
   Error(Keyword): 83-84 ","
@@ -134,7 +134,7 @@ file: 0-103
    simple_stmt: 85-92
     assignment: 85-92
      star_targets: 85-86
-      name_definition: 85-86
+      name_def: 85-86
        Name: 85-86 "a"
      Keyword: 86-87 "="
      star_expressions: 87-92
@@ -155,7 +155,7 @@ file: 0-103
    simple_stmt: 96-102
     assignment: 96-102
      single_target: 96-97
-      name_definition: 96-97
+      name_def: 96-97
        Name: 96-97 "b"
      annotation: 97-102
       Keyword: 97-98 ":"

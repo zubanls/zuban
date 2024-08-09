@@ -40,7 +40,7 @@ file: 0-66
        Keyword: 18-19 "]"
      Keyword: 20-21 "="
      star_targets: 22-23
-      name_definition: 22-23
+      name_def: 22-23
        Name: 22-23 "a"
      Keyword: 24-25 "="
      star_expressions: 26-27
@@ -102,7 +102,7 @@ file: 0-66
         Keyword: 54-55 ","
         named_expression: 56-60
          walrus: 56-60
-          name_definition: 56-57
+          name_def: 56-57
            Name: 56-57 "c"
           Keyword: 57-59 ":="
           expression: 59-60

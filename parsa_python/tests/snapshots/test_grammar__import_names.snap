@@ -10,7 +10,7 @@ file: 0-74
      Keyword: 1-7 "import"
      dotted_as_names: 8-11
       dotted_as_name: 8-11
-       name_definition: 8-11
+       name_def: 8-11
         Name: 8-11 "foo"
    Newline: 11-12 "\n"
  stmt: 12-34
@@ -26,7 +26,7 @@ file: 0-74
         Keyword: 22-23 "."
         Name: 23-26 "bar"
        Keyword: 27-29 "as"
-       name_definition: 30-33
+       name_def: 30-33
         Name: 30-33 "baz"
    Newline: 33-34 "\n"
  stmt: 34-55
@@ -36,15 +36,15 @@ file: 0-74
      Keyword: 34-40 "import"
      dotted_as_names: 41-54
       dotted_as_name: 41-44
-       name_definition: 41-44
+       name_def: 41-44
         Name: 41-44 "foo"
       Keyword: 44-45 ","
       dotted_as_name: 46-49
-       name_definition: 46-49
+       name_def: 46-49
         Name: 46-49 "bar"
       Keyword: 49-50 ","
       dotted_as_name: 51-54
-       name_definition: 51-54
+       name_def: 51-54
         Name: 51-54 "baz"
    Newline: 54-55 "\n"
  stmt: 55-74
@@ -54,7 +54,7 @@ file: 0-74
      Keyword: 55-61 "import"
      dotted_as_names: 62-73
       dotted_as_name: 62-73
-       name_definition: 62-65
+       name_def: 62-65
         Name: 62-65 "foo"
        Keyword: 65-66 "."
        dotted_name: 66-73

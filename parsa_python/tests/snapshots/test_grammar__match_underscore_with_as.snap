@@ -21,7 +21,7 @@ file: 0-36
       or_pattern: 21-24
        closed_pattern: 21-24
         pattern_capture_target: 21-24
-         name_definition: 21-24
+         name_def: 21-24
           Name: 21-24 "bar"
  Error(stmt): 25-27
   Error(Keyword): 25-27 "as"
