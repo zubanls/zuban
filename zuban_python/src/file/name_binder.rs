@@ -675,7 +675,6 @@ impl<'db> NameBinder<'db> {
     }
 
     fn index_class(&mut self, class_def: ClassDef<'db>, is_decorated: bool) {
-        let self_symbol_table = SymbolTable::default();
         let (arguments, block) = class_def.unpack();
         if let Some(arguments) = arguments {
             self.index_non_block_node(&arguments, true);
@@ -699,17 +698,7 @@ impl<'db> NameBinder<'db> {
         });
         // Need to first index the class, because the class body does not have access to
         // the class name.
-        /*
-        TODO reenable this maybe?
-        if is_decorated {
-            self.add_point_definition(
-                class.name_definition(),
-                Specific::LazyInferredClass,
-            );
-        } else {
-        */
         self.add_new_definition(class_def.name_definition(), Point::new_uncalculated());
-        //}
     }
 
     fn index_self_vars(&mut self, class: ClassDef<'db>) -> SymbolTable {
