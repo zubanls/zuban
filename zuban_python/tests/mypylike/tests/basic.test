@@ -366,3 +366,10 @@ class A:
 def bar(x: Any, y: A):
     reveal_type(x + y)  # N: Revealed type is "Any"
     reveal_type(y + x)  # N: Revealed type is "Any"
+
+[case explicit_never_list_tuple_unpacking]
+from typing import Never
+xx: list[Never] = []
+
+for (y, z) in xx:  # E: "Never" object is not iterable
+    reveal_type(y)  # N: Revealed type is "Any"

@@ -1334,43 +1334,27 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         assign_kind: AssignKind,
     ) {
         match target {
-            Target::Tuple(targets) => {
-                FLOW_ANALYSIS.with(|fa| {
-                    // TODO what about never? The loop will never be executed.
-                    let mut first_iter = true;
-                    for union_part in value
-                        .as_cow_type(self.i_s)
-                        .iter_with_unpacked_unions(self.i_s.db)
-                    {
-                        if union_part == &self.i_s.db.python_state.str_type() {
-                            value_node_ref
-                                .add_issue(self.i_s, IssueKind::UnpackingAStringIsDisallowed)
-                        }
-                        let value_iterator = union_part.iter(
-                            self.i_s,
-                            IterInfos::new(value_node_ref, &|issue| {
-                                value_node_ref.add_issue(self.i_s, issue)
-                            }),
-                        );
-                        match value_iterator {
-                            IteratorContent::Union(iterators) => {
-                                for it in iterators {
-                                    self.assign_tuple_target(
-                                        targets.clone(),
-                                        it,
-                                        value_node_ref,
-                                        assign_kind,
-                                    );
-                                    if first_iter {
-                                        first_iter = false;
-                                        fa.start_accumulating_types();
-                                    }
-                                }
-                            }
-                            _ => {
+            Target::Tuple(targets) => FLOW_ANALYSIS.with(|fa| {
+                let mut first_iter = true;
+                for union_part in value
+                    .as_cow_type(self.i_s)
+                    .iter_with_unpacked_unions_and_maybe_include_never(self.i_s.db, true)
+                {
+                    if union_part == &self.i_s.db.python_state.str_type() {
+                        value_node_ref.add_issue(self.i_s, IssueKind::UnpackingAStringIsDisallowed)
+                    }
+                    let value_iterator = union_part.iter(
+                        self.i_s,
+                        IterInfos::new(value_node_ref, &|issue| {
+                            value_node_ref.add_issue(self.i_s, issue)
+                        }),
+                    );
+                    match value_iterator {
+                        IteratorContent::Union(iterators) => {
+                            for it in iterators {
                                 self.assign_tuple_target(
                                     targets.clone(),
-                                    value_iterator,
+                                    it,
                                     value_node_ref,
                                     assign_kind,
                                 );
@@ -1380,12 +1364,24 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 }
                             }
                         }
+                        _ => {
+                            self.assign_tuple_target(
+                                targets.clone(),
+                                value_iterator,
+                                value_node_ref,
+                                assign_kind,
+                            );
+                            if first_iter {
+                                first_iter = false;
+                                fa.start_accumulating_types();
+                            }
+                        }
                     }
-                    if !first_iter {
-                        fa.stop_accumulating_types()
-                    }
-                })
-            }
+                }
+                if !first_iter {
+                    fa.stop_accumulating_types()
+                }
+            }),
             Target::Starred(starred) => {
                 // This is always invalid, just set it to Any. Issues were added before.
                 self.assign_targets(

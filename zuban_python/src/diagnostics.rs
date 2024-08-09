@@ -67,6 +67,7 @@ pub(crate) enum IssueKind {
     UnpackedDictMemberMismatch { item: usize, got: Box<str>, expected: Box<str> },
     CannotInferLambdaParams,
     NeedTypeAnnotation { for_: Box<str>, hint: Option<&'static str> },
+    CannotDetermineType { for_: Box<str> },
 
     Redefinition { name: Box<str>, suffix: Box<str> },
     CannotRedifineAs { name: Box<str>, as_: &'static str },
@@ -783,6 +784,7 @@ impl<'db> Diagnostic<'db> {
                 ),
                 None => format!(r#"Need type annotation for "{for_}""#),
             },
+            CannotDetermineType { for_ } => format!(r#"Cannot determine type of "{for_}""#),
 
             Redefinition{name, suffix} => format!(r#"Name "{name}" already defined {suffix}"#),
             CannotRedifineAs { name, as_ } => format!(r#"Cannot redefine "{name}" as {as_}"#),

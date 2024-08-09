@@ -568,10 +568,20 @@ impl Type {
         &'a self,
         db: &'a Database,
     ) -> impl Iterator<Item = &Type> {
+        self.iter_with_unpacked_unions_and_maybe_include_never(db, false)
+    }
+
+    pub fn iter_with_unpacked_unions_and_maybe_include_never<'a>(
+        &'a self,
+        db: &'a Database,
+        include_never: bool,
+    ) -> impl Iterator<Item = &Type> {
         match self {
             Type::Union(items) => TypeRefIterator::Union(items.iter()),
-            Type::Never(_) => TypeRefIterator::Finished,
-            Type::RecursiveType(rec) => rec.calculated_type(db).iter_with_unpacked_unions(db),
+            Type::Never(_) if !include_never => TypeRefIterator::Finished,
+            Type::RecursiveType(rec) => rec
+                .calculated_type(db)
+                .iter_with_unpacked_unions_and_maybe_include_never(db, include_never),
             t => TypeRefIterator::Single(t),
         }
     }

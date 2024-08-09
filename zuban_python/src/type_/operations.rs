@@ -88,7 +88,11 @@ impl Type {
                 })
             },
         );
-        result.unwrap_or_else(|| todo!())
+        result.unwrap_or_else(|| {
+            debug_assert!(matches!(self, Type::Never(_)));
+            on_lookup_error(self);
+            (LookupResult::None, AttributeKind::Attribute)
+        })
     }
 
     pub fn lookup_symbol<'db: 'a, 'a>(
