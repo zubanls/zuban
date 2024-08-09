@@ -8,9 +8,9 @@ use parsa_python_cst::{
     CompIfIterator, ComparisonContent, Comparisons, Conjunction, ContinueStmt, DelTarget,
     DelTargets, Disjunction, ElseBlock, ExceptExpression, Expression, ExpressionContent,
     ExpressionPart, ForIfClauseIterator, ForStmt, IfBlockIterator, IfBlockType, IfStmt, Name,
-    NameDefinition, NamedExpression, NamedExpressionContent, NodeIndex, Operand, Primary,
-    PrimaryContent, PrimaryOrAtom, PrimaryTarget, PrimaryTargetOrAtom, SliceType as CSTSliceType,
-    Target, Ternary, TryBlockType, TryStmt, WhileStmt,
+    NameDef, NamedExpression, NamedExpressionContent, NodeIndex, Operand, Primary, PrimaryContent,
+    PrimaryOrAtom, PrimaryTarget, PrimaryTargetOrAtom, SliceType as CSTSliceType, Target, Ternary,
+    TryBlockType, TryStmt, WhileStmt,
 };
 
 use crate::{
@@ -1363,7 +1363,7 @@ impl Inference<'_, '_, '_> {
         }
     }
 
-    pub fn delete_name(&self, name_def: NameDefinition) {
+    pub fn delete_name(&self, name_def: NameDef) {
         FLOW_ANALYSIS.with(|fa| {
             fa.overwrite_entry(
                 self.i_s,
@@ -2665,7 +2665,7 @@ impl Inference<'_, '_, '_> {
         None
     }
 
-    fn key_from_name_def(&self, name_def: NameDefinition) -> FlowKey {
+    fn key_from_name_def(&self, name_def: NameDef) -> FlowKey {
         let name_index = name_def.name_index();
         FlowKey::Name(PointLink::new(
             self.file_index,

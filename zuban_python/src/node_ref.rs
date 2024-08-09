@@ -2,8 +2,8 @@ use std::fmt;
 
 use parsa_python_cst::{
     Annotation, Assignment, Atom, AtomContent, Bytes, ClassDef, CodeIndex, Expression, Factor,
-    FunctionDef, ImportFrom, Int, Name, NameDefinition, NameImportParent, NamedExpression,
-    NodeIndex, Primary, PythonString, Slices, StarStarExpression, StarredExpression, StringLiteral,
+    FunctionDef, ImportFrom, Int, Name, NameDef, NameImportParent, NamedExpression, NodeIndex,
+    Primary, PythonString, Slices, StarStarExpression, StarredExpression, StringLiteral,
 };
 
 use crate::{
@@ -145,8 +145,8 @@ impl<'file> NodeRef<'file> {
         Name::by_index(&self.file.tree, self.node_index)
     }
 
-    pub fn as_name_def(&self) -> NameDefinition<'file> {
-        NameDefinition::by_index(&self.file.tree, self.node_index)
+    pub fn as_name_def(&self) -> NameDef<'file> {
+        NameDef::by_index(&self.file.tree, self.node_index)
     }
 
     pub fn as_annotation(&self) -> Annotation<'file> {

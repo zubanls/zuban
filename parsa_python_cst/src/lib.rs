@@ -356,7 +356,7 @@ create_nonterminal_structs!(
     Arguments: arguments
     Kwarg: kwarg
 
-    NameDefinition: name_definition
+    NameDef: name_definition
     Atom: atom
     Strings: strings
     Bytes: bytes
@@ -421,10 +421,10 @@ impl<'db> Name<'db> {
             .is_type(Nonterminal(name_definition))
     }
 
-    pub fn name_definition(&self) -> Option<NameDefinition<'db>> {
+    pub fn name_definition(&self) -> Option<NameDef<'db>> {
         let parent = self.node.parent().unwrap();
         if parent.is_type(Nonterminal(name_definition)) {
-            Some(NameDefinition::new(parent))
+            Some(NameDef::new(parent))
         } else {
             None
         }
@@ -485,7 +485,7 @@ impl<'db> Name<'db> {
         if parent.is_type(Nonterminal(atom)) {
             NameParent::Atom
         } else if parent.is_type(Nonterminal(name_definition)) {
-            NameParent::NameDefinition(NameDefinition::new(parent))
+            NameParent::NameDef(NameDef::new(parent))
         } else if parent.is_type(Nonterminal(primary)) {
             NameParent::Primary(Primary::new(parent))
         } else {
@@ -539,7 +539,7 @@ impl<'db> Name<'db> {
 
 #[derive(Debug)]
 pub enum NameParent<'db> {
-    NameDefinition(NameDefinition<'db>),
+    NameDef(NameDef<'db>),
     Primary(Primary<'db>),
     Atom,
     Other,
@@ -915,7 +915,7 @@ impl<'db> Expression<'db> {
         matches!(self.maybe_unpacked_atom(), Some(AtomContent::Ellipsis))
     }
 
-    pub fn in_simple_assignment(&self) -> Option<NameDefinition<'db>> {
+    pub fn in_simple_assignment(&self) -> Option<NameDef<'db>> {
         in_simple_assignment(self.node)
     }
 }
@@ -1094,16 +1094,16 @@ pub enum NamedExpressionContent<'db> {
 }
 
 impl<'db> Walrus<'db> {
-    pub fn name_def(&self) -> NameDefinition<'db> {
-        NameDefinition::new(self.node.nth_child(0))
+    pub fn name_def(&self) -> NameDef<'db> {
+        NameDef::new(self.node.nth_child(0))
     }
 
-    pub fn unpack(&self) -> (NameDefinition<'db>, Expression<'db>) {
+    pub fn unpack(&self) -> (NameDef<'db>, Expression<'db>) {
         let mut iterator = self.node.iter_children();
         let name_def = iterator.next().unwrap();
         iterator.next();
         let expr = iterator.next().unwrap();
-        (NameDefinition::new(name_def), Expression::new(expr))
+        (NameDef::new(name_def), Expression::new(expr))
     }
 
     pub fn expression(&self) -> Expression<'db> {
@@ -1396,12 +1396,12 @@ impl<'db> ExceptStarBlock<'db> {
 }
 
 impl<'db> ExceptExpression<'db> {
-    pub fn unpack(&self) -> (Expression<'db>, Option<NameDefinition<'db>>) {
+    pub fn unpack(&self) -> (Expression<'db>, Option<NameDef<'db>>) {
         // except_expression: [expression ["as" name_definition]]
         let mut clause_iterator = self.node.iter_children();
         let expr = clause_iterator.next().unwrap();
         clause_iterator.next();
-        let as_name = clause_iterator.next().map(NameDefinition::new);
+        let as_name = clause_iterator.next().map(NameDef::new);
         (Expression::new(expr), as_name)
     }
 
@@ -1805,8 +1805,8 @@ impl<'db> CompIf<'db> {
 }
 
 impl<'db> ClassDef<'db> {
-    pub fn name_definition(&self) -> NameDefinition<'db> {
-        NameDefinition::new(self.node.nth_child(1))
+    pub fn name_definition(&self) -> NameDef<'db> {
+        NameDef::new(self.node.nth_child(1))
     }
 
     pub fn name(&self) -> Name<'db> {
@@ -1869,7 +1869,7 @@ impl<'db> Iterator for PotentialSelfAssignments<'db> {
                 if atom_.is_type(Nonterminal(atom)) {
                     let self_name = atom_.nth_child(0);
                     if self_name.is_type(Terminal(TerminalType::Name)) {
-                        return Some((Name::new(self_name), NameDefinition::new(name_def).name()));
+                        return Some((Name::new(self_name), NameDef::new(name_def).name()));
                     }
                 }
             }
@@ -1879,8 +1879,8 @@ impl<'db> Iterator for PotentialSelfAssignments<'db> {
 }
 
 impl<'db> FunctionDef<'db> {
-    pub fn name_definition(&self) -> NameDefinition<'db> {
-        NameDefinition::new(self.node.nth_child(1))
+    pub fn name_definition(&self) -> NameDef<'db> {
+        NameDef::new(self.node.nth_child(1))
     }
 
     pub fn name(&self) -> Name<'db> {
@@ -1949,7 +1949,7 @@ impl<'db> FunctionDef<'db> {
     pub fn unpack(
         &self,
     ) -> (
-        NameDefinition<'db>,
+        NameDef<'db>,
         FunctionDefParameters<'db>,
         Option<ReturnAnnotation<'db>>,
         Block<'db>,
@@ -1958,7 +1958,7 @@ impl<'db> FunctionDef<'db> {
         //               return_annotation? ":" block
         let mut iterator = self.node.iter_children();
         iterator.next();
-        let name_def = NameDefinition::new(iterator.next().unwrap());
+        let name_def = NameDef::new(iterator.next().unwrap());
         let params = FunctionDefParameters::new(iterator.next().unwrap());
         let mut ret_annot = iterator.next();
         if ret_annot.unwrap().is_type(Nonterminal(return_annotation)) {
@@ -2097,7 +2097,7 @@ impl<'db> Iterator for ParamIterator<'db> {
 #[derive(Debug, Clone, Copy)]
 pub struct Param<'db> {
     kind: ParamKind,
-    name_def: NameDefinition<'db>,
+    name_def: NameDef<'db>,
     annotation: Option<ParamAnnotation<'db>>,
     default: Option<Expression<'db>>,
 }
@@ -2129,7 +2129,7 @@ impl<'db> ParamAnnotation<'db> {
 
 impl<'db> Param<'db> {
     fn new(param_children: &mut impl Iterator<Item = PyNode<'db>>, kind: ParamKind) -> Self {
-        let name_def = NameDefinition::new(param_children.next().unwrap());
+        let name_def = NameDef::new(param_children.next().unwrap());
         let annot = if let Some(annotation_node) = param_children.next() {
             if annotation_node.is_type(Nonterminal(annotation)) {
                 param_children.next(); // Make sure the next node is skipped for defaults
@@ -2164,7 +2164,7 @@ impl<'db> Param<'db> {
         self.default
     }
 
-    pub fn name_definition(&self) -> NameDefinition<'db> {
+    pub fn name_definition(&self) -> NameDef<'db> {
         self.name_def
     }
 
@@ -2323,11 +2323,7 @@ impl<'db> Assignment<'db> {
 
     pub fn maybe_simple_type_expression_assignment(
         &self,
-    ) -> Option<(
-        NameDefinition<'db>,
-        Option<Annotation<'db>>,
-        Expression<'db>,
-    )> {
+    ) -> Option<(NameDef<'db>, Option<Annotation<'db>>, Expression<'db>)> {
         match self.unpack() {
             AssignmentContent::Normal(mut targets_, right) => {
                 let first_target = targets_.next().unwrap();
@@ -2516,25 +2512,25 @@ impl<'db> Iterator for ImportFromTargetsIterator<'db> {
 }
 
 impl<'db> ImportFromAsName<'db> {
-    pub fn name_definition(&self) -> NameDefinition {
+    pub fn name_definition(&self) -> NameDef {
         let first = self.node.nth_child(0);
         if first.is_type(Nonterminal(name_definition)) {
-            NameDefinition::new(first)
+            NameDef::new(first)
         } else {
-            NameDefinition::new(self.node.nth_child(2))
+            NameDef::new(self.node.nth_child(2))
         }
     }
 
-    pub fn unpack(&self) -> (Name<'db>, NameDefinition<'db>) {
+    pub fn unpack(&self) -> (Name<'db>, NameDef<'db>) {
         let first = self.node.nth_child(0);
         if first.is_type(Nonterminal(name_definition)) {
-            let name_def = NameDefinition::new(first);
+            let name_def = NameDef::new(first);
             (name_def.name(), name_def)
         } else {
             // foo as bar
             debug_assert_eq!(first.type_(), Terminal(TerminalType::Name));
             let def = first.next_sibling().unwrap().next_sibling().unwrap();
-            (Name::new(first), NameDefinition::new(def))
+            (Name::new(first), NameDef::new(def))
         }
     }
 
@@ -2602,8 +2598,8 @@ impl<'db> Iterator for DottedAsNameIterator<'db> {
 }
 
 pub enum DottedAsNameContent<'db> {
-    Simple(NameDefinition<'db>, Option<DottedName<'db>>),
-    WithAs(DottedName<'db>, NameDefinition<'db>),
+    Simple(NameDef<'db>, Option<DottedName<'db>>),
+    WithAs(DottedName<'db>, NameDef<'db>),
 }
 
 impl<'db> DottedAsName<'db> {
@@ -2613,13 +2609,13 @@ impl<'db> DottedAsName<'db> {
         let maybe_second = first.next_sibling();
         if first.is_type(Nonterminal(name_definition)) {
             DottedAsNameContent::Simple(
-                NameDefinition::new(first),
+                NameDef::new(first),
                 maybe_second.map(|s| DottedName::new(s.next_sibling().unwrap())),
             )
         } else {
             DottedAsNameContent::WithAs(
                 DottedName::new(first),
-                NameDefinition::new(maybe_second.unwrap().next_sibling().unwrap()),
+                NameDef::new(maybe_second.unwrap().next_sibling().unwrap()),
             )
         }
     }
@@ -3454,7 +3450,7 @@ impl<'db> Lambda<'db> {
     }
 }
 
-impl<'db> NameDefinition<'db> {
+impl<'db> NameDef<'db> {
     #[inline]
     pub fn name(&self) -> Name<'db> {
         Name::new(self.node.nth_child(0))
@@ -3465,16 +3461,16 @@ impl<'db> NameDefinition<'db> {
         self.index() + NAME_DEF_TO_NAME_DIFFERENCE
     }
 
-    pub fn parent(&self) -> NameDefinitionParent {
+    pub fn parent(&self) -> NameDefParent {
         let parent = self.node.parent().unwrap();
         if parent.is_type(Nonterminal(t_primary)) {
-            NameDefinitionParent::Primary
+            NameDefParent::Primary
         } else if parent.is_type(Nonterminal(global_stmt)) {
-            NameDefinitionParent::GlobalStmt
+            NameDefParent::GlobalStmt
         } else if parent.is_type(Nonterminal(nonlocal_stmt)) {
-            NameDefinitionParent::NonlocalStmt
+            NameDefParent::NonlocalStmt
         } else {
-            NameDefinitionParent::Other
+            NameDefParent::Other
         }
     }
 
@@ -3598,7 +3594,7 @@ impl<'db> NameDefinition<'db> {
     }
 }
 
-pub enum NameDefinitionParent {
+pub enum NameDefParent {
     Primary,
     GlobalStmt,
     NonlocalStmt,
@@ -3812,7 +3808,7 @@ impl<'db> StringLiteral<'db> {
         (start as CodeIndex, end as CodeIndex)
     }
 
-    pub fn in_simple_assignment(&self) -> Option<NameDefinition<'db>> {
+    pub fn in_simple_assignment(&self) -> Option<NameDef<'db>> {
         in_simple_assignment(self.node)
     }
 
@@ -3821,7 +3817,7 @@ impl<'db> StringLiteral<'db> {
     }
 }
 
-fn in_simple_assignment(node: PyNode) -> Option<NameDefinition> {
+fn in_simple_assignment(node: PyNode) -> Option<NameDef> {
     node.parent_until(&[Nonterminal(assignment)])
         .and_then(|n| Assignment::new(n).maybe_simple_type_expression_assignment())
         .map(|(name, _, _)| name)
@@ -3929,8 +3925,8 @@ pub enum NameOrKeywordLookup<'db> {
 #[derive(Debug, Clone)]
 pub enum Target<'db> {
     Tuple(TargetIterator<'db>),
-    Name(NameDefinition<'db>),
-    NameExpression(PrimaryTarget<'db>, NameDefinition<'db>),
+    Name(NameDef<'db>),
+    NameExpression(PrimaryTarget<'db>, NameDef<'db>),
     IndexExpression(PrimaryTarget<'db>),
     Starred(StarTarget<'db>),
 }
@@ -3954,7 +3950,7 @@ impl<'db> Target<'db> {
 
     fn new_non_iterator(node: PyNode<'db>) -> Self {
         if node.is_type(Nonterminal(name_definition)) {
-            Self::Name(NameDefinition::new(node))
+            Self::Name(NameDef::new(node))
         } else if node.is_type(Nonterminal(t_primary)) {
             Self::new_t_primary(node)
         } else if node.is_type(Nonterminal(star_target_brackets)) {
@@ -3985,7 +3981,7 @@ impl<'db> Target<'db> {
             .iter_children()
             .find(|x| x.is_type(Nonterminal(name_definition)))
             .map(|name_def| {
-                Self::NameExpression(PrimaryTarget::new(t_prim), NameDefinition::new(name_def))
+                Self::NameExpression(PrimaryTarget::new(t_prim), NameDef::new(name_def))
             })
             .unwrap_or_else(|| Self::IndexExpression(PrimaryTarget::new(t_prim)))
     }
@@ -3996,7 +3992,7 @@ impl<'db> Target<'db> {
         // t_primary | name_definition | "(" single_target ")"
         let first = node.nth_child(0);
         if first.is_type(Nonterminal(name_definition)) {
-            Self::Name(NameDefinition::new(first))
+            Self::Name(NameDef::new(first))
         } else if first.is_type(Nonterminal(t_primary)) {
             Self::new_t_primary(first)
         } else {

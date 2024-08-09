@@ -128,7 +128,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             .set(imp.index(), Point::new_node_analysis(Locality::Todo));
     }
 
-    fn check_import_type(&self, name_def: NameDefinition) {
+    fn check_import_type(&self, name_def: NameDef) {
         // Check stuff like
         //     foo: str
         //     import foo
@@ -273,7 +273,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         &self,
         from_first_part: &ImportResult,
         import_name: Name,
-        import_name_def: NameDefinition,
+        import_name_def: NameDef,
     ) -> LookupResult {
         let name = import_name.as_str();
         match from_first_part {
@@ -292,7 +292,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         }
     }
 
-    fn global_import(&self, name: Name, name_def: Option<NameDefinition>) -> Option<ImportResult> {
+    fn global_import(&self, name: Name, name_def: Option<NameDef>) -> Option<ImportResult> {
         let result = global_import(self.i_s.db, self.file.file_index(), name.as_str());
         if let Some(result) = &result {
             debug!(
@@ -892,11 +892,11 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         }
     }
 
-    pub fn infer_name_target(&self, name_def: NameDefinition, narrow: bool) -> Option<Inferred> {
+    pub fn infer_name_target(&self, name_def: NameDef, narrow: bool) -> Option<Inferred> {
         if name_def.as_code() == "__slots__" {
             return None;
         }
-        let check_fallback = |name_def: NameDefinition| {
+        let check_fallback = |name_def: NameDef| {
             self.i_s
                 .current_class()
                 .and_then(|cls| {
@@ -951,7 +951,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
 
     fn assign_to_name_def(
         &self,
-        name_def: NameDefinition,
+        name_def: NameDef,
         from: NodeRef,
         value: &Inferred,
         assign_kind: AssignKind,
@@ -1671,7 +1671,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             })
     }
 
-    pub fn save_walrus(&self, name_def: NameDefinition, inf: Inferred) -> Inferred {
+    pub fn save_walrus(&self, name_def: NameDef, inf: Inferred) -> Inferred {
         let from = NodeRef::new(self.file, name_def.index());
         let inf = inf.avoid_implicit_literal(self.i_s);
         self.assign_to_name_def(name_def, from, &inf, AssignKind::Normal, |index, value| {
@@ -3093,7 +3093,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 }
                 PointKind::Specific => match point.specific() {
                     specific @ (Specific::Param | Specific::MaybeSelfParam) => {
-                        let name_def = NameDefinition::by_index(&self.file.tree, node_index);
+                        let name_def = NameDef::by_index(&self.file.tree, node_index);
                         // Performance: This could be improved by not needing to lookup all the
                         // parents all the time.
                         match name_def.function_or_lambda_ancestor().unwrap() {
@@ -3165,7 +3165,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     }
                     Specific::LazyInferredClass => {
                         // TODO this does not analyze decorators
-                        let name_def = NameDefinition::by_index(&self.file.tree, node_index);
+                        let name_def = NameDef::by_index(&self.file.tree, node_index);
                         let class = name_def.expect_class_def();
                         // Avoid overwriting multi definitions
                         if self.file.points.get(name_def.name().index()).kind()
@@ -3229,8 +3229,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         self.infer_name_definition(name.name_definition().unwrap())
     }
 
-    check_point_cache_with!(pub infer_name_definition, Self::_infer_name_definition, NameDefinition);
-    fn _infer_name_definition(&self, name_def: NameDefinition) -> Inferred {
+    check_point_cache_with!(pub infer_name_definition, Self::_infer_name_definition, NameDef);
+    fn _infer_name_definition(&self, name_def: NameDef) -> Inferred {
         let defining_stmt = name_def.expect_defining_stmt();
         self.cache_defining_stmt(defining_stmt, NodeRef::new(self.file, name_def.index()));
         debug_assert!(

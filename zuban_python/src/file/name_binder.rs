@@ -201,7 +201,7 @@ impl<'db> NameBinder<'db> {
         }
     }
 
-    fn add_new_walrus_definition(&mut self, name_def: NameDefinition<'db>) {
+    fn add_new_walrus_definition(&mut self, name_def: NameDef<'db>) {
         if matches!(self.kind, NameBinderKind::Comprehension) {
             // Walrus `:=` operators are available outside of comprehensions and therefore need to
             // be added to the parent.
@@ -211,7 +211,7 @@ impl<'db> NameBinder<'db> {
         }
     }
 
-    fn add_new_definition(&mut self, name_def: NameDefinition<'db>, point: Point) {
+    fn add_new_definition(&mut self, name_def: NameDef<'db>, point: Point) {
         if let Some(first) = self.symbol_table.lookup_symbol(name_def.as_code()) {
             self.ensure_multi_definition(name_def, first)
         } else {
@@ -220,7 +220,7 @@ impl<'db> NameBinder<'db> {
         self.db_infos.points.set(name_def.index(), point);
     }
 
-    fn ensure_multi_definition(&mut self, name_def: NameDefinition, first_index: NodeIndex) {
+    fn ensure_multi_definition(&mut self, name_def: NameDef, first_index: NodeIndex) {
         let mut latest_name_index = first_index;
         loop {
             let point = self.db_infos.points.get(latest_name_index);
@@ -248,7 +248,7 @@ impl<'db> NameBinder<'db> {
         }
     }
 
-    fn add_point_definition(&mut self, name_def: NameDefinition<'db>, specific: Specific) {
+    fn add_point_definition(&mut self, name_def: NameDef<'db>, specific: Specific) {
         self.add_new_definition(name_def, Point::new_specific(specific, Locality::Stmt));
     }
 
@@ -809,13 +809,13 @@ impl<'db> NameBinder<'db> {
                                 self.maybe_add_reference(name, ordered);
                             }
                         }
-                        NameParent::NameDefinition(name_def) => {
+                        NameParent::NameDef(name_def) => {
                             match name_def.parent() {
-                                NameDefinitionParent::Other => {
+                                NameDefParent::Other => {
                                     // The types are inferred later.
                                     self.add_new_definition(name_def, Point::new_uncalculated())
                                 }
-                                NameDefinitionParent::GlobalStmt => {
+                                NameDefParent::GlobalStmt => {
                                     let name_index = name.index();
                                     let name_str = name_def.as_code();
                                     if let Some(local_index) =
@@ -856,7 +856,7 @@ impl<'db> NameBinder<'db> {
                                         );
                                     }
                                 }
-                                NameDefinitionParent::NonlocalStmt => {
+                                NameDefParent::NonlocalStmt => {
                                     if let Some(parent) = self.lookup_nonlocal_in_parent(name) {
                                         let name_str = name.as_code();
                                         // If there is no parent, an error was added
@@ -892,7 +892,7 @@ impl<'db> NameBinder<'db> {
                                         }
                                     }
                                 }
-                                NameDefinitionParent::Primary => (),
+                                NameDefParent::Primary => (),
                             }
                         }
                         _ => {
@@ -1129,7 +1129,7 @@ impl<'db> NameBinder<'db> {
 
     fn index_param_name_defs(
         &mut self,
-        mut names: impl Iterator<Item = NameDefinition<'db>>,
+        mut names: impl Iterator<Item = NameDef<'db>>,
         is_method: bool,
     ) {
         if is_method {
