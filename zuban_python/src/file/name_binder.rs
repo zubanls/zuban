@@ -133,7 +133,6 @@ impl<'db> NameBinder<'db> {
                 Locality::File,
             );
         }
-        // Annotation names are also und
         for annotation_name in &binder.annotation_names {
             try_to_process_reference_for_symbol_table(
                 &mut binder.symbol_table,
@@ -489,8 +488,7 @@ impl<'db> NameBinder<'db> {
             while let Some(n) = self.unresolved_nodes.pop() {
                 match n {
                     Unresolved::Name(name) => {
-                        if !self.try_to_process_reference(name, self.references_need_flow_analysis)
-                        {
+                        if !self.try_to_process_reference(name) {
                             self.names_to_be_resolved_in_parent.push(name);
                         }
                     }
@@ -812,11 +810,7 @@ impl<'db> NameBinder<'db> {
                             if from_annotation {
                                 self.annotation_names.push(name);
                             } else {
-                                self.maybe_add_reference(
-                                    name,
-                                    ordered,
-                                    self.references_need_flow_analysis,
-                                );
+                                self.maybe_add_reference(name, ordered);
                             }
                         }
                         NameParent::NameDefinition(name_def) => {
@@ -1168,14 +1162,11 @@ impl<'db> NameBinder<'db> {
     }
 
     #[inline]
-    fn maybe_add_reference(&mut self, name: Name<'db>, ordered: bool, needs_flow_analysis: bool) {
-        if !self.try_to_process_reference(name, needs_flow_analysis) {
+    fn maybe_add_reference(&mut self, name: Name<'db>, ordered: bool) {
+        if !self.try_to_process_reference(name) {
             if !ordered || self.kind != NameBinderKind::Class {
-                self.unordered_references.push(UnorderedReference {
-                    needs_flow_analysis,
-                    name,
-                    ordered,
-                });
+                self.unordered_references
+                    .push(UnorderedReference { name, ordered });
             } else {
                 self.names_to_be_resolved_in_parent.push(name);
             }
@@ -1183,13 +1174,13 @@ impl<'db> NameBinder<'db> {
     }
 
     #[inline]
-    fn try_to_process_reference(&mut self, name: Name<'db>, needs_flow_analysis: bool) -> bool {
+    fn try_to_process_reference(&mut self, name: Name<'db>) -> bool {
         try_to_process_reference_for_symbol_table(
             &mut self.symbol_table,
             self.db_infos.file_index,
             self.db_infos.points,
             name,
-            needs_flow_analysis,
+            self.references_need_flow_analysis,
         )
     }
 
@@ -1200,7 +1191,7 @@ impl<'db> NameBinder<'db> {
                 self.db_infos.file_index,
                 self.db_infos.points,
                 unordered_reference.name,
-                unordered_reference.needs_flow_analysis,
+                self.references_need_flow_analysis,
             ) {
                 if unordered_reference.ordered && !self.db_infos.is_stub {
                     self.add_issue(
@@ -1626,7 +1617,6 @@ pub fn is_expr_part_reachable_for_name_binder(
 }
 
 struct UnorderedReference<'db> {
-    needs_flow_analysis: bool,
     name: Name<'db>,
     ordered: bool,
 }
