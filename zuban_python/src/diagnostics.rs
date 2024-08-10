@@ -69,7 +69,7 @@ pub(crate) enum IssueKind {
     NeedTypeAnnotation { for_: Box<str>, hint: Option<&'static str> },
     CannotDetermineType { for_: Box<str> },
 
-    Redefinition { name: Box<str>, suffix: Box<str> },
+    Redefinition { name: Box<str>, suffix: Box<str>, is_self_attribute: bool },
     CannotRedifineAs { name: Box<str>, as_: &'static str },
     CannotRedifineAsFinal,
     IncompatibleConditionalFunctionSignature { original: Box<str>, redefinition: Box<str> },
@@ -786,7 +786,10 @@ impl<'db> Diagnostic<'db> {
             },
             CannotDetermineType { for_ } => format!(r#"Cannot determine type of "{for_}""#),
 
-            Redefinition{name, suffix} => format!(r#"Name "{name}" already defined {suffix}"#),
+            Redefinition{name, suffix, is_self_attribute } => match *is_self_attribute {
+                false => format!(r#"Name "{name}" already defined {suffix}"#),
+                true => format!(r#"Attribute "{name}" already defined {suffix}"#),
+            },
             CannotRedifineAs { name, as_ } => format!(r#"Cannot redefine "{name}" as {as_}"#),
             CannotRedifineAsFinal => r#"Cannot redefine an existing name as final"#.to_string(),
             IncompatibleConditionalFunctionSignature { original, redefinition } => format!(

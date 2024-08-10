@@ -995,7 +995,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         value: &Inferred,
         assign_kind: AssignKind,
         save: impl FnOnce(NodeIndex, &Inferred),
-        is_self_name: bool,
+        is_self_attribute: bool,
         narrow: impl FnOnce(PointLink, &Type),
     ) {
         let current_index = name_def.name_index();
@@ -1032,9 +1032,12 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 ) {
                     name_def_ref.add_issue(self.i_s, IssueKind::CannotRedifineAsFinal);
                 } else {
-                    self.add_redefinition_issue(first_index, name_def.as_code(), |issue| {
-                        name_def_ref.add_issue(self.i_s, issue)
-                    });
+                    self.add_redefinition_issue(
+                        first_index,
+                        name_def.as_code(),
+                        is_self_attribute,
+                        |issue| name_def_ref.add_issue(self.i_s, issue),
+                    );
                 }
                 // Nothing needed to assign anymore, the original definition was already assigned.
                 return;
@@ -1094,7 +1097,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 )
             }
         } else {
-            if !is_self_name {
+            if !is_self_attribute {
                 if let Some(star_imp) = self.lookup_from_star_import(name_def.as_code(), true) {
                     let original = star_imp.as_inferred(self.i_s);
                     match star_imp {
@@ -1146,7 +1149,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         save(name_def.index(), &partial);
                         return;
                     }
-                    if !is_self_name
+                    if !is_self_attribute
                         && name_def.as_code() == "_"
                         && self.i_s.current_function().is_some()
                         && name_def.maybe_import().is_none()
@@ -1646,7 +1649,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         debug_assert_eq!(name_def.file_index(), self.file_index);
         if let Some(first) = first_defined_name_of_multi_def(self.file, name_index) {
             if name_def.as_code() != "_" {
-                self.add_redefinition_issue(first, name_def.as_code(), add_issue)
+                self.add_redefinition_issue(first, name_def.as_code(), false, add_issue)
             }
         }
     }
@@ -1655,6 +1658,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         &self,
         first: NodeIndex,
         name: &str,
+        is_self_attribute: bool,
         add_issue: impl FnOnce(IssueKind),
     ) {
         let first_ref = NodeRef::new(self.file, first);
@@ -1690,6 +1694,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         add_issue(IssueKind::Redefinition {
             name: name.into(),
             suffix,
+            is_self_attribute,
         })
     }
 
