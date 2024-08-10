@@ -1343,7 +1343,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 if base.maybe_saved_specific(i_s.db) == Some(Specific::PartialDict) {
                     let new_dict = new_class!(
                         i_s.db.python_state.dict_node_ref().as_link(),
-                        s_t.infer(i_s).as_type(i_s),
+                        s_t.infer(i_s).as_type(i_s).avoid_implicit_literal(i_s.db),
                         value.as_type(i_s),
                     );
                     debug!(
