@@ -1000,6 +1000,18 @@ impl Inference<'_, '_, '_> {
         self.maybe_has_primary_entry(primary).map(|x| x.1)
     }
 
+    pub fn maybe_lookup_narrowed_primary_target(
+        &self,
+        primary_target: PrimaryTarget,
+    ) -> Option<Inferred> {
+        let key = self.key_from_primary_target(primary_target)?;
+        Some(
+            FLOW_ANALYSIS
+                .with(|fa| fa.lookup_narrowed_key_and_deleted(self.i_s.db, key))?
+                .0,
+        )
+    }
+
     pub fn flow_analysis_for_assert(&self, assert_stmt: AssertStmt) {
         let (expr, message_expr) = assert_stmt.unpack();
         if expr
@@ -1033,44 +1045,53 @@ impl Inference<'_, '_, '_> {
         &self,
         first_name_link: PointLink,
         declaration_t: &Type,
-        current_t: &Type,
+        new_t: &Type,
+        check_for_error: impl FnOnce() -> bool,
+    ) {
+        self.narrow_or_widen_target(
+            FlowKey::Name(first_name_link),
+            declaration_t,
+            new_t,
+            check_for_error,
+        )
+    }
+
+    fn narrow_or_widen_target(
+        &self,
+        key: FlowKey,
+        declaration_t: &Type,
+        new_t: &Type,
         check_for_error: impl FnOnce() -> bool,
     ) {
         let mut widens = false;
-        if matches!(declaration_t, Type::None) && !matches!(current_t, Type::None) {
+        if matches!(declaration_t, Type::None) && !matches!(new_t, Type::None) {
             widens = true;
-        } else if current_t.is_any() && !declaration_t.is_any_or_any_in_union(self.i_s.db) {
+        } else if new_t.is_any() && !declaration_t.is_any_or_any_in_union(self.i_s.db) {
             // Any should not be narrowed if it is not part of a union with any.
-            FLOW_ANALYSIS.with(|fa| {
-                fa.remove_key_if_modifies_ancestors(self.i_s, &FlowKey::Name(first_name_link))
-            });
+            FLOW_ANALYSIS.with(|fa| fa.remove_key_if_modifies_ancestors(self.i_s, &key));
             return;
         } else if check_for_error() {
             return; // There was an error so return and don't narrow.
         }
-        self.assign_type_for_node_index(first_name_link, current_t.clone(), widens)
+        self.save_narrowed(key, new_t.clone(), widens);
     }
 
-    pub fn maybe_lookup_narrowed_primary_target(
+    pub fn narrow_or_widen_self_target(
         &self,
         primary_target: PrimaryTarget,
-    ) -> Option<Inferred> {
-        let key = self.key_from_primary_target(primary_target)?;
-        Some(
-            FLOW_ANALYSIS
-                .with(|fa| fa.lookup_narrowed_key_and_deleted(self.i_s.db, key))?
-                .0,
-        )
+        declaration_t: &Type,
+        new_t: &Type,
+        check_for_error: impl FnOnce() -> bool,
+    ) {
+        if let Some(key) = self.key_from_primary_target(primary_target) {
+            self.narrow_or_widen_target(key, declaration_t, new_t, check_for_error)
+        }
     }
 
     pub fn save_narrowed_primary_target(&self, primary_target: PrimaryTarget, t: &Type) {
         if let Some(key) = self.key_from_primary_target(primary_target) {
             self.save_narrowed(key, t.clone(), false)
         }
-    }
-
-    pub fn assign_type_for_node_index(&self, first_name_link: PointLink, t: Type, widens: bool) {
-        self.save_narrowed(FlowKey::Name(first_name_link), t, widens);
     }
 
     fn save_narrowed(&self, key: FlowKey, type_: Type, widens: bool) {
@@ -1496,8 +1517,8 @@ impl Inference<'_, '_, '_> {
                                     false,
                                 );
                             } else {
-                                self.assign_type_for_node_index(
-                                    PointLink::new(self.file_index, first),
+                                self.save_narrowed(
+                                    FlowKey::Name(PointLink::new(self.file_index, first)),
                                     instantiated,
                                     false,
                                 )

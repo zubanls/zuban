@@ -1148,6 +1148,17 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             Target::NameExpression(primary_target, name_def) => {
                 let base = self.infer_primary_target_or_atom(primary_target.first());
                 if base.maybe_saved_specific(i_s.db) == Some(Specific::MaybeSelfParam) {
+                    if let Some(first) =
+                        first_defined_name_of_multi_def(self.file, name_def.name_index())
+                    {
+                        let original_inf = self.infer_name_of_definition_by_index(first);
+                        self.narrow_or_widen_self_target(
+                            primary_target,
+                            &original_inf.as_cow_type(self.i_s),
+                            &value.as_cow_type(self.i_s),
+                            || false,
+                        );
+                    }
                     // TODO we should probably check if we are in a staticmethod/classmethod
                     let PrimaryContent::Attribute(name) = primary_target.second() else {
                         unreachable!();
@@ -3178,7 +3189,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     _ => Inferred::new_saved(self.file, node_index),
                 },
                 PointKind::MultiDefinition => {
-                    // MultiDefinition means we are on a Name that has a NameDefinition as a
+                    // MultiDefinition means we are on a Name that has a NameDef as a
                     // parent.
                     let name = Name::by_index(&self.file.tree, node_index);
                     self.infer_name_def(name.name_def().unwrap())
