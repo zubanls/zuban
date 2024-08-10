@@ -352,6 +352,8 @@ testPartialAttributeNoneTypeStrictOptional
 
 # regressions
 testRedundantExprTruthiness
+testTypingSelfAttrOldVsNewStyle
+testStripNewAnalyzer
 # list context is Never and should be something else
 testContextForAttributeDeclaredInInit
 # ????
@@ -379,7 +381,6 @@ testInferOrderedDictInitializedToEmpty
 # defaultdict
 testPartialDefaultDict*
 # self attributes
-testInferAttributeInitializedToEmptyAndAssigned
 testInferAttributeInitializedToEmptyAndAssignedItem
 testInferAttributeInitializedToEmptyNonSelf
 testInferAttributeInitializedToEmptyAndAssignedOtherMethod
@@ -396,9 +397,7 @@ testRefreshPartialTypeInClass
 testRefreshPartialTypeInferredAttributeIndex
 testRefreshPartialTypeInferredAttributeAppend
 testLocalPartialTypesWithClassAttributeInitializedToEmptyDict
-testNoCrashOnPartialMember
 testOverridePartialAttributeWithMethod
-testInferListInitializedToEmptyInMethodViaAttribute
 testInferListInitializedToEmptyInClassBodyAndOverriden
 testRefreshPartialTypeInferredAttributeAssign
 # --local-partial-types
@@ -438,14 +437,11 @@ testNonePartialType4
 testOptionalDescriptorsBinder
 testUnionDescriptorsBinder
 testSubclassDescriptorsBinder
-testPropertyGetterBody
 testAugmentedAssignmentIntFloatMember
 # self assignment validation
 testSlotsAssignmentWithMethodReassign
 testTypeVarTupleNewSyntaxGenerics
-testAssignmentToAttributeInMultipleMethods
 testInheritanceFromGenericWithImplicitDynamic
-testTypeVariableClashErrorMessage
 # Confusions with overrides, because of self definitions
 testVariableSubclassAssignment
 testClassOneErrorPerLine

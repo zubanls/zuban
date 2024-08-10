@@ -957,6 +957,47 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         assign_kind: AssignKind,
         save: impl FnOnce(NodeIndex, &Inferred),
     ) {
+        self.assign_to_name_def_or_self_name_def(
+            name_def,
+            from,
+            value,
+            assign_kind,
+            save,
+            false,
+            |first_name_link, declaration_t| {
+                let current_t = value.as_cow_type(self.i_s);
+                self.narrow_or_widen_name_target(first_name_link, declaration_t, &current_t, || {
+                    self.check_assignment_type(value, declaration_t, from)
+                })
+            },
+        )
+    }
+
+    fn check_assignment_type(&self, value: &Inferred, declaration_t: &Type, from: NodeRef) -> bool {
+        let mut had_error = false;
+        declaration_t.error_if_not_matches(
+            self.i_s,
+            value,
+            |issue| from.add_issue(self.i_s, issue),
+            |error_types| {
+                had_error = true;
+                let ErrorStrs { expected, got } = error_types.as_boxed_strs(self.i_s.db);
+                Some(IssueKind::IncompatibleAssignment { got, expected })
+            },
+        );
+        had_error
+    }
+
+    fn assign_to_name_def_or_self_name_def(
+        &self,
+        name_def: NameDef,
+        from: NodeRef,
+        value: &Inferred,
+        assign_kind: AssignKind,
+        save: impl FnOnce(NodeIndex, &Inferred),
+        is_self_name: bool,
+        narrow: impl FnOnce(PointLink, &Type),
+    ) {
         let current_index = name_def.name_index();
         let i_s = self.i_s;
 
@@ -966,36 +1007,16 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             }
 
             let declaration_t = original.as_cow_type(i_s);
-            let check_for_error = || {
-                let mut had_error = false;
-                declaration_t.error_if_not_matches(
-                    self.i_s,
-                    value,
-                    |issue| from.add_issue(self.i_s, issue),
-                    |error_types| {
-                        had_error = true;
-                        let ErrorStrs { expected, got } = error_types.as_boxed_strs(self.i_s.db);
-                        Some(IssueKind::IncompatibleAssignment { got, expected })
-                    },
-                );
-                had_error
-            };
             if matches!(assign_kind, AssignKind::Normal) {
-                let current_t = value.as_cow_type(self.i_s);
-                self.narrow_or_widen_name_target(
-                    first_name_link,
-                    &declaration_t,
-                    &current_t,
-                    check_for_error,
-                )
+                narrow(first_name_link, &declaration_t)
             } else {
-                check_for_error();
+                self.check_assignment_type(value, &declaration_t, from);
             }
         };
         if let Some(first_index) = first_defined_name_of_multi_def(self.file, current_index) {
             let special_def = self.is_special_definition(first_index);
             if matches!(assign_kind, AssignKind::Annotation(_)) || special_def.is_some() {
-                let name_def_ref = NodeRef::new(self.file, name_def.index());
+                let name_def_ref = NodeRef::new(self.file, current_index);
                 if let Some(ComplexPoint::NewTypeDefinition(special_def)) = special_def {
                     name_def_ref.add_issue(
                         self.i_s,
@@ -1073,17 +1094,19 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 )
             }
         } else {
-            if let Some(star_imp) = self.lookup_from_star_import(name_def.as_code(), true) {
-                let original = star_imp.as_inferred(self.i_s);
-                match star_imp {
-                    StarImportResult::Link(star_link) => {
-                        let node_ref = NodeRef::from_link(self.i_s.db, star_link);
-                        check_assign_to_known_definition(star_link, &original);
-                    }
-                    StarImportResult::AnyDueToError => (),
-                };
-                save(name_def.index(), &original);
-                return;
+            if !is_self_name {
+                if let Some(star_imp) = self.lookup_from_star_import(name_def.as_code(), true) {
+                    let original = star_imp.as_inferred(self.i_s);
+                    match star_imp {
+                        StarImportResult::Link(star_link) => {
+                            let node_ref = NodeRef::from_link(self.i_s.db, star_link);
+                            check_assign_to_known_definition(star_link, &original);
+                        }
+                        StarImportResult::AnyDueToError => (),
+                    };
+                    save(name_def.index(), &original);
+                    return;
+                }
             }
             if value.maybe_saved_specific(i_s.db) == Some(Specific::None)
                 && assign_kind == AssignKind::Normal
@@ -1099,7 +1122,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 })
             {
                 self.add_issue(
-                    name_def.index(),
+                    current_index,
                     IssueKind::NeedTypeAnnotation {
                         for_: name_def.as_code().into(),
                         hint: Some("Optional[<type>]"),
@@ -1115,7 +1138,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             } else {
                 if assign_kind == AssignKind::Normal {
                     if let Some(partial) =
-                        value.maybe_new_partial(i_s, NodeRef::new(self.file, name_def.index()))
+                        value.maybe_new_partial(i_s, NodeRef::new(self.file, current_index))
                     {
                         FLOW_ANALYSIS.with(|fa| {
                             fa.add_partial(PointLink::new(self.file_index, name_def.index()))
@@ -1123,7 +1146,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         save(name_def.index(), &partial);
                         return;
                     }
-                    if name_def.as_code() == "_"
+                    if !is_self_name
+                        && name_def.as_code() == "_"
                         && self.i_s.current_function().is_some()
                         && name_def.maybe_import().is_none()
                     {
@@ -1152,28 +1176,23 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             Target::NameExpression(primary_target, name_def) => {
                 let base = self.infer_primary_target_or_atom(primary_target.first());
                 if base.maybe_saved_specific(i_s.db) == Some(Specific::MaybeSelfParam) {
-                    if let Some(first) =
-                        first_defined_name_of_multi_def(self.file, name_def.name_index())
-                    {
-                        let original_inf = self.infer_name_of_definition_by_index(first);
-                        self.narrow_or_widen_self_target(
-                            primary_target,
-                            &original_inf.as_cow_type(self.i_s),
-                            &value.as_cow_type(self.i_s),
-                            || false,
-                        );
-                    } else {
-                        if let Some(partial) =
-                            value.maybe_new_partial(i_s, NodeRef::new(self.file, name_def.index()))
-                        {
-                            FLOW_ANALYSIS.with(|fa| {
-                                fa.add_partial(PointLink::new(self.file_index, name_def.index()))
-                            });
-                            save(name_def.index(), &partial);
-                        } else {
-                            save(name_def.index(), value);
-                        }
-                    }
+                    self.assign_to_name_def_or_self_name_def(
+                        name_def,
+                        from,
+                        value,
+                        assign_kind,
+                        save,
+                        true,
+                        |first_name_link, declaration_t| {
+                            let current_t = value.as_cow_type(self.i_s);
+                            self.narrow_or_widen_self_target(
+                                primary_target,
+                                declaration_t,
+                                &current_t,
+                                || self.check_assignment_type(value, declaration_t, from),
+                            )
+                        },
+                    );
                     // TODO we should probably check if we are in a staticmethod/classmethod
                     // TODO The class should ALWAYS exist, this is just a bug at the moment.
                     if let Some(class) = i_s.current_class() {
