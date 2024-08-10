@@ -1057,3 +1057,16 @@ def test2(x: List[Any] | B) -> None:
         reveal_type(x)  # N: Revealed type is "list[str] | <subclass of "B" and "A">"
     else:
         reveal_type(x)  # N: Revealed type is "__main__.B"
+
+[case infer_partial_list_with_changes_to_non_self]
+# Like testInferAttributeInitializedToEmptyNonSelf, but with an explicit annotation
+from typing import Self
+
+class C:
+    def __init__(self) -> None:
+        self.a = []  # E: Need type annotation for "a" (hint: "a: List[<type>] = ...")
+        if bool():
+            a: Self = self
+            a.a = [1]
+            a.a.append(1)
+reveal_type(C().a)  # N: Revealed type is "builtins.list[Any]"
