@@ -1158,18 +1158,19 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             &value.as_cow_type(self.i_s),
                             || false,
                         );
-                    }
-                    // TODO we should probably check if we are in a staticmethod/classmethod
-                    let PrimaryContent::Attribute(name) = primary_target.second() else {
-                        unreachable!();
-                    };
-                    // TODO The class should ALWAYS exist, this is just a bug at the moment.
-                    if let Some(class) = i_s.current_class() {
-                        class.check_self_definition(
-                            i_s,
-                            |issue| from.add_issue(i_s, issue),
-                            name.as_str(),
-                        );
+                    } else {
+                        // TODO we should probably check if we are in a staticmethod/classmethod
+                        let PrimaryContent::Attribute(name) = primary_target.second() else {
+                            unreachable!();
+                        };
+                        // TODO The class should ALWAYS exist, this is just a bug at the moment.
+                        if let Some(class) = i_s.current_class() {
+                            class.check_self_definition(
+                                i_s,
+                                |issue| from.add_issue(i_s, issue),
+                                name.as_str(),
+                            );
+                        }
                     }
                 } else {
                     if matches!(assign_kind, AssignKind::Annotation(_)) {
