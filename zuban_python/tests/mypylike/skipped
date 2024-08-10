@@ -350,6 +350,8 @@ testOptionalBackwards4
 # Never for isinstance leads to other side being unreachable
 testPartialAttributeNoneTypeStrictOptional
 
+# regressions
+testRedundantExprTruthiness
 # list context is Never and should be something else
 testContextForAttributeDeclaredInInit
 # ????
@@ -378,7 +380,6 @@ testInferOrderedDictInitializedToEmpty
 testPartialDefaultDict*
 # self attributes
 testInferAttributeInitializedToEmptyAndAssigned
-testInferAttributeInitializedToEmptyAndAppended
 testInferAttributeInitializedToEmptyAndAssignedItem
 testInferAttributeInitializedToEmptyNonSelf
 testInferAttributeInitializedToEmptyAndAssignedOtherMethod

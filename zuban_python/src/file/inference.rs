@@ -1159,18 +1159,25 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             || false,
                         );
                     } else {
-                        // TODO we should probably check if we are in a staticmethod/classmethod
-                        let PrimaryContent::Attribute(name) = primary_target.second() else {
-                            unreachable!();
-                        };
-                        // TODO The class should ALWAYS exist, this is just a bug at the moment.
-                        if let Some(class) = i_s.current_class() {
-                            class.check_self_definition(
-                                i_s,
-                                |issue| from.add_issue(i_s, issue),
-                                name.as_str(),
-                            );
+                        if let Some(partial) =
+                            value.maybe_new_partial(i_s, NodeRef::new(self.file, name_def.index()))
+                        {
+                            FLOW_ANALYSIS.with(|fa| {
+                                fa.add_partial(PointLink::new(self.file_index, name_def.index()))
+                            });
+                            save(name_def.index(), &partial);
+                        } else {
+                            save(name_def.index(), value);
                         }
+                    }
+                    // TODO we should probably check if we are in a staticmethod/classmethod
+                    // TODO The class should ALWAYS exist, this is just a bug at the moment.
+                    if let Some(class) = i_s.current_class() {
+                        class.check_self_definition(
+                            i_s,
+                            |issue| from.add_issue(i_s, issue),
+                            name_def.as_code(),
+                        );
                     }
                 } else {
                     if matches!(assign_kind, AssignKind::Annotation(_)) {
@@ -1298,9 +1305,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             &value.as_cow_type(self.i_s),
                         );
                     }
+                    save(name_def.index(), value);
                 }
-                // This mostly needs to be saved for self names
-                save(name_def.index(), value);
             }
             Target::IndexExpression(primary_target) => {
                 let base = self.infer_primary_target_or_atom(primary_target.first());
