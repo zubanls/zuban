@@ -1072,63 +1072,67 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     &original_inf,
                 )
             }
-        } else if let Some(star_imp) = self.lookup_from_star_import(name_def.as_code(), true) {
-            let original = star_imp.as_inferred(self.i_s);
-            match star_imp {
-                StarImportResult::Link(star_link) => {
-                    let node_ref = NodeRef::from_link(self.i_s.db, star_link);
-                    check_assign_to_known_definition(star_link, &original);
-                }
-                StarImportResult::AnyDueToError => (),
-            };
-            save(name_def.index(), &original);
-        } else if value.maybe_saved_specific(i_s.db) == Some(Specific::None)
-            && assign_kind == AssignKind::Normal
-            && self.flags().local_partial_types
-            && !i_s.current_class().is_some_and(|c| {
-                c.lookup(
-                    self.i_s,
-                    name_def.as_code(),
-                    ClassLookupOptions::new(&|_| ()).with_ignore_self(),
-                )
-                .lookup
-                .is_some()
-            })
-        {
-            self.add_issue(
-                name_def.index(),
-                IssueKind::NeedTypeAnnotation {
-                    for_: name_def.as_code().into(),
-                    hint: Some("Optional[<type>]"),
-                },
-            );
-            // Save Optional[Any]
-            save(
-                name_def.index(),
-                &Inferred::from_type(
-                    Type::Any(AnyCause::FromError).union_with_details(Type::None, true),
-                ),
-            );
         } else {
-            if assign_kind == AssignKind::Normal {
-                if let Some(partial) =
-                    value.maybe_new_partial(i_s, NodeRef::new(self.file, name_def.index()))
-                {
-                    FLOW_ANALYSIS.with(|fa| {
-                        fa.add_partial(PointLink::new(self.file_index, name_def.index()))
-                    });
-                    save(name_def.index(), &partial);
-                    return;
-                }
-                if name_def.as_code() == "_"
-                    && self.i_s.current_function().is_some()
-                    && name_def.maybe_import().is_none()
-                {
-                    save(name_def.index(), &Inferred::new_any(AnyCause::Todo));
-                    return;
-                }
+            if let Some(star_imp) = self.lookup_from_star_import(name_def.as_code(), true) {
+                let original = star_imp.as_inferred(self.i_s);
+                match star_imp {
+                    StarImportResult::Link(star_link) => {
+                        let node_ref = NodeRef::from_link(self.i_s.db, star_link);
+                        check_assign_to_known_definition(star_link, &original);
+                    }
+                    StarImportResult::AnyDueToError => (),
+                };
+                save(name_def.index(), &original);
+                return;
             }
-            save(name_def.index(), value);
+            if value.maybe_saved_specific(i_s.db) == Some(Specific::None)
+                && assign_kind == AssignKind::Normal
+                && self.flags().local_partial_types
+                && !i_s.current_class().is_some_and(|c| {
+                    c.lookup(
+                        self.i_s,
+                        name_def.as_code(),
+                        ClassLookupOptions::new(&|_| ()).with_ignore_self(),
+                    )
+                    .lookup
+                    .is_some()
+                })
+            {
+                self.add_issue(
+                    name_def.index(),
+                    IssueKind::NeedTypeAnnotation {
+                        for_: name_def.as_code().into(),
+                        hint: Some("Optional[<type>]"),
+                    },
+                );
+                // Save Optional[Any]
+                save(
+                    name_def.index(),
+                    &Inferred::from_type(
+                        Type::Any(AnyCause::FromError).union_with_details(Type::None, true),
+                    ),
+                );
+            } else {
+                if assign_kind == AssignKind::Normal {
+                    if let Some(partial) =
+                        value.maybe_new_partial(i_s, NodeRef::new(self.file, name_def.index()))
+                    {
+                        FLOW_ANALYSIS.with(|fa| {
+                            fa.add_partial(PointLink::new(self.file_index, name_def.index()))
+                        });
+                        save(name_def.index(), &partial);
+                        return;
+                    }
+                    if name_def.as_code() == "_"
+                        && self.i_s.current_function().is_some()
+                        && name_def.maybe_import().is_none()
+                    {
+                        save(name_def.index(), &Inferred::new_any(AnyCause::Todo));
+                        return;
+                    }
+                }
+                save(name_def.index(), value);
+            }
         }
     }
 
