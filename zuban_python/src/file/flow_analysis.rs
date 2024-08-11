@@ -262,11 +262,18 @@ struct LoopDetails {
     loop_frame_index: usize,
 }
 
+#[derive(Debug)]
+pub struct DelayedFunc {
+    pub func: PointLink,
+    pub class: Option<PointLink>,
+}
+
 #[derive(Debug, Default)]
 pub struct FlowAnalysis {
     frames: RefCell<Vec<Frame>>,
     try_frames: RefCell<Vec<Entries>>,
     loop_details: RefCell<Option<LoopDetails>>,
+    delayed_func_diagnostics: RefCell<Vec<DelayedFunc>>,
     partials_in_module: RefCell<Vec<PointLink>>,
     in_type_checking_only_block: Cell<bool>, // For stuff like if TYPE_CHECKING:
     accumulating_types: Cell<usize>, // Can accumulate nested and thereore use this counter like a stack
@@ -545,6 +552,22 @@ impl FlowAnalysis {
             }
         }
         partials.clear()
+    }
+
+    pub fn add_delayed_func(&self, func: PointLink, class: Option<PointLink>) {
+        self.delayed_func_diagnostics
+            .borrow_mut()
+            .push(DelayedFunc { func, class })
+    }
+
+    pub fn pop_delayed_func<'db>(&self, db: &'db Database) -> Option<Function<'db, 'db>> {
+        self.delayed_func_diagnostics.borrow_mut().pop().map(|d| {
+            Function::new(
+                NodeRef::from_link(db, d.func),
+                d.class
+                    .map(|c| Class::with_self_generics(db, NodeRef::from_link(db, c))),
+            )
+        })
     }
 
     pub fn start_accumulating_types(&self) {

@@ -7,7 +7,11 @@ use std::{
 
 use parsa_python_cst::*;
 
-use super::{first_defined_name, flow_analysis::FLOW_ANALYSIS, inference::await_};
+use super::{
+    first_defined_name,
+    flow_analysis::{FlowAnalysis, FLOW_ANALYSIS},
+    inference::await_,
+};
 use crate::{
     arguments::{CombinedArgs, KnownArgs, NoArgs},
     database::{
@@ -133,7 +137,8 @@ impl<'db> Inference<'db, '_, '_> {
             fa.with_new_frame_and_return_unreachable(|| {
                 self.calc_stmts_diagnostics(self.file.tree.root().iter_stmt_likes(), None, None);
             });
-            fa.check_for_unfinished_partials(self.i_s)
+            self.process_delayed_funcs(fa);
+            fa.check_for_unfinished_partials(self.i_s);
         });
         for complex_point in unsafe { self.file.complex_points.iter() } {
             if let ComplexPoint::NewTypeDefinition(n) = complex_point {
@@ -164,6 +169,18 @@ impl<'db> Inference<'db, '_, '_> {
                         special_method: "__getattr__",
                     },
                 )
+            }
+        }
+    }
+
+    fn process_delayed_funcs(&self, fa: &FlowAnalysis) {
+        while let Some(func) = fa.pop_delayed_func(self.i_s.db) {
+            if let Some(c) = func.class {
+                self.file
+                    .inference(&self.i_s.with_class_context(&c))
+                    .calc_function_diagnostics(func)
+            } else {
+                self.calc_function_diagnostics(func)
             }
         }
     }
@@ -361,13 +378,15 @@ impl<'db> Inference<'db, '_, '_> {
                 StmtLikeContent::BreakStmt(b) => self.flow_analysis_for_break_stmt(b),
                 StmtLikeContent::ContinueStmt(c) => self.flow_analysis_for_continue_stmt(c),
                 StmtLikeContent::DelStmt(d) => self.flow_analysis_for_del_stmt(d.targets()),
-                StmtLikeContent::FunctionDef(f) => self.calc_function_diagnostics(f, class),
+                StmtLikeContent::FunctionDef(f) => {
+                    self.maybe_delay_func_diagnostics(f, class, func)
+                }
                 StmtLikeContent::ClassDef(class) => self.calc_class_diagnostics(class),
                 StmtLikeContent::Decorated(decorated) => match decorated.decoratee() {
-                    Decoratee::FunctionDef(f) => self.calc_function_diagnostics(f, class),
+                    Decoratee::FunctionDef(f) => self.maybe_delay_func_diagnostics(f, class, func),
                     Decoratee::ClassDef(class) => self.calc_class_diagnostics(class),
-                    Decoratee::AsyncFunctionDef(func) => {
-                        self.calc_function_diagnostics(func, class)
+                    Decoratee::AsyncFunctionDef(f) => {
+                        self.maybe_delay_func_diagnostics(f, class, func)
                     }
                 },
                 StmtLikeContent::IfStmt(if_stmt) => {
@@ -389,8 +408,8 @@ impl<'db> Inference<'db, '_, '_> {
                     debug!("TODO match_stmt diagnostics");
                 }
                 StmtLikeContent::AsyncStmt(async_stmt) => match async_stmt.unpack() {
-                    AsyncStmtContent::FunctionDef(func) => {
-                        self.calc_function_diagnostics(func, class)
+                    AsyncStmtContent::FunctionDef(f) => {
+                        self.maybe_delay_func_diagnostics(f, class, func)
                     }
                     AsyncStmtContent::ForStmt(for_stmt) => {
                         self.flow_analysis_for_for_stmt(for_stmt, class, func, true)
@@ -797,30 +816,45 @@ impl<'db> Inference<'db, '_, '_> {
         }
     }
 
-    fn calc_function_diagnostics(&self, f: FunctionDef, class: Option<Class>) {
+    fn maybe_delay_func_diagnostics(
+        &self,
+        f: FunctionDef,
+        class: Option<Class>,
+        in_func: Option<&Function>,
+    ) {
         let function = Function::new(NodeRef::new(self.file, f.index()), class);
-        let i_s = self.i_s;
-        function.cache_func(i_s);
+        function.cache_func(self.i_s);
         if let Some(ComplexPoint::TypeInstance(Type::Callable(c))) = function.node_ref.complex() {
             if c.no_type_check {
                 return;
             }
         }
-        let is_protocol = class.is_some_and(|cls| cls.is_protocol(self.i_s.db));
+        FLOW_ANALYSIS.with(|fa| {
+            fa.add_delayed_func(
+                function.node_ref.as_link(),
+                class.map(|c| c.node_ref.as_link()),
+            )
+        })
+    }
+
+    fn calc_function_diagnostics(&self, function: Function) {
+        let i_s = self.i_s;
+        let is_protocol = function.class.is_some_and(|cls| cls.is_protocol(i_s.db));
         if is_protocol && function.is_final() {
             function.add_issue_onto_start_including_decorator(
-                self.i_s,
+                i_s,
                 IssueKind::ProtocolMemberCannotBeFinal,
             )
         }
+        let func_node = function.node();
         FLOW_ANALYSIS.with(|fa| {
             let mut is_overload_member = false;
             let unreachable = fa.with_new_frame_and_return_unreachable(|| {
-                if f.is_empty_generator_function() {
+                if func_node.is_empty_generator_function() {
                     fa.enable_reported_unreachable_in_top_frame();
                 }
                 is_overload_member = self
-                    .calc_function_diagnostics_internal_and_return_is_overload(function, f, class)
+                    .calc_function_diagnostics_internal_and_return_is_overload(function, func_node)
             });
             if !unreachable
                 && !is_overload_member
@@ -842,7 +876,7 @@ impl<'db> Inference<'db, '_, '_> {
                             })
                     {
                         self.add_issue(
-                            f.name().index(),
+                            func_node.name().index(),
                             IssueKind::Note(
                                 "If the method is meant to be abstract, use @abc.abstractmethod"
                                     .into(),
@@ -852,7 +886,7 @@ impl<'db> Inference<'db, '_, '_> {
                 };
                 if matches!(ret_type.as_ref(), Type::Never(_)) {
                     self.add_issue(
-                        f.name().index(),
+                        func_node.name().index(),
                         IssueKind::ImplicitReturnInFunctionWithNeverReturn,
                     );
                     maybe_add_async()
@@ -865,7 +899,7 @@ impl<'db> Inference<'db, '_, '_> {
                             && !is_protocol
                         {
                             self.add_issue(
-                                f.name().index(),
+                                func_node.name().index(),
                                 IssueKind::MissingReturnStatement {
                                     code: if has_trivial_body {
                                         "empty-body"
@@ -878,7 +912,7 @@ impl<'db> Inference<'db, '_, '_> {
                         }
                     } else if !is_valid {
                         self.add_issue(
-                            f.name().index(),
+                            func_node.name().index(),
                             IssueKind::IncompatibleImplicitReturn {
                                 expected: ret_type.format_short(i_s.db),
                             },
@@ -893,8 +927,7 @@ impl<'db> Inference<'db, '_, '_> {
     fn calc_function_diagnostics_internal_and_return_is_overload(
         &self,
         function: Function,
-        f: FunctionDef,
-        class: Option<Class>,
+        func_node: FunctionDef,
     ) -> bool {
         let i_s = self.i_s;
         let mut is_overload_member = false;
@@ -904,7 +937,7 @@ impl<'db> Inference<'db, '_, '_> {
                 if let Some(implementation) = &o.implementation {
                     let mut c1 = Cow::Borrowed(c1.as_ref());
                     let mut c_impl = Cow::Borrowed(&implementation.callable);
-                    if let Some(class) = class {
+                    if let Some(class) = function.class {
                         let needs_remap = |c: &CallableContent| {
                             matches!(
                                 c.kind,
@@ -984,7 +1017,7 @@ impl<'db> Inference<'db, '_, '_> {
 
         let func_kind = function.kind();
 
-        let (name, params, return_annotation, block) = f.unpack();
+        let (name, params, return_annotation, block) = func_node.unpack();
         if !is_overload_member {
             // Check defaults here.
             for param in params.iter() {
@@ -1020,7 +1053,7 @@ impl<'db> Inference<'db, '_, '_> {
         let flags = self.flags();
         let mut had_missing_annotation = false;
         let mut params_iterator = params.iter().peekable();
-        if let Some(class) = class {
+        if let Some(class) = function.class {
             if func_kind != FunctionKind::Staticmethod || function.is_dunder_new() {
                 let mut was_star = false;
                 let first_param = params_iterator
@@ -1174,7 +1207,7 @@ impl<'db> Inference<'db, '_, '_> {
             )
         }
 
-        let args = NoArgs::new(NodeRef::new(self.file, f.index()));
+        let args = NoArgs::new(function.node_ref);
         let function_i_s = &mut i_s.with_diagnostic_func_and_args(&function);
         let inference = self.file.inference(function_i_s);
         if function.is_typed() || flags.check_untyped_defs {
@@ -1205,7 +1238,7 @@ impl<'db> Inference<'db, '_, '_> {
         }
 
         if function.is_dunder_new() {
-            let mut class = class.unwrap();
+            let mut class = function.class.unwrap();
             // Here we do not want self generics, we actually want Any generics.
             class.generics = Generics::NotDefinedYet;
             if let Some(callable) = infer_class_method(
@@ -1244,7 +1277,7 @@ impl<'db> Inference<'db, '_, '_> {
         if flags.disallow_any_unimported {
             for param in params
                 .iter()
-                .skip((class.is_some() && func_kind != FunctionKind::Staticmethod).into())
+                .skip((function.class.is_some() && func_kind != FunctionKind::Staticmethod).into())
             {
                 if let Some(annotation) = param.annotation() {
                     let t = self.use_cached_param_annotation_type(annotation);
@@ -1258,7 +1291,7 @@ impl<'db> Inference<'db, '_, '_> {
             .strip_prefix("__")
             .and_then(|n| n.strip_suffix("__"))
         {
-            if class.is_some() {
+            if function.class.is_some() {
                 match magic_name {
                     "init" | "init_subclass" => {
                         if let Some(return_annotation) = function.return_annotation() {
