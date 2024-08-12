@@ -215,6 +215,16 @@ class C(B):
         reveal_type(super(C, self).f) # N: Revealed type is "def () -> builtins.float"
         return self
 
+[case super_self_lookup]
+class Bar:
+    def f1(self) -> None:
+        self.bar = 1
+class Foo(Bar):
+    def f2(self) -> None:
+        self.foo = 1
+        reveal_type(super().foo)  # E: "foo" undefined in superclass # N: Revealed type is "Any"
+        reveal_type(super().bar)  # E: "bar" undefined in superclass # N: Revealed type is "Any"
+
 [case class_var_in_method_annotation]
 from typing import ClassVar
 
