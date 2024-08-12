@@ -38,6 +38,7 @@ use crate::{
         FirstParamProperties, Function, Instance, InstanceLookupOptions, LookupDetails,
         TypeOrClass,
     },
+    utils::debug_indent,
 };
 
 const ENUM_NAMES_OVERRIDABLE: [&str; 2] = ["value", "name"];
@@ -838,6 +839,13 @@ impl<'db> Inference<'db, '_, '_> {
     }
 
     fn calc_function_diagnostics(&self, function: Function) {
+        debug_indent(|| {
+            debug!("Diagnostics for function {}", function.name());
+            self.calc_function_diagnostics_internal(function)
+        })
+    }
+
+    fn calc_function_diagnostics_internal(&self, function: Function) {
         let i_s = self.i_s;
         let is_protocol = function.class.is_some_and(|cls| cls.is_protocol(i_s.db));
         if is_protocol && function.is_final() {
