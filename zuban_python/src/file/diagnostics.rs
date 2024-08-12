@@ -176,7 +176,7 @@ impl<'db> Inference<'db, '_, '_> {
 
     fn process_delayed_funcs(&self, fa: &FlowAnalysis) {
         while let Some(func) = fa.pop_delayed_func(self.i_s.db) {
-            self.calc_function_diagnostics(func)
+            self.ensure_func_diagnostics(func)
         }
     }
 
@@ -832,14 +832,22 @@ impl<'db> Inference<'db, '_, '_> {
         })
     }
 
-    pub fn calc_function_diagnostics(&self, function: Function) {
+    pub fn ensure_func_diagnostics(&self, function: Function) {
+        let func_node = function.node();
+        let from = NodeRef::new(self.file, func_node.body().index());
+        let p = from.point();
+        if p.calculated() {
+            return;
+        }
+        from.set_point(Point::new_calculating());
         debug_indent(|| {
             debug!("Diagnostics for function {}", function.name());
-            self.calc_function_diagnostics_internal(function)
-        })
+            self.calc_func_diagnostics(function, func_node)
+        });
+        from.set_point(Point::new_node_analysis(Locality::Todo));
     }
 
-    fn calc_function_diagnostics_internal(&self, function: Function) {
+    fn calc_func_diagnostics(&self, function: Function, func_node: FunctionDef) {
         let i_s = self.i_s;
         let is_protocol = function.class.is_some_and(|cls| cls.is_protocol(i_s.db));
         if is_protocol && function.is_final() {
@@ -848,7 +856,6 @@ impl<'db> Inference<'db, '_, '_> {
                 IssueKind::ProtocolMemberCannotBeFinal,
             )
         }
-        let func_node = function.node();
         FLOW_ANALYSIS.with(|fa| {
             let mut is_overload_member = false;
             let unreachable = fa.with_new_frame_and_return_unreachable(|| {

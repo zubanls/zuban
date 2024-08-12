@@ -1146,7 +1146,7 @@ impl Inference<'_, '_, '_> {
                 param_name.add_to_node_index(-1).point().specific() == Specific::MaybeSelfParam
             );
             let func_def = param_name.as_name().expect_as_param_of_function();
-            self.calc_function_diagnostics(Function::new(
+            self.ensure_func_diagnostics(Function::new(
                 NodeRef::new(self.file, func_def.index()),
                 Some(c),
             ))
