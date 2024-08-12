@@ -484,6 +484,7 @@ impl IssueKind {
             AwaitOutsideFunction => "top-level-await",
             AwaitOutsideCoroutine => "await-not-async",
             NeedTypeAnnotation { .. } => "var-annotated",
+            CannotDetermineType { .. } => "has-type",
             TypeIsNarrowedTypeIsNotSubtypeOfInput { .. } => "narrowed-type-not-subtype",
             DecoratorOnTopOfPropertyNotSupported => "prop-decorator",
             CannotInstantiateAbstractClass { .. } => "abstract",

@@ -1,5 +1,6 @@
 # Next up
 testTypeVarTupleTypeApplicationOverload
+testUnionOfNonIterableUnpacking
 
 # callable matching regression
 testNoCrashOnNestedGenericCallable
@@ -561,23 +562,9 @@ testMatchUndefinedClassPattern
 testNoneBindingWildcardPattern
 testNoneBindingStarredWildcardPattern
 
-# "Cannot determine type of"
-testThreePassesRequired
-testAccessGlobalVarBeforeItsTypeIsAvailable
-testAccessDataAttributeBeforeItsTypeIsAvailable
-testMultipassAndTopLevelVariable
+# "Cannot determine type of" recursion errors
 testMultipassAndCircularDependency
-testForwardReferenceToDecoratedClassMethod
-testAccessingClassAttributeWithTypeInferenceIssue
-testClassObjectsNotUnpackableWithoutIterableMetaclass
-testErrorCodeCannotDetermineType
-testCannotDetermineTypeFromOtherModule
-testColumnCannotDetermineType
-testUnionOfNonIterableUnpacking
-testWalrusUsedBeforeDef
 testNarrowOptionalOutsideLambdaWithDeferred
-# "Cannot determine type of "X" in base class"
-testCannotDetermineTypeInMultipleInheritance
 
 # The type "Type[type]" is not generic and not indexable
 testTypeApplicationCrash
@@ -675,6 +662,20 @@ testIsinstanceNarrowAny
 # isinstance with alias and union literals `isinstance(x, A | B)`
 testTypeAliasWithNewUnionIsInstance
 
+# "Cannot determine type of" probably fine
+testThreePassesRequired
+testAccessGlobalVarBeforeItsTypeIsAvailable
+testAccessDataAttributeBeforeItsTypeIsAvailable
+testMultipassAndTopLevelVariable
+testForwardReferenceToDecoratedClassMethod
+testAccessingClassAttributeWithTypeInferenceIssue
+testClassObjectsNotUnpackableWithoutIterableMetaclass
+testErrorCodeCannotDetermineType
+testCannotDetermineTypeFromOtherModule
+testColumnCannotDetermineType
+testWalrusUsedBeforeDef
+# "Cannot determine type of "X" in base class"
+testCannotDetermineTypeInMultipleInheritance
 # subtyping arbitrary length unpacks
 testVariadicTupleSubtyping
 # TypeVarTuple as unpacked varargs
