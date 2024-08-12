@@ -824,12 +824,17 @@ impl<'db> Inference<'db, '_, '_> {
                 return;
             }
         }
-        FLOW_ANALYSIS.with(|fa| {
-            fa.add_delayed_func(
-                function.node_ref.as_link(),
-                class.map(|c| c.node_ref.as_link()),
-            )
-        })
+
+        if in_func.is_some() {
+            self.ensure_func_diagnostics(function)
+        } else {
+            FLOW_ANALYSIS.with(|fa| {
+                fa.add_delayed_func(
+                    function.node_ref.as_link(),
+                    class.map(|c| c.node_ref.as_link()),
+                )
+            })
+        }
     }
 
     pub fn ensure_func_diagnostics(&self, function: Function) {
