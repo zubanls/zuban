@@ -531,6 +531,20 @@ impl<'db> Name<'db> {
             annotation_node.next_sibling().is_none()
         }
     }
+
+    pub fn expect_as_param_of_function(&self) -> FunctionDef<'db> {
+        let params = self
+            .node
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap();
+        debug_assert_eq!(params.type_(), Nonterminal(parameters));
+        let func_node = params.parent().unwrap().parent().unwrap();
+        FunctionDef::new(func_node)
+    }
 }
 
 #[derive(Debug)]

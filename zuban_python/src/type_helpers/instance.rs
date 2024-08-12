@@ -368,23 +368,20 @@ impl<'a> Instance<'a> {
                 if let TypeOrClass::Class(c) = class {
                     if let Some(self_symbol) = c.class_storage.self_symbol_table.lookup_symbol(name)
                     {
-                        self_lookup = Some((class, c, self_symbol))
+                        self_lookup = Some((c, self_symbol))
                     }
                 }
             }
         }
-        if let Some((class, c, self_symbol)) = self_lookup {
+        if let Some((c, self_symbol)) = self_lookup {
             let i_s = i_s.with_class_context(&c);
-            let inf = c
-                .node_ref
-                .file
-                .inference(&i_s)
-                .infer_name_of_definition_by_index(self_symbol);
+            let inference = c.node_ref.file.inference(&i_s);
+            let inf = inference.self_lookup_with_flow_analysis(c, self_symbol);
             if inf.maybe_saved_specific(i_s.db) == Some(Specific::AnnotationOrTypeCommentFinal) {
                 attr_kind = AttributeKind::Final
             }
             return LookupDetails {
-                class,
+                class: TypeOrClass::Class(c),
                 attr_kind,
                 lookup: LookupResult::GotoName {
                     name: PointLink::new(c.node_ref.file.file_index(), self_symbol),

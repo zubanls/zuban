@@ -832,7 +832,7 @@ impl<'db> Inference<'db, '_, '_> {
         })
     }
 
-    fn calc_function_diagnostics(&self, function: Function) {
+    pub fn calc_function_diagnostics(&self, function: Function) {
         debug_indent(|| {
             debug!("Diagnostics for function {}", function.name());
             self.calc_function_diagnostics_internal(function)
