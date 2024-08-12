@@ -297,6 +297,7 @@ impl<'a> Instance<'a> {
         options: InstanceLookupOptions,
     ) -> LookupDetails<'a> {
         let mut attr_kind = AttributeKind::Attribute;
+        let mut self_lookup = None;
         for (mro_index, class) in self
             .class
             .mro_maybe_without_object(i_s.db, options.without_object)
@@ -359,35 +360,38 @@ impl<'a> Instance<'a> {
                     }
                 }
             }
-            if options.kind == LookupKind::Normal {
+            if options.kind == LookupKind::Normal && self_lookup.is_none() {
                 // Then check self attributes
+                // This is intentionally done in the same loop. Usually calculating the mro isn't
+                // expensive, but in some cases it is. It therefore makes sense to avoid using it
+                // twice.
                 if let TypeOrClass::Class(c) = class {
                     if let Some(self_symbol) = c.class_storage.self_symbol_table.lookup_symbol(name)
                     {
-                        let i_s = i_s.with_class_context(&c);
-                        let inf = c
-                            .node_ref
-                            .file
-                            .inference(&i_s)
-                            .infer_name_of_definition_by_index(self_symbol);
-                        if inf.maybe_saved_specific(i_s.db)
-                            == Some(Specific::AnnotationOrTypeCommentFinal)
-                        {
-                            attr_kind = AttributeKind::Final
-                        }
-                        return LookupDetails {
-                            class,
-                            attr_kind,
-                            lookup: LookupResult::GotoName {
-                                name: PointLink::new(c.node_ref.file.file_index(), self_symbol),
-                                inf: inf.resolve_class_type_vars(&i_s, &self.class, &c),
-                            },
-                        };
+                        self_lookup = Some((class, c, self_symbol))
                     }
                 }
             }
         }
-        if options.kind == LookupKind::Normal && options.check_dunder_getattr {
+        if let Some((class, c, self_symbol)) = self_lookup {
+            let i_s = i_s.with_class_context(&c);
+            let inf = c
+                .node_ref
+                .file
+                .inference(&i_s)
+                .infer_name_of_definition_by_index(self_symbol);
+            if inf.maybe_saved_specific(i_s.db) == Some(Specific::AnnotationOrTypeCommentFinal) {
+                attr_kind = AttributeKind::Final
+            }
+            return LookupDetails {
+                class,
+                attr_kind,
+                lookup: LookupResult::GotoName {
+                    name: PointLink::new(c.node_ref.file.file_index(), self_symbol),
+                    inf: inf.resolve_class_type_vars(&i_s, &self.class, &c),
+                },
+            };
+        } else if options.kind == LookupKind::Normal && options.check_dunder_getattr {
             for method_name in ["__getattr__", "__getattribute__"] {
                 let l = self.lookup_with_details(
                     i_s,
