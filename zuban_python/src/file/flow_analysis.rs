@@ -1133,7 +1133,7 @@ impl Inference<'_, '_, '_> {
     }
 
     pub fn self_lookup_with_flow_analysis(&self, c: Class, self_symbol: NodeIndex) -> Inferred {
-        if !self.file.points.get(self_symbol).calculated() {
+        if !self.file.points.get(self_symbol - 1).calculated() {
             // This is due to the fact that the nodes before <name> in self.<name> are
             // name_definition, `.` and then finally `self`.
             let self_index = self_symbol - 3;
@@ -1146,7 +1146,10 @@ impl Inference<'_, '_, '_> {
                 param_name.add_to_node_index(-1).point().specific() == Specific::MaybeSelfParam
             );
             let func_def = param_name.as_name().expect_as_param_of_function();
-            //self.calc_function_diagnostics(Function::new(NodeRef::new(self.file, func_def.index()), Some(c)))
+            self.calc_function_diagnostics(Function::new(
+                NodeRef::new(self.file, func_def.index()),
+                Some(c),
+            ))
         }
         self.infer_name_of_definition_by_index(self_symbol)
     }
