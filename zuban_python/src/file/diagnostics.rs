@@ -176,13 +176,7 @@ impl<'db> Inference<'db, '_, '_> {
 
     fn process_delayed_funcs(&self, fa: &FlowAnalysis) {
         while let Some(func) = fa.pop_delayed_func(self.i_s.db) {
-            if let Some(c) = func.class {
-                self.file
-                    .inference(&self.i_s.with_class_context(&c))
-                    .calc_function_diagnostics(func)
-            } else {
-                self.calc_function_diagnostics(func)
-            }
+            self.calc_function_diagnostics(func)
         }
     }
 
