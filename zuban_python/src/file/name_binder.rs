@@ -726,7 +726,10 @@ impl<'db> NameBinder<'db> {
             // Points to the name and not the name definition, therefore check that.
             // It should be safe to check the index before, because the name binder only ever
             // redirects to ame definitions.
-            let param_point = self.db_infos.points.get(param_index - 1);
+            let param_point = self
+                .db_infos
+                .points
+                .get(param_index - NAME_DEF_TO_NAME_DIFFERENCE);
             if param_point.calculated()
                 && param_point.kind() == PointKind::Specific
                 && param_point.specific() == Specific::MaybeSelfParam

@@ -10,7 +10,7 @@ use parsa_python_cst::{
     ExpressionPart, ForIfClauseIterator, ForStmt, IfBlockIterator, IfBlockType, IfStmt, Name,
     NameDef, NamedExpression, NamedExpressionContent, NodeIndex, Operand, Primary, PrimaryContent,
     PrimaryOrAtom, PrimaryTarget, PrimaryTargetOrAtom, SliceType as CSTSliceType, Target, Ternary,
-    TryBlockType, TryStmt, WhileStmt,
+    TryBlockType, TryStmt, WhileStmt, NAME_DEF_TO_NAME_DIFFERENCE,
 };
 
 use crate::{
@@ -1153,17 +1153,26 @@ impl Inference<'_, '_, '_> {
     }
 
     pub fn self_lookup_with_flow_analysis(&self, c: Class, self_symbol: NodeIndex) -> Inferred {
-        if !self.file.points.get(self_symbol - 1).calculated() {
+        if !self
+            .file
+            .points
+            .get(self_symbol - NAME_DEF_TO_NAME_DIFFERENCE)
+            .calculated()
+        {
             // This is due to the fact that the nodes before <name> in self.<name> are
             // name_definition, `.` and then finally `self`.
-            let self_index = self_symbol - 3;
+            let self_index = self_symbol - NAME_DEF_TO_NAME_DIFFERENCE - 2;
             let param_name = self
                 .file
                 .points
                 .get(self_index)
                 .as_redirected_node_ref(self.i_s.db);
             debug_assert!(
-                param_name.add_to_node_index(-1).point().specific() == Specific::MaybeSelfParam
+                param_name
+                    .add_to_node_index(-(NAME_DEF_TO_NAME_DIFFERENCE as i64))
+                    .point()
+                    .specific()
+                    == Specific::MaybeSelfParam
             );
             let func_def = param_name.as_name().expect_as_param_of_function();
             self.ensure_func_diagnostics(Function::new(

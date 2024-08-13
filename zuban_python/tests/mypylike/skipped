@@ -473,16 +473,9 @@ testSetDescriptorOnClass
 testUseSupertypeAsInferenceContextConflict
 # supertype context regressions
 testNoneAnyFallbackDescriptor
-# "NamedTuple type as an attribute is not supported"
-testAssignNamedTupleAsAttribute
-testNoCrashUnsupportedNamedTuple
 # Dynamic functions are ignored in classes and the super class is used?
 testInferringTypesFromIterable
 testMultipleAssignmentAndGenericSubtyping
-# "Enum type as attribute is not supported"
-testAssignEnumAsAttribute
-# "TypedDict type as attribute is not supported"
-testAssignTypedDictAsAttribute
 # Tuple Target definitions of self names
 testSlotsAssignmentMultipleLeftValues
 testMultipleAssignment
@@ -783,6 +776,14 @@ testUninferableLambdaWithTypeError
 testRejectCovariantArgumentInLambda
 
 # ------------- Additional unimportant, but would be nice -----------------
+
+# "NamedTuple type as an attribute is not supported"
+testAssignNamedTupleAsAttribute
+testNoCrashUnsupportedNamedTuple
+# "Enum type as attribute is not supported"
+testAssignEnumAsAttribute
+# "TypedDict type as attribute is not supported"
+testAssignTypedDictAsAttribute
 
 # Tuple type comment definitions with list assignment
 testMultipleAssignmentWithListsInInitialization
