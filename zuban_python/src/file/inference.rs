@@ -2458,7 +2458,16 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         };
         let save_partial = |resolved_partial: Type| {
             let from = NodeRef::from_link(i_s.db, base.maybe_saved_link().unwrap());
-            if from.point().partial_flags().finished {
+            let point = from.point();
+            if point.kind() != PointKind::Specific {
+                // This is a nested partial like:
+                //
+                //     arr = []
+                //     arr.append(arr.append(1))
+                //
+                return None;
+            }
+            if point.partial_flags().finished {
                 debug!(r#"Partial "{}" was already finished"#, primary.as_code());
                 return None;
             }

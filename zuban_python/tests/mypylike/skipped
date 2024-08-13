@@ -419,7 +419,6 @@ testOverridePartialAttributeWithMethod
 testInferListInitializedToEmptyInClassBodyAndOverriden
 # --local-partial-types
 testLocalPartialTypesWithGlobalInitializedToEmptyDict2
-testPartialTypeErrorSpecialCase4
 # partial list nullable
 testPartiallyInitializedToNoneAndThenToPartialList
 testPartiallyInitializedToNoneAndThenReadPartialList

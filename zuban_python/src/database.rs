@@ -108,8 +108,8 @@ impl Point {
         }
     }
 
-    pub fn new_specific(type_: Specific, locality: Locality) -> Self {
-        let flags = Self::calculate_flags(PointKind::Specific, type_ as u32, locality);
+    pub fn new_specific(specific: Specific, locality: Locality) -> Self {
+        let flags = Self::calculate_flags(PointKind::Specific, specific as u32, locality);
         Self {
             flags,
             node_index: 0,
@@ -289,7 +289,7 @@ impl fmt::Debug for Point {
         } else if !self.calculated() {
             s.field("calculated", &self.calculated());
         } else {
-            s.field("type", &self.kind())
+            s.field("kind", &self.kind())
                 .field("locality", &self.locality())
                 .field("node_index", &self.node_index);
             if self.kind() == PointKind::Specific {
