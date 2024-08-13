@@ -375,7 +375,6 @@ testNestedClassAttributeTypeChanges
 testFinalAddFinalVarAssignFine
 testReprocessModuleTopLevelWhileMethodDefinesAttr
 # reorder regressions
-testEmptyBodyTypeCheckingOnly
 new_type_with_class_generics
 # regressions
 testRedundantExprTruthiness

@@ -266,6 +266,7 @@ struct LoopDetails {
 pub struct DelayedFunc {
     pub func: PointLink,
     pub class: Option<PointLink>,
+    pub in_type_checking_only_block: bool,
 }
 
 #[derive(Debug, Default)]
@@ -557,17 +558,32 @@ impl FlowAnalysis {
     pub fn add_delayed_func(&self, func: PointLink, class: Option<PointLink>) {
         self.delayed_func_diagnostics
             .borrow_mut()
-            .push(DelayedFunc { func, class })
+            .push(DelayedFunc {
+                func,
+                class,
+                in_type_checking_only_block: self.in_type_checking_only_block.get(),
+            })
     }
 
-    pub fn pop_delayed_func<'db>(&self, db: &'db Database) -> Option<Function<'db, 'db>> {
-        self.delayed_func_diagnostics.borrow_mut().pop().map(|d| {
-            Function::new(
-                NodeRef::from_link(db, d.func),
-                d.class
+    pub fn process_delayed_funcs<'db>(&self, db: &Database, callback: impl Fn(Function)) {
+        while let Some(delayed) = {
+            let mut borrowed = self.delayed_func_diagnostics.borrow_mut();
+            let result = borrowed.pop();
+            drop(borrowed);
+            result
+        } {
+            let func = Function::new(
+                NodeRef::from_link(db, delayed.func),
+                delayed
+                    .class
                     .map(|c| Class::with_self_generics(db, NodeRef::from_link(db, c))),
-            )
-        })
+            );
+            if delayed.in_type_checking_only_block {
+                self.with_in_type_checking_only_block(|| callback(func))
+            } else {
+                callback(func)
+            }
+        }
     }
 
     pub fn start_accumulating_types(&self) {

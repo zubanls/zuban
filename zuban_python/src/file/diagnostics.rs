@@ -7,11 +7,7 @@ use std::{
 
 use parsa_python_cst::*;
 
-use super::{
-    first_defined_name,
-    flow_analysis::{FlowAnalysis, FLOW_ANALYSIS},
-    inference::await_,
-};
+use super::{first_defined_name, flow_analysis::FLOW_ANALYSIS, inference::await_};
 use crate::{
     arguments::{CombinedArgs, KnownArgs, NoArgs},
     database::{
@@ -138,7 +134,7 @@ impl<'db> Inference<'db, '_, '_> {
             fa.with_new_frame_and_return_unreachable(|| {
                 self.calc_stmts_diagnostics(self.file.tree.root().iter_stmt_likes(), None, None);
             });
-            self.process_delayed_funcs(fa);
+            fa.process_delayed_funcs(self.i_s.db, |func| self.ensure_func_diagnostics(func));
             fa.check_for_unfinished_partials(self.i_s);
         });
         for complex_point in unsafe { self.file.complex_points.iter() } {
@@ -171,12 +167,6 @@ impl<'db> Inference<'db, '_, '_> {
                     },
                 )
             }
-        }
-    }
-
-    fn process_delayed_funcs(&self, fa: &FlowAnalysis) {
-        while let Some(func) = fa.pop_delayed_func(self.i_s.db) {
-            self.ensure_func_diagnostics(func)
         }
     }
 
