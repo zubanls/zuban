@@ -376,7 +376,6 @@ testFinalAddFinalVarAssignFine
 testReprocessModuleTopLevelWhileMethodDefinesAttr
 # reorder regressions
 testEmptyBodyTypeCheckingOnly
-testInstantiationProtocolInTypeForFunctions
 new_type_with_class_generics
 # regressions
 testRedundantExprTruthiness

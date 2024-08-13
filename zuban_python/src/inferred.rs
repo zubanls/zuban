@@ -1876,11 +1876,18 @@ impl<'db: 'slf, 'slf> Inferred {
                             ComplexPoint::Class(cls) => {
                                 node_ref.ensure_cached_class_infos(i_s);
                                 let c = Class::new(node_ref, cls, Generics::NotDefinedYet, None);
-                                if c.use_cached_class_infos(i_s.db)
+                                // We might be dealing with dataclasses or enums. In that case use
+                                // the normal mechanism that creates a type first and then
+                                // executes.
+                                let is_class_like = match c
+                                    .use_cached_class_infos(i_s.db)
                                     .undefined_generics_type
                                     .get()
-                                    .is_none()
                                 {
+                                    None => true,
+                                    Some(x) => matches!(x.as_ref(), Type::Class(_)),
+                                };
+                                if is_class_like {
                                     return c.execute(
                                         i_s,
                                         args,
