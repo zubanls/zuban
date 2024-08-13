@@ -134,6 +134,9 @@ impl<'db> Inference<'db, '_, '_> {
             fa.with_new_frame_and_return_unreachable(|| {
                 self.calc_stmts_diagnostics(self.file.tree.root().iter_stmt_likes(), None, None);
             });
+            if self.flags().local_partial_types {
+                fa.check_for_unfinished_partials(self.i_s);
+            }
             fa.process_delayed_funcs(self.i_s.db, |func| self.ensure_func_diagnostics(func));
             fa.check_for_unfinished_partials(self.i_s);
         });

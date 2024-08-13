@@ -2457,13 +2457,17 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             Some(arg.as_type(i_s).avoid_implicit_literal(i_s.db))
         };
         let save_partial = |resolved_partial: Type| {
+            let from = NodeRef::from_link(i_s.db, base.maybe_saved_link().unwrap());
+            if from.point().partial_flags().finished {
+                debug!(r#"Partial "{}" was already finished"#, primary.as_code());
+                return None;
+            }
             debug!(
                 r#"Infer partial for "{}" as "{}""#,
                 primary.as_code(),
                 resolved_partial.format_short(i_s.db)
             );
-            NodeRef::from_link(i_s.db, base.maybe_saved_link().unwrap())
-                .insert_complex(ComplexPoint::TypeInstance(resolved_partial), Locality::Todo);
+            from.insert_complex(ComplexPoint::TypeInstance(resolved_partial), Locality::Todo);
             Some(())
         };
         let try_to_save = |partial_class_link, unwrap_from_iterable| {

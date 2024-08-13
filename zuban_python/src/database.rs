@@ -67,6 +67,8 @@ const PARTIAL_NULLABLE_INDEX: u32 = SPECIFIC_BIT_LEN + 1;
 const PARTIAL_NULLABLE_MASK: u32 = 1 << PARTIAL_NULLABLE_INDEX;
 const PARTIAL_REPORTED_ERROR_INDEX: u32 = SPECIFIC_BIT_LEN + 2;
 const PARTIAL_REPORTED_ERROR_MASK: u32 = 1 << PARTIAL_REPORTED_ERROR_INDEX;
+const PARTIAL_FINISHED_INDEX: u32 = SPECIFIC_BIT_LEN + 3;
+const PARTIAL_FINISHED_MASK: u32 = 1 << PARTIAL_FINISHED_INDEX;
 
 const CALCULATED_OR_REDIRECT_LIKE_KIND_OR_REST_MASK: u32 = IS_ANALIZED_MASK | KIND_MASK | REST_MASK;
 const REDIRECT_KIND_VALUE: u32 = (PointKind::Redirect as u32) << KIND_BIT_INDEX;
@@ -255,6 +257,7 @@ impl Point {
         PartialFlags {
             nullable: self.flags & PARTIAL_NULLABLE_MASK != 0,
             reported_error: self.flags & PARTIAL_REPORTED_ERROR_MASK != 0,
+            finished: self.flags & PARTIAL_FINISHED_MASK != 0,
         }
     }
 
@@ -270,6 +273,7 @@ impl Point {
         let mut flags = self.flags & !PARTIAL_NULLABLE_MASK & !PARTIAL_REPORTED_ERROR_MASK;
         flags |= (partial_flags.nullable as u32) << PARTIAL_NULLABLE_INDEX;
         flags |= (partial_flags.reported_error as u32) << PARTIAL_REPORTED_ERROR_INDEX;
+        flags |= (partial_flags.finished as u32) << PARTIAL_FINISHED_INDEX;
         Point {
             flags,
             node_index: self.node_index,
@@ -535,6 +539,7 @@ impl LocalityLink {
 pub struct PartialFlags {
     pub nullable: bool,
     pub reported_error: bool,
+    pub finished: bool,
 }
 
 // This is a core data structure and it should be kept as small as possible, because it's used in

@@ -546,9 +546,13 @@ impl FlowAnalysis {
         let mut partials = self.partials_in_module.borrow_mut();
         for partial in partials.iter() {
             let node_ref = NodeRef::from_link(i_s.db, *partial);
-            if let Some(specific) = node_ref.point().maybe_specific() {
+            let point = node_ref.point();
+            if let Some(specific) = point.maybe_specific() {
                 if specific.is_partial() {
-                    node_ref.add_need_type_annotation_issue(i_s, specific)
+                    let mut partial_flags = point.partial_flags();
+                    partial_flags.finished = true;
+                    node_ref.set_point(point.set_partial_flags(partial_flags));
+                    node_ref.add_need_type_annotation_issue(i_s, specific);
                 }
             }
         }
