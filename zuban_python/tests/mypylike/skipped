@@ -417,8 +417,6 @@ testPartialTypeInNestedClass
 testRefreshPartialTypeInClass
 testOverridePartialAttributeWithMethod
 testInferListInitializedToEmptyInClassBodyAndOverriden
-# --local-partial-types
-testLocalPartialTypesWithGlobalInitializedToEmptyDict2
 # partial list nullable
 testPartiallyInitializedToNoneAndThenToPartialList
 testPartiallyInitializedToNoneAndThenReadPartialList

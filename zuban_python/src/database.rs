@@ -536,6 +536,7 @@ impl LocalityLink {
     }
 }
 
+#[derive(Debug)]
 pub struct PartialFlags {
     pub nullable: bool,
     pub reported_error: bool,
