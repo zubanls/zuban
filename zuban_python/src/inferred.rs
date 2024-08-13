@@ -266,9 +266,14 @@ impl<'db: 'slf, 'slf> Inferred {
         }
     }
 
-    pub fn maybe_saved_specific(&self, db: &Database) -> Option<Specific> {
+    pub fn maybe_saved_node_ref(&self, db: &'db Database) -> Option<NodeRef<'db>> {
         self.maybe_saved_link()
-            .and_then(|link| NodeRef::from_link(db, link).point().maybe_specific())
+            .map(|link| NodeRef::from_link(db, link))
+    }
+
+    pub fn maybe_saved_specific(&self, db: &Database) -> Option<Specific> {
+        self.maybe_saved_node_ref(db)
+            .and_then(|node_ref| node_ref.point().maybe_specific())
     }
 
     pub fn maybe_type_guard_callable(&self, i_s: &InferenceState) -> Option<CallableLike> {

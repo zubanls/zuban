@@ -2457,7 +2457,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             Some(arg.as_type(i_s).avoid_implicit_literal(i_s.db))
         };
         let save_partial = |resolved_partial: Type| {
-            let from = NodeRef::from_link(i_s.db, base.maybe_saved_link().unwrap());
+            let from = base.maybe_saved_node_ref(i_s.db).unwrap();
             let point = from.point();
             if point.kind() != PointKind::Specific {
                 // This is a nested partial like:
