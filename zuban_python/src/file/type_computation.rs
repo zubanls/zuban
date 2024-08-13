@@ -3916,8 +3916,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
             }
 
             let inferred = self.check_point_cache(name_def.index()).unwrap();
-            let result = if let Some(saved) = inferred.maybe_saved_link() {
-                let node_ref = NodeRef::from_link(self.i_s.db, saved);
+            let result = if let Some(node_ref) = inferred.maybe_saved_node_ref(self.i_s.db) {
                 match node_ref.complex() {
                     Some(ComplexPoint::TypeVarLike(tv)) => TypeNameLookup::TypeVarLike(tv.clone()),
                     Some(ComplexPoint::NamedTupleDefinition(t)) => {

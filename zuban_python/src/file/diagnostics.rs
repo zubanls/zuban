@@ -656,17 +656,16 @@ impl<'db> Inference<'db, '_, '_> {
                     }
                     let is_final_callable = match original_inf.as_cow_type(&i_s).as_ref() {
                         Type::Callable(c) => c.is_final,
-                        Type::FunctionOverload(_) => {
-                            original_inf.maybe_saved_link().is_some_and(|func_link| {
-                                if let Some(ComplexPoint::FunctionOverload(o)) =
-                                    NodeRef::from_link(i_s.db, func_link).complex()
+                        Type::FunctionOverload(_) => original_inf
+                            .maybe_saved_node_ref(i_s.db)
+                            .is_some_and(|node_ref| {
+                                if let Some(ComplexPoint::FunctionOverload(o)) = node_ref.complex()
                                 {
                                     o.is_final
                                 } else {
                                     false
                                 }
-                            })
-                        }
+                            }),
                         _ => false,
                     };
                     if is_final_callable {

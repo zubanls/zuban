@@ -1975,7 +1975,6 @@ fn infer_decorator_details(
 ) -> InferredDecorator {
     let redirect = file.inference(i_s).infer_decorator(decorator);
     if let Some(saved_link) = redirect.maybe_saved_link() {
-        let node_ref = NodeRef::from_link(i_s.db, saved_link);
         if saved_link == i_s.db.python_state.overload_link() {
             return InferredDecorator::Overload;
         }
@@ -1993,6 +1992,7 @@ fn infer_decorator_details(
         if saved_link == i_s.db.python_state.abstractmethod_link() {
             return InferredDecorator::Abstractmethod;
         }
+        let node_ref = NodeRef::from_link(i_s.db, saved_link);
         // All these cases are classes.
         if let Some(class_def) = node_ref.maybe_class() {
             if saved_link == i_s.db.python_state.classmethod_node_ref().as_link() {

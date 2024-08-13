@@ -1354,7 +1354,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         primary_target.as_code(),
                         new_dict.format_short(i_s.db)
                     );
-                    NodeRef::from_link(i_s.db, base.maybe_saved_link().unwrap())
+                    base.maybe_saved_node_ref(i_s.db)
+                        .unwrap()
                         .insert_complex(ComplexPoint::TypeInstance(new_dict), Locality::Todo);
                 } else {
                     base.type_check_set_item(i_s, s_t, value);
@@ -1705,8 +1706,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             ref_.as_name_def();
         }
         self.check_point_cache(name_index - NAME_DEF_TO_NAME_DIFFERENCE)
-            .and_then(|inf| inf.maybe_saved_link())
-            .and_then(|link| NodeRef::from_link(self.i_s.db, link).complex())
+            .and_then(|inf| inf.maybe_saved_node_ref(self.i_s.db))
+            .and_then(|node_ref| node_ref.complex())
             .and_then(|complex| {
                 (!matches!(complex, ComplexPoint::TypeInstance(_))).then_some(complex)
             })

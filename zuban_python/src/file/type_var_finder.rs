@@ -306,8 +306,7 @@ fn follow_name<'db>(
             TypeLike::Assignment(assignment) => {
                 let inference = node_ref.file.inference(i_s);
                 let inf = inference.infer_name_of_definition(name);
-                if let Some(saved) = inf.maybe_saved_link() {
-                    let node_ref = NodeRef::from_link(i_s.db, saved);
+                if let Some(node_ref) = inf.maybe_saved_node_ref(i_s.db) {
                     if let Some(ComplexPoint::TypeVarLike(tvl)) = node_ref.complex() {
                         return Ok(tvl.clone());
                     }

@@ -635,8 +635,7 @@ pub(crate) fn match_arguments_against_params<
             if let Type::Type(type_) = expected.as_ref() {
                 if let Some(cls) = type_.maybe_class(i_s.db) {
                     if cls.is_protocol(i_s.db) {
-                        if let Some(link) = value.maybe_saved_link() {
-                            let node_ref = NodeRef::from_link(i_s.db, link);
+                        if let Some(node_ref) = value.maybe_saved_node_ref(i_s.db) {
                             if node_ref.maybe_class().is_some() {
                                 let cls2 = Class::from_non_generic_node_ref(node_ref);
                                 if cls2.is_protocol(i_s.db) {
