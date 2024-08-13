@@ -142,6 +142,10 @@ testSerializeTypedDictInMethod
 # TypedDict unions
 testTypedDictChainedGetWithEmptyDictDefault
 
+# NewType generics resolving
+new_type_with_class_generics
+new_type_with_class_generics2
+
 # override regressions
 testDataclassesInitVarNoOverride
 testGenericOverridePreciseInvalid
@@ -374,8 +378,6 @@ testRemoveAttributeInBaseClass
 testNestedClassAttributeTypeChanges
 testFinalAddFinalVarAssignFine
 testReprocessModuleTopLevelWhileMethodDefinesAttr
-# reorder regressions
-new_type_with_class_generics
 # regressions
 testRedundantExprTruthiness
 testTypingSelfAttrOldVsNewStyle

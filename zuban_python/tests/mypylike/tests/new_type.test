@@ -18,11 +18,48 @@ class Y(Generic[T]):
     X = NewType("X", list[T])
 
     def __init__(self, x: T):
-
+        self.self_t = x
         reveal_type(Y.X([x])) # N: Revealed type is "__main__.X"
         reveal_type(Y.X(1)) # N: Revealed type is "__main__.X" \
                             # E: Argument 1 to "X" has incompatible type "int"; expected "list[T]"
 
+reveal_type(Y.X)  # N: Revealed type is "Type[__main__.X]"
+Y.X(1) # E: Argument 1 to "X" has incompatible type "int"; expected "List[T]"
+Y.X([1]) # E: List item 0 has incompatible type "int"; expected "T"
+Y[int].X([1]) # E: List item 0 has incompatible type "int"; expected "T"
+Y(1).self_t
+
+[case new_type_with_class_generics2]
+# This is like new_type_with_class_generics, but there were issues with the
+# execution order, so we added additional tests to ensure this won't be an
+# issue in the future.
+from typing import NewType, TypeVar, Generic
+
+T = TypeVar("T")
+
+class Y(Generic[T]):
+    X = NewType("X", list[T])
+
+reveal_type(Y.X)  # N: Revealed type is "Type[__main__.X]"
+Y.X(1) # E: Argument 1 to "X" has incompatible type "int"; expected "List[T]"
+Y.X([1]) # E: List item 0 has incompatible type "int"; expected "T"
+Y[int].X([1]) # E: List item 0 has incompatible type "int"; expected "T"
+
+[case new_type_with_class_generics3]
+from typing import NewType, TypeVar, Generic
+
+T = TypeVar("T")
+
+class Y(Generic[T]):
+    X = NewType("X", list[T])
+
+    def __init__(self, x: T):
+        self.self_t = x
+        reveal_type(Y.X([x])) # N: Revealed type is "__main__.X"
+        reveal_type(Y.X(1)) # N: Revealed type is "__main__.X" \
+                            # E: Argument 1 to "X" has incompatible type "int"; expected "list[T]"
+
+Y(1).self_t
 reveal_type(Y.X)  # N: Revealed type is "Type[__main__.X]"
 Y.X(1) # E: Argument 1 to "X" has incompatible type "int"; expected "List[T]"
 Y.X([1]) # E: List item 0 has incompatible type "int"; expected "T"
