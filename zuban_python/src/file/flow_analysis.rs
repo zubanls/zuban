@@ -1175,12 +1175,23 @@ impl Inference<'_, '_, '_> {
                     == Specific::MaybeSelfParam
             );
             let func_def = param_name.as_name().expect_as_param_of_function();
-            self.ensure_func_diagnostics(Function::new(
-                NodeRef::new(self.file, func_def.index()),
-                Some(c),
-            ))
+            FLOW_ANALYSIS.with(|fa| {
+                self.ensure_func_diagnostics_and_finish_partials(
+                    fa,
+                    Function::new(NodeRef::new(self.file, func_def.index()), Some(c)),
+                )
+            });
         }
         self.infer_name_of_definition_by_index(self_symbol)
+    }
+
+    pub fn ensure_func_diagnostics_and_finish_partials(
+        &self,
+        fa: &FlowAnalysis,
+        function: Function,
+    ) {
+        self.ensure_func_diagnostics(function);
+        fa.check_for_unfinished_partials(self.i_s);
     }
 
     pub fn flow_analysis_for_ternary(

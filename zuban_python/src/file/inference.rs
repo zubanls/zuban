@@ -1078,10 +1078,14 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 let is_done = match point.maybe_specific() {
                     Some(Specific::PartialNone) => {
                         let value_t = value.as_cow_type(i_s);
-                        if point.partial_flags().finished {
-                            return; // TODO?
-                        }
                         if !matches!(value_t.as_ref(), Type::None) {
+                            if point.partial_flags().finished {
+                                // For --local-partial-types an error was already added
+                                if !self.flags().local_partial_types {
+                                    self.check_assignment_type(value, &Type::None, from);
+                                }
+                                return;
+                            }
                             Inferred::from_type(value_t.simplified_union(i_s, &Type::None))
                                 .save_redirect(
                                     i_s,

@@ -406,11 +406,8 @@ testInferOrderedDictInitializedToEmpty
 # defaultdict
 testPartialDefaultDict*
 # self attributes
-testInferAttributeInitializedToNoneAndAssignedOtherMethod
 testInferAttributeInitializedToNoneAndAssignedClassBody
 testSerializeDummyType
-testPartialTypeInNestedClass
-testRefreshPartialTypeInClass
 testOverridePartialAttributeWithMethod
 testInferListInitializedToEmptyInClassBodyAndOverriden
 # partial list nullable

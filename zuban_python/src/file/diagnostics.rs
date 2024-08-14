@@ -137,7 +137,9 @@ impl<'db> Inference<'db, '_, '_> {
             if self.flags().local_partial_types {
                 fa.check_for_unfinished_partials(self.i_s);
             }
-            fa.process_delayed_funcs(self.i_s.db, |func| self.ensure_func_diagnostics(func));
+            fa.process_delayed_funcs(self.i_s.db, |func| {
+                self.ensure_func_diagnostics_and_finish_partials(fa, func);
+            });
             fa.check_for_unfinished_partials(self.i_s);
         });
         for complex_point in unsafe { self.file.complex_points.iter() } {
