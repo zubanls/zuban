@@ -1001,7 +1001,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         assign_kind: AssignKind,
         save: impl FnOnce(NodeIndex, &Inferred),
         is_self_attribute: bool,
-        narrow: impl FnOnce(PointLink, &Type),
+        narrow: impl Fn(PointLink, &Type),
     ) {
         let current_index = name_def.name_index();
         let i_s = self.i_s;
@@ -1088,18 +1088,18 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         Some(Specific::PartialNone) => {
                             let value_t = value.as_cow_type(i_s);
                             if point.partial_flags().finished {
-                                false
-                            } else {
-                                if !matches!(value_t.as_ref(), Type::None) {
-                                    Inferred::from_type(value_t.simplified_union(i_s, &Type::None))
-                                        .save_redirect(
-                                            i_s,
-                                            self.file,
-                                            first_index - NAME_DEF_TO_NAME_DIFFERENCE,
-                                        );
-                                }
-                                true
+                                return; // TODO?
                             }
+                            if !matches!(value_t.as_ref(), Type::None) {
+                                Inferred::from_type(value_t.simplified_union(i_s, &Type::None))
+                                    .save_redirect(
+                                        i_s,
+                                        self.file,
+                                        first_index - NAME_DEF_TO_NAME_DIFFERENCE,
+                                    );
+                                narrow(PointLink::new(self.file_index, first_index), &value_t);
+                            }
+                            return;
                         }
                         Some(Specific::PartialList) => maybe_overwrite_partial(
                             i_s.db.python_state.list_node_ref(),
