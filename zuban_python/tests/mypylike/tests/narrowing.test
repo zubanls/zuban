@@ -1078,3 +1078,14 @@ class B(A):
     def __init__(self) -> None:
         self.x = 1
 reveal_type(B().x)  # N: Revealed type is "int | str"
+
+[case finished_dict_overwrite]
+# flags: --local-partial-types
+
+x = {}  # E: Need type annotation for "x" (hint: "x: Dict[<type>, <type>] = ...")
+
+def foo() -> None:
+    global x
+    if bool():
+        x = {1: 2}
+    reveal_type(x) # N: Revealed type is "dict[Any, Any]"
