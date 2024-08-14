@@ -249,7 +249,10 @@ impl Point {
         debug_assert!(
             matches!(
                 self.specific(),
-                Specific::PartialList | Specific::PartialDict | Specific::PartialSet
+                Specific::PartialNone
+                    | Specific::PartialList
+                    | Specific::PartialDict
+                    | Specific::PartialSet
             ),
             "{:?}",
             self
@@ -265,7 +268,10 @@ impl Point {
         debug_assert!(
             matches!(
                 self.specific(),
-                Specific::PartialList | Specific::PartialDict | Specific::PartialSet
+                Specific::PartialNone
+                    | Specific::PartialList
+                    | Specific::PartialDict
+                    | Specific::PartialSet
             ),
             "{:?}",
             self
@@ -480,7 +486,10 @@ impl Specific {
     pub fn is_partial(self) -> bool {
         matches!(
             self,
-            Specific::PartialList | Specific::PartialDict | Specific::PartialSet
+            Specific::PartialNone
+                | Specific::PartialList
+                | Specific::PartialDict
+                | Specific::PartialSet
         )
     }
 }

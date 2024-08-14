@@ -286,6 +286,11 @@ impl<'db: 'slf, 'slf> Inferred {
     }
 
     pub fn maybe_new_partial(&self, i_s: &InferenceState, from: NodeRef) -> Option<Inferred> {
+        if self.maybe_saved_specific(i_s.db) == Some(Specific::None) {
+            return Some(Self {
+                state: InferredState::UnsavedSpecific(Specific::PartialNone),
+            });
+        }
         let Some(ComplexPoint::TypeInstance(t)) = self.maybe_complex_point(i_s.db) else {
             return None;
         };
@@ -606,6 +611,7 @@ impl<'db: 'slf, 'slf> Inferred {
                         Some(
                             Specific::String
                                 | Specific::Cycle
+                                | Specific::PartialNone
                                 | Specific::PartialList
                                 | Specific::PartialDict
                                 | Specific::PartialSet
@@ -2541,6 +2547,7 @@ pub fn specific_to_type<'db>(
             use_cached_annotation_or_type_comment(i_s, definition)
         }
         Specific::MaybeSelfParam => Cow::Borrowed(&Type::Self_),
+        Specific::PartialNone => Cow::Borrowed(&Type::None),
         Specific::PartialList => {
             definition.add_need_type_annotation_issue(i_s, specific);
             Cow::Borrowed(&i_s.db.python_state.list_of_any)

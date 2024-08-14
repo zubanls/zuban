@@ -298,6 +298,7 @@ impl<'file> NodeRef<'file> {
 
     pub fn add_need_type_annotation_issue(&self, i_s: &InferenceState, specific: Specific) {
         let hint = match specific {
+            Specific::PartialNone => "Optional[<type>]",
             Specific::PartialList => "List[<type>]",
             Specific::PartialDict => "Dict[<type>, <type>]",
             Specific::PartialSet => "Set[<type>]",

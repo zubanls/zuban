@@ -930,7 +930,12 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 if point.calculated()
                     && matches!(
                         point.maybe_specific(),
-                        Some(Specific::PartialList | Specific::PartialDict | Specific::PartialSet)
+                        Some(
+                            Specific::PartialNone
+                                | Specific::PartialList
+                                | Specific::PartialDict
+                                | Specific::PartialSet
+                        )
                     )
                 {
                     return None;
@@ -1045,7 +1050,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             if current_index == first_index {
                 /*
                 if matches!(value.as_cow_type(i_s).as_ref(), Type::None) {
-                    self.file.points.set(name_def.index(), Point::new_simple_specific(Specific::PartialNone, Locality::Todo));
+                    self.file.points.set(name_def.index(), Point::new_specific(Specific::PartialNone, Locality::Todo));
                     return
                 }
                 */
@@ -1080,6 +1085,22 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         false
                     };
                     let is_done = match point.maybe_specific() {
+                        Some(Specific::PartialNone) => {
+                            let value_t = value.as_cow_type(i_s);
+                            if point.partial_flags().finished {
+                                false
+                            } else {
+                                if !matches!(value_t.as_ref(), Type::None) {
+                                    Inferred::from_type(value_t.simplified_union(i_s, &Type::None))
+                                        .save_redirect(
+                                            i_s,
+                                            self.file,
+                                            first_index - NAME_DEF_TO_NAME_DIFFERENCE,
+                                        );
+                                }
+                                true
+                            }
+                        }
                         Some(Specific::PartialList) => maybe_overwrite_partial(
                             i_s.db.python_state.list_node_ref(),
                             &i_s.db.python_state.list_of_any,
@@ -1118,55 +1139,81 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     return;
                 }
             }
-            if value.maybe_saved_specific(i_s.db) == Some(Specific::None)
-                && assign_kind == AssignKind::Normal
-                && self.flags().local_partial_types
-                && !i_s.current_class().is_some_and(|c| {
-                    c.lookup(
-                        self.i_s,
-                        name_def.as_code(),
-                        ClassLookupOptions::new(&|_| ()).with_ignore_self(),
-                    )
-                    .lookup
-                    .is_some()
-                })
-            {
-                self.add_issue(
-                    current_index,
-                    IssueKind::NeedTypeAnnotation {
-                        for_: name_def.as_code().into(),
-                        hint: Some("Optional[<type>]"),
-                    },
-                );
-                // Save Optional[Any]
-                save(
-                    name_def.index(),
-                    &Inferred::from_type(
-                        Type::Any(AnyCause::FromError).union_with_details(Type::None, true),
-                    ),
-                );
-            } else {
-                if assign_kind == AssignKind::Normal {
-                    if let Some(partial) =
-                        value.maybe_new_partial(i_s, NodeRef::new(self.file, current_index))
-                    {
-                        FLOW_ANALYSIS.with(|fa| {
-                            fa.add_partial(PointLink::new(self.file_index, name_def.index()))
-                        });
-                        save(name_def.index(), &partial);
-                        return;
-                    }
-                    if !is_self_attribute
-                        && name_def.as_code() == "_"
-                        && self.i_s.current_function().is_some()
-                        && name_def.maybe_import().is_none()
-                    {
-                        save(name_def.index(), &Inferred::new_any(AnyCause::Todo));
-                        return;
-                    }
+            if assign_kind == AssignKind::Normal {
+                /*
+                if value.maybe_saved_specific(i_s.db) == Some(Specific::None) {
+                    && self.flags().local_partial_types
+                    && !i_s.current_class().is_some_and(|c| {
+                        c.lookup(
+                            self.i_s,
+                            name_def.as_code(),
+                            ClassLookupOptions::new(&|_| ()).with_ignore_self(),
+                        )
+                        .lookup
+                        .is_some()
+                    })
+                {
+                    self.add_issue(
+                        current_index,
+                        IssueKind::NeedTypeAnnotation {
+                            for_: name_def.as_code().into(),
+                            hint: Some("Optional[<type>]"),
+                        },
+                    );
+                    // Save Optional[Any]
+                    save(
+                        name_def.index(),
+                        &Inferred::from_type(
+                            Type::Any(AnyCause::FromError).union_with_details(Type::None, true),
+                        ),
+                    );
                 }
-                save(name_def.index(), value);
+                */
+                if let Some(partial) =
+                    value.maybe_new_partial(i_s, NodeRef::new(self.file, current_index))
+                {
+                    FLOW_ANALYSIS.with(|fa| {
+                        fa.add_partial(PointLink::new(self.file_index, name_def.index()))
+                    });
+                    let name_def_index = name_def.index();
+                    save(name_def_index, &partial);
+
+                    // Mypy does not flag partials in non-classes with "Need type annotation".
+                    // However in class scopes (where we don't override a union of a superclass) it
+                    // can still lead to errors.
+                    let point = self.file.points.get(name_def_index);
+                    if point.maybe_specific() == Some(Specific::PartialNone) {
+                        if !(self.flags().local_partial_types
+                            || i_s.current_class().is_some_and(|c| {
+                                c.lookup(
+                                    self.i_s,
+                                    name_def.as_code(),
+                                    ClassLookupOptions::new(&|_| ()).with_ignore_self(),
+                                )
+                                .lookup
+                                .is_some()
+                            }))
+                        {
+                            let mut flags = point.partial_flags();
+                            flags.reported_error = true;
+                            self.file
+                                .points
+                                .set(name_def_index, point.set_partial_flags(flags))
+                        }
+                    }
+
+                    return;
+                }
+                if !is_self_attribute
+                    && name_def.as_code() == "_"
+                    && self.i_s.current_function().is_some()
+                    && name_def.maybe_import().is_none()
+                {
+                    save(name_def.index(), &Inferred::new_any(AnyCause::Todo));
+                    return;
+                }
             }
+            save(name_def.index(), value);
         }
     }
 
