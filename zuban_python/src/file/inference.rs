@@ -1088,9 +1088,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             i_s.db.python_state.dict_node_ref(),
                             &i_s.db.python_state.dict_of_any,
                         ),
-                        Some(Specific::PartialSet) => {
-                            todo!()
-                        }
+                        Some(Specific::PartialSet) => maybe_overwrite_partial(
+                            i_s.db.python_state.set_node_ref(),
+                            &i_s.db.python_state.set_of_any,
+                        ),
                         _ => false,
                     };
                     if is_done {

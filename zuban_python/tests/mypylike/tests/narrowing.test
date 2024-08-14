@@ -1094,3 +1094,9 @@ def foo() -> None:
 x = {}
 x = (x := {1: 2})
 reveal_type(x) # N: Revealed type is "dict[int, int]"
+
+[case set_overwrite]
+x = set()
+if bool():
+    x = {1, 2}
+reveal_type(x) # N: Revealed type is "set[int]"
