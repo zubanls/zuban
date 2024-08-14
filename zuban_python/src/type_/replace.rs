@@ -85,7 +85,6 @@ impl Type {
                     &i_s,
                     new_entries.into_iter(),
                     highest_union_format_index,
-                    u.format_as_optional,
                 )
             }
             Type::TypeVar(t) => match callable(TypeVarLikeUsage::TypeVar(t.clone())) {
@@ -223,7 +222,6 @@ impl Type {
                         format_index: e.format_index,
                     })
                     .collect(),
-                format_as_optional: u.format_as_optional,
             }),
             Type::FunctionOverload(overload) => {
                 Type::FunctionOverload(overload.map_functions(|functions| {

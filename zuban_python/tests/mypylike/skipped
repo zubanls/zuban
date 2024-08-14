@@ -430,7 +430,6 @@ testMultipleAssignmentNoneClassVariableInInit
 # --allow-untyped-globals
 testPermissiveAttributeOverride1
 # Global
-testLocalPartialTypesWithGlobalInitializedToNoneStrictOptional
 testNonePartialType1
 testNonePartialType2
 testNonePartialType3

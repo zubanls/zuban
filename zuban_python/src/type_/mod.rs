@@ -736,22 +736,16 @@ impl Type {
         }
     }
 
-    pub fn union(self, other: Type) -> Self {
-        self.union_with_details(other, false)
-    }
-
     pub fn make_optional(&mut self) {
-        *self =
-            mem::replace(self, Self::Never(NeverCause::Other)).union_with_details(Type::None, true);
+        *self = mem::replace(self, Self::Never(NeverCause::Other)).union(Type::None);
     }
 
-    pub fn union_with_details(self, other: Type, mut format_as_optional: bool) -> Self {
+    pub fn union(self, other: Self) -> Self {
         let entries = match self {
             Self::Union(u1) => {
                 let mut vec = u1.entries.into_vec();
                 match other {
                     Self::Union(u2) => {
-                        format_as_optional |= u2.format_as_optional;
                         for mut o in u2.entries.into_vec().into_iter() {
                             if !vec.iter().any(|e| e.type_ == o.type_) {
                                 o.format_index = vec.len();
@@ -769,13 +763,11 @@ impl Type {
                         }
                     }
                 };
-                format_as_optional |= u1.format_as_optional;
                 vec
             }
             Self::Never(_) => return other,
             _ => match other {
                 Self::Union(u) => {
-                    format_as_optional |= u.format_as_optional;
                     if u.iter().any(|t| t == &self) {
                         return Self::Union(u);
                     } else {
@@ -807,7 +799,6 @@ impl Type {
         };
         let mut t = UnionType {
             entries: entries.into_boxed_slice(),
-            format_as_optional,
         };
         t.sort_for_priority();
         Self::Union(t)

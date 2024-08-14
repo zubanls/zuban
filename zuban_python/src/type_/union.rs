@@ -20,7 +20,6 @@ impl Type {
             i_s,
             [(0, self.clone()), (1, other.clone())].into_iter(),
             highest_union_format_index,
-            false,
         )
     }
 
@@ -94,7 +93,6 @@ pub fn simplified_union_from_iterators<T: Borrow<Type>>(
         i_s,
         types.map(|t| t.borrow().clone()).enumerate(),
         highest_union_format_index,
-        false,
     )
 }
 
@@ -103,7 +101,6 @@ pub fn simplified_union_from_iterators_with_format_index(
     types: impl Iterator<Item = (usize, Type)>,
     // We need this to make sure that the unions within the iterator can be properly ordered.
     highest_union_format_index: usize,
-    format_as_optional: bool,
 ) -> Type {
     let multiply = highest_union_format_index + 1;
     let mut result = merge_simplified_union_type(
@@ -115,13 +112,12 @@ pub fn simplified_union_from_iterators_with_format_index(
                     type_: entry.type_,
                 })
         }),
-        format_as_optional,
     );
     loop {
         match result {
             MergeSimplifiedUnionResult::Done(t) => return t,
             MergeSimplifiedUnionResult::NotDone(items) => {
-                result = merge_simplified_union_type(i_s, items.into_iter(), format_as_optional)
+                result = merge_simplified_union_type(i_s, items.into_iter())
             }
         }
     }
@@ -135,7 +131,6 @@ enum MergeSimplifiedUnionResult {
 fn merge_simplified_union_type(
     i_s: &InferenceState,
     types: impl Iterator<Item = UnionEntry>,
-    format_as_optional: bool,
 ) -> MergeSimplifiedUnionResult {
     let mut new_types: Vec<UnionEntry> = vec![];
     let mut finished = true;
@@ -231,7 +226,6 @@ fn merge_simplified_union_type(
             1 => new_types.into_iter().next().unwrap().type_,
             _ => {
                 let mut union = UnionType {
-                    format_as_optional,
                     entries: new_types.into(),
                 };
                 union.sort_for_priority();
@@ -298,7 +292,6 @@ pub struct UnionEntry {
 #[derive(Debug, Clone, PartialEq)]
 pub struct UnionType {
     pub entries: Box<[UnionEntry]>,
-    pub format_as_optional: bool,
 }
 
 impl UnionType {
@@ -306,7 +299,6 @@ impl UnionType {
         debug_assert!(entries.len() > 1);
         Self {
             entries: entries.into_boxed_slice(),
-            format_as_optional: false,
         }
     }
 
@@ -372,10 +364,7 @@ impl UnionType {
                 }
             }
         };
-        let format_as_optional =
-            self.format_as_optional && format_data.style != FormatStyle::MypyRevealType;
         let mut unsorted = iterator
-            .filter(|&e| (!format_as_optional || !matches!(e.type_, Type::None)))
             .map(|e| (e.format_index, e.type_.format(format_data)))
             .collect::<Vec<_>>();
         unsorted.sort_by_key(|(format_index, _)| *format_index);
@@ -384,10 +373,6 @@ impl UnionType {
             .map(|(_, t)| t)
             .collect::<Vec<_>>()
             .join(" | ");
-        if format_as_optional {
-            format!("Optional[{sorted}]").into()
-        } else {
-            sorted.into()
-        }
+        sorted.into()
     }
 }

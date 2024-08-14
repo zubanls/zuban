@@ -628,42 +628,62 @@ fn initialize_and_return_wanted_output(project: &mut Project, step: &Step) -> Ve
         project.load_in_memory_file(p.into(), code.into());
     }
     for line in &mut wanted {
-        replace_unions(line)
+        replace_unions(line);
+        replace_optional(line);
     }
     wanted
 }
 
 fn replace_unions(line: &mut String) {
+    // Replaces Union[int, str] with int | str
     while let Some(index) = line.rfind("Union[") {
-        let mut brackets = 0;
-        let mut commas = vec![];
-        let mut end = 0;
-        for (i, chr) in line[index..].char_indices() {
-            match chr {
-                '[' | '(' | '{' => brackets += 1,
-                ']' | ')' | '}' => {
-                    brackets -= 1;
-                    if brackets == 0 {
-                        end = i;
-                        break;
-                    }
-                }
-                ',' => {
-                    if brackets == 1 {
-                        commas.push(i);
-                    }
-                }
-                _ => (),
-            }
-        }
-        assert_eq!(brackets, 0);
-        assert_ne!(end, 0);
+        let (end, commas) = find_end_bracket(&line[index..]);
         line.replace_range(index + end..index + end + 1, "");
         for i in commas.iter().rev() {
             line.replace_range(index + i..index + i + 1, " |");
         }
         line.replace_range(index..index + "Union[".len(), "");
     }
+}
+
+fn replace_optional(line: &mut String) {
+    // Replaces Optional[int] -> int | None
+    while let Some(index) = line.rfind("Optional[") {
+        let s = &line[index..];
+        if s.starts_with("Optional[...] must have exactly one type argument") {
+            return;
+        }
+        let end = find_end_bracket(s).0;
+        line.replace_range(index + end..index + end + 1, " | None");
+        line.replace_range(index..index + "Optional[".len(), "");
+    }
+}
+
+fn find_end_bracket(s: &str) -> (usize, Vec<usize>) {
+    let mut brackets = 0;
+    let mut commas = vec![];
+    let mut end = 0;
+    for (i, chr) in s.char_indices() {
+        match chr {
+            '[' | '(' | '{' => brackets += 1,
+            ']' | ')' | '}' => {
+                brackets -= 1;
+                if brackets == 0 {
+                    end = i;
+                    break;
+                }
+            }
+            ',' => {
+                if brackets == 1 {
+                    commas.push(i);
+                }
+            }
+            _ => (),
+        }
+    }
+    assert_eq!(brackets, 0);
+    assert_ne!(end, 0);
+    (end, commas)
 }
 
 struct ErrorCommentsOnCode<'a>(
