@@ -1184,8 +1184,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     let point = self.file.points.get(name_def_index);
                     if point.maybe_specific() == Some(Specific::PartialNone) {
                         if !(self.flags().local_partial_types
-                            || i_s.current_class().is_some_and(|c| {
-                                c.lookup(
+                            && i_s.current_class().is_some_and(|c| {
+                                !c.lookup(
                                     self.i_s,
                                     name_def.as_code(),
                                     ClassLookupOptions::new(&|_| ()).with_ignore_self(),
