@@ -1047,83 +1047,73 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 // Nothing needed to assign anymore, the original definition was already assigned.
                 return;
             }
-            if current_index == first_index {
-                /*
-                if matches!(value.as_cow_type(i_s).as_ref(), Type::None) {
-                    self.file.points.set(name_def.index(), Point::new_specific(Specific::PartialNone, Locality::Todo));
-                    return
-                }
-                */
-                save(name_def.index(), value);
-            } else {
-                let original_inf = self.infer_name_of_definition_by_index(first_index);
-                if let Some(maybe_saved_node_ref) = original_inf.maybe_saved_node_ref(i_s.db) {
-                    let point = maybe_saved_node_ref.point();
-                    let maybe_overwrite_partial = |class_node_ref, type_when_any: &Type| {
+            let original_inf = self.infer_name_of_definition_by_index(first_index);
+            if let Some(maybe_saved_node_ref) = original_inf.maybe_saved_node_ref(i_s.db) {
+                let point = maybe_saved_node_ref.point();
+                let maybe_overwrite_partial = |class_node_ref, type_when_any: &Type| {
+                    if point.partial_flags().finished {
+                        return false;
+                    }
+                    let t = value.as_cow_type(i_s);
+                    if t.maybe_class(i_s.db)
+                        .is_some_and(|c| c.node_ref == class_node_ref)
+                    {
+                        value.clone().save_redirect(
+                            i_s,
+                            self.file,
+                            first_index - NAME_DEF_TO_NAME_DIFFERENCE,
+                        );
+                        return true;
+                    }
+                    if t.is_any() {
+                        Inferred::from_type(type_when_any.clone()).save_redirect(
+                            i_s,
+                            self.file,
+                            first_index - NAME_DEF_TO_NAME_DIFFERENCE,
+                        );
+                        return true;
+                    }
+                    false
+                };
+                let is_done = match point.maybe_specific() {
+                    Some(Specific::PartialNone) => {
+                        let value_t = value.as_cow_type(i_s);
                         if point.partial_flags().finished {
-                            return false;
+                            return; // TODO?
                         }
-                        let t = value.as_cow_type(i_s);
-                        if t.maybe_class(i_s.db)
-                            .is_some_and(|c| c.node_ref == class_node_ref)
-                        {
-                            value.clone().save_redirect(
-                                i_s,
-                                self.file,
-                                first_index - NAME_DEF_TO_NAME_DIFFERENCE,
-                            );
-                            return true;
+                        if !matches!(value_t.as_ref(), Type::None) {
+                            Inferred::from_type(value_t.simplified_union(i_s, &Type::None))
+                                .save_redirect(
+                                    i_s,
+                                    self.file,
+                                    first_index - NAME_DEF_TO_NAME_DIFFERENCE,
+                                );
+                            narrow(PointLink::new(self.file_index, first_index), &value_t);
                         }
-                        if t.is_any() {
-                            Inferred::from_type(type_when_any.clone()).save_redirect(
-                                i_s,
-                                self.file,
-                                first_index - NAME_DEF_TO_NAME_DIFFERENCE,
-                            );
-                            return true;
-                        }
-                        false
-                    };
-                    let is_done = match point.maybe_specific() {
-                        Some(Specific::PartialNone) => {
-                            let value_t = value.as_cow_type(i_s);
-                            if point.partial_flags().finished {
-                                return; // TODO?
-                            }
-                            if !matches!(value_t.as_ref(), Type::None) {
-                                Inferred::from_type(value_t.simplified_union(i_s, &Type::None))
-                                    .save_redirect(
-                                        i_s,
-                                        self.file,
-                                        first_index - NAME_DEF_TO_NAME_DIFFERENCE,
-                                    );
-                                narrow(PointLink::new(self.file_index, first_index), &value_t);
-                            }
-                            return;
-                        }
-                        Some(Specific::PartialList) => maybe_overwrite_partial(
-                            i_s.db.python_state.list_node_ref(),
-                            &i_s.db.python_state.list_of_any,
-                        ),
-                        Some(Specific::PartialDict) => maybe_overwrite_partial(
-                            i_s.db.python_state.dict_node_ref(),
-                            &i_s.db.python_state.dict_of_any,
-                        ),
-                        Some(Specific::PartialSet) => maybe_overwrite_partial(
-                            i_s.db.python_state.set_node_ref(),
-                            &i_s.db.python_state.set_of_any,
-                        ),
-                        _ => false,
-                    };
-                    if is_done {
                         return;
                     }
+                    Some(Specific::PartialList) => maybe_overwrite_partial(
+                        i_s.db.python_state.list_node_ref(),
+                        &i_s.db.python_state.list_of_any,
+                    ),
+                    Some(Specific::PartialDict) => maybe_overwrite_partial(
+                        i_s.db.python_state.dict_node_ref(),
+                        &i_s.db.python_state.dict_of_any,
+                    ),
+                    Some(Specific::PartialSet) => maybe_overwrite_partial(
+                        i_s.db.python_state.set_node_ref(),
+                        &i_s.db.python_state.set_of_any,
+                    ),
+                    _ => false,
+                };
+                if is_done {
+                    return;
                 }
-                check_assign_to_known_definition(
-                    PointLink::new(self.file_index, first_index),
-                    &original_inf,
-                )
             }
+            check_assign_to_known_definition(
+                PointLink::new(self.file_index, first_index),
+                &original_inf,
+            )
         } else {
             if !is_self_attribute {
                 if let Some(star_imp) = self.lookup_from_star_import(name_def.as_code(), true) {
@@ -1140,35 +1130,6 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 }
             }
             if assign_kind == AssignKind::Normal {
-                /*
-                if value.maybe_saved_specific(i_s.db) == Some(Specific::None) {
-                    && self.flags().local_partial_types
-                    && !i_s.current_class().is_some_and(|c| {
-                        c.lookup(
-                            self.i_s,
-                            name_def.as_code(),
-                            ClassLookupOptions::new(&|_| ()).with_ignore_self(),
-                        )
-                        .lookup
-                        .is_some()
-                    })
-                {
-                    self.add_issue(
-                        current_index,
-                        IssueKind::NeedTypeAnnotation {
-                            for_: name_def.as_code().into(),
-                            hint: Some("Optional[<type>]"),
-                        },
-                    );
-                    // Save Optional[Any]
-                    save(
-                        name_def.index(),
-                        &Inferred::from_type(
-                            Type::Any(AnyCause::FromError).union_with_details(Type::None, true),
-                        ),
-                    );
-                }
-                */
                 if let Some(partial) =
                     value.maybe_new_partial(i_s, NodeRef::new(self.file, current_index))
                 {
