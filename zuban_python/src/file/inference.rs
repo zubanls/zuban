@@ -1179,21 +1179,28 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     save(name_def_index, &partial);
 
                     // Mypy does not flag partials in non-classes with "Need type annotation".
-                    // However in class scopes (where we don't override a union of a superclass) it
-                    // can still lead to errors.
+                    // However in class scopes (where we don't override a union of a superclass)
+                    // and module scopes it can still lead to errors.
                     let point = self.file.points.get(name_def_index);
                     if point.maybe_specific() == Some(Specific::PartialNone) {
-                        if !(self.flags().local_partial_types
-                            && i_s.current_class().is_some_and(|c| {
-                                !c.lookup(
-                                    self.i_s,
-                                    name_def.as_code(),
-                                    ClassLookupOptions::new(&|_| ()).with_ignore_self(),
-                                )
-                                .lookup
-                                .is_some()
-                            }))
-                        {
+                        let suppresses_partial_none_error = || {
+                            if !self.flags().local_partial_types {
+                                return true;
+                            }
+
+                            if let Some(class) = i_s.current_class() {
+                                return class
+                                    .lookup(
+                                        self.i_s,
+                                        name_def.as_code(),
+                                        ClassLookupOptions::new(&|_| ()).with_ignore_self(),
+                                    )
+                                    .lookup
+                                    .is_some();
+                            }
+                            i_s.current_function().is_some()
+                        };
+                        if suppresses_partial_none_error() {
                             let mut flags = point.partial_flags();
                             flags.reported_error = true;
                             self.file

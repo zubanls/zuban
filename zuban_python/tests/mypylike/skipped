@@ -325,7 +325,6 @@ testAndCases
 testFinalWithoutBool
 testFinalWithoutBoolButWithLen
 # global/local lookup in func of narrowed value in different scope
-testLocalPartialTypesWithGlobalInitializedToNone4
 testAttributePartiallyInitializedToNoneWithMissingAnnotation
 testIncompatibleInheritedAttributeNoStrictOptional
 testUnusedTargetNotClass2
@@ -351,8 +350,6 @@ testNarrowingEqualityDisabledForCustomEqualityChain
 testNarrowingEqualityFlipFlop
 testStrictEqualitywithParamSpec
 
-# None late binding, because it's None (x = None; x = 3)
-testLocalPartialTypesWithInheritance3
 # partial types with untyped defs
 testCheckUntypedDefsSelf2
 # Make x an Optional if else contains `x = None`
@@ -433,8 +430,6 @@ testMultipleAssignmentNoneClassVariableInInit
 # --allow-untyped-globals
 testPermissiveAttributeOverride1
 # Global
-testLocalPartialTypesWithGlobalInitializedToNone
-testLocalPartialTypesWithGlobalInitializedToNone2
 testLocalPartialTypesWithGlobalInitializedToNoneStrictOptional
 testNonePartialType1
 testNonePartialType2
@@ -443,7 +438,6 @@ testNonePartialType4
 # partial regressions
 testLocalPartialTypesAccessPartialNoneAttribute
 testLocalPartialTypesAccessPartialNoneAttribute2
-testSuggestPep604AnnotationForPartialNone
 testInheritedAttributeStrictOptional
 
 # Function local self attribute name binding
