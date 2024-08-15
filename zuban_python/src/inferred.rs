@@ -605,19 +605,9 @@ impl<'db: 'slf, 'slf> Inferred {
         let point = match self.state {
             InferredState::Saved(definition) => {
                 // Overwriting strings needs to be possible, because of string annotations
-                if p.calculated()
-                    && !matches!(
-                        p.maybe_specific(),
-                        Some(
-                            Specific::String
-                                | Specific::Cycle
-                                | Specific::PartialNone
-                                | Specific::PartialList
-                                | Specific::PartialDict
-                                | Specific::PartialSet
-                        )
-                    )
-                {
+                let specific_overwrite_is_fine =
+                    |s| matches!(s, Specific::String | Specific::Cycle) || s.is_partial();
+                if p.calculated() && !p.maybe_specific().is_some_and(specific_overwrite_is_fine) {
                     if ignore_if_already_saved {
                         return self;
                     }
@@ -2174,6 +2164,11 @@ impl<'db: 'slf, 'slf> Inferred {
     }
 
     pub fn is_saved_partial(&self, db: &Database) -> bool {
+        self.maybe_saved_specific(db)
+            .is_some_and(|specific| specific.is_partial())
+    }
+
+    pub fn is_saved_partial_container(&self, db: &Database) -> bool {
         self.maybe_saved_specific(db)
             .is_some_and(|specific| specific.is_partial())
     }

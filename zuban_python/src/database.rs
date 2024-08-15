@@ -246,17 +246,7 @@ impl Point {
     }
 
     pub fn partial_flags(self) -> PartialFlags {
-        debug_assert!(
-            matches!(
-                self.specific(),
-                Specific::PartialNone
-                    | Specific::PartialList
-                    | Specific::PartialDict
-                    | Specific::PartialSet
-            ),
-            "{:?}",
-            self
-        );
+        debug_assert!(self.specific().is_partial(), "{:?}", self);
         PartialFlags {
             nullable: self.flags & PARTIAL_NULLABLE_MASK != 0,
             reported_error: self.flags & PARTIAL_REPORTED_ERROR_MASK != 0,
@@ -490,6 +480,13 @@ impl Specific {
                 | Specific::PartialList
                 | Specific::PartialDict
                 | Specific::PartialSet
+        )
+    }
+
+    pub fn is_partial_container(self) -> bool {
+        matches!(
+            self,
+            Specific::PartialList | Specific::PartialDict | Specific::PartialSet
         )
     }
 }
