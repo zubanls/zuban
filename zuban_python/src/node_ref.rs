@@ -11,6 +11,7 @@ use crate::{
         ClassStorage, ComplexPoint, Database, FileIndex, Locality, Point, PointKind, PointLink,
         Specific, TypeAlias,
     },
+    debug,
     diagnostics::{Issue, IssueKind},
     file::{File, PythonFile},
     inference_state::InferenceState,
@@ -294,6 +295,14 @@ impl<'file> NodeRef<'file> {
         } else {
             self.add_issue(i_s, kind)
         }
+    }
+
+    pub fn finish_partial_with_annotation_needed(&self, i_s: &InferenceState) {
+        let point = self.point();
+        let mut partial_flags = point.partial_flags();
+        partial_flags.finished = true;
+        self.set_point(point.set_partial_flags(partial_flags));
+        self.add_need_type_annotation_issue(i_s, point.specific())
     }
 
     pub fn add_need_type_annotation_issue(&self, i_s: &InferenceState, specific: Specific) {

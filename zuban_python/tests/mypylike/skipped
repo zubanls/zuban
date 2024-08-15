@@ -393,7 +393,6 @@ testEmptyCollectionAssignedToVariableTwiceNoReadIncremental
 testNewAnalyzerLessErrorsNeedAnnotation
 testInferenceWithUninhabitedType
 # Needs error, because nested partial "Need type annotation for "X""
-testInferListInitializedToEmptyAndIncompleteTypeInAppend
 testInferDictInitializedToEmptyAndIncompleteTypeInUpdate
 # operator narrowing
 testInferListTypeFromInplaceAdd

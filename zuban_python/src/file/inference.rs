@@ -2493,6 +2493,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 debug!(r#"Partial "{}" was already finished"#, primary.as_code());
                 return None;
             }
+            if resolved_partial.has_never_from_inference(self.i_s.db) {
+                from.finish_partial_with_annotation_needed(i_s);
+                return Some(());
+            }
             debug!(
                 r#"Infer partial for "{}" as "{}""#,
                 primary.as_code(),

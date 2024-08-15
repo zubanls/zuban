@@ -549,10 +549,7 @@ impl FlowAnalysis {
             let point = node_ref.point();
             if let Some(specific) = point.maybe_specific() {
                 if specific.is_partial() {
-                    let mut partial_flags = point.partial_flags();
-                    partial_flags.finished = true;
-                    node_ref.set_point(point.set_partial_flags(partial_flags));
-                    node_ref.add_need_type_annotation_issue(i_s, specific);
+                    node_ref.finish_partial_with_annotation_needed(i_s);
                 }
             }
         }
