@@ -1041,7 +1041,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             if let Some(maybe_saved_node_ref) = original_inf.maybe_saved_node_ref(i_s.db) {
                 let point = maybe_saved_node_ref.point();
                 let maybe_overwrite_partial = |class_node_ref, type_when_any: &Type| {
-                    if point.partial_flags().finished {
+                    let mut partial_flags = point.partial_flags();
+                    if partial_flags.finished {
                         return false;
                     }
                     let t = value.as_cow_type(i_s);
@@ -1056,10 +1057,12 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         return true;
                     }
                     if t.is_any() {
-                        Inferred::from_type(type_when_any.clone()).save_redirect(
-                            i_s,
-                            self.file,
+                        partial_flags.finished = true;
+                        // There should never be an error, because we assigned Any.
+                        partial_flags.reported_error = true;
+                        self.file.points.set(
                             first_index - NAME_DEF_TO_NAME_DIFFERENCE,
+                            point.set_partial_flags(partial_flags),
                         );
                         return true;
                     }

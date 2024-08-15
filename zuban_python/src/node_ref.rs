@@ -11,7 +11,6 @@ use crate::{
         ClassStorage, ComplexPoint, Database, FileIndex, Locality, Point, PointKind, PointLink,
         Specific, TypeAlias,
     },
-    debug,
     diagnostics::{Issue, IssueKind},
     file::{File, PythonFile},
     inference_state::InferenceState,
