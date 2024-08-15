@@ -110,7 +110,8 @@ struct Entry {
     type_: Option<Type>,
     modifies_ancestors: bool,
     deleted: bool, // e.g. after a `del foo`
-    widens: bool,  // e.g. if a type is defined as None and later made an optional.
+    // TODO currently unused, delete?
+    widens: bool, // e.g. if a type is defined as None and later made an optional.
 }
 
 impl Entry {
@@ -363,10 +364,10 @@ impl FlowAnalysis {
                     }
                 }
                 if first_entry.widens {
-                    let declaration_t = Type::None;
-                    let mut entry = first_entry.clone();
-                    entry.type_ = Some(entry.type_.unwrap().union(declaration_t));
-                    self.overwrite_entry(i_s, entry)
+                    self.overwrite_entry(
+                        i_s,
+                        self.merge_key_with_ancestor_assignment(i_s, first_entry),
+                    )
                 } else {
                     self.overwrite_entry(
                         i_s,
@@ -1103,10 +1104,8 @@ impl Inference<'_, '_, '_> {
         new_t: &Type,
         check_for_error: impl FnOnce() -> bool,
     ) {
-        let mut widens = false;
-        if matches!(declaration_t, Type::None) && !matches!(new_t, Type::None) {
-            widens = true;
-        } else if new_t.is_any() && !declaration_t.is_any_or_any_in_union(self.i_s.db) {
+        let widens = false;
+        if new_t.is_any() && !declaration_t.is_any_or_any_in_union(self.i_s.db) {
             // Any should not be narrowed if it is not part of a union with any.
             FLOW_ANALYSIS.with(|fa| fa.remove_key_if_modifies_ancestors(self.i_s, &key));
             return;
@@ -1475,7 +1474,7 @@ impl Inference<'_, '_, '_> {
                     type_: Some(Type::Any(AnyCause::FromError)),
                     modifies_ancestors: true,
                     deleted: true,
-                    widens: true,
+                    widens: false,
                 },
             )
         })

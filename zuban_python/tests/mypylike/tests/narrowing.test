@@ -688,7 +688,7 @@ def foo(x: Animal):
         del x
     else:
         x.paws = 3
-    x.paws  # E: Trying to read deleted variable "x"  # E: Item "None" of "Any | None" has no attribute "paws"
+    x.paws  # E: Trying to read deleted variable "x"
 
 def bar(x: Animal):
     x = Dog()
@@ -697,7 +697,7 @@ def bar(x: Animal):
         del x
     else:
         x.paws = 3
-    x.paws  # E: Trying to read deleted variable "x"  # E: Item "None" of "Any | None" has no attribute "paws"
+    x.paws  # E: Trying to read deleted variable "x"
 
 [case try_invalidation2]
 class Animal:
