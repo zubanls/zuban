@@ -396,7 +396,6 @@ testInferenceWithUninhabitedType
 testInferListInitializedToEmptyAndIncompleteTypeInAppend
 testInferDictInitializedToEmptyAndIncompleteTypeInUpdate
 # operator narrowing
-testInferFromEmptyDictWhenUsingIn
 testInferListTypeFromInplaceAdd
 testInferSetTypeFromInplaceOr
 # explicit any context should lead to Dict[Any, Any]? might be ok?

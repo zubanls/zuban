@@ -2195,6 +2195,14 @@ impl Inference<'_, '_, '_> {
                         find_comparison_guards(self.i_s, &left_infos, &right_infos, false)
                     }
                     ComparisonContent::In(left, op, _) | ComparisonContent::NotIn(left, op, _) => {
+                        if right_infos.inf.is_saved_partial_container(self.i_s.db) {
+                            // Mypy simply disables type checking in the case of partials.
+                            // Theoretically we could recheck after the partial was finished.
+                            // See for example testInferFromEmptyListWhenUsingInWithStrictEquality,
+                            // which has a TODO.
+                            left_infos = right_infos;
+                            continue;
+                        }
                         self.guard_of_in_operator(op, &mut left_infos, &right_infos)
                     }
                     ComparisonContent::Ordering(operation) => {

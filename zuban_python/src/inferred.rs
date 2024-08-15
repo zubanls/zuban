@@ -2170,7 +2170,7 @@ impl<'db: 'slf, 'slf> Inferred {
 
     pub fn is_saved_partial_container(&self, db: &Database) -> bool {
         self.maybe_saved_specific(db)
-            .is_some_and(|specific| specific.is_partial())
+            .is_some_and(|specific| specific.is_partial_container())
     }
 
     pub fn remove_none(&self, i_s: &InferenceState) -> Self {
