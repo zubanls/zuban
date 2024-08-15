@@ -650,10 +650,7 @@ impl<'db: 'a, 'a> Class<'a> {
                         c.kind = FunctionKind::Classmethod {
                             had_first_self_or_class_annotation: true,
                         };
-                        node_ref.insert_complex(
-                            ComplexPoint::TypeInstance(Type::Callable(Rc::new(c))),
-                            Locality::Todo,
-                        );
+                        node_ref.insert_type(Type::Callable(Rc::new(c)));
                     }
                 }
             }

@@ -3,9 +3,7 @@ use std::{ptr::null, rc::Rc};
 use parsa_python_cst::{FunctionDef, NodeIndex, NAME_DEF_TO_NAME_DIFFERENCE};
 
 use crate::{
-    database::{
-        BaseClass, ComplexPoint, Database, FileIndex, Locality, Point, PointLink, Specific,
-    },
+    database::{BaseClass, Database, FileIndex, Locality, Point, PointLink, Specific},
     file::{File, PythonFile},
     inferred::Inferred,
     matching::Generics,
@@ -1046,10 +1044,7 @@ fn typing_changes(
     set_typing_inference(collections, "namedtuple", Specific::CollectionsNamedTuple);
     if let Some(none_type_index) = types.symbol_table().lookup_symbol("NoneType") {
         // Making NoneType Type[None] just makes type checking way easier.
-        NodeRef::new(types, none_type_index).insert_complex(
-            ComplexPoint::TypeInstance(Type::Type(Rc::new(Type::None))),
-            Locality::File,
-        );
+        NodeRef::new(types, none_type_index).insert_type(Type::Type(Rc::new(Type::None)));
     }
 
     setup_type_alias(typing, "Tuple", builtins, "tuple");
@@ -1105,10 +1100,7 @@ fn set_typing_inference(file: &PythonFile, name: &str, specific: Specific) {
 
 fn set_custom_behavior(file: &PythonFile, name: &str, custom: CustomBehavior) {
     let node_index = file.symbol_table().lookup_symbol(name).unwrap();
-    NodeRef::new(file, node_index).insert_complex(
-        ComplexPoint::TypeInstance(Type::CustomBehavior(custom)),
-        Locality::Stmt,
-    );
+    NodeRef::new(file, node_index).insert_type(Type::CustomBehavior(custom));
 }
 
 /* TODO remove?
@@ -1125,10 +1117,7 @@ fn set_custom_behavior_method(
         .class_symbol_table
         .lookup_symbol(name)
         .unwrap();
-    NodeRef::new(file, node_index).insert_complex(
-        ComplexPoint::TypeInstance(Type::CustomBehavior(custom)),
-        Locality::Stmt,
-    );
+    NodeRef::new(file, node_index).insert_type(Type::CustomBehavior(custom));
 }
 */
 

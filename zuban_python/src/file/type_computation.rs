@@ -763,7 +763,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         .err()
                         .unwrap();
                     let overwrite = NodeRef::new(self.inference.file, star_annotation.index());
-                    overwrite.insert_complex(ComplexPoint::TypeInstance(new_t), Locality::Todo);
+                    overwrite.insert_type(new_t);
                     return param_spec_error(
                         usage_before,
                         match tc {
@@ -966,7 +966,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         if is_implicit_optional {
             type_.make_optional()
         }
-        type_storage_node_ref.insert_complex(ComplexPoint::TypeInstance(type_), Locality::Todo);
+        type_storage_node_ref.insert_type(type_);
         annotation_node_ref.set_point(Point::new_specific(
             if is_class_var {
                 Specific::AnnotationOrTypeCommentClassVar
@@ -4035,8 +4035,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                             Specific::AnnotationOrTypeCommentWithTypeVars,
                             Locality::Todo,
                         ));
-                        NodeRef::new(f, expr_index)
-                            .insert_complex(ComplexPoint::TypeInstance(type_), Locality::Todo);
+                        NodeRef::new(f, expr_index).insert_type(type_);
                     } else {
                         let mut x = type_computation_for_variable_annotation;
                         let mut comp = TypeComputation::new(
@@ -4078,8 +4077,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                     let star_exprs_index = star_exprs.index();
                     let index = star_exprs_index - ANNOTATION_TO_EXPR_DIFFERENCE;
                     let type_ = inference.calc_type_comment_tuple(assignment_node_ref, t.iter());
-                    NodeRef::new(f, index)
-                        .insert_complex(ComplexPoint::TypeInstance(type_), Locality::Todo);
+                    NodeRef::new(f, index).insert_type(type_);
                     let complex_index = f.points.get(index).complex_index();
                     TypeCommentDetails {
                         inferred: Inferred::from_saved_node_ref(NodeRef::new(f, index)),

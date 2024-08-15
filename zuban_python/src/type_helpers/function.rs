@@ -336,10 +336,8 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     Type::Any(AnyCause::Explicit),
                 );
                 callable_t.no_type_check = true;
-                self.node_ref.insert_complex(
-                    ComplexPoint::TypeInstance(Type::Callable(Rc::new(callable_t))),
-                    Locality::Todo,
-                );
+                self.node_ref
+                    .insert_type(Type::Callable(Rc::new(callable_t)));
                 return;
             }
         }
@@ -359,10 +357,8 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             .save_redirect(i_s, self.node_ref.file, self.node_ref.node_index);
         } else if let Some(mut callable_t) = maybe_computed {
             self.avoid_invalid_typeguard_signatures(i_s, &mut callable_t);
-            self.node_ref.insert_complex(
-                ComplexPoint::TypeInstance(Type::Callable(Rc::new(callable_t))),
-                Locality::Todo,
-            );
+            self.node_ref
+                .insert_type(Type::Callable(Rc::new(callable_t)));
         } else {
             self.node_ref
                 .set_point(Point::new_specific(Specific::Function, Locality::Todo));

@@ -424,10 +424,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             Some(ImportResult::File(f)) => {
                 node_ref.set_point(Point::new_file_reference(*f, Locality::Complex))
             }
-            Some(ImportResult::Namespace(n)) => node_ref.insert_complex(
-                ComplexPoint::TypeInstance(Type::Namespace(n.clone())),
-                Locality::Complex,
-            ),
+            Some(ImportResult::Namespace(n)) => node_ref.insert_type(Type::Namespace(n.clone())),
             None => node_ref.set_point(Point::new_specific(
                 Specific::ModuleNotFound,
                 Locality::Complex,
@@ -747,7 +744,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             if annotation_ref.point().specific() == Specific::AnnotationOrTypeCommentClassVar {
                 t = t.avoid_implicit_literal(self.i_s.db);
             }
-            to_annot_expr.insert_complex(ComplexPoint::TypeInstance(t), Locality::Todo);
+            to_annot_expr.insert_type(t);
         }
         needed_recalculation
     }
@@ -1052,10 +1049,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         if t.has_never_from_inference(i_s.db) {
                             maybe_saved_node_ref.finish_partial_with_annotation_needed(i_s)
                         } else {
-                            maybe_saved_node_ref.insert_complex(
-                                ComplexPoint::TypeInstance(value.as_type(i_s)),
-                                Locality::Todo,
-                            )
+                            maybe_saved_node_ref.insert_type(value.as_type(i_s))
                         }
                         return true;
                     }
@@ -1079,12 +1073,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 }
                                 return;
                             }
-                            maybe_saved_node_ref.insert_complex(
-                                ComplexPoint::TypeInstance(
-                                    value_t.simplified_union(i_s, &Type::None),
-                                ),
-                                Locality::Todo,
-                            );
+                            maybe_saved_node_ref
+                                .insert_type(value_t.simplified_union(i_s, &Type::None));
                             narrow(PointLink::new(self.file_index, first_index), &value_t);
                         }
                         return;
@@ -1381,7 +1371,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             primary_target.as_code(),
                             new_dict.format_short(i_s.db)
                         );
-                        from.insert_complex(ComplexPoint::TypeInstance(new_dict), Locality::Todo);
+                        from.insert_type(new_dict);
                         return;
                     }
                 }
@@ -2507,7 +2497,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 primary.as_code(),
                 resolved_partial.format_short(i_s.db)
             );
-            from.insert_complex(ComplexPoint::TypeInstance(resolved_partial), Locality::Todo);
+            from.insert_type(resolved_partial);
             Some(())
         };
         let try_to_save = |partial_class_link, unwrap_from_iterable| {

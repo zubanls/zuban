@@ -125,6 +125,10 @@ impl<'file> NodeRef<'file> {
             .insert(&self.file.points, self.node_index, complex, locality);
     }
 
+    pub fn insert_type(&self, t: Type) {
+        self.insert_complex(ComplexPoint::TypeInstance(t), Locality::Todo)
+    }
+
     pub fn as_link(&self) -> PointLink {
         PointLink::new(self.file.file_index(), self.node_index)
     }
