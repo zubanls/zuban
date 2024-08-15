@@ -1052,11 +1052,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         if t.has_never_from_inference(i_s.db) {
                             maybe_saved_node_ref.finish_partial_with_annotation_needed(i_s)
                         } else {
-                            value.clone().save_redirect(
-                                i_s,
-                                self.file,
-                                first_index - NAME_DEF_TO_NAME_DIFFERENCE,
-                            );
+                            maybe_saved_node_ref.insert_complex(
+                                ComplexPoint::TypeInstance(value.as_type(i_s)),
+                                Locality::Todo,
+                            )
                         }
                         return true;
                     }
@@ -1064,10 +1063,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         partial_flags.finished = true;
                         // There should never be an error, because we assigned Any.
                         partial_flags.reported_error = true;
-                        self.file.points.set(
-                            first_index - NAME_DEF_TO_NAME_DIFFERENCE,
-                            point.set_partial_flags(partial_flags),
-                        );
+                        maybe_saved_node_ref.set_point(point.set_partial_flags(partial_flags));
                         return true;
                     }
                     false
@@ -1083,12 +1079,12 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 }
                                 return;
                             }
-                            Inferred::from_type(value_t.simplified_union(i_s, &Type::None))
-                                .save_redirect(
-                                    i_s,
-                                    self.file,
-                                    first_index - NAME_DEF_TO_NAME_DIFFERENCE,
-                                );
+                            maybe_saved_node_ref.insert_complex(
+                                ComplexPoint::TypeInstance(
+                                    value_t.simplified_union(i_s, &Type::None),
+                                ),
+                                Locality::Todo,
+                            );
                             narrow(PointLink::new(self.file_index, first_index), &value_t);
                         }
                         return;

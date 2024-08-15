@@ -605,9 +605,9 @@ impl<'db: 'slf, 'slf> Inferred {
         let point = match self.state {
             InferredState::Saved(definition) => {
                 // Overwriting strings needs to be possible, because of string annotations
-                let specific_overwrite_is_fine =
-                    |s| matches!(s, Specific::String | Specific::Cycle) || s.is_partial();
-                if p.calculated() && !p.maybe_specific().is_some_and(specific_overwrite_is_fine) {
+                if p.calculated()
+                    && !matches!(p.maybe_specific(), Some(Specific::String | Specific::Cycle))
+                {
                     if ignore_if_already_saved {
                         return self;
                     }
