@@ -1359,8 +1359,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     unreachable!();
                 };
                 let s_t = SliceType::new(self.file, primary_target.index(), slice_type);
-                if let Some(node_ref) = base.maybe_saved_node_ref(i_s.db) {
-                    let point = node_ref.point();
+                if let Some(from) = base.maybe_saved_node_ref(i_s.db) {
+                    let point = from.point();
                     if point.maybe_specific() == Some(Specific::PartialDict)
                         && !point.partial_flags().finished
                     {
@@ -1369,14 +1369,16 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             s_t.infer(i_s).as_type(i_s).avoid_implicit_literal(i_s.db),
                             value.as_type(i_s),
                         );
+                        if new_dict.has_never_from_inference(self.i_s.db) {
+                            from.finish_partial_with_annotation_needed(i_s);
+                            return;
+                        }
                         debug!(
                             r#"Infer dict assignment partial for "{}" as "{}""#,
                             primary_target.as_code(),
                             new_dict.format_short(i_s.db)
                         );
-                        base.maybe_saved_node_ref(i_s.db)
-                            .unwrap()
-                            .insert_complex(ComplexPoint::TypeInstance(new_dict), Locality::Todo);
+                        from.insert_complex(ComplexPoint::TypeInstance(new_dict), Locality::Todo);
                         return;
                     }
                 }
