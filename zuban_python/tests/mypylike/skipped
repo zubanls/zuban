@@ -388,8 +388,6 @@ testWalrusPartialTypes
 # No "Need type annotation for "X"", because untyped update exists
 testInferDictInitializedToEmptyAndUpdatedFromMethodUnannotated
 # needs error because only reassignments with other partial
-testEmptyCollectionAssignedToVariableTwiceIncremental
-testEmptyCollectionAssignedToVariableTwiceNoReadIncremental
 testNewAnalyzerLessErrorsNeedAnnotation
 testInferenceWithUninhabitedType
 # operator narrowing

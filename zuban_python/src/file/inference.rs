@@ -1049,11 +1049,15 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     if t.maybe_class(i_s.db)
                         .is_some_and(|c| c.node_ref == class_node_ref)
                     {
-                        value.clone().save_redirect(
-                            i_s,
-                            self.file,
-                            first_index - NAME_DEF_TO_NAME_DIFFERENCE,
-                        );
+                        if t.has_never_from_inference(i_s.db) {
+                            maybe_saved_node_ref.finish_partial_with_annotation_needed(i_s)
+                        } else {
+                            value.clone().save_redirect(
+                                i_s,
+                                self.file,
+                                first_index - NAME_DEF_TO_NAME_DIFFERENCE,
+                            );
+                        }
                         return true;
                     }
                     if t.is_any() {
