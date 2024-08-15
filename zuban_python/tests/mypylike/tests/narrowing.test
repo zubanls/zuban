@@ -1100,3 +1100,78 @@ x = set()
 if bool():
     x = {1, 2}
 reveal_type(x) # N: Revealed type is "set[int]"
+
+[case module_mutual_flow_analysis1]
+import a
+
+[file a.py]
+# Note: imports cycle
+from b import b
+if bool():
+    a = 1
+else:
+    b + 1
+
+[file b.py]
+from a import a
+if bool():
+    b = 1
+else:
+    a + 1
+
+[case module_mutual_flow_analysis2]
+import a
+
+[file a.py]
+from b import b as x
+if bool():
+    a = 1
+else:
+    x + 1
+
+[file b.py]
+from a import a as y
+if bool():
+    b = 1
+else:
+    y + 1
+[case foo]
+
+[case module_mutual_flow_analysis3]
+# flags: --warn-unreachable
+import a
+[file a.py]
+from b import b as x
+class A: ...
+if isinstance(x, A):
+    reveal_type(x)  # N: Revealed type is "<subclass of "int" and "A">"
+    a = 1
+else:
+    x + 1
+
+[file b.py]
+from a import a as y, A
+class B: ...
+if isinstance(y, B):
+    reveal_type(y)  # N: Revealed type is "<subclass of "int" and "B">"
+    b = y
+else:
+    y + 1
+
+[case module_mutual_flow_analysis4]
+import a
+[file a.py]
+if bool():
+    a = b  # E: Name "b" is used before definition
+else:
+    a = 1
+from b import b
+reveal_type(b)  # N: Revealed type is "Any"
+
+[file b.py]
+if bool():
+    b = a  # E: Name "a" is used before definition
+else:
+    b = a  # E: Name "a" is used before definition
+from a import a
+reveal_type(b)  # N: Revealed type is "Any"
