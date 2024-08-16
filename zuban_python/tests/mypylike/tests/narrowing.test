@@ -1159,6 +1159,7 @@ else:
     y + 1
 
 [case module_mutual_flow_analysis4]
+# Mypy errors are similar but not exactly the same
 import a
 [file a.py]
 if bool():
@@ -1175,3 +1176,48 @@ else:
     b = a  # E: Name "a" is used before definition
 from a import a
 reveal_type(b)  # N: Revealed type is "Any"
+
+[case module_mutual_flow_analysis5]
+# flags: --warn-unreachable
+import a
+[file a.py]
+from b import b
+if b is None:
+    a = None
+else:
+    a = 1
+reveal_type(b)
+
+[file b.py]
+if a is None:
+    b = None
+else:
+    b = a
+from a import a
+reveal_type(b)
+
+[case func_call_should_not_narrow_eagerly]
+# flags: --warn-unreachable
+x: str | int
+x = 1
+def foo() -> str:
+    reveal_type(x)  # N: Revealed type is "str | int"
+    return ""
+
+if bool():
+    x = foo()
+foo()
+
+[case self_access_should_not_narrow_eagerly]
+# flags: --warn-unreachable
+x: str | int
+x = 1
+class A:
+    def __init__(self) -> None:
+        reveal_type(x)  # N: Revealed type is "str | int"
+        self.z = 3
+
+if bool():
+    A().z
+x = ""
+A().z

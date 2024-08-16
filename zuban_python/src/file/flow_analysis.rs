@@ -307,18 +307,19 @@ impl FlowAnalysis {
     }
 
     #[inline]
-    fn top_frame(&self) -> RefMut<Frame> {
+    fn tos_frame(&self) -> RefMut<Frame> {
+        // tos = top of the stack
         RefMut::map(self.frames.borrow_mut(), |frames| {
             frames.last_mut().unwrap()
         })
     }
 
     pub fn enable_reported_unreachable_in_top_frame(&self) {
-        self.top_frame().reported_unreachable = true;
+        self.tos_frame().reported_unreachable = true;
     }
 
     pub fn report_unreachable_if_not_reported_before(&self, callback: impl FnOnce()) {
-        let mut top_frame = self.top_frame();
+        let mut top_frame = self.tos_frame();
         if !top_frame.reported_unreachable {
             top_frame.reported_unreachable = true;
             callback()
@@ -406,7 +407,7 @@ impl FlowAnalysis {
             }
         }
 
-        let mut top_frame = self.top_frame();
+        let mut top_frame = self.tos_frame();
         invalidate_child_entries(&mut top_frame.entries, i_s.db, &new_entry.key);
         let entries = &mut top_frame.entries;
         for entry in &mut *entries {
@@ -446,13 +447,13 @@ impl FlowAnalysis {
     }
 
     fn remove_key_if_modifies_ancestors(&self, i_s: &InferenceState, key: &FlowKey) {
-        self.top_frame()
+        self.tos_frame()
             .entries
             .retain(|entry| !entry.modifies_ancestors || !entry.key.equals(i_s.db, key))
     }
 
     fn overwrite_entries(&self, db: &Database, new_entries: Entries) {
-        let mut top_frame = self.top_frame();
+        let mut top_frame = self.tos_frame();
 
         for entry in &new_entries {
             invalidate_child_entries(&mut top_frame.entries, db, &entry.key);
@@ -472,7 +473,7 @@ impl FlowAnalysis {
 
     fn overwrite_frame(&self, db: &Database, new_frame: Frame) {
         self.overwrite_entries(db, new_frame.entries);
-        self.top_frame().unreachable |= new_frame.unreachable;
+        self.tos_frame().unreachable |= new_frame.unreachable;
     }
 
     pub fn with_new_frame_and_return_unreachable(&self, callable: impl FnOnce()) -> bool {
@@ -536,7 +537,7 @@ impl FlowAnalysis {
     }
 
     pub fn mark_current_frame_unreachable(&self) {
-        self.top_frame().unreachable = true
+        self.tos_frame().unreachable = true
     }
 
     pub fn add_partial(&self, defined_at: PointLink) {
@@ -1551,13 +1552,13 @@ impl Inference<'_, '_, '_> {
             let old_unreachable = fa.is_unreachable();
             // TODO this if is wrong and should not be here. Please remove once we recheck finally
             if old_unreachable {
-                fa.top_frame().unreachable = false;
+                fa.tos_frame().unreachable = false;
             }
             if let Some(finally_block) = finally_block {
                 self.calc_block_diagnostics(finally_block.block(), class, func)
             }
             if old_unreachable {
-                fa.top_frame().unreachable = old_unreachable;
+                fa.tos_frame().unreachable = old_unreachable;
             }
         })
     }
