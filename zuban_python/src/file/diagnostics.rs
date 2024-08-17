@@ -141,6 +141,7 @@ impl<'db> Inference<'db, '_, '_> {
                 self.ensure_func_diagnostics_and_finish_partials(fa, func);
             });
             fa.check_for_unfinished_partials(self.i_s);
+            fa.debug_assert_is_empty();
         });
         for complex_point in unsafe { self.file.complex_points.iter() } {
             if let ComplexPoint::NewTypeDefinition(n) = complex_point {

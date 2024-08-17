@@ -288,12 +288,29 @@ impl FlowAnalysis {
         let loop_details = std::mem::take(&mut *self.loop_details.borrow_mut());
         let delayed = std::mem::take(&mut *self.delayed_func_diagnostics.borrow_mut());
         let partials = std::mem::take(&mut *self.partials_in_module.borrow_mut());
+        let in_type_checking_only_block = self.in_type_checking_only_block.take();
+        let accumulating_types = self.accumulating_types.take();
         callable();
+        self.debug_assert_is_empty();
         *self.frames.borrow_mut() = old_frames;
         *self.try_frames.borrow_mut() = try_frames;
         *self.loop_details.borrow_mut() = loop_details;
         *self.delayed_func_diagnostics.borrow_mut() = delayed;
         *self.partials_in_module.borrow_mut() = partials;
+        self.in_type_checking_only_block
+            .set(in_type_checking_only_block);
+        self.accumulating_types.set(accumulating_types);
+    }
+
+    pub fn debug_assert_is_empty(&self) {
+        debug_assert!(self.frames.borrow().is_empty());
+        debug_assert!(self.try_frames.borrow().is_empty());
+        debug_assert!(self.loop_details.borrow().is_none());
+        debug_assert!(self.delayed_func_diagnostics.borrow().is_empty());
+        debug_assert!(self.partials_in_module.borrow().is_empty());
+        debug_assert!(!self.in_type_checking_only_block.get());
+        debug_assert!(!self.in_type_checking_only_block.get());
+        debug_assert_eq!(self.accumulating_types.get(), 0);
     }
 
     fn lookup_narrowed_key_and_deleted(
