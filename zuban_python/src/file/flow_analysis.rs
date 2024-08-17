@@ -282,6 +282,20 @@ pub struct FlowAnalysis {
 }
 
 impl FlowAnalysis {
+    fn with_new_empty(&self, callable: impl FnOnce()) {
+        let old_frames = std::mem::take(&mut *self.frames.borrow_mut());
+        let try_frames = std::mem::take(&mut *self.try_frames.borrow_mut());
+        let loop_details = std::mem::take(&mut *self.loop_details.borrow_mut());
+        let delayed = std::mem::take(&mut *self.delayed_func_diagnostics.borrow_mut());
+        let partials = std::mem::take(&mut *self.partials_in_module.borrow_mut());
+        callable();
+        *self.frames.borrow_mut() = old_frames;
+        *self.try_frames.borrow_mut() = try_frames;
+        *self.loop_details.borrow_mut() = loop_details;
+        *self.delayed_func_diagnostics.borrow_mut() = delayed;
+        *self.partials_in_module.borrow_mut() = partials;
+    }
+
     fn lookup_narrowed_key_and_deleted(
         &self,
         db: &Database,
@@ -1173,10 +1187,12 @@ impl Inference<'_, '_, '_> {
             );
             let func_def = param_name.as_name().expect_as_param_of_function();
             FLOW_ANALYSIS.with(|fa| {
-                self.ensure_func_diagnostics_and_finish_partials(
-                    fa,
-                    Function::new(NodeRef::new(self.file, func_def.index()), Some(c)),
-                )
+                fa.with_new_empty(|| {
+                    self.ensure_func_diagnostics_and_finish_partials(
+                        fa,
+                        Function::new(NodeRef::new(self.file, func_def.index()), Some(c)),
+                    )
+                })
             });
         }
         self.infer_name_of_definition_by_index(self_symbol)

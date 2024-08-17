@@ -551,7 +551,6 @@ testNoneBindingStarredWildcardPattern
 testMultipassAndCircularDependency
 testNarrowOptionalOutsideLambdaWithDeferred
 module_mutual_flow_analysis5
-self_access_should_not_narrow_eagerly
 
 # The type "Type[type]" is not generic and not indexable
 testTypeApplicationCrash
