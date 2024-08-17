@@ -548,7 +548,6 @@ testNoneBindingWildcardPattern
 testNoneBindingStarredWildcardPattern
 
 # "Cannot determine type of" recursion errors
-testMultipassAndCircularDependency
 testNarrowOptionalOutsideLambdaWithDeferred
 module_mutual_flow_analysis5
 

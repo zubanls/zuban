@@ -283,11 +283,11 @@ pub struct FlowAnalysis {
 
 impl FlowAnalysis {
     fn with_new_empty(&self, callable: impl FnOnce()) {
-        let old_frames = std::mem::take(&mut *self.frames.borrow_mut());
-        let try_frames = std::mem::take(&mut *self.try_frames.borrow_mut());
-        let loop_details = std::mem::take(&mut *self.loop_details.borrow_mut());
-        let delayed = std::mem::take(&mut *self.delayed_func_diagnostics.borrow_mut());
-        let partials = std::mem::take(&mut *self.partials_in_module.borrow_mut());
+        let old_frames = self.frames.take();
+        let try_frames = self.try_frames.take();
+        let loop_details = self.loop_details.take();
+        let delayed = self.delayed_func_diagnostics.take();
+        let partials = self.partials_in_module.take();
         let in_type_checking_only_block = self.in_type_checking_only_block.take();
         let accumulating_types = self.accumulating_types.take();
         callable();
@@ -600,24 +600,26 @@ impl FlowAnalysis {
     }
 
     pub fn process_delayed_funcs<'db>(&self, db: &Database, callback: impl Fn(Function)) {
-        while let Some(delayed) = {
-            let mut borrowed = self.delayed_func_diagnostics.borrow_mut();
-            let result = borrowed.pop();
-            drop(borrowed);
-            result
-        } {
-            let func = Function::new(
-                NodeRef::from_link(db, delayed.func),
-                delayed
-                    .class
-                    .map(|c| Class::with_self_generics(db, NodeRef::from_link(db, c))),
-            );
-            if delayed.in_type_checking_only_block {
-                self.with_in_type_checking_only_block(|| callback(func))
-            } else {
-                callback(func)
+        loop {
+            let delayed_funcs = self.delayed_func_diagnostics.take();
+            if delayed_funcs.is_empty() {
+                break;
+            }
+            for delayed in delayed_funcs {
+                let func = Function::new(
+                    NodeRef::from_link(db, delayed.func),
+                    delayed
+                        .class
+                        .map(|c| Class::with_self_generics(db, NodeRef::from_link(db, c))),
+                );
+                if delayed.in_type_checking_only_block {
+                    self.with_in_type_checking_only_block(|| callback(func))
+                } else {
+                    callback(func)
+                }
             }
         }
+        debug_assert!(self.delayed_func_diagnostics.borrow().is_empty())
     }
 
     pub fn start_accumulating_types(&self) {
