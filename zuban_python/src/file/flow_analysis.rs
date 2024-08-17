@@ -282,7 +282,7 @@ pub struct FlowAnalysis {
 }
 
 impl FlowAnalysis {
-    fn with_new_empty<T>(&self, callable: impl FnOnce() -> T) -> T {
+    pub fn with_new_empty<T>(&self, callable: impl FnOnce() -> T) -> T {
         let old_frames = self.frames.take();
         let try_frames = self.try_frames.take();
         let loop_details = self.loop_details.take();
@@ -290,8 +290,10 @@ impl FlowAnalysis {
         let partials = self.partials_in_module.take();
         let in_type_checking_only_block = self.in_type_checking_only_block.take();
         let accumulating_types = self.accumulating_types.take();
+
         let result = callable();
         self.debug_assert_is_empty();
+
         *self.frames.borrow_mut() = old_frames;
         *self.try_frames.borrow_mut() = try_frames;
         *self.loop_details.borrow_mut() = loop_details;

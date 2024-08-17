@@ -131,18 +131,24 @@ lazy_static::lazy_static! {
 impl<'db> Inference<'db, '_, '_> {
     pub fn calculate_diagnostics(&self) {
         FLOW_ANALYSIS.with(|fa| {
-            fa.with_new_frame_and_return_unreachable(|| {
-                self.calc_stmts_diagnostics(self.file.tree.root().iter_stmt_likes(), None, None);
-            });
-            if self.flags().local_partial_types {
+            fa.with_new_empty(|| {
+                fa.with_new_frame_and_return_unreachable(|| {
+                    self.calc_stmts_diagnostics(
+                        self.file.tree.root().iter_stmt_likes(),
+                        None,
+                        None,
+                    );
+                });
+                if self.flags().local_partial_types {
+                    fa.check_for_unfinished_partials(self.i_s);
+                }
+                fa.process_delayed_funcs(self.i_s.db, |func| {
+                    let result = self.ensure_func_diagnostics_and_finish_partials(fa, func);
+                    debug_assert!(result.is_ok());
+                });
                 fa.check_for_unfinished_partials(self.i_s);
-            }
-            fa.process_delayed_funcs(self.i_s.db, |func| {
-                let result = self.ensure_func_diagnostics_and_finish_partials(fa, func);
-                debug_assert!(result.is_ok());
-            });
-            fa.check_for_unfinished_partials(self.i_s);
-            fa.debug_assert_is_empty();
+                fa.debug_assert_is_empty();
+            })
         });
         for complex_point in unsafe { self.file.complex_points.iter() } {
             if let ComplexPoint::NewTypeDefinition(n) = complex_point {

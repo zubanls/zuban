@@ -360,6 +360,9 @@ testOptionalBackwards4
 # Never for isinstance leads to other side being unreachable
 testPartialAttributeNoneTypeStrictOptional
 
+module_mutual_flow_analysis5
+module_mutual_flow_analysis6
+module_mutual_flow_analysis7
 # self flow analysis regressions
 testAccessAttributeDeclaredInInitBeforeDeclaration
 testGenericTypeAliasesImporting
@@ -546,9 +549,6 @@ testMatchUndefinedValuePattern
 testMatchUndefinedClassPattern
 testNoneBindingWildcardPattern
 testNoneBindingStarredWildcardPattern
-
-# "Cannot determine type of" recursion errors
-module_mutual_flow_analysis5
 
 # The type "Type[type]" is not generic and not indexable
 testTypeApplicationCrash

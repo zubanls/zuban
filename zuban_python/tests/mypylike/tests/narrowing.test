@@ -1196,6 +1196,37 @@ else:
 from a import a
 reveal_type(b)
 
+[case module_mutual_flow_analysis6]
+# flags: --warn-unreachable
+import a
+[file a.py]
+from b import b
+if b is None:
+    a = None
+else:
+    a = 1
+reveal_type(b)
+
+[file b.py]
+from a import a
+if a is None:
+    b = None
+else:
+    b = a
+reveal_type(b)
+
+[case module_mutual_flow_analysis7]
+# flags: --warn-unreachable
+import a
+reveal_type(a.foo)  # N: Revealed type is "int | None"
+[file a.py]
+if bool():
+    bar = None
+else:
+    bar = 1
+foo = bar
+reveal_type(foo)  # N: Revealed type is "int | None"
+
 [case func_call_should_not_narrow_eagerly]
 # flags: --warn-unreachable
 x: str | int
