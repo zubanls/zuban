@@ -138,7 +138,8 @@ impl<'db> Inference<'db, '_, '_> {
                 fa.check_for_unfinished_partials(self.i_s);
             }
             fa.process_delayed_funcs(self.i_s.db, |func| {
-                self.ensure_func_diagnostics_and_finish_partials(fa, func);
+                let result = self.ensure_func_diagnostics_and_finish_partials(fa, func);
+                debug_assert!(result.is_ok());
             });
             fa.check_for_unfinished_partials(self.i_s);
             fa.debug_assert_is_empty();
@@ -821,7 +822,7 @@ impl<'db> Inference<'db, '_, '_> {
         }
 
         if in_func.is_some() {
-            self.ensure_func_diagnostics(function)
+            let _ = self.ensure_func_diagnostics(function);
         } else {
             FLOW_ANALYSIS.with(|fa| {
                 fa.add_delayed_func(
@@ -832,12 +833,15 @@ impl<'db> Inference<'db, '_, '_> {
         }
     }
 
-    pub fn ensure_func_diagnostics(&self, function: Function) {
+    pub fn ensure_func_diagnostics(&self, function: Function) -> Result<(), ()> {
         let func_node = function.node();
         let from = NodeRef::new(self.file, func_node.body().index());
         let p = from.point();
         if p.calculated() {
-            return;
+            return Ok(());
+        }
+        if p.calculating() {
+            return Err(());
         }
         from.set_point(Point::new_calculating());
         debug_indent(|| {
@@ -845,6 +849,7 @@ impl<'db> Inference<'db, '_, '_> {
             self.calc_func_diagnostics(function, func_node)
         });
         from.set_point(Point::new_node_analysis(Locality::Todo));
+        Ok(())
     }
 
     fn calc_func_diagnostics(&self, function: Function, func_node: FunctionDef) {

@@ -376,7 +376,10 @@ impl<'a> Instance<'a> {
         if let Some((c, self_symbol)) = self_lookup {
             let i_s = i_s.with_class_context(&c);
             let inference = c.node_ref.file.inference(&i_s);
-            let inf = inference.self_lookup_with_flow_analysis(c, self_symbol);
+            let Ok(inf) = inference.self_lookup_with_flow_analysis(c, self_symbol) else {
+                (options.add_issue)(IssueKind::CannotDetermineType { for_: name.into() });
+                return LookupDetails::any(AnyCause::FromError);
+            };
             if inf.maybe_saved_specific(i_s.db) == Some(Specific::AnnotationOrTypeCommentFinal) {
                 attr_kind = AttributeKind::Final
             }

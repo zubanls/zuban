@@ -282,7 +282,7 @@ pub struct FlowAnalysis {
 }
 
 impl FlowAnalysis {
-    fn with_new_empty(&self, callable: impl FnOnce()) {
+    fn with_new_empty<T>(&self, callable: impl FnOnce() -> T) -> T {
         let old_frames = self.frames.take();
         let try_frames = self.try_frames.take();
         let loop_details = self.loop_details.take();
@@ -290,7 +290,7 @@ impl FlowAnalysis {
         let partials = self.partials_in_module.take();
         let in_type_checking_only_block = self.in_type_checking_only_block.take();
         let accumulating_types = self.accumulating_types.take();
-        callable();
+        let result = callable();
         self.debug_assert_is_empty();
         *self.frames.borrow_mut() = old_frames;
         *self.try_frames.borrow_mut() = try_frames;
@@ -300,6 +300,7 @@ impl FlowAnalysis {
         self.in_type_checking_only_block
             .set(in_type_checking_only_block);
         self.accumulating_types.set(accumulating_types);
+        result
     }
 
     pub fn debug_assert_is_empty(&self) {
@@ -1182,17 +1183,15 @@ impl Inference<'_, '_, '_> {
         })
     }
 
-    pub fn self_lookup_with_flow_analysis(&self, c: Class, self_symbol: NodeIndex) -> Inferred {
+    pub fn self_lookup_with_flow_analysis(
+        &self,
+        c: Class,
+        self_symbol: NodeIndex,
+    ) -> Result<Inferred, ()> {
         let name_def_node_ref = NodeRef::new(self.file, self_symbol - NAME_DEF_TO_NAME_DIFFERENCE);
         let p = name_def_node_ref.point();
         if p.calculating() {
-            name_def_node_ref.add_issue(
-                self.i_s,
-                IssueKind::CannotDetermineType {
-                    for_: name_def_node_ref.as_code().into(),
-                },
-            );
-            return Inferred::new_any(AnyCause::FromError);
+            return Err(());
         }
         if !p.calculated() {
             // This is due to the fact that the nodes before <name> in self.<name> are
@@ -1211,7 +1210,7 @@ impl Inference<'_, '_, '_> {
                     == Specific::MaybeSelfParam
             );
             let func_def = param_name_node_ref.as_name().expect_as_param_of_function();
-            FLOW_ANALYSIS.with(|fa| {
+            let result = FLOW_ANALYSIS.with(|fa| {
                 fa.with_new_empty(|| {
                     self.ensure_func_diagnostics_and_finish_partials(
                         fa,
@@ -1219,17 +1218,21 @@ impl Inference<'_, '_, '_> {
                     )
                 })
             });
+            if result.is_err() {
+                return Err(());
+            }
         }
-        self.infer_name_of_definition_by_index(self_symbol)
+        Ok(self.infer_name_of_definition_by_index(self_symbol))
     }
 
     pub fn ensure_func_diagnostics_and_finish_partials(
         &self,
         fa: &FlowAnalysis,
         function: Function,
-    ) {
-        self.ensure_func_diagnostics(function);
+    ) -> Result<(), ()> {
+        let result = self.ensure_func_diagnostics(function);
         fa.check_for_unfinished_partials(self.i_s);
+        result
     }
 
     pub fn flow_analysis_for_ternary(
