@@ -1164,28 +1164,34 @@ impl Inference<'_, '_, '_> {
     }
 
     pub fn self_lookup_with_flow_analysis(&self, c: Class, self_symbol: NodeIndex) -> Inferred {
-        if !self
-            .file
-            .points
-            .get(self_symbol - NAME_DEF_TO_NAME_DIFFERENCE)
-            .calculated()
-        {
+        let name_def_node_ref = NodeRef::new(self.file, self_symbol - NAME_DEF_TO_NAME_DIFFERENCE);
+        let p = name_def_node_ref.point();
+        if p.calculating() {
+            name_def_node_ref.add_issue(
+                self.i_s,
+                IssueKind::CannotDetermineType {
+                    for_: name_def_node_ref.as_code().into(),
+                },
+            );
+            return Inferred::new_any(AnyCause::FromError);
+        }
+        if !p.calculated() {
             // This is due to the fact that the nodes before <name> in self.<name> are
             // name_definition, `.` and then finally `self`.
             let self_index = self_symbol - NAME_DEF_TO_NAME_DIFFERENCE - 2;
-            let param_name = self
+            let param_name_node_ref = self
                 .file
                 .points
                 .get(self_index)
                 .as_redirected_node_ref(self.i_s.db);
             debug_assert!(
-                param_name
+                param_name_node_ref
                     .add_to_node_index(-(NAME_DEF_TO_NAME_DIFFERENCE as i64))
                     .point()
                     .specific()
                     == Specific::MaybeSelfParam
             );
-            let func_def = param_name.as_name().expect_as_param_of_function();
+            let func_def = param_name_node_ref.as_name().expect_as_param_of_function();
             FLOW_ANALYSIS.with(|fa| {
                 fa.with_new_empty(|| {
                     self.ensure_func_diagnostics_and_finish_partials(

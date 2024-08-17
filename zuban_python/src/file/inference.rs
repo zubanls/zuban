@@ -470,12 +470,11 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
 
     fn set_calculating_on_target(&self, target: Target) {
         match target {
-            Target::Name(name_def) => {
+            Target::Name(name_def) | Target::NameExpression(_, name_def) => {
                 self.file
                     .points
                     .set(name_def.index(), Point::new_calculating());
             }
-            Target::NameExpression(primary_target, name_def_node) => (),
             Target::IndexExpression(t) => (),
             Target::Tuple(targets) => {
                 for target in targets {
