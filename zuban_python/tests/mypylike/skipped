@@ -549,7 +549,6 @@ testNoneBindingStarredWildcardPattern
 
 # "Cannot determine type of" recursion errors
 module_mutual_flow_analysis5
-testMultipassAndCircularDependency
 
 # The type "Type[type]" is not generic and not indexable
 testTypeApplicationCrash

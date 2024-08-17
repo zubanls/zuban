@@ -601,23 +601,22 @@ impl FlowAnalysis {
     }
 
     pub fn process_delayed_funcs<'db>(&self, db: &Database, callback: impl Fn(Function)) {
-        loop {
-            let delayed_funcs = self.delayed_func_diagnostics.take();
-            if delayed_funcs.is_empty() {
-                break;
-            }
-            for delayed in delayed_funcs {
-                let func = Function::new(
-                    NodeRef::from_link(db, delayed.func),
-                    delayed
-                        .class
-                        .map(|c| Class::with_self_generics(db, NodeRef::from_link(db, c))),
-                );
-                if delayed.in_type_checking_only_block {
-                    self.with_in_type_checking_only_block(|| callback(func))
-                } else {
-                    callback(func)
-                }
+        while let Some(delayed) = {
+            let mut borrowed = self.delayed_func_diagnostics.borrow_mut();
+            let result = borrowed.pop();
+            drop(borrowed);
+            result
+        } {
+            let func = Function::new(
+                NodeRef::from_link(db, delayed.func),
+                delayed
+                    .class
+                    .map(|c| Class::with_self_generics(db, NodeRef::from_link(db, c))),
+            );
+            if delayed.in_type_checking_only_block {
+                self.with_in_type_checking_only_block(|| callback(func))
+            } else {
+                callback(func)
             }
         }
         debug_assert!(self.delayed_func_diagnostics.borrow().is_empty())
