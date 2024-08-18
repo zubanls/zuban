@@ -225,7 +225,7 @@ impl<'db> NameBinder<'db> {
         loop {
             let point = self.db_infos.points.get(latest_name_index);
             if point.calculated()
-                && point.kind() == PointKind::MultiDefinition
+                && point.specific() == Specific::NameOfNameDef
                 && point.node_index() > first_index
             {
                 debug_assert_ne!(latest_name_index, point.node_index());
@@ -235,13 +235,13 @@ impl<'db> NameBinder<'db> {
                 self.references_need_flow_analysis = true;
                 self.db_infos.points.set(
                     latest_name_index,
-                    Point::new_multi_definition(new_index, Locality::File),
+                    Point::new_name_of_name_def(new_index, Locality::File),
                 );
                 // Here we create a loop, so it's easy to find the relevant definitions from
                 // any point.
                 self.db_infos.points.set(
                     new_index,
-                    Point::new_multi_definition(first_index, Locality::File),
+                    Point::new_name_of_name_def(first_index, Locality::File),
                 );
                 break;
             }
@@ -1054,7 +1054,7 @@ impl<'db> NameBinder<'db> {
 
     fn has_specific_in_multi_definitions(&self, name_index: NodeIndex, search: Specific) -> bool {
         let p = self.db_infos.points.get(name_index);
-        if p.calculated() && p.kind() == PointKind::MultiDefinition {
+        if p.calculated() && p.specific() == Specific::NameOfNameDef {
             MultiDefinitionIterator::new(self.db_infos.points, name_index).any(|index| {
                 self.db_infos
                     .points

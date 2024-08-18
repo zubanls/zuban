@@ -95,9 +95,11 @@ impl Point {
         Self { flags, node_index }
     }
 
-    pub fn new_multi_definition(node_index: NodeIndex, locality: Locality) -> Self {
-        let flags = Self::calculate_flags(PointKind::MultiDefinition, 0, locality);
-        Self { flags, node_index }
+    pub fn new_name_of_name_def(node_index: NodeIndex, locality: Locality) -> Self {
+        Self {
+            node_index,
+            ..Self::new_specific(Specific::NameOfNameDef, locality)
+        }
     }
 
     pub fn new_complex_point(complex_index: u32, locality: Locality) -> Self {
@@ -207,7 +209,7 @@ impl Point {
         debug_assert!(
             self.kind() == PointKind::Redirect
                 || self.kind() == PointKind::NodeAnalysis
-                || self.kind() == PointKind::MultiDefinition
+                || matches!(self.maybe_specific(), Some(Specific::NameOfNameDef))
         );
         self.node_index
     }
@@ -365,7 +367,6 @@ pub enum PointKind {
     Specific,
     Complex,
     Redirect,
-    MultiDefinition,
     FileReference,
     // Basically stuff like if/for nodes
     NodeAnalysis,
@@ -378,6 +379,7 @@ pub enum Specific {
     ReservedBecauseUnused,
     Calculating,
     Cycle,
+    NameOfNameDef, // Cycles for the same name definition in e.g. different branches
     OverloadUnreachable,
     AnyDueToError,
     InvalidTypeDefinition,

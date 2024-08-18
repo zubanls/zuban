@@ -4850,13 +4850,15 @@ pub(super) fn check_type_name<'db: 'file, 'file>(
             let point = name_node_ref.point();
             if point.calculated() {
                 if let Some(specific) = point.maybe_specific() {
-                    debug!(
-                        "Found an unexpected specific {specific:?} for {}",
-                        new_name.as_code()
-                    );
-                    return TypeNameLookup::InvalidVariable(InvalidVariableType::Variable(
-                        name_node_ref,
-                    ));
+                    if specific != Specific::NameOfNameDef {
+                        debug!(
+                            "Found an unexpected specific {specific:?} for {}",
+                            new_name.as_code()
+                        );
+                        return TypeNameLookup::InvalidVariable(InvalidVariableType::Variable(
+                            name_node_ref,
+                        ));
+                    }
                 }
             }
             // At this point the class is not necessarily calculated and we therefore do this here.

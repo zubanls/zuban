@@ -2035,7 +2035,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 .is_none()
             {
                 let point = name_node_ref.point();
-                if point.calculated() && point.kind() == PointKind::MultiDefinition {
+                if point.calculated() && point.maybe_specific() == Some(Specific::NameOfNameDef) {
                     NodeRef::new(self.node_ref.file, point.node_index()).add_issue(
                         i_s,
                         IssueKind::EnumReusedMemberName {
@@ -2082,7 +2082,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 TypeLike::ImportFromAsName(_) | TypeLike::DottedAsName(_) => continue,
                 TypeLike::Function(_) => {
                     let p = name_node_ref.point();
-                    if p.calculated() && p.kind() == PointKind::MultiDefinition {
+                    if p.calculated() && p.maybe_specific() == Some(Specific::NameOfNameDef) {
                         let mut has_overload = false;
                         let mut has_non_overload = false;
                         for index in MultiDefinitionIterator::new(&file.points, name_index) {

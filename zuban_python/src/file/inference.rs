@@ -3236,13 +3236,19 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             )
                         }
                     }
+                    Specific::NameOfNameDef => {
+                        // MultiDefinition means we are on a Name that has a NameDef as a
+                        // parent.
+                        let name = Name::by_index(&self.file.tree, node_index);
+                        self.infer_name_def(name.name_def().unwrap())
+                    }
                     Specific::LazyInferredClass => {
                         // TODO this does not analyze decorators
                         let name_def = NameDef::by_index(&self.file.tree, node_index);
                         let class = name_def.expect_class_def();
                         // Avoid overwriting multi definitions
-                        if self.file.points.get(name_def.name().index()).kind()
-                            == PointKind::MultiDefinition
+                        if self.file.points.get(name_def.name().index()).specific()
+                            == Specific::NameOfNameDef
                         {
                             todo!()
                         }
@@ -3256,12 +3262,6 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     }
                     _ => Inferred::new_saved(self.file, node_index),
                 },
-                PointKind::MultiDefinition => {
-                    // MultiDefinition means we are on a Name that has a NameDef as a
-                    // parent.
-                    let name = Name::by_index(&self.file.tree, node_index);
-                    self.infer_name_def(name.name_def().unwrap())
-                }
                 PointKind::Complex | PointKind::FileReference => {
                     Inferred::new_saved(self.file, node_index)
                 }
@@ -3750,7 +3750,7 @@ pub fn first_defined_name_of_multi_def(
     if !point.calculated() {
         return None;
     }
-    if point.kind() != PointKind::MultiDefinition {
+    if point.specific() != Specific::NameOfNameDef {
         // Happens e.g. for the definition of builtins.type
         debug_assert_eq!(point.kind(), PointKind::Specific, "{point:?}");
         return None;
@@ -3759,7 +3759,7 @@ pub fn first_defined_name_of_multi_def(
     loop {
         let point = file.points.get(current);
         debug_assert!(point.calculated());
-        debug_assert_eq!(point.kind(), PointKind::MultiDefinition);
+        debug_assert_eq!(point.specific(), Specific::NameOfNameDef);
         // Here we circle through multi definitions to find the first one.
         // Note that multi definition links loop, i.e. A -> B -> C -> A.
         let next = point.node_index();

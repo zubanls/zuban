@@ -10,7 +10,7 @@ use crate::{
     arguments::{Arg, Args, KnownArgs},
     database::{
         ComplexPoint, Database, Locality, OverloadDefinition, OverloadImplementation, Point,
-        PointKind, PointLink, Specific,
+        PointLink, Specific,
     },
     debug,
     diagnostics::{Issue, IssueKind},
@@ -941,7 +941,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             if !point.calculated() {
                 break;
             }
-            debug_assert_eq!(point.kind(), PointKind::MultiDefinition);
+            debug_assert_eq!(point.specific(), Specific::NameOfNameDef);
             current_name_index = point.node_index();
             if current_name_index <= first_index {
                 break;
@@ -1045,7 +1045,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             if !point.calculated() {
                 break;
             }
-            debug_assert_eq!(point.kind(), PointKind::MultiDefinition);
+            debug_assert_eq!(point.specific(), Specific::NameOfNameDef);
             current_name_index = point.node_index();
             if current_name_index <= first_index {
                 break;

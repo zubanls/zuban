@@ -15,8 +15,8 @@ use super::{
 use crate::{
     config::{set_flag_and_return_ignore_errors, IniOrTomlValue},
     database::{
-        ComplexPoint, Database, FileIndex, Locality, LocalityLink, Point, PointKind, PointLink,
-        Points, PythonProject, Specific,
+        ComplexPoint, Database, FileIndex, Locality, LocalityLink, Point, PointLink, Points,
+        PythonProject, Specific,
     },
     debug,
     diagnostics::{Diagnostic, DiagnosticConfig, Diagnostics, Issue, IssueKind},
@@ -547,7 +547,7 @@ impl<'db> PythonFile {
             Some(dunder_all)
         };
         let p = self.points.get(dunder_all_index);
-        if p.calculated() && p.kind() == PointKind::MultiDefinition {
+        if p.calculated() && p.maybe_specific() == Some(Specific::NameOfNameDef) {
             for index in MultiDefinitionIterator::new(&self.points, dunder_all_index) {
                 let name = NodeRef::new(self, index as NodeIndex).as_name();
                 dunder_all = check_multi_def(dunder_all, name)?
@@ -834,7 +834,10 @@ pub struct MultiDefinitionIterator<'a> {
 
 impl<'a> MultiDefinitionIterator<'a> {
     pub fn new(points: &'a Points, start: NodeIndex) -> Self {
-        debug_assert_eq!(points.get(start).kind(), PointKind::MultiDefinition);
+        debug_assert_eq!(
+            points.get(start).maybe_specific(),
+            Some(Specific::NameOfNameDef)
+        );
         Self {
             points,
             start,
@@ -848,7 +851,7 @@ impl Iterator for MultiDefinitionIterator<'_> {
 
     fn next(&mut self) -> Option<Self::Item> {
         let p = self.points.get(self.current);
-        debug_assert_eq!(p.kind(), PointKind::MultiDefinition);
+        debug_assert_eq!(p.maybe_specific(), Some(Specific::NameOfNameDef));
         let next = p.node_index();
         if next == self.start {
             None
