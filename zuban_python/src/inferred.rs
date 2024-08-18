@@ -364,9 +364,6 @@ impl<'db: 'slf, 'slf> Inferred {
             let definition = NodeRef::from_link(i_s.db, link);
             if let Some(specific) = definition.point().maybe_specific() {
                 match specific {
-                    Specific::Closure => {
-                        todo!()
-                    }
                     Specific::Param | Specific::MaybeSelfParam => {
                         todo!("might not even happen - remove")
                         //return i_s.infer_param(&definition);

@@ -3242,24 +3242,6 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         let name = Name::by_index(&self.file.tree, node_index);
                         self.infer_name_def(name.name_def().unwrap())
                     }
-                    Specific::LazyInferredClass => {
-                        // TODO this does not analyze decorators
-                        let name_def = NameDef::by_index(&self.file.tree, node_index);
-                        let class = name_def.expect_class_def();
-                        // Avoid overwriting multi definitions
-                        if self.file.points.get(name_def.name().index()).specific()
-                            == Specific::NameOfNameDef
-                        {
-                            todo!()
-                        }
-                        self.file.points.set(
-                            name_def.index(),
-                            Point::new_redirect(self.file_index, class.index(), Locality::Todo),
-                        );
-                        debug_assert!(self.file.points.get(node_index).calculated());
-                        todo!();
-                        //self.check_point_cache(node_index).unwrap()
-                    }
                     _ => Inferred::new_saved(self.file, node_index),
                 },
                 PointKind::Complex | PointKind::FileReference => {

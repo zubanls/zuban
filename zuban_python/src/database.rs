@@ -409,9 +409,7 @@ pub enum Specific {
 
     MaybeSelfParam,
     Param,
-    LazyInferredClass, // A class that will be inferred later.
-    Function,          // The node point so the index of the result
-    Closure,           // TODO remove this?
+    Function, // The node point so the index of the result
 
     // A class with either SimpleGeneric or just a class that contains no generics
     AnnotationOrTypeCommentSimpleClassInstance,
