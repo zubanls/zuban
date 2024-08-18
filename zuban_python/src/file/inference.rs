@@ -3719,23 +3719,11 @@ fn get_generator_return_type(db: &Database, t: &Type) -> Type {
 }
 
 pub fn first_defined_name(file: &PythonFile, name_index: NodeIndex) -> NodeIndex {
-    first_defined_name_of_multi_def(file, name_index).unwrap_or(name_index)
-}
-
-pub fn first_defined_name_of_multi_def(
-    file: &PythonFile,
-    name_index: NodeIndex,
-) -> Option<NodeIndex> {
-    // Returns the first definition, if the name_index is a later definition.
-
     let point = file.points.get(name_index);
-    if !point.calculated() {
-        return None;
-    }
-    if point.specific() != Specific::NameOfNameDef {
-        // Happens e.g. for the definition of builtins.type
-        debug_assert_eq!(point.kind(), PointKind::Specific, "{point:?}");
-        return None;
+    if !point.calculated() || point.specific() != Specific::NameOfNameDef {
+        // Happens e.g. for the definition of builtins.type (overwritten in python_state.rs)
+        // Or definitions of names that look like self (e.g. in testInferAttributeInitializedToEmptyNonSelf)
+        return name_index;
     }
     let mut current = point.node_index();
     loop {
@@ -3746,14 +3734,19 @@ pub fn first_defined_name_of_multi_def(
         // Note that multi definition links loop, i.e. A -> B -> C -> A.
         let next = point.node_index();
         if next <= current {
-            if next == name_index {
-                return None;
-            }
-            debug_assert_ne!(next, current);
-            return Some(next);
+            return next;
         }
         current = next;
     }
+}
+
+pub fn first_defined_name_of_multi_def(
+    file: &PythonFile,
+    name_index: NodeIndex,
+) -> Option<NodeIndex> {
+    // Returns the first definition, if the name_index is a later definition.
+    let first = first_defined_name(file, name_index);
+    (first != name_index).then_some(first)
 }
 
 pub fn await_(

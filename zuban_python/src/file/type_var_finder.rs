@@ -285,12 +285,13 @@ fn follow_name<'db>(
     let p = node_ref.point();
     if p.calculated() {
         if let Some(specific) = p.maybe_specific() {
-            return Err(match specific {
-                Specific::TypingGeneric => BaseLookup::Generic,
-                Specific::TypingProtocol => BaseLookup::Protocol,
-                Specific::TypingCallable => BaseLookup::Callable,
-                _ => BaseLookup::Other,
-            });
+            match specific {
+                Specific::TypingGeneric => return Err(BaseLookup::Generic),
+                Specific::TypingProtocol => return Err(BaseLookup::Protocol),
+                Specific::TypingCallable => return Err(BaseLookup::Callable),
+                Specific::NameOfNameDef => (),
+                _ => return Err(BaseLookup::Other),
+            }
         }
     }
     if let Some(name) = node_ref.maybe_name() {

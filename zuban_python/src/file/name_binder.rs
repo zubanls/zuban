@@ -216,6 +216,11 @@ impl<'db> NameBinder<'db> {
             self.ensure_multi_definition(name_def, first)
         } else {
             self.symbol_table.add_or_replace_symbol(name_def.name());
+            let name_index = name_def.name_index();
+            self.db_infos.points.set(
+                name_index,
+                Point::new_name_of_name_def(name_index, Locality::File),
+            );
         }
         self.db_infos.points.set(name_def.index(), point);
     }
@@ -713,6 +718,11 @@ impl<'db> NameBinder<'db> {
                     self.ensure_multi_definition(name.name_def().unwrap(), index)
                 } else {
                     symbol_table.add_or_replace_symbol(name);
+                    let name_index = name.index();
+                    self.db_infos.points.set(
+                        name_index,
+                        Point::new_name_of_name_def(name_index, Locality::File),
+                    );
                 }
             }
         }
@@ -1054,7 +1064,14 @@ impl<'db> NameBinder<'db> {
 
     fn has_specific_in_multi_definitions(&self, name_index: NodeIndex, search: Specific) -> bool {
         let p = self.db_infos.points.get(name_index);
-        if p.calculated() && p.specific() == Specific::NameOfNameDef {
+        debug_assert_eq!(p.specific(), Specific::NameOfNameDef);
+        if p.node_index() == name_index {
+            self.db_infos
+                .points
+                .get(name_index - NAME_DEF_TO_NAME_DIFFERENCE)
+                .maybe_calculated_and_specific()
+                .is_some_and(|specific| specific == search)
+        } else {
             MultiDefinitionIterator::new(self.db_infos.points, name_index).any(|index| {
                 self.db_infos
                     .points
@@ -1064,12 +1081,6 @@ impl<'db> NameBinder<'db> {
                         todo!("This case is currently not reached, but probably necessary")
                     })
             })
-        } else {
-            self.db_infos
-                .points
-                .get(name_index - NAME_DEF_TO_NAME_DIFFERENCE)
-                .maybe_calculated_and_specific()
-                .is_some_and(|specific| specific == search)
         }
     }
 

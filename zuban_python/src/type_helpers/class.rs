@@ -2027,15 +2027,16 @@ impl<'db: 'a, 'a> Class<'a> {
         // want the original order in an enum.
         name_indexes.sort();
 
-        for name_index in name_indexes {
-            let name_node_ref = NodeRef::new(self.node_ref.file, *name_index);
+        for &name_index in name_indexes {
+            let name_node_ref = NodeRef::new(self.node_ref.file, name_index);
             if name_node_ref
                 .add_to_node_index(-(NAME_TO_FUNCTION_DIFF as i64))
                 .maybe_function()
                 .is_none()
             {
                 let point = name_node_ref.point();
-                if point.calculated() && point.maybe_specific() == Some(Specific::NameOfNameDef) {
+                debug_assert_eq!(point.specific(), Specific::NameOfNameDef);
+                if point.node_index() != name_index {
                     NodeRef::new(self.node_ref.file, point.node_index()).add_issue(
                         i_s,
                         IssueKind::EnumReusedMemberName {
@@ -2082,7 +2083,8 @@ impl<'db: 'a, 'a> Class<'a> {
                 TypeLike::ImportFromAsName(_) | TypeLike::DottedAsName(_) => continue,
                 TypeLike::Function(_) => {
                     let p = name_node_ref.point();
-                    if p.calculated() && p.maybe_specific() == Some(Specific::NameOfNameDef) {
+                    debug_assert_eq!(p.maybe_specific(), Some(Specific::NameOfNameDef));
+                    if p.node_index() != name_index {
                         let mut has_overload = false;
                         let mut has_non_overload = false;
                         for index in MultiDefinitionIterator::new(&file.points, name_index) {

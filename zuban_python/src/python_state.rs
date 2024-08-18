@@ -1123,7 +1123,11 @@ fn set_custom_behavior_method(
 
 fn setup_type_alias(typing: &PythonFile, name: &str, target_file: &PythonFile, target_name: &str) {
     let node_index = typing.symbol_table().lookup_symbol(name).unwrap();
-    debug_assert!(!typing.points.get(node_index).calculated());
+    debug_assert_eq!(
+        typing.points.get(node_index).specific(),
+        Specific::NameOfNameDef
+    );
+    debug_assert_eq!(typing.points.get(node_index).node_index(), node_index);
     let target_node_index = target_file
         .symbol_table()
         .lookup_symbol(target_name)
