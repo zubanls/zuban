@@ -212,17 +212,17 @@ impl<'db> NameBinder<'db> {
     }
 
     fn add_new_definition(&mut self, name_def: NameDef<'db>, point: Point) {
-        self.add_new_definition_with_from_func(name_def, point, false)
+        self.add_new_definition_with_cause(name_def, point, IndexingCause::Other)
     }
 
-    fn add_new_definition_with_from_func(
+    fn add_new_definition_with_cause(
         &mut self,
         name_def: NameDef<'db>,
         point: Point,
-        from_func: bool,
+        cause: IndexingCause,
     ) {
         if let Some(first) = self.symbol_table.lookup_symbol(name_def.as_code()) {
-            self.ensure_multi_definition(name_def, first, from_func)
+            self.ensure_multi_definition(name_def, first, cause)
         } else {
             self.symbol_table.add_or_replace_symbol(name_def.name());
             let name_index = name_def.name_index();
@@ -237,7 +237,7 @@ impl<'db> NameBinder<'db> {
         &mut self,
         name_def: NameDef,
         first_index: NodeIndex,
-        from_func: bool,
+        cause: IndexingCause,
     ) {
         let mut latest_name_index = first_index;
         loop {
@@ -250,9 +250,9 @@ impl<'db> NameBinder<'db> {
                 latest_name_index = point.node_index()
             } else {
                 let new_index = name_def.name().index();
-                if (!from_func
+                if (cause != IndexingCause::FunctionName
                     || !Name::by_index(self.db_infos.tree, first_index).is_name_of_func())
-                    && name_def.as_code() != "__all__"
+                    && cause != IndexingCause::AugAssignment
                 {
                     self.following_nodes_need_flow_analysis = true;
                 }
@@ -330,12 +330,15 @@ impl<'db> NameBinder<'db> {
                             annotation,
                             _,
                         ) => {
-                            self.index_annotation_expression(&annotation.expression());
+                            self.index_annotation_expr(&annotation.expression());
                             self.index_non_block_node(&target, ordered)
                         }
-                        AssignmentContentWithSimpleTargets::AugAssign(target, _, _) => {
-                            self.index_non_block_node(&target, ordered)
-                        }
+                        AssignmentContentWithSimpleTargets::AugAssign(target, _, _) => self
+                            .index_non_block_node_full(
+                                &target,
+                                ordered,
+                                IndexingCause::AugAssignment,
+                            ),
                     }
                 }
                 StmtLikeContent::ReturnStmt(return_stmt) => {
@@ -346,7 +349,7 @@ impl<'db> NameBinder<'db> {
                         )
                     }
                     if let Some(return_expr) = return_stmt.star_expressions() {
-                        let l = self.index_non_block_node_full(&return_expr, ordered, false);
+                        let l = self.index_non_block_node(&return_expr, ordered);
                         latest_return_or_yield =
                             self.merge_latest_return_or_yield(latest_return_or_yield, l);
                     }
@@ -355,7 +358,7 @@ impl<'db> NameBinder<'db> {
                 }
                 StmtLikeContent::AssertStmt(assert_stmt) => {
                     let (assert_expr, error_expr) = assert_stmt.unpack();
-                    let latest = self.index_non_block_node_full(&assert_expr, ordered, false);
+                    let latest = self.index_non_block_node(&assert_expr, ordered);
                     match is_expr_reachable_for_name_binder(self.db_infos.flags, assert_expr) {
                         Truthiness::False => {
                             self.db_infos.points.set(
@@ -372,7 +375,7 @@ impl<'db> NameBinder<'db> {
                         }
                     }
                     if let Some(error_expr) = error_expr {
-                        self.index_non_block_node_full(&error_expr, ordered, false);
+                        self.index_non_block_node(&error_expr, ordered);
                     }
                     latest
                 }
@@ -738,7 +741,11 @@ impl<'db> NameBinder<'db> {
         for (self_name, name) in class.search_potential_self_assignments() {
             if self.is_self_param(self_name) {
                 if let Some(index) = symbol_table.lookup_symbol(name.as_code()) {
-                    self.ensure_multi_definition(name.name_def().unwrap(), index, false)
+                    self.ensure_multi_definition(
+                        name.name_def().unwrap(),
+                        index,
+                        IndexingCause::Other,
+                    )
                 } else {
                     symbol_table.add_or_replace_symbol(name);
                     let name_index = name.index();
@@ -812,11 +819,11 @@ impl<'db> NameBinder<'db> {
         node: &T,
         ordered: bool,
     ) -> NodeIndex {
-        self.index_non_block_node_full(node, ordered, false)
+        self.index_non_block_node_full(node, ordered, IndexingCause::Other)
     }
 
-    fn index_annotation_expression(&mut self, node: &Expression<'db>) -> NodeIndex {
-        self.index_non_block_node_full(node, true, true)
+    fn index_annotation_expr(&mut self, node: &Expression<'db>) -> NodeIndex {
+        self.index_non_block_node_full(node, true, IndexingCause::Annotation)
     }
 
     #[inline]
@@ -824,22 +831,22 @@ impl<'db> NameBinder<'db> {
         &mut self,
         node: &T,
         ordered: bool,
-        from_annotation: bool,
+        cause: IndexingCause,
     ) -> NodeIndex {
         let mut latest_return_or_yield = 0;
         for n in node.search_interesting_nodes() {
             let mut check_bool_op = |(left, right)| {
-                self.index_non_block_node_full(&left, ordered, from_annotation);
+                self.index_non_block_node_full(&left, ordered, cause);
                 let old_value = self.following_nodes_need_flow_analysis;
                 self.following_nodes_need_flow_analysis = true;
-                self.index_non_block_node_full(&right, ordered, from_annotation);
+                self.index_non_block_node_full(&right, ordered, cause);
                 self.following_nodes_need_flow_analysis = old_value;
             };
             match n {
                 InterestingNode::Name(name) => {
                     match name.parent() {
                         NameParent::Atom => {
-                            if from_annotation {
+                            if cause == IndexingCause::Annotation {
                                 self.annotation_names.push(name);
                             } else {
                                 self.maybe_add_reference(name, ordered);
@@ -849,7 +856,11 @@ impl<'db> NameBinder<'db> {
                             match name_def.parent() {
                                 NameDefParent::Other => {
                                     // The types are inferred later.
-                                    self.add_new_definition(name_def, Point::new_uncalculated())
+                                    self.add_new_definition_with_cause(
+                                        name_def,
+                                        Point::new_uncalculated(),
+                                        cause,
+                                    )
                                 }
                                 NameDefParent::GlobalStmt => {
                                     let name_index = name.index();
@@ -942,11 +953,11 @@ impl<'db> NameBinder<'db> {
                 InterestingNode::YieldExpr(n) => {
                     let is_yield_from = match n.unpack() {
                         YieldExprContent::StarExpressions(s) => {
-                            self.index_non_block_node_full(&s, ordered, from_annotation);
+                            self.index_non_block_node_full(&s, ordered, cause);
                             false
                         }
                         YieldExprContent::YieldFrom(y) => {
-                            self.index_non_block_node_full(&y, ordered, from_annotation);
+                            self.index_non_block_node_full(&y, ordered, cause);
                             true
                         }
                         YieldExprContent::None => false,
@@ -988,14 +999,14 @@ impl<'db> NameBinder<'db> {
                 }
                 InterestingNode::Ternary(ternary) => {
                     let (if_, condition, else_) = ternary.unpack();
-                    self.index_non_block_node_full(&condition, ordered, from_annotation);
+                    self.index_non_block_node_full(&condition, ordered, cause);
                     self.following_nodes_need_flow_analysis = true;
-                    self.index_non_block_node_full(&if_, ordered, from_annotation);
-                    self.index_non_block_node_full(&else_, ordered, from_annotation);
+                    self.index_non_block_node_full(&if_, ordered, cause);
+                    self.index_non_block_node_full(&else_, ordered, cause);
                 }
                 InterestingNode::Walrus(walrus) => {
                     let (name_def, expr) = walrus.unpack();
-                    self.index_non_block_node_full(&expr, ordered, from_annotation);
+                    self.index_non_block_node_full(&expr, ordered, cause);
                     self.add_new_walrus_definition(name_def)
                 }
             }
@@ -1128,8 +1139,10 @@ impl<'db> NameBinder<'db> {
             // end of a module.
             if let Some(param_annotation) = param.annotation() {
                 match param_annotation.maybe_starred() {
-                    Ok(starred) => self.index_non_block_node_full(&starred, true, true),
-                    Err(expr) => self.index_annotation_expression(&expr),
+                    Ok(starred) => {
+                        self.index_non_block_node_full(&starred, true, IndexingCause::Annotation)
+                    }
+                    Err(expr) => self.index_annotation_expr(&expr),
                 };
             }
             if let Some(expression) = param.default() {
@@ -1138,10 +1151,14 @@ impl<'db> NameBinder<'db> {
         }
         if let Some(return_annotation) = return_annotation {
             // This is the -> annotation
-            self.index_annotation_expression(&return_annotation.expression());
+            self.index_annotation_expr(&return_annotation.expression());
         }
 
-        self.add_new_definition_with_from_func(name_def, Point::new_uncalculated(), true);
+        self.add_new_definition_with_cause(
+            name_def,
+            Point::new_uncalculated(),
+            IndexingCause::FunctionName,
+        );
     }
 
     pub(crate) fn index_function_body(&mut self, func: FunctionDef<'db>, is_method: bool) {
@@ -1649,4 +1666,12 @@ pub fn is_expr_part_reachable_for_name_binder(
 struct UnorderedReference<'db> {
     name: Name<'db>,
     ordered: bool,
+}
+
+#[derive(Copy, Clone, PartialEq)]
+enum IndexingCause {
+    Annotation,
+    FunctionName,
+    AugAssignment,
+    Other,
 }
