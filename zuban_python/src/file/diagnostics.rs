@@ -130,70 +130,60 @@ lazy_static::lazy_static! {
 
 impl<'db> Inference<'db, '_, '_> {
     pub fn calculate_diagnostics(&self) -> Result<(), ()> {
-        const FIRST_POINT: NodeIndex = 0;
-        let first = self.file.points.get(FIRST_POINT);
-        if first.calculated() {
-            return Ok(());
-        }
-        if first.calculating() {
-            return Err(());
-        }
-        self.file.points.set(FIRST_POINT, Point::new_calculating());
-        FLOW_ANALYSIS.with(|fa| {
-            fa.with_new_empty(|| {
-                fa.with_new_frame_and_return_unreachable(|| {
-                    self.calc_stmts_diagnostics(
-                        self.file.tree.root().iter_stmt_likes(),
-                        None,
-                        None,
-                    );
-                });
-                if self.flags().local_partial_types {
+        diagnostics_for_scope(NodeRef::new(self.file, 0), || {
+            FLOW_ANALYSIS.with(|fa| {
+                fa.with_new_empty(|| {
+                    fa.with_new_frame_and_return_unreachable(|| {
+                        self.calc_stmts_diagnostics(
+                            self.file.tree.root().iter_stmt_likes(),
+                            None,
+                            None,
+                        );
+                    });
+                    if self.flags().local_partial_types {
+                        fa.check_for_unfinished_partials(self.i_s);
+                    }
+                    fa.process_delayed_funcs(self.i_s.db, |func| {
+                        let result = self.ensure_func_diagnostics_and_finish_partials(fa, func);
+                        debug_assert!(result.is_ok());
+                    });
                     fa.check_for_unfinished_partials(self.i_s);
+                    fa.debug_assert_is_empty();
+                })
+            });
+            for complex_point in unsafe { self.file.complex_points.iter() } {
+                if let ComplexPoint::NewTypeDefinition(n) = complex_point {
+                    // Make sure types are calculated and the errors are generated.
+                    n.type_(self.i_s);
                 }
-                fa.process_delayed_funcs(self.i_s.db, |func| {
-                    let result = self.ensure_func_diagnostics_and_finish_partials(fa, func);
-                    debug_assert!(result.is_ok());
-                });
-                fa.check_for_unfinished_partials(self.i_s);
-                fa.debug_assert_is_empty();
-            })
-        });
-        for complex_point in unsafe { self.file.complex_points.iter() } {
-            if let ComplexPoint::NewTypeDefinition(n) = complex_point {
-                // Make sure types are calculated and the errors are generated.
-                n.type_(self.i_s);
             }
-        }
 
-        if let Some(link) = self.file.lookup_global("__getattribute__") {
-            NodeRef::new(self.file, link.node_index)
-                .add_issue(self.i_s, IssueKind::GetattributeInvalidAtModuleLevel)
-        }
-        if let Some(link) = self.file.lookup_global("__getattr__") {
-            let actual = self.infer_name_of_definition_by_index(link.node_index);
-            let actual = actual.as_cow_type(self.i_s);
-            let Type::Callable(callable) = &self.i_s.db.python_state.valid_getattr_supertype else {
-                unreachable!();
-            };
-
-            if !Type::Callable(Rc::new(callable.remove_first_positional_param().unwrap()))
-                .is_simple_super_type_of(self.i_s, &actual)
-                .bool()
-            {
-                self.add_issue(
-                    link.node_index,
-                    IssueKind::InvalidSpecialMethodSignature {
-                        type_: actual.format_short(self.i_s.db),
-                        special_method: "__getattr__",
-                    },
-                )
+            if let Some(link) = self.file.lookup_global("__getattribute__") {
+                NodeRef::new(self.file, link.node_index)
+                    .add_issue(self.i_s, IssueKind::GetattributeInvalidAtModuleLevel)
             }
-        }
-        self.file
-            .points
-            .set(FIRST_POINT, Point::new_node_analysis(Locality::Todo));
-        Ok(())
+            if let Some(link) = self.file.lookup_global("__getattr__") {
+                let actual = self.infer_name_of_definition_by_index(link.node_index);
+                let actual = actual.as_cow_type(self.i_s);
+                let Type::Callable(callable) = &self.i_s.db.python_state.valid_getattr_supertype
+                else {
+                    unreachable!();
+                };
+
+                if !Type::Callable(Rc::new(callable.remove_first_positional_param().unwrap()))
+                    .is_simple_super_type_of(self.i_s, &actual)
+                    .bool()
+                {
+                    self.add_issue(
+                        link.node_index,
+                        IssueKind::InvalidSpecialMethodSignature {
+                            type_: actual.format_short(self.i_s.db),
+                            special_method: "__getattr__",
+                        },
+                    )
+                }
+            }
+        })
     }
 
     fn check_assignment(&self, assignment: Assignment, class: Option<Class>) {
@@ -855,20 +845,13 @@ impl<'db> Inference<'db, '_, '_> {
     pub fn ensure_func_diagnostics(&self, function: Function) -> Result<(), ()> {
         let func_node = function.node();
         let from = NodeRef::new(self.file, func_node.body().index());
-        let p = from.point();
-        if p.calculated() {
-            return Ok(());
-        }
-        if p.calculating() {
-            return Err(());
-        }
-        from.set_point(Point::new_calculating());
-        debug_indent(|| {
-            debug!("Diagnostics for function {}", function.name());
-            self.calc_func_diagnostics(function, func_node)
-        });
-        from.set_point(Point::new_node_analysis(Locality::Todo));
-        Ok(())
+        diagnostics_for_scope(from, || {
+            let func_node = function.node();
+            debug_indent(|| {
+                debug!("Diagnostics for function {}", function.name());
+                self.calc_func_diagnostics(function, func_node)
+            });
+        })
     }
 
     fn calc_func_diagnostics(&self, function: Function, func_node: FunctionDef) {
@@ -2411,4 +2394,18 @@ pub fn check_multiple_inheritance<'x, BASES: Iterator<Item = TypeOrClass<'x>>>(
             });
         }
     }
+}
+
+fn diagnostics_for_scope(from: NodeRef, callable: impl FnOnce()) -> Result<(), ()> {
+    let p = from.point();
+    if p.calculated() {
+        return Ok(());
+    }
+    if p.calculating() {
+        return Err(());
+    }
+    from.set_point(Point::new_calculating());
+    callable();
+    from.set_point(Point::new_node_analysis(Locality::Todo));
+    Ok(())
 }
