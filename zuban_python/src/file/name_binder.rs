@@ -338,20 +338,23 @@ impl<'db> NameBinder<'db> {
                 StmtLikeContent::AssertStmt(assert_stmt) => {
                     let (assert_expr, error_expr) = assert_stmt.unpack();
                     let latest = self.index_non_block_node_full(&assert_expr, ordered, false);
-                    self.references_need_flow_analysis = true;
+                    match is_expr_reachable_for_name_binder(self.db_infos.flags, assert_expr) {
+                        Truthiness::False => {
+                            self.db_infos.points.set(
+                                assert_stmt.index(),
+                                Point::new_specific(Specific::AssertAlwaysFails, Locality::File),
+                            );
+                            latest_return_or_yield =
+                                self.merge_latest_return_or_yield(latest_return_or_yield, latest);
+                            break;
+                        }
+                        Truthiness::True { .. } => (),
+                        Truthiness::Unknown => {
+                            self.references_need_flow_analysis = true;
+                        }
+                    }
                     if let Some(error_expr) = error_expr {
                         self.index_non_block_node_full(&error_expr, ordered, false);
-                    }
-                    if is_expr_reachable_for_name_binder(self.db_infos.flags, assert_expr)
-                        == Truthiness::False
-                    {
-                        self.db_infos.points.set(
-                            assert_stmt.index(),
-                            Point::new_specific(Specific::AssertAlwaysFails, Locality::File),
-                        );
-                        latest_return_or_yield =
-                            self.merge_latest_return_or_yield(latest_return_or_yield, latest);
-                        break;
                     }
                     latest
                 }
@@ -585,7 +588,6 @@ impl<'db> NameBinder<'db> {
     }
 
     fn index_if_stmt(&mut self, if_stmt: IfStmt<'db>, ordered: bool) -> NodeIndex {
-        self.references_need_flow_analysis = true;
         let mut latest_return_or_yield = 0;
         let mut block_iterator = if_stmt.iter_blocks();
         for if_block in block_iterator.by_ref() {
@@ -630,7 +632,10 @@ impl<'db> NameBinder<'db> {
                             );
                             0
                         }
-                        Truthiness::Unknown => self.index_block(block, ordered),
+                        Truthiness::Unknown => {
+                            self.references_need_flow_analysis = true;
+                            self.index_block(block, ordered)
+                        }
                     }
                 }
                 IfBlockType::Else(else_block) => self.index_block(else_block.block(), ordered),
