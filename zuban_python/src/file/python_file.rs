@@ -175,7 +175,8 @@ impl File for PythonFile {
         if self.super_file.is_none() {
             // The main file is responsible for calculating diagnostics of type comments,
             // annotation strings, etc.
-            self.inference(&i_s).calculate_diagnostics();
+            let result = self.inference(&i_s).calculate_diagnostics();
+            debug_assert!(result.is_ok());
         }
         let flags = self.flags(db);
         let mut vec: Vec<_> = unsafe {

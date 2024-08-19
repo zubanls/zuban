@@ -1113,7 +1113,7 @@ else:
     b + 1
 
 [file b.py]
-from a import a
+from a import a  # E: Cannot determine type of "a"
 if bool():
     b = 1
 else:
@@ -1130,7 +1130,7 @@ else:
     x + 1
 
 [file b.py]
-from a import a as y
+from a import a as y  # E: Cannot determine type of "a"
 if bool():
     b = 1
 else:
@@ -1144,16 +1144,16 @@ import a
 from b import b as x
 class A: ...
 if isinstance(x, A):
-    reveal_type(x)  # N: Revealed type is "<subclass of "int" and "A">"
+    reveal_type(x)  # N: Revealed type is "<subclass of "B" and "A">"
     a = 1
 else:
-    x + 1
+    x + 1  # E: Unsupported operand types for + ("B" and "int")
 
 [file b.py]
-from a import a as y, A
+from a import a as y, A  # E: Cannot determine type of "a"
 class B: ...
 if isinstance(y, B):
-    reveal_type(y)  # N: Revealed type is "<subclass of "int" and "B">"
+    reveal_type(y)  # N: Revealed type is "b.B"
     b = y
 else:
     y + 1
@@ -1174,7 +1174,7 @@ if bool():
     b = a  # E: Name "a" is used before definition
 else:
     b = a  # E: Name "a" is used before definition
-from a import a
+from a import a  # E: Cannot determine type of "a"
 reveal_type(b)  # N: Revealed type is "Any"
 
 [case module_mutual_flow_analysis5]
@@ -1186,15 +1186,15 @@ if b is None:
     a = None
 else:
     a = 1
-reveal_type(b)
+reveal_type(b)  # N: Revealed type is "Any | None"
 
 [file b.py]
-if a is None:
+if a is None:  # E: Name "a" is used before definition
     b = None
 else:
-    b = a
-from a import a
-reveal_type(b)
+    b = a  # E: Name "a" is used before definition
+from a import a  # E: Cannot determine type of "a"
+reveal_type(b)  # N: Revealed type is "Any | None"
 
 [case module_mutual_flow_analysis6]
 # flags: --warn-unreachable
@@ -1205,15 +1205,15 @@ if b is None:
     a = None
 else:
     a = 1
-reveal_type(b)
+reveal_type(b)  # N: Revealed type is "Any | None"
 
 [file b.py]
-from a import a
+from a import a  # E: Cannot determine type of "a"
 if a is None:
     b = None
 else:
     b = a
-reveal_type(b)
+reveal_type(b)  # N: Revealed type is "Any | None"
 
 [case module_mutual_flow_analysis7]
 # flags: --warn-unreachable

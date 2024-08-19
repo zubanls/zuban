@@ -129,7 +129,16 @@ lazy_static::lazy_static! {
 }
 
 impl<'db> Inference<'db, '_, '_> {
-    pub fn calculate_diagnostics(&self) {
+    pub fn calculate_diagnostics(&self) -> Result<(), ()> {
+        const FIRST_POINT: NodeIndex = 0;
+        let first = self.file.points.get(FIRST_POINT);
+        if first.calculated() {
+            return Ok(());
+        }
+        if first.calculating() {
+            return Err(());
+        }
+        self.file.points.set(FIRST_POINT, Point::new_calculating());
         FLOW_ANALYSIS.with(|fa| {
             fa.with_new_empty(|| {
                 fa.with_new_frame_and_return_unreachable(|| {
@@ -181,6 +190,10 @@ impl<'db> Inference<'db, '_, '_> {
                 )
             }
         }
+        self.file
+            .points
+            .set(FIRST_POINT, Point::new_node_analysis(Locality::Todo));
+        Ok(())
     }
 
     fn check_assignment(&self, assignment: Assignment, class: Option<Class>) {

@@ -12,7 +12,7 @@ use crate::{
     inference_state::InferenceState,
     inferred::Inferred,
     node_ref::NodeRef,
-    type_::{LookupResult, Namespace, Type},
+    type_::{AnyCause, LookupResult, Namespace, Type},
     workspaces::{FileEntry, Parent},
 };
 
@@ -93,7 +93,10 @@ impl<'a> Module<'a> {
         {
             let p = NodeRef::new(self.file, link.node_index).point();
             if p.calculated() && p.needs_flow_analysis() {
-                self.file.inference(i_s).calculate_diagnostics();
+                if self.file.inference(i_s).calculate_diagnostics().is_err() {
+                    add_issue(IssueKind::CannotDetermineType { for_: name.into() });
+                    return LookupResult::any(AnyCause::FromError);
+                }
             }
             let link = link.into();
             if is_reexport_issue_if_check_needed(i_s.db, self.file, link) {
