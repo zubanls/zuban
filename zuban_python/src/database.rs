@@ -289,7 +289,8 @@ impl fmt::Debug for Point {
         } else {
             s.field("kind", &self.kind())
                 .field("locality", &self.locality())
-                .field("node_index", &self.node_index);
+                .field("node_index", &self.node_index)
+                .field("needs_flow_analysis", &self.needs_flow_analysis());
             if self.kind() == PointKind::Specific {
                 s.field("specific", &self.specific());
             }

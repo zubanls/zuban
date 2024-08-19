@@ -260,7 +260,8 @@ impl<'db> NameBinder<'db> {
                 }
                 self.db_infos.points.set(
                     latest_name_index,
-                    Point::new_name_of_name_def(new_index, Locality::File),
+                    Point::new_name_of_name_def(new_index, Locality::File)
+                        .with_needs_flow_analysis(self.following_nodes_need_flow_analysis),
                 );
                 // Here we create a loop, so it's easy to find the relevant definitions from
                 // any point.
