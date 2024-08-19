@@ -91,6 +91,10 @@ impl<'a> Module<'a> {
             .lookup_global(name)
             .filter(|link| original_import_file != Some(link.file))
         {
+            let p = NodeRef::new(self.file, link.node_index).point();
+            if p.calculated() && p.needs_flow_analysis() {
+                self.file.inference(i_s).calculate_diagnostics();
+            }
             let link = link.into();
             if is_reexport_issue_if_check_needed(i_s.db, self.file, link) {
                 if let Some(import) =

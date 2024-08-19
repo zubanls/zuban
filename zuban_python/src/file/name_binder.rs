@@ -212,20 +212,33 @@ impl<'db> NameBinder<'db> {
     }
 
     fn add_new_definition(&mut self, name_def: NameDef<'db>, point: Point) {
+        self.add_new_definition_with_from_func(name_def, point, false)
+    }
+
+    fn add_new_definition_with_from_func(
+        &mut self,
+        name_def: NameDef<'db>,
+        point: Point,
+        from_func: bool,
+    ) {
         if let Some(first) = self.symbol_table.lookup_symbol(name_def.as_code()) {
-            self.ensure_multi_definition(name_def, first)
+            self.ensure_multi_definition(name_def, first, from_func)
         } else {
             self.symbol_table.add_or_replace_symbol(name_def.name());
             let name_index = name_def.name_index();
-            self.db_infos.points.set(
-                name_index,
-                Point::new_name_of_name_def(name_index, Locality::File),
-            );
+            let p = Point::new_name_of_name_def(name_index, Locality::File)
+                .with_needs_flow_analysis(self.references_need_flow_analysis);
+            self.db_infos.points.set(name_index, p);
         }
         self.db_infos.points.set(name_def.index(), point);
     }
 
-    fn ensure_multi_definition(&mut self, name_def: NameDef, first_index: NodeIndex) {
+    fn ensure_multi_definition(
+        &mut self,
+        name_def: NameDef,
+        first_index: NodeIndex,
+        from_func: bool,
+    ) {
         let mut latest_name_index = first_index;
         loop {
             let point = self.db_infos.points.get(latest_name_index);
@@ -237,7 +250,12 @@ impl<'db> NameBinder<'db> {
                 latest_name_index = point.node_index()
             } else {
                 let new_index = name_def.name().index();
-                self.references_need_flow_analysis = true;
+                if (!from_func
+                    || !Name::by_index(self.db_infos.tree, first_index).is_name_of_func())
+                    && name_def.as_code() != "__all__"
+                {
+                    self.references_need_flow_analysis = true;
+                }
                 self.db_infos.points.set(
                     latest_name_index,
                     Point::new_name_of_name_def(new_index, Locality::File),
@@ -720,7 +738,7 @@ impl<'db> NameBinder<'db> {
         for (self_name, name) in class.search_potential_self_assignments() {
             if self.is_self_param(self_name) {
                 if let Some(index) = symbol_table.lookup_symbol(name.as_code()) {
-                    self.ensure_multi_definition(name.name_def().unwrap(), index)
+                    self.ensure_multi_definition(name.name_def().unwrap(), index, false)
                 } else {
                     symbol_table.add_or_replace_symbol(name);
                     let name_index = name.index();
@@ -1123,7 +1141,7 @@ impl<'db> NameBinder<'db> {
             self.index_annotation_expression(&return_annotation.expression());
         }
 
-        self.add_new_definition(name_def, Point::new_uncalculated());
+        self.add_new_definition_with_from_func(name_def, Point::new_uncalculated(), true);
     }
 
     pub(crate) fn index_function_body(&mut self, func: FunctionDef<'db>, is_method: bool) {

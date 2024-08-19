@@ -360,9 +360,13 @@ testOptionalBackwards4
 # Never for isinstance leads to other side being unreachable
 testPartialAttributeNoneTypeStrictOptional
 
+# name regressions
+testTreeShadowingViaParentPackage
+module_mutual_flow_analysis1
+module_mutual_flow_analysis2
+module_mutual_flow_analysis3
 module_mutual_flow_analysis5
 module_mutual_flow_analysis6
-module_mutual_flow_analysis7
 # self flow analysis regressions
 testAccessAttributeDeclaredInInitBeforeDeclaration
 testGenericTypeAliasesImporting

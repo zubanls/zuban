@@ -545,6 +545,13 @@ impl<'db> Name<'db> {
         let func_node = params.parent().unwrap().parent().unwrap();
         FunctionDef::new(func_node)
     }
+
+    pub fn is_name_of_func(&self) -> bool {
+        let Some(n) = self.name_def() else {
+            return false;
+        };
+        n.node.parent().unwrap().is_type(Nonterminal(function_def))
+    }
 }
 
 #[derive(Debug)]
