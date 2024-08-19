@@ -1227,6 +1227,16 @@ else:
 foo = bar
 reveal_type(foo)  # N: Revealed type is "int | None"
 
+[case module_mutual_flow_analysis_partial_list]
+# flags: --warn-unreachable
+import a
+reveal_type(a.foo)  # N: Revealed type is "list[int]"
+[file a.py]
+bar = []
+bar.append(1)
+foo = bar
+reveal_type(foo)  # N: Revealed type is "list[int]"
+
 [case func_call_should_not_narrow_eagerly]
 # flags: --warn-unreachable
 x: str | int

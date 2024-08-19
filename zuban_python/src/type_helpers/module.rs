@@ -91,11 +91,17 @@ impl<'a> Module<'a> {
             .lookup_global(name)
             .filter(|link| original_import_file != Some(link.file))
         {
-            let p = NodeRef::new(self.file, link.node_index).point();
-            if p.calculated() && p.needs_flow_analysis() {
+            let ensure_flow_analysis = || {
                 if self.file.inference(i_s).calculate_diagnostics().is_err() {
                     add_issue(IssueKind::CannotDetermineType { for_: name.into() });
-                    return LookupResult::any(AnyCause::FromError);
+                    return Some(LookupResult::any(AnyCause::FromError));
+                }
+                None
+            };
+            let p = NodeRef::new(self.file, link.node_index).point();
+            if p.calculated() && p.needs_flow_analysis() {
+                if let Some(result) = ensure_flow_analysis() {
+                    return result;
                 }
             }
             let link = link.into();
@@ -148,13 +154,21 @@ impl<'a> Module<'a> {
                     attribute: name.into(),
                 })
             }
-            LookupResult::GotoName {
-                name: link,
-                inf: self
-                    .file
-                    .inference(i_s)
-                    .infer_name_of_definition_by_index(link.node_index),
+            let inf = self
+                .file
+                .inference(i_s)
+                .infer_name_of_definition_by_index(link.node_index);
+            if inf
+                .maybe_saved_specific(i_s.db)
+                .is_some_and(|specific| specific.is_partial())
+            {
+                if let Some(result) = ensure_flow_analysis() {
+                    return result;
+                }
+                // In case where the partial is overwritten, we can just return the old Inferred,
+                // because it points to the correct place.
             }
+            LookupResult::GotoName { name: link, inf }
         } else if let Some(result) = self.sub_module_lookup(i_s.db, name) {
             result
         } else if let Some(star_imp) = self
