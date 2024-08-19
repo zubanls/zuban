@@ -72,6 +72,7 @@ pub(crate) struct NameBinder<'db> {
     unresolved_class_self_vars: Vec<UnresolvedClass<'db>>,
     annotation_names: Vec<Name<'db>>,
     following_nodes_need_flow_analysis: bool,
+    latest_return_or_yield: NodeIndex,
     parent: Option<*mut NameBinder<'db>>,
 }
 
@@ -93,6 +94,7 @@ impl<'db> NameBinder<'db> {
             unresolved_class_self_vars: vec![],
             annotation_names: vec![],
             following_nodes_need_flow_analysis: false,
+            latest_return_or_yield: 0,
             parent,
         }
     }
@@ -279,8 +281,7 @@ impl<'db> NameBinder<'db> {
         self.index_stmts(file_node.iter_stmt_likes(), true);
     }
 
-    fn index_block(&mut self, block: Block<'db>, ordered: bool) -> NodeIndex {
-        // Returns the latest return/yield index
+    fn index_block(&mut self, block: Block<'db>, ordered: bool) {
         // Theory:
         // - while_stmt, for_stmt: ignore order (at least mostly)
         // - match_stmt, if_stmt, try_stmt (only in coresponding blocks and after)
@@ -290,8 +291,7 @@ impl<'db> NameBinder<'db> {
         self.index_stmts(block.iter_stmt_likes(), ordered)
     }
 
-    fn index_stmts(&mut self, mut stmts: StmtLikeIterator<'db>, ordered: bool) -> NodeIndex {
-        let mut latest_return_or_yield = 0;
+    fn index_stmts(&mut self, mut stmts: StmtLikeIterator<'db>, ordered: bool) {
         let mut last_was_an_error = false;
         for stmt_like in stmts.by_ref() {
             let return_or_yield = match stmt_like.node {
@@ -303,7 +303,7 @@ impl<'db> NameBinder<'db> {
                         AssignmentContentWithSimpleTargets::Normal(_, right)
                         | AssignmentContentWithSimpleTargets::WithAnnotation(_, _, Some(right))
                         | AssignmentContentWithSimpleTargets::AugAssign(_, _, right) => {
-                            let latest = match right {
+                            match right {
                                 AssignmentRightSide::YieldExpr(yield_expr) => {
                                     self.index_non_block_node(yield_expr, ordered)
                                 }
@@ -311,19 +311,14 @@ impl<'db> NameBinder<'db> {
                                     self.index_non_block_node(star_exprs, ordered)
                                 }
                             };
-                            latest_return_or_yield =
-                                self.merge_latest_return_or_yield(latest_return_or_yield, latest);
                         }
                         _ => (),
                     };
                     match unpacked {
                         AssignmentContentWithSimpleTargets::Normal(targets, _) => {
                             for target in targets {
-                                let l = self.index_non_block_node(&target, ordered);
-                                latest_return_or_yield =
-                                    self.merge_latest_return_or_yield(latest_return_or_yield, l);
+                                self.index_non_block_node(&target, ordered);
                             }
-                            0
                         }
                         AssignmentContentWithSimpleTargets::WithAnnotation(
                             target,
@@ -350,23 +345,19 @@ impl<'db> NameBinder<'db> {
                     }
                     if let Some(return_expr) = return_stmt.star_expressions() {
                         let l = self.index_non_block_node(&return_expr, ordered);
-                        latest_return_or_yield =
-                            self.merge_latest_return_or_yield(latest_return_or_yield, l);
                     }
-                    self.index_return_or_yield(&mut latest_return_or_yield, return_stmt.index());
+                    self.index_return_or_yield(return_stmt.index());
                     break;
                 }
                 StmtLikeContent::AssertStmt(assert_stmt) => {
                     let (assert_expr, error_expr) = assert_stmt.unpack();
-                    let latest = self.index_non_block_node(&assert_expr, ordered);
+                    self.index_non_block_node(&assert_expr, ordered);
                     match is_expr_reachable_for_name_binder(self.db_infos.flags, assert_expr) {
                         Truthiness::False => {
                             self.db_infos.points.set(
                                 assert_stmt.index(),
                                 Point::new_specific(Specific::AssertAlwaysFails, Locality::File),
                             );
-                            latest_return_or_yield =
-                                self.merge_latest_return_or_yield(latest_return_or_yield, latest);
                             break;
                         }
                         Truthiness::True { .. } => (),
@@ -377,7 +368,6 @@ impl<'db> NameBinder<'db> {
                     if let Some(error_expr) = error_expr {
                         self.index_non_block_node(&error_expr, ordered);
                     }
-                    latest
                 }
                 StmtLikeContent::ImportFrom(import) => {
                     match import.unpack_targets() {
@@ -394,12 +384,9 @@ impl<'db> NameBinder<'db> {
                             }
                         }
                     };
-                    0
                 }
                 StmtLikeContent::RaiseStmt(raise_stmt) => {
                     let l = self.index_non_block_node(&raise_stmt, ordered);
-                    latest_return_or_yield =
-                        self.merge_latest_return_or_yield(latest_return_or_yield, l);
                     break;
                 }
                 StmtLikeContent::BreakStmt(_) | StmtLikeContent::ContinueStmt(_) => break,
@@ -417,11 +404,9 @@ impl<'db> NameBinder<'db> {
                         func, ordered, false, // decorators
                         false, // is_async
                     );
-                    0
                 }
                 StmtLikeContent::ClassDef(class) => {
                     self.index_class(class, false);
-                    0
                 }
                 StmtLikeContent::Decorated(decorated) => {
                     for decorator in decorated.decorators().iter() {
@@ -442,7 +427,6 @@ impl<'db> NameBinder<'db> {
                             self.index_class(cls, true);
                         }
                     }
-                    0
                 }
                 StmtLikeContent::IfStmt(if_stmt) => self.index_if_stmt(if_stmt, ordered),
                 StmtLikeContent::ForStmt(for_stmt) => self.index_for_stmt(for_stmt, ordered),
@@ -462,7 +446,6 @@ impl<'db> NameBinder<'db> {
                             false, // decorators
                             true,
                         );
-                        0
                     }
                     AsyncStmtContent::ForStmt(for_stmt) => self.index_for_stmt(for_stmt, ordered),
                     AsyncStmtContent::WithStmt(with_stmt) => {
@@ -476,43 +459,14 @@ impl<'db> NameBinder<'db> {
                     }
                     continue;
                 }
-                StmtLikeContent::Newline | StmtLikeContent::PassStmt(_) => 0,
+                StmtLikeContent::Newline | StmtLikeContent::PassStmt(_) => (),
             };
             last_was_an_error = false;
-            latest_return_or_yield =
-                self.merge_latest_return_or_yield(latest_return_or_yield, return_or_yield);
         }
         for stmt_like in stmts {
             if let StmtLikeContent::YieldExpr(y) = stmt_like.node {
-                self.index_return_or_yield(&mut latest_return_or_yield, y.index());
+                self.index_return_or_yield(y.index());
             }
-        }
-        latest_return_or_yield
-    }
-
-    fn merge_latest_return_or_yield(&self, first: NodeIndex, mut second: NodeIndex) -> NodeIndex {
-        if first != 0 && second != 0 {
-            loop {
-                let point = self.db_infos.points.get(second);
-                let node_index = point.node_index();
-                if node_index == 0 {
-                    // Now that we have the first node in the chain of the second nodes, link that
-                    // to the first one (like a linked list)
-                    self.db_infos.points.set(
-                        second,
-                        Point::new_node_analysis_with_node_index(Locality::File, first),
-                    );
-                    break;
-                } else {
-                    assert!(node_index < second);
-                    second = node_index;
-                }
-            }
-        }
-        if second == 0 {
-            first
-        } else {
-            second
         }
     }
 
@@ -552,71 +506,51 @@ impl<'db> NameBinder<'db> {
         debug_assert_eq!(self.unordered_references.len(), 0);
     }
 
-    fn index_for_stmt(&mut self, for_stmt: ForStmt<'db>, ordered: bool) -> NodeIndex {
-        let mut latest_return_or_yield = 0;
+    fn index_for_stmt(&mut self, for_stmt: ForStmt<'db>, ordered: bool) {
         let (star_targets, star_expressions, block, else_block) = for_stmt.unpack();
-        let latest = self.index_non_block_node(&star_targets, ordered);
-        latest_return_or_yield = self.merge_latest_return_or_yield(latest_return_or_yield, latest);
-        let latest = self.index_non_block_node(&star_expressions, ordered);
-        latest_return_or_yield = self.merge_latest_return_or_yield(latest_return_or_yield, latest);
+        self.index_non_block_node(&star_targets, ordered);
+        self.index_non_block_node(&star_expressions, ordered);
 
         self.following_nodes_need_flow_analysis = true;
-        let latest = self.index_block(block, false);
-        latest_return_or_yield = self.merge_latest_return_or_yield(latest_return_or_yield, latest);
+        self.index_block(block, false);
 
         if ordered {
             self.index_unordered_references();
         }
         if let Some(else_block) = else_block {
-            let latest = self.index_block(else_block.block(), ordered);
-            latest_return_or_yield =
-                self.merge_latest_return_or_yield(latest_return_or_yield, latest);
+            self.index_block(else_block.block(), ordered);
         }
-        latest_return_or_yield
     }
 
-    fn index_while_stmt(&mut self, while_stmt: WhileStmt<'db>, ordered: bool) -> NodeIndex {
-        let mut latest_return_or_yield = 0;
+    fn index_while_stmt(&mut self, while_stmt: WhileStmt<'db>, ordered: bool) {
         self.following_nodes_need_flow_analysis = true;
         let (condition, block, else_block) = while_stmt.unpack();
-        let latest = self.index_non_block_node(&condition, ordered);
-        latest_return_or_yield = self.merge_latest_return_or_yield(latest_return_or_yield, latest);
-        let latest = self.index_block(block, false);
-        latest_return_or_yield = self.merge_latest_return_or_yield(latest_return_or_yield, latest);
+        self.index_non_block_node(&condition, ordered);
+        self.index_block(block, false);
         if ordered {
             self.index_unordered_references();
         }
         if let Some(else_block) = else_block {
             // "else" ":" block
-            let latest = self.index_block(else_block.block(), ordered);
-            latest_return_or_yield =
-                self.merge_latest_return_or_yield(latest_return_or_yield, latest);
+            self.index_block(else_block.block(), ordered);
         }
-        latest_return_or_yield
     }
 
-    fn index_with_stmt(&mut self, with_stmt: WithStmt<'db>, ordered: bool) -> NodeIndex {
+    fn index_with_stmt(&mut self, with_stmt: WithStmt<'db>, ordered: bool) {
         self.following_nodes_need_flow_analysis = true;
-        let mut latest_return_or_yield = 0;
         let (with_items, block) = with_stmt.unpack();
         for with_item in with_items.iter() {
-            let latest = self.index_non_block_node(&with_item, ordered);
-            latest_return_or_yield =
-                self.merge_latest_return_or_yield(latest_return_or_yield, latest);
+            self.index_non_block_node(&with_item, ordered);
         }
-        let latest = self.index_block(block, ordered);
-        self.merge_latest_return_or_yield(latest_return_or_yield, latest)
+        self.index_block(block, ordered);
     }
 
-    fn index_if_stmt(&mut self, if_stmt: IfStmt<'db>, ordered: bool) -> NodeIndex {
-        let mut latest_return_or_yield = 0;
+    fn index_if_stmt(&mut self, if_stmt: IfStmt<'db>, ordered: bool) {
         let mut block_iterator = if_stmt.iter_blocks();
         for if_block in block_iterator.by_ref() {
-            let latest = match if_block {
+            match if_block {
                 IfBlockType::If(expr, block) => {
-                    let latest = self.index_non_block_node(&expr, ordered);
-                    latest_return_or_yield =
-                        self.merge_latest_return_or_yield(latest_return_or_yield, latest);
+                    self.index_non_block_node(&expr, ordered);
                     let set_block_specific = |if_block: IfBlockType, specific| {
                         self.db_infos.points.set(
                             if_block.first_leaf_index(),
@@ -628,8 +562,7 @@ impl<'db> NameBinder<'db> {
                         Truthiness::True {
                             in_type_checking_block,
                         } => {
-                            let latest = self.index_block(block, ordered);
-                            self.merge_latest_return_or_yield(latest_return_or_yield, latest);
+                            self.index_block(block, ordered);
                             set_block_specific(
                                 if_block,
                                 if in_type_checking_block {
@@ -651,7 +584,6 @@ impl<'db> NameBinder<'db> {
                                 if_block,
                                 Specific::IfBranchAlwaysUnreachableInNameBinder,
                             );
-                            0
                         }
                         Truthiness::Unknown => {
                             self.following_nodes_need_flow_analysis = true;
@@ -661,17 +593,13 @@ impl<'db> NameBinder<'db> {
                 }
                 IfBlockType::Else(else_block) => self.index_block(else_block.block(), ordered),
             };
-            latest_return_or_yield =
-                self.merge_latest_return_or_yield(latest_return_or_yield, latest);
         }
-        latest_return_or_yield
     }
 
-    fn index_try_stmt(&mut self, try_stmt: TryStmt<'db>, ordered: bool) -> NodeIndex {
+    fn index_try_stmt(&mut self, try_stmt: TryStmt<'db>, ordered: bool) {
         self.following_nodes_need_flow_analysis = true;
-        let mut latest_return_or_yield = 0;
         for b in try_stmt.iter_blocks() {
-            let latest = match b {
+            match b {
                 TryBlockType::Try(block) => self.index_block(block, ordered),
                 TryBlockType::Except(except) => {
                     let (except_expression, block) = except.unpack();
@@ -688,10 +616,7 @@ impl<'db> NameBinder<'db> {
                 TryBlockType::Else(else_) => self.index_block(else_.block(), ordered),
                 TryBlockType::Finally(finally) => self.index_block(finally.block(), ordered),
             };
-            latest_return_or_yield =
-                self.merge_latest_return_or_yield(latest_return_or_yield, latest);
         }
-        latest_return_or_yield
     }
 
     fn index_except_expression_with_block(
@@ -699,14 +624,13 @@ impl<'db> NameBinder<'db> {
         except_expr: ExceptExpression<'db>,
         block: Block<'db>,
         ordered: bool,
-    ) -> NodeIndex {
+    ) {
         let (expression, name_def) = except_expr.unpack();
         if let Some(name_def) = name_def {
             self.add_new_definition(name_def, Point::new_uncalculated())
         }
-        let latest1 = self.index_non_block_node(&expression, ordered);
-        let latest2 = self.index_block(block, ordered);
-        self.merge_latest_return_or_yield(latest1, latest2)
+        self.index_non_block_node(&expression, ordered);
+        self.index_block(block, ordered);
     }
 
     fn index_class(&mut self, class_def: ClassDef<'db>, is_decorated: bool) {
@@ -809,20 +733,15 @@ impl<'db> NameBinder<'db> {
         result.into()
     }
 
-    fn index_match_stmt(&mut self, match_stmt: MatchStmt<'db>, ordered: bool) -> NodeIndex {
+    fn index_match_stmt(&mut self, match_stmt: MatchStmt<'db>, ordered: bool) {
         debug!("TODO match_stmt name binding");
-        0
     }
 
-    fn index_non_block_node<T: InterestingNodeSearcher<'db>>(
-        &mut self,
-        node: &T,
-        ordered: bool,
-    ) -> NodeIndex {
+    fn index_non_block_node<T: InterestingNodeSearcher<'db>>(&mut self, node: &T, ordered: bool) {
         self.index_non_block_node_full(node, ordered, IndexingCause::Other)
     }
 
-    fn index_annotation_expr(&mut self, node: &Expression<'db>) -> NodeIndex {
+    fn index_annotation_expr(&mut self, node: &Expression<'db>) {
         self.index_non_block_node_full(node, true, IndexingCause::Annotation)
     }
 
@@ -832,8 +751,7 @@ impl<'db> NameBinder<'db> {
         node: &T,
         ordered: bool,
         cause: IndexingCause,
-    ) -> NodeIndex {
-        let mut latest_return_or_yield = 0;
+    ) {
         for n in node.search_interesting_nodes() {
             let mut check_bool_op = |(left, right)| {
                 self.index_non_block_node_full(&left, ordered, cause);
@@ -977,7 +895,7 @@ impl<'db> NameBinder<'db> {
                         ),
                         _ => self.add_issue(n.index(), IssueKind::StmtOutsideFunction { keyword }),
                     }
-                    self.index_return_or_yield(&mut latest_return_or_yield, n.index());
+                    self.index_return_or_yield(n.index());
                 }
                 InterestingNode::Lambda(lambda) => {
                     self.index_lambda_param_defaults(lambda, ordered);
@@ -1011,16 +929,15 @@ impl<'db> NameBinder<'db> {
                 }
             }
         }
-        latest_return_or_yield
     }
 
-    fn index_return_or_yield(&self, latest_return_or_yield: &mut NodeIndex, node_index: NodeIndex) {
+    fn index_return_or_yield(&mut self, node_index: NodeIndex) {
         let keyword_index = node_index + 1;
         self.db_infos.points.set(
             keyword_index,
-            Point::new_node_analysis_with_node_index(Locality::File, *latest_return_or_yield),
+            Point::new_node_analysis_with_node_index(Locality::File, self.latest_return_or_yield),
         );
-        *latest_return_or_yield = keyword_index
+        self.latest_return_or_yield = keyword_index;
     }
 
     fn index_comprehension(&mut self, comp: Comprehension<'db>, ordered: bool) {
@@ -1167,13 +1084,13 @@ impl<'db> NameBinder<'db> {
 
         self.index_param_name_defs(params.iter().map(|param| param.name_def()), is_method);
 
-        let latest_return_index = self.index_block(block, true);
+        self.index_block(block, true);
         // It's kind of hard to know where to store the latest reference statement.
         self.db_infos.points.set(
             func.index() + 1,
             Point::new_node_analysis_with_node_index(
                 Locality::ClassOrFunction,
-                latest_return_index,
+                self.latest_return_or_yield,
             ),
         );
     }
