@@ -71,7 +71,7 @@ pub(crate) struct NameBinder<'db> {
     names_to_be_resolved_in_parent: Vec<Name<'db>>,
     unresolved_class_self_vars: Vec<UnresolvedClass<'db>>,
     annotation_names: Vec<Name<'db>>,
-    references_need_flow_analysis: bool,
+    following_nodes_need_flow_analysis: bool,
     parent: Option<*mut NameBinder<'db>>,
 }
 
@@ -92,7 +92,7 @@ impl<'db> NameBinder<'db> {
             names_to_be_resolved_in_parent: vec![],
             unresolved_class_self_vars: vec![],
             annotation_names: vec![],
-            references_need_flow_analysis: false,
+            following_nodes_need_flow_analysis: false,
             parent,
         }
     }
@@ -152,7 +152,7 @@ impl<'db> NameBinder<'db> {
         func: impl FnOnce(&mut NameBinder<'db>),
     ) -> SymbolTable {
         let mut name_binder = NameBinder::new(self.db_infos, kind, scope_node, Some(self));
-        name_binder.references_need_flow_analysis = self.references_need_flow_analysis;
+        name_binder.following_nodes_need_flow_analysis = self.following_nodes_need_flow_analysis;
         func(&mut name_binder);
         name_binder.close();
         let NameBinder {
@@ -227,7 +227,7 @@ impl<'db> NameBinder<'db> {
             self.symbol_table.add_or_replace_symbol(name_def.name());
             let name_index = name_def.name_index();
             let p = Point::new_name_of_name_def(name_index, Locality::File)
-                .with_needs_flow_analysis(self.references_need_flow_analysis);
+                .with_needs_flow_analysis(self.following_nodes_need_flow_analysis);
             self.db_infos.points.set(name_index, p);
         }
         self.db_infos.points.set(name_def.index(), point);
@@ -254,7 +254,7 @@ impl<'db> NameBinder<'db> {
                     || !Name::by_index(self.db_infos.tree, first_index).is_name_of_func())
                     && name_def.as_code() != "__all__"
                 {
-                    self.references_need_flow_analysis = true;
+                    self.following_nodes_need_flow_analysis = true;
                 }
                 self.db_infos.points.set(
                     latest_name_index,
@@ -368,7 +368,7 @@ impl<'db> NameBinder<'db> {
                         }
                         Truthiness::True { .. } => (),
                         Truthiness::Unknown => {
-                            self.references_need_flow_analysis = true;
+                            self.following_nodes_need_flow_analysis = true;
                         }
                     }
                     if let Some(error_expr) = error_expr {
@@ -401,7 +401,7 @@ impl<'db> NameBinder<'db> {
                 }
                 StmtLikeContent::BreakStmt(_) | StmtLikeContent::ContinueStmt(_) => break,
                 StmtLikeContent::DelStmt(del_stmt) => {
-                    self.references_need_flow_analysis = true;
+                    self.following_nodes_need_flow_analysis = true;
                     self.index_non_block_node(&del_stmt, ordered)
                 }
                 StmtLikeContent::StarExpressions(s) => self.index_non_block_node(&s, ordered),
@@ -557,7 +557,7 @@ impl<'db> NameBinder<'db> {
         let latest = self.index_non_block_node(&star_expressions, ordered);
         latest_return_or_yield = self.merge_latest_return_or_yield(latest_return_or_yield, latest);
 
-        self.references_need_flow_analysis = true;
+        self.following_nodes_need_flow_analysis = true;
         let latest = self.index_block(block, false);
         latest_return_or_yield = self.merge_latest_return_or_yield(latest_return_or_yield, latest);
 
@@ -574,7 +574,7 @@ impl<'db> NameBinder<'db> {
 
     fn index_while_stmt(&mut self, while_stmt: WhileStmt<'db>, ordered: bool) -> NodeIndex {
         let mut latest_return_or_yield = 0;
-        self.references_need_flow_analysis = true;
+        self.following_nodes_need_flow_analysis = true;
         let (condition, block, else_block) = while_stmt.unpack();
         let latest = self.index_non_block_node(&condition, ordered);
         latest_return_or_yield = self.merge_latest_return_or_yield(latest_return_or_yield, latest);
@@ -593,7 +593,7 @@ impl<'db> NameBinder<'db> {
     }
 
     fn index_with_stmt(&mut self, with_stmt: WithStmt<'db>, ordered: bool) -> NodeIndex {
-        self.references_need_flow_analysis = true;
+        self.following_nodes_need_flow_analysis = true;
         let mut latest_return_or_yield = 0;
         let (with_items, block) = with_stmt.unpack();
         for with_item in with_items.iter() {
@@ -651,7 +651,7 @@ impl<'db> NameBinder<'db> {
                             0
                         }
                         Truthiness::Unknown => {
-                            self.references_need_flow_analysis = true;
+                            self.following_nodes_need_flow_analysis = true;
                             self.index_block(block, ordered)
                         }
                     }
@@ -665,7 +665,7 @@ impl<'db> NameBinder<'db> {
     }
 
     fn index_try_stmt(&mut self, try_stmt: TryStmt<'db>, ordered: bool) -> NodeIndex {
-        self.references_need_flow_analysis = true;
+        self.following_nodes_need_flow_analysis = true;
         let mut latest_return_or_yield = 0;
         for b in try_stmt.iter_blocks() {
             let latest = match b {
@@ -830,10 +830,10 @@ impl<'db> NameBinder<'db> {
         for n in node.search_interesting_nodes() {
             let mut check_bool_op = |(left, right)| {
                 self.index_non_block_node_full(&left, ordered, from_annotation);
-                let old_value = self.references_need_flow_analysis;
-                self.references_need_flow_analysis = true;
+                let old_value = self.following_nodes_need_flow_analysis;
+                self.following_nodes_need_flow_analysis = true;
                 self.index_non_block_node_full(&right, ordered, from_annotation);
-                self.references_need_flow_analysis = old_value;
+                self.following_nodes_need_flow_analysis = old_value;
             };
             match n {
                 InterestingNode::Name(name) => {
@@ -975,7 +975,7 @@ impl<'db> NameBinder<'db> {
                 InterestingNode::Comprehension(comp) => {
                     // Index the first expression of a comprehension, which is always executed
                     // in the current scope.
-                    self.references_need_flow_analysis = true;
+                    self.following_nodes_need_flow_analysis = true;
                     if comp.is_generator() {
                         self.unresolved_nodes.push(Unresolved::Comprehension(comp));
                     } else {
@@ -983,13 +983,13 @@ impl<'db> NameBinder<'db> {
                     }
                 }
                 InterestingNode::DictComprehension(comp) => {
-                    self.references_need_flow_analysis = true;
+                    self.following_nodes_need_flow_analysis = true;
                     self.index_dict_comprehension(comp, ordered);
                 }
                 InterestingNode::Ternary(ternary) => {
                     let (if_, condition, else_) = ternary.unpack();
                     self.index_non_block_node_full(&condition, ordered, from_annotation);
-                    self.references_need_flow_analysis = true;
+                    self.following_nodes_need_flow_analysis = true;
                     self.index_non_block_node_full(&if_, ordered, from_annotation);
                     self.index_non_block_node_full(&else_, ordered, from_annotation);
                 }
@@ -1210,7 +1210,7 @@ impl<'db> NameBinder<'db> {
             self.db_infos.file_index,
             self.db_infos.points,
             name,
-            self.references_need_flow_analysis,
+            self.following_nodes_need_flow_analysis,
         )
     }
 
@@ -1221,7 +1221,7 @@ impl<'db> NameBinder<'db> {
                 self.db_infos.file_index,
                 self.db_infos.points,
                 unordered_reference.name,
-                self.references_need_flow_analysis,
+                self.following_nodes_need_flow_analysis,
             ) {
                 if unordered_reference.ordered && !self.db_infos.is_stub {
                     self.add_issue(
