@@ -409,11 +409,9 @@ testNoneClassVariableInInit
 testMultipleAssignmentNoneClassVariableInInit
 # --allow-untyped-globals
 testPermissiveAttributeOverride1
-# Global
-testNonePartialType1
-testNonePartialType2
-testNonePartialType3
-testNonePartialType4
+# None allowed on self.x = None with --local-partial-types?
+testNoneAttribute
+testStrictNoneAttribute
 
 # Function local self attribute name binding
 testOptionalDescriptorsBinder

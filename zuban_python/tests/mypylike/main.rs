@@ -295,6 +295,8 @@ impl<'name, 'code> TestCase<'name, 'code> {
         } else if self.file_name == "check-modules-case" {
             // These tests are checking for case insensitive file systems like macOS, Windows
             config.case_sensitive = false;
+        } else if self.file_name.starts_with("fine-grained") {
+            config.local_partial_types = true;
         }
 
         let mut tmp;
