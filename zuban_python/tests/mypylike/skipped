@@ -414,10 +414,6 @@ testNonePartialType1
 testNonePartialType2
 testNonePartialType3
 testNonePartialType4
-# partial regressions
-testLocalPartialTypesAccessPartialNoneAttribute
-testLocalPartialTypesAccessPartialNoneAttribute2
-testInheritedAttributeStrictOptional
 
 # Function local self attribute name binding
 testOptionalDescriptorsBinder
@@ -434,7 +430,7 @@ testTypingSelfInternalSafe
 testTypingSelfClashInBodies
 # subclass or superclass preferred over class for types
 testClassOrderOfError
-testLocalPartialTypesWithClassAttributeInitializedToNone
+testInheritedAttributeStrictOptional
 # supertype context inference where descriptors are executed as if it was an instance
 testUseSupertypeAsInferenceContextPartialErrorProperty
 testSetDescriptorOnClass

@@ -2539,7 +2539,15 @@ pub fn specific_to_type<'db>(
             use_cached_annotation_or_type_comment(i_s, definition)
         }
         Specific::MaybeSelfParam => Cow::Borrowed(&Type::Self_),
-        Specific::PartialNone => Cow::Borrowed(&Type::None),
+        Specific::PartialNone => {
+            if definition.point().partial_flags().finished
+                && definition.file.flags(i_s.db).local_partial_types
+            {
+                Cow::Borrowed(&i_s.db.python_state.any_or_none)
+            } else {
+                Cow::Borrowed(&Type::None)
+            }
+        }
         Specific::PartialList => {
             definition.add_need_type_annotation_issue(i_s, specific);
             Cow::Borrowed(&i_s.db.python_state.list_of_any)

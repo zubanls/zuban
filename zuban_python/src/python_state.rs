@@ -188,6 +188,7 @@ pub struct PythonState {
     pub type_of_any: Type,
     pub type_of_self: Type,
     pub type_of_arbitrary_tuple: Type,
+    pub any_or_none: Type,
     pub list_of_any: Type,
     pub dict_of_any: Type,
     pub set_of_any: Type,
@@ -306,6 +307,7 @@ impl PythonState {
                 Tuple::new_arbitrary_length_with_any(),
             ))),
             list_of_any: Type::None, // Will be set later
+            any_or_none: Type::Any(AnyCause::FromError).union(Type::None),
             dict_of_any: Type::None, // Will be set later
             set_of_any: Type::None,  // Will be set later
             any_callable_from_error: Rc::new(CallableContent::new_any(
