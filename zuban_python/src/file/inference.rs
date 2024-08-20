@@ -2892,10 +2892,24 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             return inf;
         }
         let first = self.infer_primary_target_or_atom(primary_target.first());
+        let second = primary_target.second();
+        if first.maybe_saved_specific(self.i_s.db) == Some(Specific::MaybeSelfParam) {
+            if let PrimaryContent::Attribute(attr) = second {
+                let i = attr.index();
+                if self.file.points.get(i).calculated()
+                    && first_defined_name_of_multi_def(self.file, i).is_none()
+                {
+                    // This is the initial definition of self. The definition is not defined at
+                    // this point is probably just inferred to know its context (which is not
+                    // known, because this is going to be the definition).
+                    return Inferred::new_any(AnyCause::Internal);
+                }
+            }
+        }
         self.infer_primary_or_primary_t_content(
             &first,
             primary_target.index(),
-            primary_target.second(),
+            second,
             true,
             &mut ResultContext::Unknown,
         )

@@ -439,9 +439,6 @@ testNoneAnyFallbackDescriptor
 # Dynamic functions are ignored in classes and the super class is used?
 testInferringTypesFromIterable
 testMultipleAssignmentAndGenericSubtyping
-# Tuple Target definitions of self names
-testSlotsAssignmentMultipleLeftValues
-testMultipleAssignment
 
 # Redefinition (Name "X" already defined on line X)
 testRedefineVariableAsTypevar
