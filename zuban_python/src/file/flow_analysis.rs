@@ -282,7 +282,7 @@ pub struct FlowAnalysis {
 }
 
 impl FlowAnalysis {
-    pub fn with_new_empty<T>(&self, callable: impl FnOnce() -> T) -> T {
+    pub fn with_new_empty<T>(&self, i_s: &InferenceState, callable: impl FnOnce() -> T) -> T {
         let old_frames = self.frames.take();
         let try_frames = self.try_frames.take();
         let loop_details = self.loop_details.take();
@@ -292,6 +292,7 @@ impl FlowAnalysis {
         let accumulating_types = self.accumulating_types.take();
 
         let result = callable();
+        self.check_for_unfinished_partials(i_s);
         self.debug_assert_is_empty();
 
         *self.frames.borrow_mut() = old_frames;
@@ -1212,8 +1213,8 @@ impl Inference<'_, '_, '_> {
             );
             let func_def = param_name_node_ref.as_name().expect_as_param_of_function();
             let result = FLOW_ANALYSIS.with(|fa| {
-                fa.with_new_empty(|| {
-                    self.ensure_func_diagnostics_and_finish_partials(
+                fa.with_new_empty(self.i_s, || {
+                    self.ensure_func_diagnostics_for_self_attribute(
                         fa,
                         Function::new(NodeRef::new(self.file, func_def.index()), Some(c)),
                     )
@@ -1226,7 +1227,7 @@ impl Inference<'_, '_, '_> {
         Ok(self.infer_name_of_definition_by_index(self_symbol))
     }
 
-    pub fn ensure_func_diagnostics_and_finish_partials(
+    fn ensure_func_diagnostics_for_self_attribute(
         &self,
         fa: &FlowAnalysis,
         function: Function,
@@ -1241,7 +1242,7 @@ impl Inference<'_, '_, '_> {
                 .calculated()
             {
                 if self.flags().mypy_compatible {
-                    fa.with_new_empty(|| {
+                    fa.with_new_empty(self.i_s, || {
                         let inference = self.file.inference(&self.i_s.with_class_context(&class));
                         let result = fa
                             .with_frame_and_result(Frame::default(), || {
@@ -1249,10 +1250,9 @@ impl Inference<'_, '_, '_> {
                             })
                             .1;
                         fa.process_delayed_funcs(self.i_s.db, |func| {
-                            let result = self.ensure_func_diagnostics_and_finish_partials(fa, func);
+                            let result = self.ensure_func_diagnostics(func);
                             debug_assert!(result.is_ok());
                         });
-                        fa.check_for_unfinished_partials(self.i_s);
                         result
                     })?
                     // At this point we just lose reachability information for the class. This is
@@ -1265,7 +1265,6 @@ impl Inference<'_, '_, '_> {
         }
 
         let result = self.ensure_func_diagnostics(function);
-        fa.check_for_unfinished_partials(self.i_s);
         result
     }
 

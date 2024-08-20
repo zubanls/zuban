@@ -132,7 +132,7 @@ impl<'db> Inference<'db, '_, '_> {
     pub fn calculate_diagnostics(&self) -> Result<(), ()> {
         diagnostics_for_scope(NodeRef::new(self.file, 0), || {
             FLOW_ANALYSIS.with(|fa| {
-                fa.with_new_empty(|| {
+                fa.with_new_empty(self.i_s, || {
                     fa.with_new_frame_and_return_unreachable(|| {
                         self.calc_stmts_diagnostics(
                             self.file.tree.root().iter_stmt_likes(),
@@ -144,10 +144,9 @@ impl<'db> Inference<'db, '_, '_> {
                         fa.check_for_unfinished_partials(self.i_s);
                     }
                     fa.process_delayed_funcs(self.i_s.db, |func| {
-                        let result = self.ensure_func_diagnostics_and_finish_partials(fa, func);
+                        let result = self.ensure_func_diagnostics(func);
                         debug_assert!(result.is_ok());
                     });
-                    fa.check_for_unfinished_partials(self.i_s);
                 })
             });
             for complex_point in unsafe { self.file.complex_points.iter() } {
