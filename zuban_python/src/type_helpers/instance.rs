@@ -360,7 +360,10 @@ impl<'a> Instance<'a> {
                     }
                 }
             }
-            if options.kind == LookupKind::Normal && self_lookup.is_none() {
+            if options.kind == LookupKind::Normal
+                && self_lookup.is_none()
+                && !(options.skip_first_self && mro_index.0 == 0)
+            {
                 // Then check self attributes
                 // This is intentionally done in the same loop. Usually calculating the mro isn't
                 // expensive, but in some cases it is. It therefore makes sense to avoid using it
@@ -908,6 +911,7 @@ pub struct InstanceLookupOptions<'x> {
     add_issue: &'x dyn Fn(IssueKind),
     kind: LookupKind,
     super_count: usize,
+    skip_first_self: bool,
     as_self_instance: Option<&'x dyn Fn() -> Type>,
     check_dunder_getattr: bool,
     disallow_lazy_bound_method: bool,
@@ -920,6 +924,7 @@ impl<'x> InstanceLookupOptions<'x> {
             add_issue,
             kind: LookupKind::Normal,
             super_count: 0,
+            skip_first_self: false,
             as_self_instance: None,
             check_dunder_getattr: true,
             disallow_lazy_bound_method: false,
@@ -929,6 +934,13 @@ impl<'x> InstanceLookupOptions<'x> {
 
     pub fn with_super_count(mut self, super_count: usize) -> Self {
         self.super_count = super_count;
+        // It feels like this is never wanted.
+        self.check_dunder_getattr = false;
+        self
+    }
+
+    pub fn with_skip_first_self(mut self) -> Self {
+        self.skip_first_self = true;
         // It feels like this is never wanted.
         self.check_dunder_getattr = false;
         self
