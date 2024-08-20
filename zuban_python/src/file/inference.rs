@@ -37,7 +37,7 @@ use crate::{
     type_helpers::{
         cache_class_name, is_private_import, is_reexport_issue_if_check_needed,
         lookup_in_namespace, Class, ClassLookupOptions, FirstParamKind, Function, GeneratorType,
-        Instance, Module, TypeOrClass,
+        Instance, InstanceLookupOptions, Module, TypeOrClass,
     },
     utils::debug_indent,
     TypeCheckerFlags,
@@ -954,7 +954,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             value,
             assign_kind,
             save,
-            false,
+            None,
             |first_name_link, declaration_t| {
                 let current_t = value.as_cow_type(self.i_s);
                 self.narrow_or_widen_name_target(first_name_link, declaration_t, &current_t, || {
@@ -986,7 +986,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         value: &Inferred,
         assign_kind: AssignKind,
         save: impl FnOnce(NodeIndex, &Inferred),
-        is_self_attribute: bool,
+        lookup_self_attribute_in_bases: Option<&dyn Fn() -> Option<Inferred>>,
         narrow: impl Fn(PointLink, &Type),
     ) {
         let current_index = name_def.name_index();
@@ -1026,7 +1026,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     self.add_redefinition_issue(
                         first_index,
                         name_def.as_code(),
-                        is_self_attribute,
+                        lookup_self_attribute_in_bases.is_some(),
                         |issue| name_def_ref.add_issue(self.i_s, issue),
                     );
                 }
@@ -1101,7 +1101,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 &original_inf,
             )
         } else {
-            if !is_self_attribute {
+            if lookup_self_attribute_in_bases.is_none() {
                 if let Some(star_imp) = self.lookup_from_star_import(name_def.as_code(), true) {
                     let original = star_imp.as_inferred(self.i_s);
                     match star_imp {
@@ -1112,6 +1112,16 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         StarImportResult::AnyDueToError => (),
                     };
                     save(name_def.index(), &original);
+                    return;
+                }
+            }
+            if let Some(lookup_in_bases) = lookup_self_attribute_in_bases {
+                if let Some(inf) = lookup_in_bases() {
+                    check_assign_to_known_definition(
+                        PointLink::new(self.file_index, current_index),
+                        &inf,
+                    );
+                    save(name_def.index(), &inf);
                     return;
                 }
             }
@@ -1158,7 +1168,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
 
                     return;
                 }
-                if !is_self_attribute
+                if lookup_self_attribute_in_bases.is_none()
                     && name_def.as_code() == "_"
                     && self.i_s.current_function().is_some()
                     && name_def.maybe_import().is_none()
@@ -1193,7 +1203,15 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         value,
                         assign_kind,
                         save,
-                        true,
+                        Some(&|| {
+                            let c = i_s.current_class()?; // TODO this should never be None
+                            let ancestor_lookup = c.instance().lookup(
+                                self.i_s,
+                                name_def.as_code(),
+                                InstanceLookupOptions::new(&|_| todo!()).with_super_count(1),
+                            );
+                            ancestor_lookup.lookup.into_maybe_inferred()
+                        }),
                         |first_name_link, declaration_t| {
                             let current_t = value.as_cow_type(self.i_s);
                             self.narrow_or_widen_self_target(

@@ -377,7 +377,6 @@ testWalrusPartialTypes
 # No "Need type annotation for "X"", because untyped update exists
 testInferDictInitializedToEmptyAndUpdatedFromMethodUnannotated
 # needs error because only reassignments with other partial
-testNewAnalyzerLessErrorsNeedAnnotation
 testInferenceWithUninhabitedType
 # operator narrowing
 testInferListTypeFromInplaceAdd
@@ -427,20 +426,14 @@ testAugmentedAssignmentIntFloatMember
 # self assignment validation
 testSlotsAssignmentWithMethodReassign
 testTypeVarTupleNewSyntaxGenerics
-testInheritanceFromGenericWithImplicitDynamic
 # Confusions with overrides, because of self definitions
-testVariableSubclassAssignment
 testClassOneErrorPerLine
-testAttributeDefOrder1
 testAttributeDefOrder2
-testChangeBaseClassAttributeType
-testInheritanceAndAttributeAssignment
 # verify class definitions when setting self.foo
 testInferAttributeTypeAndAssignInInit
 testTypingSelfInternalSafe
 testTypingSelfClashInBodies
 # subclass or superclass preferred over class for types
-testAddBaseClassAttributeCausingErrorInSubclass
 testClassOrderOfError
 # supertype context inference where descriptors are executed as if it was an instance
 testUseSupertypeAsInferenceContextPartialErrorProperty
@@ -564,6 +557,7 @@ testEnvvar_MYPY_CONFIG_FILE_DIR
 
 # Never not rewritten to Any for "Need type annotation for "X""
 testNewAnalyzerLessErrorsNeedAnnotationNested
+testNewAnalyzerLessErrorsNeedAnnotation
 testUnderspecifiedInferenceResult
 testNeedAnnotationForCallable
 testTypeVarDefaultsClass1
