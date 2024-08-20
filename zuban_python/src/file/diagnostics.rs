@@ -148,7 +148,6 @@ impl<'db> Inference<'db, '_, '_> {
                         debug_assert!(result.is_ok());
                     });
                     fa.check_for_unfinished_partials(self.i_s);
-                    fa.debug_assert_is_empty();
                 })
             });
             for complex_point in unsafe { self.file.complex_points.iter() } {
@@ -613,6 +612,12 @@ impl<'db> Inference<'db, '_, '_> {
         self.calc_stmts_diagnostics(block.iter_stmt_likes(), class, func)
     }
 
+    pub fn calculate_class_block_diagnostics(&self, c: Class, block: Block) -> Result<(), ()> {
+        diagnostics_for_scope(NodeRef::new(self.file, block.index()), || {
+            self.calc_block_diagnostics(block, Some(c), None);
+        })
+    }
+
     fn calc_class_diagnostics(&self, class: ClassDef) {
         let (arguments, block) = class.unpack();
         cache_class_name(NodeRef::new(self.file, class.name_def().index()), class);
@@ -628,7 +633,8 @@ impl<'db> Inference<'db, '_, '_> {
         }
         let i_s = self.i_s.with_diagnostic_class_context(&c);
         let inference = self.file.inference(&i_s);
-        inference.calc_block_diagnostics(block, Some(c), None);
+        let result = inference.calculate_class_block_diagnostics(c, block);
+        debug_assert!(result.is_ok());
 
         check_multiple_inheritance(
             self.i_s,

@@ -1262,3 +1262,13 @@ if bool():
     A().z
 x = ""
 A().z
+
+[case access_self_variable_before_definition_no_mypy_compatible]
+# flags: --no-mypy-compatible
+# This is supported by Mypy (many tests cover it), but we should probably
+# suppress this kind of pattern of accessing members before definition.
+x: A
+x.z  # E: Cannot determine type of "z"
+class A:
+    def __init__(self) -> None:
+        self.z = 3

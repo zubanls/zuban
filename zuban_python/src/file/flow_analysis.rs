@@ -1231,6 +1231,39 @@ impl Inference<'_, '_, '_> {
         fa: &FlowAnalysis,
         function: Function,
     ) -> Result<(), ()> {
+        if let Some(class) = function.class {
+            let class_block = class.node().block();
+            if !class
+                .node_ref
+                .file
+                .points
+                .get(class_block.index())
+                .calculated()
+            {
+                if self.flags().mypy_compatible {
+                    fa.with_new_empty(|| {
+                        let inference = self.file.inference(&self.i_s.with_class_context(&class));
+                        let result = fa
+                            .with_frame_and_result(Frame::default(), || {
+                                self.calculate_class_block_diagnostics(class, class_block)
+                            })
+                            .1;
+                        fa.process_delayed_funcs(self.i_s.db, |func| {
+                            let result = self.ensure_func_diagnostics_and_finish_partials(fa, func);
+                            debug_assert!(result.is_ok());
+                        });
+                        fa.check_for_unfinished_partials(self.i_s);
+                        result
+                    })?
+                    // At this point we just lose reachability information for the class. This is
+                    // probably the price we pay, since we allow weird (in reality impossible?) forward
+                    // statements in Mypy.
+                } else {
+                    return Err(());
+                }
+            }
+        }
+
         let result = self.ensure_func_diagnostics(function);
         fa.check_for_unfinished_partials(self.i_s);
         result
