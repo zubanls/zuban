@@ -415,9 +415,6 @@ testPermissiveAttributeOverride1
 testNoneAttribute
 testStrictNoneAttribute
 
-# self assignment validation
-testSlotsAssignmentWithMethodReassign
-testTypeVarTupleNewSyntaxGenerics
 # Confusions with overrides, because of self definitions
 testClassOneErrorPerLine
 # subclass or superclass preferred over class for types
@@ -606,6 +603,9 @@ testNarrowingWithTupleOfTypesPy310Plus
 testIsinstanceNarrowAny
 # isinstance with alias and union literals `isinstance(x, A | B)`
 testTypeAliasWithNewUnionIsInstance
+
+# Cannot assign to a method when assigning `self.method = lambda: None`
+testSlotsAssignmentWithMethodReassign
 
 # "Cannot determine type of" probably fine
 testThreePassesRequired
