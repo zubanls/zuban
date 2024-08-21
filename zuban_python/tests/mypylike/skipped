@@ -79,6 +79,7 @@ testTypeVarTuplePep646TypeVarStarArgs
 testClassChangedIntoFunction2
 testChangeTypeVarToFunction
 testAsyncForComprehensionErrors
+testNoneAnyFallbackDescriptor
 # i_s missing current class
 testLambdaDeferredSpecialCase
 testLambdaDeferredCrash
@@ -189,6 +190,7 @@ testMultipleInheritance_MethodDefinitionsIncompatibleOverride
 testClassIgnoreType_RedefinedAttributeAndGrandparentAttributeTypesNotIgnored
 testMultipleInheritance_NestedVariableOverriddenWithIncompatibleType1
 testGenericMultipleOverrideReplace
+testUseSupertypeAsInferenceContextConflict
 # "This violates the Liskov substitution principle"
 testIntroducingInplaceOperatorInSubclass
 # Namedtuple bad overwrite of count etc
@@ -432,10 +434,6 @@ testInheritedAttributeStrictOptional
 # supertype context inference where descriptors are executed as if it was an instance
 testUseSupertypeAsInferenceContextPartialErrorProperty
 testSetDescriptorOnClass
-# Need type annotation when different base classes define different lists
-testUseSupertypeAsInferenceContextConflict
-# supertype context regressions
-testNoneAnyFallbackDescriptor
 # Dynamic functions are ignored in classes and the super class is used?
 testInferringTypesFromIterable
 testMultipleAssignmentAndGenericSubtyping

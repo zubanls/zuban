@@ -1242,11 +1242,14 @@ impl Inference<'_, '_, '_> {
                 .calculated()
             {
                 if self.flags().mypy_compatible {
+                    // The class should have self generics within the functions
+                    let class = Class::with_self_generics(self.i_s.db, class.node_ref);
                     fa.with_new_empty(self.i_s, || {
-                        let inference = self.file.inference(&self.i_s.with_class_context(&class));
+                        let new_i_s = self.i_s.with_class_context(&class);
+                        let inference = self.file.inference(&new_i_s);
                         let result = fa
                             .with_frame_and_result(Frame::default(), || {
-                                self.calculate_class_block_diagnostics(class, class_block)
+                                inference.calculate_class_block_diagnostics(class, class_block)
                             })
                             .1;
                         fa.process_delayed_funcs(self.i_s.db, |func| {
