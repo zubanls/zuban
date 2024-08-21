@@ -1224,12 +1224,8 @@ impl<'db: 'slf, 'slf> Inferred {
             _ => (),
         }
 
-        let needs_remapping = match attribute_class.generics {
-            Generics::Self_ { .. } => !attribute_class.has_simple_self_generics(),
-            _ => !attribute_class.type_vars(i_s).is_empty() || t.has_self_type(i_s.db),
-        };
         let mut new = None;
-        if needs_remapping {
+        if attribute_class.needs_generic_remapping_for_attributes(i_s, t) {
             new = Some(replace_class_type_vars(
                 i_s.db,
                 t,
@@ -1437,15 +1433,8 @@ impl<'db: 'slf, 'slf> Inferred {
                 FunctionKind::Staticmethod => (),
             }
         }
-        let needs_remapping = match attribute_class.generics {
-            Generics::Self_ { .. } => {
-                !attribute_class.has_simple_self_generics()
-                    || as_type_type.is_some() && t.has_self_type(i_s.db)
-            }
-            _ => !attribute_class.type_vars(i_s).is_empty() || t.has_self_type(i_s.db),
-        };
         let mut new = None;
-        if needs_remapping {
+        if attribute_class.needs_generic_remapping_for_attributes(i_s, t) {
             new = Some(replace_class_type_vars(
                 i_s.db,
                 t,

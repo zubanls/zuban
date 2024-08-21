@@ -1774,6 +1774,13 @@ impl<'db: 'a, 'a> Class<'a> {
         matches!(self.generics, Generics::Self_ { .. }) && self.type_var_remap.is_none()
     }
 
+    pub fn needs_generic_remapping_for_attributes(&self, i_s: &InferenceState, t: &Type) -> bool {
+        match self.generics {
+            Generics::Self_ { .. } => !self.type_var_remap.is_none(),
+            _ => !self.type_vars(i_s).is_empty() || t.has_self_type(i_s.db),
+        }
+    }
+
     pub fn nth_type_argument(&self, db: &Database, nth: usize) -> Type {
         let type_vars = self.use_cached_type_vars(db);
         self.generics()
