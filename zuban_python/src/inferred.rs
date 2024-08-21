@@ -357,9 +357,6 @@ impl<'db: 'slf, 'slf> Inferred {
         class: &Class,
         attribute_class: &Class,
     ) -> Self {
-        if attribute_class.has_simple_self_generics() {
-            return self;
-        }
         if let InferredState::Saved(link) = self.state {
             let definition = NodeRef::from_link(i_s.db, link);
             if let Some(specific) = definition.point().maybe_specific() {
@@ -371,10 +368,12 @@ impl<'db: 'slf, 'slf> Inferred {
                     Specific::AnnotationOrTypeCommentWithTypeVars
                     | Specific::AnnotationOrTypeCommentFinal => {
                         let t = use_cached_annotation_or_type_comment(i_s, definition);
-                        let d = replace_class_type_vars(i_s.db, &t, attribute_class, &|| {
-                            class.as_type(i_s.db)
-                        });
-                        return Inferred::from_type(d);
+                        if attribute_class.needs_generic_remapping_for_attributes(i_s, &t) {
+                            let d = replace_class_type_vars(i_s.db, &t, attribute_class, &|| {
+                                class.as_type(i_s.db)
+                            });
+                            return Inferred::from_type(d);
+                        }
                     }
                     _ => (),
                 }
@@ -912,38 +911,26 @@ impl<'db: 'slf, 'slf> Inferred {
                                 ))
                             };
                         }
-                        // TODO this should have the case of Specific::AnnotationOrTypeCommentClassVar as well
-                        Specific::AnnotationOrTypeCommentWithTypeVars
-                        | Specific::AnnotationOrTypeCommentFinal
-                            if !attribute_class.has_simple_self_generics() =>
-                        {
-                            let t = use_cached_annotation_or_type_comment(i_s, node_ref);
-                            let t = replace_class_type_vars(i_s.db, &t, &attribute_class, &|| {
-                                instance.clone()
-                            });
-                            if let Some(r) = Self::bind_instance_descriptors_for_type(
-                                i_s,
-                                for_name,
-                                instance,
-                                attribute_class,
-                                add_issue,
-                                mro_index,
-                                &t,
-                                ApplyDescriptorsKind::NoBoundMethod,
-                            ) {
-                                return r;
-                            }
-                            return Some((
-                                Inferred::from_type(t),
-                                AttributeKind::AnnotatedAttribute,
-                            ));
-                        }
                         specific @ (Specific::AnnotationOrTypeCommentWithTypeVars
                         | Specific::AnnotationOrTypeCommentWithoutTypeVars
                         | Specific::AnnotationOrTypeCommentSimpleClassInstance
                         | Specific::AnnotationOrTypeCommentClassVar
                         | Specific::AnnotationOrTypeCommentFinal) => {
-                            let t = use_cached_annotation_or_type_comment(i_s, node_ref);
+                            let mut t = use_cached_annotation_or_type_comment(i_s, node_ref);
+                            let is_remapped = matches!(
+                                specific,
+                                Specific::AnnotationOrTypeCommentWithTypeVars
+                                | Specific::AnnotationOrTypeCommentFinal
+                                if !attribute_class.needs_generic_remapping_for_attributes(i_s, &t)
+                            );
+                            if is_remapped {
+                                t = Cow::Owned(replace_class_type_vars(
+                                    i_s.db,
+                                    &t,
+                                    &attribute_class,
+                                    &|| instance.clone(),
+                                ));
+                            }
                             let is_class_var =
                                 specific == Specific::AnnotationOrTypeCommentClassVar;
                             let attr_kind = if is_class_var {
@@ -968,6 +955,12 @@ impl<'db: 'slf, 'slf> Inferred {
                                 },
                             ) {
                                 return r.map(|(inf, _)| (inf, attr_kind));
+                            }
+                            if is_remapped {
+                                return Some((
+                                    Inferred::from_type(t.into_owned()),
+                                    AttributeKind::AnnotatedAttribute,
+                                ));
                             }
                             return Some((self, attr_kind));
                         }
@@ -1451,8 +1444,6 @@ impl<'db: 'slf, 'slf> Inferred {
                             unreachable!()
                         };
                         (*t).clone()
-                    } else if attribute_class.has_simple_self_generics() {
-                        Type::Self_
                     } else {
                         class.as_type(i_s.db)
                     }

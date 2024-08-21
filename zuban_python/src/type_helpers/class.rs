@@ -1770,10 +1770,6 @@ impl<'db: 'a, 'a> Class<'a> {
         }
     }
 
-    pub fn has_simple_self_generics(&self) -> bool {
-        matches!(self.generics, Generics::Self_ { .. }) && self.type_var_remap.is_none()
-    }
-
     pub fn needs_generic_remapping_for_attributes(&self, i_s: &InferenceState, t: &Type) -> bool {
         match self.generics {
             Generics::Self_ { .. } => !self.type_var_remap.is_none(),
