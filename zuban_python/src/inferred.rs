@@ -921,16 +921,22 @@ impl<'db: 'slf, 'slf> Inferred {
                             let t = replace_class_type_vars(i_s.db, &t, &attribute_class, &|| {
                                 instance.clone()
                             });
-                            return Inferred::from_type(t).bind_instance_descriptors_internal(
+                            if let Some(r) = Self::bind_instance_descriptors_for_type(
                                 i_s,
                                 for_name,
                                 instance,
                                 attribute_class,
                                 add_issue,
                                 mro_index,
+                                &t,
                                 ApplyDescriptorsKind::NoBoundMethod,
-                                disallow_lazy_bound_method,
-                            );
+                            ) {
+                                return r;
+                            }
+                            return Some((
+                                Inferred::from_type(t),
+                                AttributeKind::AnnotatedAttribute,
+                            ));
                         }
                         specific @ (Specific::AnnotationOrTypeCommentWithTypeVars
                         | Specific::AnnotationOrTypeCommentWithoutTypeVars
