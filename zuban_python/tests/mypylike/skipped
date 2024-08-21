@@ -45,6 +45,9 @@ testUnpackInExpression2-only_when_nocache
 # Self is confused. matcher needs to know Self from both sides.
 testOverloadWithDerivedFromAny
 testTypingSelfOverrideVarMulti
+# Self remapped, but it shouldn't
+testTypingSelfInternalSafe
+testTypingSelfClashInBodies
 # Any base class now matches everything for union simplification
 testUnionSimplificationSpecialCases2
 # EnumMeta does not inherit from ABCMeta anymore: https://github.com/python/typeshed/pull/10577
@@ -416,18 +419,12 @@ testNoneAttribute
 testStrictNoneAttribute
 
 # Function local self attribute name binding
-testOptionalDescriptorsBinder
-testUnionDescriptorsBinder
-testSubclassDescriptorsBinder
 testAugmentedAssignmentIntFloatMember
 # self assignment validation
 testSlotsAssignmentWithMethodReassign
 testTypeVarTupleNewSyntaxGenerics
 # Confusions with overrides, because of self definitions
 testClassOneErrorPerLine
-# verify class definitions when setting self.foo
-testTypingSelfInternalSafe
-testTypingSelfClashInBodies
 # subclass or superclass preferred over class for types
 testClassOrderOfError
 testInheritedAttributeStrictOptional
