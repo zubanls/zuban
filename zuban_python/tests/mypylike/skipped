@@ -306,8 +306,6 @@ testNarrowingEqualityDisabledForCustomEquality
 assign_bool_to_false_true_literal
 testBoolInTuplesRegression
 
-# aug assignments can widen types
-testAugmentedAssignmentIntFloat
 # any overwrites of None
 testOptionalAssignAny1
 testOptionalAssignAny2
@@ -417,8 +415,6 @@ testPermissiveAttributeOverride1
 testNoneAttribute
 testStrictNoneAttribute
 
-# Function local self attribute name binding
-testAugmentedAssignmentIntFloatMember
 # self assignment validation
 testSlotsAssignmentWithMethodReassign
 testTypeVarTupleNewSyntaxGenerics

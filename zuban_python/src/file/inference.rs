@@ -1003,10 +1003,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             }
 
             let declaration_t = original.as_cow_type(i_s);
-            if matches!(assign_kind, AssignKind::Normal) {
-                narrow(first_name_link, &declaration_t)
-            } else {
+            if matches!(assign_kind, AssignKind::Annotation(_)) {
                 self.check_assignment_type(value, &declaration_t, from);
+            } else {
+                narrow(first_name_link, &declaration_t)
             }
         };
         if let Some(first_index) = first_defined_name_of_multi_def(self.file, current_index) {
