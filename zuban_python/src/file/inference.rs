@@ -993,7 +993,12 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         let i_s = self.i_s;
 
         let check_assign_to_known_definition = |first_name_link, original: &Inferred| {
-            if original.add_issue_if_final_assignment(i_s, from, name_def.as_code(), false) {
+            if original.add_issue_if_final_assignment(
+                i_s,
+                from,
+                name_def.as_code(),
+                lookup_self_attribute_in_bases.is_some(),
+            ) {
                 return;
             }
 
