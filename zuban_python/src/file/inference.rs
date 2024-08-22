@@ -1130,6 +1130,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     return;
                 }
             }
+            if let Some(class) = i_s.in_class_scope() {
+                // TODO check assignments to base classes
+            }
             if assign_kind == AssignKind::Normal {
                 if let Some(partial) =
                     value.maybe_new_partial(i_s, NodeRef::new(self.file, current_index))
@@ -1150,10 +1153,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 return true;
                             }
 
-                            if i_s.current_function().is_some() {
-                                return true;
-                            }
-                            if let Some(class) = i_s.current_class() {
+                            if let Some(class) = i_s.in_class_scope() {
                                 // TODO this case should not suppress, but behave entirely
                                 // differently: Use the super class definition and then narrow?!
                                 return class
@@ -1165,7 +1165,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                     .lookup
                                     .is_some();
                             }
-                            false
+                            i_s.current_function().is_some()
                         };
                         if suppresses_partial_none_error() {
                             let mut flags = point.partial_flags();
@@ -2984,7 +2984,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         self.file_index != builtins.file_index(),
                         "{name_str}; {save_to_index}"
                     );
-                    if i_s.in_class_scope() {
+                    if i_s.in_class_scope().is_some() {
                         if matches!(name_str, "__name__" | "__module__" | "__qualname__") {
                             return Inferred::from_type(i_s.db.python_state.str_type());
                         }

@@ -141,11 +141,11 @@ impl<'db, 'a> InferenceState<'db, 'a> {
         }
     }
 
-    pub fn in_class_scope(&self) -> bool {
-        matches!(
-            self.context,
-            Context::DiagnosticClass(c) | Context::Class(c)
-        )
+    pub fn in_class_scope(&self) -> Option<&'a Class<'a>> {
+        match self.context {
+            Context::DiagnosticClass(c) | Context::Class(c) => Some(c),
+            _ => None,
+        }
     }
 
     pub fn in_module_context(&self) -> bool {

@@ -700,7 +700,7 @@ fn execute_super_internal<'db>(
             } else {
                 Err(IssueKind::SuperUsedOutsideClass)
             }
-        } else if i_s.in_class_scope() {
+        } else if i_s.in_class_scope().is_some() {
             Err(IssueKind::SuperOutsideOfAMethod)
         } else {
             Err(IssueKind::SuperUsedOutsideClass)
