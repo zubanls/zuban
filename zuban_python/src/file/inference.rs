@@ -1150,7 +1150,12 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 return true;
                             }
 
+                            if i_s.current_function().is_some() {
+                                return true;
+                            }
                             if let Some(class) = i_s.current_class() {
+                                // TODO this case should not suppress, but behave entirely
+                                // differently: Use the super class definition and then narrow?!
                                 return class
                                     .lookup(
                                         self.i_s,
@@ -1160,7 +1165,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                     .lookup
                                     .is_some();
                             }
-                            i_s.current_function().is_some()
+                            false
                         };
                         if suppresses_partial_none_error() {
                             let mut flags = point.partial_flags();
