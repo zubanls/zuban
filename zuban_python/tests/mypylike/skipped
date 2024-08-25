@@ -308,7 +308,6 @@ testBoolInTuplesRegression
 
 # any overwrites of None
 testOptionalAssignAny1
-testOptionalAssignAny2
 testOptionalAssignAny3
 # list[Any] should not be narrowed to e.g. list[int]
 testNewAnalyzerBuiltinAliasesFixed
@@ -357,11 +356,9 @@ testCheckUntypedDefsSelf2
 # Make x an Optional if else contains `x = None`
 testOptionalBackwards1
 testOptionalBackwards2
-testOptionalBackwards3
 testOptionalBackwards4
 # Never for isinstance leads to other side being unreachable
 testPartialAttributeNoneTypeStrictOptional
-
 # name regressions
 testTreeShadowingViaParentPackage
 # self flow analysis regressions
@@ -411,9 +408,6 @@ testNoneClassVariableInInit
 testMultipleAssignmentNoneClassVariableInInit
 # --allow-untyped-globals
 testPermissiveAttributeOverride1
-# None allowed on self.x = None with --local-partial-types?
-testNoneAttribute
-testStrictNoneAttribute
 
 # Confusions with overrides, because of self definitions
 testClassOneErrorPerLine
