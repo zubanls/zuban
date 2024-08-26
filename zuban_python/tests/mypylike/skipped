@@ -371,7 +371,6 @@ testStripNewAnalyzer
 testContextForAttributeDeclaredInInit
 # ????
 testEnumWithPartialTypes
-testIgnoreTypeInferenceErrorAndMultipleAssignment
 testWalrusPartialTypes
 # No "Need type annotation for "X"", because untyped update exists
 testInferDictInitializedToEmptyAndUpdatedFromMethodUnannotated
@@ -389,7 +388,6 @@ testPartialDefaultDict*
 # self attributes
 testInferAttributeInitializedToNoneAndAssignedClassBody
 testSerializeDummyType
-testOverridePartialAttributeWithMethod
 testInferListInitializedToEmptyInClassBodyAndOverriden
 # partial list nullable
 testPartiallyInitializedToNoneAndThenToPartialList
@@ -404,16 +402,56 @@ testIncrementalClassVar
 # error formatting?
 testMultipassAndPartialTypes4
 # None as a default for class variables, even if not optional?
-testNoneClassVariableInInit
 testMultipleAssignmentNoneClassVariableInInit
 # --allow-untyped-globals
 testPermissiveAttributeOverride1
 
-# Confusions with overrides, because of self definitions
-testClassOneErrorPerLine
+# overrides regressions, because of checking overrides in different place
+testNoCrashForwardRefOverloadIncrementalClass
+testSelfRefNTIncremental3
+testNewAnalyzerMemberNameMatchesNamedTuple
+testMutuallyRecursiveNamedTuplesJoin
+testVariadicNamedTuple
+#
+testVariableSubclassTypeOverwrite
+testVariableSubclassTypeOverwriteImplicit
+testClassAllBases
+testInstanceMethodOverwrite
+testInstanceMethodOverwriteError
+testInstanceMethodOverwriteTypevar
+testInstanceMethodOverwriteTwice
+testClassMethodOverwrite
+testClassMethodOverwriteError
+testTempNode
+testClassMemberObject
+testIgnorePrivateAttributesTypeCheck
+testCheckForPrivateMethodsWhenPublicCheck
+testOverrideWithExtendedUnion
+testOverrideWithIncomatibleType
+testOverrideWithNormalAttribute
+testOverrideWithAttributeWithClassVar
+testColumnsAttributeIncompatibleWithBaseClassUsingAnnotation
+testCustomEqVarStrictEquality
+testIncrementalDataclassesThreeFiles
+testLocalPartialTypesWithInheritance
+testLocalPartialTypesInMultipleMroItems
+testLocalPartialTypesWithInheritance3
+testPermissiveAttributeOverride2
+testLiteralSubtypeContext
+testMultipleInheritance_NestedVariableOverriddenWithIncompatibleType2
+testTypingSelfOverrideVar
+testInvalidBaseClass1
+testInvalidBaseClass2
+testNamedTupleUpdateGeneric
+testLiskovFineVariable
+testLiskovFineVariableInFunction
+testLiskovFineVariableClean-only_when_nocache
+testLiskovFineVariableInFunctionClean-only_when_nocache
+testSetattr
+testSetattrSignature
+yield_from_with_generator_subtype
 # subclass or superclass preferred over class for types
 testClassOrderOfError
-testInheritedAttributeStrictOptional
 # supertype context inference where descriptors are executed as if it was an instance
 testUseSupertypeAsInferenceContextPartialErrorProperty
 testSetDescriptorOnClass

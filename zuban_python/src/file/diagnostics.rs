@@ -1884,7 +1884,7 @@ fn find_and_check_override(
     }
 }
 
-fn check_override(
+pub(super) fn check_override(
     i_s: &InferenceState,
     from: NodeRef,
     original_lookup_details: LookupDetails,
@@ -1892,7 +1892,7 @@ fn check_override(
     name: &str,
     original_class_name: impl for<'x> Fn(&'x Database, &'x TypeOrClass) -> &'x str,
     original_formatter: Option<&dyn Fn() -> String>,
-) {
+) -> bool {
     let original_inf = original_lookup_details.lookup.into_inferred();
     let original_t = original_inf.as_cow_type(i_s);
     let original_class = original_lookup_details.class;
@@ -1977,7 +1977,8 @@ fn check_override(
         _ => (),
     }
     let mut added_liskov_note = false;
-    if !match_.bool() {
+    let matched = match_.bool();
+    if !matched {
         let db = i_s.db;
         let mut emitted = false;
         // Mypy helps the user a bit by formatting different error messages for similar
@@ -2143,12 +2144,19 @@ fn check_override(
                 );
             }
             notes.push("     Subclass:".into());
-            try_pretty_format(
-                &mut notes,
-                &i_s.with_class_context(&override_class),
-                override_t,
-                override_class.simple_lookup(i_s, |_| (), name),
-            );
+            if override_lookup_details.attr_kind == AttributeKind::Attribute
+                || override_lookup_details.attr_kind == AttributeKind::AnnotatedAttribute
+            {
+                // TODO remove this hack again and use try_pretty_format
+                notes.push(format!("         {}", override_t.format_short(i_s.db)).into())
+            } else {
+                try_pretty_format(
+                    &mut notes,
+                    &i_s.with_class_context(&override_class),
+                    override_t,
+                    override_class.simple_lookup(i_s, |_| (), name),
+                );
+            }
 
             if op_method_wider_note {
                 notes.push(
@@ -2169,6 +2177,7 @@ fn check_override(
             }
         }
     }
+    matched
 }
 
 fn is_async_iterator_without_async(

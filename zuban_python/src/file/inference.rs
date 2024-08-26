@@ -3,10 +3,14 @@ use std::{cell::Cell, rc::Rc};
 use parsa_python_cst::*;
 
 use super::{
-    diagnostics::await_aiter_and_next, flow_analysis::has_custom_special_method,
-    name_binder::GLOBAL_NONLOCAL_TO_NAME_DIFFERENCE, on_argument_type_error,
-    python_file::StarImport, type_computation::ANNOTATION_TO_EXPR_DIFFERENCE,
-    utils::infer_dict_like, File, PythonFile, FLOW_ANALYSIS,
+    diagnostics::{await_aiter_and_next, check_override},
+    flow_analysis::has_custom_special_method,
+    name_binder::GLOBAL_NONLOCAL_TO_NAME_DIFFERENCE,
+    on_argument_type_error,
+    python_file::StarImport,
+    type_computation::ANNOTATION_TO_EXPR_DIFFERENCE,
+    utils::infer_dict_like,
+    File, PythonFile, FLOW_ANALYSIS,
 };
 use crate::{
     arguments::{Args, KnownArgs, NoArgs, SimpleArgs},
@@ -37,7 +41,7 @@ use crate::{
     type_helpers::{
         cache_class_name, is_private_import, is_reexport_issue_if_check_needed,
         lookup_in_namespace, Class, ClassLookupOptions, FirstParamKind, Function, GeneratorType,
-        Instance, InstanceLookupOptions, Module, TypeOrClass,
+        Instance, InstanceLookupOptions, LookupDetails, Module, TypeOrClass,
     },
     utils::debug_indent,
     TypeCheckerFlags,
@@ -948,6 +952,59 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         assign_kind: AssignKind,
         save: impl FnOnce(NodeIndex, &Inferred),
     ) {
+        let i_s = self.i_s;
+        if let Some(class) = i_s.in_class_scope() {
+            let name_str = name_def.as_code();
+            if class.node_ref != i_s.db.python_state.bare_type_node_ref() && name_str != "__slots__"
+            {
+                // Handle assignments in classes where the variable exists in a super class.
+                let ancestor_lookup = class.instance().lookup(
+                    i_s,
+                    name_str,
+                    InstanceLookupOptions::new(&|issue| ()).with_super_count(1),
+                );
+                if let Some(ancestor_inf) = ancestor_lookup.lookup.maybe_inferred() {
+                    let declaration_t = ancestor_inf.as_cow_type(i_s);
+                    if matches!(assign_kind, AssignKind::Annotation(_)) {
+                        // TODO when an annotation appears again, what should we do?
+                        self.check_assignment_type(value, &declaration_t, from);
+                    } else {
+                        let current_t = value.as_cow_type(i_s);
+                        let first_name_link = PointLink::new(
+                            self.file_index,
+                            first_defined_name(self.file, name_def.name_index()),
+                        );
+                        self.narrow_or_widen_name_target(
+                            first_name_link,
+                            &declaration_t,
+                            &current_t,
+                            || {
+                                check_override(
+                                    i_s,
+                                    from,
+                                    ancestor_lookup.clone(),
+                                    LookupDetails {
+                                        class: TypeOrClass::Class(*class),
+                                        lookup: LookupResult::UnknownName(value.clone()),
+                                        attr_kind: match assign_kind {
+                                            AssignKind::Annotation(_) => {
+                                                AttributeKind::AnnotatedAttribute
+                                            }
+                                            _ => AttributeKind::Attribute,
+                                        },
+                                    },
+                                    name_str,
+                                    |db, c| c.name(db),
+                                    None,
+                                )
+                            },
+                        )
+                    }
+                    save(name_def.index(), &ancestor_inf);
+                    return;
+                }
+            }
+        }
         self.assign_to_name_def_or_self_name_def(
             name_def,
             from,
@@ -956,7 +1013,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             save,
             None,
             |first_name_link, declaration_t| {
-                let current_t = value.as_cow_type(self.i_s);
+                let current_t = value.as_cow_type(i_s);
                 self.narrow_or_widen_name_target(first_name_link, declaration_t, &current_t, || {
                     self.check_assignment_type(value, declaration_t, from)
                 })

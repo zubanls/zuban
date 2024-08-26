@@ -1118,7 +1118,9 @@ impl<'db: 'slf, 'slf> Inferred {
                     }
                 }
             }
-            InferredState::UnsavedSpecific(specific) => todo!(),
+            InferredState::UnsavedSpecific(specific) => {
+                todo!("{specific:?} {}", instance.format_short(i_s.db))
+            }
             InferredState::UnsavedFileReference(file_index) => todo!(),
             InferredState::BoundMethod { .. } => todo!(),
         }

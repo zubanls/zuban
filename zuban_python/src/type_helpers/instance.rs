@@ -868,6 +868,7 @@ fn get_relevant_type_for_super(db: &Database, t: &Type) -> Type {
     t.clone()
 }
 
+#[derive(Clone)]
 pub struct LookupDetails<'a> {
     pub class: TypeOrClass<'a>,
     pub lookup: LookupResult,
