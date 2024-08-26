@@ -965,41 +965,42 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 );
                 if let Some(ancestor_inf) = ancestor_lookup.lookup.maybe_inferred() {
                     let declaration_t = ancestor_inf.as_cow_type(i_s);
-                    if matches!(assign_kind, AssignKind::Annotation(_)) {
-                        // TODO when an annotation appears again, what should we do?
-                        self.check_assignment_type(value, &declaration_t, from);
-                    } else {
-                        let current_t = value.as_cow_type(i_s);
-                        let first_name_link = PointLink::new(
-                            self.file_index,
-                            first_defined_name(self.file, name_def.name_index()),
-                        );
-                        self.narrow_or_widen_name_target(
-                            first_name_link,
-                            &declaration_t,
-                            &current_t,
-                            || {
-                                check_override(
-                                    i_s,
-                                    from,
-                                    ancestor_lookup.clone(),
-                                    LookupDetails {
-                                        class: TypeOrClass::Class(*class),
-                                        lookup: LookupResult::UnknownName(value.clone()),
-                                        attr_kind: match assign_kind {
-                                            AssignKind::Annotation(_) => {
-                                                AttributeKind::AnnotatedAttribute
-                                            }
-                                            _ => AttributeKind::Attribute,
-                                        },
+                    let current_t = value.as_cow_type(i_s);
+                    let first_name_link = PointLink::new(
+                        self.file_index,
+                        first_defined_name(self.file, name_def.name_index()),
+                    );
+                    self.narrow_or_widen_name_target(
+                        first_name_link,
+                        &declaration_t,
+                        &current_t,
+                        || {
+                            check_override(
+                                i_s,
+                                from,
+                                ancestor_lookup.clone(),
+                                LookupDetails {
+                                    class: TypeOrClass::Class(*class),
+                                    lookup: LookupResult::UnknownName(value.clone()),
+                                    attr_kind: match assign_kind {
+                                        AssignKind::Annotation(Some(
+                                            Specific::AnnotationOrTypeCommentClassVar,
+                                        )) => AttributeKind::ClassVar,
+                                        AssignKind::Annotation(Some(
+                                            Specific::AnnotationOrTypeCommentFinal,
+                                        )) => AttributeKind::Final,
+                                        AssignKind::Annotation(_) => {
+                                            AttributeKind::AnnotatedAttribute
+                                        }
+                                        _ => AttributeKind::Attribute,
                                     },
-                                    name_str,
-                                    |db, c| c.name(db),
-                                    None,
-                                )
-                            },
-                        )
-                    }
+                                },
+                                name_str,
+                                |db, c| c.name(db),
+                                None,
+                            )
+                        },
+                    );
                     save(name_def.index(), &ancestor_inf);
                     return;
                 }
