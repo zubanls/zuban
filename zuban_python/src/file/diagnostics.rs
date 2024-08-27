@@ -772,7 +772,6 @@ impl<'db> Inference<'db, '_, '_> {
                         }
                     }
                 }
-
                 find_and_check_override(self.i_s, node_ref, c, name, has_override_decorator)
             }
         }
@@ -1838,6 +1837,26 @@ fn find_and_check_override(
         ),
     );
     if original_details.lookup.is_some() {
+        {
+            // TODO delete this
+            let Some(x) = instance
+                .class
+                .class_storage
+                .class_symbol_table
+                .lookup_symbol(name)
+            else {
+                return;
+            };
+            let n = NodeRef::new(instance.class.node_ref.file, x);
+            if n.as_name()
+                .name_def()
+                .unwrap()
+                .maybe_assignment_definition()
+                .is_some()
+            {
+                return;
+            }
+        }
         let override_details =
             instance.lookup_with_details(i_s, add_lookup_issue, name, LookupKind::Normal);
         if !has_override_decorator

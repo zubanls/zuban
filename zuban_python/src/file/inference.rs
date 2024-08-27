@@ -24,7 +24,9 @@ use crate::{
     getitem::SliceType,
     imports::{find_ancestor, global_import, python_import, ImportResult},
     inference_state::InferenceState,
-    inferred::{add_attribute_error, specific_to_type, AttributeKind, Inferred, UnionValue},
+    inferred::{
+        add_attribute_error, specific_to_type, AttributeKind, Inferred, MroIndex, UnionValue,
+    },
     matching::{
         format_got_expected, CouldBeALiteral, ErrorStrs, ErrorTypes, IteratorContent, LookupKind,
         Matcher, OnTypeError, ResultContext, TupleLenInfos,
@@ -965,35 +967,48 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 );
                 if let Some(ancestor_inf) = ancestor_lookup.lookup.maybe_inferred() {
                     let declaration_t = ancestor_inf.as_cow_type(i_s);
-                    let current_t = value.as_cow_type(i_s);
                     let first_name_link = PointLink::new(
                         self.file_index,
                         first_defined_name(self.file, name_def.name_index()),
                     );
+                    let attr_kind = match assign_kind {
+                        AssignKind::Annotation(Some(Specific::AnnotationOrTypeCommentClassVar)) => {
+                            AttributeKind::ClassVar
+                        }
+                        AssignKind::Annotation(Some(Specific::AnnotationOrTypeCommentFinal)) => {
+                            AttributeKind::Final
+                        }
+                        AssignKind::Annotation(_) => AttributeKind::AnnotatedAttribute,
+                        _ => AttributeKind::Attribute,
+                    };
                     self.narrow_or_widen_name_target(
                         first_name_link,
                         &declaration_t,
-                        &current_t,
+                        &value.as_cow_type(i_s),
                         || {
+                            // TODO all these clones feel weird.
+                            let bound_inf = if let Some((new, _)) =
+                                value.clone().bind_instance_descriptors(
+                                    i_s,
+                                    name_str,
+                                    class.as_type(i_s.db),
+                                    *class,
+                                    |_| todo!(),
+                                    MroIndex(0),
+                                    false,
+                                ) {
+                                new
+                            } else {
+                                value.clone()
+                            };
                             check_override(
                                 i_s,
                                 from,
                                 ancestor_lookup.clone(),
                                 LookupDetails {
                                     class: TypeOrClass::Class(*class),
-                                    lookup: LookupResult::UnknownName(value.clone()),
-                                    attr_kind: match assign_kind {
-                                        AssignKind::Annotation(Some(
-                                            Specific::AnnotationOrTypeCommentClassVar,
-                                        )) => AttributeKind::ClassVar,
-                                        AssignKind::Annotation(Some(
-                                            Specific::AnnotationOrTypeCommentFinal,
-                                        )) => AttributeKind::Final,
-                                        AssignKind::Annotation(_) => {
-                                            AttributeKind::AnnotatedAttribute
-                                        }
-                                        _ => AttributeKind::Attribute,
-                                    },
+                                    lookup: LookupResult::UnknownName(bound_inf),
+                                    attr_kind,
                                 },
                                 name_str,
                                 |db, c| c.name(db),
