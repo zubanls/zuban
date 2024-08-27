@@ -41,7 +41,7 @@ use crate::{
         WithUnpack,
     },
     type_helpers::{
-        cache_class_name, is_private_import, is_reexport_issue_if_check_needed,
+        cache_class_name, is_private, is_private_import, is_reexport_issue_if_check_needed,
         lookup_in_namespace, Class, ClassLookupOptions, FirstParamKind, Function, GeneratorType,
         Instance, InstanceLookupOptions, LookupDetails, Module, TypeOrClass,
     },
@@ -957,7 +957,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         let i_s = self.i_s;
         if let Some(class) = i_s.in_class_scope() {
             let name_str = name_def.as_code();
-            if class.node_ref != i_s.db.python_state.bare_type_node_ref() && name_str != "__slots__"
+            if class.node_ref != i_s.db.python_state.bare_type_node_ref()
+                && name_str != "__slots__"
+                && !is_private(name_str)
             {
                 // Handle assignments in classes where the variable exists in a super class.
                 let ancestor_lookup = class.instance().lookup(
