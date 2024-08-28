@@ -650,11 +650,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 self.check_right_side_against_annotation(&t, right_side);
                             }
                         }
-                        let n = match right_side {
-                            Some(right_side) => NodeRef::new(self.file, right_side.index()),
-                            None => NodeRef::new(self.file, annotation.index()),
-                        };
-                        self.assign_for_annotation(annotation, target, n)
+                        self.assign_for_annotation(annotation, target, node_ref)
                     }
                 }
             }

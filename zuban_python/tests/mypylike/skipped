@@ -416,7 +416,6 @@ testSpecialTypingProtocols
 #
 testEnumNotFinalWithMethodsAndUninitializedValues
 testEnumAreStillFinalAfterCache
-testColumnsAttributeIncompatibleWithBaseClassUsingAnnotation
 testLocalPartialTypesWithInheritance3
 # subclass or superclass preferred over class for types
 testInheritedAttributeNoStrictOptional
