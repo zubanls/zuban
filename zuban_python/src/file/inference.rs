@@ -983,6 +983,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         AssignKind::Annotation(_) => AttributeKind::AnnotatedAttribute,
                         _ => AttributeKind::Attribute,
                     };
+                    let mut had_error = false;
                     self.narrow_or_widen_name_target(
                         first_name_link,
                         &declaration_t,
@@ -1003,7 +1004,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             } else {
                                 value.clone()
                             };
-                            check_override(
+                            let matched = check_override(
                                 i_s,
                                 from,
                                 ancestor_lookup.clone(),
@@ -1015,10 +1016,16 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 name_str,
                                 |db, c| c.name(db),
                                 None,
-                            )
+                            );
+                            had_error = !matched;
+                            matched
                         },
                     );
-                    save(name_def.index(), &ancestor_inf);
+                    if had_error && assign_kind == AssignKind::Normal {
+                        save(name_def.index(), &ancestor_inf);
+                    } else {
+                        save(name_def.index(), value);
+                    }
                     return;
                 }
             }
