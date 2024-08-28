@@ -49,6 +49,8 @@ use crate::{
     TypeCheckerFlags,
 };
 
+const ENUM_NAMES_OVERRIDABLE: [&str; 2] = ["value", "name"];
+
 pub struct Inference<'db: 'file, 'file, 'i_s> {
     pub(super) file: &'file PythonFile,
     pub(super) file_index: FileIndex,
@@ -1000,6 +1002,21 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             } else {
                                 value.clone()
                             };
+                            let override_class_infos = class.use_cached_class_infos(i_s.db);
+                            if let Some(t) = override_class_infos.undefined_generics_type.get() {
+                                if let Type::Enum(e) = t.as_ref() {
+                                    if e.members.iter().any(|member| member.name(i_s.db) == name_str)
+                                        && !ENUM_NAMES_OVERRIDABLE.contains(&name_str)
+                                    {
+                                        from.add_issue(
+                                            i_s,
+                                            IssueKind::EnumCannotOverrideWritableAttributeWithFinal {
+                                                name: name_str.into(),
+                                            },
+                                        )
+                                    }
+                                }
+                            }
                             let matched = check_override(
                                 i_s,
                                 from,

@@ -37,7 +37,6 @@ use crate::{
     utils::debug_indent,
 };
 
-const ENUM_NAMES_OVERRIDABLE: [&str; 2] = ["value", "name"];
 const IGNORED_INHERITANCE_NAMES: [&str; 5] = [
     "__init__",
     "__new__",
@@ -1874,20 +1873,6 @@ fn find_and_check_override(
                     class: original_details.class.qualified_name(i_s.db).into(),
                 },
             );
-        }
-        if let Some(t) = override_class_infos.undefined_generics_type.get() {
-            if let Type::Enum(e) = t.as_ref() {
-                if e.members.iter().any(|member| member.name(i_s.db) == name)
-                    && !ENUM_NAMES_OVERRIDABLE.contains(&name)
-                {
-                    from.add_issue(
-                        i_s,
-                        IssueKind::EnumCannotOverrideWritableAttributeWithFinal {
-                            name: name.into(),
-                        },
-                    )
-                }
-            }
         }
         check_override(
             i_s,

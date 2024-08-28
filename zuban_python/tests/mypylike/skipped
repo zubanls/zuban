@@ -415,7 +415,6 @@ testVariadicNamedTuple
 testSpecialTypingProtocols
 #
 testEnumNotFinalWithMethodsAndUninitializedValues
-testEnumAreStillFinalAfterCache
 testLocalPartialTypesWithInheritance3
 # subclass or superclass preferred over class for types
 testInheritedAttributeNoStrictOptional
