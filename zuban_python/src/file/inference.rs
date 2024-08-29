@@ -958,6 +958,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             if class.node_ref != i_s.db.python_state.bare_type_node_ref()
                 && name_str != "__slots__"
                 && !is_private(name_str)
+                // This happens for NamedTuples and should probably not be here, but otherwise we
+                // cannot do lookups.
+                && !class.is_calculating_class_infos()
             {
                 // Handle assignments in classes where the variable exists in a super class.
                 let ancestor_lookup = class.instance().lookup(

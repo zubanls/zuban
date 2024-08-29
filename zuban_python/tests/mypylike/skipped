@@ -407,10 +407,6 @@ testMultipleAssignmentNoneClassVariableInInit
 testPermissiveAttributeOverride1
 
 # overrides regressions, because of checking overrides in different place
-testNoCrashForwardRefOverloadIncrementalClass
-testSelfRefNTIncremental3
-testNewAnalyzerMemberNameMatchesNamedTuple
-testMutuallyRecursiveNamedTuplesJoin
 testVariadicNamedTuple
 testSpecialTypingProtocols
 #
