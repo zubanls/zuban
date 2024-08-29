@@ -963,10 +963,16 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 && !class.is_calculating_class_infos()
             {
                 // Handle assignments in classes where the variable exists in a super class.
+                let class_infos = class.use_cached_class_infos(i_s.db);
+                let tuple_or_named_tuple = class_infos
+                    .mro
+                    .first()
+                    .is_some_and(|t| matches!(&t.type_, Type::Tuple(_) | Type::NamedTuple(_)));
                 let ancestor_lookup = class.instance().lookup(
                     i_s,
                     name_str,
-                    InstanceLookupOptions::new(&|issue| ()).with_super_count(1),
+                    InstanceLookupOptions::new(&|issue| ())
+                        .with_skip_first_of_mro(tuple_or_named_tuple),
                 );
                 if let Some(ancestor_inf) = ancestor_lookup.lookup.maybe_inferred() {
                     let declaration_t = ancestor_inf.as_cow_type(i_s);

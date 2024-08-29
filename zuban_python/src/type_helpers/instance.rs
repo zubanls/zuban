@@ -940,6 +940,10 @@ impl<'x> InstanceLookupOptions<'x> {
         self
     }
 
+    pub fn with_skip_first_of_mro(self, is_tuple_or_named_tuple: bool) -> Self {
+        self.with_super_count(1 + is_tuple_or_named_tuple as usize)
+    }
+
     pub fn with_skip_first_self(mut self) -> Self {
         self.skip_first_self = true;
         // It feels like this is never wanted.

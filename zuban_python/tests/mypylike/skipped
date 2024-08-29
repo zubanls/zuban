@@ -407,9 +407,7 @@ testMultipleAssignmentNoneClassVariableInInit
 testPermissiveAttributeOverride1
 
 # overrides regressions, because of checking overrides in different place
-testVariadicNamedTuple
 testSpecialTypingProtocols
-#
 testEnumNotFinalWithMethodsAndUninitializedValues
 testLocalPartialTypesWithInheritance3
 # subclass or superclass preferred over class for types
