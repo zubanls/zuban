@@ -358,7 +358,6 @@ testInheritedAttributeNoStrictOptional
 testClassOrderOfError
 # supertype context inference where descriptors are executed as if it was an instance
 testUseSupertypeAsInferenceContextPartialErrorProperty
-testSetDescriptorOnClass
 # Dynamic functions are ignored in classes and the super class is used?
 testInferringTypesFromIterable
 testMultipleAssignmentAndGenericSubtyping

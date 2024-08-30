@@ -462,7 +462,20 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         return result;
                     }
                 }
-                Target::NameExpression(primary_target, _) => {
+                Target::NameExpression(primary_target, name_def) => {
+                    let base = self.infer_primary_target_or_atom(primary_target.first());
+                    if let Some(c) = base.as_cow_type(self.i_s).maybe_type_of_class(self.i_s.db) {
+                        // We need to handle class descriptors separately, because
+                        // there the __get__ descriptor should not be applied.
+                        return c
+                            .lookup(
+                                self.i_s,
+                                name_def.as_code(),
+                                ClassLookupOptions::new(&|_| ()).without_descriptors(),
+                            )
+                            .lookup
+                            .into_maybe_inferred();
+                    }
                     debug!("TODO enable context for named expr");
                     continue;
                 }
