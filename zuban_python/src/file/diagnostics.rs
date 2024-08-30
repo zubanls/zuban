@@ -850,10 +850,8 @@ impl<'db> Inference<'db, '_, '_> {
         let from = NodeRef::new(self.file, func_node.body().index());
         diagnostics_for_scope(from, || {
             let func_node = function.node();
-            debug_indent(|| {
-                debug!("Diagnostics for function {}", function.name());
-                self.calc_func_diagnostics(function, func_node)
-            });
+            debug!("Diagnostics for function {}", function.name());
+            debug_indent(|| self.calc_func_diagnostics(function, func_node));
         })
     }
 

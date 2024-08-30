@@ -272,6 +272,7 @@ testFinalDelayedDefinitionOtherMethod
 testFinalReassignInstanceVarClassVsInit
 testFinalReassignInstanceVarMethod
 testFinalDefiningNoRhsSubclass
+testEnumNotFinalWithMethodsAndUninitializedValues
 # Overrides
 testFinalOverridingVarClassBody
 testFinalOverridingVarClassBodyExplicit
@@ -350,6 +351,19 @@ testStrictEqualityAllowlist
 testNarrowingEqualityDisabledForCustomEqualityChain
 testNarrowingEqualityFlipFlop
 testStrictEqualitywithParamSpec
+# overrides regressions, because of checking overrides in different place
+testSpecialTypingProtocols
+# optional assignment within class
+testLocalPartialTypesWithInheritance3
+testInheritedAttributeNoStrictOptional
+# formatting of class
+testClassOrderOfError
+# supertype context inference where descriptors are executed as if it was an instance
+testUseSupertypeAsInferenceContextPartialErrorProperty
+testSetDescriptorOnClass
+# Dynamic functions are ignored in classes and the super class is used?
+testInferringTypesFromIterable
+testMultipleAssignmentAndGenericSubtyping
 
 # partial types with untyped defs
 testCheckUntypedDefsSelf2
@@ -405,20 +419,6 @@ testMultipassAndPartialTypes4
 testMultipleAssignmentNoneClassVariableInInit
 # --allow-untyped-globals
 testPermissiveAttributeOverride1
-
-# overrides regressions, because of checking overrides in different place
-testSpecialTypingProtocols
-testEnumNotFinalWithMethodsAndUninitializedValues
-testLocalPartialTypesWithInheritance3
-# subclass or superclass preferred over class for types
-testInheritedAttributeNoStrictOptional
-testClassOrderOfError
-# supertype context inference where descriptors are executed as if it was an instance
-testUseSupertypeAsInferenceContextPartialErrorProperty
-testSetDescriptorOnClass
-# Dynamic functions are ignored in classes and the super class is used?
-testInferringTypesFromIterable
-testMultipleAssignmentAndGenericSubtyping
 
 # Redefinition (Name "X" already defined on line X)
 testRedefineVariableAsTypevar

@@ -60,37 +60,37 @@ pub struct Inference<'db: 'file, 'file, 'i_s> {
 macro_rules! check_point_cache_with {
     ($vis:vis $name:ident, $func:path, $ast:ident $(, $result_context:ident )?) => {
         $vis fn $name(&self, node: $ast $(, $result_context : &mut ResultContext)?) -> $crate::inferred::Inferred {
-            debug_indent(|| {
-                if let Some(inferred) = self.check_point_cache(node.index()) {
-                    debug!(
-                        "{} {:?} (#{}, {}:{}) from cache: {}",
-                        stringify!($name),
-                        node.short_debug(),
-                        self.file.byte_to_line_column(node.start()).0,
-                        self.file.file_index(),
-                        node.index(),
-                        {
-                            let point = self.file.points.get(node.index());
-                            match point.kind() {
-                                PointKind::Specific => format!("{:?}", point.specific()),
-                                PointKind::Redirect => format!("Redirect {}:{}", point.file_index(), point.node_index()),
-                                _ => format!("{:?}", point.kind()),
-                            }
-                        },
-                    );
-                    inferred
-                } else {
-                    debug!(
-                        "{} {:?} (#{}, {}:{})",
-                        stringify!($name),
-                        node.short_debug(),
-                        self.file.byte_to_line_column(node.start()).0,
-                        self.file.file_index(),
-                        node.index(),
-                    );
+            if let Some(inferred) = self.check_point_cache(node.index()) {
+                debug!(
+                    "{} {:?} (#{}, {}:{}) from cache: {}",
+                    stringify!($name),
+                    node.short_debug(),
+                    self.file.byte_to_line_column(node.start()).0,
+                    self.file.file_index(),
+                    node.index(),
+                    {
+                        let point = self.file.points.get(node.index());
+                        match point.kind() {
+                            PointKind::Specific => format!("{:?}", point.specific()),
+                            PointKind::Redirect => format!("Redirect {}:{}", point.file_index(), point.node_index()),
+                            _ => format!("{:?}", point.kind()),
+                        }
+                    },
+                );
+                inferred
+            } else {
+                debug!(
+                    "{} {:?} (#{}, {}:{})",
+                    stringify!($name),
+                    node.short_debug(),
+                    self.file.byte_to_line_column(node.start()).0,
+                    self.file.file_index(),
+                    node.index(),
+                );
+                debug_indent(|| {
                     $func(self, node $(, $result_context)?)
-                }
-            })
+                })
+            }
         }
     }
 }
