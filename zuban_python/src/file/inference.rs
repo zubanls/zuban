@@ -952,6 +952,24 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         assign_kind: AssignKind,
         save: impl FnOnce(NodeIndex, &Inferred),
     ) {
+        debug!(
+            "Assign to name def {} (#{}, {}:{})",
+            name_def.as_code(),
+            self.file.byte_to_line_column(name_def.start()).0,
+            self.file.file_index(),
+            name_def.index(),
+        );
+        debug_indent(|| self.assign_to_name_def_internal(name_def, from, value, assign_kind, save))
+    }
+
+    fn assign_to_name_def_internal(
+        &self,
+        name_def: NameDef,
+        from: NodeRef,
+        value: &Inferred,
+        assign_kind: AssignKind,
+        save: impl FnOnce(NodeIndex, &Inferred),
+    ) {
         let i_s = self.i_s;
         if let Some(class) = i_s.in_class_scope() {
             let name_str = name_def.as_code();
