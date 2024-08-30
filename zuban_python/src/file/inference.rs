@@ -1372,12 +1372,6 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     let name_str = name_def.as_code();
                     let mut had_error = false;
                     for t in base.iter_with_unpacked_unions(i_s.db) {
-                        if let Some(cls) = t.maybe_class(i_s.db) {
-                            had_error |= Instance::new(cls, None)
-                                .check_set_descriptor(i_s, node_ref, name_def.name(), value)
-                                .is_err();
-                            continue;
-                        }
                         let property_is_read_only = |class_name| {
                             from.add_issue(
                                 i_s,
@@ -1388,6 +1382,14 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             )
                         };
                         match t {
+                            Type::Class(c) => {
+                                had_error |= c
+                                    .class(i_s.db)
+                                    .instance()
+                                    .check_set_descriptor(i_s, node_ref, name_def.name(), value)
+                                    .is_err();
+                                continue;
+                            }
                             Type::Dataclass(d) => {
                                 if d.options.frozen {
                                     had_error = true;
