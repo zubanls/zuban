@@ -3440,7 +3440,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
 
     pub fn infer_name_of_definition(&self, name: Name) -> Inferred {
         let point = self.file.points.get(name.index());
-        if point.calculated() {
+        if point.calculated() && point.maybe_specific() != Some(Specific::NameOfNameDef) {
             if let Some(inf) = self.check_point_cache(name.index()) {
                 return inf;
             }

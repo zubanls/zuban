@@ -2146,6 +2146,8 @@ pub(super) fn check_override(
             notes.push("     Subclass:".into());
             if override_lookup_details.attr_kind == AttributeKind::Attribute
                 || override_lookup_details.attr_kind == AttributeKind::AnnotatedAttribute
+                || override_lookup_details.attr_kind == AttributeKind::ClassVar
+                || override_lookup_details.attr_kind == AttributeKind::Final
             {
                 // TODO remove this hack again and use try_pretty_format
                 notes.push(format!("         {}", override_t.format_short(i_s.db)).into())

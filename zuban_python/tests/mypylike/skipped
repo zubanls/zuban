@@ -351,12 +351,10 @@ testStrictEqualityAllowlist
 testNarrowingEqualityDisabledForCustomEqualityChain
 testNarrowingEqualityFlipFlop
 testStrictEqualitywithParamSpec
-# overrides regressions, because of checking overrides in different place
-testSpecialTypingProtocols
 # optional assignment within class
 testLocalPartialTypesWithInheritance3
 testInheritedAttributeNoStrictOptional
-# formatting of class
+# formatting the wrong class in assignment to member of superclass of superclass
 testClassOrderOfError
 # supertype context inference where descriptors are executed as if it was an instance
 testUseSupertypeAsInferenceContextPartialErrorProperty
