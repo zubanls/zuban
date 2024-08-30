@@ -1826,10 +1826,8 @@ fn find_and_check_override(
         i_s,
         name,
         // NamedTuple / Tuple are special, because they insert an additional type of themselves.
-        InstanceLookupOptions::new(&add_lookup_issue).with_skip_first_of_mro(matches!(
-            override_class_infos.class_kind,
-            ClassKind::Tuple | ClassKind::NamedTuple
-        )),
+        InstanceLookupOptions::new(&add_lookup_issue)
+            .with_skip_first_of_mro(i_s.db, &override_class),
     );
     if original_details.lookup.is_some() {
         {

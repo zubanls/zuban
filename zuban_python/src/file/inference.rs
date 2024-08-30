@@ -920,7 +920,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         .lookup(
                             self.i_s,
                             name_def.as_code(),
-                            InstanceLookupOptions::new(&|_| ()).with_skip_first_of_mro(false),
+                            InstanceLookupOptions::new(&|_| ())
+                                .with_skip_first_of_mro(self.i_s.db, cls),
                         )
                         .lookup
                         .into_maybe_inferred()
@@ -995,16 +996,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 && !class.is_calculating_class_infos()
             {
                 // Handle assignments in classes where the variable exists in a super class.
-                let class_infos = class.use_cached_class_infos(i_s.db);
-                let tuple_or_named_tuple = class_infos
-                    .mro
-                    .first()
-                    .is_some_and(|t| matches!(&t.type_, Type::Tuple(_) | Type::NamedTuple(_)));
                 let ancestor_lookup = class.instance().lookup(
                     i_s,
                     name_str,
-                    InstanceLookupOptions::new(&|issue| ())
-                        .with_skip_first_of_mro(tuple_or_named_tuple),
+                    InstanceLookupOptions::new(&|issue| ()).with_skip_first_of_mro(i_s.db, class),
                 );
                 if let Some(ancestor_inf) = ancestor_lookup.lookup.maybe_inferred() {
                     let declaration_t = ancestor_inf.as_cow_type(i_s);

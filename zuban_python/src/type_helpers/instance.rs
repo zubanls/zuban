@@ -940,8 +940,13 @@ impl<'x> InstanceLookupOptions<'x> {
         self
     }
 
-    pub fn with_skip_first_of_mro(self, is_tuple_or_named_tuple: bool) -> Self {
-        self.with_super_count(1 + is_tuple_or_named_tuple as usize)
+    pub fn with_skip_first_of_mro(self, db: &Database, cls: &Class) -> Self {
+        let class_infos = cls.use_cached_class_infos(db);
+        let tuple_or_named_tuple = class_infos
+            .mro
+            .first()
+            .is_some_and(|t| matches!(&t.type_, Type::Tuple(_) | Type::NamedTuple(_)));
+        self.with_super_count(1 + tuple_or_named_tuple as usize)
     }
 
     pub fn with_skip_first_self(mut self) -> Self {
