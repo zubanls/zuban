@@ -916,13 +916,14 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     if cls.is_calculating_class_infos() {
                         return None;
                     }
-                    cls.lookup(
-                        self.i_s,
-                        name_def.as_code(),
-                        ClassLookupOptions::new(&|_| ()).with_ignore_self(),
-                    )
-                    .lookup
-                    .into_maybe_inferred()
+                    cls.instance()
+                        .lookup(
+                            self.i_s,
+                            name_def.as_code(),
+                            InstanceLookupOptions::new(&|_| ()).with_skip_first_of_mro(false),
+                        )
+                        .lookup
+                        .into_maybe_inferred()
                 })
                 .or_else(|| {
                     Some(
