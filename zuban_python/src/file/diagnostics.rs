@@ -833,16 +833,18 @@ impl<'db> Inference<'db, '_, '_> {
             }
         }
 
-        if in_func.is_some() {
-            let _ = self.ensure_func_diagnostics(function);
-        } else {
-            FLOW_ANALYSIS.with(|fa| {
+        FLOW_ANALYSIS.with(|fa| {
+            if in_func.is_some() {
+                fa.with_reused_narrowings_for_nested_function(self.i_s, function.node_ref, || {
+                    let _ = self.ensure_func_diagnostics(function);
+                })
+            } else {
                 fa.add_delayed_func(
                     function.node_ref.as_link(),
                     class.map(|c| c.node_ref.as_link()),
                 )
-            })
-        }
+            }
+        })
     }
 
     pub fn ensure_func_diagnostics(&self, function: Function) -> Result<(), ()> {

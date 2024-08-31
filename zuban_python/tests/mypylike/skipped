@@ -326,12 +326,6 @@ testOrCases
 testAndCases
 testFinalWithoutBool
 testFinalWithoutBoolButWithLen
-# global/local lookup in func of narrowed value in different scope
-testAttributePartiallyInitializedToNoneWithMissingAnnotation
-testNarrowedVariableInNestedFunctionBasic
-testNarrowedVariableInNestedModifiedInWalrus
-testNarrowedVariableInNestedFunctionMore1
-testNarrowedVariableInNestedFunctionMore2
 # isinstance intersections lead sometimes to never?
 testIsInstanceAdHocIntersectionIncrementalIntersectionToUnreachable
 testIsInstanceAdHocIntersectionIncrementalUnreachaableToIntersection
@@ -355,6 +349,8 @@ testClassOrderOfError
 testInferringTypesFromIterable
 testMultipleAssignmentAndGenericSubtyping
 
+# self.x = None in class is not partial anymore after finishing scope
+testAttributePartiallyInitializedToNoneWithMissingAnnotation
 # partial types with untyped defs
 testCheckUntypedDefsSelf2
 # Make x an Optional if else contains `x = None`
@@ -586,6 +582,8 @@ testNarrowingWithTupleOfTypesPy310Plus
 testIsinstanceNarrowAny
 # isinstance with alias and union literals `isinstance(x, A | B)`
 testTypeAliasWithNewUnionIsInstance
+# nonlocal
+testNarrowedVariableInNestedFunctionMore1
 
 # Cannot assign to a method when assigning `self.method = lambda: None`
 testSlotsAssignmentWithMethodReassign

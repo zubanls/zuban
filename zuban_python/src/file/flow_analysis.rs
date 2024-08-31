@@ -18,6 +18,7 @@ use crate::{
     database::{ClassKind, Database, PointKind, PointLink, Specific},
     debug,
     diagnostics::IssueKind,
+    file::MultiDefinitionIterator,
     getitem::SliceType,
     inference_state::InferenceState,
     inferred::{Inferred, UnionValue},
@@ -304,6 +305,45 @@ impl FlowAnalysis {
             .set(in_type_checking_only_block);
         self.accumulating_types.set(accumulating_types);
         result
+    }
+
+    pub fn with_reused_narrowings_for_nested_function(
+        &self,
+        i_s: &InferenceState,
+        func_node_ref: NodeRef,
+        callable: impl FnOnce(),
+    ) {
+        let reused_narrowings = Frame::new(
+            self.frames
+                .borrow()
+                .iter()
+                .rev()
+                .map(|frame| {
+                    frame.entries.iter().filter_map(|entry| {
+                        // We can only use narrowings of names in functions. More complex variables could
+                        // have been tampered in different ways.
+                        let FlowKey::Name(link) = entry.key else {
+                            return None;
+                        };
+
+                        debug_assert_eq!(func_node_ref.file_index(), link.file);
+                        // We try to filter out narrowed names that are reassigned within the
+                        // function later than where that function is defined.
+                        for name_index in MultiDefinitionIterator::new(
+                            &func_node_ref.file.points,
+                            link.node_index,
+                        ) {
+                            if name_index > func_node_ref.node_index {
+                                return None;
+                            }
+                        }
+                        Some(entry.clone())
+                    })
+                })
+                .flatten()
+                .collect(),
+        );
+        self.with_new_empty(i_s, || self.with_frame(reused_narrowings, callable));
     }
 
     pub fn debug_assert_is_empty(&self) {
