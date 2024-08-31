@@ -1349,7 +1349,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             let ancestor_lookup = c.instance().lookup(
                                 self.i_s,
                                 name_def.as_code(),
-                                InstanceLookupOptions::new(&|_| todo!()).with_skip_first_self(),
+                                InstanceLookupOptions::new(&|_| todo!())
+                                    .with_skip_first_self_variables(),
                             );
                             ancestor_lookup.lookup.into_maybe_inferred()
                         }),

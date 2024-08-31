@@ -949,7 +949,7 @@ impl<'x> InstanceLookupOptions<'x> {
         self.with_super_count(1 + tuple_or_named_tuple as usize)
     }
 
-    pub fn with_skip_first_self(mut self) -> Self {
+    pub fn with_skip_first_self_variables(mut self) -> Self {
         self.skip_first_self = true;
         // It feels like this is never wanted.
         self.check_dunder_getattr = false;
