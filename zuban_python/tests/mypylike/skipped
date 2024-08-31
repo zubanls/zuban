@@ -328,7 +328,6 @@ testFinalWithoutBool
 testFinalWithoutBoolButWithLen
 # global/local lookup in func of narrowed value in different scope
 testAttributePartiallyInitializedToNoneWithMissingAnnotation
-testUnusedTargetNotClass2
 testNarrowedVariableInNestedFunctionBasic
 testNarrowedVariableInNestedModifiedInWalrus
 testNarrowedVariableInNestedFunctionMore1

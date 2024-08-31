@@ -942,7 +942,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 let name_def_ref =
                     NodeRef::new(self.file, first_index - NAME_DEF_TO_NAME_DIFFERENCE);
                 let point = name_def_ref.point();
-                if point.calculated() && point.maybe_specific().is_some_and(|s| s.is_partial()) {
+                if point.calculated() && point.maybe_specific().is_some_and(|s| s.is_partial())
+                    || point.calculating()
+                {
                     return None;
                 }
                 if narrow {
