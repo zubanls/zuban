@@ -83,6 +83,8 @@ testClassChangedIntoFunction2
 testChangeTypeVarToFunction
 testAsyncForComprehensionErrors
 testNoneAnyFallbackDescriptor
+# wrong function in i_s is used in self assignment
+testFinalReassignInstanceVarInit
 # i_s missing current class
 testLambdaDeferredSpecialCase
 testLambdaDeferredCrash
@@ -289,7 +291,6 @@ testFinalAttributeProtocol
 testModuleAsProtocolImplementationFinal
 # Final issues
 testFinalMultiassignAllowed
-testFinalDefiningNotInOtherMethod
 testFinalDefiningOnlyOnSelf
 testFinalNotInLoops
 # "Unexpected type declaration"

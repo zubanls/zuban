@@ -891,7 +891,12 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     annotation_node_ref.set_point(Point::new_specific(
                         match special {
                             SpecialType::TypeAlias => Specific::AnnotationTypeAlias,
-                            SpecialType::Final => Specific::AnnotationOrTypeCommentFinal,
+                            SpecialType::Final => {
+                                self.add_issue_if_final_attribute_in_wrong_place(
+                                    type_storage_node_ref,
+                                );
+                                Specific::AnnotationOrTypeCommentFinal
+                            }
                             SpecialType::ClassVar => Specific::AnnotationOrTypeCommentClassVar,
                             _ => unreachable!(),
                         },
@@ -944,6 +949,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                                 IssueKind::FinalNameMustBeInitializedWithValue,
                             );
                         }
+                        self.add_issue_if_final_attribute_in_wrong_place(type_storage_node_ref);
                         if i_s
                             .current_class()
                             .is_some_and(|class| uses_class_generics(class, &t))
@@ -979,6 +985,17 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             },
             Locality::Todo,
         ));
+    }
+
+    fn add_issue_if_final_attribute_in_wrong_place(&self, from: NodeRef) {
+        if self
+            .inference
+            .i_s
+            .current_function()
+            .is_some_and(|func| func.class.is_some() && func.name() != "__init__")
+        {
+            self.add_issue(from, IssueKind::FinalAttributeOnlyValidInClassBodyOrInit);
+        }
     }
 
     fn as_type(&mut self, type_: TypeContent, node_ref: NodeRef) -> Type {
