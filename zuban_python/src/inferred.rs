@@ -957,10 +957,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 return r.map(|(inf, _)| (inf, attr_kind));
                             }
                             if is_remapped {
-                                return Some((
-                                    Inferred::from_type(t.into_owned()),
-                                    AttributeKind::AnnotatedAttribute,
-                                ));
+                                return Some((Inferred::from_type(t.into_owned()), attr_kind));
                             }
                             return Some((self, attr_kind));
                         }

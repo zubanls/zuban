@@ -2376,6 +2376,13 @@ pub fn check_multiple_inheritance<'x, BASES: Iterator<Item = TypeOrClass<'x>>>(
                         todo!()
                     }
                     if let Some(first) = inst1_lookup.lookup.into_maybe_inferred() {
+                        if inst2_lookup.attr_kind == AttributeKind::Final {
+                            add_issue(IssueKind::CannotOverrideFinalAttribute {
+                                name: name.into(),
+                                base_class: base2.name(db).into(),
+                            });
+                            return;
+                        }
                         let first = first.as_cow_type(i_s);
                         if !first
                             .is_sub_type_of(
