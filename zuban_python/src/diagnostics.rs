@@ -267,6 +267,7 @@ pub(crate) enum IssueKind {
     CannotOverrideClassVariableWithInstanceVariable { base_class: Box<str> },
     CannotOverrideInstanceVariableWithClassVariable { base_class: Box<str> },
     CannotOverrideFinalAttribute { base_class: Box<str>, name: Box<str> },
+    CannotOverrideWritableWithFinalAttribute { name: Box<str> },
     ExplicitOverrideFlagRequiresOverride { method: Box<str>, class: Box<str> },
 
     BaseExceptionExpected,
@@ -1476,6 +1477,9 @@ impl<'db> Diagnostic<'db> {
             ),
             CannotOverrideFinalAttribute { name, base_class } => format!(
                 r#"Cannot override final attribute "{name}" (previously declared in base class "{base_class}")"#
+            ),
+            CannotOverrideWritableWithFinalAttribute { name } => format!(
+                r#"Cannot override writable attribute "{name}" with a final one"#
             ),
             ExplicitOverrideFlagRequiresOverride { method, class } => format!(
                 r#"Method "{method}" is not using @override but is overriding a method in class "{class}""#

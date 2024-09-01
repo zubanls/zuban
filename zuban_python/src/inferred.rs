@@ -2713,4 +2713,14 @@ impl AttributeKind {
                 | Self::Staticmethod { is_final: true, .. }
         )
     }
+
+    pub(crate) fn is_writable(&self) -> bool {
+        matches!(
+            self,
+            Self::Attribute
+                | Self::AnnotatedAttribute
+                | Self::ClassVar
+                | Self::Property { writable: true, .. }
+        )
+    }
 }

@@ -2385,6 +2385,13 @@ pub fn check_multiple_inheritance<'x, BASES: Iterator<Item = TypeOrClass<'x>>>(
                             });
                             return;
                         }
+                        if inst2_lookup.attr_kind.is_writable() && inst1_lookup.attr_kind.is_final()
+                        {
+                            add_issue(IssueKind::CannotOverrideWritableWithFinalAttribute {
+                                name: name.into(),
+                            });
+                            return;
+                        }
                         let first = first.as_cow_type(i_s);
                         if !first
                             .is_sub_type_of(
