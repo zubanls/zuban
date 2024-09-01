@@ -1043,7 +1043,6 @@ fn split_truthy_and_falsey(i_s: &InferenceState, t: &Type) -> Option<(Type, Type
                     let Some(CallableLike::Callable(callable)) = class_lookup
                         .lookup
                         .into_maybe_inferred()
-                        .filter(|_| !class_lookup.class.is_object(i_s.db))
                         .and_then(|inf| inf.as_cow_type(i_s).maybe_callable(i_s))
                     else {
                         if let Some(nt) = class.maybe_named_tuple_base(i_s.db) {
