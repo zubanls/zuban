@@ -1038,25 +1038,29 @@ fn split_truthy_and_falsey(i_s: &InferenceState, t: &Type) -> Option<(Type, Type
             Type::Class(c) => maybe_split_bool_from_literal(i_s.db, t, &LiteralKind::Bool(true))
                 .or_else(|| {
                     let class = c.class(i_s.db);
-                    let class_lookup =
-                        class.lookup(i_s, "__bool__", ClassLookupOptions::new(&|_| ()));
-                    let Some(CallableLike::Callable(callable)) = class_lookup
-                        .lookup
-                        .into_maybe_inferred()
-                        .and_then(|inf| inf.as_cow_type(i_s).maybe_callable(i_s))
-                    else {
-                        if let Some(nt) = class.maybe_named_tuple_base(i_s.db) {
-                            if nt.params().is_empty() {
-                                todo!()
-                            } else {
-                                return Some((t.clone(), Type::Never(NeverCause::Other)));
-                            }
-                        }
-                        return None;
+
+                    let narrow_by_return_literal = |name| {
+                        let l = class.lookup(i_s, name, ClassLookupOptions::new(&|_| ()));
+                        let inf = l.lookup.into_maybe_inferred()?;
+                        Some(match inf.as_cow_type(i_s).maybe_callable(i_s)? {
+                            CallableLike::Callable(c) => match &c.return_type {
+                                Type::Literal(literal) => check_literal(literal),
+                                _ => None,
+                            },
+                            _ => None,
+                        })
                     };
-                    match &callable.return_type {
-                        Type::Literal(literal) => check_literal(literal),
-                        _ => None,
+
+                    if let Some(maybe_specific_bool) = narrow_by_return_literal("__bool__") {
+                        maybe_specific_bool
+                    } else if let Some(nt) = class.maybe_named_tuple_base(i_s.db) {
+                        check_literal(&Literal::new(LiteralKind::Int(nt.params().len() as i64)))
+                    } else if let Some(maybe_specific_len) = narrow_by_return_literal("__len__") {
+                        maybe_specific_len
+                    } else if class.use_cached_class_infos(i_s.db).is_final {
+                        Some((t.clone(), Type::Never(NeverCause::Other)))
+                    } else {
+                        None
                     }
                 }),
             _ => None,

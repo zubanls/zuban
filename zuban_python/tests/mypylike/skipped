@@ -324,8 +324,6 @@ testAndOr
 testRestrictedBoolAndOrWithGenerics
 testOrCases
 testAndCases
-testFinalWithoutBool
-testFinalWithoutBoolButWithLen
 # isinstance intersections lead sometimes to never?
 testIsInstanceAdHocIntersectionIncrementalIntersectionToUnreachable
 testIsInstanceAdHocIntersectionIncrementalUnreachaableToIntersection
