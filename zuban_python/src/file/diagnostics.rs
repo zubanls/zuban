@@ -2367,31 +2367,30 @@ pub fn check_multiple_inheritance<'x, BASES: Iterator<Item = TypeOrClass<'x>>>(
                         return;
                     }
                     let second = inf.as_cow_type(i_s);
-                    let first = instance1
-                        .lookup(
-                            i_s,
-                            name,
-                            InstanceLookupOptions::new(&|_| had_lookup_issue.set(true)),
-                        )
-                        .lookup
-                        .into_inferred();
+                    let inst1_lookup = instance1.lookup(
+                        i_s,
+                        name,
+                        InstanceLookupOptions::new(&|_| had_lookup_issue.set(true)),
+                    );
                     if had_lookup_issue.get() {
                         todo!()
                     }
-                    let first = first.as_cow_type(i_s);
-                    if !first
-                        .is_sub_type_of(
-                            i_s,
-                            &mut Matcher::default().with_ignore_positional_param_names(),
-                            &second,
-                        )
-                        .bool()
-                    {
-                        add_issue(IssueKind::MultipleInheritanceIncompatibility {
-                            name: name.into(),
-                            class1: base1.name(db).into(),
-                            class2: base2.name(db).into(),
-                        });
+                    if let Some(first) = inst1_lookup.lookup.into_maybe_inferred() {
+                        let first = first.as_cow_type(i_s);
+                        if !first
+                            .is_sub_type_of(
+                                i_s,
+                                &mut Matcher::default().with_ignore_positional_param_names(),
+                                &second,
+                            )
+                            .bool()
+                        {
+                            add_issue(IssueKind::MultipleInheritanceIncompatibility {
+                                name: name.into(),
+                                class1: base1.name(db).into(),
+                                class2: base2.name(db).into(),
+                            });
+                        }
                     }
                 }
             });
