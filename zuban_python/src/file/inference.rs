@@ -1009,6 +1009,15 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         self.file_index,
                         first_defined_name(self.file, name_def.name_index()),
                     );
+                    if ancestor_lookup.attr_kind == AttributeKind::Final {
+                        from.add_issue(
+                            i_s,
+                            IssueKind::CannotAssignToFinal {
+                                name: name_str.into(),
+                                is_attribute: false,
+                            },
+                        )
+                    }
                     let attr_kind = match assign_kind {
                         AssignKind::Annotation(Some(Specific::AnnotationOrTypeCommentClassVar)) => {
                             AttributeKind::ClassVar

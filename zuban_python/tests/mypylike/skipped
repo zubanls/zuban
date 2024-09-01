@@ -263,7 +263,6 @@ testTypingSelfAllowAliasUseInFinalClasses
 # "Protocol member cannot be final"
 testFinalNotInProtocol
 # Final: "Cannot assign to final name "x""
-testNewAnalyzerFinalOverrideInSubclass
 testFinalAddFinalVarOverrideFine
 testLiteralFinalMismatchCausesError
 testFinalAddFinalVarOverride
