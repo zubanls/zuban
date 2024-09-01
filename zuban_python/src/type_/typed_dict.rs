@@ -1058,7 +1058,7 @@ pub(crate) fn lookup_on_typed_dict<'a>(
     LookupDetails::new(
         Type::TypedDict(typed_dict),
         lookup,
-        AttributeKind::DefMethod,
+        AttributeKind::DefMethod { is_final: false },
     )
 }
 

@@ -154,7 +154,7 @@ impl NamedTuple {
         let mut attr_kind = AttributeKind::Attribute;
         let mut replace_method = |method_name| {
             Type::Callable({
-                attr_kind = AttributeKind::DefMethod;
+                attr_kind = AttributeKind::DefMethod { is_final: false };
                 let mut params = vec![];
                 if from_type {
                     params.push(CallableParam::new_anonymous(ParamType::PositionalOnly(
@@ -185,7 +185,7 @@ impl NamedTuple {
                 replace_method("__replace__")
             }
             "_asdict" => Type::Callable({
-                attr_kind = AttributeKind::DefMethod;
+                attr_kind = AttributeKind::DefMethod { is_final: false };
                 let mut params = vec![];
                 if from_type {
                     params.push(CallableParam::new_anonymous(ParamType::PositionalOnly(
@@ -206,7 +206,7 @@ impl NamedTuple {
                 ))
             }),
             "_make" => Type::Callable({
-                attr_kind = AttributeKind::Classmethod;
+                attr_kind = AttributeKind::Classmethod { is_final: false };
                 let mut params = vec![];
                 if as_self.is_none() {
                     params.push(CallableParam::new_anonymous(ParamType::PositionalOnly(
@@ -270,7 +270,10 @@ impl NamedTuple {
             }
             _ => {
                 if let Some(param) = self.search_param(i_s.db, name) {
-                    attr_kind = AttributeKind::Property { writable: false };
+                    attr_kind = AttributeKind::Property {
+                        writable: false,
+                        is_final: false,
+                    };
                     param.type_.expect_positional_type_as_ref().clone()
                 } else {
                     return LookupDetails::none();

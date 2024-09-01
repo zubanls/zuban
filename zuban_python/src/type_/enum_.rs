@@ -315,7 +315,7 @@ pub(crate) fn lookup_on_enum_member_instance<'a>(
                 return LookupDetails::new(
                     Type::Enum(member.enum_.clone()),
                     LookupResult::UnknownName(infer_value_on_member(i_s, &member.enum_, value)),
-                    AttributeKind::DefMethod,
+                    AttributeKind::DefMethod { is_final: false },
                 );
             }
             "_ignore_" => return LookupDetails::none(),

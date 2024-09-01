@@ -709,7 +709,7 @@ impl<'db> Inference<'db, '_, '_> {
                         lookup: LookupResult::UnknownName(Inferred::from_type(Type::Callable(
                             Rc::new(__post_init__.clone()),
                         ))),
-                        attr_kind: AttributeKind::DefMethod,
+                        attr_kind: AttributeKind::DefMethod { is_final: false },
                     };
                     check_override(
                         &i_s,
@@ -1927,9 +1927,11 @@ pub(super) fn check_override(
         (
             AttributeKind::Property {
                 writable: writable1,
+                ..
             },
             AttributeKind::Property {
                 writable: writable2,
+                ..
             },
         ) => {
             if writable1 && !writable2 {
@@ -1944,7 +1946,7 @@ pub(super) fn check_override(
                     );
             }
         }
-        (Classmethod | Staticmethod, DefMethod) => {
+        (Classmethod { .. } | Staticmethod { .. }, DefMethod { .. }) => {
             // Some method types may be overridden, because they still work the same way on class
             // and instance, others not.
             match_ = Match::new_false();
@@ -2376,7 +2378,7 @@ pub fn check_multiple_inheritance<'x, BASES: Iterator<Item = TypeOrClass<'x>>>(
                         todo!()
                     }
                     if let Some(first) = inst1_lookup.lookup.into_maybe_inferred() {
-                        if inst2_lookup.attr_kind == AttributeKind::Final {
+                        if inst2_lookup.attr_kind.is_final() {
                             add_issue(IssueKind::CannotOverrideFinalAttribute {
                                 name: name.into(),
                                 base_class: base2.name(db).into(),

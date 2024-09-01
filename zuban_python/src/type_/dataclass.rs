@@ -801,11 +801,14 @@ pub fn lookup_symbol_internal(
         );
         return (
             LookupResult::UnknownName(Inferred::from_type(Type::Tuple(tup))),
-            AttributeKind::DefMethod,
+            AttributeKind::DefMethod { is_final: false },
         );
     }
     if self_.options.order && ORDER_METHOD_NAMES.contains(&name) {
-        return (order_func(self_.clone(), i_s), AttributeKind::DefMethod);
+        return (
+            order_func(self_.clone(), i_s),
+            AttributeKind::DefMethod { is_final: false },
+        );
     }
     if self_.options.slots {
         todo!()
@@ -815,7 +818,7 @@ pub fn lookup_symbol_internal(
             LookupResult::UnknownName(Inferred::from_type(Type::Callable(Rc::new(
                 dataclass_init_func(&self_, i_s.db).clone(),
             )))),
-            AttributeKind::DefMethod,
+            AttributeKind::DefMethod { is_final: false },
         );
     }
     (LookupResult::None, AttributeKind::Attribute)

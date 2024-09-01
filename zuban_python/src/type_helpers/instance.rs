@@ -310,7 +310,10 @@ impl<'a> Instance<'a> {
                     if c.node_ref == self.class.node_ref {
                         if let Some(named_tuple) = self.class.maybe_named_tuple_base(i_s.db) {
                             if let Some(param) = named_tuple.search_param(i_s.db, name) {
-                                attr_kind = AttributeKind::Property { writable: false };
+                                attr_kind = AttributeKind::Property {
+                                    writable: false,
+                                    is_final: false,
+                                };
                                 return Some(Inferred::from_type(
                                     param.type_.expect_positional_type_as_ref().clone(),
                                 ));
@@ -427,6 +430,7 @@ impl<'a> Instance<'a> {
                                 );
                                 details.lookup.is_some() && !details.class.is_object(i_s.db)
                             },
+                            is_final: false,
                         },
                     };
                 }

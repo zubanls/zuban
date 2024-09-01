@@ -655,7 +655,7 @@ pub fn lookup_tuple_magic_methods(tuple: Rc<Tuple>, name: &str) -> LookupDetails
             ))),
             _ => LookupResult::None,
         },
-        AttributeKind::DefMethod,
+        AttributeKind::DefMethod { is_final: false },
     )
 }
 

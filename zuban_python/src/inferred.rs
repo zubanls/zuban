@@ -834,7 +834,7 @@ impl<'db: 'slf, 'slf> Inferred {
                     PointKind::Specific => match point.specific() {
                         Specific::Function => {
                             let func = prepare_func(i_s, *definition, attribute_class);
-                            let attr_kind = AttributeKind::DefMethod;
+                            let attr_kind = AttributeKind::DefMethod { is_final: false };
                             if !func.node().params().iter().next().is_some_and(|p| {
                                 matches!(
                                     p.kind(),
@@ -969,10 +969,21 @@ impl<'db: 'slf, 'slf> Inferred {
                                 let kind = o.kind();
                                 let attr_kind = match kind {
                                     FunctionKind::Staticmethod => {
-                                        return Some((self, AttributeKind::Staticmethod))
+                                        return Some((
+                                            self,
+                                            AttributeKind::Staticmethod {
+                                                is_final: o.is_final,
+                                            },
+                                        ))
                                     }
-                                    FunctionKind::Function { .. } => AttributeKind::DefMethod,
-                                    FunctionKind::Classmethod { .. } => AttributeKind::Classmethod,
+                                    FunctionKind::Function { .. } => AttributeKind::DefMethod {
+                                        is_final: o.is_final,
+                                    },
+                                    FunctionKind::Classmethod { .. } => {
+                                        AttributeKind::Classmethod {
+                                            is_final: o.is_final,
+                                        }
+                                    }
                                     FunctionKind::Property { .. } => unreachable!(),
                                 };
 
@@ -1168,7 +1179,9 @@ impl<'db: 'slf, 'slf> Inferred {
                         });
                         return Some(Some((
                             Inferred::from_type(Type::Callable(new_c)),
-                            AttributeKind::DefMethod,
+                            AttributeKind::DefMethod {
+                                is_final: c.is_final,
+                            },
                         )));
                     } else {
                         add_issue(IssueKind::NotAcceptingSelfArgument {
@@ -1184,7 +1197,13 @@ impl<'db: 'slf, 'slf> Inferred {
                         if let Some(t) =
                             calculate_property_return(i_s, &instance, &attribute_class, c)
                         {
-                            (Inferred::from_type(t), AttributeKind::Property { writable })
+                            (
+                                Inferred::from_type(t),
+                                AttributeKind::Property {
+                                    writable,
+                                    is_final: c.is_final,
+                                },
+                            )
                         } else {
                             add_invalid_self_arg(c);
                             (Inferred::new_any_from_error(), AttributeKind::Attribute)
@@ -1202,21 +1221,27 @@ impl<'db: 'slf, 'slf> Inferred {
                         add_issue(t);
                         return Some(Some((Self::new_any_from_error(), AttributeKind::Attribute)));
                     }
-                    return Some(
-                        result.map(|c| (callable_into_inferred(c), AttributeKind::Classmethod)),
-                    );
+                    let is_final = c.is_final;
+                    return Some(result.map(|c| {
+                        (
+                            callable_into_inferred(c),
+                            AttributeKind::Classmethod { is_final },
+                        )
+                    }));
                 }
                 FunctionKind::Staticmethod => {
                     return Some(Some((
                         Inferred::from_type(t.clone()),
-                        AttributeKind::Staticmethod,
+                        AttributeKind::Staticmethod {
+                            is_final: c.is_final,
+                        },
                     )))
                 }
             },
             Type::CustomBehavior(custom) => {
                 return Some(Some((
                     Inferred::from_type(Type::CustomBehavior(custom.bind(Rc::new(instance)))),
-                    AttributeKind::DefMethod,
+                    AttributeKind::DefMethod { is_final: false },
                 )))
             }
             _ => (),
@@ -2646,29 +2671,46 @@ pub enum AttributeKind {
     Attribute,
     ClassVar,
     Final,
-    Property { writable: bool },
-    Classmethod,
-    Staticmethod,
-    DefMethod,
+    Property { writable: bool, is_final: bool },
+    Classmethod { is_final: bool },
+    Staticmethod { is_final: bool },
+    DefMethod { is_final: bool },
 }
 
 impl AttributeKind {
     pub fn is_read_only_property(&self) -> bool {
-        matches!(self, Self::Property { writable: false })
+        matches!(
+            self,
+            Self::Property {
+                writable: false,
+                ..
+            }
+        )
     }
 
     pub fn classmethod_or_staticmethod(&self) -> bool {
-        matches!(self, Self::Classmethod | Self::Staticmethod)
+        matches!(self, Self::Classmethod { .. } | Self::Staticmethod { .. })
     }
 
     pub fn classvar_like(&self) -> bool {
         matches!(
             self,
-            AttributeKind::ClassVar
-                | AttributeKind::DefMethod
-                | AttributeKind::Property { .. }
-                | AttributeKind::Classmethod
-                | AttributeKind::Staticmethod
+            Self::ClassVar
+                | Self::DefMethod { .. }
+                | Self::Property { .. }
+                | Self::Classmethod { .. }
+                | Self::Staticmethod { .. }
+        )
+    }
+
+    pub fn is_final(&self) -> bool {
+        matches!(
+            self,
+            Self::Final
+                | Self::DefMethod { is_final: true, .. }
+                | Self::Property { is_final: true, .. }
+                | Self::Classmethod { is_final: true, .. }
+                | Self::Staticmethod { is_final: true, .. }
         )
     }
 }
