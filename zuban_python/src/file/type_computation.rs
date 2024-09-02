@@ -943,7 +943,10 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     } = self.origin
                     {
                         is_final = true;
-                        if !is_initialized && !self.inference.file.is_stub() {
+                        if !is_initialized
+                            && !self.inference.file.is_stub()
+                            && !self.final_is_assigned_in_init(annotation_node_ref)
+                        {
                             self.add_issue(
                                 type_storage_node_ref,
                                 IssueKind::FinalNameMustBeInitializedWithValue,
@@ -996,6 +999,22 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         {
             self.add_issue(from, IssueKind::FinalAttributeOnlyValidInClassBodyOrInit);
         }
+    }
+
+    fn final_is_assigned_in_init(&self, annotation_node_ref: NodeRef) -> bool {
+        let Some(class) = self.inference.i_s.in_class_scope() else {
+            return false;
+        };
+        let Some(name_def) = annotation_node_ref.as_annotation().maybe_assignment_name() else {
+            return false;
+        };
+        // TODO this is not correctly looking up Final assignments. To do this correctly we would
+        // probably need to check if we are in __init__.
+        class
+            .class_storage
+            .self_symbol_table
+            .lookup_symbol(name_def.as_code())
+            .is_some()
     }
 
     fn as_type(&mut self, type_: TypeContent, node_ref: NodeRef) -> Type {

@@ -2203,6 +2203,17 @@ impl<'db> Annotation<'db> {
     pub fn expression(&self) -> Expression<'db> {
         Expression::new(self.node.nth_child(1))
     }
+
+    pub fn maybe_assignment_name(&self) -> Option<NameDef<'db>> {
+        let parent = self.node.parent().unwrap();
+        if parent.is_type(Nonterminal(assignment)) {
+            let maybe_name_def = parent.nth_child(0).nth_child(0);
+            if maybe_name_def.is_type(Nonterminal(name_def)) {
+                return Some(NameDef::new(maybe_name_def));
+            }
+        }
+        None
+    }
 }
 
 pub enum StarAnnotationContent<'db> {

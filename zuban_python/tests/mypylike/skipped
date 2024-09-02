@@ -290,7 +290,6 @@ testFinalCantOverrideWriteable
 testFinalAttributeProtocol
 testModuleAsProtocolImplementationFinal
 # Final issues
-testFinalMultiassignAllowed
 testFinalDefiningOnlyOnSelf
 testFinalNotInLoops
 # "Unexpected type declaration"
