@@ -291,8 +291,6 @@ testFinalAttributeProtocol
 testModuleAsProtocolImplementationFinal
 # Final issues
 testFinalDefiningOnlyOnSelf
-# "Unexpected type declaration"
-testFinalInvalidDefinitions
 
 # [''] + [1] does not generate an error
 testAssignmentSubtypes
