@@ -1248,20 +1248,6 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 &original_inf,
             )
         } else {
-            if lookup_self_attribute_in_bases.is_none() {
-                if let Some(star_imp) = self.lookup_from_star_import(name_def.as_code(), true) {
-                    let original = star_imp.as_inferred(self.i_s);
-                    match star_imp {
-                        StarImportResult::Link(star_link) => {
-                            let node_ref = NodeRef::from_link(self.i_s.db, star_link);
-                            check_assign_to_known_definition(star_link, &original);
-                        }
-                        StarImportResult::AnyDueToError => (),
-                    };
-                    save(name_def.index(), &original);
-                    return;
-                }
-            }
             if let Some(lookup_in_bases) = lookup_self_attribute_in_bases {
                 if let Some(inf) = lookup_in_bases() {
                     check_assign_to_known_definition(
@@ -1271,6 +1257,17 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     save(name_def.index(), &inf);
                     return;
                 }
+            } else if let Some(star_imp) = self.lookup_from_star_import(name_def.as_code(), true) {
+                let original = star_imp.as_inferred(self.i_s);
+                match star_imp {
+                    StarImportResult::Link(star_link) => {
+                        let node_ref = NodeRef::from_link(self.i_s.db, star_link);
+                        check_assign_to_known_definition(star_link, &original);
+                    }
+                    StarImportResult::AnyDueToError => (),
+                };
+                save(name_def.index(), &original);
+                return;
             }
             if let Some(class) = i_s.in_class_scope() {
                 // TODO check assignments to base classes
