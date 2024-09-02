@@ -1121,14 +1121,14 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         had_error
     }
 
-    fn assign_to_name_def_or_self_name_def(
+    fn assign_to_name_def_or_self_name_def<'x>(
         &self,
         name_def: NameDef,
         from: NodeRef,
         value: &Inferred,
         assign_kind: AssignKind,
         save: impl FnOnce(NodeIndex, &Inferred),
-        lookup_self_attribute_in_bases: Option<&dyn Fn() -> Option<Inferred>>,
+        lookup_self_attribute_in_bases: Option<&dyn Fn() -> LookupDetails<'x>>,
         narrow: impl Fn(PointLink, &Type),
     ) {
         let current_index = name_def.name_index();
@@ -1249,11 +1249,22 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             )
         } else {
             if let Some(lookup_in_bases) = lookup_self_attribute_in_bases {
-                if let Some(inf) = lookup_in_bases() {
-                    check_assign_to_known_definition(
-                        PointLink::new(self.file_index, current_index),
-                        &inf,
-                    );
+                let lookup_details = lookup_in_bases();
+                if let Some(inf) = lookup_details.lookup.into_maybe_inferred() {
+                    if lookup_details.attr_kind == AttributeKind::Final {
+                        from.add_issue(
+                            i_s,
+                            IssueKind::CannotAssignToFinal {
+                                is_attribute: true,
+                                name: name_def.as_code().into(),
+                            },
+                        );
+                    } else {
+                        check_assign_to_known_definition(
+                            PointLink::new(self.file_index, current_index),
+                            &inf,
+                        );
+                    }
                     save(name_def.index(), &inf);
                     return;
                 }
@@ -1353,14 +1364,17 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         assign_kind,
                         save,
                         Some(&|| {
-                            let c = i_s.current_class()?; // TODO this should never be None
+                            // TODO this should never be None
+                            let Some(c) = i_s.current_class() else {
+                                return LookupDetails::any(AnyCause::Internal);
+                            };
                             let ancestor_lookup = c.instance().lookup(
                                 self.i_s,
                                 name_def.as_code(),
                                 InstanceLookupOptions::new(&|_| todo!())
                                     .with_skip_first_self_variables(),
                             );
-                            ancestor_lookup.lookup.into_maybe_inferred()
+                            ancestor_lookup
                         }),
                         |first_name_link, declaration_t| {
                             let current_t = value.as_cow_type(self.i_s);

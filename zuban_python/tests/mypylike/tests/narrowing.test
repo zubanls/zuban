@@ -1283,3 +1283,13 @@ for i in [1, 2, 3]:
 
 while True:
     y: Final[bool] = True  # E: Cannot use Final inside a loop
+
+[case final_reassignment_in_init]
+# Like testFinalDelayedDefinition, but not delayed
+from typing import Final
+
+class C:
+    x: Final[int] = 2  # OK, defined in __init__
+
+    def __init__(self, x: int) -> None:
+        self.x = 2  # E: Cannot assign to final attribute "x"
