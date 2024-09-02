@@ -377,6 +377,10 @@ impl FlowAnalysis {
         self.frames.borrow().len() > 1
     }
 
+    pub fn in_loop(&self) -> bool {
+        self.loop_details.borrow().is_some()
+    }
+
     pub fn is_unreachable(&self) -> bool {
         self.frames.borrow().last().unwrap().unreachable
     }
@@ -1093,6 +1097,10 @@ impl Inference<'_, '_, '_> {
 
     pub fn in_type_checking_only_block(&self) -> bool {
         FLOW_ANALYSIS.with(|fa| fa.in_type_checking_only_block.get())
+    }
+
+    pub fn in_loop(&self) -> bool {
+        FLOW_ANALYSIS.with(|fa| fa.in_loop())
     }
 
     pub fn mark_current_frame_unreachable(&self) {

@@ -1272,3 +1272,14 @@ x.z  # E: Cannot determine type of "z"
 class A:
     def __init__(self) -> None:
         self.z = 3
+
+
+[case final_with_getitem_in_loop]
+# Like testFinalNotInLoops but instead of Final we use Final[int]
+from typing import Final
+
+for i in [1, 2, 3]:
+    x: Final[int] = i  # E: Cannot use Final inside a loop
+
+while True:
+    y: Final[bool] = True  # E: Cannot use Final inside a loop

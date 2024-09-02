@@ -291,7 +291,6 @@ testFinalAttributeProtocol
 testModuleAsProtocolImplementationFinal
 # Final issues
 testFinalDefiningOnlyOnSelf
-testFinalNotInLoops
 # "Unexpected type declaration"
 testFinalInvalidDefinitions
 
