@@ -1255,12 +1255,12 @@ impl Inference<'_, '_, '_> {
                 .points
                 .get(self_index)
                 .as_redirected_node_ref(self.i_s.db);
-            debug_assert!(
+            debug_assert_eq!(
                 param_name_node_ref
                     .add_to_node_index(-(NAME_DEF_TO_NAME_DIFFERENCE as i64))
                     .point()
-                    .specific()
-                    == Specific::MaybeSelfParam
+                    .specific(),
+                Specific::MaybeSelfParam
             );
             let func_def = param_name_node_ref.as_name().expect_as_param_of_function();
             let result = FLOW_ANALYSIS.with(|fa| {

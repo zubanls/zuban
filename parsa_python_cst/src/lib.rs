@@ -1913,15 +1913,6 @@ impl<'db> FunctionDef<'db> {
         unreachable!()
     }
 
-    pub fn from_param_name_def_index(tree: &'db Tree, param_name_index: NodeIndex) -> Self {
-        Self::new(
-            tree.0
-                .node_by_index(param_name_index)
-                .parent_until(&[Nonterminal(function_def)])
-                .unwrap(),
-        )
-    }
-
     pub fn return_annotation(&self) -> Option<ReturnAnnotation<'db>> {
         let ret = self.node.nth_child(3);
         if ret.is_type(Nonterminal(return_annotation)) {
