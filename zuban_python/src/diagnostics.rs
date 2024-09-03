@@ -70,8 +70,8 @@ pub(crate) enum IssueKind {
     CannotDetermineType { for_: Box<str> },
 
     Redefinition { name: Box<str>, suffix: Box<str>, is_self_attribute: bool },
-    CannotRedifineAs { name: Box<str>, as_: &'static str },
-    CannotRedifineAsFinal,
+    CannotRedefineAs { name: Box<str>, as_: &'static str },
+    CannotRedefineAsFinal,
     IncompatibleConditionalFunctionSignature { original: Box<str>, redefinition: Box<str> },
     IncompatibleConditionalFunctionSignaturePretty { original: Box<str>, redefinition: Box<str> },
     NameUsedBeforeDefinition { name: Box<str> },
@@ -794,8 +794,8 @@ impl<'db> Diagnostic<'db> {
                 false => format!(r#"Name "{name}" already defined {suffix}"#),
                 true => format!(r#"Attribute "{name}" already defined {suffix}"#),
             },
-            CannotRedifineAs { name, as_ } => format!(r#"Cannot redefine "{name}" as {as_}"#),
-            CannotRedifineAsFinal => r#"Cannot redefine an existing name as final"#.to_string(),
+            CannotRedefineAs { name, as_ } => format!(r#"Cannot redefine "{name}" as {as_}"#),
+            CannotRedefineAsFinal => r#"Cannot redefine an existing name as final"#.to_string(),
             IncompatibleConditionalFunctionSignature { original, redefinition } => format!(
                 r#"Incompatible redefinition (redefinition with type "{redefinition}", original type "{original}")"#
             ),

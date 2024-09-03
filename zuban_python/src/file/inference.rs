@@ -1189,7 +1189,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 if let Some(ComplexPoint::NewTypeDefinition(special_def)) = special_def {
                     name_def_ref.add_issue(
                         self.i_s,
-                        IssueKind::CannotRedifineAs {
+                        IssueKind::CannotRedefineAs {
                             name: name_def.as_code().into(),
                             as_: "a NewType",
                         },
@@ -1199,7 +1199,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     assign_kind,
                     AssignKind::Annotation(Some(Specific::AnnotationOrTypeCommentFinal))
                 ) {
-                    name_def_ref.add_issue(self.i_s, IssueKind::CannotRedifineAsFinal);
+                    name_def_ref.add_issue(self.i_s, IssueKind::CannotRedefineAsFinal);
                 } else {
                     self.add_redefinition_issue(
                         first_index,
@@ -1286,7 +1286,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         assign_kind,
                         AssignKind::Annotation(Some(Specific::AnnotationOrTypeCommentFinal))
                     ) {
-                        from.add_issue(self.i_s, IssueKind::CannotRedifineAsFinal);
+                        from.add_issue(self.i_s, IssueKind::CannotRedefineAsFinal);
                     }
                     if lookup_details.attr_kind.is_final() {
                         if let TypeOrClass::Class(c) = lookup_details.class {
