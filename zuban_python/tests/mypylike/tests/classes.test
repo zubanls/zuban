@@ -520,3 +520,9 @@ class Foo:
 
 f: Foo
 f.x = []
+
+[case avoid_losing_context_when_self_attr_doesnt_exist]
+
+class Foo: ...
+x = [1]
+Foo().undefined = x = []  # E: "Foo" has no attribute "undefined"

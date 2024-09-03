@@ -464,17 +464,17 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 }
                 Target::NameExpression(primary_target, name_def) => {
                     let base = self.infer_primary_target_or_atom(primary_target.first());
-                    if let Some(c) = base.as_cow_type(self.i_s).maybe_type_of_class(self.i_s.db) {
+                    let lookup = if let Some(c) =
+                        base.as_cow_type(self.i_s).maybe_type_of_class(self.i_s.db)
+                    {
                         // We need to handle class descriptors separately, because
                         // there the __get__ descriptor should not be applied.
-                        return c
-                            .lookup(
-                                self.i_s,
-                                name_def.as_code(),
-                                ClassLookupOptions::new(&|_| ()).without_descriptors(),
-                            )
-                            .lookup
-                            .into_maybe_inferred();
+                        c.lookup(
+                            self.i_s,
+                            name_def.as_code(),
+                            ClassLookupOptions::new(&|_| ()).without_descriptors(),
+                        )
+                        .lookup
                     } else {
                         let t = base.as_cow_type(self.i_s);
                         if matches!(t.as_ref(), Type::Self_) {
@@ -482,18 +482,19 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             // a lot of problems with non-finished partial lists for example.
                             continue;
                         }
-                        return t
-                            .lookup(
-                                self.i_s,
-                                self.file_index,
-                                name_def.as_code(),
-                                LookupKind::Normal,
-                                &mut ResultContext::Unknown,
-                                // Errors don't matter, we just want a potential context.
-                                &|_| (),
-                                &|_| (),
-                            )
-                            .into_maybe_inferred();
+                        t.lookup(
+                            self.i_s,
+                            self.file_index,
+                            name_def.as_code(),
+                            LookupKind::Normal,
+                            &mut ResultContext::Unknown,
+                            // Errors don't matter, we just want a potential context.
+                            &|_| (),
+                            &|_| (),
+                        )
+                    };
+                    if let Some(result) = lookup.into_maybe_inferred() {
+                        return Some(result);
                     }
                 }
                 _ => {
