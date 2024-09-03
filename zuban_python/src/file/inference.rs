@@ -1295,11 +1295,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             //             self.x = 1
                             //         def foo(self) -> None:
                             //             self.y = 1  # This is disallowed
-                            if c.lookup_assignment(name_str).is_some_and(|a| {
-                                matches!(
-                                    a.unpack(),
-                                    AssignmentContent::WithAnnotation(_, _, Some(_)),
-                                )
+                            if !c.lookup_assignment(name_str).is_some_and(|a| {
+                                matches!(a.unpack(), AssignmentContent::WithAnnotation(_, _, None),)
                             }) || func_of_self_symbol(self.file, name_def.name_index())
                                 .name_def()
                                 .as_code()
