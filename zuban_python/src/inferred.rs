@@ -725,6 +725,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 | Specific::StringLiteral
                                 | Specific::BytesLiteral
                                 | Specific::BoolLiteral
+                                | Specific::AnnotationOrTypeCommentFinal
                         ) {
                             return self;
                         }

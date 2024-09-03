@@ -84,7 +84,7 @@ impl<'a> Instance<'a> {
                 InstanceLookupOptions::new(&add_issue).with_no_check_dunder_getattr(),
             )
         });
-        let Some(inf) = lookup_details.lookup.maybe_inferred() else {
+        let Some(mut inf) = lookup_details.lookup.maybe_inferred() else {
             let t = self.class.as_type(i_s.db);
             let had_setattr_issue = Cell::new(false);
             let l = self.lookup_with_details(
@@ -131,7 +131,7 @@ impl<'a> Instance<'a> {
                     name: name_str.into(),
                 },
             );
-            return Err(());
+            inf = Cow::Owned(inf.into_owned().avoid_implicit_literal(i_s));
         }
 
         let assign_to = inf.as_cow_type(i_s);

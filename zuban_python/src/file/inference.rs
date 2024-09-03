@@ -1,4 +1,4 @@
-use std::{cell::Cell, rc::Rc};
+use std::{borrow::Cow, cell::Cell, rc::Rc};
 
 use parsa_python_cst::*;
 
@@ -1143,16 +1143,21 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         let i_s = self.i_s;
 
         let check_assign_to_known_definition = |first_name_link, original: &Inferred| {
+            let declaration_t = original.as_cow_type(i_s);
             if original.add_issue_if_final_assignment(
                 i_s,
                 from,
                 name_def.as_code(),
                 lookup_self_attribute_in_bases.is_some(),
             ) {
+                self.check_assignment_type(
+                    value,
+                    &declaration_t.into_owned().avoid_implicit_literal(i_s.db),
+                    from,
+                );
                 return;
             }
 
-            let declaration_t = original.as_cow_type(i_s);
             if matches!(assign_kind, AssignKind::Annotation(_)) {
                 self.check_assignment_type(value, &declaration_t, from);
             } else {
@@ -1533,6 +1538,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             result.0
                         });
                         let inf = lookup.into_inferred();
+                        let mut declaration_t = inf.as_cow_type(i_s);
                         if attr_kind == AttributeKind::Final {
                             from.add_issue(
                                 i_s,
@@ -1541,10 +1547,12 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                     name: name_str.into(),
                                 },
                             );
+                            declaration_t = Cow::Owned(
+                                declaration_t.into_owned().avoid_implicit_literal(i_s.db),
+                            );
                             had_error = true;
-                            continue;
                         }
-                        inf.as_cow_type(i_s).error_if_not_matches(
+                        declaration_t.error_if_not_matches(
                             i_s,
                             value,
                             |issue| from.add_issue(i_s, issue),
