@@ -2,7 +2,7 @@ use std::{borrow::Cow, cell::Cell, rc::Rc};
 
 use parsa_python_cst::{SliceType as CSTSliceType, *};
 
-use super::{inference::StarImportResult, TypeVarFinder};
+use super::{inference::StarImportResult, utils::func_of_self_symbol, TypeVarFinder};
 use crate::{
     arguments::SimpleArgs,
     database::{
@@ -1023,7 +1023,12 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             .class_storage
             .self_symbol_table
             .lookup_symbol(name_def.as_code())
-            .is_some()
+            .is_some_and(|symbol| {
+                func_of_self_symbol(class.node_ref.file, symbol)
+                    .name_def()
+                    .as_code()
+                    == "__init__"
+            })
     }
 
     fn as_type(&mut self, type_: TypeContent, node_ref: NodeRef) -> Type {

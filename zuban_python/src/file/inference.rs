@@ -9,7 +9,7 @@ use super::{
     on_argument_type_error,
     python_file::StarImport,
     type_computation::ANNOTATION_TO_EXPR_DIFFERENCE,
-    utils::infer_dict_like,
+    utils::{func_of_self_symbol, infer_dict_like},
     File, PythonFile, FLOW_ANALYSIS,
 };
 use crate::{
@@ -1259,14 +1259,21 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             //
                             //     class Foo:
                             //         x: Final[int]  # Not missing assignment, which is allowed
-                            //         def foo(self):
+                            //         y: Final[int]
+                            //         def __init__(self) -> None:
                             //             self.x = 1
+                            //         def foo(self) -> None:
+                            //             self.y = 1  # This is disallowed
                             if c.lookup_assignment(name_str).is_some_and(|a| {
                                 matches!(
                                     a.unpack(),
                                     AssignmentContent::WithAnnotation(_, _, Some(_)),
                                 )
-                            }) {
+                            }) || func_of_self_symbol(self.file, name_def.name_index())
+                                .name_def()
+                                .as_code()
+                                != "__init__"
+                            {
                                 from.add_issue(
                                     i_s,
                                     IssueKind::CannotAssignToFinal {
