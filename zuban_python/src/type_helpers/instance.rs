@@ -5,7 +5,7 @@ use parsa_python_cst::Name;
 use super::{class::TypeOrClass, Class, FirstParamKind, Function, MroIterator};
 use crate::{
     arguments::{Args, CombinedArgs, InferredArg, KnownArgs, KnownArgsWithCustomAddIssue},
-    database::{Database, PointLink, Specific},
+    database::{ComplexPoint, Database, PointLink, Specific},
     debug,
     diagnostics::IssueKind,
     file::{on_argument_type_error, File},
@@ -84,7 +84,7 @@ impl<'a> Instance<'a> {
                 InstanceLookupOptions::new(&add_issue).with_no_check_dunder_getattr(),
             )
         });
-        let Some(inf) = lookup_details.lookup.into_maybe_inferred() else {
+        let Some(inf) = lookup_details.lookup.maybe_inferred() else {
             let t = self.class.as_type(i_s.db);
             let had_setattr_issue = Cell::new(false);
             let l = self.lookup_with_details(
@@ -123,7 +123,7 @@ impl<'a> Instance<'a> {
                 name: name_str.into(),
             });
         }
-        if lookup_details.attr_kind == AttributeKind::Final {
+        if lookup_details.is_final(i_s.db) {
             from.add_issue(
                 i_s,
                 IssueKind::CannotAssignToFinal {
@@ -909,6 +909,18 @@ impl LookupDetails<'_> {
             LookupResult::None => c(),
             _ => self,
         }
+    }
+
+    pub fn is_final(&self, db: &Database) -> bool {
+        if self.attr_kind == AttributeKind::Final {
+            return true;
+        }
+        self.lookup.maybe_inferred().is_some_and(|inf| {
+            matches!(
+                inf.maybe_complex_point(db),
+                Some(ComplexPoint::IndirectFinal(_))
+            )
+        })
     }
 }
 

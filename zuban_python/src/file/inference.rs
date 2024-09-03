@@ -1010,13 +1010,21 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         first_defined_name(self.file, name_def.name_index()),
                     );
                     if ancestor_lookup.attr_kind == AttributeKind::Final {
+                        //if ancestor_lookup.attr_kind == AttributeKind::Final || matches!(ancestor_inf.maybe_complex_point(i_s.db), Some(ComplexPoint::IndirectFinal(_))) {
                         from.add_issue(
                             i_s,
                             IssueKind::CannotAssignToFinal {
                                 name: name_str.into(),
                                 is_attribute: false,
                             },
-                        )
+                        );
+                        save(
+                            name_def.index(),
+                            &Inferred::new_unsaved_complex(ComplexPoint::IndirectFinal(Rc::new(
+                                ancestor_inf.as_type(i_s),
+                            ))),
+                        );
+                        return;
                     }
                     let attr_kind = match assign_kind {
                         AssignKind::Annotation(Some(Specific::AnnotationOrTypeCommentClassVar)) => {
@@ -1938,7 +1946,11 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             .and_then(|inf| inf.maybe_saved_node_ref(self.i_s.db))
             .and_then(|node_ref| node_ref.complex())
             .and_then(|complex| {
-                (!matches!(complex, ComplexPoint::TypeInstance(_))).then_some(complex)
+                (!matches!(
+                    complex,
+                    ComplexPoint::TypeInstance(_) | ComplexPoint::IndirectFinal(_)
+                ))
+                .then_some(complex)
             })
     }
 
