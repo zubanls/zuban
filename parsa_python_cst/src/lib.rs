@@ -501,7 +501,7 @@ impl<'db> Name<'db> {
         }
     }
 
-    pub fn maybe_assignment_definition_name(&self) -> Option<Assignment> {
+    pub fn maybe_assignment_definition_name(&self) -> Option<Assignment<'db>> {
         let node = self
             .node
             .parent_until(&[

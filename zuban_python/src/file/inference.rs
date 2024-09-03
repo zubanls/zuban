@@ -1251,14 +1251,31 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             if let Some(lookup_in_bases) = lookup_self_attribute_in_bases {
                 let lookup_details = lookup_in_bases();
                 if let Some(inf) = lookup_details.lookup.into_maybe_inferred() {
-                    if lookup_details.attr_kind == AttributeKind::Final {
-                        from.add_issue(
-                            i_s,
-                            IssueKind::CannotAssignToFinal {
-                                is_attribute: true,
-                                name: name_def.as_code().into(),
-                            },
-                        );
+                    if lookup_details.attr_kind.is_final() {
+                        if let TypeOrClass::Class(c) = lookup_details.class {
+                            let name_str = name_def.as_code();
+                            // We cannot assign to final only in the case where the original
+                            // definition in the parent class was not an assignment like:
+                            //
+                            //     class Foo:
+                            //         x: Final[int]  # Not missing assignment, which is allowed
+                            //         def foo(self):
+                            //             self.x = 1
+                            if c.lookup_assignment(name_str).is_some_and(|a| {
+                                matches!(
+                                    a.unpack(),
+                                    AssignmentContent::WithAnnotation(_, _, Some(_)),
+                                )
+                            }) {
+                                from.add_issue(
+                                    i_s,
+                                    IssueKind::CannotAssignToFinal {
+                                        is_attribute: true,
+                                        name: name_str.into(),
+                                    },
+                                );
+                            }
+                        }
                     } else {
                         check_assign_to_known_definition(
                             PointLink::new(self.file_index, current_index),

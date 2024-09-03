@@ -6,9 +6,9 @@ use std::{
 };
 
 use parsa_python_cst::{
-    Argument, Arguments as CSTArguments, AssignmentContent, AsyncStmtContent, ClassDef, Decoratee,
-    ExpressionContent, ExpressionPart, PrimaryContent, StmtLikeContent, StmtLikeIterator, Target,
-    TypeLike,
+    Argument, Arguments as CSTArguments, Assignment, AssignmentContent, AsyncStmtContent, ClassDef,
+    Decoratee, ExpressionContent, ExpressionPart, PrimaryContent, StmtLikeContent,
+    StmtLikeIterator, Target, TypeLike,
 };
 
 use super::{overload::OverloadResult, Callable, Instance, InstanceLookupOptions, LookupDetails};
@@ -1555,6 +1555,13 @@ impl<'db: 'a, 'a> Class<'a> {
             }
         }
         false
+    }
+
+    pub fn lookup_assignment(&self, name: &str) -> Option<Assignment<'a>> {
+        let i = self.class_storage.class_symbol_table.lookup_symbol(name)?;
+        NodeRef::new(self.node_ref.file, i)
+            .as_name()
+            .maybe_assignment_definition_name()
     }
 
     pub fn lookup_symbol(&self, i_s: &InferenceState<'db, '_>, name: &str) -> LookupResult {
