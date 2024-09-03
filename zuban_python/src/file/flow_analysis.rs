@@ -38,7 +38,9 @@ use super::{
     first_defined_name, first_defined_name_of_multi_def,
     inference::{instantiate_except, instantiate_except_star, Inference},
     name_binder::{is_expr_part_reachable_for_name_binder, Truthiness},
-    on_argument_type_error, PythonFile,
+    on_argument_type_error,
+    utils::func_of_self_symbol,
+    PythonFile,
 };
 
 type Entries = Vec<Entry>;
@@ -1247,22 +1249,7 @@ impl Inference<'_, '_, '_> {
             return Err(());
         }
         if !p.calculated() {
-            // This is due to the fact that the nodes before <name> in self.<name> are
-            // name_definition, `.` and then finally `self`.
-            let self_index = self_symbol - NAME_DEF_TO_NAME_DIFFERENCE - 2;
-            let param_name_node_ref = self
-                .file
-                .points
-                .get(self_index)
-                .as_redirected_node_ref(self.i_s.db);
-            debug_assert_eq!(
-                param_name_node_ref
-                    .add_to_node_index(-(NAME_DEF_TO_NAME_DIFFERENCE as i64))
-                    .point()
-                    .specific(),
-                Specific::MaybeSelfParam
-            );
-            let func_def = param_name_node_ref.as_name().expect_as_param_of_function();
+            let func_def = func_of_self_symbol(self.file, self_symbol);
             let result = FLOW_ANALYSIS.with(|fa| {
                 fa.with_new_empty(self.i_s, || {
                     self.ensure_func_diagnostics_for_self_attribute(
