@@ -1285,7 +1285,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     if matches!(
                         assign_kind,
                         AssignKind::Annotation(Some(Specific::AnnotationOrTypeCommentFinal))
-                    ) {
+                    ) && matches!(lookup_details.class, TypeOrClass::Class(c) if c.node_ref == i_s.current_class().unwrap().node_ref)
+                    {
                         from.add_issue(self.i_s, IssueKind::CannotRedefineAsFinal);
                     }
                     if lookup_details.attr_kind.is_final() {
