@@ -564,6 +564,8 @@ pub enum ComplexPoint {
     NamedTupleDefinition(Rc<Type>),
     // e.g. X = TypedDict('X', {'x': int}), does not include classes.
     TypedDictDefinition(TypedDictDefinition),
+    // Sometimes needed when a Final is defined in a class and initialized in __init__.
+    IndirectFinal(Rc<Type>),
 
     // Relevant for types only (not inference)
     TypeVarLike(TypeVarLike),

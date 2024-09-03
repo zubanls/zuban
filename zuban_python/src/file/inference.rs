@@ -1283,13 +1283,19 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 );
                             }
                         }
+                        save(
+                            name_def.index(),
+                            &Inferred::new_unsaved_complex(ComplexPoint::IndirectFinal(Rc::new(
+                                inf.as_type(i_s),
+                            ))),
+                        );
                     } else {
                         check_assign_to_known_definition(
                             PointLink::new(self.file_index, current_index),
                             &inf,
                         );
+                        save(name_def.index(), &inf);
                     }
-                    save(name_def.index(), &inf);
                     return;
                 }
             } else if let Some(star_imp) = self.lookup_from_star_import(name_def.as_code(), true) {

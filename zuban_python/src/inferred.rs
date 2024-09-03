@@ -2146,8 +2146,12 @@ impl<'db: 'slf, 'slf> Inferred {
         name: &str,
         is_attribute: bool,
     ) -> bool {
-        let result =
-            self.maybe_saved_specific(i_s.db) == Some(Specific::AnnotationOrTypeCommentFinal);
+        let result = self.maybe_saved_specific(i_s.db)
+            == Some(Specific::AnnotationOrTypeCommentFinal)
+            || matches!(
+                self.maybe_complex_point(i_s.db),
+                Some(ComplexPoint::IndirectFinal(_))
+            );
         if result {
             from.add_issue(
                 i_s,
@@ -2481,6 +2485,7 @@ fn type_of_complex<'db: 'x, 'x>(
         }
         ComplexPoint::NamedTupleDefinition(n) => Cow::Owned(Type::Type(n.clone())),
         ComplexPoint::TypedDictDefinition(t) => Cow::Owned(Type::Type(t.type_.clone())),
+        ComplexPoint::IndirectFinal(t) => Cow::Borrowed(t),
         _ => {
             unreachable!("Classes are handled earlier {complex:?}")
         }
