@@ -512,3 +512,11 @@ class Foo:
 f = Foo()
 f.x = ''
 f.x = 1
+
+[case self_attr_context]
+class Foo:
+    def __init__(self, x: list[int]):
+        self.x = x
+
+f: Foo
+f.x = []

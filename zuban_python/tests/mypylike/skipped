@@ -266,7 +266,6 @@ testTypingSelfAllowAliasUseInFinalClasses
 testFinalNotInProtocol
 # Final: "Cannot assign to final name "x""
 testFinalAddFinalVarOverrideFine
-testLiteralFinalMismatchCausesError
 testFinalAddFinalVarOverride
 testFinalReassignInstanceVarClassVsInit
 testFinalReassignInstanceVarMethod

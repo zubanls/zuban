@@ -475,9 +475,26 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             )
                             .lookup
                             .into_maybe_inferred();
+                    } else {
+                        let t = base.as_cow_type(self.i_s);
+                        if matches!(t.as_ref(), Type::Self_) {
+                            // For now giving Self a context is hard, because if we do that we have
+                            // a lot of problems with non-finished partial lists for example.
+                            continue;
+                        }
+                        return t
+                            .lookup(
+                                self.i_s,
+                                self.file_index,
+                                name_def.as_code(),
+                                LookupKind::Normal,
+                                &mut ResultContext::Unknown,
+                                // Errors don't matter, we just want a potential context.
+                                &|_| (),
+                                &|_| (),
+                            )
+                            .into_maybe_inferred();
                     }
-                    debug!("TODO enable context for named expr");
-                    continue;
                 }
                 _ => {
                     if let Some(inferred) = self.infer_target(target, false) {
