@@ -1039,21 +1039,25 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         self.file_index,
                         first_defined_name(self.file, name_def.name_index()),
                     );
-                    if ancestor_lookup.attr_kind == AttributeKind::Final {
-                        //if ancestor_lookup.is_final(i_s)
+                    if ancestor_lookup.attr_kind.is_final() {
                         from.add_issue(
                             i_s,
-                            match assign_kind {
+                            if matches!(
+                                assign_kind,
                                 AssignKind::Annotation(Some(
-                                    Specific::AnnotationOrTypeCommentFinal,
-                                )) => IssueKind::CannotOverrideFinalAttribute {
+                                    Specific::AnnotationOrTypeCommentFinal
+                                ))
+                            ) || !matches!(ancestor_lookup.attr_kind, AttributeKind::Final)
+                            {
+                                IssueKind::CannotOverrideFinalAttribute {
                                     name: name_str.into(),
                                     base_class: ancestor_lookup.class.name(i_s.db).into(),
-                                },
-                                _ => IssueKind::CannotAssignToFinal {
+                                }
+                            } else {
+                                IssueKind::CannotAssignToFinal {
                                     name: name_str.into(),
                                     is_attribute: false,
-                                },
+                                }
                             },
                         );
                         save(
