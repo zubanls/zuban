@@ -707,7 +707,7 @@ impl<'db> Inference<'db, '_, '_> {
         if is_private(name) {
             return;
         }
-        let mut node_ref = NodeRef::new(self.file, index);
+        let from = NodeRef::new(self.file, index);
 
         if name == "__post_init__" {
             if let Some(dataclass) = c.maybe_dataclass(i_s.db) {
@@ -727,7 +727,7 @@ impl<'db> Inference<'db, '_, '_> {
                 };
                 check_override(
                     &i_s,
-                    node_ref,
+                    from,
                     original_details,
                     override_details,
                     name,
@@ -755,7 +755,7 @@ impl<'db> Inference<'db, '_, '_> {
                 name,
                 ClassLookupOptions::new(&|_| ()).with_ignore_self(),
             );
-            add_error_if_final(i_s, node_ref, name, &original_details);
+            add_error_if_final(i_s, from, name, &original_details);
             return;
         }
 
@@ -770,17 +770,10 @@ impl<'db> Inference<'db, '_, '_> {
                     if Some(redirect) == i_s.db.python_state.typing_override() {
                         has_override_decorator = true;
                     }
-                    if redirect == i_s.db.python_state.typing_overload() {
-                        // In Mypy the error is on the first decorator of an @overload.
-                        node_ref = NodeRef::new(
-                            self.file,
-                            decorators.iter().next().unwrap().named_expression().index(),
-                        );
-                    }
                 }
             }
         }
-        find_and_check_override(self.i_s, node_ref, c, name, has_override_decorator)
+        find_and_check_override(self.i_s, from, c, name, has_override_decorator)
     }
 
     fn maybe_delay_func_diagnostics(
@@ -1843,7 +1836,18 @@ fn find_and_check_override(
             None,
         );
     } else if has_override_decorator {
-        from.add_issue(i_s, IssueKind::MissingBaseForOverride { name: name.into() });
+        let issue = IssueKind::MissingBaseForOverride { name: name.into() };
+        // For whatever reason, this is how Mypy does it and we don't want to screw up the line
+        // numbers
+        let lookup = override_class.simple_lookup(i_s, |_| (), name);
+        if matches!(
+            lookup.into_inferred().as_type(i_s),
+            Type::FunctionOverload(_)
+        ) {
+            from.add_issue_onto_start_including_decorator(i_s, issue);
+        } else {
+            from.add_issue(i_s, issue);
+        }
     }
 }
 
@@ -2066,7 +2070,7 @@ pub(super) fn check_override(
                                 continue 'outer;
                             } else {
                                 emitted = true;
-                                from.add_issue(
+                                from.add_issue_onto_start_including_decorator(
                                     i_s,
                                     IssueKind::OverloadOrderMustMatchSupertype {
                                         name: name.into(),
@@ -2146,7 +2150,11 @@ pub(super) fn check_override(
             if let Some(func) = maybe_func() {
                 func.add_issue_for_declaration(i_s, issue)
             } else {
-                from.add_issue(i_s, issue)
+                if matches!(override_t, Type::FunctionOverload(_)) {
+                    from.add_issue_onto_start_including_decorator(i_s, issue)
+                } else {
+                    from.add_issue(i_s, issue)
+                }
             }
         }
     }
