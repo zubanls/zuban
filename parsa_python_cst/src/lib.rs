@@ -3579,6 +3579,12 @@ impl<'db> NameDef<'db> {
         ClassDef::new(self.node.parent().unwrap())
     }
 
+    pub fn maybe_name_of_func(&self) -> Option<FunctionDef<'db>> {
+        let n = self.node.parent().unwrap();
+        n.is_type(Nonterminal(function_def))
+            .then(|| FunctionDef::new(n))
+    }
+
     pub fn maybe_primary_parent(&self) -> Option<Primary<'db>> {
         let parent = self.node.parent().unwrap();
         if parent.is_type(Nonterminal(primary)) {

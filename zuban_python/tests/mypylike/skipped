@@ -2,6 +2,8 @@
 testTypeVarTupleTypeApplicationOverload
 testUnionOfNonIterableUnpacking
 
+testPostInitIsNotAFunction
+
 # callable matching regression
 testNoCrashOnNestedGenericCallable
 
@@ -265,6 +267,7 @@ testFinalNotInProtocol
 # Final: "Cannot assign to final name "x""
 testEnumNotFinalWithMethodsAndUninitializedValues
 # Overrides
+testFinalOverridingMethodWithVar
 testFinalOverridingVarMultipleInheritanceClass
 testFinalOverridingVarMultipleInheritanceInit
 testFinalOverridingVarWithMethod

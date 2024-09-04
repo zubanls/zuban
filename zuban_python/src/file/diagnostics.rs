@@ -695,6 +695,15 @@ impl<'db> Inference<'db, '_, '_> {
 
     fn check_function_override(&self, c: Class, index: NodeIndex, name: &str) {
         let i_s = self.i_s;
+        let Some(func_def) = NodeRef::new(c.node_ref.file, index)
+            .as_name()
+            .name_def()
+            .unwrap()
+            .maybe_name_of_func()
+        else {
+            return;
+        };
+
         if is_private(name) {
             return;
         }
@@ -774,27 +783,25 @@ impl<'db> Inference<'db, '_, '_> {
 
         // Calculate if there is an @override decorator
         let mut has_override_decorator = false;
-        if let Some(func_def) = NodeRef::new(self.file, index).maybe_name_of_function() {
-            if !func_def.is_typed() && !self.flags().check_untyped_defs {
-                // Mypy completely ignores untyped functions.
-                return;
-            }
-            if let Some(decorated) = func_def.maybe_decorated() {
-                let decorators = decorated.decorators();
-                for decorator in decorators.iter() {
-                    if let Some(redirect) =
-                        NodeRef::new(self.file, decorator.index()).maybe_redirect(i_s.db)
-                    {
-                        if Some(redirect) == i_s.db.python_state.typing_override() {
-                            has_override_decorator = true;
-                        }
-                        if redirect == i_s.db.python_state.typing_overload() {
-                            // In Mypy the error is on the first decorator of an @overload.
-                            node_ref = NodeRef::new(
-                                self.file,
-                                decorators.iter().next().unwrap().named_expression().index(),
-                            );
-                        }
+        if !func_def.is_typed() && !self.flags().check_untyped_defs {
+            // Mypy completely ignores untyped functions.
+            return;
+        }
+        if let Some(decorated) = func_def.maybe_decorated() {
+            let decorators = decorated.decorators();
+            for decorator in decorators.iter() {
+                if let Some(redirect) =
+                    NodeRef::new(self.file, decorator.index()).maybe_redirect(i_s.db)
+                {
+                    if Some(redirect) == i_s.db.python_state.typing_override() {
+                        has_override_decorator = true;
+                    }
+                    if redirect == i_s.db.python_state.typing_overload() {
+                        // In Mypy the error is on the first decorator of an @overload.
+                        node_ref = NodeRef::new(
+                            self.file,
+                            decorators.iter().next().unwrap().named_expression().index(),
+                        );
                     }
                 }
             }
@@ -1815,26 +1822,6 @@ fn find_and_check_override(
             .with_skip_first_of_mro(i_s.db, &override_class),
     );
     if original_details.lookup.is_some() {
-        {
-            // TODO delete this
-            let Some(x) = instance
-                .class
-                .class_storage
-                .class_symbol_table
-                .lookup_symbol(name)
-            else {
-                return;
-            };
-            let n = NodeRef::new(instance.class.node_ref.file, x);
-            if n.as_name()
-                .name_def()
-                .unwrap()
-                .maybe_assignment_definition()
-                .is_some()
-            {
-                return;
-            }
-        }
         let override_details =
             instance.lookup_with_details(i_s, add_lookup_issue, name, LookupKind::Normal);
         if !has_override_decorator
