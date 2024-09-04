@@ -1028,7 +1028,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         first_defined_name(self.file, name_def.name_index()),
                     );
                     if ancestor_lookup.attr_kind == AttributeKind::Final {
-                        //if ancestor_lookup.attr_kind == AttributeKind::Final || matches!(ancestor_inf.maybe_complex_point(i_s.db), Some(ComplexPoint::IndirectFinal(_))) {
+                        //if ancestor_lookup.attr_kind == AttributeKind::Final || matches!(ancestor_inf.maybe_complex_point(i_s.db), Some(ComplexPoint::IndirectFinal(_)))
                         from.add_issue(
                             i_s,
                             IssueKind::CannotAssignToFinal {
@@ -1329,7 +1329,11 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             PointLink::new(self.file_index, current_index),
                             &inf,
                         );
-                        save(name_def.index(), &inf);
+                        if matches!(assign_kind, AssignKind::Annotation(_)) {
+                            save(name_def.index(), value);
+                        } else {
+                            save(name_def.index(), &inf);
+                        }
                     }
                     return;
                 }
