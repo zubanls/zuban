@@ -1896,12 +1896,10 @@ pub(super) fn check_override(
             },
         ) => {
             if writable1 && !writable2 {
-                let func = from.maybe_name_of_function().unwrap();
-                Function::new(NodeRef::new(from.file, func.index()), None)
-                    .add_issue_onto_start_including_decorator(
-                        i_s,
-                        IssueKind::ReadOnlyPropertyCannotOverwriteReadWriteProperty,
-                    );
+                from.add_issue_onto_start_including_decorator(
+                    i_s,
+                    IssueKind::ReadOnlyPropertyCannotOverwriteReadWriteProperty,
+                );
             }
         }
         (Classmethod { .. } | Staticmethod { .. }, DefMethod { .. }) => {
@@ -1925,7 +1923,18 @@ pub(super) fn check_override(
     }
     let mut added_liskov_note = false;
     let matched = match_.bool();
-    if !matched {
+    if matched {
+        if original_lookup_details.attr_kind.is_writable()
+            && override_lookup_details.attr_kind.is_final()
+        {
+            let issue = IssueKind::CannotOverrideWritableWithFinalAttribute { name: name.into() };
+            if let Some(func) = maybe_func() {
+                func.add_issue_onto_start_including_decorator(i_s, issue)
+            } else {
+                from.add_issue(i_s, issue);
+            }
+        }
+    } else {
         let db = i_s.db;
         let mut emitted = false;
         // Mypy helps the user a bit by formatting different error messages for similar
