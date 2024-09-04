@@ -270,13 +270,25 @@ impl<'a> Matcher<'a> {
     ) -> Match {
         match value_type {
             Type::Self_ => Match::new_true(),
-            _ if self.is_matching_reverse() => Match::new_false(),
             _ => {
-                if matches!(self.func_or_callable, Some(FunctionOrCallable::Function(_))) {
-                    // In case we are working within a function, Self is bound already.
-                    self.replace_self.unwrap()().matches(i_s, self, value_type, variance)
-                } else {
+                if let Some(class) = value_type.maybe_class(i_s.db) {
+                    if class.use_cached_class_infos(i_s.db).is_final {
+                        if let Some(current) = i_s.current_class() {
+                            if current.node_ref == class.node_ref {
+                                return Match::new_true();
+                            }
+                        }
+                    }
+                }
+                if self.is_matching_reverse() {
                     Match::new_false()
+                } else {
+                    if matches!(self.func_or_callable, Some(FunctionOrCallable::Function(_))) {
+                        // In case we are working within a function, Self is bound already.
+                        self.replace_self.unwrap()().matches(i_s, self, value_type, variance)
+                    } else {
+                        Match::new_false()
+                    }
                 }
             }
         }
