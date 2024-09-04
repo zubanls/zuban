@@ -709,9 +709,6 @@ impl<'db> Inference<'db, '_, '_> {
         }
         let mut node_ref = NodeRef::new(self.file, index);
 
-        if IGNORED_INHERITANCE_NAMES.contains(&name) {
-            return;
-        }
         if name == "__post_init__" {
             if let Some(dataclass) = c.maybe_dataclass(i_s.db) {
                 let override_details = Instance::new(c, None).lookup_on_self(
@@ -749,12 +746,21 @@ impl<'db> Inference<'db, '_, '_> {
             }
         }
 
-        // Calculate if there is an @override decorator
-        let mut has_override_decorator = false;
-        if !func_def.is_typed() && !self.flags().check_untyped_defs {
-            // Mypy completely ignores untyped functions.
+        // Mypy completely ignores untyped functions.
+        if IGNORED_INHERITANCE_NAMES.contains(&name)
+            || !func_def.is_typed() && !self.flags().check_untyped_defs
+        {
+            let original_details = c.lookup(
+                i_s,
+                name,
+                ClassLookupOptions::new(&|_| ()).with_ignore_self(),
+            );
+            add_error_if_final(i_s, node_ref, name, &original_details);
             return;
         }
+
+        // Calculate if there is an @override decorator
+        let mut has_override_decorator = false;
         if let Some(decorated) = func_def.maybe_decorated() {
             let decorators = decorated.decorators();
             for decorator in decorators.iter() {
@@ -1767,6 +1773,23 @@ fn is_overload_unmatchable(
     matches!(result, Match::True { with_any: false })
 }
 
+fn add_error_if_final(
+    i_s: &InferenceState,
+    from: NodeRef,
+    name: &str,
+    original_lookup: &LookupDetails,
+) {
+    if original_lookup.attr_kind.is_final() {
+        from.add_issue_onto_start_including_decorator(
+            i_s,
+            IssueKind::CannotOverrideFinalAttribute {
+                name: name.into(),
+                base_class: original_lookup.class.name(i_s.db).into(),
+            },
+        );
+    }
+}
+
 fn find_and_check_override(
     i_s: &InferenceState,
     from: NodeRef,
@@ -1789,15 +1812,7 @@ fn find_and_check_override(
         InstanceLookupOptions::new(&add_lookup_issue)
             .with_skip_first_of_mro(i_s.db, &override_class),
     );
-    if original_details.attr_kind.is_final() {
-        from.add_issue_onto_start_including_decorator(
-            i_s,
-            IssueKind::CannotOverrideFinalAttribute {
-                name: name.into(),
-                base_class: original_details.class.name(i_s.db).into(),
-            },
-        );
-    }
+    add_error_if_final(i_s, from, name, &original_details);
 
     if original_details.lookup.is_some() {
         let override_details =

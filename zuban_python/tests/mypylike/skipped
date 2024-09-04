@@ -264,9 +264,6 @@ testFinalAddFinalPropertyWithVarFine
 testTypingSelfAllowAliasUseInFinalClasses
 # "Protocol member cannot be final"
 testFinalNotInProtocol
-# Overrides
-testFinalOverridingMethodInitNew
-testFinalOverrideOnUntypedDef
 # Final "Protocol member PPS.attr expected settable variable, got read-only attribute"
 testFinalAttributeProtocol
 testModuleAsProtocolImplementationFinal
