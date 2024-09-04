@@ -522,7 +522,13 @@ f: Foo
 f.x = []
 
 [case avoid_losing_context_when_self_attr_doesnt_exist]
-
 class Foo: ...
 x = [1]
 Foo().undefined = x = []  # E: "Foo" has no attribute "undefined"
+
+[case avoid_context_of_getattr]
+class Foo:
+    def __getattr__(self, name: str) -> list[int]: ...
+
+class Bar(Foo):
+    x = []  # E: Need type annotation for "x" (hint: "x: List[<type>] = ...")
