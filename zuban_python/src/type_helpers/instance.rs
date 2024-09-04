@@ -180,7 +180,14 @@ impl<'a> Instance<'a> {
             }
             Type::Callable(c) => {
                 if !matches!(&c.params, CallableParams::Any(_)) {
-                    add_issue(IssueKind::CannotAssignToAMethod);
+                    if c.is_final {
+                        add_issue(IssueKind::CannotAssignToFinal {
+                            name: name_str.into(),
+                            is_attribute: true,
+                        });
+                    } else {
+                        add_issue(IssueKind::CannotAssignToAMethod);
+                    }
                 }
             }
             _ => {}

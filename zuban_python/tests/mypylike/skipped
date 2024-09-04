@@ -265,10 +265,6 @@ testTypingSelfAllowAliasUseInFinalClasses
 # "Protocol member cannot be final"
 testFinalNotInProtocol
 # Overrides
-testEnumNotFinalWithMethodsAndUninitializedValues
-testFinalOverridingVarMultipleInheritanceClass
-testFinalOverridingVarMultipleInheritanceInit
-testFinalOverridingMethodWithVarImplicit
 testFinalCantOverrideWriteable
 testFinalOverridingMethodInitNew
 testFinalOverrideOnUntypedDef
