@@ -253,8 +253,6 @@ testIsInstanceAdHocIntersectionGenericsWithValues
 testIsInstanceAdHocIntersectionGenericsWithValuesDirectReturn
 testCallableTypeVarUnion
 
-# Final "Protocol member PPS.attr expected settable variable, got read-only attribute"
-testModuleAsProtocolImplementationFinal
 # Final issues
 testFinalDefiningOnlyOnSelf
 
