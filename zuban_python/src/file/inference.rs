@@ -571,11 +571,22 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             node_ref,
             &inf_annot,
             AssignKind::Annotation(inf_annot.maybe_saved_specific(self.i_s.db)),
-            |index, _| {
-                self.file.points.set(
-                    index,
-                    Point::new_redirect(self.file.file_index(), annotation.index(), Locality::Todo),
-                );
+            |index, value| {
+                if matches!(
+                    value.maybe_complex_point(self.i_s.db),
+                    Some(ComplexPoint::IndirectFinal(_))
+                ) {
+                    value.clone().save_redirect(self.i_s, self.file, index);
+                } else {
+                    self.file.points.set(
+                        index,
+                        Point::new_redirect(
+                            self.file.file_index(),
+                            annotation.index(),
+                            Locality::Todo,
+                        ),
+                    );
+                }
             },
         )
     }
@@ -585,6 +596,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         if node_ref.point().calculated() {
             return;
         }
+        debug!("Cache assignment {}", assignment.as_code());
         let right_side = match assignment.unpack() {
             AssignmentContent::Normal(targets, right_side) => {
                 for target in targets {
@@ -1329,11 +1341,12 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             PointLink::new(self.file_index, current_index),
                             &inf,
                         );
-                        if matches!(assign_kind, AssignKind::Annotation(_)) {
-                            save(name_def.index(), value);
-                        } else {
-                            save(name_def.index(), &inf);
-                        }
+                        // TODO maybe this is needed?
+                        //if matches!(assign_kind, AssignKind::Annotation(_)) {
+                        //save(name_def.index(), value);
+                        //} else {
+                        save(name_def.index(), &inf);
+                        //}
                     }
                     return;
                 }

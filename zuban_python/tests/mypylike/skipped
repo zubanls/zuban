@@ -265,10 +265,8 @@ testFinalNotInProtocol
 # Final: "Cannot assign to final name "x""
 testEnumNotFinalWithMethodsAndUninitializedValues
 # Overrides
-testFinalOverridingVarClassBody
 testFinalOverridingVarClassBodyExplicit
 testFinalOverridingVarInit2
-testFinalOverridingVarOtherMethod
 testFinalOverridingVarMultipleInheritanceClass
 testFinalOverridingVarMultipleInheritanceInit
 testFinalOverridingVarWithMethod

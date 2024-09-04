@@ -1392,6 +1392,20 @@ impl<'db: 'slf, 'slf> Inferred {
                                 return r.map(|inf| (inf, AttributeKind::Attribute));
                             }
                         }
+                        ComplexPoint::IndirectFinal(t) => {
+                            attr_kind = AttributeKind::Final;
+                            if let Some(r) = Self::bind_class_descriptors_for_type(
+                                i_s,
+                                class,
+                                attribute_class,
+                                add_issue,
+                                apply_descriptor,
+                                t,
+                                as_type_type,
+                            ) {
+                                return r.map(|inf| (inf, attr_kind));
+                            }
+                        }
                         _ => (),
                     },
                     _ => (),
