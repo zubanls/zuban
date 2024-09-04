@@ -646,110 +646,7 @@ impl<'db> Inference<'db, '_, '_> {
             |issue| NodeRef::new(self.file, arguments.unwrap().index()).add_issue(self.i_s, issue),
         );
         for (name, index) in c.class_storage.class_symbol_table.iter() {
-            if is_private(name) {
-                continue;
-            }
-            let lookup_infos = c.lookup(
-                &i_s,
-                name,
-                ClassLookupOptions::new(&|issue| ())
-                    .without_descriptors()
-                    .with_ignore_self(),
-            );
-            if let Some(original_inf) = lookup_infos.lookup.into_maybe_inferred() {
-                let is_final_callable = match original_inf.as_cow_type(&i_s).as_ref() {
-                    Type::Callable(c) => c.is_final,
-                    Type::FunctionOverload(_) => original_inf
-                        .maybe_saved_node_ref(i_s.db)
-                        .is_some_and(|node_ref| {
-                            if let Some(ComplexPoint::FunctionOverload(o)) = node_ref.complex() {
-                                o.is_final
-                            } else {
-                                false
-                            }
-                        }),
-                    _ => false,
-                };
-                if is_final_callable {
-                    NodeRef::new(self.file, *index).add_issue_onto_start_including_decorator(
-                        &i_s,
-                        IssueKind::CannotOverrideFinalAttribute {
-                            base_class: lookup_infos.class.name(i_s.db).into(),
-                            name: name.into(),
-                        },
-                    );
-                }
-            }
-
-            if IGNORED_INHERITANCE_NAMES.contains(&name) {
-                continue;
-            }
-            let mut node_ref = NodeRef::new(self.file, *index - NAME_DEF_TO_NAME_DIFFERENCE);
-            if name == "__post_init__" {
-                if let Some(dataclass) = c.maybe_dataclass(db) {
-                    let override_details = Instance::new(c, None).lookup_on_self(
-                        self.i_s,
-                        &|issue| todo!(),
-                        name,
-                        LookupKind::OnlyType,
-                    );
-                    let __post_init__ = dataclass.expect_calculated_post_init();
-                    let original_details = LookupDetails {
-                        class: TypeOrClass::Type(Cow::Owned(Type::Dataclass(dataclass.clone()))),
-                        lookup: LookupResult::UnknownName(Inferred::from_type(Type::Callable(
-                            Rc::new(__post_init__.clone()),
-                        ))),
-                        attr_kind: AttributeKind::DefMethod { is_final: false },
-                    };
-                    check_override(
-                        &i_s,
-                        node_ref,
-                        original_details,
-                        override_details,
-                        name,
-                        |_, _| "dataclass",
-                        Some(&|| {
-                            let params = format_callable_params(
-                                &FormatData::new_short(i_s.db),
-                                false,
-                                __post_init__.expect_simple_params().iter(),
-                                false,
-                            );
-                            format!("def __post_init__(self, {params}) -> None")
-                        }),
-                    );
-                    continue;
-                }
-            }
-
-            // Calculate if there is an @override decorator
-            let mut has_override_decorator = false;
-            if let Some(func_def) = NodeRef::new(self.file, *index).maybe_name_of_function() {
-                if !func_def.is_typed() && !self.flags().check_untyped_defs {
-                    // Mypy completely ignores untyped functions.
-                    continue;
-                }
-                if let Some(decorated) = func_def.maybe_decorated() {
-                    let decorators = decorated.decorators();
-                    for decorator in decorators.iter() {
-                        if let Some(redirect) =
-                            NodeRef::new(self.file, decorator.index()).maybe_redirect(db)
-                        {
-                            if Some(redirect) == db.python_state.typing_override() {
-                                has_override_decorator = true;
-                            }
-                            if redirect == db.python_state.typing_overload() {
-                                // In Mypy the error is on the first decorator of an @overload.
-                                node_ref = NodeRef::new(
-                                    self.file,
-                                    decorators.iter().next().unwrap().named_expression().index(),
-                                );
-                            }
-                        }
-                    }
-                }
-            }
-            find_and_check_override(self.i_s, node_ref, c, name, has_override_decorator)
+            inference.check_function_override(c, *index, name)
         }
         if let Some(node_index) = c
             .class_storage
@@ -794,6 +691,115 @@ impl<'db> Inference<'db, '_, '_> {
             }
             check_protocol_type_var_variances(self.i_s, c)
         }
+    }
+
+    fn check_function_override(&self, c: Class, index: NodeIndex, name: &str) {
+        let i_s = self.i_s;
+        if is_private(name) {
+            return;
+        }
+        let lookup_infos = c.lookup(
+            &i_s,
+            name,
+            ClassLookupOptions::new(&|issue| ())
+                .without_descriptors()
+                .with_ignore_self(),
+        );
+        if let Some(original_inf) = lookup_infos.lookup.into_maybe_inferred() {
+            let is_final_callable =
+                match original_inf.as_cow_type(&i_s).as_ref() {
+                    Type::Callable(c) => c.is_final,
+                    Type::FunctionOverload(_) => original_inf
+                        .maybe_saved_node_ref(i_s.db)
+                        .is_some_and(|node_ref| {
+                            if let Some(ComplexPoint::FunctionOverload(o)) = node_ref.complex() {
+                                o.is_final
+                            } else {
+                                false
+                            }
+                        }),
+                    _ => false,
+                };
+            if is_final_callable {
+                NodeRef::new(self.file, index).add_issue_onto_start_including_decorator(
+                    &i_s,
+                    IssueKind::CannotOverrideFinalAttribute {
+                        base_class: lookup_infos.class.name(i_s.db).into(),
+                        name: name.into(),
+                    },
+                );
+            }
+        }
+
+        if IGNORED_INHERITANCE_NAMES.contains(&name) {
+            return;
+        }
+        let mut node_ref = NodeRef::new(self.file, index - NAME_DEF_TO_NAME_DIFFERENCE);
+        if name == "__post_init__" {
+            if let Some(dataclass) = c.maybe_dataclass(i_s.db) {
+                let override_details = Instance::new(c, None).lookup_on_self(
+                    self.i_s,
+                    &|issue| todo!(),
+                    name,
+                    LookupKind::OnlyType,
+                );
+                let __post_init__ = dataclass.expect_calculated_post_init();
+                let original_details = LookupDetails {
+                    class: TypeOrClass::Type(Cow::Owned(Type::Dataclass(dataclass.clone()))),
+                    lookup: LookupResult::UnknownName(Inferred::from_type(Type::Callable(
+                        Rc::new(__post_init__.clone()),
+                    ))),
+                    attr_kind: AttributeKind::DefMethod { is_final: false },
+                };
+                check_override(
+                    &i_s,
+                    node_ref,
+                    original_details,
+                    override_details,
+                    name,
+                    |_, _| "dataclass",
+                    Some(&|| {
+                        let params = format_callable_params(
+                            &FormatData::new_short(i_s.db),
+                            false,
+                            __post_init__.expect_simple_params().iter(),
+                            false,
+                        );
+                        format!("def __post_init__(self, {params}) -> None")
+                    }),
+                );
+                return;
+            }
+        }
+
+        // Calculate if there is an @override decorator
+        let mut has_override_decorator = false;
+        if let Some(func_def) = NodeRef::new(self.file, index).maybe_name_of_function() {
+            if !func_def.is_typed() && !self.flags().check_untyped_defs {
+                // Mypy completely ignores untyped functions.
+                return;
+            }
+            if let Some(decorated) = func_def.maybe_decorated() {
+                let decorators = decorated.decorators();
+                for decorator in decorators.iter() {
+                    if let Some(redirect) =
+                        NodeRef::new(self.file, decorator.index()).maybe_redirect(i_s.db)
+                    {
+                        if Some(redirect) == i_s.db.python_state.typing_override() {
+                            has_override_decorator = true;
+                        }
+                        if redirect == i_s.db.python_state.typing_overload() {
+                            // In Mypy the error is on the first decorator of an @overload.
+                            node_ref = NodeRef::new(
+                                self.file,
+                                decorators.iter().next().unwrap().named_expression().index(),
+                            );
+                        }
+                    }
+                }
+            }
+        }
+        find_and_check_override(self.i_s, node_ref, c, name, has_override_decorator)
     }
 
     fn maybe_delay_func_diagnostics(
