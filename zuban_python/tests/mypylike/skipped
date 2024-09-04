@@ -85,6 +85,7 @@ testAsyncForComprehensionErrors
 testNoneAnyFallbackDescriptor
 # wrong function in i_s is used in self assignment
 testFinalReassignInstanceVarInit
+testFinalReassignInstanceVarMethod
 # i_s missing current class
 testLambdaDeferredSpecialCase
 testLambdaDeferredCrash
@@ -250,9 +251,6 @@ testIsInstanceAdHocIntersectionGenericsWithValues
 testIsInstanceAdHocIntersectionGenericsWithValuesDirectReturn
 testCallableTypeVarUnion
 
-# literal final details
-testLiteralWithFinalPropagation
-testLiteralWithFinalPropagationIsNotLeaking
 # @final overloads
 testFinalOverridingMethodOverloads
 testFinalAddFinalMethodOverrideOverloadFine
@@ -265,7 +263,6 @@ testTypingSelfAllowAliasUseInFinalClasses
 # "Protocol member cannot be final"
 testFinalNotInProtocol
 # Final: "Cannot assign to final name "x""
-testFinalReassignInstanceVarMethod
 testEnumNotFinalWithMethodsAndUninitializedValues
 # Overrides
 testFinalOverridingVarClassBody
