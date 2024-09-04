@@ -1298,7 +1298,10 @@ impl<'db: 'slf, 'slf> Inferred {
                                 i_s,
                                 FirstParamProperties::MethodAccessedOnClass { func_class_type },
                             );
-                            return Some((Inferred::from_type(t), AttributeKind::Attribute));
+                            return Some((
+                                Inferred::from_type(t),
+                                AttributeKind::DefMethod { is_final: false },
+                            ));
                         }
                         specific @ (Specific::AnnotationOrTypeCommentWithoutTypeVars
                         | Specific::AnnotationOrTypeCommentClassVar
@@ -1380,6 +1383,26 @@ impl<'db: 'slf, 'slf> Inferred {
                             FunctionKind::Staticmethod => (),
                         },
                         ComplexPoint::TypeInstance(t) => {
+                            if let Type::Callable(c) = t {
+                                match c.kind {
+                                    FunctionKind::Function { .. } => {
+                                        attr_kind = AttributeKind::DefMethod {
+                                            is_final: c.is_final,
+                                        };
+                                    }
+                                    FunctionKind::Property { .. } => (),
+                                    FunctionKind::Classmethod { .. } => {
+                                        attr_kind = AttributeKind::Classmethod {
+                                            is_final: c.is_final,
+                                        };
+                                    }
+                                    FunctionKind::Staticmethod => {
+                                        attr_kind = AttributeKind::Staticmethod {
+                                            is_final: c.is_final,
+                                        };
+                                    }
+                                }
+                            }
                             if let Some(r) = Self::bind_class_descriptors_for_type(
                                 i_s,
                                 class,
