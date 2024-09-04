@@ -707,43 +707,11 @@ impl<'db> Inference<'db, '_, '_> {
         if is_private(name) {
             return;
         }
-        let lookup_infos = c.lookup(
-            &i_s,
-            name,
-            ClassLookupOptions::new(&|issue| ())
-                .without_descriptors()
-                .with_ignore_self(),
-        );
-        if let Some(original_inf) = lookup_infos.lookup.into_maybe_inferred() {
-            let is_final_callable =
-                match original_inf.as_cow_type(&i_s).as_ref() {
-                    Type::Callable(c) => c.is_final,
-                    Type::FunctionOverload(_) => original_inf
-                        .maybe_saved_node_ref(i_s.db)
-                        .is_some_and(|node_ref| {
-                            if let Some(ComplexPoint::FunctionOverload(o)) = node_ref.complex() {
-                                o.is_final
-                            } else {
-                                false
-                            }
-                        }),
-                    _ => false,
-                };
-            if is_final_callable {
-                NodeRef::new(self.file, index).add_issue_onto_start_including_decorator(
-                    &i_s,
-                    IssueKind::CannotOverrideFinalAttribute {
-                        base_class: lookup_infos.class.name(i_s.db).into(),
-                        name: name.into(),
-                    },
-                );
-            }
-        }
+        let mut node_ref = NodeRef::new(self.file, index);
 
         if IGNORED_INHERITANCE_NAMES.contains(&name) {
             return;
         }
-        let mut node_ref = NodeRef::new(self.file, index - NAME_DEF_TO_NAME_DIFFERENCE);
         if name == "__post_init__" {
             if let Some(dataclass) = c.maybe_dataclass(i_s.db) {
                 let override_details = Instance::new(c, None).lookup_on_self(
@@ -1821,6 +1789,16 @@ fn find_and_check_override(
         InstanceLookupOptions::new(&add_lookup_issue)
             .with_skip_first_of_mro(i_s.db, &override_class),
     );
+    if original_details.attr_kind.is_final() {
+        from.add_issue_onto_start_including_decorator(
+            i_s,
+            IssueKind::CannotOverrideFinalAttribute {
+                name: name.into(),
+                base_class: original_details.class.name(i_s.db).into(),
+            },
+        );
+    }
+
     if original_details.lookup.is_some() {
         let override_details =
             instance.lookup_with_details(i_s, add_lookup_issue, name, LookupKind::Normal);
@@ -1879,7 +1857,7 @@ pub(super) fn check_override(
             node_ref
                 .maybe_function()
                 .map(|func| Function::new(node_ref, None))
-                .filter(|func| func.node().name_def().index() == from.node_index)
+                .filter(|func| func.node().name_def().name_index() == from.node_index)
         }
         _ => None,
     };
@@ -1918,10 +1896,7 @@ pub(super) fn check_override(
             },
         ) => {
             if writable1 && !writable2 {
-                let func = from
-                    .add_to_node_index(NAME_DEF_TO_NAME_DIFFERENCE as i64)
-                    .maybe_name_of_function()
-                    .unwrap();
+                let func = from.maybe_name_of_function().unwrap();
                 Function::new(NodeRef::new(from.file, func.index()), None)
                     .add_issue_onto_start_including_decorator(
                         i_s,

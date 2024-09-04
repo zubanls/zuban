@@ -264,16 +264,15 @@ testFinalAddFinalPropertyWithVarFine
 testTypingSelfAllowAliasUseInFinalClasses
 # "Protocol member cannot be final"
 testFinalNotInProtocol
-# Final: "Cannot assign to final name "x""
-testEnumNotFinalWithMethodsAndUninitializedValues
 # Overrides
+testEnumNotFinalWithMethodsAndUninitializedValues
 testFinalOverridingMethodWithVar
 testFinalOverridingVarMultipleInheritanceClass
 testFinalOverridingVarMultipleInheritanceInit
-testFinalOverridingVarWithMethod
-testFinalOverridingVarWithMethodClass
 testFinalOverridingMethodWithVarImplicit
 testFinalCantOverrideWriteable
+testFinalOverridingMethodInitNew
+testFinalOverrideOnUntypedDef
 # Final "Protocol member PPS.attr expected settable variable, got read-only attribute"
 testFinalAttributeProtocol
 testModuleAsProtocolImplementationFinal
