@@ -1040,12 +1040,20 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         first_defined_name(self.file, name_def.name_index()),
                     );
                     if ancestor_lookup.attr_kind == AttributeKind::Final {
-                        //if ancestor_lookup.attr_kind == AttributeKind::Final || matches!(ancestor_inf.maybe_complex_point(i_s.db), Some(ComplexPoint::IndirectFinal(_)))
+                        //if ancestor_lookup.is_final(i_s)
                         from.add_issue(
                             i_s,
-                            IssueKind::CannotAssignToFinal {
-                                name: name_str.into(),
-                                is_attribute: false,
+                            match assign_kind {
+                                AssignKind::Annotation(Some(
+                                    Specific::AnnotationOrTypeCommentFinal,
+                                )) => IssueKind::CannotOverrideFinalAttribute {
+                                    name: name_str.into(),
+                                    base_class: ancestor_lookup.class.name(i_s.db).into(),
+                                },
+                                _ => IssueKind::CannotAssignToFinal {
+                                    name: name_str.into(),
+                                    is_attribute: false,
+                                },
                             },
                         );
                         save(
@@ -1323,9 +1331,17 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             {
                                 from.add_issue(
                                     i_s,
-                                    IssueKind::CannotAssignToFinal {
-                                        is_attribute: true,
-                                        name: name_str.into(),
+                                    match assign_kind {
+                                        AssignKind::Annotation(Some(
+                                            Specific::AnnotationOrTypeCommentFinal,
+                                        )) => IssueKind::CannotOverrideFinalAttribute {
+                                            name: name_str.into(),
+                                            base_class: c.name().into(),
+                                        },
+                                        _ => IssueKind::CannotAssignToFinal {
+                                            name: name_str.into(),
+                                            is_attribute: true,
+                                        },
                                     },
                                 );
                             }
