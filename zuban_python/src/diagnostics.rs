@@ -376,7 +376,6 @@ pub(crate) enum IssueKind {
     EnumMultipleMixinNew { extra: Box<str> },
     EnumMixinNotAllowedAfterEnum { after: Box<str> },
     EnumMembersAttributeOverwritten,
-    EnumCannotOverrideWritableAttributeWithFinal { name: Box<str> },
 
     DataclassMultipleKwOnly,
     DataclassNoDefaultAfterDefault,
@@ -980,9 +979,6 @@ impl<'db> Diagnostic<'db> {
             ),
             EnumMembersAttributeOverwritten =>
                 r#"Assigned "__members__" will be overridden by "Enum" internally"#.to_string(),
-            EnumCannotOverrideWritableAttributeWithFinal { name } => format!(
-                r#"Cannot override writable attribute "{name}" with a final one"#
-            ),
 
             DataclassMultipleKwOnly =>
                 "There may not be more than one field with the KW_ONLY type".to_string(),

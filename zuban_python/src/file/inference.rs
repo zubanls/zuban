@@ -1102,12 +1102,14 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             let override_class_infos = class.use_cached_class_infos(i_s.db);
                             if let Some(t) = override_class_infos.undefined_generics_type.get() {
                                 if let Type::Enum(e) = t.as_ref() {
-                                    if e.members.iter().any(|member| member.name(i_s.db) == name_str)
+                                    if e.members
+                                        .iter()
+                                        .any(|member| member.name(i_s.db) == name_str)
                                         && !ENUM_NAMES_OVERRIDABLE.contains(&name_str)
                                     {
                                         from.add_issue(
                                             i_s,
-                                            IssueKind::EnumCannotOverrideWritableAttributeWithFinal {
+                                            IssueKind::CannotOverrideWritableWithFinalAttribute {
                                                 name: name_str.into(),
                                             },
                                         )
