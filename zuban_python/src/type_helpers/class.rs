@@ -1460,13 +1460,25 @@ impl<'db: 'a, 'a> Class<'a> {
                                         notes.push(
                                             format!(
                                             "Only class variables allowed for class object access \
-                                             on protocols, {} is an instance variable of \"{}\"",
-                                            name,
+                                             on protocols, {name} is an instance variable of \"{}\"",
                                             t.format_short(i_s.db),
                                         )
                                             .into(),
                                         );
                                     }
+                                }
+                            }
+                            if lookup_details.attr_kind == AttributeKind::Final && protocol_lookup_details.attr_kind != AttributeKind::Final {
+                                mismatch = true;
+                                if mismatches < SHOW_MAX_MISMATCHES {
+                                    notes.push(
+                                        format!(
+                                        "Protocol member {}.{name} expected settable variable, \
+                                         got read-only attribute",
+                                        self.name()
+                                    )
+                                        .into(),
+                                    );
                                 }
                             }
                         }
