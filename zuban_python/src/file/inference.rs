@@ -1410,6 +1410,143 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         }
     }
 
+    fn check_assign_arbitrary_named_expr(
+        &self,
+        base: Inferred,
+        primary_target: PrimaryTarget,
+        name_def: NameDef,
+        from: NodeRef,
+        value: &Inferred,
+        assign_kind: AssignKind,
+    ) {
+        let i_s = self.i_s;
+        if matches!(assign_kind, AssignKind::Annotation(_)) {
+            self.add_issue(primary_target.index(), IssueKind::InvalidTypeDeclaration);
+        }
+        let base = base.as_cow_type(i_s);
+        let node_ref = NodeRef::new(self.file, primary_target.index());
+        let name_str = name_def.as_code();
+        let mut had_error = false;
+        for t in base.iter_with_unpacked_unions(i_s.db) {
+            let property_is_read_only = |class_name| {
+                from.add_issue(
+                    i_s,
+                    IssueKind::PropertyIsReadOnly {
+                        class_name,
+                        property_name: name_def.as_code().into(),
+                    },
+                )
+            };
+            match t {
+                Type::Class(c) => {
+                    had_error |= c
+                        .class(i_s.db)
+                        .instance()
+                        .check_set_descriptor(i_s, node_ref, name_def.name(), value)
+                        .is_err();
+                    continue;
+                }
+                Type::Dataclass(d) => {
+                    if d.options.frozen {
+                        had_error = true;
+                        property_is_read_only(d.class(i_s.db).name().into())
+                    }
+                    had_error |= Instance::new(d.class(i_s.db), None)
+                        .check_set_descriptor(i_s, node_ref, name_def.name(), value)
+                        .is_err();
+                    continue;
+                }
+                Type::NamedTuple(nt) => {
+                    if nt.search_param(i_s.db, name_def.as_code()).is_some() {
+                        had_error = true;
+                        property_is_read_only(nt.name(i_s.db).into());
+                        continue;
+                    }
+                }
+                Type::Type(type_) => match type_.as_ref() {
+                    Type::Enum(enum_)
+                        if enum_
+                            .members
+                            .iter()
+                            .any(|member| member.name(i_s.db) == name_str) =>
+                    {
+                        had_error = true;
+                        from.add_issue(
+                            i_s,
+                            IssueKind::CannotAssignToFinal {
+                                is_attribute: true,
+                                name: name_str.into(),
+                            },
+                        );
+                        continue;
+                    }
+                    _ => (),
+                },
+                Type::Super { .. } => {
+                    had_error = true;
+                    from.add_issue(i_s, IssueKind::InvalidAssignmentTarget);
+                    continue;
+                }
+                _ => (),
+            }
+
+            let mut lookup = LookupResult::None;
+            let mut attr_kind = AttributeKind::Attribute;
+            if let Some(c) = t.maybe_type_of_class(i_s.db) {
+                // We need to handle class descriptors separately, because
+                // there the __get__ descriptor should not be applied.
+                let lookup_details = c.lookup_without_descriptors(i_s, node_ref, name_str);
+                if let Some(inf) = lookup_details.lookup.maybe_inferred() {
+                    if inf.as_cow_type(i_s).is_func_or_overload_not_any_callable() {
+                        from.add_issue(i_s, IssueKind::CannotAssignToAMethod);
+                    }
+                }
+                lookup = lookup_details.lookup;
+                attr_kind = lookup_details.attr_kind;
+            }
+            lookup = lookup.or_else(|| {
+                let result = t.lookup_with_first_attr_kind(
+                    i_s,
+                    node_ref.file_index(),
+                    name_str,
+                    LookupKind::Normal,
+                    &mut ResultContext::Unknown,
+                    &|issue| node_ref.add_issue(i_s, issue),
+                    &|t| add_attribute_error(i_s, node_ref, &base, t, name_str),
+                );
+                attr_kind = result.1;
+                result.0
+            });
+            let inf = lookup.into_inferred();
+            let mut declaration_t = inf.as_cow_type(i_s);
+            if attr_kind == AttributeKind::Final {
+                from.add_issue(
+                    i_s,
+                    IssueKind::CannotAssignToFinal {
+                        is_attribute: !matches!(t, Type::Module(_)),
+                        name: name_str.into(),
+                    },
+                );
+                declaration_t =
+                    Cow::Owned(declaration_t.into_owned().avoid_implicit_literal(i_s.db));
+                had_error = true;
+            }
+            declaration_t.error_if_not_matches(
+                i_s,
+                value,
+                |issue| from.add_issue(i_s, issue),
+                |error_types| {
+                    had_error = true;
+                    let ErrorStrs { expected, got } = error_types.as_boxed_strs(i_s.db);
+                    Some(IssueKind::IncompatibleAssignment { got, expected })
+                },
+            );
+        }
+        if matches!(assign_kind, AssignKind::Normal) && !had_error {
+            self.save_narrowed_primary_target(primary_target, &value.as_cow_type(self.i_s));
+        }
+    }
+
     fn assign_single_target(
         &self,
         target: Target,
@@ -1465,136 +1602,14 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         );
                     }
                 } else {
-                    if matches!(assign_kind, AssignKind::Annotation(_)) {
-                        self.add_issue(primary_target.index(), IssueKind::InvalidTypeDeclaration);
-                    }
-                    let base = base.as_cow_type(i_s);
-                    let node_ref = NodeRef::new(self.file, primary_target.index());
-                    let name_str = name_def.as_code();
-                    let mut had_error = false;
-                    for t in base.iter_with_unpacked_unions(i_s.db) {
-                        let property_is_read_only = |class_name| {
-                            from.add_issue(
-                                i_s,
-                                IssueKind::PropertyIsReadOnly {
-                                    class_name,
-                                    property_name: name_def.as_code().into(),
-                                },
-                            )
-                        };
-                        match t {
-                            Type::Class(c) => {
-                                had_error |= c
-                                    .class(i_s.db)
-                                    .instance()
-                                    .check_set_descriptor(i_s, node_ref, name_def.name(), value)
-                                    .is_err();
-                                continue;
-                            }
-                            Type::Dataclass(d) => {
-                                if d.options.frozen {
-                                    had_error = true;
-                                    property_is_read_only(d.class(i_s.db).name().into())
-                                }
-                                had_error |= Instance::new(d.class(i_s.db), None)
-                                    .check_set_descriptor(i_s, node_ref, name_def.name(), value)
-                                    .is_err();
-                                continue;
-                            }
-                            Type::NamedTuple(nt) => {
-                                if nt.search_param(i_s.db, name_def.as_code()).is_some() {
-                                    had_error = true;
-                                    property_is_read_only(nt.name(i_s.db).into());
-                                    continue;
-                                }
-                            }
-                            Type::Type(type_) => match type_.as_ref() {
-                                Type::Enum(enum_)
-                                    if enum_
-                                        .members
-                                        .iter()
-                                        .any(|member| member.name(i_s.db) == name_str) =>
-                                {
-                                    had_error = true;
-                                    from.add_issue(
-                                        i_s,
-                                        IssueKind::CannotAssignToFinal {
-                                            is_attribute: true,
-                                            name: name_str.into(),
-                                        },
-                                    );
-                                    continue;
-                                }
-                                _ => (),
-                            },
-                            Type::Super { .. } => {
-                                had_error = true;
-                                from.add_issue(i_s, IssueKind::InvalidAssignmentTarget);
-                                continue;
-                            }
-                            _ => (),
-                        }
-
-                        let mut lookup = LookupResult::None;
-                        let mut attr_kind = AttributeKind::Attribute;
-                        if let Some(c) = t.maybe_type_of_class(i_s.db) {
-                            // We need to handle class descriptors separately, because
-                            // there the __get__ descriptor should not be applied.
-                            let lookup_details =
-                                c.lookup_without_descriptors(i_s, node_ref, name_str);
-                            if let Some(inf) = lookup_details.lookup.maybe_inferred() {
-                                if inf.as_cow_type(i_s).is_func_or_overload_not_any_callable() {
-                                    from.add_issue(i_s, IssueKind::CannotAssignToAMethod);
-                                }
-                            }
-                            lookup = lookup_details.lookup;
-                            attr_kind = lookup_details.attr_kind;
-                        }
-                        lookup = lookup.or_else(|| {
-                            let result = t.lookup_with_first_attr_kind(
-                                i_s,
-                                node_ref.file_index(),
-                                name_str,
-                                LookupKind::Normal,
-                                &mut ResultContext::Unknown,
-                                &|issue| node_ref.add_issue(i_s, issue),
-                                &|t| add_attribute_error(i_s, node_ref, &base, t, name_str),
-                            );
-                            attr_kind = result.1;
-                            result.0
-                        });
-                        let inf = lookup.into_inferred();
-                        let mut declaration_t = inf.as_cow_type(i_s);
-                        if attr_kind == AttributeKind::Final {
-                            from.add_issue(
-                                i_s,
-                                IssueKind::CannotAssignToFinal {
-                                    is_attribute: !matches!(t, Type::Module(_)),
-                                    name: name_str.into(),
-                                },
-                            );
-                            declaration_t = Cow::Owned(
-                                declaration_t.into_owned().avoid_implicit_literal(i_s.db),
-                            );
-                            had_error = true;
-                        }
-                        declaration_t.error_if_not_matches(
-                            i_s,
-                            value,
-                            |issue| from.add_issue(i_s, issue),
-                            |error_types| {
-                                had_error = true;
-                                let ErrorStrs { expected, got } = error_types.as_boxed_strs(i_s.db);
-                                Some(IssueKind::IncompatibleAssignment { got, expected })
-                            },
-                        );
-                    }
-                    if matches!(assign_kind, AssignKind::Normal) && !had_error {
-                        self.save_narrowed_primary_target(
-                            primary_target,
-                            &value.as_cow_type(self.i_s),
-                        );
-                    }
+                    self.check_assign_arbitrary_named_expr(
+                        base,
+                        primary_target,
+                        name_def,
+                        from,
+                        value,
+                        assign_kind,
+                    );
                     save(name_def.index(), value);
                 }
             }
