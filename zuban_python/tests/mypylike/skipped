@@ -253,9 +253,6 @@ testIsInstanceAdHocIntersectionGenericsWithValues
 testIsInstanceAdHocIntersectionGenericsWithValuesDirectReturn
 testCallableTypeVarUnion
 
-# Final issues
-testFinalDefiningOnlyOnSelf
-
 # [''] + [1] does not generate an error
 testAssignmentSubtypes
 # union order issues
