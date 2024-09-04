@@ -256,11 +256,7 @@ testCallableTypeVarUnion
 # @final overloads
 testFinalOverridingMethodOverloads
 testFinalAddFinalMethodOverrideOverloadFine
-testFinalBodyReprocessedAndStillFinalOverloaded-only_when_cache
-testFinalBodyReprocessedAndStillFinalOverloaded2-only_when_nocache
 # @final
-testFinalAddFinalMethodOverrideWithVarFine
-testFinalAddFinalPropertyWithVarFine
 testTypingSelfAllowAliasUseInFinalClasses
 # "Protocol member cannot be final"
 testFinalNotInProtocol
