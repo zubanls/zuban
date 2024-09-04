@@ -256,8 +256,6 @@ testCallableTypeVarUnion
 # @final overloads
 testFinalOverridingMethodOverloads
 testFinalAddFinalMethodOverrideOverloadFine
-# "Protocol member cannot be final"
-testFinalNotInProtocol
 # Final "Protocol member PPS.attr expected settable variable, got read-only attribute"
 testFinalAttributeProtocol
 testModuleAsProtocolImplementationFinal

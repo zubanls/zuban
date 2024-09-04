@@ -823,13 +823,6 @@ impl<'db> Inference<'db, '_, '_> {
 
     fn calc_func_diagnostics(&self, function: Function, func_node: FunctionDef) {
         let i_s = self.i_s;
-        let is_protocol = function.class.is_some_and(|cls| cls.is_protocol(i_s.db));
-        if is_protocol && function.is_final() {
-            function.add_issue_onto_start_including_decorator(
-                i_s,
-                IssueKind::ProtocolMemberCannotBeFinal,
-            )
-        }
         FLOW_ANALYSIS.with(|fa| {
             let mut is_overload_member = false;
             let unreachable = fa.with_new_frame_and_return_unreachable(|| {
@@ -839,6 +832,13 @@ impl<'db> Inference<'db, '_, '_> {
                 is_overload_member = self
                     .calc_function_diagnostics_internal_and_return_is_overload(function, func_node)
             });
+            let is_protocol = function.class.is_some_and(|cls| cls.is_protocol(i_s.db));
+            if is_protocol && function.is_final() && !is_overload_member {
+                function.add_issue_onto_start_including_decorator(
+                    i_s,
+                    IssueKind::ProtocolMemberCannotBeFinal,
+                )
+            }
             if !unreachable
                 && !is_overload_member
                 && !self.file.is_stub()
