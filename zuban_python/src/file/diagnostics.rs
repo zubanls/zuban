@@ -2393,6 +2393,8 @@ pub fn check_multiple_inheritance<'x, BASES: Iterator<Item = TypeOrClass<'x>>>(
                                 &second,
                             )
                             .bool()
+                            || !inst1_lookup.attr_kind.is_writable()
+                                && inst2_lookup.attr_kind.is_writable()
                         {
                             add_issue(IssueKind::MultipleInheritanceIncompatibility {
                                 name: name.into(),

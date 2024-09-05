@@ -155,8 +155,6 @@ testTypedDictChainedGetWithEmptyDictDefault
 new_type_with_class_generics
 new_type_with_class_generics2
 
-# "Read-only property cannot override read-write property"
-testMixinTypedPropertyReversed
 # "Property "x" defined in "Base" is read-only"
 testNewNamedTupleMethodInheritance
 testCantImplementAbstractPropertyViaInstanceVariable
