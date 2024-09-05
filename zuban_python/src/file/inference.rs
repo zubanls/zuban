@@ -1152,13 +1152,19 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             |first_name_link, declaration_t| {
                 let current_t = value.as_cow_type(i_s);
                 self.narrow_or_widen_name_target(first_name_link, declaration_t, &current_t, || {
-                    self.check_assignment_type(value, declaration_t, from)
+                    self.check_assignment_type(value, declaration_t, from, None)
                 })
             },
         )
     }
 
-    fn check_assignment_type(&self, value: &Inferred, declaration_t: &Type, from: NodeRef) -> bool {
+    fn check_assignment_type(
+        &self,
+        value: &Inferred,
+        declaration_t: &Type,
+        from: NodeRef,
+        base_class: Option<TypeOrClass>,
+    ) -> bool {
         let mut had_error = false;
         declaration_t.error_if_not_matches(
             self.i_s,
@@ -1167,7 +1173,15 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             |error_types| {
                 had_error = true;
                 let ErrorStrs { expected, got } = error_types.as_boxed_strs(self.i_s.db);
-                Some(IssueKind::IncompatibleAssignment { got, expected })
+                if let Some(base_class) = base_class.as_ref() {
+                    Some(IssueKind::IncompatibleAssignmentInSubclass {
+                        base_class: base_class.name(self.i_s.db).into(),
+                        got,
+                        expected,
+                    })
+                } else {
+                    Some(IssueKind::IncompatibleAssignment { got, expected })
+                }
             },
         );
         had_error
@@ -1186,28 +1200,30 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         let current_index = name_def.name_index();
         let i_s = self.i_s;
 
-        let check_assign_to_known_definition = |first_name_link, original: &Inferred| {
-            let declaration_t = original.as_cow_type(i_s);
-            if original.add_issue_if_final_assignment(
-                i_s,
-                from,
-                name_def.as_code(),
-                lookup_self_attribute_in_bases.is_some(),
-            ) {
-                self.check_assignment_type(
-                    value,
-                    &declaration_t.into_owned().avoid_implicit_literal(i_s.db),
+        let check_assign_to_known_definition =
+            |first_name_link, original: &Inferred, base_class| {
+                let declaration_t = original.as_cow_type(i_s);
+                if original.add_issue_if_final_assignment(
+                    i_s,
                     from,
-                );
-                return;
-            }
+                    name_def.as_code(),
+                    lookup_self_attribute_in_bases.is_some(),
+                ) {
+                    self.check_assignment_type(
+                        value,
+                        &declaration_t.into_owned().avoid_implicit_literal(i_s.db),
+                        from,
+                        None,
+                    );
+                    return;
+                }
 
-            if matches!(assign_kind, AssignKind::Annotation(_)) {
-                self.check_assignment_type(value, &declaration_t, from);
-            } else {
-                narrow(first_name_link, &declaration_t)
-            }
-        };
+                if matches!(assign_kind, AssignKind::Annotation(_)) {
+                    self.check_assignment_type(value, &declaration_t, from, base_class);
+                } else {
+                    narrow(first_name_link, &declaration_t)
+                }
+            };
         if let Some(first_index) = first_defined_name_of_multi_def(self.file, current_index) {
             let special_def = self.is_special_definition(first_index);
             if matches!(assign_kind, AssignKind::Annotation(_)) || special_def.is_some() {
@@ -1272,7 +1288,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             if point.partial_flags().finished {
                                 // For --local-partial-types an error was already added
                                 if !self.flags().local_partial_types {
-                                    self.check_assignment_type(value, &Type::None, from);
+                                    self.check_assignment_type(value, &Type::None, from, None);
                                 }
                                 return;
                             }
@@ -1303,6 +1319,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             check_assign_to_known_definition(
                 PointLink::new(self.file_index, first_index),
                 &original_inf,
+                None,
             )
         } else {
             if let Some(lookup_in_bases) = lookup_self_attribute_in_bases {
@@ -1362,6 +1379,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         check_assign_to_known_definition(
                             PointLink::new(self.file_index, current_index),
                             &inf,
+                            Some(lookup_details.class),
                         );
                         // TODO maybe this is needed?
                         //if matches!(assign_kind, AssignKind::Annotation(_)) {
@@ -1377,7 +1395,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 match star_imp {
                     StarImportResult::Link(star_link) => {
                         let node_ref = NodeRef::from_link(self.i_s.db, star_link);
-                        check_assign_to_known_definition(star_link, &original);
+                        check_assign_to_known_definition(star_link, &original, None);
                     }
                     StarImportResult::AnyDueToError => (),
                 };
@@ -1623,7 +1641,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 primary_target,
                                 declaration_t,
                                 &current_t,
-                                || self.check_assignment_type(value, declaration_t, from),
+                                || self.check_assignment_type(value, declaration_t, from, None),
                             )
                         },
                     );
