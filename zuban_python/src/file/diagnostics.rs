@@ -1905,21 +1905,15 @@ pub(super) fn check_override(
         override_lookup_details.attr_kind,
     ) {
         (
+            AttributeKind::Property { writable: true, .. },
             AttributeKind::Property {
-                writable: writable1,
-                ..
-            },
-            AttributeKind::Property {
-                writable: writable2,
-                ..
+                writable: false, ..
             },
         ) => {
-            if writable1 && !writable2 {
-                from.add_issue_onto_start_including_decorator(
-                    i_s,
-                    IssueKind::ReadOnlyPropertyCannotOverwriteReadWriteProperty,
-                );
-            }
+            from.add_issue_onto_start_including_decorator(
+                i_s,
+                IssueKind::ReadOnlyPropertyCannotOverwriteReadWriteProperty,
+            );
         }
         (Classmethod { .. } | Staticmethod { .. }, DefMethod { .. }) => {
             // Some method types may be overridden, because they still work the same way on class
