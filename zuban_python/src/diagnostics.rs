@@ -352,6 +352,7 @@ pub(crate) enum IssueKind {
 
     DecoratorOnTopOfPropertyNotSupported,
     ReadOnlyPropertyCannotOverwriteReadWriteProperty,
+    ReadOnlyPropertyCannotOverwriteWritableAttribute,
     OnlyInstanceMethodsCanBeDecoratedWithProperty,
     OnlySupportedTopDecoratorSetter { name: Box<str> },
     UnexpectedDefinitionForProperty { name: Box<str> },
@@ -1682,6 +1683,8 @@ impl<'db> Diagnostic<'db> {
                 "Decorators on top of @property are not supported".to_string(),
             ReadOnlyPropertyCannotOverwriteReadWriteProperty =>
                 "Read-only property cannot override read-write property".to_string(),
+            ReadOnlyPropertyCannotOverwriteWritableAttribute =>
+                "Cannot override writeable attribute with read-only property".to_string(),
             OnlyInstanceMethodsCanBeDecoratedWithProperty =>
                 "Only instance methods can be decorated with @property".to_string(),
             OnlySupportedTopDecoratorSetter{name} =>

@@ -1905,15 +1905,24 @@ pub(super) fn check_override(
         override_lookup_details.attr_kind,
     ) {
         (
-            AttributeKind::Property { writable: true, .. },
+            original,
             AttributeKind::Property {
                 writable: false, ..
             },
-        ) => {
-            from.add_issue_onto_start_including_decorator(
-                i_s,
-                IssueKind::ReadOnlyPropertyCannotOverwriteReadWriteProperty,
-            );
+        ) if original.is_writable() => {
+            if matches!(original, AttributeKind::Property { .. }) {
+                from.add_issue_onto_start_including_decorator(
+                    i_s,
+                    IssueKind::ReadOnlyPropertyCannotOverwriteReadWriteProperty,
+                )
+            // TODO we should not need to check if we are in a frozen dataclass, the attr kind
+            // should never be writable in the first place!
+            } else if !original_class.is_frozen_dataclass() {
+                from.add_issue(
+                    i_s,
+                    IssueKind::ReadOnlyPropertyCannotOverwriteWritableAttribute,
+                )
+            }
         }
         (Classmethod { .. } | Staticmethod { .. }, DefMethod { .. }) => {
             // Some method types may be overridden, because they still work the same way on class

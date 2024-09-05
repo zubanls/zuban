@@ -156,7 +156,6 @@ new_type_with_class_generics
 new_type_with_class_generics2
 
 # "Read-only property cannot override read-write property"
-testDataclassIncompatibleOverrides
 testMixinTypedPropertyReversed
 # "Property "x" defined in "Base" is read-only"
 testNewNamedTupleMethodInheritance
@@ -329,7 +328,6 @@ testPartialDefaultDict*
 # self attributes
 testInferAttributeInitializedToNoneAndAssignedClassBody
 testSerializeDummyType
-testInferListInitializedToEmptyInClassBodyAndOverriden
 # partial list nullable
 testPartiallyInitializedToNoneAndThenToPartialList
 testPartiallyInitializedToNoneAndThenReadPartialList

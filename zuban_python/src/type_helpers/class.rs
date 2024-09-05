@@ -2839,6 +2839,15 @@ impl<'a> TypeOrClass<'a> {
         matches!(self, TypeOrClass::Class(c) if c.node_ref == db.python_state.object_node_ref())
     }
 
+    pub fn is_frozen_dataclass(&self) -> bool {
+        match self {
+            Self::Type(t) => match t.as_ref() {
+                Type::Dataclass(d) => d.options.frozen,
+                _ => false,
+            },
+            Self::Class(_) => false,
+        }
+    }
     pub fn originates_in_builtins_or_typing(&self, db: &Database) -> bool {
         match self {
             TypeOrClass::Class(c) => {
