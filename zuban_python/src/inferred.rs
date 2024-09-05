@@ -1412,7 +1412,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 t,
                                 as_type_type,
                             ) {
-                                return r.map(|inf| (inf, AttributeKind::Attribute));
+                                return r.map(|inf| (inf, attr_kind));
                             }
                         }
                         ComplexPoint::IndirectFinal(t) => {

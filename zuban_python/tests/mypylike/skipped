@@ -167,9 +167,6 @@ explicitOverrideNotOnOverloadsImplementation
 # Self definitions different from parent
 testSelfTypeOverrideCompatibility
 testSelfTypeOverrideCompatibilityGeneric
-# "Cannot assign to a method" should not error
-testDataclassCallableFieldAssignment
-testDataclassesCallableFrozen
 # "Covariant override of a mutable attribute (base class "C" defined the type as "float", expressi on has type "int")  [mutable-override]"
 testCovariantMutableOverride
 # "Signature of "???" incompatible with supertype "???""

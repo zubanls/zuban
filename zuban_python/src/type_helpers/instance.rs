@@ -185,7 +185,7 @@ impl<'a> Instance<'a> {
                             name: name_str.into(),
                             is_attribute: true,
                         });
-                    } else {
+                    } else if !lookup_details.attr_kind.is_writable() {
                         add_issue(IssueKind::CannotAssignToAMethod);
                     }
                 }
