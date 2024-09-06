@@ -1202,6 +1202,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 Inferred::from_type(t),
                                 AttributeKind::Property {
                                     writable,
+                                    is_abstract: c.is_abstract,
                                     is_final: c.is_final,
                                 },
                             )
@@ -2714,10 +2715,20 @@ pub enum AttributeKind {
     Attribute,
     ClassVar,
     Final,
-    Property { writable: bool, is_final: bool },
-    Classmethod { is_final: bool },
-    Staticmethod { is_final: bool },
-    DefMethod { is_final: bool },
+    Property {
+        writable: bool,
+        is_final: bool,
+        is_abstract: bool,
+    },
+    Classmethod {
+        is_final: bool,
+    },
+    Staticmethod {
+        is_final: bool,
+    },
+    DefMethod {
+        is_final: bool,
+    },
 }
 
 impl AttributeKind {
@@ -2764,6 +2775,24 @@ impl AttributeKind {
                 | Self::AnnotatedAttribute
                 | Self::ClassVar
                 | Self::Property { writable: true, .. }
+        )
+    }
+
+    pub(crate) fn is_overwritable(&self) -> bool {
+        matches!(
+            self,
+            Self::Attribute
+                | Self::AnnotatedAttribute
+                | Self::ClassVar
+                | Self::Property {
+                    is_abstract: false,
+                    writable: true,
+                    ..
+                }
+                | Self::Property {
+                    is_abstract: true,
+                    ..
+                }
         )
     }
 }

@@ -185,7 +185,7 @@ impl<'a> Instance<'a> {
                             name: name_str.into(),
                             is_attribute: true,
                         });
-                    } else if !lookup_details.attr_kind.is_writable() {
+                    } else if !lookup_details.attr_kind.is_overwritable() {
                         add_issue(IssueKind::CannotAssignToAMethod);
                     }
                 }
@@ -319,6 +319,7 @@ impl<'a> Instance<'a> {
                                 attr_kind = AttributeKind::Property {
                                     writable: false,
                                     is_final: false,
+                                    is_abstract: true,
                                 };
                                 return Some(Inferred::from_type(
                                     param.type_.expect_positional_type_as_ref().clone(),
@@ -437,6 +438,8 @@ impl<'a> Instance<'a> {
                                 );
                                 details.lookup.is_some() && !details.class.is_object(i_s.db)
                             },
+                            // This is abstract, because this is not an actual property.
+                            is_abstract: true,
                             is_final: false,
                         },
                     };

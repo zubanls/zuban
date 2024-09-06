@@ -273,6 +273,7 @@ impl NamedTuple {
                     attr_kind = AttributeKind::Property {
                         writable: false,
                         is_final: false,
+                        is_abstract: true,
                     };
                     param.type_.expect_positional_type_as_ref().clone()
                 } else {
