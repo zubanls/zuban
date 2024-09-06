@@ -159,16 +159,15 @@ new_type_with_class_generics2
 testNewNamedTupleMethodInheritance
 # Self definitions different from parent
 testSelfTypeOverrideCompatibility
-testSelfTypeOverrideCompatibilityGeneric
 # "Signature of "???" incompatible with supertype "???""
 # __hash__ None overrides
 testOverrideAttributeWithMethod
 testPartialTypeProtocolHashable
-testIntroducingInplaceOperatorInSubclass
 # dunder operator override checks
 testSubtypingIterableUnpacking2
 testEnumBaseClassesOrder
 testMultipleInheritance_MethodDefinitionsCompatibleNoOverride
+testIntroducingInplaceOperatorInSubclass
 # Inheritance multiple issues?
 testOverrideClassVarManyBases
 testOverrideIncompatibleWithMultipleSupertypes
