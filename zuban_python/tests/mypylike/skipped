@@ -155,11 +155,7 @@ testTypedDictChainedGetWithEmptyDictDefault
 new_type_with_class_generics
 new_type_with_class_generics2
 
-# "Property "x" defined in "Base" is read-only"
-testNewNamedTupleMethodInheritance
-# "Signature of "???" incompatible with supertype "???""
 # __hash__ None overrides
-testOverrideAttributeWithMethod
 testPartialTypeProtocolHashable
 # dunder operator override checks
 testSubtypingIterableUnpacking2
@@ -469,6 +465,8 @@ testWithStmtScopeAndLambda
 
 # Self definitions different from parent
 testSelfTypeOverrideCompatibility
+# "Property "x" defined in "Base" is read-only"
+testNewNamedTupleMethodInheritance
 
 # finally must be checked twice
 testUnionTryFinally

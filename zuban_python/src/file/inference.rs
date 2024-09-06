@@ -1033,7 +1033,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     name_str,
                     InstanceLookupOptions::new(&|issue| ()).with_skip_first_of_mro(i_s.db, class),
                 );
-                if let Some(ancestor_inf) = ancestor_lookup.lookup.maybe_inferred() {
+                // __hash__ is allowed to be rewritten to None
+                if let Some(ancestor_inf) = ancestor_lookup.lookup.maybe_inferred().filter(|_| {
+                    !(name_str == "__hash__" && ancestor_lookup.class.is_object(i_s.db))
+                }) {
                     let declaration_t = ancestor_inf.as_cow_type(i_s);
                     let first_name_link = PointLink::new(
                         self.file_index,
