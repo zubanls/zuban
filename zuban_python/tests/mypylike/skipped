@@ -157,8 +157,6 @@ new_type_with_class_generics2
 
 # "Property "x" defined in "Base" is read-only"
 testNewNamedTupleMethodInheritance
-# Self definitions different from parent
-testSelfTypeOverrideCompatibility
 # "Signature of "???" incompatible with supertype "???""
 # __hash__ None overrides
 testOverrideAttributeWithMethod
@@ -468,6 +466,9 @@ testWithStmtScopeMultipleContextManagers
 testWithStmtScopeMultipleAssignment
 testWithStmtScopeAndClass
 testWithStmtScopeAndLambda
+
+# Self definitions different from parent
+testSelfTypeOverrideCompatibility
 
 # finally must be checked twice
 testUnionTryFinally

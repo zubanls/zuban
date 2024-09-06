@@ -1797,10 +1797,7 @@ fn find_and_check_override(
     let override_class_infos = override_class.use_cached_class_infos(i_s.db);
     let instance = Instance::new(override_class, None);
     let add_lookup_issue = |issue| {
-        // This is issue is only relevant for actual lookups
-        if !matches!(issue, IssueKind::NotAcceptingSelfArgument { .. }) {
-            from.add_issue(i_s, issue)
-        }
+        // TODO we need to work on this, see testSelfTypeOverrideCompatibility
     };
     let original_details = instance.lookup(
         i_s,
