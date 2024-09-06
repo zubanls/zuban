@@ -160,12 +160,11 @@ testNewNamedTupleMethodInheritance
 # Self definitions different from parent
 testSelfTypeOverrideCompatibility
 testSelfTypeOverrideCompatibilityGeneric
-# "Covariant override of a mutable attribute (base class "C" defined the type as "float", expressi on has type "int")  [mutable-override]"
-testCovariantMutableOverride
 # "Signature of "???" incompatible with supertype "???""
 # __hash__ None overrides
 testOverrideAttributeWithMethod
 testPartialTypeProtocolHashable
+testIntroducingInplaceOperatorInSubclass
 # dunder operator override checks
 testSubtypingIterableUnpacking2
 testEnumBaseClassesOrder
@@ -181,8 +180,6 @@ testClassIgnoreType_RedefinedAttributeAndGrandparentAttributeTypesNotIgnored
 testMultipleInheritance_NestedVariableOverriddenWithIncompatibleType1
 testGenericMultipleOverrideReplace
 testUseSupertypeAsInferenceContextConflict
-# "This violates the Liskov substitution principle"
-testIntroducingInplaceOperatorInSubclass
 # Namedtuple bad overwrite of count etc
 testNewNamedTupleIllegalNames
 testNamedTupleFallback
@@ -1140,6 +1137,8 @@ testTruthyFunctions
 testTruthyIterable
 # flags: --disable-error-code truthy-bool
 testDisableEnableErrorCodesIncremental
+# flags: --enable-error-code=mutable-override: "Covariant override of a mutable attribute (base class "C" defined the type as "float", expressi on has type "int")"
+testCovariantMutableOverride
 
 # "Method cannot have explicit self annotation and Self type"
 testTypingSelfConflict
