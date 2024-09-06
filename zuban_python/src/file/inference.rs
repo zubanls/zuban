@@ -1376,6 +1376,15 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             ))),
                         );
                     } else {
+                        if !lookup_details.attr_kind.is_overwritable() {
+                            from.add_issue(
+                                i_s,
+                                IssueKind::PropertyIsReadOnly {
+                                    class_name: lookup_details.class.name(i_s.db).into(),
+                                    property_name: name_def.as_code().into(),
+                                },
+                            );
+                        }
                         check_assign_to_known_definition(
                             PointLink::new(self.file_index, current_index),
                             &inf,

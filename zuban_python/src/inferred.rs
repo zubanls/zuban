@@ -2786,11 +2786,11 @@ impl AttributeKind {
                 | Self::ClassVar
                 | Self::Property {
                     is_abstract: false,
-                    writable: true,
                     ..
                 }
                 | Self::Property {
                     is_abstract: true,
+                    writable: true,
                     ..
                 }
         )
