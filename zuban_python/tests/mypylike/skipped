@@ -157,9 +157,6 @@ new_type_with_class_generics2
 
 # "Property "x" defined in "Base" is read-only"
 testNewNamedTupleMethodInheritance
-# @override  "Method "g" is marked as an override, but no base method was found with this name"
-explicitOverrideOverloads
-explicitOverrideNotOnOverloadsImplementation
 # Self definitions different from parent
 testSelfTypeOverrideCompatibility
 testSelfTypeOverrideCompatibilityGeneric

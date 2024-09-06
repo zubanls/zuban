@@ -761,7 +761,11 @@ impl<'db> Inference<'db, '_, '_> {
 
         // Calculate if there is an @override decorator
         let mut has_override_decorator = false;
-        if let Some(decorated) = func_def.maybe_decorated() {
+        if let Some(ComplexPoint::FunctionOverload(overload)) =
+            NodeRef::new(self.file, func_def.index()).complex()
+        {
+            has_override_decorator = overload.is_override;
+        } else if let Some(decorated) = func_def.maybe_decorated() {
             let decorators = decorated.decorators();
             for decorator in decorators.iter() {
                 if let Some(redirect) =

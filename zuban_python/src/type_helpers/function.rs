@@ -748,6 +748,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         let mut is_overload = false;
         let mut is_abstract = false;
         let mut is_final = false;
+        let mut is_override = false;
         for decorator in decorated.decorators().iter_reverse() {
             let inferred_dec =
                 infer_decorator_details(i_s, self.node_ref.file, decorator, had_first_annotation);
@@ -843,6 +844,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     is_final = true
                 }
                 InferredDecorator::Override => {
+                    is_override = true;
                     if self.class.is_none() {
                         used_with_a_non_method("override")
                     }
@@ -902,6 +904,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             inferred,
             kind,
             is_overload,
+            is_override,
             has_decorator: true,
         })
     }
@@ -1005,6 +1008,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
 
         let mut has_abstract = false;
         let mut has_non_abstract = false;
+        let mut is_override = details.is_override;
         let mut add_func = |func: &Function, inf: Inferred, is_first: bool| {
             if let Some(CallableLike::Callable(callable)) = inf.as_cow_type(i_s).maybe_callable(i_s)
             {
@@ -1083,10 +1087,13 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                                 .is_some_and(|p| p.annotation().is_some()),
                         },
                         is_overload: false,
+                        is_override: false,
                         has_decorator: false,
                     }
                 }
             };
+            is_override |= next_details.is_override;
+
             if !details.kind.is_same_base_kind(next_details.kind) {
                 if matches!(details.kind, FunctionKind::Function { .. }) {
                     inconsistent_function_kind = Some(next_details.kind)
@@ -1190,6 +1197,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             functions: FunctionOverload::new(functions.into_boxed_slice()),
             implementation,
             is_final,
+            is_override,
         })
     }
 
@@ -2051,6 +2059,7 @@ struct FunctionDetails {
     inferred: Inferred,
     kind: FunctionKind,
     is_overload: bool,
+    is_override: bool,
     has_decorator: bool,
 }
 

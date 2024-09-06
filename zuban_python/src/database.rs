@@ -592,7 +592,8 @@ impl OverloadImplementation {
 pub struct OverloadDefinition {
     pub implementation: Option<OverloadImplementation>,
     pub functions: Rc<FunctionOverload>,
-    pub is_final: bool,
+    pub is_final: bool,    // Had @final
+    pub is_override: bool, // Had @override
 }
 
 impl OverloadDefinition {
