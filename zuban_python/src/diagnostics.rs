@@ -291,6 +291,7 @@ pub(crate) enum IssueKind {
     InvalidStmtInNamedTuple,
     NamedTupleNonDefaultFieldFollowsDefault,
     NamedTupleFieldExpectsTupleOfStrAndType,
+    NamedTupleInvalidAttributeOverride { name: Box<str> },
     InvalidSecondArgumentToNamedTuple { name: &'static str },
     UnexpectedArgumentsTo { name: &'static str },
     UnexpectedArgumentTo { name: &'static str },
@@ -1530,6 +1531,8 @@ impl<'db> Diagnostic<'db> {
                 "Non-default NamedTuple fields cannot follow default fields".to_string(),
             NamedTupleFieldExpectsTupleOfStrAndType =>
                 "NamedTuple field should be a tuple of a string literal and a type".to_string(),
+            NamedTupleInvalidAttributeOverride { name } =>
+                format!("Cannot overwrite NamedTuple attribute \"{name}\""),
             InvalidSecondArgumentToNamedTuple{name} =>
                 format!("List or tuple literal expected as the second argument to \"{name}()\""),
             UnexpectedArgumentsTo{name} =>

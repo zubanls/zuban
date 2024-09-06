@@ -180,10 +180,6 @@ testClassIgnoreType_RedefinedAttributeAndGrandparentAttributeTypesNotIgnored
 testMultipleInheritance_NestedVariableOverriddenWithIncompatibleType1
 testGenericMultipleOverrideReplace
 testUseSupertypeAsInferenceContextConflict
-# Namedtuple bad overwrite of count etc
-testNewNamedTupleIllegalNames
-testNamedTupleFallback
-testNamedTupleIncompatibleRedefinition
 
 # TypeVar Values in func
 testErrorCodeInvalidTypeArg

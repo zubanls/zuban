@@ -69,6 +69,22 @@ const EXCLUDED_PROTOCOL_ATTRIBUTES: [&str; 11] = [
     "__class_getitem__",
 ];
 
+const NAMEDTUPLE_PROHIBITED_NAMES: [&str; 12] = [
+    // Copied from Mypy
+    "__new__",
+    "__init__",
+    "__slots__",
+    "__getnewargs__",
+    "_fields",
+    "_field_defaults",
+    "_field_types",
+    "_make",
+    "_replace",
+    "_asdict",
+    "_source",
+    "__annotations__",
+];
+
 pub fn cache_class_name(name_def: NodeRef, class: ClassDef) {
     if !name_def.point().calculated() {
         name_def.set_point(Point::new_redirect(
@@ -1960,6 +1976,14 @@ impl<'db: 'a, 'a> Class<'a> {
         let mut vec = start_namedtuple_params(i_s.db);
         let file = self.node_ref.file;
         find_stmt_named_tuple_types(i_s, file, &mut vec, self.node().block().iter_stmt_likes());
+        for (name, index) in self.class_storage.class_symbol_table.iter() {
+            if NAMEDTUPLE_PROHIBITED_NAMES.contains(&name) {
+                NodeRef::new(self.node_ref.file, *index).add_issue(
+                    i_s,
+                    IssueKind::NamedTupleInvalidAttributeOverride { name: name.into() },
+                )
+            }
+        }
         let tvls = self.use_cached_type_vars(i_s.db);
         CallableContent::new_simple(
             Some(DbString::StringSlice(name)),
