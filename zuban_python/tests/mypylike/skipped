@@ -16,30 +16,6 @@ testTotalOrderingReturnNotBool
 testTotalOrderingAllowsAny
 testTotalOrderingWithForwardReference
 
-# union math vs. type var
-testOverloadDetectsPossibleMatchesWithGenerics
-testOverloadsAndNoReturnNarrowWhenBlacklistingSubtype
-testOverloadsAndNoReturnNarrowWhenBlacklistingSubtype2
-testOverloadsAndNoReturnNarrowTypeNoStrictOptional2
-testOverloadsAndNoReturnNarrowTypeWithStrictOptional2
-testOverloadsAndNoReturnNarrowTypeNoStrictOptional3
-testOverloadsAndNoReturnNarrowTypeWithStrictOptional3
-# overload Any unclear why Mypy decides like this
-testTypeVarTupleOverloadMatch
-# overload x should be preferred over an *x alternative
-testTupleOverloadZipAny
-
-# Special-case type inference of empty collections https://github.com/python/mypy/pull/16122
-testInferenceWorksWithEmptyCollectionsUnion
-testWideOuterContextEmptyError
-testWideOuterContextNoArgsError
-testInferenceWorksWithEmptyCollectionsNested
-testCallerVarargsAndComplexTypeInference
-# Union/addition of empty lists dicts sets with used ones
-testOrOperationWithGenericOperands
-testOrOperationInferredFromContext
-testInWithInvalidArgs
-
 # WTF why is this base type not object/function?
 testListLiteralWithNameOnlyArgsDoesNotEraseNames
 # join of {1, *some_str_tuple} leads to int | str???
@@ -91,6 +67,9 @@ testFinalReassignInstanceVarMethod
 # i_s missing current class
 testLambdaDeferredSpecialCase
 testLambdaDeferredCrash
+# NewType generics resolving
+new_type_with_class_generics
+new_type_with_class_generics2
 
 # param spec complex nested transitive tests
 testParamSpecNestedApplyPosVsNamed
@@ -113,6 +92,37 @@ multiple_lambda_mypy_issue_4226
 testMatchProtocolAgainstOverloadWithAmbiguity
 # type var with unions and fallback in case solving is not possible
 testTypeVarTupleInvariant
+
+# union math vs. type var
+testOverloadDetectsPossibleMatchesWithGenerics
+testOverloadsAndNoReturnNarrowWhenBlacklistingSubtype
+testOverloadsAndNoReturnNarrowWhenBlacklistingSubtype2
+testOverloadsAndNoReturnNarrowTypeNoStrictOptional2
+testOverloadsAndNoReturnNarrowTypeWithStrictOptional2
+testOverloadsAndNoReturnNarrowTypeNoStrictOptional3
+testOverloadsAndNoReturnNarrowTypeWithStrictOptional3
+# overload Any unclear why Mypy decides like this
+testTypeVarTupleOverloadMatch
+# overload x should be preferred over an *x alternative
+testTupleOverloadZipAny
+
+# Special-case type inference of empty collections https://github.com/python/mypy/pull/16122
+testInferenceWorksWithEmptyCollectionsUnion
+testWideOuterContextEmptyError
+testWideOuterContextNoArgsError
+testInferenceWorksWithEmptyCollectionsNested
+testCallerVarargsAndComplexTypeInference
+# Union/addition of empty lists dicts sets with used ones
+testOrOperationWithGenericOperands
+testOrOperationInferredFromContext
+testInWithInvalidArgs
+# [''] + [1] does not generate an error
+testAssignmentSubtypes
+# union order issues
+testNarrowingEqualityDisabledForCustomEquality
+# bool literal type matching
+assign_bool_to_false_true_literal
+testBoolInTuplesRegression
 
 # Nested type vars
 testFunctionInGenericInnerClassTypeVariable-skip
@@ -150,10 +160,6 @@ testTypedDictNonMappingMethods
 testSerializeTypedDictInMethod
 # TypedDict unions
 testTypedDictChainedGetWithEmptyDictDefault
-
-# NewType generics resolving
-new_type_with_class_generics
-new_type_with_class_generics2
 
 # dunder operator override checks
 testSubtypingIterableUnpacking2
@@ -218,14 +224,6 @@ testStrictEqualityDisabledWithTypeVarRestrictions
 testIsInstanceAdHocIntersectionGenericsWithValues
 testIsInstanceAdHocIntersectionGenericsWithValuesDirectReturn
 testCallableTypeVarUnion
-
-# [''] + [1] does not generate an error
-testAssignmentSubtypes
-# union order issues
-testNarrowingEqualityDisabledForCustomEquality
-# bool literal type matching
-assign_bool_to_false_true_literal
-testBoolInTuplesRegression
 
 # any overwrites of None
 testOptionalAssignAny1
