@@ -406,21 +406,8 @@ fn type_computation_for_variable_annotation(
     type_var_like: TypeVarLike,
     current_callable: Option<PointLink>,
 ) -> TypeVarCallbackReturn {
-    if let Some(class) = i_s.current_class() {
-        if let Some(usage) = class
-            .type_vars(i_s)
-            .find(type_var_like.clone(), class.node_ref.as_link())
-        {
-            return TypeVarCallbackReturn::TypeVarLike(usage);
-        }
-    }
-    if let Some(func) = i_s.current_function() {
-        let usage = func
-            .type_vars(i_s)
-            .find(type_var_like, func.node_ref.as_link());
-        if let Some(usage) = usage {
-            return TypeVarCallbackReturn::TypeVarLike(usage);
-        }
+    if let Some(result) = i_s.find_parent_type_var(&type_var_like) {
+        return result;
     }
     match current_callable {
         Some(_) => TypeVarCallbackReturn::NotFound {
