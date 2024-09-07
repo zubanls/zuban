@@ -1293,3 +1293,24 @@ class C:
 
     def __init__(self, x: int) -> None:
         self.x = 2  # E: Cannot assign to final attribute "x"
+
+[case self_access_before_assignment1]
+class A:
+    def __init__(self) -> None:
+        self.x = 2
+
+class B(A):
+    def __init__(self) -> None:
+        super().__init__()
+        reveal_type(self.x)  # N: Revealed type is "int"
+        self.x = 2
+
+[case self_access_before_assignment2]
+class A:
+    x: int
+
+class B(A):
+    def __init__(self) -> None:
+        super().__init__()
+        reveal_type(self.x)  # N: Revealed type is "int"
+        self.x = 2

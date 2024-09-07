@@ -30,7 +30,7 @@ use crate::{
         NamedTuple, NeverCause, StringSlice, Tuple, TupleArgs, TupleUnpack, Type, TypeVarKind,
         UnionType, WithUnpack,
     },
-    type_helpers::{Callable, Class, ClassLookupOptions, Function},
+    type_helpers::{Callable, Class, ClassLookupOptions, Function, InstanceLookupOptions},
     utils::join_with_commas,
 };
 
@@ -1259,6 +1259,23 @@ impl Inference<'_, '_, '_> {
                 })
             });
             if result.is_err() {
+                // It is possible that the self variable is defined in a super class and we are
+                // accessing it before definition in the current class, so use the one from the
+                // super class.
+                if let Some(inf) = c
+                    .instance()
+                    .lookup(
+                        self.i_s,
+                        name_def_node_ref.as_code(),
+                        InstanceLookupOptions::new(&|_| todo!())
+                            .with_skip_first_of_mro(self.i_s.db, &c)
+                            .with_no_check_dunder_getattr(),
+                    )
+                    .lookup
+                    .into_maybe_inferred()
+                {
+                    return Ok(inf);
+                }
                 return Err(());
             }
         }

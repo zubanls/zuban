@@ -463,7 +463,7 @@ testWithStmtScopeAndLambda
 
 # Self definitions different from parent
 testSelfTypeOverrideCompatibility
-# "Property "x" defined in "Base" is read-only"
+# "Property "x" defined in "Base" is read-only" because of NamedTuple inheritance
 testNewNamedTupleMethodInheritance
 
 # finally must be checked twice
