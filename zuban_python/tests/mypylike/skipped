@@ -397,23 +397,6 @@ testTypeEquivalentTypeAny2
 # Type[Any] is object
 testSimplifyingUnionWithTypeTypes2
 
-# strict optional with config file
-testPerFileStrictOptionalBasic
-testPerFileStrictOptionalBasicImportStandard
-testPerFileStrictOptionalListItemImportOptional
-testPerFileStrictOptionalBasicPyProjectTOML
-testPerFileStrictOptionalBasicImportStandardPyProjectTOML
-testPerFileStrictOptionalListItemImportOptionalPyProjectTOML
-testPerFileStrictOptionalModuleOnly
-testPerFileStrictOptionalFunction
-testPerFileStrictOptionalMethod
-testNewAnalyzerTypeArgBoundCheckWithStrictOptional
-testNewAnalyzerTypeArgBoundCheckWithStrictOptionalPyProjectTOML
-testPerFileStrictOptionalModule
-testStrictOptionalCovarianceCrossModule
-# Uses an environment variable in mypy.ini files=$MYPY_CONFIG_FILE_DIR/good.py
-testEnvvar_MYPY_CONFIG_FILE_DIR
-
 # Never not rewritten to Any for "Need type annotation for "X""
 testNewAnalyzerLessErrorsNeedAnnotationNested
 testNewAnalyzerLessErrorsNeedAnnotation
@@ -617,6 +600,23 @@ testUninferableLambdaWithTypeError
 testRejectCovariantArgumentInLambda
 
 # ------------- Additional unimportant, but would be nice -----------------
+
+# strict optional with config file
+testPerFileStrictOptionalBasic
+testPerFileStrictOptionalBasicImportStandard
+testPerFileStrictOptionalListItemImportOptional
+testPerFileStrictOptionalBasicPyProjectTOML
+testPerFileStrictOptionalBasicImportStandardPyProjectTOML
+testPerFileStrictOptionalListItemImportOptionalPyProjectTOML
+testPerFileStrictOptionalModuleOnly
+testPerFileStrictOptionalFunction
+testPerFileStrictOptionalMethod
+testNewAnalyzerTypeArgBoundCheckWithStrictOptional
+testNewAnalyzerTypeArgBoundCheckWithStrictOptionalPyProjectTOML
+testPerFileStrictOptionalModule
+testStrictOptionalCovarianceCrossModule
+# Uses an environment variable in mypy.ini files=$MYPY_CONFIG_FILE_DIR/good.py
+testEnvvar_MYPY_CONFIG_FILE_DIR
 
 # "NamedTuple type as an attribute is not supported"
 testAssignNamedTupleAsAttribute
