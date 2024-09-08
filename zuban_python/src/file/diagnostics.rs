@@ -1593,29 +1593,24 @@ impl<'db> Inference<'db, '_, '_> {
         let Some(normal_magic_name) = INPLACE_TO_NORMAL_METHODS.get(inplace_magic_name) else {
             return;
         };
-        let normal_method = func
-            .class
-            .unwrap()
-            .lookup_without_descriptors(i_s, func.node_ref, normal_magic_name)
-            .lookup;
-        let inplace_method = func
-            .class
-            .unwrap()
-            .lookup_without_descriptors(i_s, func.node_ref, func.name())
-            .lookup;
-        if !normal_method
-            .into_inferred()
-            .as_cow_type(i_s)
-            .is_simple_super_type_of(i_s, &inplace_method.into_inferred().as_cow_type(i_s))
-            .bool()
-        {
-            func.add_issue_for_declaration(
-                self.i_s,
-                IssueKind::SignaturesAreIncompatible {
-                    name1: func.name().into(),
-                    name2: normal_magic_name,
-                },
-            )
+        let instance = func.class.unwrap().instance();
+        let options = InstanceLookupOptions::new(&|_| ());
+        let normal_method = instance.lookup(i_s, normal_magic_name, options).lookup;
+        if let Some(normal_inf) = normal_method.into_maybe_inferred() {
+            let inplace_method = instance.lookup(i_s, func.name(), options).lookup;
+            if !normal_inf
+                .as_cow_type(i_s)
+                .is_simple_super_type_of(i_s, &inplace_method.into_inferred().as_cow_type(i_s))
+                .bool()
+            {
+                func.add_issue_for_declaration(
+                    self.i_s,
+                    IssueKind::SignaturesAreIncompatible {
+                        name1: func.name().into(),
+                        name2: normal_magic_name,
+                    },
+                )
+            }
         }
     }
 

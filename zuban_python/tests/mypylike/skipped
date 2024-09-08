@@ -163,7 +163,6 @@ testTypedDictChainedGetWithEmptyDictDefault
 
 # dunder operator override checks
 testSubtypingIterableUnpacking2
-testIntroducingInplaceOperatorInSubclass
 
 # TypeVar Values in func
 testErrorCodeInvalidTypeArg

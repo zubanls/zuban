@@ -943,6 +943,7 @@ impl LookupDetails<'_> {
     }
 }
 
+#[derive(Copy, Clone)]
 pub struct InstanceLookupOptions<'x> {
     add_issue: &'x dyn Fn(IssueKind),
     kind: LookupKind,
