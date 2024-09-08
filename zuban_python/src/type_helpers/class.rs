@@ -1704,6 +1704,7 @@ impl<'db: 'a, 'a> Class<'a> {
                     lookup: LookupResult::None,
                     class: TypeOrClass::Class(*self),
                     attr_kind: AttributeKind::Attribute,
+                    mro_index: None,
                 };
             }
             self.lookup_and_class_and_maybe_ignore_self_internal(
@@ -1765,6 +1766,7 @@ impl<'db: 'a, 'a> Class<'a> {
                         class,
                         lookup,
                         attr_kind,
+                        mro_index: Some(mro_index),
                     })
                 },
             )
@@ -1799,6 +1801,7 @@ impl<'db: 'a, 'a> Class<'a> {
                         class: TypeOrClass::Class(*self),
                         lookup: metaclass_result.lookup,
                         attr_kind: metaclass_result.attr_kind,
+                        mro_index: None,
                     }
                 }
             }

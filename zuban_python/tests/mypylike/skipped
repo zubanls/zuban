@@ -166,17 +166,7 @@ testSubtypingIterableUnpacking2
 testEnumBaseClassesOrder
 testMultipleInheritance_MethodDefinitionsCompatibleNoOverride
 testIntroducingInplaceOperatorInSubclass
-# Inheritance multiple issues?
-testOverrideClassVarManyBases
-testOverrideIncompatibleWithMultipleSupertypes
-testSubclassingGenericABCWithDeepHierarchy
-testSubclassingGenericABCWithDeepHierarchy2
-testOverridingMethodAcrossHierarchy
 testMultipleInheritance_MethodDefinitionsIncompatibleOverride
-testClassIgnoreType_RedefinedAttributeAndGrandparentAttributeTypesNotIgnored
-testMultipleInheritance_NestedVariableOverriddenWithIncompatibleType1
-testGenericMultipleOverrideReplace
-testUseSupertypeAsInferenceContextConflict
 
 # TypeVar Values in func
 testErrorCodeInvalidTypeArg
@@ -261,6 +251,7 @@ testLocalPartialTypesWithInheritance3
 testInheritedAttributeNoStrictOptional
 # formatting the wrong class in assignment to member of superclass of superclass
 testClassOrderOfError
+testClassIgnoreType_RedefinedAttributeAndGrandparentAttributeTypesNotIgnored
 # Dynamic functions are ignored in classes and the super class is used?
 testInferringTypesFromIterable
 testMultipleAssignmentAndGenericSubtyping
@@ -463,6 +454,12 @@ testWithStmtScopeAndLambda
 testSelfTypeOverrideCompatibility
 # "Property "x" defined in "Base" is read-only" because of NamedTuple inheritance
 testNewNamedTupleMethodInheritance
+# Inheritance ClassVar in parent of parent, overwritten in parent and therefore should still be a ClassVar but isn't
+testOverrideClassVarManyBases
+# Multi inheritance should check both sides
+testMultipleInheritance_NestedVariableOverriddenWithIncompatibleType1
+testGenericMultipleOverrideReplace
+testUseSupertypeAsInferenceContextConflict
 
 # finally must be checked twice
 testUnionTryFinally

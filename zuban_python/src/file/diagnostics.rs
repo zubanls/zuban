@@ -724,12 +724,13 @@ impl<'db> Inference<'db, '_, '_> {
                         Rc::new(__post_init__.clone()),
                     ))),
                     attr_kind: AttributeKind::DefMethod { is_final: false },
+                    mro_index: None,
                 };
                 check_override(
                     &i_s,
                     from,
                     original_details,
-                    override_details,
+                    &override_details,
                     name,
                     |_, _| "dataclass",
                     Some(&|| {
@@ -1799,7 +1800,7 @@ fn find_and_check_override(
     let add_lookup_issue = |issue| {
         // TODO we need to work on this, see testSelfTypeOverrideCompatibility
     };
-    let original_details = instance.lookup(
+    let mut original_details = instance.lookup(
         i_s,
         name,
         // NamedTuple / Tuple are special, because they insert an additional type of themselves.
@@ -1827,15 +1828,24 @@ fn find_and_check_override(
                 },
             );
         }
-        check_override(
-            i_s,
-            from,
-            original_details,
-            override_details,
-            name,
-            |db, c| c.name(db),
-            None,
-        );
+        while let Some(mro_index) = original_details.mro_index {
+            check_override(
+                i_s,
+                from,
+                original_details,
+                &override_details,
+                name,
+                |db, c| c.name(db),
+                None,
+            );
+            original_details = instance.lookup(
+                i_s,
+                name,
+                // NamedTuple / Tuple are special, because they insert an additional type of themselves.
+                InstanceLookupOptions::new(&add_lookup_issue)
+                    .with_super_count(mro_index.0 as usize + 1),
+            )
+        }
     } else if has_override_decorator {
         let issue = IssueKind::MissingBaseForOverride { name: name.into() };
         // For whatever reason, this is how Mypy does it and we don't want to screw up the line
@@ -1856,7 +1866,7 @@ pub(super) fn check_override(
     i_s: &InferenceState,
     from: NodeRef,
     original_lookup_details: LookupDetails,
-    override_lookup_details: LookupDetails,
+    override_lookup_details: &LookupDetails,
     name: &str,
     original_class_name: impl for<'x> Fn(&'x Database, &'x TypeOrClass) -> &'x str,
     original_formatter: Option<&dyn Fn() -> String>,
@@ -1864,7 +1874,10 @@ pub(super) fn check_override(
     let original_inf = original_lookup_details.lookup.into_inferred();
     let original_t = original_inf.as_cow_type(i_s);
     let original_class = original_lookup_details.class;
-    let override_inf = override_lookup_details.lookup.into_inferred();
+    let override_inf = override_lookup_details
+        .lookup
+        .maybe_inferred()
+        .unwrap_or_else(|| Cow::Owned(Inferred::new_any(AnyCause::Internal)));
     let override_t = override_inf.as_cow_type(i_s);
     let override_t = override_t.as_ref();
     let TypeOrClass::Class(override_class) = override_lookup_details.class else {
@@ -2117,7 +2130,12 @@ pub(super) fn check_override(
                         .lookup(
                             i_s,
                             name,
-                            ClassLookupOptions::new(&|_| todo!()).with_ignore_self(),
+                            ClassLookupOptions::new(&|_| todo!()).with_super_count(
+                                original_lookup_details
+                                    .mro_index
+                                    .map(|m| m.0 as usize)
+                                    .unwrap_or(0),
+                            ),
                         )
                         .lookup,
                 );
@@ -2356,7 +2374,7 @@ pub fn check_multiple_inheritance<'x, BASES: Iterator<Item = TypeOrClass<'x>>>(
                     });
                     return;
                     */
-                    todo!()
+                    todo!("{name}")
                 }
                 if let Some(inf) = inst2_lookup.lookup.into_maybe_inferred() {
                     if !should_check(name) {

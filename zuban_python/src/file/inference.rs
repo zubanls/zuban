@@ -1123,10 +1123,11 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 i_s,
                                 from,
                                 ancestor_lookup.clone(),
-                                LookupDetails {
+                                &LookupDetails {
                                     class: TypeOrClass::Class(*class),
                                     lookup: LookupResult::UnknownName(bound_inf),
                                     attr_kind,
+                                    mro_index: None,
                                 },
                                 name_str,
                                 |db, c| c.name(db),

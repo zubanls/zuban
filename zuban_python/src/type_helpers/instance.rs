@@ -11,7 +11,7 @@ use crate::{
     file::{on_argument_type_error, File},
     getitem::SliceType,
     inference_state::InferenceState,
-    inferred::{add_attribute_error, AttributeKind, Inferred},
+    inferred::{add_attribute_error, AttributeKind, Inferred, MroIndex},
     matching::{ErrorStrs, IteratorContent, LookupKind, OnTypeError, ResultContext},
     node_ref::NodeRef,
     type_::{
@@ -360,6 +360,7 @@ impl<'a> Instance<'a> {
                         class,
                         attr_kind,
                         lookup: LookupResult::None,
+                        mro_index: Some(mro_index),
                     }
                 }
                 Some(lookup) => {
@@ -367,6 +368,7 @@ impl<'a> Instance<'a> {
                         class,
                         attr_kind,
                         lookup,
+                        mro_index: Some(mro_index),
                     }
                 }
             }
@@ -400,6 +402,7 @@ impl<'a> Instance<'a> {
                                 name: PointLink::new(c.node_ref.file.file_index(), self_symbol),
                                 inf: inf.resolve_class_type_vars(&i_s, &self.class, &c),
                             },
+                            mro_index: Some(mro_index),
                         };
                     }
                 }
@@ -442,6 +445,7 @@ impl<'a> Instance<'a> {
                             is_abstract: true,
                             is_final: false,
                         },
+                        mro_index: None,
                     };
                 }
             }
@@ -451,12 +455,14 @@ impl<'a> Instance<'a> {
                 class: TypeOrClass::Class(self.class),
                 lookup: LookupResult::any(AnyCause::Todo),
                 attr_kind,
+                mro_index: None,
             }
         } else {
             LookupDetails {
                 class: TypeOrClass::Class(self.class),
                 lookup: LookupResult::None,
                 attr_kind,
+                mro_index: None,
             }
         }
     }
@@ -887,6 +893,7 @@ pub struct LookupDetails<'a> {
     pub class: TypeOrClass<'a>,
     pub lookup: LookupResult,
     pub attr_kind: AttributeKind,
+    pub mro_index: Option<MroIndex>,
 }
 
 impl LookupDetails<'_> {
@@ -895,6 +902,7 @@ impl LookupDetails<'_> {
             class: TypeOrClass::Type(Cow::Owned(Type::Any(cause))),
             lookup: LookupResult::any(cause),
             attr_kind: AttributeKind::Attribute,
+            mro_index: None,
         }
     }
 
@@ -903,6 +911,7 @@ impl LookupDetails<'_> {
             class: TypeOrClass::Type(Cow::Owned(type_)),
             lookup,
             attr_kind,
+            mro_index: None,
         }
     }
 

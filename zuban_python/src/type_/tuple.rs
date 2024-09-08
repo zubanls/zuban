@@ -629,6 +629,7 @@ pub(crate) fn lookup_on_tuple<'x>(
                     class: class_or_type,
                     lookup: LookupResult::UnknownName(lookup),
                     attr_kind,
+                    mro_index: None,
                 };
             }
         }
