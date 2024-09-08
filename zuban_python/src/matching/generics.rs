@@ -132,12 +132,11 @@ impl<'a> Generics<'a> {
                 if let Some(g) = list.nth(n.into()) {
                     replace_class_vars!(db, g, type_var_generics)
                 } else {
-                    debug!(
+                    unreachable!(
                         "Generic list {} given, but item {:?} was requested",
                         self.format(&FormatData::new_short(db), None),
                         n,
                     );
-                    todo!()
                 }
             }
             Self::NotDefinedYet => Generic::owned(type_var_like.as_any_generic_item()),

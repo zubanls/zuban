@@ -1,6 +1,8 @@
 use super::Matcher;
 use crate::{
     database::Database,
+    debug,
+    format_data::FormatData,
     inference_state::InferenceState,
     type_::{CallableContent, GenericItem, ReplaceSelf, Type, TypeVarLikeUsage},
     type_helpers::Class,
@@ -61,6 +63,11 @@ pub fn create_signature_without_self_for_callable(
 ) -> Option<CallableContent> {
     let mut matcher = Matcher::new_callable_matcher(callable);
     if !match_self_type(i_s, &mut matcher, instance, func_class, first_type) {
+        debug!(
+            "Couldn't create signature without self for callable {} with instance {}",
+            callable.format(&FormatData::new_short(i_s.db)),
+            instance.format_short(i_s.db)
+        );
         return None;
     }
     let c = callable
