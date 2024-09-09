@@ -32,7 +32,7 @@ use crate::{
     matching::{
         calculate_callable_dunder_init_type_vars_and_return,
         calculate_callable_type_vars_and_return, calculate_class_dunder_init_type_vars_and_return,
-        format_got_expected, maybe_class_usage, ErrorStrs, FunctionOrCallable, Generics,
+        format_got_expected, maybe_class_usage, ErrorStrs, FunctionOrCallable, Generic, Generics,
         LookupKind, Match, Matcher, MismatchReason, OnTypeError, ResultContext,
     },
     node_ref::NodeRef,
@@ -42,9 +42,10 @@ use crate::{
         infer_typed_dict_total_argument, infer_value_on_member, AnyCause, CallableContent,
         CallableLike, CallableParam, CallableParams, ClassGenerics, Dataclass, DataclassOptions,
         DbString, Enum, EnumMemberDefinition, FormatStyle, FunctionKind, FunctionOverload,
-        GenericClass, GenericItem, GenericsList, LookupResult, NamedTuple, ParamType, StringSlice,
-        Tuple, TupleArgs, Type, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypedDict,
-        TypedDictMember, TypedDictMemberGatherer, Variance,
+        GenericClass, GenericItem, GenericsList, LookupResult, NamedTuple, ParamSpecArg,
+        ParamSpecUsage, ParamType, StringSlice, Tuple, TupleArgs, Type, TypeVarLike,
+        TypeVarLikeUsage, TypeVarLikes, TypedDict, TypedDictMember, TypedDictMemberGatherer,
+        Variance,
     },
     type_helpers::{FirstParamProperties, Function},
     utils::join_with_commas,
@@ -1826,9 +1827,27 @@ impl<'db: 'a, 'a> Class<'a> {
 
     pub fn nth_type_argument(&self, db: &Database, nth: usize) -> Type {
         let type_vars = self.use_cached_type_vars(db);
-        self.generics()
-            .nth_type_argument(db, &type_vars[nth], nth)
-            .into_owned()
+        let generic = self.generics().nth(db, &type_vars[nth], nth);
+        if let Generic::TypeArg(t) = generic {
+            t.into_owned()
+        } else {
+            unreachable!()
+        }
+    }
+
+    pub fn nth_param_spec_usage(
+        &self,
+        db: &'db Database,
+        usage: &ParamSpecUsage,
+    ) -> Cow<ParamSpecArg> {
+        let generic = self
+            .generics()
+            .nth_usage(db, &TypeVarLikeUsage::ParamSpec(usage.clone()));
+        if let Generic::ParamSpecArg(p) = generic {
+            p
+        } else {
+            unreachable!()
+        }
     }
 
     pub fn mro_maybe_without_object(

@@ -1,5 +1,3 @@
-use std::borrow::Cow;
-
 use parsa_python_cst::{Expression, SliceContent, SliceIterator, Slices};
 
 use super::{FormatData, Generic, Match, Matcher};
@@ -10,8 +8,8 @@ use crate::{
     inference_state::InferenceState,
     node_ref::NodeRef,
     type_::{
-        ClassGenerics, GenericItem, GenericsList, ParamSpecArg, ParamSpecUsage, Type, TypeVarLike,
-        TypeVarLikeUsage, TypeVarLikes, Variance,
+        ClassGenerics, GenericItem, GenericsList, Type, TypeVarLike, TypeVarLikeUsage,
+        TypeVarLikes, Variance,
     },
 };
 
@@ -69,34 +67,7 @@ impl<'a> Generics<'a> {
         self.nth(db, &usage.as_type_var_like(), usage.index().as_usize())
     }
 
-    pub fn nth_param_spec_usage<'db: 'a>(
-        &self,
-        db: &'db Database,
-        usage: &ParamSpecUsage,
-    ) -> Cow<'a, ParamSpecArg> {
-        let generic = self.nth_usage(db, &TypeVarLikeUsage::ParamSpec(usage.clone()));
-        if let Generic::ParamSpecArg(p) = generic {
-            p
-        } else {
-            unreachable!()
-        }
-    }
-
-    pub fn nth_type_argument<'db: 'a>(
-        &self,
-        db: &'db Database,
-        type_var_like: &TypeVarLike,
-        n: usize,
-    ) -> Cow<'a, Type> {
-        let generic = self.nth(db, type_var_like, n);
-        if let Generic::TypeArg(p) = generic {
-            p
-        } else {
-            unreachable!()
-        }
-    }
-
-    fn nth<'db: 'a>(
+    pub fn nth<'db: 'a>(
         &self,
         db: &'db Database,
         type_var_like: &TypeVarLike,

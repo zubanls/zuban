@@ -561,7 +561,7 @@ impl<'a> Matcher<'a> {
         if !self.match_reverse {
             if let Some(class) = self.class {
                 if class.node_ref.as_link() == p1.in_definition {
-                    let usage = class.generics().nth_param_spec_usage(i_s.db, p1);
+                    let usage = class.nth_param_spec_usage(i_s.db, p1);
                     return matches_params(
                         i_s,
                         &mut Matcher::default(),
@@ -674,13 +674,13 @@ impl<'a> Matcher<'a> {
                 todo!("why?")
             }
         } else if let Some(class) = self.class {
-            param_spec_usage = class.generics().nth_param_spec_usage(i_s.db, usage);
+            param_spec_usage = class.nth_param_spec_usage(i_s.db, usage);
             &param_spec_usage.params
         } else if let Some(fc) =
             self.maybe_func_class_for_usage(&TypeVarLikeUsage::ParamSpec(usage.clone()))
         {
             func_class = fc;
-            param_spec_usage = func_class.generics().nth_param_spec_usage(i_s.db, usage);
+            param_spec_usage = func_class.nth_param_spec_usage(i_s.db, usage);
             &param_spec_usage.params
         } else {
             return match args.as_ref() {
