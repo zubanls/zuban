@@ -8,7 +8,7 @@ mod utils;
 use std::{borrow::Cow, cell::RefCell, rc::Rc};
 
 pub use generic::Generic;
-pub use generics::Generics;
+pub use generics::{Generics, GenericsIterator};
 pub use match_::{ArgumentIndexWithParam, Match, MismatchReason, SignatureMatch};
 pub(crate) use matcher::{
     calculate_callable_dunder_init_type_vars_and_return, calculate_callable_type_vars_and_return,

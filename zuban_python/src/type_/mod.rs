@@ -896,12 +896,14 @@ impl Type {
                         format_data,
                         nt.name(format_data.db),
                         Generics::NotDefinedYet,
+                        format_data.db.python_state.typing_named_tuple_node_ref(),
                     )
                 }
                 _ => nt.format_with_name(
                     format_data,
                     &nt.qualified_name(format_data.db),
                     Generics::NotDefinedYet,
+                    format_data.db.python_state.typing_named_tuple_node_ref(),
                 ),
             },
             Self::Enum(e) => e.format(format_data).into(),
@@ -1118,8 +1120,8 @@ impl Type {
         match self {
             Self::Class(c) => {
                 check(self)
-                    || Generics::from_class_generics(db, &c.generics)
-                        .iter(db)
+                    || c.class(db)
+                        .iter_generics(db)
                         .any(|generic| generic.find_in_type(db, check))
             }
             Self::Union(u) => u.iter().any(|t| t.find_in_type(db, check)),
@@ -1263,6 +1265,7 @@ impl Type {
         match self {
             Type::Literal(literal) => MroIterator::new(
                 db,
+                None,
                 TypeOrClass::Type(Cow::Borrowed(self)),
                 Generics::None,
                 match literal.kind {
@@ -1278,6 +1281,7 @@ impl Type {
                 let tuple_class = tup.class(db);
                 MroIterator::new(
                     db,
+                    Some(tuple_class.node_ref),
                     TypeOrClass::Type(Cow::Borrowed(self)),
                     tuple_class.generics,
                     tuple_class.use_cached_class_infos(db).mro.iter(),
@@ -1291,6 +1295,7 @@ impl Type {
             }
             Type::TypedDict(td) => MroIterator::new(
                 db,
+                None,
                 TypeOrClass::Type(Cow::Borrowed(self)),
                 Generics::None,
                 db.python_state.typing_typed_dict_bases.iter(),
@@ -1300,6 +1305,7 @@ impl Type {
                 let class = e.class(db);
                 MroIterator::new(
                     db,
+                    Some(class.node_ref),
                     TypeOrClass::Type(Cow::Borrowed(self)),
                     class.generics,
                     class.use_cached_class_infos(db).mro.iter(),
@@ -1313,6 +1319,7 @@ impl Type {
             }
             _ => MroIterator::new(
                 db,
+                None,
                 TypeOrClass::Type(Cow::Borrowed(self)),
                 Generics::None,
                 [].iter(),
@@ -1485,16 +1492,16 @@ impl Type {
         }
         */
         // necessary.
-        let merge_generics = |g1: &ClassGenerics, g2: &ClassGenerics| {
-            if matches!(g1, ClassGenerics::None) {
+        let merge_generics = |c1: &GenericClass, c2: &GenericClass| {
+            if matches!(c1.generics, ClassGenerics::None) {
                 return ClassGenerics::None;
             }
             ClassGenerics::List(GenericsList::new_generics(
                 // Performance issue: clone could probably be removed. Rc -> Vec check
                 // https://github.com/rust-lang/rust/issues/93610#issuecomment-1528108612
-                Generics::from_class_generics(db, g1)
-                    .iter(db)
-                    .zip(Generics::from_class_generics(db, g2).iter(db))
+                c1.class(db)
+                    .iter_generics(db)
+                    .zip(c2.class(db).iter_generics(db))
                     .map(|(gi1, gi2)| gi1.merge_matching_parts(db, gi2))
                     .collect(),
             ))
@@ -1502,7 +1509,7 @@ impl Type {
         match self {
             Type::Class(c1) => match other {
                 Type::Class(c2) if c1.link == c2.link => {
-                    Type::new_class(c1.link, merge_generics(&c1.generics, &c2.generics))
+                    Type::new_class(c1.link, merge_generics(c1, c2))
                 }
                 _ => Type::Any(AnyCause::FromError),
             },

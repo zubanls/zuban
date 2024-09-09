@@ -152,8 +152,8 @@ fn common_base_class_basic(
     for ((type_var_like, generic1), generic2) in c1
         .type_vars(i_s)
         .iter()
-        .zip(c1.generics().iter(i_s.db))
-        .zip(c2.generics().iter(i_s.db))
+        .zip(c1.iter_generics(i_s.db))
+        .zip(c2.iter_generics(i_s.db))
     {
         match type_var_like {
             TypeVarLike::TypeVar(type_var) => {
