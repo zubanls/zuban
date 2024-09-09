@@ -1959,8 +1959,34 @@ impl<'db: 'a, 'a> Class<'a> {
 
     pub fn generics_as_list(&self, db: &Database) -> ClassGenerics {
         // TODO we instantiate, because we cannot use use_cached_type_vars?
-        let type_vars = self.type_vars(&InferenceState::new(db));
-        self.generics().as_generics_list(db, type_vars)
+        let type_var_likes = self.type_vars(&InferenceState::new(db));
+        match type_var_likes.is_empty() {
+            false => match self.generics() {
+                Generics::NotDefinedYet => ClassGenerics::List(GenericsList::new_generics(
+                    type_var_likes
+                        .iter()
+                        .map(|t| t.as_any_generic_item())
+                        .collect(),
+                )),
+                Generics::ExpressionWithClassType(file, expr) => {
+                    ClassGenerics::ExpressionWithClassType(PointLink::new(
+                        file.file_index(),
+                        expr.index(),
+                    ))
+                }
+                Generics::SlicesWithClassTypes(file, slices) => {
+                    ClassGenerics::SlicesWithClassTypes(PointLink::new(
+                        file.file_index(),
+                        slices.index(),
+                    ))
+                }
+                Generics::List(generics, None) => ClassGenerics::List((*generics).clone()),
+                generics => ClassGenerics::List(GenericsList::new_generics(
+                    generics.iter(db).map(|g| g.into_generic_item(db)).collect(),
+                )),
+            },
+            true => ClassGenerics::None,
+        }
     }
 
     pub fn as_generic_class(&self, db: &Database) -> GenericClass {
