@@ -22,7 +22,7 @@ use crate::{
     getitem::SliceType,
     inference_state::InferenceState,
     inferred::{Inferred, UnionValue},
-    matching::{Generic, LookupKind, Match, Matcher, OnTypeError, ResultContext},
+    matching::{LookupKind, Match, Matcher, OnTypeError, ResultContext},
     node_ref::NodeRef,
     type_::{
         simplified_union_from_iterators, AnyCause, CallableContent, CallableLike, CallableParams,
@@ -3306,11 +3306,7 @@ fn stdlib_container_item(db: &Database, t: &Type) -> Option<Type> {
                 ]
                 .contains(&class.node_ref)
                 {
-                    let generics = class.generics();
-                    let Some(Generic::TypeArg(item)) = generics.iter(db).next() else {
-                        unreachable!()
-                    };
-                    item.into_owned()
+                    class.nth_type_argument(db, 0)
                 } else {
                     return None;
                 }
