@@ -237,7 +237,7 @@ fn overlaps_class(
             (c1.node_ref == c2.node_ref).then(|| {
                 let type_vars = c1.type_vars(i_s);
                 let mut matches = true;
-                for (t1, t2) in c1.iter_generics(i_s.db).zip(c2.iter_generics(i_s.db)) {
+                for (t1, t2) in c1.generics().iter(i_s.db).zip(c2.generics().iter(i_s.db)) {
                     matches &= t1.overlaps(i_s, matcher, t2);
                 }
                 matches

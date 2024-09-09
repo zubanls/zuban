@@ -536,8 +536,9 @@ impl Type {
         if !type_vars.is_empty() {
             let mut matches = Match::new_true();
             for ((t1, t2), tv) in class1
-                .iter_generics(i_s.db)
-                .zip(class2.iter_generics(i_s.db))
+                .generics()
+                .iter(i_s.db)
+                .zip(class2.generics().iter(i_s.db))
                 .zip(type_vars.iter())
             {
                 let v = match tv {

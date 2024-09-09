@@ -92,7 +92,6 @@ impl NamedTuple {
         format_data: &FormatData,
         name: &str,
         generics: Generics,
-        class_node_ref: NodeRef,
     ) -> Box<str> {
         if format_data.style != FormatStyle::MypyRevealType {
             return Box::from(name);
@@ -114,7 +113,7 @@ impl NamedTuple {
                                     format_data.db,
                                     &mut |usage| {
                                         generics
-                                            .nth_usage(format_data.db, &usage, class_node_ref)
+                                            .nth_usage(format_data.db, &usage)
                                             .into_generic_item(format_data.db)
                                     },
                                     &|| todo!(),

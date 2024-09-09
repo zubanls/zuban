@@ -33,7 +33,7 @@ use crate::{
         calculate_callable_dunder_init_type_vars_and_return,
         calculate_callable_type_vars_and_return, calculate_class_dunder_init_type_vars_and_return,
         format_got_expected, maybe_class_usage, ErrorStrs, FunctionOrCallable, Generic, Generics,
-        GenericsIterator, LookupKind, Match, Matcher, MismatchReason, OnTypeError, ResultContext,
+        LookupKind, Match, Matcher, MismatchReason, OnTypeError, ResultContext,
     },
     node_ref::NodeRef,
     python_state::{NAME_TO_CLASS_DIFF, NAME_TO_FUNCTION_DIFF},
@@ -694,13 +694,13 @@ impl<'db: 'a, 'a> Class<'a> {
         }
     }
 
-    pub fn bases(&self, db: &'a Database) -> impl Iterator<Item = TypeOrClass<'a>> + '_ {
+    pub fn bases(&self, db: &'a Database) -> impl Iterator<Item = TypeOrClass<'a>> {
         let generics = self.generics;
         self.use_cached_class_infos(db)
             .mro
             .iter()
             .filter(|&b| b.is_direct_base)
-            .map(move |b| apply_generics_to_base_class(db, Some(self.node_ref), &b.type_, generics))
+            .map(move |b| apply_generics_to_base_class(db, &b.type_, generics))
     }
 
     fn calculate_class_infos(
@@ -1825,13 +1825,9 @@ impl<'db: 'a, 'a> Class<'a> {
         }
     }
 
-    pub fn nth_usage(&self, db: &'db Database, usage: &TypeVarLikeUsage) -> Generic {
-        self.generics().nth_usage(db, usage, self.node_ref)
-    }
-
     pub fn nth_type_argument(&self, db: &Database, nth: usize) -> Type {
         let type_vars = self.use_cached_type_vars(db);
-        let generic = self.generics().nth(db, &type_vars[nth], nth, self.node_ref);
+        let generic = self.generics().nth(db, &type_vars[nth], nth);
         if let Generic::TypeArg(t) = generic {
             t.into_owned()
         } else {
@@ -1844,20 +1840,14 @@ impl<'db: 'a, 'a> Class<'a> {
         db: &'db Database,
         usage: &ParamSpecUsage,
     ) -> Cow<ParamSpecArg> {
-        let generic = self.generics().nth_usage(
-            db,
-            &TypeVarLikeUsage::ParamSpec(usage.clone()),
-            self.node_ref,
-        );
+        let generic = self
+            .generics()
+            .nth_usage(db, &TypeVarLikeUsage::ParamSpec(usage.clone()));
         if let Generic::ParamSpecArg(p) = generic {
             p
         } else {
             unreachable!()
         }
-    }
-
-    pub fn iter_generics(&self, db: &'db Database) -> GenericsIterator {
-        self.generics().iter(db, self.node_ref)
     }
 
     pub fn mro_maybe_without_object(
@@ -1868,7 +1858,6 @@ impl<'db: 'a, 'a> Class<'a> {
         let class_infos = self.use_cached_class_infos(db);
         MroIterator::new(
             db,
-            Some(self.node_ref),
             TypeOrClass::Class(*self),
             self.generics,
             class_infos.mro.iter(),
@@ -1920,7 +1909,8 @@ impl<'db: 'a, 'a> Class<'a> {
         if !type_var_likes.is_empty() && !matches!(self.generics, Generics::NotDefinedYet) {
             // Returns something like [str] or [List[int], Set[Any]]
             let strings: Vec<_> = self
-                .iter_generics(format_data.db)
+                .generics()
+                .iter(format_data.db)
                 .filter_map(|g| g.format(format_data))
                 .collect();
             if strings.is_empty() {
@@ -1934,12 +1924,7 @@ impl<'db: 'a, 'a> Class<'a> {
             match &class_infos.class_kind {
                 ClassKind::NamedTuple => {
                     let named_tuple = self.maybe_named_tuple_base(format_data.db).unwrap();
-                    return named_tuple.format_with_name(
-                        format_data,
-                        &result,
-                        self.generics,
-                        self.node_ref,
-                    );
+                    return named_tuple.format_with_name(format_data, &result, self.generics);
                 }
                 ClassKind::Tuple if format_data.style == FormatStyle::MypyRevealType => {
                     for (_, type_or_class) in self.mro(format_data.db) {
@@ -1997,10 +1982,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 }
                 Generics::List(generics, None) => ClassGenerics::List((*generics).clone()),
                 generics => ClassGenerics::List(GenericsList::new_generics(
-                    generics
-                        .iter(db, self.node_ref)
-                        .map(|g| g.into_generic_item(db))
-                        .collect(),
+                    generics.iter(db).map(|g| g.into_generic_item(db)).collect(),
                 )),
             },
             true => ClassGenerics::None,
@@ -2716,12 +2698,11 @@ pub fn linearize_mro_and_return_linearizable(
                                 ..
                             }) => generics[usage.index()].clone(),
                             // Very rare and therefore a separate case.
-                            Type::Class(c) => {
-                                let cls = c.class(i_s.db);
-                                cls.generics
-                                    .nth_usage(i_s.db, &usage, cls.node_ref)
-                                    .into_generic_item(i_s.db)
-                            }
+                            Type::Class(c) => c
+                                .class(i_s.db)
+                                .generics
+                                .nth_usage(i_s.db, &usage)
+                                .into_generic_item(i_s.db),
                             Type::Dataclass(d) => match &d.class.generics {
                                 ClassGenerics::List(generics) => generics[usage.index()].clone(),
                                 _ => unreachable!(),
@@ -2843,7 +2824,6 @@ fn add_inconsistency_issue(i_s: &InferenceState, class: &Class) {
 
 pub struct MroIterator<'db, 'a> {
     db: &'db Database,
-    class_node_ref: Option<NodeRef<'a>>,
     generics: Generics<'a>,
     pub class: Option<TypeOrClass<'a>>,
     iterator: std::slice::Iter<'a, BaseClass>,
@@ -2854,7 +2834,6 @@ pub struct MroIterator<'db, 'a> {
 impl<'db, 'a> MroIterator<'db, 'a> {
     pub fn new(
         db: &'db Database,
-        class_node_ref: Option<NodeRef<'a>>,
         class: TypeOrClass<'a>,
         generics: Generics<'a>,
         iterator: std::slice::Iter<'a, BaseClass>,
@@ -2862,7 +2841,6 @@ impl<'db, 'a> MroIterator<'db, 'a> {
     ) -> Self {
         Self {
             db,
-            class_node_ref,
             generics,
             class: Some(class),
             iterator,
@@ -2973,7 +2951,7 @@ impl<'db: 'a, 'a> Iterator for MroIterator<'db, 'a> {
         } else if let Some(c) = self.iterator.next() {
             let r = Some((
                 MroIndex(self.mro_index),
-                apply_generics_to_base_class(self.db, self.class_node_ref, &c.type_, self.generics),
+                apply_generics_to_base_class(self.db, &c.type_, self.generics),
             ));
             self.mro_index += 1;
             r
@@ -3000,7 +2978,7 @@ impl<'db: 'a, 'a> DoubleEndedIterator for MroIterator<'db, 'a> {
         } else if let Some(c) = self.iterator.next_back() {
             let r = Some((
                 MroIndex(self.mro_index),
-                apply_generics_to_base_class(self.db, self.class_node_ref, &c.type_, self.generics),
+                apply_generics_to_base_class(self.db, &c.type_, self.generics),
             ));
             self.mro_index += 1;
             r
@@ -3015,7 +2993,6 @@ impl<'db: 'a, 'a> DoubleEndedIterator for MroIterator<'db, 'a> {
 
 fn apply_generics_to_base_class<'a>(
     db: &'a Database,
-    class_node_ref: Option<NodeRef>,
     t: &'a Type,
     generics: Generics<'a>,
 ) -> TypeOrClass<'a> {
@@ -3037,11 +3014,7 @@ fn apply_generics_to_base_class<'a>(
         }
         _ => TypeOrClass::Type(Cow::Owned(t.replace_type_var_likes_and_self(
             db,
-            &mut |usage| {
-                generics
-                    .nth_usage(db, &usage, class_node_ref.unwrap())
-                    .into_generic_item(db)
-            },
+            &mut |usage| generics.nth_usage(db, &usage).into_generic_item(db),
             &|| todo!(),
         ))),
     }

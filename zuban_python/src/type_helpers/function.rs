@@ -1509,7 +1509,11 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                                 new_params,
                                 &mut None,
                                 None,
-                                &mut |usage| c.nth_usage(i_s.db, &usage).into_generic_item(i_s.db),
+                                &mut |usage| {
+                                    c.generics()
+                                        .nth_usage(i_s.db, &usage)
+                                        .into_generic_item(i_s.db)
+                                },
                                 &|| Type::Self_,
                                 &mut None,
                                 u1,

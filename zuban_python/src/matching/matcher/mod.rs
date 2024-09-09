@@ -336,6 +336,7 @@ impl<'a> Matcher<'a> {
             if let Some(class) = self.class {
                 if class.node_ref.as_link() == t1.in_definition {
                     let g = class
+                        .generics()
                         .nth_usage(i_s.db, &TypeVarLikeUsage::TypeVar(t1.clone()))
                         .expect_type_argument();
                     return Some(g.simple_matches(i_s, value_type, variance));
@@ -346,6 +347,7 @@ impl<'a> Matcher<'a> {
                 self.maybe_func_class_for_usage(&TypeVarLikeUsage::TypeVar(t1.clone()))
             {
                 let g = func_class
+                    .generics()
                     .nth_usage(i_s.db, &TypeVarLikeUsage::TypeVar(t1.clone()))
                     .expect_type_argument();
                 return Some(g.matches(i_s, self, value_type, variance));
@@ -493,6 +495,7 @@ impl<'a> Matcher<'a> {
             if let Some(class) = self.class {
                 if class.node_ref.as_link() == tvt.in_definition {
                     let ts1 = class
+                        .generics()
                         .nth_usage(i_s.db, &TypeVarLikeUsage::TypeVarTuple(tvt.clone()))
                         .expect_type_arguments();
                     return match_tuple_type_arguments(
@@ -509,6 +512,7 @@ impl<'a> Matcher<'a> {
                 self.maybe_func_class_for_usage(&TypeVarLikeUsage::TypeVarTuple(tvt.clone()))
             {
                 let ts1 = func_class
+                    .generics()
                     .nth_usage(i_s.db, &TypeVarLikeUsage::TypeVarTuple(tvt.clone()))
                     .expect_type_arguments();
                 return match_tuple_type_arguments(
@@ -778,6 +782,7 @@ impl<'a> Matcher<'a> {
                 if class.node_ref.as_link() == usage.in_definition() {
                     return MatcherFormatResult::Str(
                         class
+                            .generics()
                             .nth_usage(format_data.db, usage)
                             .format(&format_data.remove_matcher())
                             .unwrap_or("()".into()),
@@ -787,6 +792,7 @@ impl<'a> Matcher<'a> {
             if let Some(func_class) = self.maybe_func_class_for_usage(usage) {
                 return MatcherFormatResult::Str(
                     func_class
+                        .generics()
                         .nth_usage(format_data.db, usage)
                         .format(format_data)
                         .unwrap_or("()".into()),
@@ -896,11 +902,14 @@ impl<'a> Matcher<'a> {
             }
             if let Some(c) = self.class {
                 if c.node_ref.as_link() == usage.in_definition() {
-                    return c.nth_usage(db, &usage).into_generic_item(db);
+                    return c.generics().nth_usage(db, &usage).into_generic_item(db);
                 }
             }
             if let Some(func_class) = self.maybe_func_class_for_usage(&usage) {
-                let g = func_class.nth_usage(db, &usage).into_generic_item(db);
+                let g = func_class
+                    .generics()
+                    .nth_usage(db, &usage)
+                    .into_generic_item(db);
                 return match g {
                     GenericItem::TypeArg(t) => {
                         GenericItem::TypeArg(self.replace_type_var_likes_for_nested_context(db, &t))

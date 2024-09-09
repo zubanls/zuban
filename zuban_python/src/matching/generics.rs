@@ -1,27 +1,25 @@
 use parsa_python_cst::{Expression, SliceContent, SliceIterator, Slices};
 
-use super::Generic;
+use super::{Generic, Match, Matcher};
 use crate::{
     database::{Database, PointLink},
     debug,
     file::{use_cached_simple_generic_type, PythonFile},
+    inference_state::InferenceState,
     node_ref::NodeRef,
     type_::{
-        ClassGenerics, GenericItem, GenericsList, Type, TypeVarLike, TypeVarLikeUsage, TypeVarLikes,
+        ClassGenerics, GenericItem, GenericsList, Type, TypeVarLike, TypeVarLikeUsage,
+        TypeVarLikes, Variance,
     },
 };
 
 macro_rules! replace_class_vars {
-    ($db:expr, $g:ident, $type_var_generics:ident, $class_node_ref:expr) => {
+    ($db:expr, $g:ident, $type_var_generics:ident) => {
         match $type_var_generics {
             None | Some(Generics::None | Generics::NotDefinedYet) => Generic::new($g),
             Some(type_var_generics) => Generic::owned($g.replace_type_var_likes_and_self(
                 $db,
-                &mut |t| {
-                    type_var_generics
-                        .nth_usage($db, &t, $class_node_ref)
-                        .into_generic_item($db)
-                },
+                &mut |t| type_var_generics.nth_usage($db, &t).into_generic_item($db),
                 &|| Type::Self_,
             )),
         }
@@ -65,18 +63,8 @@ impl<'a> Generics<'a> {
         }
     }
 
-    pub fn nth_usage<'db: 'a>(
-        &self,
-        db: &'db Database,
-        usage: &TypeVarLikeUsage,
-        class_node_ref: NodeRef,
-    ) -> Generic<'a> {
-        self.nth(
-            db,
-            &usage.as_type_var_like(),
-            usage.index().as_usize(),
-            class_node_ref,
-        )
+    pub fn nth_usage<'db: 'a>(&self, db: &'db Database, usage: &TypeVarLikeUsage) -> Generic<'a> {
+        self.nth(db, &usage.as_type_var_like(), usage.index().as_usize())
     }
 
     pub fn nth<'db: 'a>(
@@ -84,7 +72,6 @@ impl<'a> Generics<'a> {
         db: &'db Database,
         type_var_like: &TypeVarLike,
         n: usize,
-        class_node_ref: NodeRef,
     ) -> Generic<'a> {
         match self {
             Self::ExpressionWithClassType(file, expr) => {
@@ -114,7 +101,7 @@ impl<'a> Generics<'a> {
             ),
             Self::List(list, type_var_generics) => {
                 if let Some(g) = list.nth(n.into()) {
-                    replace_class_vars!(db, g, type_var_generics, class_node_ref)
+                    replace_class_vars!(db, g, type_var_generics)
                 } else {
                     unreachable!("Generic list given, but item {:?} was requested", n);
                 }
@@ -124,20 +111,14 @@ impl<'a> Generics<'a> {
                 class_definition, ..
             } => Generic::owned(
                 type_var_like
-                    .as_type_var_like_usage(
-                        n.into(),
-                        *class_definition, /*class_node_ref.as_link()*/
-                    )
+                    .as_type_var_like_usage(n.into(), *class_definition)
                     .into_generic_item(),
             ),
             Self::None => unreachable!("No generics given, but {:?} was requested", n),
         }
     }
 
-    pub fn iter<'x>(&self, db: &'x Database, class_node_ref: NodeRef<'x>) -> GenericsIterator<'x>
-    where
-        'a: 'x,
-    {
+    pub fn iter<'x>(&'x self, db: &'x Database) -> GenericsIterator<'x> {
         let item = match self {
             Self::ExpressionWithClassType(file, expr) => {
                 GenericsIteratorItem::SimpleGenericExpression(file, *expr)
@@ -155,24 +136,22 @@ impl<'a> Generics<'a> {
             },
             Self::None | Self::NotDefinedYet => GenericsIteratorItem::None,
         };
-        GenericsIterator::new(db, item, class_node_ref)
+        GenericsIterator::new(db, item)
     }
 }
 
 pub struct GenericsIterator<'a> {
     db: &'a Database,
     ended: bool,
-    class_node_ref: NodeRef<'a>,
     item: GenericsIteratorItem<'a>,
 }
 
 impl<'a> GenericsIterator<'a> {
-    fn new(db: &'a Database, item: GenericsIteratorItem<'a>, class_node_ref: NodeRef<'a>) -> Self {
+    fn new(db: &'a Database, item: GenericsIteratorItem<'a>) -> Self {
         Self {
             db,
             ended: false,
             item,
-            class_node_ref,
         }
     }
 }
@@ -215,7 +194,7 @@ impl<'a> Iterator for GenericsIterator<'a> {
             }
             GenericsIteratorItem::GenericsList(iterator, type_var_generics) => iterator
                 .next()
-                .map(|g| replace_class_vars!(self.db, g, type_var_generics, self.class_node_ref)),
+                .map(|g| replace_class_vars!(self.db, g, type_var_generics)),
             GenericsIteratorItem::TypeVarLikeIterator {
                 iterator,
                 definition,
