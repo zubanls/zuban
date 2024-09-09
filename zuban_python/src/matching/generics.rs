@@ -1,6 +1,6 @@
 use parsa_python_cst::{Expression, SliceContent, SliceIterator, Slices};
 
-use super::{FormatData, Generic, Match, Matcher};
+use super::{Generic, Match, Matcher};
 use crate::{
     database::{Database, PointLink},
     debug,
@@ -103,11 +103,7 @@ impl<'a> Generics<'a> {
                 if let Some(g) = list.nth(n.into()) {
                     replace_class_vars!(db, g, type_var_generics)
                 } else {
-                    unreachable!(
-                        "Generic list {} given, but item {:?} was requested",
-                        self.format(&FormatData::new_short(db), None),
-                        n,
-                    );
+                    unreachable!("Generic list given, but item {:?} was requested", n);
                 }
             }
             Self::NotDefinedYet => Generic::owned(type_var_like.as_any_generic_item()),
@@ -167,24 +163,6 @@ impl<'a> Generics<'a> {
                 )),
             },
             true => ClassGenerics::None,
-        }
-    }
-
-    pub fn format(&self, format_data: &FormatData, expected: Option<usize>) -> String {
-        // Returns something like [str] or [List[int], Set[Any]]
-        let strings: Vec<_> = self
-            .iter(format_data.db)
-            .filter_map(|g| g.format(format_data))
-            .collect();
-        if strings.is_empty() {
-            if matches!(self, Self::NotDefinedYet) {
-                // Format classes that have not been initialized like Foo() or Foo[int] like "Foo".
-                "".to_string()
-            } else {
-                "[()]".to_string()
-            }
-        } else {
-            format!("[{}]", strings.join(", "))
         }
     }
 

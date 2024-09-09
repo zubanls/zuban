@@ -1905,10 +1905,19 @@ impl<'db: 'a, 'a> Class<'a> {
             _ => self.qualified_name(format_data.db),
         };
         let type_var_likes = self.type_vars(&InferenceState::new(format_data.db));
-        if !type_var_likes.is_empty() {
-            result += &self
+        // Format classes that have not been initialized like Foo() or Foo[int] like "Foo".
+        if !type_var_likes.is_empty() && !matches!(self.generics, Generics::NotDefinedYet) {
+            // Returns something like [str] or [List[int], Set[Any]]
+            let strings: Vec<_> = self
                 .generics()
-                .format(format_data, Some(type_var_likes.len()));
+                .iter(format_data.db)
+                .filter_map(|g| g.format(format_data))
+                .collect();
+            if strings.is_empty() {
+                result += "[()]"
+            } else {
+                result += &format!("[{}]", strings.join(", "))
+            };
         }
 
         if let Some(class_infos) = self.maybe_cached_class_infos(format_data.db) {
