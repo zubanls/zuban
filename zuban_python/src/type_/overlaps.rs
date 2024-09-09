@@ -236,8 +236,11 @@ fn overlaps_class(
         |i_s: &InferenceState, c1: Class, c2: Class| {
             (c1.node_ref == c2.node_ref).then(|| {
                 let type_vars = c1.type_vars(i_s);
-                c1.generics()
-                    .overlaps(i_s, matcher, c2.generics(), type_vars)
+                let mut matches = true;
+                for (t1, t2) in c1.generics().iter(i_s.db).zip(c2.generics().iter(i_s.db)) {
+                    matches &= t1.overlaps(i_s, matcher, t2);
+                }
+                matches
             })
         }
     };

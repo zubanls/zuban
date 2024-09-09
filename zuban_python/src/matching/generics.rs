@@ -4,7 +4,7 @@ use super::{Generic, Match, Matcher};
 use crate::{
     database::{Database, PointLink},
     debug,
-    file::{use_cached_simple_generic_type, File, PythonFile},
+    file::{use_cached_simple_generic_type, PythonFile},
     inference_state::InferenceState,
     node_ref::NodeRef,
     type_::{
@@ -137,49 +137,6 @@ impl<'a> Generics<'a> {
             Self::None | Self::NotDefinedYet => GenericsIteratorItem::None,
         };
         GenericsIterator::new(db, item)
-    }
-
-    pub fn matches(
-        &self,
-        i_s: &InferenceState,
-        matcher: &mut Matcher,
-        value_generics: Self,
-        type_vars: &TypeVarLikes,
-        variance: Variance,
-    ) -> Match {
-        let value_generics = value_generics.iter(i_s.db);
-        let mut matches = Match::new_true();
-        for ((t1, t2), tv) in self.iter(i_s.db).zip(value_generics).zip(type_vars.iter()) {
-            let v = match tv {
-                TypeVarLike::TypeVar(t) if variance == Variance::Covariant => t.variance,
-                TypeVarLike::TypeVar(t) if variance == Variance::Contravariant => {
-                    t.variance.invert()
-                }
-                TypeVarLike::ParamSpec(_) => Variance::Covariant,
-                _ => Variance::Invariant,
-            };
-            matches &= t1.matches(i_s, matcher, &t2, v);
-        }
-        matches
-    }
-
-    pub fn overlaps(
-        self,
-        i_s: &InferenceState,
-        matcher: &mut Matcher,
-        other_generics: Self,
-        type_vars: &TypeVarLikes,
-    ) -> bool {
-        let other_generics = other_generics.iter(i_s.db);
-        let mut matches = true;
-        let mut type_var_iterator = type_vars.iter();
-        for (t1, t2) in self.iter(i_s.db).zip(other_generics) {
-            if let Some(t) = type_var_iterator.next() {
-                // TODO ?
-            };
-            matches &= t1.overlaps(i_s, matcher, t2);
-        }
-        matches
     }
 }
 

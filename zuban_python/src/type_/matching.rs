@@ -1,8 +1,8 @@
 use std::rc::Rc;
 
 use super::{
-    CallableContent, ClassGenerics, FunctionOverload, Tuple, Type, TypeVarKind, UnionType,
-    WithUnpack,
+    CallableContent, ClassGenerics, FunctionOverload, Tuple, Type, TypeVarKind, TypeVarLike,
+    UnionType, WithUnpack,
 };
 use crate::{
     database::{ComplexPoint, MetaclassState},
@@ -534,11 +534,25 @@ impl Type {
         }
         let type_vars = class1.type_vars(i_s);
         if !type_vars.is_empty() {
-            let result = class1
+            let mut matches = Match::new_true();
+            for ((t1, t2), tv) in class1
                 .generics()
-                .matches(i_s, matcher, class2.generics(), type_vars, variance)
-                .similar_if_false();
-            if !result.bool() {
+                .iter(i_s.db)
+                .zip(class2.generics().iter(i_s.db))
+                .zip(type_vars.iter())
+            {
+                let v = match tv {
+                    TypeVarLike::TypeVar(t) if variance == Variance::Covariant => t.variance,
+                    TypeVarLike::TypeVar(t) if variance == Variance::Contravariant => {
+                        t.variance.invert()
+                    }
+                    TypeVarLike::ParamSpec(_) => Variance::Covariant,
+                    _ => Variance::Invariant,
+                };
+                matches &= t1.matches(i_s, matcher, &t2, v);
+            }
+
+            if !matches.bool() {
                 let mut check = |i_s: &InferenceState, n| {
                     let t1 = class1.nth_type_argument(i_s.db, n);
                     if matches!(t1, Type::Any(_)) {
@@ -562,7 +576,7 @@ impl Type {
                     };
                 }
             }
-            return result;
+            return matches.similar_if_false();
         }
         Match::new_true()
     }
