@@ -304,54 +304,41 @@ testMultipassAndPartialTypes4
 testMultipleAssignmentNoneClassVariableInInit
 # --allow-untyped-globals
 testPermissiveAttributeOverride1
-
-# Redefinition (Name "X" already defined on line X)
-testRedefineVariableAsTypevar
-testRedefineTypevar
-testRedefineTypevar4
-testImportTwoModulesWithSameNameInFunction
-testImportTwoModulesWithSameNameInGlobalContext
-testDuplicateDefOverload
-testNewAnalyzerImportStarForwardRef1
-testNewAnalyzerImportStarForwardRef2
-testNewAnalyzerImportOverExistingInCycleStar1
-testNewAnalyzerImportOverExistingInCycleStar2
-testNewAnalyzerMissingImportErrorsRedefinition
-testNewAnalyzerDuplicateTypeVar
-testNewAnalyzerDuplicateTypeVarImportCycle
-testNewAnalyzerDuplicateTypeVarImportCycleWithAliases
-testNewAnalyzerOverrideClassWithTypeAlias
-testNewAnalyzerIdentityAssignment1
-testNewAnalyzerIdentityAssignment2
-testNewAnalyzerIdentityAssignment3
-testNewAnalyzerIdentityAssignment4
-testNewAnalyzerIdentityAssignment5
-testNewAnalyzerIdentityAssignment6
-testNewAnalyzerIdentityAssignment7
-testProhibitReassigningAliases
-testProhibitReassigningSubscriptedAliases
-testProhibitReassigningGenericAliases
-testImportOnTopOfAlias1
-testMemberRedefinitionDefinedInClass
-testNewAnalyzerEnumRedefinition
-testPropertyAndFieldRedefinitionNoCrash
-testModuleLevelGetattrImportFromAsTwice
-# redefinition overload
-testRedefinedOverloadedFunction
-testFakeOverloadCrash2
-testOverloadNotImportedNoCrash
-testSingleOverload2
-testCustomRedefinitionDecorator
-# NewType Redefinition
-testNewTypeRedefiningVariablesFails
-# "Cannot assign multiple types to name "b" without an explicit "Type[...]" annotation"
-testAliasesInClassBodyNormalVsSubscripted
 # Mypy treats a None partial that is then assigned to a function as the function?? Wrong?
 testRedefineFunctionDefinedAsVariableInitializedToNone
 testRedefineNestedFunctionDefinedAsVariableInitializedToNone
-# "Cannot assign to a type"
-testAssignToNestedClassViaClass
-testAssignToTypeDef
+
+# TypeVar redefinition details
+testRedefineVariableAsTypevar
+testRedefineTypevar4
+testNewAnalyzerDuplicateTypeVar
+testNewAnalyzerDuplicateTypeVarImportCycle
+testNewAnalyzerDuplicateTypeVarImportCycleWithAliases
+# import redefinition
+testImportTwoModulesWithSameNameInFunction
+testImportTwoModulesWithSameNameInGlobalContext
+testNewAnalyzerMissingImportErrorsRedefinition
+testImportOnTopOfAlias1
+testModuleLevelGetattrImportFromAsTwice
+# out/inline errors merging
+testNewAnalyzerOverrideClassWithTypeAlias
+# Redefinition (Name "X" already defined on line X) for 
+testNewAnalyzerIdentityAssignment1
+testNewAnalyzerIdentityAssignment2
+testNewAnalyzerIdentityAssignment3
+# self var reassignment
+testMemberRedefinitionDefinedInClass
+# type alias reassignments
+testProhibitReassigningSubscriptedAliases
+testProhibitReassigningGenericAliases
+# redefinition overload
+testRedefinedOverloadedFunction
+testFakeOverloadCrash2
+testSingleOverload2
+testCustomRedefinitionDecorator
+testDuplicateDefOverload
+# NewType Redefinition
+testNewTypeRedefiningVariablesFails
 
 # "Value of type "A" must be used"
 # "Value of type "Coroutine[Any, Any, None]" must be used"
@@ -436,6 +423,9 @@ testOverrideClassVarManyBases
 testMultipleInheritance_NestedVariableOverriddenWithIncompatibleType1
 testGenericMultipleOverrideReplace
 testUseSupertypeAsInferenceContextConflict
+
+# "Cannot assign multiple types to name "b" without an explicit "Type[...]" annotation"
+testAliasesInClassBodyNormalVsSubscripted
 
 # finally must be checked twice
 testUnionTryFinally
@@ -577,6 +567,11 @@ testImportStarWithinFunction
 # Star import check what we override
 testAssignAndConditionalStarImport
 testStarImportOverlappingMismatch
+# Star import redefinitions
+testNewAnalyzerImportStarForwardRef1
+testNewAnalyzerImportStarForwardRef2
+testNewAnalyzerImportOverExistingInCycleStar1
+testNewAnalyzerImportOverExistingInCycleStar2
 
 # TypeVar defaults
 testTypeVarDefaultsInvalid3
