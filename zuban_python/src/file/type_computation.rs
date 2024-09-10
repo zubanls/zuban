@@ -4977,6 +4977,12 @@ pub(super) fn check_type_name<'db: 'file, 'file>(
             if p.calculated() {
                 if p.kind() == PointKind::Redirect {
                     let new = p.as_redirected_node_ref(i_s.db);
+                    if new.maybe_name_def().is_some() {
+                        return check_type_name(
+                            i_s,
+                            new.add_to_node_index(NAME_DEF_TO_NAME_DIFFERENCE as i64),
+                        );
+                    }
                     if new.maybe_name().is_some() {
                         return check_type_name(i_s, new);
                     }

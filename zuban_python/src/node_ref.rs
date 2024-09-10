@@ -165,6 +165,10 @@ impl<'file> NodeRef<'file> {
         Name::maybe_by_index(&self.file.tree, self.node_index)
     }
 
+    pub fn maybe_name_def(&self) -> Option<NameDef<'file>> {
+        NameDef::maybe_by_index(&self.file.tree, self.node_index)
+    }
+
     pub fn maybe_starred_expression(&self) -> Option<StarredExpression<'file>> {
         StarredExpression::maybe_by_index(&self.file.tree, self.node_index)
     }
