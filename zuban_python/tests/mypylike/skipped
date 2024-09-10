@@ -320,6 +320,8 @@ testImportTwoModulesWithSameNameInGlobalContext
 testNewAnalyzerMissingImportErrorsRedefinition
 testImportOnTopOfAlias1
 testModuleLevelGetattrImportFromAsTwice
+# import assign change regressions
+testImportStarOverlap2
 # Redefinition (Name "X" already defined on line X) for 
 testNewAnalyzerIdentityAssignment1
 testNewAnalyzerIdentityAssignment2

@@ -131,6 +131,12 @@ impl<'db: 'slf, 'slf> Inferred {
         }
     }
 
+    pub fn new_module_not_found() -> Self {
+        Self {
+            state: InferredState::UnsavedSpecific(Specific::ModuleNotFound),
+        }
+    }
+
     pub fn new_object(db: &Database) -> Self {
         Self::from_type(db.python_state.object_type())
     }

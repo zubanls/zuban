@@ -105,7 +105,6 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             match dotted_as_name.unpack() {
                 DottedAsNameContent::Simple(name_def, rest) => {
                     let result = self.global_import(name_def.name(), Some(name_def));
-                    self.check_import_type(name_def);
                     if let Some(rest) = rest {
                         if result.is_some() {
                             self.infer_import_dotted_name(rest, result);
@@ -309,15 +308,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 result.debug_path(self.i_s.db),
             );
         }
-        let point = match &result {
-            Some(ImportResult::File(file_index)) => {
-                Point::new_file_reference(*file_index, Locality::DirectExtern)
-            }
+        let inf = match &result {
+            Some(ImportResult::File(file_index)) => Inferred::new_file_reference(*file_index),
             Some(ImportResult::Namespace(namespace)) => {
-                if let Some(name_def) = name_def {
-                    self.save_namespace(name_def.index(), namespace.clone())
-                }
-                return result;
+                Inferred::from_type(Type::Namespace(namespace.clone()))
             }
             None => {
                 if !self.flags().ignore_missing_imports {
@@ -328,11 +322,16 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         },
                     );
                 }
-                Point::new_specific(Specific::ModuleNotFound, Locality::Todo)
+                Inferred::new_module_not_found()
             }
         };
         if let Some(name_def) = name_def {
-            self.file.points.set(name_def.index(), point);
+            self.assign_to_name_def_simple(
+                name_def,
+                NodeRef::new(self.file, name_def.index()),
+                &inf,
+                AssignKind::Import,
+            );
         }
         result
     }
@@ -991,6 +990,18 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             .or_else(|| check_fallback(name_def))
     }
 
+    fn assign_to_name_def_simple(
+        &self,
+        name_def: NameDef,
+        from: NodeRef,
+        value: &Inferred,
+        assign_kind: AssignKind,
+    ) {
+        self.assign_to_name_def(name_def, from, &value, assign_kind, |index, value| {
+            value.clone().save_redirect(self.i_s, self.file, index);
+        });
+    }
+
     fn assign_to_name_def(
         &self,
         name_def: NameDef,
@@ -1156,7 +1167,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             |first_name_link, declaration_t| {
                 let current_t = value.as_cow_type(i_s);
                 self.narrow_or_widen_name_target(first_name_link, declaration_t, &current_t, || {
-                    self.check_assignment_type(value, declaration_t, from, None)
+                    self.check_assignment_type(value, declaration_t, from, None, assign_kind)
                 })
             },
         )
@@ -1168,6 +1179,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         declaration_t: &Type,
         from: NodeRef,
         base_class: Option<TypeOrClass>,
+        assign_kind: AssignKind,
     ) -> bool {
         let mut had_error = false;
         declaration_t.error_if_not_matches(
@@ -1180,6 +1192,12 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 if let Some(base_class) = base_class.as_ref() {
                     Some(IssueKind::IncompatibleAssignmentInSubclass {
                         base_class: base_class.name(self.i_s.db).into(),
+                        got,
+                        expected,
+                    })
+                } else if matches!(assign_kind, AssignKind::Import) {
+                    Some(IssueKind::IncompatibleImportAssignment {
+                        name: from.as_code().into(),
                         got,
                         expected,
                     })
@@ -1218,12 +1236,19 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         &declaration_t.into_owned().avoid_implicit_literal(i_s.db),
                         from,
                         None,
+                        assign_kind,
                     );
                     return;
                 }
 
                 if matches!(assign_kind, AssignKind::Annotation(_)) {
-                    self.check_assignment_type(value, &declaration_t, from, base_class);
+                    self.check_assignment_type(
+                        value,
+                        &declaration_t,
+                        from,
+                        base_class,
+                        assign_kind,
+                    );
                 } else {
                     narrow(first_name_link, &declaration_t)
                 }
@@ -1292,7 +1317,13 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             if point.partial_flags().finished {
                                 // For --local-partial-types an error was already added
                                 if !self.flags().local_partial_types {
-                                    self.check_assignment_type(value, &Type::None, from, None);
+                                    self.check_assignment_type(
+                                        value,
+                                        &Type::None,
+                                        from,
+                                        None,
+                                        assign_kind,
+                                    );
                                 }
                                 return;
                             }
@@ -1654,7 +1685,15 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 primary_target,
                                 declaration_t,
                                 &current_t,
-                                || self.check_assignment_type(value, declaration_t, from, None),
+                                || {
+                                    self.check_assignment_type(
+                                        value,
+                                        declaration_t,
+                                        from,
+                                        None,
+                                        assign_kind,
+                                    )
+                                },
                             )
                         },
                     );
@@ -2072,9 +2111,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     pub fn save_walrus(&self, name_def: NameDef, inf: Inferred) -> Inferred {
         let from = NodeRef::new(self.file, name_def.index());
         let inf = inf.avoid_implicit_literal(self.i_s);
-        self.assign_to_name_def(name_def, from, &inf, AssignKind::Normal, |index, value| {
-            value.clone().save_redirect(self.i_s, self.file, index);
-        });
+        self.assign_to_name_def_simple(name_def, from, &inf, AssignKind::Normal);
         self.check_point_cache(name_def.index()).unwrap_or(inf)
     }
 
@@ -4162,7 +4199,8 @@ fn targets_len_infos(targets: TargetIterator) -> (usize, TupleLenInfos) {
 pub enum AssignKind {
     Annotation(Option<Specific>), // `a: int = 1` or `a = 1 # type: int
     Normal,                       // a = 1
-    AugAssign,                    // a += 1
+    Import,
+    AugAssign, // a += 1
 }
 
 pub enum StarImportResult {
