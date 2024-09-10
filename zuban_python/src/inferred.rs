@@ -176,7 +176,9 @@ impl<'db: 'slf, 'slf> Inferred {
             InferredState::UnsavedComplex(complex) => type_of_complex(i_s, complex, None),
             InferredState::UnsavedSpecific(specific) => match specific {
                 Specific::None => Cow::Borrowed(&Type::None),
-                Specific::Cycle => Cow::Borrowed(&Type::Any(AnyCause::Todo)),
+                Specific::Cycle | Specific::ModuleNotFound => {
+                    Cow::Borrowed(&Type::Any(AnyCause::Todo))
+                }
                 _ => unreachable!("{specific:?}"),
             },
             InferredState::UnsavedFileReference(file_index) => {
