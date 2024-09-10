@@ -1824,12 +1824,10 @@ impl<'db: 'a, 'a> Class<'a> {
 
     pub fn nth_type_argument(&self, db: &Database, nth: usize) -> Type {
         let type_vars = self.use_cached_type_vars(db);
-        let generic = self.generics().nth(db, &type_vars[nth], nth);
-        if let Generic::TypeArg(t) = generic {
-            t.into_owned()
-        } else {
-            unreachable!()
-        }
+        self.generics()
+            .nth(db, &type_vars[nth], nth)
+            .expect_type_argument()
+            .into_owned()
     }
 
     pub fn nth_param_spec_usage(
