@@ -320,8 +320,6 @@ testImportTwoModulesWithSameNameInGlobalContext
 testNewAnalyzerMissingImportErrorsRedefinition
 testImportOnTopOfAlias1
 testModuleLevelGetattrImportFromAsTwice
-# out/inline errors merging
-testNewAnalyzerOverrideClassWithTypeAlias
 # Redefinition (Name "X" already defined on line X) for 
 testNewAnalyzerIdentityAssignment1
 testNewAnalyzerIdentityAssignment2

@@ -598,34 +598,8 @@ fn initialize_and_return_wanted_output(project: &mut Project, step: &Step) -> Ve
         if ["mypy.ini", "pyproject.toml"].contains(&path) {
             continue;
         }
-        let p = if path == "__main__" {
-            // TODO this if is so weird. Why is this shit needed???
-            "main"
-        } else {
-            path
-        };
-        let lines: Box<_> = code.split('\n').collect();
-        for (line_nr, column, mut type_, comment) in
-            ErrorCommentsOnCode(&lines, lines.iter().enumerate())
-        {
-            for comment in comment.split(" # E: ") {
-                for (i, comment) in comment.split(" # N: ").enumerate() {
-                    if i != 0 {
-                        type_ = "note";
-                    }
-                    if let Some(comment) = cleanup_mypy_issues(comment) {
-                        if let Some(column) = column {
-                            wanted.push(format!(
-                                "{p}:{line_nr}:{column}: {type_}: {}",
-                                comment.trim_end()
-                            ))
-                        } else {
-                            wanted.push(format!("{p}:{line_nr}: {type_}: {}", comment.trim_end()))
-                        }
-                    }
-                }
-            }
-        }
+        add_inline_errors(&mut wanted, path, code);
+        // testAbstractClassSubclasses
         let p = BASE_PATH.to_owned() + path;
         project.load_in_memory_file(p.into(), code.into());
     }
@@ -634,6 +608,37 @@ fn initialize_and_return_wanted_output(project: &mut Project, step: &Step) -> Ve
         replace_optional(line);
     }
     wanted
+}
+
+fn add_inline_errors(wanted: &mut Vec<String>, path: &str, code: &str) {
+    let p = if path == "__main__" {
+        // TODO this if is so weird. Why is this shit needed???
+        "main"
+    } else {
+        path
+    };
+    let lines: Box<_> = code.split('\n').collect();
+    for (line_nr, column, mut type_, comment) in
+        ErrorCommentsOnCode(&lines, lines.iter().enumerate())
+    {
+        for comment in comment.split(" # E: ") {
+            for (i, comment) in comment.split(" # N: ").enumerate() {
+                if i != 0 {
+                    type_ = "note";
+                }
+                if let Some(comment) = cleanup_mypy_issues(comment) {
+                    if let Some(column) = column {
+                        wanted.push(format!(
+                            "{p}:{line_nr}:{column}: {type_}: {}",
+                            comment.trim_end()
+                        ))
+                    } else {
+                        wanted.push(format!("{p}:{line_nr}: {type_}: {}", comment.trim_end()))
+                    }
+                }
+            }
+        }
+    }
 }
 
 fn replace_unions(line: &mut String) {
