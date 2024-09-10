@@ -6,7 +6,8 @@ use std::{
 use crate::{
     database::{Database, FileIndex},
     file::{File, PythonFile},
-    type_::Namespace,
+    inferred::Inferred,
+    type_::{Namespace, Type},
     type_helpers::Module,
     workspaces::{Directory, DirectoryEntry},
     TypeCheckerFlags,
@@ -40,6 +41,15 @@ impl ImportResult {
                 ns.directories.iter().cloned(),
                 name,
             ),
+        }
+    }
+
+    pub fn as_inferred(&self) -> Inferred {
+        match self {
+            ImportResult::File(file_index) => Inferred::new_file_reference(*file_index),
+            ImportResult::Namespace(namespace) => {
+                Inferred::from_type(Type::Namespace(namespace.clone()))
+            }
         }
     }
 

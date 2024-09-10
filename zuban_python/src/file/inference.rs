@@ -309,10 +309,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             );
         }
         let inf = match &result {
-            Some(ImportResult::File(file_index)) => Inferred::new_file_reference(*file_index),
-            Some(ImportResult::Namespace(namespace)) => {
-                Inferred::from_type(Type::Namespace(namespace.clone()))
-            }
+            Some(import_result) => import_result.as_inferred(),
             None => {
                 if !self.flags().ignore_missing_imports {
                     self.add_issue(
