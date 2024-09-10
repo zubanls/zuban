@@ -114,18 +114,16 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 DottedAsNameContent::WithAs(dotted_name, as_name_def) => {
                     let result = self.infer_import_dotted_name(dotted_name, None);
                     debug_assert!(!self.file.points.get(as_name_def.index()).calculated());
-                    let point = match result {
-                        Some(ImportResult::File(file_index)) => {
-                            Point::new_file_reference(file_index, Locality::Todo)
-                        }
-                        Some(ImportResult::Namespace(namespace)) => {
-                            self.save_namespace(as_name_def.index(), namespace.clone());
-                            continue;
-                        }
-                        None => Point::new_specific(Specific::ModuleNotFound, Locality::Todo),
+                    let inf = match result {
+                        Some(import_result) => import_result.as_inferred(),
+                        None => Inferred::new_module_not_found(),
                     };
-                    self.file.points.set(as_name_def.index(), point);
-                    self.check_import_type(as_name_def);
+                    self.assign_to_name_def_simple(
+                        as_name_def,
+                        NodeRef::new(self.file, as_name_def.index()),
+                        &inf,
+                        AssignKind::Import,
+                    );
                 }
             }
         }
@@ -331,10 +329,6 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             );
         }
         result
-    }
-
-    fn save_namespace(&self, index: NodeIndex, namespace: Rc<Namespace>) {
-        Inferred::from_type(Type::Namespace(namespace)).save_redirect(self.i_s, self.file, index);
     }
 
     pub fn infer_import_dotted_name(
