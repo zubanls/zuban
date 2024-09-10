@@ -101,7 +101,7 @@ pub struct Class<'a> {
     pub node_ref: NodeRef<'a>,
     pub class_storage: &'a ClassStorage,
     pub generics: Generics<'a>,
-    pub type_var_remap: Option<&'a GenericsList>,
+    type_var_remap: Option<&'a GenericsList>,
 }
 
 impl<'db: 'a, 'a> Class<'a> {
@@ -1819,10 +1819,7 @@ impl<'db: 'a, 'a> Class<'a> {
     }
 
     pub fn needs_generic_remapping_for_attributes(&self, i_s: &InferenceState, t: &Type) -> bool {
-        match self.generics {
-            Generics::Self_ { .. } => !self.type_var_remap.is_none(),
-            _ => !self.type_vars(i_s).is_empty() || t.has_self_type(i_s.db),
-        }
+        !self.type_vars(i_s).is_empty() || t.has_self_type(i_s.db)
     }
 
     pub fn nth_type_argument(&self, db: &Database, nth: usize) -> Type {
@@ -2997,14 +2994,21 @@ fn apply_generics_to_base_class<'a>(
     generics: Generics<'a>,
 ) -> TypeOrClass<'a> {
     match &t {
-        Type::Class(g) => {
-            let n = NodeRef::from_link(db, g.link);
-            TypeOrClass::Class(match &g.generics {
-                ClassGenerics::List(g) => Class::from_position(n, generics, Some(g)),
-                ClassGenerics::None => Class::from_position(n, generics, None),
-                ClassGenerics::ExpressionWithClassType(link) => todo!("Class::from_position(n, Generics::from_class_generics(self.db, t_generics), None)"),
-                ClassGenerics::SlicesWithClassTypes(link) => todo!(),
-                ClassGenerics::NotDefinedYet => unreachable!(),
+        Type::Class(c) => {
+            TypeOrClass::Class(match &c.generics {
+                ClassGenerics::List(g) => {
+                    if matches!(generics, Generics::Self_ { .. }) {
+                        // Self generics imply that there is no remapping of generics necessary. We can
+                        // therefore simply use the class in the mro.
+                        c.class(db)
+                    } else {
+                        Class::from_position(NodeRef::from_link(db, c.link), generics, Some(g))
+                    }
+                }
+                ClassGenerics::None => {
+                    Class::from_position(NodeRef::from_link(db, c.link), generics, None)
+                }
+                _ => unreachable!(),
             })
         }
         // TODO is this needed?

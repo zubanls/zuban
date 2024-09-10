@@ -1,15 +1,13 @@
 use parsa_python_cst::{Expression, SliceContent, SliceIterator, Slices};
 
-use super::{Generic, Match, Matcher};
+use super::Generic;
 use crate::{
     database::{Database, PointLink},
     debug,
     file::{use_cached_simple_generic_type, PythonFile},
-    inference_state::InferenceState,
     node_ref::NodeRef,
     type_::{
-        ClassGenerics, GenericItem, GenericsList, Type, TypeVarLike, TypeVarLikeUsage,
-        TypeVarLikes, Variance,
+        ClassGenerics, GenericItem, GenericsList, Type, TypeVarLike, TypeVarLikeUsage, TypeVarLikes,
     },
 };
 

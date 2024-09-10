@@ -21,7 +21,9 @@ use crate::{
     imports::ImportResult,
     inference_state::InferenceState,
     inferred::{infer_class_method, AttributeKind, Inferred},
-    matching::{ErrorStrs, Generics, LookupKind, Match, Matcher, OnTypeError, ResultContext},
+    matching::{
+        ErrorStrs, Generic, Generics, LookupKind, Match, Matcher, OnTypeError, ResultContext,
+    },
     node_ref::NodeRef,
     params::{has_overlapping_params, matches_params, Param, WrappedParamType, WrappedStar},
     type_::{
@@ -2321,16 +2323,18 @@ pub fn check_multiple_inheritance<'x, BASES: Iterator<Item = TypeOrClass<'x>>>(
         for (type_var_like, arg) in cls1
             .use_cached_type_vars(db)
             .iter()
-            .zip(cls1.type_var_remap.map(|g| g.iter()).unwrap_or([].iter()))
+            .zip(cls1.generics().iter(i_s.db))
         {
-            if let GenericItem::TypeArg(Type::TypeVar(tv)) = arg {
-                if let TypeVarLike::TypeVar(tv_def) = type_var_like {
-                    if tv.type_var.variance != Variance::Invariant
-                        && tv.type_var.variance != tv_def.variance
-                    {
-                        add_issue(IssueKind::TypeVarVarianceIncompatibleWithParentType {
-                            type_var_name: tv.type_var.name(db).into(),
-                        });
+            if let Generic::TypeArg(t) = arg {
+                if let Type::TypeVar(tv) = t.as_ref() {
+                    if let TypeVarLike::TypeVar(tv_def) = type_var_like {
+                        if tv.type_var.variance != Variance::Invariant
+                            && tv.type_var.variance != tv_def.variance
+                        {
+                            add_issue(IssueKind::TypeVarVarianceIncompatibleWithParentType {
+                                type_var_name: tv.type_var.name(db).into(),
+                            });
+                        }
                     }
                 }
             }

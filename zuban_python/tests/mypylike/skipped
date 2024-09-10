@@ -161,9 +161,6 @@ testSerializeTypedDictInMethod
 # TypedDict unions
 testTypedDictChainedGetWithEmptyDictDefault
 
-# dunder operator override checks
-testSubtypingIterableUnpacking2
-
 # TypeVar Values in func
 testErrorCodeInvalidTypeArg
 testCheckGenericFunctionBodyWithTypeVarValues

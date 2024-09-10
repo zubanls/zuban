@@ -928,8 +928,7 @@ impl<'a> Matcher<'a> {
             .and_then(|f| f.class())
             .filter(|func_class| {
                 usage.in_definition() == func_class.node_ref.as_link()
-                    && !(matches!(func_class.generics, Generics::Self_ { .. })
-                        && func_class.type_var_remap.is_none())
+                    && !matches!(func_class.generics, Generics::Self_ { .. })
             })
     }
 
