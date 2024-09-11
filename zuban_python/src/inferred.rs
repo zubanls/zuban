@@ -1984,8 +1984,8 @@ impl<'db: 'slf, 'slf> Inferred {
                                 let mut iterator = args.iter();
                                 if let Some(first_arg) = iterator.next() {
                                     let t = new_type.type_(i_s);
-                                    let InferredArg::Inferred(inf) =
-                                        first_arg.infer(i_s, &mut ResultContext::Known(t))
+                                    let InferredArg::Inferred(inf) = first_arg
+                                        .infer(i_s, &mut ResultContext::Known { type_: t })
                                     else {
                                         todo!()
                                     };

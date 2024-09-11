@@ -788,9 +788,9 @@ fn typed_dict_get_or_pop_internal<'db>(
     });
 
     if let Some(maybe_had_literals) = maybe_had_literals {
-        let default = infer_default(&mut ResultContext::Known(
-            &maybe_had_literals.as_cow_type(i_s),
-        ))?;
+        let default = infer_default(&mut ResultContext::Known {
+            type_: &maybe_had_literals.as_cow_type(i_s),
+        })?;
         if is_pop && second_arg.is_none() {
             Some(maybe_had_literals)
         } else {
@@ -989,8 +989,12 @@ fn typed_dict_update_internal<'db>(
         td.defined_at,
         td.generics.clone(),
     );
-    let inf_key = args
-        .maybe_single_positional_arg(i_s, &mut ResultContext::Known(&Type::TypedDict(expected)))?;
+    let inf_key = args.maybe_single_positional_arg(
+        i_s,
+        &mut ResultContext::Known {
+            type_: &Type::TypedDict(expected),
+        },
+    )?;
     Some(Inferred::new_none())
 }
 

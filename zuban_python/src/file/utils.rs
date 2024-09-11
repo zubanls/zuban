@@ -227,8 +227,8 @@ impl<'db> Inference<'db, '_, '_> {
         value_t: &Type,
         dict: Dict,
     ) -> Option<Type> {
-        let mut new_key_context = ResultContext::Known(key_t);
-        let mut new_value_context = ResultContext::Known(value_t);
+        let mut new_key_context = ResultContext::Known { type_: key_t };
+        let mut new_value_context = ResultContext::Known { type_: value_t };
 
         // Since it's a list, now check all the entries if they match the given
         // result generic;

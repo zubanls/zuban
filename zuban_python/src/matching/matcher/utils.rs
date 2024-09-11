@@ -569,7 +569,7 @@ pub(crate) fn match_arguments_against_params<
                     },
                 )
             } else {
-                arg.infer(i_s, &mut ResultContext::Known(&expected))
+                arg.infer(i_s, &mut ResultContext::Known { type_: &expected })
             };
             let value = match value {
                 InferredArg::Inferred(value) => value,
