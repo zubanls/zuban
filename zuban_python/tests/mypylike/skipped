@@ -315,8 +315,6 @@ testRedefineNestedFunctionDefinedAsVariableInitializedToNone
 testNewAnalyzerIdentityAssignment1
 testNewAnalyzerIdentityAssignment2
 testNewAnalyzerIdentityAssignment3
-# self var reassignment
-testMemberRedefinitionDefinedInClass
 
 # "Value of type "A" must be used"
 # "Value of type "Coroutine[Any, Any, None]" must be used"

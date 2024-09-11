@@ -1393,12 +1393,32 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             if let Some(lookup_in_bases) = lookup_self_attribute_in_bases {
                 let lookup_details = lookup_in_bases();
                 if let Some(inf) = lookup_details.lookup.into_maybe_inferred() {
-                    if matches!(
-                        assign_kind,
-                        AssignKind::Annotation(Some(Specific::AnnotationOrTypeCommentFinal))
-                    ) && matches!(lookup_details.class, TypeOrClass::Class(c) if c.node_ref == i_s.current_class().unwrap().node_ref)
-                    {
-                        from.add_issue(self.i_s, IssueKind::CannotRedefineAsFinal);
+                    match assign_kind {
+                        AssignKind::Annotation(reason)
+                            if matches!(
+                                lookup_details.class,
+                                TypeOrClass::Class(c)
+                                if c.node_ref == i_s.current_class().unwrap().node_ref
+                            ) =>
+                        {
+                            if reason == Some(Specific::AnnotationOrTypeCommentFinal) {
+                                from.add_issue(self.i_s, IssueKind::CannotRedefineAsFinal);
+                            } else {
+                                if let Some(link) = inf
+                                    .maybe_saved_node_ref(i_s.db)
+                                    .filter(|node_ref| node_ref.maybe_name_def().is_some())
+                                {
+                                    debug_assert_eq!(link.file_index(), self.file_index);
+                                    self.add_redefinition_issue(
+                                        link.node_index + NAME_DEF_TO_NAME_DIFFERENCE,
+                                        name_def.as_code(),
+                                        true,
+                                        |issue| from.add_issue(i_s, issue),
+                                    )
+                                }
+                            }
+                        }
+                        _ => (),
                     }
                     if lookup_details.attr_kind.is_final() {
                         if let TypeOrClass::Class(c) = lookup_details.class {
@@ -2081,12 +2101,12 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
 
     fn add_redefinition_issue(
         &self,
-        first: NodeIndex,
+        first_index_of_definition: NodeIndex,
         name: &str,
         is_self_attribute: bool,
         add_issue: impl FnOnce(IssueKind),
     ) {
-        let first_ref = NodeRef::new(self.file, first);
+        let first_ref = NodeRef::new(self.file, first_index_of_definition);
         let mut line = first_ref.line();
         let i_s = self.i_s;
         if self.flags().mypy_compatible {
