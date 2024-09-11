@@ -1367,11 +1367,9 @@ impl Inference<'_, '_, '_> {
                         // Mypy passes the context without literals here.
                         self.infer_expression_with_context(
                             else_,
-                            &mut ResultContext::Known {
-                                type_: &if_inf
-                                    .as_type(self.i_s)
-                                    .avoid_implicit_literal(self.i_s.db),
-                            },
+                            &mut ResultContext::new_known(
+                                &if_inf.as_type(self.i_s).avoid_implicit_literal(self.i_s.db),
+                            ),
                         )
                     } else {
                         self.infer_expression_with_context(else_, result_context)
@@ -1386,11 +1384,11 @@ impl Inference<'_, '_, '_> {
                             // Mypy passes the context without literals here.
                             self.infer_expression_part_with_context(
                                 if_,
-                                &mut ResultContext::Known {
-                                    type_: &else_inf
+                                &mut ResultContext::new_known(
+                                    &else_inf
                                         .as_type(self.i_s)
                                         .avoid_implicit_literal(self.i_s.db),
-                                },
+                                ),
                             )
                         } else {
                             self.infer_expression_part_with_context(if_, result_context)
@@ -2036,9 +2034,7 @@ impl Inference<'_, '_, '_> {
                     if let Some(inf) = self.infer_name_target(name_def, false) {
                         self.find_guards_in_expr_with_context(
                             expr,
-                            &mut ResultContext::Known {
-                                type_: &inf.as_cow_type(self.i_s),
-                            },
+                            &mut ResultContext::new_known(&inf.as_cow_type(self.i_s)),
                         )
                     } else {
                         self.find_guards_in_expr(expr)

@@ -11,6 +11,7 @@ use crate::{
 pub enum ResultContext<'a, 'b> {
     Known {
         type_: &'a Type,
+        from_annotation: bool,
     },
     KnownLambdaReturn(&'a Type),
     WithMatcher {
@@ -24,13 +25,20 @@ pub enum ResultContext<'a, 'b> {
 }
 
 impl<'a> ResultContext<'a, '_> {
+    pub fn new_known(type_: &'a Type) -> Self {
+        Self::Known {
+            type_,
+            from_annotation: false,
+        }
+    }
+
     pub fn with_type_if_exists_and_replace_type_var_likes<T>(
         &self,
         i_s: &InferenceState<'_, '_>,
         callable: impl FnOnce(&Type) -> T,
     ) -> Option<T> {
         match self {
-            Self::Known { type_ } | Self::KnownLambdaReturn(type_) => Some(callable(type_)),
+            Self::Known { type_, .. } | Self::KnownLambdaReturn(type_) => Some(callable(type_)),
             Self::WithMatcher { matcher, type_ } => {
                 let t = matcher.replace_type_var_likes_for_nested_context(i_s.db, type_);
                 Some(callable(&t))
@@ -47,7 +55,7 @@ impl<'a> ResultContext<'a, '_> {
         callable: impl FnOnce(&Type, &mut Matcher) -> T,
     ) -> Option<T> {
         match self {
-            Self::Known { type_ } | Self::KnownLambdaReturn(type_) => {
+            Self::Known { type_, .. } | Self::KnownLambdaReturn(type_) => {
                 Some(callable(type_, &mut Matcher::default()))
             }
             Self::WithMatcher { matcher, type_ } => Some(callable(type_, matcher)),
@@ -112,7 +120,7 @@ impl<'a> ResultContext<'a, '_> {
 
     pub fn expects_union(&self, i_s: &InferenceState) -> bool {
         match self {
-            Self::Known { type_ }
+            Self::Known { type_, .. }
             | Self::KnownLambdaReturn(type_)
             | Self::WithMatcher { type_, .. } => {
                 matches!(type_, Type::Union(_))
@@ -127,7 +135,9 @@ impl<'a> ResultContext<'a, '_> {
     pub fn expect_not_none(&mut self, i_s: &InferenceState) -> bool {
         match self {
             Self::ExpectUnused | Self::RevealType | Self::KnownLambdaReturn(_) => false,
-            Self::Known { type_ } | Self::WithMatcher { type_, .. } => !matches!(type_, Type::None),
+            Self::Known { type_, .. } | Self::WithMatcher { type_, .. } => {
+                !matches!(type_, Type::None)
+            }
             Self::AssignmentNewDefinition | Self::Unknown => true,
         }
     }
@@ -166,14 +176,26 @@ impl<'a> ResultContext<'a, '_> {
     }
 
     pub fn is_annotation_assignment(&self) -> bool {
-        !matches!(self, ResultContext::AssignmentNewDefinition)
+        matches!(
+            self,
+            ResultContext::Known {
+                from_annotation: true,
+                ..
+            }
+        )
     }
 }
 
 impl fmt::Debug for ResultContext<'_, '_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Self::Known { type_: t } => write!(f, "Known({t:?})"),
+            Self::Known {
+                type_: t,
+                from_annotation,
+            } => write!(
+                f,
+                "Known {{ type_: {t:?}, from_annotation: {from_annotation}}}"
+            ),
             Self::KnownLambdaReturn(t) => write!(f, "KnownLambdaReturn({t:?})"),
             Self::WithMatcher { type_, .. } => write!(f, "WithMatcher(_, {type_:?})"),
             Self::Unknown => write!(f, "Unknown"),

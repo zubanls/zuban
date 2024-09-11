@@ -1009,7 +1009,7 @@ impl<'db> Inference<'db, '_, '_> {
                         let t = self.use_cached_param_annotation_type(annotation);
                         let inf = self.infer_expression_with_context(
                             default,
-                            &mut ResultContext::Known { type_: &t },
+                            &mut ResultContext::new_known(&t),
                         );
                         t.error_if_not_matches(
                             i_s,
@@ -1388,10 +1388,8 @@ impl<'db> Inference<'db, '_, '_> {
                     return;
                 }
                 if let Some(star_exprs) = return_stmt.star_expressions() {
-                    let inf = self.infer_star_expressions(
-                        star_exprs,
-                        &mut ResultContext::Known { type_: &t },
-                    );
+                    let inf =
+                        self.infer_star_expressions(star_exprs, &mut ResultContext::new_known(&t));
                     if self.flags().warn_return_any
                         && inf.as_cow_type(i_s).is_any()
                         && t.as_ref() != &i_s.db.python_state.object_type()

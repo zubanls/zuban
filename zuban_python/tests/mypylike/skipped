@@ -326,8 +326,7 @@ testSingleOverload2
 testCustomRedefinitionDecorator
 testDuplicateDefOverload
 # NewType Redefinition
-testNewTypeRedefiningVariablesFails
-testNewAnalyzerNewTypeRedefinition
+# testNewTypeRedefiningVariablesFails  <- TODO redefinition
 
 # "Value of type "A" must be used"
 # "Value of type "Coroutine[Any, Any, None]" must be used"

@@ -534,8 +534,13 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         expected: &Type,
         right_side: AssignmentRightSide,
     ) {
-        let right = self
-            .infer_assignment_right_side(right_side, &mut ResultContext::Known { type_: expected });
+        let right = self.infer_assignment_right_side(
+            right_side,
+            &mut ResultContext::Known {
+                type_: expected,
+                from_annotation: true,
+            },
+        );
         self.check_right_side_against_expected(expected, right, right_side)
     }
 
@@ -598,7 +603,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         TypeCommentState::Type(t) => {
                             let right = self.infer_assignment_right_side(
                                 right_side,
-                                &mut ResultContext::Known { type_: &t },
+                                &mut ResultContext::Known {
+                                    type_: &t,
+                                    from_annotation: true,
+                                },
                             );
                             // It is very weird, but somehow type comments in Mypy are allowed to
                             // have the form of `x = None  # type: int` in classes, even with
@@ -622,7 +630,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     let inf = self.inferred_context_for_simple_assignment(targets.clone());
                     let return_type = inf.as_ref().map(|inf| inf.as_cow_type(self.i_s));
                     let mut result_context = match &return_type {
-                        Some(t) => ResultContext::Known { type_: t },
+                        Some(t) => ResultContext::new_known(&t),
                         None => ResultContext::AssignmentNewDefinition,
                     };
                     self.infer_assignment_right_side(right_side, &mut result_context)
@@ -795,9 +803,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             YieldExprContent::StarExpressions(s) => {
                 let inf = self.infer_star_expressions(
                     s,
-                    &mut ResultContext::Known {
-                        type_: &generator.yield_type,
-                    },
+                    &mut ResultContext::new_known(&generator.yield_type),
                 );
                 Inferred::from_type(generator.yield_type)
                     .as_cow_type(i_s)
@@ -2028,9 +2034,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         let inf = if let Some(inf) = self.infer_name_target(name_def, false) {
             self.infer_expression_with_context(
                 expr,
-                &mut ResultContext::Known {
-                    type_: &inf.as_cow_type(self.i_s),
-                },
+                &mut ResultContext::new_known(&inf.as_cow_type(self.i_s)),
             )
         } else if let Some(result_context) = result_context {
             self.infer_expression_with_context(expr, result_context)
@@ -3215,7 +3219,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         let t = self
                             .infer_named_expression_with_context(
                                 e,
-                                &mut ResultContext::Known { type_: expected },
+                                &mut ResultContext::new_known(expected),
                             )
                             .as_type(self.i_s);
                         gatherer.add(t)
@@ -3224,7 +3228,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         let t = self
                             .infer_expression_with_context(
                                 e,
-                                &mut ResultContext::Known { type_: expected },
+                                &mut ResultContext::new_known(expected),
                             )
                             .as_type(self.i_s);
                         gatherer.add(t)
@@ -3832,7 +3836,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 let mut check = |expected_t: &Type, expr, part| {
                     let inf = self.infer_expression_with_context(
                         expr,
-                        &mut ResultContext::Known { type_: expected_t },
+                        &mut ResultContext::new_known(expected_t),
                     );
                     let t = inf.as_cow_type(i_s);
                     if expected_t.is_super_type_of(i_s, matcher, &t).bool() {
