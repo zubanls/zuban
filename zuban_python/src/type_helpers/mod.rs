@@ -23,6 +23,6 @@ pub use module::{
 };
 pub use overload::OverloadedFunction;
 pub(crate) use typing::{
-    execute_assert_type, execute_param_spec_class, execute_type, execute_type_var_class,
-    execute_type_var_tuple_class, NewTypeClass, RevealTypeFunction, TypingCast,
+    execute_assert_type, execute_cast, execute_new_type, execute_param_spec_class,
+    execute_reveal_type, execute_type, execute_type_var_class, execute_type_var_tuple_class,
 };

@@ -65,138 +65,126 @@ pub(crate) fn execute_type<'db>(
     }
 }
 
-#[derive(Debug)]
-pub struct TypingCast();
-
-impl<'db> TypingCast {
-    pub(crate) fn execute(
-        &self,
-        i_s: &InferenceState<'db, '_>,
-        args: &dyn Args<'db>,
-        result_context: &mut ResultContext,
-        on_type_error: OnTypeError,
-    ) -> Inferred {
-        let mut result = None;
-        let mut actual = None;
-        let mut count = 0;
-        let mut had_non_positional = false;
-        for arg in args.iter() {
-            // TODO something like *Iterable[str] looped forever and then we put in this hack
-            if arg.in_args_or_kwargs_and_arbitrary_len() {
-                count = 2;
+pub(crate) fn execute_cast<'db>(
+    i_s: &InferenceState<'db, '_>,
+    args: &dyn Args<'db>,
+    result_context: &mut ResultContext,
+    on_type_error: OnTypeError,
+) -> Inferred {
+    let mut result = None;
+    let mut actual = None;
+    let mut count = 0;
+    let mut had_non_positional = false;
+    for arg in args.iter() {
+        // TODO something like *Iterable[str] looped forever and then we put in this hack
+        if arg.in_args_or_kwargs_and_arbitrary_len() {
+            count = 2;
+            had_non_positional = true;
+            break;
+        }
+        match arg.kind {
+            ArgKind::Positional(positional) => {
+                if positional.position == 1 {
+                    result = positional
+                        .node_ref
+                        .file
+                        .inference(i_s)
+                        .compute_cast_target(positional.node_ref)
+                        .ok()
+                } else {
+                    actual = Some(positional.infer(i_s, &mut ResultContext::ExpectUnused));
+                }
+            }
+            _ => {
+                arg.infer(i_s, &mut ResultContext::ExpectUnused);
                 had_non_positional = true;
-                break;
-            }
-            match arg.kind {
-                ArgKind::Positional(positional) => {
-                    if positional.position == 1 {
-                        result = positional
-                            .node_ref
-                            .file
-                            .inference(i_s)
-                            .compute_cast_target(positional.node_ref)
-                            .ok()
-                    } else {
-                        actual = Some(positional.infer(i_s, &mut ResultContext::ExpectUnused));
-                    }
-                }
-                _ => {
-                    arg.infer(i_s, &mut ResultContext::ExpectUnused);
-                    had_non_positional = true;
-                }
-            }
-            count += 1;
-        }
-        if count != 2 {
-            args.add_issue(
-                i_s,
-                IssueKind::ArgumentIssue(Box::from("\"cast\" expects 2 arguments")),
-            );
-            return Inferred::new_any_from_error();
-        } else if had_non_positional {
-            args.add_issue(
-                i_s,
-                IssueKind::ArgumentIssue(Box::from(
-                    "\"cast\" must be called with 2 positional arguments",
-                )),
-            );
-        }
-        let result = result.unwrap_or_else(Inferred::new_any_from_error);
-        if args
-            .in_file()
-            .is_some_and(|file| file.flags(i_s.db).warn_redundant_casts)
-        {
-            if let Some(actual) = actual {
-                let t_in = actual.as_cow_type(i_s);
-                let t_out = result.as_type(i_s);
-                if t_in.is_simple_same_type(i_s, &t_out).non_any_match() && !(t_in.is_any()) {
-                    args.add_issue(
-                        i_s,
-                        IssueKind::RedundantCast {
-                            to: result.format_short(i_s),
-                        },
-                    );
-                }
             }
         }
-        result
+        count += 1;
     }
+    if count != 2 {
+        args.add_issue(
+            i_s,
+            IssueKind::ArgumentIssue(Box::from("\"cast\" expects 2 arguments")),
+        );
+        return Inferred::new_any_from_error();
+    } else if had_non_positional {
+        args.add_issue(
+            i_s,
+            IssueKind::ArgumentIssue(Box::from(
+                "\"cast\" must be called with 2 positional arguments",
+            )),
+        );
+    }
+    let result = result.unwrap_or_else(Inferred::new_any_from_error);
+    if args
+        .in_file()
+        .is_some_and(|file| file.flags(i_s.db).warn_redundant_casts)
+    {
+        if let Some(actual) = actual {
+            let t_in = actual.as_cow_type(i_s);
+            let t_out = result.as_type(i_s);
+            if t_in.is_simple_same_type(i_s, &t_out).non_any_match() && !(t_in.is_any()) {
+                args.add_issue(
+                    i_s,
+                    IssueKind::RedundantCast {
+                        to: result.format_short(i_s),
+                    },
+                );
+            }
+        }
+    }
+    result
 }
 
-#[derive(Debug)]
-pub struct RevealTypeFunction();
-
-impl RevealTypeFunction {
-    pub(crate) fn execute<'db>(
-        &self,
-        i_s: &InferenceState<'db, '_>,
-        args: &dyn Args<'db>,
-        result_context: &mut ResultContext,
-        on_type_error: OnTypeError,
-    ) -> Inferred {
-        let mut iterator = args.iter();
-        let arg = iterator.next().unwrap_or_else(|| todo!());
-        if !matches!(
-            &arg.kind,
-            ArgKind::Positional(_) | ArgKind::Comprehension { .. }
-        ) {
-            todo!()
-        }
-
-        let inferred = if matches!(result_context, ResultContext::ExpectUnused) {
-            // For some reason mypy wants to generate a literal here if possible.
-            arg.infer(i_s, &mut ResultContext::RevealType)
-        } else {
-            arg.infer(i_s, result_context)
-        };
-        let InferredArg::Inferred(inferred) = inferred else {
-            unreachable!() // Not reachable, because we only allow positional args above
-        };
-        let t = inferred.as_cow_type(i_s);
-        let s = reveal_type_info(
-            i_s,
-            match result_context.could_be_a_literal(i_s) {
-                CouldBeALiteral::Yes { implicit: false } => match t.as_ref() {
-                    Type::Literal(l) => {
-                        let mut l = l.clone();
-                        l.implicit = false;
-                        Cow::Owned(Type::Literal(l))
-                    }
-                    _ => t,
-                },
-                _ => t,
-            }
-            .as_ref(),
-        );
-        arg.add_issue(
-            i_s,
-            IssueKind::Note(format!("Revealed type is \"{s}\"").into()),
-        );
-        if iterator.next().is_some() {
-            todo!()
-        }
-        inferred
+pub(crate) fn execute_reveal_type<'db>(
+    i_s: &InferenceState<'db, '_>,
+    args: &dyn Args<'db>,
+    result_context: &mut ResultContext,
+    on_type_error: OnTypeError,
+) -> Inferred {
+    let mut iterator = args.iter();
+    let arg = iterator.next().unwrap_or_else(|| todo!());
+    if !matches!(
+        &arg.kind,
+        ArgKind::Positional(_) | ArgKind::Comprehension { .. }
+    ) {
+        todo!()
     }
+
+    let inferred = if matches!(result_context, ResultContext::ExpectUnused) {
+        // For some reason mypy wants to generate a literal here if possible.
+        arg.infer(i_s, &mut ResultContext::RevealType)
+    } else {
+        arg.infer(i_s, result_context)
+    };
+    let InferredArg::Inferred(inferred) = inferred else {
+        unreachable!() // Not reachable, because we only allow positional args above
+    };
+    let t = inferred.as_cow_type(i_s);
+    let s = reveal_type_info(
+        i_s,
+        match result_context.could_be_a_literal(i_s) {
+            CouldBeALiteral::Yes { implicit: false } => match t.as_ref() {
+                Type::Literal(l) => {
+                    let mut l = l.clone();
+                    l.implicit = false;
+                    Cow::Owned(Type::Literal(l))
+                }
+                _ => t,
+            },
+            _ => t,
+        }
+        .as_ref(),
+    );
+    arg.add_issue(
+        i_s,
+        IssueKind::Note(format!("Revealed type is \"{s}\"").into()),
+    );
+    if iterator.next().is_some() {
+        todo!()
+    }
+    inferred
 }
 
 fn reveal_type_info(i_s: &InferenceState, t: &Type) -> Box<str> {
@@ -773,22 +761,16 @@ fn maybe_param_spec(
     }
 }
 
-#[derive(Debug)]
-pub struct NewTypeClass();
-
-impl NewTypeClass {
-    pub(crate) fn execute<'db>(
-        &self,
-        i_s: &InferenceState<'db, '_>,
-        args: &dyn Args<'db>,
-        result_context: &mut ResultContext,
-        on_type_error: OnTypeError,
-    ) -> Inferred {
-        if let Some(n) = maybe_new_type(i_s, args) {
-            Inferred::new_unsaved_complex(ComplexPoint::NewTypeDefinition(Rc::new(n)))
-        } else {
-            Inferred::new_invalid_type_definition()
-        }
+pub(crate) fn execute_new_type<'db>(
+    i_s: &InferenceState<'db, '_>,
+    args: &dyn Args<'db>,
+    result_context: &mut ResultContext,
+    on_type_error: OnTypeError,
+) -> Inferred {
+    if let Some(n) = maybe_new_type(i_s, args) {
+        Inferred::new_unsaved_complex(ComplexPoint::NewTypeDefinition(Rc::new(n)))
+    } else {
+        Inferred::new_invalid_type_definition()
     }
 }
 

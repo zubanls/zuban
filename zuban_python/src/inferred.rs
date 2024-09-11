@@ -34,11 +34,11 @@ use crate::{
         TypeVarKind, TypeVarLike, TypeVarLikes,
     },
     type_helpers::{
-        execute_assert_type, execute_isinstance, execute_issubclass, execute_param_spec_class,
-        execute_super, execute_type, execute_type_var_class, execute_type_var_tuple_class,
-        BoundMethod, BoundMethodFunction, Class, FirstParamProperties, Function, Instance,
-        LookupDetails, NewTypeClass, OverloadedFunction, RevealTypeFunction, TypeOrClass,
-        TypingCast,
+        execute_assert_type, execute_cast, execute_isinstance, execute_issubclass,
+        execute_new_type, execute_param_spec_class, execute_reveal_type, execute_super,
+        execute_type, execute_type_var_class, execute_type_var_tuple_class, BoundMethod,
+        BoundMethodFunction, Class, FirstParamProperties, Function, Instance, LookupDetails,
+        OverloadedFunction, TypeOrClass,
     },
 };
 
@@ -1857,15 +1857,10 @@ impl<'db: 'slf, 'slf> Inferred {
                                     .execute(i_s, args, result_context, on_type_error, true)
                             }
                             Specific::TypingCast => {
-                                return TypingCast().execute(
-                                    i_s,
-                                    args,
-                                    result_context,
-                                    on_type_error,
-                                )
+                                return execute_cast(i_s, args, result_context, on_type_error)
                             }
                             Specific::RevealTypeFunction => {
-                                return RevealTypeFunction().execute(
+                                return execute_reveal_type(
                                     i_s,
                                     args,
                                     result_context,
@@ -1881,12 +1876,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 )
                             }
                             Specific::TypingNewType => {
-                                return NewTypeClass().execute(
-                                    i_s,
-                                    args,
-                                    result_context,
-                                    on_type_error,
-                                )
+                                return execute_new_type(i_s, args, result_context, on_type_error)
                             }
                             Specific::TypingAny => {
                                 args.add_issue(i_s, IssueKind::AnyNotCallable);
