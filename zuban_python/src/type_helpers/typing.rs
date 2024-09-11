@@ -301,22 +301,16 @@ pub(crate) fn execute_assert_type<'db>(
     first
 }
 
-#[derive(Debug)]
-pub struct TypeVarClass();
-
-impl TypeVarClass {
-    pub(crate) fn execute(
-        &self,
-        i_s: &InferenceState,
-        args: &dyn Args,
-        result_context: &mut ResultContext,
-        on_type_error: OnTypeError,
-    ) -> Inferred {
-        if let Some(t) = maybe_type_var(i_s, args, result_context) {
-            Inferred::new_unsaved_complex(ComplexPoint::TypeVarLike(t))
-        } else {
-            Inferred::new_invalid_type_definition()
-        }
+pub(crate) fn execute_type_var_class(
+    i_s: &InferenceState,
+    args: &dyn Args,
+    result_context: &mut ResultContext,
+    on_type_error: OnTypeError,
+) -> Inferred {
+    if let Some(t) = maybe_type_var(i_s, args, result_context) {
+        Inferred::new_unsaved_complex(ComplexPoint::TypeVarLike(t))
+    } else {
+        Inferred::new_invalid_type_definition()
     }
 }
 
@@ -535,22 +529,16 @@ fn maybe_type_var(
     }
 }
 
-#[derive(Debug)]
-pub struct TypeVarTupleClass();
-
-impl TypeVarTupleClass {
-    pub(crate) fn execute(
-        &self,
-        i_s: &InferenceState,
-        args: &dyn Args,
-        result_context: &mut ResultContext,
-        on_type_error: OnTypeError,
-    ) -> Inferred {
-        if let Some(t) = maybe_type_var_tuple(i_s, args, result_context) {
-            Inferred::new_unsaved_complex(ComplexPoint::TypeVarLike(t))
-        } else {
-            Inferred::new_invalid_type_definition()
-        }
+pub(crate) fn execute_type_var_tuple_class(
+    i_s: &InferenceState,
+    args: &dyn Args,
+    result_context: &mut ResultContext,
+    on_type_error: OnTypeError,
+) -> Inferred {
+    if let Some(t) = maybe_type_var_tuple(i_s, args, result_context) {
+        Inferred::new_unsaved_complex(ComplexPoint::TypeVarLike(t))
+    } else {
+        Inferred::new_invalid_type_definition()
     }
 }
 
@@ -669,22 +657,16 @@ fn maybe_type_var_tuple(
     }
 }
 
-#[derive(Debug)]
-pub struct ParamSpecClass();
-
-impl ParamSpecClass {
-    pub(crate) fn execute(
-        &self,
-        i_s: &InferenceState,
-        args: &dyn Args,
-        result_context: &mut ResultContext,
-        on_type_error: OnTypeError,
-    ) -> Inferred {
-        if let Some(t) = maybe_param_spec(i_s, args, result_context) {
-            Inferred::new_unsaved_complex(ComplexPoint::TypeVarLike(t))
-        } else {
-            Inferred::new_invalid_type_definition()
-        }
+pub(crate) fn execute_param_spec_class(
+    i_s: &InferenceState,
+    args: &dyn Args,
+    result_context: &mut ResultContext,
+    on_type_error: OnTypeError,
+) -> Inferred {
+    if let Some(t) = maybe_param_spec(i_s, args, result_context) {
+        Inferred::new_unsaved_complex(ComplexPoint::TypeVarLike(t))
+    } else {
+        Inferred::new_invalid_type_definition()
     }
 }
 

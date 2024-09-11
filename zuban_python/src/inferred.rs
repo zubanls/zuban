@@ -34,10 +34,11 @@ use crate::{
         TypeVarKind, TypeVarLike, TypeVarLikes,
     },
     type_helpers::{
-        execute_assert_type, execute_isinstance, execute_issubclass, execute_super, execute_type,
+        execute_assert_type, execute_isinstance, execute_issubclass, execute_param_spec_class,
+        execute_super, execute_type, execute_type_var_class, execute_type_var_tuple_class,
         BoundMethod, BoundMethodFunction, Class, FirstParamProperties, Function, Instance,
-        LookupDetails, NewTypeClass, OverloadedFunction, ParamSpecClass, RevealTypeFunction,
-        TypeOrClass, TypeVarClass, TypeVarTupleClass, TypingCast,
+        LookupDetails, NewTypeClass, OverloadedFunction, RevealTypeFunction, TypeOrClass,
+        TypingCast,
     },
 };
 
@@ -1812,7 +1813,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             Specific::BuiltinsIsinstance => return execute_isinstance(i_s, args),
                             Specific::BuiltinsIssubclass => return execute_issubclass(i_s, args),
                             Specific::TypingTypeVarClass => {
-                                return TypeVarClass().execute(
+                                return execute_type_var_class(
                                     i_s,
                                     args,
                                     result_context,
@@ -1820,7 +1821,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 )
                             }
                             Specific::TypingTypeVarTupleClass => {
-                                return TypeVarTupleClass().execute(
+                                return execute_type_var_tuple_class(
                                     i_s,
                                     args,
                                     result_context,
@@ -1828,7 +1829,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 )
                             }
                             Specific::TypingParamSpecClass => {
-                                return ParamSpecClass().execute(
+                                return execute_param_spec_class(
                                     i_s,
                                     args,
                                     result_context,
