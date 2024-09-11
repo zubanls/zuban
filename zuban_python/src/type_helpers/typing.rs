@@ -307,7 +307,7 @@ fn maybe_type_var(
     args: &dyn Args,
     result_context: &ResultContext,
 ) -> Option<TypeVarLike> {
-    if !matches!(result_context, ResultContext::AssignmentNewDefinition) {
+    if result_context.is_annotation_assignment() {
         args.add_issue(i_s, IssueKind::UnexpectedTypeForTypeVar);
         return None;
     }
@@ -535,7 +535,7 @@ fn maybe_type_var_tuple(
     args: &dyn Args,
     result_context: &ResultContext,
 ) -> Option<TypeVarLike> {
-    if !matches!(result_context, ResultContext::AssignmentNewDefinition) {
+    if result_context.is_annotation_assignment() {
         args.add_issue(i_s, IssueKind::UnexpectedTypeForTypeVar);
         return None;
     }
@@ -663,7 +663,7 @@ fn maybe_param_spec(
     args: &dyn Args,
     result_context: &ResultContext,
 ) -> Option<TypeVarLike> {
-    if !matches!(result_context, ResultContext::AssignmentNewDefinition) {
+    if result_context.is_annotation_assignment() {
         args.add_issue(i_s, IssueKind::UnexpectedTypeForTypeVar);
         return None;
     }
@@ -767,7 +767,7 @@ pub(crate) fn execute_new_type<'db>(
     result_context: &mut ResultContext,
     on_type_error: OnTypeError,
 ) -> Inferred {
-    if !matches!(result_context, ResultContext::AssignmentNewDefinition) {
+    if result_context.is_annotation_assignment() {
         args.add_issue(i_s, IssueKind::NewTypeCannotHaveTypeDeclaration);
         return Inferred::new_any(AnyCause::FromError);
     }

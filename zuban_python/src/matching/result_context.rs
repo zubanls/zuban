@@ -162,6 +162,10 @@ impl<'a> ResultContext<'a, '_> {
         .flatten()
         .unwrap_or_else(|| callable(TupleContextIterator::Unknown))
     }
+
+    pub fn is_annotation_assignment(&self) -> bool {
+        !matches!(self, ResultContext::AssignmentNewDefinition)
+    }
 }
 
 impl fmt::Debug for ResultContext<'_, '_> {
