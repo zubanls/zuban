@@ -1232,6 +1232,12 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         if let Some(first_index) = first_defined_name_of_multi_def(self.file, current_index) {
             let maybe_saved = self.follow_and_maybe_saved(first_index);
             let maybe_complex_def = maybe_saved.and_then(|n| n.complex());
+            // This is mostly to make it clear that things like NewType/TypeVars are special
+            // and cannot be redefined
+            let is_special_def = !matches!(
+                maybe_complex_def,
+                None | Some(ComplexPoint::TypeInstance(_) | ComplexPoint::IndirectFinal(_))
+            );
             let assign_as_new_definition = match assign_kind {
                 AssignKind::Annotation(_) => true,
                 AssignKind::Import => {
@@ -1242,17 +1248,15 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         true
                     } else {
                         maybe_saved.is_some_and(|n| {
+                            if let Some(complex) = maybe_complex_def {
+                                return is_special_def && !matches!(complex, ComplexPoint::Class(_) | ComplexPoint::FunctionOverload(_) | ComplexPoint::TypeAlias(_))
+                            }
                             let p = n.point();
                             p.kind() == PointKind::FileReference && matches!(value.as_cow_type(i_s).as_ref(), Type::Module(f) if *f != p.file_index())
                         })
                     }
                 }
-                // This is mostly to make it clear that things like NewType/TypeVars are special
-                // and cannot be redefined
-                _ => !matches!(
-                    maybe_complex_def,
-                    None | Some(ComplexPoint::TypeInstance(_) | ComplexPoint::IndirectFinal(_))
-                ),
+                _ => is_special_def,
             };
             if assign_as_new_definition {
                 let name_def_ref = NodeRef::new(self.file, current_index);

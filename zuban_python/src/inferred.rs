@@ -2650,7 +2650,7 @@ pub fn specific_to_type<'db>(
         | Specific::TypingAnnotated
         | Specific::TypingNamedTuple
         | Specific::TypingTypedDict
-        | Specific::TypingCallable => todo!(),
+        | Specific::TypingCallable => todo!(), //Cow::Owned(i_s.db.python_state.typing_special_form_type()),
         Specific::TypingCast => todo!(),
         Specific::TypingClassVar => todo!(),
         Specific::RevealTypeFunction => todo!(),

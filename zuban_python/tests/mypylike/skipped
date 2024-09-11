@@ -310,12 +310,9 @@ testRedefineNestedFunctionDefinedAsVariableInitializedToNone
 
 # TypeVar redefinition details
 testRedefineVariableAsTypevar
-testRedefineTypevar4
 testNewAnalyzerDuplicateTypeVar
 testNewAnalyzerDuplicateTypeVarImportCycle
 testNewAnalyzerDuplicateTypeVarImportCycleWithAliases
-# import redefinition
-testModuleLevelGetattrImportFromAsTwice
 # Redefinition (Name "X" already defined on line X) for 
 testNewAnalyzerIdentityAssignment1
 testNewAnalyzerIdentityAssignment2
@@ -1337,6 +1334,8 @@ testShowErrorCodeLinks
 testUnusedTargetNotClass
 testFinalReassignModuleVar
 testFinalReassignModuleVar2
+# module __getattr__ is considered a redefinition
+testModuleLevelGetattrImportFromAsTwice
 
 # --no-strict-optional details
 testUnreachableWhenSuperclassIsAnyNoStrictOptional
