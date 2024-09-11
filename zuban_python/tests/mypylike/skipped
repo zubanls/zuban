@@ -311,8 +311,6 @@ testPermissiveAttributeOverride1
 testRedefineFunctionDefinedAsVariableInitializedToNone
 testRedefineNestedFunctionDefinedAsVariableInitializedToNone
 
-# TypeVar redefinition details
-testRedefineVariableAsTypevar
 # Redefinition (Name "X" already defined on line X) for 
 testNewAnalyzerIdentityAssignment1
 testNewAnalyzerIdentityAssignment2

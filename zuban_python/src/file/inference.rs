@@ -1240,28 +1240,48 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 }
             };
         if let Some(first_index) = first_defined_name_of_multi_def(self.file, current_index) {
+            let add_redefinition_issue = || {
+                let name_def_ref = NodeRef::new(self.file, current_index);
+                if matches!(
+                    assign_kind,
+                    AssignKind::Annotation(Some(Specific::AnnotationOrTypeCommentFinal))
+                ) {
+                    name_def_ref.add_issue(self.i_s, IssueKind::CannotRedefineAsFinal);
+                } else {
+                    self.add_redefinition_issue(
+                        first_index,
+                        name_def.as_code(),
+                        lookup_self_attribute_in_bases.is_some(),
+                        |issue| name_def_ref.add_issue(self.i_s, issue),
+                    );
+                }
+            };
+
             if let Some(node_ref) = value.maybe_saved_node_ref(i_s.db) {
+                let name_def_ref = NodeRef::new(self.file, current_index);
+                let cannot_redefine = |as_| {
+                    name_def_ref.add_issue(
+                        self.i_s,
+                        IssueKind::CannotRedefineAs {
+                            name: name_def.as_code().into(),
+                            as_,
+                        },
+                    );
+                };
                 match node_ref.complex() {
                     Some(ComplexPoint::NewTypeDefinition(_)) => {
-                        let name_def_ref = NodeRef::new(self.file, current_index);
-                        name_def_ref.add_issue(
-                            self.i_s,
-                            IssueKind::CannotRedefineAs {
-                                name: name_def.as_code().into(),
-                                as_: "a NewType",
-                            },
-                        );
-                        self.add_redefinition_issue(
-                            first_index,
-                            name_def.as_code(),
-                            lookup_self_attribute_in_bases.is_some(),
-                            |issue| name_def_ref.add_issue(self.i_s, issue),
-                        );
+                        cannot_redefine("a NewType");
+                        add_redefinition_issue();
+                        return;
+                    }
+                    Some(ComplexPoint::TypeVarLike(_)) => {
+                        cannot_redefine("a type variable");
                         return;
                     }
                     _ => (),
                 }
             }
+
             let maybe_saved = self.follow_and_maybe_saved(first_index);
             let maybe_complex_def = maybe_saved.and_then(|n| n.complex());
             // This is mostly to make it clear that things like NewType/TypeVars are special
@@ -1291,20 +1311,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 _ => is_special_def,
             };
             if assign_as_new_definition {
-                let name_def_ref = NodeRef::new(self.file, current_index);
-                if matches!(
-                    assign_kind,
-                    AssignKind::Annotation(Some(Specific::AnnotationOrTypeCommentFinal))
-                ) {
-                    name_def_ref.add_issue(self.i_s, IssueKind::CannotRedefineAsFinal);
-                } else {
-                    self.add_redefinition_issue(
-                        first_index,
-                        name_def.as_code(),
-                        lookup_self_attribute_in_bases.is_some(),
-                        |issue| name_def_ref.add_issue(self.i_s, issue),
-                    );
-                }
+                add_redefinition_issue();
                 // Nothing needed to assign anymore, the original definition was already assigned.
                 return;
             }
