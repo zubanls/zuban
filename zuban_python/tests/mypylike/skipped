@@ -319,9 +319,6 @@ testNewAnalyzerIdentityAssignment2
 testNewAnalyzerIdentityAssignment3
 # self var reassignment
 testMemberRedefinitionDefinedInClass
-# type alias reassignments
-testProhibitReassigningSubscriptedAliases
-testProhibitReassigningGenericAliases
 # redefinition overload
 testRedefinedOverloadedFunction
 testFakeOverloadCrash2
@@ -330,6 +327,7 @@ testCustomRedefinitionDecorator
 testDuplicateDefOverload
 # NewType Redefinition
 testNewTypeRedefiningVariablesFails
+testNewAnalyzerNewTypeRedefinition
 
 # "Value of type "A" must be used"
 # "Value of type "Coroutine[Any, Any, None]" must be used"
@@ -417,6 +415,9 @@ testUseSupertypeAsInferenceContextConflict
 
 # "Cannot assign multiple types to name "b" without an explicit "Type[...]" annotation"
 testAliasesInClassBodyNormalVsSubscripted
+# type alias reassignments
+testProhibitReassigningSubscriptedAliases
+testProhibitReassigningGenericAliases
 
 # finally must be checked twice
 testUnionTryFinally

@@ -11,8 +11,8 @@ use crate::{
     matching::{CouldBeALiteral, Matcher, OnTypeError, ResultContext},
     node_ref::NodeRef,
     type_::{
-        ClassGenerics, NeverCause, NewType, ParamSpec, Type, TypeVar, TypeVarKind, TypeVarLike,
-        TypeVarName, TypeVarTuple, TypedDictGenerics, Variance,
+        AnyCause, ClassGenerics, NeverCause, NewType, ParamSpec, Type, TypeVar, TypeVarKind,
+        TypeVarLike, TypeVarName, TypeVarTuple, TypedDictGenerics, Variance,
     },
     utils::join_with_commas,
 };
@@ -767,6 +767,10 @@ pub(crate) fn execute_new_type<'db>(
     result_context: &mut ResultContext,
     on_type_error: OnTypeError,
 ) -> Inferred {
+    if !matches!(result_context, ResultContext::AssignmentNewDefinition) {
+        args.add_issue(i_s, IssueKind::NewTypeCannotHaveTypeDeclaration);
+        return Inferred::new_any(AnyCause::FromError);
+    }
     if let Some(n) = maybe_new_type(i_s, args) {
         Inferred::new_unsaved_complex(ComplexPoint::NewTypeDefinition(Rc::new(n)))
     } else {
