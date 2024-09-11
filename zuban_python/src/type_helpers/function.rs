@@ -1161,8 +1161,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 .add_issue(i_s, IssueKind::OverloadInconsistentKind { kind })
         }
         if functions.len() < 2 && !should_error_out {
-            self.node_ref
-                .add_issue(i_s, IssueKind::OverloadSingleNotAllowed);
+            self.add_issue_onto_start_including_decorator(i_s, IssueKind::OverloadSingleNotAllowed);
         } else if implementation.is_none()
             && !in_stub
             && self.class.map(|c| !c.is_protocol(i_s.db)).unwrap_or(true)

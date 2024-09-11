@@ -317,12 +317,6 @@ testNewAnalyzerIdentityAssignment2
 testNewAnalyzerIdentityAssignment3
 # self var reassignment
 testMemberRedefinitionDefinedInClass
-# redefinition overload
-testRedefinedOverloadedFunction
-testFakeOverloadCrash2
-testSingleOverload2
-testCustomRedefinitionDecorator
-testDuplicateDefOverload
 
 # "Value of type "A" must be used"
 # "Value of type "Coroutine[Any, Any, None]" must be used"
@@ -378,8 +372,6 @@ testInferenceOfFor3
 testReusingInferredForIndex2
 testTwoStarExpressionsInGeneratorExpr
 testMultipleForIndexVars
-# "Perhaps you need a type annotation for "x"? Suggestion: "List[str | int]""
-testInferredTypeSubTypeOfReturnType
 # --disallow-any-generics
 testDisallowAnyGenericsForAliasesInRuntimeContext
 testGenericTypedDictAlias
@@ -413,6 +405,8 @@ testAliasesInClassBodyNormalVsSubscripted
 # type alias reassignments
 testProhibitReassigningSubscriptedAliases
 testProhibitReassigningGenericAliases
+# overload statements between definitions
+testRedefinedOverloadedFunction
 
 # finally must be checked twice
 testUnionTryFinally
@@ -747,6 +741,8 @@ testMultipleKeywordsForMisspelling
 testKeywordMisspelling*
 # "TypedDict "XXX" has no key "xxx" note: Did you mean "type"?"
 testCannotGetItemOfTypedDictWithInvalidStringLiteralKey
+# "Perhaps you need a type annotation for "x"? Suggestion: "List[str | int]""
+testInferredTypeSubTypeOfReturnType
 
 # `import a.b # type: ignore` means that the attribute is later Any without error
 testAddedMissingStubsIgnorePackagePartial
