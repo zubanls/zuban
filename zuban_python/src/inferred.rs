@@ -2235,6 +2235,13 @@ impl<'db: 'slf, 'slf> Inferred {
             .is_some_and(|specific| specific.is_partial_container())
     }
 
+    pub fn is_unsaved_module_not_found(&self) -> bool {
+        matches!(
+            self.state,
+            InferredState::UnsavedSpecific(Specific::ModuleNotFound)
+        )
+    }
+
     pub fn remove_none(&self, i_s: &InferenceState) -> Self {
         Inferred::from_type(self.as_type(i_s).remove_none(i_s.db).into_owned())
     }

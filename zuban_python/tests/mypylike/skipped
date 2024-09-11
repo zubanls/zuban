@@ -315,10 +315,6 @@ testNewAnalyzerDuplicateTypeVar
 testNewAnalyzerDuplicateTypeVarImportCycle
 testNewAnalyzerDuplicateTypeVarImportCycleWithAliases
 # import redefinition
-testImportTwoModulesWithSameNameInFunction
-testImportTwoModulesWithSameNameInGlobalContext
-testNewAnalyzerMissingImportErrorsRedefinition
-testImportOnTopOfAlias1
 testModuleLevelGetattrImportFromAsTwice
 # Redefinition (Name "X" already defined on line X) for 
 testNewAnalyzerIdentityAssignment1

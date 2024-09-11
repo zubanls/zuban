@@ -36,9 +36,8 @@ use crate::{
     params::matches_simple_params,
     type_::{
         AnyCause, CallableContent, CallableParam, CallableParams, IterInfos, Literal, LiteralKind,
-        LookupResult, Namespace, NeverCause, ParamType, StarParamType, StarStarParamType,
-        StringSlice, Tuple, TupleArgs, TupleUnpack, Type, UnionEntry, UnionType, Variance,
-        WithUnpack,
+        LookupResult, NeverCause, ParamType, StarParamType, StarStarParamType, StringSlice, Tuple,
+        TupleArgs, TupleUnpack, Type, UnionEntry, UnionType, Variance, WithUnpack,
     },
     type_helpers::{
         cache_class_name, is_private, is_private_import, is_reexport_issue_if_check_needed,
@@ -133,33 +132,6 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             .set(imp.index(), Point::new_node_analysis(Locality::Todo));
     }
 
-    fn check_import_type(&self, name_def: NameDef) {
-        // Check stuff like
-        //     foo: str
-        //     import foo
-        if let Some(original_name_index) =
-            first_defined_name_of_multi_def(self.file, name_def.name().index())
-        {
-            let from = NodeRef::new(self.file, name_def.index());
-            let import_inferred = self.infer_name_def(name_def);
-            self.infer_name_of_definition_by_index(original_name_index)
-                .as_cow_type(self.i_s)
-                .error_if_not_matches(
-                    self.i_s,
-                    &import_inferred,
-                    |issue| from.add_issue(self.i_s, issue),
-                    |error_types| {
-                        let ErrorStrs { expected, got } = error_types.as_boxed_strs(self.i_s.db);
-                        Some(IssueKind::IncompatibleImportAssignment {
-                            name: name_def.as_code().into(),
-                            got,
-                            expected,
-                        })
-                    },
-                )
-        }
-    }
-
     fn cache_import_from_only_particular_name_def(&self, as_name: ImportFromAsName) {
         let import_from = as_name.import_from();
         let from_first_part = self.import_from_first_part(import_from);
@@ -180,7 +152,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         // Set calculating here, so that the logic that follows the names can set a
         // cycle if it needs to.
         self.file.points.set(n_index, Point::new_calculating());
-        let point = match from_first_part {
+        let mut redirect_to_link = None;
+        let inf = match from_first_part {
             Some(imp) => {
                 let maybe_add_issue = || {
                     if !self.flags().ignore_missing_imports {
@@ -194,7 +167,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     }
                 };
                 match self.lookup_import_from_target(imp, import_name, name_def) {
-                    LookupResult::GotoName { name: link, .. } => {
+                    LookupResult::GotoName { name: link, inf } => {
                         if self
                             .file
                             .points
@@ -205,27 +178,39 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             maybe_add_issue();
                             return;
                         }
-                        link.into_redirect_point(Locality::Todo)
+                        redirect_to_link = Some(link);
+                        inf
                     }
                     LookupResult::FileReference(file_index) => {
-                        Point::new_file_reference(file_index, Locality::Todo)
+                        Inferred::new_file_reference(file_index)
                     }
-                    LookupResult::UnknownName(inf) => {
-                        inf.save_redirect(self.i_s, self.file, n_index);
-                        return;
-                    }
+                    LookupResult::UnknownName(inf) => inf,
                     LookupResult::None => {
                         maybe_add_issue();
-                        Point::new_specific(Specific::ModuleNotFound, Locality::Todo)
+                        Inferred::new_module_not_found()
                     }
                 }
             }
             // Means one of the imports before failed.
-            None => Point::new_specific(Specific::ModuleNotFound, Locality::Todo),
+            None => Inferred::new_module_not_found(),
         };
 
-        self.file.points.set(n_index, point);
-        self.check_import_type(name_def);
+        self.assign_to_name_def(
+            name_def,
+            NodeRef::new(self.file, name_def.index()),
+            &inf,
+            AssignKind::Import,
+            |_, inf| match redirect_to_link {
+                Some(link) => {
+                    self.file
+                        .points
+                        .set(n_index, link.into_redirect_point(Locality::Todo));
+                }
+                None => {
+                    inf.clone().save_redirect(self.i_s, self.file, n_index);
+                }
+            },
+        );
     }
 
     pub(super) fn cache_import_from(&self, imp: ImportFrom) {
@@ -1245,10 +1230,33 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 }
             };
         if let Some(first_index) = first_defined_name_of_multi_def(self.file, current_index) {
-            let special_def = self.is_special_definition(first_index);
-            if matches!(assign_kind, AssignKind::Annotation(_)) || special_def.is_some() {
+            let maybe_saved = self.follow_and_maybe_saved(first_index);
+            let maybe_complex_def = maybe_saved.and_then(|n| n.complex());
+            let assign_as_new_definition = match assign_kind {
+                AssignKind::Annotation(_) => true,
+                AssignKind::Import => {
+                    // Imports are a bit special since most of the time they are allowed and not
+                    // considered a redefinition in Mypy and then there's unresolved imports and
+                    // imports of files that are considered to be redefinitions.
+                    if value.is_unsaved_module_not_found() {
+                        true
+                    } else {
+                        maybe_saved.is_some_and(|n| {
+                            let p = n.point();
+                            p.kind() == PointKind::FileReference && matches!(value.as_cow_type(i_s).as_ref(), Type::Module(f) if *f != p.file_index())
+                        })
+                    }
+                }
+                // This is mostly to make it clear that things like NewType/TypeVars are special
+                // and cannot be redefined
+                _ => !matches!(
+                    maybe_complex_def,
+                    None | Some(ComplexPoint::TypeInstance(_) | ComplexPoint::IndirectFinal(_))
+                ),
+            };
+            if assign_as_new_definition {
                 let name_def_ref = NodeRef::new(self.file, current_index);
-                if let Some(ComplexPoint::NewTypeDefinition(special_def)) = special_def {
+                if let Some(ComplexPoint::NewTypeDefinition(special_def)) = maybe_complex_def {
                     name_def_ref.add_issue(
                         self.i_s,
                         IssueKind::CannotRedefineAs {
@@ -2081,7 +2089,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         })
     }
 
-    fn is_special_definition(&self, name_index: NodeIndex) -> Option<&ComplexPoint> {
+    fn follow_and_maybe_saved(&self, name_index: NodeIndex) -> Option<NodeRef<'db>> {
         if std::cfg!(debug_assertions) {
             // Make sure it's a NameDef
             let ref_ = NodeRef::new(self.file, name_index - NAME_DEF_TO_NAME_DIFFERENCE);
@@ -2089,14 +2097,6 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         }
         self.check_point_cache(name_index - NAME_DEF_TO_NAME_DIFFERENCE)
             .and_then(|inf| inf.maybe_saved_node_ref(self.i_s.db))
-            .and_then(|node_ref| node_ref.complex())
-            .and_then(|complex| {
-                (!matches!(
-                    complex,
-                    ComplexPoint::TypeInstance(_) | ComplexPoint::IndirectFinal(_)
-                ))
-                .then_some(complex)
-            })
     }
 
     pub fn save_walrus(&self, name_def: NameDef, inf: Inferred) -> Inferred {
