@@ -1103,6 +1103,16 @@ impl<'db> NamedExpression<'db> {
             None
         }
     }
+
+    pub fn has_await(&self) -> bool {
+        node_subtree_has_await(self.node)
+    }
+}
+
+fn node_subtree_has_await(node: PyNode) -> bool {
+    node.search(&[Nonterminal(await_primary)], true)
+        .next()
+        .is_some()
 }
 
 pub enum NamedExpressionContent<'db> {
@@ -1803,6 +1813,10 @@ impl<'db> SyncForIfClause<'db> {
         let disjunction_ = ExpressionPart::new(iterator.next().unwrap());
         (star_targets_, disjunction_, CompIfIterator(iterator))
     }
+
+    pub fn has_await(&self) -> bool {
+        node_subtree_has_await(self.node)
+    }
 }
 
 pub struct CompIfIterator<'db>(SiblingIterator<'db>);
@@ -1818,6 +1832,10 @@ impl<'db> Iterator for CompIfIterator<'db> {
 impl<'db> CompIf<'db> {
     pub fn expression_part(&self) -> ExpressionPart<'db> {
         ExpressionPart::new(self.node.nth_child(1))
+    }
+
+    pub fn has_await(&self) -> bool {
+        node_subtree_has_await(self.node)
     }
 }
 

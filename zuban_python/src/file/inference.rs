@@ -3996,12 +3996,35 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             },
             comp,
         );
-        Inferred::from_type(new_class!(
-            self.i_s.db.python_state.generator_link(),
-            t,
-            Type::None,
-            Type::None,
-        ))
+        let (named_expr, for_if_clauses) = comp.unpack();
+        let is_async = named_expr.has_await()
+            || for_if_clauses
+                .iter()
+                .enumerate()
+                .any(|(i, for_if_clause)| match for_if_clause {
+                    ForIfClause::Async(_) => true,
+                    ForIfClause::Sync(sync_for_if) => match i {
+                        0 => {
+                            let (_, _, mut conditionals) = sync_for_if.unpack();
+                            conditionals.any(|c| c.has_await())
+                        }
+                        _ => sync_for_if.has_await(),
+                    },
+                });
+        Inferred::from_type(if is_async {
+            new_class!(
+                self.i_s.db.python_state.async_generator_link(),
+                t,
+                Type::None,
+            )
+        } else {
+            new_class!(
+                self.i_s.db.python_state.generator_link(),
+                t,
+                Type::None,
+                Type::None,
+            )
+        })
     }
 
     check_point_cache_with!(pub infer_decorator, Self::_infer_decorator, Decorator);

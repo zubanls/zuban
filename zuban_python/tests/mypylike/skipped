@@ -1,7 +1,6 @@
 # Next up
 testTypeVarTupleTypeApplicationOverload
 testUnionOfNonIterableUnpacking
-
 testPostInitIsNotAFunction
 
 # callable matching regression
@@ -64,6 +63,7 @@ testClassChangedIntoFunction2
 testChangeTypeVarToFunction
 testAsyncForComprehensionErrors
 testNoneAnyFallbackDescriptor
+testAsyncForComprehension
 # wrong function in i_s is used in self assignment
 testFinalReassignInstanceVarInit
 testFinalReassignInstanceVarMethod
@@ -311,10 +311,6 @@ testPermissiveAttributeOverride1
 testRedefineFunctionDefinedAsVariableInitializedToNone
 testRedefineNestedFunctionDefinedAsVariableInitializedToNone
 
-# async await when is a generator comprehension becoming an asyncgenerator?
-testAsyncGeneratorExpressionAwait
-testAsyncForComprehension
-testImplicitAsyncGenerator
 # Crazy types.coroutine types
 testFullCoroutineMatrix
 # ""async for" outside async function"
