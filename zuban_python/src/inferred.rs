@@ -36,9 +36,9 @@ use crate::{
     type_helpers::{
         execute_assert_type, execute_cast, execute_isinstance, execute_issubclass,
         execute_new_type, execute_param_spec_class, execute_reveal_type, execute_super,
-        execute_type, execute_type_var_class, execute_type_var_tuple_class, BoundMethod,
-        BoundMethodFunction, Class, FirstParamProperties, Function, Instance, LookupDetails,
-        OverloadedFunction, TypeOrClass,
+        execute_type_var_class, execute_type_var_tuple_class, BoundMethod, BoundMethodFunction,
+        Class, FirstParamProperties, Function, Instance, LookupDetails, OverloadedFunction,
+        TypeOrClass,
     },
 };
 
@@ -1848,7 +1848,6 @@ impl<'db: 'slf, 'slf> Inferred {
                                     on_type_error,
                                 )
                             }
-                            Specific::TypingType => return execute_type(i_s, args, on_type_error),
                             Specific::TypingTuple => {
                                 return i_s
                                     .db

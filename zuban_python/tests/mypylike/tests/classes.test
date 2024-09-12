@@ -532,3 +532,13 @@ class Foo:
 
 class Bar(Foo):
     x = []  # E: Need type annotation for "x" (hint: "x: List[<type>] = ...")
+
+[case initialize_type]
+type("A", (), {})
+type("B", 1, 1)
+
+[out]
+main:2: error: No overload variant of "type" matches argument types "str", "int", "int"
+main:2: note: Possible overload variants:
+main:2: note:     def __init__(self, object, /) -> type
+main:2: note:     def __init__(self, str, tuple[Type[Any], ...], dict[str, Any], /, **kwds: Any) -> type

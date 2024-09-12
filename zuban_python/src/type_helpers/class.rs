@@ -42,12 +42,12 @@ use crate::{
         infer_typed_dict_total_argument, infer_value_on_member, AnyCause, CallableContent,
         CallableLike, CallableParam, CallableParams, ClassGenerics, Dataclass, DataclassOptions,
         DbString, Enum, EnumMemberDefinition, FormatStyle, FunctionKind, FunctionOverload,
-        GenericClass, GenericItem, GenericsList, LookupResult, NamedTuple, ParamSpecArg,
-        ParamSpecUsage, ParamType, StringSlice, Tuple, TupleArgs, Type, TypeVarLike,
+        GenericClass, GenericItem, GenericsList, LookupResult, NamedTuple, NeverCause,
+        ParamSpecArg, ParamSpecUsage, ParamType, StringSlice, Tuple, TupleArgs, Type, TypeVarLike,
         TypeVarLikeUsage, TypeVarLikes, TypedDict, TypedDictMember, TypedDictMemberGatherer,
         Variance,
     },
-    type_helpers::{execute_type, FirstParamProperties, Function},
+    type_helpers::{FirstParamProperties, Function},
     utils::join_with_commas,
 };
 
@@ -2288,18 +2288,18 @@ impl<'db: 'a, 'a> Class<'a> {
 
     pub(crate) fn execute(
         &self,
-        original_i_s: &InferenceState<'db, '_>,
+        i_s: &InferenceState<'db, '_>,
         args: &dyn Args<'db>,
         result_context: &mut ResultContext,
         on_type_error: OnTypeError,
         from_type_type: bool,
     ) -> Inferred {
-        if self.node_ref == original_i_s.db.python_state.dict_node_ref() {
+        if self.node_ref == i_s.db.python_state.dict_node_ref() {
             // This is a special case where we intercept the call to dict(..) when used with
             // TypedDict.
             if let Some(file) = args.in_file() {
                 if let Some(inf) = file
-                    .inference(original_i_s)
+                    .inference(i_s)
                     .infer_dict_call_from_context(args, result_context)
                 {
                     return inf;
@@ -2307,7 +2307,7 @@ impl<'db: 'a, 'a> Class<'a> {
             }
         }
         match self.execute_and_return_generics(
-            original_i_s,
+            i_s,
             args,
             result_context,
             on_type_error,
@@ -2318,10 +2318,12 @@ impl<'db: 'a, 'a> Class<'a> {
                     link: self.node_ref.as_link(),
                     generics,
                 }));
-                debug!("Class execute: {}", result.format_short(original_i_s));
-                if self.node_ref == original_i_s.db.python_state.bare_type_node_ref() {
-                    if args.iter().count() == 1 {
-                        return execute_type(original_i_s, args, on_type_error);
+                debug!("Class execute: {}", result.format_short(i_s));
+                if self.node_ref == i_s.db.python_state.bare_type_node_ref() {
+                    if let Some(first_arg) =
+                        args.maybe_single_positional_arg(i_s, &mut ResultContext::Unknown)
+                    {
+                        return execute_bare_type(i_s, first_arg);
                     }
                 }
                 result
@@ -3396,4 +3398,34 @@ impl<'x> ClassLookupOptions<'x> {
         self.super_count = super_count;
         self
     }
+}
+
+fn execute_bare_type<'db>(i_s: &InferenceState<'db, '_>, first_arg: Inferred) -> Inferred {
+    let mut type_part = Type::Never(NeverCause::Other);
+    for t in first_arg.as_cow_type(i_s).iter_with_unpacked_unions(i_s.db) {
+        match t {
+            Type::Class(_)
+            | Type::None
+            | Type::Any(_)
+            | Type::Self_
+            | Type::Dataclass(_)
+            | Type::Enum(_) => type_part.union_in_place(t.clone()),
+            Type::Literal(l) => type_part.union_in_place(l.fallback_type(i_s.db)),
+            Type::Type(type_) => match type_.as_ref() {
+                Type::Class(c) => match &c.class(i_s.db).use_cached_class_infos(i_s.db).metaclass {
+                    MetaclassState::Some(link) => {
+                        type_part.union_in_place(Type::new_class(*link, ClassGenerics::None))
+                    }
+                    _ => type_part.union_in_place(i_s.db.python_state.type_of_object.clone()),
+                },
+                _ => todo!(),
+            },
+            _ => todo!("{t:?}"),
+        }
+    }
+    Inferred::from_type(if type_part.is_never() {
+        first_arg.as_type(i_s)
+    } else {
+        Type::Type(Rc::new(type_part))
+    })
 }

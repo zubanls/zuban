@@ -2,7 +2,7 @@ use std::{borrow::Cow, rc::Rc};
 
 use crate::{
     arguments::{ArgKind, Args, InferredArg, KeywordArg},
-    database::{ComplexPoint, MetaclassState, PointLink},
+    database::{ComplexPoint, PointLink},
     debug,
     diagnostics::IssueKind,
     format_data::FormatData,
@@ -11,60 +11,11 @@ use crate::{
     matching::{CouldBeALiteral, Matcher, OnTypeError, ResultContext},
     node_ref::NodeRef,
     type_::{
-        AnyCause, ClassGenerics, NeverCause, NewType, ParamSpec, Type, TypeVar, TypeVarKind,
-        TypeVarLike, TypeVarName, TypeVarTuple, TypedDictGenerics, Variance,
+        AnyCause, ClassGenerics, NewType, ParamSpec, Type, TypeVar, TypeVarKind, TypeVarLike,
+        TypeVarName, TypeVarTuple, TypedDictGenerics, Variance,
     },
     utils::join_with_commas,
 };
-
-pub(crate) fn execute_type<'db>(
-    i_s: &InferenceState<'db, '_>,
-    args: &dyn Args<'db>,
-    on_type_error: OnTypeError,
-) -> Inferred {
-    let mut iterator = args.iter();
-    let first = iterator.next();
-    if let Some(x) = iterator.next() {
-        // TODO do type checking!
-        Inferred::from_type(i_s.db.python_state.bare_type_type())
-    } else if let Some(first) = first {
-        let InferredArg::Inferred(inf) = first.infer(i_s, &mut ResultContext::Unknown) else {
-            todo!()
-        };
-        let mut type_part = Type::Never(NeverCause::Other);
-        for t in inf.as_cow_type(i_s).iter_with_unpacked_unions(i_s.db) {
-            match t {
-                Type::Class(_)
-                | Type::None
-                | Type::Any(_)
-                | Type::Self_
-                | Type::Dataclass(_)
-                | Type::Enum(_) => type_part.union_in_place(t.clone()),
-                Type::Literal(l) => type_part.union_in_place(l.fallback_type(i_s.db)),
-                Type::Type(type_) => match type_.as_ref() {
-                    Type::Class(c) => {
-                        match &c.class(i_s.db).use_cached_class_infos(i_s.db).metaclass {
-                            MetaclassState::Some(link) => type_part
-                                .union_in_place(Type::new_class(*link, ClassGenerics::None)),
-                            _ => {
-                                type_part.union_in_place(i_s.db.python_state.type_of_object.clone())
-                            }
-                        }
-                    }
-                    _ => todo!(),
-                },
-                _ => todo!("{t:?}"),
-            }
-        }
-        Inferred::from_type(if type_part.is_never() {
-            inf.as_type(i_s)
-        } else {
-            Type::Type(Rc::new(type_part))
-        })
-    } else {
-        todo!()
-    }
-}
 
 pub(crate) fn execute_cast<'db>(
     i_s: &InferenceState<'db, '_>,
