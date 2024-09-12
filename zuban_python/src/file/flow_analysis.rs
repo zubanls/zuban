@@ -3684,13 +3684,16 @@ fn split_and_intersect(
             let mut matched = false;
             let mut matched_with_any = true;
             let mut had_any = None;
-            for (i, isinstance_t) in isinstance_type
+            for (i, mut isinstance_t) in isinstance_type
                 .iter_with_unpacked_unions(i_s.db)
                 .enumerate()
             {
                 if isinstance_t.is_any() {
                     had_any = Some(isinstance_t.clone());
                     continue;
+                } else if matches!(isinstance_t, Type::Class(c) if c.link == i_s.db.python_state.bare_type_link())
+                {
+                    isinstance_t = &i_s.db.python_state.type_of_any;
                 }
                 match isinstance_t.is_super_type_of(i_s, matcher, t) {
                     Match::True { with_any: true, .. } => {
