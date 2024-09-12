@@ -327,8 +327,6 @@ testMatchUndefinedClassPattern
 testNoneBindingWildcardPattern
 testNoneBindingStarredWildcardPattern
 
-# `class type` stuff
-testObfuscatedTypeConstructorReturnsTypeType
 # Type[Any] is object
 testSimplifyingUnionWithTypeTypes2
 

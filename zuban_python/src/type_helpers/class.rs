@@ -47,7 +47,7 @@ use crate::{
         TypeVarLikeUsage, TypeVarLikes, TypedDict, TypedDictMember, TypedDictMemberGatherer,
         Variance,
     },
-    type_helpers::{FirstParamProperties, Function},
+    type_helpers::{execute_type, FirstParamProperties, Function},
     utils::join_with_commas,
 };
 
@@ -2319,6 +2319,11 @@ impl<'db: 'a, 'a> Class<'a> {
                     generics,
                 }));
                 debug!("Class execute: {}", result.format_short(original_i_s));
+                if self.node_ref == original_i_s.db.python_state.bare_type_node_ref() {
+                    if args.iter().count() == 1 {
+                        return execute_type(original_i_s, args, on_type_error);
+                    }
+                }
                 result
             }
             ClassExecutionResult::Inferred(inf) => inf,
