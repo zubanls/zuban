@@ -399,6 +399,8 @@ pub(crate) enum IssueKind {
     FunctionMissingParamAnnotations, // Also from --disallow-incomplete-defs
 
     CallToUntypedFunction { name: Box<str> }, // From --disallow-untyped-calls
+    CoroutineValueMustBeUsed { type_: Box<str> },
+    AwaitableValueMustBeUsed { type_: Box<str> }, // From --enable-error-code unused-awaitable
     MissingTypeParameters { name: Box<str> }, // From --disallow-any-generics
     UntypedDecorator { name: Box<str> }, // From --disallow-untyped-decorators
     UntypedFunctionAfterDecorator { got: Option<Box<str>> }, // From --disallow-any-decorated
@@ -485,6 +487,8 @@ impl IssueKind {
             | FunctionMissingParamAnnotations => "no-untyped-def",
             DoesNotReturnAValue(_) => "func-returns-value",
             CallToUntypedFunction { .. } => "no-untyped-call",
+            CoroutineValueMustBeUsed { type_ } => "unused-coroutine",
+            AwaitableValueMustBeUsed { type_ } => "unused-awaitable",
             AnnotationInUntypedFunction => "annotation-unchecked",
             AwaitOutsideFunction => "top-level-await",
             AwaitOutsideCoroutine => "await-not-async",
@@ -1024,6 +1028,14 @@ impl<'db> Diagnostic<'db> {
             CallToUntypedFunction{name} => format!(
                 "Call to untyped function \"{name}\" in typed context"
             ),
+            CoroutineValueMustBeUsed { type_ } => {
+                additional_notes.push("Are you missing an await?".to_string());
+                format!(r#"Value of type "{type_}" must be used"#)
+            }
+            AwaitableValueMustBeUsed { type_ } => {
+                additional_notes.push("Are you missing an await?".to_string());
+                format!(r#"Value of type "{type_}" must be used"#)
+            }
             MissingTypeParameters { name } => format!(
                 r#"Missing type parameters for generic type "{name}""#
             ),

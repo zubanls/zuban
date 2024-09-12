@@ -311,17 +311,6 @@ testPermissiveAttributeOverride1
 testRedefineFunctionDefinedAsVariableInitializedToNone
 testRedefineNestedFunctionDefinedAsVariableInitializedToNone
 
-# Redefinition (Name "X" already defined on line X) for 
-testNewAnalyzerIdentityAssignment1
-testNewAnalyzerIdentityAssignment2
-testNewAnalyzerIdentityAssignment3
-
-# "Value of type "A" must be used"
-# "Value of type "Coroutine[Any, Any, None]" must be used"
-# "Are you missing an await?"
-# --enable-error-code unused-awaitable
-testUnusedAwaitable
-testForwardRefToBadAsyncShouldNotCrash_newsemanal
 # async await when is a generator comprehension becoming an asyncgenerator?
 testAsyncGeneratorExpressionAwait
 testAsyncForComprehension
@@ -397,6 +386,10 @@ testOverrideClassVarManyBases
 testMultipleInheritance_NestedVariableOverriddenWithIncompatibleType1
 testGenericMultipleOverrideReplace
 testUseSupertypeAsInferenceContextConflict
+# Redefinitions of star imports and builtins
+testNewAnalyzerIdentityAssignment1
+testNewAnalyzerIdentityAssignment2
+testNewAnalyzerIdentityAssignment3
 
 # "Cannot assign multiple types to name "b" without an explicit "Type[...]" annotation"
 testAliasesInClassBodyNormalVsSubscripted
@@ -449,6 +442,13 @@ testNarrowedVariableInNestedFunctionMore1
 
 # Cannot assign to a method when assigning `self.method = lambda: None`
 testSlotsAssignmentWithMethodReassign
+
+# "Value of type "A" must be used"
+# "Value of type "Coroutine[Any, Any, None]" must be used"
+# "Are you missing an await?"
+# --enable-error-code unused-awaitable
+testUnusedAwaitable
+testForwardRefToBadAsyncShouldNotCrash_newsemanal
 
 # "Cannot determine type of" probably fine
 testThreePassesRequired
