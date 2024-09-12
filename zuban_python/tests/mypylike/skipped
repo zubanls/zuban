@@ -311,9 +311,6 @@ testPermissiveAttributeOverride1
 testRedefineFunctionDefinedAsVariableInitializedToNone
 testRedefineNestedFunctionDefinedAsVariableInitializedToNone
 
-# Crazy types.coroutine types
-testFullCoroutineMatrix
-
 # match statement
 testValuePattern
 testCapturePattern
@@ -330,12 +327,8 @@ testMatchUndefinedClassPattern
 testNoneBindingWildcardPattern
 testNoneBindingStarredWildcardPattern
 
-# The type "Type[type]" is not generic and not indexable
-testTypeApplicationCrash
 # `class type` stuff
 testObfuscatedTypeConstructorReturnsTypeType
-testOtherTypeConstructorsSucceed
-testTypeEquivalentTypeAny2
 # Type[Any] is object
 testSimplifyingUnionWithTypeTypes2
 
@@ -442,6 +435,8 @@ testSlotsAssignmentWithMethodReassign
 # --enable-error-code unused-awaitable
 testUnusedAwaitable
 testForwardRefToBadAsyncShouldNotCrash_newsemanal
+# Crazy types.coroutine types/async await matrix
+testFullCoroutineMatrix
 
 # "Cannot determine type of" probably fine
 testThreePassesRequired

@@ -25,7 +25,8 @@ pub(crate) fn execute_type<'db>(
     let mut iterator = args.iter();
     let first = iterator.next();
     if let Some(x) = iterator.next() {
-        todo!()
+        // TODO do type checking!
+        Inferred::from_type(i_s.db.python_state.bare_type_type())
     } else if let Some(first) = first {
         let InferredArg::Inferred(inf) = first.infer(i_s, &mut ResultContext::Unknown) else {
             todo!()
