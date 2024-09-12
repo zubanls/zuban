@@ -1754,7 +1754,7 @@ impl<'db> Comprehension<'db> {
     }
 
     pub fn is_generator(&self) -> bool {
-        return self.node.next_leaf().unwrap().as_code() == ")";
+        return self.node.previous_leaf().unwrap().as_code() == "(";
     }
 }
 

@@ -313,9 +313,6 @@ testRedefineNestedFunctionDefinedAsVariableInitializedToNone
 
 # Crazy types.coroutine types
 testFullCoroutineMatrix
-# ""async for" outside async function"
-testAsyncForOutsideCoroutine
-testAsyncWithOutsideCoroutine
 
 # match statement
 testValuePattern

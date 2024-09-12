@@ -452,12 +452,18 @@ impl<'db> NameBinder<'db> {
                         if !matches!(self.kind, NameBinderKind::Function { is_async: true }) {
                             self.add_issue(
                                 async_stmt.index(),
-                                IssueKind::AsyncForOutsideAsyncFunction,
+                                IssueKind::AsyncOutsideAsyncFunction { keyword: "for" },
                             );
                         }
                         self.index_for_stmt(for_stmt, ordered)
                     }
                     AsyncStmtContent::WithStmt(with_stmt) => {
+                        if !matches!(self.kind, NameBinderKind::Function { is_async: true }) {
+                            self.add_issue(
+                                async_stmt.index(),
+                                IssueKind::AsyncOutsideAsyncFunction { keyword: "with" },
+                            );
+                        }
                         self.index_with_stmt(with_stmt, ordered)
                     }
                 },
@@ -917,11 +923,17 @@ impl<'db> NameBinder<'db> {
                     if comp.is_generator() {
                         self.unresolved_nodes.push(Unresolved::Comprehension(comp));
                     } else {
+                        self.add_issue_for_async_comprehension_not_in_async_func(
+                            comp.unpack().1.iter(),
+                        );
                         self.index_comprehension(comp, ordered);
                     }
                 }
                 InterestingNode::DictComprehension(comp) => {
                     self.following_nodes_need_flow_analysis = true;
+                    self.add_issue_for_async_comprehension_not_in_async_func(
+                        comp.unpack().1.iter(),
+                    );
                     self.index_dict_comprehension(comp, ordered);
                 }
                 InterestingNode::Ternary(ternary) => {
@@ -947,6 +959,30 @@ impl<'db> NameBinder<'db> {
             Point::new_node_analysis_with_node_index(Locality::File, self.latest_return_or_yield),
         );
         self.latest_return_or_yield = keyword_index;
+    }
+
+    fn add_issue_for_async_comprehension_not_in_async_func(
+        &self,
+        for_if_clauses: ForIfClauseIterator,
+    ) {
+        for async_for_clause in for_if_clauses.filter(|c| matches!(c, ForIfClause::Async(_))) {
+            if !self.is_async_func_scope() {
+                self.add_issue(
+                    async_for_clause.index(),
+                    IssueKind::AsyncOutsideAsyncFunction { keyword: "for" },
+                );
+            }
+        }
+    }
+
+    fn is_async_func_scope(&self) -> bool {
+        match self.kind {
+            NameBinderKind::Function { is_async } => is_async,
+            NameBinderKind::Comprehension => {
+                unsafe { &*self.parent.unwrap() }.is_async_func_scope()
+            }
+            _ => false,
+        }
     }
 
     fn index_comprehension(&mut self, comp: Comprehension<'db>, ordered: bool) {
