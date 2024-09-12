@@ -448,7 +448,15 @@ impl<'db> NameBinder<'db> {
                             true,
                         );
                     }
-                    AsyncStmtContent::ForStmt(for_stmt) => self.index_for_stmt(for_stmt, ordered),
+                    AsyncStmtContent::ForStmt(for_stmt) => {
+                        if !matches!(self.kind, NameBinderKind::Function { is_async: true }) {
+                            self.add_issue(
+                                async_stmt.index(),
+                                IssueKind::AsyncForOutsideAsyncFunction,
+                            );
+                        }
+                        self.index_for_stmt(for_stmt, ordered)
+                    }
                     AsyncStmtContent::WithStmt(with_stmt) => {
                         self.index_with_stmt(with_stmt, ordered)
                     }

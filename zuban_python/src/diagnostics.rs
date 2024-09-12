@@ -106,6 +106,7 @@ pub(crate) enum IssueKind {
     BreakOutsideLoop,
     ContinueOutsideLoop,
     StmtOutsideFunction { keyword: &'static str },
+    AsyncForOutsideAsyncFunction,
     YieldOrYieldFromInsideComprehension { keyword: &'static str },
     AwaitOutsideFunction,
     AwaitOutsideCoroutine,
@@ -1110,6 +1111,7 @@ impl<'db> Diagnostic<'db> {
             BreakOutsideLoop => "\"break\" outside loop".to_string(),
             ContinueOutsideLoop => "\"continue\" outside loop".to_string(),
             StmtOutsideFunction{keyword} => format!("{keyword:?} outside function"),
+            AsyncForOutsideAsyncFunction => r#""async for" outside function"#.to_string(),
             YieldOrYieldFromInsideComprehension { keyword } => format!(
                 "{keyword:?} inside comprehension or generator expression"
             ),
