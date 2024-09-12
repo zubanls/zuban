@@ -2630,7 +2630,9 @@ pub fn specific_to_type<'db>(
         Specific::TypingTypeVarClass => todo!(),
         Specific::TypingTypeVarTupleClass => todo!(),
         Specific::TypingParamSpecClass => todo!(),
-        Specific::TypingType => Cow::Owned(i_s.db.python_state.bare_type_type()),
+        Specific::TypingType => {
+            Cow::Owned(Type::Type(Rc::new(i_s.db.python_state.bare_type_type())))
+        }
         Specific::TypingTuple => Cow::Borrowed(&i_s.db.python_state.type_of_arbitrary_tuple),
         Specific::CollectionsNamedTuple => todo!(),
         Specific::TypingProtocol
