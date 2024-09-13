@@ -525,6 +525,13 @@ impl Type {
         }
     }
 
+    pub fn is_object(&self, db: &Database) -> bool {
+        match self {
+            Self::Class(c) => c.link == db.python_state.object_link(),
+            _ => false,
+        }
+    }
+
     pub fn remove_none(&self, db: &Database) -> Cow<Type> {
         if self.is_none_or_none_in_union(db) {
             Cow::Owned(Type::from_union_entries(

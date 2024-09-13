@@ -138,6 +138,9 @@ fn merge_simplified_union_type(
     let mut had_true = false;
     let mut had_false = false;
     'outer: for additional in types {
+        if additional.type_.is_object(i_s.db) {
+            return MergeSimplifiedUnionResult::Done(additional.type_);
+        }
         if additional.type_.has_any(i_s) {
             if !new_types
                 .iter()

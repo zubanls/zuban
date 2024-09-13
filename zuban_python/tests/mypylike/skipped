@@ -327,9 +327,6 @@ testMatchUndefinedClassPattern
 testNoneBindingWildcardPattern
 testNoneBindingStarredWildcardPattern
 
-# Type[Any] is object
-testSimplifyingUnionWithTypeTypes2
-
 # Never not rewritten to Any for "Need type annotation for "X""
 testNewAnalyzerLessErrorsNeedAnnotationNested
 testNewAnalyzerLessErrorsNeedAnnotation
