@@ -293,69 +293,68 @@ impl<'db: 'slf, 'slf> Inferred {
     }
 
     pub fn maybe_new_partial(&self, i_s: &InferenceState, from: NodeRef) -> Option<Inferred> {
-        self.maybe_new_partial_point(i_s, from, false)
-            .map(|p| Inferred {
-                state: InferredState::UnsavedSpecific(p),
-            })
-    }
-
-    pub fn maybe_new_partial_point(
-        &self,
-        i_s: &InferenceState,
-        from: NodeRef,
-        nullable: bool,
-    ) -> Option<Point> {
         if self.maybe_saved_specific(i_s.db) == Some(Specific::None) {
-            return Some(Point::new_specific(Specific::PartialNone, Locality::Todo));
+            return Some(Inferred::new_unsaved_specific(Specific::PartialNone));
         }
         let Some(ComplexPoint::TypeInstance(t)) = self.maybe_complex_point(i_s.db) else {
             return None;
         };
-        let check_for_partial = || {
-            let Type::Class(GenericClass {
-                link,
-                generics: ClassGenerics::List(generics),
-            }) = t
-            else {
-                return None;
-            };
-            let specific = if *link == i_s.db.python_state.list_node_ref().as_link() {
-                Specific::PartialList
-            } else if *link == i_s.db.python_state.dict_node_ref().as_link() {
-                Specific::PartialDict
-            } else if *link == i_s.db.python_state.set_node_ref().as_link() {
-                Specific::PartialSet
-            } else {
-                return None;
-            };
-            for generic in generics.iter() {
-                if !matches!(
-                    generic,
-                    GenericItem::TypeArg(Type::Never(NeverCause::Inference))
-                ) {
-                    return None;
+        self.maybe_new_partial_point_internal(i_s)
+            .map(|p| Inferred {
+                state: InferredState::UnsavedSpecific(p),
+            })
+            .or_else(|| {
+                if t.has_never_from_inference(i_s.db) {
+                    from.add_issue(
+                        i_s,
+                        IssueKind::NeedTypeAnnotation {
+                            for_: from.as_code().into(),
+                            hint: None,
+                        },
+                    )
                 }
-            }
-            let mut p = Point::new_specific(specific, Locality::Todo);
-            if nullable {
-                let mut flags = p.partial_flags();
-                flags.nullable = true;
-                p = p.set_partial_flags(flags);
-            }
-            Some(p)
-        };
-        check_for_partial().or_else(|| {
-            if t.has_never_from_inference(i_s.db) {
-                from.add_issue(
-                    i_s,
-                    IssueKind::NeedTypeAnnotation {
-                        for_: from.as_code().into(),
-                        hint: None,
-                    },
-                )
-            }
-            None
+                None
+            })
+    }
+
+    pub fn maybe_new_nullable_partial_point(&self, i_s: &InferenceState) -> Option<Point> {
+        self.maybe_new_partial_point_internal(i_s).map(|mut p| {
+            let mut flags = p.partial_flags();
+            flags.nullable = true;
+            p = p.set_partial_flags(flags);
+            p
         })
+    }
+
+    pub fn maybe_new_partial_point_internal(&self, i_s: &InferenceState) -> Option<Point> {
+        let Some(ComplexPoint::TypeInstance(t)) = self.maybe_complex_point(i_s.db) else {
+            return None;
+        };
+        let Type::Class(GenericClass {
+            link,
+            generics: ClassGenerics::List(generics),
+        }) = t
+        else {
+            return None;
+        };
+        let specific = if *link == i_s.db.python_state.list_node_ref().as_link() {
+            Specific::PartialList
+        } else if *link == i_s.db.python_state.dict_node_ref().as_link() {
+            Specific::PartialDict
+        } else if *link == i_s.db.python_state.set_node_ref().as_link() {
+            Specific::PartialSet
+        } else {
+            return None;
+        };
+        for generic in generics.iter() {
+            if !matches!(
+                generic,
+                GenericItem::TypeArg(Type::Never(NeverCause::Inference))
+            ) {
+                return None;
+            }
+        }
+        Some(Point::new_specific(specific, Locality::Todo))
     }
 
     pub fn resolve_untyped_function_return(self, i_s: &InferenceState) -> Self {

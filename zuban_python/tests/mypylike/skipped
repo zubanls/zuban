@@ -276,7 +276,6 @@ testInferSetTypeFromInplaceOr
 # explicit any context should lead to Dict[Any, Any]? might be ok?
 testGenericDictWithOverload
 # partial list nullable
-testNoCrashOnPartialVariable2
 testNoCrashOnPartialMember
 # partial for `x: Final = []`
 testLiteralFinalErasureInMutableDatastructures2

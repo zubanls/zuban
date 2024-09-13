@@ -1373,11 +1373,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 };
                 let is_done = match point.maybe_specific() {
                     Some(Specific::PartialNone) => {
-                        if let Some(p) = value.maybe_new_partial_point(
-                            i_s,
-                            NodeRef::new(self.file, current_index),
-                            true,
-                        ) {
+                        if let Some(p) = value.maybe_new_nullable_partial_point(i_s) {
                             saved_node_ref.set_point(p);
                             return;
                         }
