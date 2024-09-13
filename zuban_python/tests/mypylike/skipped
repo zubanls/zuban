@@ -73,6 +73,8 @@ testLambdaDeferredCrash
 # NewType generics resolving
 new_type_with_class_generics
 new_type_with_class_generics2
+# import recursive usages and therefore "Cannot determine type of "Node""
+testTreeShadowingViaParentPackage
 
 # param spec complex nested transitive tests
 testParamSpecNestedApplyPosVsNamed
@@ -121,6 +123,7 @@ testOrOperationInferredFromContext
 testInWithInvalidArgs
 # [''] + [1] does not generate an error
 testAssignmentSubtypes
+testRedundantExprTruthiness
 # union order issues
 testNarrowingEqualityDisabledForCustomEquality
 # bool literal type matching
@@ -254,32 +257,25 @@ testMultipleAssignmentAndGenericSubtyping
 
 # self.x = None in class is not partial anymore after finishing scope
 testAttributePartiallyInitializedToNoneWithMissingAnnotation
-# partial types with untyped defs
-testCheckUntypedDefsSelf2
+testInferAttributeInitializedToNoneAndAssignedClassBody
 # Make x an Optional if else contains `x = None`
 testOptionalBackwards1
 testOptionalBackwards2
 testOptionalBackwards4
 # Never for isinstance leads to other side being unreachable
 testPartialAttributeNoneTypeStrictOptional
-# name regressions
-testTreeShadowingViaParentPackage
 # self flow analysis regressions
 testHasAttrDeferred
 # regressions
-testRedundantExprTruthiness
 testTypingSelfAttrOldVsNewStyle
 testStripNewAnalyzer
-# list context is Never and should be something else
-testContextForAttributeDeclaredInInit
-# ????
+# Enum weird case
 testEnumWithPartialTypes
+# Walrus can be a partial as well
 testWalrusPartialTypes
-# No "Need type annotation for "X"", because untyped update exists
-testInferDictInitializedToEmptyAndUpdatedFromMethodUnannotated
 # needs error because only reassignments with other partial
 testInferenceWithUninhabitedType
-# operator narrowing
+# partial reassignments
 testInferListTypeFromInplaceAdd
 testInferSetTypeFromInplaceOr
 # explicit any context should lead to Dict[Any, Any]? might be ok?
@@ -288,9 +284,6 @@ testGenericDictWithOverload
 testInferOrderedDictInitializedToEmpty
 # defaultdict
 testPartialDefaultDict*
-# self attributes
-testInferAttributeInitializedToNoneAndAssignedClassBody
-testSerializeDummyType
 # partial list nullable
 testPartiallyInitializedToNoneAndThenToPartialList
 testPartiallyInitializedToNoneAndThenReadPartialList
@@ -303,8 +296,6 @@ testLiteralFinalErasureInMutableDatastructures2
 testIncrementalClassVar
 # error formatting?
 testMultipassAndPartialTypes4
-# --allow-untyped-globals
-testPermissiveAttributeOverride1
 # Mypy treats a None partial that is then assigned to a function as the function?? Wrong?
 testRedefineFunctionDefinedAsVariableInitializedToNone
 testRedefineNestedFunctionDefinedAsVariableInitializedToNone
@@ -418,6 +409,10 @@ testIsinstanceNarrowAny
 testTypeAliasWithNewUnionIsInstance
 # nonlocal
 testNarrowedVariableInNestedFunctionMore1
+
+# No "Need type annotation for "X"", because untyped update exists
+testInferDictInitializedToEmptyAndUpdatedFromMethodUnannotated
+testCheckUntypedDefsSelf2
 
 # Cannot assign to a method when assigning `self.method = lambda: None`
 testSlotsAssignmentWithMethodReassign
@@ -1078,6 +1073,8 @@ testTruthyIterable
 testDisableEnableErrorCodesIncremental
 # flags: --enable-error-code=mutable-override: "Covariant override of a mutable attribute (base class "C" defined the type as "float", expressi on has type "int")"
 testCovariantMutableOverride
+# flags: --allow-untyped-globals
+testPermissiveAttributeOverride1
 
 # "Method cannot have explicit self annotation and Self type"
 testTypingSelfConflict
@@ -1322,6 +1319,7 @@ testDescriptorAccessForUnionOfTypesWithNoStrictOptional
 testMeetOfIncompatibleProtocols
 testIssubclassWithMetaclasses
 testImportAndAssignToModule
+testSerializeDummyType
 
 # --untyped-calls-exclude=bar.A
 testDisallowUntypedCallsAllowListFlags
