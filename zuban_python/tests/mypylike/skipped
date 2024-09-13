@@ -266,9 +266,8 @@ testOptionalBackwards4
 testPartialAttributeNoneTypeStrictOptional
 # self flow analysis regressions
 testHasAttrDeferred
-# regressions
+# self.x = self where self: T
 testTypingSelfAttrOldVsNewStyle
-testStripNewAnalyzer
 # Enum weird case
 testEnumWithPartialTypes
 # needs error because only reassignments with other partial
@@ -278,10 +277,6 @@ testInferListTypeFromInplaceAdd
 testInferSetTypeFromInplaceOr
 # explicit any context should lead to Dict[Any, Any]? might be ok?
 testGenericDictWithOverload
-# OrderedDict
-testInferOrderedDictInitializedToEmpty
-# defaultdict
-testPartialDefaultDict*
 # partial list nullable
 testPartiallyInitializedToNoneAndThenToPartialList
 testPartiallyInitializedToNoneAndThenReadPartialList
@@ -392,7 +387,11 @@ testTypeAliasWithNewUnionIsInstance
 # nonlocal
 testNarrowedVariableInNestedFunctionMore1
 
-# No "Need type annotation for "X"", because untyped update exists
+# partials: OrderedDict
+testInferOrderedDictInitializedToEmpty
+# partials: defaultdict
+testPartialDefaultDict*
+# partials: No "Need type annotation for "X"", because untyped update exists
 testInferDictInitializedToEmptyAndUpdatedFromMethodUnannotated
 testCheckUntypedDefsSelf2
 

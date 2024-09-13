@@ -455,20 +455,39 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         if matches!(t.as_ref(), Type::Self_) {
                             // For now giving Self a context is hard, because if we do that we have
                             // a lot of problems with non-finished partial lists for example.
-                            continue;
+                            let Some(cls) = self.i_s.current_class() else {
+                                continue; // TODO this should always be defined.
+                            };
+                            cls.instance()
+                                .lookup(
+                                    self.i_s,
+                                    name_def.as_code(),
+                                    InstanceLookupOptions::new(&|_| ())
+                                        .without_object()
+                                        .with_no_check_dunder_getattr()
+                                        .with_disallowed_lazy_bound_method(),
+                                )
+                                .lookup
+                        } else {
+                            t.lookup(
+                                self.i_s,
+                                self.file_index,
+                                name_def.as_code(),
+                                LookupKind::Normal,
+                                &mut ResultContext::Unknown,
+                                // Errors don't matter, we just want a potential context.
+                                &|_| (),
+                                &|_| (),
+                            )
                         }
-                        t.lookup(
-                            self.i_s,
-                            self.file_index,
-                            name_def.as_code(),
-                            LookupKind::Normal,
-                            &mut ResultContext::Unknown,
-                            // Errors don't matter, we just want a potential context.
-                            &|_| (),
-                            &|_| (),
-                        )
                     };
                     if let Some(result) = lookup.into_maybe_inferred() {
+                        if result
+                            .maybe_saved_specific(self.i_s.db)
+                            .is_some_and(|s| s.is_partial_container())
+                        {
+                            continue;
+                        }
                         return Some(result);
                     }
                 }
