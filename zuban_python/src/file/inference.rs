@@ -1344,8 +1344,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 return;
             }
             let original_inf = self.infer_name_of_definition_by_index(first_index);
-            if let Some(maybe_saved_node_ref) = original_inf.maybe_saved_node_ref(i_s.db) {
-                let point = maybe_saved_node_ref.point();
+            if let Some(saved_node_ref) = original_inf.maybe_saved_node_ref(i_s.db) {
+                let point = saved_node_ref.point();
                 let maybe_overwrite_partial = |class_node_ref, type_when_any: &Type| {
                     let mut partial_flags = point.partial_flags();
                     if partial_flags.finished {
@@ -1356,9 +1356,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         .is_some_and(|c| c.node_ref == class_node_ref)
                     {
                         if t.has_never_from_inference(i_s.db) {
-                            maybe_saved_node_ref.finish_partial_with_annotation_needed(i_s)
+                            saved_node_ref.finish_partial_with_annotation_needed(i_s)
                         } else {
-                            maybe_saved_node_ref.insert_type(value.as_type(i_s))
+                            saved_node_ref.insert_type(value.as_type(i_s))
                         }
                         return true;
                     }
@@ -1366,13 +1366,21 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         partial_flags.finished = true;
                         // There should never be an error, because we assigned Any.
                         partial_flags.reported_error = true;
-                        maybe_saved_node_ref.set_point(point.set_partial_flags(partial_flags));
+                        saved_node_ref.set_point(point.set_partial_flags(partial_flags));
                         return true;
                     }
                     false
                 };
                 let is_done = match point.maybe_specific() {
                     Some(Specific::PartialNone) => {
+                        if let Some(p) = value.maybe_new_partial_point(
+                            i_s,
+                            NodeRef::new(self.file, current_index),
+                            true,
+                        ) {
+                            saved_node_ref.set_point(p);
+                            return;
+                        }
                         let value_t = value.as_cow_type(i_s);
                         if !matches!(value_t.as_ref(), Type::None) {
                             if point.partial_flags().finished {
@@ -1388,8 +1396,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 }
                                 return;
                             }
-                            maybe_saved_node_ref
-                                .insert_type(value_t.simplified_union(i_s, &Type::None));
+                            saved_node_ref.insert_type(value_t.simplified_union(i_s, &Type::None));
                             narrow(PointLink::new(self.file_index, first_index), &value_t);
                         }
                         return;

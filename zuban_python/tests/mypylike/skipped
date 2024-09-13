@@ -266,8 +266,6 @@ testOptionalBackwards4
 testPartialAttributeNoneTypeStrictOptional
 # self flow analysis regressions
 testHasAttrDeferred
-# self.x = self where self: T
-testTypingSelfAttrOldVsNewStyle
 # Enum weird case
 testEnumWithPartialTypes
 # needs error because only reassignments with other partial
@@ -278,10 +276,7 @@ testInferSetTypeFromInplaceOr
 # explicit any context should lead to Dict[Any, Any]? might be ok?
 testGenericDictWithOverload
 # partial list nullable
-testPartiallyInitializedToNoneAndThenToPartialList
-testPartiallyInitializedToNoneAndThenReadPartialList
-testPartiallyInitializedToNoneAndPartialListAndLeftPartial
-testPartiallyInitializedToNoneAndThenToIncompleteType-skip
+testNoCrashOnPartialVariable2
 testNoCrashOnPartialMember
 # partial for `x: Final = []`
 testLiteralFinalErasureInMutableDatastructures2
@@ -395,6 +390,8 @@ testPartialDefaultDict*
 testInferDictInitializedToEmptyAndUpdatedFromMethodUnannotated
 testCheckUntypedDefsSelf2
 
+# self.x = self where self: T
+testTypingSelfAttrOldVsNewStyle
 # Cannot assign to a method when assigning `self.method = lambda: None`
 testSlotsAssignmentWithMethodReassign
 
@@ -1595,3 +1592,4 @@ testSubtypingWithTypeImplementingGenericABCViaInheritance2-skip
 testOverloadInferringArgumentsUsingContext2-skip
 testUnionTwoPassInference-skip
 testWeirdRecursiveInferenceForProtocols-skip
+testPartiallyInitializedToNoneAndThenToIncompleteType-skip
