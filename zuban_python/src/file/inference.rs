@@ -1265,6 +1265,84 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     narrow(first_name_link, &declaration_t)
                 }
             };
+        let check_assign_including_partials = |first_index, original: &Inferred, base_class| {
+            if let Some(saved_node_ref) = original.maybe_saved_node_ref(i_s.db) {
+                let point = saved_node_ref.point();
+                let maybe_overwrite_partial = |class_node_ref, type_when_any: &Type| {
+                    let mut partial_flags = point.partial_flags();
+                    if partial_flags.finished {
+                        return false;
+                    }
+                    let t = value.as_cow_type(i_s);
+                    if t.maybe_class(i_s.db)
+                        .is_some_and(|c| c.node_ref == class_node_ref)
+                    {
+                        if t.has_never_from_inference(i_s.db) {
+                            saved_node_ref.finish_partial_with_annotation_needed(i_s)
+                        } else {
+                            saved_node_ref.insert_type(value.as_type(i_s))
+                        }
+                        return true;
+                    }
+                    if t.is_any() {
+                        partial_flags.finished = true;
+                        // There should never be an error, because we assigned Any.
+                        partial_flags.reported_error = true;
+                        saved_node_ref.set_point(point.set_partial_flags(partial_flags));
+                        return true;
+                    }
+                    false
+                };
+                let is_done = match point.maybe_specific() {
+                    Some(Specific::PartialNone) => {
+                        if let Some(p) = value.maybe_new_nullable_partial_point(i_s) {
+                            saved_node_ref.set_point(p);
+                            return;
+                        }
+                        let value_t = value.as_cow_type(i_s);
+                        if !matches!(value_t.as_ref(), Type::None) {
+                            if point.partial_flags().finished {
+                                // For --local-partial-types an error was already added
+                                if !self.flags().local_partial_types {
+                                    self.check_assignment_type(
+                                        value,
+                                        &Type::None,
+                                        from,
+                                        None,
+                                        assign_kind,
+                                    );
+                                }
+                                return;
+                            }
+                            saved_node_ref.insert_type(value_t.simplified_union(i_s, &Type::None));
+                            narrow(PointLink::new(self.file_index, first_index), &value_t);
+                        }
+                        return;
+                    }
+                    Some(Specific::PartialList) => maybe_overwrite_partial(
+                        i_s.db.python_state.list_node_ref(),
+                        &i_s.db.python_state.list_of_any,
+                    ),
+                    Some(Specific::PartialDict) => maybe_overwrite_partial(
+                        i_s.db.python_state.dict_node_ref(),
+                        &i_s.db.python_state.dict_of_any,
+                    ),
+                    Some(Specific::PartialSet) => maybe_overwrite_partial(
+                        i_s.db.python_state.set_node_ref(),
+                        &i_s.db.python_state.set_of_any,
+                    ),
+                    _ => false,
+                };
+                if is_done {
+                    return;
+                }
+            }
+            check_assign_to_known_definition(
+                PointLink::new(self.file_index, first_index),
+                original,
+                base_class,
+            )
+        };
         if let Some(first_index) = first_defined_name_of_multi_def(self.file, current_index) {
             let add_redefinition_issue = || {
                 let name_def_ref = NodeRef::new(self.file, current_index);
@@ -1344,82 +1422,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 return;
             }
             let original_inf = self.infer_name_of_definition_by_index(first_index);
-            if let Some(saved_node_ref) = original_inf.maybe_saved_node_ref(i_s.db) {
-                let point = saved_node_ref.point();
-                let maybe_overwrite_partial = |class_node_ref, type_when_any: &Type| {
-                    let mut partial_flags = point.partial_flags();
-                    if partial_flags.finished {
-                        return false;
-                    }
-                    let t = value.as_cow_type(i_s);
-                    if t.maybe_class(i_s.db)
-                        .is_some_and(|c| c.node_ref == class_node_ref)
-                    {
-                        if t.has_never_from_inference(i_s.db) {
-                            saved_node_ref.finish_partial_with_annotation_needed(i_s)
-                        } else {
-                            saved_node_ref.insert_type(value.as_type(i_s))
-                        }
-                        return true;
-                    }
-                    if t.is_any() {
-                        partial_flags.finished = true;
-                        // There should never be an error, because we assigned Any.
-                        partial_flags.reported_error = true;
-                        saved_node_ref.set_point(point.set_partial_flags(partial_flags));
-                        return true;
-                    }
-                    false
-                };
-                let is_done = match point.maybe_specific() {
-                    Some(Specific::PartialNone) => {
-                        if let Some(p) = value.maybe_new_nullable_partial_point(i_s) {
-                            saved_node_ref.set_point(p);
-                            return;
-                        }
-                        let value_t = value.as_cow_type(i_s);
-                        if !matches!(value_t.as_ref(), Type::None) {
-                            if point.partial_flags().finished {
-                                // For --local-partial-types an error was already added
-                                if !self.flags().local_partial_types {
-                                    self.check_assignment_type(
-                                        value,
-                                        &Type::None,
-                                        from,
-                                        None,
-                                        assign_kind,
-                                    );
-                                }
-                                return;
-                            }
-                            saved_node_ref.insert_type(value_t.simplified_union(i_s, &Type::None));
-                            narrow(PointLink::new(self.file_index, first_index), &value_t);
-                        }
-                        return;
-                    }
-                    Some(Specific::PartialList) => maybe_overwrite_partial(
-                        i_s.db.python_state.list_node_ref(),
-                        &i_s.db.python_state.list_of_any,
-                    ),
-                    Some(Specific::PartialDict) => maybe_overwrite_partial(
-                        i_s.db.python_state.dict_node_ref(),
-                        &i_s.db.python_state.dict_of_any,
-                    ),
-                    Some(Specific::PartialSet) => maybe_overwrite_partial(
-                        i_s.db.python_state.set_node_ref(),
-                        &i_s.db.python_state.set_of_any,
-                    ),
-                    _ => false,
-                };
-                if is_done {
-                    return;
-                }
-            }
-            check_assign_to_known_definition(
-                PointLink::new(self.file_index, first_index),
-                &original_inf,
-                None,
-            )
+            check_assign_including_partials(first_index, &original_inf, None)
         } else {
             if let Some(lookup_in_bases) = lookup_self_attribute_in_bases {
                 let lookup_details = lookup_in_bases();
@@ -1504,8 +1507,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 },
                             );
                         }
-                        check_assign_to_known_definition(
-                            PointLink::new(self.file_index, current_index),
+                        check_assign_including_partials(
+                            current_index,
                             &inf,
                             Some(lookup_details.class),
                         );
