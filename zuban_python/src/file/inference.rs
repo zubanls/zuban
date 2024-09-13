@@ -1530,9 +1530,6 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 save(name_def.index(), &original);
                 return;
             }
-            if let Some(class) = i_s.in_class_scope() {
-                // TODO check assignments to base classes
-            }
             if assign_kind == AssignKind::Normal {
                 if let Some(partial) =
                     value.maybe_new_partial(i_s, NodeRef::new(self.file, current_index))
