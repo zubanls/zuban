@@ -63,7 +63,7 @@ enum InferredState {
     Saved(PointLink),
     UnsavedFileReference(FileIndex),
     UnsavedComplex(ComplexPoint),
-    UnsavedSpecific(Point),
+    UnsavedSpecific(Specific),
     BoundMethod {
         instance: Type,
         mro_index: MroIndex,
@@ -132,7 +132,7 @@ impl<'db: 'slf, 'slf> Inferred {
 
     fn new_unsaved_specific(specific: Specific) -> Self {
         Self {
-            state: InferredState::UnsavedSpecific(Point::new_specific(specific, Locality::Todo)),
+            state: InferredState::UnsavedSpecific(specific),
         }
     }
 
@@ -173,12 +173,12 @@ impl<'db: 'slf, 'slf> Inferred {
         match &self.state {
             InferredState::Saved(definition) => saved_as_type(i_s, *definition),
             InferredState::UnsavedComplex(complex) => type_of_complex(i_s, complex, None),
-            InferredState::UnsavedSpecific(p) => match p.specific() {
+            InferredState::UnsavedSpecific(specific) => match specific {
                 Specific::None => Cow::Borrowed(&Type::None),
                 Specific::Cycle | Specific::ModuleNotFound => {
                     Cow::Borrowed(&Type::Any(AnyCause::Todo))
                 }
-                _ => unreachable!("{:?}", p.specific()),
+                _ => unreachable!("{:?}", specific),
             },
             InferredState::UnsavedFileReference(file_index) => {
                 Cow::Owned(Type::Module(*file_index))
@@ -299,9 +299,9 @@ impl<'db: 'slf, 'slf> Inferred {
         let Some(ComplexPoint::TypeInstance(t)) = self.maybe_complex_point(i_s.db) else {
             return None;
         };
-        self.maybe_new_partial_point_internal(i_s)
-            .map(|p| Inferred {
-                state: InferredState::UnsavedSpecific(p),
+        self.maybe_new_partial_point_internal(i_s, t)
+            .map(|specific| Inferred {
+                state: InferredState::UnsavedSpecific(specific),
             })
             .or_else(|| {
                 if t.has_never_from_inference(i_s.db) {
@@ -318,18 +318,24 @@ impl<'db: 'slf, 'slf> Inferred {
     }
 
     pub fn maybe_new_nullable_partial_point(&self, i_s: &InferenceState) -> Option<Point> {
-        self.maybe_new_partial_point_internal(i_s).map(|mut p| {
-            let mut flags = p.partial_flags();
-            flags.nullable = true;
-            p = p.set_partial_flags(flags);
-            p
-        })
-    }
-
-    pub fn maybe_new_partial_point_internal(&self, i_s: &InferenceState) -> Option<Point> {
         let Some(ComplexPoint::TypeInstance(t)) = self.maybe_complex_point(i_s.db) else {
             return None;
         };
+        self.maybe_new_partial_point_internal(i_s, t)
+            .map(|specific| {
+                let mut p = Point::new_specific(specific, Locality::Todo);
+                let mut flags = p.partial_flags();
+                flags.nullable = true;
+                p = p.set_partial_flags(flags);
+                p
+            })
+    }
+
+    pub fn maybe_new_partial_point_internal(
+        &self,
+        i_s: &InferenceState,
+        t: &Type,
+    ) -> Option<Specific> {
         let Type::Class(GenericClass {
             link,
             generics: ClassGenerics::List(generics),
@@ -354,7 +360,7 @@ impl<'db: 'slf, 'slf> Inferred {
                 return None;
             }
         }
-        Some(Point::new_specific(specific, Locality::Todo))
+        Some(specific)
     }
 
     pub fn resolve_untyped_function_return(self, i_s: &InferenceState) -> Self {
@@ -653,8 +659,7 @@ impl<'db: 'slf, 'slf> Inferred {
                     return Self::new_saved(file, index);
                 }
             },
-            InferredState::UnsavedSpecific(p) => {
-                let mut specific = p.specific();
+            InferredState::UnsavedSpecific(mut specific) => {
                 if specific == Specific::Cycle {
                     let r = NodeRef::new(file, index);
                     r.add_issue(
@@ -1148,8 +1153,8 @@ impl<'db: 'slf, 'slf> Inferred {
                     }
                 }
             }
-            InferredState::UnsavedSpecific(p) => {
-                todo!("{:?} {}", p.specific(), instance.format_short(i_s.db))
+            InferredState::UnsavedSpecific(specific) => {
+                todo!("{:?} {}", specific, instance.format_short(i_s.db))
             }
             InferredState::UnsavedFileReference(file_index) => todo!(),
             InferredState::BoundMethod { .. } => todo!(),
@@ -1471,7 +1476,7 @@ impl<'db: 'slf, 'slf> Inferred {
                     }
                 }
             }
-            InferredState::UnsavedSpecific(p) => todo!(),
+            InferredState::UnsavedSpecific(specific) => todo!(),
             InferredState::UnsavedFileReference(file_index) => todo!(),
             InferredState::BoundMethod { .. } => todo!(),
         }
@@ -1626,7 +1631,7 @@ impl<'db: 'slf, 'slf> Inferred {
                 }
             }
             InferredState::UnsavedComplex(complex) => (),
-            InferredState::UnsavedSpecific(p) => todo!(),
+            InferredState::UnsavedSpecific(specific) => todo!(),
             InferredState::UnsavedFileReference(file_index) => todo!(),
             InferredState::BoundMethod { .. } => todo!(),
         }
@@ -2240,7 +2245,7 @@ impl<'db: 'slf, 'slf> Inferred {
     pub fn is_unsaved_module_not_found(&self) -> bool {
         matches!(
             self.state,
-            InferredState::UnsavedSpecific(p) if p.specific() == Specific::ModuleNotFound
+            InferredState::UnsavedSpecific(Specific::ModuleNotFound)
         )
     }
 
