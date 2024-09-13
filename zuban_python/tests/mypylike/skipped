@@ -298,22 +298,6 @@ testMultipassAndPartialTypes4
 testRedefineFunctionDefinedAsVariableInitializedToNone
 testRedefineNestedFunctionDefinedAsVariableInitializedToNone
 
-# match statement
-testValuePattern
-testCapturePattern
-testCapturePatternOutliving
-testNestedCapturePatterns
-testMappingPatternRest
-testAsPattern
-testGuard
-testCapturePatternInGuard
-testAsPatternInGuard
-testMatchUndefinedSubject
-testMatchUndefinedValuePattern
-testMatchUndefinedClassPattern
-testNoneBindingWildcardPattern
-testNoneBindingStarredWildcardPattern
-
 # Never not rewritten to Any for "Need type annotation for "X""
 testNewAnalyzerLessErrorsNeedAnnotationNested
 testNewAnalyzerLessErrorsNeedAnnotation
@@ -543,6 +527,22 @@ testUninferableLambda
 testUninferableLambdaWithTypeError
 # lambda inferred: Cannot use a covariant type variable as a parameter
 testRejectCovariantArgumentInLambda
+
+# match statement
+testValuePattern
+testCapturePattern
+testCapturePatternOutliving
+testNestedCapturePatterns
+testMappingPatternRest
+testAsPattern
+testGuard
+testCapturePatternInGuard
+testAsPatternInGuard
+testMatchUndefinedSubject
+testMatchUndefinedValuePattern
+testMatchUndefinedClassPattern
+testNoneBindingWildcardPattern
+testNoneBindingStarredWildcardPattern
 
 # ------------- Additional unimportant, but would be nice -----------------
 
