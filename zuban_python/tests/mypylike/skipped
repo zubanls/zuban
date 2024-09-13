@@ -303,8 +303,6 @@ testLiteralFinalErasureInMutableDatastructures2
 testIncrementalClassVar
 # error formatting?
 testMultipassAndPartialTypes4
-# None as a default for class variables, even if not optional?
-testMultipleAssignmentNoneClassVariableInInit
 # --allow-untyped-globals
 testPermissiveAttributeOverride1
 # Mypy treats a None partial that is then assigned to a function as the function?? Wrong?
@@ -583,6 +581,8 @@ testAssignTypedDictAsAttribute
 # Tuple type comment definitions with list assignment
 testMultipleAssignmentWithListsInInitialization
 testAssignmentToStarAnnotation
+# Tuple type comment with None should not be checked like x, y = None, None  # type: int, str
+testMultipleAssignmentNoneClassVariableInInit
 # star input for tuple
 testTupleWithStarExpr
 # List literal inference that works like a tuple? (x, y) = [1, ""]

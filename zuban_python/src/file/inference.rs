@@ -616,7 +616,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             // have the form of `x = None  # type: int` in classes, even with
                             // strict-optional. It's even weirder that the form `x: int = None` is
                             // not allowed.
-                            if !(self.i_s.current_class().is_some()
+                            // The reason for this is apparently that with type comments there is
+                            // no way to write x: int without a value. So they allowed None on type
+                            // comments.
+                            if !(self.i_s.in_class_scope().is_some()
                                 && matches!(right.as_cow_type(self.i_s).as_ref(), Type::None))
                             {
                                 self.check_right_side_against_expected(&t, right, right_side)
