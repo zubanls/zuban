@@ -550,7 +550,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             target,
             node_ref,
             &inf_annot,
-            AssignKind::Annotation(inf_annot.maybe_saved_specific(self.i_s.db)),
+            AssignKind::Annotation {
+                specific: inf_annot.maybe_saved_specific(self.i_s.db),
+            },
             |index, value| {
                 if matches!(
                     value.maybe_complex_point(self.i_s.db),
@@ -595,7 +597,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 let type_comment_result = self.check_for_type_comment(assignment);
 
                 let assign_kind = match type_comment_result.as_ref() {
-                    Some(r) => AssignKind::Annotation(r.inferred.maybe_saved_specific(self.i_s.db)),
+                    Some(r) => AssignKind::Annotation {
+                        specific: r.inferred.maybe_saved_specific(self.i_s.db),
+                    },
                     None => AssignKind::Normal,
                 };
                 let right = if let Some(type_comment) = type_comment_result {
@@ -644,7 +648,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             AssignmentContent::WithAnnotation(target, annotation, right_side) => {
                 self.ensure_cached_annotation(annotation, right_side.is_some());
                 let specific = self.file.points.get(annotation.index()).maybe_specific();
-                let assign_kind = AssignKind::Annotation(specific);
+                let assign_kind = AssignKind::Annotation { specific };
                 match specific {
                     Some(Specific::AnnotationTypeAlias) => {
                         let inf = self.compute_explicit_type_assignment(assignment);
@@ -1044,9 +1048,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             i_s,
                             if matches!(
                                 assign_kind,
-                                AssignKind::Annotation(Some(
-                                    Specific::AnnotationOrTypeCommentFinal
-                                ))
+                                AssignKind::Annotation {
+                                    specific: Some(Specific::AnnotationOrTypeCommentFinal)
+                                }
                             ) || !matches!(ancestor_lookup.attr_kind, AttributeKind::Final)
                             {
                                 IssueKind::CannotOverrideFinalAttribute {
@@ -1069,13 +1073,13 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         return;
                     }
                     let attr_kind = match assign_kind {
-                        AssignKind::Annotation(Some(Specific::AnnotationOrTypeCommentClassVar)) => {
-                            AttributeKind::ClassVar
-                        }
-                        AssignKind::Annotation(Some(Specific::AnnotationOrTypeCommentFinal)) => {
-                            AttributeKind::Final
-                        }
-                        AssignKind::Annotation(_) => AttributeKind::AnnotatedAttribute,
+                        AssignKind::Annotation {
+                            specific: Some(Specific::AnnotationOrTypeCommentClassVar),
+                        } => AttributeKind::ClassVar,
+                        AssignKind::Annotation {
+                            specific: Some(Specific::AnnotationOrTypeCommentFinal),
+                        } => AttributeKind::Final,
+                        AssignKind::Annotation { .. } => AttributeKind::AnnotatedAttribute,
                         _ => AttributeKind::Attribute,
                     };
                     let mut had_error = false;
@@ -1227,7 +1231,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     return;
                 }
 
-                if matches!(assign_kind, AssignKind::Annotation(_)) {
+                if matches!(assign_kind, AssignKind::Annotation { .. }) {
                     self.check_assignment_type(
                         value,
                         &declaration_t,
@@ -1244,7 +1248,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 let name_def_ref = NodeRef::new(self.file, current_index);
                 if matches!(
                     assign_kind,
-                    AssignKind::Annotation(Some(Specific::AnnotationOrTypeCommentFinal))
+                    AssignKind::Annotation {
+                        specific: Some(Specific::AnnotationOrTypeCommentFinal)
+                    }
                 ) {
                     name_def_ref.add_issue(self.i_s, IssueKind::CannotRedefineAsFinal);
                 } else {
@@ -1291,7 +1297,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 None | Some(ComplexPoint::TypeInstance(_) | ComplexPoint::IndirectFinal(_))
             );
             let assign_as_new_definition = match assign_kind {
-                AssignKind::Annotation(_) => true,
+                AssignKind::Annotation { .. } => true,
                 AssignKind::Import => {
                     // Imports are a bit special since most of the time they are allowed and not
                     // considered a redefinition in Mypy and then there's unresolved imports and
@@ -1394,7 +1400,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 let lookup_details = lookup_in_bases();
                 if let Some(inf) = lookup_details.lookup.into_maybe_inferred() {
                     match assign_kind {
-                        AssignKind::Annotation(reason)
+                        AssignKind::Annotation { specific: reason }
                             if matches!(
                                 lookup_details.class,
                                 TypeOrClass::Class(c)
@@ -1443,9 +1449,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 from.add_issue(
                                     i_s,
                                     match assign_kind {
-                                        AssignKind::Annotation(Some(
-                                            Specific::AnnotationOrTypeCommentFinal,
-                                        )) => IssueKind::CannotOverrideFinalAttribute {
+                                        AssignKind::Annotation {
+                                            specific: Some(Specific::AnnotationOrTypeCommentFinal),
+                                        } => IssueKind::CannotOverrideFinalAttribute {
                                             name: name_str.into(),
                                             base_class: c.name().into(),
                                         },
@@ -1479,7 +1485,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             Some(lookup_details.class),
                         );
                         // TODO maybe this is needed?
-                        //if matches!(assign_kind, AssignKind::Annotation(_)) {
+                        //if matches!(assign_kind, AssignKind::Annotation { .. }) {
                         //save(name_def.index(), value);
                         //} else {
                         save(name_def.index(), &inf);
@@ -1570,7 +1576,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         assign_kind: AssignKind,
     ) {
         let i_s = self.i_s;
-        if matches!(assign_kind, AssignKind::Annotation(_)) {
+        if matches!(assign_kind, AssignKind::Annotation { .. }) {
             self.add_issue(primary_target.index(), IssueKind::InvalidTypeDeclaration);
         }
         let base = base.as_cow_type(i_s);
@@ -1773,7 +1779,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             }
             Target::IndexExpression(primary_target) => {
                 let base = self.infer_primary_target_or_atom(primary_target.first());
-                if matches!(assign_kind, AssignKind::Annotation(_)) {
+                if matches!(assign_kind, AssignKind::Annotation { .. }) {
                     self.add_issue(primary_target.index(), IssueKind::UnexpectedTypeDeclaration);
                 }
                 let PrimaryContent::GetItem(slice_type) = primary_target.second() else {
@@ -4270,8 +4276,8 @@ fn targets_len_infos(targets: TargetIterator) -> (usize, TupleLenInfos) {
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum AssignKind {
-    Annotation(Option<Specific>), // `a: int = 1` or `a = 1 # type: int
-    Normal,                       // a = 1
+    Annotation { specific: Option<Specific> }, // `a: int = 1` or `a = 1 # type: int
+    Normal,                                    // a = 1
     Import,
     AugAssign, // a += 1
 }
