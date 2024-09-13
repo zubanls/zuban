@@ -271,8 +271,6 @@ testTypingSelfAttrOldVsNewStyle
 testStripNewAnalyzer
 # Enum weird case
 testEnumWithPartialTypes
-# Walrus can be a partial as well
-testWalrusPartialTypes
 # needs error because only reassignments with other partial
 testInferenceWithUninhabitedType
 # partial reassignments

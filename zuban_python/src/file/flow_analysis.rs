@@ -1012,7 +1012,18 @@ fn maybe_split_bool_from_literal(
     None
 }
 
-fn split_truthy_and_falsey(i_s: &InferenceState, t: &Type) -> Option<(Type, Type)> {
+fn split_truthy_and_falsey(i_s: &InferenceState, inf: &Inferred) -> Option<(Type, Type)> {
+    if inf
+        .maybe_saved_specific(i_s.db)
+        .is_some_and(|specific| specific.is_partial_container())
+    {
+        None // Do not narrow here for now. The truthy side could be narrowed to Never.
+    } else {
+        split_truthy_and_falsey_t(i_s, &inf.as_cow_type(i_s))
+    }
+}
+
+fn split_truthy_and_falsey_t(i_s: &InferenceState, t: &Type) -> Option<(Type, Type)> {
     let split_truthy_and_falsey_single = |t: &Type| {
         let check = |condition| {
             if condition {
@@ -1079,7 +1090,7 @@ fn split_truthy_and_falsey(i_s: &InferenceState, t: &Type) -> Option<(Type, Type
             let mut falsey = Type::Never(NeverCause::Other);
             let mut had_split = false;
             for t in union.iter() {
-                let result = split_truthy_and_falsey(i_s, t);
+                let result = split_truthy_and_falsey_t(i_s, t);
                 had_split |= result.is_some();
                 let (new_true, new_false) = result.unwrap_or_else(|| (t.clone(), t.clone()));
                 truthy.union_in_place(new_true);
@@ -1892,12 +1903,11 @@ impl Inference<'_, '_, '_> {
             });
         }
         let (inf, right_frames) = if let Some((right_inf, right_frames)) = right_infos {
-            let left_t = left_inf.as_cow_type(self.i_s);
             (
                 Inferred::from_type(
-                    split_truthy_and_falsey(self.i_s, &left_t)
+                    split_truthy_and_falsey(self.i_s, &left_inf)
                         .map(|(_, falsey)| falsey)
-                        .unwrap_or_else(|| left_t.into_owned()),
+                        .unwrap_or_else(|| left_inf.as_type(self.i_s)),
                 )
                 .simplified_union(self.i_s, right_inf),
                 right_frames,
@@ -1947,12 +1957,11 @@ impl Inference<'_, '_, '_> {
         }
 
         let (inf, right_frames) = if let Some((right_inf, right_frames)) = right_infos {
-            let left_t = left_inf.as_cow_type(self.i_s);
             (
                 Inferred::from_type(
-                    split_truthy_and_falsey(self.i_s, &left_t)
+                    split_truthy_and_falsey(self.i_s, &left_inf)
                         .map(|(truthy, _)| truthy)
-                        .unwrap_or_else(|| left_t.into_owned()),
+                        .unwrap_or_else(|| left_inf.as_type(self.i_s)),
                 )
                 .simplified_union(self.i_s, right_inf),
                 right_frames,
@@ -2044,7 +2053,7 @@ impl Inference<'_, '_, '_> {
                         self.save_walrus(name_def, inf)
                     });
                     if let Some((walrus_truthy, walrus_falsey)) =
-                        split_truthy_and_falsey(self.i_s, &inf.as_cow_type(self.i_s))
+                        split_truthy_and_falsey(self.i_s, &inf)
                     {
                         debug!(
                             "Narrowed {} to true: {} and false: {}",
@@ -2113,9 +2122,7 @@ impl Inference<'_, '_, '_> {
     ) -> (Inferred, FramesWithParentUnions) {
         self.find_guards_in_expression_parts_inner(part, result_context)
             .unwrap_or_else(|inf| {
-                if let Some((truthy, falsey)) =
-                    split_truthy_and_falsey(self.i_s, &inf.as_cow_type(self.i_s))
-                {
+                if let Some((truthy, falsey)) = split_truthy_and_falsey(self.i_s, &inf) {
                     let frames = FramesWithParentUnions {
                         truthy: Frame::from_type_without_entry(truthy),
                         falsey: Frame::from_type_without_entry(falsey),
@@ -2145,9 +2152,7 @@ impl Inference<'_, '_, '_> {
     ) -> Result<(Inferred, FramesWithParentUnions), Inferred> {
         let narrow_from_key = |key: Option<FlowKey>, inf: Inferred, parent_unions| {
             if let Some(key) = key {
-                if let Some((truthy, falsey)) =
-                    split_truthy_and_falsey(self.i_s, &inf.as_cow_type(self.i_s))
-                {
+                if let Some((truthy, falsey)) = split_truthy_and_falsey(self.i_s, &inf) {
                     debug!(
                         "Narrowed {} to true: {} and false: {}",
                         part.as_code(),

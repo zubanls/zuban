@@ -1314,3 +1314,15 @@ class B(A):
         super().__init__()
         reveal_type(self.x)  # N: Revealed type is "int"
         self.x = 2
+
+[case walrus_with_partial_list]
+# flags: --warn-unreachable
+# Like testWalrusPartialTypes, but with a bit of additional code as well
+from typing import List
+
+def check_partial_list() -> None:
+    if (z := []):
+        print(1)  # Theoretically this would be unreachable and could be analyzed as such as well.
+    else:
+        z.append(4)
+    reveal_type(z)  # N: Revealed type is "list[int]"
