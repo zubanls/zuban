@@ -3227,7 +3227,7 @@ impl Inference<'_, '_, '_> {
             attr,
             LookupKind::Normal,
             &mut ResultContext::Unknown,
-            &|_| todo!(),
+            &|_| (),
             &|_| (), // OnLookupError is irrelevant for us here.
         )
     }

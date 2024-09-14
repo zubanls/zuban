@@ -263,8 +263,6 @@ testOptionalBackwards2
 testOptionalBackwards4
 # Never for isinstance leads to other side being unreachable
 testPartialAttributeNoneTypeStrictOptional
-# self flow analysis regressions
-testHasAttrDeferred
 # Enum weird case
 testEnumWithPartialTypes
 # needs error because only reassignments with other partial
