@@ -261,8 +261,6 @@ testInferAttributeInitializedToNoneAndAssignedClassBody
 testOptionalBackwards1
 testOptionalBackwards2
 testOptionalBackwards4
-# Never for isinstance leads to other side being unreachable
-testPartialAttributeNoneTypeStrictOptional
 # Enum weird case
 testEnumWithPartialTypes
 # needs error because only reassignments with other partial
@@ -1301,7 +1299,6 @@ testUnreachableWithStdlibContextManagersNoStrictOptional
 testInitializationWithMultipleValues
 testNoneAndGenericTypesOverlapNoStrictOptional
 testNamedTupleAsConditionalStrictOptionalDisabled
-testPartialAttributeNoneType
 testOptionalIterator
 testDescriptorAccessForUnionOfTypesWithNoStrictOptional
 testMeetOfIncompatibleProtocols
