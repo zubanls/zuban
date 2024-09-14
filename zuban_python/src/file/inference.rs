@@ -712,7 +712,36 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 let (inplace_method, op_infos) = aug_assign.magic_methods();
                 let right =
                     self.infer_assignment_right_side(right_side, &mut ResultContext::Unknown);
-                let Some(left) = self.infer_target(target.clone(), true) else {
+                if let Some(left) = self.infer_target(target.clone(), true) {
+                    let had_lookup_error = Cell::new(false);
+                    let mut result = left.type_lookup_and_execute(
+                        self.i_s,
+                        node_ref.file,
+                        inplace_method,
+                        &KnownArgs::new(&right, node_ref),
+                        &|type_| had_lookup_error.set(true),
+                    );
+                    let had_error = Cell::new(false);
+                    if had_lookup_error.get() {
+                        result = self.infer_detailed_operation(
+                            right_side.index(),
+                            op_infos,
+                            left,
+                            &right,
+                        )
+                    }
+
+                    let n = NodeRef::new(self.file, right_side.index());
+                    self.assign_single_target(
+                        target,
+                        n,
+                        &result,
+                        AssignKind::AugAssign,
+                        |index, _| {
+                            // There is no need to save this, because it's never used
+                        },
+                    )
+                } else {
                     // This is essentially a bare `foo += 1` that does not have any definition and
                     // leads to a NameError within Python.
                     match target.clone() {
@@ -739,26 +768,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         }
                         _ => todo!(),
                     }
-                    return;
-                };
-                let had_lookup_error = Cell::new(false);
-                let mut result = left.type_lookup_and_execute(
-                    self.i_s,
-                    node_ref.file,
-                    inplace_method,
-                    &KnownArgs::new(&right, node_ref),
-                    &|type_| had_lookup_error.set(true),
-                );
-                let had_error = Cell::new(false);
-                if had_lookup_error.get() {
-                    result =
-                        self.infer_detailed_operation(right_side.index(), op_infos, left, &right)
                 }
-
-                let n = NodeRef::new(self.file, right_side.index());
-                self.assign_single_target(target, n, &result, AssignKind::AugAssign, |index, _| {
-                    // There is no need to save this, because it's never used
-                })
             }
         }
         self.file
