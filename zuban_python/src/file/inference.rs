@@ -804,9 +804,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         } else {
             return None;
         };
-        let right_t = right.as_type(self.i_s);
+        let mut right_t = right.as_type(self.i_s);
         if right_t.is_any() {
-            todo!()
+            right_t = self.i_s.db.python_state.list_of_any.clone()
         }
         let class = right_t.maybe_class(self.i_s.db)?;
         if class.node_ref != wanted {
