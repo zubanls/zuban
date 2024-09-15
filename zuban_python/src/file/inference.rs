@@ -785,16 +785,20 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         aug_assign: AugAssign,
         right: Inferred,
     ) -> Option<()> {
-        let maybe_partial_node_ref = match target {
-            Target::Name(name_def) => {
-                let first = first_defined_name_of_multi_def(self.file, name_def.name_index())?;
-                // The first definition is always responsible for how a name is defined.
-                // So we try to look up active narrowings first or we try to lookup the first
-                // name.
-                NodeRef::new(self.file, first - NAME_DEF_TO_NAME_DIFFERENCE)
+        let name_index = match target {
+            Target::Name(name_def) => name_def.name_index(),
+            Target::NameExpression(_, name_def) => {
+                let name_index = name_def.name_index();
+                let specific = NodeRef::new(self.file, name_index)
+                    .point()
+                    .maybe_calculated_and_specific()?;
+                debug_assert_eq!(specific, Specific::NameOfNameDef);
+                name_index
             }
             _ => return None,
         };
+        let first = first_defined_name_of_multi_def(self.file, name_index)?;
+        let maybe_partial_node_ref = NodeRef::new(self.file, first - NAME_DEF_TO_NAME_DIFFERENCE);
         let point = maybe_partial_node_ref.point();
         let specific = point.maybe_calculated_and_specific()?;
         let wanted = if specific == Specific::PartialList && aug_assign.as_code() == "+=" {
@@ -3389,13 +3393,20 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         if first.maybe_saved_specific(self.i_s.db) == Some(Specific::MaybeSelfParam) {
             if let PrimaryContent::Attribute(attr) = second {
                 let i = attr.index();
-                if self.file.points.get(i).calculated()
-                    && first_defined_name_of_multi_def(self.file, i).is_none()
-                {
-                    // This is the initial definition of self. The definition is not defined at
-                    // this point is probably just inferred to know its context (which is not
-                    // known, because this is going to be the definition).
-                    return Inferred::new_any(AnyCause::Internal);
+                if self.file.points.get(i).calculated() {
+                    if let Some(first) = first_defined_name_of_multi_def(self.file, i) {
+                        let point = self.file.points.get(first - NAME_DEF_TO_NAME_DIFFERENCE);
+                        if point.calculated()
+                            && point.maybe_specific().is_some_and(|s| s.is_partial())
+                        {
+                            return Inferred::new_any(AnyCause::Internal);
+                        }
+                    } else {
+                        // This is the initial definition of self. The definition is not defined at
+                        // this point is probably just inferred to know its context (which is not
+                        // known, because this is going to be the definition).
+                        return Inferred::new_any(AnyCause::Internal);
+                    }
                 }
             }
         }

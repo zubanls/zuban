@@ -1081,6 +1081,26 @@ y = []
 y += undefined  # E: Name "undefined" is not defined
 reveal_type(y)  # N: Revealed type is "list[Any]"
 
+[case partial_list_any_aug_assignment_in_self]
+
+class Foo:
+    def __init__(self) -> None:
+        self.x = []
+        self.x += [undefined]  # E: Name "undefined" is not defined
+        reveal_type(self.x)  # N: Revealed type is "list[Any]"
+
+        self.y = []
+        self.y += undefined  # E: Name "undefined" is not defined
+        reveal_type(self.y)  # N: Revealed type is "list[Any]"
+
+[case partial_list_aug_assignment_in_self]
+
+class Foo:
+    def __init__(self) -> None:
+        self.x = []
+        self.x += [1]
+        reveal_type(self.x)  # N: Revealed type is "list[int]"
+
 [case partial_list_never_aug_assignment]
 
 x = []
