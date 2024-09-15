@@ -812,8 +812,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         if class.node_ref != wanted {
             return None;
         }
-        if right_t.has_never_from_inference(self.i_s.db) {
-            todo!()
+        if class.nth_type_argument(self.i_s.db, 0).is_never() {
+            // This adds an empty list again, which should be fine.
+            return Some(());
         }
         maybe_partial_node_ref.insert_type(right_t.clone());
         Some(())

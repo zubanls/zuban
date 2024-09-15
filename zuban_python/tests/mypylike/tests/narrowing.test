@@ -1081,6 +1081,17 @@ y = []
 y += undefined  # E: Name "undefined" is not defined
 reveal_type(y)  # N: Revealed type is "list[Any]"
 
+[case partial_list_never_aug_assignment]
+
+x = []
+x += []
+x += [1]
+reveal_type(x)  # N: Revealed type is "list[int]"
+
+y = []  # E: Need type annotation for "y" (hint: "y: List[<type>] = ...")
+y += []
+reveal_type(y)  # N: Revealed type is "list[Any]"
+
 [case self_assignment_does_not_narrow]
 class A:
     x: int | str
