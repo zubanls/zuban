@@ -741,7 +741,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             // There is no need to save this, because it's never used
                         },
                     )
-                } else {
+                } else if self
+                    .maybe_partial_aug_assignment(&target, aug_assign, right)
+                    .is_none()
+                {
                     // This is essentially a bare `foo += 1` that does not have any definition and
                     // leads to a NameError within Python.
                     match target.clone() {
@@ -774,6 +777,46 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         self.file
             .points
             .set(assignment.index(), Point::new_node_analysis(Locality::Todo));
+    }
+
+    fn maybe_partial_aug_assignment(
+        &self,
+        target: &Target,
+        aug_assign: AugAssign,
+        right: Inferred,
+    ) -> Option<()> {
+        let maybe_partial_node_ref = match target {
+            Target::Name(name_def) => {
+                let first = first_defined_name_of_multi_def(self.file, name_def.name_index())?;
+                // The first definition is always responsible for how a name is defined.
+                // So we try to look up active narrowings first or we try to lookup the first
+                // name.
+                NodeRef::new(self.file, first - NAME_DEF_TO_NAME_DIFFERENCE)
+            }
+            _ => return None,
+        };
+        let point = maybe_partial_node_ref.point();
+        let specific = point.maybe_calculated_and_specific()?;
+        let wanted = if specific == Specific::PartialList && aug_assign.as_code() == "+=" {
+            self.i_s.db.python_state.list_node_ref()
+        } else if specific == Specific::PartialSet && aug_assign.as_code() == "|=" {
+            self.i_s.db.python_state.set_node_ref()
+        } else {
+            return None;
+        };
+        let right_t = right.as_type(self.i_s);
+        if right_t.is_any() {
+            todo!()
+        }
+        let class = right_t.maybe_class(self.i_s.db)?;
+        if class.node_ref != wanted {
+            return None;
+        }
+        if right_t.has_never_from_inference(self.i_s.db) {
+            todo!()
+        }
+        maybe_partial_node_ref.insert_type(right_t.clone());
+        Some(())
     }
 
     fn infer_assignment_right_side(

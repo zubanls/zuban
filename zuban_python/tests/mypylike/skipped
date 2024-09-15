@@ -265,9 +265,6 @@ testOptionalBackwards4
 testEnumWithPartialTypes
 # needs error because only reassignments with other partial
 testInferenceWithUninhabitedType
-# partial reassignments
-testInferListTypeFromInplaceAdd
-testInferSetTypeFromInplaceOr
 # explicit any context should lead to Dict[Any, Any]? might be ok?
 testGenericDictWithOverload
 # partial for `x: Final = []`
