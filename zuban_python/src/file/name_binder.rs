@@ -1460,7 +1460,7 @@ fn python_version_matches_tuple(
             return Truthiness::Unknown;
         }
     }
-    if let Some(result) = compare_with_operandv2(comp, total_order) {
+    if let Some(result) = check_operand_against_total_order(comp, total_order) {
         if result {
             Truthiness::True {
                 in_type_checking_block: false,
@@ -1518,10 +1518,12 @@ fn python_version_matches_slice(
             if let Some(AtomContent::Int(nth)) = ne.expression().maybe_unpacked_atom() {
                 if let Some(AtomContent::Int(wanted)) = other.maybe_unpacked_atom() {
                     if nth.parse() == Some(0) {
-                        if let Some(result) = wanted
-                            .parse_as_usize()
-                            .and_then(|x| compare_with_operand(comp, flags.python_version.major, x))
-                        {
+                        if let Some(result) = wanted.parse_as_usize().and_then(|x| {
+                            check_operand_against_total_order(
+                                comp,
+                                TotalOrder::new(flags.python_version.major, x),
+                            )
+                        }) {
                             return result.into();
                         }
                     }
@@ -1533,25 +1535,7 @@ fn python_version_matches_slice(
     Truthiness::Unknown
 }
 
-fn compare_with_operand<T: Eq + Ord>(comp: ComparisonContent, x: T, y: T) -> Option<bool> {
-    match comp {
-        ComparisonContent::Equals(_, _, _) => Some(x == y),
-        ComparisonContent::NotEquals(_, _, _) => Some(x != y),
-        ComparisonContent::Is(_, _, _) => None,
-        ComparisonContent::IsNot(_, _, _) => None,
-        ComparisonContent::In(_, _, _) => None,
-        ComparisonContent::NotIn(_, _, _) => None,
-        ComparisonContent::Ordering(op) => match op.infos.operand {
-            "<" => Some(x < y),
-            ">" => Some(x > y),
-            "<=" => Some(x <= y),
-            ">=" => Some(x >= y),
-            _ => unreachable!(),
-        },
-    }
-}
-
-fn compare_with_operandv2(comp: ComparisonContent, order: TotalOrder) -> Option<bool> {
+fn check_operand_against_total_order(comp: ComparisonContent, order: TotalOrder) -> Option<bool> {
     match comp {
         ComparisonContent::Equals(_, _, _) => Some(order == TotalOrder::Equals),
         ComparisonContent::NotEquals(_, _, _) => Some(order != TotalOrder::Equals),

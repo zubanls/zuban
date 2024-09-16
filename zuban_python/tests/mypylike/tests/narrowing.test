@@ -1374,7 +1374,22 @@ if sys.version_info < (3, 200):
     undefined # E: Name "undefined" is not defined
 if sys.version_info > (3, 200):
     undefined
+if sys.version_info > (3, 1):
+    undefined # E: Name "undefined" is not defined
 if sys.version_info < (2, 200):
     undefined
 if sys.version_info > (2, 200):
+    undefined # E: Name "undefined" is not defined
+
+[case sys_version_slice_defined_smaller_than]
+import sys
+if sys.version_info[:2] < (3, 200):
+    undefined # E: Name "undefined" is not defined
+if sys.version_info[:2] > (3, 200):
+    undefined
+if sys.version_info[:2] > (3, 1):
+    undefined # E: Name "undefined" is not defined
+if sys.version_info[:2] < (2, 200):
+    undefined
+if sys.version_info[:2] > (2, 200):
     undefined # E: Name "undefined" is not defined
