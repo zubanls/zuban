@@ -542,3 +542,32 @@ main:2: error: No overload variant of "type" matches argument types "str", "int"
 main:2: note: Possible overload variants:
 main:2: note:     def __init__(self, object, /) -> type
 main:2: note:     def __init__(self, str, tuple[Type[Any], ...], dict[str, Any], /, **kwds: Any) -> type
+
+[case assign_in_subclass_to_callable]
+# Inspired a bit by testTypedDictUnpackSingleWithSubtypingNoCrash
+from typing import Callable
+
+def f(pseudo_self, x: int) -> None:
+    pass
+def g(pseudo_self, y: str) -> None:
+    pass
+def h(x: int) -> None:
+    pass
+
+class C:
+    foo: Callable[[int], None]
+    bar: Callable[[int], None]
+    baz: Callable[[int], None]
+
+# Currently we fail
+class D(C):
+    foo = f
+    bar = g  # E: Argument 1 of "bar" is incompatible with supertype "C"; supertype defines the argument type as "int" \
+             # N: This violates the Liskov substitution principle \
+             # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
+    baz = h  # E: Invalid self argument "D" to attribute function "h" with type "Callable[[int], None]" \
+             # E: Signature of "baz" incompatible with supertype "C" \
+             # N:      Superclass: \
+             # N:          def (int, /) -> None \
+             # N:      Subclass: \
+             # N:          Callable[[], None]

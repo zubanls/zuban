@@ -1173,7 +1173,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                     name_str,
                                     class.as_type(i_s.db),
                                     *class,
-                                    |_| todo!(),
+                                    |issue| from.add_issue(i_s, issue),
                                     MroIndex(0),
                                     false,
                                 ) {

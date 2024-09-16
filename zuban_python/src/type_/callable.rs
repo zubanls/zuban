@@ -195,7 +195,9 @@ impl CallableParam {
                     StarStarParamType::ValueType(t) => {
                         format!("KwArg({})", t.format(format_data))
                     }
-                    StarStarParamType::UnpackTypedDict(_) => "TODO format unpack TD".to_string(),
+                    StarStarParamType::UnpackTypedDict(td) => {
+                        format!("**Unpack[{}]", td.format(format_data))
+                    }
                     StarStarParamType::ParamSpecKwargs(_) => todo!(),
                 }
                 .into();
