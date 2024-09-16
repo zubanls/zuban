@@ -271,8 +271,6 @@ testGenericDictWithOverload
 testLiteralFinalErasureInMutableDatastructures2
 # partial for `x: ClassVar = None`
 testIncrementalClassVar
-# error formatting?
-testMultipassAndPartialTypes4
 # Mypy treats a None partial that is then assigned to a function as the function?? Wrong?
 testRedefineFunctionDefinedAsVariableInitializedToNone
 testRedefineNestedFunctionDefinedAsVariableInitializedToNone

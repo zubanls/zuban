@@ -569,7 +569,10 @@ impl Type {
                         similar: true,
                         reason: MismatchReason::SequenceInsteadOfListNeeded,
                     };
-                } else if class1.node_ref == i_s.db.python_state.dict_node_ref() && check(i_s, 1) {
+                } else if class1.node_ref == i_s.db.python_state.dict_node_ref()
+                    && check(i_s, 0)
+                    && check(i_s, 1)
+                {
                     return Match::False {
                         similar: true,
                         reason: MismatchReason::MappingInsteadOfDictNeeded,
