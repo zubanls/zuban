@@ -2837,11 +2837,23 @@ impl Inference<'_, '_, '_> {
             }
         };
         let db = self.i_s.db;
-        if let Some(item) = stdlib_container_item(db, &right.inf.as_cow_type(self.i_s)) {
-            if !item.iter_with_unpacked_unions(db).any(|t| t == &Type::None) {
-                if let Some(ComparisonKey::Normal(left_key)) = &left.key {
-                    let left_t = left.inf.as_cow_type(self.i_s);
-                    if left_t.simple_overlaps(self.i_s, &item) {
+        if let Some(container_item) = stdlib_container_item(db, &right.inf.as_cow_type(self.i_s)) {
+            if let Some(ComparisonKey::Normal(left_key)) = &left.key {
+                let left_t = left.inf.as_cow_type(self.i_s);
+                if left_t
+                    .is_simple_super_type_of(self.i_s, &container_item)
+                    .non_any_match()
+                {
+                    return maybe_invert(
+                        Frame::from_type(left_key.clone(), container_item),
+                        Frame::default(),
+                        left.parent_unions.take(),
+                    );
+                } else if !container_item
+                    .iter_with_unpacked_unions(db)
+                    .any(|t| t == &Type::None)
+                {
+                    if left_t.simple_overlaps(self.i_s, &container_item) {
                         if let Some(t) = removed_optional(db, &left_t) {
                             return maybe_invert(
                                 Frame::from_type(left_key.clone(), t),

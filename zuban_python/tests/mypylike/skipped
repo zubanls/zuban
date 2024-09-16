@@ -6,16 +6,8 @@ testPostInitIsNotAFunction
 # callable matching regression
 testNoCrashOnNestedGenericCallable
 
-# mypy upgrade
-testNarrowingOptionalEqualsNone
-testTypeNarrowingStringInLiteralUnion
-testTypeNarrowingStringInLiteralUnionSubset
-testNarrowingStringNotInLiteralUnion
-testTypeNarrowingStringInMixedUnion
+# set context issue?
 testTypeNarrowingStringInSet
-testTypeNarrowingStringInList
-testTypeNarrowingUnionStringFloat
-testTypedDictRequiredUnimportedAny
 
 # functools.total_ordering
 testTotalOrderingEqLt
@@ -1346,6 +1338,7 @@ testDisallowImplicitAnyVarDeclaration
 testDisallowUnimportedAnyTypedDictSimple
 testDisallowUnimportedAnyTypedDictGeneric
 testNoCrashOnUnImportedAnyNotRequired
+testTypedDictRequiredUnimportedAny
 
 # --no-namespace-packages
 testClassicNotPackage
