@@ -6,6 +6,14 @@ testPostInitIsNotAFunction
 # callable matching regression
 testNoCrashOnNestedGenericCallable
 
+# typeshed upgrade
+testDisableMemoryviewPromotion
+testGenericAliasCollectionsABCReveal
+testIOTypes
+testBuiltinOpen
+testOpenReturnTypeInference
+testPathOpenReturnTypeInference
+testPathOpenReturnTypeInferenceSpecialCases
 # mypy upgrade
 
 # functools.total_ordering
