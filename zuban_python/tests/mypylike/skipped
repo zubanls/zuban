@@ -208,8 +208,6 @@ testClassIgnoreType_RedefinedAttributeAndGrandparentAttributeTypesNotIgnored
 testInferringTypesFromIterable
 testMultipleAssignmentAndGenericSubtyping
 
-# self.x = None in class is not partial anymore after finishing scope
-testInferAttributeInitializedToNoneAndAssignedClassBody
 # Make x an Optional if else contains `x = None`
 testOptionalBackwards1
 testOptionalBackwards2
@@ -218,13 +216,6 @@ testOptionalBackwards4
 testEnumWithPartialTypes
 # needs error because only reassignments with other partial
 testInferenceWithUninhabitedType
-# partial for `x: Final = []`
-testLiteralFinalErasureInMutableDatastructures2
-# partial for `x: ClassVar = None`
-testIncrementalClassVar
-# Mypy treats a None partial that is then assigned to a function as the function?? Wrong?
-testRedefineFunctionDefinedAsVariableInitializedToNone
-testRedefineNestedFunctionDefinedAsVariableInitializedToNone
 
 # Never not rewritten to Any for "Need type annotation for "X""
 testNewAnalyzerLessErrorsNeedAnnotationNested
@@ -329,6 +320,13 @@ testPartialDefaultDict*
 # partials: No "Need type annotation for "X"", because untyped update exists
 testInferDictInitializedToEmptyAndUpdatedFromMethodUnannotated
 testCheckUntypedDefsSelf2
+# partial for `x: Final = []`
+testLiteralFinalErasureInMutableDatastructures2
+# self.x = None in class is not partial anymore after finishing scope
+testInferAttributeInitializedToNoneAndAssignedClassBody
+# Mypy treats a None partial that is then assigned to a function as the function?? Wrong?
+testRedefineFunctionDefinedAsVariableInitializedToNone
+testRedefineNestedFunctionDefinedAsVariableInitializedToNone
 
 # self.x = self where self: T
 testTypingSelfAttrOldVsNewStyle

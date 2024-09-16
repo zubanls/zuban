@@ -122,6 +122,7 @@ impl<'a> Instance<'a> {
             add_issue(IssueKind::CannotAssignToClassVarViaInstance {
                 name: name_str.into(),
             });
+            return Err(());
         }
         if lookup_details.is_final(i_s.db) {
             from.add_issue(
