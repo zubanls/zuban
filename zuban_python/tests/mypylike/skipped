@@ -255,7 +255,6 @@ testClassIgnoreType_RedefinedAttributeAndGrandparentAttributeTypesNotIgnored
 testInferringTypesFromIterable
 testMultipleAssignmentAndGenericSubtyping
 
-partial_list_aug_assignment_in_self
 # self.x = None in class is not partial anymore after finishing scope
 testInferAttributeInitializedToNoneAndAssignedClassBody
 # Make x an Optional if else contains `x = None`

@@ -985,10 +985,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     fn infer_target(&self, target: Target, from_aug_assign: bool) -> Option<Inferred> {
         match target {
             Target::Name(name_def) => self.infer_name_target(name_def, from_aug_assign),
-            Target::NameExpression(primary_target, _) => {
-                Some(self.infer_primary_target(primary_target))
-            }
-            Target::IndexExpression(t) if from_aug_assign => Some(self.infer_primary_target(t)),
+            Target::NameExpression(primary_target, _) => self.infer_primary_target(primary_target),
+            Target::IndexExpression(t) if from_aug_assign => self.infer_primary_target(t),
             Target::Tuple(targets) => {
                 Some(Inferred::from_type(Type::Tuple(Tuple::new_fixed_length(
                     targets
@@ -3379,14 +3377,12 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         gatherer.into_tuple(self, iterator)
     }
 
-    check_point_cache_with!(
-        infer_primary_target,
-        Self::_infer_primary_target,
-        PrimaryTarget
-    );
-    fn _infer_primary_target(&self, primary_target: PrimaryTarget) -> Inferred {
+    fn infer_primary_target(&self, primary_target: PrimaryTarget) -> Option<Inferred> {
+        if let Some(inferred) = self.check_point_cache(primary_target.index()) {
+            return Some(inferred);
+        }
         if let Some(inf) = self.maybe_lookup_narrowed_primary_target(primary_target) {
-            return inf;
+            return Some(inf);
         }
         let first = self.infer_primary_target_or_atom(primary_target.first());
         let second = primary_target.second();
@@ -3399,31 +3395,35 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         if point.calculated()
                             && point.maybe_specific().is_some_and(|s| s.is_partial())
                         {
-                            return Inferred::new_any(AnyCause::Internal);
+                            return None;
                         }
                     } else {
                         // This is the initial definition of self. The definition is not defined at
                         // this point is probably just inferred to know its context (which is not
                         // known, because this is going to be the definition).
-                        return Inferred::new_any(AnyCause::Internal);
+                        return None;
                     }
                 }
             }
         }
-        self.infer_primary_or_primary_t_content(
-            &first,
-            primary_target.index(),
-            second,
-            true,
-            &mut ResultContext::Unknown,
+        Some(
+            self.infer_primary_or_primary_t_content(
+                &first,
+                primary_target.index(),
+                second,
+                true,
+                &mut ResultContext::Unknown,
+            )
+            .save_redirect(self.i_s, self.file, primary_target.index()),
         )
-        .save_redirect(self.i_s, self.file, primary_target.index())
     }
 
     pub fn infer_primary_target_or_atom(&self, t: PrimaryTargetOrAtom) -> Inferred {
         match t {
             PrimaryTargetOrAtom::Atom(atom) => self.infer_atom(atom, &mut ResultContext::Unknown),
-            PrimaryTargetOrAtom::PrimaryTarget(p) => self.infer_primary_target(p),
+            PrimaryTargetOrAtom::PrimaryTarget(p) => self
+                .infer_primary_target(p)
+                .unwrap_or_else(|| Inferred::new_any(AnyCause::Internal)),
         }
     }
 
