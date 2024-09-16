@@ -148,25 +148,6 @@ testOverride__new__AndCallObject
 testNewAndInitNoReturn
 testOverloadedNewAndInitNoReturn
 
-# TypedDict Recursive definitions
-testRecursiveNamedTupleTypedDict
-# TypedDict Unpack
-testUnpackKwargsInference
-testUnpackKwargsParamSpec
-# TypedDict dict unpacking
-testTypedDictUnpackFromUnion
-testTypedDictUnpackUnionRequiredMissing
-testTypedDictUnpackIncompatible
-# TypedDict Lookups
-testTypedDictMappingMethods
-testTypedDictAsStarStarArgCalleeKwargs
-testTypedDictAsStarStarAndDictAsStarStar
-testTypedDictNonMappingMethods
-# Nested typed dict formatting
-testSerializeTypedDictInMethod
-# TypedDict unions
-testTypedDictChainedGetWithEmptyDictDefault
-
 # any overwrites of None
 testOptionalAssignAny1
 testOptionalAssignAny3
@@ -405,6 +386,24 @@ updateDataclassTransformParameterViaParentClass
 updateBaseClassToUseDataclassTransform
 frozenInheritanceViaDefault
 testDataclassReplaceOptional
+
+# TypedDict Recursive definitions
+testRecursiveNamedTupleTypedDict
+# TypedDict Unpack
+testUnpackKwargsInference
+testUnpackKwargsParamSpec
+# TypedDict dict unpacking
+testTypedDictUnpackFromUnion
+testTypedDictUnpackUnionRequiredMissing
+testTypedDictUnpackIncompatible
+# TypedDict Lookups
+testTypedDictAsStarStarArgCalleeKwargs
+testTypedDictAsStarStarAndDictAsStarStar
+testTypedDictNonMappingMethods
+# Nested typed dict formatting
+testSerializeTypedDictInMethod
+# TypedDict unions
+testTypedDictChainedGetWithEmptyDictDefault
 
 # multiline annotations
 testMultilineQuotedAnnotation
