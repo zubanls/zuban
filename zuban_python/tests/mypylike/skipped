@@ -7,7 +7,6 @@ testPostInitIsNotAFunction
 testNoCrashOnNestedGenericCallable
 
 # typeshed upgrade
-testDisableMemoryviewPromotion
 testGenericAliasCollectionsABCReveal
 # mypy upgrade
 testNarrowingOptionalEqualsNone
