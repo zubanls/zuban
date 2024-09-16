@@ -10,9 +10,6 @@ testNoCrashOnNestedGenericCallable
 testDisableMemoryviewPromotion
 testGenericAliasCollectionsABCReveal
 # mypy upgrade
-testDunderReplacePresent
-testStartUsingPEP604Union
-testLiteralDisallowCollections
 testNarrowingOptionalEqualsNone
 testTypeNarrowingStringInLiteralUnion
 testTypeNarrowingStringInLiteralUnionSubset
@@ -21,15 +18,7 @@ testTypeNarrowingStringInMixedUnion
 testTypeNarrowingStringInSet
 testTypeNarrowingStringInList
 testTypeNarrowingUnionStringFloat
-testTypedDictInlineYesNewStyleAlias
-testTypeAliasTypePython311
-testCannotCreateTypedDictInstanceWithInlineTypedDict
 testTypedDictRequiredUnimportedAny
-testTypedDictInlineNoOldStyleAlias
-testTypedDictInlineYesMidStyleAlias
-testTypedDictInlineNotRequired
-testTypedDictInlineNestedSchema
-testTypedDictInlineMergeAnother
 
 # functools.total_ordering
 testTotalOrderingEqLt
@@ -312,6 +301,7 @@ testNarrowingWithTupleOfTypesPy310Plus
 testIsinstanceNarrowAny
 # isinstance with alias and union literals `isinstance(x, A | B)`
 testTypeAliasWithNewUnionIsInstance
+testStartUsingPEP604Union
 # nonlocal
 testNarrowedVariableInNestedFunctionMore1
 
@@ -409,6 +399,8 @@ updateDataclassTransformParameterViaParentClass
 updateBaseClassToUseDataclassTransform
 frozenInheritanceViaDefault
 testDataclassReplaceOptional
+# dataclass __replace__
+testDunderReplacePresent
 
 # TypedDict Recursive definitions
 testRecursiveNamedTupleTypedDict
@@ -437,6 +429,7 @@ testTypeAliasTypeInvalid
 testTypeAliasTypeGeneric
 testTypeAliasTypeInvalidGeneric
 testTypeAliasTypeNoUnpackInTypeParams311
+testTypeAliasTypePython311
 # "Type aliases are prohibited in protocol bodies"
 testTypeAliasInProtocolBody
 # Weird and unsound mypy cases for x: typing.TypeAlias = ...
@@ -1282,6 +1275,15 @@ type_type_alias_circular
 
 # Weird native types of mypy like `from mypy_extensions import i64, i32`
 testNativeIntTypes
+
+# --enable-incomplete-feature=InlineTypedDict
+testTypedDictInlineYesNewStyleAlias
+testCannotCreateTypedDictInstanceWithInlineTypedDict
+testTypedDictInlineNoOldStyleAlias
+testTypedDictInlineYesMidStyleAlias
+testTypedDictInlineNotRequired
+testTypedDictInlineNestedSchema
+testTypedDictInlineMergeAnother
 
 # Mypy plugins
 testChangedPluginsInvalidateCache
