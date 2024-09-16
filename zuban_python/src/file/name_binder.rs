@@ -1435,6 +1435,7 @@ fn python_version_matches_tuple(
         // (major, minor, bugfix) is currently not supported
         return Truthiness::Unknown;
     }
+    let mut total_order = TotalOrder::Equals;
     for (current, tup_entry) in [flags.python_version.major, flags.python_version.minor][from..]
         .iter()
         .zip(tup.iter())
@@ -1451,19 +1452,44 @@ fn python_version_matches_tuple(
             .parse()
             .and_then(|i| <i64 as TryInto<usize>>::try_into(i).ok())
         {
-            if let Some(result) = comp.compare_with_operand(*current, n_in_tup) {
-                if !result {
-                    return Truthiness::False;
-                }
-            } else {
-                return Truthiness::Unknown;
+            total_order = TotalOrder::new(*current, n_in_tup);
+            if !matches!(total_order, TotalOrder::Equals) {
+                break; // We already know if it's bigger or smaller
             }
         } else {
             return Truthiness::Unknown;
         }
     }
-    Truthiness::True {
-        in_type_checking_block: false,
+    if let Some(result) = compare_with_operandv2(comp, total_order) {
+        if result {
+            Truthiness::True {
+                in_type_checking_block: false,
+            }
+        } else {
+            Truthiness::False
+        }
+    } else {
+        Truthiness::Unknown
+    }
+}
+
+#[derive(Copy, Clone, PartialEq)]
+#[repr(usize)]
+enum TotalOrder {
+    Smaller,
+    Equals,
+    Bigger,
+}
+
+impl TotalOrder {
+    fn new<T: Eq + Ord>(x: T, y: T) -> Self {
+        if x < y {
+            TotalOrder::Smaller
+        } else if x == y {
+            TotalOrder::Equals
+        } else {
+            TotalOrder::Bigger
+        }
     }
 }
 
@@ -1494,7 +1520,7 @@ fn python_version_matches_slice(
                     if nth.parse() == Some(0) {
                         if let Some(result) = wanted
                             .parse_as_usize()
-                            .and_then(|x| comp.compare_with_operand(flags.python_version.major, x))
+                            .and_then(|x| compare_with_operand(comp, flags.python_version.major, x))
                         {
                             return result.into();
                         }
@@ -1505,6 +1531,42 @@ fn python_version_matches_slice(
         _ => (),
     }
     Truthiness::Unknown
+}
+
+fn compare_with_operand<T: Eq + Ord>(comp: ComparisonContent, x: T, y: T) -> Option<bool> {
+    match comp {
+        ComparisonContent::Equals(_, _, _) => Some(x == y),
+        ComparisonContent::NotEquals(_, _, _) => Some(x != y),
+        ComparisonContent::Is(_, _, _) => None,
+        ComparisonContent::IsNot(_, _, _) => None,
+        ComparisonContent::In(_, _, _) => None,
+        ComparisonContent::NotIn(_, _, _) => None,
+        ComparisonContent::Ordering(op) => match op.infos.operand {
+            "<" => Some(x < y),
+            ">" => Some(x > y),
+            "<=" => Some(x <= y),
+            ">=" => Some(x >= y),
+            _ => unreachable!(),
+        },
+    }
+}
+
+fn compare_with_operandv2(comp: ComparisonContent, order: TotalOrder) -> Option<bool> {
+    match comp {
+        ComparisonContent::Equals(_, _, _) => Some(order == TotalOrder::Equals),
+        ComparisonContent::NotEquals(_, _, _) => Some(order != TotalOrder::Equals),
+        ComparisonContent::Is(_, _, _) => None,
+        ComparisonContent::IsNot(_, _, _) => None,
+        ComparisonContent::In(_, _, _) => None,
+        ComparisonContent::NotIn(_, _, _) => None,
+        ComparisonContent::Ordering(op) => match op.infos.operand {
+            "<" => Some(order == TotalOrder::Smaller),
+            ">" => Some(order == TotalOrder::Bigger),
+            "<=" => Some(order != TotalOrder::Bigger),
+            ">=" => Some(order != TotalOrder::Smaller),
+            _ => unreachable!(),
+        },
+    }
 }
 
 fn maybe_sys_name(primary: Primary, name: &str) -> bool {

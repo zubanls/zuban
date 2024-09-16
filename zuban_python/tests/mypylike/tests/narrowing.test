@@ -1367,3 +1367,14 @@ def check_partial_list() -> None:
     else:
         z.append(4)
     reveal_type(z)  # N: Revealed type is "list[int]"
+
+[case sys_version_defined_smaller_than]
+import sys
+if sys.version_info < (3, 200):
+    undefined # E: Name "undefined" is not defined
+if sys.version_info > (3, 200):
+    undefined
+if sys.version_info < (2, 200):
+    undefined
+if sys.version_info > (2, 200):
+    undefined # E: Name "undefined" is not defined
