@@ -212,8 +212,6 @@ testMultipleAssignmentAndGenericSubtyping
 testOptionalBackwards1
 testOptionalBackwards2
 testOptionalBackwards4
-# Enum weird case
-testEnumWithPartialTypes
 # needs error because only reassignments with other partial
 testInferenceWithUninhabitedType
 
@@ -865,14 +863,10 @@ testUnsafeOverlappingNotWithAny
 
 # ------------------- priority? tests -----------------------
 
-# int | str leads to object instead of Any when using Enum().value?
-testEnumValueInhomogenous
 # All members in a union lead to the enum again
 testEnumTypeCompatibleWithLiteralUnion
 # Enum Dict value inferred is int instead of Literal[1]
 testFunctionalEnumListOfPairs
-# Enum access merging leads to int | Any instead of Any
-testEnumValueUnionSimplification
 
 # Recursive aliases that fail to resolve because imports are calculating
 check-incremental:testRecursiveAliasImported

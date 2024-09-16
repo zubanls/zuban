@@ -256,6 +256,22 @@ impl Type {
             ),
             Type::Self_ => {
                 let current_class = i_s.current_class().unwrap();
+                let class_infos = current_class.use_cached_class_infos(i_s.db);
+                if let Some(t) = class_infos.undefined_generics_type.get() {
+                    if matches!(t.as_ref(), Type::Enum(_)) {
+                        t.run_after_lookup_on_each_union_member(
+                            i_s,
+                            None,
+                            from_file,
+                            name,
+                            kind,
+                            result_context,
+                            add_issue,
+                            callable,
+                        );
+                        return;
+                    }
+                }
                 let type_var_likes = current_class.type_vars(i_s);
                 let inst = Instance::new(
                     Class::with_self_generics(
