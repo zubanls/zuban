@@ -1058,6 +1058,125 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             .or_else(|| check_fallback(name_def))
     }
 
+    #[inline]
+    fn assign_and_override_in_subclass(
+        &self,
+        name_def: NameDef,
+        from: NodeRef,
+        assign_kind: AssignKind,
+        override_class: &Class,
+        value: &Inferred,
+        ancestor_lookup: &LookupDetails,
+        ancestor_inf: &Inferred,
+        save: impl FnOnce(NodeIndex, &Inferred),
+    ) {
+        let i_s = self.i_s;
+        let declaration_t = ancestor_inf.as_cow_type(self.i_s);
+        let first_name_link = PointLink::new(
+            self.file_index,
+            first_defined_name(self.file, name_def.name_index()),
+        );
+        let name_str = name_def.as_code();
+        if ancestor_lookup.attr_kind.is_final() {
+            from.add_issue(
+                i_s,
+                if matches!(
+                    assign_kind,
+                    AssignKind::Annotation {
+                        specific: Some(Specific::AnnotationOrTypeCommentFinal)
+                    }
+                ) || !matches!(ancestor_lookup.attr_kind, AttributeKind::Final)
+                {
+                    IssueKind::CannotOverrideFinalAttribute {
+                        name: name_str.into(),
+                        base_class: ancestor_lookup.class.name(i_s.db).into(),
+                    }
+                } else {
+                    IssueKind::CannotAssignToFinal {
+                        name: name_str.into(),
+                        is_attribute: false,
+                    }
+                },
+            );
+            save(
+                name_def.index(),
+                &Inferred::new_unsaved_complex(ComplexPoint::IndirectFinal(Rc::new(
+                    ancestor_inf.as_type(i_s),
+                ))),
+            );
+            return;
+        }
+        let attr_kind = match assign_kind {
+            AssignKind::Annotation {
+                specific: Some(Specific::AnnotationOrTypeCommentClassVar),
+            } => AttributeKind::ClassVar,
+            AssignKind::Annotation {
+                specific: Some(Specific::AnnotationOrTypeCommentFinal),
+            } => AttributeKind::Final,
+            AssignKind::Annotation { .. } => AttributeKind::AnnotatedAttribute,
+            _ => AttributeKind::Attribute,
+        };
+        let mut had_error = false;
+        self.narrow_or_widen_name_target(
+            first_name_link,
+            &declaration_t,
+            &value.as_cow_type(i_s),
+            || {
+                // TODO all these clones feel weird.
+                let bound_inf = if let Some((new, _)) = value.clone().bind_instance_descriptors(
+                    i_s,
+                    name_str,
+                    override_class.as_type(i_s.db),
+                    *override_class,
+                    |issue| from.add_issue(i_s, issue),
+                    MroIndex(0),
+                    false,
+                ) {
+                    new
+                } else {
+                    value.clone()
+                };
+                let override_class_infos = override_class.use_cached_class_infos(i_s.db);
+                if let Some(t) = override_class_infos.undefined_generics_type.get() {
+                    if let Type::Enum(e) = t.as_ref() {
+                        if e.members
+                            .iter()
+                            .any(|member| member.name(i_s.db) == name_str)
+                            && !ENUM_NAMES_OVERRIDABLE.contains(&name_str)
+                        {
+                            from.add_issue(
+                                i_s,
+                                IssueKind::CannotOverrideWritableWithFinalAttribute {
+                                    name: name_str.into(),
+                                },
+                            )
+                        }
+                    }
+                }
+                let matched = check_override(
+                    i_s,
+                    from,
+                    ancestor_lookup.clone(),
+                    &LookupDetails {
+                        class: TypeOrClass::Class(*override_class),
+                        lookup: LookupResult::UnknownName(bound_inf),
+                        attr_kind,
+                        mro_index: None,
+                    },
+                    name_str,
+                    |db, c| c.name(db),
+                    None,
+                );
+                had_error = !matched;
+                matched
+            },
+        );
+        if had_error && assign_kind == AssignKind::Normal {
+            save(name_def.index(), ancestor_inf);
+        } else {
+            save(name_def.index(), value);
+        }
+    }
     fn assign_to_name_def_simple(
         &self,
         name_def: NameDef,
@@ -1116,111 +1235,16 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 if let Some(ancestor_inf) = ancestor_lookup.lookup.maybe_inferred().filter(|_| {
                     !(name_str == "__hash__" && ancestor_lookup.class.is_object(i_s.db))
                 }) {
-                    let declaration_t = ancestor_inf.as_cow_type(i_s);
-                    let first_name_link = PointLink::new(
-                        self.file_index,
-                        first_defined_name(self.file, name_def.name_index()),
+                    self.assign_and_override_in_subclass(
+                        name_def,
+                        from,
+                        assign_kind,
+                        class,
+                        value,
+                        &ancestor_lookup,
+                        &ancestor_inf,
+                        save,
                     );
-                    if ancestor_lookup.attr_kind.is_final() {
-                        from.add_issue(
-                            i_s,
-                            if matches!(
-                                assign_kind,
-                                AssignKind::Annotation {
-                                    specific: Some(Specific::AnnotationOrTypeCommentFinal)
-                                }
-                            ) || !matches!(ancestor_lookup.attr_kind, AttributeKind::Final)
-                            {
-                                IssueKind::CannotOverrideFinalAttribute {
-                                    name: name_str.into(),
-                                    base_class: ancestor_lookup.class.name(i_s.db).into(),
-                                }
-                            } else {
-                                IssueKind::CannotAssignToFinal {
-                                    name: name_str.into(),
-                                    is_attribute: false,
-                                }
-                            },
-                        );
-                        save(
-                            name_def.index(),
-                            &Inferred::new_unsaved_complex(ComplexPoint::IndirectFinal(Rc::new(
-                                ancestor_inf.as_type(i_s),
-                            ))),
-                        );
-                        return;
-                    }
-                    let attr_kind = match assign_kind {
-                        AssignKind::Annotation {
-                            specific: Some(Specific::AnnotationOrTypeCommentClassVar),
-                        } => AttributeKind::ClassVar,
-                        AssignKind::Annotation {
-                            specific: Some(Specific::AnnotationOrTypeCommentFinal),
-                        } => AttributeKind::Final,
-                        AssignKind::Annotation { .. } => AttributeKind::AnnotatedAttribute,
-                        _ => AttributeKind::Attribute,
-                    };
-                    let mut had_error = false;
-                    self.narrow_or_widen_name_target(
-                        first_name_link,
-                        &declaration_t,
-                        &value.as_cow_type(i_s),
-                        || {
-                            // TODO all these clones feel weird.
-                            let bound_inf = if let Some((new, _)) =
-                                value.clone().bind_instance_descriptors(
-                                    i_s,
-                                    name_str,
-                                    class.as_type(i_s.db),
-                                    *class,
-                                    |issue| from.add_issue(i_s, issue),
-                                    MroIndex(0),
-                                    false,
-                                ) {
-                                new
-                            } else {
-                                value.clone()
-                            };
-                            let override_class_infos = class.use_cached_class_infos(i_s.db);
-                            if let Some(t) = override_class_infos.undefined_generics_type.get() {
-                                if let Type::Enum(e) = t.as_ref() {
-                                    if e.members
-                                        .iter()
-                                        .any(|member| member.name(i_s.db) == name_str)
-                                        && !ENUM_NAMES_OVERRIDABLE.contains(&name_str)
-                                    {
-                                        from.add_issue(
-                                            i_s,
-                                            IssueKind::CannotOverrideWritableWithFinalAttribute {
-                                                name: name_str.into(),
-                                            },
-                                        )
-                                    }
-                                }
-                            }
-                            let matched = check_override(
-                                i_s,
-                                from,
-                                ancestor_lookup.clone(),
-                                &LookupDetails {
-                                    class: TypeOrClass::Class(*class),
-                                    lookup: LookupResult::UnknownName(bound_inf),
-                                    attr_kind,
-                                    mro_index: None,
-                                },
-                                name_str,
-                                |db, c| c.name(db),
-                                None,
-                            );
-                            had_error = !matched;
-                            matched
-                        },
-                    );
-                    if had_error && assign_kind == AssignKind::Normal {
-                        save(name_def.index(), &ancestor_inf);
-                    } else {
-                        save(name_def.index(), value);
-                    }
                     return;
                 }
             }
