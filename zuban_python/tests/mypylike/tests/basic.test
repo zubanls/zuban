@@ -373,3 +373,7 @@ xx: list[Never] = []
 
 for (y, z) in xx:  # E: "Never" object is not iterable
     reveal_type(y)  # N: Revealed type is "Any"
+
+[case set_literal_item_mismatch]
+from typing import Set
+x: Set[int] = {1, ""}  # E: Set item 1 has incompatible type "str"; expected "int"

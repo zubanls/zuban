@@ -60,6 +60,7 @@ pub(crate) enum IssueKind {
     AssigningToNameOutsideOfSlots { name: Box<str>, class: Box<str> },
     ListItemMismatch { item: usize, got: Box<str>, expected: Box<str> },
     ListComprehensionMismatch { got: Box<str>, expected: Box<str> },
+    SetItemMismatch { item: usize, got: Box<str>, expected: Box<str> },
     SetComprehensionMismatch { got: Box<str>, expected: Box<str> },
     GeneratorComprehensionMismatch { got: Box<str>, expected: Box<str> },
     DictComprehensionMismatch { part: &'static str, got: Box<str>, expected: Box<str> },
@@ -473,6 +474,7 @@ impl IssueKind {
             TypeArgumentIssue { .. } | MissingTypeParameters { .. } => "type-arg",
             ModuleNotFound { .. } => "import-not-found",
             ListItemMismatch { .. } => "list-item",
+            SetItemMismatch { .. } => "call-arg", // This has no error code in Mypy currently.
             DictMemberMismatch { .. } | UnpackedDictMemberMismatch { .. } => "dict-item",
             NewTypeMustBeSubclassable { .. } => "valid-newtype",
             OverloadImplementationNeeded { .. } => "no-overload-impl",
@@ -772,6 +774,9 @@ impl<'db> Diagnostic<'db> {
             ),
             ListComprehensionMismatch{got, expected} => format!(
                 "List comprehension has incompatible type List[{got}]; expected List[{expected}]",
+            ),
+            SetItemMismatch{item, got, expected} => format!(
+                "Set item {item} has incompatible type \"{got}\"; expected \"{expected}\"",
             ),
             SetComprehensionMismatch{got, expected} => format!(
                 "Set comprehension has incompatible type Set[{got}]; expected Set[{expected}]",

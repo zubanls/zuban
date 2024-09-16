@@ -83,8 +83,14 @@ impl<'db> Inference<'db, '_, '_> {
                 let item = if matches!(elements, StarLikeExpressionIterator::Empty) {
                     matcher.replace_type_var_likes_for_unknown_type_vars(i_s.db, &generic_t)
                 } else {
-                    let found =
-                        check_elements_with_context(i_s, matcher, &generic_t, self.file, elements);
+                    let found = check_elements_with_context(
+                        i_s,
+                        matcher,
+                        &generic_t,
+                        self.file,
+                        elements,
+                        wanted_node_ref,
+                    );
                     found.unwrap_or_else(|| {
                         generic_t
                             .replace_type_var_likes(self.i_s.db, &mut |tv| tv.as_any_generic_item())
@@ -411,6 +417,7 @@ fn check_elements_with_context<'db>(
     generic_t: &Type,
     file: &PythonFile,
     elements: StarLikeExpressionIterator,
+    wanted_node_ref: NodeRef,
 ) -> Option<Type> {
     // Since it's a list or a set, now check all the entries if they match the given
     // result generic;
@@ -428,11 +435,19 @@ fn check_elements_with_context<'db>(
                 |error_types, _: &MismatchReason| {
                     let ErrorStrs { expected, got } = error_types.as_boxed_strs(i_s.db);
                     had_error = true;
-                    Some(IssueKind::ListItemMismatch {
-                        item,
-                        got,
-                        expected,
-                    })
+                    if wanted_node_ref == i_s.db.python_state.list_node_ref() {
+                        Some(IssueKind::ListItemMismatch {
+                            item,
+                            got,
+                            expected,
+                        })
+                    } else {
+                        Some(IssueKind::SetItemMismatch {
+                            item,
+                            got,
+                            expected,
+                        })
+                    }
                 },
             );
             if !had_error && context_has_any {
