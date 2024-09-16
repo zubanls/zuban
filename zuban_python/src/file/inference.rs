@@ -3220,7 +3220,11 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             Bool(b) => return check_literal(result_context, i_s, b.index(), Specific::BoolLiteral),
             Ellipsis => Specific::Ellipsis,
             List(list) => {
-                if let Some(result) = self.infer_list_literal_from_context(list, result_context) {
+                if let Some(result) = self.infer_list_or_set_literal_from_context(
+                    list.unpack(),
+                    result_context,
+                    i_s.db.python_state.list_node_ref(),
+                ) {
                     return result.save_redirect(i_s, self.file, atom.index());
                 }
                 let result = match list.unpack() {
@@ -3244,6 +3248,13 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             }
             DictComprehension(comp) => return self.infer_dict_comprehension(comp, result_context),
             Set(set) => {
+                if let Some(result) = self.infer_list_or_set_literal_from_context(
+                    set.unpack(),
+                    result_context,
+                    i_s.db.python_state.set_node_ref(),
+                ) {
+                    return result.save_redirect(i_s, self.file, atom.index());
+                }
                 if let elements @ StarLikeExpressionIterator::Elements(_) = set.unpack() {
                     return Inferred::from_type(new_class!(
                         i_s.db.python_state.set_node_ref().as_link(),

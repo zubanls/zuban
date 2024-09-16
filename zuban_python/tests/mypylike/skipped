@@ -6,9 +6,6 @@ testPostInitIsNotAFunction
 # callable matching regression
 testNoCrashOnNestedGenericCallable
 
-# set context issue?
-testTypeNarrowingStringInSet
-
 # functools.total_ordering
 testTotalOrderingEqLt
 testTotalOrderingLambda

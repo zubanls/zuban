@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use parsa_python_cst::{
-    Dict, DictElement, DictElementIterator, Expression, FunctionDef, Int, List, NodeIndex,
+    Dict, DictElement, DictElementIterator, Expression, FunctionDef, Int, NodeIndex,
     StarLikeExpression, StarLikeExpressionIterator, NAME_DEF_TO_NAME_DIFFERENCE,
 };
 
@@ -64,29 +64,33 @@ impl<'db> Inference<'db, '_, '_> {
         result.unwrap_or(Type::Never(NeverCause::Other))
     }
 
-    pub fn infer_list_literal_from_context(
+    pub fn infer_list_or_set_literal_from_context(
         &self,
-        list: List,
+        elements: StarLikeExpressionIterator,
         result_context: &mut ResultContext,
+        wanted_node_ref: NodeRef,
     ) -> Option<Inferred> {
         let i_s = self.i_s;
         result_context.on_unique_type_in_unpacked_union(
             i_s,
-            i_s.db.python_state.list_node_ref(),
+            wanted_node_ref,
             |matcher, cls_matcher| {
                 let generic_t = cls_matcher
                     .into_type_arg_iterator_or_any(i_s.db)
                     .next()
                     .unwrap();
-                let found = check_list_with_context(i_s, matcher, &generic_t, self.file, list);
-                Inferred::from_type(found.unwrap_or_else(|| {
-                    new_class!(
-                        i_s.db.python_state.list_node_ref().as_link(),
-                        generic_t.replace_type_var_likes(self.i_s.db, &mut |tv| {
-                            tv.as_any_generic_item()
-                        }),
-                    )
-                }))
+
+                let item = if matches!(elements, StarLikeExpressionIterator::Empty) {
+                    matcher.replace_type_var_likes_for_unknown_type_vars(i_s.db, &generic_t)
+                } else {
+                    let found =
+                        check_elements_with_context(i_s, matcher, &generic_t, self.file, elements);
+                    found.unwrap_or_else(|| {
+                        generic_t
+                            .replace_type_var_likes(self.i_s.db, &mut |tv| tv.as_any_generic_item())
+                    })
+                };
+                Inferred::from_type(new_class!(wanted_node_ref.as_link(), item))
             },
         )
     }
@@ -401,28 +405,20 @@ fn is_any_dict(db: &Database, t: &Type) -> bool {
     }
 }
 
-fn check_list_with_context<'db>(
+fn check_elements_with_context<'db>(
     i_s: &InferenceState<'db, '_>,
     matcher: &mut Matcher,
     generic_t: &Type,
     file: &PythonFile,
-    list: List,
+    elements: StarLikeExpressionIterator,
 ) -> Option<Type> {
-    let iterator = list.unpack();
-    if matches!(iterator, StarLikeExpressionIterator::Empty) {
-        return Some(new_class!(
-            i_s.db.python_state.list_node_ref().as_link(),
-            matcher.replace_type_var_likes_for_unknown_type_vars(i_s.db, generic_t),
-        ));
-    }
-
-    // Since it's a list, now check all the entries if they match the given
+    // Since it's a list or a set, now check all the entries if they match the given
     // result generic;
     let mut had_error = false;
     let mut out: Option<Type> = None;
     let out_pointer = &mut out;
     let context_has_any = generic_t.is_any_or_any_in_union(i_s.db);
-    for (item, element) in iterator.enumerate() {
+    for (item, element) in elements.enumerate() {
         let mut check_item = |i_s: &InferenceState<'db, '_>, matcher, inferred: Inferred, index| {
             generic_t.error_if_not_matches_with_matcher(
                 i_s,
@@ -472,13 +468,10 @@ fn check_list_with_context<'db>(
         };
     }
     (!had_error).then(|| {
-        new_class!(
-            i_s.db.python_state.list_node_ref().as_link(),
-            out.map(|t| t.avoid_implicit_literal(i_s.db))
-                .unwrap_or_else(|| {
-                    matcher.replace_type_var_likes_for_unknown_type_vars(i_s.db, generic_t)
-                }),
-        )
+        out.map(|t| t.avoid_implicit_literal(i_s.db))
+            .unwrap_or_else(|| {
+                matcher.replace_type_var_likes_for_unknown_type_vars(i_s.db, generic_t)
+            })
     })
 }
 
