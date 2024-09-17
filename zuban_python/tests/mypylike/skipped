@@ -79,11 +79,9 @@ testInferenceAgainstGenericCallableGenericNonLinear
 # Recursive alias union type var inference where Nested[T] is checked before T
 testRecursiveAliasWithRecursiveInstanceInference
 # type var backtracking
-testGenericFunctionSubtypingWithUnions
 testUnionInference
 testCrashOnComplexCheckWithNamedTupleNext
 unite_type_vars_mypy_issue_5874
-multiple_lambda_mypy_issue_4226
 # type var backtracking for overloads if variant does not match
 testMatchProtocolAgainstOverloadWithAmbiguity
 # type var with unions and fallback in case solving is not possible

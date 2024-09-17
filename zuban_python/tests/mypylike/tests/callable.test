@@ -294,7 +294,7 @@ def comp(g: Callable[[T], U], f: Callable[[S], T]) -> Callable[[S], U]:
 def test(s: str) -> int:
     len_and_inc = comp(lambda i: i + 1, lambda s: len(s))
     x = len_and_inc(s)
-    reveal_type(x)
+    reveal_type(x)  # N: Revealed type is "int"
     return x
 
 [case callable_with_keyword_errors]
