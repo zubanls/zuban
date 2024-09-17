@@ -6,11 +6,6 @@ testPostInitIsNotAFunction
 # callable matching regression
 testNoCrashOnNestedGenericCallable
 
-# functools.total_ordering
-testTotalOrderingLambda
-testTotalOrderingReturnNotBool
-testTotalOrderingAllowsAny
-
 # WTF why is this base type not object/function?
 testListLiteralWithNameOnlyArgsDoesNotEraseNames
 # join of {1, *some_str_tuple} leads to int | str???
@@ -213,6 +208,11 @@ testGenericTypedDictAlias
 testNewAnalyzerDisallowAnyGenericsMessages
 
 # --------------------------- Not first release ---------------------------
+
+# Better functools.total_ordering support
+testTotalOrderingLambda
+testTotalOrderingReturnNotBool
+testTotalOrderingAllowsAny
 
 # with scoping is special (Does it need to be??)
 testWithStmtScopeBasics

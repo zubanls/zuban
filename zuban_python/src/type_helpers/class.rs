@@ -86,6 +86,8 @@ const NAMEDTUPLE_PROHIBITED_NAMES: [&str; 12] = [
     "__annotations__",
 ];
 
+pub(super) const ORDERING_METHODS: [&'static str; 4] = ["__lt__", "__le__", "__gt__", "__ge__"];
+
 pub fn cache_class_name(name_def: NodeRef, class: ClassDef) {
     if !name_def.point().calculated() {
         name_def.set_point(Point::new_redirect(
@@ -471,8 +473,17 @@ impl<'db: 'a, 'a> Class<'a> {
                 .set(Rc::new(Type::Dataclass(dataclass.clone())))
                 .unwrap();
         }
+        if total_ordering {
+            if !self.has_a_total_ordering_method_in_mro(i_s.db, &class_infos.mro) {
+                // If there is no corresponding method, we just ignore the MRO
+                NodeRef::new(self.node_ref.file, self.node().name_def().index())
+                    .add_issue(i_s, IssueKind::TotalOrderingMissingMethod);
+                total_ordering = false;
+            }
+        }
         class_infos.is_final |= is_final;
         class_infos.total_ordering = total_ordering;
+
         if class_infos.class_kind == ClassKind::Protocol {
             class_infos.is_runtime_checkable = is_runtime_checkable;
         } else {
@@ -677,6 +688,32 @@ impl<'db: 'a, 'a> Class<'a> {
             }
         }
         debug!("Finished calculating class infos for {}", self.name());
+    }
+
+    pub fn has_a_total_ordering_method_in_mro(&self, db: &Database, mro: &[BaseClass]) -> bool {
+        for n in ORDERING_METHODS {
+            if self
+                .class_storage
+                .class_symbol_table
+                .lookup_symbol(n)
+                .is_some()
+            {
+                return true;
+            }
+            for b in mro {
+                if let Type::Class(c) = &b.type_ {
+                    if c.class(db)
+                        .class_storage
+                        .class_symbol_table
+                        .lookup_symbol(n)
+                        .is_some()
+                    {
+                        return true;
+                    }
+                }
+            }
+        }
+        false
     }
 
     pub fn use_cached_class_infos(&self, db: &'db Database) -> &'db ClassInfos {

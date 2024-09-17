@@ -2,7 +2,10 @@ use std::{borrow::Cow, cell::Cell, rc::Rc};
 
 use parsa_python_cst::Name;
 
-use super::{class::TypeOrClass, Class, FirstParamKind, Function, MroIterator};
+use super::{
+    class::{TypeOrClass, ORDERING_METHODS},
+    Class, FirstParamKind, Function, MroIterator,
+};
 use crate::{
     arguments::{Args, CombinedArgs, InferredArg, KnownArgs, KnownArgsWithCustomAddIssue},
     database::{ComplexPoint, Database, PointLink, Specific},
@@ -19,8 +22,6 @@ use crate::{
         TypeVarKind,
     },
 };
-
-const ORDERING_METHODS: [&'static str; 4] = ["__lt__", "__le__", "__gt__", "__ge__"];
 
 #[derive(Debug, Clone, Copy)]
 pub struct Instance<'a> {
@@ -413,6 +414,7 @@ impl<'a> Instance<'a> {
         }
         if self.class.use_cached_class_infos(i_s.db).total_ordering
             && ORDERING_METHODS.contains(&name)
+            && options.super_count == 0
             && options.check_total_ordering
         {
             return self.fill_total_ordering_method(i_s, name, options);
@@ -492,7 +494,7 @@ impl<'a> Instance<'a> {
                 return result;
             }
         }
-        LookupDetails::none()
+        unreachable!("total ordering should not be enabled without corresponding methods")
     }
 
     pub(crate) fn lookup_with_details(

@@ -571,3 +571,15 @@ class D(C):
              # N:          def (int, /) -> None \
              # N:      Subclass: \
              # N:          Callable[[], None]
+
+[case total_ordering_missing_method]
+from functools import total_ordering
+
+@total_ordering
+class Ord:  # E: No ordering operation defined when using "functools.total_ordering": < > <= >=
+    def __eq__(self, other: object) -> bool:
+        return False
+
+reveal_type(Ord() < Ord())  # E: Unsupported left operand type for < ("Ord")  # N: Revealed type is "Any"
+reveal_type(Ord() <= Ord())  # E: Unsupported left operand type for <= ("Ord")  # N: Revealed type is "Any"
+reveal_type(Ord() == Ord())  # N: Revealed type is "bool"

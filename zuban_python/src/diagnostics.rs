@@ -274,6 +274,7 @@ pub(crate) enum IssueKind {
     CannotOverrideFinalAttribute { base_class: Box<str>, name: Box<str> },
     CannotOverrideWritableWithFinalAttribute { name: Box<str> },
     ExplicitOverrideFlagRequiresOverride { method: Box<str>, class: Box<str> },
+    TotalOrderingMissingMethod,
 
     BaseExceptionExpected,
     BaseExceptionExpectedForRaise,
@@ -1511,6 +1512,9 @@ impl<'db> Diagnostic<'db> {
             ExplicitOverrideFlagRequiresOverride { method, class } => format!(
                 r#"Method "{method}" is not using @override but is overriding a method in class "{class}""#
             ),
+            TotalOrderingMissingMethod => {
+                r#"No ordering operation defined when using "functools.total_ordering": < > <= >="#.to_string()
+            }
 
             BaseExceptionExpected =>
                 "Exception type must be derived from BaseException (or be a \
