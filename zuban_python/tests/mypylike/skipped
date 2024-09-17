@@ -7,11 +7,9 @@ testPostInitIsNotAFunction
 testNoCrashOnNestedGenericCallable
 
 # functools.total_ordering
-testTotalOrderingEqLt
 testTotalOrderingLambda
 testTotalOrderingReturnNotBool
 testTotalOrderingAllowsAny
-testTotalOrderingWithForwardReference
 
 # WTF why is this base type not object/function?
 testListLiteralWithNameOnlyArgsDoesNotEraseNames

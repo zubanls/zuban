@@ -1401,6 +1401,7 @@ pub struct ClassInfos {
     pub protocol_members: Box<[ProtocolMember]>,
     pub has_slots: bool,
     pub is_final: bool,
+    pub total_ordering: bool,
     pub is_runtime_checkable: bool,
     pub abstract_attributes: Box<[PointLink]>,
     // We have this less for caching and more to be able to have different types.

@@ -20,6 +20,8 @@ use crate::{
     },
 };
 
+const ORDERING_METHODS: [&'static str; 4] = ["__lt__", "__le__", "__gt__", "__ge__"];
+
 #[derive(Debug, Clone, Copy)]
 pub struct Instance<'a> {
     pub class: Class<'a>,
@@ -409,6 +411,12 @@ impl<'a> Instance<'a> {
                 }
             }
         }
+        if self.class.use_cached_class_infos(i_s.db).total_ordering
+            && ORDERING_METHODS.contains(&name)
+            && options.check_total_ordering
+        {
+            return self.fill_total_ordering_method(i_s, name, options);
+        }
         if options.kind == LookupKind::Normal && options.check_dunder_getattr {
             for method_name in ["__getattr__", "__getattribute__"] {
                 let l = self.lookup_with_details(
@@ -466,6 +474,25 @@ impl<'a> Instance<'a> {
                 mro_index: None,
             }
         }
+    }
+
+    pub fn fill_total_ordering_method(
+        &self,
+        i_s: &'a InferenceState,
+        name: &str,
+        options: InstanceLookupOptions,
+    ) -> LookupDetails<'a> {
+        for n in ORDERING_METHODS {
+            if n == name {
+                continue;
+            }
+            // TODO while this is working, the name of the function is obviously not correct.
+            let result = self.lookup(i_s, n, options.without_total_ordering_lookup());
+            if result.lookup.is_some() {
+                return result;
+            }
+        }
+        LookupDetails::none()
     }
 
     pub(crate) fn lookup_with_details(
@@ -954,6 +981,7 @@ pub struct InstanceLookupOptions<'x> {
     check_dunder_getattr: bool,
     disallow_lazy_bound_method: bool,
     without_object: bool,
+    check_total_ordering: bool,
 }
 
 impl<'x> InstanceLookupOptions<'x> {
@@ -967,6 +995,7 @@ impl<'x> InstanceLookupOptions<'x> {
             check_dunder_getattr: true,
             disallow_lazy_bound_method: false,
             without_object: false,
+            check_total_ordering: true,
         }
     }
 
@@ -1015,6 +1044,11 @@ impl<'x> InstanceLookupOptions<'x> {
 
     pub fn without_object(mut self) -> Self {
         self.without_object = true;
+        self
+    }
+
+    pub fn without_total_ordering_lookup(mut self) -> Self {
+        self.check_total_ordering = false;
         self
     }
 }

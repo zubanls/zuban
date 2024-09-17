@@ -169,6 +169,7 @@ pub struct PythonState {
     abc_abstractmethod_index: NodeIndex,
     abc_abstractproperty_index: NodeIndex,
     functools_cached_property_index: NodeIndex,
+    functools_total_ordering_index: NodeIndex,
     enum_enum_meta_index: NodeIndex,
     enum_enum_index: NodeIndex,
     enum_auto_index: NodeIndex,
@@ -285,6 +286,7 @@ impl PythonState {
             abc_abstractmethod_index: 0,
             abc_abstractproperty_index: 0,
             functools_cached_property_index: 0,
+            functools_total_ordering_index: 0,
             enum_enum_meta_index: 0,
             enum_enum_index: 0,
             enum_auto_index: 0,
@@ -500,6 +502,12 @@ impl PythonState {
             typing_extensions_runtime_checkable_index,
             typing_extensions,
             "runtime_checkable",
+            true
+        );
+        cache_index!(
+            functools_total_ordering_index,
+            functools,
+            "total_ordering",
             true
         );
         cache_index!(builtins_object_index, builtins, "object");
@@ -849,6 +857,7 @@ impl PythonState {
     attribute_link!(abc, pub abstractmethod_link, abc_abstractmethod_index);
     attribute_link!(abc, pub abstractproperty_link, abc_abstractproperty_index);
     attribute_link!(functools, pub cached_property_link, functools_cached_property_index);
+    attribute_link!(functools, pub total_ordering_link, functools_total_ordering_index);
     attribute_link!(enum_file, pub enum_meta_link, enum_enum_meta_index);
     attribute_link!(enum_file, pub enum_auto_link, enum_auto_index);
     attribute_link!(typing, pub overload_link, typing_overload_index);

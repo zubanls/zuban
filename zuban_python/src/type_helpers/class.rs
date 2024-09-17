@@ -393,6 +393,7 @@ impl<'db: 'a, 'a> Class<'a> {
         let mut was_dataclass = None;
         let maybe_decorated = self.node().maybe_decorated();
         let mut is_final = false;
+        let mut total_ordering = false;
         let mut is_runtime_checkable = false;
         if let Some(decorated) = maybe_decorated {
             let inference = self.node_ref.file.inference(i_s);
@@ -421,6 +422,8 @@ impl<'db: 'a, 'a> Class<'a> {
                 if let Some(maybe_link) = inf.maybe_saved_link() {
                     if maybe_link == i_s.db.python_state.typing_final().as_link() {
                         is_final = true;
+                    } else if maybe_link == i_s.db.python_state.total_ordering_link() {
+                        total_ordering = true;
                     } else if maybe_link == i_s.db.python_state.runtime_checkable_link()
                         || maybe_link
                             == i_s
@@ -469,6 +472,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 .unwrap();
         }
         class_infos.is_final |= is_final;
+        class_infos.total_ordering = total_ordering;
         if class_infos.class_kind == ClassKind::Protocol {
             class_infos.is_runtime_checkable = is_runtime_checkable;
         } else {
@@ -1060,6 +1064,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 has_slots,
                 protocol_members,
                 is_final,
+                total_ordering: false,
                 is_runtime_checkable: true,
                 abstract_attributes,
                 undefined_generics_type: OnceCell::new(),
