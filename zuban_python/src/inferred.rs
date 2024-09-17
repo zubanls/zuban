@@ -292,7 +292,7 @@ impl<'db: 'slf, 'slf> Inferred {
         self.as_cow_type(i_s).maybe_callable(i_s)
     }
 
-    pub fn maybe_new_partial(&self, i_s: &InferenceState, from: NodeRef) -> Option<Inferred> {
+    pub fn maybe_new_partial(&self, i_s: &InferenceState) -> Option<Inferred> {
         if self.maybe_saved_specific(i_s.db) == Some(Specific::None) {
             return Some(Inferred::new_unsaved_specific(Specific::PartialNone));
         }
@@ -303,18 +303,26 @@ impl<'db: 'slf, 'slf> Inferred {
             .map(|specific| Inferred {
                 state: InferredState::UnsavedSpecific(specific),
             })
-            .or_else(|| {
-                if t.has_never_from_inference(i_s.db) {
-                    from.add_issue(
-                        i_s,
-                        IssueKind::NeedTypeAnnotation {
-                            for_: from.as_code().into(),
-                            hint: None,
-                        },
-                    )
-                }
-                None
-            })
+    }
+
+    pub fn maybe_never_from_inference(
+        &self,
+        i_s: &InferenceState,
+        from: NodeRef,
+    ) -> Option<Inferred> {
+        let Some(ComplexPoint::TypeInstance(t)) = self.maybe_complex_point(i_s.db) else {
+            return None;
+        };
+        t.has_never_from_inference(i_s.db).then(|| {
+            from.add_issue(
+                i_s,
+                IssueKind::NeedTypeAnnotation {
+                    for_: from.as_code().into(),
+                    hint: None,
+                },
+            );
+            Inferred::from_type(t.replace_never_from_inference_with_any())
+        })
     }
 
     pub fn maybe_new_nullable_partial_point(&self, i_s: &InferenceState) -> Option<Point> {

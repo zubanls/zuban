@@ -2,22 +2,174 @@ use std::rc::Rc;
 
 use super::{
     simplified_union_from_iterators_with_format_index, type_var_likes::CallableId, CallableContent,
-    CallableParam, CallableParams, ClassGenerics, Dataclass, GenericClass, GenericItem,
-    GenericsList, Intersection, NamedTuple, ParamSpecArg, ParamSpecUsage, ParamType, RecursiveType,
-    StarParamType, StarStarParamType, Tuple, TupleArgs, Type, TypeArgs, TypeGuardInfo, TypeVarLike,
-    TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypedDictGenerics, UnionEntry, UnionType,
+    CallableParam, CallableParams, ClassGenerics, Dataclass, FunctionOverload, GenericClass,
+    GenericItem, GenericsList, Intersection, NamedTuple, ParamSpecArg, ParamSpecTypeVars,
+    ParamSpecUsage, ParamType, RecursiveType, StarParamType, StarStarParamType, Tuple, TupleArgs,
+    Type, TypeArgs, TypeGuardInfo, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager,
+    TypedDictGenerics, UnionEntry, UnionType,
 };
 use crate::{
     database::{Database, PointLink},
     inference_state::InferenceState,
-    type_::{TupleUnpack, WithUnpack},
+    type_::{AnyCause, NeverCause, TupleUnpack, WithUnpack},
     utils::rc_slice_into_vec,
 };
 
 pub type ReplaceTypeVarLike<'x> = &'x mut dyn FnMut(TypeVarLikeUsage) -> GenericItem;
 pub type ReplaceSelf<'x> = &'x dyn Fn() -> Type;
 
+trait Replacer {
+    fn replace_type(&mut self, t: &Type) -> Option<Type>;
+}
+
 impl Type {
+    pub fn replace_never_from_inference_with_any(&self) -> Self {
+        struct NeverReplacer();
+        impl Replacer for NeverReplacer {
+            fn replace_type(&mut self, t: &Type) -> Option<Type> {
+                match t {
+                    Type::Never(NeverCause::Inference) => Some(Type::Any(AnyCause::FromError)),
+                    _ => None,
+                }
+            }
+        }
+        self.replace_internal(&mut NeverReplacer())
+            .unwrap_or_else(|| self.clone())
+    }
+
+    fn replace_internal(&self, replacer: &mut impl Replacer) -> Option<Self> {
+        if let Some(t) = replacer.replace_type(self) {
+            return Some(t);
+        }
+
+        let mut replace_generics = |generics: &GenericsList| {
+            Some(GenericsList::new_generics(maybe_replace_iterable(
+                generics.iter(),
+                |g| g.replace_internal(replacer),
+            )?))
+        };
+
+        match self {
+            Type::Class(c) => match &c.generics {
+                ClassGenerics::List(l) => {
+                    replace_generics(l).map(|g| Type::new_class(c.link, ClassGenerics::List(g)))
+                }
+                _ => None,
+            },
+            Type::FunctionOverload(overload) => Some(Type::FunctionOverload(
+                FunctionOverload::new(maybe_replace_iterable(overload.iter_functions(), |c| {
+                    c.replace_internal(replacer).map(Rc::new)
+                })?),
+            )),
+            Type::Union(u) => {
+                /*
+                let new_entries = u
+                    .entries
+                    .iter()
+                    .map(|u| {
+                        (
+                            u.format_index,
+                            u.type_
+                                .replace_type_var_likes_and_self(db, callable, replace_self),
+                        )
+                    })
+                    .collect::<Vec<_>>();
+                let i_s = InferenceState::new(db);
+                let highest_union_format_index = new_entries
+                    .iter()
+                    .map(|e| e.1.highest_union_format_index())
+                    .max()
+                    .unwrap();
+                simplified_union_from_iterators_with_format_index(
+                    &i_s,
+                    new_entries.into_iter(),
+                    highest_union_format_index,
+                )
+                */
+                todo!()
+            }
+            Type::Type(t) => Some(Type::Type(Rc::new(t.replace_internal(replacer)?))),
+            Type::Tuple(content) => Some(Type::Tuple(Tuple::new(
+                content.args.replace_internal(replacer)?,
+            ))),
+            Type::Callable(c) => Some(Type::Callable(Rc::new(c.replace_internal(replacer)?))),
+            Type::RecursiveType(rec) => Some(Type::RecursiveType(Rc::new(RecursiveType::new(
+                rec.link,
+                Some(replace_generics(rec.generics.as_ref()?)?),
+            )))),
+            Type::Dataclass(d) => match &d.class.generics {
+                ClassGenerics::List(l) => Some(Type::Dataclass(Dataclass::new(
+                    GenericClass {
+                        link: d.class.link,
+                        generics: ClassGenerics::List(replace_generics(l)?),
+                    },
+                    d.options,
+                ))),
+                _ => None,
+            },
+            Type::TypedDict(td) => match &td.generics {
+                TypedDictGenerics::Generics(generics) => {
+                    /*
+                    Type::TypedDict(td.replace_type_var_likes_and_self(
+                        db,
+                        generics,
+                        callable,
+                        replace_self,
+                    ))
+                    TypedDictGenerics::Generics(replace_generics(generics))
+                    */
+                    todo!()
+                }
+                TypedDictGenerics::None | TypedDictGenerics::NotDefinedYet(_) => None,
+            },
+            Type::NamedTuple(nt) => {
+                /*
+                let mut constructor = nt.__new__.as_ref().clone();
+                constructor.params = CallableParams::new_simple(
+                    constructor
+                        .expect_simple_params()
+                        .iter()
+                        .map(|param| {
+                            let ParamType::PositionalOrKeyword(t) = &param.type_ else {
+                                return param.clone();
+                            };
+                            CallableParam {
+                                type_: ParamType::PositionalOrKeyword(
+                                    t.replace_internal(replacer),
+                                ),
+                                has_default: param.has_default,
+                                name: param.name.clone(),
+                            }
+                        })
+                        .collect(),
+                );
+                Type::NamedTuple(Rc::new(NamedTuple::new(nt.name, constructor)))
+                */
+                todo!()
+            }
+            Type::Intersection(intersection) => Some(Type::Intersection(Intersection::new(
+                maybe_replace_iterable(intersection.iter_entries(), |t| {
+                    t.replace_internal(replacer)
+                })?,
+            ))),
+            Type::Any(..)
+            | Type::None
+            | Type::Never(..)
+            | Type::TypeVar(_)
+            | Type::Self_
+            | Type::Literal { .. }
+            | Type::Module(_)
+            | Type::Namespace(_)
+            | Type::Enum(_)
+            | Type::EnumMember(_)
+            | Type::NewType(_)
+            | Type::Super { .. }
+            | Type::CustomBehavior(_)
+            | Type::ParamSpecArgs(_)
+            | Type::ParamSpecKwargs(_) => None,
+        }
+    }
+
     pub fn replace_type_var_likes(
         &self,
         db: &Database,
@@ -274,7 +426,46 @@ impl Type {
     }
 }
 
+#[inline]
+fn maybe_replace_iterable<
+    'x,
+    T: Clone + 'x,
+    IT: Iterator<Item = &'x T> + Clone,
+    R: FromIterator<T>,
+>(
+    elements: IT,
+    mut replace: impl FnMut(&T) -> Option<T>,
+) -> Option<R> {
+    let iter2 = elements.into_iter();
+    let mut iter1 = iter2.clone();
+    for (i, x) in iter1.by_ref().enumerate() {
+        let Some(first_replaced) = replace(x) else {
+            continue;
+        };
+        let result = iter2
+            .take(i)
+            .cloned()
+            .chain(std::iter::once(first_replaced))
+            .chain(iter1.map(|t| replace(t).unwrap_or_else(|| t.clone())))
+            .collect();
+        return Some(result);
+    }
+    None
+}
+
 impl GenericItem {
+    fn replace_internal(&self, replacer: &mut impl Replacer) -> Option<Self> {
+        match self {
+            Self::TypeArg(t) => Some(Self::TypeArg(t.replace_internal(replacer)?)),
+            Self::TypeArgs(ta) => Some(Self::TypeArgs(TypeArgs {
+                args: ta.args.replace_internal(replacer)?,
+            })),
+            Self::ParamSpecArg(param_spec_arg) => Some(Self::ParamSpecArg(
+                param_spec_arg.replace_internal(replacer)?,
+            )),
+        }
+    }
+
     pub fn replace_type_var_likes_and_self(
         &self,
         db: &Database,
@@ -297,7 +488,25 @@ impl GenericItem {
     }
 }
 
+impl ParamSpecArg {
+    fn replace_internal(&self, replacer: &mut impl Replacer) -> Option<Self> {
+        let type_vars = self.type_vars.as_ref().map(|t| t.type_vars.as_vec());
+        // TODO what todo about changing type vars? like replace_type_var_likes_and_self
+        Some(Self::new(
+            self.params.replace_internal(replacer)?,
+            type_vars.map(|t| ParamSpecTypeVars {
+                type_vars: TypeVarLikes::from_vec(t),
+                in_definition: self.type_vars.as_ref().unwrap().in_definition,
+            }),
+        ))
+    }
+}
+
 impl CallableContent {
+    fn replace_internal(&self, replacer: &mut impl Replacer) -> Option<Self> {
+        todo!()
+    }
+
     pub fn replace_type_var_likes_and_self(
         &self,
         db: &Database,
@@ -434,6 +643,10 @@ impl CallableParam {
 }
 
 impl CallableParams {
+    fn replace_internal(&self, replacer: &mut impl Replacer) -> Option<Self> {
+        todo!()
+    }
+
     pub fn replace_type_var_likes_and_self(
         &self,
         db: &Database,
@@ -620,6 +833,20 @@ fn replace_param_spec_inner_type_var_likes(
 }
 
 impl TupleArgs {
+    fn replace_internal(&self, replacer: &mut impl Replacer) -> Option<Self> {
+        Some(match self {
+            TupleArgs::FixedLen(ts) => {
+                TupleArgs::FixedLen(maybe_replace_iterable(ts.iter(), |t| {
+                    t.replace_internal(replacer)
+                })?)
+            }
+            TupleArgs::ArbitraryLen(t) => {
+                TupleArgs::ArbitraryLen(Box::new(t.replace_internal(replacer)?))
+            }
+            TupleArgs::WithUnpack(unpack) => todo!(),
+        })
+    }
+
     pub fn replace_type_var_likes_and_self(
         &self,
         db: &Database,

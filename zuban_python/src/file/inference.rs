@@ -1614,9 +1614,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 return;
             }
             if assign_kind == AssignKind::Normal {
-                if let Some(partial) =
-                    value.maybe_new_partial(i_s, NodeRef::new(self.file, current_index))
-                {
+                if let Some(partial) = value.maybe_new_partial(i_s) {
                     FLOW_ANALYSIS.with(|fa| {
                         fa.add_partial(PointLink::new(self.file_index, name_def.index()))
                     });
@@ -1657,8 +1655,12 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     }
 
                     return;
-                }
-                if lookup_self_attribute_in_bases.is_none()
+                } else if let Some(inf) =
+                    value.maybe_never_from_inference(i_s, NodeRef::new(self.file, current_index))
+                {
+                    save(name_def.index(), &inf);
+                    return;
+                } else if lookup_self_attribute_in_bases.is_none()
                     && name_def.as_code() == "_"
                     && self.i_s.current_function().is_some()
                     && name_def.maybe_import().is_none()

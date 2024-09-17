@@ -349,7 +349,7 @@ impl FunctionOverload {
         self.0[0].is_abstract
     }
 
-    pub fn iter_functions(&self) -> impl Iterator<Item = &Rc<CallableContent>> {
+    pub fn iter_functions(&self) -> impl Iterator<Item = &Rc<CallableContent>> + Clone {
         self.0.iter()
     }
 

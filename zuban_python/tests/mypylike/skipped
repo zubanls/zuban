@@ -186,18 +186,9 @@ testOptionalBackwards4
 testInferenceWithUninhabitedType
 
 # Never not rewritten to Any for "Need type annotation for "X""
-testNewAnalyzerLessErrorsNeedAnnotationNested
-testNewAnalyzerLessErrorsNeedAnnotation
-testUnderspecifiedInferenceResult
 testNeedAnnotationForCallable
-testTypeVarDefaultsClass1
 testTypeVarDefaultsClass2
-testTypeVarDefaultsClass3
-testInferenceOfFor1
-testInferenceOfFor3
 testReusingInferredForIndex2
-testTwoStarExpressionsInGeneratorExpr
-testMultipleForIndexVars
 # explicit any context should lead to Dict[Any, Any]? might be ok?
 testGenericDictWithOverload
 # --disallow-any-generics
