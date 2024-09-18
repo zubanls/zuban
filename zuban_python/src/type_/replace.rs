@@ -72,33 +72,15 @@ impl Type {
                     c.replace_internal(replacer).map(Rc::new)
                 })?),
             )),
-            Type::Union(u) => {
-                /*
-                let new_entries = u
-                    .entries
-                    .iter()
-                    .map(|u| {
-                        (
-                            u.format_index,
-                            u.type_
-                                .replace_type_var_likes_and_self(db, callable, replace_self),
-                        )
+            Type::Union(u) => Some(Type::Union(UnionType::new(maybe_replace_iterable(
+                u.entries.iter(),
+                |union_entry| {
+                    Some(UnionEntry {
+                        type_: union_entry.type_.replace_internal(replacer)?,
+                        format_index: union_entry.format_index,
                     })
-                    .collect::<Vec<_>>();
-                let i_s = InferenceState::new(db);
-                let highest_union_format_index = new_entries
-                    .iter()
-                    .map(|e| e.1.highest_union_format_index())
-                    .max()
-                    .unwrap();
-                simplified_union_from_iterators_with_format_index(
-                    &i_s,
-                    new_entries.into_iter(),
-                    highest_union_format_index,
-                )
-                */
-                todo!()
-            }
+                },
+            )?))),
             Type::Type(t) => Some(Type::Type(Rc::new(t.replace_internal(replacer)?))),
             Type::Tuple(content) => Some(Type::Tuple(Tuple::new(
                 content.args.replace_internal(replacer)?,
@@ -1039,7 +1021,7 @@ impl TupleArgs {
         }
     }
 
-    pub fn rewrite_late_bound_callables<T: CallableId>(&self, manager: &TypeVarManager<T>) -> Self {
+    fn rewrite_late_bound_callables<T: CallableId>(&self, manager: &TypeVarManager<T>) -> Self {
         match self {
             Self::FixedLen(ts) => Self::FixedLen(
                 ts.iter()
