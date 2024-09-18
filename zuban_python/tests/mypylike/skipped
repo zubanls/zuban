@@ -186,17 +186,14 @@ testOptionalBackwards4
 testInferenceWithUninhabitedType
 
 # Never not rewritten to Any for "Need type annotation for "X""
-testNeedAnnotationForCallable
 testTypeVarDefaultsClass2
-testReusingInferredForIndex2
-# explicit any context should lead to Dict[Any, Any]? might be ok?
-testGenericDictWithOverload
+
+# --------------------------- Not first release ---------------------------
+
 # --disallow-any-generics
 testDisallowAnyGenericsForAliasesInRuntimeContext
 testGenericTypedDictAlias
 testNewAnalyzerDisallowAnyGenericsMessages
-
-# --------------------------- Not first release ---------------------------
 
 # Better functools.total_ordering support
 testTotalOrderingLambda
@@ -292,6 +289,8 @@ testInferAttributeInitializedToNoneAndAssignedClassBody
 # Mypy treats a None partial that is then assigned to a function as the function?? Wrong?
 testRedefineFunctionDefinedAsVariableInitializedToNone
 testRedefineNestedFunctionDefinedAsVariableInitializedToNone
+# explicit any context should lead to Dict[Any, Any]? might be ok?
+testGenericDictWithOverload
 
 # self.x = self where self: T
 testTypingSelfAttrOldVsNewStyle
@@ -1274,6 +1273,7 @@ testShowErrorCodeLinks
 testUnusedTargetNotClass
 testFinalReassignModuleVar
 testFinalReassignModuleVar2
+testReusingInferredForIndex2
 # module __getattr__ is considered a redefinition
 testModuleLevelGetattrImportFromAsTwice
 

@@ -504,7 +504,30 @@ impl ParamSpecArg {
 
 impl CallableContent {
     fn replace_internal(&self, replacer: &mut impl Replacer) -> Option<Self> {
-        todo!()
+        let new_params = self.params.replace_internal(replacer);
+        let new_return_type = self.return_type.replace_internal(replacer);
+        let new_guard = self.guard.as_ref().map(|g| {
+            Some(TypeGuardInfo {
+                type_: g.type_.replace_internal(replacer)?,
+                from_type_is: g.from_type_is,
+            })
+        });
+        if new_guard.is_none() && new_params.is_none() && new_return_type.is_none() {
+            return None;
+        }
+        Some(CallableContent {
+            name: self.name.clone(),
+            class_name: self.class_name,
+            defined_at: self.defined_at,
+            kind: self.kind,
+            type_vars: self.type_vars.clone(),
+            guard: new_guard.unwrap_or_else(|| self.guard.clone()),
+            is_abstract: self.is_abstract,
+            is_final: self.is_final,
+            no_type_check: self.no_type_check,
+            params: new_params.unwrap_or_else(|| self.params.clone()),
+            return_type: new_return_type.unwrap_or_else(|| self.return_type.clone()),
+        })
     }
 
     pub fn replace_type_var_likes_and_self(
@@ -644,7 +667,115 @@ impl CallableParam {
 
 impl CallableParams {
     fn replace_internal(&self, replacer: &mut impl Replacer) -> Option<Self> {
-        todo!()
+        match self {
+            CallableParams::Simple(params) => {
+                let backfill = |new_params: &mut Vec<_>, len| {
+                    new_params.extend_from_slice(&params[..len]);
+                };
+                let mut new_params = vec![];
+                let mut maybe_add = |i, param: &CallableParam| {
+                    let new_param_type = match &param.type_ {
+                        ParamType::PositionalOnly(t) => {
+                            ParamType::PositionalOnly(t.replace_internal(replacer)?)
+                        }
+                        ParamType::PositionalOrKeyword(t) => {
+                            ParamType::PositionalOrKeyword(t.replace_internal(replacer)?)
+                        }
+                        ParamType::KeywordOnly(t) => {
+                            ParamType::KeywordOnly(t.replace_internal(replacer)?)
+                        }
+                        ParamType::Star(s) => ParamType::Star(match s {
+                            StarParamType::ArbitraryLen(t) => {
+                                StarParamType::ArbitraryLen(t.replace_internal(replacer)?)
+                            }
+                            StarParamType::UnpackedTuple(u) => {
+                                match u.args.replace_internal(replacer)? {
+                                    TupleArgs::FixedLen(types) => {
+                                        for t in rc_slice_into_vec(types) {
+                                            new_params.push(CallableParam::new_anonymous(
+                                                ParamType::PositionalOnly(t),
+                                            ))
+                                        }
+                                        if new_params.is_empty() {
+                                            backfill(&mut new_params, i)
+                                        }
+                                        return Some(());
+                                    }
+                                    TupleArgs::ArbitraryLen(t) => {
+                                        new_params.push(CallableParam::new_anonymous(
+                                            ParamType::Star(StarParamType::ArbitraryLen(*t)),
+                                        ));
+                                        if new_params.is_empty() {
+                                            backfill(&mut new_params, i)
+                                        }
+                                        return Some(());
+                                    }
+                                    TupleArgs::WithUnpack(mut with_unpack) => {
+                                        let before = std::mem::replace(
+                                            &mut with_unpack.before,
+                                            Rc::from([]),
+                                        );
+                                        for t in before.iter() {
+                                            new_params.push(CallableParam::new_anonymous(
+                                                ParamType::PositionalOnly(t.clone()),
+                                            ))
+                                        }
+                                        StarParamType::UnpackedTuple(Tuple::new(
+                                            TupleArgs::WithUnpack(with_unpack),
+                                        ))
+                                    }
+                                }
+                            }
+                            StarParamType::ParamSpecArgs(u) => {
+                                /*
+                                return (
+                                    remap_param_spec(
+                                        db,
+                                        new_params,
+                                        type_vars,
+                                        in_definition,
+                                        callable,
+                                        replace_self,
+                                        &mut replace_data,
+                                        u,
+                                    ),
+                                    replace_data,
+                                );
+                                */
+                                todo!()
+                            }
+                        }),
+                        ParamType::StarStar(d) => ParamType::StarStar(match d {
+                            StarStarParamType::ValueType(t) => {
+                                StarStarParamType::ValueType(t.replace_internal(replacer)?)
+                            }
+                            StarStarParamType::UnpackTypedDict(_) => {
+                                todo!()
+                            }
+                            StarStarParamType::ParamSpecKwargs(_) => {
+                                // Was already handled in ParamSpecArgs
+                                unreachable!()
+                            }
+                        }),
+                    };
+                    if new_params.is_empty() {
+                        backfill(&mut new_params, i)
+                    }
+                    new_params.push(CallableParam {
+                        type_: new_param_type,
+                        has_default: param.has_default,
+                        name: param.name.clone(),
+                    });
+                    Some(())
+                };
+                for (i, param) in params.iter().enumerate() {
+                    maybe_add(i, param);
+                }
+                (!new_params.is_empty()).then(|| CallableParams::new_simple(new_params.into()))
+            }
+            CallableParams::Any(cause) => Some(CallableParams::Any(*cause)),
+            CallableParams::Never(cause) => Some(CallableParams::Never(*cause)),
+        }
     }
 
     pub fn replace_type_var_likes_and_self(
