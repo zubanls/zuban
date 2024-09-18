@@ -20,15 +20,26 @@ pub type ReplaceSelf<'x> = &'x dyn Fn() -> Type;
 
 trait Replacer {
     fn replace_type(&mut self, t: &Type) -> Option<Type>;
+    fn replace_callable_params(&mut self, p: &CallableParams) -> Option<CallableParams> {
+        None
+    }
 }
 
 impl Type {
     pub fn replace_never_from_inference_with_any(&self) -> Self {
         struct NeverReplacer();
         impl Replacer for NeverReplacer {
+            #[inline]
             fn replace_type(&mut self, t: &Type) -> Option<Type> {
                 match t {
                     Type::Never(NeverCause::Inference) => Some(Type::Any(AnyCause::FromError)),
+                    _ => None,
+                }
+            }
+            #[inline]
+            fn replace_callable_params(&mut self, p: &CallableParams) -> Option<CallableParams> {
+                match p {
+                    CallableParams::Never(_) => Some(CallableParams::Any(AnyCause::FromError)),
                     _ => None,
                 }
             }
@@ -667,6 +678,9 @@ impl CallableParam {
 
 impl CallableParams {
     fn replace_internal(&self, replacer: &mut impl Replacer) -> Option<Self> {
+        if let Some(replaced) = replacer.replace_callable_params(self) {
+            return Some(replaced);
+        }
         match self {
             CallableParams::Simple(params) => {
                 let backfill = |new_params: &mut Vec<_>, len| {

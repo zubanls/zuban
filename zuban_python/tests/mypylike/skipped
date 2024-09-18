@@ -185,9 +185,6 @@ testOptionalBackwards4
 # needs error because only reassignments with other partial
 testInferenceWithUninhabitedType
 
-# Never not rewritten to Any for "Need type annotation for "X""
-testTypeVarDefaultsClass2
-
 # --------------------------- Not first release ---------------------------
 
 # --disallow-any-generics
