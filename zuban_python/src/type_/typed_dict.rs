@@ -354,6 +354,29 @@ impl TypedDict {
         }
     }
 
+    pub fn replace(
+        &self,
+        generics: TypedDictGenerics,
+        mut callable: &mut impl FnMut(&Type) -> Type,
+    ) -> Rc<Self> {
+        Rc::new(TypedDict {
+            name: self.name,
+            members: if let Some(members) = self.members.get() {
+                OnceCell::from(
+                    members
+                        .iter()
+                        .map(|m| m.replace_type(&mut callable))
+                        .collect::<Box<_>>(),
+                )
+            } else {
+                OnceCell::new()
+            },
+            defined_at: self.defined_at,
+            generics,
+            is_final: self.is_final,
+        })
+    }
+
     pub fn replace_type_var_likes_and_self(
         &self,
         db: &Database,

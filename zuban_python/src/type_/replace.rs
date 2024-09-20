@@ -178,43 +178,32 @@ impl Type {
             },
             Type::TypedDict(td) => match &td.generics {
                 TypedDictGenerics::Generics(generics) => {
-                    /*
-                    Type::TypedDict(td.replace_type_var_likes_and_self(
-                        db,
-                        generics,
-                        callable,
-                        replace_self,
-                    ))
-                    TypedDictGenerics::Generics(replace_generics(generics))
-                    */
-                    todo!()
+                    let new_generics = replace_generics(generics)?;
+                    Some(Type::TypedDict(td.replace(
+                        TypedDictGenerics::Generics(new_generics),
+                        &mut |t| t.replace_internal(replacer).unwrap_or_else(|| t.clone()),
+                    )))
                 }
                 TypedDictGenerics::None | TypedDictGenerics::NotDefinedYet(_) => None,
             },
             Type::NamedTuple(nt) => {
-                /*
-                let mut constructor = nt.__new__.as_ref().clone();
-                constructor.params = CallableParams::new_simple(
-                    constructor
-                        .expect_simple_params()
-                        .iter()
-                        .map(|param| {
-                            let ParamType::PositionalOrKeyword(t) = &param.type_ else {
-                                return param.clone();
-                            };
-                            CallableParam {
-                                type_: ParamType::PositionalOrKeyword(
-                                    t.replace_internal(replacer),
-                                ),
-                                has_default: param.has_default,
-                                name: param.name.clone(),
-                            }
+                let new_params =
+                    maybe_replace_iterable(nt.__new__.expect_simple_params().iter(), |param| {
+                        let ParamType::PositionalOrKeyword(t) = &param.type_ else {
+                            return None;
+                        };
+                        Some(CallableParam {
+                            type_: ParamType::PositionalOrKeyword(t.replace_internal(replacer)?),
+                            has_default: param.has_default,
+                            name: param.name.clone(),
                         })
-                        .collect(),
-                );
-                Type::NamedTuple(Rc::new(NamedTuple::new(nt.name, constructor)))
-                */
-                todo!()
+                    })?;
+                let mut constructor = nt.__new__.as_ref().clone();
+                constructor.params = CallableParams::new_simple(new_params);
+                Some(Type::NamedTuple(Rc::new(NamedTuple::new(
+                    nt.name,
+                    constructor,
+                ))))
             }
             Type::Intersection(intersection) => Some(Type::Intersection(Intersection::new(
                 maybe_replace_iterable(intersection.iter_entries(), |t| {
@@ -311,7 +300,7 @@ impl Type {
             Type::TypeVar(t) => match callable(TypeVarLikeUsage::TypeVar(t.clone())) {
                 GenericItem::TypeArg(t) => t,
                 GenericItem::TypeArgs(ts) => unreachable!(),
-                GenericItem::ParamSpecArg(params) => todo!(),
+                GenericItem::ParamSpecArg(params) => unreachable!(),
             },
             Type::Type(t) => Type::Type(Rc::new(t.replace_type_var_likes_and_self(
                 db,
