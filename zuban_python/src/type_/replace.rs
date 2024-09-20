@@ -29,9 +29,20 @@ trait Replacer {
     fn replace_type_var_tuple(&mut self, tvt: &TypeVarTupleUsage) -> Option<TupleArgs> {
         None
     }
-    fn replace_param_spec(&mut self, p: &ParamSpecUsage) -> Option<ParamSpecUsage> {
+    fn replace_param_spec_and_add_params(
+        &mut self,
+        type_vars: &mut Option<Vec<TypeVarLike>>,
+        in_definition: Option<PointLink>,
+        replace_data: &mut Option<(PointLink, usize)>,
+        p: &ParamSpecUsage,
+    ) -> Option<ReplacedParamSpec> {
         None
     }
+}
+
+enum ReplacedParamSpec {
+    ParamSpec(ParamSpecUsage),
+    Params(CallableParams),
 }
 
 impl Type {
@@ -92,7 +103,8 @@ impl Type {
                         no_type_check: c.no_type_check,
                         params: c
                             .params
-                            .replace_internal(self)
+                            .replace_internal(self, &mut None, None)
+                            .map(|(params, _)| params)
                             .unwrap_or_else(|| c.params.clone()),
                         return_type: c
                             .return_type
@@ -108,8 +120,18 @@ impl Type {
                     )),
                 ))
             }
-            fn replace_param_spec(&mut self, p: &ParamSpecUsage) -> Option<ParamSpecUsage> {
-                Some(self.0.remap_param_spec(p))
+            fn replace_param_spec_and_add_params(
+                &mut self,
+                type_vars: &mut Option<Vec<TypeVarLike>>,
+                in_definition: Option<PointLink>,
+                replace_data: &mut Option<(PointLink, usize)>,
+                p: &ParamSpecUsage,
+            ) -> Option<ReplacedParamSpec> {
+                let new_param_spec = self.0.remap_param_spec(p);
+                if p == &new_param_spec {
+                    return None;
+                }
+                Some(ReplacedParamSpec::ParamSpec(new_param_spec))
             }
         }
 
@@ -123,11 +145,12 @@ impl Type {
         callable: ReplaceTypeVarLike,
         replace_self: ReplaceSelf,
     ) -> Self {
-        struct ReplaceTypeVarLikes<'a> {
+        struct ReplaceTypeVarLikes<'db, 'a> {
+            db: &'db Database,
             callable: ReplaceTypeVarLike<'a>,
             replace_self: ReplaceSelf<'a>,
         }
-        impl Replacer for ReplaceTypeVarLikes<'_> {
+        impl Replacer for ReplaceTypeVarLikes<'_, '_> {
             #[inline]
             fn replace_type(&mut self, t: &Type) -> Option<Type> {
                 match t {
@@ -151,34 +174,41 @@ impl Type {
 
             #[inline]
             fn replace_callable(&mut self, c: &Rc<CallableContent>) -> Option<Rc<CallableContent>> {
-                /*
-                let new = self.0.type_vars_for_callable(c);
-                (new != c.type_vars).then(|| {
-                    Rc::new(CallableContent {
-                        name: c.name.clone(),
-                        class_name: c.class_name,
-                        defined_at: c.defined_at,
-                        kind: c.kind,
-                        type_vars: new,
-                        guard: c
-                            .guard
-                            .as_ref()
-                            .map(|g| g.replace_internal(self).unwrap_or_else(|| g.clone())),
-                        is_abstract: c.is_abstract,
-                        is_final: c.is_final,
-                        no_type_check: c.no_type_check,
-                        params: c
-                            .params
-                            .replace_internal(self)
-                            .unwrap_or_else(|| c.params.clone()),
-                        return_type: c
-                            .return_type
-                            .replace_internal(self)
-                            .unwrap_or_else(|| c.return_type.clone()),
-                    })
-                })
-                */
-                todo!()
+                let has_type_vars = !c.type_vars.is_empty();
+                let mut type_vars = has_type_vars.then(|| c.type_vars.as_vec());
+                let new_param_data =
+                    c.params
+                        .replace_internal(self, &mut type_vars, Some(c.defined_at));
+                let new_return_type = c.return_type.replace_internal(self);
+                let new_guard = c.guard.as_ref().map(|g| g.replace_internal(self));
+                if new_guard.is_none() && new_param_data.is_none() && new_return_type.is_none() {
+                    return None;
+                }
+                let (params, remap_data) =
+                    new_param_data.unwrap_or_else(|| (c.params.clone(), None));
+                let mut return_type = new_return_type.unwrap_or_else(|| c.return_type.clone());
+                if let Some(remap_data) = remap_data {
+                    return_type = return_type.replace_type_var_likes_and_self(
+                        self.db,
+                        &mut |usage| {
+                            replace_param_spec_inner_type_var_likes(usage, c.defined_at, remap_data)
+                        },
+                        self.replace_self,
+                    );
+                }
+                Some(Rc::new(CallableContent {
+                    name: c.name.clone(),
+                    class_name: c.class_name,
+                    defined_at: c.defined_at,
+                    kind: c.kind,
+                    type_vars: c.type_vars.clone(),
+                    guard: new_guard.unwrap_or_else(|| c.guard.clone()),
+                    is_abstract: c.is_abstract,
+                    is_final: c.is_final,
+                    no_type_check: c.no_type_check,
+                    params,
+                    return_type,
+                }))
             }
 
             fn replace_type_var_tuple(&mut self, tvt: &TypeVarTupleUsage) -> Option<TupleArgs> {
@@ -199,13 +229,50 @@ impl Type {
                 Some(args)
             }
 
-            fn replace_param_spec(&mut self, p: &ParamSpecUsage) -> Option<ParamSpecUsage> {
-                //Some(self.0.remap_param_spec(p))
-                todo!()
+            fn replace_param_spec_and_add_params(
+                &mut self,
+                type_vars: &mut Option<Vec<TypeVarLike>>,
+                in_definition: Option<PointLink>,
+                replace_data: &mut Option<(PointLink, usize)>,
+                p: &ParamSpecUsage,
+            ) -> Option<ReplacedParamSpec> {
+                let result = (self.callable)(TypeVarLikeUsage::ParamSpec(p.clone()));
+                let GenericItem::ParamSpecArg(mut new) = result else {
+                    unreachable!()
+                };
+                if let Some(new_spec_type_vars) = new.type_vars {
+                    if let Some(in_definition) = in_definition {
+                        let type_var_len = type_vars.as_ref().map(|t| t.len()).unwrap_or(0);
+                        *replace_data = Some((new_spec_type_vars.in_definition, type_var_len));
+                        let new_params = new.params.replace_type_var_likes_and_self(
+                            self.db,
+                            &mut None,
+                            None,
+                            &mut |usage| {
+                                replace_param_spec_inner_type_var_likes(
+                                    usage,
+                                    in_definition,
+                                    replace_data.unwrap(),
+                                )
+                            },
+                            self.replace_self,
+                        );
+                        if let Some(type_vars) = type_vars.as_mut() {
+                            type_vars.extend(new_spec_type_vars.type_vars.as_vec());
+                        } else {
+                            *type_vars = Some(new_spec_type_vars.type_vars.as_vec());
+                        }
+                        new.params = new_params.0;
+                    } else {
+                        debug_assert!(type_vars.is_none());
+                    }
+                }
+                Some(ReplacedParamSpec::Params(new.params))
             }
         }
 
         self.replace_internal(&mut ReplaceTypeVarLikes {
+            db,
             callable,
             replace_self,
         })
@@ -556,7 +623,7 @@ impl ParamSpecArg {
         let type_vars = self.type_vars.as_ref().map(|t| t.type_vars.as_vec());
         // TODO what todo about changing type vars? like replace_type_var_likes_and_self
         Some(Self::new(
-            self.params.replace_internal(replacer)?,
+            self.params.replace_internal(replacer, &mut None, None)?.0,
             type_vars.map(|t| ParamSpecTypeVars {
                 type_vars: TypeVarLikes::from_vec(t),
                 in_definition: self.type_vars.as_ref().unwrap().in_definition,
@@ -567,12 +634,13 @@ impl ParamSpecArg {
 
 impl CallableContent {
     fn replace_internal(&self, replacer: &mut impl Replacer) -> Option<Self> {
-        let new_params = self.params.replace_internal(replacer);
+        let new_param_data = self.params.replace_internal(replacer, &mut None, None);
         let new_return_type = self.return_type.replace_internal(replacer);
         let new_guard = self.guard.as_ref().map(|g| g.replace_internal(replacer));
-        if new_guard.is_none() && new_params.is_none() && new_return_type.is_none() {
+        if new_guard.is_none() && new_param_data.is_none() && new_return_type.is_none() {
             return None;
         }
+        let (params, remap_data) = new_param_data.unwrap_or_else(|| (self.params.clone(), None));
         Some(CallableContent {
             name: self.name.clone(),
             class_name: self.class_name,
@@ -583,7 +651,7 @@ impl CallableContent {
             is_abstract: self.is_abstract,
             is_final: self.is_final,
             no_type_check: self.no_type_check,
-            params: new_params.unwrap_or_else(|| self.params.clone()),
+            params,
             return_type: new_return_type.unwrap_or_else(|| self.return_type.clone()),
         })
     }
@@ -660,16 +728,23 @@ impl TypeGuardInfo {
 }
 
 impl CallableParams {
-    fn replace_internal(&self, replacer: &mut impl Replacer) -> Option<Self> {
+    fn replace_internal(
+        &self,
+        replacer: &mut impl Replacer,
+        type_vars: &mut Option<Vec<TypeVarLike>>,
+        in_definition: Option<PointLink>,
+    ) -> Option<(CallableParams, Option<(PointLink, usize)>)> {
         if let Some(replaced) = replacer.replace_callable_params(self) {
-            return Some(replaced);
+            return Some((replaced, None));
         }
+        let mut replace_data = None;
         match self {
             CallableParams::Simple(params) => {
                 let backfill = |new_params: &mut Vec<_>, len| {
                     new_params.extend_from_slice(&params[..len]);
                 };
                 let mut new_params = vec![];
+                let mut overwritten_params = None;
                 let mut maybe_add = |new_params: &mut Vec<_>, i, param: &CallableParam| {
                     let new_param_type = match &param.type_ {
                         ParamType::PositionalOnly(t) => {
@@ -717,24 +792,40 @@ impl CallableParams {
                                 }
                             }
                             StarParamType::ParamSpecArgs(u) => {
-                                let new = replacer.replace_param_spec(u)?;
+                                let result = replacer.replace_param_spec_and_add_params(
+                                    type_vars,
+                                    in_definition,
+                                    &mut replace_data,
+                                    u,
+                                )?;
                                 if new_params.is_empty() {
                                     backfill(new_params, i)
                                 }
-                                new_params.push(CallableParam {
-                                    type_: ParamType::Star(StarParamType::ParamSpecArgs(
-                                        new.clone(),
-                                    )),
-                                    has_default: param.has_default,
-                                    name: param.name.clone(),
-                                });
-                                new_params.push(CallableParam {
-                                    type_: ParamType::StarStar(StarStarParamType::ParamSpecKwargs(
-                                        new,
-                                    )),
-                                    has_default: param.has_default,
-                                    name: param.name.clone(),
-                                });
+                                match result {
+                                    ReplacedParamSpec::ParamSpec(p) => {
+                                        new_params.push(CallableParam::new_anonymous(
+                                            ParamType::Star(StarParamType::ParamSpecArgs(
+                                                p.clone(),
+                                            )),
+                                        ));
+                                        new_params.push(CallableParam::new_anonymous(
+                                            ParamType::StarStar(
+                                                StarStarParamType::ParamSpecKwargs(p),
+                                            ),
+                                        ));
+                                    }
+                                    ReplacedParamSpec::Params(new) => match new {
+                                        CallableParams::Simple(params) => {
+                                            new_params.extend_from_slice(&params);
+                                        }
+                                        CallableParams::Any(cause) => {
+                                            overwritten_params = Some(CallableParams::Any(cause))
+                                        }
+                                        CallableParams::Never(cause) => {
+                                            overwritten_params = Some(CallableParams::Never(cause))
+                                        }
+                                    },
+                                };
                                 return Some(());
                             }
                         }),
@@ -766,10 +857,15 @@ impl CallableParams {
                         new_params.push(param.clone())
                     }
                 }
-                (!new_params.is_empty()).then(|| CallableParams::new_simple(new_params.into()))
+                if let Some(p) = overwritten_params {
+                    Some((p, replace_data))
+                } else {
+                    (!new_params.is_empty())
+                        .then(|| (CallableParams::new_simple(new_params.into()), replace_data))
+                }
             }
-            CallableParams::Any(cause) => Some(CallableParams::Any(*cause)),
-            CallableParams::Never(cause) => Some(CallableParams::Never(*cause)),
+            CallableParams::Any(cause) => Some((CallableParams::Any(*cause), None)),
+            CallableParams::Never(cause) => Some((CallableParams::Never(*cause), None)),
         }
     }
 
@@ -781,7 +877,6 @@ impl CallableParams {
         callable: ReplaceTypeVarLike,
         replace_self: ReplaceSelf,
     ) -> (CallableParams, Option<(PointLink, usize)>) {
-        let mut replace_data = None;
         let new_params = match self {
             CallableParams::Simple(params) => {
                 let mut new_params = vec![];
@@ -837,6 +932,7 @@ impl CallableParams {
                                 }
                             }
                             StarParamType::ParamSpecArgs(u) => {
+                                let mut replace_data = None;
                                 return (
                                     remap_param_spec(
                                         db,
@@ -876,7 +972,7 @@ impl CallableParams {
             CallableParams::Any(cause) => CallableParams::Any(*cause),
             CallableParams::Never(cause) => CallableParams::Never(*cause),
         };
-        (new_params, replace_data)
+        (new_params, None)
     }
 }
 

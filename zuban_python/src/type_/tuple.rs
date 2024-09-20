@@ -593,7 +593,7 @@ impl TupleArgs {
     }
 }
 
-trait MergableTypes: Deref<Target = [Type]> + Into<Rc<[Type]>> {
+pub trait MergableTypes: Deref<Target = [Type]> + Into<Rc<[Type]>> {
     fn into_iter_types(self) -> impl Iterator<Item = Type>;
     fn into_types_vec(self) -> Vec<Type>;
 }
