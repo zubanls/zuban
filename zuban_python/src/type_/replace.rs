@@ -26,7 +26,7 @@ trait Replacer {
     fn replace_callable(&mut self, c: &Rc<CallableContent>) -> Option<Rc<CallableContent>> {
         None
     }
-    fn replace_type_var_tuple(&mut self, tvt: &TypeVarTupleUsage) -> Option<TypeVarTupleUsage> {
+    fn replace_type_var_tuple(&mut self, tvt: &TypeVarTupleUsage) -> Option<TupleArgs> {
         None
     }
     fn replace_param_spec(&mut self, p: &ParamSpecUsage) -> Option<ParamSpecUsage> {
@@ -101,11 +101,12 @@ impl Type {
                     })
                 })
             }
-            fn replace_type_var_tuple(
-                &mut self,
-                tvt: &TypeVarTupleUsage,
-            ) -> Option<TypeVarTupleUsage> {
-                Some(self.0.remap_type_var_tuple(tvt))
+            fn replace_type_var_tuple(&mut self, tvt: &TypeVarTupleUsage) -> Option<TupleArgs> {
+                Some(TupleArgs::WithUnpack(
+                    WithUnpack::with_empty_before_and_after(TupleUnpack::TypeVarTuple(
+                        self.0.remap_type_var_tuple(tvt),
+                    )),
+                ))
             }
             fn replace_param_spec(&mut self, p: &ParamSpecUsage) -> Option<ParamSpecUsage> {
                 Some(self.0.remap_param_spec(p))
@@ -114,6 +115,101 @@ impl Type {
 
         self.replace_internal(&mut LateBoundReplacer(manager))
             .unwrap_or_else(|| self.clone())
+    }
+
+    pub fn replace_type_var_likes_and_selfv2(
+        &self,
+        db: &Database,
+        callable: ReplaceTypeVarLike,
+        replace_self: ReplaceSelf,
+    ) -> Self {
+        struct ReplaceTypeVarLikes<'a> {
+            callable: ReplaceTypeVarLike<'a>,
+            replace_self: ReplaceSelf<'a>,
+        }
+        impl Replacer for ReplaceTypeVarLikes<'_> {
+            #[inline]
+            fn replace_type(&mut self, t: &Type) -> Option<Type> {
+                match t {
+                    Type::TypeVar(tv) => {
+                        match (self.callable)(TypeVarLikeUsage::TypeVar(tv.clone())) {
+                            GenericItem::TypeArg(t) => Some(t),
+                            GenericItem::TypeArgs(ts) => unreachable!(),
+                            GenericItem::ParamSpecArg(params) => unreachable!(),
+                        }
+                    }
+                    Type::Self_ => Some((self.replace_self)()),
+                    Type::ParamSpecArgs(usage) => {
+                        todo!()
+                    }
+                    Type::ParamSpecKwargs(usage) => {
+                        todo!()
+                    }
+                    _ => None,
+                }
+            }
+
+            #[inline]
+            fn replace_callable(&mut self, c: &Rc<CallableContent>) -> Option<Rc<CallableContent>> {
+                /*
+                let new = self.0.type_vars_for_callable(c);
+                (new != c.type_vars).then(|| {
+                    Rc::new(CallableContent {
+                        name: c.name.clone(),
+                        class_name: c.class_name,
+                        defined_at: c.defined_at,
+                        kind: c.kind,
+                        type_vars: new,
+                        guard: c
+                            .guard
+                            .as_ref()
+                            .map(|g| g.replace_internal(self).unwrap_or_else(|| g.clone())),
+                        is_abstract: c.is_abstract,
+                        is_final: c.is_final,
+                        no_type_check: c.no_type_check,
+                        params: c
+                            .params
+                            .replace_internal(self)
+                            .unwrap_or_else(|| c.params.clone()),
+                        return_type: c
+                            .return_type
+                            .replace_internal(self)
+                            .unwrap_or_else(|| c.return_type.clone()),
+                    })
+                })
+                */
+                todo!()
+            }
+
+            fn replace_type_var_tuple(&mut self, tvt: &TypeVarTupleUsage) -> Option<TupleArgs> {
+                let GenericItem::TypeArgs(new) =
+                    (self.callable)(TypeVarLikeUsage::TypeVarTuple(tvt.clone()))
+                else {
+                    unreachable!();
+                };
+                let args = new.args;
+                if let TupleArgs::WithUnpack(w) = &args {
+                    if w.before.is_empty()
+                        && w.after.is_empty()
+                        && matches!(&w.unpack, TupleUnpack::TypeVarTuple(tvt2) if tvt == tvt2)
+                    {
+                        return None;
+                    }
+                }
+                Some(args)
+            }
+
+            fn replace_param_spec(&mut self, p: &ParamSpecUsage) -> Option<ParamSpecUsage> {
+                //Some(self.0.remap_param_spec(p))
+                todo!()
+            }
+        }
+
+        self.replace_internal(&mut ReplaceTypeVarLikes {
+            callable,
+            replace_self,
+        })
+        .unwrap_or_else(|| self.clone())
     }
 
     fn replace_internal(&self, replacer: &mut impl Replacer) -> Option<Self> {
@@ -866,9 +962,21 @@ impl TupleArgs {
                 let new_after: Option<Vec<_>> =
                     maybe_replace_iterable(unpack.after.iter(), |t| t.replace_internal(replacer));
                 let inner = match &unpack.unpack {
-                    TupleUnpack::TypeVarTuple(tvt) => replacer
-                        .replace_type_var_tuple(tvt)
-                        .map(|tvt| TupleUnpack::TypeVarTuple(tvt)),
+                    TupleUnpack::TypeVarTuple(tvt) => match replacer.replace_type_var_tuple(tvt) {
+                        Some(new) => {
+                            return Some(
+                                new.add_before_and_after(
+                                    new_before
+                                        .map(|v| v.into())
+                                        .unwrap_or_else(|| unpack.before.clone()),
+                                    new_after
+                                        .map(|v| v.into())
+                                        .unwrap_or_else(|| unpack.after.clone()),
+                                ),
+                            )
+                        }
+                        None => None,
+                    },
                     TupleUnpack::ArbitraryLen(t) => t
                         .replace_internal(replacer)
                         .map(|t| TupleUnpack::ArbitraryLen(t)),

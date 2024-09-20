@@ -1,4 +1,4 @@
-use std::{cell::OnceCell, rc::Rc};
+use std::{cell::OnceCell, ops::Deref, rc::Rc};
 
 use super::{
     simplified_union_from_iterators, utils::method_with_fallback, CustomBehavior, FormatStyle,
@@ -538,22 +538,27 @@ impl TupleArgs {
         }
     }
 
-    pub fn add_before_and_after(self, before: Vec<Type>, after: Vec<Type>) -> Self {
+    pub fn add_before_and_after(
+        self,
+        before: impl MergableTypes,
+        after: impl MergableTypes,
+    ) -> Self {
         match self {
             TupleArgs::FixedLen(fixed) => TupleArgs::FixedLen({
                 before
-                    .into_iter()
+                    .into_iter_types()
                     .chain(fixed.iter().cloned())
-                    .chain(after)
+                    .chain(after.into_iter_types())
                     .collect()
             }),
             TupleArgs::WithUnpack(new) => TupleArgs::WithUnpack(WithUnpack {
                 before: merge_types(before, new.before),
                 unpack: new.unpack,
+                // TODO this after is wrong
                 after: merge_types(after, new.after),
             }),
             TupleArgs::ArbitraryLen(t) => {
-                if before.is_empty() && after.is_empty() {
+                if before.len() == 0 && after.is_empty() {
                     TupleArgs::ArbitraryLen(t)
                 } else {
                     TupleArgs::WithUnpack(WithUnpack {
@@ -588,13 +593,39 @@ impl TupleArgs {
     }
 }
 
-fn merge_types(mut original: Vec<Type>, new: Rc<[Type]>) -> Rc<[Type]> {
+trait MergableTypes: Deref<Target = [Type]> + Into<Rc<[Type]>> {
+    fn into_iter_types(self) -> impl Iterator<Item = Type>;
+    fn into_types_vec(self) -> Vec<Type>;
+}
+
+impl MergableTypes for Vec<Type> {
+    fn into_iter_types(self) -> impl Iterator<Item = Type> {
+        self.into_iter()
+    }
+
+    fn into_types_vec(self) -> Vec<Type> {
+        self
+    }
+}
+
+impl MergableTypes for Rc<[Type]> {
+    fn into_iter_types(self) -> impl Iterator<Item = Type> {
+        self.into_types_vec().into_iter()
+    }
+
+    fn into_types_vec(self) -> Vec<Type> {
+        rc_slice_into_vec(self)
+    }
+}
+
+fn merge_types(original: impl MergableTypes, new: impl MergableTypes) -> Rc<[Type]> {
     if original.is_empty() {
-        new
+        new.into()
     } else if new.is_empty() {
         original.into()
     } else {
-        original.append(&mut rc_slice_into_vec(new));
+        let mut original: Vec<_> = original.into_types_vec();
+        original.extend(new.into_iter_types());
         original.into()
     }
 }
