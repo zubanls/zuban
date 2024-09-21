@@ -29,7 +29,7 @@ trait Replacer {
     fn replace_type_var_tuple(&mut self, tvt: &TypeVarTupleUsage) -> Option<TupleArgs> {
         None
     }
-    fn replace_param_spec_and_add_params(
+    fn replace_param_spec(
         &mut self,
         type_vars: &mut Option<Vec<TypeVarLike>>,
         in_definition: Option<PointLink>,
@@ -120,7 +120,7 @@ impl Type {
                     )),
                 ))
             }
-            fn replace_param_spec_and_add_params(
+            fn replace_param_spec(
                 &mut self,
                 type_vars: &mut Option<Vec<TypeVarLike>>,
                 in_definition: Option<PointLink>,
@@ -139,7 +139,7 @@ impl Type {
             .unwrap_or_else(|| self.clone())
     }
 
-    pub fn replace_type_var_likes_and_selfv2(
+    pub fn replace_type_var_likes_and_self(
         &self,
         db: &Database,
         callable: ReplaceTypeVarLike,
@@ -154,6 +154,25 @@ impl Type {
             #[inline]
             fn replace_type(&mut self, t: &Type) -> Option<Type> {
                 match t {
+                    Type::Union(u) => {
+                        let new_entries: Vec<_> = maybe_replace_iterable(u.entries.iter(), |u| {
+                            Some(UnionEntry {
+                                type_: u.type_.replace_internal(self)?,
+                                format_index: u.format_index,
+                            })
+                        })?;
+                        let i_s = InferenceState::new(self.db);
+                        let highest_union_format_index = new_entries
+                            .iter()
+                            .map(|e| e.type_.highest_union_format_index())
+                            .max()
+                            .unwrap();
+                        Some(simplified_union_from_iterators_with_format_index(
+                            &i_s,
+                            new_entries.into_iter().map(|e| (e.format_index, e.type_)),
+                            highest_union_format_index,
+                        ))
+                    }
                     Type::TypeVar(tv) => {
                         match (self.callable)(TypeVarLikeUsage::TypeVar(tv.clone())) {
                             GenericItem::TypeArg(t) => Some(t),
@@ -162,12 +181,6 @@ impl Type {
                         }
                     }
                     Type::Self_ => Some((self.replace_self)()),
-                    Type::ParamSpecArgs(usage) => {
-                        todo!()
-                    }
-                    Type::ParamSpecKwargs(usage) => {
-                        todo!()
-                    }
                     _ => None,
                 }
             }
@@ -201,7 +214,9 @@ impl Type {
                     class_name: c.class_name,
                     defined_at: c.defined_at,
                     kind: c.kind,
-                    type_vars: c.type_vars.clone(),
+                    type_vars: type_vars
+                        .map(|v| TypeVarLikes::from_vec(v))
+                        .unwrap_or_else(|| self.db.python_state.empty_type_var_likes.clone()),
                     guard: new_guard.unwrap_or_else(|| c.guard.clone()),
                     is_abstract: c.is_abstract,
                     is_final: c.is_final,
@@ -229,7 +244,7 @@ impl Type {
                 Some(args)
             }
 
-            fn replace_param_spec_and_add_params(
+            fn replace_param_spec(
                 &mut self,
                 type_vars: &mut Option<Vec<TypeVarLike>>,
                 in_definition: Option<PointLink>,
@@ -339,16 +354,18 @@ impl Type {
                 ))),
                 _ => None,
             },
-            Type::TypedDict(td) => match &td.generics {
-                TypedDictGenerics::Generics(generics) => {
-                    let new_generics = replace_generics(generics)?;
-                    Some(Type::TypedDict(td.replace(
-                        TypedDictGenerics::Generics(new_generics),
-                        &mut |t| t.replace_internal(replacer).unwrap_or_else(|| t.clone()),
-                    )))
-                }
-                TypedDictGenerics::None | TypedDictGenerics::NotDefinedYet(_) => None,
-            },
+            Type::TypedDict(td) => {
+                let generics = match &td.generics {
+                    TypedDictGenerics::Generics(generics) => {
+                        TypedDictGenerics::Generics(replace_generics(generics)?)
+                    }
+                    TypedDictGenerics::NotDefinedYet(_) => td.generics.clone(),
+                    TypedDictGenerics::None => return None,
+                };
+                Some(Type::TypedDict(td.replace(generics, &mut |t| {
+                    t.replace_internal(replacer).unwrap_or_else(|| t.clone())
+                })))
+            }
             Type::NamedTuple(nt) => {
                 let new_params =
                     maybe_replace_iterable(nt.__new__.expect_simple_params().iter(), |param| {
@@ -407,7 +424,7 @@ impl Type {
         )
     }
 
-    pub fn replace_type_var_likes_and_self(
+    pub fn replace_type_var_likes_and_self_old(
         &self,
         db: &Database,
         mut callable: ReplaceTypeVarLike,
@@ -740,7 +757,9 @@ impl CallableParams {
         let mut replace_data = None;
         match self {
             CallableParams::Simple(params) => {
-                let backfill = |new_params: &mut Vec<_>, len| {
+                let mut had_replace = false;
+                let mut backfill = |new_params: &mut Vec<_>, len| {
+                    had_replace = true;
                     new_params.extend_from_slice(&params[..len]);
                 };
                 let mut new_params = vec![];
@@ -792,7 +811,7 @@ impl CallableParams {
                                 }
                             }
                             StarParamType::ParamSpecArgs(u) => {
-                                let result = replacer.replace_param_spec_and_add_params(
+                                let result = replacer.replace_param_spec(
                                     type_vars,
                                     in_definition,
                                     &mut replace_data,
@@ -860,7 +879,7 @@ impl CallableParams {
                 if let Some(p) = overwritten_params {
                     Some((p, replace_data))
                 } else {
-                    (!new_params.is_empty())
+                    had_replace
                         .then(|| (CallableParams::new_simple(new_params.into()), replace_data))
                 }
             }
