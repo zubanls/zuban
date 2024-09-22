@@ -591,7 +591,14 @@ impl CallableParams {
 
 pub fn replace_param_spec(
     db: &Database,
-    mut new_params: Vec<CallableParam>,
+    callable: ReplaceTypeVarLike,
+    u: &ParamSpecUsage,
+) -> CallableParams {
+    replace_param_spec_internal(db, &mut None, None, callable, &|| Type::Self_, &mut None, u)
+}
+
+fn replace_param_spec_internal(
+    db: &Database,
     type_vars: &mut Option<Vec<TypeVarLike>>,
     in_definition: Option<PointLink>,
     callable: ReplaceTypeVarLike,
@@ -628,14 +635,7 @@ pub fn replace_param_spec(
             debug_assert!(type_vars.is_none());
         }
     }
-    match new.params {
-        CallableParams::Simple(params) => {
-            new_params.extend_from_slice(&params);
-        }
-        CallableParams::Any(cause) => return CallableParams::Any(cause),
-        CallableParams::Never(cause) => return CallableParams::Never(cause),
-    };
-    CallableParams::Simple(new_params.into())
+    new.params
 }
 
 fn replace_param_spec_inner_type_var_likes(
@@ -837,35 +837,15 @@ impl Replacer for ReplaceTypeVarLikes<'_, '_> {
         replace_data: &mut Option<(PointLink, usize)>,
         p: &ParamSpecUsage,
     ) -> Option<ReplacedParamSpec> {
-        let result = (self.callable)(TypeVarLikeUsage::ParamSpec(p.clone()));
-        let GenericItem::ParamSpecArg(mut new) = result else {
-            unreachable!()
-        };
-        if let Some(new_spec_type_vars) = new.type_vars {
-            if let Some(in_definition) = in_definition {
-                let type_var_len = type_vars.as_ref().map(|t| t.len()).unwrap_or(0);
-                *replace_data = Some((new_spec_type_vars.in_definition, type_var_len));
-                let new_params = new.params.replace_type_var_likes_and_self(
-                    self.db,
-                    &mut |usage| {
-                        replace_param_spec_inner_type_var_likes(
-                            usage,
-                            in_definition,
-                            replace_data.unwrap(),
-                        )
-                    },
-                    self.replace_self,
-                );
-                if let Some(type_vars) = type_vars.as_mut() {
-                    type_vars.extend(new_spec_type_vars.type_vars.as_vec());
-                } else {
-                    *type_vars = Some(new_spec_type_vars.type_vars.as_vec());
-                }
-                new.params = new_params;
-            } else {
-                debug_assert!(type_vars.is_none());
-            }
-        }
-        Some(ReplacedParamSpec::Params(new.params))
+        let result = replace_param_spec_internal(
+            self.db,
+            type_vars,
+            in_definition,
+            self.callable,
+            self.replace_self,
+            replace_data,
+            p,
+        );
+        Some(ReplacedParamSpec::Params(result))
     }
 }

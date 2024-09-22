@@ -1503,20 +1503,23 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 WrappedParamType::Star(WrappedStar::ParamSpecArgs(u1)) => {
                     if let Some(c) = self.class {
                         if c.node_ref.as_link() == u1.in_definition {
-                            return return_result(replace_param_spec(
+                            let new = replace_param_spec(
                                 i_s.db,
-                                new_params,
-                                &mut None,
-                                None,
                                 &mut |usage| {
                                     c.generics()
                                         .nth_usage(i_s.db, &usage)
                                         .into_generic_item(i_s.db)
                                 },
-                                &|| Type::Self_,
-                                &mut None,
                                 u1,
-                            ));
+                            );
+                            return return_result(match new {
+                                CallableParams::Simple(params) => {
+                                    new_params.extend_from_slice(&params);
+                                    CallableParams::Simple(new_params.into())
+                                }
+                                CallableParams::Any(cause) => CallableParams::Any(cause),
+                                CallableParams::Never(cause) => CallableParams::Never(cause),
+                            });
                         }
                     }
                     ParamType::Star(StarParamType::ParamSpecArgs(u1.clone()))
