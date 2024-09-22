@@ -3,9 +3,8 @@ use std::{cell::OnceCell, rc::Rc};
 use parsa_python_cst::{AtomContent, DictElement};
 
 use super::{
-    replace::ReplaceTypeVarLike, utils::method_with_fallback, AnyCause, CallableParam,
-    CustomBehavior, DbString, FormatStyle, GenericsList, LookupResult, NeverCause, ParamType,
-    ReplaceSelf, StringSlice, Type, TypeVarLikes,
+    utils::method_with_fallback, AnyCause, CallableParam, CustomBehavior, DbString, FormatStyle,
+    GenericsList, LookupResult, NeverCause, ParamType, StringSlice, Type, TypeVarLikes,
 };
 use crate::{
     arguments::{ArgKind, Args},
@@ -366,35 +365,6 @@ impl TypedDict {
                     members
                         .iter()
                         .map(|m| m.replace_type(&mut callable))
-                        .collect::<Box<_>>(),
-                )
-            } else {
-                OnceCell::new()
-            },
-            defined_at: self.defined_at,
-            generics,
-            is_final: self.is_final,
-        })
-    }
-
-    pub fn replace_type_var_likes_and_self(
-        &self,
-        db: &Database,
-        generics: TypedDictGenerics,
-        callable: ReplaceTypeVarLike,
-        replace_self: ReplaceSelf,
-    ) -> Rc<Self> {
-        Rc::new(TypedDict {
-            name: self.name,
-            members: if let Some(members) = self.members.get() {
-                OnceCell::from(
-                    members
-                        .iter()
-                        .map(|m| {
-                            m.replace_type(|t| {
-                                t.replace_type_var_likes_and_self(db, callable, replace_self)
-                            })
-                        })
                         .collect::<Box<_>>(),
                 )
             } else {
