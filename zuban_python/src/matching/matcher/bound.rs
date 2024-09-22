@@ -331,11 +331,9 @@ impl BoundKind {
     ) -> Self {
         match self {
             Self::TypeVar(t) => Self::TypeVar(t.replace_type_var_likes(db, on_type_var_like)),
-            Self::TypeVarTuple(tup) => Self::TypeVarTuple(tup.replace_type_var_likes_and_self(
-                db,
-                on_type_var_like,
-                &|| Type::Self_,
-            )),
+            Self::TypeVarTuple(tup) => {
+                Self::TypeVarTuple(tup.replace_type_var_likes(db, on_type_var_like))
+            }
             Self::ParamSpec(params) => Self::ParamSpec(params.replace_type_var_likes_and_self(
                 db,
                 on_type_var_like,

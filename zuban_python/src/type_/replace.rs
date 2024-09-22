@@ -704,52 +704,13 @@ impl TupleArgs {
         })
     }
 
-    pub fn replace_type_var_likes_and_self(
-        &self,
-        db: &Database,
-        callable: ReplaceTypeVarLike,
-        replace_self: ReplaceSelf,
-    ) -> Self {
-        match self {
-            TupleArgs::FixedLen(ts) => TupleArgs::FixedLen(
-                ts.iter()
-                    .map(|t| t.replace_type_var_likes_and_self(db, callable, replace_self))
-                    .collect(),
-            ),
-            TupleArgs::ArbitraryLen(t) => TupleArgs::ArbitraryLen(Box::new(
-                t.replace_type_var_likes_and_self(db, callable, replace_self),
-            )),
-            TupleArgs::WithUnpack(unpack) => match &unpack.unpack {
-                TupleUnpack::TypeVarTuple(tvt) => {
-                    let GenericItem::TypeArgs(new) =
-                        callable(TypeVarLikeUsage::TypeVarTuple(tvt.clone()))
-                    else {
-                        unreachable!();
-                    };
-                    let new_before: Vec<_> = unpack
-                        .before
-                        .iter()
-                        .map(|t| t.replace_type_var_likes_and_self(db, callable, replace_self))
-                        .collect();
-                    let new_after: Vec<_> = unpack
-                        .after
-                        .iter()
-                        .map(|t| t.replace_type_var_likes_and_self(db, callable, replace_self))
-                        .collect();
-                    new.args.add_before_and_after(new_before, new_after)
-                }
-                TupleUnpack::ArbitraryLen(t) => TupleArgs::WithUnpack(WithUnpack {
-                    // TODO this is wrong and should be remapped
-                    before: unpack.before.clone(),
-                    unpack: TupleUnpack::ArbitraryLen(t.replace_type_var_likes_and_self(
-                        db,
-                        callable,
-                        replace_self,
-                    )),
-                    after: unpack.after.clone(),
-                }),
-            },
-        }
+    pub fn replace_type_var_likes(&self, db: &Database, callable: ReplaceTypeVarLike) -> Self {
+        self.replace_internal(&mut ReplaceTypeVarLikes {
+            db,
+            callable,
+            replace_self: &|| Type::Self_,
+        })
+        .unwrap_or_else(|| self.clone())
     }
 }
 
