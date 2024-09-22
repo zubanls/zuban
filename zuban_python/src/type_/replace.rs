@@ -364,7 +364,10 @@ impl CallableContent {
     fn replace_internal(&self, replacer: &mut impl Replacer) -> Option<Self> {
         let new_param_data = self.params.replace_internal(replacer, &mut None, None);
         let new_return_type = self.return_type.replace_internal(replacer);
-        let new_guard = self.guard.as_ref().map(|g| g.replace_internal(replacer));
+        let new_guard = match &self.guard {
+            None => Some(None),
+            Some(g) => g.replace_internal(replacer).map(Some),
+        };
         if new_guard.is_none() && new_param_data.is_none() && new_return_type.is_none() {
             return None;
         }
@@ -904,7 +907,10 @@ impl ReplaceTypeVarLikes<'_, '_> {
             .params
             .replace_internal(self, &mut type_vars, Some(c.defined_at));
         let new_return_type = c.return_type.replace_internal(self);
-        let new_guard = c.guard.as_ref().map(|g| g.replace_internal(self));
+        let new_guard = match &c.guard {
+            None => Some(None),
+            Some(g) => g.replace_internal(self).map(Some),
+        };
         if new_param_data.is_none() && new_return_type.is_none() && new_guard.is_none() {
             return None;
         }
