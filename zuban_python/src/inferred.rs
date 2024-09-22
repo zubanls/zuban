@@ -2416,7 +2416,7 @@ fn proper_classmethod_callable(
                     }
                 }
                 if matcher.has_type_var_matcher() && class_method_type_var_usage.is_none() {
-                    callable = callable.replace_type_var_likes_and_self(
+                    callable = callable.replace_type_var_likes_and_self_inplace(
                         i_s.db,
                         &mut |usage| matcher.replace_usage_if_calculated(i_s.db, usage),
                         &|| Type::Self_,
@@ -2429,13 +2429,14 @@ fn proper_classmethod_callable(
 
     let type_vars = RefCell::new(type_vars);
 
+    let callable_defined_at = callable.defined_at;
     let ensure_classmethod_type_var_like = |tvl| {
         let pos = type_vars.borrow().iter().position(|t| t == &tvl);
         let position = pos.unwrap_or_else(|| {
             type_vars.borrow_mut().push(tvl.clone());
             type_vars.borrow().len() - 1
         });
-        tvl.as_type_var_like_usage(position.into(), callable.defined_at)
+        tvl.as_type_var_like_usage(position.into(), callable_defined_at)
             .into_generic_item()
     };
     let get_class_method_class = || {
@@ -2457,7 +2458,7 @@ fn proper_classmethod_callable(
             as_type()
         }
     };
-    let mut new_callable = callable.replace_type_var_likes_and_self(
+    let mut new_callable = callable.replace_type_var_likes_and_self_inplace(
         i_s.db,
         &mut |mut usage| {
             let in_definition = usage.in_definition();
@@ -2480,7 +2481,7 @@ fn proper_classmethod_callable(
                     );
                 }
                 result
-            } else if in_definition == callable.defined_at {
+            } else if in_definition == callable_defined_at {
                 if let Some(u) = &class_method_type_var_usage {
                     if u.index == usage.index() {
                         return GenericItem::TypeArg(get_class_method_class());

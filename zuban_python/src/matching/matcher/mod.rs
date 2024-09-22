@@ -817,7 +817,7 @@ impl<'a> Matcher<'a> {
         if !callable.type_vars.is_empty() {
             let tv_matcher = self.type_var_matchers.first().unwrap();
             let defined_at = callable.defined_at;
-            callable = callable.replace_type_var_likes_and_self(
+            callable = callable.replace_type_var_likes_and_self_inplace(
                 i_s.db,
                 &mut self.as_usage_closure(i_s.db, |usage| {
                     let index = usage.index().as_usize();

@@ -3,6 +3,8 @@ testTypeVarTupleTypeApplicationOverload
 testUnionOfNonIterableUnpacking
 testPostInitIsNotAFunction
 
+testTypeGuardClassMethod
+testTypeIsClassMethod
 # callable matching regression
 testNoCrashOnNestedGenericCallable
 

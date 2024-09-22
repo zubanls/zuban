@@ -384,6 +384,23 @@ impl CallableContent {
         })
     }
 
+    pub fn replace_type_var_likes_and_self_inplace(
+        self,
+        db: &Database,
+        callable: ReplaceTypeVarLike,
+        replace_self: ReplaceSelf,
+    ) -> Self {
+        let replacer = &mut ReplaceTypeVarLikes {
+            db,
+            callable,
+            replace_self,
+        };
+        if let Some(c) = replacer.replace_callable_without_rc(&self) {
+            return c;
+        }
+        self.replace_internal(replacer).unwrap_or_else(|| self)
+    }
+
     pub fn replace_type_var_likes_and_self(
         &self,
         db: &Database,
@@ -877,6 +894,49 @@ struct ReplaceTypeVarLikes<'db, 'a> {
     callable: ReplaceTypeVarLike<'a>,
     replace_self: ReplaceSelf<'a>,
 }
+
+impl ReplaceTypeVarLikes<'_, '_> {
+    #[inline]
+    fn replace_callable_without_rc(&mut self, c: &CallableContent) -> Option<CallableContent> {
+        let has_type_vars = !c.type_vars.is_empty();
+        let mut type_vars = has_type_vars.then(|| c.type_vars.as_vec());
+        let new_param_data = c
+            .params
+            .replace_internal(self, &mut type_vars, Some(c.defined_at));
+        let new_return_type = c.return_type.replace_internal(self);
+        let new_guard = c.guard.as_ref().map(|g| g.replace_internal(self));
+        if new_param_data.is_none() && new_return_type.is_none() && new_guard.is_none() {
+            return None;
+        }
+        let (params, remap_data) = new_param_data.unwrap_or_else(|| (c.params.clone(), None));
+        let mut return_type = new_return_type.unwrap_or_else(|| c.return_type.clone());
+        if let Some(remap_data) = remap_data {
+            return_type = return_type.replace_type_var_likes_and_self(
+                self.db,
+                &mut |usage| {
+                    replace_param_spec_inner_type_var_likes(usage, c.defined_at, remap_data)
+                },
+                self.replace_self,
+            );
+        }
+        Some(CallableContent {
+            name: c.name.clone(),
+            class_name: c.class_name,
+            defined_at: c.defined_at,
+            kind: c.kind,
+            type_vars: type_vars
+                .map(|v| TypeVarLikes::from_vec(v))
+                .unwrap_or_else(|| self.db.python_state.empty_type_var_likes.clone()),
+            guard: new_guard.unwrap_or_else(|| c.guard.clone()),
+            is_abstract: c.is_abstract,
+            is_final: c.is_final,
+            no_type_check: c.no_type_check,
+            params,
+            return_type,
+        })
+    }
+}
+
 impl Replacer for ReplaceTypeVarLikes<'_, '_> {
     #[inline]
     fn replace_type(&mut self, t: &Type) -> Option<Type> {
@@ -921,42 +981,7 @@ impl Replacer for ReplaceTypeVarLikes<'_, '_> {
 
     #[inline]
     fn replace_callable(&mut self, c: &Rc<CallableContent>) -> Option<Rc<CallableContent>> {
-        let has_type_vars = !c.type_vars.is_empty();
-        let mut type_vars = has_type_vars.then(|| c.type_vars.as_vec());
-        let new_param_data = c
-            .params
-            .replace_internal(self, &mut type_vars, Some(c.defined_at));
-        let new_return_type = c.return_type.replace_internal(self);
-        let new_guard = c.guard.as_ref().map(|g| g.replace_internal(self));
-        if new_guard.is_none() && new_param_data.is_none() && new_return_type.is_none() {
-            return None;
-        }
-        let (params, remap_data) = new_param_data.unwrap_or_else(|| (c.params.clone(), None));
-        let mut return_type = new_return_type.unwrap_or_else(|| c.return_type.clone());
-        if let Some(remap_data) = remap_data {
-            return_type = return_type.replace_type_var_likes_and_self(
-                self.db,
-                &mut |usage| {
-                    replace_param_spec_inner_type_var_likes(usage, c.defined_at, remap_data)
-                },
-                self.replace_self,
-            );
-        }
-        Some(Rc::new(CallableContent {
-            name: c.name.clone(),
-            class_name: c.class_name,
-            defined_at: c.defined_at,
-            kind: c.kind,
-            type_vars: type_vars
-                .map(|v| TypeVarLikes::from_vec(v))
-                .unwrap_or_else(|| self.db.python_state.empty_type_var_likes.clone()),
-            guard: new_guard.unwrap_or_else(|| c.guard.clone()),
-            is_abstract: c.is_abstract,
-            is_final: c.is_final,
-            no_type_check: c.no_type_check,
-            params,
-            return_type,
-        }))
+        self.replace_callable_without_rc(c).map(Rc::new)
     }
 
     fn replace_type_var_tuple(&mut self, tvt: &TypeVarTupleUsage) -> Option<TupleArgs> {

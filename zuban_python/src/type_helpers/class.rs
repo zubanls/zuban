@@ -3302,7 +3302,7 @@ fn init_as_callable(
             // If the __init__ comes from a super class, we need to fetch the generics that
             // are relevant for our class.
             if c.has_self_type(i_s.db) || needs_type_var_remap {
-                c = c.replace_type_var_likes_and_self(
+                c = c.replace_type_var_likes_and_self_inplace(
                     i_s.db,
                     &mut |usage| {
                         if needs_type_var_remap {
@@ -3331,16 +3331,17 @@ fn init_as_callable(
                 tv_vec.extend(c.type_vars.iter().cloned());
                 c.type_vars = TypeVarLikes::from_vec(tv_vec);
             }
+            let c_defined_at = c.defined_at;
             if !c.type_vars.is_empty() {
-                c = c.replace_type_var_likes_and_self(
+                c = c.replace_type_var_likes_and_self_inplace(
                     i_s.db,
                     &mut |mut usage| {
                         let in_def = usage.in_definition();
                         if cls.node_ref.as_link() == in_def {
-                            usage.update_in_definition_and_index(c.defined_at, usage.index());
-                        } else if c.defined_at == in_def {
+                            usage.update_in_definition_and_index(c_defined_at, usage.index());
+                        } else if c_defined_at == in_def {
                             usage.update_in_definition_and_index(
-                                c.defined_at,
+                                c_defined_at,
                                 (class_type_vars.len() + usage.index().as_usize()).into(),
                             )
                         }
