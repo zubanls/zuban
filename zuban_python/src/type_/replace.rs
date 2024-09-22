@@ -572,11 +572,11 @@ impl CallableParams {
     pub fn replace_type_var_likes_and_self(
         &self,
         db: &Database,
-        type_vars: &mut Option<Vec<TypeVarLike>>,
-        in_definition: Option<PointLink>,
         callable: ReplaceTypeVarLike,
         replace_self: ReplaceSelf,
-    ) -> (CallableParams, Option<(PointLink, usize)>) {
+    ) -> CallableParams {
+        let type_vars = &mut None;
+        let in_definition = None;
         let new_params = match self {
             CallableParams::Simple(params) => {
                 let mut new_params = vec![];
@@ -633,18 +633,15 @@ impl CallableParams {
                             }
                             StarParamType::ParamSpecArgs(u) => {
                                 let mut replace_data = None;
-                                return (
-                                    remap_param_spec(
-                                        db,
-                                        new_params,
-                                        type_vars,
-                                        in_definition,
-                                        callable,
-                                        replace_self,
-                                        &mut replace_data,
-                                        u,
-                                    ),
-                                    replace_data,
+                                return remap_param_spec(
+                                    db,
+                                    new_params,
+                                    type_vars,
+                                    in_definition,
+                                    callable,
+                                    replace_self,
+                                    &mut replace_data,
+                                    u,
                                 );
                             }
                         }),
@@ -672,7 +669,7 @@ impl CallableParams {
             CallableParams::Any(cause) => CallableParams::Any(*cause),
             CallableParams::Never(cause) => CallableParams::Never(*cause),
         };
-        (new_params, None)
+        new_params
     }
 }
 
@@ -696,8 +693,6 @@ pub fn remap_param_spec(
             *replace_data = Some((new_spec_type_vars.in_definition, type_var_len));
             let new_params = new.params.replace_type_var_likes_and_self(
                 db,
-                &mut None,
-                None,
                 &mut |usage| {
                     replace_param_spec_inner_type_var_likes(
                         usage,
@@ -712,7 +707,7 @@ pub fn remap_param_spec(
             } else {
                 *type_vars = Some(new_spec_type_vars.type_vars.as_vec());
             }
-            new.params = new_params.0;
+            new.params = new_params;
         } else {
             debug_assert!(type_vars.is_none());
         }
@@ -975,8 +970,6 @@ impl Replacer for ReplaceTypeVarLikes<'_, '_> {
                 *replace_data = Some((new_spec_type_vars.in_definition, type_var_len));
                 let new_params = new.params.replace_type_var_likes_and_self(
                     self.db,
-                    &mut None,
-                    None,
                     &mut |usage| {
                         replace_param_spec_inner_type_var_likes(
                             usage,
@@ -991,7 +984,7 @@ impl Replacer for ReplaceTypeVarLikes<'_, '_> {
                 } else {
                     *type_vars = Some(new_spec_type_vars.type_vars.as_vec());
                 }
-                new.params = new_params.0;
+                new.params = new_params;
             } else {
                 debug_assert!(type_vars.is_none());
             }

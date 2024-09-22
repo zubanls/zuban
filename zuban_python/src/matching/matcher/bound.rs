@@ -336,13 +336,11 @@ impl BoundKind {
                 on_type_var_like,
                 &|| Type::Self_,
             )),
-            Self::ParamSpec(params) => Self::ParamSpec(
-                params
-                    .replace_type_var_likes_and_self(db, &mut None, None, on_type_var_like, &|| {
-                        Type::Self_
-                    })
-                    .0,
-            ),
+            Self::ParamSpec(params) => Self::ParamSpec(params.replace_type_var_likes_and_self(
+                db,
+                on_type_var_like,
+                &|| Type::Self_,
+            )),
         }
     }
 
