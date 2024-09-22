@@ -330,19 +330,12 @@ impl GenericItem {
         callable: &mut impl FnMut(TypeVarLikeUsage) -> GenericItem,
         replace_self: ReplaceSelf,
     ) -> Self {
-        match self {
-            Self::TypeArg(t) => {
-                Self::TypeArg(t.replace_type_var_likes_and_self(db, callable, replace_self))
-            }
-            Self::TypeArgs(ta) => Self::TypeArgs(TypeArgs {
-                args: ta
-                    .args
-                    .replace_type_var_likes_and_self(db, callable, replace_self),
-            }),
-            Self::ParamSpecArg(param_spec_arg) => Self::ParamSpecArg(
-                param_spec_arg.replace_type_var_likes_and_self(db, callable, replace_self),
-            ),
-        }
+        self.replace_internal(&mut ReplaceTypeVarLikes {
+            db,
+            callable,
+            replace_self,
+        })
+        .unwrap_or_else(|| self.clone())
     }
 }
 
@@ -401,7 +394,7 @@ impl CallableContent {
         if let Some(c) = replacer.replace_callable_without_rc(&self) {
             return c;
         }
-        self.replace_internal(replacer).unwrap_or_else(|| self)
+        self.replace_internal(replacer).unwrap_or(self)
     }
 
     pub fn replace_type_var_likes_and_self(
