@@ -145,156 +145,6 @@ impl Type {
         callable: ReplaceTypeVarLike,
         replace_self: ReplaceSelf,
     ) -> Self {
-        struct ReplaceTypeVarLikes<'db, 'a> {
-            db: &'db Database,
-            callable: ReplaceTypeVarLike<'a>,
-            replace_self: ReplaceSelf<'a>,
-        }
-        impl Replacer for ReplaceTypeVarLikes<'_, '_> {
-            #[inline]
-            fn replace_type(&mut self, t: &Type) -> Option<Type> {
-                match t {
-                    Type::Union(u) => {
-                        let new_entries: Vec<_> = maybe_replace_iterable(u.entries.iter(), |u| {
-                            Some(UnionEntry {
-                                // Performance: It is a bit questionable that this always clones.
-                                // The problem is that if it doesn't, we won't use simplified union
-                                // logic in all cases.
-                                // Perhaps we should find a way to check whether this we are in a
-                                // simplified union case. But this is generally tricky. And might
-                                // also intensify workloads.
-                                type_: u
-                                    .type_
-                                    .replace_internal(self)
-                                    .unwrap_or_else(|| u.type_.clone()),
-                                format_index: u.format_index,
-                            })
-                        })?;
-                        let i_s = InferenceState::new(self.db);
-                        let highest_union_format_index = new_entries
-                            .iter()
-                            .map(|e| e.type_.highest_union_format_index())
-                            .max()
-                            .unwrap();
-                        Some(simplified_union_from_iterators_with_format_index(
-                            &i_s,
-                            new_entries.into_iter().map(|e| (e.format_index, e.type_)),
-                            highest_union_format_index,
-                        ))
-                    }
-                    Type::TypeVar(tv) => {
-                        match (self.callable)(TypeVarLikeUsage::TypeVar(tv.clone())) {
-                            GenericItem::TypeArg(t) => Some(t),
-                            GenericItem::TypeArgs(ts) => unreachable!(),
-                            GenericItem::ParamSpecArg(params) => unreachable!(),
-                        }
-                    }
-                    Type::Self_ => Some((self.replace_self)()),
-                    _ => None,
-                }
-            }
-
-            #[inline]
-            fn replace_callable(&mut self, c: &Rc<CallableContent>) -> Option<Rc<CallableContent>> {
-                let has_type_vars = !c.type_vars.is_empty();
-                let mut type_vars = has_type_vars.then(|| c.type_vars.as_vec());
-                let new_param_data =
-                    c.params
-                        .replace_internal(self, &mut type_vars, Some(c.defined_at));
-                let new_return_type = c.return_type.replace_internal(self);
-                let new_guard = c.guard.as_ref().map(|g| g.replace_internal(self));
-                if new_guard.is_none() && new_param_data.is_none() && new_return_type.is_none() {
-                    return None;
-                }
-                let (params, remap_data) =
-                    new_param_data.unwrap_or_else(|| (c.params.clone(), None));
-                let mut return_type = new_return_type.unwrap_or_else(|| c.return_type.clone());
-                if let Some(remap_data) = remap_data {
-                    return_type = return_type.replace_type_var_likes_and_self(
-                        self.db,
-                        &mut |usage| {
-                            replace_param_spec_inner_type_var_likes(usage, c.defined_at, remap_data)
-                        },
-                        self.replace_self,
-                    );
-                }
-                Some(Rc::new(CallableContent {
-                    name: c.name.clone(),
-                    class_name: c.class_name,
-                    defined_at: c.defined_at,
-                    kind: c.kind,
-                    type_vars: type_vars
-                        .map(|v| TypeVarLikes::from_vec(v))
-                        .unwrap_or_else(|| self.db.python_state.empty_type_var_likes.clone()),
-                    guard: new_guard.unwrap_or_else(|| c.guard.clone()),
-                    is_abstract: c.is_abstract,
-                    is_final: c.is_final,
-                    no_type_check: c.no_type_check,
-                    params,
-                    return_type,
-                }))
-            }
-
-            fn replace_type_var_tuple(&mut self, tvt: &TypeVarTupleUsage) -> Option<TupleArgs> {
-                let GenericItem::TypeArgs(new) =
-                    (self.callable)(TypeVarLikeUsage::TypeVarTuple(tvt.clone()))
-                else {
-                    unreachable!();
-                };
-                let args = new.args;
-                if let TupleArgs::WithUnpack(w) = &args {
-                    if w.before.is_empty()
-                        && w.after.is_empty()
-                        && matches!(&w.unpack, TupleUnpack::TypeVarTuple(tvt2) if tvt == tvt2)
-                    {
-                        return None;
-                    }
-                }
-                Some(args)
-            }
-
-            fn replace_param_spec(
-                &mut self,
-                type_vars: &mut Option<Vec<TypeVarLike>>,
-                in_definition: Option<PointLink>,
-                replace_data: &mut Option<(PointLink, usize)>,
-                p: &ParamSpecUsage,
-            ) -> Option<ReplacedParamSpec> {
-                let result = (self.callable)(TypeVarLikeUsage::ParamSpec(p.clone()));
-                let GenericItem::ParamSpecArg(mut new) = result else {
-                    unreachable!()
-                };
-                if let Some(new_spec_type_vars) = new.type_vars {
-                    if let Some(in_definition) = in_definition {
-                        let type_var_len = type_vars.as_ref().map(|t| t.len()).unwrap_or(0);
-                        *replace_data = Some((new_spec_type_vars.in_definition, type_var_len));
-                        let new_params = new.params.replace_type_var_likes_and_self(
-                            self.db,
-                            &mut None,
-                            None,
-                            &mut |usage| {
-                                replace_param_spec_inner_type_var_likes(
-                                    usage,
-                                    in_definition,
-                                    replace_data.unwrap(),
-                                )
-                            },
-                            self.replace_self,
-                        );
-                        if let Some(type_vars) = type_vars.as_mut() {
-                            type_vars.extend(new_spec_type_vars.type_vars.as_vec());
-                        } else {
-                            *type_vars = Some(new_spec_type_vars.type_vars.as_vec());
-                        }
-                        new.params = new_params.0;
-                    } else {
-                        debug_assert!(type_vars.is_none());
-                    }
-                }
-                Some(ReplacedParamSpec::Params(new.params))
-            }
-        }
-
         self.replace_internal(&mut ReplaceTypeVarLikes {
             db,
             callable,
@@ -1167,5 +1017,152 @@ impl TupleArgs {
                 }),
             },
         }
+    }
+}
+
+struct ReplaceTypeVarLikes<'db, 'a> {
+    db: &'db Database,
+    callable: ReplaceTypeVarLike<'a>,
+    replace_self: ReplaceSelf<'a>,
+}
+impl Replacer for ReplaceTypeVarLikes<'_, '_> {
+    #[inline]
+    fn replace_type(&mut self, t: &Type) -> Option<Type> {
+        match t {
+            Type::Union(u) => {
+                let new_entries: Vec<_> = maybe_replace_iterable(u.entries.iter(), |u| {
+                    Some(UnionEntry {
+                        // Performance: It is a bit questionable that this always clones.
+                        // The problem is that if it doesn't, we won't use simplified union
+                        // logic in all cases.
+                        // Perhaps we should find a way to check whether this we are in a
+                        // simplified union case. But this is generally tricky. And might
+                        // also intensify workloads.
+                        type_: u
+                            .type_
+                            .replace_internal(self)
+                            .unwrap_or_else(|| u.type_.clone()),
+                        format_index: u.format_index,
+                    })
+                })?;
+                let i_s = InferenceState::new(self.db);
+                let highest_union_format_index = new_entries
+                    .iter()
+                    .map(|e| e.type_.highest_union_format_index())
+                    .max()
+                    .unwrap();
+                Some(simplified_union_from_iterators_with_format_index(
+                    &i_s,
+                    new_entries.into_iter().map(|e| (e.format_index, e.type_)),
+                    highest_union_format_index,
+                ))
+            }
+            Type::TypeVar(tv) => match (self.callable)(TypeVarLikeUsage::TypeVar(tv.clone())) {
+                GenericItem::TypeArg(t) => Some(t),
+                GenericItem::TypeArgs(ts) => unreachable!(),
+                GenericItem::ParamSpecArg(params) => unreachable!(),
+            },
+            Type::Self_ => Some((self.replace_self)()),
+            _ => None,
+        }
+    }
+
+    #[inline]
+    fn replace_callable(&mut self, c: &Rc<CallableContent>) -> Option<Rc<CallableContent>> {
+        let has_type_vars = !c.type_vars.is_empty();
+        let mut type_vars = has_type_vars.then(|| c.type_vars.as_vec());
+        let new_param_data = c
+            .params
+            .replace_internal(self, &mut type_vars, Some(c.defined_at));
+        let new_return_type = c.return_type.replace_internal(self);
+        let new_guard = c.guard.as_ref().map(|g| g.replace_internal(self));
+        if new_guard.is_none() && new_param_data.is_none() && new_return_type.is_none() {
+            return None;
+        }
+        let (params, remap_data) = new_param_data.unwrap_or_else(|| (c.params.clone(), None));
+        let mut return_type = new_return_type.unwrap_or_else(|| c.return_type.clone());
+        if let Some(remap_data) = remap_data {
+            return_type = return_type.replace_type_var_likes_and_self(
+                self.db,
+                &mut |usage| {
+                    replace_param_spec_inner_type_var_likes(usage, c.defined_at, remap_data)
+                },
+                self.replace_self,
+            );
+        }
+        Some(Rc::new(CallableContent {
+            name: c.name.clone(),
+            class_name: c.class_name,
+            defined_at: c.defined_at,
+            kind: c.kind,
+            type_vars: type_vars
+                .map(|v| TypeVarLikes::from_vec(v))
+                .unwrap_or_else(|| self.db.python_state.empty_type_var_likes.clone()),
+            guard: new_guard.unwrap_or_else(|| c.guard.clone()),
+            is_abstract: c.is_abstract,
+            is_final: c.is_final,
+            no_type_check: c.no_type_check,
+            params,
+            return_type,
+        }))
+    }
+
+    fn replace_type_var_tuple(&mut self, tvt: &TypeVarTupleUsage) -> Option<TupleArgs> {
+        let GenericItem::TypeArgs(new) =
+            (self.callable)(TypeVarLikeUsage::TypeVarTuple(tvt.clone()))
+        else {
+            unreachable!();
+        };
+        let args = new.args;
+        if let TupleArgs::WithUnpack(w) = &args {
+            if w.before.is_empty()
+                && w.after.is_empty()
+                && matches!(&w.unpack, TupleUnpack::TypeVarTuple(tvt2) if tvt == tvt2)
+            {
+                return None;
+            }
+        }
+        Some(args)
+    }
+
+    fn replace_param_spec(
+        &mut self,
+        type_vars: &mut Option<Vec<TypeVarLike>>,
+        in_definition: Option<PointLink>,
+        replace_data: &mut Option<(PointLink, usize)>,
+        p: &ParamSpecUsage,
+    ) -> Option<ReplacedParamSpec> {
+        let result = (self.callable)(TypeVarLikeUsage::ParamSpec(p.clone()));
+        let GenericItem::ParamSpecArg(mut new) = result else {
+            unreachable!()
+        };
+        if let Some(new_spec_type_vars) = new.type_vars {
+            if let Some(in_definition) = in_definition {
+                let type_var_len = type_vars.as_ref().map(|t| t.len()).unwrap_or(0);
+                *replace_data = Some((new_spec_type_vars.in_definition, type_var_len));
+                let new_params = new.params.replace_type_var_likes_and_self(
+                    self.db,
+                    &mut None,
+                    None,
+                    &mut |usage| {
+                        replace_param_spec_inner_type_var_likes(
+                            usage,
+                            in_definition,
+                            replace_data.unwrap(),
+                        )
+                    },
+                    self.replace_self,
+                );
+                if let Some(type_vars) = type_vars.as_mut() {
+                    type_vars.extend(new_spec_type_vars.type_vars.as_vec());
+                } else {
+                    *type_vars = Some(new_spec_type_vars.type_vars.as_vec());
+                }
+                new.params = new_params.0;
+            } else {
+                debug_assert!(type_vars.is_none());
+            }
+        }
+        Some(ReplacedParamSpec::Params(new.params))
     }
 }
