@@ -575,101 +575,17 @@ impl CallableParams {
         callable: ReplaceTypeVarLike,
         replace_self: ReplaceSelf,
     ) -> CallableParams {
-        let type_vars = &mut None;
-        let in_definition = None;
-        let new_params = match self {
-            CallableParams::Simple(params) => {
-                let mut new_params = vec![];
-                for p in params.iter() {
-                    let new_param_type = match &p.type_ {
-                        ParamType::PositionalOnly(t) => ParamType::PositionalOnly(
-                            t.replace_type_var_likes_and_self(db, callable, replace_self),
-                        ),
-                        ParamType::PositionalOrKeyword(t) => ParamType::PositionalOrKeyword(
-                            t.replace_type_var_likes_and_self(db, callable, replace_self),
-                        ),
-                        ParamType::KeywordOnly(t) => ParamType::KeywordOnly(
-                            t.replace_type_var_likes_and_self(db, callable, replace_self),
-                        ),
-                        ParamType::Star(s) => ParamType::Star(match s {
-                            StarParamType::ArbitraryLen(t) => StarParamType::ArbitraryLen(
-                                t.replace_type_var_likes_and_self(db, callable, replace_self),
-                            ),
-                            StarParamType::UnpackedTuple(u) => {
-                                match u.args.replace_type_var_likes_and_self(
-                                    db,
-                                    callable,
-                                    replace_self,
-                                ) {
-                                    TupleArgs::FixedLen(types) => {
-                                        for t in rc_slice_into_vec(types) {
-                                            new_params.push(CallableParam::new_anonymous(
-                                                ParamType::PositionalOnly(t),
-                                            ))
-                                        }
-                                        continue;
-                                    }
-                                    TupleArgs::ArbitraryLen(t) => {
-                                        new_params.push(CallableParam::new_anonymous(
-                                            ParamType::Star(StarParamType::ArbitraryLen(*t)),
-                                        ));
-                                        continue;
-                                    }
-                                    TupleArgs::WithUnpack(mut with_unpack) => {
-                                        let before = std::mem::replace(
-                                            &mut with_unpack.before,
-                                            Rc::from([]),
-                                        );
-                                        for t in before.iter() {
-                                            new_params.push(CallableParam::new_anonymous(
-                                                ParamType::PositionalOnly(t.clone()),
-                                            ))
-                                        }
-                                        StarParamType::UnpackedTuple(Tuple::new(
-                                            TupleArgs::WithUnpack(with_unpack),
-                                        ))
-                                    }
-                                }
-                            }
-                            StarParamType::ParamSpecArgs(u) => {
-                                let mut replace_data = None;
-                                return remap_param_spec(
-                                    db,
-                                    new_params,
-                                    type_vars,
-                                    in_definition,
-                                    callable,
-                                    replace_self,
-                                    &mut replace_data,
-                                    u,
-                                );
-                            }
-                        }),
-                        ParamType::StarStar(d) => ParamType::StarStar(match d {
-                            StarStarParamType::ValueType(t) => StarStarParamType::ValueType(
-                                t.replace_type_var_likes_and_self(db, callable, replace_self),
-                            ),
-                            StarStarParamType::UnpackTypedDict(_) => {
-                                todo!()
-                            }
-                            StarStarParamType::ParamSpecKwargs(_) => {
-                                // Was already handled in ParamSpecArgs
-                                unreachable!()
-                            }
-                        }),
-                    };
-                    new_params.push(CallableParam {
-                        type_: new_param_type,
-                        has_default: p.has_default,
-                        name: p.name.clone(),
-                    })
-                }
-                CallableParams::new_simple(new_params.into())
-            }
-            CallableParams::Any(cause) => CallableParams::Any(*cause),
-            CallableParams::Never(cause) => CallableParams::Never(*cause),
-        };
-        new_params
+        self.replace_internal(
+            &mut ReplaceTypeVarLikes {
+                db,
+                callable,
+                replace_self,
+            },
+            &mut None,
+            None,
+        )
+        .map(|(params, _)| params)
+        .unwrap_or_else(|| self.clone())
     }
 }
 
