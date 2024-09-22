@@ -157,7 +157,16 @@ impl Type {
                     Type::Union(u) => {
                         let new_entries: Vec<_> = maybe_replace_iterable(u.entries.iter(), |u| {
                             Some(UnionEntry {
-                                type_: u.type_.replace_internal(self)?,
+                                // Performance: It is a bit questionable that this always clones.
+                                // The problem is that if it doesn't, we won't use simplified union
+                                // logic in all cases.
+                                // Perhaps we should find a way to check whether this we are in a
+                                // simplified union case. But this is generally tricky. And might
+                                // also intensify workloads.
+                                type_: u
+                                    .type_
+                                    .replace_internal(self)
+                                    .unwrap_or_else(|| u.type_.clone()),
                                 format_index: u.format_index,
                             })
                         })?;

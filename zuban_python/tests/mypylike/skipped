@@ -3,13 +3,6 @@ testTypeVarTupleTypeApplicationOverload
 testUnionOfNonIterableUnpacking
 testPostInitIsNotAFunction
 
-# replace regressions
-testFunctionalEnumErrors (check-enum)
-testFunctionalEnum (check-enum)
-testTupleContextFromIterable2 (check-inference)
-testUnionSimplificationWithBoolIntAndFloat (check-unions)
-testUnionSimplificationWithBoolIntAndFloat2 (check-unions)
-
 # callable matching regression
 testNoCrashOnNestedGenericCallable
 
