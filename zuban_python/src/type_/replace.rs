@@ -410,45 +410,16 @@ impl CallableContent {
         callable: ReplaceTypeVarLike,
         replace_self: ReplaceSelf,
     ) -> CallableContent {
-        let has_type_vars = !self.type_vars.is_empty();
-        let mut type_vars = has_type_vars.then(|| self.type_vars.as_vec());
-        let (params, remap_data) = self.params.replace_type_var_likes_and_self(
+        let replacer = &mut ReplaceTypeVarLikes {
             db,
-            &mut type_vars,
-            Some(self.defined_at),
             callable,
             replace_self,
-        );
-        let mut return_type =
-            self.return_type
-                .replace_type_var_likes_and_self(db, callable, replace_self);
-        if let Some(remap_data) = remap_data {
-            return_type = return_type.replace_type_var_likes_and_self(
-                db,
-                &mut |usage| {
-                    replace_param_spec_inner_type_var_likes(usage, self.defined_at, remap_data)
-                },
-                replace_self,
-            );
+        };
+        if let Some(c) = replacer.replace_callable_without_rc(&self) {
+            return c;
         }
-        CallableContent {
-            name: self.name.clone(),
-            class_name: self.class_name,
-            defined_at: self.defined_at,
-            kind: self.kind,
-            type_vars: type_vars
-                .map(TypeVarLikes::from_vec)
-                .unwrap_or_else(|| db.python_state.empty_type_var_likes.clone()),
-            guard: self
-                .guard
-                .as_ref()
-                .map(|g| g.replace_type_var_likes_and_self(db, callable, replace_self)),
-            is_abstract: self.is_abstract,
-            is_final: self.is_final,
-            no_type_check: self.no_type_check,
-            params,
-            return_type,
-        }
+        self.replace_internal(replacer)
+            .unwrap_or_else(|| self.clone())
     }
 }
 
@@ -458,20 +429,6 @@ impl TypeGuardInfo {
             type_: self.type_.replace_internal(replacer)?,
             from_type_is: self.from_type_is,
         })
-    }
-
-    pub fn replace_type_var_likes_and_self(
-        &self,
-        db: &Database,
-        callable: ReplaceTypeVarLike,
-        replace_self: ReplaceSelf,
-    ) -> Self {
-        Self {
-            type_: self
-                .type_
-                .replace_type_var_likes_and_self(db, callable, replace_self),
-            from_type_is: self.from_type_is,
-        }
     }
 }
 
