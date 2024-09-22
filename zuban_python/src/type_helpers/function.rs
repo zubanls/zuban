@@ -30,7 +30,7 @@ use crate::{
     params::{InferrableParamIterator, Param, WrappedParamType, WrappedStar, WrappedStarStar},
     python_state::NAME_TO_FUNCTION_DIFF,
     type_::{
-        remap_param_spec, AnyCause, CallableContent, CallableLike, CallableParam, CallableParams,
+        replace_param_spec, AnyCause, CallableContent, CallableLike, CallableParam, CallableParams,
         ClassGenerics, DbString, FunctionKind, FunctionOverload, GenericClass, GenericItem,
         LookupResult, ParamType, ReplaceSelf, StarParamType, StarStarParamType, StringSlice,
         TupleArgs, Type, TypeGuardInfo, TypeVar, TypeVarKind, TypeVarLike, TypeVarLikes,
@@ -1503,7 +1503,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 WrappedParamType::Star(WrappedStar::ParamSpecArgs(u1)) => {
                     if let Some(c) = self.class {
                         if c.node_ref.as_link() == u1.in_definition {
-                            return return_result(remap_param_spec(
+                            return return_result(replace_param_spec(
                                 i_s.db,
                                 new_params,
                                 &mut None,
