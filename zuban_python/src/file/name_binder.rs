@@ -137,7 +137,7 @@ impl<'db> NameBinder<'db> {
         }
         for annotation_name in &binder.annotation_names {
             try_to_process_reference_for_symbol_table(
-                &mut binder.symbol_table,
+                &binder.symbol_table,
                 binder.db_infos.file_index,
                 binder.db_infos.points,
                 *annotation_name,
@@ -162,7 +162,7 @@ impl<'db> NameBinder<'db> {
             names_to_be_resolved_in_parent,
             annotation_names,
             unresolved_class_self_vars,
-            mut symbol_table,
+            symbol_table,
             ..
         } = name_binder;
         self.unresolved_class_self_vars
@@ -175,7 +175,7 @@ impl<'db> NameBinder<'db> {
         self.unresolved_nodes.extend(unresolved_nodes);
         for annotation_name in annotation_names {
             if !try_to_process_reference_for_symbol_table(
-                &mut symbol_table,
+                &symbol_table,
                 self.db_infos.file_index,
                 self.db_infos.points,
                 annotation_name,
@@ -1185,7 +1185,7 @@ impl<'db> NameBinder<'db> {
     #[inline]
     fn try_to_process_reference(&mut self, name: Name<'db>) -> bool {
         try_to_process_reference_for_symbol_table(
-            &mut self.symbol_table,
+            &self.symbol_table,
             self.db_infos.file_index,
             self.db_infos.points,
             name,
@@ -1196,7 +1196,7 @@ impl<'db> NameBinder<'db> {
     fn index_unordered_references(&mut self) {
         for unordered_reference in &self.unordered_references {
             if try_to_process_reference_for_symbol_table(
-                &mut self.symbol_table,
+                &self.symbol_table,
                 self.db_infos.file_index,
                 self.db_infos.points,
                 unordered_reference.name,
@@ -1294,7 +1294,7 @@ fn gather_slots(file_index: FileIndex, assignment: Assignment) -> Option<Box<[St
 
 #[inline]
 fn try_to_process_reference_for_symbol_table(
-    symbol_table: &mut SymbolTable,
+    symbol_table: &SymbolTable,
     file_index: FileIndex,
     points: &Points,
     name: Name,
