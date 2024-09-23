@@ -4866,6 +4866,9 @@ pub(super) fn check_type_name<'db: 'file, 'file>(
     //
     // It's important to check that it's a name. Otherwise it redirects to some random place.
     if point.calculated() {
+        if point.in_global_scope() && !i_s.in_module_context() {
+            return check_type_name(&InferenceState::new(i_s.db), name_node_ref);
+        }
         if point.kind() == PointKind::Redirect {
             let new = point.as_redirected_node_ref(i_s.db);
             if new.maybe_name().is_some() {
