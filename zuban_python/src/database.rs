@@ -41,7 +41,6 @@ type FileStateLoaders = Box<[Box<dyn FileStateLoader>]>;
 // xoxxx is_invalidated TODO remove?
 // xxooo Locality (xXxx is_external)
 // xxxxxo needs_flow_analysis
-// xxxxxxo is_nullable  TODO remove
 // xxxxxxxooo PointType
 // if true rest 22 bits reserved for Point details
 
@@ -49,8 +48,7 @@ const IS_ANALIZED_BIT_INDEX: usize = 31;
 // const IS_INVALIDATED_BIT_INDEX: usize = 30;
 const LOCALITY_BIT_INDEX: usize = 27; // Uses 3 bits
 const NEEDS_FLOW_ANALYSIS_BIT_INDEX: usize = 26;
-// const IS_NULLABLE_BIT_INDEX: usize = 25;
-const KIND_BIT_INDEX: usize = 22; // Uses 3 bits
+const KIND_BIT_INDEX: usize = 23; // Uses 3 bits
 
 const REST_MASK: u32 = (1 << KIND_BIT_INDEX) - 1;
 const SPECIFIC_BIT_LEN: u32 = 8;
@@ -59,7 +57,6 @@ const SPECIFIC_MASK: u32 = (1 << SPECIFIC_BIT_LEN) - 1; // 8 bits
                                                         // const FILE_MASK: u32 = 0xFFFFFF; // 24 bits
 const IS_ANALIZED_MASK: u32 = 1 << IS_ANALIZED_BIT_INDEX;
 const NEEDS_FLOW_ANALYSIS_MASK: u32 = 1 << NEEDS_FLOW_ANALYSIS_BIT_INDEX;
-// const IS_NULLABLE_MASK: u32 = 1 << IS_NULLABLE_MASK_BIT_INDEX;
 const LOCALITY_MASK: u32 = 0b111 << LOCALITY_BIT_INDEX;
 const KIND_MASK: u32 = 0b111 << KIND_BIT_INDEX;
 
@@ -72,8 +69,6 @@ const PARTIAL_FINISHED_MASK: u32 = 1 << PARTIAL_FINISHED_INDEX;
 
 const CALCULATED_OR_REDIRECT_LIKE_KIND_OR_REST_MASK: u32 = IS_ANALIZED_MASK | KIND_MASK | REST_MASK;
 const REDIRECT_KIND_VALUE: u32 = (PointKind::Redirect as u32) << KIND_BIT_INDEX;
-
-// const IS_EXTERN_MASK: u32 = 1 << 30;
 
 #[derive(Copy, Clone, Eq, PartialEq, Default)]
 pub struct Point {
