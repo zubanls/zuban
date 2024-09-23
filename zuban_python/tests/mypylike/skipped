@@ -55,9 +55,6 @@ testChangeTypeVarToFunction
 testAsyncForComprehensionErrors
 testNoneAnyFallbackDescriptor
 testAsyncForComprehension
-# wrong function in i_s is used in self assignment
-testFinalReassignInstanceVarInit
-testFinalReassignInstanceVarMethod
 # i_s missing current class
 testLambdaDeferredSpecialCase
 testLambdaDeferredCrash
