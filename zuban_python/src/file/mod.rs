@@ -16,6 +16,7 @@ pub use file_state::{
 pub use flow_analysis::FLOW_ANALYSIS;
 use inference::Inference;
 pub use inference::{first_defined_name, first_defined_name_of_multi_def};
+pub use name_binder::{FUNC_TO_PARENT_DIFF, FUNC_TO_RETURN_OR_YIELD_DIFF, FUNC_TO_TYPE_VAR_DIFF};
 pub use python_file::{dotted_path_from_dir, ComplexValues, MultiDefinitionIterator, PythonFile};
 pub use type_computation::{
     maybe_saved_annotation, use_cached_annotation_or_type_comment, use_cached_annotation_type,

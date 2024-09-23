@@ -19,6 +19,15 @@ use crate::{
 use super::python_file::MultiDefinitionIterator;
 
 pub const GLOBAL_NONLOCAL_TO_NAME_DIFFERENCE: NodeIndex = 2;
+// Functions use the following points:
+// - "def" to redirect to the first return/yield (Function::type_var_reference)
+// - "function_def_parameters" to save calculated type vars (Function::iter_return_or_yield)
+// - "(" for the understanding of the parent scope (Function::parent_reference)
+// To save the generics just use the ( operator's storage.
+// + 1 for def; + 2 for name + 1 for (...)
+pub const FUNC_TO_RETURN_OR_YIELD_DIFF: u32 = 1;
+pub const FUNC_TO_TYPE_VAR_DIFF: i64 = NAME_TO_FUNCTION_DIFF as i64 + 1;
+pub const FUNC_TO_PARENT_DIFF: i64 = NAME_TO_FUNCTION_DIFF as i64 + 2;
 
 #[derive(PartialEq, Debug)]
 enum NameBinderKind {
@@ -1135,7 +1144,7 @@ impl<'db> NameBinder<'db> {
         self.index_block(block, true);
         // It's kind of hard to know where to store the latest reference statement.
         self.db_infos.points.set(
-            func.index() + 1,
+            func.index() + FUNC_TO_RETURN_OR_YIELD_DIFF,
             Point::new_node_analysis_with_node_index(
                 Locality::ClassOrFunction,
                 self.latest_return_or_yield,

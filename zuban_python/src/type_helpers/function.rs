@@ -17,6 +17,7 @@ use crate::{
     file::{
         first_defined_name, first_defined_name_of_multi_def, use_cached_param_annotation_type,
         PythonFile, TypeComputation, TypeComputationOrigin, TypeVarCallbackReturn, FLOW_ANALYSIS,
+        FUNC_TO_PARENT_DIFF, FUNC_TO_RETURN_OR_YIELD_DIFF, FUNC_TO_TYPE_VAR_DIFF,
     },
     format_data::FormatData,
     inference_state::InferenceState,
@@ -59,10 +60,6 @@ impl fmt::Debug for Function<'_, '_> {
 }
 
 impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
-    // Functions use the following points:
-    // - "def" to redirect to the first return/yield
-    // - "function_def_parameters" to save calculated type vars
-    // - "(" for decorator caching
     pub fn new(node_ref: NodeRef<'a>, class: Option<Class<'class>>) -> Self {
         if std::cfg!(debug_assertions) {
             debug_assert!(node_ref.maybe_function().is_some());
@@ -218,7 +215,11 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
     }
 
     pub fn iter_return_or_yield(&self) -> ReturnOrYieldIterator<'a> {
-        let def_point = self.node_ref.file.points.get(self.node_ref.node_index + 1);
+        let def_point = self
+            .node_ref
+            .file
+            .points
+            .get(self.node_ref.node_index + FUNC_TO_RETURN_OR_YIELD_DIFF);
         let first_return_or_yield = def_point.node_index();
         ReturnOrYieldIterator {
             file: self.node_ref.file,
@@ -258,10 +259,11 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
     }
 
     fn type_var_reference(&self) -> NodeRef<'a> {
-        // To save the generics just use the ( operator's storage.
-        // + 1 for def; + 2 for name + 1 for (...)
-        self.node_ref
-            .add_to_node_index(NAME_TO_FUNCTION_DIFF as i64 + 1)
+        self.node_ref.add_to_node_index(FUNC_TO_TYPE_VAR_DIFF)
+    }
+
+    fn parent_reference(&self) -> NodeRef<'a> {
+        self.node_ref.add_to_node_index(FUNC_TO_PARENT_DIFF)
     }
 
     fn avoid_invalid_typeguard_signatures(
