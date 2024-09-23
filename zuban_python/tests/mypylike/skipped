@@ -110,7 +110,6 @@ testTupleAndDictOperationsOnParamSpecArgsAndKwargs
 testUnpackingParamsSpecArgsAndKwargs
 testParamSpecConcatenateFromPep
 testNestedGenericFunctionTypeApplication
-testIncrementalInnerClassAttrInMethodReveal
 
 # Class argument and __init__ as overloaded DbType
 testOverloadedToGeneric

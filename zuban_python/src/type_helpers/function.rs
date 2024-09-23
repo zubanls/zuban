@@ -295,7 +295,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 FuncParent::Function(func) => {
                     func.find_type_var_like_including_ancestors(db, type_var)
                 }
-                FuncParent::Class(c) => todo!(),
+                FuncParent::Class(c) => c.find_type_var_like_including_ancestors(db, type_var),
             })
     }
 
