@@ -34,8 +34,8 @@ use crate::{
         replace_param_spec, AnyCause, CallableContent, CallableLike, CallableParam, CallableParams,
         ClassGenerics, DbString, FunctionKind, FunctionOverload, GenericClass, GenericItem,
         LookupResult, ParamType, ReplaceSelf, StarParamType, StarStarParamType, StringSlice,
-        TupleArgs, Type, TypeGuardInfo, TypeVar, TypeVarKind, TypeVarLike, TypeVarLikes,
-        TypeVarManager, TypeVarName, TypeVarUsage, Variance, WrongPositionalCount,
+        TupleArgs, Type, TypeGuardInfo, TypeVar, TypeVarKind, TypeVarLike, TypeVarLikeUsage,
+        TypeVarLikes, TypeVarManager, TypeVarName, TypeVarUsage, Variance, WrongPositionalCount,
     },
     type_helpers::Class,
     utils::rc_unwrap_or_clone,
@@ -65,6 +65,13 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             debug_assert!(node_ref.maybe_function().is_some());
         }
         Self { node_ref, class }
+    }
+
+    pub fn new_with_unknown_parent(db: &'db Database, node_ref: NodeRef<'a>) -> Self {
+        match Self::new(node_ref, None).parent(db) {
+            FuncParent::Class(c) => Self::new(node_ref, Some(c)),
+            _ => Self::new(node_ref, None),
+        }
     }
 
     pub fn node(&self) -> FunctionDef<'a> {
@@ -262,8 +269,34 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         self.node_ref.add_to_node_index(FUNC_TO_TYPE_VAR_DIFF)
     }
 
-    fn parent_reference(&self) -> NodeRef<'a> {
-        self.node_ref.add_to_node_index(FUNC_TO_PARENT_DIFF)
+    fn parent(&self, db: &'db Database) -> FuncParent<'db> {
+        let parent_reference = self.node_ref.add_to_node_index(FUNC_TO_PARENT_DIFF as i64);
+        let to = parent_reference.point().node_index();
+        if to == 0 {
+            return FuncParent::Module;
+        }
+        let parent = NodeRef::new(self.node_ref.file, to).to_db_lifetime(db);
+        if parent.maybe_class().is_some() {
+            FuncParent::Class(Class::with_self_generics(db, parent))
+        } else {
+            FuncParent::Function(Function::new_with_unknown_parent(db, parent))
+        }
+    }
+
+    pub fn find_type_var_like_including_ancestors(
+        &self,
+        db: &Database,
+        type_var: &TypeVarLike,
+    ) -> Option<TypeVarLikeUsage> {
+        self.type_vars(db)
+            .find(type_var.clone(), self.node_ref.as_link())
+            .or_else(|| match self.parent(db) {
+                FuncParent::Module => None,
+                FuncParent::Function(func) => {
+                    func.find_type_var_like_including_ancestors(db, type_var)
+                }
+                FuncParent::Class(c) => todo!(),
+            })
     }
 
     fn avoid_invalid_typeguard_signatures(
@@ -2155,4 +2188,10 @@ impl GeneratorType {
             _ => None,
         }
     }
+}
+
+enum FuncParent<'x> {
+    Module,
+    Function(Function<'x, 'x>),
+    Class(Class<'x>),
 }

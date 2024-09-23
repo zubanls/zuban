@@ -27,7 +27,7 @@ pub const GLOBAL_NONLOCAL_TO_NAME_DIFFERENCE: NodeIndex = 2;
 // + 1 for def; + 2 for name + 1 for (...)
 pub const FUNC_TO_RETURN_OR_YIELD_DIFF: u32 = 1;
 pub const FUNC_TO_TYPE_VAR_DIFF: i64 = NAME_TO_FUNCTION_DIFF as i64 + 1;
-pub const FUNC_TO_PARENT_DIFF: i64 = NAME_TO_FUNCTION_DIFF as i64 + 2;
+pub const FUNC_TO_PARENT_DIFF: u32 = NAME_TO_FUNCTION_DIFF + 2;
 
 #[derive(PartialEq, Debug)]
 enum NameBinderKind {
@@ -112,7 +112,7 @@ impl<'db> NameBinder<'db> {
         db_infos: DbInfos<'db>,
         func: impl FnOnce(&mut NameBinder<'db>),
     ) -> SymbolTable {
-        let mut binder = NameBinder::new(db_infos, NameBinderKind::Global, 0, None);
+        let mut binder = Self::new(db_infos, NameBinderKind::Global, 0, None);
         func(&mut binder);
         binder.close();
 
@@ -162,7 +162,7 @@ impl<'db> NameBinder<'db> {
         scope_node: NodeIndex,
         func: impl FnOnce(&mut NameBinder<'db>),
     ) -> SymbolTable {
-        let mut name_binder = NameBinder::new(self.db_infos, kind, scope_node, Some(self));
+        let mut name_binder = Self::new(self.db_infos, kind, scope_node, Some(self));
         name_binder.following_nodes_need_flow_analysis = self.following_nodes_need_flow_analysis;
         func(&mut name_binder);
         name_binder.close();
@@ -1128,6 +1128,16 @@ impl<'db> NameBinder<'db> {
             self.index_annotation_expr(&return_annotation.expression());
         }
 
+        let parent_node_index = match self.kind {
+            NameBinderKind::Global | NameBinderKind::Function { .. } | NameBinderKind::Class => {
+                self.scope_node
+            }
+            NameBinderKind::Lambda | NameBinderKind::Comprehension => unreachable!(),
+        };
+        self.db_infos.points.set(
+            func.index() + FUNC_TO_PARENT_DIFF,
+            Point::new_parent(parent_node_index, Locality::File),
+        );
         self.add_new_definition_with_cause(
             name_def,
             Point::new_uncalculated(),

@@ -356,7 +356,10 @@ impl<'db: 'a, 'a> Class<'a> {
                             .find(type_var.clone(), parent_class.node_ref.as_link())
                     })
             }
-            ParentScope::Function(node_index) => todo!(),
+            ParentScope::Function(node_index) => {
+                Function::new_with_unknown_parent(db, NodeRef::new(self.node_ref.file, node_index))
+                    .find_type_var_like_including_ancestors(db, type_var)
+            }
         }
     }
 

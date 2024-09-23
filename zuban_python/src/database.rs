@@ -106,6 +106,13 @@ impl Point {
         }
     }
 
+    pub fn new_parent(node_index: NodeIndex, locality: Locality) -> Self {
+        Self {
+            flags: Self::calculate_flags(PointKind::Specific, Specific::Parent as u32, locality),
+            node_index,
+        }
+    }
+
     pub fn new_complex_point(complex_index: u32, locality: Locality) -> Self {
         let flags = Self::calculate_flags(PointKind::Complex, complex_index, locality);
         Self {
@@ -217,7 +224,10 @@ impl Point {
         debug_assert!(
             self.kind() == PointKind::Redirect
                 || self.kind() == PointKind::NodeAnalysis
-                || matches!(self.maybe_specific(), Some(Specific::NameOfNameDef))
+                || matches!(
+                    self.maybe_specific(),
+                    Some(Specific::NameOfNameDef | Specific::Parent)
+                )
         );
         self.node_index
     }
@@ -389,6 +399,7 @@ pub enum Specific {
     Calculating,
     Cycle,
     NameOfNameDef, // Cycles for the same name definition in e.g. different branches
+    Parent,        // Has a link to the parent scope
     OverloadUnreachable,
     AnyDueToError,
     InvalidTypeDefinition,
