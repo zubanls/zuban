@@ -51,7 +51,7 @@ impl<'db: 'a, 'a> FunctionOrCallable<'a> {
 
     pub fn type_vars(&self, i_s: &InferenceState<'db, '_>) -> &'a TypeVarLikes {
         match self {
-            Self::Function(function) => function.type_vars(i_s),
+            Self::Function(function) => function.type_vars(i_s.db),
             Self::Callable(c) => &c.content.type_vars,
         }
     }

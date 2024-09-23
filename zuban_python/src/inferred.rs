@@ -890,7 +890,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 let as_instance = || instance.clone();
                                 let mut matcher = Matcher::new_function_matcher(
                                     func,
-                                    func.type_vars(i_s),
+                                    func.type_vars(i_s.db),
                                     &as_instance,
                                 );
                                 // If __call__ has a self type that is a Callable, just ignore it,

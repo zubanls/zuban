@@ -243,7 +243,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         )
     }
 
-    pub fn type_vars(&self, i_s: &InferenceState<'db, '_>) -> &'a TypeVarLikes {
+    pub fn type_vars(&self, db: &'db Database) -> &'a TypeVarLikes {
         let type_var_reference = self.type_var_reference();
         if type_var_reference.point().calculated() {
             if let Some(complex) = type_var_reference.complex() {
@@ -252,7 +252,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     _ => unreachable!(),
                 }
             }
-            &i_s.db.python_state.empty_type_var_likes
+            &db.python_state.empty_type_var_likes
         } else {
             unreachable!()
         }
@@ -1301,7 +1301,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         let mut params = self.iter_params().peekable();
         let mut self_type_var_usage = None;
         let defined_at = self.node_ref.as_link();
-        let mut type_vars = self.type_vars(i_s).as_vec();
+        let mut type_vars = self.type_vars(i_s.db).as_vec();
         match options.first_param {
             FirstParamProperties::MethodAccessedOnClass { func_class_type } => {
                 let mut needs_self_type_variable = self.return_type(i_s).has_self_type(i_s.db);
@@ -1621,7 +1621,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             args.iter(),
             |issue| args.add_issue(i_s, issue),
             skip_first_argument,
-            self.type_vars(i_s),
+            self.type_vars(i_s.db),
             self.node_ref.as_link(),
             replace_self_type,
             result_context,

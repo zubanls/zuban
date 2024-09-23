@@ -163,7 +163,7 @@ impl<'db, 'a> InferenceState<'db, 'a> {
             }
         }
         if let Some(func) = self.current_function() {
-            for (index, type_var) in func.type_vars(self).iter().enumerate() {
+            for (index, type_var) in func.type_vars(self.db).iter().enumerate() {
                 if type_var == searched {
                     return Some(TypeVarCallbackReturn::TypeVarLike(
                         type_var.as_type_var_like_usage(index.into(), func.node_ref.as_link()),

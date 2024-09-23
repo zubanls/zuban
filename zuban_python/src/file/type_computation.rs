@@ -334,7 +334,7 @@ macro_rules! compute_type_application {
             }
             if let Some(function) = i_s.current_function() {
                 if let Some(usage) = function
-                    .type_vars(i_s)
+                    .type_vars(i_s.db)
                     .find(type_var_like.clone(), function.node_ref.as_link())
                 {
                     if $from_alias_definition {
