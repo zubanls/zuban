@@ -48,13 +48,8 @@ testNewAnalyzerDuplicateTypeVarImportCycleWithAliases
 testEnumNameWorkCorrectlyOn311
 # Class/Function is still set in InferenceState/i_s
 testUnusedTargetNotImport
-testFunctionForwardRefAlias
-testTypeVarTuplePep646TypeVarStarArgs
 testClassChangedIntoFunction2
 testChangeTypeVarToFunction
-testAsyncForComprehensionErrors
-testNoneAnyFallbackDescriptor
-testAsyncForComprehension
 # i_s missing current class
 testLambdaDeferredSpecialCase
 testLambdaDeferredCrash

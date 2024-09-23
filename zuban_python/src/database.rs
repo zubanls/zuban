@@ -102,7 +102,7 @@ impl Point {
                 PointKind::Specific,
                 Specific::NameOfNameDef as u32,
                 locality,
-            ) | IN_GLOBAL_SCOPE_MASK,
+            ) | (in_global_scope as u32) << IN_GLOBAL_SCOPE_INDEX,
         }
     }
 

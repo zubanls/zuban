@@ -3676,7 +3676,15 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         let point = self.file.points.get(node_index);
         point
             .calculated()
-            .then(|| self.infer_point(node_index, point))
+            .then(|| {
+                if point.in_global_scope() {
+                    self.file
+                        .inference(&mut InferenceState::new(self.i_s.db))
+                        .infer_point(node_index, point)
+                } else {
+                    self.infer_point(node_index, point)
+                }
+            })
             .or_else(|| {
                 if point.calculating() {
                     let node_ref = NodeRef::new(self.file, node_index);
