@@ -270,7 +270,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             ImportResult::File(file_index) => {
                 let import_file = self.i_s.db.loaded_python_file(*file_index);
                 Module::new(import_file).lookup_with_is_import(
-                    self.i_s,
+                    self.i_s.db,
                     |issue| self.add_issue(import_name.index(), issue),
                     import_name.as_str(),
                     Some(self.file_index),
@@ -352,7 +352,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         && module.file.is_stub()
                         && module
                             .lookup(
-                                i_s,
+                                i_s.db,
                                 |issue| self.add_issue(name.index(), issue),
                                 "__getattr__",
                             )

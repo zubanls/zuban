@@ -235,7 +235,7 @@ impl Type {
             ),
             Type::Module(file_index) => {
                 let module = Module::from_file_index(i_s.db, *file_index);
-                let lookup = module.lookup(i_s, add_issue, name);
+                let lookup = module.lookup(i_s.db, add_issue, name);
                 let mut attr_kind = AttributeKind::Attribute;
                 if let Some(inf) = lookup.maybe_inferred() {
                     if inf.maybe_saved_specific(i_s.db)

@@ -71,21 +71,22 @@ impl<'a> Module<'a> {
 
     pub(crate) fn lookup(
         &self,
-        i_s: &InferenceState,
+        db: &Database,
         add_issue: impl Fn(IssueKind),
         name: &str,
     ) -> LookupResult {
-        self.lookup_with_is_import(i_s, add_issue, name, None)
+        self.lookup_with_is_import(db, add_issue, name, None)
     }
 
     pub(crate) fn lookup_with_is_import(
         &self,
-        i_s: &InferenceState,
+        db: &Database,
         add_issue: impl Fn(IssueKind),
         name: &str,
         // Coming from an import we need to make sure that we do not create loops for imports
         original_import_file: Option<FileIndex>,
     ) -> LookupResult {
+        let i_s = &InferenceState::new(db);
         if let Some(link) = self
             .file
             .lookup_global(name)

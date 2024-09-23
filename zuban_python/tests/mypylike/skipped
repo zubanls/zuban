@@ -47,7 +47,6 @@ testNewAnalyzerDuplicateTypeVarImportCycleWithAliases
 # current_class in i_s should probably be a type and not a class
 testEnumNameWorkCorrectlyOn311
 # Class/Function is still set in InferenceState/i_s
-testUnusedTargetNotImport
 testClassChangedIntoFunction2
 testChangeTypeVarToFunction
 # i_s missing current class
