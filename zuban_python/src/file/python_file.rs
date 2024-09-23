@@ -614,7 +614,8 @@ impl<'db> PythonFile {
         }
     }
 
-    pub fn has_unsupported_class_scoped_import(&self, i_s: &InferenceState) -> bool {
+    pub fn has_unsupported_class_scoped_import(&self, db: &Database) -> bool {
+        let i_s = &InferenceState::new(db);
         let inference = self.inference(i_s);
         self.symbol_table().iter().any(|(_, index)| {
             inference
@@ -625,7 +626,7 @@ impl<'db> PythonFile {
             star_import.in_module_scope()
                 && star_import
                     .to_file(&inference)
-                    .is_some_and(|file| file.has_unsupported_class_scoped_import(i_s))
+                    .is_some_and(|file| file.has_unsupported_class_scoped_import(db))
         })
     }
 }

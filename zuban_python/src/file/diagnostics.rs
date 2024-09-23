@@ -247,7 +247,7 @@ impl<'db> Inference<'db, '_, '_> {
                     if let Some(ImportResult::File(file)) = self.import_from_first_part(import_from)
                     {
                         let imported = self.i_s.db.loaded_python_file(file);
-                        if imported.has_unsupported_class_scoped_import(self.i_s) {
+                        if imported.has_unsupported_class_scoped_import(self.i_s.db) {
                             self.add_issue(
                                 import_from.index(),
                                 IssueKind::UnsupportedClassScopedImport,
