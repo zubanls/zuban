@@ -3694,7 +3694,6 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         "{file_index}:{node_index}"
                     );
                     let infer = |inference: &Inference| {
-                        let point = inference.file.points.get(next_node_index);
                         inference
                             .check_point_cache(next_node_index)
                             .unwrap_or_else(|| {

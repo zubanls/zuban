@@ -45,7 +45,7 @@ type FileStateLoaders = Box<[Box<dyn FileStateLoader>]>;
 // if true rest 22 bits reserved for Point details
 
 const IS_ANALIZED_BIT_INDEX: usize = 31;
-// const IS_INVALIDATED_BIT_INDEX: usize = 30;
+const IN_GLOBAL_SCOPE_INDEX: usize = 30;
 const LOCALITY_BIT_INDEX: usize = 27; // Uses 3 bits
 const NEEDS_FLOW_ANALYSIS_BIT_INDEX: usize = 26;
 const KIND_BIT_INDEX: usize = 23; // Uses 3 bits
@@ -56,6 +56,7 @@ const SPECIFIC_MASK: u32 = (1 << SPECIFIC_BIT_LEN) - 1; // 8 bits
                                                         // const MAX_KIND_VAR: u32 = 0xFF; // 256
                                                         // const FILE_MASK: u32 = 0xFFFFFF; // 24 bits
 const IS_ANALIZED_MASK: u32 = 1 << IS_ANALIZED_BIT_INDEX;
+const IN_GLOBAL_SCOPE_MASK: u32 = 1 << IN_GLOBAL_SCOPE_INDEX;
 const NEEDS_FLOW_ANALYSIS_MASK: u32 = 1 << NEEDS_FLOW_ANALYSIS_BIT_INDEX;
 const LOCALITY_MASK: u32 = 0b111 << LOCALITY_BIT_INDEX;
 const KIND_MASK: u32 = 0b111 << KIND_BIT_INDEX;
@@ -90,10 +91,18 @@ impl Point {
         Self { flags, node_index }
     }
 
-    pub fn new_name_of_name_def(node_index: NodeIndex, locality: Locality) -> Self {
+    pub fn new_name_of_name_def(
+        node_index: NodeIndex,
+        in_global_scope: bool,
+        locality: Locality,
+    ) -> Self {
         Self {
             node_index,
-            ..Self::new_specific(Specific::NameOfNameDef, locality)
+            flags: Self::calculate_flags(
+                PointKind::Specific,
+                Specific::NameOfNameDef as u32,
+                locality,
+            ) | IN_GLOBAL_SCOPE_MASK,
         }
     }
 
@@ -174,6 +183,10 @@ impl Point {
 
     pub fn calculating(self) -> bool {
         self.flags == Specific::Calculating as u32
+    }
+
+    pub fn in_global_scope(self) -> bool {
+        (self.flags & IN_GLOBAL_SCOPE_MASK) != 0
     }
 
     pub fn file_index(self) -> FileIndex {

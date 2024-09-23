@@ -223,12 +223,13 @@ impl<'db> NameBinder<'db> {
         point: Point,
         cause: IndexingCause,
     ) {
+        let in_global_scope = matches!(self.kind, NameBinderKind::Global);
         if let Some(first) = self.symbol_table.lookup_symbol(name_def.as_code()) {
-            self.ensure_multi_definition(name_def, first, cause)
+            self.ensure_multi_definition(name_def, first, in_global_scope, cause)
         } else {
             self.symbol_table.add_or_replace_symbol(name_def.name());
             let name_index = name_def.name_index();
-            let p = Point::new_name_of_name_def(name_index, Locality::File)
+            let p = Point::new_name_of_name_def(name_index, in_global_scope, Locality::File)
                 .with_needs_flow_analysis(self.following_nodes_need_flow_analysis);
             self.db_infos.points.set(name_index, p);
         }
@@ -239,6 +240,7 @@ impl<'db> NameBinder<'db> {
         &mut self,
         name_def: NameDef,
         first_index: NodeIndex,
+        in_global_scope: bool,
         cause: IndexingCause,
     ) {
         let mut latest_name_index = first_index;
@@ -260,14 +262,14 @@ impl<'db> NameBinder<'db> {
                 }
                 self.db_infos.points.set(
                     latest_name_index,
-                    Point::new_name_of_name_def(new_index, Locality::File)
+                    Point::new_name_of_name_def(new_index, in_global_scope, Locality::File)
                         .with_needs_flow_analysis(self.following_nodes_need_flow_analysis),
                 );
                 // Here we create a loop, so it's easy to find the relevant definitions from
                 // any point.
                 self.db_infos.points.set(
                     new_index,
-                    Point::new_name_of_name_def(first_index, Locality::File),
+                    Point::new_name_of_name_def(first_index, in_global_scope, Locality::File),
                 );
                 break;
             }
@@ -683,6 +685,7 @@ impl<'db> NameBinder<'db> {
                     self.ensure_multi_definition(
                         name.name_def().unwrap(),
                         index,
+                        false,
                         IndexingCause::Other,
                     )
                 } else {
@@ -690,7 +693,7 @@ impl<'db> NameBinder<'db> {
                     let name_index = name.index();
                     self.db_infos.points.set(
                         name_index,
-                        Point::new_name_of_name_def(name_index, Locality::File),
+                        Point::new_name_of_name_def(name_index, false, Locality::File),
                     );
                 }
             }
