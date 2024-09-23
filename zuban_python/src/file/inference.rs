@@ -3676,155 +3676,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         let point = self.file.points.get(node_index);
         point
             .calculated()
-            .then(|| match point.kind() {
-                PointKind::Redirect => {
-                    let file_index = point.file_index();
-                    let next_node_index = point.node_index();
-                    if point.needs_flow_analysis() {
-                        debug_assert!(Name::maybe_by_index(&self.file.tree, node_index).is_some());
-                        if let Some(result) = self.maybe_lookup_narrowed_name(
-                            node_index,
-                            PointLink::new(file_index, next_node_index),
-                        ) {
-                            return result;
-                        }
-                    }
-                    debug_assert!(
-                        file_index != self.file.file_index() || next_node_index != node_index,
-                        "{file_index}:{node_index}"
-                    );
-                    let infer = |inference: &Inference| {
-                        inference
-                            .check_point_cache(next_node_index)
-                            .unwrap_or_else(|| {
-                                let name =
-                                    Name::maybe_by_index(&inference.file.tree, next_node_index);
-                                if let Some(name) = name {
-                                    inference.infer_name_of_definition(name)
-                                } else if let Some(expr) = Expression::maybe_by_index(
-                                    &inference.file.tree,
-                                    next_node_index,
-                                ) {
-                                    inference.infer_expression_without_cache(
-                                        expr,
-                                        &mut ResultContext::Unknown,
-                                    )
-                                } else if let Some(annotation) = Annotation::maybe_by_index(
-                                    &inference.file.tree,
-                                    next_node_index,
-                                ) {
-                                    todo!()
-                                    // inference.cache_annotation(annotation)
-                                } else {
-                                    todo!(
-                                        "{}",
-                                        NodeRef::new(inference.file, next_node_index)
-                                            .debug_info(self.i_s.db)
-                                    )
-                                }
-                            })
-                    };
-                    if file_index == self.file_index {
-                        infer(self)
-                    } else {
-                        infer(
-                            &mut self
-                                .i_s
-                                .db
-                                .loaded_python_file(file_index)
-                                .inference(self.i_s),
-                        )
-                    }
-                }
-                PointKind::Specific => match point.specific() {
-                    specific @ (Specific::Param | Specific::MaybeSelfParam) => {
-                        let name_def = NameDef::by_index(&self.file.tree, node_index);
-                        // Performance: This could be improved by not needing to lookup all the
-                        // parents all the time.
-                        match name_def.function_or_lambda_ancestor().unwrap() {
-                            FunctionOrLambda::Function(func_node) => {
-                                let func = Function::new(
-                                    NodeRef::new(self.file, func_node.index()),
-                                    self.i_s.current_class().copied(),
-                                );
-                                func.ensure_cached_func(self.i_s);
-
-                                if let Some(annotation) = name_def.maybe_param_annotation() {
-                                    self.use_cached_param_annotation(annotation)
-                                } else if let Some(function) = self.i_s.current_function() {
-                                    if specific == Specific::MaybeSelfParam {
-                                        match func.first_param_kind(self.i_s) {
-                                            FirstParamKind::Self_ => {
-                                                Inferred::new_saved(self.file, node_index)
-                                            }
-                                            FirstParamKind::ClassOfSelf => Inferred::from_type(
-                                                Type::Type(Rc::new(Type::Self_)),
-                                            ),
-                                            FirstParamKind::InStaticmethod => todo!(),
-                                        }
-                                    } else {
-                                        for param in func_node.params().iter() {
-                                            if param.name_def().index() == name_def.index() {
-                                                return match param.kind() {
-                                                    ParamKind::Star => todo!(),
-                                                    ParamKind::StarStar => {
-                                                        Inferred::from_type(new_class!(
-                                                            self.i_s
-                                                                .db
-                                                                .python_state
-                                                                .dict_node_ref()
-                                                                .as_link(),
-                                                            self.i_s.db.python_state.str_type(),
-                                                            Type::Any(AnyCause::Unannotated),
-                                                        ))
-                                                    }
-                                                    _ => Inferred::new_any(AnyCause::Unannotated),
-                                                };
-                                            }
-                                        }
-                                        unreachable!()
-                                    }
-                                } else if specific == Specific::MaybeSelfParam {
-                                    Inferred::new_saved(self.file, node_index)
-                                } else {
-                                    Inferred::new_any(AnyCause::Unannotated)
-                                }
-                            }
-                            FunctionOrLambda::Lambda(lambda) => {
-                                lookup_lambda_param(self.i_s, lambda, node_index)
-                            }
-                        }
-                    }
-                    specific @ (Specific::GlobalVariable | Specific::NonlocalVariable) => {
-                        let index = node_index - GLOBAL_NONLOCAL_TO_NAME_DIFFERENCE
-                            + NAME_DEF_TO_NAME_DIFFERENCE;
-                        if self.file.points.get(index).calculated() {
-                            self.check_point_cache(index).unwrap()
-                        } else {
-                            debug_assert_eq!(specific, Specific::GlobalVariable);
-                            self.infer_name_by_str(
-                                NodeRef::new(self.file, node_index).as_code(),
-                                index,
-                            )
-                        }
-                    }
-                    Specific::NameOfNameDef => {
-                        // MultiDefinition means we are on a Name that has a NameDef as a
-                        // parent.
-                        let name = Name::by_index(&self.file.tree, node_index);
-                        self.infer_name_def(name.name_def().unwrap())
-                    }
-                    _ => Inferred::new_saved(self.file, node_index),
-                },
-                PointKind::Complex | PointKind::FileReference => {
-                    Inferred::new_saved(self.file, node_index)
-                }
-                PointKind::NodeAnalysis => {
-                    unreachable!(
-                        "Invalid NodeAnalysis, should not happen on node index {node_index:?}"
-                    );
-                }
-            })
+            .then(|| self.infer_point(node_index, point))
             .or_else(|| {
                 if point.calculating() {
                     let node_ref = NodeRef::new(self.file, node_index);
@@ -3840,6 +3692,153 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     None
                 }
             })
+    }
+
+    #[inline]
+    fn infer_point(&self, node_index: NodeIndex, point: Point) -> Inferred {
+        match point.kind() {
+            PointKind::Redirect => {
+                let file_index = point.file_index();
+                let next_node_index = point.node_index();
+                if point.needs_flow_analysis() {
+                    debug_assert!(Name::maybe_by_index(&self.file.tree, node_index).is_some());
+                    if let Some(result) = self.maybe_lookup_narrowed_name(
+                        node_index,
+                        PointLink::new(file_index, next_node_index),
+                    ) {
+                        return result;
+                    }
+                }
+                debug_assert!(
+                    file_index != self.file.file_index() || next_node_index != node_index,
+                    "{file_index}:{node_index}"
+                );
+                let infer = |inference: &Inference| {
+                    inference
+                        .check_point_cache(next_node_index)
+                        .unwrap_or_else(|| {
+                            let name = Name::maybe_by_index(&inference.file.tree, next_node_index);
+                            if let Some(name) = name {
+                                inference.infer_name_of_definition(name)
+                            } else if let Some(expr) =
+                                Expression::maybe_by_index(&inference.file.tree, next_node_index)
+                            {
+                                inference.infer_expression_without_cache(
+                                    expr,
+                                    &mut ResultContext::Unknown,
+                                )
+                            } else if let Some(annotation) =
+                                Annotation::maybe_by_index(&inference.file.tree, next_node_index)
+                            {
+                                todo!()
+                                // inference.cache_annotation(annotation)
+                            } else {
+                                todo!(
+                                    "{}",
+                                    NodeRef::new(inference.file, next_node_index)
+                                        .debug_info(self.i_s.db)
+                                )
+                            }
+                        })
+                };
+                if file_index == self.file_index {
+                    infer(self)
+                } else {
+                    infer(
+                        &mut self
+                            .i_s
+                            .db
+                            .loaded_python_file(file_index)
+                            .inference(self.i_s),
+                    )
+                }
+            }
+            PointKind::Specific => match point.specific() {
+                specific @ (Specific::Param | Specific::MaybeSelfParam) => {
+                    let name_def = NameDef::by_index(&self.file.tree, node_index);
+                    // Performance: This could be improved by not needing to lookup all the
+                    // parents all the time.
+                    match name_def.function_or_lambda_ancestor().unwrap() {
+                        FunctionOrLambda::Function(func_node) => {
+                            let func = Function::new(
+                                NodeRef::new(self.file, func_node.index()),
+                                self.i_s.current_class().copied(),
+                            );
+                            func.ensure_cached_func(self.i_s);
+
+                            if let Some(annotation) = name_def.maybe_param_annotation() {
+                                self.use_cached_param_annotation(annotation)
+                            } else if let Some(function) = self.i_s.current_function() {
+                                if specific == Specific::MaybeSelfParam {
+                                    match func.first_param_kind(self.i_s) {
+                                        FirstParamKind::Self_ => {
+                                            Inferred::new_saved(self.file, node_index)
+                                        }
+                                        FirstParamKind::ClassOfSelf => {
+                                            Inferred::from_type(Type::Type(Rc::new(Type::Self_)))
+                                        }
+                                        FirstParamKind::InStaticmethod => todo!(),
+                                    }
+                                } else {
+                                    for param in func_node.params().iter() {
+                                        if param.name_def().index() == name_def.index() {
+                                            return match param.kind() {
+                                                ParamKind::Star => todo!(),
+                                                ParamKind::StarStar => {
+                                                    Inferred::from_type(new_class!(
+                                                        self.i_s
+                                                            .db
+                                                            .python_state
+                                                            .dict_node_ref()
+                                                            .as_link(),
+                                                        self.i_s.db.python_state.str_type(),
+                                                        Type::Any(AnyCause::Unannotated),
+                                                    ))
+                                                }
+                                                _ => Inferred::new_any(AnyCause::Unannotated),
+                                            };
+                                        }
+                                    }
+                                    unreachable!()
+                                }
+                            } else if specific == Specific::MaybeSelfParam {
+                                Inferred::new_saved(self.file, node_index)
+                            } else {
+                                Inferred::new_any(AnyCause::Unannotated)
+                            }
+                        }
+                        FunctionOrLambda::Lambda(lambda) => {
+                            lookup_lambda_param(self.i_s, lambda, node_index)
+                        }
+                    }
+                }
+                specific @ (Specific::GlobalVariable | Specific::NonlocalVariable) => {
+                    let index = node_index - GLOBAL_NONLOCAL_TO_NAME_DIFFERENCE
+                        + NAME_DEF_TO_NAME_DIFFERENCE;
+                    if self.file.points.get(index).calculated() {
+                        self.check_point_cache(index).unwrap()
+                    } else {
+                        debug_assert_eq!(specific, Specific::GlobalVariable);
+                        self.infer_name_by_str(NodeRef::new(self.file, node_index).as_code(), index)
+                    }
+                }
+                Specific::NameOfNameDef => {
+                    // MultiDefinition means we are on a Name that has a NameDef as a
+                    // parent.
+                    let name = Name::by_index(&self.file.tree, node_index);
+                    self.infer_name_def(name.name_def().unwrap())
+                }
+                _ => Inferred::new_saved(self.file, node_index),
+            },
+            PointKind::Complex | PointKind::FileReference => {
+                Inferred::new_saved(self.file, node_index)
+            }
+            PointKind::NodeAnalysis => {
+                unreachable!(
+                    "Invalid NodeAnalysis, should not happen on node index {node_index:?}"
+                );
+            }
+        }
     }
 
     pub fn infer_name_of_definition_by_index(&self, node_index: NodeIndex) -> Inferred {
