@@ -38,11 +38,11 @@ type FileStateLoaders = Box<[Box<dyn FileStateLoader>]>;
 // Most significant bits
 // 27 bits = 134217728; 20 bits = 1048576
 // oxxxx is_analyzed
-// xoxxx is_invalidated TODO remove?
-// xxooo Locality (xXxx is_external)
+// xoxxx in_global_scope
+// xxooo Locality (xxXxx is_external)
 // xxxxxo needs_flow_analysis
-// xxxxxxxooo PointType
-// if true rest 22 bits reserved for Point details
+// xxxxxxxooo PointKind
+// the other 23 bits are reserved for Point details
 
 const IS_ANALIZED_BIT_INDEX: usize = 31;
 const IN_GLOBAL_SCOPE_INDEX: usize = 30;
