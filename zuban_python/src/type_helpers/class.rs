@@ -340,7 +340,7 @@ impl<'db: 'a, 'a> Class<'a> {
 
     pub fn maybe_type_var_like_in_parent(
         &self,
-        i_s: &InferenceState<'db, '_>,
+        db: &Database,
         type_var: &TypeVarLike,
     ) -> Option<TypeVarLikeUsage> {
         match self.class_storage.parent_scope {
@@ -349,10 +349,10 @@ impl<'db: 'a, 'a> Class<'a> {
                 let parent_class =
                     Self::with_undefined_generics(NodeRef::new(self.node_ref.file, node_index));
                 parent_class
-                    .maybe_type_var_like_in_parent(i_s, type_var)
+                    .maybe_type_var_like_in_parent(db, type_var)
                     .or_else(|| {
                         parent_class
-                            .type_vars(i_s)
+                            .use_cached_type_vars(db)
                             .find(type_var.clone(), parent_class.node_ref.as_link())
                     })
             }
@@ -836,7 +836,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                 {
                                     TypeVarCallbackReturn::TypeVarLike(usage)
                                 } else if let Some(usage) =
-                                    self.maybe_type_var_like_in_parent(i_s, &type_var_like)
+                                    self.maybe_type_var_like_in_parent(i_s.db, &type_var_like)
                                 {
                                     TypeVarCallbackReturn::TypeVarLike(usage)
                                 } else {

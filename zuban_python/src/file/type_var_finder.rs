@@ -205,7 +205,7 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd> {
                 Ok(type_var_like) => {
                     if self
                         .class
-                        .and_then(|c| c.maybe_type_var_like_in_parent(self.i_s, &type_var_like))
+                        .and_then(|c| c.maybe_type_var_like_in_parent(self.i_s.db, &type_var_like))
                         .is_none()
                     {
                         if let TypeVarLike::TypeVarTuple(t) = &type_var_like {
