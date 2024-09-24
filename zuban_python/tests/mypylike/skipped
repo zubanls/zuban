@@ -106,8 +106,6 @@ testBoolInTuplesRegression
 
 # Nested type vars
 testFunctionInGenericInnerClassTypeVariable-skip
-testTupleAndDictOperationsOnParamSpecArgsAndKwargs
-testUnpackingParamsSpecArgsAndKwargs
 testParamSpecConcatenateFromPep
 testNestedGenericFunctionTypeApplication
 

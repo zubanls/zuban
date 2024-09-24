@@ -193,6 +193,8 @@ pub struct PythonState {
     pub list_of_any: Type,
     pub dict_of_any: Type,
     pub set_of_any: Type,
+    pub tuple_of_obj: Type,
+    pub dict_of_str_and_obj: Type,
     pub any_callable_from_error: Rc<CallableContent>,
     pub generator_with_any_generics: Type,
     pub async_generator_with_any_generics: Type,
@@ -310,8 +312,10 @@ impl PythonState {
             ))),
             list_of_any: Type::None, // Will be set later
             any_or_none: Type::Any(AnyCause::FromError).union(Type::None),
-            dict_of_any: Type::None, // Will be set later
-            set_of_any: Type::None,  // Will be set later
+            dict_of_any: Type::None,         // Will be set later
+            set_of_any: Type::None,          // Will be set later
+            tuple_of_obj: Type::None,        // Will be set later
+            dict_of_str_and_obj: Type::None, // Will be set later
             any_callable_from_error: Rc::new(CallableContent::new_any(
                 empty_type_var_likes.clone(),
                 AnyCause::FromError,
@@ -635,6 +639,9 @@ impl PythonState {
             Type::Any(AnyCause::FromError)
         );
         s.set_of_any = new_class!(s.set_node_ref().as_link(), Type::Any(AnyCause::FromError));
+        s.tuple_of_obj = Type::Tuple(Tuple::new_arbitrary_length(s.object_type()));
+        s.dict_of_str_and_obj =
+            new_class!(s.dict_node_ref().as_link(), s.str_type(), s.object_type(),);
         s.generator_with_any_generics = new_class!(
             s.generator_link(),
             Type::Any(AnyCause::Internal),

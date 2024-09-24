@@ -355,11 +355,34 @@ impl Type {
                     add_issue,
                     callable,
                 ),
-            Type::ParamSpecArgs(_) | Type::ParamSpecKwargs(_) => {
-                // TODO this is not correct, some things should probably work on dict[str, object]
-                // for example
-                callable(self, LookupDetails::any(AnyCause::FromError))
-            }
+            Type::ParamSpecArgs(_) => i_s
+                .db
+                .python_state
+                .tuple_of_obj
+                .run_after_lookup_on_each_union_member(
+                    i_s,
+                    None,
+                    from_file,
+                    name,
+                    kind,
+                    result_context,
+                    add_issue,
+                    callable,
+                ),
+            Type::ParamSpecKwargs(_) => i_s
+                .db
+                .python_state
+                .dict_of_str_and_obj
+                .run_after_lookup_on_each_union_member(
+                    i_s,
+                    None,
+                    from_file,
+                    name,
+                    kind,
+                    result_context,
+                    add_issue,
+                    callable,
+                ),
             Type::CustomBehavior(_) => todo!(),
             Self::Intersection(i) => i.run_after_lookup_on_each_union_member(
                 i_s,
@@ -503,6 +526,14 @@ impl Type {
             ),
             Type::Intersection(i) => i.get_item(i_s, slice_type, result_context, add_issue),
             Type::Callable(_) => not_possible(true),
+            Type::ParamSpecArgs(_) => i_s.db.python_state.tuple_of_obj.get_item_internal(
+                i_s,
+                None,
+                slice_type,
+                result_context,
+                add_issue,
+            ),
+            Type::ParamSpecKwargs(_) => todo!(), //i_s.db.python_state.dict_of_str_and_obj
             _ => not_possible(false),
         }
     }
