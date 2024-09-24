@@ -105,9 +105,7 @@ assign_bool_to_false_true_literal
 testBoolInTuplesRegression
 
 # Nested type vars
-testFunctionInGenericInnerClassTypeVariable-skip
 testParamSpecConcatenateFromPep
-testTvarScopingWithNestedClass
 
 # Class argument and __init__ as overloaded DbType
 testOverloadedToGeneric

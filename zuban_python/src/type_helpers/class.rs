@@ -348,11 +348,11 @@ impl<'db: 'a, 'a> Class<'a> {
             ParentScope::Class(node_index) => {
                 let parent_class =
                     Self::with_undefined_generics(NodeRef::new(self.node_ref.file, node_index));
-                parent_class.find_type_var_like_including_ancestors(db, type_var)
+                parent_class.find_type_var_like_including_ancestors(db, type_var, true)
             }
             ParentScope::Function(node_index) => {
                 Function::new_with_unknown_parent(db, NodeRef::new(self.node_ref.file, node_index))
-                    .find_type_var_like_including_ancestors(db, type_var)
+                    .find_type_var_like_including_ancestors(db, type_var, true)
             }
         }
     }
@@ -361,11 +361,15 @@ impl<'db: 'a, 'a> Class<'a> {
         &self,
         db: &Database,
         type_var: &TypeVarLike,
+        class_seen: bool,
     ) -> Option<TypeVarCallbackReturn> {
         if let Some(tvl) = self
             .use_cached_type_vars(db)
             .find(type_var.clone(), self.node_ref.as_link())
         {
+            if class_seen {
+                return Some(TypeVarCallbackReturn::BoundByOuterClass);
+            }
             return Some(TypeVarCallbackReturn::TypeVarLike(tvl));
         }
         self.maybe_type_var_like_in_parent(db, type_var)

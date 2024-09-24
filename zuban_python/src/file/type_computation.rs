@@ -45,6 +45,7 @@ pub(super) const ANNOTATION_TO_EXPR_DIFFERENCE: u32 = 2;
 pub enum TypeVarCallbackReturn {
     TypeVarLike(TypeVarLikeUsage),
     UnboundTypeVar,
+    BoundByOuterClass,
     NotFound { allow_late_bound_callables: bool },
 }
 
@@ -3093,13 +3094,14 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 TypeContent::Unpacked(TypeOrUnpack::TypeVarTuple(t))
                     if t.in_definition == self.for_definition
             );
-            if !matches!(result, TypeContent::ParamSpec(_))
-                && !matches!(
-                    result,
-                    TypeContent::Type(Type::TypeVar(usage))
-                        if usage.in_definition == self.for_definition
-                )
-                && !unpacked_type_var_tuple
+            if !matches!(
+                result,
+                TypeContent::ParamSpec(_) | TypeContent::Unknown(UnknownCause::ReportedIssue)
+            ) && !matches!(
+                result,
+                TypeContent::Type(Type::TypeVar(usage))
+                    if usage.in_definition == self.for_definition
+            ) && !unpacked_type_var_tuple
             {
                 self.add_issue(s.as_node_ref(), IssueKind::TypeVarExpected { class })
             }
@@ -3168,6 +3170,16 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         node_ref.add_issue(
                             self.inference.i_s,
                             IssueKind::UnboundTypeVarLike {
+                                type_var_like: type_var_like.clone(),
+                            },
+                        );
+                        TypeContent::Unknown(UnknownCause::ReportedIssue)
+                    }
+                    TypeVarCallbackReturn::BoundByOuterClass => {
+                        let node_ref = NodeRef::new(self.inference.file, name.index());
+                        node_ref.add_issue(
+                            self.inference.i_s,
+                            IssueKind::TypeVarLikeBoundByOuterClass {
                                 type_var_like: type_var_like.clone(),
                             },
                         );

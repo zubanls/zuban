@@ -287,6 +287,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         &self,
         db: &Database,
         type_var: &TypeVarLike,
+        class_seen: bool,
     ) -> Option<TypeVarCallbackReturn> {
         if let Some(tvl) = self
             .type_vars(db)
@@ -296,8 +297,12 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         }
         match self.parent(db) {
             FuncParent::Module => None,
-            FuncParent::Function(func) => func.find_type_var_like_including_ancestors(db, type_var),
-            FuncParent::Class(c) => c.find_type_var_like_including_ancestors(db, type_var),
+            FuncParent::Function(func) => {
+                func.find_type_var_like_including_ancestors(db, type_var, class_seen)
+            }
+            FuncParent::Class(c) => {
+                c.find_type_var_like_including_ancestors(db, type_var, class_seen)
+            }
         }
     }
 
