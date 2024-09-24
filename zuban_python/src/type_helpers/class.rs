@@ -342,7 +342,7 @@ impl<'db: 'a, 'a> Class<'a> {
         &self,
         db: &Database,
         type_var: &TypeVarLike,
-    ) -> Option<TypeVarLikeUsage> {
+    ) -> Option<TypeVarCallbackReturn> {
         match self.class_storage.parent_scope {
             ParentScope::Module => None,
             ParentScope::Class(node_index) => {
@@ -361,12 +361,14 @@ impl<'db: 'a, 'a> Class<'a> {
         &self,
         db: &Database,
         type_var: &TypeVarLike,
-    ) -> Option<TypeVarLikeUsage> {
+    ) -> Option<TypeVarCallbackReturn> {
+        if let Some(tvl) = self
+            .use_cached_type_vars(db)
+            .find(type_var.clone(), self.node_ref.as_link())
+        {
+            return Some(TypeVarCallbackReturn::TypeVarLike(tvl));
+        }
         self.maybe_type_var_like_in_parent(db, type_var)
-            .or_else(|| {
-                self.use_cached_type_vars(db)
-                    .find(type_var.clone(), self.node_ref.as_link())
-            })
     }
 
     pub fn is_calculating_class_infos(&self) -> bool {
@@ -847,7 +849,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                 } else if let Some(usage) =
                                     self.maybe_type_var_like_in_parent(i_s.db, &type_var_like)
                                 {
-                                    TypeVarCallbackReturn::TypeVarLike(usage)
+                                    usage
                                 } else {
                                     // This can happen if two type var likes are used.
                                     TypeVarCallbackReturn::NotFound {

@@ -34,8 +34,8 @@ use crate::{
         replace_param_spec, AnyCause, CallableContent, CallableLike, CallableParam, CallableParams,
         ClassGenerics, DbString, FunctionKind, FunctionOverload, GenericClass, GenericItem,
         LookupResult, ParamType, ReplaceSelf, StarParamType, StarStarParamType, StringSlice,
-        TupleArgs, Type, TypeGuardInfo, TypeVar, TypeVarKind, TypeVarLike, TypeVarLikeUsage,
-        TypeVarLikes, TypeVarManager, TypeVarName, TypeVarUsage, Variance, WrongPositionalCount,
+        TupleArgs, Type, TypeGuardInfo, TypeVar, TypeVarKind, TypeVarLike, TypeVarLikes,
+        TypeVarManager, TypeVarName, TypeVarUsage, Variance, WrongPositionalCount,
     },
     type_helpers::Class,
     utils::rc_unwrap_or_clone,
@@ -287,16 +287,18 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         &self,
         db: &Database,
         type_var: &TypeVarLike,
-    ) -> Option<TypeVarLikeUsage> {
-        self.type_vars(db)
+    ) -> Option<TypeVarCallbackReturn> {
+        if let Some(tvl) = self
+            .type_vars(db)
             .find(type_var.clone(), self.node_ref.as_link())
-            .or_else(|| match self.parent(db) {
-                FuncParent::Module => None,
-                FuncParent::Function(func) => {
-                    func.find_type_var_like_including_ancestors(db, type_var)
-                }
-                FuncParent::Class(c) => c.find_type_var_like_including_ancestors(db, type_var),
-            })
+        {
+            return Some(TypeVarCallbackReturn::TypeVarLike(tvl));
+        }
+        match self.parent(db) {
+            FuncParent::Module => None,
+            FuncParent::Function(func) => func.find_type_var_like_including_ancestors(db, type_var),
+            FuncParent::Class(c) => c.find_type_var_like_including_ancestors(db, type_var),
+        }
     }
 
     fn avoid_invalid_typeguard_signatures(
