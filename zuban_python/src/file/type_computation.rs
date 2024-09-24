@@ -315,38 +315,16 @@ pub enum CalculatedBaseClass {
 macro_rules! compute_type_application {
     ($self:ident, $slice_type:expr, $from_alias_definition:expr, $method:ident $args:tt) => {{
         let mut on_type_var = |i_s: &InferenceState, _: &_, type_var_like: TypeVarLike, current_callable: Option<_>| {
-            if let Some(class) = i_s.current_class() {
-                if let Some(usage) = class
-                    .type_vars(i_s)
-                    .find(type_var_like.clone(), class.node_ref.as_link())
-                {
-                    if $from_alias_definition {
-                        $slice_type.as_node_ref().add_issue(
-                            i_s,
-                            IssueKind::BoundTypeVarInAlias{
-                                name: Box::from(type_var_like.name(i_s.db))
-                            },
-                        );
-                    } else {
-                        return TypeVarCallbackReturn::TypeVarLike(usage)
-                    }
-                }
-            }
-            if let Some(function) = i_s.current_function() {
-                if let Some(usage) = function
-                    .type_vars(i_s.db)
-                    .find(type_var_like.clone(), function.node_ref.as_link())
-                {
-                    if $from_alias_definition {
-                        $slice_type.as_node_ref().add_issue(
-                            i_s,
-                            IssueKind::BoundTypeVarInAlias{
-                                name: Box::from(type_var_like.name(i_s.db))
-                            },
-                        );
-                    } else {
-                        return TypeVarCallbackReturn::TypeVarLike(usage)
-                    }
+            if let Some(result) = i_s.find_parent_type_var(&type_var_like) {
+                if $from_alias_definition {
+                    $slice_type.as_node_ref().add_issue(
+                        i_s,
+                        IssueKind::BoundTypeVarInAlias{
+                            name: Box::from(type_var_like.name(i_s.db))
+                        },
+                    );
+                } else {
+                    return result
                 }
             }
             if $from_alias_definition || current_callable.is_some(){
