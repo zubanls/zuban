@@ -107,7 +107,7 @@ testBoolInTuplesRegression
 # Nested type vars
 testFunctionInGenericInnerClassTypeVariable-skip
 testParamSpecConcatenateFromPep
-testNestedGenericFunctionTypeApplication
+testTvarScopingWithNestedClass
 
 # Class argument and __init__ as overloaded DbType
 testOverloadedToGeneric
