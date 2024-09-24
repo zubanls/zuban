@@ -104,9 +104,6 @@ testNarrowingEqualityDisabledForCustomEquality
 assign_bool_to_false_true_literal
 testBoolInTuplesRegression
 
-# Nested type vars
-testParamSpecConcatenateFromPep
-
 # Class argument and __init__ as overloaded DbType
 testOverloadedToGeneric
 # Class __init__ like `def __init__(self: C[Int[S]], x: int, y: S) -> None: ...`

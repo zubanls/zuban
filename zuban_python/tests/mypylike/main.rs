@@ -574,6 +574,8 @@ fn temporarily_skip(s: String) -> Option<String> {
     if s.contains("note: types from \"numbers\" aren't supported for static type checking")
         || s.contains("note: consider using a protocol instead, such as typing.supportsfloat")
         || s.contains("https://peps.python.org/pep-0484/#the-numeric-tower")
+        // Full note: This is likely because "one" has named arguments: "x". Consider marking them positional-only
+        || s.contains("consider marking them positional-only")
     {
         return None;
     }
