@@ -233,6 +233,21 @@ impl PythonVersion {
     }
 }
 
+impl std::str::FromStr for PythonVersion {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let error = "Expected a dot separated python version like 3.13";
+        let Some((major, minor)) = s.split_once(".") else {
+            return Err(error.into());
+        };
+        Ok(Self {
+            major: major.parse().map_err(|i| format!("{error} ({i})"))?,
+            minor: minor.parse().map_err(|i| format!("{error} ({i})"))?,
+        })
+    }
+}
+
 #[derive(Clone)]
 struct OverridePath {
     path: Vec<Box<str>>,

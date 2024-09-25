@@ -7,4 +7,5 @@ members = [
     "parsa_python_cst",
     "zuban_python",
     "scripts",
+    "zmypy",
 ]
