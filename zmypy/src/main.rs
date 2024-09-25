@@ -7,14 +7,19 @@ use clap::Parser;
 #[command(version, about)]
 struct Cli {
     // Running code:
-    #[arg(num_args = 0..)]
-    path_filters: Vec<String>,
-    #[arg(short, long)]
-    module: Vec<String>,
-    #[arg(short, long)]
-    package: Vec<String>,
+    /// Regular expression to match file names, directory names or paths which mypy should ignore
+    /// while recursively discovering files to check, e.g. --exclude '/setup\.py$'. May be
+    /// specified more than once, eg. --exclude a --exclude b
     #[arg(long)]
     exclude: Vec<String>,
+    #[arg(num_args = 0..)]
+    files: Vec<String>,
+    /// Type-check module; can repeat for more modules
+    #[arg(short, long)]
+    module: Vec<String>,
+    /// Type-check package recursively; can be repeated
+    #[arg(short, long)]
+    package: Vec<String>,
 
     // Config file
     /// Configuration file, must have a [mypy] section
@@ -34,10 +39,10 @@ struct Cli {
     #[arg(long)]
     platform: Option<String>,
     /// Additional variable to be considered True (may be repeated)
-    #[arg(long, num_args = 0.., value_name="NAME")]
+    #[arg(long, value_name = "NAME")]
     always_true: Vec<String>,
     /// Additional variable to be considered False (may be repeated)
-    #[arg(long, num_args = 0.., value_name="NAME")]
+    #[arg(long, value_name = "NAME")]
     always_false: Vec<String>,
 
     // Disallow dynamic typing:
@@ -82,6 +87,7 @@ struct Cli {
     #[arg(long)]
     allow_incomplete_defs: bool,
     /// Type check the interior of functions without type annotations (inverse: --no-check-untyped-defs)
+    #[arg(long)]
     check_untyped_defs: bool,
     #[arg(long)]
     no_check_untyped_defs: bool,
@@ -154,10 +160,10 @@ struct Cli {
     #[arg(long)]
     strict: bool,
     /// Disable a specific error code
-    #[arg(long, num_args = 0.., value_name="NAME")]
+    #[arg(long, value_name = "NAME")]
     disable_error_code: Vec<String>,
     /// Enable a specific error code
-    #[arg(long, num_args = 0.., value_name="NAME")]
+    #[arg(long, value_name = "NAME")]
     enable_error_code: Vec<String>,
 
     // Configuring error messages:
@@ -222,7 +228,7 @@ fn main() -> std::io::Result<()> {
         mypy_compatible: todo!(),
         case_sensitive: todo!(),
     });
-    let mut project = zuban_python::Project::new(options);
+    let mut project = Project::new(options);
     let diagnostic_config = DiagnosticConfig {
         show_error_codes: true,
         ..Default::default()
