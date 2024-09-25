@@ -3,6 +3,15 @@ use zuban_python::{DiagnosticConfig, Project, ProjectOptions, PythonVersion, Typ
 
 use clap::Parser;
 
+const CONFIG_PATHS: [&str; 6] = [
+    "mypy.ini",
+    ".mypy.ini",
+    "pyproject.toml",
+    "setup.cfg",
+    "~/.config/mypy/config",
+    "~/.mypy.ini",
+];
+
 #[derive(Parser)]
 #[command(version, about)]
 struct Cli {
@@ -22,7 +31,7 @@ struct Cli {
     package: Vec<String>,
 
     // Config file
-    /// Configuration file, must have a [mypy] section
+    /// Configuration file, must have a [mypy] section (defaults to mypy.ini, .mypy.ini, pyproject.toml, setup.cfg, ~/.config/mypy/config, ~/.mypy.ini)
     #[arg(long)]
     config_file: Option<PathBuf>,
 
@@ -190,7 +199,14 @@ struct Cli {
 fn main() -> std::io::Result<()> {
     // TODO MYPYPATH=$MYPYPATH:mypy-stubs
     let cli = Cli::parse();
+    let in_dir = std::env::current_dir().expect("Expected a valid working directory");
+    for config_path in CONFIG_PATHS {}
 
+    let mut diagnostic_config = DiagnosticConfig::default();
+
+    let in_dir = "TODO ";
+    let code = "TODO ";
+    let options = ProjectOptions::from_mypy_ini(in_dir, code, &mut diagnostic_config).unwrap();
     let options = ProjectOptions::new(TypeCheckerFlags {
         strict_optional: todo!(),
         strict_equality: todo!(),
