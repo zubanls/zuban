@@ -81,13 +81,22 @@ impl Project {
             directory.for_each_file(&mut |file_index| {
                 file_indexes.push(file_index);
             });
-            for file_index in file_indexes {
+            'outer: for file_index in file_indexes {
                 let file = self.db.loaded_file(file_index);
                 debug!(
                     "Calculate Diagnostics for {} ({})",
                     file.file_path(&self.db),
                     file.file_index(),
                 );
+                let python_file = self.db.loaded_python_file(file_index);
+                if python_file
+                    .flags(&self.db)
+                    .excludes
+                    .iter()
+                    .any(|e| e.regex.is_match(file.file_path(&self.db)))
+                {
+                    continue 'outer;
+                }
                 all_diagnostics.append(&mut file.diagnostics(&self.db, config).into_vec())
             }
         }

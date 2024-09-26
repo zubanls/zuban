@@ -1,0 +1,38 @@
+[case mypy_ini_exclude_simple]
+# Copied from testCmdlineExclude
+[file abc/apkg.py]
+1()
+[file b/bpkg.py]
+1()  # E: "int" not callable
+[file c/cpkg.py]
+1()  # E: "int" not callable
+[file mypy.ini]
+\[mypy]
+exclude = abc
+
+[case mypy_toml_exclude_simple]
+# Copied from testCmdlineExclude
+[file abc/apkg.py]
+1()
+[file b/bpkg.py]
+1()  # E: "int" not callable
+[file c/cpkg.py]
+1()  # E: "int" not callable
+[file pyproject.toml]
+\[tool.mypy]
+exclude = "abc"
+
+[case mypy_toml_exclude_list]
+# Copied from testCmdlineExclude
+[file abc/apkg.py]
+1()
+[file b/bpkg.py]
+1()
+[file c/cpkg.py]
+1()  # E: "int" not callable
+[file pyproject.toml]
+\[tool.mypy]
+exclude = [
+    "abc",
+    "b/.*pkg",
+]

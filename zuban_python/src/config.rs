@@ -1,6 +1,7 @@
 use std::borrow::Cow;
 
 use ini::Ini;
+use regex::Regex;
 use toml_edit::{DocumentMut, Item, Table, Value};
 
 use crate::{workspaces::Directory, DiagnosticConfig};
@@ -148,6 +149,7 @@ pub struct TypeCheckerFlags {
     pub always_true_symbols: Vec<String>,
     pub always_false_symbols: Vec<String>,
     pub mypy_path: Vec<String>,
+    pub excludes: Vec<ExcludeRegex>,
 
     pub extra_checks: bool,
     pub mypy_compatible: bool,
@@ -184,6 +186,7 @@ impl Default for TypeCheckerFlags {
             disable_memoryview_promotion: false,
             platform: None,
             python_version: PythonVersion::new(3, 12),
+            excludes: vec![],
             always_true_symbols: vec![],
             always_false_symbols: vec![],
             enabled_error_codes: vec![],
@@ -245,6 +248,24 @@ impl std::str::FromStr for PythonVersion {
             major: major.parse().map_err(|i| format!("{error} ({i})"))?,
             minor: minor.parse().map_err(|i| format!("{error} ({i})"))?,
         })
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ExcludeRegex {
+    regex_str: String,
+    pub(crate) regex: Regex,
+}
+
+impl std::cmp::PartialEq for ExcludeRegex {
+    fn eq(&self, other: &Self) -> bool {
+        self.regex_str == other.regex_str
+    }
+}
+impl std::cmp::Eq for ExcludeRegex {}
+impl std::hash::Hash for ExcludeRegex {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.regex_str.hash(state)
     }
 }
 
@@ -453,7 +474,12 @@ pub fn set_flag_and_return_ignore_errors(
         }
     };
     match option_name.as_ref() {
-        "exclude" => todo!(),
+        "exclude" => {
+            if invert {
+                return Err(format!("Can not invert non-boolean key {option_name}"));
+            }
+            add_excludes(&mut flags.excludes, value)
+        }
         "always_true" => add_list_of_str(&mut flags.always_true_symbols),
         "always_false" => add_list_of_str(&mut flags.always_false_symbols),
         "enable_error_code" => add_list_of_str(&mut flags.enabled_error_codes),
@@ -567,5 +593,34 @@ fn apply_from_config_part(
         Ok(false)
     } else {
         set_flag_and_return_ignore_errors(flags, key, value)
+    }
+}
+
+fn add_excludes(excludes: &mut Vec<ExcludeRegex>, value: IniOrTomlValue) -> ConfigResult {
+    let mut compile_str = |s| match Regex::new(s) {
+        Ok(regex) => {
+            excludes.push(ExcludeRegex {
+                regex_str: s.into(),
+                regex,
+            });
+            Ok(false)
+        }
+        Err(err) => Err(err.to_string()),
+    };
+    match &value {
+        IniOrTomlValue::Toml(Value::Array(lst)) => {
+            for entry in lst.iter() {
+                match entry {
+                    Value::String(s) => {
+                        compile_str(s.value())?;
+                    }
+                    _ => return Err("TODO expected string array".to_string()),
+                }
+            }
+            Ok(false)
+        }
+        IniOrTomlValue::Toml(Value::String(s)) => compile_str(s.value()),
+        IniOrTomlValue::Ini(v) => compile_str(v),
+        _ => Err("TODO expected string".to_string()),
     }
 }
