@@ -4,7 +4,7 @@ use ini::Ini;
 use regex::Regex;
 use toml_edit::{DocumentMut, Item, Table, Value};
 
-use crate::{workspaces::Directory, DiagnosticConfig};
+use crate::{debug, workspaces::Directory, DiagnosticConfig};
 
 type ConfigResult = Result<bool, String>;
 
@@ -572,7 +572,14 @@ fn apply_from_base_config(
             diagnostic_config.show_error_end = value.as_bool(false)?;
             Ok(false)
         }
-        // Currently ignored, but need to use in the future.
+        "files"
+        | "show_error_context"
+        | "warn_redundant_casts"
+        | "warn_unused_configs"
+        | "warn_unused_ignores" => {
+            debug!("TODO ignored config value {key}");
+            Ok(false)
+        }
         "mypy_path" => {
             flags.mypy_path.extend(value.as_mypy_path()?);
             Ok(false)

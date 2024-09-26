@@ -215,7 +215,9 @@ fn main() {
     } else {
         ProjectOptions::new(TypeCheckerFlags::default())
     };
+    todo!();
 
+    /*
     let options = ProjectOptions::new(TypeCheckerFlags {
         strict_optional: todo!(),
         strict_equality: todo!(),
@@ -253,6 +255,7 @@ fn main() {
         mypy_compatible: todo!(),
         case_sensitive: todo!(),
     });
+    */
     let mut project = Project::new(options);
     let diagnostic_config = DiagnosticConfig {
         show_error_codes: true,
