@@ -2,6 +2,7 @@ use std::path::PathBuf;
 use zuban_python::{DiagnosticConfig, Project, ProjectOptions, PythonVersion, TypeCheckerFlags};
 
 use clap::Parser;
+use tokio;
 
 const CONFIG_PATHS: [&str; 6] = [
     "mypy.ini",
@@ -196,17 +197,19 @@ struct Cli {
     // --warn-unreachable --disallow-untyped-calls --disallow-incomplete-defs
 }
 
-fn main() -> std::io::Result<()> {
+fn main() {
     // TODO MYPYPATH=$MYPYPATH:mypy-stubs
     let cli = Cli::parse();
     let in_dir = std::env::current_dir().expect("Expected a valid working directory");
-    for config_path in CONFIG_PATHS {}
-
-    let mut diagnostic_config = DiagnosticConfig::default();
 
     let in_dir = "TODO ";
-    let code = "TODO ";
-    let options = ProjectOptions::from_mypy_ini(in_dir, code, &mut diagnostic_config).unwrap();
+    let mut diagnostic_config = DiagnosticConfig::default();
+    let mut options = if let Some(content) = find_mypy_config_file() {
+        ProjectOptions::from_mypy_ini(in_dir, &content, &mut diagnostic_config).expect("Problem parsing Mypy config")
+    } else {
+        ProjectOptions::new(TypeCheckerFlags::default())
+    };
+
     let options = ProjectOptions::new(TypeCheckerFlags {
         strict_optional: todo!(),
         strict_equality: todo!(),
@@ -253,5 +256,29 @@ fn main() -> std::io::Result<()> {
     for diagnostic in diagnostics.iter() {
         println!("{}", diagnostic.as_string(&diagnostic_config))
     }
-    return Ok(());
+}
+
+#[tokio::main(flavor = "current_thread")]
+async fn find_mypy_config_file() -> Option<String> {
+    let mut set = tokio::task::JoinSet::new();
+
+    for config_path in CONFIG_PATHS {
+        set.spawn(async move {
+            let mut file = tokio::fs::File::open(config_path).await.ok()?;
+            // Read the whole file
+            //tokio::fs::read_to_string(file).await
+
+            let mut content = String::new();
+            use tokio::io::AsyncReadExt;
+            file.read_to_string(&mut content).await.ok()?;
+            Some(content)
+        });
+    }
+
+    while let Some(maybe_file) = set.join_next().await {
+        if let Some(content) = maybe_file.unwrap() {
+            return Some(content)
+        }
+    }
+    None
 }
