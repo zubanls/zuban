@@ -194,11 +194,12 @@ struct Cli {
     hide_error_codes: bool,
     // --show-absolute-path Show absolute paths to files (inverse: --hide-absolute-path)
 
-    // --warn-unreachable --disallow-untyped-calls --disallow-incomplete-defs
+    // Additional options
+    #[arg(long)]
+    no_mypy_compatible: bool,
 }
 
 fn main() {
-    // TODO MYPYPATH=$MYPYPATH:mypy-stubs
     let cli = Cli::parse();
     let in_dir = std::env::current_dir().expect("Expected a valid working directory");
 
@@ -215,47 +216,9 @@ fn main() {
     } else {
         ProjectOptions::new(TypeCheckerFlags::default())
     };
-    todo!();
 
-    /*
-    let options = ProjectOptions::new(TypeCheckerFlags {
-        strict_optional: todo!(),
-        strict_equality: todo!(),
-        implicit_optional: todo!(),
-        check_untyped_defs: todo!(),
-        ignore_missing_imports: todo!(),
-        disallow_untyped_defs: todo!(),
-        disallow_untyped_calls: todo!(),
-        disallow_untyped_decorators: todo!(),
-        disallow_any_generics: todo!(),
-        disallow_any_decorated: todo!(),
-        disallow_any_explicit: todo!(),
-        disallow_any_unimported: todo!(),
-        disallow_any_expr: false,
-        disallow_subclassing_any: todo!(),
-        disallow_incomplete_defs: todo!(),
-        allow_untyped_globals: todo!(),
-        allow_empty_bodies: todo!(),
-        warn_unreachable: todo!(),
-        warn_redundant_casts: todo!(),
-        warn_return_any: todo!(),
-        warn_no_return: todo!(),
-        local_partial_types: todo!(),
-        no_implicit_reexport: todo!(),
-        disable_bytearray_promotion: todo!(),
-        disable_memoryview_promotion: todo!(),
-        platform: todo!(),
-        enabled_error_codes: todo!(),
-        disabled_error_codes: todo!(),
-        python_version: todo!(),
-        always_true_symbols: todo!(),
-        always_false_symbols: todo!(),
-        mypy_path: todo!(),
-        extra_checks: todo!(),
-        mypy_compatible: todo!(),
-        case_sensitive: todo!(),
-    });
-    */
+    apply_flags(&mut options, cli);
+
     let mut project = Project::new(options);
     let diagnostic_config = DiagnosticConfig {
         show_error_codes: true,
@@ -290,4 +253,71 @@ async fn find_mypy_config_file() -> Option<(&'static str, String)> {
         }
     }
     None
+}
+
+fn apply_flags(project_options: &mut ProjectOptions, cli: Cli) {
+    macro_rules! apply {
+        ($attr:ident, $inverse:ident) => {
+            if cli.$attr {
+                project_options.flags.$attr = true;
+            }
+            if cli.$inverse {
+                project_options.flags.$attr = false;
+            }
+        };
+    }
+    apply!(strict_optional, no_strict_optional);
+    apply!(strict_equality, no_strict_equality);
+    apply!(implicit_optional, no_implicit_optional);
+    apply!(check_untyped_defs, no_check_untyped_defs);
+    if cli.ignore_missing_imports {
+        project_options.flags.ignore_missing_imports = true;
+    }
+    apply!(disallow_untyped_defs, allow_untyped_defs);
+    apply!(disallow_untyped_calls, allow_untyped_calls);
+    apply!(disallow_untyped_decorators, allow_untyped_decorators);
+    apply!(disallow_any_generics, allow_any_generics);
+    apply!(disallow_any_decorated, disallow_any_decorated);
+    apply!(disallow_any_explicit, disallow_any_explicit);
+    //apply!(disallow_any_unimported, allow_any_unimported);
+    //apply!(disallow_any_expr, allow_any_expr);
+    apply!(disallow_subclassing_any, allow_subclassing_any);
+    apply!(disallow_incomplete_defs, allow_incomplete_defs);
+    if cli.allow_untyped_globals {
+        project_options.flags.allow_untyped_globals = true;
+    }
+    apply!(warn_unreachable, no_warn_unreachable);
+    //apply!(warn_redundant_casts, no_warn_redundant_casts);
+    apply!(warn_return_any, no_warn_return_any);
+    apply!(warn_no_return, no_warn_no_return);
+    apply!(no_implicit_reexport, implicit_reexport);
+    apply!(extra_checks, no_extra_checks);
+
+    if cli.no_mypy_compatible {
+        project_options.flags.mypy_compatible = false;
+    }
+
+    if cli.platform.is_some() {
+        project_options.flags.platform = cli.platform;
+    }
+    if let Some(python_version) = cli.python_version {
+        project_options.flags.python_version = python_version;
+    }
+    project_options
+        .flags
+        .enabled_error_codes
+        .extend(cli.enable_error_code);
+    project_options
+        .flags
+        .disabled_error_codes
+        .extend(cli.disable_error_code);
+    project_options
+        .flags
+        .always_true_symbols
+        .extend(cli.always_true);
+    project_options
+        .flags
+        .always_false_symbols
+        .extend(cli.always_false);
+    // TODO MYPYPATH=$MYPYPATH:mypy-stubs
 }
