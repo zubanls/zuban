@@ -66,3 +66,22 @@ exclude = (
     ^apkg\.py$    # files named "one.py"
     | ^b/   # or files starting with "three."
   )
+
+[case mypy_toml_exclude_with_overrides_inheritance]
+# Copied from testCmdlineExclude
+[file abc/a/apkg.py]
+1()
+[file abc/a/other.py]
+1()  # E: "int" not callable
+[file abc/a/inherited_exclude.py]
+1()
+[file abc/a/bpkg.py]
+1()
+[file abc/b/cpkg.py]
+1()  # E: "int" not callable
+[file pyproject.toml]
+\[tool.mypy]
+exclude = "abc/a.*pkg"
+\[[tool.mypy.overrides]]
+module = 'abc.a.*'
+exclude = "inherited_exclude"
