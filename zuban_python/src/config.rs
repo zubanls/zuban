@@ -453,6 +453,7 @@ pub fn set_flag_and_return_ignore_errors(
         }
     };
     match option_name.as_ref() {
+        "exclude" => todo!(),
         "always_true" => add_list_of_str(&mut flags.always_true_symbols),
         "always_false" => add_list_of_str(&mut flags.always_false_symbols),
         "enable_error_code" => add_list_of_str(&mut flags.enabled_error_codes),

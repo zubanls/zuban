@@ -204,8 +204,14 @@ fn main() {
 
     let in_dir = "TODO ";
     let mut diagnostic_config = DiagnosticConfig::default();
-    let mut options = if let Some(content) = find_mypy_config_file() {
-        ProjectOptions::from_mypy_ini(in_dir, &content, &mut diagnostic_config).expect("Problem parsing Mypy config")
+    let mut options = if let Some((name, content)) = find_mypy_config_file() {
+        if name.ends_with(".toml") {
+            ProjectOptions::from_pyproject_toml(in_dir, &content, &mut diagnostic_config)
+                .expect("Problem parsing Mypy config")
+        } else {
+            ProjectOptions::from_mypy_ini(in_dir, &content, &mut diagnostic_config)
+                .expect("Problem parsing Mypy config")
+        }
     } else {
         ProjectOptions::new(TypeCheckerFlags::default())
     };
@@ -259,7 +265,7 @@ fn main() {
 }
 
 #[tokio::main(flavor = "current_thread")]
-async fn find_mypy_config_file() -> Option<String> {
+async fn find_mypy_config_file() -> Option<(&'static str, String)> {
     let mut set = tokio::task::JoinSet::new();
 
     for config_path in CONFIG_PATHS {
@@ -271,13 +277,13 @@ async fn find_mypy_config_file() -> Option<String> {
             let mut content = String::new();
             use tokio::io::AsyncReadExt;
             file.read_to_string(&mut content).await.ok()?;
-            Some(content)
+            Some((config_path, content))
         });
     }
 
     while let Some(maybe_file) = set.join_next().await {
-        if let Some(content) = maybe_file.unwrap() {
-            return Some(content)
+        if let Some((config_path, content)) = maybe_file.unwrap() {
+            return Some((config_path, content));
         }
     }
     None
