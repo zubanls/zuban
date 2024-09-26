@@ -36,3 +36,33 @@ exclude = [
     "abc",
     "b/.*pkg",
 ]
+
+[case mypy_ini_exclude_multi_line_verbose_regex]
+# Copied from testCmdlineExclude
+[file abc/apkg.py]
+1()
+[file b/bpkg.py]
+1()
+[file c/cpkg.py]
+1()  # E: "int" not callable
+[file mypy.ini]
+\[mypy]
+exclude = (?x)(
+    ^apkg\.py$    # files named "one.py"
+    | ^b/   # or files starting with "three."
+  )
+
+[case mypy_ini_exclude_multi_line_verbose_regex_not_working]
+# Copied from testCmdlineExclude
+[file abc/apkg.py]
+1()  # E: "int" not callable
+[file b/bpkg.py]
+1()  # E: "int" not callable
+[file c/cpkg.py]
+1()  # E: "int" not callable
+[file mypy.ini]
+\[mypy]
+exclude = (
+    ^apkg\.py$    # files named "one.py"
+    | ^b/   # or files starting with "three."
+  )

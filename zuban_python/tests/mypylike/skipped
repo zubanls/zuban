@@ -484,6 +484,10 @@ testIsInstanceAdHocIntersectionGenericsWithValues
 testIsInstanceAdHocIntersectionGenericsWithValuesDirectReturn
 testCallableTypeVarUnion
 
+# ini config multiline
+mypy_ini_exclude_multi_line_verbose_regex
+mypy_ini_exclude_multi_line_verbose_regex_not_working
+
 # ------------- Additional unimportant, but would be nice -----------------
 
 # strict optional with config file
