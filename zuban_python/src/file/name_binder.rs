@@ -141,7 +141,7 @@ impl<'db> NameBinder<'db> {
                     promote_to: Default::default(),
                     slots,
                 })),
-                Locality::File,
+                Locality::NameBinder,
             );
         }
         for annotation_name in &binder.annotation_names {
@@ -238,7 +238,7 @@ impl<'db> NameBinder<'db> {
         } else {
             self.symbol_table.add_or_replace_symbol(name_def.name());
             let name_index = name_def.name_index();
-            let p = Point::new_name_of_name_def(name_index, in_global_scope, Locality::File)
+            let p = Point::new_name_of_name_def(name_index, in_global_scope, Locality::NameBinder)
                 .with_needs_flow_analysis(self.following_nodes_need_flow_analysis);
             self.db_infos.points.set(name_index, p);
         }
@@ -271,14 +271,14 @@ impl<'db> NameBinder<'db> {
                 }
                 self.db_infos.points.set(
                     latest_name_index,
-                    Point::new_name_of_name_def(new_index, in_global_scope, Locality::File)
+                    Point::new_name_of_name_def(new_index, in_global_scope, Locality::NameBinder)
                         .with_needs_flow_analysis(self.following_nodes_need_flow_analysis),
                 );
                 // Here we create a loop, so it's easy to find the relevant definitions from
                 // any point.
                 self.db_infos.points.set(
                     new_index,
-                    Point::new_name_of_name_def(first_index, in_global_scope, Locality::File),
+                    Point::new_name_of_name_def(first_index, in_global_scope, Locality::NameBinder),
                 );
                 break;
             }
@@ -286,7 +286,10 @@ impl<'db> NameBinder<'db> {
     }
 
     fn add_point_definition(&mut self, name_def: NameDef<'db>, specific: Specific) {
-        self.add_new_definition(name_def, Point::new_specific(specific, Locality::Stmt));
+        self.add_new_definition(
+            name_def,
+            Point::new_specific(specific, Locality::NameBinder),
+        );
     }
 
     pub(crate) fn index_file(&mut self, file_node: File<'db>) {
@@ -368,7 +371,10 @@ impl<'db> NameBinder<'db> {
                         Truthiness::False => {
                             self.db_infos.points.set(
                                 assert_stmt.index(),
-                                Point::new_specific(Specific::AssertAlwaysFails, Locality::File),
+                                Point::new_specific(
+                                    Specific::AssertAlwaysFails,
+                                    Locality::NameBinder,
+                                ),
                             );
                             break;
                         }
@@ -580,7 +586,7 @@ impl<'db> NameBinder<'db> {
                     let set_block_specific = |if_block: IfBlockType, specific| {
                         self.db_infos.points.set(
                             if_block.first_leaf_index(),
-                            Point::new_specific(specific, Locality::File),
+                            Point::new_specific(specific, Locality::NameBinder),
                         )
                     };
                     match is_expr_reachable_for_name_binder(self.db_infos.flags, expr.expression())
@@ -702,7 +708,7 @@ impl<'db> NameBinder<'db> {
                     let name_index = name.index();
                     self.db_infos.points.set(
                         name_index,
-                        Point::new_name_of_name_def(name_index, false, Locality::File),
+                        Point::new_name_of_name_def(name_index, false, Locality::NameBinder),
                     );
                 }
             }
@@ -833,7 +839,7 @@ impl<'db> NameBinder<'db> {
                                             Point::new_redirect(
                                                 self.db_infos.file_index,
                                                 i,
-                                                Locality::File,
+                                                Locality::NameBinder,
                                             )
                                         } else {
                                             Point::new_uncalculated()
@@ -878,7 +884,7 @@ impl<'db> NameBinder<'db> {
                                                 Point::new_redirect(
                                                     self.db_infos.file_index,
                                                     parent,
-                                                    Locality::File,
+                                                    Locality::NameBinder,
                                                 ),
                                             );
                                         }
@@ -968,7 +974,10 @@ impl<'db> NameBinder<'db> {
         let keyword_index = node_index + 1;
         self.db_infos.points.set(
             keyword_index,
-            Point::new_node_analysis_with_node_index(Locality::File, self.latest_return_or_yield),
+            Point::new_node_analysis_with_node_index(
+                Locality::NameBinder,
+                self.latest_return_or_yield,
+            ),
         );
         self.latest_return_or_yield = keyword_index;
     }
@@ -1136,7 +1145,7 @@ impl<'db> NameBinder<'db> {
         };
         self.db_infos.points.set(
             func.index() + FUNC_TO_PARENT_DIFF,
-            Point::new_parent(parent_node_index, Locality::File),
+            Point::new_parent(parent_node_index, Locality::NameBinder),
         );
         self.add_new_definition_with_cause(
             name_def,
@@ -1156,7 +1165,7 @@ impl<'db> NameBinder<'db> {
         self.db_infos.points.set(
             func.index() + FUNC_TO_RETURN_OR_YIELD_DIFF,
             Point::new_node_analysis_with_node_index(
-                Locality::ClassOrFunction,
+                Locality::NameBinder,
                 self.latest_return_or_yield,
             ),
         );
@@ -1324,7 +1333,7 @@ fn try_to_process_reference_for_symbol_table(
 ) -> bool {
     let point = {
         if let Some(definition) = symbol_table.lookup_symbol(name.as_str()) {
-            Point::new_redirect(file_index, definition, Locality::File)
+            Point::new_redirect(file_index, definition, Locality::NameBinder)
                 .with_needs_flow_analysis(needs_flow_analysis)
         } else {
             return false;

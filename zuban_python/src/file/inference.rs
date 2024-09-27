@@ -3497,7 +3497,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 {
                     self.add_issue(save_to_index, IssueKind::UnimportedRevealType);
                 }
-                Point::new_specific(Specific::RevealTypeFunction, Locality::Stmt)
+                Point::new_specific(Specific::RevealTypeFunction, Locality::Todo)
             }
             "__builtins__" => Point::new_file_reference(builtins.file_index, Locality::Todo),
             _ => {

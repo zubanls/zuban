@@ -515,9 +515,9 @@ impl Specific {
 #[repr(u32)]
 pub enum Locality {
     // Intern: 0xx
-    Stmt,
-    ClassOrFunction,
-    MostOuterClassOrFunction,
+    NameBinder,
+    _Reserved1,
+    _Reserved2,
     File,
 
     // Extern: 1xx
@@ -1470,9 +1470,9 @@ mod tests {
     }
 
     #[test]
-    fn test_emtpy_point() {
+    fn test_empty_point() {
         use super::*;
-        let p = Point::new_specific(Specific::ReservedBecauseUnused, Locality::Stmt);
+        let p = Point::new_specific(Specific::ReservedBecauseUnused, Locality::File);
         assert_eq!(p.flags & !IS_ANALIZED_MASK, 0);
         assert_eq!(p.node_index, 0);
         assert!(p.calculated());

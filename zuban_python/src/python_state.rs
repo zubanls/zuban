@@ -1113,7 +1113,7 @@ fn typing_changes(
 fn set_typing_inference(file: &PythonFile, name: &str, specific: Specific) {
     if let Some(node_index) = file.symbol_table().lookup_symbol(name) {
         file.points
-            .set(node_index, Point::new_specific(specific, Locality::Stmt));
+            .set(node_index, Point::new_specific(specific, Locality::File));
     }
 }
 
@@ -1153,7 +1153,7 @@ fn setup_type_alias(typing: &PythonFile, name: &str, target_file: &PythonFile, t
         .unwrap();
     typing.points.set(
         node_index, // Set it on name
-        Point::new_redirect(target_file.file_index, target_node_index, Locality::Stmt),
+        Point::new_redirect(target_file.file_index, target_node_index, Locality::File),
     );
 }
 
@@ -1163,7 +1163,7 @@ fn set_mypy_extension_specific(file: &PythonFile, name: &str, specific: Specific
     // Act on the name def index and not the name.
     file.points.set(
         name_def_node_index,
-        Point::new_specific(specific, Locality::Stmt),
+        Point::new_specific(specific, Locality::File),
     );
     let function_index = node_index - NAME_TO_FUNCTION_DIFF;
     debug_assert!(FunctionDef::maybe_by_index(&file.tree, function_index).is_some());
