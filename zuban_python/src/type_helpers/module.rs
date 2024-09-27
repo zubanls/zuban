@@ -7,7 +7,7 @@ use crate::{
     database::{Database, FileIndex, PointLink},
     debug,
     diagnostics::IssueKind,
-    file::{File, PythonFile},
+    file::PythonFile,
     imports::{python_import, python_import_with_needs_exact_case, ImportResult},
     inference_state::InferenceState,
     inferred::Inferred,
@@ -46,7 +46,7 @@ impl<'a> Module<'a> {
         match &entry.parent {
             Parent::Directory(dir) => python_import_with_needs_exact_case(
                 db,
-                self.file.file_index(),
+                self.file.file_index,
                 std::iter::once(dir.upgrade().unwrap()),
                 name,
                 true,
@@ -112,7 +112,7 @@ impl<'a> Module<'a> {
                 {
                     let is_submodule = |import_result| {
                         if let Some(ImportResult::File(f)) = import_result {
-                            f == self.file.file_index()
+                            f == self.file.file_index
                         } else {
                             false
                         }

@@ -22,7 +22,7 @@ use crate::{
     debug,
     diagnostics::IssueKind,
     file::{
-        use_cached_annotation_type, CalculatedBaseClass, File, MultiDefinitionIterator, PythonFile,
+        use_cached_annotation_type, CalculatedBaseClass, MultiDefinitionIterator, PythonFile,
         TypeComputation, TypeComputationOrigin, TypeVarCallbackReturn, TypeVarFinder,
     },
     format_data::FormatData,
@@ -1645,8 +1645,8 @@ impl<'db: 'a, 'a> Class<'a> {
             let (c, lookup) = c.lookup_symbol(i_s, "__new__");
             if lookup.into_maybe_inferred().is_some() {
                 let Some(class) = c else { unreachable!() };
-                return class.node_ref.file.file_index()
-                    != i_s.db.python_state.enum_file().file_index();
+                return class.node_ref.file.file_index
+                    != i_s.db.python_state.enum_file().file_index;
             }
         }
         false
@@ -1683,7 +1683,7 @@ impl<'db: 'a, 'a> Class<'a> {
                     .inference(&i_s.with_class_context(self))
                     .infer_name_of_definition_by_index(node_index);
                 LookupResult::GotoName {
-                    name: PointLink::new(self.node_ref.file.file_index(), node_index),
+                    name: PointLink::new(self.node_ref.file.file_index, node_index),
                     inf,
                 }
             }
@@ -2026,13 +2026,13 @@ impl<'db: 'a, 'a> Class<'a> {
                 )),
                 Generics::ExpressionWithClassType(file, expr) => {
                     ClassGenerics::ExpressionWithClassType(PointLink::new(
-                        file.file_index(),
+                        file.file_index,
                         expr.index(),
                     ))
                 }
                 Generics::SlicesWithClassTypes(file, slices) => {
                     ClassGenerics::SlicesWithClassTypes(PointLink::new(
-                        file.file_index(),
+                        file.file_index,
                         slices.index(),
                     ))
                 }
@@ -2678,7 +2678,7 @@ impl<'db: 'a, 'a> Class<'a> {
 impl fmt::Debug for Class<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("Class")
-            .field("file_index", &self.node_ref.file.file_index())
+            .field("file_index", &self.node_ref.file.file_index)
             .field("node_index", &self.node_ref.node_index)
             .field("name", &self.name())
             .field("generics", &self.generics)
@@ -2996,8 +2996,8 @@ impl<'a> TypeOrClass<'a> {
         match self {
             TypeOrClass::Class(c) => {
                 let class_file_index = c.node_ref.file_index();
-                class_file_index == db.python_state.builtins().file_index()
-                    || c.node_ref.file_index() == db.python_state.typing().file_index()
+                class_file_index == db.python_state.builtins().file_index
+                    || c.node_ref.file_index() == db.python_state.typing().file_index
             }
             TypeOrClass::Type(_) => true,
         }
@@ -3119,9 +3119,7 @@ fn find_stmt_named_tuple_types(
                         vec.push(CallableParam {
                             type_: ParamType::PositionalOrKeyword(t),
                             has_default: default.is_some(),
-                            name: Some(
-                                StringSlice::from_name(file.file_index(), name.name()).into(),
-                            ),
+                            name: Some(StringSlice::from_name(file.file_index, name.name()).into()),
                         })
                     }
                 }
@@ -3162,7 +3160,7 @@ fn find_stmt_typed_dict_types(
                     if let Err(issue) = vec.add(
                         i_s.db,
                         file.inference(i_s).compute_class_typed_dict_member(
-                            StringSlice::from_name(file.file_index(), name_def.name()),
+                            StringSlice::from_name(file.file_index, name_def.name()),
                             annot,
                             total,
                         ),
@@ -3181,10 +3179,7 @@ fn find_stmt_typed_dict_types(
                                 TypedDictMember {
                                     type_: Type::Any(AnyCause::Todo),
                                     required: true,
-                                    name: StringSlice::from_name(
-                                        file.file_index(),
-                                        name_def.name(),
-                                    ),
+                                    name: StringSlice::from_name(file.file_index, name_def.name()),
                                 },
                             )
                             .ok();

@@ -11,7 +11,7 @@ use crate::{
     database::{ComplexPoint, Database, PointLink, Specific},
     debug,
     diagnostics::IssueKind,
-    file::{on_argument_type_error, File},
+    file::on_argument_type_error,
     getitem::SliceType,
     inference_state::InferenceState,
     inferred::{add_attribute_error, AttributeKind, Inferred, MroIndex},
@@ -403,7 +403,7 @@ impl<'a> Instance<'a> {
                             class: TypeOrClass::Class(c),
                             attr_kind,
                             lookup: LookupResult::GotoName {
-                                name: PointLink::new(c.node_ref.file.file_index(), self_symbol),
+                                name: PointLink::new(c.node_ref.file.file_index, self_symbol),
                                 inf: inf.resolve_class_type_vars(&i_s, &self.class, &c),
                             },
                             mro_index: Some(mro_index),

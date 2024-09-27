@@ -15,7 +15,7 @@ use crate::{
     arguments::{Arg, ArgKind, Args, SimpleArgs},
     database::{Database, Locality, Point, Specific},
     diagnostics::{Issue, IssueKind},
-    file::{File, PythonFile},
+    file::PythonFile,
     inference_state::InferenceState,
     inferred::{AttributeKind, Inferred},
     matching::{
@@ -361,7 +361,7 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> Init
                 let DbString::StringSlice(name) = name else {
                     unreachable!();
                 };
-                if name.file_index == file.file_index() {
+                if name.file_index == file.file_index {
                     file.add_issue(
                         i_s,
                         Issue::from_start_stop(name.start, name.end, issue_type),

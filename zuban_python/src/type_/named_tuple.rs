@@ -11,7 +11,7 @@ use crate::{
     arguments::{ArgIterator, ArgKind, Args, KeywordArg},
     database::{ComplexPoint, Database, FileIndex, PointLink},
     diagnostics::IssueKind,
-    file::{File, TypeComputation, TypeComputationOrigin, TypeVarCallbackReturn},
+    file::{TypeComputation, TypeComputationOrigin, TypeVarCallbackReturn},
     format_data::{AvoidRecursionFor, FormatData},
     getitem::SliceType,
     inference_state::InferenceState,
@@ -504,7 +504,7 @@ pub(crate) fn new_collections_named_tuple<'db>(
                 todo!()
             };
             let Some(string_slice) = StringSlice::from_string_in_expression(
-                second_node_ref.file.file_index(),
+                second_node_ref.file.file_index,
                 ne.expression(),
             ) else {
                 NodeRef::new(second_node_ref.file, ne.index())

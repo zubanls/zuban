@@ -1093,12 +1093,10 @@ impl Database {
     ) -> &PythonFile {
         let index = self.with_add_file_state(|file_index| {
             Box::pin(LanguageFileState::new_parsed(
-                self.file_state(super_file.file_index())
-                    .file_entry()
-                    .clone(),
+                self.file_state(super_file.file_index).file_entry().clone(),
                 "".into(),
                 add(file_index),
-                self.file_state(super_file.file_index())
+                self.file_state(super_file.file_index)
                     .invalidate_invalidates_db(),
             ))
         });

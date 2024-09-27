@@ -55,7 +55,7 @@ impl<'file> NodeRef<'file> {
     pub fn to_db_lifetime(self, db: &Database) -> NodeRef {
         if std::cfg!(debug_assertions) {
             // Check that the file index is set, which means that it's in the database.
-            self.file.file_index();
+            self.file.file_index;
         }
         // This should be safe, because all files are added to the database.
         unsafe { std::mem::transmute(self) }
@@ -77,7 +77,7 @@ impl<'file> NodeRef<'file> {
     pub fn set_point_redirect_in_same_file(&self, node_index: NodeIndex, locality: Locality) {
         self.file.points.set(
             self.node_index,
-            Point::new_redirect(self.file.file_index(), node_index, locality),
+            Point::new_redirect(self.file.file_index, node_index, locality),
         )
     }
 
@@ -130,7 +130,7 @@ impl<'file> NodeRef<'file> {
     }
 
     pub fn as_link(&self) -> PointLink {
-        PointLink::new(self.file.file_index(), self.node_index)
+        PointLink::new(self.file.file_index, self.node_index)
     }
 
     pub fn as_expression(&self) -> Expression<'file> {
@@ -186,7 +186,7 @@ impl<'file> NodeRef<'file> {
     }
 
     pub fn file_index(&self) -> FileIndex {
-        self.file.file_index()
+        self.file.file_index
     }
 
     pub fn infer_int(&self) -> Option<i64> {
@@ -359,7 +359,7 @@ impl<'file> NodeRef<'file> {
 impl fmt::Debug for NodeRef<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut s = f.debug_struct("NodeRef");
-        s.field("file_index", &self.file.file_index());
+        s.field("file_index", &self.file.file_index);
         s.field("node_index", &self.node_index);
         s.field(
             "node",

@@ -4,7 +4,7 @@ use parsa_python_cst::{CodeIndex, NodeIndex, Tree};
 
 use crate::{
     database::{Database, PointLink},
-    file::{File, GenericCounts, PythonFile, OVERLAPPING_REVERSE_TO_NORMAL_METHODS},
+    file::{GenericCounts, PythonFile, OVERLAPPING_REVERSE_TO_NORMAL_METHODS},
     name::TreePosition,
     node_ref::NodeRef,
     type_::{FunctionKind, TypeVarLike, Variance},
@@ -677,7 +677,7 @@ impl<'db> Diagnostic<'db> {
         let mut kind = "error";
         let mut path = self
             .db
-            .file_path(self.file.file_index())
+            .file_path(self.file.file_index)
             .trim_start_matches(&self.file.file_entry(self.db).parent.workspace_path() as &str);
         if path == "__main__" {
             path = "main";

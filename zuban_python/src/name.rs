@@ -107,7 +107,7 @@ impl<'db> Name<'db> for TreeName<'db, PythonFile, CSTName<'db>> {
     }
 
     fn file_path(&self) -> &str {
-        self.db.file_path(self.file.file_index())
+        self.db.file_path(self.file.file_index)
     }
 
     fn start_position(&self) -> TreePosition<'db> {

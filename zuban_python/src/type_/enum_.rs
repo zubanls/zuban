@@ -12,7 +12,6 @@ use crate::{
     arguments::{ArgKind, Args},
     database::{Database, ParentScope, PointLink},
     diagnostics::IssueKind,
-    file::File,
     format_data::FormatData,
     inference_state::InferenceState,
     inferred::{AttributeKind, Inferred},
@@ -253,7 +252,7 @@ pub fn infer_value_on_member(
                                 // Check We have a proper callable that is not part of the enum module
                                 // and overwrites the default of int.
                                 if inf.maybe_saved_link().is_some_and(|link| {
-                                    link.file == i_s.db.python_state.enum_file().file_index()
+                                    link.file == i_s.db.python_state.enum_file().file_index
                                 }) {
                                     return None;
                                 }
@@ -487,7 +486,7 @@ fn gather_functional_enum_members(
         let StarLikeExpression::NamedExpression(n) = first else {
             todo!()
         };
-        StringSlice::from_string_in_expression(node_ref.file.file_index(), n.expression())
+        StringSlice::from_string_in_expression(node_ref.file.file_index, n.expression())
     };
 
     let mut add_from_iterator = |iterator| -> Option<()> {
@@ -500,9 +499,7 @@ fn gather_functional_enum_members(
                 // Enums can be defined like Enum("Foo", [('CYAN', 4), ('MAGENTA', 5)])
                 Some(AtomContent::List(list)) => get_tuple_like(list.unpack())?,
                 Some(AtomContent::Tuple(tup)) => get_tuple_like(tup.iter())?,
-                _ => {
-                    StringSlice::from_string_in_expression(node_ref.file.file_index(), expression)?
-                }
+                _ => StringSlice::from_string_in_expression(node_ref.file.file_index, expression)?,
             };
             members.add_member(
                 i_s,
@@ -560,7 +557,7 @@ fn gather_functional_enum_members(
                 };
                 let key = kv.key();
                 let Some(name) =
-                    StringSlice::from_string_in_expression(node_ref.file.file_index(), key)
+                    StringSlice::from_string_in_expression(node_ref.file.file_index, key)
                 else {
                     node_ref.add_issue(
                         i_s,
@@ -576,10 +573,7 @@ fn gather_functional_enum_members(
                     NodeRef::new(node_ref.file, key.index()),
                     EnumMemberDefinition::new(
                         name.into(),
-                        Some(PointLink::new(
-                            node_ref.file.file_index(),
-                            kv.value().index(),
-                        )),
+                        Some(PointLink::new(node_ref.file.file_index, kv.value().index())),
                     ),
                 );
             }

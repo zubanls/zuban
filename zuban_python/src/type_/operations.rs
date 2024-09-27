@@ -12,7 +12,7 @@ use crate::{
     database::{FileIndex, Specific},
     debug,
     diagnostics::IssueKind,
-    file::{File, PythonFile},
+    file::PythonFile,
     getitem::SliceType,
     inference_state::InferenceState,
     inferred::{AttributeKind, Inferred},
@@ -646,7 +646,7 @@ impl Type {
             _ => IteratorContent::Inferred(
                 self.lookup(
                     i_s,
-                    infos.file().file_index(),
+                    infos.file().file_index,
                     "__iter__",
                     LookupKind::OnlyType,
                     &mut ResultContext::Unknown,

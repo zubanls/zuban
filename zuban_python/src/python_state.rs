@@ -4,7 +4,7 @@ use parsa_python_cst::{FunctionDef, NodeIndex, NAME_DEF_TO_NAME_DIFFERENCE};
 
 use crate::{
     database::{BaseClass, Database, FileIndex, Locality, Point, PointLink, Specific},
-    file::{File, PythonFile},
+    file::PythonFile,
     inferred::Inferred,
     matching::Generics,
     new_class,
@@ -948,7 +948,7 @@ impl PythonState {
     pub fn type_var_type(&self) -> Type {
         debug_assert!(self.typing_type_var != 0);
         Type::new_class(
-            PointLink::new(self.typing().file_index(), self.typing_type_var),
+            PointLink::new(self.typing().file_index, self.typing_type_var),
             ClassGenerics::None,
         )
     }
@@ -964,7 +964,7 @@ impl PythonState {
     pub fn dataclasses_dataclass(&self) -> PointLink {
         debug_assert!(self.dataclasses_dataclass_index != 0);
         PointLink::new(
-            self.dataclasses_file().file_index(),
+            self.dataclasses_file().file_index,
             self.dataclasses_dataclass_index,
         )
     }
@@ -1153,7 +1153,7 @@ fn setup_type_alias(typing: &PythonFile, name: &str, target_file: &PythonFile, t
         .unwrap();
     typing.points.set(
         node_index, // Set it on name
-        Point::new_redirect(target_file.file_index(), target_node_index, Locality::Stmt),
+        Point::new_redirect(target_file.file_index, target_node_index, Locality::Stmt),
     );
 }
 

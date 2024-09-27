@@ -14,7 +14,7 @@ use crate::{
     diagnostics::IssueKind,
     file::{
         maybe_saved_annotation, on_argument_type_error, use_cached_annotation_or_type_comment,
-        File, PythonFile,
+        PythonFile,
     },
     format_data::FormatData,
     getitem::{SliceType, SliceTypeContent},
@@ -94,7 +94,7 @@ impl<'db: 'slf, 'slf> Inferred {
 
     pub fn new_saved(file: &'db PythonFile, node_index: NodeIndex) -> Self {
         Self {
-            state: InferredState::Saved(PointLink::new(file.file_index(), node_index)),
+            state: InferredState::Saved(PointLink::new(file.file_index, node_index)),
         }
     }
 
@@ -1698,7 +1698,7 @@ impl<'db: 'slf, 'slf> Inferred {
         self.as_cow_type(i_s).run_after_lookup_on_each_union_member(
             i_s,
             Some(self),
-            in_file.file_index(),
+            in_file.file_index,
             name,
             kind,
             &mut ResultContext::Unknown,

@@ -65,7 +65,7 @@ macro_rules! check_point_cache_with {
                     stringify!($name),
                     node.short_debug(),
                     self.file.byte_to_line_column(node.start()).0,
-                    self.file.file_index(),
+                    self.file.file_index,
                     node.index(),
                     {
                         let point = self.file.points.get(node.index());
@@ -83,7 +83,7 @@ macro_rules! check_point_cache_with {
                     stringify!($name),
                     node.short_debug(),
                     self.file.byte_to_line_column(node.start()).0,
-                    self.file.file_index(),
+                    self.file.file_index,
                     node.index(),
                 );
                 debug_indent(|| {
@@ -283,7 +283,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     }
 
     fn global_import(&self, name: Name, name_def: Option<NameDef>) -> Option<ImportResult> {
-        let result = global_import(self.i_s.db, self.file.file_index(), name.as_str());
+        let result = global_import(self.i_s.db, self.file.file_index, name.as_str());
         if let Some(result) = &result {
             debug!(
                 "Global import '{}': {:?}",
@@ -582,7 +582,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     self.file.points.set(
                         index,
                         Point::new_redirect(
-                            self.file.file_index(),
+                            self.file.file_index,
                             annotation.index(),
                             Locality::Todo,
                         ),
@@ -1201,7 +1201,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             "Assign to name def {} (#{}, {}:{})",
             name_def.as_code(),
             self.file.byte_to_line_column(name_def.start()).0,
-            self.file.file_index(),
+            self.file.file_index,
             name_def.index(),
         );
         debug_indent(|| self.assign_to_name_def_internal(name_def, from, value, assign_kind, save))
@@ -2711,7 +2711,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 )),
             },
             name: Some(
-                StringSlice::from_name(self.file.file_index(), param.name_def().name()).into(),
+                StringSlice::from_name(self.file.file_index, param.name_def().name()).into(),
             ),
             has_default: param.default().is_some(),
         };
@@ -2785,7 +2785,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 let c = CallableContent::new_simple(
                     None,
                     None,
-                    PointLink::new(self.file.file_index(), lambda.index()),
+                    PointLink::new(self.file.file_index, lambda.index()),
                     self.i_s.db.python_state.empty_type_var_likes.clone(),
                     CallableParams::new_simple(params.map(to_callable_param).collect()),
                     result.as_type(self.i_s),
@@ -3502,7 +3502,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 }
                 Point::new_specific(Specific::RevealTypeFunction, Locality::Stmt)
             }
-            "__builtins__" => Point::new_file_reference(builtins.file_index(), Locality::Todo),
+            "__builtins__" => Point::new_file_reference(builtins.file_index, Locality::Todo),
             _ => {
                 if let Some(link) = builtins.lookup_global(name_str).filter(|link| {
                     !name_str.starts_with('_') && !is_private_import(i_s.db, (*link).into())
@@ -3512,7 +3512,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 } else {
                     // The builtin module should really not have any issues.
                     debug_assert!(
-                        self.file_index != builtins.file_index(),
+                        self.file_index != builtins.file_index,
                         "{name_str}; {save_to_index}"
                     );
                     if i_s.in_class_scope().is_some() {
@@ -3691,7 +3691,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     debug!(
                         "Found a cycle at #{}, {}:{node_index}: {:?}",
                         node_ref.line(),
-                        self.file.file_index(),
+                        self.file.file_index,
                         node_ref.as_code()
                     );
                     node_ref.set_point(Point::new_specific(Specific::Cycle, Locality::Todo));
@@ -3718,7 +3718,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     }
                 }
                 debug_assert!(
-                    file_index != self.file.file_index() || next_node_index != node_index,
+                    file_index != self.file.file_index || next_node_index != node_index,
                     "{file_index}:{node_index}"
                 );
                 let infer = |inference: &Inference| {
@@ -3878,7 +3878,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         debug!(
             "Infer name of stmt (#{}, {}:{})",
             name_def.line(),
-            self.file.file_index(),
+            self.file.file_index,
             defining_stmt.index(),
         );
         match defining_stmt {

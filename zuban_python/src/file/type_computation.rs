@@ -11,7 +11,7 @@ use crate::{
     },
     debug,
     diagnostics::{Issue, IssueKind},
-    file::{File, Inference, PythonFile},
+    file::{Inference, PythonFile},
     format_data::FormatData,
     getitem::{SliceOrSimple, SliceType, SliceTypeIterator},
     imports::{python_import, ImportResult},
@@ -3247,7 +3247,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 let mut iterator = arguments.iter();
                 let name_from_expr = |slf: &mut Self, expr: Expression| {
                     let result = StringSlice::from_string_in_expression(
-                        self.inference.file.file_index(),
+                        self.inference.file.file_index,
                         expr,
                     );
                     if result.is_none() && !expr.is_none_literal() {
@@ -3838,7 +3838,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                 let alias = TypeAlias::new(
                     type_var_likes,
                     in_definition,
-                    Some(PointLink::new(file.file_index(), name_def.name().index())),
+                    Some(PointLink::new(file.file_index, name_def.name().index())),
                 );
                 save_alias(cached_type_node_ref, alias);
 
@@ -5059,7 +5059,7 @@ pub(super) fn cache_name_on_class(cls: Class, file: &PythonFile, name: Name) -> 
             .class_symbol_table
             .lookup_symbol(name.as_str())
         {
-            Point::new_redirect(cls.node_ref.file.file_index(), index, Locality::Todo)
+            Point::new_redirect(cls.node_ref.file.file_index, index, Locality::Todo)
         } else {
             Point::new_specific(Specific::AnyDueToError, Locality::Todo)
         },

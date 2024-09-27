@@ -77,7 +77,7 @@ pub struct PythonFile {
     //all_names_bloom_filter: Option<BloomFilter<&str>>,
     pub points: Points,
     pub complex_points: ComplexValues,
-    file_index: FileIndex,
+    pub file_index: FileIndex,
     pub issues: Diagnostics,
     pub star_imports: RefCell<Vec<StarImport>>,
     sub_files: RefCell<HashMap<CodeIndex, FileIndex>>,
@@ -95,7 +95,7 @@ impl File for PythonFile {
             // It was already done.
             return;
         }
-        debug!("Initialize {}", self.file_index());
+        debug!("Initialize {}", self.file_index);
         self.symbol_table
             .set(NameBinder::with_global_binder(
                 DbInfos {
@@ -340,7 +340,7 @@ impl<'db> PythonFile {
     ) -> Inference<'db, 'file, 'i_s> {
         Inference {
             file: self,
-            file_index: self.file_index(),
+            file_index: self.file_index,
             i_s,
         }
     }
@@ -349,7 +349,7 @@ impl<'db> PythonFile {
         self.symbol_table()
             .lookup_symbol(name)
             .map(|node_index| LocalityLink {
-                file: self.file_index(),
+                file: self.file_index,
                 node_index,
                 locality: Locality::Todo,
             })
@@ -372,11 +372,11 @@ impl<'db> PythonFile {
                 None,
                 self.ignore_type_errors,
             );
-            file.super_file = Some(self.file_index());
+            file.super_file = Some(self.file_index);
             file
         });
         // TODO just saving this in the cache and forgetting about it is a bad idea
-        self.sub_files.borrow_mut().insert(start, f.file_index());
+        self.sub_files.borrow_mut().insert(start, f.file_index);
         f
     }
 
@@ -438,9 +438,9 @@ impl<'db> PythonFile {
                 }
             }
             let (name, parent_dir) = name_and_parent_dir(self.file_entry(db));
-            match try_to_import(db, self.file_index(), parent_dir, name)? {
+            match try_to_import(db, self.file_index, parent_dir, name)? {
                 ImportResult::File(file_index) => {
-                    assert_ne!(file_index, self.file_index());
+                    assert_ne!(file_index, self.file_index);
                     Some(file_index)
                 }
                 ImportResult::Namespace(_) => None,
@@ -466,7 +466,7 @@ impl<'db> PythonFile {
                                     assignment.maybe_simple_type_expression_assignment()
                                 })
                         {
-                            let base = maybe_dunder_all_names(vec![], self.file_index(), expr)?;
+                            let base = maybe_dunder_all_names(vec![], self.file_index, expr)?;
                             self.gather_dunder_all_modifications(db, dunder_all_index, base)
                         } else if let Some(NameImportParent::ImportFromAsName(as_name)) =
                             name_def.maybe_import()
@@ -498,7 +498,7 @@ impl<'db> PythonFile {
         dunder_all_index: NodeIndex,
         mut dunder_all: Vec<DbString>,
     ) -> Option<Box<[DbString]>> {
-        let file_index = self.file_index();
+        let file_index = self.file_index;
         let check_multi_def = |dunder_all: Vec<DbString>, name: Name| -> Option<Vec<DbString>> {
             let name_def = name.name_def().unwrap();
             let assignment = name_def.maybe_assignment_definition()?;
@@ -568,7 +568,7 @@ impl<'db> PythonFile {
     }
 
     pub fn file_entry(&self, db: &'db Database) -> &'db Rc<FileEntry> {
-        db.file_state(self.file_index()).file_entry()
+        db.file_state(self.file_index).file_entry()
     }
 
     pub fn add_issue(&self, i_s: &InferenceState, issue: Issue) {
