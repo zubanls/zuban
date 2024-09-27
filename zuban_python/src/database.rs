@@ -320,7 +320,7 @@ impl fmt::Debug for Point {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct Points(Vec<Cell<Point>>);
 
 impl Points {
@@ -1059,7 +1059,6 @@ impl Database {
         let f = state
             .file(&*self.vfs)
             .unwrap_or_else(|| panic!("file #{index}: {}", state.path()));
-        f.ensure_initialized(&self.project);
         f
     }
 
@@ -1222,7 +1221,7 @@ impl Database {
                 if file.has_super_file() {
                     file_state.unload_and_return_invalidations();
                 } else {
-                    file.invalidate_full_db();
+                    file.invalidate_full_db(&self.project);
                 }
             }
         }

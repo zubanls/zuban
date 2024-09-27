@@ -27,6 +27,10 @@ impl Tree {
         Self(parse(code))
     }
 
+    pub fn invalid_empty() -> Self {
+        Self(PyTree::empty())
+    }
+
     pub fn length(&self) -> usize {
         self.0.length()
     }

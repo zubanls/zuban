@@ -72,7 +72,7 @@ impl ComplexValues {
 #[derive(Clone)]
 pub struct PythonFile {
     pub tree: Tree, // TODO should probably not be public
-    symbol_table: OnceCell<SymbolTable>,
+    pub symbol_table: SymbolTable,
     maybe_dunder_all: OnceCell<Option<Box<[DbString]>>>, // For __all__
     //all_names_bloom_filter: Option<BloomFilter<&str>>,
     pub points: Points,
@@ -90,30 +90,6 @@ pub struct PythonFile {
 }
 
 impl File for PythonFile {
-    fn ensure_initialized(&self, project: &PythonProject) {
-        if self.symbol_table.get().is_some() {
-            // It was already done.
-            return;
-        }
-        debug!("Initialize {}", self.file_index);
-        self.symbol_table
-            .set(NameBinder::with_global_binder(
-                DbInfos {
-                    // TODO this does not use flags of the super file. Is this an issue?
-                    flags: self.flags.as_ref().unwrap_or(&project.flags),
-                    tree: &self.tree,
-                    points: &self.points,
-                    complex_points: &self.complex_points,
-                    issues: &self.issues,
-                    star_imports: &self.star_imports,
-                    file_index: self.file_index,
-                    is_stub: self.is_stub(),
-                },
-                |binder| binder.index_file(self.tree.root()),
-            ))
-            .unwrap()
-    }
-
     fn implementation<'db>(&self, names: Names<'db>) -> Names<'db> {
         todo!()
     }
@@ -204,18 +180,22 @@ impl File for PythonFile {
         }
     }
 
-    fn invalidate_full_db(&mut self) {
+    fn invalidate_full_db(&mut self, project: &PythonProject) {
         debug_assert!(self.super_file.is_none());
-        self.points.invalidate_full_db();
-        self.complex_points.clear();
-        self.issues.clear();
-        self.symbol_table.take();
-        self.maybe_dunder_all.take();
-        self.sub_files.get_mut().clear();
-        self.star_imports.get_mut().clear();
-        if let Some(cache) = self.stub_cache.as_mut() {
-            *cache = StubCache::default();
-        }
+        let mut points = std::mem::take(&mut self.points);
+        points.invalidate_full_db();
+        let is_stub = self.is_stub();
+        let tree = std::mem::replace(&mut self.tree, Tree::invalid_empty());
+        *self = Self::new_internal(
+            self.file_index,
+            tree,
+            points,
+            Diagnostics::default(),
+            is_stub,
+            self.flags.take(),
+            project,
+            self.ignore_type_errors,
+        );
     }
 
     fn has_super_file(&self) -> bool {
@@ -297,12 +277,15 @@ impl<'db> PythonFile {
             tree.mypy_inline_config_directives(),
         );
         ignore_type_errors |= directives_info.ignore_errors;
+        let points = Points::new(tree.length());
         Self::new_internal(
             file_index,
             tree,
+            points,
             issues,
             is_stub,
             directives_info.flags,
+            project_options,
             ignore_type_errors,
         )
     }
@@ -310,20 +293,37 @@ impl<'db> PythonFile {
     fn new_internal(
         file_index: FileIndex,
         tree: Tree,
+        points: Points,
         issues: Diagnostics,
         is_stub: bool,
         flags: Option<TypeCheckerFlags>,
+        project: &PythonProject,
         ignore_type_errors: bool,
     ) -> Self {
-        let length = tree.length();
+        let complex_points = Default::default();
+        let star_imports: RefCell<Vec<StarImport>> = Default::default();
+        let symbol_table = NameBinder::with_global_binder(
+            DbInfos {
+                // TODO this does not use flags of the super file. Is this an issue?
+                flags: flags.as_ref().unwrap_or(&project.flags),
+                tree: &tree,
+                points: &points,
+                complex_points: &complex_points,
+                issues: &issues,
+                star_imports: &star_imports,
+                file_index,
+                is_stub,
+            },
+            |binder| binder.index_file(tree.root()),
+        );
         Self {
             tree,
             file_index,
-            symbol_table: Default::default(),
+            symbol_table,
             maybe_dunder_all: OnceCell::default(),
-            points: Points::new(length),
-            complex_points: Default::default(),
-            star_imports: Default::default(),
+            points,
+            complex_points,
+            star_imports,
             issues,
             newline_indices: NewlineIndices::new(),
             sub_files: Default::default(),
@@ -342,7 +342,7 @@ impl<'db> PythonFile {
     }
 
     pub fn lookup_global(&self, name: &str) -> Option<LocalityLink> {
-        self.symbol_table()
+        self.symbol_table
             .lookup_symbol(name)
             .map(|node_index| LocalityLink {
                 file: self.file_index,
@@ -359,13 +359,16 @@ impl<'db> PythonFile {
     ) -> &'db Self {
         // TODO should probably not need a newline
         let tree = Tree::parse(Box::from(code.into_string() + "\n"));
+        let points = Points::new(tree.length());
         let f = db.load_sub_file(self, |file_index| {
             let mut file = PythonFile::new_internal(
                 file_index,
                 tree,
+                points,
                 Diagnostics::default(),
                 self.is_stub(),
                 None,
+                &db.project,
                 self.ignore_type_errors,
             );
             file.super_file = Some(self.file_index);
@@ -448,7 +451,7 @@ impl<'db> PythonFile {
     pub fn maybe_dunder_all(&self, db: &Database) -> Option<&[DbString]> {
         self.maybe_dunder_all
             .get_or_init(|| {
-                self.symbol_table()
+                self.symbol_table
                     .lookup_symbol("__all__")
                     .and_then(|dunder_all_index| {
                         let name_def = NodeRef::new(self, dunder_all_index)
@@ -599,11 +602,6 @@ impl<'db> PythonFile {
         }
     }
 
-    #[inline]
-    pub fn symbol_table(&self) -> &SymbolTable {
-        self.symbol_table.get().unwrap()
-    }
-
     pub fn flags<'x>(&'x self, db: &'x Database) -> &TypeCheckerFlags {
         if let Some(super_file) = self.super_file {
             debug_assert!(self.flags.is_none());
@@ -616,7 +614,7 @@ impl<'db> PythonFile {
     pub fn has_unsupported_class_scoped_import(&self, db: &Database) -> bool {
         let i_s = &InferenceState::new(db);
         let inference = self.inference(i_s);
-        self.symbol_table().iter().any(|(_, index)| {
+        self.symbol_table.iter().any(|(_, index)| {
             inference
                 .infer_name_of_definition_by_index(*index)
                 .as_cow_type(i_s)

@@ -5,6 +5,7 @@ use parsa_python_cst::{CodeIndex, Keyword, NodeIndex};
 
 use crate::{
     database::{Database, FileIndex},
+    debug,
     diagnostics::{Diagnostic, DiagnosticConfig},
     file::PythonFile,
     imports::STUBS_SUFFIX,
@@ -107,6 +108,7 @@ impl FileStateLoader for PythonFileLoader {
         invalidates_db: bool,
     ) -> Pin<Box<dyn FileState>> {
         let is_stub = path.ends_with(".pyi");
+        debug!("Initialize {path} ({file_index})");
         let new_python_file = PythonFile::new(project, file_index, &file_entry, code, is_stub);
         Box::pin(LanguageFileState::new_parsed(
             file_entry,
@@ -134,7 +136,6 @@ impl<T> AsAny for T {
 
 pub trait File: std::fmt::Debug + AsAny {
     // Called each time a file is loaded
-    fn ensure_initialized(&self, project: &PythonProject);
     fn implementation<'db>(&self, names: Names<'db>) -> Names<'db> {
         vec![]
     }
@@ -157,7 +158,7 @@ pub trait File: std::fmt::Debug + AsAny {
         config: &DiagnosticConfig,
     ) -> Box<[Diagnostic<'db>]>;
     fn invalidate_references_to(&mut self, file_index: FileIndex);
-    fn invalidate_full_db(&mut self);
+    fn invalidate_full_db(&mut self, project: &PythonProject);
     fn has_super_file(&self) -> bool;
 }
 

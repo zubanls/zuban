@@ -740,6 +740,15 @@ macro_rules! create_grammar {
         }
 
         impl $Tree {
+            pub fn empty() -> Self {
+                Self {
+                    internal_tree: $crate::InternalTree {
+                        code: Box::from(""),
+                        nodes: vec![],
+                    }
+                }
+            }
+
             pub fn as_code(&self) -> &str {
                 &self.internal_tree.code
             }
