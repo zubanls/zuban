@@ -1451,7 +1451,7 @@ mod tests {
         use super::*;
         use crate::type_::{ClassGenerics, StringSlice, Tuple, UnionType};
         assert_eq!(size_of::<ClassGenerics>(), 24);
-        assert_eq!(size_of::<UnionType>(), 24);
+        assert_eq!(size_of::<UnionType>(), 16);
         assert_eq!(size_of::<Tuple>(), 88);
         assert_eq!(size_of::<Type>(), 40); // TODO Would like it to be 32, but ClassGenerics is 24
         assert_eq!(size_of::<ComplexPoint>(), size_of::<Type>());

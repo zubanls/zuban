@@ -95,6 +95,7 @@ impl File for PythonFile {
             // It was already done.
             return;
         }
+        debug!("Initialize {}", self.file_index());
         self.symbol_table
             .set(NameBinder::with_global_binder(
                 DbInfos {
