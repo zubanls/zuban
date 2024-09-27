@@ -69,6 +69,7 @@ pub trait FileStateLoader {
     fn load_parsed(
         &self,
         project: &PythonProject,
+        file_index: FileIndex,
         file_entry: Rc<FileEntry>,
         path: Box<str>,
         code: Box<str>,
@@ -99,13 +100,14 @@ impl FileStateLoader for PythonFileLoader {
     fn load_parsed(
         &self,
         project: &PythonProject,
+        file_index: FileIndex,
         file_entry: Rc<FileEntry>,
         path: Box<str>,
         code: Box<str>,
         invalidates_db: bool,
     ) -> Pin<Box<dyn FileState>> {
         let is_stub = path.ends_with(".pyi");
-        let new_python_file = PythonFile::new(project, &file_entry, code, is_stub);
+        let new_python_file = PythonFile::new(project, file_index, &file_entry, code, is_stub);
         Box::pin(LanguageFileState::new_parsed(
             file_entry,
             path,
@@ -139,7 +141,6 @@ pub trait File: std::fmt::Debug + AsAny {
     fn leaf<'db>(&'db self, db: &'db Database, position: CodeIndex) -> Leaf<'db>;
     fn infer_operator_leaf<'db>(&'db self, db: &'db Database, keyword: Keyword<'db>) -> Inferred;
     fn file_index(&self) -> FileIndex;
-    fn set_file_index(&self, index: FileIndex);
 
     fn node_start_position(&self, n: NodeIndex) -> TreePosition;
     fn node_end_position(&self, n: NodeIndex) -> TreePosition;
@@ -165,7 +166,6 @@ pub trait FileState: fmt::Debug + Unpin {
     fn file_entry(&self) -> &Rc<FileEntry>;
     fn file(&self, reader: &dyn Vfs) -> Option<&(dyn File + 'static)>;
     fn maybe_loaded_file_mut(&mut self) -> Option<&mut dyn File>;
-    fn set_file_index(&self, index: FileIndex);
     fn unload_and_return_invalidations(&mut self) -> Option<Invalidations>;
     fn add_invalidates(&self, file_index: FileIndex);
     fn take_invalidations(&mut self) -> Option<Invalidations>;
@@ -193,13 +193,6 @@ impl<F: File + Unpin + Clone> FileState for LanguageFileState<F> {
         match &mut self.state {
             InternalFileExistence::Parsed(f) => Some(f),
             _ => None,
-        }
-    }
-
-    fn set_file_index(&self, index: FileIndex) {
-        match &self.state {
-            InternalFileExistence::Unloaded => {}
-            InternalFileExistence::Parsed(f) => f.set_file_index(index),
         }
     }
 

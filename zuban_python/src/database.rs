@@ -1077,28 +1077,31 @@ impl Database {
         None
     }
 
-    fn add_file_state(&self, file_state: Pin<Box<dyn FileState>>) -> FileIndex {
-        self.files.push(file_state);
-        let file_index = FileIndex(self.files.len() as u32 - 1);
-        self.files.last().unwrap().set_file_index(file_index);
+    fn with_add_file_state(
+        &self,
+        add: impl FnOnce(FileIndex) -> Pin<Box<dyn FileState>>,
+    ) -> FileIndex {
+        let file_index = FileIndex(self.files.len() as u32);
+        self.files.push(add(file_index));
         file_index
     }
 
-    fn update_file_state(&mut self, file_index: FileIndex, file_state: Pin<Box<dyn FileState>>) {
-        file_state.set_file_index(file_index);
-        self.files.set(file_index.0 as usize, file_state);
-    }
-
-    pub fn load_sub_file(&self, super_file: &PythonFile, file: PythonFile) -> &PythonFile {
-        let index = self.add_file_state(Box::pin(LanguageFileState::new_parsed(
-            self.file_state(super_file.file_index())
-                .file_entry()
-                .clone(),
-            "".into(),
-            file,
-            self.file_state(super_file.file_index())
-                .invalidate_invalidates_db(),
-        )));
+    pub fn load_sub_file(
+        &self,
+        super_file: &PythonFile,
+        add: impl FnOnce(FileIndex) -> PythonFile,
+    ) -> &PythonFile {
+        let index = self.with_add_file_state(|file_index| {
+            Box::pin(LanguageFileState::new_parsed(
+                self.file_state(super_file.file_index())
+                    .file_entry()
+                    .clone(),
+                "".into(),
+                add(file_index),
+                self.file_state(super_file.file_index())
+                    .invalidate_invalidates_db(),
+            ))
+        });
         self.loaded_python_file(index)
     }
 
@@ -1110,17 +1113,20 @@ impl Database {
         // A loader should be available for all files in the workspace.
         let path = file_entry.path(&*self.vfs);
         let loader = self.loader(&path).unwrap();
-        let file_index = self.add_file_state(if let Some(code) = self.vfs.read_file(&path) {
-            loader.load_parsed(
-                &self.project,
-                file_entry.clone(),
-                path.into(),
-                code.into(),
-                invalidates_db,
-            )
-        } else {
-            //loader.inexistent_file_state(path)
-            todo!()
+        let file_index = self.with_add_file_state(|file_index| {
+            if let Some(code) = self.vfs.read_file(&path) {
+                loader.load_parsed(
+                    &self.project,
+                    file_index,
+                    file_entry.clone(),
+                    path.into(),
+                    code.into(),
+                    invalidates_db,
+                )
+            } else {
+                //loader.inexistent_file_state(path)
+                todo!("File vanished while checking")
+            }
         });
         file_entry.file_index.set(file_index);
         file_index
@@ -1139,18 +1145,22 @@ impl Database {
             .ensure_file(&self.project.flags, &*self.vfs, &path);
         // TODO there could be no loader...
         let loader = self.loader(&path).unwrap();
-        let file_state = loader.load_parsed(
-            &self.project,
-            ensured.file_entry.clone(),
-            path.clone(),
-            code,
-            false,
-        );
+        let new_file_state = |file_index| {
+            loader.load_parsed(
+                &self.project,
+                file_index,
+                ensured.file_entry.clone(),
+                path.clone(),
+                code,
+                false,
+            )
+        };
         let file_index = if let Some(file_index) = in_mem_file {
-            self.update_file_state(file_index, file_state);
+            self.files
+                .set(file_index.0 as usize, new_file_state(file_index));
             file_index
         } else {
-            let file_index = self.add_file_state(file_state);
+            let file_index = self.with_add_file_state(new_file_state);
             self.in_memory_files.insert(path.clone(), file_index);
             file_index
         };

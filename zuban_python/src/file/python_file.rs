@@ -145,10 +145,6 @@ impl File for PythonFile {
         self.file_index.get().unwrap()
     }
 
-    fn set_file_index(&self, index: FileIndex) {
-        self.file_index.set(Some(index));
-    }
-
     fn node_start_position(&self, n: NodeIndex) -> TreePosition {
         TreePosition::new(self, self.tree.node_start_position(n))
     }
@@ -270,6 +266,7 @@ impl fmt::Debug for PythonFile {
 impl<'db> PythonFile {
     pub fn new(
         project_options: &PythonProject,
+        file_index: FileIndex,
         file_entry: &FileEntry,
         code: Box<str>,
         is_stub: bool,
@@ -301,6 +298,7 @@ impl<'db> PythonFile {
         );
         ignore_type_errors |= directives_info.ignore_errors;
         Self::new_internal(
+            file_index,
             tree,
             issues,
             is_stub,
@@ -310,6 +308,7 @@ impl<'db> PythonFile {
     }
 
     fn new_internal(
+        file_index: FileIndex,
         tree: Tree,
         issues: Diagnostics,
         is_stub: bool,
@@ -319,7 +318,7 @@ impl<'db> PythonFile {
         let length = tree.length();
         Self {
             tree,
-            file_index: Cell::new(None),
+            file_index: Cell::new(Some(file_index)),
             symbol_table: Default::default(),
             maybe_dunder_all: OnceCell::default(),
             points: Points::new(length),
@@ -364,16 +363,19 @@ impl<'db> PythonFile {
     ) -> &'db Self {
         // TODO should probably not need a newline
         let tree = Tree::parse(Box::from(code.into_string() + "\n"));
-        let mut file = PythonFile::new_internal(
-            tree,
-            Diagnostics::default(),
-            self.is_stub(),
-            None,
-            self.ignore_type_errors,
-        );
-        file.super_file = Some(self.file_index());
+        let f = db.load_sub_file(self, |file_index| {
+            let mut file = PythonFile::new_internal(
+                file_index,
+                tree,
+                Diagnostics::default(),
+                self.is_stub(),
+                None,
+                self.ignore_type_errors,
+            );
+            file.super_file = Some(self.file_index());
+            file
+        });
         // TODO just saving this in the cache and forgetting about it is a bad idea
-        let f = db.load_sub_file(self, file);
         self.sub_files.borrow_mut().insert(start, f.file_index());
         f
     }
