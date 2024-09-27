@@ -14,9 +14,7 @@ use super::{
 };
 use crate::{
     arguments::{Args, KnownArgs, NoArgs, SimpleArgs},
-    database::{
-        ComplexPoint, Database, FileIndex, Locality, Point, PointKind, PointLink, Specific,
-    },
+    database::{ComplexPoint, Database, Locality, Point, PointKind, PointLink, Specific},
     debug,
     diagnostics::{Issue, IssueKind},
     file::type_computation::TypeCommentState,
@@ -52,7 +50,6 @@ const ENUM_NAMES_OVERRIDABLE: [&str; 2] = ["value", "name"];
 
 pub struct Inference<'db: 'file, 'file, 'i_s> {
     pub(super) file: &'file PythonFile,
-    pub(super) file_index: FileIndex,
     pub(super) i_s: &'i_s InferenceState<'db, 'i_s>,
 }
 
@@ -273,11 +270,11 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     self.i_s.db,
                     |issue| self.add_issue(import_name.index(), issue),
                     import_name.as_str(),
-                    Some(self.file_index),
+                    Some(self.file.file_index),
                 )
             }
             ImportResult::Namespace(namespace) => {
-                lookup_in_namespace(self.i_s.db, self.file_index, namespace, name)
+                lookup_in_namespace(self.i_s.db, self.file.file_index, namespace, name)
             }
         }
     }
@@ -336,7 +333,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 _ => unreachable!(),
             };
         }
-        let file_index = self.file_index;
+        let file_index = self.file.file_index;
         let infer_name = |self_: &Self, import_result, name: Name| {
             let i_s = self_.i_s;
             let mut in_stub_and_has_getattr = false;
@@ -471,7 +468,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         } else {
                             t.lookup(
                                 self.i_s,
-                                self.file_index,
+                                self.file.file_index,
                                 name_def.as_code(),
                                 LookupKind::Normal,
                                 &mut ResultContext::Unknown,
@@ -1047,7 +1044,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 if narrow {
                     if let Some(result) = self.maybe_lookup_narrowed_name(
                         name_index,
-                        PointLink::new(self.file_index, first_index),
+                        PointLink::new(self.file.file_index, first_index),
                     ) {
                         return Some(result);
                     }
@@ -1073,7 +1070,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         let i_s = self.i_s;
         let declaration_t = ancestor_inf.as_cow_type(self.i_s);
         let first_name_link = PointLink::new(
-            self.file_index,
+            self.file.file_index,
             first_defined_name(self.file, name_def.name_index()),
         );
         let name_str = name_def.as_code();
@@ -1395,7 +1392,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 return;
                             }
                             saved_node_ref.insert_type(value_t.simplified_union(i_s, &Type::None));
-                            narrow(PointLink::new(self.file_index, first_index), &value_t);
+                            narrow(PointLink::new(self.file.file_index, first_index), &value_t);
                         }
                         return;
                     }
@@ -1418,7 +1415,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 }
             }
             check_assign_to_known_definition(
-                PointLink::new(self.file_index, first_index),
+                PointLink::new(self.file.file_index, first_index),
                 original,
                 base_class,
             )
@@ -1522,7 +1519,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                     .maybe_saved_node_ref(i_s.db)
                                     .filter(|node_ref| node_ref.maybe_name_def().is_some())
                                 {
-                                    debug_assert_eq!(link.file_index(), self.file_index);
+                                    debug_assert_eq!(link.file_index(), self.file.file_index);
                                     self.add_redefinition_issue(
                                         link.node_index + NAME_DEF_TO_NAME_DIFFERENCE,
                                         name_def.as_code(),
@@ -1616,7 +1613,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             if assign_kind == AssignKind::Normal {
                 if let Some(partial) = value.maybe_new_partial(i_s) {
                     FLOW_ANALYSIS.with(|fa| {
-                        fa.add_partial(PointLink::new(self.file_index, name_def.index()))
+                        fa.add_partial(PointLink::new(self.file.file_index, name_def.index()))
                     });
                     let name_def_index = name_def.index();
                     save(name_def_index, &partial);
@@ -2204,7 +2201,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         add_issue: impl FnOnce(IssueKind),
     ) {
         let name_index = name_def.node_index + NAME_DEF_TO_NAME_DIFFERENCE;
-        debug_assert_eq!(name_def.file_index(), self.file_index);
+        debug_assert_eq!(name_def.file_index(), self.file.file_index);
         if let Some(first) = first_defined_name_of_multi_def(self.file, name_index) {
             if name_def.as_code() != "_" {
                 self.add_redefinition_issue(first, name_def.as_code(), false, add_issue)
@@ -3507,12 +3504,14 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 if let Some(link) = builtins.lookup_global(name_str).filter(|link| {
                     !name_str.starts_with('_') && !is_private_import(i_s.db, (*link).into())
                 }) {
-                    debug_assert!(link.file != self.file_index || link.node_index != save_to_index);
+                    debug_assert!(
+                        link.file != self.file.file_index || link.node_index != save_to_index
+                    );
                     link.into_point_redirect()
                 } else {
                     // The builtin module should really not have any issues.
                     debug_assert!(
-                        self.file_index != builtins.file_index,
+                        self.file.file_index != builtins.file_index,
                         "{name_str}; {save_to_index}"
                     );
                     if i_s.in_class_scope().is_some() {
@@ -3749,7 +3748,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             }
                         })
                 };
-                if file_index == self.file_index {
+                if file_index == self.file.file_index {
                     infer(self)
                 } else {
                     infer(

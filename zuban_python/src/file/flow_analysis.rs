@@ -1746,7 +1746,7 @@ impl Inference<'_, '_, '_> {
                                 );
                             } else {
                                 self.save_narrowed(
-                                    FlowKey::Name(PointLink::new(self.file_index, first)),
+                                    FlowKey::Name(PointLink::new(self.file.file_index, first)),
                                     instantiated,
                                     false,
                                 )
@@ -2931,7 +2931,7 @@ impl Inference<'_, '_, '_> {
     fn key_from_name_def(&self, name_def: NameDef) -> FlowKey {
         let name_index = name_def.name_index();
         FlowKey::Name(PointLink::new(
-            self.file_index,
+            self.file.file_index,
             first_defined_name(self.file, name_index),
         ))
     }
@@ -3000,7 +3000,7 @@ impl Inference<'_, '_, '_> {
                 if let Some(base_key) = &old_base_key {
                     base.key = Some(FlowKey::Member(
                         Rc::new(base_key.clone()),
-                        DbString::StringSlice(StringSlice::from_name(self.file_index, attr)),
+                        DbString::StringSlice(StringSlice::from_name(self.file.file_index, attr)),
                     ));
                 }
             }
@@ -3086,7 +3086,7 @@ impl Inference<'_, '_, '_> {
         match primary_target.second() {
             PrimaryContent::Attribute(n) => Some(FlowKey::Member(
                 Rc::new(base_key),
-                DbString::StringSlice(StringSlice::from_name(self.file_index, n)),
+                DbString::StringSlice(StringSlice::from_name(self.file.file_index, n)),
             )),
             PrimaryContent::Execution(_) => None,
             PrimaryContent::GetItem(slice_type) => {
@@ -3235,7 +3235,7 @@ impl Inference<'_, '_, '_> {
     fn check_attr(&self, t: &Type, attr: &str) -> LookupResult {
         t.lookup(
             self.i_s,
-            self.file_index,
+            self.file.file_index,
             attr,
             LookupKind::Normal,
             &mut ResultContext::Unknown,

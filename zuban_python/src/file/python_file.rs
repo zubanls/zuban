@@ -338,11 +338,7 @@ impl<'db> PythonFile {
         &'file self,
         i_s: &'i_s InferenceState<'db, 'i_s>,
     ) -> Inference<'db, 'file, 'i_s> {
-        Inference {
-            file: self,
-            file_index: self.file_index,
-            i_s,
-        }
+        Inference { file: self, i_s }
     }
 
     pub fn lookup_global(&self, name: &str) -> Option<LocalityLink> {

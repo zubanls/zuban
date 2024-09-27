@@ -1689,7 +1689,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             TypeContent::Namespace(n) => {
                 match python_import(
                     db,
-                    self.inference.file_index,
+                    self.inference.file.file_index,
                     n.directories.iter().cloned(),
                     name.as_str(),
                 ) {
@@ -2882,7 +2882,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         AtomContent::Strings(s) => s.maybe_single_string_literal().map(|s| {
                             LiteralKind::String(
                                 DbString::from_python_string(
-                                    self.inference.file_index,
+                                    self.inference.file.file_index,
                                     s.as_python_string(),
                                 )
                                 .unwrap(),
@@ -3336,7 +3336,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
     ) -> Option<Vec<CallableParam>> {
         // From NamedTuple('x', [('a', int)]) to a callable that matches those params
 
-        let file_index = self.inference.file_index;
+        let file_index = self.inference.file.file_index;
         let mut params = start_namedtuple_params(self.inference.i_s.db);
         for element in list {
             let StarLikeExpression::NamedExpression(ne) = element else {
@@ -3468,7 +3468,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
             let mut x = type_computation_for_variable_annotation;
             let mut comp = TypeComputation::new(
                 self,
-                PointLink::new(self.file_index, annotation.index()),
+                PointLink::new(self.file.file_index, annotation.index()),
                 &mut x,
                 origin,
             );
