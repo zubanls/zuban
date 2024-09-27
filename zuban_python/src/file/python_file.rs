@@ -1,5 +1,5 @@
 use std::{
-    cell::{Cell, OnceCell, RefCell},
+    cell::{OnceCell, RefCell},
     collections::HashMap,
     fmt,
     rc::Rc,
@@ -77,7 +77,7 @@ pub struct PythonFile {
     //all_names_bloom_filter: Option<BloomFilter<&str>>,
     pub points: Points,
     pub complex_points: ComplexValues,
-    file_index: Cell<Option<FileIndex>>,
+    file_index: FileIndex,
     pub issues: Diagnostics,
     pub star_imports: RefCell<Vec<StarImport>>,
     sub_files: RefCell<HashMap<CodeIndex, FileIndex>>,
@@ -106,7 +106,7 @@ impl File for PythonFile {
                     complex_points: &self.complex_points,
                     issues: &self.issues,
                     star_imports: &self.star_imports,
-                    file_index: self.file_index.get().unwrap(),
+                    file_index: self.file_index,
                     is_stub: self.is_stub(),
                 },
                 |binder| binder.index_file(self.tree.root()),
@@ -142,7 +142,7 @@ impl File for PythonFile {
     }
 
     fn file_index(&self) -> FileIndex {
-        self.file_index.get().unwrap()
+        self.file_index
     }
 
     fn node_start_position(&self, n: NodeIndex) -> TreePosition {
@@ -258,7 +258,7 @@ impl StarImport {
 impl fmt::Debug for PythonFile {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("PythonFile")
-            .field("file_index", &self.file_index.get())
+            .field("file_index", &self.file_index)
             .finish()
     }
 }
@@ -318,7 +318,7 @@ impl<'db> PythonFile {
         let length = tree.length();
         Self {
             tree,
-            file_index: Cell::new(Some(file_index)),
+            file_index,
             symbol_table: Default::default(),
             maybe_dunder_all: OnceCell::default(),
             points: Points::new(length),
