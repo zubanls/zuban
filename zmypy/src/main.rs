@@ -1,4 +1,5 @@
 use std::path::PathBuf;
+use std::process::ExitCode;
 use zuban_python::{DiagnosticConfig, Project, ProjectOptions, PythonVersion, TypeCheckerFlags};
 
 use clap::Parser;
@@ -199,9 +200,8 @@ struct Cli {
     no_mypy_compatible: bool,
 }
 
-fn main() {
+fn main() -> ExitCode {
     let cli = Cli::parse();
-    let in_dir = std::env::current_dir().expect("Expected a valid working directory");
 
     let in_dir = "TODO ";
     let mut diagnostic_config = DiagnosticConfig::default();
@@ -225,9 +225,12 @@ fn main() {
         ..Default::default()
     };
     let diagnostics = project.diagnostics(&diagnostic_config);
+    let mut had_diagnostics = false;
     for diagnostic in diagnostics.iter() {
+        had_diagnostics = true;
         println!("{}", diagnostic.as_string(&diagnostic_config))
     }
+    ExitCode::from(had_diagnostics as u8)
 }
 
 #[tokio::main(flavor = "current_thread")]
@@ -319,5 +322,13 @@ fn apply_flags(project_options: &mut ProjectOptions, cli: Cli) {
         .flags
         .always_false_symbols
         .extend(cli.always_false);
+
     // TODO MYPYPATH=$MYPYPATH:mypy-stubs
+    project_options.flags.mypy_path.push(
+        std::env::current_dir()
+            .expect("Expected a valid working directory")
+            .into_os_string()
+            .into_string()
+            .expect("Expected a valid unicode working directory"),
+    );
 }

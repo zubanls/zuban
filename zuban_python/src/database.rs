@@ -849,8 +849,8 @@ impl Database {
     pub fn new(file_state_loaders: FileStateLoaders, options: ProjectOptions) -> Self {
         // TODO use a real sys path
         let sys_path = vec![
-            "../typeshed/stdlib".into(),
-            "../typeshed/stubs/mypy-extensions".into(),
+            "/home/dave/source/rust/zuban/typeshed/stdlib".into(),
+            "/home/dave/source/rust/zuban/typeshed/stubs/mypy-extensions".into(),
             //"../typeshed/stubs".into(),
             //"/usr/lib/python3/dist-packages".into(),
             //"/usr/local/lib/python3.8/dist-packages/pip-20.0.2-py3.8.egg".into(),
