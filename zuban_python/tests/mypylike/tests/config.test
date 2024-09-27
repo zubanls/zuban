@@ -1,6 +1,6 @@
 [case mypy_ini_exclude_simple]
 # Copied from testCmdlineExclude
-[file abc/apkg.py]
+[file lala/apkg.py]
 1()
 [file b/bpkg.py]
 1()  # E: "int" not callable
@@ -8,10 +8,10 @@
 1()  # E: "int" not callable
 [file mypy.ini]
 \[mypy]
-exclude = abc
+exclude = lala
 
 [case mypy_toml_exclude_simple]
-[file abc/apkg.py]
+[file lala/apkg.py]
 1()
 [file b/bpkg.py]
 1()  # E: "int" not callable
@@ -19,10 +19,10 @@ exclude = abc
 1()  # E: "int" not callable
 [file pyproject.toml]
 \[tool.mypy]
-exclude = "abc"
+exclude = "lala"
 
 [case mypy_toml_exclude_list]
-[file abc/apkg.py]
+[file lala/apkg.py]
 1()
 [file b/bpkg.py]
 1()
@@ -31,12 +31,12 @@ exclude = "abc"
 [file pyproject.toml]
 \[tool.mypy]
 exclude = [
-    "abc",
+    "lala",
     "b/.*pkg",
 ]
 
 [case mypy_ini_exclude_multi_line_verbose_regex]
-[file abc/apkg.py]
+[file lala/apkg.py]
 1()
 [file b/bpkg.py]
 1()
@@ -50,7 +50,7 @@ exclude = (?x)(
   )
 
 [case mypy_ini_exclude_multi_line_verbose_regex_not_working]
-[file abc/apkg.py]
+[file lala/apkg.py]
 1()  # E: "int" not callable
 [file b/bpkg.py]
 1()  # E: "int" not callable
@@ -64,19 +64,19 @@ exclude = (
   )
 
 [case mypy_toml_exclude_with_overrides_inheritance]
-[file abc/a/apkg.py]
+[file lala/a/apkg.py]
 1()
-[file abc/a/other.py]
+[file lala/a/other.py]
 1()  # E: "int" not callable
-[file abc/a/inherited_exclude.py]
+[file lala/a/inherited_exclude.py]
 1()
-[file abc/a/bpkg.py]
+[file lala/a/bpkg.py]
 1()
-[file abc/b/cpkg.py]
+[file lala/b/cpkg.py]
 1()  # E: "int" not callable
 [file pyproject.toml]
 \[tool.mypy]
-exclude = "abc/a.*pkg"
+exclude = "lala/a.*pkg"
 \[[tool.mypy.overrides]]
-module = 'abc.a.*'
+module = 'lala.a.*'
 exclude = "inherited_exclude"
