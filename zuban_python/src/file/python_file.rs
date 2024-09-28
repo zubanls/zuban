@@ -79,7 +79,7 @@ pub struct PythonFile {
     pub complex_points: ComplexValues,
     pub file_index: FileIndex,
     pub issues: Diagnostics,
-    pub star_imports: RefCell<Vec<StarImport>>,
+    pub star_imports: Box<[StarImport]>,
     sub_files: RefCell<HashMap<CodeIndex, FileIndex>>,
     pub(crate) super_file: Option<FileIndex>,
     stub_cache: Option<StubCache>,
@@ -323,7 +323,7 @@ impl<'db> PythonFile {
             maybe_dunder_all: OnceCell::default(),
             points,
             complex_points,
-            star_imports,
+            star_imports: star_imports.into_inner().into_boxed_slice(),
             issues,
             newline_indices: NewlineIndices::new(),
             sub_files: Default::default(),
@@ -619,7 +619,7 @@ impl<'db> PythonFile {
                 .infer_name_of_definition_by_index(*index)
                 .as_cow_type(i_s)
                 .is_func_or_overload()
-        }) || self.star_imports.borrow().iter().any(|star_import| {
+        }) || self.star_imports.iter().any(|star_import| {
             star_import.in_module_scope()
                 && star_import
                     .to_file(&inference)

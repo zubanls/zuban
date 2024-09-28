@@ -3577,7 +3577,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         name: &str,
         check_local: bool,
     ) -> Option<StarImportResult> {
-        for star_import in self.file.star_imports.borrow().iter() {
+        for star_import in self.file.star_imports.iter() {
             // TODO these feel a bit weird and do not include parent functions (when in a
             // closure)
             let mut is_class_star_import = false;

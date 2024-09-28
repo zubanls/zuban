@@ -1662,7 +1662,7 @@ impl<'db: 'a, 'a> Class<'a> {
     pub fn lookup_symbol(&self, i_s: &InferenceState<'db, '_>, name: &str) -> LookupResult {
         match self.class_storage.class_symbol_table.lookup_symbol(name) {
             None => {
-                for star_import in self.node_ref.file.star_imports.borrow().iter() {
+                for star_import in self.node_ref.file.star_imports.iter() {
                     if star_import.scope == self.node_ref.node_index {
                         if let Some(result) = self
                             .node_ref
