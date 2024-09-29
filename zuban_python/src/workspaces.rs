@@ -372,14 +372,14 @@ impl DirectoryEntry {
         }
     }
 
-    pub fn for_each_file(&self, callable: &mut impl FnMut(FileIndex)) {
+    pub fn walk(&self, callable: &mut impl FnMut(FileIndex)) {
         match self {
             DirectoryEntry::File(file) => {
                 if let Some(index) = file.file_index.get() {
                     callable(index)
                 }
             }
-            DirectoryEntry::Directory(dir) => dir.for_each_file(callable),
+            DirectoryEntry::Directory(dir) => dir.walk(callable),
             DirectoryEntry::MissingEntry { .. } => (),
         }
     }
@@ -520,9 +520,9 @@ impl Directory {
         }
     }
 
-    pub fn for_each_file(&self, callable: &mut impl FnMut(FileIndex)) {
+    pub fn walk(&self, callable: &mut impl FnMut(FileIndex)) {
         for n in self.entries.borrow_mut().iter_mut() {
-            n.for_each_file(callable)
+            n.walk(callable)
         }
     }
 

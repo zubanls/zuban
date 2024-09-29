@@ -77,7 +77,7 @@ impl Project {
             if !self.db.project.flags.mypy_path.iter().any(|p| p == path) {
                 continue;
             }
-            directory.for_each_file(&mut |file_index| {
+            directory.walk(&mut |file_index| {
                 let file = self.db.loaded_file(file_index);
                 debug!(
                     "Calculate Diagnostics for {} ({})",
