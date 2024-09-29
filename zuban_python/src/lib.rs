@@ -77,11 +77,7 @@ impl Project {
             if !self.db.project.flags.mypy_path.iter().any(|p| p == path) {
                 continue;
             }
-            let mut file_indexes = vec![];
             directory.for_each_file(&mut |file_index| {
-                file_indexes.push(file_index);
-            });
-            'outer: for file_index in file_indexes {
                 let file = self.db.loaded_file(file_index);
                 debug!(
                     "Calculate Diagnostics for {} ({})",
@@ -95,10 +91,10 @@ impl Project {
                     .iter()
                     .any(|e| e.regex.is_match(file.file_path(&self.db)))
                 {
-                    continue 'outer;
+                    return;
                 }
                 all_diagnostics.append(&mut file.diagnostics(&self.db, config).into_vec())
-            }
+            });
         }
         all_diagnostics.into_boxed_slice()
     }
