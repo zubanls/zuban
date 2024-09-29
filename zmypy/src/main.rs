@@ -1,9 +1,9 @@
+use std::io::Read;
 use std::path::PathBuf;
 use std::process::ExitCode;
 use zuban_python::{DiagnosticConfig, Project, ProjectOptions, PythonVersion, TypeCheckerFlags};
 
 use clap::Parser;
-use tokio;
 
 const CONFIG_PATHS: [&str; 6] = [
     "mypy.ini",
@@ -233,25 +233,12 @@ fn main() -> ExitCode {
     ExitCode::from(had_diagnostics as u8)
 }
 
-#[tokio::main(flavor = "current_thread")]
-async fn find_mypy_config_file() -> Option<(&'static str, String)> {
-    let mut set = tokio::task::JoinSet::new();
-
+fn find_mypy_config_file() -> Option<(&'static str, String)> {
     for config_path in CONFIG_PATHS {
-        set.spawn(async move {
-            let mut file = tokio::fs::File::open(config_path).await.ok()?;
-            // Read the whole file
-            //tokio::fs::read_to_string(file).await
-
+        if let Ok(mut file) = std::fs::File::open(config_path) {
             let mut content = String::new();
-            use tokio::io::AsyncReadExt;
-            file.read_to_string(&mut content).await.ok()?;
-            Some((config_path, content))
-        });
-    }
-
-    while let Some(maybe_file) = set.join_next().await {
-        if let Some((config_path, content)) = maybe_file.unwrap() {
+            file.read_to_string(&mut content)
+                .expect("Issue while reading the config file");
             return Some((config_path, content));
         }
     }
