@@ -3502,7 +3502,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             "__builtins__" => Point::new_file_reference(builtins.file_index, Locality::Todo),
             _ => {
                 if let Some(link) = builtins.lookup_global(name_str).filter(|link| {
-                    !name_str.starts_with('_') && !is_private_import(i_s.db, (*link).into())
+                    (is_valid_builtins_export(name_str))
+                        && !is_private_import(i_s.db, (*link).into())
                 }) {
                     debug_assert!(
                         link.file != self.file.file_index || link.node_index != save_to_index
@@ -4505,4 +4506,8 @@ fn lookup_lambda_param(
         }
     }
     unreachable!()
+}
+
+fn is_valid_builtins_export(name: &str) -> bool {
+    !name.starts_with('_') || name.starts_with("__") && name.ends_with("__")
 }

@@ -3,20 +3,6 @@ testTypeVarTupleTypeApplicationOverload
 testUnionOfNonIterableUnpacking
 testPostInitIsNotAFunction
 
-# temporary
-testTypedPkgSimplePackageSearchPath
-testTypedPkgNamespaceImportAs
-testTypedPkgNamespaceRegImport
-testPep561TestIncremental
-testTypedPkgNamespaceRegFromImportTwice
-testTypedPkgNamespaceRegFromImportTwiceMissing
-testTypedPkgNamespaceRegFromImportTwiceMissing2
-#
-testTypedPkgSimple
-testStubPrecedence
-testTypedPkgSimpleEditable
-testTypedPkgNamespaceImportFrom
-
 # callable matching regression
 testNoCrashOnNestedGenericCallable
 
