@@ -869,10 +869,15 @@ impl Database {
         let mut workspaces = Workspaces::default();
         let separator = vfs.separator();
         for p in project.flags.mypy_path.iter() {
-            workspaces.add(vfs.as_ref(), file_state_loaders.as_ref(), p.clone());
+            workspaces.add(vfs.as_ref(), file_state_loaders.as_ref(), p.clone(), true);
         }
         for p in &project.sys_path {
-            workspaces.add(vfs.as_ref(), file_state_loaders.as_ref(), p.clone().into())
+            workspaces.add(
+                vfs.as_ref(),
+                file_state_loaders.as_ref(),
+                p.clone().into(),
+                false,
+            )
         }
 
         let mut this = Self {
@@ -1106,10 +1111,10 @@ impl Database {
         &self,
         file_entry: Rc<FileEntry>,
         invalidates_db: bool,
-    ) -> FileIndex {
+    ) -> Option<FileIndex> {
         // A loader should be available for all files in the workspace.
         let path = file_entry.path(&*self.vfs);
-        let loader = self.loader(&path).unwrap();
+        let loader = self.loader(&path)?;
         let file_index = self.with_add_file_state(|file_index| {
             if let Some(code) = self.vfs.read_file(&path) {
                 loader.load_parsed(
@@ -1126,7 +1131,7 @@ impl Database {
             }
         });
         file_entry.file_index.set(file_index);
-        file_index
+        Some(file_index)
     }
 
     pub fn load_in_memory_file(&mut self, path: Box<str>, code: Box<str>) -> FileIndex {
@@ -1282,10 +1287,10 @@ impl Database {
                 dir.path(&*self.vfs)
             )
         };
-        let file_index = file_entry
-            .file_index
-            .get()
-            .unwrap_or_else(|| self.load_file_from_workspace(file_entry.clone(), true));
+        let file_index = file_entry.file_index.get().unwrap_or_else(|| {
+            self.load_file_from_workspace(file_entry.clone(), true)
+                .unwrap()
+        });
         debug!("Preloaded typeshed stub {file_name} as #{}", file_index.0);
         self.loaded_python_file(file_index)
     }

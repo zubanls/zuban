@@ -73,11 +73,24 @@ impl Project {
             );
         }
         let mut all_diagnostics: Vec<diagnostics::Diagnostic> = vec![];
-        for (path, directory) in self.db.workspaces.directories() {
-            if !self.db.project.flags.mypy_path.iter().any(|p| p == path) {
-                continue;
+        for directory in self.db.workspaces.directories_to_type_check() {
+            let mut to_be_loaded = vec![];
+            directory.walk(&mut |file_index_or_file| {
+                if let Err(file) = file_index_or_file {
+                    to_be_loaded.push((file.clone(), file.path(self.db.vfs.as_ref())));
+                }
+            });
+            for (file, path) in to_be_loaded {
+                self.db.load_file_from_workspace(file, false);
             }
+
+            let mut file_indexes = vec![];
             directory.walk(&mut |file_index| {
+                if let Ok(file_index) = file_index {
+                    file_indexes.push(file_index);
+                }
+            });
+            'outer: for file_index in file_indexes {
                 let file = self.db.loaded_file(file_index);
                 debug!(
                     "Calculate Diagnostics for {} ({})",
@@ -91,10 +104,10 @@ impl Project {
                     .iter()
                     .any(|e| e.regex.is_match(file.file_path(&self.db)))
                 {
-                    return;
+                    continue 'outer;
                 }
                 all_diagnostics.append(&mut file.diagnostics(&self.db, config).into_vec())
-            });
+            }
         }
         all_diagnostics.into_boxed_slice()
     }

@@ -18,8 +18,15 @@ use crate::{
 pub struct Workspaces(Vec<Workspace>);
 
 impl Workspaces {
-    pub fn add(&mut self, vfs: &dyn Vfs, loaders: &[Box<dyn FileStateLoader>], root: String) {
-        self.0.push(Workspace::new(vfs, loaders, root))
+    pub fn add(
+        &mut self,
+        vfs: &dyn Vfs,
+        loaders: &[Box<dyn FileStateLoader>],
+        root: String,
+        is_type_checked: bool,
+    ) {
+        self.0
+            .push(Workspace::new(vfs, loaders, root, is_type_checked))
     }
 
     pub fn add_at_start(
@@ -28,11 +35,18 @@ impl Workspaces {
         loaders: &[Box<dyn FileStateLoader>],
         root: String,
     ) {
-        self.0.insert(0, Workspace::new(vfs, loaders, root))
+        self.0.insert(0, Workspace::new(vfs, loaders, root, true))
     }
 
     pub fn directories(&self) -> impl Iterator<Item = (&str, &Directory)> {
         self.0.iter().map(|x| (x.root_path(), &x.directory))
+    }
+
+    pub fn directories_to_type_check(&self) -> impl Iterator<Item = &Directory> {
+        self.0
+            .iter()
+            .filter(|x| x.is_type_checked)
+            .map(|x| &x.directory)
     }
 
     pub fn ensure_file(
@@ -136,11 +150,17 @@ impl Workspaces {
 pub struct Workspace {
     root_path: Rc<Box<str>>,
     directory: Directory,
+    pub is_type_checked: bool,
     //watcher: dyn notify::Watcher,
 }
 
 impl Workspace {
-    fn new(vfs: &dyn Vfs, loaders: &[Box<dyn FileStateLoader>], mut root_path: String) -> Self {
+    fn new(
+        vfs: &dyn Vfs,
+        loaders: &[Box<dyn FileStateLoader>],
+        mut root_path: String,
+        is_type_checked: bool,
+    ) -> Self {
         let separator = vfs.separator();
         if !root_path.ends_with(separator) {
             root_path.push(separator);
@@ -222,6 +242,7 @@ impl Workspace {
                 return Self {
                     directory: rc_unwrap_or_clone(current.1),
                     root_path,
+                    is_type_checked,
                 };
             }
         }
@@ -372,11 +393,13 @@ impl DirectoryEntry {
         }
     }
 
-    pub fn walk(&self, callable: &mut impl FnMut(FileIndex)) {
+    pub fn walk(&self, callable: &mut impl FnMut(Result<FileIndex, &Rc<FileEntry>>)) {
         match self {
             DirectoryEntry::File(file) => {
                 if let Some(index) = file.file_index.get() {
-                    callable(index)
+                    callable(Ok(index))
+                } else {
+                    callable(Err(file))
                 }
             }
             DirectoryEntry::Directory(dir) => dir.walk(callable),
@@ -520,7 +543,7 @@ impl Directory {
         }
     }
 
-    pub fn walk(&self, callable: &mut impl FnMut(FileIndex)) {
+    pub fn walk(&self, callable: &mut impl FnMut(Result<FileIndex, &Rc<FileEntry>>)) {
         for n in self.entries.borrow_mut().iter_mut() {
             n.walk(callable)
         }
