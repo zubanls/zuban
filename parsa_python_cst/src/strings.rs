@@ -56,14 +56,14 @@ impl<'db> PythonString<'db> {
                         b'u' => s.push(parse_hex(4, iterator.by_ref())),
                         b'U' => s.push(parse_hex(8, iterator.by_ref())),
                         b'x' => s.push(parse_hex(2, iterator.by_ref())),
-                        b'N' => todo!(),
-                        b'a' => todo!(),
-                        b'b' => todo!(),
-                        b'f' => todo!(),
-                        b'n' => s.push('\n'),
-                        b'r' => todo!(),
-                        b't' => todo!(),
-                        b'v' => todo!(),
+                        b'N' => todo!("Need to implement \\N{{...}}"),
+                        b'a' => s.push('\x07'), // Bell
+                        b'b' => s.push('\x08'), // Backspace
+                        b't' => s.push('\x09'), // Tab
+                        b'n' => s.push('\n'),   // Newline (line feed \x0a)
+                        b'v' => s.push('\x0b'), // Vertical tab
+                        b'f' => s.push('\x0c'), // Form Feed
+                        b'r' => s.push('\x0d'), // Carriage Return
                         // TODO also \ooo (where o is 0-7) (octal)
                         _ => todo!("{inner:?}"),
                     }

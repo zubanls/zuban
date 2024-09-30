@@ -398,3 +398,42 @@ def m2() -> Self: ...  # E: Self type is only allowed in annotations within clas
 [file module3.py]
 from typing import Self
 def m3() -> Self: ...  # E: Self type is only allowed in annotations within class definition
+
+[case string_backslash_newline_escape]
+from typing import Final, Literal
+x: Final = "\
+"
+def check_empty(literal: Literal[""]): ...
+check_empty(x)
+
+[case string_backslash_special_characters_escape]
+from typing import Final, Literal
+a: Final = "\a"
+def check_bell(literal: Literal["\x07"]): ...
+check_bell(a)
+
+b: Final = "\b"
+def check_backspace(literal: Literal["\x08"]): ...
+check_backspace(b)
+check_bell(b)  # E: Argument 1 to "check_bell" has incompatible type "Literal['\x08']"; expected "Literal['\x07']"
+check_backspace(a) # E: Argument 1 to "check_backspace" has incompatible type "Literal['\x07']"; expected "Literal['\x08']"
+
+f: Final = "\f"
+def check_form_feed(literal: Literal["\x0c"]): ...
+check_form_feed(f)
+check_bell(f)  # E: Argument 1 to "check_bell" has incompatible type "Literal['\x0c']"; expected "Literal['\x07']"
+
+r: Final = "\r"
+def check_carriage_return(literal: Literal["\x0d"]): ...
+check_carriage_return(r)
+check_bell(r)  # E: Argument 1 to "check_bell" has incompatible type "Literal['\r']"; expected "Literal['\x07']"
+
+t: Final = "\t"
+def check_tab(literal: Literal["\x09"]): ...
+check_tab(t)
+check_bell(t)  # E: Argument 1 to "check_bell" has incompatible type "Literal['\t']"; expected "Literal['\x07']"
+
+v: Final = "\v"
+def check_vertical_tab(literal: Literal["\x0b"]): ...
+check_vertical_tab(v)
+check_bell(v)  # E: Argument 1 to "check_bell" has incompatible type "Literal['\x0b']"; expected "Literal['\x07']"
