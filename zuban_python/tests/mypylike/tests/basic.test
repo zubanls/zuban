@@ -439,7 +439,7 @@ check_vertical_tab(v)
 check_bell(v)  # E: Argument 1 to "check_bell" has incompatible type "Literal['\x0b']"; expected "Literal['\x07']"
 
 [case string_backslash_octal_escape]
-from typing import Final, Literal
+from typing import Literal
 
 def check_octal0(literal: Literal["\x00"]): ...
 def check_octal1(literal: Literal["\x01"]): ...
@@ -461,7 +461,7 @@ check_octal18("\0018")
 check_octal18("\00018")  # E: Argument 1 to "check_octal18" has incompatible type "Literal['\x0018']"; expected "Literal['\x018']"
 
 [case string_invalid_escapes]
-from typing import Final, Literal
+from typing import Literal
 def check(literal: Literal["a"]): ...
 def ok(literal: Literal["\\l"]): ...
 
@@ -470,3 +470,18 @@ check("\l")  # E: Argument 1 to "check" has incompatible type "Literal['\\l']"; 
 check("\i")  # E: Argument 1 to "check" has incompatible type "Literal['\\i']"; expected "Literal['a']"
 check("\z")  # E: Argument 1 to "check" has incompatible type "Literal['\\z']"; expected "Literal['a']"
 check("\ä ")  # E: Argument 1 to "check" has incompatible type "Literal['\\ä ']"; expected "Literal['a']"
+
+[case fstring_unions]
+from typing import Literal
+abc = int
+
+def ok(literal: "a" "bc"): ...
+ok(1)
+ok("")  # E: Argument 1 to "ok" has incompatible type "str"; expected "int"
+
+def not_ok1(literal: f"a" "bc"): ...  # E: Invalid type comment or annotation
+def not_ok2(literal: "a" f"bc"): ...  # E: Invalid type comment or annotation
+def not_ok3(literal: f"a" f"bc"): ...  # E: Invalid type comment or annotation
+
+def not_ok4(literal: "\x01" f"bc"): ...  # E: Invalid type comment or annotation
+def not_ok5(literal: f"a" "\x01"): ...  # E: Invalid type comment or annotation

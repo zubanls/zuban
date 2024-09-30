@@ -98,12 +98,12 @@ impl<'db> PythonString<'db> {
             Self::Ref(start, s2) => match self {
                 Self::Ref(_, s1) => Self::String(start, s1.to_owned() + s2),
                 Self::String(_, s1) => Self::String(start, s1 + s2),
-                Self::FString => todo!(),
+                Self::FString => Self::FString,
             },
             Self::String(start, s2) => match self {
                 Self::Ref(_, s1) => Self::String(start, s1.to_owned() + &s2),
                 Self::String(_, s1) => Self::String(start, s1 + &s2),
-                Self::FString => todo!(),
+                Self::FString => Self::FString,
             },
             Self::FString => Self::FString,
         }
