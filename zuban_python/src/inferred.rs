@@ -1,8 +1,6 @@
 use std::{borrow::Cow, cell::RefCell, rc::Rc};
 
-use parsa_python_cst::{
-    NodeIndex, ParamKind, PrimaryContent, PythonString, SliceType as CSTSliceType,
-};
+use parsa_python_cst::{NodeIndex, ParamKind, PrimaryContent, SliceType as CSTSliceType};
 
 use crate::{
     arguments::{Args, CombinedArgs, InferredArg, KnownArgs, KnownArgsWithCustomAddIssue},
@@ -580,16 +578,6 @@ impl<'db: 'slf, 'slf> Inferred {
                 }),
             UnionValue::Any => None,
         }
-    }
-
-    pub fn maybe_str(&self, db: &'db Database) -> Option<PythonString<'db>> {
-        if let InferredState::Saved(link) = self.state {
-            let node_ref = NodeRef::from_link(db, link);
-            if let Some(Specific::String) = node_ref.point().maybe_specific() {
-                return node_ref.infer_str();
-            }
-        }
-        None
     }
 
     pub fn maybe_bool_literal(&self, i_s: &InferenceState) -> Option<bool> {

@@ -1,9 +1,9 @@
 use std::fmt;
 
 use parsa_python_cst::{
-    Annotation, Assignment, Atom, AtomContent, Bytes, ClassDef, CodeIndex, Expression, Factor,
-    FunctionDef, ImportFrom, Int, Name, NameDef, NameImportParent, NamedExpression, NodeIndex,
-    Primary, PythonString, Slices, StarStarExpression, StarredExpression, StringLiteral,
+    Annotation, Assignment, Atom, Bytes, ClassDef, CodeIndex, Expression, Factor, FunctionDef,
+    ImportFrom, Int, Name, NameDef, NameImportParent, NamedExpression, NodeIndex, Primary, Slices,
+    StarStarExpression, StarredExpression, StringLiteral,
 };
 
 use crate::{
@@ -191,15 +191,6 @@ impl<'file> NodeRef<'file> {
 
     pub fn infer_int(&self) -> Option<i64> {
         Int::maybe_by_index(&self.file.tree, self.node_index).and_then(|i| i.as_str().parse().ok())
-    }
-
-    pub fn infer_str(&self) -> Option<PythonString<'file>> {
-        Atom::maybe_by_index(&self.file.tree, self.node_index).and_then(|atom| {
-            match atom.unpack() {
-                AtomContent::Strings(s) => Some(s.as_python_string()),
-                _ => None,
-            }
-        })
     }
 
     pub fn maybe_str(&self) -> Option<StringLiteral<'file>> {
