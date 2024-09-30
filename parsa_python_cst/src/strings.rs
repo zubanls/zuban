@@ -50,23 +50,23 @@ impl<'db> PythonString<'db> {
                     s.push_str(&inner[previous_insert..i]);
                     (_, ch) = iterator.next().unwrap();
 
-                    s.push(match ch {
-                        b'\\' | b'\'' | b'"' => *ch as char,
-                        b'\n' => todo!(),
-                        b'u' => parse_hex(4, iterator.by_ref()),
-                        b'U' => parse_hex(8, iterator.by_ref()),
-                        b'x' => parse_hex(2, iterator.by_ref()),
+                    match ch {
+                        b'\\' | b'\'' | b'"' => s.push(*ch as char),
+                        b'\n' => (), // Escaping a newline ignores it
+                        b'u' => s.push(parse_hex(4, iterator.by_ref())),
+                        b'U' => s.push(parse_hex(8, iterator.by_ref())),
+                        b'x' => s.push(parse_hex(2, iterator.by_ref())),
                         b'N' => todo!(),
                         b'a' => todo!(),
                         b'b' => todo!(),
                         b'f' => todo!(),
-                        b'n' => '\n',
+                        b'n' => s.push('\n'),
                         b'r' => todo!(),
                         b't' => todo!(),
                         b'v' => todo!(),
                         // TODO also \ooo (where o is 0-7) (octal)
                         _ => todo!("{inner:?}"),
-                    });
+                    }
                     previous_insert = iterator.peek().map(|x| x.0).unwrap_or_else(|| inner.len());
                 }
             }

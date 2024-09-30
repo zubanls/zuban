@@ -217,6 +217,7 @@ fn main() -> ExitCode {
         ProjectOptions::new(TypeCheckerFlags::default())
     };
 
+    options.flags.mypy_compatible = true;
     apply_flags(&mut options, cli);
 
     let mut project = Project::new(options);
