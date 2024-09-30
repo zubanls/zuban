@@ -527,6 +527,9 @@ fn set_bool_init_flags(
         "warn_no_return" => flags.warn_no_return = value.as_bool(invert)?,
         "local_partial_types" => flags.local_partial_types = value.as_bool(invert)?,
         "implicit_reexport" => flags.no_implicit_reexport = !value.as_bool(invert)?,
+        "warn_unused_ignores" | "strict_concatenate" => {
+            debug!("TODO ignored config value {name}");
+        }
 
         "extra_checks" => flags.extra_checks = value.as_bool(invert)?,
         // These are currently ignored
@@ -572,11 +575,7 @@ fn apply_from_base_config(
             diagnostic_config.show_error_end = value.as_bool(false)?;
             Ok(false)
         }
-        "files"
-        | "show_error_context"
-        | "warn_redundant_casts"
-        | "warn_unused_configs"
-        | "warn_unused_ignores" => {
+        "files" | "show_error_context" | "warn_redundant_casts" | "warn_unused_configs" => {
             debug!("TODO ignored config value {key}");
             Ok(false)
         }
