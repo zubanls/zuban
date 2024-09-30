@@ -53,9 +53,21 @@ impl<'db> PythonString<'db> {
                     match ch {
                         b'\\' | b'\'' | b'"' => s.push(*ch as char),
                         b'\n' => (), // Escaping a newline ignores it
-                        b'u' => s.push(parse_hex(4, iterator.by_ref())),
-                        b'U' => s.push(parse_hex(8, iterator.by_ref())),
-                        b'x' => s.push(parse_hex(2, iterator.by_ref())),
+                        b'u' => {
+                            if let Some(c) = parse_hex(4, iterator.by_ref()) {
+                                s.push(c)
+                            }
+                        }
+                        b'U' => {
+                            if let Some(c) = parse_hex(8, iterator.by_ref()) {
+                                s.push(c)
+                            }
+                        }
+                        b'x' => {
+                            if let Some(c) = parse_hex(2, iterator.by_ref()) {
+                                s.push(c)
+                            }
+                        }
                         b'N' => todo!("Need to implement \\N{{...}}"),
                         b'a' => s.push('\x07'), // Bell
                         b'b' => s.push('\x08'), // Backspace
@@ -118,7 +130,7 @@ impl<'db> PythonString<'db> {
     }
 }
 
-fn parse_hex<'x, I: Iterator<Item = (usize, &'x u8)>>(count: usize, iterator: I) -> char {
+fn parse_hex<'x, I: Iterator<Item = (usize, &'x u8)>>(count: usize, iterator: I) -> Option<char> {
     let mut number = 0;
     for (i, (_, x)) in iterator.take(count).enumerate() {
         let digit = if x.is_ascii_digit() {
@@ -128,11 +140,11 @@ fn parse_hex<'x, I: Iterator<Item = (usize, &'x u8)>>(count: usize, iterator: I)
         } else if (b'A'..=b'F').contains(x) {
             *x - b'A' + 10
         } else {
-            todo!()
+            return None;
         };
         number += (digit as u32) << ((count - i - 1) * 4);
     }
-    char::from_u32(number).unwrap_or_else(|| todo!())
+    char::from_u32(number)
 }
 
 fn parse_python_octal(x: &str) -> Option<(usize, char)> {

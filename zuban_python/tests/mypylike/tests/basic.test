@@ -472,7 +472,6 @@ check("\z")  # E: Argument 1 to "check" has incompatible type "Literal['\\z']"; 
 check("\ä ")  # E: Argument 1 to "check" has incompatible type "Literal['\\ä ']"; expected "Literal['a']"
 
 [case fstring_unions]
-from typing import Literal
 abc = int
 
 def ok(literal: "a" "bc"): ...
@@ -485,3 +484,10 @@ def not_ok3(literal: f"a" f"bc"): ...  # E: Invalid type comment or annotation
 
 def not_ok4(literal: "\x01" f"bc"): ...  # E: Invalid type comment or annotation
 def not_ok5(literal: f"a" "\x01"): ...  # E: Invalid type comment or annotation
+
+[case invalid_hex]
+# Theoretically these should raise SyntaxErrors, but for now they don't and that's fine.
+from typing import Literal
+x: Literal["\xz"]
+
+y: Literal["\UFFFFFFFF"]
