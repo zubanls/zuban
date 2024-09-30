@@ -41,14 +41,14 @@ impl<'db> PythonString<'db> {
             let mut iterator = inner.as_bytes().iter().enumerate().peekable();
             let mut string = None;
             let mut previous_insert = 0;
-            while let Some((i, mut ch)) = iterator.next() {
+            while let Some((i, ch)) = iterator.next() {
                 if ch == &b'\\' {
                     if string.is_none() {
                         string = Some(String::with_capacity(inner.len()));
                     }
                     let s = string.as_mut().unwrap();
                     s.push_str(&inner[previous_insert..i]);
-                    (_, ch) = iterator.next().unwrap();
+                    let (next_index, ch) = iterator.next().unwrap();
 
                     match ch {
                         b'\\' | b'\'' | b'"' => s.push(*ch as char),
@@ -64,8 +64,22 @@ impl<'db> PythonString<'db> {
                         b'v' => s.push('\x0b'), // Vertical tab
                         b'f' => s.push('\x0c'), // Form Feed
                         b'r' => s.push('\x0d'), // Carriage Return
-                        // TODO also \ooo (where o is 0-7) (octal)
-                        _ => todo!("{inner:?}"),
+                        _ => {
+                            let string_from_here = &inner[next_index..];
+                            if let Some((len, octal)) = parse_python_octal(string_from_here) {
+                                for _ in 1..len {
+                                    iterator.next();
+                                }
+                                s.push(octal)
+                            } else {
+                                s.push('\\');
+                                let c = string_from_here.chars().next().unwrap();
+                                for _ in 1..c.len_utf8() {
+                                    iterator.next();
+                                }
+                                s.push(c);
+                            }
+                        }
                     }
                     previous_insert = iterator.peek().map(|x| x.0).unwrap_or_else(|| inner.len());
                 }
@@ -119,4 +133,16 @@ fn parse_hex<'x, I: Iterator<Item = (usize, &'x u8)>>(count: usize, iterator: I)
         number += (digit as u32) << ((count - i - 1) * 4);
     }
     char::from_u32(number).unwrap_or_else(|| todo!())
+}
+
+fn parse_python_octal(x: &str) -> Option<(usize, char)> {
+    // Parses "7" to 7 and "011" to 9
+    let x = x;
+    let len = x
+        .chars()
+        .take(3)
+        .take_while(|c| c.to_digit(8).is_some())
+        .count();
+    let c = u32::from_str_radix(&x[..len], 8).ok()?;
+    char::from_u32(c).map(|c| (len, c))
 }

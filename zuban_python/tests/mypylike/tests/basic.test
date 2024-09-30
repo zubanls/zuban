@@ -437,3 +437,36 @@ v: Final = "\v"
 def check_vertical_tab(literal: Literal["\x0b"]): ...
 check_vertical_tab(v)
 check_bell(v)  # E: Argument 1 to "check_bell" has incompatible type "Literal['\x0b']"; expected "Literal['\x07']"
+
+[case string_backslash_octal_escape]
+from typing import Final, Literal
+
+def check_octal0(literal: Literal["\x00"]): ...
+def check_octal1(literal: Literal["\x01"]): ...
+def check_octal7(literal: Literal["\x07"]): ...
+def check_octal8(literal: Literal["\x08"]): ...
+def check_octalI(literal: Literal["iIi"]): ...
+def check_octalI1(literal: Literal["iI1"]): ...
+def check_octal18(literal: Literal["\x018"]): ...
+
+check_octal0("\0")
+check_octal1("\1")
+check_octal7("\7")
+check_octal8("\8")  # E: Argument 1 to "check_octal8" has incompatible type "Literal['\\8']"; expected "Literal['\x08']"
+check_octalI("i\111i")
+check_octalI1("i\1111")
+check_octal18("\18")
+check_octal18("\018")
+check_octal18("\0018")
+check_octal18("\00018")  # E: Argument 1 to "check_octal18" has incompatible type "Literal['\x0018']"; expected "Literal['\x018']"
+
+[case string_invalid_escapes]
+from typing import Final, Literal
+def check(literal: Literal["a"]): ...
+def ok(literal: Literal["\\l"]): ...
+
+ok("\l")
+check("\l")  # E: Argument 1 to "check" has incompatible type "Literal['\\l']"; expected "Literal['a']"
+check("\i")  # E: Argument 1 to "check" has incompatible type "Literal['\\i']"; expected "Literal['a']"
+check("\z")  # E: Argument 1 to "check" has incompatible type "Literal['\\z']"; expected "Literal['a']"
+check("\ä ")  # E: Argument 1 to "check" has incompatible type "Literal['\\ä ']"; expected "Literal['a']"
