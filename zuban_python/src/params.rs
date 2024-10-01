@@ -724,6 +724,10 @@ fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
     params1: impl Iterator<Item = P1>,
     params2: impl Iterator<Item = P2>,
 ) -> bool {
+    // This feels like a bit of a weird and partial implementation. But Mypy also implements these
+    // things only partially and returning false feels like the safe way to compatible, since
+    // having overlapping params might enable some lints that are not desired for users.
+
     let to_type = |db: &'db _, p2: P2| match p2.specific(db) {
         WrappedParamType::PositionalOnly(t2)
         | WrappedParamType::PositionalOrKeyword(t2)
@@ -773,9 +777,7 @@ fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
                         ParamKind::PositionalOrKeyword | ParamKind::PositionalOnly => {
                             params2.next(); // We only peeked.
                         }
-                        ParamKind::KeywordOnly => {
-                            todo!()
-                        }
+                        ParamKind::KeywordOnly => return false,
                         ParamKind::Star => (),
                         ParamKind::StarStar => (),
                     }
@@ -795,9 +797,6 @@ fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
                     .copied()
                 {
                     match param2.kind(db) {
-                        ParamKind::PositionalOrKeyword => {
-                            todo!()
-                        }
                         ParamKind::KeywordOnly => {
                             let mut found = false;
                             for (i, p2) in unused_keyword_params.iter().enumerate() {

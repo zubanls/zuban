@@ -423,3 +423,17 @@ class MyClass(Generic[T1, T2]):
     def __init__(self, t: T1, u: T2) -> None:  # E: Overloaded function implementation does not accept all possible arguments of signature 1 \
                                                # E: Overloaded function implementation does not accept all possible arguments of signature 2
         pass
+
+[case function_overlapping_kwonly_vs_normal]
+[file foo.pyi]
+from typing import overload
+
+@overload
+def g(*, x: int) -> str: pass
+@overload
+def g(x: int) -> int: pass
+
+@overload
+def h(x: int) -> int: pass
+@overload
+def h(*, x: int) -> str: pass  # E: Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader
