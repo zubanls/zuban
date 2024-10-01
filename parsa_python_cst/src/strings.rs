@@ -75,7 +75,9 @@ impl<'db> PythonString<'db> {
                         b'r' => s.push('\x0d'), // Carriage Return
                         _ => {
                             let string_from_here = &inner[next_index..];
-                            if let Some((len, octal)) = parse_python_octal(string_from_here) {
+                            if let Some((len, octal)) =
+                                parse_python_octal(string_from_here.as_bytes())
+                            {
                                 for _ in 1..len {
                                     iterator.next();
                                 }
@@ -144,22 +146,25 @@ fn parse_hex<'x, I: Iterator<Item = (usize, &'x u8)>>(count: usize, iterator: I)
     char::from_u32(number)
 }
 
-fn parse_python_octal(x: &str) -> Option<(usize, char)> {
+pub(crate) fn parse_python_octal(x: &[u8]) -> Option<(usize, char)> {
     // Parses "7" to 7 and "011" to 9
-    let x = x;
-    let len = x
-        .chars()
-        .take(3)
-        .take_while(|c| c.to_digit(8).is_some())
-        .count();
-    let c = u32::from_str_radix(&x[..len], 8).ok()?;
-    char::from_u32(c).map(|c| (len, c))
+    let mut result = 0;
+    let mut used_bytes = 0;
+    for &b in x.iter().take(3) {
+        let Some(x) = char::from_u32(b as u32).and_then(|c| c.to_digit(8)) else {
+            break;
+        };
+        used_bytes += 1;
+        result <<= 3;
+        result += x;
+    }
+    (used_bytes > 0).then(|| (used_bytes, char::from_u32(result).unwrap()))
 }
 
 pub(crate) struct UnpackedLiteral<'x> {
-    inner: &'x str,
-    inner_start_offset: CodeIndex,
-    had_raw_modifier: bool,
+    pub inner: &'x str,
+    pub inner_start_offset: CodeIndex,
+    pub had_raw_modifier: bool,
 }
 
 pub(crate) fn unpack_string_or_bytes_content(code: &str) -> UnpackedLiteral {

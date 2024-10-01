@@ -1,3 +1,4 @@
+mod bytes;
 mod strings;
 
 use std::{
@@ -7,6 +8,7 @@ use std::{
     str::from_utf8,
 };
 
+pub use bytes::parse_python_bytes_literal;
 pub use parsa_python::{keywords_contain, CodeIndex, NodeIndex};
 use parsa_python::{
     parse,
@@ -3771,20 +3773,7 @@ impl<'db> Bytes<'db> {
 
 impl<'db> BytesLiteral<'db> {
     pub fn content_as_bytes(&self) -> Cow<'db, [u8]> {
-        let code = self.as_code();
-        if code.contains("'''") || code.contains("\"\"\"") {
-            todo!()
-        }
-        let code = code.as_bytes();
-        if code.contains(&b'\\') {
-            todo!()
-        }
-        debug_assert!(code[0] != b'"' && code[0] != b'\'');
-        if code[1] == b'"' || code[1] == b'\'' {
-            Cow::Borrowed(&code[2..code.len() - 1])
-        } else {
-            todo!()
-        }
+        parse_python_bytes_literal(self.node)
     }
 }
 

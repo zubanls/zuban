@@ -547,3 +547,12 @@ def simple(y: bytes): ...
 simple(b'a' b'bc')
 
 def not_supported(y: Literal[b"abc" b"d"]): ...  # E: Literals with chained bytes are not supported
+
+[case check_bytes_raw]
+from typing import Literal
+
+def foo(y: Literal[rb"a\nb"]): ...
+foo(b'a\nb')  # E: Argument 1 to "foo" has incompatible type "Literal[b'a\x0xab']"; expected "Literal[b'a\nb']"
+foo(br'a\nb')
+foo(RB"""a\nb""")
+foo(br'''''')  # E: Argument 1 to "foo" has incompatible type "Literal[b'']"; expected "Literal[b'a\nb']"
