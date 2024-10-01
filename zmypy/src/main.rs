@@ -227,10 +227,30 @@ fn main() -> ExitCode {
         ..Default::default()
     };
     let diagnostics = project.diagnostics(&diagnostic_config);
-    let mut had_diagnostics = false;
-    for diagnostic in diagnostics.iter() {
-        had_diagnostics = true;
+    for diagnostic in diagnostics.issues.iter() {
         println!("{}", diagnostic.as_string(&diagnostic_config))
+    }
+    let had_diagnostics = !diagnostics.issues.is_empty();
+    let s_if_plural = |n| match n {
+        1 => "",
+        _ => "s",
+    };
+    if had_diagnostics {
+        println!(
+            "Found {e} error{e_s} in {fwe} file{fwe_s} (checked {checked} source file{checked_s})",
+            e = diagnostics.issues.len(),
+            e_s = s_if_plural(diagnostics.issues.len()),
+            fwe = diagnostics.files_with_errors,
+            fwe_s = s_if_plural(diagnostics.files_with_errors),
+            checked = diagnostics.checked_files,
+            checked_s = s_if_plural(diagnostics.checked_files),
+        )
+    } else {
+        println!(
+            "Success: no issues found in {checked} source file{checked_s}",
+            checked = diagnostics.checked_files,
+            checked_s = s_if_plural(diagnostics.checked_files),
+        )
     }
     ExitCode::from(had_diagnostics as u8)
 }

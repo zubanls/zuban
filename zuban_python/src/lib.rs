@@ -65,7 +65,7 @@ impl Project {
         self.db.unload_all_in_memory_files()
     }
 
-    pub fn diagnostics(&mut self, config: &DiagnosticConfig) -> Box<[diagnostics::Diagnostic<'_>]> {
+    pub fn diagnostics(&mut self, config: &DiagnosticConfig) -> Diagnostics<'_> {
         if self.db.project.flags.mypy_path.len() > 1 {
             debug!(
                 "Has complex mypy path: {:?}",
@@ -73,6 +73,8 @@ impl Project {
             );
         }
         let mut all_diagnostics: Vec<diagnostics::Diagnostic> = vec![];
+        let mut checked_files = 0;
+        let mut files_with_errors = 0;
         for directory in self.db.workspaces.directories_to_type_check() {
             let mut to_be_loaded = vec![];
             directory.walk(&mut |file_index_or_file| {
@@ -107,10 +109,19 @@ impl Project {
                 {
                     continue 'outer;
                 }
-                all_diagnostics.append(&mut file.diagnostics(&self.db, config).into_vec())
+                checked_files += 1;
+                let mut issues = file.diagnostics(&self.db, config).into_vec();
+                if !issues.is_empty() {
+                    files_with_errors += 1;
+                    all_diagnostics.append(&mut issues)
+                }
             }
         }
-        all_diagnostics.into_boxed_slice()
+        Diagnostics {
+            checked_files,
+            files_with_errors,
+            issues: all_diagnostics.into_boxed_slice(),
+        }
     }
 
     /// This function is mostly for tests and should therefore not be used for something
@@ -314,4 +325,10 @@ mod tests {
     fn it_works() {
         assert_eq!(2 + 2, 4);
     }
+}
+
+pub struct Diagnostics<'a> {
+    pub checked_files: usize,
+    pub files_with_errors: usize,
+    pub issues: Box<[diagnostics::Diagnostic<'a>]>,
 }
