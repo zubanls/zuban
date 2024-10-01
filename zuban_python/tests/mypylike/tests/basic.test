@@ -491,3 +491,17 @@ from typing import Literal
 x: Literal["\xz"]
 
 y: Literal["\UFFFFFFFF"]
+
+[case check_bytes_merging]
+from typing import Literal
+
+def foo(y: Literal[b"abc"]): ...
+foo(b'a' b'bc')  # E: Argument 1 to "foo" has incompatible type "bytes"; expected "Literal[b'abc']"
+foo(b'abc')
+foo(b'a' f'bc')  # E: invalid syntax
+foo('a' b'bc')  # E: invalid syntax
+
+def simple(y: bytes): ...
+simple(b'a' b'bc')
+
+def not_supported(y: Literal[b"abc" b"d"]): ...  # E: Literals with chained bytes are not supported

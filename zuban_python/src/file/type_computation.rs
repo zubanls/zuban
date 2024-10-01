@@ -2877,7 +2877,17 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             Some(LiteralKind::Int(i.parse().unwrap_or_else(|| todo!())))
                         }
                         AtomContent::Bytes(b) => Some(LiteralKind::Bytes(
-                            NodeRef::new(self.inference.file, b.index()).as_link(),
+                            if let Some(b) = b.maybe_single_bytes_literal() {
+                                PointLink::new(self.inference.file.file_index, b.index())
+                            } else {
+                                self.add_issue(
+                                    NodeRef::new(self.inference.file, b.index()),
+                                    IssueKind::InvalidType(
+                                        "Literals with chained bytes are not supported".into(),
+                                    ),
+                                );
+                                return TypeContent::Unknown(UnknownCause::ReportedIssue);
+                            },
                         )),
                         AtomContent::Strings(s) => s.maybe_single_string_literal().map(|s| {
                             LiteralKind::String(

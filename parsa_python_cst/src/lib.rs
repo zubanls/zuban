@@ -3762,6 +3762,14 @@ impl<'db> AtomContent<'db> {
 }
 
 impl<'db> Bytes<'db> {
+    pub fn maybe_single_bytes_literal(&self) -> Option<BytesLiteral> {
+        let mut iterator = self.node.iter_children();
+        let first = iterator.next()?;
+        iterator.next().is_none().then(|| BytesLiteral::new(first))
+    }
+}
+
+impl<'db> BytesLiteral<'db> {
     pub fn content_as_bytes(&self) -> Cow<'db, [u8]> {
         let code = self.as_code();
         if code.contains("'''") || code.contains("\"\"\"") {

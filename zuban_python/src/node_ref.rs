@@ -1,9 +1,9 @@
 use std::fmt;
 
 use parsa_python_cst::{
-    Annotation, Assignment, Atom, Bytes, ClassDef, CodeIndex, Expression, Factor, FunctionDef,
-    ImportFrom, Int, Name, NameDef, NameImportParent, NamedExpression, NodeIndex, Primary, Slices,
-    StarStarExpression, StarredExpression, StringLiteral,
+    Annotation, Assignment, Atom, BytesLiteral, ClassDef, CodeIndex, Expression, Factor,
+    FunctionDef, ImportFrom, Int, Name, NameDef, NameImportParent, NamedExpression, NodeIndex,
+    Primary, Slices, StarStarExpression, StarredExpression, StringLiteral,
 };
 
 use crate::{
@@ -157,8 +157,8 @@ impl<'file> NodeRef<'file> {
         Annotation::by_index(&self.file.tree, self.node_index)
     }
 
-    pub fn as_bytes_literal(&self) -> Bytes<'file> {
-        Bytes::by_index(&self.file.tree, self.node_index)
+    pub fn as_bytes_literal(&self) -> BytesLiteral<'file> {
+        BytesLiteral::by_index(&self.file.tree, self.node_index)
     }
 
     pub fn maybe_name(&self) -> Option<Name<'file>> {

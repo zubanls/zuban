@@ -3213,7 +3213,11 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 }
             }
             Bytes(b) => {
-                return check_literal(result_context, i_s, b.index(), Specific::BytesLiteral)
+                if let Some(b) = b.maybe_single_bytes_literal() {
+                    return check_literal(result_context, i_s, b.index(), Specific::BytesLiteral);
+                } else {
+                    Specific::Bytes
+                }
             }
             NoneLiteral => Specific::None,
             Bool(b) => return check_literal(result_context, i_s, b.index(), Specific::BoolLiteral),
