@@ -471,6 +471,48 @@ check("\i")  # E: Argument 1 to "check" has incompatible type "Literal['\\i']"; 
 check("\z")  # E: Argument 1 to "check" has incompatible type "Literal['\\z']"; expected "Literal['a']"
 check("\ä ")  # E: Argument 1 to "check" has incompatible type "Literal['\\ä ']"; expected "Literal['a']"
 
+[case string_literal_multiline]
+from typing import Literal
+
+def foo(y: Literal["abc"]): ...
+def bar(y: Literal["ab\nc"]): ...
+def baz(y: Literal["""ab
+c"""]): ...
+
+# Errors
+foo(r'''ab\
+c''')
+foo(r'''abc
+''')
+foo("""ab""" '''c''')
+
+foo("""abc""")
+foo("""ab\
+c""")
+
+foo(u"""abc""")
+foo(r"""abc""")
+foo(R"""abc""")
+foo(U"""abc""")
+
+bar("""ab
+c""")
+bar('''ab
+c''')
+bar("""ab\n\
+c""")
+
+baz("""ab
+c""")
+baz(r'''ab
+c''')
+baz("""ab\nc""")
+
+[out]
+main:9: error: Argument 1 to "foo" has incompatible type "Literal['ab\\\nc']"; expected "Literal['abc']"
+main:11: error: Argument 1 to "foo" has incompatible type "Literal['abc\n']"; expected "Literal['abc']"
+main:13: error: Argument 1 to "foo" has incompatible type "str"; expected "Literal['abc']"
+
 [case fstring_unions]
 abc = int
 

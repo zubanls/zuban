@@ -26,17 +26,14 @@ impl<'db> PythonString<'db> {
             Self::FString
         } else {
             let code = literal.as_code();
-            let bytes = code.as_bytes();
-            let quote = bytes[0];
-            let start = match quote {
-                b'u' | b'U' => 2,
-                b'r' | b'R' => return Self::Ref(literal.start() + 2, &code[2..code.len() - 1]),
-                _ => {
-                    debug_assert!(quote == b'"' || quote == b'\'');
-                    1
-                }
-            };
-            let inner = &code[start..code.len() - 1];
+            let UnpackedLiteral {
+                inner,
+                inner_start_offset,
+                had_raw_modifier,
+            } = unpack_string_or_bytes_content(code);
+            if had_raw_modifier {
+                return Self::Ref(literal.start() + inner_start_offset, inner);
+            }
 
             let mut iterator = inner.as_bytes().iter().enumerate().peekable();
             let mut string = None;
@@ -98,9 +95,9 @@ impl<'db> PythonString<'db> {
             }
             if let Some(mut string) = string {
                 string.push_str(&inner[previous_insert..inner.len()]);
-                Self::String(literal.start() + start as u32, string)
+                Self::String(literal.start() + inner_start_offset, string)
             } else {
-                Self::Ref(literal.start() + start as u32, inner)
+                Self::Ref(literal.start() + inner_start_offset, inner)
             }
         }
     }
@@ -157,4 +154,41 @@ fn parse_python_octal(x: &str) -> Option<(usize, char)> {
         .count();
     let c = u32::from_str_radix(&x[..len], 8).ok()?;
     char::from_u32(c).map(|c| (len, c))
+}
+
+pub(crate) struct UnpackedLiteral<'x> {
+    inner: &'x str,
+    inner_start_offset: CodeIndex,
+    had_raw_modifier: bool,
+}
+
+pub(crate) fn unpack_string_or_bytes_content(code: &str) -> UnpackedLiteral {
+    let mut had_raw_modifier = false;
+    let mut inner_start_offset = 0;
+    let mut quote_len = 1;
+    let mut byte_iterator = code.as_bytes().iter().enumerate();
+    for (i, &b) in byte_iterator.by_ref() {
+        match b {
+            b'r' | b'R' => had_raw_modifier = true,
+            b'\'' | b'"' => {
+                if byte_iterator.len() > 3 {
+                    let (_, &second) = byte_iterator.next().unwrap();
+                    let (i, &third) = byte_iterator.next().unwrap();
+                    if second == b && third == b {
+                        quote_len = 3;
+                        inner_start_offset = i + 1;
+                        break;
+                    }
+                }
+                inner_start_offset = i + 1;
+                break;
+            }
+            _ => (), // All other modifiers don't matter
+        }
+    }
+    UnpackedLiteral {
+        inner: &code[inner_start_offset..code.len() - quote_len],
+        inner_start_offset: inner_start_offset as CodeIndex,
+        had_raw_modifier,
+    }
 }
