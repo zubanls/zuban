@@ -583,3 +583,17 @@ class Ord:  # E: No ordering operation defined when using "functools.total_order
 reveal_type(Ord() < Ord())  # E: Unsupported left operand type for < ("Ord")  # N: Revealed type is "Any"
 reveal_type(Ord() <= Ord())  # E: Unsupported left operand type for <= ("Ord")  # N: Revealed type is "Any"
 reveal_type(Ord() == Ord())  # N: Revealed type is "bool"
+
+[case self_annotation_eq_mismatch]
+from typing import Generic, TypeVar
+
+T = TypeVar("T")
+class A(Generic[T]):
+    def __init__(self, x: T):
+        self.x = x
+    def __eq__(self: A[int], other: object) -> bool: ...
+
+aint = A(1)
+astr = A("")
+aint == None
+astr == None

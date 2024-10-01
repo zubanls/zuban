@@ -1675,12 +1675,13 @@ impl<'db: 'slf, 'slf> Inferred {
     }
 
     #[inline]
-    pub fn run_after_lookup_on_each_union_member(
+    pub(crate) fn run_after_lookup_on_each_union_member(
         &self,
         i_s: &InferenceState,
         in_file: &PythonFile,
         name: &str,
         kind: LookupKind,
+        add_issue: &dyn Fn(IssueKind),
         callable: &mut impl FnMut(&Type, LookupDetails),
     ) {
         self.as_cow_type(i_s).run_after_lookup_on_each_union_member(
@@ -1690,7 +1691,7 @@ impl<'db: 'slf, 'slf> Inferred {
             name,
             kind,
             &mut ResultContext::Unknown,
-            &|issue| todo!(),
+            add_issue,
             callable,
         )
     }
@@ -1738,6 +1739,7 @@ impl<'db: 'slf, 'slf> Inferred {
             in_file,
             name,
             args,
+            &|_| todo!(),
             on_lookup_error,
             OnTypeError::new(&on_argument_type_error),
         )
@@ -1761,6 +1763,7 @@ impl<'db: 'slf, 'slf> Inferred {
         in_file: &PythonFile,
         name: &str,
         args: &dyn Args<'db>,
+        add_issue: &dyn Fn(IssueKind),
         on_lookup_error: OnLookupError,
         on_type_error: OnTypeError,
     ) -> Self {
@@ -1770,6 +1773,7 @@ impl<'db: 'slf, 'slf> Inferred {
             in_file,
             name,
             LookupKind::OnlyType,
+            add_issue,
             &mut |_, lookup_result| {
                 if matches!(lookup_result.lookup, LookupResult::None) {
                     on_lookup_error(&self.as_cow_type(i_s));
@@ -2166,6 +2170,7 @@ impl<'db: 'slf, 'slf> Inferred {
             from.file,
             "__setitem__",
             &CombinedArgs::new(&args, &KnownArgs::new(value, from)),
+            &|_| todo!(),
             &|_| {
                 slice_type.as_node_ref().add_issue(
                     i_s,

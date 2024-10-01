@@ -2,6 +2,7 @@
 testTypeVarTupleTypeApplicationOverload
 testUnionOfNonIterableUnpacking
 testPostInitIsNotAFunction
+self_annotation_eq_mismatch
 
 # callable matching regression
 testNoCrashOnNestedGenericCallable

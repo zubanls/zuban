@@ -2618,6 +2618,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             from.file,
             "__contains__",
             LookupKind::OnlyType,
+            &|issue| todo!(),
             &mut |r_type, lookup_result| {
                 if let Some(method) = lookup_result.lookup.into_maybe_inferred() {
                     for l_type in left_inf.as_cow_type(i_s).iter_with_unpacked_unions(i_s.db) {
@@ -2819,6 +2820,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 from.file,
                 op_infos.magic_method,
                 LookupKind::OnlyType,
+                &|issue| todo!(),
                 &mut |l_type, lookup_result| {
                     let left_op_method = lookup_result.lookup.into_maybe_inferred();
                     for r_type in right.as_cow_type(i_s).iter_with_unpacked_unions(i_s.db) {
