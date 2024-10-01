@@ -194,6 +194,7 @@ pub struct PythonState {
     pub dict_of_any: Type,
     pub set_of_any: Type,
     pub tuple_of_obj: Type,
+    pub tuple_of_unannotated_any: Type,
     pub dict_of_str_and_obj: Type,
     pub any_callable_from_error: Rc<CallableContent>,
     pub generator_with_any_generics: Type,
@@ -312,9 +313,12 @@ impl PythonState {
             ))),
             list_of_any: Type::None, // Will be set later
             any_or_none: Type::Any(AnyCause::FromError).union(Type::None),
-            dict_of_any: Type::None,         // Will be set later
-            set_of_any: Type::None,          // Will be set later
-            tuple_of_obj: Type::None,        // Will be set later
+            dict_of_any: Type::None,  // Will be set later
+            set_of_any: Type::None,   // Will be set later
+            tuple_of_obj: Type::None, // Will be set later
+            tuple_of_unannotated_any: Type::Tuple(Tuple::new_arbitrary_length(Type::Any(
+                AnyCause::Unannotated,
+            ))),
             dict_of_str_and_obj: Type::None, // Will be set later
             any_callable_from_error: Rc::new(CallableContent::new_any(
                 empty_type_var_likes.clone(),

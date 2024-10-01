@@ -3803,7 +3803,13 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                     for param in func_node.params().iter() {
                                         if param.name_def().index() == name_def.index() {
                                             return match param.kind() {
-                                                ParamKind::Star => todo!(),
+                                                ParamKind::Star => Inferred::from_type(
+                                                    self.i_s
+                                                        .db
+                                                        .python_state
+                                                        .tuple_of_unannotated_any
+                                                        .clone(),
+                                                ),
                                                 ParamKind::StarStar => {
                                                     Inferred::from_type(new_class!(
                                                         self.i_s
