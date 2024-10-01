@@ -1,7 +1,9 @@
 use std::io::Read;
 use std::path::PathBuf;
 use std::process::ExitCode;
-use zuban_python::{DiagnosticConfig, Project, ProjectOptions, PythonVersion, TypeCheckerFlags};
+use zuban_python::{
+    DiagnosticConfig, ExcludeRegex, Project, ProjectOptions, PythonVersion, TypeCheckerFlags,
+};
 
 use clap::Parser;
 
@@ -208,11 +210,10 @@ fn main() -> ExitCode {
     let mut options = if let Some((name, content)) = find_mypy_config_file() {
         if name.ends_with(".toml") {
             ProjectOptions::from_pyproject_toml(in_dir, &content, &mut diagnostic_config)
-                .expect("Problem parsing Mypy config")
         } else {
             ProjectOptions::from_mypy_ini(in_dir, &content, &mut diagnostic_config)
-                .expect("Problem parsing Mypy config")
         }
+        .unwrap_or_else(|err| panic!("Problem parsing Mypy config {name}: {err}"))
     } else {
         ProjectOptions::new(TypeCheckerFlags::default())
     };
@@ -310,6 +311,13 @@ fn apply_flags(project_options: &mut ProjectOptions, cli: Cli) {
         .flags
         .always_false_symbols
         .extend(cli.always_false);
+
+    for r in cli.exclude {
+        project_options
+            .flags
+            .excludes
+            .push(ExcludeRegex::new(r).expect("Invalid --exclude regex"));
+    }
 
     // TODO MYPYPATH=$MYPYPATH:mypy-stubs
     project_options.flags.mypy_path.push(

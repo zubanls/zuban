@@ -253,8 +253,15 @@ impl std::str::FromStr for PythonVersion {
 
 #[derive(Debug, Clone)]
 pub struct ExcludeRegex {
-    regex_str: String,
+    pub(crate) regex_str: String,
     pub(crate) regex: Regex,
+}
+
+impl ExcludeRegex {
+    pub fn new(regex_str: String) -> Result<Self, regex::Error> {
+        let regex = Regex::new(&regex_str)?;
+        Ok(Self { regex_str, regex })
+    }
 }
 
 impl std::cmp::PartialEq for ExcludeRegex {

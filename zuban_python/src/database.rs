@@ -1074,7 +1074,10 @@ impl Database {
                 if loader.responsible_for_file_endings().contains(&e) {
                     return Some(loader.as_ref());
                 }
-            } else {
+            } else if Path::new(path)
+                .file_name()
+                .is_some_and(|n| n.to_str() == Some("__main__"))
+            {
                 return Some(&PythonFileLoader {});
             }
         }

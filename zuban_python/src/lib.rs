@@ -25,7 +25,7 @@ mod type_helpers;
 mod utils;
 mod workspaces;
 
-pub use config::{ProjectOptions, PythonVersion, TypeCheckerFlags};
+pub use config::{ExcludeRegex, ProjectOptions, PythonVersion, TypeCheckerFlags};
 use database::{Database, FileIndex, PythonProject};
 pub use diagnostics::DiagnosticConfig;
 use file::{FileStateLoader, Leaf};
@@ -77,7 +77,8 @@ impl Project {
             let mut to_be_loaded = vec![];
             directory.walk(&mut |file_index_or_file| {
                 if let Err(file) = file_index_or_file {
-                    to_be_loaded.push((file.clone(), file.path(self.db.vfs.as_ref())));
+                    let path = file.path(self.db.vfs.as_ref());
+                    to_be_loaded.push((file.clone(), path));
                 }
             });
             for (file, path) in to_be_loaded {

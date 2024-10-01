@@ -1432,6 +1432,7 @@ testFollowImportsNormalSearchPathUpdate-only_when_nocache
 testFollowImportsNormalSearchPathUpdate2-only_when_cache
 testAddNonPackageSubdir
 testAddPackage5
+testScriptsAreNotModules
 
 # Won't do: Type Vars qualified names -> comes from visit_Attribute and is not really qualified, but the expr name
 testQualifiedTypeVariableName

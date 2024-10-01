@@ -11,7 +11,7 @@ parsa_python_cst = { path = "../parsa_python_cst" }
 lazy_static = "*"
 regex = "*"
 walkdir = "2"
-rust-ini = "0.21.0"
+rust-ini = { version = "0.21.0", features = ["inline-comment"] }
 toml_edit = "0.22.13"
 clap = { version = "4.5.4", features = ["derive"] }
 
