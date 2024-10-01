@@ -1118,8 +1118,8 @@ impl Database {
         // A loader should be available for all files in the workspace.
         let path = file_entry.path(&*self.vfs);
         let loader = self.loader(&path)?;
-        let file_index = self.with_add_file_state(|file_index| {
-            if let Some(code) = self.vfs.read_file(&path) {
+        let file_index = match self.vfs.read_file(&path) {
+            Ok(code) => self.with_add_file_state(|file_index| {
                 loader.load_parsed(
                     &self.project,
                     file_index,
@@ -1128,11 +1128,12 @@ impl Database {
                     code.into(),
                     invalidates_db,
                 )
-            } else {
-                //loader.inexistent_file_state(path)
-                todo!("File vanished while checking")
+            }),
+            Err(err) => {
+                debug!("Tried to load file, but failed: {err}");
+                return None;
             }
-        });
+        };
         file_entry.file_index.set(file_index);
         Some(file_index)
     }

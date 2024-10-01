@@ -1,4 +1,3 @@
-#![allow(dead_code)] // TODO remove this
 use std::{any::Any, fmt, fs, pin::Pin, rc::Rc};
 
 use parsa_python_cst::{CodeIndex, Keyword, NodeIndex};
@@ -15,11 +14,8 @@ use crate::{
     PythonProject,
 };
 
-type InvalidatedDependencies = Vec<FileIndex>;
-type LoadFileFunction<F> = &'static dyn Fn(String) -> F;
-
 pub trait Vfs {
-    fn read_file(&self, path: &str) -> Option<String>;
+    fn read_file(&self, path: &str) -> std::io::Result<String>;
 
     fn separator(&self) -> char {
         self.separator_u8().into()
@@ -46,9 +42,8 @@ pub trait Vfs {
 pub struct FileSystemReader {}
 
 impl Vfs for FileSystemReader {
-    fn read_file(&self, path: &str) -> Option<String> {
-        // TODO can error
-        Some(fs::read_to_string(path).unwrap())
+    fn read_file(&self, path: &str) -> std::io::Result<String> {
+        fs::read_to_string(path)
     }
 }
 

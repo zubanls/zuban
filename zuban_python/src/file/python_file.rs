@@ -407,7 +407,7 @@ impl<'db> PythonFile {
                     DirectoryEntry::File(entry) => db
                         .vfs
                         .read_file(&entry.path(db.vfs.as_ref()))
-                        .is_some_and(|code| code.contains("partial\n")),
+                        .is_ok_and(|code| code.contains("partial\n")),
                     _ => false,
                 })
             })
