@@ -2,7 +2,7 @@ use std::borrow::Cow;
 
 use parsa_python::PyNode;
 
-use crate::strings::{parse_python_octal, unpack_string_or_bytes_content};
+use crate::strings::{parse_hex, parse_python_octal, unpack_string_or_bytes_content};
 
 pub fn parse_python_bytes_literal(literal: PyNode) -> Cow<[u8]> {
     let code = literal.as_code();
@@ -27,17 +27,15 @@ pub fn parse_python_bytes_literal(literal: PyNode) -> Cow<[u8]> {
             match ch {
                 b'\\' | b'\'' | b'"' => s.push(ch),
                 b'\n' => (), // Escaping a newline ignores it
-                /*
                 b'x' => {
                     if let Some(c) = parse_hex(2, iterator.by_ref()) {
-                        s.push(c)
+                        s.push(c as u8);
+                        previous_insert += 2;
                     }
                 }
-                b'N' => todo!("Need to implement \\N{{...}}"),
-                b'a' => s.push('\x07'), // Bell
-                b'b' => s.push('\x08'), // Backspace
-                b't' => s.push('\x09'), // Tab
-                */
+                b'a' => s.push(b'\x07'), // Bell
+                b'b' => s.push(b'\x08'), // Backspace
+                b't' => s.push(b'\x09'), // Tab
                 b'n' => s.push(b'\n'),   // Newline (line feed \x0a)
                 b'v' => s.push(b'\x0b'), // Vertical tab
                 b'f' => s.push(b'\x0c'), // Form Feed

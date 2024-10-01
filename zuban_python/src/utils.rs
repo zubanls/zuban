@@ -216,12 +216,16 @@ impl<'a, 'b: 'a, T: 'a> IntoIterator for &'b VecRefWrapper<'a, T> {
 }
 
 pub fn bytes_repr(bytes: Cow<[u8]>) -> String {
-    let mut string = String::new();
-    for b in bytes.iter() {
-        if b.is_ascii_graphic() {
-            string.push(*b as char);
-        } else {
-            string += &format!("\\x{:#02x}", b);
+    let mut string = String::with_capacity(bytes.len());
+    for &b in bytes.iter() {
+        match b {
+            b'\t' => string.push_str(r"\t"),
+            b'\n' => string.push_str(r"\n"),
+            b'\r' => string.push_str(r"\r"),
+            b'\\' => string.push_str(r"\\"),
+            b' ' => string.push_str(" "),
+            _ if b.is_ascii_graphic() => string.push(b as char),
+            _ => string += &format!("\\x{:02x}", b),
         }
     }
     format!("b'{string}'")

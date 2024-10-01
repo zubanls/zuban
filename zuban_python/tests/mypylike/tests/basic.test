@@ -552,7 +552,51 @@ def not_supported(y: Literal[b"abc" b"d"]): ...  # E: Literals with chained byte
 from typing import Literal
 
 def foo(y: Literal[rb"a\nb"]): ...
-foo(b'a\nb')  # E: Argument 1 to "foo" has incompatible type "Literal[b'a\x0xab']"; expected "Literal[b'a\nb']"
+foo(b'a\nb')  # E: Argument 1 to "foo" has incompatible type "Literal[b'a\nb']"; expected "Literal[b'a\\nb']"
 foo(br'a\nb')
 foo(RB"""a\nb""")
-foo(br'''''')  # E: Argument 1 to "foo" has incompatible type "Literal[b'']"; expected "Literal[b'a\nb']"
+foo(br'''''')  # E: Argument 1 to "foo" has incompatible type "Literal[b'']"; expected "Literal[b'a\\nb']"
+
+[case bytes_backslash_special_characters_escape]
+from typing import Final, Literal
+a: Final = b"\a"
+def check_bell(literal: Literal[b"\x07"]): ...
+check_bell(a)
+
+b: Final = b"\b"
+def check_backspace(literal: Literal[b"\x08"]): ...
+check_backspace(b)
+check_bell(b)  # E: Argument 1 to "check_bell" has incompatible type "Literal[b'\x08']"; expected "Literal[b'\x07']"
+check_backspace(a) # E: Argument 1 to "check_backspace" has incompatible type "Literal[b'\x07']"; expected "Literal[b'\x08']"
+
+f: Final = b"\f"
+def check_form_feed(literal: Literal[b"\x0c"]): ...
+check_form_feed(f)
+check_bell(f)  # E: Argument 1 to "check_bell" has incompatible type "Literal[b'\x0c']"; expected "Literal[b'\x07']"
+
+r: Final = b"\r"
+def check_carriage_return(literal: Literal[b"\x0d"]): ...
+check_carriage_return(r)
+check_bell(r)  # E: Argument 1 to "check_bell" has incompatible type "Literal[b'\r']"; expected "Literal[b'\x07']"
+check_bell(b"\n")  # E: Argument 1 to "check_bell" has incompatible type "Literal[b'\n']"; expected "Literal[b'\x07']"
+
+t: Final = b"\t"
+def check_tab(literal: Literal[b"\x09"]): ...
+check_tab(t)
+check_bell(t)  # E: Argument 1 to "check_bell" has incompatible type "Literal[b'\t']"; expected "Literal[b'\x07']"
+
+v: Final = b"\v"
+def check_vertical_tab(literal: Literal[b"\x0b"]): ...
+check_vertical_tab(v)
+check_bell(v)  # E: Argument 1 to "check_bell" has incompatible type "Literal[b'\x0b']"; expected "Literal[b'\x07']"
+
+[case bytes_invalid_escapes]
+from typing import Literal
+def check(literal: Literal[b"a"]): ...
+def ok(literal: Literal[b"\\l"]): ...
+
+ok(b"\l")
+check(b"\l")  # E: Argument 1 to "check" has incompatible type "Literal[b'\\l']"; expected "Literal[b'a']"
+check(b"\i")  # E: Argument 1 to "check" has incompatible type "Literal[b'\\i']"; expected "Literal[b'a']"
+check(b"\z")  # E: Argument 1 to "check" has incompatible type "Literal[b'\\z']"; expected "Literal[b'a']"
+check(b"\ä ")  # E: Argument 1 to "check" has incompatible type "Literal[b'\\\xc3\xa4 ']"; expected "Literal[b'a']"

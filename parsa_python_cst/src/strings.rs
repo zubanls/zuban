@@ -129,7 +129,10 @@ impl<'db> PythonString<'db> {
     }
 }
 
-fn parse_hex<'x, I: Iterator<Item = (usize, &'x u8)>>(count: usize, iterator: I) -> Option<char> {
+pub(crate) fn parse_hex<'x, I: Iterator<Item = (usize, &'x u8)>>(
+    count: usize,
+    iterator: I,
+) -> Option<char> {
     let mut number = 0;
     for (i, (_, x)) in iterator.take(count).enumerate() {
         let digit = if x.is_ascii_digit() {
