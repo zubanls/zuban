@@ -2479,7 +2479,13 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     from.file,
                     "__eq__",
                     &KnownArgs::new(right_inf, from),
-                    &|_| todo!(),
+                    &|_| {
+                        debug!(
+                            "__eq__ is normally accessible, but might not be \
+                         for protocols and other things: {}",
+                            left_inf.format_short(self.i_s)
+                        )
+                    },
                 )
             }
             ComparisonContent::Is(l, op, r) | ComparisonContent::IsNot(l, op, r) => {
