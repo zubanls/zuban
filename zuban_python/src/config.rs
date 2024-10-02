@@ -467,16 +467,23 @@ pub fn set_flag_and_return_ignore_errors(
                     for entry in lst.iter() {
                         match entry {
                             Value::String(s) => target.push(s.value().clone()),
-                            _ => return Err("TODO expected string array".to_string()),
+                            _ => return Err(format!("TODO expected string array for {name}")),
                         }
                     }
                     Ok(false)
+                }
+                IniOrTomlValue::Toml(Value::String(s)) => {
+                    // Apparently Mypy allows single strings for things like
+                    //
+                    //     enable_error_code = "ignore-without-code"
+                    target.push(s.value().clone());
+                    return Ok(false);
                 }
                 IniOrTomlValue::Ini(v) => {
                     target.extend(split_and_trim(v, &[',']).map(String::from));
                     Ok(false)
                 }
-                _ => Err("TODO expected string".to_string()),
+                _ => Err(format!("TODO expected string for {name}")),
             }
         }
     };
@@ -534,7 +541,14 @@ fn set_bool_init_flags(
         "warn_no_return" => flags.warn_no_return = value.as_bool(invert)?,
         "local_partial_types" => flags.local_partial_types = value.as_bool(invert)?,
         "implicit_reexport" => flags.no_implicit_reexport = !value.as_bool(invert)?,
-        "warn_unused_ignores" | "strict_concatenate" => {
+        "warn_unused_ignores"
+        | "strict_concatenate"
+        | "namespace_packages"
+        | "explicit_package_bases"
+        | "site_packages"
+        | "silence_site_packages"
+        | "python_version"
+        | "platform" => {
             debug!("TODO ignored config value {name}");
         }
 
