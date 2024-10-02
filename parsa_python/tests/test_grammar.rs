@@ -324,4 +324,9 @@ parametrize_snapshots!(
         except* (BarError, BazError) as e:
             ...
         "#);
+    invalid_syntax: dedent(r#"
+        def f():
+            (x,) += 1
+            z
+        "#);
 );

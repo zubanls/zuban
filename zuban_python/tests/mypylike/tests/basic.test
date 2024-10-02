@@ -623,7 +623,7 @@ Foo().undefined += 1  # E: "Foo" has no attribute "undefined"  # E: "Foo" has no
 class Foo:
     def f(self) -> None:
         self.a = 3
-        (self.bar, self.baz) += 1
+        (self.bar, self.baz) += 1  # E: invalid syntax
         self.b = 3
 
 reveal_type(Foo().a)  # N: Revealed type is "int"

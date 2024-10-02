@@ -1,0 +1,52 @@
+---
+source: parsa_python/tests/test_grammar.rs
+expression: tree_to_string(tree)
+---
+file: 0-30
+ stmt: 1-30
+  function_def: 1-30
+   Keyword: 1-4 "def"
+   name_def: 5-6
+    Name: 5-6 "f"
+   function_def_parameters: 6-8
+    Keyword: 6-7 "("
+    Keyword: 7-8 ")"
+   Keyword: 8-9 ":"
+   block: 9-30
+    Newline: 9-10 "\n"
+    Indent: 14-14 ""
+    Error(stmt): 14-18
+     Error(simple_stmts): 14-18
+      simple_stmt: 14-18
+       star_expressions: 14-18
+        expression: 14-18
+         atom: 14-18
+          Keyword: 14-15 "("
+          tuple_content: 15-17
+           named_expression: 15-16
+            expression: 15-16
+             atom: 15-16
+              Name: 15-16 "x"
+           Keyword: 16-17 ","
+          Keyword: 17-18 ")"
+    Error(stmt): 19-21
+     Error(Keyword): 19-21 "+="
+    stmt: 22-24
+     simple_stmts: 22-24
+      simple_stmt: 22-23
+       star_expressions: 22-23
+        expression: 22-23
+         atom: 22-23
+          Number: 22-23 "1"
+      Newline: 23-24 "\n"
+    stmt: 28-30
+     simple_stmts: 28-30
+      simple_stmt: 28-29
+       star_expressions: 28-29
+        expression: 28-29
+         atom: 28-29
+          Name: 28-29 "z"
+      Newline: 29-30 "\n"
+    Dedent: 30-30 ""
+ Endmarker: 30-30 ""
+

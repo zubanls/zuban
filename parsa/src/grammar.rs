@@ -291,30 +291,6 @@ impl<'a, T: Token> Grammar<T> {
             }
         }
 
-        // First step of error recovery is to mark tree nodes as failed and pop the
-        // stack nodes that are failed.
-        for (i, node) in stack.stack_nodes.iter().enumerate().rev() {
-            if self.automatons[&node.node_id].does_error_recovery {
-                while stack.stack_nodes.len() > i {
-                    let stack_node = stack.stack_nodes.pop().unwrap();
-                    update_tree_node_position(&mut stack.tree_nodes, &stack_node);
-                    let mut n = stack
-                        .tree_nodes
-                        .get_mut(stack_node.tree_node_index)
-                        .unwrap();
-                    n.type_ = n.type_.set_error_recovery_bit();
-                }
-                if let Some(transition) = transition {
-                    self.apply_transition(
-                        stack,
-                        backtracking_tokenizer,
-                        transition,
-                        token.unwrap(),
-                    );
-                }
-                return; // Error recovery is done.
-            }
-        }
         if let Some(transition) = transition {
             // If the first step did not work, we try to add the token as an error terminal to
             // the tree.
@@ -339,6 +315,30 @@ impl<'a, T: Token> Grammar<T> {
                     });
                     return; // Error recovery is done.
                 }
+            }
+        }
+        // First step of error recovery is to mark tree nodes as failed and pop the
+        // stack nodes that are failed.
+        for (i, node) in stack.stack_nodes.iter().enumerate().rev() {
+            if self.automatons[&node.node_id].does_error_recovery {
+                while stack.stack_nodes.len() > i {
+                    let stack_node = stack.stack_nodes.pop().unwrap();
+                    update_tree_node_position(&mut stack.tree_nodes, &stack_node);
+                    let mut n = stack
+                        .tree_nodes
+                        .get_mut(stack_node.tree_node_index)
+                        .unwrap();
+                    n.type_ = n.type_.set_error_recovery_bit();
+                }
+                if let Some(transition) = transition {
+                    self.apply_transition(
+                        stack,
+                        backtracking_tokenizer,
+                        transition,
+                        token.unwrap(),
+                    );
+                }
+                return; // Error recovery is done.
             }
         }
         //let rest = &code[token.start_index() as usize..];
