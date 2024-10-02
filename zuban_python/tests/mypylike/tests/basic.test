@@ -628,3 +628,7 @@ class Foo:
 
 reveal_type(Foo().a)  # N: Revealed type is "int"
 reveal_type(Foo().b)  # N: Revealed type is "int"
+
+[case aug_assign_tuple_syntax_issue2]
+a = 1
+(a) += 1

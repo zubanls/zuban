@@ -4019,7 +4019,7 @@ impl<'db> Target<'db> {
             Self::new_t_primary(first)
         } else {
             debug_assert_eq!(node.nth_child(0).as_code(), "(");
-            Self::new_single_target(first.nth_child(1))
+            Self::new_single_target(node.nth_child(1))
         }
     }
 }
