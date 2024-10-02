@@ -38,7 +38,7 @@ impl Workspaces {
         self.0.insert(0, Workspace::new(vfs, loaders, root, true))
     }
 
-    pub fn directories(&self) -> impl Iterator<Item = (&str, &Directory)> {
+    pub fn directories(&self) -> impl DoubleEndedIterator<Item = (&str, &Directory)> {
         self.0.iter().map(|x| (x.root_path(), &x.directory))
     }
 

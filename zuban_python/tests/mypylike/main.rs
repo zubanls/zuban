@@ -343,6 +343,7 @@ impl<'name, 'code> TestCase<'name, 'code> {
 
             let diagnostics: Vec<_> = project
                 .diagnostics(&diagnostics_config)
+                .issues
                 .iter()
                 .filter_map(|d| {
                     if is_semanal_test && !d.is_mypy_semanal_error() {
