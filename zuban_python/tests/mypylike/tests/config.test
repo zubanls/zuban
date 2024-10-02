@@ -80,3 +80,17 @@ exclude = "lala/a.*pkg"
 \[[tool.mypy.overrides]]
 module = 'lala.a.*'
 exclude = "inherited_exclude"
+
+[case mypy_setup_ini_with_multiline_string]
+# See also https://github.com/zonyitoo/rust-ini/issues/138
+def foo(x: int = None) -> None: ...
+foo(1)
+foo(None)
+
+[file mypy.ini]
+[section1]
+a =
+  b
+  c
+[mypy]
+implicit_optional = True
