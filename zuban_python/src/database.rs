@@ -315,6 +315,9 @@ impl fmt::Debug for Point {
             if self.kind() == PointKind::Redirect || self.kind() == PointKind::FileReference {
                 s.field("file_index", &self.file_index().0);
             }
+            if self.in_global_scope() {
+                s.field("in_global_scope", &true);
+            }
         }
         s.finish()
     }
@@ -1460,11 +1463,11 @@ impl std::cmp::PartialEq for ClassStorage {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     #[test]
     fn test_sizes() {
         use std::mem::size_of;
 
-        use super::*;
         use crate::type_::{ClassGenerics, StringSlice, Tuple, UnionType};
         assert_eq!(size_of::<ClassGenerics>(), 24);
         assert_eq!(size_of::<UnionType>(), 16);
@@ -1479,9 +1482,8 @@ mod tests {
 
     #[test]
     fn test_empty_point() {
-        use super::*;
-        let p = Point::new_specific(Specific::ReservedBecauseUnused, Locality::File);
-        assert_eq!(p.flags & !IS_ANALIZED_MASK, 0);
+        let p = Point::new_specific(Specific::ReservedBecauseUnused, Locality::NameBinder);
+        assert_eq!(p.flags & !IS_ANALIZED_MASK, 0, "{p:?}");
         assert_eq!(p.node_index, 0);
         assert!(p.calculated());
         assert_eq!(p.kind(), PointKind::Specific);
