@@ -213,6 +213,24 @@ class Bar:
         self.f = 3
         self.other = 3
 
+[case __slots___inherited]
+class Foo:
+    __slots__ = 'a', 'b'
+    a: int
+
+    def __init__(self) -> None:
+        self.a = 3
+        self.b = 3
+
+Foo().a = 3
+Foo().b = 3
+if bool():
+    Foo.a = 3
+else:
+    x = Foo.a  # E: "a" in __slots__ conflicts with class variable access
+    reveal_type(x) # N: Revealed type is "int"
+Foo.b = 3  # E: "Type[Foo]" has no attribute "b"
+
 [case type_type_annotation]
 # No such test exists in Mypy (only for recursive aliases)
 foo: type[type[int]]  # E: Type[...] can't contain another Type[...]

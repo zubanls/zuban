@@ -1777,7 +1777,10 @@ impl<'db: 'a, 'a> Class<'a> {
                         };
                         match &class {
                             TypeOrClass::Class(in_class) => {
-                                if class_infos.has_slots && self.in_slots(i_s.db, name) {
+                                if class_infos.has_slots
+                                    && options.use_descriptors
+                                    && self.in_slots(i_s.db, name)
+                                {
                                     (options.add_issue)(
                                         IssueKind::SlotsConflictWithClassVariableAccess {
                                             name: name.into(),
