@@ -224,7 +224,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     Some(ImportResult::File(file_index)) => {
                         Point::new_file_reference(file_index, Locality::Todo)
                     }
-                    Some(ImportResult::Namespace { .. }) => todo!(),
+                    Some(ImportResult::Namespace { .. }) => todo!("Star import on namespace"),
                     None => Point::new_specific(Specific::ModuleNotFound, Locality::Todo),
                 };
                 self.file.points.set(keyword.index(), point);
@@ -595,18 +595,16 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             return;
         }
         debug!("Cache assignment {}", assignment.as_code());
-        let right_side = match assignment.unpack() {
+        match assignment.unpack() {
             AssignmentContent::Normal(targets, right_side) => {
                 for target in targets {
                     self.set_calculating_on_target(target);
                 }
-                Some(right_side)
             }
             AssignmentContent::WithAnnotation(target, _, right_side) => {
                 self.set_calculating_on_target(target);
-                right_side
             }
-            AssignmentContent::AugAssign(target, aug_assign, right_side) => Some(right_side),
+            AssignmentContent::AugAssign(target, aug_assign, right_side) => (),
         };
         match assignment.unpack() {
             AssignmentContent::Normal(targets, right_side) => {
@@ -745,29 +743,39 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     // This is essentially a bare `foo += 1` that does not have any definition and
                     // leads to a NameError within Python.
                     match target.clone() {
-                        Target::Name(name_def) => {
-                            self.assign_single_target(
-                                target,
-                                node_ref,
-                                &Inferred::new_any_from_error(),
-                                AssignKind::Normal,
-                                |index, value| {
-                                    value.clone().save_redirect(
-                                        self.i_s,
-                                        self.file,
-                                        name_def.index(),
-                                    );
-                                },
-                            );
-                            self.add_issue(
-                                name_def.index(),
-                                IssueKind::NameError {
-                                    name: name_def.as_code().into(),
-                                },
-                            )
-                        }
-                        _ => todo!(),
+                        Target::Name(name_def) => self.add_issue(
+                            name_def.index(),
+                            IssueKind::NameError {
+                                name: name_def.as_code().into(),
+                            },
+                        ),
+                        Target::NameExpression(t, n) => self.add_issue(
+                            assignment.index(),
+                            IssueKind::AttributeError {
+                                name: n.as_code().into(),
+                                object: format!(
+                                    "\"{}\"",
+                                    self.infer_primary_target(t)
+                                        .unwrap_or_else(|| Inferred::from_type(Type::Self_))
+                                        .format_short(self.i_s)
+                                )
+                                .into(),
+                            },
+                        ),
+                        // Should probably never happen, because the target should always be
+                        // inferrable
+                        Target::IndexExpression(_) => unreachable!(),
+                        // Invalid syntax
+                        Target::Tuple(_) | Target::Starred(_) => unreachable!(),
                     }
+                    // Just assign targets in normal mode, so that we have at least assigned
+                    // something to these names.
+                    self.assign_targets(
+                        target,
+                        Inferred::new_any_from_error(),
+                        node_ref,
+                        AssignKind::Normal,
+                    )
                 }
             }
         }
@@ -3931,7 +3939,6 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 // Performance: We probably do not need to calculate diagnostics just for
                 // calculating the names.
                 self.cache_for_stmt_names(star_targets, star_exprs, false);
-                // TODO do the async case as well
             }
             DefiningStmt::TryStmt(try_stmt) => {
                 for block in try_stmt.iter_blocks() {

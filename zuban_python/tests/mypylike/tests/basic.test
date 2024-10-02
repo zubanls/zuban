@@ -600,3 +600,31 @@ check(b"\l")  # E: Argument 1 to "check" has incompatible type "Literal[b'\\l']"
 check(b"\i")  # E: Argument 1 to "check" has incompatible type "Literal[b'\\i']"; expected "Literal[b'a']"
 check(b"\z")  # E: Argument 1 to "check" has incompatible type "Literal[b'\\z']"; expected "Literal[b'a']"
 check(b"\ä ")  # E: Argument 1 to "check" has incompatible type "Literal[b'\\\xc3\xa4 ']"; expected "Literal[b'a']"
+
+[case bare_self_aug_assignment]
+class Foo:
+    def f(self) -> None:
+        self.foo += 1  # E: "Self" has no attribute "foo"
+        self.bla[1] += 1  # E: "Self" has no attribute "bla"
+        self.lst = []  # E: Need type annotation for "lst" (hint: "lst: List[<type>] = ...")
+
+        reveal_type(self.foo)  # N: Revealed type is "Any"
+        reveal_type(self.bla)  # E: "Self" has no attribute "bla" # N: Revealed type is "Any"
+
+        self.lst[0] += 1
+
+
+reveal_type(Foo().foo)  # N: Revealed type is "Any"
+reveal_type(Foo().bla)  # E: "Foo" has no attribute "bla" # N: Revealed type is "Any"
+
+Foo().undefined += 1  # E: "Foo" has no attribute "undefined"  # E: "Foo" has no attribute "undefined"
+
+[case aug_assign_tuple_syntax_issue]
+class Foo:
+    def f(self) -> None:
+        self.a = 3
+        (self.bar, self.baz) += 1
+        self.b = 3
+
+reveal_type(Foo().a)  # N: Revealed type is "int"
+reveal_type(Foo().b)  # N: Revealed type is "int"
