@@ -307,6 +307,12 @@ parametrize_snapshots!(
         with (i for i in 42): ...
         with (yield y): ...
         ");
+    string_literals_in_strings: dedent(r#"
+        '"""'
+        "'''"
+        ""
+        ''
+        "#);
     bytes: dedent(r#"
         b'asdf\n\''
         br'\asdf'

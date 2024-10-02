@@ -523,9 +523,11 @@ impl Iterator for PythonTokenizer<'_> {
                 if !self.is_still_part_of_f_string(match_) {
                     let length = match_.end();
                     self.index += length;
-                    if length <= 5
-                        && (match_.as_str().contains("'''") || match_.as_str().contains("\"\"\""))
-                    {
+                    if length <= 5 && {
+                        let s = match_.as_str();
+                        s.contains("'''") && !s.ends_with('"')
+                            || s.contains(r#"""""#) && !s.ends_with('\'')
+                    } {
                         return self.new_tok(start, false, TerminalType::ErrorToken);
                     }
                     return self.new_tok(start, false, token_type);
@@ -645,6 +647,8 @@ mod tests {
         string_with_escape2 r"R'''test\''''" => [(0, 13, String)];
         string_with_escape3 r"''\'test\''''" => [(0, 2, String), (2, 1, ErrorToken),
                                                  (3, 8, String), (11, 2, String)];
+        string_literal_in_string1 r#""'''""# => [(0, 5, String)];
+        string_literal_in_string2 r#"'"""'"# => [(0, 5, String)];
         bytes1 "b'foo'" => [(0, 6, Bytes)];
         bytes2 "br'foo'" => [(0, 7, Bytes)];
         bytes3 "rb'foo'" => [(0, 7, Bytes)];

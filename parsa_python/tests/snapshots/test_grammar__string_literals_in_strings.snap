@@ -1,0 +1,43 @@
+---
+source: parsa_python/tests/test_grammar.rs
+expression: tree_to_string(tree)
+---
+file: 0-19
+ stmt: 1-7
+  simple_stmts: 1-7
+   simple_stmt: 1-6
+    star_expressions: 1-6
+     expression: 1-6
+      atom: 1-6
+       strings: 1-6
+        String: 1-6 "'\"\"\"'"
+   Newline: 6-7 "\n"
+ stmt: 7-13
+  simple_stmts: 7-13
+   simple_stmt: 7-12
+    star_expressions: 7-12
+     expression: 7-12
+      atom: 7-12
+       strings: 7-12
+        String: 7-12 "\"'''\""
+   Newline: 12-13 "\n"
+ stmt: 13-16
+  simple_stmts: 13-16
+   simple_stmt: 13-15
+    star_expressions: 13-15
+     expression: 13-15
+      atom: 13-15
+       strings: 13-15
+        String: 13-15 "\"\""
+   Newline: 15-16 "\n"
+ stmt: 16-19
+  simple_stmts: 16-19
+   simple_stmt: 16-18
+    star_expressions: 16-18
+     expression: 16-18
+      atom: 16-18
+       strings: 16-18
+        String: 16-18 "''"
+   Newline: 18-19 "\n"
+ Endmarker: 19-19 ""
+
