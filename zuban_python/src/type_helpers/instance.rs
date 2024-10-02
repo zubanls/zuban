@@ -4,7 +4,7 @@ use parsa_python_cst::Name;
 
 use super::{
     class::{TypeOrClass, ORDERING_METHODS},
-    Class, FirstParamKind, Function, MroIterator,
+    Class, ClassLookupOptions, FirstParamKind, Function, MroIterator,
 };
 use crate::{
     arguments::{Args, CombinedArgs, InferredArg, KnownArgs, KnownArgsWithCustomAddIssue},
@@ -79,14 +79,20 @@ impl<'a> Instance<'a> {
             }
         };
 
-        let lookup_details = self.class.lookup_without_descriptors(i_s, from, name_str);
-        let lookup_details = lookup_details.or_else(|| {
-            self.lookup(
+        let lookup_details = self
+            .class
+            .lookup(
                 i_s,
                 name_str,
-                InstanceLookupOptions::new(&add_issue).with_no_check_dunder_getattr(),
+                ClassLookupOptions::new(&|issue| from.add_issue(i_s, issue)).without_descriptors(),
             )
-        });
+            .or_else(|| {
+                self.lookup(
+                    i_s,
+                    name_str,
+                    InstanceLookupOptions::new(&add_issue).with_no_check_dunder_getattr(),
+                )
+            });
         let Some(mut inf) = lookup_details.lookup.maybe_inferred() else {
             let t = self.class.as_type(i_s.db);
             let had_setattr_issue = Cell::new(false);

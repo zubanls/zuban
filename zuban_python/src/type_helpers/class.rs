@@ -1733,19 +1733,6 @@ impl<'db: 'a, 'a> Class<'a> {
         )
     }
 
-    pub fn lookup_without_descriptors(
-        &self,
-        i_s: &InferenceState<'db, '_>,
-        node_ref: NodeRef,
-        name: &str,
-    ) -> LookupDetails {
-        self.lookup(
-            i_s,
-            name,
-            ClassLookupOptions::new(&|issue| node_ref.add_issue(i_s, issue)).without_descriptors(),
-        )
-    }
-
     pub fn lookup(
         &self,
         i_s: &InferenceState<'db, '_>,

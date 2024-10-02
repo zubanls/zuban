@@ -1763,7 +1763,12 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             if let Some(c) = t.maybe_type_of_class(i_s.db) {
                 // We need to handle class descriptors separately, because
                 // there the __get__ descriptor should not be applied.
-                let lookup_details = c.lookup_without_descriptors(i_s, node_ref, name_str);
+                let lookup_details = c.lookup(
+                    i_s,
+                    name_str,
+                    ClassLookupOptions::new(&|issue| node_ref.add_issue(i_s, issue))
+                        .without_descriptors(),
+                );
                 if let Some(inf) = lookup_details.lookup.maybe_inferred() {
                     if inf.as_cow_type(i_s).is_func_or_overload_not_any_callable() {
                         from.add_issue(i_s, IssueKind::CannotAssignToAMethod);
