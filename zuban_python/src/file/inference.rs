@@ -3797,7 +3797,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                         FirstParamKind::ClassOfSelf => {
                                             Inferred::from_type(Type::Type(Rc::new(Type::Self_)))
                                         }
-                                        FirstParamKind::InStaticmethod => todo!(),
+                                        FirstParamKind::InStaticmethod => {
+                                            Inferred::from_type(Type::Any(AnyCause::Unannotated))
+                                        }
                                     }
                                 } else {
                                     for param in func_node.params().iter() {

@@ -14,3 +14,10 @@ f = j
 def foo(*args, **kwargs) -> None:
     reveal_type(args)  # N: Revealed type is "tuple[Any, ...]"
     reveal_type(kwargs)  # N: Revealed type is "dict[str, Any]"
+
+[case staticmethod_unannotated_types]
+class Foo:
+    @staticmethod
+    def foo(x, y) -> None:
+        reveal_type(x)  # N: Revealed type is "Any"
+        reveal_type(y)  # N: Revealed type is "Any"
