@@ -597,3 +597,51 @@ aint = A(1)
 astr = A("")
 aint == None
 astr == None
+
+[case unannotated_class_init_with_self_def_no_check_untyped_defs]
+class C:
+    def __init__(self):
+        self.x = 1
+        self.y = None
+        if bool():
+            self.y = 1
+        self.z = None
+        self.lst = []
+        self.lst.append(1)
+        self.with_annotation: int = ""  # N: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs
+        self.with_type_comment = ""  # type: int  # N: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs
+        self.wrong_aug_assign += ""
+
+c = C()
+reveal_type(c.x)  # N: Revealed type is "Any"
+reveal_type(c.y)  # N: Revealed type is "Any"
+reveal_type(c.z)  # N: Revealed type is "Any"
+reveal_type(c.lst)  # N: Revealed type is "Any"
+reveal_type(c.with_annotation)  # N: Revealed type is "int"
+reveal_type(c.with_type_comment)  # N: Revealed type is "int"
+reveal_type(c.wrong_aug_assign)  # N: Revealed type is "Any"
+
+
+[case unannotated_class_init_with_self_def_check_untyped_defs]
+# flags: --check-untyped-defs
+class C:
+    def __init__(self):
+        self.x = 1
+        self.y = None
+        if bool():
+            self.y = 1
+        self.z = None
+        self.lst = []
+        self.lst.append(1)
+        self.with_annotation: int = ""  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+        self.with_type_comment = ""  # type: int  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+        self.wrong_aug_assign += ""  # E: "Self" has no attribute "wrong_aug_assign"
+
+c = C()
+reveal_type(c.x)  # N: Revealed type is "int"
+reveal_type(c.y)  # N: Revealed type is "int | None"
+reveal_type(c.z)  # N: Revealed type is "None"
+reveal_type(c.lst)  # N: Revealed type is "list[int]"
+reveal_type(c.with_annotation)  # N: Revealed type is "int"
+reveal_type(c.with_type_comment)  # N: Revealed type is "int"
+reveal_type(c.wrong_aug_assign)  # N: Revealed type is "Any"

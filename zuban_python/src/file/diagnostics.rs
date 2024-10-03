@@ -579,17 +579,37 @@ impl<'db> Inference<'db, '_, '_> {
                     }
                 }
                 RelevantUntypedNode::Assignment(a) => {
+                    let from = NodeRef::new(self.file, a.index());
+                    let add_annotation_in_untyped_issue =
+                        || from.add_issue(self.i_s, IssueKind::AnnotationInUntypedFunction);
                     let is_type_definition = match a.unpack() {
-                        AssignmentContent::Normal(_, right) => {
-                            self.check_for_type_comment(a).is_some()
+                        AssignmentContent::Normal(targets, right) => {
+                            if let Some(type_comment) = self.check_for_type_comment(a) {
+                                add_annotation_in_untyped_issue();
+                                for target in targets {
+                                    self.assign_targets(
+                                        target,
+                                        type_comment.inferred.clone(),
+                                        from,
+                                        AssignKind::Normal,
+                                    )
+                                }
+                            } else {
+                                for target in targets {
+                                    self.assign_any_to_target(target, from)
+                                }
+                            }
                         }
-                        AssignmentContent::WithAnnotation(_, annotation, _) => true,
-                        AssignmentContent::AugAssign(..) => false,
+                        AssignmentContent::WithAnnotation(target, annotation, right_side) => {
+                            // TODO what about self.x: Final?
+                            self.ensure_cached_annotation(annotation, right_side.is_some());
+                            self.assign_for_annotation(annotation, target, from);
+                            add_annotation_in_untyped_issue()
+                        }
+                        AssignmentContent::AugAssign(target, _, _) => {
+                            self.assign_any_to_target(target, from)
+                        }
                     };
-                    if is_type_definition {
-                        NodeRef::new(self.file, a.index())
-                            .add_issue(self.i_s, IssueKind::AnnotationInUntypedFunction);
-                    }
                 }
                 RelevantUntypedNode::ImportFrom(i) => self.cache_import_from(i),
                 RelevantUntypedNode::ImportName(i) => self.cache_import_name(i),
