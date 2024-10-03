@@ -768,14 +768,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         // Invalid syntax
                         Target::Tuple(_) | Target::Starred(_) => unreachable!(),
                     }
-                    // Just assign targets in normal mode, so that we have at least assigned
-                    // something to these names.
-                    self.assign_targets(
-                        target,
-                        Inferred::new_any_from_error(),
-                        node_ref,
-                        AssignKind::Normal,
-                    )
+                    self.assign_any_to_target(target, node_ref)
                 }
             }
         }
@@ -1933,6 +1926,17 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         }
     }
 
+    pub fn assign_any_to_target(&self, target: Target, n: NodeRef) {
+        // Just assign targets in normal mode, so that we have at least assigned
+        // something to these names.
+        self.assign_targets(
+            target,
+            Inferred::new_any_from_error(),
+            n,
+            AssignKind::Normal,
+        )
+    }
+
     pub(super) fn assign_targets(
         &self,
         target: Target,
@@ -2095,12 +2099,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         // 3. Abort if necessary.
         if had_issue {
             for target in targets {
-                self.assign_targets(
-                    target,
-                    Inferred::new_any_from_error(),
-                    value_node_ref,
-                    assign_kind,
-                );
+                self.assign_any_to_target(target, value_node_ref);
             }
             return;
         }
