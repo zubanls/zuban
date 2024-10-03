@@ -437,3 +437,17 @@ def g(x: int) -> int: pass
 def h(x: int) -> int: pass
 @overload
 def h(*, x: int) -> str: pass  # E: Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader
+
+[case part_of_overload_target]
+# This used to fail because the parser has a primary_t
+from typing import overload
+
+class A:
+    x: int
+@overload
+def g(x: str) -> A: pass
+@overload
+def g(x: int) -> A: pass
+def g(x: object) -> object: ...
+
+g(1).x = 1

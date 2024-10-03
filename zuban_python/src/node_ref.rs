@@ -3,7 +3,7 @@ use std::fmt;
 use parsa_python_cst::{
     Annotation, Assignment, Atom, BytesLiteral, ClassDef, CodeIndex, Expression, Factor,
     FunctionDef, ImportFrom, Int, Name, NameDef, NameImportParent, NamedExpression, NodeIndex,
-    Primary, Slices, StarStarExpression, StarredExpression, StringLiteral,
+    Primary, PrimaryTarget, Slices, StarStarExpression, StarredExpression, StringLiteral,
 };
 
 use crate::{
@@ -207,6 +207,10 @@ impl<'file> NodeRef<'file> {
 
     pub fn maybe_factor(&self) -> Option<Factor<'file>> {
         Factor::maybe_by_index(&self.file.tree, self.node_index)
+    }
+
+    pub fn maybe_primary_target(&self) -> Option<PrimaryTarget<'file>> {
+        PrimaryTarget::maybe_by_index(&self.file.tree, self.node_index)
     }
 
     pub fn as_named_expression(&self) -> NamedExpression<'file> {

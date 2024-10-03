@@ -2725,6 +2725,12 @@ impl<'db> PrimaryTarget<'db> {
             PrimaryContent::Execution(ArgumentsDetails::None)
         }
     }
+
+    pub fn expect_closing_bracket_index(&self) -> NodeIndex {
+        let last = self.node.iter_children().last().unwrap();
+        debug_assert_eq!(last.as_code(), ")");
+        last.index
+    }
 }
 
 impl<'db> Primary<'db> {

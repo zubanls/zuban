@@ -136,10 +136,14 @@ impl<'db: 'a, 'a> Args<'db> for SimpleArgs<'db, 'a> {
     }
 
     fn points_backup(&self) -> Option<PointsBackup> {
-        let primary = NodeRef::new(self.file, self.primary_node_index).as_primary();
-        let start = primary.index();
-        let end = primary.expect_closing_bracket_index();
-        Some(self.file.points.backup(start..end))
+        let from = NodeRef::new(self.file, self.primary_node_index);
+        let end = if let Some(primary_target) = from.maybe_primary_target() {
+            primary_target.expect_closing_bracket_index()
+        } else {
+            let primary = from.as_primary();
+            primary.expect_closing_bracket_index()
+        };
+        Some(self.file.points.backup(self.primary_node_index..end))
     }
 
     fn reset_points_from_backup(&self, backup: &Option<PointsBackup>) {
