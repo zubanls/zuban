@@ -602,8 +602,27 @@ impl<'db> Inference<'db, '_, '_> {
                         }
                         AssignmentContent::WithAnnotation(target, annotation, right_side) => {
                             // TODO what about self.x: Final?
+                            /*
+                            if matches!(
+                                value.maybe_complex_point(self.i_s.db),
+                                Some(ComplexPoint::IndirectFinal(_))
+                            ) {
+                                value.clone().save_redirect(self.i_s, self.file, index);
+                            */
                             self.ensure_cached_annotation(annotation, right_side.is_some());
-                            self.assign_for_annotation(annotation, target, from);
+                            match target {
+                                Target::Name(n) | Target::NameExpression(_, n) => {
+                                    self.file.points.set(
+                                        n.index(),
+                                        Point::new_redirect(
+                                            self.file.file_index,
+                                            annotation.index(),
+                                            Locality::Todo,
+                                        ),
+                                    );
+                                }
+                                _ => self.assign_any_to_target(target, from),
+                            }
                             add_annotation_in_untyped_issue()
                         }
                         AssignmentContent::AugAssign(target, _, _) => {

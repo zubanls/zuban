@@ -645,3 +645,17 @@ reveal_type(c.lst)  # N: Revealed type is "list[int]"
 reveal_type(c.with_annotation)  # N: Revealed type is "int"
 reveal_type(c.with_type_comment)  # N: Revealed type is "int"
 reveal_type(c.wrong_aug_assign)  # N: Revealed type is "Any"
+
+[case global_with_late_type_defs]
+# Like testGlobalWithoutInitialization, but without type comments
+# flags: --disable-error-code=annotation-unchecked
+from typing import List
+
+def foo1() -> None:
+    global bar1  # E: Name "bar1" is not defined
+    bar1: List[str] = []  # E: Name "bar1" already defined on line 6
+    reveal_type(bar1)  # N: Revealed type is "Any"
+
+def foo2():
+    global bar2
+    bar2: List[str] = []
