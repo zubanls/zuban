@@ -587,12 +587,16 @@ impl<'db> Inference<'db, '_, '_> {
                             if let Some(type_comment) = self.check_for_type_comment(a) {
                                 add_annotation_in_untyped_issue();
                                 for target in targets {
-                                    self.assign_targets(
-                                        target,
-                                        type_comment.inferred.clone(),
-                                        from,
-                                        AssignKind::Normal,
-                                    )
+                                    match target {
+                                        Target::Name(n) | Target::NameExpression(_, n) => {
+                                            type_comment.inferred.clone().save_redirect(
+                                                self.i_s,
+                                                self.file,
+                                                n.index(),
+                                            );
+                                        }
+                                        _ => self.assign_any_to_target(target, from),
+                                    }
                                 }
                             } else {
                                 for target in targets {
