@@ -587,20 +587,19 @@ impl<'db> Inference<'db, '_, '_> {
                             if let Some(type_comment) = self.check_for_type_comment(a) {
                                 add_annotation_in_untyped_issue();
                                 for target in targets {
-                                    match target {
-                                        Target::Name(n) | Target::NameExpression(_, n) => {
-                                            type_comment.inferred.clone().save_redirect(
-                                                self.i_s,
-                                                self.file,
-                                                n.index(),
-                                            );
-                                        }
-                                        _ => self.assign_any_to_target(target, from),
+                                    if let Target::Name(n) | Target::NameExpression(_, n) = target {
+                                        type_comment.inferred.clone().save_redirect(
+                                            self.i_s,
+                                            self.file,
+                                            n.index(),
+                                        );
+                                    } else {
+                                        self.assign_any_to_untyped_target(target)
                                     }
                                 }
                             } else {
                                 for target in targets {
-                                    self.assign_any_to_target(target, from)
+                                    self.assign_any_to_untyped_target(target)
                                 }
                             }
                         }
@@ -614,23 +613,20 @@ impl<'db> Inference<'db, '_, '_> {
                                 value.clone().save_redirect(self.i_s, self.file, index);
                             */
                             self.ensure_cached_annotation(annotation, right_side.is_some());
-                            match target {
-                                Target::Name(n) | Target::NameExpression(_, n) => {
-                                    self.file.points.set(
-                                        n.index(),
-                                        Point::new_redirect(
-                                            self.file.file_index,
-                                            annotation.index(),
-                                            Locality::Todo,
-                                        ),
-                                    );
-                                }
-                                _ => self.assign_any_to_target(target, from),
+                            if let Target::Name(n) | Target::NameExpression(_, n) = target {
+                                self.file.points.set(
+                                    n.index(),
+                                    Point::new_redirect(
+                                        self.file.file_index,
+                                        annotation.index(),
+                                        Locality::Todo,
+                                    ),
+                                );
                             }
                             add_annotation_in_untyped_issue()
                         }
                         AssignmentContent::AugAssign(target, _, _) => {
-                            self.assign_any_to_target(target, from)
+                            self.assign_any_to_untyped_target(target)
                         }
                     };
                 }
@@ -643,6 +639,21 @@ impl<'db> Inference<'db, '_, '_> {
                     // TODO
                 }
             }
+        }
+    }
+
+    fn assign_any_to_untyped_target(&self, target: Target) {
+        match target {
+            Target::Name(n) | Target::NameExpression(_, n) => {
+                Inferred::new_any_from_error().save_redirect(self.i_s, self.file, n.index());
+            }
+            Target::Tuple(targets) => {
+                for target in targets {
+                    self.assign_any_to_untyped_target(target)
+                }
+            }
+            Target::Starred(star_target) => self.assign_any_to_untyped_target(target),
+            Target::IndexExpression(_) => (),
         }
     }
 

@@ -21,3 +21,24 @@ class Foo:
     def foo(x, y) -> None:
         reveal_type(x)  # N: Revealed type is "Any"
         reveal_type(y)  # N: Revealed type is "Any"
+
+[case global_with_late_type_defs]
+# Like testGlobalWithoutInitialization, but without type comments
+from typing import List
+
+def foo1() -> None:
+    global bar1  # E: Name "bar1" is not defined
+    bar1: List[str] = []  # E: Name "bar1" already defined on line 5
+    reveal_type(bar1)  # N: Revealed type is "Any"
+
+def foo2():
+    global bar2
+    bar2: List[str] = []  # N: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs
+
+[case assigning_in_unannotated_funcs_should_not_generate_errors]
+def foo():
+    [1][1()] = 1
+    [1][1()].x = 1
+    str(1()).x = 1
+    (1().x, b) = 1, 1
+    (1().x, c) = 1, 1  # type: (int, int)  # N: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs
