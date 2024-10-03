@@ -587,15 +587,12 @@ impl<'db> Inference<'db, '_, '_> {
                             if let Some(type_comment) = self.check_for_type_comment(a) {
                                 add_annotation_in_untyped_issue();
                                 for target in targets {
-                                    match target {
-                                        Target::Name(n) | Target::NameExpression(_, n) => {
-                                            type_comment.inferred.clone().save_redirect(
-                                                self.i_s,
-                                                self.file,
-                                                n.index(),
-                                            );
-                                        }
-                                        _ => self.assign_any_to_target(target, from),
+                                    if let Target::Name(n) | Target::NameExpression(_, n) = target {
+                                        type_comment.inferred.clone().save_redirect(
+                                            self.i_s,
+                                            self.file,
+                                            n.index(),
+                                        );
                                     }
                                 }
                             } else {
@@ -614,18 +611,15 @@ impl<'db> Inference<'db, '_, '_> {
                                 value.clone().save_redirect(self.i_s, self.file, index);
                             */
                             self.ensure_cached_annotation(annotation, right_side.is_some());
-                            match target {
-                                Target::Name(n) | Target::NameExpression(_, n) => {
-                                    self.file.points.set(
-                                        n.index(),
-                                        Point::new_redirect(
-                                            self.file.file_index,
-                                            annotation.index(),
-                                            Locality::Todo,
-                                        ),
-                                    );
-                                }
-                                _ => self.assign_any_to_target(target, from),
+                            if let Target::Name(n) | Target::NameExpression(_, n) = target {
+                                self.file.points.set(
+                                    n.index(),
+                                    Point::new_redirect(
+                                        self.file.file_index,
+                                        annotation.index(),
+                                        Locality::Todo,
+                                    ),
+                                );
                             }
                             add_annotation_in_untyped_issue()
                         }
