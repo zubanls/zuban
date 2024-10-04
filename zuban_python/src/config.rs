@@ -14,15 +14,40 @@ const OPTIONS_STARTING_WITH_ALLOW: [&str; 3] = [
     "allow_empty_bodies",
 ];
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct ProjectOptions {
+    pub settings: Settings,
     pub flags: TypeCheckerFlags,
     pub(crate) overrides: Vec<OverrideConfig>,
 }
 
-impl ProjectOptions {
-    pub fn new(flags: TypeCheckerFlags) -> Self {
+#[derive(Clone, Hash, PartialEq, Eq)]
+pub struct Settings {
+    pub platform: Option<String>,
+    pub python_version: PythonVersion,
+    pub mypy_path: Vec<String>,
+}
+
+impl Default for Settings {
+    fn default() -> Self {
         Self {
+            platform: None,
+            python_version: PythonVersion::new(3, 12),
+            mypy_path: vec![],
+        }
+    }
+}
+
+impl Settings {
+    pub(crate) fn computed_platform(&self) -> &str {
+        self.platform.as_deref().unwrap_or("posix")
+    }
+}
+
+impl ProjectOptions {
+    pub fn new(settings: Settings, flags: TypeCheckerFlags) -> Self {
+        Self {
+            settings,
             flags,
             overrides: vec![],
         }
@@ -35,12 +60,14 @@ impl ProjectOptions {
     ) -> Result<Self, String> {
         let ini = Ini::load_from_str(code).map_err(|err| err.to_string())?;
         let mut flags = TypeCheckerFlags::default();
+        let mut settings = Settings::default();
         let mut overrides = vec![];
         for (name, section) in ini.iter() {
             let Some(name) = name else { continue };
             if name == "mypy" {
                 for (key, value) in section.iter() {
                     apply_from_base_config(
+                        &mut settings,
                         &mut flags,
                         diagnostic_config,
                         key,
@@ -57,7 +84,11 @@ impl ProjectOptions {
                 })
             }
         }
-        Ok(ProjectOptions { flags, overrides })
+        Ok(ProjectOptions {
+            settings,
+            flags,
+            overrides,
+        })
     }
 
     pub fn from_pyproject_toml(
@@ -67,6 +98,7 @@ impl ProjectOptions {
     ) -> Result<Self, String> {
         let document = code.parse::<DocumentMut>().map_err(|err| err.to_string())?;
         let mut flags = TypeCheckerFlags::default();
+        let mut settings = Settings::default();
         if let Some(config) = document.get("tool").and_then(|item| item.get("mypy")) {
             let Item::Table(table) = config else {
                 return Err("Expected tool.mypy to be a table in pyproject.toml".to_string());
@@ -77,6 +109,7 @@ impl ProjectOptions {
                 match item {
                     Item::Value(value) => {
                         apply_from_base_config(
+                            &mut settings,
                             &mut flags,
                             diagnostic_config,
                             key,
@@ -106,9 +139,13 @@ impl ProjectOptions {
                     _ => todo!("{item:?}"),
                 }
             }
-            Ok(ProjectOptions { flags, overrides })
+            Ok(ProjectOptions {
+                settings,
+                flags,
+                overrides,
+            })
         } else {
-            Ok(ProjectOptions::new(TypeCheckerFlags::default()))
+            Ok(ProjectOptions::default())
         }
     }
 }
@@ -142,13 +179,10 @@ pub struct TypeCheckerFlags {
     pub disable_bytearray_promotion: bool,
     pub disable_memoryview_promotion: bool,
 
-    pub platform: Option<String>,
     pub enabled_error_codes: Vec<String>,
     pub disabled_error_codes: Vec<String>,
-    pub python_version: PythonVersion,
     pub always_true_symbols: Vec<String>,
     pub always_false_symbols: Vec<String>,
-    pub mypy_path: Vec<String>,
     pub excludes: Vec<ExcludeRegex>,
 
     pub extra_checks: bool,
@@ -184,14 +218,11 @@ impl Default for TypeCheckerFlags {
             no_implicit_reexport: false,
             disable_bytearray_promotion: false,
             disable_memoryview_promotion: false,
-            platform: None,
-            python_version: PythonVersion::new(3, 12),
             excludes: vec![],
             always_true_symbols: vec![],
             always_false_symbols: vec![],
             enabled_error_codes: vec![],
             disabled_error_codes: vec![],
-            mypy_path: vec![],
             extra_checks: false,
             mypy_compatible: false,
             case_sensitive: true,
@@ -213,10 +244,6 @@ impl TypeCheckerFlags {
         self.disallow_incomplete_defs = true;
         self.warn_redundant_casts = true;
         self.warn_return_any = true;
-    }
-
-    pub(crate) fn computed_platform(&self) -> &str {
-        self.platform.as_deref().unwrap_or("posix")
     }
 }
 
@@ -546,9 +573,7 @@ fn set_bool_init_flags(
         | "namespace_packages"
         | "explicit_package_bases"
         | "site_packages"
-        | "silence_site_packages"
-        | "python_version"
-        | "platform" => {
+        | "silence_site_packages" => {
             debug!("TODO ignored config value {name}");
         }
 
@@ -578,6 +603,7 @@ fn split_and_trim<'a>(s: &'a str, pattern: &'a [char]) -> impl Iterator<Item = &
 }
 
 fn apply_from_base_config(
+    settings: &mut Settings,
     flags: &mut TypeCheckerFlags,
     diagnostic_config: &mut DiagnosticConfig,
     key: &str,
@@ -596,12 +622,17 @@ fn apply_from_base_config(
             diagnostic_config.show_error_end = value.as_bool(false)?;
             Ok(false)
         }
-        "files" | "show_error_context" | "warn_redundant_casts" | "warn_unused_configs" => {
+        "python_version"
+        | "platform"
+        | "files"
+        | "show_error_context"
+        | "warn_redundant_casts"
+        | "warn_unused_configs" => {
             debug!("TODO ignored config value {key}");
             Ok(false)
         }
         "mypy_path" => {
-            flags.mypy_path.extend(value.as_mypy_path()?);
+            settings.mypy_path.extend(value.as_mypy_path()?);
             Ok(false)
         }
         _ => apply_from_config_part(flags, key, value),

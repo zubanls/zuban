@@ -3,6 +3,7 @@ use std::cell::RefCell;
 use parsa_python_cst::*;
 
 use crate::{
+    config::Settings,
     database::{
         ClassStorage, ComplexPoint, FileIndex, Locality, ParentScope, Point, PointKind, Points,
         Specific,
@@ -60,6 +61,7 @@ struct UnresolvedClass<'db> {
 
 #[derive(Clone, Copy)]
 pub struct DbInfos<'db> {
+    pub settings: &'db Settings,
     pub flags: &'db TypeCheckerFlags,
     pub tree: &'db Tree,
     pub points: &'db Points,
@@ -367,7 +369,11 @@ impl<'db> NameBinder<'db> {
                 StmtLikeContent::AssertStmt(assert_stmt) => {
                     let (assert_expr, error_expr) = assert_stmt.unpack();
                     self.index_non_block_node(&assert_expr, ordered);
-                    match is_expr_reachable_for_name_binder(self.db_infos.flags, assert_expr) {
+                    match is_expr_reachable_for_name_binder(
+                        self.db_infos.settings,
+                        self.db_infos.flags,
+                        assert_expr,
+                    ) {
                         Truthiness::False => {
                             self.db_infos.points.set(
                                 assert_stmt.index(),
@@ -589,8 +595,11 @@ impl<'db> NameBinder<'db> {
                             Point::new_specific(specific, Locality::NameBinder),
                         )
                     };
-                    match is_expr_reachable_for_name_binder(self.db_infos.flags, expr.expression())
-                    {
+                    match is_expr_reachable_for_name_binder(
+                        self.db_infos.settings,
+                        self.db_infos.flags,
+                        expr.expression(),
+                    ) {
                         Truthiness::True {
                             in_type_checking_block,
                         } => {
@@ -1408,7 +1417,7 @@ impl Truthiness {
 }
 
 fn check_comparison_reachability(
-    flags: &TypeCheckerFlags,
+    settings: &Settings,
     comp: ComparisonContent,
     check: ExpressionPart,
     other: ExpressionPart,
@@ -1423,7 +1432,7 @@ fn check_comparison_reachability(
             if let ExpressionPart::Atom(a) = other {
                 if let Some(s) = a.unpack().maybe_single_string_literal() {
                     if let Some(to_compare) = s.as_python_string().as_str() {
-                        let mut result = to_compare == flags.computed_platform();
+                        let mut result = to_compare == settings.computed_platform();
                         if matches!(comp, ComparisonContent::NotEquals(..)) {
                             result = !result;
                         }
@@ -1440,12 +1449,12 @@ fn check_comparison_reachability(
         }
 
         if maybe_sys_name(primary, "version_info") {
-            return python_version_matches_tuple(flags, comp, other, 0);
+            return python_version_matches_tuple(settings, comp, other, 0);
         }
         if let PrimaryContent::GetItem(slice_type) = primary.second() {
             if let PrimaryOrAtom::Primary(first) = primary.first() {
                 if maybe_sys_name(first, "version_info") {
-                    return python_version_matches_slice(flags, comp, slice_type, other);
+                    return python_version_matches_slice(settings, comp, slice_type, other);
                 }
             }
         }
@@ -1454,7 +1463,7 @@ fn check_comparison_reachability(
 }
 
 fn python_version_matches_tuple(
-    flags: &TypeCheckerFlags,
+    settings: &Settings,
     comp: ComparisonContent,
     other: ExpressionPart,
     from: usize,
@@ -1467,7 +1476,8 @@ fn python_version_matches_tuple(
         return Truthiness::Unknown;
     }
     let mut total_order = TotalOrder::Equals;
-    for (current, tup_entry) in [flags.python_version.major, flags.python_version.minor][from..]
+    for (current, tup_entry) in [settings.python_version.major, settings.python_version.minor]
+        [from..]
         .iter()
         .zip(tup.iter())
     {
@@ -1525,7 +1535,7 @@ impl TotalOrder {
 }
 
 fn python_version_matches_slice(
-    flags: &TypeCheckerFlags,
+    settings: &Settings,
     comp: ComparisonContent,
     slice_type: SliceType,
     other: ExpressionPart,
@@ -1537,7 +1547,7 @@ fn python_version_matches_slice(
                 let from = first.map(|expr| expr.maybe_simple_int());
                 if from != Some(None) {
                     return python_version_matches_tuple(
-                        flags,
+                        settings,
                         comp,
                         other,
                         from.flatten().unwrap_or(0),
@@ -1552,7 +1562,7 @@ fn python_version_matches_slice(
                         if let Some(result) = wanted.parse_as_usize().and_then(|x| {
                             check_operand_against_total_order(
                                 comp,
-                                TotalOrder::new(flags.python_version.major, x),
+                                TotalOrder::new(settings.python_version.major, x),
                             )
                         }) {
                             return result.into();
@@ -1593,7 +1603,7 @@ fn maybe_sys_name(primary: Primary, name: &str) -> bool {
 }
 
 fn maybe_sys_platform_startswith(
-    flags: &TypeCheckerFlags,
+    settings: &Settings,
     before: Primary,
     arguments: ArgumentsDetails,
 ) -> Truthiness {
@@ -1603,7 +1613,7 @@ fn maybe_sys_platform_startswith(
                 if let Some(named_expr) = arguments.maybe_single_named_expr() {
                     if let Some(s) = named_expr.maybe_single_string_literal() {
                         if let Some(to_compare) = s.as_python_string().as_str() {
-                            if flags.computed_platform().starts_with(to_compare) {
+                            if settings.computed_platform().starts_with(to_compare) {
                                 return Truthiness::True {
                                     in_type_checking_block: false,
                                 };
@@ -1619,14 +1629,21 @@ fn maybe_sys_platform_startswith(
     Truthiness::Unknown
 }
 
-fn is_expr_reachable_for_name_binder(flags: &TypeCheckerFlags, expr: Expression) -> Truthiness {
+fn is_expr_reachable_for_name_binder(
+    settings: &Settings,
+    flags: &TypeCheckerFlags,
+    expr: Expression,
+) -> Truthiness {
     match expr.unpack() {
-        ExpressionContent::ExpressionPart(p) => is_expr_part_reachable_for_name_binder(flags, p),
+        ExpressionContent::ExpressionPart(p) => {
+            is_expr_part_reachable_for_name_binder(settings, flags, p)
+        }
         _ => Truthiness::Unknown,
     }
 }
 
 pub fn is_expr_part_reachable_for_name_binder(
+    settings: &Settings,
     flags: &TypeCheckerFlags,
     expr_part: ExpressionPart,
 ) -> Truthiness {
@@ -1647,7 +1664,7 @@ pub fn is_expr_part_reachable_for_name_binder(
                 }
             }
             AtomContent::NamedExpression(named_expr) => {
-                return is_expr_reachable_for_name_binder(flags, named_expr.expression())
+                return is_expr_reachable_for_name_binder(settings, flags, named_expr.expression())
             }
             _ => (),
         },
@@ -1666,13 +1683,14 @@ pub fn is_expr_part_reachable_for_name_binder(
             }
             PrimaryContent::Execution(execution) => {
                 if let PrimaryOrAtom::Primary(prim) = primary.first() {
-                    return maybe_sys_platform_startswith(flags, prim, execution);
+                    return maybe_sys_platform_startswith(settings, prim, execution);
                 }
             }
             _ => (),
         },
         ExpressionPart::Inversion(inv) => {
-            return is_expr_part_reachable_for_name_binder(flags, inv.expression()).invert()
+            return is_expr_part_reachable_for_name_binder(settings, flags, inv.expression())
+                .invert()
         }
         ExpressionPart::Comparisons(comps) => {
             let mut iterator = comps.iter();
@@ -1680,22 +1698,22 @@ pub fn is_expr_part_reachable_for_name_binder(
             if iterator.next().is_none() {
                 let left = first.left();
                 let right = first.right();
-                let result = check_comparison_reachability(flags, first, left, right);
+                let result = check_comparison_reachability(settings, first, left, right);
                 if result == Truthiness::Unknown {
-                    return check_comparison_reachability(flags, first, right, left);
+                    return check_comparison_reachability(settings, first, right, left);
                 }
                 return result;
             }
         }
         ExpressionPart::Conjunction(conjunction) => {
             let (left, right) = conjunction.unpack();
-            return is_expr_part_reachable_for_name_binder(flags, left)
-                & is_expr_part_reachable_for_name_binder(flags, right);
+            return is_expr_part_reachable_for_name_binder(settings, flags, left)
+                & is_expr_part_reachable_for_name_binder(settings, flags, right);
         }
         ExpressionPart::Disjunction(disjunction) => {
             let (left, right) = disjunction.unpack();
-            return is_expr_part_reachable_for_name_binder(flags, left)
-                .or_else(|| is_expr_part_reachable_for_name_binder(flags, right));
+            return is_expr_part_reachable_for_name_binder(settings, flags, left)
+                .or_else(|| is_expr_part_reachable_for_name_binder(settings, flags, right));
         }
         _ => (),
     }

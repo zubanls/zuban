@@ -1898,7 +1898,11 @@ impl Inference<'_, '_, '_> {
         and: Conjunction,
     ) -> (Inferred, FramesWithParentUnions, FramesWithParentUnions) {
         let (left, right) = and.unpack();
-        match is_expr_part_reachable_for_name_binder(self.flags(), left) {
+        match is_expr_part_reachable_for_name_binder(
+            &self.i_s.db.project.settings,
+            self.flags(),
+            left,
+        ) {
             Truthiness::True { .. } => {
                 let (inf, r) = self.find_guards_in_expression_parts(right);
                 return (inf, FramesWithParentUnions::default(), r);
@@ -1952,7 +1956,11 @@ impl Inference<'_, '_, '_> {
         or: Disjunction,
     ) -> (Inferred, FramesWithParentUnions, FramesWithParentUnions) {
         let (left, right) = or.unpack();
-        match is_expr_part_reachable_for_name_binder(self.flags(), left) {
+        match is_expr_part_reachable_for_name_binder(
+            &self.i_s.db.project.settings,
+            self.flags(),
+            left,
+        ) {
             Truthiness::False => {
                 let (inf, r) = self.find_guards_in_expression_parts(right);
                 return (inf, FramesWithParentUnions::default(), r);

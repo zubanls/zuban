@@ -1087,7 +1087,7 @@ impl<'db> Diagnostic<'db> {
                 r#"Non-overlapping container check (element type: "{element_type}", container item type: "{container_type}")"#
             ),
             UnimportedRevealType => {
-                let module = if self.db.project.flags.python_version < PythonVersion::new(3, 11) {
+                let module = if self.db.project.settings.python_version < PythonVersion::new(3, 11) {
                     "typing_extensions"
                 } else {
                     "typing"

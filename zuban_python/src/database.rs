@@ -12,7 +12,7 @@ use std::{
 use parsa_python_cst::NodeIndex;
 
 use crate::{
-    config::OverrideConfig,
+    config::{OverrideConfig, Settings},
     debug,
     file::{
         File, FileState, FileStateLoader, FileSystemReader, LanguageFileState, PythonFile,
@@ -863,6 +863,7 @@ impl Database {
         ];
         let project = PythonProject {
             sys_path,
+            settings: options.settings,
             flags: options.flags,
             overrides: options.overrides,
         };
@@ -871,7 +872,7 @@ impl Database {
 
         let mut workspaces = Workspaces::default();
         let separator = vfs.separator();
-        for p in project.flags.mypy_path.iter() {
+        for p in project.settings.mypy_path.iter() {
             workspaces.add(vfs.as_ref(), file_state_loaders.as_ref(), p.clone(), true);
         }
         for p in &project.sys_path {
@@ -904,6 +905,7 @@ impl Database {
     ) -> Self {
         let project = PythonProject {
             sys_path: self.project.sys_path.clone(),
+            settings: options.settings,
             flags: options.flags,
             overrides: options.overrides,
         };
@@ -957,8 +959,13 @@ impl Database {
             files.push(file_state.clone_box(new_file_entry.clone()));
         }
 
-        let mut mypy_path_iter = project.flags.mypy_path.iter();
-        assert_eq!(mypy_path_iter.next_back().unwrap(), "/mypylike/");
+        let mut mypy_path_iter = project.settings.mypy_path.iter();
+        assert_eq!(
+            mypy_path_iter.next_back().map(|p| p.as_str()),
+            Some("/mypylike/"),
+            "{:?}",
+            project.settings.mypy_path
+        );
         for p in mypy_path_iter.rev() {
             workspaces.add_at_start(self.vfs.as_ref(), file_state_loaders.as_ref(), p.clone())
         }
@@ -1359,6 +1366,7 @@ impl Database {
 
 pub struct PythonProject {
     pub sys_path: Vec<Box<str>>,
+    pub settings: Settings,
     pub flags: TypeCheckerFlags,
     pub(crate) overrides: Vec<OverrideConfig>,
     // is_django: bool,  // TODO maybe add?

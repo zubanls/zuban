@@ -181,7 +181,7 @@ impl NamedTuple {
         let type_ = match name {
             "__new__" => Type::Callable(self.__new__.clone()),
             "_replace" => replace_method("_replace"),
-            "__replace__" if i_s.flags().python_version.at_least_3_dot(13) => {
+            "__replace__" if i_s.db.project.settings.python_version.at_least_3_dot(13) => {
                 replace_method("__replace__")
             }
             "_asdict" => Type::Callable({
@@ -256,7 +256,7 @@ impl NamedTuple {
             "__mul__" | "__rmul__" | "__add__" => {
                 return lookup_tuple_magic_methods(self.as_tuple(), name)
             }
-            "__match_args__" if i_s.flags().python_version.at_least_3_dot(10) => {
+            "__match_args__" if i_s.db.project.settings.python_version.at_least_3_dot(10) => {
                 Type::Tuple(Tuple::new_fixed_length(
                     self.params()
                         .iter()

@@ -310,10 +310,10 @@ fn apply_flags(project_options: &mut ProjectOptions, cli: Cli) {
     }
 
     if cli.platform.is_some() {
-        project_options.flags.platform = cli.platform;
+        project_options.settings.platform = cli.platform;
     }
     if let Some(python_version) = cli.python_version {
-        project_options.flags.python_version = python_version;
+        project_options.settings.python_version = python_version;
     }
     project_options
         .flags
@@ -340,7 +340,7 @@ fn apply_flags(project_options: &mut ProjectOptions, cli: Cli) {
     }
 
     // TODO MYPYPATH=$MYPYPATH:mypy-stubs
-    project_options.flags.mypy_path.push(
+    project_options.settings.mypy_path.push(
         std::env::current_dir()
             .expect("Expected a valid working directory")
             .into_os_string()

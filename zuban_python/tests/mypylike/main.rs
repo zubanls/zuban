@@ -9,7 +9,9 @@ use std::{
 use clap::Parser;
 
 use regex::{Captures, Regex, Replacer};
-use zuban_python::{DiagnosticConfig, Project, ProjectOptions, PythonVersion, TypeCheckerFlags};
+use zuban_python::{
+    DiagnosticConfig, Project, ProjectOptions, PythonVersion, Settings, TypeCheckerFlags,
+};
 
 const SKIP_MYPY_TEST_FILES: [&str; 29] = [
     // Narrowing tests
@@ -129,6 +131,7 @@ impl<'name, 'code> TestCase<'name, 'code> {
         };
 
         let mut config = TypeCheckerFlags::default();
+        let mut settings = Settings::default();
         let mut project_options = None;
         if let Some(mypy_ini_config) = steps.steps[0].files.get("mypy.ini") {
             println!("Loading mypy.ini for {} ({})", self.name, self.file_name);
@@ -138,6 +141,7 @@ impl<'name, 'code> TestCase<'name, 'code> {
                     .unwrap();
             set_mypy_path(&mut new);
             config = std::mem::replace(&mut new.flags, config);
+            settings = std::mem::replace(&mut new.settings, settings);
             project_options = Some(new);
         }
         if let Some(pyproject_toml) = steps.steps[0].files.get("pyproject.toml") {
@@ -154,6 +158,7 @@ impl<'name, 'code> TestCase<'name, 'code> {
             .unwrap();
             set_mypy_path(&mut new);
             config = std::mem::replace(&mut new.flags, config);
+            settings = std::mem::replace(&mut new.settings, settings);
             project_options = Some(new);
         }
 
@@ -162,7 +167,7 @@ impl<'name, 'code> TestCase<'name, 'code> {
             let Some(suffix) = first_line.strip_prefix("# pkgs:") else {
                 unreachable!()
             };
-            config.mypy_path.extend(
+            settings.mypy_path.extend(
                 suffix
                     .split([';', ','])
                     .map(|s| MYPY_TEST_DATA_PACKAGES_FOLDER.to_string() + s.trim()),
@@ -249,14 +254,14 @@ impl<'name, 'code> TestCase<'name, 'code> {
         // This is simply for testing and mirrors how mypy does it.
         config.allow_empty_bodies =
             !self.name.ends_with("_no_empty") && self.file_name != "check-abstract";
-        config.platform = arg_after("--platform");
+        settings.platform = arg_after("--platform");
         config.mypy_compatible = mypy_compatible;
 
         if let Some(version) = arg_after("--python-version") {
             let x = &version[..1];
             let y = &version[2..];
             let error = "Expected version X.Y like 3.10";
-            config.python_version =
+            settings.python_version =
                 PythonVersion::new(x.parse().expect(error), y.parse().expect(error));
         } else {
             // TODO This appears to cause issues, because Mypy uses a custom typing.pyi that has
@@ -267,7 +272,7 @@ impl<'name, 'code> TestCase<'name, 'code> {
         {
             let mut flag_iterator = steps.flags.iter();
             if flag_iterator.any(|x| *x == "--platform") {
-                config.platform = Some(flag_iterator.next().unwrap().to_string());
+                settings.platform = Some(flag_iterator.next().unwrap().to_string());
             }
         }
 
@@ -301,11 +306,12 @@ impl<'name, 'code> TestCase<'name, 'code> {
 
         let mut tmp;
         let project = if let Some(mut project_options) = project_options {
+            project_options.settings = settings;
             project_options.flags = config;
             tmp = projects.try_to_reuse_project_parts(project_options);
             &mut tmp
         } else {
-            projects.get_mut(config)
+            projects.get_mut(settings, config)
         };
 
         let is_parse_test = self.file_name.starts_with("parse");
@@ -802,22 +808,22 @@ fn calculate_filters(args: Vec<String>) -> Vec<String> {
 
 struct ProjectsCache {
     base_project: Option<Project>,
-    map: HashMap<TypeCheckerFlags, Project>,
+    map: HashMap<(Settings, TypeCheckerFlags), Project>,
 }
 
 fn set_mypy_path(options: &mut ProjectOptions) {
-    for path in options.flags.mypy_path.iter_mut() {
+    for path in options.settings.mypy_path.iter_mut() {
         if !path.starts_with(MYPY_TEST_DATA_PACKAGES_FOLDER) {
             // Mypy has a kind of weird way how they deal with tmp/
             *path = BASE_PATH.to_owned() + path;
         }
     }
-    options.flags.mypy_path.push(BASE_PATH.into());
+    options.settings.mypy_path.push(BASE_PATH.into());
 }
 
 impl ProjectsCache {
     fn new(reuse_db: bool) -> Self {
-        let mut po = ProjectOptions::new(Default::default());
+        let mut po = ProjectOptions::default();
         set_mypy_path(&mut po);
         Self {
             base_project: reuse_db.then(|| Project::new(po)),
@@ -825,14 +831,15 @@ impl ProjectsCache {
         }
     }
 
-    fn get_mut(&mut self, flags: TypeCheckerFlags) -> &mut Project {
-        if !self.map.contains_key(&flags) {
-            let mut options = ProjectOptions::new(flags.clone());
+    fn get_mut(&mut self, settings: Settings, flags: TypeCheckerFlags) -> &mut Project {
+        let key = (settings, flags);
+        if !self.map.contains_key(&key) {
+            let mut options = ProjectOptions::new(key.0.clone(), key.1.clone());
             set_mypy_path(&mut options);
             let project = self.try_to_reuse_project_parts(options);
-            self.map.insert(flags.clone(), project);
+            self.map.insert(key.clone(), project);
         }
-        self.map.get_mut(&flags).unwrap()
+        self.map.get_mut(&key).unwrap()
     }
 
     fn try_to_reuse_project_parts(&self, options: ProjectOptions) -> Project {

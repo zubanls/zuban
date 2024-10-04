@@ -305,6 +305,7 @@ impl<'db> PythonFile {
         let symbol_table = NameBinder::with_global_binder(
             DbInfos {
                 // TODO this does not use flags of the super file. Is this an issue?
+                settings: &project.settings,
                 flags: flags.as_ref().unwrap_or(&project.flags),
                 tree: &tree,
                 points: &points,

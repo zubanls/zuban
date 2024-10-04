@@ -25,7 +25,7 @@ mod type_helpers;
 mod utils;
 mod workspaces;
 
-pub use config::{ExcludeRegex, ProjectOptions, PythonVersion, TypeCheckerFlags};
+pub use config::{ExcludeRegex, ProjectOptions, PythonVersion, Settings, TypeCheckerFlags};
 use database::{Database, FileIndex, PythonProject};
 pub use diagnostics::DiagnosticConfig;
 use file::{FileStateLoader, Leaf};
@@ -66,10 +66,10 @@ impl Project {
     }
 
     pub fn diagnostics(&mut self, config: &DiagnosticConfig) -> Diagnostics<'_> {
-        if self.db.project.flags.mypy_path.len() > 1 {
+        if self.db.project.settings.mypy_path.len() > 1 {
             debug!(
                 "Has complex mypy path: {:?}",
-                &self.db.project.flags.mypy_path
+                &self.db.project.settings.mypy_path
             );
         }
         let mut all_diagnostics: Vec<diagnostics::Diagnostic> = vec![];
