@@ -3544,9 +3544,16 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     {
                         return Inferred::from_type(i_s.db.python_state.str_type());
                     }
-                    if !matches!(
+                    // It feels somewhat arbitrary what is exposed from the ModuleType and what's
+                    // not, so just filter here.
+                    if matches!(
                         name_str,
-                        "__dict__" | "__loader__" | "__path__" | "__init__" | "__getattr__"
+                        "__name__"
+                            | "__file__"
+                            | "__package__"
+                            | "__spec__"
+                            | "__doc__"
+                            | "__annotations__"
                     ) {
                         if let Some(inf) = i_s
                             .db

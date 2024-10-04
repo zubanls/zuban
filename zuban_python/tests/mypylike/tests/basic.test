@@ -664,6 +664,16 @@ __path__  # E: Name "__path__" is not defined
 __init__  # E: Name "__init__" is not defined
 __getattr__  # E: Name "__getattr__" is not defined
 
+# From object
+reveal_type(__doc__)  # N: Revealed type is "str | None"
+reveal_type(__annotations__)  # N: Revealed type is "builtins.dict[builtins.str, Any]"
+__module__  # E: Name "__module__" is not defined
+__hash__  # E: Name "__hash__" is not defined
+__eq__  # E: Name "__eq__" is not defined
+# From metaclass
+mro  # E: Name "mro" is not defined
+__base__  # E: Name "__base__" is not defined
+
 def foo() -> None:
     reveal_type(__name__)  # N: Revealed type is "str"
     reveal_type(__file__)  # N: Revealed type is "str"
@@ -675,6 +685,13 @@ def foo() -> None:
     __path__  # E: Name "__path__" is not defined
     __init__  # E: Name "__init__" is not defined
     __getattr__  # E: Name "__getattr__" is not defined
+
+    reveal_type(__doc__)  # N: Revealed type is "str | None"
+    reveal_type(__annotations__)  # N: Revealed type is "builtins.dict[builtins.str, Any]"
+    __module__  # E: Name "__module__" is not defined
+    __hash__  # E: Name "__hash__" is not defined
+    __eq__  # E: Name "__eq__" is not defined
+    mro  # E: Name "mro" is not defined
 
 class Foo:
     reveal_type(__name__)  # N: Revealed type is "str"
@@ -688,3 +705,9 @@ class Foo:
     __init__  # E: Name "__init__" is not defined
     __getattr__  # E: Name "__getattr__" is not defined
 
+    reveal_type(__doc__)  # N: Revealed type is "str | None"
+    reveal_type(__annotations__)  # N: Revealed type is "builtins.dict[builtins.str, Any]"
+    reveal_type(__module__)  # N: Revealed type is "str"
+    __hash__  # E: Name "__hash__" is not defined
+    __eq__  # E: Name "__eq__" is not defined
+    mro  # E: Name "mro" is not defined
