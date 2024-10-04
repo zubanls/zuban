@@ -83,6 +83,15 @@ impl Project {
                     to_be_loaded.push((file.clone(), path));
                 }
             });
+
+            let maybe_skipped = |flags: &TypeCheckerFlags, path| {
+                let check_files = &self.db.project.settings.files_or_directories_to_check;
+                !check_files.is_empty()
+                    && check_files
+                        .iter()
+                        .any(|p| self.db.vfs.is_sub_file_of(path, p))
+                    || flags.excludes.iter().any(|e| e.regex.is_match(path))
+            };
             for (file, path) in to_be_loaded {
                 self.db.load_file_from_workspace(file, false);
             }
@@ -101,12 +110,7 @@ impl Project {
                     file.file_index(),
                 );
                 let python_file = self.db.loaded_python_file(file_index);
-                if python_file
-                    .flags(&self.db)
-                    .excludes
-                    .iter()
-                    .any(|e| e.regex.is_match(file.file_path(&self.db)))
-                {
+                if maybe_skipped(python_file.flags(&self.db), file.file_path(&self.db)) {
                     continue 'outer;
                 }
                 checked_files += 1;

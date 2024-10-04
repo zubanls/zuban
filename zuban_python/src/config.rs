@@ -27,6 +27,7 @@ pub struct Settings {
     pub python_version: PythonVersion,
     pub mypy_path: Vec<String>,
     pub mypy_compatible: bool,
+    pub files_or_directories_to_check: Vec<String>,
 }
 
 impl Default for Settings {
@@ -36,6 +37,7 @@ impl Default for Settings {
             python_version: PythonVersion::new(3, 12),
             mypy_path: vec![],
             mypy_compatible: false,
+            files_or_directories_to_check: vec![],
         }
     }
 }

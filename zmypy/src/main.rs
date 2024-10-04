@@ -313,6 +313,21 @@ fn apply_flags(project_options: &mut ProjectOptions, cli: Cli) {
     if let Some(python_version) = cli.python_version {
         project_options.settings.python_version = python_version;
     }
+    let cwd = std::env::current_dir().expect("Expected a valid working directory");
+    const CWD_ERROR: &'static str = "Expected valid unicode in working directory";
+    if !cli.files.is_empty() {
+        project_options.settings.files_or_directories_to_check = cli
+            .files
+            .into_iter()
+            .map(|f| {
+                cwd.as_path()
+                    .join(f)
+                    .into_os_string()
+                    .into_string()
+                    .expect(CWD_ERROR)
+            })
+            .collect();
+    }
     project_options
         .flags
         .enabled_error_codes
@@ -338,11 +353,8 @@ fn apply_flags(project_options: &mut ProjectOptions, cli: Cli) {
     }
 
     // TODO MYPYPATH=$MYPYPATH:mypy-stubs
-    project_options.settings.mypy_path.push(
-        std::env::current_dir()
-            .expect("Expected a valid working directory")
-            .into_os_string()
-            .into_string()
-            .expect("Expected a valid unicode working directory"),
-    );
+    project_options
+        .settings
+        .mypy_path
+        .push(cwd.into_os_string().into_string().expect(CWD_ERROR));
 }

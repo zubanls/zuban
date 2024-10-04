@@ -36,6 +36,11 @@ pub trait Vfs {
     fn dir_path<'a>(&self, path: &'a str) -> Option<&'a str> {
         path.rfind(self.separator()).map(|index| &path[..index])
     }
+
+    fn is_sub_file_of(&self, path: &str, maybe_parent: &str) -> bool {
+        dbg!(path, maybe_parent);
+        path.contains(maybe_parent)
+    }
 }
 
 #[derive(Default)]
