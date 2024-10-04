@@ -1207,8 +1207,33 @@ impl Inference<'_, '_, '_> {
     ) {
         let widens = false;
         if new_t.is_any() && !declaration_t.is_any_or_any_in_union(self.i_s.db) {
-            // Any should not be narrowed if it is not part of a union with any.
-            FLOW_ANALYSIS.with(|fa| fa.remove_key_if_modifies_ancestors(self.i_s, &key));
+            let lookup = FLOW_ANALYSIS
+                .with(|fa| fa.lookup_narrowed_key_and_deleted(self.i_s.db, key.clone()));
+            if lookup.is_some_and(|(result, deleted)| {
+                !deleted && matches!(result.as_cow_type(self.i_s).as_ref(), Type::None)
+            }) {
+                // This is a special case like
+                //
+                //     def foo(x: int | None) -> None:
+                //         if x is None:
+                //             x = assign_with_untyped_function()
+                //             reveal_type(x) # Revealed type is "Union[builtins.int, Any]"
+                //         reveal_type(x)     # Revealed type is "Union[builtins.int, Any]"
+                //
+                // This special case is important, because a lot of the time when Any is returned
+                // people actually remove None from the union.
+                self.save_narrowed(
+                    key,
+                    declaration_t
+                        .remove_none(self.i_s.db)
+                        .into_owned()
+                        .union(new_t.clone()),
+                    widens,
+                )
+            } else {
+                // Any should not be narrowed if it is not part of a union with any.
+                FLOW_ANALYSIS.with(|fa| fa.remove_key_if_modifies_ancestors(self.i_s, &key));
+            }
             return;
         } else if check_for_error() {
             return; // There was an error so return and don't narrow.

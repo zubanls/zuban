@@ -119,9 +119,6 @@ testOverride__new__AndCallObject
 testNewAndInitNoReturn
 testOverloadedNewAndInitNoReturn
 
-# any overwrites of None
-testOptionalAssignAny1
-testOptionalAssignAny3
 # list[Any] should not be narrowed to e.g. list[int]
 testNewAnalyzerBuiltinAliasesFixed
 testInferredTypeIsSimpleNestedList
