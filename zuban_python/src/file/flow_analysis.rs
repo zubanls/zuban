@@ -1332,7 +1332,7 @@ impl Inference<'_, '_, '_> {
                 .get(class_block.index())
                 .calculated()
             {
-                if self.flags().mypy_compatible {
+                if self.i_s.db.project.settings.mypy_compatible {
                     // The class should have self generics within the functions
                     let class = Class::with_self_generics(self.i_s.db, class.node_ref);
                     fa.with_new_empty(self.i_s, || {

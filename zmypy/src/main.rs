@@ -1,9 +1,7 @@
 use std::io::Read;
 use std::path::PathBuf;
 use std::process::ExitCode;
-use zuban_python::{
-    DiagnosticConfig, ExcludeRegex, Project, ProjectOptions, PythonVersion, TypeCheckerFlags,
-};
+use zuban_python::{DiagnosticConfig, ExcludeRegex, Project, ProjectOptions, PythonVersion};
 
 use clap::Parser;
 
@@ -215,10 +213,10 @@ fn main() -> ExitCode {
         }
         .unwrap_or_else(|err| panic!("Problem parsing Mypy config {name}: {err}"))
     } else {
-        ProjectOptions::new(TypeCheckerFlags::default())
+        ProjectOptions::default()
     };
 
-    options.flags.mypy_compatible = true;
+    options.settings.mypy_compatible = true;
     apply_flags(&mut options, cli);
 
     let mut project = Project::new(options);
@@ -306,7 +304,7 @@ fn apply_flags(project_options: &mut ProjectOptions, cli: Cli) {
     apply!(extra_checks, no_extra_checks);
 
     if cli.no_mypy_compatible {
-        project_options.flags.mypy_compatible = false;
+        project_options.settings.mypy_compatible = false;
     }
 
     if cli.platform.is_some() {

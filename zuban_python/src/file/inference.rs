@@ -2231,7 +2231,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         let first_ref = NodeRef::new(self.file, first_index_of_definition);
         let mut line = first_ref.line();
         let i_s = self.i_s;
-        if self.flags().mypy_compatible {
+        if i_s.db.project.settings.mypy_compatible {
             // Mypy uses the line of the first decorator as the definition line. This feels
             // weird, because the name is what matters, so in our implementation we use a
             // different line.

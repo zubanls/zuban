@@ -26,6 +26,7 @@ pub struct Settings {
     pub platform: Option<String>,
     pub python_version: PythonVersion,
     pub mypy_path: Vec<String>,
+    pub mypy_compatible: bool,
 }
 
 impl Default for Settings {
@@ -34,6 +35,7 @@ impl Default for Settings {
             platform: None,
             python_version: PythonVersion::new(3, 12),
             mypy_path: vec![],
+            mypy_compatible: false,
         }
     }
 }
@@ -186,7 +188,6 @@ pub struct TypeCheckerFlags {
     pub excludes: Vec<ExcludeRegex>,
 
     pub extra_checks: bool,
-    pub mypy_compatible: bool,
     pub case_sensitive: bool,
 }
 
@@ -224,7 +225,6 @@ impl Default for TypeCheckerFlags {
             enabled_error_codes: vec![],
             disabled_error_codes: vec![],
             extra_checks: false,
-            mypy_compatible: false,
             case_sensitive: true,
         }
     }

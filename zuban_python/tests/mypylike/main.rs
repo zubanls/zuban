@@ -255,7 +255,7 @@ impl<'name, 'code> TestCase<'name, 'code> {
         config.allow_empty_bodies =
             !self.name.ends_with("_no_empty") && self.file_name != "check-abstract";
         settings.platform = arg_after("--platform");
-        config.mypy_compatible = mypy_compatible;
+        settings.mypy_compatible = mypy_compatible;
 
         if let Some(version) = arg_after("--python-version") {
             let x = &version[..1];

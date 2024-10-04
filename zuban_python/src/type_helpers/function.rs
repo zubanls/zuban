@@ -192,7 +192,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         i_s: &InferenceState<'db, '_>,
         args: &dyn Args<'db>,
     ) -> Inferred {
-        if self.node_ref.file.flags(i_s.db).mypy_compatible {
+        if i_s.db.project.settings.mypy_compatible {
             return Inferred::new_any(AnyCause::Unannotated);
         }
         if self.is_generator() {
@@ -1979,7 +1979,7 @@ impl<'x> Param<'x> for FunctionParam<'x> {
     fn kind(&self, db: &Database) -> ParamKind {
         let mut t = self.param.kind();
         if t == ParamKind::PositionalOrKeyword
-            && self.file.flags(db).mypy_compatible
+            && db.project.settings.mypy_compatible
             && is_private(self.param.name_def().as_code())
         {
             // Mypy treats __ params as positional only
