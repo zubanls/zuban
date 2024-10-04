@@ -650,3 +650,41 @@ reveal_type(Foo().b)  # N: Revealed type is "int"
 [case aug_assign_tuple_syntax_issue2]
 a = 1
 (a) += 1
+
+[case current_module_attrs]
+reveal_type(__name__)  # N: Revealed type is "str"
+reveal_type(__file__)  # N: Revealed type is "str"
+reveal_type(__package__)  # N: Revealed type is "str"
+reveal_type(__spec__)  # N: Revealed type is "importlib.machinery.ModuleSpec | None"
+
+# Attributes defined in ModuleType but not actually available in the current module.
+__dict__  # E: Name "__dict__" is not defined
+__loader__  # E: Name "__loader__" is not defined
+__path__  # E: Name "__path__" is not defined
+__init__  # E: Name "__init__" is not defined
+__getattr__  # E: Name "__getattr__" is not defined
+
+def foo() -> None:
+    reveal_type(__name__)  # N: Revealed type is "str"
+    reveal_type(__file__)  # N: Revealed type is "str"
+    reveal_type(__package__)  # N: Revealed type is "str"
+    reveal_type(__spec__)  # N: Revealed type is "importlib.machinery.ModuleSpec | None"
+
+    __dict__  # E: Name "__dict__" is not defined
+    __loader__  # E: Name "__loader__" is not defined
+    __path__  # E: Name "__path__" is not defined
+    __init__  # E: Name "__init__" is not defined
+    __getattr__  # E: Name "__getattr__" is not defined
+
+class Foo:
+    reveal_type(__name__)  # N: Revealed type is "str"
+    reveal_type(__file__)  # N: Revealed type is "str"
+    reveal_type(__package__)  # N: Revealed type is "str"
+    reveal_type(__spec__)  # N: Revealed type is "importlib.machinery.ModuleSpec | None"
+
+    __dict__  # E: Name "__dict__" is not defined
+    __loader__  # E: Name "__loader__" is not defined
+    __path__  # E: Name "__path__" is not defined
+    __init__  # E: Name "__init__" is not defined
+    __getattr__  # E: Name "__getattr__" is not defined
+

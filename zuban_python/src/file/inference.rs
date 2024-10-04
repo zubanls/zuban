@@ -3539,11 +3539,15 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         self.file.file_index != builtins.file_index,
                         "{name_str}; {save_to_index}"
                     );
-                    if i_s.in_class_scope().is_some() {
-                        if matches!(name_str, "__name__" | "__module__" | "__qualname__") {
-                            return Inferred::from_type(i_s.db.python_state.str_type());
-                        }
-                    } else if i_s.in_module_context() {
+                    if i_s.in_class_scope().is_some()
+                        && matches!(name_str, "__name__" | "__module__" | "__qualname__")
+                    {
+                        return Inferred::from_type(i_s.db.python_state.str_type());
+                    }
+                    if !matches!(
+                        name_str,
+                        "__dict__" | "__loader__" | "__path__" | "__init__" | "__getattr__"
+                    ) {
                         if let Some(inf) = i_s
                             .db
                             .python_state
