@@ -286,6 +286,9 @@ fn apply_flags(
         };
     }
     let flags = &mut project_options.flags;
+    if cli.strict {
+        flags.enable_all_strict_flags();
+    }
     apply!(flags, strict_optional, no_strict_optional);
     apply!(flags, strict_equality, no_strict_equality);
     apply!(flags, implicit_optional, no_implicit_optional);
