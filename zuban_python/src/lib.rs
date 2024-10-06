@@ -84,7 +84,7 @@ impl Project {
                 }
             });
 
-            let maybe_skipped = |flags: &TypeCheckerFlags, path| {
+            let maybe_skipped = |flags: &TypeCheckerFlags, path: &str| {
                 let check_files = &self.db.project.settings.files_or_directories_to_check;
                 !check_files.is_empty()
                     && !check_files
@@ -93,7 +93,9 @@ impl Project {
                     || flags.excludes.iter().any(|e| e.regex.is_match(path))
             };
             for (file, path) in to_be_loaded {
-                self.db.load_file_from_workspace(file, false);
+                if !maybe_skipped(&self.db.project.flags, &path) {
+                    self.db.load_file_from_workspace(file, false);
+                }
             }
 
             let mut file_indexes = vec![];
