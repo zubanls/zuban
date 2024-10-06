@@ -27,10 +27,10 @@ struct Cli {
     files: Vec<String>,
     /// Type-check module; can repeat for more modules
     #[arg(short, long)]
-    module: Vec<String>,
+    module_todo_unimplemented: Vec<String>,
     /// Type-check package recursively; can be repeated
     #[arg(short, long)]
-    package: Vec<String>,
+    package_todo_unimplemented: Vec<String>,
 
     // Config file
     /// Configuration file, must have a [mypy] section (defaults to mypy.ini, .mypy.ini, pyproject.toml, setup.cfg, ~/.config/mypy/config, ~/.mypy.ini)
@@ -296,15 +296,13 @@ fn apply_flags(project_options: &mut ProjectOptions, cli: Cli) {
     apply!(disallow_untyped_calls, allow_untyped_calls);
     apply!(disallow_untyped_decorators, allow_untyped_decorators);
     apply!(disallow_any_generics, allow_any_generics);
-    apply!(disallow_any_decorated, disallow_any_decorated);
-    apply!(disallow_any_explicit, disallow_any_explicit);
+    apply!(disallow_any_decorated, allow_any_decorated);
+    apply!(disallow_any_explicit, allow_any_explicit);
     //apply!(disallow_any_unimported, allow_any_unimported);
     //apply!(disallow_any_expr, allow_any_expr);
     apply!(disallow_subclassing_any, allow_subclassing_any);
     apply!(disallow_incomplete_defs, allow_incomplete_defs);
-    if cli.allow_untyped_globals {
-        project_options.flags.allow_untyped_globals = true;
-    }
+    apply!(allow_untyped_globals, disallow_allow_untyped_globals);
     apply!(warn_unreachable, no_warn_unreachable);
     //apply!(warn_redundant_casts, no_warn_redundant_casts);
     apply!(warn_return_any, no_warn_return_any);
