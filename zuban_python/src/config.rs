@@ -628,6 +628,11 @@ fn apply_from_base_config(
         | "platform"
         | "files"
         | "show_error_context"
+        | "show_traceback"
+        | "pretty"
+        | "plugins"
+        | "enable_incomplete_feature"
+        | "show_error_code_links"
         | "warn_redundant_casts"
         | "warn_unused_configs" => {
             debug!("TODO ignored config value {key}");

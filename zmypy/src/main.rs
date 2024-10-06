@@ -205,7 +205,7 @@ fn main() -> ExitCode {
 
     let in_dir = "TODO ";
     let mut diagnostic_config = DiagnosticConfig::default();
-    let mut options = if let Some((name, content)) = find_mypy_config_file() {
+    let mut options = if let Some((name, content)) = find_mypy_config_file(&cli) {
         if name.ends_with(".toml") {
             ProjectOptions::from_pyproject_toml(in_dir, &content, &mut diagnostic_config)
         } else {
@@ -253,12 +253,21 @@ fn main() -> ExitCode {
     ExitCode::from(had_diagnostics as u8)
 }
 
-fn find_mypy_config_file() -> Option<(&'static str, String)> {
+fn find_mypy_config_file(cli: &Cli) -> Option<(&str, String)> {
+    const CONFIG_FILE_READ_ISSUE: &'static str = "Issue while reading the config file";
+    if let Some(config_file) = cli.config_file.as_ref() {
+        let config_path = config_file
+            .as_os_str()
+            .to_str()
+            .expect("Expected a valid UTF-8 encoded config path");
+        let s = std::fs::read_to_string(config_path).expect(CONFIG_FILE_READ_ISSUE);
+        return Some((config_path, s));
+    }
     for config_path in CONFIG_PATHS {
         if let Ok(mut file) = std::fs::File::open(config_path) {
             let mut content = String::new();
             file.read_to_string(&mut content)
-                .expect("Issue while reading the config file");
+                .expect(CONFIG_FILE_READ_ISSUE);
             return Some((config_path, content));
         }
     }
