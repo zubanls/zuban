@@ -3150,7 +3150,21 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     LookupKind::Normal,
                     result_context,
                 )
-                .save_name(self.i_s, self.file, name.index())
+                .save_name(
+                    self.i_s,
+                    self.file,
+                    if is_target {
+                        // If it's a name def it might be something like self.foo = 1, which should not
+                        // be overwritten.
+                        if let Some(name_def) = name.name_def() {
+                            name_def.index()
+                        } else {
+                            name.index()
+                        }
+                    } else {
+                        name.index()
+                    },
+                )
                 .unwrap_or_else(Inferred::new_any_from_error)
             }
             PrimaryContent::Execution(details) => {

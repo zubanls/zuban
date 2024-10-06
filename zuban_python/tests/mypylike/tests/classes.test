@@ -645,3 +645,10 @@ reveal_type(c.lst)  # N: Revealed type is "list[int]"
 reveal_type(c.with_annotation)  # N: Revealed type is "int"
 reveal_type(c.with_type_comment)  # N: Revealed type is "int"
 reveal_type(c.wrong_aug_assign)  # N: Revealed type is "Any"
+
+[case aug_assign_had_issue]
+class M:
+    def __init__(self) -> None:
+        self.next_id = 0
+        self.next_id += 1
+        reveal_type(self.next_id)  # N: Revealed type is "int"
