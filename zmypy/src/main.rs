@@ -217,13 +217,9 @@ fn main() -> ExitCode {
     };
 
     options.settings.mypy_compatible = true;
-    apply_flags(&mut options, cli);
+    apply_flags(&mut options, &mut diagnostic_config, cli);
 
     let mut project = Project::new(options);
-    let diagnostic_config = DiagnosticConfig {
-        show_error_codes: true,
-        ..Default::default()
-    };
     let diagnostics = project.diagnostics(&diagnostic_config);
     for diagnostic in diagnostics.issues.iter() {
         println!("{}", diagnostic.as_string(&diagnostic_config))
@@ -274,41 +270,50 @@ fn find_mypy_config_file(cli: &Cli) -> Option<(&str, String)> {
     None
 }
 
-fn apply_flags(project_options: &mut ProjectOptions, cli: Cli) {
+fn apply_flags(
+    project_options: &mut ProjectOptions,
+    diagnostic_config: &mut DiagnosticConfig,
+    cli: Cli,
+) {
     macro_rules! apply {
-        ($attr:ident, $inverse:ident) => {
+        ($to:ident, $attr:ident, $inverse:ident) => {
             if cli.$attr {
-                project_options.flags.$attr = true;
+                $to.$attr = true;
             }
             if cli.$inverse {
-                project_options.flags.$attr = false;
+                $to.$attr = false;
             }
         };
     }
-    apply!(strict_optional, no_strict_optional);
-    apply!(strict_equality, no_strict_equality);
-    apply!(implicit_optional, no_implicit_optional);
-    apply!(check_untyped_defs, no_check_untyped_defs);
+    let flags = &mut project_options.flags;
+    apply!(flags, strict_optional, no_strict_optional);
+    apply!(flags, strict_equality, no_strict_equality);
+    apply!(flags, implicit_optional, no_implicit_optional);
+    apply!(flags, check_untyped_defs, no_check_untyped_defs);
     if cli.ignore_missing_imports {
-        project_options.flags.ignore_missing_imports = true;
+        flags.ignore_missing_imports = true;
     }
-    apply!(disallow_untyped_defs, allow_untyped_defs);
-    apply!(disallow_untyped_calls, allow_untyped_calls);
-    apply!(disallow_untyped_decorators, allow_untyped_decorators);
-    apply!(disallow_any_generics, allow_any_generics);
-    apply!(disallow_any_decorated, allow_any_decorated);
-    apply!(disallow_any_explicit, allow_any_explicit);
+    apply!(flags, disallow_untyped_defs, allow_untyped_defs);
+    apply!(flags, disallow_untyped_calls, allow_untyped_calls);
+    apply!(flags, disallow_untyped_decorators, allow_untyped_decorators);
+    apply!(flags, disallow_any_generics, allow_any_generics);
+    apply!(flags, disallow_any_decorated, allow_any_decorated);
+    apply!(flags, disallow_any_explicit, allow_any_explicit);
     //apply!(disallow_any_unimported, allow_any_unimported);
     //apply!(disallow_any_expr, allow_any_expr);
-    apply!(disallow_subclassing_any, allow_subclassing_any);
-    apply!(disallow_incomplete_defs, allow_incomplete_defs);
-    apply!(allow_untyped_globals, disallow_allow_untyped_globals);
-    apply!(warn_unreachable, no_warn_unreachable);
+    apply!(flags, disallow_subclassing_any, allow_subclassing_any);
+    apply!(flags, disallow_incomplete_defs, allow_incomplete_defs);
+    apply!(flags, allow_untyped_globals, disallow_allow_untyped_globals);
+    apply!(flags, warn_unreachable, no_warn_unreachable);
     //apply!(warn_redundant_casts, no_warn_redundant_casts);
-    apply!(warn_return_any, no_warn_return_any);
-    apply!(warn_no_return, no_warn_no_return);
-    apply!(no_implicit_reexport, implicit_reexport);
-    apply!(extra_checks, no_extra_checks);
+    apply!(flags, warn_return_any, no_warn_return_any);
+    apply!(flags, warn_no_return, no_warn_no_return);
+    apply!(flags, no_implicit_reexport, implicit_reexport);
+    apply!(flags, extra_checks, no_extra_checks);
+
+    apply!(diagnostic_config, show_column_numbers, hide_column_numbers);
+    apply!(diagnostic_config, show_error_end, hide_error_end);
+    apply!(diagnostic_config, show_error_codes, hide_error_codes);
 
     if cli.no_mypy_compatible {
         project_options.settings.mypy_compatible = false;
