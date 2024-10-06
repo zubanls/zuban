@@ -1197,7 +1197,8 @@ impl Database {
 
     fn unload_file(&mut self, file_index: FileIndex) {
         let file_state = &mut self.files[file_index.0 as usize];
-        self.workspaces.unload_file(&*self.vfs, file_state.path());
+        self.workspaces
+            .unload_file(&self.project.flags, &*self.vfs, file_state.path());
         let invalidations = file_state
             .unload_and_return_invalidations()
             .expect("We don't support rebuilding/unloading after changing of typeshed, yet.");
@@ -1272,7 +1273,8 @@ impl Database {
         for index in indexes {
             self.unload_file(index);
         }
-        self.workspaces.delete_directory(&*self.vfs, dir_path)
+        self.workspaces
+            .delete_directory(&self.project.flags, &*self.vfs, dir_path)
     }
 
     pub fn unload_in_memory_file(&mut self, path: &str) -> Result<(), &'static str> {

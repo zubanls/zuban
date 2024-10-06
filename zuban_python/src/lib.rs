@@ -87,7 +87,7 @@ impl Project {
             let maybe_skipped = |flags: &TypeCheckerFlags, path| {
                 let check_files = &self.db.project.settings.files_or_directories_to_check;
                 !check_files.is_empty()
-                    && check_files
+                    && !check_files
                         .iter()
                         .any(|p| self.db.vfs.is_sub_file_of(path, p))
                     || flags.excludes.iter().any(|e| e.regex.is_match(path))

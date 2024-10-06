@@ -57,16 +57,7 @@ impl Workspaces {
     ) -> AddedFile {
         for workspace in &mut self.0 {
             let root_path = workspace.root_path();
-            let rest = if flags.case_sensitive {
-                path.strip_prefix(root_path)
-            } else {
-                path.get(..root_path.len())
-                    .and_then(|p| {
-                        match_case(flags, root_path, p).then(|| path.get(root_path.len()..))
-                    })
-                    .flatten()
-            };
-            if let Some(p) = rest {
+            if let Some(p) = strip_path_prefix(flags, vfs, path, root_path) {
                 return ensure_dirs_and_file(
                     Parent::Workspace(workspace.root_path.clone()),
                     &workspace.directory,
@@ -78,18 +69,23 @@ impl Workspaces {
         todo!()
     }
 
-    pub fn unload_file(&mut self, vfs: &dyn Vfs, path: &str) {
+    pub fn unload_file(&mut self, flags: &TypeCheckerFlags, vfs: &dyn Vfs, path: &str) {
         // TODO for now we always unload, fix that.
         for workspace in &mut self.0 {
-            if let Some(p) = path.strip_prefix(workspace.root_path()) {
+            if let Some(p) = strip_path_prefix(flags, vfs, path, workspace.root_path()) {
                 workspace.directory.unload_file(vfs, p);
             }
         }
     }
 
-    pub fn delete_directory(&mut self, vfs: &dyn Vfs, path: &str) -> Result<(), String> {
+    pub fn delete_directory(
+        &mut self,
+        flags: &TypeCheckerFlags,
+        vfs: &dyn Vfs,
+        path: &str,
+    ) -> Result<(), String> {
         for workspace in &mut self.0 {
-            if let Some(p) = path.strip_prefix(workspace.root_path()) {
+            if let Some(p) = strip_path_prefix(flags, vfs, path, workspace.root_path()) {
                 return workspace.directory.delete_directory(vfs, p);
             }
         }
@@ -162,8 +158,8 @@ impl Workspace {
         is_type_checked: bool,
     ) -> Self {
         let separator = vfs.separator();
-        if !root_path.ends_with(separator) {
-            root_path.push(separator);
+        if root_path.ends_with(separator) {
+            root_path.pop();
         }
         let root_path = Rc::<Box<str>>::new(root_path.into());
 
@@ -178,7 +174,7 @@ impl Workspace {
             .into_iter()
             .filter_entry(|entry| {
                 if first {
-                    // The first entry needs to be passed, because it's the directory itself.
+                    // The first entry needs to be ignored, because it's the directory itself.
                     first = false;
                     return true;
                 }
@@ -554,6 +550,24 @@ impl Directory {
         path.push(vfs.separator());
         path + &self.name
     }
+}
+
+fn strip_path_prefix<'x>(
+    flags: &TypeCheckerFlags,
+    vfs: &dyn Vfs,
+    path: &'x str,
+    to_strip: &str,
+) -> Option<&'x str> {
+    let path = if flags.case_sensitive {
+        path.strip_prefix(to_strip)?
+    } else {
+        let p = path.get(..to_strip.len())?;
+        if !match_case(flags, to_strip, p) {
+            return None;
+        }
+        path.get(to_strip.len()..)?
+    };
+    path.strip_prefix(vfs.separator())
 }
 
 #[derive(Debug, Default, Clone)]

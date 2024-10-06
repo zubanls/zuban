@@ -38,7 +38,6 @@ pub trait Vfs {
     }
 
     fn is_sub_file_of(&self, path: &str, maybe_parent: &str) -> bool {
-        dbg!(path, maybe_parent);
         path.contains(maybe_parent)
     }
 }
