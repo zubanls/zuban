@@ -4243,6 +4243,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     pub fn flags(&self) -> &TypeCheckerFlags {
         self.file.flags(self.i_s.db)
     }
+
+    pub fn file_path(&self) -> &str {
+        self.file.file_path(self.i_s.db)
+    }
 }
 
 pub fn instantiate_except(i_s: &InferenceState, t: &Type) -> Type {

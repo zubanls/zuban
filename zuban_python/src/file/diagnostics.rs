@@ -673,6 +673,18 @@ impl<'db> Inference<'db, '_, '_> {
     }
 
     fn calc_class_diagnostics(&self, class: ClassDef) {
+        debug!(
+            "Diagnostics for class {} ({}({}:{}):#{})",
+            class.name().as_code(),
+            self.file_path(),
+            self.file.file_index,
+            class.index(),
+            NodeRef::new(self.file, class.index()).line()
+        );
+        debug_indent(|| self.calc_class_diagnostics_internal(class));
+    }
+
+    fn calc_class_diagnostics_internal(&self, class: ClassDef) {
         let (arguments, block) = class.unpack();
         cache_class_name(NodeRef::new(self.file, class.name_def().index()), class);
         let class_node_ref = NodeRef::new(self.file, class.index());
@@ -870,7 +882,14 @@ impl<'db> Inference<'db, '_, '_> {
         let from = NodeRef::new(self.file, func_node.body().index());
         diagnostics_for_scope(from, || {
             let func_node = function.node();
-            debug!("Diagnostics for function {}", function.name());
+            debug!(
+                "Diagnostics for function {} ({}({}:{}):#{})",
+                function.name(),
+                self.file_path(),
+                self.file.file_index,
+                func_node.index(),
+                function.node_ref.line()
+            );
             debug_indent(|| self.calc_func_diagnostics(function, func_node));
         })
     }

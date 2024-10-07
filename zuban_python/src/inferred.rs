@@ -631,7 +631,8 @@ impl<'db: 'slf, 'slf> Inferred {
                     }
                     let node_ref = NodeRef::new(file, index);
                     todo!(
-                        "{self:?} >>>> {p:?} {index:?}, {}, {:?}",
+                        "{self:?} >>>> {p:?} {}:{index:?}, {}, {:?}",
+                        file.file_index,
                         file.tree.short_debug_of_index(index),
                         node_ref.complex()
                     );

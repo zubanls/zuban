@@ -107,7 +107,7 @@ impl Project {
             'outer: for file_index in file_indexes {
                 let file = self.db.loaded_file(file_index);
                 debug!(
-                    "Calculate Diagnostics for {} ({})",
+                    "Diagnostics for module {} ({})",
                     file.file_path(&self.db),
                     file.file_index(),
                 );
