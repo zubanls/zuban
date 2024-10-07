@@ -3008,6 +3008,11 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         let i_s = self.i_s;
         let base = match primary_method.first() {
             PrimaryOrAtom::Primary(prim) => {
+                let index = prim.index();
+                if self.file.points.get(index).calculated() {
+                    // This means that we have already tried so return.
+                    return;
+                }
                 // Only care about very specific cases here.
                 if !matches!(prim.first(), PrimaryOrAtom::Atom(_)) {
                     return;
@@ -3016,7 +3021,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     return;
                 }
                 self.infer_primary(prim, &mut ResultContext::Unknown)
-                    .save_redirect(i_s, self.file, prim.index())
+                    .save_redirect(i_s, self.file, index)
             }
             PrimaryOrAtom::Atom(atom) => self.infer_atom(atom, &mut ResultContext::Unknown),
         };
@@ -3107,7 +3112,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     // Primary is not saved by this function, but can be saved by other stuff and to avoid
     // re-executing, we check the point cache here.
     check_point_cache_with!(pub infer_primary, Self::_infer_primary, Primary, result_context);
-    pub fn _infer_primary(&self, primary: Primary, result_context: &mut ResultContext) -> Inferred {
+    fn _infer_primary(&self, primary: Primary, result_context: &mut ResultContext) -> Inferred {
         if let Some(inf) = self.maybe_lookup_narrowed_primary(primary) {
             return inf;
         }

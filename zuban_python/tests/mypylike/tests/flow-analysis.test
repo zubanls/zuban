@@ -61,3 +61,10 @@ def func2() -> None:
 def func3() -> None:
     assert not TYPE_CHECKING; undefined1  # E: Statement is unreachable
     undefined2
+
+[case conjunction_partial_inference_combination_issue]
+# This was an issue, because flow analysis for conjunction can lead to
+# multiple times trying to infer partials (which are not even used here).
+import os
+def foo() -> None:
+    x = 1 and os.path.islink("").conjugate(1)  # E: Too many arguments for "conjugate" of "int"
