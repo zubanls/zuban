@@ -283,6 +283,17 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         }
     }
 
+    pub fn parent_class(&self, db: &'db Database) -> Option<Class<'class>> {
+        if let Some(cls) = self.class {
+            return Some(cls);
+        }
+        match self.parent(db) {
+            FuncParent::Module => None,
+            FuncParent::Function(func) => func.parent_class(db),
+            FuncParent::Class(c) => unreachable!(), // Handled above
+        }
+    }
+
     pub fn find_type_var_like_including_ancestors(
         &self,
         db: &Database,

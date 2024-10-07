@@ -811,7 +811,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         let mut is_class_var = false;
         let mut is_final = false;
         let i_s = self.inference.i_s;
-        let uses_class_generics = |class: &Class, t: &Type| {
+        let uses_class_generics = |class: Class, t: &Type| {
             let mut uses_class_generics = false;
             t.search_type_vars(&mut |usage| {
                 if usage.in_definition() == class.node_ref.as_link() {
@@ -4966,7 +4966,7 @@ pub(super) fn check_type_name<'db: 'file, 'file>(
             let point = name_node_ref.point();
             let func = Function::new(
                 NodeRef::new(name_node_ref.file, f.index()),
-                i_s.current_class().copied(),
+                i_s.current_class(),
             );
             InvalidVariableType::Function {
                 name: name_node_ref.as_code(),

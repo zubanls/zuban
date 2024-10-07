@@ -238,7 +238,7 @@ impl<'db: 'slf, 'slf> Inferred {
                     .metaclass(i_s.db),
                 _ => unreachable!(),
             },
-            Type::Self_ => *i_s.current_class().unwrap(),
+            Type::Self_ => i_s.current_class().unwrap(),
             Type::TypedDict(_) => i_s.db.python_state.typed_dict_class(),
             Type::Enum(enum_) => enum_.class(i_s.db),
             Type::TypeVar(tv) => match &tv.type_var.kind {
@@ -2526,8 +2526,7 @@ fn type_of_complex<'db: 'x, 'x>(
             Cow::Owned(cls.as_type_type(i_s))
         }
         ComplexPoint::FunctionOverload(overload) => {
-            let overload =
-                OverloadedFunction::new(&overload.functions, i_s.current_class().copied());
+            let overload = OverloadedFunction::new(&overload.functions, i_s.current_class());
             Cow::Owned(overload.as_type(i_s, None))
         }
         ComplexPoint::TypeInstance(t) => Cow::Borrowed(t),
@@ -2611,8 +2610,7 @@ pub fn specific_to_type<'db>(
         Specific::Complex => Cow::Owned(i_s.db.python_state.complex_type()),
         Specific::Ellipsis => Cow::Owned(i_s.db.python_state.ellipsis_type()),
         Specific::Function => Cow::Owned(
-            Function::new(definition, i_s.current_class().copied())
-                .as_type(i_s, FirstParamProperties::None),
+            Function::new(definition, i_s.current_class()).as_type(i_s, FirstParamProperties::None),
         ),
         Specific::AnnotationOrTypeCommentSimpleClassInstance
         | Specific::AnnotationOrTypeCommentWithoutTypeVars

@@ -1016,7 +1016,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             self.i_s,
                             name_def.as_code(),
                             InstanceLookupOptions::new(&|_| ())
-                                .with_skip_first_of_mro(self.i_s.db, cls),
+                                .with_skip_first_of_mro(self.i_s.db, &cls),
                         )
                         .lookup
                         .into_maybe_inferred()
@@ -3824,7 +3824,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         FunctionOrLambda::Function(func_node) => {
                             let func = Function::new(
                                 NodeRef::new(self.file, func_node.index()),
-                                self.i_s.current_class().copied(),
+                                self.i_s.current_class(),
                             );
                             func.ensure_cached_func(self.i_s);
 
@@ -3947,7 +3947,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             DefiningStmt::FunctionDef(func_def) => {
                 Function::new(
                     NodeRef::new(self.file, func_def.index()),
-                    self.i_s.current_class().copied(),
+                    self.i_s.current_class(),
                 )
                 .cache_func_with_name_def(self.i_s, name_def);
             }

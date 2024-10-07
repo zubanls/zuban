@@ -640,7 +640,7 @@ impl Type {
                 }
             },
             Type::NewType(n) => n.type_(i_s).iter(i_s, infos),
-            Type::Self_ => Instance::new(*i_s.current_class().unwrap(), None).iter(i_s, infos),
+            Type::Self_ => Instance::new(i_s.current_class().unwrap(), None).iter(i_s, infos),
             Type::RecursiveType(rec) => rec.calculated_type(i_s.db).iter(i_s, infos),
             Type::Intersection(i) => i.iter(i_s, infos),
             _ => IteratorContent::Inferred(

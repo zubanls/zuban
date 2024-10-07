@@ -22,11 +22,11 @@ enum Context<'a> {
 }
 
 impl<'a> Context<'a> {
-    fn current_class(&self) -> Option<&'a Class<'a>> {
+    fn current_class(&self, db: &'a Database) -> Option<Class<'a>> {
         match self {
-            Context::DiagnosticClass(c) | Context::Class(c) => Some(c),
-            Context::DiagnosticExecution(func) | Context::Execution(func) => func.class.as_ref(),
-            Context::LambdaCallable { parent_context, .. } => parent_context.current_class(),
+            Context::DiagnosticClass(c) | Context::Class(c) => Some(**c),
+            Context::DiagnosticExecution(func) | Context::Execution(func) => func.parent_class(db),
+            Context::LambdaCallable { parent_context, .. } => parent_context.current_class(db),
             Context::None => None,
         }
     }
@@ -146,8 +146,11 @@ impl<'db, 'a> InferenceState<'db, 'a> {
         }
     }
 
-    pub fn current_class(&self) -> Option<&'a Class<'a>> {
-        self.context.current_class()
+    pub fn current_class(&self) -> Option<Class<'a>>
+    where
+        'db: 'a,
+    {
+        self.context.current_class(self.db)
     }
 
     pub fn current_lambda_callable(&self) -> Option<&'a CallableContent> {

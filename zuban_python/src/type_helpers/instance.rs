@@ -811,14 +811,14 @@ fn execute_super_internal<'db>(
     let (cls, bound_to) = match relevant.as_ref() {
         Type::Self_ => {
             let cls = i_s.current_class().unwrap();
-            (*cls, Type::Self_)
+            (cls, Type::Self_)
         }
         t @ Type::Class(c) => (c.class(i_s.db), t.clone()),
         t @ Type::TypeVar(tv) => {
             let Some(cls) = i_s.current_class() else {
                 return Err(IssueKind::SuperUnsupportedArgument { argument_index: 2 });
             };
-            (*cls, t.clone())
+            (cls, t.clone())
         }
         Type::Any(cause) => {
             return match fallback(true) {
@@ -829,20 +829,20 @@ fn execute_super_internal<'db>(
         full @ Type::Type(t) => match t.as_ref() {
             Type::Self_ => {
                 let cls = i_s.current_class().unwrap();
-                (*cls, full.clone())
+                (cls, full.clone())
             }
             Type::Class(c) => (c.class(i_s.db), full.clone()),
             Type::TypeVar(tv) => {
                 let Some(cls) = i_s.current_class() else {
                     return Err(IssueKind::SuperUnsupportedArgument { argument_index: 2 });
                 };
-                (*cls, full.clone())
+                (cls, full.clone())
             }
             Type::Any(cause) => {
                 let Some(cls) = i_s.current_class() else {
                     return Ok(Inferred::new_any(*cause));
                 };
-                (*cls, Type::Type(Rc::new(Type::Self_)))
+                (cls, Type::Type(Rc::new(Type::Self_)))
             }
             _ => return Err(IssueKind::SuperUnsupportedArgument { argument_index: 2 }),
         },

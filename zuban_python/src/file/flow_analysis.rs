@@ -2805,7 +2805,7 @@ impl Inference<'_, '_, '_> {
         let key = infos.key?;
 
         let had_error = Cell::new(false);
-        let resolved_guard_t = Callable::new(callable, self.i_s.current_class().copied())
+        let resolved_guard_t = Callable::new(callable, self.i_s.current_class())
             .execute_for_custom_return_type(
                 self.i_s,
                 &SimpleArgs::new(*self.i_s, self.file, args.index(), args_details),

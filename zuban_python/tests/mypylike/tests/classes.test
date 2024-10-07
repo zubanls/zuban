@@ -673,3 +673,17 @@ class B:
 
 class M1(B, A[int]): ...  # E: Definition of "foo" in base class "B" is incompatible with definition in base class "A"
 class M2(A[int], B): ...
+
+[case closure_self_access]
+class Foo:
+    x: int
+    def foo(self) -> None:
+        def bar() -> None:
+            reveal_type(self.x)  # N: Revealed type is "int"
+
+        def bar2() -> None:
+            def bar3() -> None:
+                reveal_type(self.x)  # N: Revealed type is "int"
+
+        def bar4(self) -> None:
+            reveal_type(self.x)  # N: Revealed type is "Any"
