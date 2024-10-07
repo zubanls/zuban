@@ -2419,7 +2419,7 @@ pub fn check_multiple_inheritance<'x, BASES: Iterator<Item = TypeOrClass<'x>>>(
                     // Everything can inherit from object and it should therefore be fine to ignore
                     // it.
                     InstanceLookupOptions::new(&|issue| {
-                        debug!("Multi inheritance bind issue: {issue:?}");
+                        debug!("Multi inheritance bind issue on name {name}: {issue:?}");
                         had_lookup_issue.set(true)
                     })
                     .without_object(),

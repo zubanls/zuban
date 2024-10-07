@@ -652,3 +652,24 @@ class M:
         self.next_id = 0
         self.next_id += 1
         reveal_type(self.next_id)  # N: Revealed type is "int"
+
+[case multi_inheritance_with_generic_nested]
+from typing import Generic, TypeVar
+from abc import abstractmethod
+
+T = TypeVar("T")
+
+class S(Generic[T]):
+    @abstractmethod
+    def foo(self, x: T) -> T: ...
+    @abstractmethod
+    def bar(self, x: T) -> T: ...
+
+class A(S[T]): ...
+
+class B:
+    def foo(self, x: str) -> str: ...
+    def bar(self, x: int) -> int: ...
+
+class M1(B, A[int]): ...  # E: Definition of "foo" in base class "B" is incompatible with definition in base class "A"
+class M2(A[int], B): ...

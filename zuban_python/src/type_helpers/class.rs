@@ -1899,8 +1899,16 @@ impl<'db: 'a, 'a> Class<'a> {
     ) -> MroIterator<'db, 'a> {
         let class_infos = self.use_cached_class_infos(db);
         if let Some(type_var_remap) = self.type_var_remap {
-            // TODO enable something like this, because otherwise we lose type_var_remap
-            //debug_assert!(matches!(self.generics, Generics::Self_ { .. } | Generics::None), "{:?}", self);
+            if matches!(self.generics, Generics::Self_ { .. } | Generics::None) {
+                return Class::new(
+                    self.node_ref,
+                    self.class_storage,
+                    Generics::List(type_var_remap, None),
+                    None,
+                )
+                .mro_maybe_without_object(db, without_object);
+            }
+            // TODO Do something similar for generics, because otherwise we lose type_var_remap
         }
         MroIterator::new(
             db,
