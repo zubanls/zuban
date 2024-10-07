@@ -15,7 +15,21 @@ enum Context<'a> {
     Class(&'a Class<'a>),
     DiagnosticExecution(&'a Function<'a, 'a>),
     Execution(&'a Function<'a, 'a>),
-    LambdaCallable(&'a CallableContent),
+    LambdaCallable {
+        callable: &'a CallableContent,
+        parent_context: &'a Context<'a>,
+    },
+}
+
+impl<'a> Context<'a> {
+    fn current_class(&self) -> Option<&'a Class<'a>> {
+        match self {
+            Context::DiagnosticClass(c) | Context::Class(c) => Some(c),
+            Context::DiagnosticExecution(func) | Context::Execution(func) => func.class.as_ref(),
+            Context::LambdaCallable { parent_context, .. } => parent_context.current_class(),
+            Context::None => None,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -81,10 +95,16 @@ impl<'db, 'a> InferenceState<'db, 'a> {
         }
     }
 
-    pub fn with_lambda_callable(&self, callable: &'a CallableContent) -> Self {
+    pub fn with_lambda_callable<'x: 'a>(
+        &'x self,
+        callable: &'x CallableContent,
+    ) -> InferenceState<'db, 'x> {
         Self {
             db: self.db,
-            context: Context::LambdaCallable(callable),
+            context: Context::LambdaCallable {
+                callable,
+                parent_context: &self.context,
+            },
             mode: self.mode,
         }
     }
@@ -127,16 +147,12 @@ impl<'db, 'a> InferenceState<'db, 'a> {
     }
 
     pub fn current_class(&self) -> Option<&'a Class<'a>> {
-        match &self.context {
-            Context::DiagnosticClass(c) | Context::Class(c) => Some(c),
-            Context::DiagnosticExecution(func) | Context::Execution(func) => func.class.as_ref(),
-            _ => None,
-        }
+        self.context.current_class()
     }
 
     pub fn current_lambda_callable(&self) -> Option<&'a CallableContent> {
         match &self.context {
-            Context::LambdaCallable(c) => Some(c),
+            Context::LambdaCallable { callable, .. } => Some(callable),
             _ => None,
         }
     }

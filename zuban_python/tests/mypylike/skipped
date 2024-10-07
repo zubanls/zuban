@@ -49,8 +49,6 @@ testSelfTypeNew_explicit
 testNewAnalyzerDuplicateTypeVar
 testNewAnalyzerDuplicateTypeVarImportCycle
 testNewAnalyzerDuplicateTypeVarImportCycleWithAliases
-# i_s missing current class
-testLambdaDeferredSpecialCase
 # NewType generics resolving
 new_type_with_class_generics
 new_type_with_class_generics2
