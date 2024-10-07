@@ -23,9 +23,10 @@ use crate::{
         WrappedStarStar,
     },
     type_::{
-        match_unpack, CallableContent, CallableParams, CallableWithParent, ClassGenerics,
-        GenericItem, GenericsList, NeverCause, ParamSpecTypeVars, ReplaceSelf, TupleArgs,
-        TupleUnpack, Type, TypeVarLikes, TypeVarManager, Variance, WithUnpack,
+        match_arbitrary_len_vs_unpack, match_unpack, CallableContent, CallableParams,
+        CallableWithParent, ClassGenerics, GenericItem, GenericsList, NeverCause,
+        ParamSpecTypeVars, ReplaceSelf, Tuple, TupleArgs, TupleUnpack, Type, TypeVarLikes,
+        TypeVarManager, Variance, WithUnpack,
     },
     type_helpers::{Callable, Class, Function},
 };
@@ -573,7 +574,31 @@ pub(crate) fn match_arguments_against_params<
             };
             let value = match value {
                 InferredArg::Inferred(value) => value,
-                InferredArg::StarredWithUnpack(_) => todo!(),
+                InferredArg::StarredWithUnpack(with_unpack) => {
+                    let m = match_arbitrary_len_vs_unpack(
+                        i_s,
+                        matcher,
+                        &expected,
+                        &with_unpack,
+                        Variance::Covariant,
+                    );
+                    if let Match::False { reason, .. } = &m {
+                        if let Some(on_type_error) = on_type_error {
+                            let got = GotType::Starred(Type::Tuple(Tuple::new(
+                                TupleArgs::WithUnpack(with_unpack),
+                            )));
+                            let error_types = ErrorTypes {
+                                matcher: Some(matcher),
+                                reason,
+                                got,
+                                expected: &expected,
+                            };
+                            (on_type_error.callback)(i_s, &diagnostic_string, arg, error_types)
+                        }
+                    }
+                    matches &= m;
+                    return;
+                }
                 InferredArg::ParamSpec(param_spec) => {
                     let e = &expected.format_short(i_s.db);
                     let n = param_spec.param_spec.name(i_s.db);
@@ -608,7 +633,6 @@ pub(crate) fn match_arguments_against_params<
                     &matches
                 );
                 if let Some(on_type_error) = on_type_error {
-                    let got = GotType::from_arg(i_s, arg, &value_t);
                     match reason {
                         MismatchReason::ConstraintMismatch { expected, type_var } => {
                             arg.add_issue(
@@ -624,7 +648,7 @@ pub(crate) fn match_arguments_against_params<
                             let error_types = ErrorTypes {
                                 matcher: Some(matcher),
                                 reason,
-                                got,
+                                got: GotType::from_arg(i_s, arg, &value_t),
                                 expected: &expected,
                             };
                             (on_type_error.callback)(i_s, &diagnostic_string, arg, error_types)

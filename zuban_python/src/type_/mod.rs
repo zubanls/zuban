@@ -39,7 +39,7 @@ pub(crate) use self::{
     },
     intersection::Intersection,
     lookup_result::LookupResult,
-    matching::{match_tuple_type_arguments, match_unpack},
+    matching::{match_arbitrary_len_vs_unpack, match_tuple_type_arguments, match_unpack},
     named_tuple::{
         add_named_tuple_param, execute_collections_named_tuple, execute_typing_named_tuple,
         new_collections_named_tuple, new_typing_named_tuple, NamedTuple,

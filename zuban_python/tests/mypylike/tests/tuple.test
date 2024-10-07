@@ -164,3 +164,33 @@ reveal_type(x[-12::-4])  # N: Revealed type is "tuple[()]"
 reveal_type(x[-13:-12:-1])  # N: Revealed type is "tuple[()]"
 reveal_type(x[-12:-13:-1])  # N: Revealed type is "tuple[()]"
 reveal_type(x[-12::-1])  # N: Revealed type is "tuple[()]"
+
+[case tuple_at_least_size_one_narrowed]
+def foo(tup: tuple[int, ...]) -> None:
+    def f(*args: int) -> None: ...
+    def g(x: int, *args: int) -> None: ...
+    def h(x: int, y: int, *args: int) -> None: ...
+
+    def i(*args: str) -> None: ...
+    def j(x: str, *args: int) -> None: ...
+    def k(x: int, *args: str) -> None: ...
+    def l(x: str, *args: str) -> None: ...
+    def m(x: str, y: str, *args: str) -> None: ...
+
+    def n(x: int) -> None: ...
+    def o(*, x: int) -> None: ...
+
+    if tup:
+        f(*tup)
+        g(*tup)
+        h(*tup)  # E: Missing positional argument "y" in call to "h"
+
+        i(*tup)  # E: Argument 1 to "i" has incompatible type "*tuple[int, Unpack[Tuple[int, ...]]]"; expected "str"
+        j(*tup)  # E: Argument 1 to "j" has incompatible type "*tuple[int, Unpack[Tuple[int, ...]]]"; expected "str"
+        k(*tup)
+        l(*tup)  # E: Argument 1 to "l" has incompatible type "*tuple[int, Unpack[Tuple[int, ...]]]"; expected "str"
+        m(*tup)  # E: Missing positional argument "y" in call to "m" \
+                 # E: Argument 1 to "m" has incompatible type "*tuple[int, Unpack[Tuple[int, ...]]]"; expected "str"
+
+        n(*tup)
+        o(*tup)  # E: Too many positional arguments for "o"

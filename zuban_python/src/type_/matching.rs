@@ -804,26 +804,38 @@ fn match_tuple_type_arguments_internal(
         (WithUnpack(unpack), _) => {
             match_unpack_internal(i_s, matcher, unpack, tup2, variance, None, None)
         }
-        (ArbitraryLen(t1), WithUnpack(u2)) => match &u2.unpack {
-            TupleUnpack::TypeVarTuple(tvt2) => Match::new_false(),
-            TupleUnpack::ArbitraryLen(inner_t2) => {
-                let mut matches = Match::new_true();
-                for t2 in u2.before.iter() {
-                    matches &= t1.matches(i_s, matcher, t2, variance)
-                }
-                matches &= t1.matches(i_s, matcher, inner_t2, variance);
-                for t2 in u2.after.iter() {
-                    matches &= t1.matches(i_s, matcher, t2, variance)
-                }
-                matches
-            }
-        },
+        (ArbitraryLen(t1), WithUnpack(u2)) => {
+            match_arbitrary_len_vs_unpack(i_s, matcher, t1, u2, variance)
+        }
         (FixedLen(_), WithUnpack(_)) => Match::new_false(),
         (_, ArbitraryLen(t2)) => matches!(t2.as_ref(), Type::Any(_)).into(),
         (ArbitraryLen(t1), FixedLen(ts2)) => ts2
             .iter()
             .all(|t2| t1.matches(i_s, matcher, t2, variance).bool())
             .into(),
+    }
+}
+
+pub fn match_arbitrary_len_vs_unpack(
+    i_s: &InferenceState,
+    matcher: &mut Matcher,
+    t1: &Type,
+    with_unpack: &WithUnpack,
+    variance: Variance,
+) -> Match {
+    match &with_unpack.unpack {
+        TupleUnpack::TypeVarTuple(tvt2) => Match::new_false(),
+        TupleUnpack::ArbitraryLen(inner_t2) => {
+            let mut matches = Match::new_true();
+            for t2 in with_unpack.before.iter() {
+                matches &= t1.matches(i_s, matcher, t2, variance)
+            }
+            matches &= t1.matches(i_s, matcher, inner_t2, variance);
+            for t2 in with_unpack.after.iter() {
+                matches &= t1.matches(i_s, matcher, t2, variance)
+            }
+            matches
+        }
     }
 }
 
