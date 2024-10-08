@@ -3476,7 +3476,9 @@ fn execute_bare_type<'db>(i_s: &InferenceState<'db, '_>, first_arg: Inferred) ->
             Type::Module(_) | Type::NamedTuple(_) => {
                 type_part.union_in_place(i_s.db.python_state.module_type())
             }
-            _ => todo!("{t:?}"),
+            Type::EnumMember(m) => type_part.union_in_place(Type::Enum(m.enum_.clone())),
+            Type::Super { .. } => type_part.union_in_place(i_s.db.python_state.super_type()),
+            _ => type_part.union_in_place(i_s.db.python_state.object_type()),
         }
     }
     if type_part.is_never() {
