@@ -2256,7 +2256,10 @@ impl Inference<'_, '_, '_> {
             ExpressionPart::Inversion(inv) => {
                 let (inf, mut frames) = self.find_guards_in_expression_parts(inv.expression());
                 (frames.truthy, frames.falsey) = (frames.falsey, frames.truthy);
-                return Ok((inf, frames));
+                return Ok((
+                    Inferred::from_type(self.i_s.db.python_state.bool_type()),
+                    frames,
+                ));
             }
             ExpressionPart::Primary(primary) => match primary.second() {
                 PrimaryContent::Execution(arg_details @ ArgumentsDetails::Node(args)) => {

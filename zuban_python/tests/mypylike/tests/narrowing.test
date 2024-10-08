@@ -1393,3 +1393,13 @@ if sys.version_info[:2] < (2, 200):
     undefined
 if sys.version_info[:2] > (2, 200):
     undefined # E: Name "undefined" is not defined
+
+[case not_narrowing]
+reveal_type(not str())  # N: Revealed type is "bool"
+reveal_type(1 and not str())  # N: Revealed type is "bool"
+reveal_type(1 or not str())  # N: Revealed type is "Literal[1]?"
+reveal_type(not 1 or not str())  # N: Revealed type is "bool"
+x = 1
+reveal_type(x and not str())  # N: Revealed type is "int"
+reveal_type(x or not str())  # N: Revealed type is "int"
+reveal_type(not x or not str())  # N: Revealed type is "bool"
