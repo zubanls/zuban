@@ -711,3 +711,11 @@ class Foo:
     __hash__  # E: Name "__hash__" is not defined
     __eq__  # E: Name "__eq__" is not defined
     mro  # E: Name "mro" is not defined
+
+[case had_fstring_syntax_error]
+a = 'x'
+f"{a * 3:1}"
+f"{a + ':':24}"
+f'{a + ":":24}'
+f"{a / 3:9}"  # E: Unsupported operand types for / ("str" and "int")
+f"""{'' + ":":24}"""

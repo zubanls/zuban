@@ -97,17 +97,6 @@ enum QuoteType {
     DoubleTriple, // """
 }
 
-impl QuoteType {
-    fn to_value(self) -> &'static str {
-        match self {
-            Self::Single => "'",
-            Self::Double => "\"",
-            Self::SingleTriple => "'''",
-            Self::DoubleTriple => "\"\"\"",
-        }
-    }
-}
-
 #[derive(Debug)]
 struct FStringNode {
     quote: QuoteType,
@@ -216,9 +205,23 @@ impl PythonTokenizer<'_> {
     #[inline]
     fn handle_fstring_stack(&mut self) -> Option<PyTerminal> {
         let in_expr = self.f_string_tos().in_expr();
-        let mut iterator = code_from_start(self.code, self.index)
-            .char_indices()
-            .peekable();
+        if in_expr {
+            if *self.code.as_bytes().get(self.index)? == b':' {
+                let tos = self.f_string_tos();
+                if tos.parentheses_level - tos.format_spec_count == 1 {
+                    tos.format_spec_count += 1;
+                    self.index += 1;
+                    // We cannot just return None here, because otherwise := would be tokenized
+                    // the wrong way.
+                    return self.new_tok(self.index - 1, true, TerminalType::Operator);
+                }
+                // By returning here, we are making sure that the normal
+                // tokenizer returns the as an operator.
+            }
+            return None;
+        }
+        let c = code_from_start(self.code, self.index);
+        let mut iterator = c.char_indices().peekable();
         while let Some((i, character)) = iterator.next() {
             if (character == '{' || character == '}') && !in_expr {
                 if let Some((_, next)) = iterator.next() {
@@ -361,16 +364,6 @@ impl PythonTokenizer<'_> {
         }
         self.maybe_fstring_string(string_length)
             .or_else(|| end(self))
-    }
-
-    #[inline]
-    fn is_still_part_of_f_string(&self, match_: regex::Match) -> bool {
-        for node in &self.f_string_stack {
-            if match_.as_str().contains(node.quote.to_value()) {
-                return true;
-            }
-        }
-        false
     }
 
     #[inline]
@@ -520,41 +513,37 @@ impl Iterator for PythonTokenizer<'_> {
         ];
         for &(r, token_type) in &regexes {
             if let Some(match_) = r.find(c) {
-                if !self.is_still_part_of_f_string(match_) {
-                    let length = match_.end();
-                    self.index += length;
-                    if length <= 5 && {
-                        let s = match_.as_str();
-                        s.contains("'''") && !s.ends_with('"')
-                            || s.contains(r#"""""#) && !s.ends_with('\'')
-                    } {
-                        return self.new_tok(start, false, TerminalType::ErrorToken);
-                    }
-                    return self.new_tok(start, false, token_type);
+                let length = match_.end();
+                self.index += length;
+                if length <= 5 && {
+                    let s = match_.as_str();
+                    s.contains("'''") && !s.ends_with('"')
+                        || s.contains(r#"""""#) && !s.ends_with('\'')
+                } {
+                    return self.new_tok(start, false, TerminalType::ErrorToken);
                 }
+                return self.new_tok(start, false, token_type);
             }
         }
         if let Some(match_) = F_STRING_START.find(c) {
-            if !self.is_still_part_of_f_string(match_) {
-                self.index += match_.end();
-                self.f_string_stack.push(FStringNode {
-                    quote: {
-                        let string = match_.as_str();
-                        if string.contains("''") {
-                            QuoteType::SingleTriple
-                        } else if string.contains("\"\"") {
-                            QuoteType::DoubleTriple
-                        } else if string.contains('"') {
-                            QuoteType::Double
-                        } else {
-                            QuoteType::Single
-                        }
-                    },
-                    parentheses_level: 0,
-                    format_spec_count: 0,
-                });
-                return self.new_tok(start, false, TerminalType::FStringStart);
-            }
+            self.index += match_.end();
+            self.f_string_stack.push(FStringNode {
+                quote: {
+                    let string = match_.as_str();
+                    if string.contains("''") {
+                        QuoteType::SingleTriple
+                    } else if string.contains("\"\"") {
+                        QuoteType::DoubleTriple
+                    } else if string.contains('"') {
+                        QuoteType::Double
+                    } else {
+                        QuoteType::Single
+                    }
+                },
+                parentheses_level: 0,
+                format_spec_count: 0,
+            });
+            return self.new_tok(start, false, TerminalType::FStringStart);
         }
 
         let name_length = self.find_name_length(c);
@@ -712,13 +701,14 @@ mod tests {
         f_string3 "f' {}'" => [(0, 2, FStringStart), (2, 1, FStringString),
                                (3, 1, Op), (4, 1, Op), (5, 1, FStringEnd)];
         f_string4 "f' {'" => [(0, 2, FStringStart), (2, 1, FStringString),
-                              (3, 1, Op), (4, 1, FStringEnd)];
+                              (3, 1, Op), (4, 1, ErrorToken)];
         f_string5 "f' '{}" => [(0, 2, FStringStart), (2, 1, FStringString),
                                (3, 1, FStringEnd), (4, 1, Op), (5, 1, Op)];
         f_string6 r"f'\''" => [(0, 2, FStringStart), (2, 2, FStringString), (4, 1, FStringEnd)];
-        f_string7 "f'{ ''}'" => [(0, 2, FStringStart), (2, 1, Op), (4, 1, FStringEnd), (5, 3, String)];
-        f_string8 "f'{ f''}'" => [(0, 2, FStringStart), (2, 1, Op), (4, 1, Name),
-                                  (5, 1, FStringEnd), (6, 3, String)];
+        f_string7 "f'{ ''}'" => [(0, 2, FStringStart), (2, 1, Op), (4, 2, String),
+                                 (6, 1, Op), (7, 1, FStringEnd)];
+        f_string8 "f'{ f''}'" => [(0, 2, FStringStart), (2, 1, Op), (4, 2, FStringStart),
+                                  (6, 1, FStringEnd), (7, 1, Op), (8, 1, ErrorToken)];
 
         f_string_format_spec1 "f'Some {x:.2f}{y}'" => [
             (0, 2, FStringStart), (2, 5, FStringString), (7, 1, Operator),
@@ -743,6 +733,10 @@ mod tests {
             (0, 2, FStringStart), (2, 1, Op), (3, 1, Number), (4, 1, Op),
             (5, 1, Op), (6, 1, Name), (7, 1, Op), (8, 1, Op), (9, 3, String),
             (12, 1, Op), (13, 1, Op), (14, 1, Op), (15, 1, FStringEnd)];
+        f_string_format_spec_with_str r#"f"{a+':':1}""# => [
+            (0, 2, FStringStart), (2, 1, Op), (3, 1, Name), (4, 1, Op),
+            (5, 3, String), (8, 1, Op), (9, 1, FStringString),
+            (10, 1, Op), (11, 1, FStringEnd)];
 
         f_string_multiline1 "f'''abc\ndef'''" => [(0, 4, FStringStart), (4, 7, FStringString),
                                                 (11, 3, FStringEnd)];
@@ -759,7 +753,7 @@ mod tests {
             (0, 2, FStringStart), (2, 2, FStringString), (4, 1, Op),
             (5, 3, Number), (8, 1, Op), (9, 2, FStringString), (11, 1, FStringEnd)];
         f_string_line_continuation3 "f'{\\\n123}'" => [
-            (0, 2, FStringStart), (2, 1, Op), (3, 2, ErrorToken), (5, 3, Number), (8, 1, Op),
+            (0, 2, FStringStart), (2, 1, Op), (5, 3, Number), (8, 1, Op),
             (9, 1, FStringEnd)];
         // In format spec
         f_string_line_continuation4 "f'{123:.2\\\nf}'" => [
