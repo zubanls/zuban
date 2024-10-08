@@ -248,7 +248,7 @@ impl PythonTokenizer<'_> {
                     }
                 }
             } else if character == '\'' {
-                for (j, node) in self.f_string_stack.iter().enumerate() {
+                for (j, node) in self.f_string_stack.iter().enumerate().rev() {
                     let quote = node.quote;
                     match quote {
                         QuoteType::Single => return self.end_f_string(i, j, quote),
@@ -708,7 +708,7 @@ mod tests {
         f_string7 "f'{ ''}'" => [(0, 2, FStringStart), (2, 1, Op), (4, 2, String),
                                  (6, 1, Op), (7, 1, FStringEnd)];
         f_string8 "f'{ f''}'" => [(0, 2, FStringStart), (2, 1, Op), (4, 2, FStringStart),
-                                  (6, 1, FStringEnd), (7, 1, Op), (8, 1, ErrorToken)];
+                                  (6, 1, FStringEnd), (7, 1, Op), (8, 1, FStringEnd)];
 
         f_string_format_spec1 "f'Some {x:.2f}{y}'" => [
             (0, 2, FStringStart), (2, 5, FStringString), (7, 1, Operator),
