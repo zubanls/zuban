@@ -734,3 +734,13 @@ reveal_type(typing.ParamSpec)  # N: Revealed type is "Type[typing.ParamSpec]"
 reveal_type(typing.ClassVar)  # N: Revealed type is "typing._SpecialForm"
 reveal_type(typing.reveal_type)  # N: Revealed type is "def [_T] (_T) -> _T"
 reveal_type(typing.NewType)  # N: Revealed type is "Type[typing.NewType]"
+
+[case type_var_likes_access]
+import typing
+T = typing.TypeVar("T")
+Ts = typing.TypeVarTuple("Ts")
+P = typing.ParamSpec("P")
+
+reveal_type(T.__name__) # N: Revealed type is "str"
+reveal_type(Ts.__name__) # N: Revealed type is "str"
+reveal_type(P.__name__) # N: Revealed type is "str"

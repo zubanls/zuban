@@ -2540,8 +2540,8 @@ fn type_of_complex<'db: 'x, 'x>(
         }),
         ComplexPoint::TypeVarLike(t) => match t {
             TypeVarLike::TypeVar(_) => Cow::Owned(i_s.db.python_state.type_var_type()),
-            TypeVarLike::TypeVarTuple(_) => todo!(),
-            TypeVarLike::ParamSpec(_) => todo!(),
+            TypeVarLike::TypeVarTuple(_) => Cow::Owned(i_s.db.python_state.type_var_tuple_type()),
+            TypeVarLike::ParamSpec(_) => Cow::Owned(i_s.db.python_state.param_spec_type()),
         },
         ComplexPoint::NewTypeDefinition(n) => {
             Cow::Owned(Type::Type(Rc::new(Type::NewType(n.clone()))))
