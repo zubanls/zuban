@@ -1051,16 +1051,13 @@ impl<'db, 'a> Iterator for ArgIterator<'db, 'a> {
                     })
                 }
                 Some(UnpackedArgument::WithUnpack(with_unpack)) => {
-                    let index = self.counter;
-                    self.counter += 1;
-                    Some(Arg {
-                        kind: ArgKind::StarredWithUnpack {
-                            with_unpack,
-                            position,
-                            node_ref,
-                        },
-                        index,
-                    })
+                    self.args_kwargs_iterator = ArgsKwargsIterator::WithUnpack {
+                        with_unpack,
+                        before_iterator_index: 0,
+                        node_ref,
+                        position,
+                    };
+                    return self.next();
                 }
                 None => self.next(),
             },
@@ -1116,6 +1113,48 @@ impl<'db, 'a> Iterator for ArgIterator<'db, 'a> {
                     index,
                 })
             }
+            ArgsKwargsIterator::WithUnpack {
+                mut with_unpack,
+                mut before_iterator_index,
+                position,
+                node_ref,
+            } => {
+                let index = self.counter;
+                self.counter += 1;
+                if let Some(t) = with_unpack.before.get(before_iterator_index) {
+                    let current_t = t.clone();
+                    before_iterator_index += 1;
+                    self.args_kwargs_iterator = ArgsKwargsIterator::WithUnpack {
+                        with_unpack,
+                        before_iterator_index,
+                        position,
+                        node_ref,
+                    };
+                    Some(Arg {
+                        kind: ArgKind::Inferred {
+                            inferred: Inferred::from_type(current_t),
+                            position,
+                            node_ref,
+                            in_args_or_kwargs_and_arbitrary_len: false,
+                            is_keyword: None,
+                        },
+                        // counter was increased before
+                        index,
+                    })
+                } else {
+                    if !with_unpack.before.is_empty() {
+                        with_unpack.before = Rc::new([]);
+                    }
+                    Some(Arg {
+                        kind: ArgKind::StarredWithUnpack {
+                            with_unpack,
+                            position,
+                            node_ref,
+                        },
+                        index,
+                    })
+                }
+            }
         }
     }
 }
@@ -1136,6 +1175,12 @@ enum ArgsKwargsIterator<'a> {
         db: &'a Database,
         typed_dict: Rc<TypedDict>,
         iterator_index: usize,
+        position: usize,
+        node_ref: NodeRef<'a>,
+    },
+    WithUnpack {
+        with_unpack: WithUnpack,
+        before_iterator_index: usize,
         position: usize,
         node_ref: NodeRef<'a>,
     },
