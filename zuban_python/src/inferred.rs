@@ -2644,9 +2644,15 @@ pub fn specific_to_type<'db>(
         Specific::BuiltinsIsinstance => Cow::Owned(i_s.db.python_state.isinstance_type(i_s.db)),
         Specific::BuiltinsIssubclass => Cow::Owned(i_s.db.python_state.issubclass_type(i_s.db)),
         Specific::BuiltinsSuper => Cow::Owned(i_s.db.python_state.super_type()),
-        Specific::TypingTypeVarClass => todo!(),
-        Specific::TypingTypeVarTupleClass => todo!(),
-        Specific::TypingParamSpecClass => todo!(),
+        Specific::TypingTypeVarClass => {
+            Cow::Owned(Type::Type(Rc::new(i_s.db.python_state.type_var_type())))
+        }
+        Specific::TypingTypeVarTupleClass => Cow::Owned(Type::Type(Rc::new(
+            i_s.db.python_state.type_var_tuple_type(),
+        ))),
+        Specific::TypingParamSpecClass => {
+            Cow::Owned(Type::Type(Rc::new(i_s.db.python_state.param_spec_type())))
+        }
         Specific::TypingType => {
             Cow::Owned(Type::Type(Rc::new(i_s.db.python_state.bare_type_type())))
         }
@@ -2661,12 +2667,14 @@ pub fn specific_to_type<'db>(
         | Specific::TypingNamedTuple
         | Specific::TypingTypedDict
         | Specific::TypingSelf
+        | Specific::TypingClassVar
         | Specific::TypingCallable => Cow::Owned(i_s.db.python_state.typing_special_form_type()),
-        Specific::TypingCast => todo!(),
-        Specific::TypingClassVar => todo!(),
-        Specific::RevealTypeFunction => todo!(),
+        Specific::TypingCast => todo!(), // Cow::Owned(i_s.db.python_state.cast_type(i_s.db)),
+        Specific::RevealTypeFunction => Cow::Owned(i_s.db.python_state.reveal_type(i_s.db)),
         Specific::None => Cow::Borrowed(&Type::None),
-        Specific::TypingNewType => todo!(),
+        Specific::TypingNewType => {
+            Cow::Owned(Type::Type(Rc::new(i_s.db.python_state.new_type_type())))
+        }
         // Typeshed defines this as object()
         Specific::TypingAny => Cow::Owned(i_s.db.python_state.object_type()),
         Specific::MypyExtensionsArg

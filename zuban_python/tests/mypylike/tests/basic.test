@@ -724,3 +724,13 @@ f"""{'' + ":":24}"""
 reveal_type(isinstance)  # N: Revealed type is "def (object, Type[Any] | types.UnionType | tuple[..., ...]) -> bool"
 reveal_type(issubclass)  # N: Revealed type is "def (Type[Any], Type[Any] | types.UnionType | tuple[..., ...]) -> bool"
 reveal_type(super)  # N: Revealed type is "super"
+
+[case special_typing_access]
+import typing
+reveal_type(typing.TypeVar)  # N: Revealed type is "Type[typing.TypeVar]"
+reveal_type(typing.TypeVarTuple)  # N: Revealed type is "Type[typing.TypeVarTuple]"
+reveal_type(typing.ParamSpec)  # N: Revealed type is "Type[typing.ParamSpec]"
+-- TODO reveal_type(typing.cast)  # N: Revealed type is ""
+reveal_type(typing.ClassVar)  # N: Revealed type is "typing._SpecialForm"
+reveal_type(typing.reveal_type)  # N: Revealed type is "def [_T] (_T) -> _T"
+reveal_type(typing.NewType)  # N: Revealed type is "Type[typing.NewType]"

@@ -138,7 +138,12 @@ pub struct PythonState {
     pub builtins_bytes_mro: Box<[BaseClass]>,
     typeshed_supports_keys_and_get_item_index: NodeIndex,
     typing_namedtuple_index: NodeIndex,
-    typing_type_var: NodeIndex,
+    typing_type_var_index: NodeIndex,
+    typing_type_var_tuple_index: NodeIndex,
+    typing_param_spec_index: NodeIndex,
+    typing_new_type_index: NodeIndex,
+    typing_cast_index: NodeIndex,
+    typing_reveal_type_index: NodeIndex,
     typing_coroutine_index: NodeIndex,
     typing_iterator_index: NodeIndex,
     typing_iterable_index: NodeIndex,
@@ -263,7 +268,12 @@ impl PythonState {
             typing_ellipsis_fallback_index: None,
             typeshed_supports_keys_and_get_item_index: 0,
             typing_namedtuple_index: 0,
-            typing_type_var: 0,
+            typing_type_var_index: 0,
+            typing_type_var_tuple_index: 0,
+            typing_param_spec_index: 0,
+            typing_new_type_index: 0,
+            typing_cast_index: 0,
+            typing_reveal_type_index: 0,
             typing_overload_index: 0,
             typing_override_index: None,
             typing_final_index: 0,
@@ -567,7 +577,12 @@ impl PythonState {
             "SupportsKeysAndGetItem"
         );
         cache_index!(typing_namedtuple_index, typing, "NamedTuple");
-        cache_index!(typing_type_var, typing, "TypeVar");
+        cache_index!(typing_type_var_index, typing, "TypeVar");
+        cache_index!(typing_type_var_tuple_index, typing, "TypeVarTuple");
+        cache_index!(typing_param_spec_index, typing, "ParamSpec");
+        cache_index!(typing_new_type_index, typing, "NewType");
+        cache_index!(typing_cast_index, typing, "cast", true);
+        cache_index!(typing_reveal_type_index, typing, "reveal_type", true);
         cache_index!(typing_coroutine_index, typing, "Coroutine");
         cache_index!(typing_iterator_index, typing, "Iterator");
         cache_index!(typing_iterable_index, typing, "Iterable");
@@ -833,6 +848,12 @@ impl PythonState {
         builtins_exception_group_index
     );
 
+    attribute_node_ref!(typing, type_var_node_ref, typing_type_var_index);
+    attribute_node_ref!(typing, type_var_tuple_node_ref, typing_type_var_tuple_index);
+    attribute_node_ref!(typing, param_spec_node_ref, typing_param_spec_index);
+    attribute_node_ref!(typing, new_type_node_ref, typing_new_type_index);
+    attribute_node_ref!(typing, cast_node_ref, typing_cast_index);
+    attribute_node_ref!(typing, reveal_type_node_ref, typing_reveal_type_index);
     attribute_node_ref!(typing, supports_index_node_ref, typing_supports_index_index);
     attribute_node_ref!(typing, typed_dict_node_ref, typing_typed_dict_index);
     attribute_node_ref!(typing, pub container_node_ref, typing_container_index);
@@ -927,6 +948,10 @@ impl PythonState {
     node_ref_to_type_class_without_generic!(pub function_type, function_node_ref);
     node_ref_to_type_class_without_generic!(pub bare_type_type, bare_type_node_ref);
     node_ref_to_type_class_without_generic!(pub typed_dict_type, typed_dict_node_ref);
+    node_ref_to_type_class_without_generic!(pub type_var_type, type_var_node_ref);
+    node_ref_to_type_class_without_generic!(pub type_var_tuple_type, type_var_tuple_node_ref);
+    node_ref_to_type_class_without_generic!(pub param_spec_type, param_spec_node_ref);
+    node_ref_to_type_class_without_generic!(pub new_type_type, new_type_node_ref);
     node_ref_to_type_class_without_generic!(pub typing_named_tuple_type, typing_named_tuple_node_ref);
     node_ref_to_type_class_without_generic!(pub typing_special_form_type, typing_special_form_node_ref);
 
@@ -952,14 +977,6 @@ impl PythonState {
 
     pub fn supports_keys_and_get_item_class<'a>(&'a self, db: &'a Database) -> Class<'a> {
         Class::with_self_generics(db, self.supports_keys_and_get_item_node_ref())
-    }
-
-    pub fn type_var_type(&self) -> Type {
-        debug_assert!(self.typing_type_var != 0);
-        Type::new_class(
-            PointLink::new(self.typing().file_index, self.typing_type_var),
-            ClassGenerics::None,
-        )
     }
 
     pub fn collections_namedtuple_function(&self) -> Function {
@@ -1016,6 +1033,14 @@ impl PythonState {
 
     pub fn issubclass_type(&self, db: &Database) -> Type {
         node_ref_to_global_func_type(db, self.issubclass_node_ref())
+    }
+
+    pub fn cast_type(&self, db: &Database) -> Type {
+        node_ref_to_global_func_type(db, self.cast_node_ref())
+    }
+
+    pub fn reveal_type(&self, db: &Database) -> Type {
+        node_ref_to_global_func_type(db, self.reveal_type_node_ref())
     }
 }
 
