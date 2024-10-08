@@ -432,6 +432,7 @@ impl<'db, 'a> Arg<'db, 'a> {
                 in_args_or_kwargs_and_arbitrary_len,
                 ..
             } => *in_args_or_kwargs_and_arbitrary_len,
+            ArgKind::StarredWithUnpack { .. } => true,
             _ => false,
         }
     }

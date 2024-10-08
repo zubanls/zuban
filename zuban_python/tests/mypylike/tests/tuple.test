@@ -165,7 +165,7 @@ reveal_type(x[-13:-12:-1])  # N: Revealed type is "tuple[()]"
 reveal_type(x[-12:-13:-1])  # N: Revealed type is "tuple[()]"
 reveal_type(x[-12::-1])  # N: Revealed type is "tuple[()]"
 
-[case tuple_at_least_size_one_narrowed]
+[case tuple_star_args_at_least_size_one_narrowed]
 def foo(tup: tuple[int, ...]) -> None:
     def f(*args: int) -> None: ...
     def g(x: int, *args: int) -> None: ...
@@ -183,14 +183,66 @@ def foo(tup: tuple[int, ...]) -> None:
     if tup:
         f(*tup)
         g(*tup)
-        h(*tup)  # E: Missing positional argument "y" in call to "h"
+        h(*tup)
 
         i(*tup)  # E: Argument 1 to "i" has incompatible type "*tuple[int, Unpack[Tuple[int, ...]]]"; expected "str"
         j(*tup)  # E: Argument 1 to "j" has incompatible type "*tuple[int, Unpack[Tuple[int, ...]]]"; expected "str"
-        k(*tup)
-        l(*tup)  # E: Argument 1 to "l" has incompatible type "*tuple[int, Unpack[Tuple[int, ...]]]"; expected "str"
-        m(*tup)  # E: Missing positional argument "y" in call to "m" \
+        k(*tup)  # E: Argument 1 to "k" has incompatible type "*tuple[int, Unpack[Tuple[int, ...]]]"; expected "str"
+        l(*tup)  # E: Argument 1 to "l" has incompatible type "*tuple[int, Unpack[Tuple[int, ...]]]"; expected "str" \
+                 # E: Argument 1 to "l" has incompatible type "*tuple[int, Unpack[Tuple[int, ...]]]"; expected "str"
+        m(*tup)  # E: Argument 1 to "m" has incompatible type "*tuple[int, Unpack[Tuple[int, ...]]]"; expected "str" \
+                 # E: Argument 1 to "m" has incompatible type "*tuple[int, Unpack[Tuple[int, ...]]]"; expected "str" \
                  # E: Argument 1 to "m" has incompatible type "*tuple[int, Unpack[Tuple[int, ...]]]"; expected "str"
 
         n(*tup)
-        o(*tup)  # E: Too many positional arguments for "o"
+        o(*tup)  # E: Missing named argument "x" for "o"
+
+[case tuple_star_args_at_least_size_one_narrowed_variance]
+def foo(tup1: tuple[int, ...], tup2: tuple[object, ...]) -> None:
+    def f(*args: int) -> None: ...
+    def g(x: int, *args: int) -> None: ...
+    def h(x: int, y: int, *args: int) -> None: ...
+
+    def x(*args: object) -> None: ...
+    def y(x: object, *args: object) -> None: ...
+    def z(x: object, y: object, *args: object) -> None: ...
+
+    if tup1:
+        if tup2:
+            f(*tup1)
+            g(*tup1)
+            h(*tup1)
+
+            f(*tup2)  # E: Argument 1 to "f" has incompatible type "*tuple[object, Unpack[Tuple[object, ...]]]"; expected "int"
+            g(*tup2)  # E: Argument 1 to "g" has incompatible type "*tuple[object, Unpack[Tuple[object, ...]]]"; expected "int" \
+                      # E: Argument 1 to "g" has incompatible type "*tuple[object, Unpack[Tuple[object, ...]]]"; expected "int"
+            h(*tup2)  # E: Argument 1 to "h" has incompatible type "*tuple[object, Unpack[Tuple[object, ...]]]"; expected "int" \
+                      # E: Argument 1 to "h" has incompatible type "*tuple[object, Unpack[Tuple[object, ...]]]"; expected "int" \
+                      # E: Argument 1 to "h" has incompatible type "*tuple[object, Unpack[Tuple[object, ...]]]"; expected "int"
+
+            x(*tup1)
+            y(*tup1)
+            z(*tup1)
+
+            x(*tup2)
+            y(*tup2)
+            z(*tup2)
+
+
+[case tuple_star_args_at_least_size_one_narrowed_type_var]
+from typing import TypeVar
+T = TypeVar("T")
+
+def foo(tup: tuple[int, ...]) -> None:
+    def f(*args: T) -> T: ...
+    def g(x: T, *args: T) -> T: ...
+    def h(x: T, y: T, *args: T) -> T: ...
+    def i(x: T, *args: int) -> T: ...
+    def j(x: int, *args: T) -> T: ...
+
+    if tup:
+        reveal_type(f(*tup))  # N: Revealed type is "int"
+        reveal_type(g(*tup))  # N: Revealed type is "int"
+        reveal_type(h(*tup))  # N: Revealed type is "int"
+        reveal_type(i(*tup))  # N: Revealed type is "int"
+        reveal_type(j(*tup))  # N: Revealed type is "int"

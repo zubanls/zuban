@@ -750,19 +750,12 @@ pub(crate) fn match_arguments_against_params<
                             ));
                             return SignatureMatch::False { similar: false };
                         }
-                        unpack = Some(TupleUnpack::ArbitraryLen(
-                            arg.infer_inferrable(i_s, &mut ResultContext::Unknown)
-                                .as_type(i_s),
-                        ))
-                    } else {
                         match arg.infer(i_s, &mut ResultContext::Unknown) {
                             InferredArg::Inferred(inf) => {
-                                let t = inf.as_type(i_s);
-                                if unpack.is_some() {
-                                    after.push(t)
-                                } else {
-                                    before.push(t)
-                                }
+                                unpack = Some(TupleUnpack::ArbitraryLen(
+                                    arg.infer_inferrable(i_s, &mut ResultContext::Unknown)
+                                        .as_type(i_s),
+                                ))
                             }
                             InferredArg::StarredWithUnpack(with_unpack) => {
                                 if unpack.is_some() {
@@ -773,7 +766,15 @@ pub(crate) fn match_arguments_against_params<
                                 unpack = Some(with_unpack.unpack);
                                 after.extend_from_slice(&with_unpack.after);
                             }
-                            InferredArg::ParamSpec { .. } => todo!(),
+                            InferredArg::ParamSpec { .. } => unreachable!(),
+                        }
+                    } else {
+                        let inf = arg.infer_inferrable(i_s, &mut ResultContext::Unknown);
+                        let t = inf.as_type(i_s);
+                        if unpack.is_some() {
+                            after.push(t)
+                        } else {
+                            before.push(t)
                         }
                     }
                 }
