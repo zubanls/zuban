@@ -719,3 +719,8 @@ f"{a + ':':24}"
 f'{a + ":":24}'
 f"{a / 3:9}"  # E: Unsupported operand types for / ("str" and "int")
 f"""{'' + ":":24}"""
+
+[case special_builtins_access]
+reveal_type(isinstance)  # N: Revealed type is "def (object, Type[Any] | types.UnionType | tuple[..., ...]) -> bool"
+reveal_type(issubclass)  # N: Revealed type is "def (Type[Any], Type[Any] | types.UnionType | tuple[..., ...]) -> bool"
+reveal_type(super)  # N: Revealed type is "super"

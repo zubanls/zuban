@@ -13,7 +13,7 @@ use crate::{
         dataclasses_replace, AnyCause, CallableContent, CallableParam, CallableParams,
         ClassGenerics, CustomBehavior, ParamType, Tuple, Type, TypeVarLikes,
     },
-    type_helpers::{cache_class_name, Class, Function, Instance},
+    type_helpers::{cache_class_name, Class, FirstParamProperties, Function, Instance},
     InferenceState,
 };
 
@@ -127,6 +127,7 @@ pub struct PythonState {
     builtins_property_index: NodeIndex,
     builtins_isinstance_index: NodeIndex,
     builtins_issubclass_index: NodeIndex,
+    builtins_super_index: NodeIndex,
     builtins_callable_index: NodeIndex,
     builtins_hasattr_index: NodeIndex,
     builtins_len_index: NodeIndex,
@@ -248,6 +249,7 @@ impl PythonState {
             builtins_notimplementederror: 0,
             builtins_isinstance_index: 0,
             builtins_issubclass_index: 0,
+            builtins_super_index: 0,
             builtins_callable_index: 0,
             builtins_hasattr_index: 0,
             builtins_len_index: 0,
@@ -594,6 +596,7 @@ impl PythonState {
 
         cache_index!(builtins_isinstance_index, builtins, "isinstance", true);
         cache_index!(builtins_issubclass_index, builtins, "issubclass", true);
+        cache_index!(builtins_super_index, builtins, "super");
         cache_index!(builtins_callable_index, builtins, "callable", true);
         cache_index!(builtins_hasattr_index, builtins, "hasattr", true);
         cache_index!(builtins_len_index, builtins, "len", true);
@@ -808,6 +811,7 @@ impl PythonState {
     attribute_node_ref!(builtins, pub property_node_ref, builtins_property_index);
     attribute_node_ref!(builtins, pub isinstance_node_ref, builtins_isinstance_index);
     attribute_node_ref!(builtins, pub issubclass_node_ref, builtins_issubclass_index);
+    attribute_node_ref!(builtins, pub super_node_ref, builtins_super_index);
     attribute_node_ref!(builtins, pub callable_node_ref, builtins_callable_index);
     attribute_node_ref!(builtins, pub hasattr_node_ref, builtins_hasattr_index);
     attribute_node_ref!(builtins, pub len_node_ref, builtins_len_index);
@@ -912,6 +916,7 @@ impl PythonState {
     node_ref_to_type_class_without_generic!(pub str_type, str_node_ref);
     node_ref_to_type_class_without_generic!(pub bytes_type, bytes_node_ref);
     node_ref_to_type_class_without_generic!(pub bytearray_type, bytearray_node_ref);
+    node_ref_to_type_class_without_generic!(pub super_type, super_node_ref);
     node_ref_to_type_class_without_generic!(pub memoryview_type, memoryview_node_ref);
     node_ref_to_type_class_without_generic!(pub int_type, int_node_ref);
     node_ref_to_type_class_without_generic!(pub bool_type, bool_node_ref);
@@ -1004,6 +1009,26 @@ impl PythonState {
             None,
         )
     }
+
+    pub fn isinstance_type(&self, db: &Database) -> Type {
+        node_ref_to_global_func_type(db, self.isinstance_node_ref())
+    }
+
+    pub fn issubclass_type(&self, db: &Database) -> Type {
+        node_ref_to_global_func_type(db, self.issubclass_node_ref())
+    }
+}
+
+fn node_ref_to_global_func_type(db: &Database, n: NodeRef) -> Type {
+    assert!(
+        n.maybe_function().is_some(),
+        "Expected a function for {:?}",
+        n.file.tree.short_debug_of_index(n.node_index)
+    );
+    let func = Function::new(n, None);
+    let i_s = InferenceState::new(db);
+    func.ensure_cached_func(&i_s);
+    func.as_type(&i_s, FirstParamProperties::None)
 }
 
 fn typing_changes(

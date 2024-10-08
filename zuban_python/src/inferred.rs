@@ -2641,9 +2641,9 @@ pub fn specific_to_type<'db>(
             definition.add_need_type_annotation_issue(i_s, specific);
             Cow::Borrowed(&i_s.db.python_state.set_of_any)
         }
-        Specific::BuiltinsIsinstance => todo!(),
-        Specific::BuiltinsIssubclass => todo!(),
-        Specific::BuiltinsSuper => todo!(),
+        Specific::BuiltinsIsinstance => Cow::Owned(i_s.db.python_state.isinstance_type(i_s.db)),
+        Specific::BuiltinsIssubclass => Cow::Owned(i_s.db.python_state.issubclass_type(i_s.db)),
+        Specific::BuiltinsSuper => Cow::Owned(i_s.db.python_state.super_type()),
         Specific::TypingTypeVarClass => todo!(),
         Specific::TypingTypeVarTupleClass => todo!(),
         Specific::TypingParamSpecClass => todo!(),
