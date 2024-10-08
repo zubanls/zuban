@@ -73,3 +73,8 @@ show_column_numbers = true
 show_error_end = true
 [out]
 main:1:10:1:11: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+[case strict_allows_explicit_any]
+# flags: --strict
+from typing import Any
+def foo(x: Any) -> None: ...

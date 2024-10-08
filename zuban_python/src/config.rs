@@ -235,17 +235,20 @@ impl Default for TypeCheckerFlags {
 impl TypeCheckerFlags {
     pub fn enable_all_strict_flags(&mut self) {
         // Use for --strict
-        self.strict_equality = true;
-        self.check_untyped_defs = true;
-        self.disallow_untyped_defs = true;
-        self.disallow_untyped_calls = true;
+        // self.warn_unused_configs = true;
         self.disallow_any_generics = true;
-        self.disallow_any_decorated = true;
-        self.disallow_any_explicit = true;
         self.disallow_subclassing_any = true;
+        self.disallow_untyped_calls = true;
+        self.disallow_untyped_defs = true;
         self.disallow_incomplete_defs = true;
+        self.check_untyped_defs = true;
+        self.disallow_untyped_decorators = true;
         self.warn_redundant_casts = true;
+        // self.warn_unused_ignores = true;
         self.warn_return_any = true;
+        self.no_implicit_reexport = true;
+        self.strict_equality = true;
+        self.extra_checks = true;
     }
 }
 
