@@ -3460,6 +3460,8 @@ fn execute_bare_type<'db>(i_s: &InferenceState<'db, '_>, first_arg: Inferred) ->
             | Type::Any(_)
             | Type::Self_
             | Type::Dataclass(_)
+            | Type::Tuple(_)
+            | Type::NewType(_)
             | Type::Enum(_) => type_part.union_in_place(t.clone()),
             Type::Literal(l) => type_part.union_in_place(l.fallback_type(i_s.db)),
             Type::Type(type_) => match type_.as_ref() {
@@ -3469,14 +3471,17 @@ fn execute_bare_type<'db>(i_s: &InferenceState<'db, '_>, first_arg: Inferred) ->
                     }
                     _ => type_part.union_in_place(i_s.db.python_state.type_of_object.clone()),
                 },
-                _ => todo!(),
+                _ => type_part.union_in_place(i_s.db.python_state.type_of_object.clone()),
             },
+            Type::Module(_) | Type::NamedTuple(_) => {
+                type_part.union_in_place(i_s.db.python_state.module_type())
+            }
             _ => todo!("{t:?}"),
         }
     }
-    Inferred::from_type(if type_part.is_never() {
-        first_arg.as_type(i_s)
+    if type_part.is_never() {
+        first_arg // Must be never
     } else {
-        Type::Type(Rc::new(type_part))
-    })
+        Inferred::from_type(Type::Type(Rc::new(type_part)))
+    }
 }

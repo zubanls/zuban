@@ -687,3 +687,25 @@ class Foo:
 
         def bar4(self) -> None:
             reveal_type(self.x)  # N: Revealed type is "Any"
+
+[case weird_type_executions]
+from typing import Any, TypeVar, NewType
+import typing
+
+T = TypeVar("T")
+N = NewType("N", int)
+
+def foo(
+        a: type[Any],
+        b: type[int],
+        n: N,
+        ):
+    reveal_type(type(a))  # N: Revealed type is "Type[Type[object]]"
+    reveal_type(type(b))  # N: Revealed type is "Type[Type[object]]"
+    reveal_type(type(()))  # N: Revealed type is "Type[tuple[()]]"
+    reveal_type(type(T))  # N: Revealed type is "Type[typing.TypeVar]"
+
+    reveal_type(type(n))  # N: Revealed type is "Type[__main__.N]"
+    reveal_type(type(N))  # N: Revealed type is "Type[Type[object]]"
+    reveal_type(type(N))  # N: Revealed type is "Type[Type[object]]"
+    reveal_type(type(typing))  # N: Revealed type is "Type[types.ModuleType]"
