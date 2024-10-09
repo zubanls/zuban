@@ -62,7 +62,7 @@ impl fmt::Debug for Function<'_, '_> {
 impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
     pub fn new(node_ref: NodeRef<'a>, class: Option<Class<'class>>) -> Self {
         if std::cfg!(debug_assertions) {
-            debug_assert!(node_ref.maybe_function().is_some());
+            debug_assert!(node_ref.maybe_function().is_some(), "{node_ref:?}");
         }
         Self { node_ref, class }
     }

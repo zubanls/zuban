@@ -414,13 +414,12 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     todo!()
                 }
                 match calculated_type_args.matches {
-                    SignatureMatch::True { .. } => {
+                    SignatureMatch::TrueWithAny { .. } | SignatureMatch::True { .. } => {
                         return UnionMathResult::Match {
                             result: as_union_math_type(&callable, calculated_type_args),
                             first_similar_index: i,
                         };
                     }
-                    SignatureMatch::TrueWithAny { argument_indices } => todo!(),
                     SignatureMatch::False { similar: true } if first_similar.is_none() => {
                         first_similar = Some(i);
                     }

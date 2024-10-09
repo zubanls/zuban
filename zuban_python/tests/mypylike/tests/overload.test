@@ -451,3 +451,20 @@ def g(x: int) -> A: pass
 def g(x: object) -> object: ...
 
 g(1).x = 1
+
+[case overload_union_math_with_any_involved]
+from typing import Any
+from foo import foo
+
+def x(x: int | str, y: list[Any]) -> None:
+    reveal_type(foo(x, y))  # N: Revealed type is "int | bytes"
+
+[file foo.pyi]
+from typing import overload, Any
+
+@overload
+def foo(x: int, y: list[int]) -> int: ...
+@overload
+def foo(x: str, y: list[bytes]) -> bytes: ...
+@overload
+def foo(x: str, y: set[str]) -> str: ...
