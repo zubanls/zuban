@@ -164,9 +164,10 @@ impl<'file> Slice<'file> {
                 let inf = self.file.inference(i_s).infer_expression(expr);
                 let t = inf.as_cow_type(i_s);
                 let supports_index = i_s.db.python_state.supports_index_type();
-                if !t.is_simple_sub_type_of(i_s, &supports_index).bool()
-                    && !t.is_simple_sub_type_of(i_s, &Type::None).bool()
-                {
+                if t.iter_with_unpacked_unions(i_s.db).any(|t| {
+                    !t.is_simple_sub_type_of(i_s, &supports_index).bool()
+                        && !t.is_simple_sub_type_of(i_s, &Type::None).bool()
+                }) {
                     NodeRef::new(self.file, expr.index())
                         .add_issue(i_s, IssueKind::InvalidSliceIndex);
                 }

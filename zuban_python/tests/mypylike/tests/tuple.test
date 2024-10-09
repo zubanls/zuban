@@ -275,3 +275,7 @@ def foo(
     h(*tup3)
     h(*tup4)  # E: Argument 1 to "h" has incompatible type "*tuple[int, int, Unpack[Tuple[str, ...]], int]"; expected "str" \
               # E: Argument 1 to "h" has incompatible type "*tuple[Unpack[Tuple[str, ...]], int]"; expected "int"
+
+[case valid_slice_args]
+def foo(x: tuple[int, str], z: int | None) -> None:
+    reveal_type(x[z:])  # N: Revealed type is "tuple[int | str, ...]"
