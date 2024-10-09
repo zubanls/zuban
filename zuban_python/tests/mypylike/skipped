@@ -1332,9 +1332,6 @@ testDictExpressionErrorLocations
 # --no-silence-site-packages
 testAddFileWhichImportsLibModuleWithErrors
 
-# Probably won't support: Special mypy extensions
-testFlexibleAlias1
-
 # Won't support for now: "t" is a type variable and only valid in type context
 testExpressionRefersToTypeVariable
 

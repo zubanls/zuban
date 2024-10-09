@@ -2099,7 +2099,8 @@ impl<'db: 'slf, 'slf> Inferred {
                     | Specific::TypingAnnotated
                     | Specific::TypingNamedTuple
                     | Specific::CollectionsNamedTuple
-                    | Specific::TypingCallable),
+                    | Specific::TypingCallable
+                    | Specific::MypyExtensionsFlexibleAlias),
                 ) => {
                     let result = slice_type
                         .file

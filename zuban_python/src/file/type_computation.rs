@@ -3078,13 +3078,10 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         slice_type: SliceType,
     ) -> TypeContent<'db, 'db> {
         let add_issue = || {
-            // It's intentional that we don't use self.add_issue here, because FlexibleAliases are
-            // just assumed to be Any. This is a bit hacky, but since they are just used for the
-            // Mypy code base this should be fine.
-            slice_type.as_node_ref().add_issue(
-                self.inference.i_s,
+            self.add_issue(
+                slice_type.as_node_ref(),
                 IssueKind::InvalidType("FlexibleAlias must have exactly two type arguments".into()),
-            );
+            )
         };
 
         let mut iterator = slice_type.iter();
@@ -3669,6 +3666,14 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                     slice_type,
                     from_alias_definition,
                     compute_get_item_on_annotated(slice_type)
+                )
+            }
+            Specific::MypyExtensionsFlexibleAlias => {
+                compute_type_application!(
+                    self,
+                    slice_type,
+                    from_alias_definition,
+                    compute_get_item_on_flexible_alias(slice_type)
                 )
             }
             _ => unreachable!("{:?}", specific),
