@@ -756,3 +756,16 @@ def foo(e: E, d: D, n: N, t: T):
 
     reveal_type(type(T))  # N: Revealed type is "Type[Type[object]]"
     reveal_type(type(t))  # N: Revealed type is "Type[object]"
+
+[case self_argument_against_generics]
+from typing import Self, Generic, TypeVar
+
+T = TypeVar("T")
+class Parent(Generic[T]): ...
+
+class A(Parent[int]):
+    def foo(self, b: B) -> None:
+        reveal_type(b.bar(self))  # N: Revealed type is "int"
+
+class B:
+    def bar(self, other: Parent[T]) -> T: ...

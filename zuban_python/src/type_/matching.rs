@@ -448,7 +448,7 @@ impl Type {
                         );
                     }
                 } else if let Some(cls) = i_s.current_class() {
-                    return self.simple_matches(i_s, &cls.as_type(i_s.db), variance);
+                    return self.matches(i_s, matcher, &cls.as_type(i_s.db), variance);
                 }
             }
             Type::RecursiveType(rec2) => {
