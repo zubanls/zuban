@@ -231,8 +231,8 @@ impl PythonTokenizer<'_> {
                         if let Some(t) = self.maybe_fstring_string(i) {
                             return Some(t);
                         }
+                        return None;
                     }
-                    return None;
                 }
             } else if character == '"' {
                 for (j, node) in self.f_string_stack.iter().enumerate() {
@@ -776,5 +776,8 @@ mod tests {
         f_string_with_unicode_name4 r"f'\N{}'" => [
             (0, 2, FStringStart), (2, 2, FStringString), (4, 1, Op),
             (5, 1, Op), (6, 1, FStringEnd)];
+
+        f_string_bracket_escape r#"f"x{{y}}z""# => [
+            (0, 2, FStringStart), (2, 7, FStringString), (9, 1, FStringEnd)];
     );
 }
