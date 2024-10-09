@@ -325,7 +325,25 @@ impl IteratorContent {
                 inferred: inf,
                 arbitrary_len: false,
             }),
-            Self::Union(iterators) => todo!(),
+            Self::Union(iterators) => iterators
+                .iter_mut()
+                .map(|i| i.next_as_argument(i_s))
+                .reduce(|x, y| match (x?, y?) {
+                    (
+                        UnpackedArgument::Normal {
+                            inferred: inf1,
+                            arbitrary_len: a1,
+                        },
+                        UnpackedArgument::Normal {
+                            inferred: inf2,
+                            arbitrary_len: a2,
+                        },
+                    ) => Some(UnpackedArgument::Normal {
+                        inferred: inf1.simplified_union(i_s, inf2),
+                        arbitrary_len: a1 & a2,
+                    }),
+                    _ => todo!(),
+                })?,
             Self::WithUnpack {
                 unpack,
                 before_index,
