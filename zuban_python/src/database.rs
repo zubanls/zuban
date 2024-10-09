@@ -481,6 +481,7 @@ pub enum Specific {
     TypingNamedTuple,      // typing.NamedTuple
     CollectionsNamedTuple, // collections.namedtuple
     DataclassesDataclass,
+    MypyExtensionsFlexibleAlias,
 
     MypyExtensionsArg,
     MypyExtensionsDefaultArg,

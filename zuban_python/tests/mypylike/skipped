@@ -1334,8 +1334,6 @@ testAddFileWhichImportsLibModuleWithErrors
 
 # Probably won't support: Special mypy extensions
 testFlexibleAlias1
-testFlexibleAlias2
-testFlexibleAlias3
 
 # Won't support for now: "t" is a type variable and only valid in type context
 testExpressionRefersToTypeVariable

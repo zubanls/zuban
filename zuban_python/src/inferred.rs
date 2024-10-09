@@ -2689,6 +2689,7 @@ pub fn specific_to_type<'db>(
                 .as_cow_type(i_s);
             todo!()
         }
+        Specific::MypyExtensionsFlexibleAlias => Cow::Borrowed(&Type::Any(AnyCause::Internal)),
         actual => unreachable!("{actual:?}"),
     }
 }

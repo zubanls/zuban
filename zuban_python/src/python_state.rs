@@ -1162,6 +1162,11 @@ fn typing_changes(
         set_typing_inference(module, "TypedDict", Specific::TypingTypedDict);
     }
     set_typing_inference(mypy_extensions, "NoReturn", Specific::TypingNeverOrNoReturn);
+    set_typing_inference(
+        mypy_extensions,
+        "FlexibleAlias",
+        Specific::MypyExtensionsFlexibleAlias,
+    );
 }
 
 fn set_typing_inference(file: &PythonFile, name: &str, specific: Specific) {

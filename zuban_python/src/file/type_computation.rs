@@ -87,6 +87,7 @@ pub(super) enum SpecialType {
     ClassVar,
     TypeGuard,
     TypeIs,
+    FlexibleAlias,
     MypyExtensionsParamType(Specific),
     CallableParam(CallableParam),
 }
@@ -1573,6 +1574,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         SpecialType::ClassVar => self.compute_get_item_on_class_var(s),
                         SpecialType::TypeGuard => self.compute_get_item_on_type_guard(s, false),
                         SpecialType::TypeIs => self.compute_get_item_on_type_guard(s, true),
+                        SpecialType::FlexibleAlias => self.compute_get_item_on_flexible_alias(s),
                         _ => TypeContent::InvalidVariable(InvalidVariableType::Other),
                     },
                     TypeContent::RecursiveAlias(link) => {
@@ -3069,6 +3071,33 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             type_: self.compute_slice_type(first),
             from_type_is,
         })
+    }
+
+    fn compute_get_item_on_flexible_alias(
+        &mut self,
+        slice_type: SliceType,
+    ) -> TypeContent<'db, 'db> {
+        let add_issue = || {
+            // It's intentional that we don't use self.add_issue here, because FlexibleAliases are
+            // just assumed to be Any. This is a bit hacky, but since they are just used for the
+            // Mypy code base this should be fine.
+            slice_type.as_node_ref().add_issue(
+                self.inference.i_s,
+                IssueKind::InvalidType("FlexibleAlias must have exactly two type arguments".into()),
+            );
+        };
+
+        let mut iterator = slice_type.iter();
+        let first = iterator.next().unwrap();
+        let Some(second) = iterator.next() else {
+            add_issue();
+            return TypeContent::Unknown(UnknownCause::ReportedIssue);
+        };
+        if iterator.next().is_some() {
+            add_issue();
+        }
+        self.compute_slice_type(first);
+        TypeContent::Type(self.compute_slice_type(second))
     }
 
     fn compute_type_get_item_on_required_like(
@@ -4816,6 +4845,7 @@ fn check_special_type(point: Point) -> Option<SpecialType> {
             | Specific::MypyExtensionsKwArg => {
                 SpecialType::MypyExtensionsParamType(point.specific())
             }
+            Specific::MypyExtensionsFlexibleAlias => SpecialType::FlexibleAlias,
             _ => return None,
         })
     } else {

@@ -744,3 +744,18 @@ P = typing.ParamSpec("P")
 reveal_type(T.__name__) # N: Revealed type is "str"
 reveal_type(Ts.__name__) # N: Revealed type is "str"
 reveal_type(P.__name__) # N: Revealed type is "str"
+
+[case flexible_alias_basics]
+from mypy_extensions import FlexibleAlias
+
+X = FlexibleAlias[int]  # E: FlexibleAlias must have exactly two type arguments
+Y = FlexibleAlias[int, str, bytes]  # E: FlexibleAlias must have exactly two type arguments
+Z = FlexibleAlias[int, str]
+
+reveal_type(FlexibleAlias.undefined)  # N: Revealed type is "Any"
+x: X
+reveal_type(x)  # N: Revealed type is "Any"
+y: Y
+reveal_type(y)  # N: Revealed type is "str"
+z: Y
+reveal_type(z)  # N: Revealed type is "str"
