@@ -68,3 +68,19 @@ def func3() -> None:
 import os
 def foo() -> None:
     x = 1 and os.path.islink("").conjugate(1)  # E: Too many arguments for "conjugate" of "int"
+
+[case avoid_type_computation_recursion]
+
+[file foo.py]
+from typing import Generic
+from bar import X
+class Foo(Generic[X]): ...
+[file bar.py]
+from typing import TypeVar
+import foo
+
+if bool():  # Causes flow analysis to happen
+    X = TypeVar("X")
+
+def here() -> None:
+    reveal_type(foo.Foo())

@@ -4,6 +4,7 @@ testUnionOfNonIterableUnpacking
 testPostInitIsNotAFunction
 self_annotation_eq_mismatch
 mypy_setup_ini_with_multiline_string
+avoid_type_computation_recursion
 
 # regressions
 testIncrementalInvalidNamedTupleInUnannotatedFunction
