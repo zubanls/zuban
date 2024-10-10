@@ -273,6 +273,12 @@ pub struct DelayedFunc {
     pub in_type_checking_only_block: bool,
 }
 
+#[must_use]
+pub struct FlowAnalysisResult<T> {
+    pub result: T,
+    pub unfinished_partials: Vec<PointLink>,
+}
+
 #[derive(Debug, Default)]
 pub struct FlowAnalysis {
     frames: RefCell<Vec<Frame>>,
@@ -286,6 +292,18 @@ pub struct FlowAnalysis {
 
 impl FlowAnalysis {
     pub fn with_new_empty<T>(&self, i_s: &InferenceState, callable: impl FnOnce() -> T) -> T {
+        let FlowAnalysisResult {
+            result,
+            unfinished_partials,
+        } = self.with_new_empty_without_unfinished_partial_checking(callable);
+        process_unfinished_partials(i_s, unfinished_partials);
+        result
+    }
+
+    pub fn with_new_empty_without_unfinished_partial_checking<T>(
+        &self,
+        callable: impl FnOnce() -> T,
+    ) -> FlowAnalysisResult<T> {
         let old_frames = self.frames.take();
         let try_frames = self.try_frames.take();
         let loop_details = self.loop_details.take();
@@ -294,8 +312,10 @@ impl FlowAnalysis {
         let in_type_checking_only_block = self.in_type_checking_only_block.take();
         let accumulating_types = self.accumulating_types.take();
 
-        let result = callable();
-        self.check_for_unfinished_partials(i_s);
+        let result = FlowAnalysisResult {
+            result: callable(),
+            unfinished_partials: self.partials_in_module.take(),
+        };
         self.debug_assert_is_empty();
 
         *self.frames.borrow_mut() = old_frames;
@@ -626,17 +646,7 @@ impl FlowAnalysis {
     }
 
     pub fn check_for_unfinished_partials(&self, i_s: &InferenceState) {
-        let mut partials = self.partials_in_module.borrow_mut();
-        for partial in partials.iter() {
-            let node_ref = NodeRef::from_link(i_s.db, *partial);
-            let point = node_ref.point();
-            if let Some(specific) = point.maybe_specific() {
-                if specific.is_partial() {
-                    node_ref.finish_partial_with_annotation_needed(i_s);
-                }
-            }
-        }
-        partials.clear()
+        process_unfinished_partials(i_s, self.partials_in_module.take());
     }
 
     pub fn add_delayed_func(&self, func: PointLink, class: Option<PointLink>) {
@@ -3874,5 +3884,17 @@ fn except_type(i_s: &InferenceState, t: &Type, allow_tuple: bool) -> ExceptType 
             result
         }
         _ => ExceptType::Invalid,
+    }
+}
+
+pub fn process_unfinished_partials(i_s: &InferenceState, partials: Vec<PointLink>) {
+    for partial in partials.into_iter() {
+        let node_ref = NodeRef::from_link(i_s.db, partial);
+        let point = node_ref.point();
+        if let Some(specific) = point.maybe_specific() {
+            if specific.is_partial() {
+                node_ref.finish_partial_with_annotation_needed(i_s);
+            }
+        }
     }
 }

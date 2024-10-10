@@ -84,3 +84,12 @@ if bool():  # Causes flow analysis to happen
 
 def here() -> None:
     reveal_type(foo.Foo())
+
+[case flow_analysis_should_be_avoided_for_simple_imports]
+import foo
+for x in [1]:
+    foo.bar  # This used to cause "Cannot use Final inside a loop" in foo.py
+
+[file foo.py]
+from typing import Final
+bar: Final = 1

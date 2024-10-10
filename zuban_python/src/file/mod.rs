@@ -13,7 +13,7 @@ pub use file_state::{
     File, FileState, FileStateLoader, FileSystemReader, LanguageFileState, Leaf, PythonFileLoader,
     Vfs,
 };
-pub use flow_analysis::FLOW_ANALYSIS;
+pub use flow_analysis::{process_unfinished_partials, FLOW_ANALYSIS};
 use inference::Inference;
 pub use inference::{first_defined_name, first_defined_name_of_multi_def};
 pub use name_binder::{FUNC_TO_PARENT_DIFF, FUNC_TO_RETURN_OR_YIELD_DIFF, FUNC_TO_TYPE_VAR_DIFF};

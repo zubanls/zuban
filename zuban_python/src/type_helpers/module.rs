@@ -7,7 +7,7 @@ use crate::{
     database::{Database, FileIndex, PointLink},
     debug,
     diagnostics::IssueKind,
-    file::PythonFile,
+    file::{process_unfinished_partials, PythonFile, FLOW_ANALYSIS},
     imports::{python_import, python_import_with_needs_exact_case, ImportResult},
     inference_state::InferenceState,
     inferred::Inferred,
@@ -155,21 +155,25 @@ impl<'a> Module<'a> {
                     attribute: name.into(),
                 })
             }
-            let inf = self
-                .file
-                .inference(i_s)
-                .infer_name_of_definition_by_index(link.node_index);
-            if inf
-                .maybe_saved_specific(i_s.db)
-                .is_some_and(|specific| specific.is_partial())
-            {
+            let r = FLOW_ANALYSIS.with(|fa| {
+                fa.with_new_empty_without_unfinished_partial_checking(|| {
+                    self.file
+                        .inference(i_s)
+                        .infer_name_of_definition_by_index(link.node_index)
+                })
+            });
+            if !r.unfinished_partials.is_empty() {
                 if let Some(result) = ensure_flow_analysis() {
                     return result;
                 }
+                process_unfinished_partials(i_s, r.unfinished_partials);
                 // In case where the partial is overwritten, we can just return the old Inferred,
                 // because it points to the correct place.
             }
-            LookupResult::GotoName { name: link, inf }
+            LookupResult::GotoName {
+                name: link,
+                inf: r.result,
+            }
         } else if let Some(result) = self.sub_module_lookup(i_s.db, name) {
             result
         } else if let Some(star_imp) = self
