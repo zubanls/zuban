@@ -1424,3 +1424,17 @@ def foo(
         reveal_type(y)  # N: Revealed type is "Any"
     if isinstance(y, x4):  # E: Argument 2 to "isinstance" has incompatible type "tuple[int, Unpack[Tuple[Type[bytes], ...]], Type[str]]"; expected "Type[Any] | UnionType | tuple[_ClassInfo, ...]"
         reveal_type(y)  # N: Revealed type is "Any"
+
+[case comprehension_if_complex_narrowing]
+class Foo:
+    x: int
+
+def foo(lst) -> None:
+    a = [
+        reveal_type(obj).x  # N: Revealed type is "def () -> __main__.Foo"
+        for obj in lst
+        if isinstance(obj, type)
+        and issubclass(obj, Foo)
+        and obj is not Foo
+    ]
+    reveal_type(a)  # N: Revealed type is "list[int]"

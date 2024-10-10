@@ -83,6 +83,16 @@ impl Type {
             (_, Type::Callable(c2)) => common_sub_type_for_callable_against_type(i_s, c2, self),
             (Type::Any(_), _) => Some(other.clone()),
             (_, Type::Any(_)) => Some(self.clone()),
+            (Type::Type(t1), Type::Type(t2)) => {
+                let new = t1.common_sub_type(i_s, t2)?;
+                if &new == t1.as_ref() {
+                    Some(self.clone())
+                } else if &new == t2.as_ref() {
+                    Some(other.clone())
+                } else {
+                    Some(Type::Type(Rc::new(new)))
+                }
+            }
             _ => {
                 if self.is_simple_sub_type_of(i_s, other).bool() {
                     Some(self.clone())
