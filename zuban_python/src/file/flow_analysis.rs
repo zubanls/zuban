@@ -2615,20 +2615,18 @@ impl Inference<'_, '_, '_> {
     ) -> Option<Type> {
         match t {
             Type::Tuple(tup) => match &tup.args {
-                TupleArgs::FixedLen(ts) => {
-                    let ts: Option<Vec<Type>> = ts
-                        .iter()
-                        .map(|t| self.process_isinstance_type(part, t, true))
-                        .collect();
-                    let ts = ts?;
-                    Some(match ts.len() {
-                        0 => Type::Never(NeverCause::Other),
-                        1 => ts.into_iter().next().unwrap(),
-                        _ => simplified_union_from_iterators(self.i_s, ts.iter()),
-                    })
-                }
+                TupleArgs::FixedLen(ts) => self.process_tuple_types(part, ts.iter()),
                 TupleArgs::ArbitraryLen(t) => self.process_isinstance_type(part, t, false),
-                TupleArgs::WithUnpack(_) => todo!(),
+                TupleArgs::WithUnpack(w) => match &w.unpack {
+                    TupleUnpack::ArbitraryLen(t) => self.process_tuple_types(
+                        part,
+                        w.before
+                            .iter()
+                            .chain(w.after.iter())
+                            .chain(std::iter::once(t)),
+                    ),
+                    TupleUnpack::TypeVarTuple(_) => None,
+                },
             },
             Type::Type(t) => {
                 if let Type::Class(cls) = t.as_ref() {
@@ -2657,6 +2655,22 @@ impl Inference<'_, '_, '_> {
                 None
             }
         }
+    }
+
+    fn process_tuple_types<'x>(
+        &self,
+        part: ExpressionPart,
+        types: impl Iterator<Item = &'x Type>,
+    ) -> Option<Type> {
+        let ts: Option<Vec<Type>> = types
+            .map(|t| self.process_isinstance_type(part, t, true))
+            .collect();
+        let ts = ts?;
+        Some(match ts.len() {
+            0 => Type::Never(NeverCause::Other),
+            1 => ts.into_iter().next().unwrap(),
+            _ => simplified_union_from_iterators(self.i_s, ts.iter()),
+        })
     }
 
     fn guard_hasattr(&self, args: Arguments) -> Option<FramesWithParentUnions> {

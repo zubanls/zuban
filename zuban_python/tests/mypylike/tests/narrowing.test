@@ -1403,3 +1403,25 @@ x = 1
 reveal_type(x and not str())  # N: Revealed type is "int"
 reveal_type(x or not str())  # N: Revealed type is "int"
 reveal_type(not x or not str())  # N: Revealed type is "bool"
+
+[case with_unpack_tuple_in_isinstance]
+from typing import TypeVarTuple, Any
+
+Ts = TypeVarTuple("Ts")
+def foo(
+        x1: tuple[type[int], *tuple[type[bytes], ...], type[str]],
+        x2: tuple[type[int], *tuple[type[int], ...]],
+
+        x3: tuple[type[int], *Ts, type[str]],
+        x4: tuple[int, *tuple[type[bytes], ...], type[str]],
+        y: Any,
+        ) -> None:
+    if isinstance(y, x1):
+        reveal_type(y)  # N: Revealed type is "int | str | bytes"
+    if isinstance(y, x2):
+        reveal_type(y)  # N: Revealed type is "int"
+
+    if isinstance(y, x3):  # E: Argument 2 to "isinstance" has incompatible type "tuple[Type[int], Unpack[Ts], Type[str]]"; expected "Type[Any] | UnionType | tuple[_ClassInfo, ...]"
+        reveal_type(y)  # N: Revealed type is "Any"
+    if isinstance(y, x4):  # E: Argument 2 to "isinstance" has incompatible type "tuple[int, Unpack[Tuple[Type[bytes], ...]], Type[str]]"; expected "Type[Any] | UnionType | tuple[_ClassInfo, ...]"
+        reveal_type(y)  # N: Revealed type is "Any"
