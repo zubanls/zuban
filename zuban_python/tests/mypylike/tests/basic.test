@@ -759,3 +759,11 @@ y: Y
 reveal_type(y)  # N: Revealed type is "str"
 z: Y
 reveal_type(z)  # N: Revealed type is "str"
+
+[case import_from_module_with_empty_all]
+import foo
+foo.X
+
+[file foo.pyi]
+__all__ = ()
+class X: ...

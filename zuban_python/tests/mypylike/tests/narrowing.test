@@ -1176,7 +1176,6 @@ if bool():
     b = 1
 else:
     y + 1
-[case foo]
 
 [case module_mutual_flow_analysis3]
 # flags: --warn-unreachable

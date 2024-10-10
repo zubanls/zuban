@@ -256,13 +256,14 @@ pub fn is_reexport_issue_if_check_needed(
     file: &PythonFile,
     link: PointLink,
 ) -> bool {
-    if let Some(dunder_all) = file.maybe_dunder_all(db) {
-        let name = NodeRef::from_link(db, link).as_name().as_code();
-        !(dunder_all.iter().any(|d| d.as_str(db) == name) || name == "__all__")
-    } else {
-        let check_reexport = file.is_stub() || file.flags(db).no_implicit_reexport;
-        check_reexport && is_private_import(db, link)
-    }
+    let check_reexport = match file.maybe_dunder_all(db) {
+        Some(dunder_all) => {
+            let name = NodeRef::from_link(db, link).as_name().as_code();
+            !(dunder_all.iter().any(|d| d.as_str(db) == name) || name == "__all__")
+        }
+        None => file.is_stub() || file.flags(db).no_implicit_reexport,
+    };
+    check_reexport && is_private_import(db, link)
 }
 
 pub fn is_private_import(db: &Database, link: PointLink) -> bool {
