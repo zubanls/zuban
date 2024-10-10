@@ -1,8 +1,9 @@
 use std::{cell::OnceCell, ops::Deref, rc::Rc};
 
 use super::{
-    simplified_union_from_iterators, utils::method_with_fallback, CustomBehavior, FormatStyle,
-    GenericItem, GenericsList, LookupResult, RecursiveType, TypeVarLikeUsage, TypeVarTupleUsage,
+    simplified_union_from_iterators, utils::method_with_fallback, ClassGenerics, CustomBehavior,
+    FormatStyle, GenericItem, GenericsList, LookupResult, RecursiveType, TypeVarLikeUsage,
+    TypeVarTupleUsage,
 };
 use crate::{
     arguments::Args,
@@ -15,7 +16,7 @@ use crate::{
     inferred::{AttributeKind, Inferred},
     matching::{Generics, IteratorContent, OnTypeError, ResultContext},
     type_::{AnyCause, Type},
-    type_helpers::{Class, Instance, LookupDetails, TypeOrClass},
+    type_helpers::{Class, ClassExecutionResult, Instance, LookupDetails, TypeOrClass},
     utils::{join_with_commas, rc_slice_into_vec},
 };
 
@@ -34,6 +35,13 @@ impl Tuple {
     pub fn new(args: TupleArgs) -> Rc<Self> {
         Rc::new(Self {
             args,
+            tuple_class_generics: OnceCell::new(),
+        })
+    }
+
+    pub fn new_arbitrary_length_with_class_generics(t: Type, generics: GenericsList) -> Rc<Self> {
+        Rc::new(Self {
+            args: TupleArgs::ArbitraryLen(Box::new(t)),
             tuple_class_generics: OnceCell::new(),
         })
     }
@@ -791,5 +799,39 @@ fn tuple_mul_internal<'db>(
         }),
         TupleArgs::ArbitraryLen(_) => Some(Inferred::from_type(Type::Tuple(tuple))),
         TupleArgs::WithUnpack(_) => todo!(),
+    }
+}
+
+pub fn execute_tuple_class<'db>(
+    i_s: &InferenceState<'db, '_>,
+    args: &dyn Args<'db>,
+    result_context: &mut ResultContext,
+    on_type_error: OnTypeError,
+) -> Inferred {
+    let tup_cls = i_s
+        .db
+        .python_state
+        .tuple_class_with_generics_to_be_defined();
+    let class_execution_result =
+        tup_cls.execute_and_return_generics(i_s, args, result_context, on_type_error, true);
+    // While we theoretically now have a result, but that result is essentially just an instance of
+    // "class tuple". We however would want a Tuple[int, ...] instead. Therefore we unpack the type
+    // we got here.
+    let ClassExecutionResult::Inferred(inf) = class_execution_result else {
+        unreachable!("Expected a __new__ within builtins.tuple")
+    };
+    match inf.as_cow_type(i_s).as_ref() {
+        Type::Class(tup_cls) => {
+            let ClassGenerics::List(generics_list) = &tup_cls.generics else {
+                unreachable!("Expected a tuple with one type argument in typeshed")
+            };
+            let Some(GenericItem::TypeArg(t)) = generics_list.iter().next() else {
+                unreachable!("Expected a tuple with one type argument in typeshed")
+            };
+            return Inferred::from_type(Type::Tuple(
+                Tuple::new_arbitrary_length_with_class_generics(t.clone(), generics_list.clone()),
+            ));
+        }
+        _ => unreachable!("Expected tuple.__new__ to return the tuple class"),
     }
 }

@@ -11,7 +11,8 @@ pub use bound_method::{BoundMethod, BoundMethodFunction};
 pub use callable::Callable;
 pub use class::{
     cache_class_name, linearize_mro_and_return_linearizable, start_namedtuple_params, Class,
-    ClassLookupOptions, MroIterator, TypeOrClass, CLASS_TO_CLASS_INFO_DIFFERENCE,
+    ClassExecutionResult, ClassLookupOptions, MroIterator, TypeOrClass,
+    CLASS_TO_CLASS_INFO_DIFFERENCE,
 };
 pub use function::{is_private, FirstParamKind, FirstParamProperties, Function, GeneratorType};
 pub(crate) use instance::{

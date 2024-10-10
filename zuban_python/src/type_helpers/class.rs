@@ -2387,7 +2387,7 @@ impl<'db: 'a, 'a> Class<'a> {
         }
     }
 
-    fn execute_and_return_generics(
+    pub(crate) fn execute_and_return_generics(
         &self,
         original_i_s: &InferenceState<'db, '_>,
         args: &dyn Args<'db>,

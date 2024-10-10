@@ -25,11 +25,11 @@ use crate::{
     new_class,
     node_ref::NodeRef,
     type_::{
-        execute_collections_named_tuple, execute_type_of_type, execute_typing_named_tuple,
-        new_typed_dict, AnyCause, CallableContent, CallableLike, CallableParams, ClassGenerics,
-        DbString, FunctionKind, FunctionOverload, GenericClass, GenericItem, GenericsList,
-        IterInfos, Literal as DbLiteral, LiteralKind, LiteralValue, LookupResult, NeverCause, Type,
-        TypeVarKind, TypeVarLike, TypeVarLikes,
+        execute_collections_named_tuple, execute_tuple_class, execute_type_of_type,
+        execute_typing_named_tuple, new_typed_dict, AnyCause, CallableContent, CallableLike,
+        CallableParams, ClassGenerics, DbString, FunctionKind, FunctionOverload, GenericClass,
+        GenericItem, GenericsList, IterInfos, Literal as DbLiteral, LiteralKind, LiteralValue,
+        LookupResult, NeverCause, Type, TypeVarKind, TypeVarLike, TypeVarLikes,
     },
     type_helpers::{
         execute_assert_type, execute_cast, execute_isinstance, execute_issubclass,
@@ -1867,11 +1867,12 @@ impl<'db: 'slf, 'slf> Inferred {
                                 )
                             }
                             Specific::TypingTuple => {
-                                return i_s
-                                    .db
-                                    .python_state
-                                    .tuple_class_with_generics_to_be_defined()
-                                    .execute(i_s, args, result_context, on_type_error, true)
+                                return execute_tuple_class(
+                                    i_s,
+                                    args,
+                                    result_context,
+                                    on_type_error,
+                                )
                             }
                             Specific::TypingCast => {
                                 return execute_cast(i_s, args, result_context, on_type_error)

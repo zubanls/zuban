@@ -279,3 +279,10 @@ def foo(
 [case valid_slice_args]
 def foo(x: tuple[int, str], z: int | None) -> None:
     reveal_type(x[z:])  # N: Revealed type is "tuple[int | str, ...]"
+
+[case tuple_execution]
+from typing import Iterable
+def foo(x: Iterable[int], y: tuple[int, str]) -> None:
+    reveal_type(tuple(x))  # N: Revealed type is "tuple[int, ...]"
+    reveal_type(tuple(y))  # N: Revealed type is "tuple[int | str, ...]"
+    reveal_type(tuple())  # N: Revealed type is "tuple[Never, ...]"

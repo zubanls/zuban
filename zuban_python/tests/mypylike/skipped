@@ -146,6 +146,7 @@ testStrictEqualityAllowlist
 testNarrowingEqualityDisabledForCustomEqualityChain
 testNarrowingEqualityFlipFlop
 testStrictEqualitywithParamSpec
+testCustomEqCheckStrictEqualityTuple
 # optional assignment within class
 testLocalPartialTypesWithInheritance3
 testInheritedAttributeNoStrictOptional
@@ -533,8 +534,6 @@ testAssignmentToStarFromTupleType
 # empty tuple as iterator ("Need type annotation for "x"")
 testAssignmentToStarMissingAnnotation
 testForLoopOverEmptyTuple
-# tuple call tuple() leads to tuple[Any, ..] in Mypy, but is probably not technically wrong here
-testTupleCompatibleWithSequence
 
 # Type var constraints not enforced in type alias
 testValidTypeAliasValues
