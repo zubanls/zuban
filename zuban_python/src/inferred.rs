@@ -2095,6 +2095,7 @@ impl<'db: 'slf, 'slf> Inferred {
                     | Specific::TypingTuple
                     | Specific::TypingUnion
                     | Specific::TypingOptional
+                    | Specific::BuiltinsType
                     | Specific::TypingType
                     | Specific::TypingLiteral
                     | Specific::TypingAnnotated
@@ -2655,13 +2656,14 @@ pub fn specific_to_type<'db>(
         Specific::TypingParamSpecClass => {
             Cow::Owned(Type::Type(Rc::new(i_s.db.python_state.param_spec_type())))
         }
-        Specific::TypingType => {
+        Specific::BuiltinsType => {
             Cow::Owned(Type::Type(Rc::new(i_s.db.python_state.bare_type_type())))
         }
         Specific::TypingTuple => Cow::Borrowed(&i_s.db.python_state.type_of_arbitrary_tuple),
         Specific::CollectionsNamedTuple => todo!(),
         Specific::TypingProtocol
         | Specific::TypingGeneric
+        | Specific::TypingType
         | Specific::TypingUnion
         | Specific::TypingOptional
         | Specific::TypingLiteral

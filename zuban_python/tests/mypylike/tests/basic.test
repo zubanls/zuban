@@ -767,3 +767,24 @@ foo.X
 [file foo.pyi]
 __all__ = ()
 class X: ...
+
+[case type_differences]
+# flags: --strict
+from typing import Type, Any
+x: Type  # E: Missing type parameters for generic type "Type"
+y: type
+
+class Foo(Type): ...  # E: Invalid base class "Type"
+class Bar(type): ...
+
+a: Any = ...
+if isinstance(a, type):
+    reveal_type(a) # N: Revealed type is "Type[Any]"
+if issubclass(a, type):
+    reveal_type(a) # N: Revealed type is "Type[type]"
+
+isinstance(x, Type)  # E: Argument 2 to "isinstance" has incompatible type "_SpecialForm"; expected "Type[Any] | UnionType | tuple[_ClassInfo, ...]"
+issubclass(x, Type)  # E: Argument 2 to "issubclass" has incompatible type "_SpecialForm"; expected "Type[Any] | UnionType | tuple[_ClassInfo, ...]"
+
+type.mro
+Type.mro  # E: "_SpecialForm" has no attribute "mro"

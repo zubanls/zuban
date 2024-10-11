@@ -73,7 +73,8 @@ pub(super) enum SpecialType {
     NotRequired,
     CollectionsNamedTuple,
     Callable,
-    Type,
+    BuiltinsType,
+    TypingType,
     Tuple,
     Literal,
     LiteralString,
@@ -506,7 +507,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             TypeContent::SpecialType(SpecialType::TypingTypedDict) => {
                 CalculatedBaseClass::TypedDict
             }
-            TypeContent::SpecialType(SpecialType::Type) => {
+            TypeContent::SpecialType(SpecialType::BuiltinsType) => {
                 CalculatedBaseClass::Type(Type::new_class(
                     self.inference
                         .i_s
@@ -521,9 +522,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 // TODO what is this case?
                 CalculatedBaseClass::Unknown
             }
-            TypeContent::ParamSpec(_) | TypeContent::InvalidVariable(_) => {
-                CalculatedBaseClass::Invalid
-            }
+            TypeContent::ParamSpec(_)
+            | TypeContent::InvalidVariable(_)
+            | TypeContent::SpecialType(SpecialType::TypingType) => CalculatedBaseClass::Invalid,
             TypeContent::Type(Type::Enum(e)) => CalculatedBaseClass::InvalidEnum(e),
             _ => {
                 let type_ =
@@ -1120,8 +1121,10 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 }
                 SpecialType::Any => return Some(Type::Any(AnyCause::Explicit)),
                 SpecialType::Never => return Some(Type::Never(NeverCause::Explicit)),
-                SpecialType::Type => {
-                    if self.inference.flags().disallow_any_generics {
+                SpecialType::BuiltinsType | SpecialType::TypingType => {
+                    if self.inference.flags().disallow_any_generics
+                        && matches!(m, SpecialType::TypingType)
+                    {
                         self.add_issue(
                             node_ref,
                             IssueKind::MissingTypeParameters {
@@ -1540,7 +1543,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     TypeContent::SpecialType(special) => match special {
                         SpecialType::Union => self.compute_type_get_item_on_union(s),
                         SpecialType::Optional => self.compute_type_get_item_on_optional(s),
-                        SpecialType::Type => self.compute_type_get_item_on_type(s),
+                        SpecialType::BuiltinsType | SpecialType::TypingType => {
+                            self.compute_type_get_item_on_type(s)
+                        }
                         SpecialType::Tuple => self.compute_type_get_item_on_tuple(s),
                         SpecialType::Protocol => {
                             self.expect_type_var_like_args(s, "Protocol");
@@ -2715,7 +2720,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             return TypeContent::InvalidVariable(InvalidVariableType::Other);
         }
         let mut t = match self.compute_slice_type_content(content) {
-            TypeContent::SpecialType(SpecialType::Type) => {
+            TypeContent::SpecialType(SpecialType::BuiltinsType | SpecialType::TypingType) => {
                 self.inference.i_s.db.python_state.bare_type_type()
             }
             t => self.as_type(t, content.as_node_ref()),
@@ -3644,7 +3649,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                     compute_type_get_item_on_optional(slice_type)
                 )
             }
-            Specific::TypingType => {
+            Specific::TypingType | Specific::BuiltinsType => {
                 compute_type_application!(
                     self,
                     slice_type,
@@ -4822,7 +4827,8 @@ fn check_special_type(point: Point) -> Option<SpecialType> {
             Specific::TypingAny => SpecialType::Any,
             Specific::TypingGeneric => SpecialType::Generic,
             Specific::TypingProtocol => SpecialType::Protocol,
-            Specific::TypingType => SpecialType::Type,
+            Specific::BuiltinsType => SpecialType::BuiltinsType,
+            Specific::TypingType => SpecialType::TypingType,
             Specific::TypingCallable => SpecialType::Callable,
             Specific::TypingLiteralString => SpecialType::LiteralString,
             Specific::TypingUnpack => SpecialType::Unpack,

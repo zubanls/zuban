@@ -2592,9 +2592,9 @@ impl Inference<'_, '_, '_> {
                     Some(Specific::TypingAny) => {
                         return cannot_use_with("Any");
                     }
-                    Some(Specific::TypingType) => {
+                    Some(Specific::BuiltinsType) => {
                         if issubclass {
-                            todo!()
+                            return Some(self.i_s.db.python_state.bare_type_type());
                         } else {
                             return Some(self.i_s.db.python_state.type_of_any.clone());
                         }
@@ -3273,7 +3273,7 @@ impl Inference<'_, '_, '_> {
                     }
                 })
             };
-            if pre_exec.maybe_saved_specific(db) == Some(Specific::TypingType) {
+            if pre_exec.maybe_saved_specific(db) == Some(Specific::BuiltinsType) {
                 as_infos(false)
             } else if pre_exec.maybe_saved_link() == Some(db.python_state.len_node_ref().as_link())
             {

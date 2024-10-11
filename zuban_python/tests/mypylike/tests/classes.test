@@ -23,7 +23,7 @@ from typing import Type
 
 class A(Type[int]): ...  # E: Invalid base class "Type[int]"
 class B(type[int]): ...  # E: Invalid base class "type[int]"
-class C(Type): ...
+class C(Type): ...  # E: Invalid base class "Type"
 class D(type): ...
 
 [case function_as_invalid_base_class]
