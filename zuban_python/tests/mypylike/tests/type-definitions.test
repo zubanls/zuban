@@ -167,3 +167,17 @@ x: f'int'  # E: Invalid type comment or annotation
 from typing import Protocol, Generic
 Generic[int]  # E: Invalid type application
 Protocol[int]  # E: Invalid type application
+
+[case parens_in_annotation]
+class X:
+    foo: (int)
+    bar: ()  # E: Syntax error in type annotation \
+             # N: Suggestion: Use Tuple[T1, ..., Tn] instead of (T1, ..., Tn)
+    baz: (int) = 1
+
+def foo(
+        x: (tuple[int, str]),
+        y: (),  # E: Syntax error in type annotation \
+                # N: Suggestion: Use Tuple[T1, ..., Tn] instead of (T1, ..., Tn)
+        z: (a := int),  # E: Invalid type comment or annotation
+        ): ...

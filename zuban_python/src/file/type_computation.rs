@@ -3175,6 +3175,12 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             AtomContent::Ellipsis => TypeContent::InvalidVariable(InvalidVariableType::Ellipsis),
             AtomContent::Float(_) => TypeContent::InvalidVariable(InvalidVariableType::Float),
             AtomContent::Complex(_) => TypeContent::InvalidVariable(InvalidVariableType::Complex),
+            AtomContent::NamedExpression(ne) => match ne.unpack() {
+                NamedExpressionContent::Expression(expr) => self.compute_type(expr),
+                NamedExpressionContent::Walrus(_) => {
+                    TypeContent::InvalidVariable(InvalidVariableType::Other)
+                }
+            },
             _ => TypeContent::InvalidVariable(InvalidVariableType::Other),
         }
     }
