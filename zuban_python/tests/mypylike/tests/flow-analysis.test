@@ -93,3 +93,19 @@ for x in [1]:
 [file foo.py]
 from typing import Final
 bar: Final = 1
+
+[case flow_analysis_circular_dependency]
+# flags: --warn-unreachable
+import foo
+[file foo.py]
+from bar import X
+if bool(): # Causes flow analysis
+    def foo() -> X: ...
+
+class Y: ...
+[file bar.py]
+from foo import Y
+if bool(): # Causes flow analysis
+    def bar() -> Y: ...
+
+class X: ...

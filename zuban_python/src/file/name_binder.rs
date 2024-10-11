@@ -241,7 +241,17 @@ impl<'db> NameBinder<'db> {
             self.symbol_table.add_or_replace_symbol(name_def.name());
             let name_index = name_def.name_index();
             let p = Point::new_name_of_name_def(name_index, in_global_scope, Locality::NameBinder)
-                .with_needs_flow_analysis(self.following_nodes_need_flow_analysis);
+                .with_needs_flow_analysis(
+                    self.following_nodes_need_flow_analysis
+                        && !{
+                            matches!(
+                                cause,
+                                IndexingCause::FunctionName
+                                    | IndexingCause::ClassName
+                                    | IndexingCause::Annotation
+                            )
+                        },
+                );
             self.db_infos.points.set(name_index, p);
         }
         self.db_infos.points.set(name_def.index(), point);
@@ -698,7 +708,11 @@ impl<'db> NameBinder<'db> {
         });
         // Need to first index the class, because the class body does not have access to
         // the class name.
-        self.add_new_definition(class_def.name_def(), Point::new_uncalculated());
+        self.add_new_definition_with_cause(
+            class_def.name_def(),
+            Point::new_uncalculated(),
+            IndexingCause::ClassName,
+        );
     }
 
     fn index_self_vars(&mut self, class: ClassDef<'db>) -> SymbolTable {
@@ -1729,6 +1743,7 @@ struct UnorderedReference<'db> {
 enum IndexingCause {
     Annotation,
     FunctionName,
+    ClassName,
     AugAssignment,
     Other,
 }
