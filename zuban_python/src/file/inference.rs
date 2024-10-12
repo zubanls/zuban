@@ -1499,6 +1499,23 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 // Nothing needed to assign anymore, the original definition was already assigned.
                 return;
             }
+            if let Some(lookup_in_bases) = lookup_self_attribute_in_bases {
+                let lookup_details = lookup_in_bases();
+                if let Some(inf) = lookup_details.lookup.into_maybe_inferred() {
+                    if lookup_details.attr_kind == AttributeKind::Final {
+                        from.add_issue(
+                            i_s,
+                            IssueKind::CannotAssignToFinal {
+                                name: name_def.as_code().into(),
+                                is_attribute: true,
+                            },
+                        );
+                    } else {
+                        check_assign_including_partials(first_index, &inf, None);
+                    }
+                    return;
+                }
+            }
             let original_inf = self.infer_name_of_definition_by_index(first_index);
             check_assign_including_partials(first_index, &original_inf, None)
         } else {

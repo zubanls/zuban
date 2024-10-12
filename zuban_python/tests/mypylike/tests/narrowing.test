@@ -1438,3 +1438,55 @@ def foo(lst) -> None:
         and obj is not Foo
     ]
     reveal_type(a)  # N: Revealed type is "list[int]"
+
+[case self_vars_narrowed]
+class B:
+    x: int = 1
+
+class Foo1:
+    b: B | None = None
+    y: int
+
+    def __init__(self) -> None:
+        self.b = B()
+
+    def foo(self) -> None:
+        if self.b:
+            self.y = self.b.x
+
+    def bar(self) -> None:
+        self.y = 1
+'''
+class Foo2:
+    b: B | None = None
+    y: int
+
+    def __init__(self) -> None:
+        self.b = B()
+
+    def bar(self) -> None:
+        self.y = 1
+
+    def foo(self) -> None:
+        if self.b:
+            self.y = self.b.x
+'''
+
+[case context_for_self_var_should_prefer_class]
+class Foo1:
+    x: list[int | str]
+
+    def __init__(self) -> None:
+        self.x = [1]
+
+    def bar(self) -> None:
+        self.x = [""]
+
+class Foo2:
+    x: list[int | str]
+
+    def __init__(self) -> None:
+        self.x = [""]
+
+    def bar(self) -> None:
+        self.x = [1]
