@@ -1243,6 +1243,8 @@ impl<'db> NameBinder<'db> {
             self.db_infos.file_index,
             self.db_infos.points,
             name,
+            // Even references sometimes don't need flow analysis. This is really practical in some
+            // very simple cases.
             self.following_nodes_need_flow_analysis,
         )
     }
