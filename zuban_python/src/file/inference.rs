@@ -1684,7 +1684,11 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     return;
                 }
             }
-            save(name_def.index(), value);
+            if let Some(value_without_final) = value.remove_final(i_s.db) {
+                save(name_def.index(), &value_without_final);
+            } else {
+                save(name_def.index(), value);
+            }
         }
     }
 

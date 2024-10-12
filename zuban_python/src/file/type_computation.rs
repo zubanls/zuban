@@ -39,7 +39,7 @@ use crate::{
 };
 
 const ASSIGNMENT_TYPE_CACHE_OFFSET: u32 = 1;
-pub(super) const ANNOTATION_TO_EXPR_DIFFERENCE: u32 = 2;
+pub const ANNOTATION_TO_EXPR_DIFFERENCE: u32 = 2;
 
 #[derive(Debug)]
 pub enum TypeVarCallbackReturn {

@@ -6,3 +6,56 @@ class Foo(Generic[T]):
     x: Final = 1
 
 Foo.x = 3  # E: Cannot assign to final attribute "x"
+
+[case final_reassignment_inferred]
+from typing import Final
+
+fin: Final = 1
+other = fin
+if bool():
+    fin = 2   # E: Cannot assign to final name "fin"
+    other = 2
+
+class Foo:
+    x = fin
+    y = fin
+    def __init__(self) -> None:
+        self.y = 2
+        self.z = fin
+
+        self.member1: Final = 1
+        self.member2 = self.member1
+
+foo = Foo()
+foo.x = 3
+foo.y = 3
+foo.z = 3
+foo.member1 = 2  # E: Cannot assign to final attribute "member1"
+foo.member2 = 2
+
+[case final_reassignment_defined]
+# Should not cause final assignment issues if it is reassigned
+from typing import Final
+
+fin: Final[int] = 1
+other = fin
+if bool():
+    fin = 2   # E: Cannot assign to final name "fin"
+    other = 2
+
+class Foo:
+    x = fin
+    y = fin
+    def __init__(self) -> None:
+        self.y = 2
+        self.z = fin
+
+        self.member1: Final = 1
+        self.member2 = self.member1
+
+foo = Foo()
+foo.x = 3
+foo.y = 3
+foo.z = 3
+foo.member1 = 2  # E: Cannot assign to final attribute "member1"
+foo.member2 = 2

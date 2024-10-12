@@ -12,7 +12,7 @@ use crate::{
     diagnostics::IssueKind,
     file::{
         maybe_saved_annotation, on_argument_type_error, use_cached_annotation_or_type_comment,
-        PythonFile,
+        PythonFile, ANNOTATION_TO_EXPR_DIFFERENCE,
     },
     format_data::FormatData,
     getitem::{SliceType, SliceTypeContent},
@@ -2256,6 +2256,23 @@ impl<'db: 'slf, 'slf> Inferred {
 
     pub fn remove_none(&self, i_s: &InferenceState) -> Self {
         Inferred::from_type(self.as_type(i_s).remove_none(i_s.db).into_owned())
+    }
+
+    pub fn remove_final(&self, db: &Database) -> Option<Self> {
+        if let InferredState::Saved(link) = self.state {
+            let n = NodeRef::from_link(db, link);
+            if n.point().maybe_specific() == Some(Specific::AnnotationOrTypeCommentFinal) {
+                debug_assert!(n
+                    .add_to_node_index(ANNOTATION_TO_EXPR_DIFFERENCE as i64)
+                    .point()
+                    .calculated());
+                return Some(Self::from_saved_link(PointLink::new(
+                    link.file,
+                    link.node_index + ANNOTATION_TO_EXPR_DIFFERENCE,
+                )));
+            }
+        }
+        None
     }
 }
 
