@@ -427,12 +427,12 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     if base.is_saved_partial(self.i_s.db) {
                         return None;
                     }
-                    let result = base
-                        .as_cow_type(self.i_s)
-                        .setitem_context(self.i_s, &SliceType::new(self.file, t.index(), slice));
-                    if result.is_some() {
-                        return result;
-                    }
+                    return Some(
+                        base.as_cow_type(self.i_s).setitem_context(
+                            self.i_s,
+                            &SliceType::new(self.file, t.index(), slice),
+                        ),
+                    );
                 }
                 Target::NameExpression(primary_target, name_def) => {
                     let base = self.infer_primary_target_or_atom(primary_target.first());

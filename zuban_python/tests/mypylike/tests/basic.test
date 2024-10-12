@@ -788,3 +788,7 @@ issubclass(x, Type)  # E: Argument 2 to "issubclass" has incompatible type "_Spe
 
 type.mro
 Type.mro  # E: "_SpecialForm" has no attribute "mro"
+
+[case dict_getitem_context]
+def foo(y: dict[int, set[int]]) -> None:
+    y[1] = set()

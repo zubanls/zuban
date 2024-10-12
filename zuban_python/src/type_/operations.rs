@@ -538,17 +538,8 @@ impl Type {
         }
     }
 
-    pub fn setitem_context(
-        &self,
-        i_s: &InferenceState,
-        slice_type: &SliceType,
-    ) -> Option<Inferred> {
-        match self {
-            Type::TypedDict(td) => {
-                Some(td.get_item(i_s, slice_type, &mut ResultContext::Unknown, false, &|_| ()))
-            }
-            _ => None,
-        }
+    pub fn setitem_context(&self, i_s: &InferenceState, slice_type: &SliceType) -> Inferred {
+        self.get_item_internal(i_s, None, slice_type, &mut ResultContext::Unknown, &|_| ())
     }
 
     pub(crate) fn execute<'db>(
