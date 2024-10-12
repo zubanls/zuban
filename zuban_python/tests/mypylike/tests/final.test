@@ -59,3 +59,25 @@ foo.y = 3
 foo.z = 3
 foo.member1 = 2  # E: Cannot assign to final attribute "member1"
 foo.member2 = 2
+
+[case final_reassignment_indirect_final]
+from typing import Final
+
+class Foo:
+    x: Final = 1
+    y: Final[int] = 1
+    z: Final[int]  # E: Final name must be initialized with a value
+
+class Bar(Foo):
+    x = 2  # E: Cannot assign to final name "x"
+    y = 2  # E: Cannot assign to final name "y"
+    in_bar1 = x
+    in_bar2 = y
+    def __init__(self):
+        self.z = 2
+        self.in_bar3 = self.z
+
+bar = Bar()
+bar.in_bar1 = 3
+bar.in_bar2 = 3
+bar.in_bar3 = 3

@@ -2258,9 +2258,9 @@ impl<'db: 'slf, 'slf> Inferred {
         Inferred::from_type(self.as_type(i_s).remove_none(i_s.db).into_owned())
     }
 
-    pub fn remove_final(&self, db: &Database) -> Option<Self> {
+    pub fn remove_final(&self, i_s: &InferenceState) -> Option<Self> {
         if let InferredState::Saved(link) = self.state {
-            let n = NodeRef::from_link(db, link);
+            let n = NodeRef::from_link(i_s.db, link);
             if n.point().maybe_specific() == Some(Specific::AnnotationOrTypeCommentFinal) {
                 debug_assert!(n
                     .add_to_node_index(ANNOTATION_TO_EXPR_DIFFERENCE as i64)
@@ -2270,6 +2270,11 @@ impl<'db: 'slf, 'slf> Inferred {
                     link.file,
                     link.node_index + ANNOTATION_TO_EXPR_DIFFERENCE,
                 )));
+            }
+            if n.complex()
+                .is_some_and(|c| matches!(c, ComplexPoint::IndirectFinal(_)))
+            {
+                return Some(Self::from_type(self.as_type(i_s)).avoid_implicit_literal(i_s));
             }
         }
         None
