@@ -1494,3 +1494,14 @@ class Foo2:
 def foo(x: list[int] | None) -> None:
     x is not None and any(a for a in x)
     x is not None and any([a for a in x])
+
+[case narrowing_negative_literal]
+class A:
+    x = 1
+class B(A):
+    y = 1
+
+def foo(a: list[A]) -> None:
+    if isinstance(a[-1], B):
+        a[-1].x
+        a[-1].y

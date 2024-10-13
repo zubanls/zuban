@@ -103,7 +103,7 @@ impl FlowKey {
 
 #[derive(Debug, Clone, PartialEq)]
 enum FlowKeyIndex {
-    Int(usize),
+    Int(isize),
     Str(String),
 }
 
