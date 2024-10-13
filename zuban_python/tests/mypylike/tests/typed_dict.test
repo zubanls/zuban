@@ -6,3 +6,25 @@ class B(TypedDict): x: str
 
 reveal_type(A)  # N: Revealed type is "def (*, x: Any) -> TypedDict('__main__.A', {'x': Any})"
 reveal_type(B)  # N: Revealed type is "def (*, x: str) -> TypedDict('__main__.B', {'x': str})"
+
+[case unpack_optional_args]
+from typing import TypedDict, Unpack
+from typing_extensions import NotRequired
+
+class A(TypedDict, total=False):
+    x: int
+    y: int
+
+class B(TypedDict):
+    x: int
+    y: NotRequired[int]
+
+def foo(**kwargs: Unpack[A]) -> None: ...
+def bar(**kwargs: Unpack[B]) -> None: ...
+
+foo()
+bar()  # E: Missing named argument "x" for "bar"
+foo(y=1)
+bar(y=1)  # E: Missing named argument "x" for "bar"
+foo(x=1)
+bar(x=1)

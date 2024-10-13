@@ -942,7 +942,7 @@ pub(crate) fn match_arguments_against_params<
             }
         }
         if let Some(unused_td) = &args_with_params.unused_unpack_typed_dict.maybe_unchecked() {
-            for missing in unused_td.members(i_s.db) {
+            for missing in unused_td.iter_required_members(i_s.db) {
                 add_missing_kw_issue(missing.name.as_str(i_s.db))
             }
         }
