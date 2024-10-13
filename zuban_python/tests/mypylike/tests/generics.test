@@ -1153,3 +1153,15 @@ class Other2(Thing[t]):
     def end2(self) -> None:
         self.chain([1])  # E: List item 0 has incompatible type "int"; expected "t"
         return self.chain(1)  # E: Argument 1 to "chain" of "Thing" has incompatible type "int"; expected "list[t]"
+
+[case __new__super_class_generics]
+from typing import Iterator, TypeVar, Iterable, Self
+
+T = TypeVar('T')
+
+class container(Iterable[T]):
+    def __new__(cls, sequence: list[T], /) -> Iterable[T]: ...  # E: Incompatible return type for "__new__" (returns "Iterable[T]", but must return a subtype of "container")
+    def __iter__(self) -> Iterator[T]: ...
+
+def foo(x: list[int]) -> None:
+    reveal_type(container(x))  # N: Revealed type is "__main__.container[int]"

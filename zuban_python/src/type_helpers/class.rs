@@ -2454,6 +2454,19 @@ impl<'db: 'a, 'a> Class<'a> {
                     .bool()
             {
                 return ClassExecutionResult::Inferred(Inferred::from_type(result));
+            } else if matches!(self.generics, Generics::NotDefinedYet)
+                && !self.type_vars(i_s).is_empty()
+            {
+                // This is a bit special, because in some cases like reversed() __new__ returns a
+                // super class of the current class. We use that super class to infer the generics
+                // that are relevant in the current class.
+                let mut matcher = Matcher::new_class_matcher(i_s, *self);
+                Self::with_self_generics(i_s.db, self.node_ref)
+                    .as_type(i_s.db)
+                    .is_sub_type_of(i_s, &mut matcher, &result);
+                return ClassExecutionResult::ClassGenerics(ClassGenerics::List(
+                    matcher.into_type_arguments(i_s.db).1.unwrap(),
+                ));
             } else {
                 return ClassExecutionResult::ClassGenerics(self.generics_as_list(i_s.db));
             }
