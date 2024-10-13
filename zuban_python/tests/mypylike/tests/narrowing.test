@@ -1490,6 +1490,7 @@ class Foo2:
     def bar(self) -> None:
         self.x = [1]
 
-[case narrowing_should_work_in_function_call]
+[case narrowing_should_work_in_comprehensions_after_conjunction]
 def foo(x: list[int] | None) -> None:
     x is not None and any(a for a in x)
+    x is not None and any([a for a in x])

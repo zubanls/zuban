@@ -811,10 +811,8 @@ impl<'db> NameBinder<'db> {
         for n in node.search_interesting_nodes() {
             let mut check_bool_op = |(left, right)| {
                 self.index_non_block_node_full(&left, ordered, cause);
-                let old_value = self.following_nodes_need_flow_analysis;
                 self.following_nodes_need_flow_analysis = true;
                 self.index_non_block_node_full(&right, ordered, cause);
-                self.following_nodes_need_flow_analysis = old_value;
             };
             match n {
                 InterestingNode::Name(name) => {
