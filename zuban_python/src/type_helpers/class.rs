@@ -2445,19 +2445,18 @@ impl<'db: 'a, 'a> Class<'a> {
                 .into_inferred()
                 .execute_with_details(i_s, args, result_context, on_type_error)
                 .as_type(i_s);
-            return match &result {
-                // Only subclasses of the current class are valid, otherwise return the current
-                // class. Diagnostics will care about these cases and raise errors when needed.
-                Type::Class(c)
-                    if self
-                        .as_type(i_s.db)
-                        .is_simple_super_type_of(i_s, &result)
-                        .bool() =>
-                {
-                    ClassExecutionResult::Inferred(Inferred::from_type(result))
-                }
-                _ => ClassExecutionResult::ClassGenerics(self.generics_as_list(i_s.db)),
-            };
+            // Only subclasses of the current class are valid, otherwise return the current
+            // class. Diagnostics will care about these cases and raise errors when needed.
+            if !result.is_any()
+                && self
+                    .as_type(i_s.db)
+                    .is_simple_super_type_of(i_s, &result)
+                    .bool()
+            {
+                return ClassExecutionResult::Inferred(Inferred::from_type(result));
+            } else {
+                return ClassExecutionResult::ClassGenerics(self.generics_as_list(i_s.db));
+            }
         }
 
         self.type_check_dunder_init_func(
