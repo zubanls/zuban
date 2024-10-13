@@ -1456,7 +1456,7 @@ class Foo1:
 
     def bar(self) -> None:
         self.y = 1
-'''
+
 class Foo2:
     b: B | None = None
     y: int
@@ -1470,7 +1470,6 @@ class Foo2:
     def foo(self) -> None:
         if self.b:
             self.y = self.b.x
-'''
 
 [case context_for_self_var_should_prefer_class]
 class Foo1:
