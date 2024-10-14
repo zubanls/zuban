@@ -19,6 +19,7 @@ testUnpackInExpression2-only_when_nocache
 # Self is confused. matcher needs to know Self from both sides.
 testOverloadWithDerivedFromAny
 testTypingSelfOverrideVarMulti
+self_argument_to_class__init__
 # Self remapped, but it shouldn't
 testTypingSelfInternalSafe
 testTypingSelfClashInBodies

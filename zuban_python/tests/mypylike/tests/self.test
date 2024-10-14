@@ -197,3 +197,12 @@ class Foo(Generic[T]):
 
 x = Foo[str]().foo() # E: Invalid self argument "Foo[str]" to attribute function "foo" with type "Callable[[Foo[int]], int]"
 reveal_type(x)  # N: Revealed type is "int"
+
+[case self_argument_to_class__init__]
+from typing import Self
+class Foo:
+    def __init__(self) -> None:
+        Bar(self, Bar(self, None))
+
+class Bar:
+    def __init__(self, x: Foo, y: Self | None) -> None: ...
