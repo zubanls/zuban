@@ -3800,28 +3800,11 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     inference
                         .check_point_cache(next_node_index)
                         .unwrap_or_else(|| {
-                            let name = Name::maybe_by_index(&inference.file.tree, next_node_index);
-                            if let Some(name) = name {
-                                inference.infer_name_of_definition(name)
-                            } else if let Some(expr) =
-                                Expression::maybe_by_index(&inference.file.tree, next_node_index)
-                            {
-                                inference.infer_expression_without_cache(
-                                    expr,
-                                    &mut ResultContext::Unknown,
-                                )
-                            } else if let Some(annotation) =
-                                Annotation::maybe_by_index(&inference.file.tree, next_node_index)
-                            {
-                                todo!()
-                                // inference.cache_annotation(annotation)
-                            } else {
-                                todo!(
-                                    "{}",
-                                    NodeRef::new(inference.file, next_node_index)
-                                        .debug_info(self.i_s.db)
-                                )
-                            }
+                            todo!(
+                                "When does this ever happen? {}",
+                                NodeRef::new(inference.file, next_node_index)
+                                    .debug_info(self.i_s.db)
+                            )
                         })
                 };
                 if file_index == self.file.file_index {
