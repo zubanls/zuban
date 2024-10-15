@@ -3899,8 +3899,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 Specific::NameOfNameDef => {
                     // MultiDefinition means we are on a Name that has a NameDef as a
                     // parent.
-                    let name = Name::by_index(&self.file.tree, node_index);
-                    self.infer_name_def(name.name_def().unwrap())
+                    let node_index = node_index - NAME_DEF_TO_NAME_DIFFERENCE;
+                    let name_def = NameDef::by_index(&self.file.tree, node_index);
+                    self.infer_name_def(name_def)
                 }
                 _ => Inferred::new_saved(self.file, node_index),
             },
