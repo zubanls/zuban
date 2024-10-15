@@ -2389,13 +2389,12 @@ impl<'db: 'a, 'a> Class<'a> {
 
     pub(crate) fn execute_and_return_generics(
         &self,
-        original_i_s: &InferenceState<'db, '_>,
+        i_s: &InferenceState<'db, '_>,
         args: &dyn Args<'db>,
         result_context: &mut ResultContext,
         on_type_error: OnTypeError,
         from_type_type: bool,
     ) -> ClassExecutionResult {
-        let i_s = &original_i_s.with_class_context(self);
         let had_type_error = Cell::new(false);
         let d = |_: &FunctionOrCallable, _: &Database| {
             had_type_error.set(true);
@@ -2431,7 +2430,7 @@ impl<'db: 'a, 'a> Class<'a> {
                     return ClassExecutionResult::Inferred(Inferred::new_any_from_error());
                 }
                 return ClassExecutionResult::Inferred(
-                    execute_functional_enum(original_i_s, *self, args, result_context)
+                    execute_functional_enum(i_s, *self, args, result_context)
                         .unwrap_or_else(Inferred::new_invalid_type_definition),
                 );
             }

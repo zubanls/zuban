@@ -12,14 +12,13 @@ testIncrementalInvalidNamedTupleInUnannotatedFunction
 # callable matching regression
 testNoCrashOnNestedGenericCallable
 
+
 # WTF why is this base type not object/function?
 testListLiteralWithNameOnlyArgsDoesNotEraseNames
 # join of {1, *some_str_tuple} leads to int | str???
 testUnpackInExpression2-only_when_nocache
-# Self is confused. matcher needs to know Self from both sides.
-testOverloadWithDerivedFromAny
+# Self in multi inheritance matching needs intersection to satisfy if its fine
 testTypingSelfOverrideVarMulti
-self_argument_to_class__init__
 # Self remapped, but it shouldn't
 testTypingSelfInternalSafe
 testTypingSelfClashInBodies
