@@ -177,13 +177,9 @@ impl Type {
             Type::Namespace(file_index) => todo!(),
             Type::Super { .. } => todo!(),
             Type::CustomBehavior(_) => Match::new_false(),
-            Self::Intersection(intersection1) => match value_type {
-                Self::Intersection(intersection2) => {
-                    debug!("TODO implement proper intersection matching");
-                    (intersection1 == intersection2).into()
-                }
-                _ => Match::new_false(),
-            },
+            Self::Intersection(intersection1) => Match::all(intersection1.iter_entries(), |t| {
+                t.matches(i_s, matcher, value_type, variance)
+            }),
         }
     }
 
