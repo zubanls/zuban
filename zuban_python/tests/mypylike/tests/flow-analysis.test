@@ -109,3 +109,20 @@ if bool(): # Causes flow analysis
     def bar() -> Y: ...
 
 class X: ...
+
+[case flow_analysis_global_context_should_not_be_loop_context]
+# flags: --mypy-compatible
+import foo
+
+def f(x: foo.X) -> None:
+    x.abc
+
+[file foo.py]
+from typing import Final
+
+bar: Final = 1
+
+class X:
+    def __init__(self) -> None:
+        for x in (1,):
+            self.abc = bar

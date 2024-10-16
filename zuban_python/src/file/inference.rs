@@ -3749,17 +3749,18 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
 
     pub fn check_point_cache(&self, node_index: NodeIndex) -> Option<Inferred> {
         let point = self.file.points.get(node_index);
+        self.check_point_cache_internal(node_index, point, false)
+    }
+
+    pub fn check_point_cache_internal(
+        &self,
+        node_index: NodeIndex,
+        point: Point,
+        global_redirect: bool,
+    ) -> Option<Inferred> {
         point
             .calculated()
-            .then(|| {
-                if point.in_global_scope() {
-                    self.file
-                        .inference(&mut InferenceState::new(self.i_s.db))
-                        .infer_point(node_index, point)
-                } else {
-                    self.infer_point(node_index, point)
-                }
-            })
+            .then(|| self.infer_point(node_index, point, global_redirect))
             .or_else(|| {
                 if point.calculating() {
                     let node_ref = NodeRef::new(self.file, node_index);
@@ -3778,7 +3779,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     }
 
     #[inline]
-    fn infer_point(&self, node_index: NodeIndex, point: Point) -> Inferred {
+    fn infer_point(&self, node_index: NodeIndex, point: Point, global_redirect: bool) -> Inferred {
         match point.kind() {
             PointKind::Redirect => {
                 let file_index = point.file_index();
@@ -3797,8 +3798,13 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     "{file_index}:{node_index}"
                 );
                 let infer = |inference: &Inference| {
+                    let new_p = inference.file.points.get(next_node_index);
                     inference
-                        .check_point_cache(next_node_index)
+                        .check_point_cache_internal(
+                            next_node_index,
+                            new_p,
+                            global_redirect || !point.in_global_scope() && new_p.in_global_scope(),
+                        )
                         .unwrap_or_else(|| {
                             todo!(
                                 "When does this ever happen? {}",
@@ -3821,7 +3827,13 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             }
             PointKind::Specific => match point.specific() {
                 specific @ (Specific::Param | Specific::MaybeSelfParam) => {
-                    self.infer_param(node_index, specific)
+                    if global_redirect {
+                        self.file
+                            .inference(&mut InferenceState::new(self.i_s.db))
+                            .infer_param(node_index, specific)
+                    } else {
+                        self.infer_param(node_index, specific)
+                    }
                 }
                 specific @ (Specific::GlobalVariable | Specific::NonlocalVariable) => {
                     let index = node_index - GLOBAL_NONLOCAL_TO_NAME_DIFFERENCE
@@ -3830,15 +3842,23 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         self.check_point_cache(index).unwrap()
                     } else {
                         debug_assert_eq!(specific, Specific::GlobalVariable);
-                        self.infer_name_by_str(NodeRef::new(self.file, node_index).as_code(), index)
+                        self.file
+                            .inference(&mut InferenceState::new(self.i_s.db))
+                            .infer_name_by_str(NodeRef::new(self.file, node_index).as_code(), index)
                     }
                 }
                 Specific::NameOfNameDef => {
                     // MultiDefinition means we are on a Name that has a NameDef as a
                     // parent.
-                    let node_index = node_index - NAME_DEF_TO_NAME_DIFFERENCE;
-                    let name_def = NameDef::by_index(&self.file.tree, node_index);
-                    self.infer_name_def(name_def)
+                    if global_redirect {
+                        self.file
+                            .inference(&mut InferenceState::new(self.i_s.db))
+                            .infer_point(node_index, point, false)
+                    } else {
+                        let node_index = node_index - NAME_DEF_TO_NAME_DIFFERENCE;
+                        let name_def = NameDef::by_index(&self.file.tree, node_index);
+                        self.infer_name_def(name_def)
+                    }
                 }
                 _ => Inferred::new_saved(self.file, node_index),
             },

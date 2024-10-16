@@ -5,13 +5,13 @@ testPostInitIsNotAFunction
 self_annotation_eq_mismatch
 mypy_setup_ini_with_multiline_string
 avoid_type_computation_recursion
+flow_analysis_global_context_should_not_be_loop_context
 
 # regressions
 testIncrementalInvalidNamedTupleInUnannotatedFunction
 
 # callable matching regression
 testNoCrashOnNestedGenericCallable
-
 
 # WTF why is this base type not object/function?
 testListLiteralWithNameOnlyArgsDoesNotEraseNames
