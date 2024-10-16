@@ -662,7 +662,7 @@ impl CallableContent {
     }
 
     pub fn has_self_type(&self, db: &Database) -> bool {
-        self.return_type.has_self_type(db) || self.find_in_type(db, &mut Type::is_self_type)
+        self.find_in_type(db, &mut |t| matches!(t, Type::Self_))
     }
 
     pub fn find_in_type(&self, db: &Database, check: &mut impl FnMut(&Type) -> bool) -> bool {

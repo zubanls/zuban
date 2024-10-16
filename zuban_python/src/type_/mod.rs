@@ -1105,20 +1105,8 @@ impl Type {
         }
     }
 
-    fn is_self_type(&self) -> bool {
-        match self {
-            Self::Self_ => true,
-            Self::Dataclass(_) => todo!(),
-            Self::NamedTuple(_) => {
-                debug!("TODO namedtuple has_self_type");
-                false
-            }
-            _ => false,
-        }
-    }
-
     pub fn has_self_type(&self, db: &Database) -> bool {
-        self.find_in_type(db, &mut Self::is_self_type)
+        self.find_in_type(db, &mut |t| matches!(t, Type::Self_))
     }
 
     pub fn find_in_type(&self, db: &Database, check: &mut impl FnMut(&Type) -> bool) -> bool {
