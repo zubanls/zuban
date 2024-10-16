@@ -180,3 +180,15 @@ y = C(1)
 reveal_type(y)  # N: Revealed type is "__main__.C"
 type(y)("")  # E: Argument 1 to "C" has incompatible type "str"; expected "int"
 type(y)(1)
+
+[case generic_dataclass_used_in_annotation]
+from typing import TypeVar, Generic
+from dataclasses import dataclass
+
+T = TypeVar("T")
+
+@dataclass
+class D(Generic[T]):
+    foo: T
+def foo(x: D[int]) -> None:
+    reveal_type(x.foo)  # N: Revealed type is "int"

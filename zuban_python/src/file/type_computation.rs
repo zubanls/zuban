@@ -1869,7 +1869,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             ClassGetItemResult::SimpleGeneric {
                 node_ref, generics, ..
             } => GenericClass {
-                link: node_ref.as_link(),
+                link: dataclass.class.link,
                 generics,
             },
             ClassGetItemResult::Invalid => {

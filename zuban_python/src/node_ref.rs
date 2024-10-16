@@ -230,9 +230,14 @@ impl<'file> NodeRef<'file> {
     }
 
     pub fn expect_class_storage(&self) -> &'file ClassStorage {
-        let complex = self
-            .complex()
-            .unwrap_or_else(|| panic!("Node {:?} is not a complex class", self.as_code()));
+        let complex = self.complex().unwrap_or_else(|| {
+            panic!(
+                "Node {:?} ({}:{}) is not a complex class",
+                self.as_code(),
+                self.file_index(),
+                self.node_index
+            )
+        });
         match complex {
             ComplexPoint::Class(c) => c,
             _ => unreachable!("Probably an issue with indexing: {complex:?}"),
