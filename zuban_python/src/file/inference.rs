@@ -3850,15 +3850,19 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 Specific::NameOfNameDef => {
                     // MultiDefinition means we are on a Name that has a NameDef as a
                     // parent.
-                    if global_redirect {
-                        self.file
-                            .inference(&mut InferenceState::new(self.i_s.db))
-                            .infer_point(node_index, point, false)
-                    } else {
-                        let node_index = node_index - NAME_DEF_TO_NAME_DIFFERENCE;
-                        let name_def = NameDef::by_index(&self.file.tree, node_index);
-                        self.infer_name_def(name_def)
-                    }
+                    let node_index = node_index - NAME_DEF_TO_NAME_DIFFERENCE;
+                    let p = self.file.points.get(node_index);
+                    self.check_point_cache_internal(node_index, p, global_redirect)
+                        .unwrap_or_else(|| {
+                            let name_def = NameDef::by_index(&self.file.tree, node_index);
+                            if global_redirect {
+                                self.file
+                                    .inference(&mut InferenceState::new(self.i_s.db))
+                                    ._infer_name_def(name_def)
+                            } else {
+                                self._infer_name_def(name_def)
+                            }
+                        })
                 }
                 _ => Inferred::new_saved(self.file, node_index),
             },
