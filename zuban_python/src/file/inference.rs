@@ -3821,70 +3821,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             }
             PointKind::Specific => match point.specific() {
                 specific @ (Specific::Param | Specific::MaybeSelfParam) => {
-                    let name_def = NameDef::by_index(&self.file.tree, node_index);
-                    // Performance: This could be improved by not needing to lookup all the
-                    // parents all the time.
-                    match name_def.function_or_lambda_ancestor().unwrap() {
-                        FunctionOrLambda::Function(func_node) => {
-                            let func = Function::new(
-                                NodeRef::new(self.file, func_node.index()),
-                                self.i_s.current_class(),
-                            );
-                            func.ensure_cached_func(self.i_s);
-
-                            if let Some(annotation) = name_def.maybe_param_annotation() {
-                                self.use_cached_param_annotation(annotation)
-                            } else if let Some(function) = self.i_s.current_function() {
-                                if specific == Specific::MaybeSelfParam {
-                                    match func.first_param_kind(self.i_s) {
-                                        FirstParamKind::Self_ => {
-                                            Inferred::new_saved(self.file, node_index)
-                                        }
-                                        FirstParamKind::ClassOfSelf => {
-                                            Inferred::from_type(Type::Type(Rc::new(Type::Self_)))
-                                        }
-                                        FirstParamKind::InStaticmethod => {
-                                            Inferred::from_type(Type::Any(AnyCause::Unannotated))
-                                        }
-                                    }
-                                } else {
-                                    for param in func_node.params().iter() {
-                                        if param.name_def().index() == name_def.index() {
-                                            return match param.kind() {
-                                                ParamKind::Star => Inferred::from_type(
-                                                    self.i_s
-                                                        .db
-                                                        .python_state
-                                                        .tuple_of_unannotated_any
-                                                        .clone(),
-                                                ),
-                                                ParamKind::StarStar => {
-                                                    Inferred::from_type(new_class!(
-                                                        self.i_s
-                                                            .db
-                                                            .python_state
-                                                            .dict_node_ref()
-                                                            .as_link(),
-                                                        self.i_s.db.python_state.str_type(),
-                                                        Type::Any(AnyCause::Unannotated),
-                                                    ))
-                                                }
-                                                _ => Inferred::new_any(AnyCause::Unannotated),
-                                            };
-                                        }
-                                    }
-                                    unreachable!()
-                                }
-                            } else if specific == Specific::MaybeSelfParam {
-                                Inferred::new_saved(self.file, node_index)
-                            } else {
-                                Inferred::new_any(AnyCause::Unannotated)
-                            }
-                        }
-                        FunctionOrLambda::Lambda(lambda) => {
-                            lookup_lambda_param(self.i_s, lambda, node_index)
-                        }
-                    }
+                    self.infer_param(node_index, specific)
                 }
                 specific @ (Specific::GlobalVariable | Specific::NonlocalVariable) => {
                     let index = node_index - GLOBAL_NONLOCAL_TO_NAME_DIFFERENCE
@@ -3913,6 +3850,59 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     "Invalid NodeAnalysis, should not happen on node index {node_index:?}"
                 );
             }
+        }
+    }
+
+    fn infer_param(&self, node_index: NodeIndex, specific: Specific) -> Inferred {
+        let name_def = NameDef::by_index(&self.file.tree, node_index);
+        // Performance: This could be improved by not needing to lookup all the
+        // parents all the time.
+        match name_def.function_or_lambda_ancestor().unwrap() {
+            FunctionOrLambda::Function(func_node) => {
+                let func = Function::new(
+                    NodeRef::new(self.file, func_node.index()),
+                    self.i_s.current_class(),
+                );
+                func.ensure_cached_func(self.i_s);
+
+                if let Some(annotation) = name_def.maybe_param_annotation() {
+                    self.use_cached_param_annotation(annotation)
+                } else if let Some(function) = self.i_s.current_function() {
+                    if specific == Specific::MaybeSelfParam {
+                        match func.first_param_kind(self.i_s) {
+                            FirstParamKind::Self_ => Inferred::new_saved(self.file, node_index),
+                            FirstParamKind::ClassOfSelf => {
+                                Inferred::from_type(Type::Type(Rc::new(Type::Self_)))
+                            }
+                            FirstParamKind::InStaticmethod => {
+                                Inferred::from_type(Type::Any(AnyCause::Unannotated))
+                            }
+                        }
+                    } else {
+                        for param in func_node.params().iter() {
+                            if param.name_def().index() == name_def.index() {
+                                return match param.kind() {
+                                    ParamKind::Star => Inferred::from_type(
+                                        self.i_s.db.python_state.tuple_of_unannotated_any.clone(),
+                                    ),
+                                    ParamKind::StarStar => Inferred::from_type(new_class!(
+                                        self.i_s.db.python_state.dict_node_ref().as_link(),
+                                        self.i_s.db.python_state.str_type(),
+                                        Type::Any(AnyCause::Unannotated),
+                                    )),
+                                    _ => Inferred::new_any(AnyCause::Unannotated),
+                                };
+                            }
+                        }
+                        unreachable!()
+                    }
+                } else if specific == Specific::MaybeSelfParam {
+                    Inferred::new_saved(self.file, node_index)
+                } else {
+                    Inferred::new_any(AnyCause::Unannotated)
+                }
+            }
+            FunctionOrLambda::Lambda(lambda) => lookup_lambda_param(self.i_s, lambda, node_index),
         }
     }
 
