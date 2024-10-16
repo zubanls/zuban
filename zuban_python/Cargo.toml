@@ -1,10 +1,10 @@
 [package]
 name = "zuban_python"
 version = "0.1.0"
-authors = ["Dave Halter <davidhalter88@gmail.com>"]
-edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+edition.workspace = true
+rust-version.workspace = true
+homepage.workspace = true
+authors.workspace = true
 
 [dependencies]
 parsa_python_cst = { path = "../parsa_python_cst" }

@@ -9,3 +9,9 @@ members = [
     "scripts",
     "zmypy",
 ]
+
+[workspace.package]
+edition = "2021"
+rust-version = "1.81"
+homepage = "https://zubanls.com"
+authors = ["Dave Halter <davidhalter88@gmail.com>"]
