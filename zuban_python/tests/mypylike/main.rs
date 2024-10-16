@@ -3,6 +3,7 @@ use std::{
     env,
     fs::{read_dir, read_to_string},
     path::PathBuf,
+    process::ExitCode,
     time::Instant,
 };
 
@@ -851,7 +852,7 @@ impl ProjectsCache {
     }
 }
 
-fn main() {
+fn main() -> ExitCode {
     // Avoid the --, because that's the only way how we can accept flags like --foo like
     // cargo test mypy -- -- --foo. Otherwise libtest? complains, if we just use -- once.
     let cli_args = CliArgs::parse_from(env::args().filter(|arg| arg != "--"));
@@ -923,6 +924,7 @@ fn main() {
          mypy-like tests in {file_count} files; finished in {:.2}s",
         start.elapsed().as_secs_f32(),
     );
+    ExitCode::from((error_count > 0) as u8)
 }
 
 fn mypy_style_cases<'a, 'b>(file_name: &'a str, code: &'b str) -> Vec<TestCase<'a, 'b>> {
