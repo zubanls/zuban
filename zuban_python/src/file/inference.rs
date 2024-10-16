@@ -3826,15 +3826,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 }
             }
             PointKind::Specific => match point.specific() {
-                specific @ (Specific::Param | Specific::MaybeSelfParam) => {
-                    if global_redirect {
-                        self.file
-                            .inference(&mut InferenceState::new(self.i_s.db))
-                            .infer_param(node_index, specific)
-                    } else {
-                        self.infer_param(node_index, specific)
-                    }
-                }
+                specific @ (Specific::Param | Specific::MaybeSelfParam) => self
+                    .with_correct_context(global_redirect, |inference| {
+                        inference.infer_param(node_index, specific)
+                    }),
                 specific @ (Specific::GlobalVariable | Specific::NonlocalVariable) => {
                     let index = node_index - GLOBAL_NONLOCAL_TO_NAME_DIFFERENCE
                         + NAME_DEF_TO_NAME_DIFFERENCE;
@@ -3842,9 +3837,12 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         self.check_point_cache(index).unwrap()
                     } else {
                         debug_assert_eq!(specific, Specific::GlobalVariable);
-                        self.file
-                            .inference(&mut InferenceState::new(self.i_s.db))
-                            .infer_name_by_str(NodeRef::new(self.file, node_index).as_code(), index)
+                        self.with_correct_context(true, |inference| {
+                            inference.infer_name_by_str(
+                                NodeRef::new(self.file, node_index).as_code(),
+                                index,
+                            )
+                        })
                     }
                 }
                 Specific::NameOfNameDef => {
@@ -3855,13 +3853,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     self.check_point_cache_internal(node_index, p, global_redirect)
                         .unwrap_or_else(|| {
                             let name_def = NameDef::by_index(&self.file.tree, node_index);
-                            if global_redirect {
-                                self.file
-                                    .inference(&mut InferenceState::new(self.i_s.db))
-                                    ._infer_name_def(name_def)
-                            } else {
-                                self._infer_name_def(name_def)
-                            }
+                            self.with_correct_context(global_redirect, |inference| {
+                                inference._infer_name_def(name_def)
+                            })
                         })
                 }
                 _ => Inferred::new_saved(self.file, node_index),
@@ -3874,6 +3868,23 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     "Invalid NodeAnalysis, should not happen on node index {node_index:?}"
                 );
             }
+        }
+    }
+
+    #[inline]
+    fn with_correct_context<T>(
+        &self,
+        global_redirect: bool,
+        callable: impl Fn(&Inference) -> T,
+    ) -> T {
+        if global_redirect {
+            FLOW_ANALYSIS.with(|fa| {
+                fa.with_new_empty(self.i_s, || {
+                    callable(&self.file.inference(&InferenceState::new(self.i_s.db)))
+                })
+            })
+        } else {
+            callable(self)
         }
     }
 
