@@ -154,6 +154,7 @@ impl<'db> NameBinder<'db> {
                 binder.db_infos.points,
                 *annotation_name,
                 false,
+                true,
             );
         }
         binder.symbol_table
@@ -192,6 +193,7 @@ impl<'db> NameBinder<'db> {
                 self.db_infos.points,
                 annotation_name,
                 false,
+                self.in_global_scope(),
             ) {
                 self.annotation_names.push(annotation_name);
             }
@@ -524,7 +526,7 @@ impl<'db> NameBinder<'db> {
             while let Some(n) = self.unresolved_nodes.pop() {
                 match n {
                     Unresolved::Name(name) => {
-                        if !self.try_to_process_reference(name) {
+                        if !self.try_to_process_reference(name, false) {
                             self.names_to_be_resolved_in_parent.push(name);
                         }
                     }
@@ -1225,7 +1227,7 @@ impl<'db> NameBinder<'db> {
 
     #[inline]
     fn maybe_add_reference(&mut self, name: Name<'db>, ordered: bool) {
-        if !self.try_to_process_reference(name) {
+        if !self.try_to_process_reference(name, self.in_global_scope()) {
             if !ordered || self.kind != NameBinderKind::Class {
                 self.unordered_references
                     .push(UnorderedReference { name, ordered });
@@ -1236,7 +1238,12 @@ impl<'db> NameBinder<'db> {
     }
 
     #[inline]
-    fn try_to_process_reference(&mut self, name: Name<'db>) -> bool {
+    fn in_global_scope(&self) -> bool {
+        self.parent.is_none()
+    }
+
+    #[inline]
+    fn try_to_process_reference(&mut self, name: Name<'db>, in_global_scope: bool) -> bool {
         try_to_process_reference_for_symbol_table(
             &self.symbol_table,
             self.db_infos.file_index,
@@ -1245,6 +1252,7 @@ impl<'db> NameBinder<'db> {
             // Even references sometimes don't need flow analysis. This is really practical in some
             // very simple cases.
             self.following_nodes_need_flow_analysis,
+            in_global_scope,
         )
     }
 
@@ -1256,6 +1264,7 @@ impl<'db> NameBinder<'db> {
                 self.db_infos.points,
                 unordered_reference.name,
                 self.following_nodes_need_flow_analysis,
+                self.in_global_scope(),
             ) {
                 if unordered_reference.ordered && !self.db_infos.is_stub {
                     self.add_issue(
@@ -1354,11 +1363,13 @@ fn try_to_process_reference_for_symbol_table(
     points: &Points,
     name: Name,
     needs_flow_analysis: bool,
+    in_global_scope: bool,
 ) -> bool {
     let point = {
         if let Some(definition) = symbol_table.lookup_symbol(name.as_str()) {
             Point::new_redirect(file_index, definition, Locality::NameBinder)
                 .with_needs_flow_analysis(needs_flow_analysis)
+                .with_in_global_scope(in_global_scope)
         } else {
             return false;
         }

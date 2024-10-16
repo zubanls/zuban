@@ -102,8 +102,9 @@ impl Point {
                 PointKind::Specific,
                 Specific::NameOfNameDef as u32,
                 locality,
-            ) | (in_global_scope as u32) << IN_GLOBAL_SCOPE_INDEX,
+            ),
         }
+        .with_in_global_scope(in_global_scope)
     }
 
     pub fn new_parent(node_index: NodeIndex, locality: Locality) -> Self {
@@ -165,8 +166,15 @@ impl Point {
         }
     }
 
+    #[inline]
     pub fn with_needs_flow_analysis(mut self, needs_flow_analysis: bool) -> Self {
         self.flags |= (needs_flow_analysis as u32) << NEEDS_FLOW_ANALYSIS_BIT_INDEX;
+        self
+    }
+
+    #[inline]
+    pub fn with_in_global_scope(mut self, in_global_scope: bool) -> Self {
+        self.flags |= (in_global_scope as u32) << IN_GLOBAL_SCOPE_INDEX;
         self
     }
 
