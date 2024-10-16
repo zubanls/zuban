@@ -46,6 +46,9 @@ struct Cli {
     /// Type check code assuming it will be running on Python x.y
     #[arg(long)]
     python_version: Option<PythonVersion>,
+    /// Specifies the path for a python executable (for example a virtual env)
+    #[arg(long)]
+    python_executable: Option<String>,
     /// Type check special-cased code for the given OS platform (defaults to sys.platform)
     #[arg(long)]
     platform: Option<String>,
@@ -328,6 +331,7 @@ fn apply_flags(
     if let Some(python_version) = cli.python_version {
         project_options.settings.python_version = python_version;
     }
+    project_options.settings.python_executable = cli.python_executable;
     let cwd = std::env::current_dir().expect("Expected a valid working directory");
     const CWD_ERROR: &'static str = "Expected valid unicode in working directory";
     if !cli.files.is_empty() {

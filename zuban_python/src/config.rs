@@ -25,6 +25,7 @@ pub struct ProjectOptions {
 pub struct Settings {
     pub platform: Option<String>,
     pub python_version: PythonVersion,
+    pub python_executable: Option<String>,
     pub mypy_path: Vec<String>,
     pub mypy_compatible: bool,
     pub files_or_directories_to_check: Vec<String>,
@@ -35,6 +36,7 @@ impl Default for Settings {
         Self {
             platform: None,
             python_version: PythonVersion::new(3, 12),
+            python_executable: None,
             mypy_path: vec![],
             mypy_compatible: false,
             files_or_directories_to_check: vec![],

@@ -729,8 +729,9 @@ pub(crate) fn match_arguments_against_params<
                     on_type_error,
                     &diagnostic_string,
                 ) {
-                    SignatureMatch::True { .. } => Match::new_true(),
-                    SignatureMatch::TrueWithAny { .. } => todo!(),
+                    SignatureMatch::True { .. } | SignatureMatch::TrueWithAny { .. } => {
+                        Match::new_true()
+                    }
                     SignatureMatch::False { similar } => Match::False {
                         similar,
                         reason: MismatchReason::None,
