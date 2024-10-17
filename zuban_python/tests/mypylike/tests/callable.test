@@ -394,3 +394,78 @@ from typing import Callable, Never
 def foo(x: Callable[[], Never]) -> None:
     x()
     undefined  # E: Statement is unreachable
+
+[case unpack_generic_typeddict_callable_in_class]
+from typing import TypedDict, Generic, TypeVar, Unpack
+
+T = TypeVar('T')
+class Foo(TypedDict, Generic[T]):
+    x: T
+
+class X(Generic[T]):
+    def foo(self, **kwargs: Unpack[Foo[T]]) -> T: ...
+
+reveal_type(X().foo(x=3))  # E: Argument "x" to "foo" of "X" has incompatible type "int"; expected "Never"  # N: Revealed type is "Never"
+reveal_type(X[int]().foo(x=3))  # N: Revealed type is "int"
+reveal_type(X[str]().foo(x=3))  # E: Argument "x" to "foo" of "X" has incompatible type "int"; expected "str" # N: Revealed type is "str"
+
+[case unpack_generic_typeddict_callable_with_overload]
+from typing import TypedDict, Generic, TypeVar, Unpack, overload, Any
+
+T = TypeVar('T')
+class Foo(TypedDict, Generic[T]):
+    x: T
+
+class X(Generic[T]):
+    @overload
+    def foo(self, **kwargs: Unpack[Foo[T]]) -> T: ...
+    @overload
+    def foo(self, x: int) -> int: ...
+    def foo(self, *args: Any, **kwargs: Any) -> Any: ...
+
+# This call is kind of complicated internally and should just not crash.
+reveal_type(X[int].foo(X(), x=3))  # N: Revealed type is "int"
+
+reveal_type(X[int]().foo(x=3))  # N: Revealed type is "int"
+reveal_type(X[int]().foo(x=""))  # E: No overload variant of "foo" of "X" matches argument type "x=str" \
+                                 # N: Possible overload variants: \
+                                 # N:     def foo(self, **kwargs: Unpack[__main__.Foo[int]]) -> int \
+                                 # N:     def foo(self, x: int) -> int \
+                                 # N: Revealed type is "Any"
+
+[case unpacked_typeddict_compatible_with_broader_kwargs1]
+from typing import TypedDict, Generic, TypeVar, Unpack, overload, Any
+
+class Foo(TypedDict):
+    x: int
+
+def foo(**kwargs: Unpack[Foo]) -> None: ...
+def bar(**kwargs: int) -> None: ...
+
+if bool():
+    foo = bar
+if bool():
+    bar = foo  # E: Incompatible types in assignment (expression has type "Callable[[**Unpack[Foo]], None]", variable has type "Callable[[KwArg(int)], None]")
+
+[case unpacked_typeddict_compatible_with_broader_kwargs2]
+from typing import TypedDict, Generic, TypeVar, Unpack, overload, Any
+
+class Foo(TypedDict):
+    x: int
+
+def foo(**kwargs: Unpack[Foo]) -> None: ...
+def bar(*args: str, **kwargs: int) -> None: ...
+
+if bool():
+    foo = bar
+if bool():
+    bar = foo  # E: Incompatible types in assignment (expression has type "Callable[[**Unpack[Foo]], None]", variable has type "Callable[[VarArg(str), KwArg(int)], None]")
+
+[case kwargs_subtyping]
+def foo(*args: int, **kwargs: str) -> None: ...
+def bar(**kwargs: str) -> None: ...
+
+if bool():
+    foo = bar  # E: Incompatible types in assignment (expression has type "Callable[[KwArg(str)], None]", variable has type "Callable[[VarArg(int), KwArg(str)], None]")
+if bool():
+    bar = foo

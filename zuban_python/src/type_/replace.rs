@@ -6,7 +6,7 @@ use super::{
     GenericItem, GenericsList, Intersection, NamedTuple, ParamSpecArg, ParamSpecTypeVars,
     ParamSpecUsage, ParamType, RecursiveType, StarParamType, StarStarParamType, Tuple, TupleArgs,
     Type, TypeArgs, TypeGuardInfo, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager,
-    TypeVarTupleUsage, TypedDictGenerics, UnionEntry, UnionType,
+    TypeVarTupleUsage, TypedDict, TypedDictGenerics, UnionEntry, UnionType,
 };
 use crate::{
     database::{Database, PointLink},
@@ -158,18 +158,11 @@ impl Type {
             return Some(t);
         }
 
-        let mut replace_generics = |generics: &GenericsList| {
-            Some(GenericsList::new_generics(maybe_replace_iterable(
-                generics.iter(),
-                |g| g.replace_internal(replacer),
-            )?))
-        };
-
         match self {
             Type::Class(c) => match &c.generics {
-                ClassGenerics::List(l) => {
-                    replace_generics(l).map(|g| Type::new_class(c.link, ClassGenerics::List(g)))
-                }
+                ClassGenerics::List(l) => l
+                    .replace_internal(replacer)
+                    .map(|g| Type::new_class(c.link, ClassGenerics::List(g))),
                 _ => None,
             },
             Type::FunctionOverload(overload) => Some(Type::FunctionOverload(
@@ -201,30 +194,19 @@ impl Type {
             }
             Type::RecursiveType(rec) => Some(Type::RecursiveType(Rc::new(RecursiveType::new(
                 rec.link,
-                Some(replace_generics(rec.generics.as_ref()?)?),
+                Some(rec.generics.as_ref()?.replace_internal(replacer)?),
             )))),
             Type::Dataclass(d) => match &d.class.generics {
                 ClassGenerics::List(l) => Some(Type::Dataclass(Dataclass::new(
                     GenericClass {
                         link: d.class.link,
-                        generics: ClassGenerics::List(replace_generics(l)?),
+                        generics: ClassGenerics::List(l.replace_internal(replacer)?),
                     },
                     d.options,
                 ))),
                 _ => None,
             },
-            Type::TypedDict(td) => {
-                let generics = match &td.generics {
-                    TypedDictGenerics::Generics(generics) => {
-                        TypedDictGenerics::Generics(replace_generics(generics)?)
-                    }
-                    TypedDictGenerics::NotDefinedYet(_) => td.generics.clone(),
-                    TypedDictGenerics::None => return None,
-                };
-                Some(Type::TypedDict(td.replace(generics, &mut |t| {
-                    t.replace_internal(replacer).unwrap_or_else(|| t.clone())
-                })))
-            }
+            Type::TypedDict(td) => td.replace_internal(replacer).map(Type::TypedDict),
             Type::NamedTuple(nt) => {
                 let new_params =
                     maybe_replace_iterable(nt.__new__.expect_simple_params().iter(), |param| {
@@ -533,8 +515,8 @@ impl CallableParams {
                             StarStarParamType::ValueType(t) => {
                                 StarStarParamType::ValueType(t.replace_internal(replacer)?)
                             }
-                            StarStarParamType::UnpackTypedDict(_) => {
-                                todo!()
+                            StarStarParamType::UnpackTypedDict(td) => {
+                                StarStarParamType::UnpackTypedDict(td.replace_internal(replacer)?)
                             }
                             StarStarParamType::ParamSpecKwargs(_) => {
                                 // Was already handled in ParamSpecArgs
@@ -711,6 +693,30 @@ impl TupleArgs {
             replace_self: &|| Type::Self_,
         })
         .unwrap_or_else(|| self.clone())
+    }
+}
+
+impl GenericsList {
+    fn replace_internal(&self, replacer: &mut impl Replacer) -> Option<Self> {
+        Some(GenericsList::new_generics(maybe_replace_iterable(
+            self.iter(),
+            |g| g.replace_internal(replacer),
+        )?))
+    }
+}
+
+impl TypedDict {
+    fn replace_internal(&self, replacer: &mut impl Replacer) -> Option<Rc<Self>> {
+        let generics = match &self.generics {
+            TypedDictGenerics::Generics(generics) => {
+                TypedDictGenerics::Generics(generics.replace_internal(replacer)?)
+            }
+            TypedDictGenerics::NotDefinedYet(_) => self.generics.clone(),
+            TypedDictGenerics::None => return None,
+        };
+        Some(self.replace(generics, &mut |t| {
+            t.replace_internal(replacer).unwrap_or_else(|| t.clone())
+        }))
     }
 }
 

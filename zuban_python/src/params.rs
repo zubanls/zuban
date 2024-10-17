@@ -106,6 +106,7 @@ fn matches_params_detailed(
     }
 }
 
+// Check whether params of f1 are assignable to params of f2, like f2 = f1
 pub fn matches_simple_params<
     'db: 'x + 'y,
     'x,
@@ -514,6 +515,9 @@ pub fn matches_simple_params<
                                 }
                             }
                         }
+                        (WrappedStarStar::ValueType(td1), WrappedStarStar::UnpackTypedDict(t2)) => {
+                            return Match::new_false()
+                        }
                         (x, y) => todo!("{:?} {:?}", x, y),
                     },
                     WrappedParamType::PositionalOrKeyword(t2)
@@ -536,6 +540,7 @@ pub fn matches_simple_params<
                             return Match::new_false();
                         }
                     },
+                    WrappedParamType::Star(WrappedStar::ArbitraryLen(_)) => continue,
                     _ => {
                         debug!(
                             "Params mismatch, because had {:?} vs {:?}",

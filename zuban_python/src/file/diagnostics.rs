@@ -2202,7 +2202,7 @@ pub(super) fn check_override(
                         .lookup(
                             i_s,
                             name,
-                            ClassLookupOptions::new(&|_| todo!()).with_super_count(
+                            ClassLookupOptions::new(&|_| ()).with_super_count(
                                 original_lookup_details
                                     .mro_index
                                     .map(|m| m.0 as usize)
