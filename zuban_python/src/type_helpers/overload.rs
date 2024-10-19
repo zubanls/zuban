@@ -13,8 +13,8 @@ use crate::{
     matching::{
         calculate_callable_dunder_init_type_vars_and_return,
         calculate_callable_type_vars_and_return, replace_class_type_vars_in_callable,
-        ArgumentIndexWithParam, CalculatedTypeArgs, FunctionOrCallable, OnTypeError, ResultContext,
-        SignatureMatch,
+        ArgumentIndexWithParam, CalculatedTypeArgs, FunctionOrCallable, Generics, OnTypeError,
+        ResultContext, SignatureMatch,
     },
     type_::{AnyCause, FunctionOverload, NeverCause, ReplaceSelf, Type},
 };
@@ -440,12 +440,13 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             .iter_functions()
             .map(|callable| {
                 if let Some(class) = self.class {
-                    let mut callable = replace_class_type_vars_in_callable(
-                        i_s.db,
-                        callable,
-                        Some(&class),
-                        &|| Type::Self_,
-                    );
+                    let mut callable = if matches!(class.generics, Generics::NotDefinedYet) {
+                        callable.as_ref().clone()
+                    } else {
+                        replace_class_type_vars_in_callable(i_s.db, callable, Some(&class), &|| {
+                            Type::Self_
+                        })
+                    };
                     if let Some(init_cls) = init_cls {
                         callable.return_type = init_cls.as_type(i_s.db)
                     }

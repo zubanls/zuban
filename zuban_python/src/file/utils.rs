@@ -394,7 +394,7 @@ impl<'db> Inference<'db, '_, '_> {
     pub fn parse_int(&self, int: Int, result_context: &mut ResultContext) -> Option<i64> {
         let result = int.parse();
         if result.is_none() {
-            todo!("Add diagnostic?");
+            debug!("TODO Add diagnostic for unparsable ints?");
         }
         result
     }

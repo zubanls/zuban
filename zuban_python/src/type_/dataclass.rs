@@ -59,11 +59,28 @@ impl Default for DataclassOptions {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Clone)]
 pub struct Dataclass {
     pub class: GenericClass,
     inits: OnceCell<Inits>,
     pub options: DataclassOptions,
+}
+
+impl std::fmt::Debug for Dataclass {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        // We don't want to display inits, since it can contain an Rc of the dataclass.
+        f.debug_struct("Dataclass")
+            .field("class", &self.class)
+            .field("options", &self.options)
+            .finish()
+    }
+}
+
+impl PartialEq for Dataclass {
+    fn eq(&self, other: &Self) -> bool {
+        // This should not compare inits, because it might recurse
+        self.class == other.class && self.options == self.options
+    }
 }
 
 impl Dataclass {

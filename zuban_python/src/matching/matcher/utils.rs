@@ -34,13 +34,17 @@ use crate::{
 pub(crate) fn calculate_callable_dunder_init_type_vars_and_return<'db: 'a, 'a>(
     i_s: &InferenceState<'db, '_>,
     class: &Class,
-    callable: Callable<'a>,
+    mut callable: Callable<'a>,
     args: impl Iterator<Item = Arg<'db, 'a>>,
     add_issue: impl Fn(IssueKind),
     skip_first_param: bool,
     result_context: &mut ResultContext,
     on_type_error: Option<OnTypeError>,
 ) -> CalculatedTypeArgs {
+    callable
+        .defined_in
+        .as_mut()
+        .map(|c| c.set_correct_generics_if_necessary_for_init_in_superclass());
     calculate_dunder_init_type_vars_and_return(
         i_s,
         class,
@@ -56,12 +60,16 @@ pub(crate) fn calculate_callable_dunder_init_type_vars_and_return<'db: 'a, 'a>(
 pub(crate) fn calculate_class_dunder_init_type_vars_and_return<'db: 'a, 'a>(
     i_s: &InferenceState<'db, '_>,
     class: &Class,
-    function: Function<'a, 'a>,
+    mut function: Function<'a, 'a>,
     args: impl Iterator<Item = Arg<'db, 'a>>,
     add_issue: impl Fn(IssueKind),
     result_context: &mut ResultContext,
     on_type_error: Option<OnTypeError>,
 ) -> CalculatedTypeArgs {
+    function
+        .class
+        .as_mut()
+        .map(|c| c.set_correct_generics_if_necessary_for_init_in_superclass());
     calculate_dunder_init_type_vars_and_return(
         i_s,
         class,

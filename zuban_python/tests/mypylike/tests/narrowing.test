@@ -1505,3 +1505,22 @@ def foo(a: list[A]) -> None:
     if isinstance(a[-1], B):
         a[-1].x
         a[-1].y
+
+[case extend_narrowed_any_list1]
+from typing import Any
+def foo(item: Any) -> None:
+    mark_list = []
+    if isinstance(item, list):
+        mark_list.extend(item)
+    reveal_type(mark_list)  # N: Revealed type is "list[Any]"
+
+[case extend_narrowed_any_list2]
+from typing import Any, TypeVar
+T = TypeVar("T")
+
+class Setlist(list[set[T]]): ...
+def foo(item: Any) -> None:
+    mark_list = []
+    if isinstance(item, Setlist):
+        mark_list.extend(item)
+    reveal_type(mark_list)  # N: Revealed type is "list[set[Any]]"

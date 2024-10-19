@@ -207,6 +207,15 @@ impl<'db: 'a, 'a> Class<'a> {
         };
         match inf.init_as_function(i_s, dunder_init_class.as_maybe_class()) {
             Some(FunctionOrOverload::Function(func)) => {
+                /*
+                let type_vars = self.type_vars(i_s);
+                if let Some(func_cls) = &mut func.class {
+                    if func_cls.type_var_remap.is_some() && matches!(func_cls.generics, Generics::NotDefinedYet) {
+                        func_cls.generics = Generics::Self_ { class_definition: self.node_ref.as_link(), type_var_likes: &type_vars }
+                    }
+                }
+                */
+
                 let calculated_type_args = calculate_class_dunder_init_type_vars_and_return(
                     i_s,
                     self,
@@ -1865,6 +1874,12 @@ impl<'db: 'a, 'a> Class<'a> {
         }
     }
 
+    pub fn set_correct_generics_if_necessary_for_init_in_superclass(&mut self) {
+        if self.type_var_remap.is_some() && matches!(self.generics, Generics::NotDefinedYet) {
+            self.generics = Generics::None;
+        }
+    }
+
     pub fn needs_generic_remapping_for_attributes(&self, i_s: &InferenceState, t: &Type) -> bool {
         !self.type_vars(i_s).is_empty() || t.has_self_type(i_s.db)
     }
@@ -3296,9 +3311,13 @@ fn init_as_callable(
     i_s: &InferenceState,
     cls: Class,
     inf: Inferred,
-    init_class: TypeOrClass,
+    mut init_class: TypeOrClass,
 ) -> Option<CallableLike> {
     let cls = if matches!(cls.generics(), Generics::NotDefinedYet) {
+        // Because of this, generics are not remapped more than the type_var_remap
+        if let TypeOrClass::Class(init_class) = &mut init_class {
+            init_class.generics = Generics::None;
+        }
         Class::with_self_generics(i_s.db, cls.node_ref)
     } else {
         cls
