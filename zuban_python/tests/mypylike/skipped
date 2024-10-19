@@ -7,9 +7,6 @@ mypy_setup_ini_with_multiline_string
 avoid_type_computation_recursion
 testOverloadPossibleOverlapWithArgsAndKwargs
 
-testSpecialCaseEmptyListInitialization2
-testTypeVarTupleNewSyntaxCallables
-
 # regressions
 testIncrementalInvalidNamedTupleInUnannotatedFunction
 

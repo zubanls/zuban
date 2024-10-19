@@ -440,17 +440,26 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             .iter_functions()
             .map(|callable| {
                 if let Some(class) = self.class {
-                    let mut callable = if matches!(class.generics, Generics::NotDefinedYet) {
-                        callable.as_ref().clone()
+                    let mut c;
+                    if matches!(class.generics, Generics::NotDefinedYet) {
+                        c = callable.as_ref().clone();
+                        if let Some(init_cls) = init_cls {
+                            c.return_type = Class::with_self_generics(i_s.db, init_cls.node_ref)
+                                .as_type(i_s.db);
+                        }
+                        c.type_vars = class.type_vars(i_s).clone();
                     } else {
-                        replace_class_type_vars_in_callable(i_s.db, callable, Some(&class), &|| {
-                            Type::Self_
-                        })
+                        c = replace_class_type_vars_in_callable(
+                            i_s.db,
+                            callable,
+                            Some(&class),
+                            &|| Type::Self_,
+                        );
+                        if let Some(init_cls) = init_cls {
+                            c.return_type = init_cls.as_type(i_s.db)
+                        }
                     };
-                    if let Some(init_cls) = init_cls {
-                        callable.return_type = init_cls.as_type(i_s.db)
-                    }
-                    callable.format_pretty(format_data)
+                    c.format_pretty(format_data)
                 } else {
                     callable.format_pretty(format_data)
                 }

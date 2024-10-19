@@ -498,8 +498,8 @@ class Bar(Foo[str, U]): ...
 x: Bar[float]  # Fine
 y = Bar(1.0)  # E: No overload variant of "Bar" matches argument type "float" \
               # N: Possible overload variants: \
-              # N:     def __init__(self: Foo[int, U], y: U) -> Bar[Any] \
-              # N:     def __init__(self: Foo[float, U], y: U) -> Bar[Any]
+              # N:     def [T, U] __init__(self: Foo[int, U], y: U) -> Bar[U] \
+              # N:     def [T, U] __init__(self: Foo[float, U], y: U) -> Bar[U]
 
 reveal_type(y)  # N: Revealed type is "Any"
 
