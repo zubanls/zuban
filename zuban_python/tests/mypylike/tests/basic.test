@@ -792,3 +792,10 @@ Type.mro  # E: "_SpecialForm" has no attribute "mro"
 [case dict_getitem_context]
 def foo(y: dict[int, set[int]]) -> None:
     y[1] = set()
+
+[case import_code]
+# flags: --show-error-codes
+import lxml  # E: Library stubs not installed for "lxml"  [import-untyped] \
+             # N: Hint: "python3 -m pip install lxml-stubs" \
+             # N: (or run "mypy --install-types" to install all missing stub packages)
+import undefined   # E: Cannot find implementation or library stub for module named "undefined"  [import-not-found]

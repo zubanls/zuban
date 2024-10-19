@@ -474,7 +474,13 @@ impl IssueKind {
             | NotCallable { .. }
             | UnknownFunctionNotCallable => "operator",
             TypeArgumentIssue { .. } | MissingTypeParameters { .. } => "type-arg",
-            ModuleNotFound { .. } => "import-not-found",
+            ModuleNotFound { module_name } => {
+                if has_known_types_package(module_name).is_some() {
+                    "import-untyped"
+                } else {
+                    "import-not-found"
+                }
+            }
             ListItemMismatch { .. } => "list-item",
             SetItemMismatch { .. } => "call-arg", // This has no error code in Mypy currently.
             DictMemberMismatch { .. } | UnpackedDictMemberMismatch { .. } => "dict-item",
