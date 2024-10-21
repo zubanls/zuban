@@ -1459,14 +1459,11 @@ impl<'a> Matcher<'a> {
             for calc in tv_matcher.calculating_type_args.iter_mut() {
                 // Make sure that the fallback is never used from a context.
                 // Also None as a type is a partial type, so don't use that either.
-                if calc.type_.has_any(i_s)
-                    || calc.type_.is_none()
-                    || !calc.calculated()
-                    || calc.uninferrable
-                {
+                if calc.type_.is_none() || !calc.calculated() || calc.uninferrable {
                     *calc = Default::default();
                 } else {
                     calc.defined_by_result_context = true;
+                    calc.has_any_in_context = calc.type_.has_any(i_s);
                 }
             }
         }

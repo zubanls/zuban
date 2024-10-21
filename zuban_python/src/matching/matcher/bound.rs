@@ -59,7 +59,7 @@ impl Bound {
         Self::new(BoundKind::ParamSpec(params), variance)
     }
 
-    fn new(k: BoundKind, variance: Variance) -> Self {
+    pub(super) fn new(k: BoundKind, variance: Variance) -> Self {
         match variance {
             Variance::Invariant => Self::Invariant(k),
             Variance::Covariant => Self::Lower(k),
@@ -98,33 +98,6 @@ impl Bound {
                 MatcherFormatResult::Str(t.format(format_data, style))
             }
             Self::Uncalculated { fallback } => on_fallback(fallback),
-        }
-    }
-
-    pub(super) fn update_upper_bound(&mut self, i_s: &InferenceState, upper: BoundKind) {
-        let common = |b: &BoundKind, upper: BoundKind| {
-            b.common_sub_type(i_s, &upper).expect("See expect below")
-        };
-        match self {
-            Self::Upper(old) => *self = Self::Upper(upper),
-            Self::Lower(lower) => *self = Self::UpperAndLower(upper, lower.clone()),
-            Self::UpperAndLower(old, lower) => *self = Self::UpperAndLower(upper, lower.clone()),
-            _ => unreachable!(),
-        }
-    }
-
-    pub(super) fn update_lower_bound(&mut self, i_s: &InferenceState, lower: BoundKind) {
-        let common = |b: &BoundKind, lower: BoundKind| {
-            b.common_base_type(i_s, &lower)
-                .expect("It feels like this should never happend, because matching happened before")
-        };
-        match self {
-            Self::Lower(old) => *self = Self::Lower(common(old, lower)),
-            Self::Upper(upper) => *self = Self::UpperAndLower(upper.clone(), lower),
-            Self::UpperAndLower(upper, old) => {
-                *self = Self::UpperAndLower(upper.clone(), common(old, lower))
-            }
-            _ => unreachable!(),
         }
     }
 

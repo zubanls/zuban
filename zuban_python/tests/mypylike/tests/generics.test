@@ -1165,3 +1165,8 @@ class container(Iterable[T]):
 
 def foo(x: list[int]) -> None:
     reveal_type(container(x))  # N: Revealed type is "__main__.container[int]"
+
+[case set_generics_with_any]
+from typing import Any
+Alias = tuple[Any, ...]
+x: set[Alias] = set()

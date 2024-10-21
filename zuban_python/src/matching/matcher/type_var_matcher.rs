@@ -108,6 +108,7 @@ pub(super) struct CalculatingTypeArg {
     pub(super) unresolved_transitive_constraints: Vec<Bound>,
     pub(super) defined_by_result_context: bool,
     pub(super) uninferrable: bool,
+    pub(super) has_any_in_context: bool,
 }
 
 impl CalculatingTypeArg {
@@ -169,6 +170,10 @@ impl CalculatingTypeArg {
             Bound::Invariant(t) => {
                 let m = t.is_simple_same_type(i_s, &other);
                 if m.bool() {
+                    if self.has_any_in_context {
+                        self.type_ = Bound::new(other, variance);
+                        self.has_any_in_context = false;
+                    }
                     return m; // In the false case we still have to check for the variance cases.
                 }
                 m
@@ -185,8 +190,8 @@ impl CalculatingTypeArg {
             // If we are between the bounds we might need to update lower/upper bounds
             match variance {
                 Variance::Invariant => self.type_ = Bound::Invariant(other),
-                Variance::Covariant => self.type_.update_lower_bound(i_s, other),
-                Variance::Contravariant => self.type_.update_upper_bound(i_s, other),
+                Variance::Covariant => self.update_lower_bound(i_s, other),
+                Variance::Contravariant => self.update_upper_bound(i_s, other),
             }
             matches
         } else {
@@ -231,6 +236,33 @@ impl CalculatingTypeArg {
                 },
             }
         }
+    }
+
+    fn update_upper_bound(&mut self, i_s: &InferenceState, upper: BoundKind) {
+        let common = |b: &BoundKind, upper: BoundKind| {
+            b.common_sub_type(i_s, &upper).expect("See expect below")
+        };
+        self.type_ = match &self.type_ {
+            Bound::Upper(_) => Bound::Upper(upper),
+            Bound::Lower(lower) => Bound::UpperAndLower(upper, lower.clone()),
+            Bound::UpperAndLower(old, lower) => Bound::UpperAndLower(upper, lower.clone()),
+            _ => unreachable!(),
+        };
+    }
+
+    fn update_lower_bound(&mut self, i_s: &InferenceState, lower: BoundKind) {
+        let common = |b: &BoundKind, lower: BoundKind| {
+            b.common_base_type(i_s, &lower)
+                .expect("It feels like this should never happend, because matching happened before")
+        };
+        self.type_ = match &self.type_ {
+            Bound::Lower(old) => Bound::Lower(common(&old, lower)),
+            Bound::Upper(upper) => Bound::UpperAndLower(upper.clone(), lower),
+            Bound::UpperAndLower(upper, old) => {
+                Bound::UpperAndLower(upper.clone(), common(&old, lower))
+            }
+            _ => unreachable!(),
+        };
     }
 
     pub fn into_generic_item(self, db: &Database, type_var_like: &TypeVarLike) -> GenericItem {
