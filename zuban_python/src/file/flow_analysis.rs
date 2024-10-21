@@ -1957,13 +1957,18 @@ impl Inference<'_, '_, '_> {
         (inf, left_frames, right_frames)
     }
 
-    pub fn flow_analysis_for_disjunction(&self, or: Disjunction) -> Inferred {
-        self.check_disjunction(or).0
+    pub fn flow_analysis_for_disjunction(
+        &self,
+        or: Disjunction,
+        result_context: &mut ResultContext,
+    ) -> Inferred {
+        self.check_disjunction(or, result_context).0
     }
 
     fn check_disjunction(
         &self,
         or: Disjunction,
+        result_context: &mut ResultContext,
     ) -> (Inferred, FramesWithParentUnions, FramesWithParentUnions) {
         let (left, right) = or.unpack();
         match is_expr_part_reachable_for_name_binder(
@@ -1982,7 +1987,8 @@ impl Inference<'_, '_, '_> {
             Truthiness::Unknown => (),
         }
 
-        let (left_inf, mut left_frames) = self.find_guards_in_expression_parts(left);
+        let (left_inf, mut left_frames) =
+            self.find_guards_in_expression_parts_with_context(left, result_context);
         let left_t = left_inf.as_cow_type(self.i_s);
         let mut right_infos = None;
         if left_frames.falsey.unreachable {
@@ -2250,7 +2256,7 @@ impl Inference<'_, '_, '_> {
                     .with(|fa| Ok((inf, fa.merge_conjunction(self.i_s, Some(left), right))));
             }
             ExpressionPart::Disjunction(or) => {
-                let (inf, left_frames, right_frames) = self.check_disjunction(or);
+                let (inf, left_frames, right_frames) = self.check_disjunction(or, result_context);
                 let mut parent_unions = left_frames.parent_unions;
                 parent_unions.extend(right_frames.parent_unions);
                 return Ok((

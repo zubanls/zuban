@@ -95,8 +95,6 @@ testWideOuterContextEmptyError
 testWideOuterContextNoArgsError
 testInferenceWorksWithEmptyCollectionsNested
 testCallerVarargsAndComplexTypeInference
-# [] or a type inference
-testOrOperationInferredFromContext
 # [''] + [1] does not generate an error
 testAssignmentSubtypes
 testRedundantExprTruthiness

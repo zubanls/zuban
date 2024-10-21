@@ -2383,7 +2383,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             ExpressionPart::BitwiseOr(or) => self.infer_operation(or.as_operation()),
             ExpressionPart::BitwiseAnd(and) => self.infer_operation(and.as_operation()),
             ExpressionPart::BitwiseXor(xor) => self.infer_operation(xor.as_operation()),
-            ExpressionPart::Disjunction(or) => self.flow_analysis_for_disjunction(or),
+            ExpressionPart::Disjunction(or) => {
+                self.flow_analysis_for_disjunction(or, result_context)
+            }
             ExpressionPart::Conjunction(and) => self.flow_analysis_for_conjunction(and),
             ExpressionPart::Inversion(inversion) => {
                 let expr = inversion.expression();
