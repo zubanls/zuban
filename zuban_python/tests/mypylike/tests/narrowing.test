@@ -1533,3 +1533,10 @@ class X(Y):
     def f(self) -> None:
         x = [1] if bool() else []
         reveal_type(x)  # N: Revealed type is "list[int]"
+
+[case tuple_assign_none]
+x, y = None, None
+if bool():
+    x = 1
+    y = ""
+reveal_type(x)  # N: Revealed type is "int | None"

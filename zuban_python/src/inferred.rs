@@ -172,7 +172,7 @@ impl<'db: 'slf, 'slf> Inferred {
             InferredState::Saved(definition) => saved_as_type(i_s, *definition),
             InferredState::UnsavedComplex(complex) => type_of_complex(i_s, complex, None),
             InferredState::UnsavedSpecific(specific) => match specific {
-                Specific::None => Cow::Borrowed(&Type::None),
+                Specific::None | Specific::PartialNone => Cow::Borrowed(&Type::None),
                 Specific::Cycle | Specific::ModuleNotFound => {
                     Cow::Borrowed(&Type::Any(AnyCause::Todo))
                 }
@@ -291,7 +291,12 @@ impl<'db: 'slf, 'slf> Inferred {
     }
 
     pub fn maybe_new_partial(&self, i_s: &InferenceState) -> Option<Inferred> {
-        if self.maybe_saved_specific(i_s.db) == Some(Specific::None) {
+        if self.maybe_saved_specific(i_s.db) == Some(Specific::None)
+            || matches!(
+                self.state,
+                InferredState::UnsavedComplex(ComplexPoint::TypeInstance(Type::None))
+            )
+        {
             return Some(Inferred::new_unsaved_specific(Specific::PartialNone));
         }
         let Some(ComplexPoint::TypeInstance(t)) = self.maybe_complex_point(i_s.db) else {
