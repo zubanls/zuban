@@ -95,13 +95,12 @@ testWideOuterContextEmptyError
 testWideOuterContextNoArgsError
 testInferenceWorksWithEmptyCollectionsNested
 testCallerVarargsAndComplexTypeInference
-# Union/addition of empty lists dicts sets with used ones
-testOrOperationWithGenericOperands
+# [] or a type inference
 testOrOperationInferredFromContext
-testInWithInvalidArgs
 # [''] + [1] does not generate an error
 testAssignmentSubtypes
 testRedundantExprTruthiness
+testInWithInvalidArgs
 # union order issues
 testNarrowingEqualityDisabledForCustomEquality
 # bool literal type matching

@@ -1983,6 +1983,7 @@ impl Inference<'_, '_, '_> {
         }
 
         let (left_inf, mut left_frames) = self.find_guards_in_expression_parts(left);
+        let left_t = left_inf.as_cow_type(self.i_s);
         let mut right_infos = None;
         if left_frames.falsey.unreachable {
             if self.flags().warn_unreachable {
@@ -1994,7 +1995,10 @@ impl Inference<'_, '_, '_> {
         } else {
             left_frames.falsey = FLOW_ANALYSIS.with(|fa| {
                 fa.with_frame(left_frames.falsey, || {
-                    right_infos = Some(self.find_guards_in_expression_parts(right));
+                    right_infos = Some(self.find_guards_in_expression_parts_with_context(
+                        right,
+                        &mut ResultContext::new_known(&left_t),
+                    ));
                 })
             });
         }
