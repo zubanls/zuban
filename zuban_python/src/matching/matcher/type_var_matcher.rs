@@ -173,11 +173,11 @@ impl CalculatingTypeArg {
                 }
                 m
             }
-            Bound::Upper(lower) => lower.is_simple_super_type_of(i_s, &other),
-            Bound::Lower(upper) => upper.is_simple_sub_type_of(i_s, &other),
-            Bound::UpperAndLower(lower, upper) => {
-                lower.is_simple_super_type_of(i_s, &other)
-                    & upper.is_simple_sub_type_of(i_s, &other)
+            Bound::Upper(upper) => upper.is_simple_super_type_of(i_s, &other),
+            Bound::Lower(lower) => lower.is_simple_sub_type_of(i_s, &other),
+            Bound::UpperAndLower(upper, lower) => {
+                upper.is_simple_super_type_of(i_s, &other)
+                    & lower.is_simple_sub_type_of(i_s, &other)
             }
             Bound::Uncalculated { .. } => unreachable!(),
         };

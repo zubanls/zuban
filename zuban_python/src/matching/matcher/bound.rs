@@ -222,7 +222,7 @@ impl Bound {
     pub fn has_any(&self, i_s: &InferenceState) -> bool {
         match self {
             Self::Invariant(k) | Self::Upper(k) | Self::Lower(k) => k.has_any(i_s),
-            Self::UpperAndLower(lower, upper) => lower.has_any(i_s) || upper.has_any(i_s),
+            Self::UpperAndLower(upper, lower) => upper.has_any(i_s) || lower.has_any(i_s),
             Self::Uncalculated {
                 fallback: Some(fallback),
             } => fallback.has_any(i_s),
@@ -233,7 +233,7 @@ impl Bound {
     pub fn is_none(&self) -> bool {
         match self {
             Self::Invariant(k) | Self::Upper(k) | Self::Lower(k) => k.is_none(),
-            Self::UpperAndLower(lower, upper) => lower.is_none() || upper.is_none(),
+            Self::UpperAndLower(upper, lower) => upper.is_none() || lower.is_none(),
             Self::Uncalculated {
                 fallback: Some(fallback),
             } => matches!(fallback, Type::None),
