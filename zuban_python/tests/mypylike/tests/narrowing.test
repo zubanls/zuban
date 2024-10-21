@@ -1524,3 +1524,12 @@ def foo(item: Any) -> None:
     if isinstance(item, Setlist):
         mark_list.extend(item)
     reveal_type(mark_list)  # N: Revealed type is "list[set[Any]]"
+
+[case context_for_ternary_else]
+class Y:
+    x = 1
+
+class X(Y):
+    def f(self) -> None:
+        x = [1] if bool() else []
+        reveal_type(x)  # N: Revealed type is "list[int]"

@@ -1006,7 +1006,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         }
         let check_fallback = |name_def: NameDef| {
             self.i_s
-                .current_class()
+                .in_class_scope()
                 .and_then(|cls| {
                     if cls.is_calculating_class_infos() {
                         return None;
