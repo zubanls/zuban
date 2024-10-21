@@ -8,7 +8,6 @@ avoid_type_computation_recursion
 testOverloadPossibleOverlapWithArgsAndKwargs
 
 context_inference_with_any
-testStarUnpackNestedUnderscore
 
 # regressions
 testIncrementalInvalidNamedTupleInUnannotatedFunction

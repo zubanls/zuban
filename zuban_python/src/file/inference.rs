@@ -986,14 +986,14 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             Target::NameExpression(primary_target, _) => self.infer_primary_target(primary_target),
             Target::IndexExpression(t) if from_aug_assign => self.infer_primary_target(t),
             Target::Tuple(targets) => {
+                let out: Option<Rc<[Type]>> = targets
+                    .map(|target| {
+                        self.infer_target(target, from_aug_assign)
+                            .map(|i| i.as_type(self.i_s))
+                    })
+                    .collect();
                 Some(Inferred::from_type(Type::Tuple(Tuple::new_fixed_length(
-                    targets
-                        .map(|target| {
-                            self.infer_target(target, from_aug_assign)
-                                .map(|i| i.as_type(self.i_s))
-                                .unwrap_or(Type::Any(AnyCause::Todo))
-                        })
-                        .collect(),
+                    out?,
                 ))))
             }
             _ => None,
