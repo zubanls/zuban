@@ -184,15 +184,16 @@ impl CalculatingTypeArg {
         if matches.bool() {
             // If we are between the bounds we might need to update lower/upper bounds
             match variance {
-                Variance::Invariant => self.type_ = Bound::Invariant(other.clone()),
+                Variance::Invariant => self.type_ = Bound::Invariant(other),
                 Variance::Covariant => self.type_.update_lower_bound(i_s, other),
                 Variance::Contravariant => self.type_.update_upper_bound(i_s, other),
             }
+            matches
         } else {
             // If we are not between the lower and upper bound, but the value is co or
             // contravariant, it can still be valid.
             match variance {
-                Variance::Invariant => (),
+                Variance::Invariant => matches,
                 Variance::Covariant => match &mut self.type_ {
                     Bound::Lower(t) => {
                         // TODO shouldn't this also do a limited common base type search in the
@@ -200,15 +201,15 @@ impl CalculatingTypeArg {
                         let m = t.is_simple_super_type_of(i_s, &other);
                         if let Some(new) = t.common_base_type(i_s, &other) {
                             *t = new;
-                            return Match::new_true();
+                            Match::new_true()
                         } else {
-                            return m;
+                            m
                         }
                     }
                     Bound::Invariant(t) | Bound::UpperAndLower(_, t) => {
-                        return t.is_simple_super_type_of(i_s, &other)
+                        t.is_simple_super_type_of(i_s, &other)
                     }
-                    Bound::Upper(t) => {}
+                    Bound::Upper(t) => matches,
                     Bound::Uncalculated { .. } => unreachable!(),
                 },
                 Variance::Contravariant => match &mut self.type_ {
@@ -217,20 +218,19 @@ impl CalculatingTypeArg {
                         let m = t.is_simple_sub_type_of(i_s, &other);
                         if let Some(new) = t.common_sub_type(i_s, &other) {
                             *t = new;
-                            return Match::new_true();
+                            Match::new_true()
                         } else {
-                            return m;
+                            m
                         }
                     }
                     Bound::Invariant(t) | Bound::UpperAndLower(t, _) => {
-                        return t.is_simple_sub_type_of(i_s, &other);
+                        t.is_simple_sub_type_of(i_s, &other)
                     }
-                    Bound::Lower(_) => {}
+                    Bound::Lower(_) => matches,
                     Bound::Uncalculated { .. } => unreachable!(),
                 },
-            };
+            }
         }
-        matches
     }
 
     pub fn into_generic_item(self, db: &Database, type_var_like: &TypeVarLike) -> GenericItem {
