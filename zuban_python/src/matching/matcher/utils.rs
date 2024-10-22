@@ -463,7 +463,10 @@ fn calculate_type_vars<'db: 'a, 'a>(
                 return_type.is_sub_type_of(i_s, &mut matcher, expected);
                 matcher.reset_invalid_bounds_of_context(i_s)
             }
-            debug!("Finished trying to infer context type arguments");
+            debug!(
+                "Finished trying to infer context type arguments: [{}]",
+                matcher.type_var_matchers[0].debug_format(i_s.db)
+            );
         });
     }
     let mut matches = match func_or_callable {
