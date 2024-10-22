@@ -651,6 +651,9 @@ reveal_type(Foo().b)  # N: Revealed type is "int"
 a = 1
 (a) += 1
 
+[case accessing__file__]
+__file__.endswith("")
+
 [case current_module_attrs]
 reveal_type(__name__)  # N: Revealed type is "str"
 reveal_type(__file__)  # N: Revealed type is "str"

@@ -3606,7 +3606,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 |issue| self.add_issue(save_to_index, issue),
                                 name_str,
                             )
-                            .save_name(i_s, self.file, save_to_index)
+                            .into_maybe_inferred()
                         {
                             if matches!(name_str, "__package__" | "__file__") {
                                 return inf.remove_none(i_s);
