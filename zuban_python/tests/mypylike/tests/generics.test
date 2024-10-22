@@ -1187,9 +1187,16 @@ x: set[Alias] = set()
 from typing import TypeVar, Any, Sequence
 T = TypeVar('T', bound=Sequence[Any])
 
+class A: ...
+class B(A): ...
+class C(A): ...
+
 def foo(x: T, y: T) -> T: ...
 
 def bar(x: Sequence[int], y: Sequence[str]) -> None:
     foo(x, x)
     foo(x, y)
-    # TODO z: Sequence[object] = foo(x, y)
+    z: Sequence[object] = foo(x, y)
+
+def baz(x: Sequence[B], y: Sequence[C]) -> None:
+    z: Sequence[A] = foo(x, y)

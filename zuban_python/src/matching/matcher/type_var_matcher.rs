@@ -195,8 +195,6 @@ impl CalculatingTypeArg {
                 Variance::Invariant => matches,
                 Variance::Covariant => match &mut self.type_ {
                     Bound::Lower(t) => {
-                        // TODO shouldn't this also do a limited common base type search in the
-                        // case of LowerAndUpper?
                         let m = t.is_simple_super_type_of(i_s, &other);
                         if let Some(new) = t.common_base_type(i_s, &other) {
                             *t = new;
@@ -205,15 +203,23 @@ impl CalculatingTypeArg {
                             m
                         }
                     }
-                    Bound::Invariant(t) | Bound::UpperAndLower(_, t) => {
-                        t.is_simple_super_type_of(i_s, &other)
-                    }
+                    Bound::Invariant(t) => t.is_simple_super_type_of(i_s, &other),
                     Bound::Upper(t) => matches,
+                    Bound::UpperAndLower(upper, lower) => {
+                        let m = lower.is_simple_super_type_of(i_s, &other);
+                        if let Some(new) = lower.common_base_type(i_s, &other) {
+                            if upper.is_simple_super_type_of(i_s, &new).bool() {
+                                *lower = new;
+                                return Match::new_true();
+                            }
+                        }
+                        m
+                    }
                     Bound::Uncalculated { .. } => unreachable!(),
                 },
                 Variance::Contravariant => match &mut self.type_ {
                     Bound::Upper(t) => {
-                        // TODO shouldn't we also check LowerAndUpper like this?
+                        // TODO shouldn't we also check UpperAndLower like this?
                         let m = t.is_simple_sub_type_of(i_s, &other);
                         if let Some(new) = t.common_sub_type(i_s, &other) {
                             *t = new;
