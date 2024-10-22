@@ -890,7 +890,7 @@ def same_wrong(x: str, y: str) -> None: ...
 def other(x: int, y: str) -> None: ...
 foo(1.0, same)
 foo(1.0, same_wrong)  # E: Value of type variable "B" of "foo" cannot be "str"
-foo(1.0, other)
+foo(1.0, other)  # E: Value of type variable "B" of "foo" cannot be "str"
 
 def tv1(x: B, y: B2) -> None: ...
 def tv2(x: B2, y: B2) -> None: ...
@@ -909,12 +909,24 @@ def same_wrong(x: str, y: str) -> str: ...
 def other(x: int, y: str) -> object: ...
 foo(1.0, same)
 foo(1.0, same_wrong)  # E: Value of type variable "B" of "foo" cannot be "str"
-foo(1.0, other)  # E: Argument 2 to "foo" has incompatible type "Callable[[int, str], object]"; expected "Callable[[Never, Never], Never]"
+foo(1.0, other)  # E: Value of type variable "B" of "foo" cannot be "str"
 
 def tv1(x: B, y: B2) -> B2: ...
 def tv2(x: B2, y: B2) -> B2: ...
 foo(1.0, tv1)
 foo(1.0, tv2)
+
+[case nested_late_bound_type_vars3]
+from typing import TypeVar, Callable
+B = TypeVar("B", bound=int)
+def foo(c: Callable[[B], B]) -> None: ...
+
+def same(x: int) -> int: ...
+def same_wrong(y: str) -> str: ...
+def other(x: int) -> object: ...
+foo(same)
+foo(same_wrong)  # E: Value of type variable "B" of "foo" cannot be "str"
+foo(other)  # E: Value of type variable "B" of "foo" cannot be "object"
 
 [case transitive_constraints_pick_correct_bound]
 # A bit like testInferenceAgainstGenericBoundsAndValues, but another case as
@@ -1170,3 +1182,14 @@ def foo(x: list[int]) -> None:
 from typing import Any
 Alias = tuple[Any, ...]
 x: set[Alias] = set()
+
+[case bound_generics_no_mismatches]
+from typing import TypeVar, Any, Sequence
+T = TypeVar('T', bound=Sequence[Any])
+
+def foo(x: T, y: T) -> T: ...
+
+def bar(x: Sequence[int], y: Sequence[str]) -> None:
+    foo(x, x)
+    foo(x, y)
+    # TODO z: Sequence[object] = foo(x, y)

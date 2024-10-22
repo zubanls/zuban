@@ -461,7 +461,7 @@ def bar2(c: Callable[[str, bytes, int], Foo[str]]) -> None: ...
 def bar3(c: Callable[[str, str, float], Foo[int]]) -> None: ...
 
 foo(Foo)
-bar1(Foo)  # E: Argument 1 to "bar1" has incompatible type "Type[Foo]"; expected "Callable[[str, int, bytes], Foo[str]]"
+bar1(Foo)  # E: Value of type variable "S" of "bar1" cannot be "bytes"
 bar2(Foo)  # E: Value of type variable "S" of "bar2" cannot be "bytes"
 bar3(Foo)  # E: Value of type variable "S" of "bar3" cannot be "str"
 

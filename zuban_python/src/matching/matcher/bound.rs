@@ -41,12 +41,7 @@ impl Bound {
         let k = BoundKind::TypeVar(t);
         match variance {
             Variance::Invariant => Self::Invariant(k),
-            Variance::Covariant => match &type_var.kind {
-                TypeVarKind::Bound(bound) => {
-                    Self::UpperAndLower(BoundKind::TypeVar(bound.clone()), k)
-                }
-                _ => Self::Lower(k),
-            },
+            Variance::Covariant => Self::Lower(k),
             Variance::Contravariant => Self::Upper(k),
         }
     }
