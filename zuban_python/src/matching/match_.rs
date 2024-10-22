@@ -55,6 +55,7 @@ pub enum Match {
 #[derive(Clone, Debug)]
 pub enum MismatchReason {
     None,
+    ConstraintAlreadySet,
     ConstraintMismatch {
         expected: Type,
         type_var: Rc<TypeVar>,

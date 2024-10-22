@@ -333,11 +333,24 @@ impl TypeVarMatcher {
         debug_assert_eq!(type_var_usage.in_definition, self.match_in_definition);
         let current = &mut self.calculating_type_args[type_var_usage.index.as_usize()];
         if current.calculated() {
-            return current.merge_or_mismatch(
-                i_s,
-                BoundKind::TypeVar(value_type.clone()),
-                variance,
-            );
+            return if matches!(&type_var_usage.type_var.kind, TypeVarKind::Constraints(_)) {
+                match check_constraints(i_s, &type_var_usage.type_var, value_type, variance) {
+                    Ok(bound) => {
+                        let mut m = current.merge(i_s.db, bound);
+                        if let Match::False {
+                            reason: reason @ MismatchReason::None,
+                            ..
+                        } = &mut m
+                        {
+                            *reason = MismatchReason::ConstraintAlreadySet;
+                        }
+                        m
+                    }
+                    Err(m) => m,
+                }
+            } else {
+                current.merge_or_mismatch(i_s, BoundKind::TypeVar(value_type.clone()), variance)
+            };
         }
         // Before setting the type var, we need to check if the constraints match.
         match check_constraints(i_s, &type_var_usage.type_var, value_type, variance) {

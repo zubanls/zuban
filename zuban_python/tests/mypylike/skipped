@@ -7,8 +7,6 @@ mypy_setup_ini_with_multiline_string
 avoid_type_computation_recursion
 testOverloadPossibleOverlapWithArgsAndKwargs
 
-context_inference_with_any
-
 # regressions
 testIncrementalInvalidNamedTupleInUnannotatedFunction
 
