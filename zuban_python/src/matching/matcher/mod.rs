@@ -325,7 +325,7 @@ impl<'a> Matcher<'a> {
                     type_var_index: t1.index.as_usize(),
                 },
                 |found_type_var| value_type.search_type_vars(found_type_var),
-                || Bound::new_type_arg(value_type.clone(), variance, t1.type_var.as_ref()),
+                || Bound::new(BoundKind::TypeVar(value_type.clone()), variance),
             ) {
                 return Some(Match::new_true());
             }

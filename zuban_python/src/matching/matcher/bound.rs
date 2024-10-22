@@ -7,8 +7,8 @@ use crate::{
     params::matches_params_with_variance,
     type_::{
         match_tuple_type_arguments, AnyCause, CallableParams, GenericItem, NeverCause,
-        ParamSpecArg, ParamType, StarStarParamType, TupleArgs, Type, TypeArgs, TypeVar,
-        TypeVarKind, TypeVarLike, TypeVarLikeUsage, Variance,
+        ParamSpecArg, ParamType, StarStarParamType, TupleArgs, Type, TypeArgs, TypeVarKind,
+        TypeVarLike, TypeVarLikeUsage, Variance,
     },
     type_helpers::Class,
 };
@@ -37,15 +37,6 @@ impl Default for Bound {
 }
 
 impl Bound {
-    pub fn new_type_arg(t: Type, variance: Variance, type_var: &TypeVar) -> Self {
-        let k = BoundKind::TypeVar(t);
-        match variance {
-            Variance::Invariant => Self::Invariant(k),
-            Variance::Covariant => Self::Lower(k),
-            Variance::Contravariant => Self::Upper(k),
-        }
-    }
-
     pub fn new_type_args(ts: TupleArgs, variance: Variance) -> Self {
         Self::new(BoundKind::TypeVarTuple(ts), variance)
     }
