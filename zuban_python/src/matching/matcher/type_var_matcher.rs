@@ -1,4 +1,4 @@
-use std::{borrow::Cow, rc::Rc};
+use std::borrow::Cow;
 
 use parsa_python_cst::ParamKind;
 
@@ -14,7 +14,7 @@ use crate::{
     matching::MatcherFormatResult,
     params::Param,
     type_::{
-        AnyCause, CallableParams, GenericItem, GenericsList, NeverCause, ParamType, Type, TypeVar,
+        AnyCause, CallableParams, GenericItem, GenericsList, NeverCause, ParamType, Type,
         TypeVarKind, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarUsage, Variance,
     },
     type_helpers::{Callable, Class, Function},
@@ -146,23 +146,14 @@ impl CalculatingTypeArg {
             }
             Bound::Uncalculated { .. } => return Match::new_true(),
         };
-        m & self.merge_or_mismatch(&i_s, t, variance)
+        let m = m & self.merge_or_mismatch(&i_s, t, variance);
+        if !m.bool() && !self.defined_by_result_context {
+            self.uninferrable = true;
+        }
+        m
     }
 
     fn merge_or_mismatch(
-        &mut self,
-        i_s: &InferenceState,
-        other: BoundKind,
-        variance: Variance,
-    ) -> Match {
-        let result = self.merge_or_mismatch_internal(i_s, other, variance);
-        if !result.bool() && !self.defined_by_result_context {
-            self.uninferrable = true;
-        }
-        result
-    }
-
-    fn merge_or_mismatch_internal(
         &mut self,
         i_s: &InferenceState,
         other: BoundKind,
