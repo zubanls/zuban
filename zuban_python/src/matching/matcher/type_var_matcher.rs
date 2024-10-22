@@ -130,6 +130,9 @@ impl CalculatingTypeArg {
         if let Bound::Uncalculated { fallback } = &self.type_ {
             if !matches!(&other, Bound::Uncalculated { .. }) || fallback.is_none() {
                 self.type_ = other;
+                if self.type_.is_any() {
+                    return Match::True { with_any: true };
+                }
             }
             return Match::new_true();
         }
@@ -146,7 +149,7 @@ impl CalculatingTypeArg {
         m & self.merge_or_mismatch(&i_s, t, variance)
     }
 
-    pub fn merge_or_mismatch(
+    fn merge_or_mismatch(
         &mut self,
         i_s: &InferenceState,
         other: BoundKind,
@@ -333,46 +336,63 @@ impl TypeVarMatcher {
         debug_assert_eq!(type_var_usage.in_definition, self.match_in_definition);
         let current = &mut self.calculating_type_args[type_var_usage.index.as_usize()];
         // Before setting the type var, we need to check if the constraints match.
-        match check_constraints(i_s, &type_var_usage.type_var, value_type, variance) {
-            Ok(bound) => {
-                let mut m = if current.calculated() {
-                    if matches!(&type_var_usage.type_var.kind, TypeVarKind::Constraints(_)) {
-                        current.merge(i_s.db, bound)
-                    } else {
-                        current.merge_or_mismatch(
-                            i_s,
-                            BoundKind::TypeVar(value_type.clone()),
-                            variance,
-                        )
-                    }
-                } else {
-                    current.type_ = bound;
-                    if value_type.is_any() {
-                        Match::True { with_any: true }
-                    } else {
-                        Match::new_true()
-                    }
+        let constraint_mismatch = |current: &mut CalculatingTypeArg| {
+            if !current.calculated() {
+                current.type_ = Bound::Uncalculated {
+                    fallback: Some(value_type.clone()),
                 };
-                if matches!(&type_var_usage.type_var.kind, TypeVarKind::Constraints(_)) {
-                    if let Match::False {
-                        reason: reason @ MismatchReason::None,
-                        ..
-                    } = &mut m
-                    {
-                        *reason = MismatchReason::ConstraintAlreadySet;
-                    }
-                }
-                m
             }
-            Err(m) => {
-                if !current.calculated() {
-                    current.type_ = Bound::Uncalculated {
-                        fallback: Some(value_type.clone()),
-                    };
+            Match::False {
+                reason: MismatchReason::ConstraintMismatch {
+                    expected: value_type.clone(),
+                    type_var: type_var_usage.type_var.clone(),
+                },
+                similar: false,
+            }
+        };
+        match &type_var_usage.type_var.kind {
+            TypeVarKind::Unrestricted => (),
+            TypeVarKind::Bound(bound) => {
+                if !bound.is_simple_super_type_of(i_s, value_type).bool() {
+                    debug!(
+                        "Mismatched constraint {} :> {}",
+                        bound.format_short(i_s.db),
+                        value_type.format_short(i_s.db)
+                    );
+                    return constraint_mismatch(current);
                 }
-                m
+            }
+            TypeVarKind::Constraints(constraints) => {
+                match check_constraints(i_s, constraints, value_type, variance) {
+                    Ok(bound) => {
+                        let mut m = if current.calculated() {
+                            current.merge(i_s.db, bound)
+                        } else {
+                            current.type_ = bound;
+                            if value_type.is_any() {
+                                Match::True { with_any: true }
+                            } else {
+                                Match::new_true()
+                            }
+                        };
+                        if let Match::False {
+                            reason: reason @ MismatchReason::None,
+                            ..
+                        } = &mut m
+                        {
+                            // This means that if the constraints are (x, y) and we set
+                            *reason = MismatchReason::ConstraintAlreadySet;
+                        }
+                        return m;
+                    }
+                    Err(()) => return constraint_mismatch(current),
+                }
             }
         }
+        current.merge(
+            i_s.db,
+            Bound::new(BoundKind::TypeVar(value_type.clone()), variance),
+        )
     }
 
     pub fn debug_format(&self, db: &Database) -> String {
@@ -406,71 +426,42 @@ impl TypeVarMatcher {
     }
 }
 
-pub fn check_constraints(
+fn check_constraints(
     i_s: &InferenceState,
-    type_var: &Rc<TypeVar>,
+    constraints: &[Type],
     value_type: &Type,
     variance: Variance,
-) -> Result<Bound, Match> {
-    let mut mismatch_constraints = false;
-    match &type_var.kind {
-        TypeVarKind::Unrestricted => (),
-        TypeVarKind::Bound(bound) => {
-            mismatch_constraints |= !bound.is_simple_super_type_of(i_s, value_type).bool();
-            if mismatch_constraints {
-                debug!(
-                    "Mismatched constraint {} :> {}",
-                    bound.format_short(i_s.db),
-                    value_type.format_short(i_s.db)
-                );
-            }
-        }
-        TypeVarKind::Constraints(constraints) => {
-            if let Type::TypeVar(t2) = value_type {
-                if let TypeVarKind::Constraints(constraints2) = &t2.type_var.kind {
-                    if constraints2.iter().all(|r2| {
-                        constraints
-                            .iter()
-                            .any(|r1| r1.is_simple_super_type_of(i_s, r2).bool())
-                    }) {
-                        return Ok(Bound::Invariant(BoundKind::TypeVar(value_type.clone())));
-                    } else {
-                        mismatch_constraints = true;
-                    }
-                }
-            }
-            if !mismatch_constraints {
-                let mut matched_constraint = None;
-                for constraint in constraints.iter() {
-                    let m = constraint.simple_matches(i_s, value_type, variance);
-                    if m.bool() {
-                        if matched_constraint.is_some() {
-                            // This means that any is involved and multiple constraints
-                            // are matching. Therefore just return Any.
-                            return Ok(Bound::Invariant(BoundKind::TypeVar(Type::Any(
-                                AnyCause::Todo,
-                            ))));
-                        }
-                        if value_type.has_any(i_s) {
-                            matched_constraint = Some(constraint);
-                        } else {
-                            return Ok(Bound::Invariant(BoundKind::TypeVar(constraint.clone())));
-                        }
-                    }
-                }
-                mismatch_constraints = true;
+) -> Result<Bound, ()> {
+    if let Type::TypeVar(t2) = value_type {
+        if let TypeVarKind::Constraints(constraints2) = &t2.type_var.kind {
+            if constraints2.iter().all(|r2| {
+                constraints
+                    .iter()
+                    .any(|r1| r1.is_simple_super_type_of(i_s, r2).bool())
+            }) {
+                return Ok(Bound::Invariant(BoundKind::TypeVar(value_type.clone())));
+            } else {
+                return Err(());
             }
         }
     }
-    if mismatch_constraints {
-        Err(Match::False {
-            reason: MismatchReason::ConstraintMismatch {
-                expected: value_type.clone(),
-                type_var: type_var.clone(),
-            },
-            similar: false,
-        })
-    } else {
-        Ok(Bound::new_type_arg(value_type.clone(), variance, type_var))
+    let mut matched_constraint = None;
+    for constraint in constraints.iter() {
+        let m = constraint.simple_matches(i_s, value_type, variance);
+        if m.bool() {
+            if matched_constraint.is_some() {
+                // This means that any is involved and multiple constraints
+                // are matching. Therefore just return Any.
+                return Ok(Bound::Invariant(BoundKind::TypeVar(Type::Any(
+                    AnyCause::Todo,
+                ))));
+            }
+            if value_type.has_any(i_s) {
+                matched_constraint = Some(constraint);
+            } else {
+                return Ok(Bound::Invariant(BoundKind::TypeVar(constraint.clone())));
+            }
+        }
     }
+    Err(())
 }

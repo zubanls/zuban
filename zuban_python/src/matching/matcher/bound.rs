@@ -198,6 +198,14 @@ impl Bound {
         }
     }
 
+    pub fn is_any(&self) -> bool {
+        match self {
+            Self::Invariant(k) | Self::Upper(k) | Self::Lower(k) => k.is_any(),
+            Self::UpperAndLower(upper, lower) => upper.is_any() && lower.is_any(),
+            Self::Uncalculated { .. } => false,
+        }
+    }
+
     pub fn is_none(&self) -> bool {
         match self {
             Self::Invariant(k) | Self::Upper(k) | Self::Lower(k) => k.is_none(),
@@ -315,6 +323,14 @@ impl BoundKind {
             Self::TypeVar(t) => t.has_any(i_s),
             Self::TypeVarTuple(ts) => ts.has_any(i_s),
             Self::ParamSpec(params) => params.has_any(i_s),
+        }
+    }
+
+    fn is_any(&self) -> bool {
+        match self {
+            Self::TypeVar(t) => t.is_any(),
+            Self::TypeVarTuple(ts) => ts.is_any(),
+            Self::ParamSpec(params) => matches!(params, CallableParams::Any(_)),
         }
     }
 
