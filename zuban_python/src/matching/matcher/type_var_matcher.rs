@@ -335,17 +335,9 @@ impl TypeVarMatcher {
         // Before setting the type var, we need to check if the constraints match.
         match check_constraints(i_s, &type_var_usage.type_var, value_type, variance) {
             Ok(bound) => {
-                if current.calculated() {
+                let mut m = if current.calculated() {
                     if matches!(&type_var_usage.type_var.kind, TypeVarKind::Constraints(_)) {
-                        let mut m = current.merge(i_s.db, bound);
-                        if let Match::False {
-                            reason: reason @ MismatchReason::None,
-                            ..
-                        } = &mut m
-                        {
-                            *reason = MismatchReason::ConstraintAlreadySet;
-                        }
-                        m
+                        current.merge(i_s.db, bound)
                     } else {
                         current.merge_or_mismatch(
                             i_s,
@@ -360,7 +352,17 @@ impl TypeVarMatcher {
                     } else {
                         Match::new_true()
                     }
+                };
+                if matches!(&type_var_usage.type_var.kind, TypeVarKind::Constraints(_)) {
+                    if let Match::False {
+                        reason: reason @ MismatchReason::None,
+                        ..
+                    } = &mut m
+                    {
+                        *reason = MismatchReason::ConstraintAlreadySet;
+                    }
                 }
+                m
             }
             Err(m) => {
                 if !current.calculated() {

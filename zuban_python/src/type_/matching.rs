@@ -217,7 +217,7 @@ impl Type {
         let mut mro = value_type.mro(i_s.db);
         // Protocols contain no object in its MRO, therefore we add that here.
         mro.returned_object = false;
-        for (_, t2) in mro {
+        for (i, t2) in mro {
             m = match t2 {
                 TypeOrClass::Class(c2) => match self.maybe_class(i_s.db) {
                     Some(c1) => Self::matches_class(i_s, matcher, &c1, &c2, Variance::Covariant),
@@ -241,6 +241,18 @@ impl Type {
                     similar: false
                 }
             ) {
+                if let Match::False {
+                    reason: reason @ MismatchReason::ConstraintMismatch { .. },
+                    ..
+                } = &mut m
+                {
+                    if i.0 != 0 {
+                        // If the constraint matched previously, but doesn't anymore, because we
+                        // have a non-matching super class, the constraint was actually fine, but
+                        // there were other issues.
+                        *reason = MismatchReason::None;
+                    }
+                }
                 debug_message_for_result(matcher, &m);
                 return m;
             }
