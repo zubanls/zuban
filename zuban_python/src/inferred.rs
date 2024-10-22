@@ -246,6 +246,7 @@ impl<'db: 'slf, 'slf> Inferred {
                 _ => unreachable!(),
             },
             Type::Dataclass(d) => d.class(i_s.db),
+            Type::NewType(n) => n.type_(i_s).maybe_class(i_s.db).unwrap(),
             _ => unreachable!(),
         };
         let class_t = instance_class

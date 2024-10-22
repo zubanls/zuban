@@ -206,3 +206,16 @@ class Foo:
 
 class Bar:
     def __init__(self, x: Foo, y: Self | None) -> None: ...
+
+[case self_of_new_type]
+from typing import NewType, Self, TypeVar
+T = TypeVar("T")
+class C:
+    def foo(self) -> Self: ...
+    def bar(self: T) -> T: ...
+
+N = NewType("N", C)
+def x(x: N) -> N:
+    if bool():
+        return x.foo()
+    return x.bar()

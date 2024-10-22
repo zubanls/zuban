@@ -325,16 +325,30 @@ impl Type {
                 nt.lookup(i_s, add_issue, name, Some(&|| self.clone())),
             ),
             Type::Never(_) => (),
-            Type::NewType(new_type) => new_type.type_(i_s).run_after_lookup_on_each_union_member(
-                i_s,
-                None,
-                from_file,
-                name,
-                kind,
-                result_context,
-                add_issue,
-                callable,
-            ),
+            Type::NewType(new_type) => {
+                let t = new_type.type_(i_s);
+                if let Type::Class(c) = t {
+                    let l = Instance::new(c.class(i_s.db), None).lookup(
+                        i_s,
+                        name,
+                        InstanceLookupOptions::new(add_issue)
+                            .with_kind(kind)
+                            .with_as_self_instance(&|| self.clone()),
+                    );
+                    callable(self, l)
+                } else {
+                    t.run_after_lookup_on_each_union_member(
+                        i_s,
+                        None,
+                        from_file,
+                        name,
+                        kind,
+                        result_context,
+                        add_issue,
+                        callable,
+                    )
+                }
+            }
             Type::Enum(e) => callable(
                 self,
                 lookup_on_enum_instance(i_s, add_issue, e, name, result_context),
