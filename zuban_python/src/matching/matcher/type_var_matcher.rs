@@ -219,7 +219,6 @@ impl CalculatingTypeArg {
                 },
                 Variance::Contravariant => match &mut self.type_ {
                     Bound::Upper(t) => {
-                        // TODO shouldn't we also check UpperAndLower like this?
                         let m = t.is_simple_sub_type_of(i_s, &other);
                         if let Some(new) = t.common_sub_type(i_s, &other) {
                             *t = new;
@@ -228,8 +227,16 @@ impl CalculatingTypeArg {
                             m
                         }
                     }
-                    Bound::Invariant(t) | Bound::UpperAndLower(t, _) => {
-                        t.is_simple_sub_type_of(i_s, &other)
+                    Bound::Invariant(t) => t.is_simple_sub_type_of(i_s, &other),
+                    Bound::UpperAndLower(upper, lower) => {
+                        let m = upper.is_simple_sub_type_of(i_s, &other);
+                        if let Some(new) = upper.common_sub_type(i_s, &other) {
+                            if lower.is_simple_sub_type_of(i_s, &new).bool() {
+                                *upper = new;
+                                return Match::new_true();
+                            }
+                        }
+                        m
                     }
                     Bound::Lower(_) => matches,
                     Bound::Uncalculated { .. } => unreachable!(),
