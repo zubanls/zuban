@@ -776,3 +776,12 @@ class F:
     def __init__(self, x: int) -> None: ...
 
 F(b'')
+
+[case __init__decorator_with_invalid_type]
+def foo(x) -> int: ...
+class F:
+    # TODO add an error that this is an invalid __init__
+    @foo
+    def __init__(self, x: int) -> None: ...
+
+F(b'')

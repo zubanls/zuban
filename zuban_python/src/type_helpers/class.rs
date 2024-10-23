@@ -206,7 +206,7 @@ impl<'db: 'a, 'a> Class<'a> {
             });
         };
         match inf.init_as_function(i_s, dunder_init_class.as_maybe_class()) {
-            Some(FunctionOrOverload::Function(func)) => {
+            FunctionOrOverload::Function(func) => {
                 /*
                 let type_vars = self.type_vars(i_s);
                 if let Some(func_cls) = &mut func.class {
@@ -229,7 +229,7 @@ impl<'db: 'a, 'a> Class<'a> {
                     calculated_type_args.type_arguments_into_class_generics(),
                 )
             }
-            Some(FunctionOrOverload::Callable(callable_content)) => {
+            FunctionOrOverload::Callable(callable_content) => {
                 let calculated_type_args = match dunder_init_class.as_base_class(i_s.db, self) {
                     Some(class) => {
                         let from_class = matches!(dunder_init_class, TypeOrClass::Class(_));
@@ -259,7 +259,7 @@ impl<'db: 'a, 'a> Class<'a> {
                     calculated_type_args.type_arguments_into_class_generics(),
                 )
             }
-            Some(FunctionOrOverload::Overload(overloaded_function)) => match overloaded_function
+            FunctionOrOverload::Overload(overloaded_function) => match overloaded_function
                 .find_matching_function(
                     i_s,
                     args,
@@ -294,7 +294,6 @@ impl<'db: 'a, 'a> Class<'a> {
                     ClassExecutionResult::Inferred(Inferred::new_any_from_error())
                 }
             },
-            None => unreachable!("Should never happen, because there's always object.__init__"),
         }
     }
 

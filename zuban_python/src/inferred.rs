@@ -702,7 +702,7 @@ impl<'db: 'slf, 'slf> Inferred {
         &self,
         i_s: &InferenceState<'db, '_>,
         class: Option<Class<'a>>,
-    ) -> Option<FunctionOrOverload<'a>>
+    ) -> FunctionOrOverload<'a>
     where
         'db: 'a,
     {
@@ -711,36 +711,29 @@ impl<'db: 'slf, 'slf> Inferred {
                 let definition = NodeRef::from_link(i_s.db, *link);
                 match definition.point().maybe_specific() {
                     Some(Specific::Function) => {
-                        return Some(FunctionOrOverload::Function(Function::new(
-                            definition, class,
-                        )));
-                    }
-                    Some(Specific::AnyDueToError | Specific::Cycle) => {
-                        return Some(FunctionOrOverload::Callable(
-                            i_s.db.python_state.any_callable_from_error.clone(),
-                        ))
+                        return FunctionOrOverload::Function(Function::new(definition, class));
                     }
                     _ => (),
                 }
                 match definition.complex() {
                     Some(ComplexPoint::FunctionOverload(overload)) => {
-                        return Some(FunctionOrOverload::Overload(OverloadedFunction::new(
+                        return FunctionOrOverload::Overload(OverloadedFunction::new(
                             &overload.functions,
                             class,
-                        )));
+                        ));
                     }
                     Some(ComplexPoint::TypeInstance(Type::Callable(c))) => {
-                        return Some(FunctionOrOverload::Callable(c.clone()));
+                        return FunctionOrOverload::Callable(c.clone());
                     }
                     _ => (),
                 }
             }
             InferredState::UnsavedComplex(ComplexPoint::TypeInstance(Type::Callable(c))) => {
-                return Some(FunctionOrOverload::Callable(c.clone()));
+                return FunctionOrOverload::Callable(c.clone());
             }
             _ => (),
         }
-        None
+        FunctionOrOverload::Callable(i_s.db.python_state.any_callable_from_error.clone())
     }
 
     pub fn avoid_implicit_literal(self, i_s: &InferenceState) -> Self {
