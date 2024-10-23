@@ -526,7 +526,9 @@ impl<'db> NameBinder<'db> {
             while let Some(n) = self.unresolved_nodes.pop() {
                 match n {
                     Unresolved::Name(name) => {
-                        if !self.try_to_process_reference(name, false) {
+                        // Enable flow analysis, because we don't know the original state if flow
+                        // analsis is needed here, because we are in the parent scope.
+                        if !self.try_to_process_reference(name, false, true) {
                             self.names_to_be_resolved_in_parent.push(name);
                         }
                     }
@@ -1227,7 +1229,11 @@ impl<'db> NameBinder<'db> {
 
     #[inline]
     fn maybe_add_reference(&mut self, name: Name<'db>, ordered: bool) {
-        if !self.try_to_process_reference(name, self.in_global_scope()) {
+        if !self.try_to_process_reference(
+            name,
+            self.in_global_scope(),
+            self.following_nodes_need_flow_analysis,
+        ) {
             if !ordered || self.kind != NameBinderKind::Class {
                 self.unordered_references
                     .push(UnorderedReference { name, ordered });
@@ -1243,7 +1249,12 @@ impl<'db> NameBinder<'db> {
     }
 
     #[inline]
-    fn try_to_process_reference(&mut self, name: Name<'db>, in_global_scope: bool) -> bool {
+    fn try_to_process_reference(
+        &mut self,
+        name: Name<'db>,
+        in_global_scope: bool,
+        following_nodes_need_flow_analysis: bool,
+    ) -> bool {
         try_to_process_reference_for_symbol_table(
             &self.symbol_table,
             self.db_infos.file_index,
@@ -1251,7 +1262,7 @@ impl<'db> NameBinder<'db> {
             name,
             // Even references sometimes don't need flow analysis. This is really practical in some
             // very simple cases.
-            self.following_nodes_need_flow_analysis,
+            following_nodes_need_flow_analysis,
             in_global_scope,
         )
     }
