@@ -1215,3 +1215,29 @@ def foo(x: T, y: Callable[[T, T], None]) -> T: ...
 def baz(x: C, y: Callable[[C, B], None]) -> None:
     reveal_type(foo(x, y))  # N: Revealed type is "__main__.C"
     z: A = foo(x, y)
+
+[case avoid_recursion_on_type_var_nesting_in_list_inference]
+# This used to lead to stack overflows
+from typing import Callable, TypeVar, Any
+T = TypeVar("T")
+U = TypeVar("U")
+def foo(x: T) -> T:
+    def bar(x: U, y: T) -> U: ...
+
+    bar(1, [])  # E: Argument 2 to "bar" has incompatible type "list[Never]"; expected "T"
+    return x
+
+[case defaultdict_like_getitem]
+from typing import Callable, TypeVar, Any
+_KT = TypeVar("_KT")
+_VT = TypeVar("_VT")
+class X(dict[_KT, _VT]):
+    def __init__(self, c: Callable[[], _VT]) -> None: ...
+
+def foo(a: Any) -> None:
+    reveal_type(X(list)[a])  # N: Revealed type is "list[Any]"
+    reveal_type(X(list[int])[a])  # N: Revealed type is "list[int]"
+
+y = X(list)
+reveal_type(y)
+y[[]].append(1)

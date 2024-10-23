@@ -1432,9 +1432,18 @@ impl Type {
         for t in self.iter_with_unpacked_unions(db) {
             match t {
                 Type::TypeVar(_) if matcher.might_have_defined_type_vars() => {
-                    let new = matcher
-                        .replace_type_var_likes_for_nested_context(db, t)
-                        .find_unique_type_in_unpacked_union(db, matcher, find);
+                    let new_t = matcher.replace_type_var_likes_for_nested_context(db, t);
+                    if &new_t == t {
+                        if let Some(x) = find(t) {
+                            if found.is_ok() {
+                                return Err(UniqueInUnpackedUnionError::Multiple);
+                            } else {
+                                found = Ok(x)
+                            }
+                        }
+                        continue;
+                    }
+                    let new = new_t.find_unique_type_in_unpacked_union(db, matcher, find);
                     match new {
                         Err(UniqueInUnpackedUnionError::Multiple) => return new,
                         // Avoid overwriting current results
