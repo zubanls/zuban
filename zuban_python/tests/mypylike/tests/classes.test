@@ -769,3 +769,10 @@ class A(Parent[int]):
 
 class B:
     def bar(self, other: Parent[T]) -> T: ...
+
+[case missing__init__decorator]
+class F:
+    @foo  # E: Name "foo" is not defined
+    def __init__(self, x: int) -> None: ...
+
+F(b'')

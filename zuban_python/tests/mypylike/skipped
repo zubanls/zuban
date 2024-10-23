@@ -254,7 +254,13 @@ testNarrowedVariableInNestedFunctionMore1
 # partials: OrderedDict
 testInferOrderedDictInitializedToEmpty
 # partials: defaultdict
-testPartialDefaultDict*
+testPartialDefaultDict
+testPartialDefaultDictInconsistentValueTypes
+testPartialDefaultDictListValue
+testPartialDefaultDictListValueStrictOptional
+testPartialDefaultDictSpecialCases
+testPartialDefaultDictSpecialCases2
+testPartialDefaultDictSpecialCase3
 # partials: No "Need type annotation for "X"", because untyped update exists
 testInferDictInitializedToEmptyAndUpdatedFromMethodUnannotated
 testCheckUntypedDefsSelf2

@@ -715,6 +715,11 @@ impl<'db: 'slf, 'slf> Inferred {
                             definition, class,
                         )));
                     }
+                    Some(Specific::AnyDueToError | Specific::Cycle) => {
+                        return Some(FunctionOrOverload::Callable(
+                            i_s.db.python_state.any_callable_from_error.clone(),
+                        ))
+                    }
                     _ => (),
                 }
                 match definition.complex() {
