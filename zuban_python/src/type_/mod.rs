@@ -1557,6 +1557,16 @@ impl Type {
     }
 }
 
+impl FromIterator<Type> for Type {
+    fn from_iter<I: IntoIterator<Item = Type>>(iter: I) -> Self {
+        let mut result = Type::Never(NeverCause::Other);
+        for t in iter {
+            result.union_in_place(t)
+        }
+        result
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FunctionKind {
     Function {

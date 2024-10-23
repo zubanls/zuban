@@ -701,18 +701,22 @@ pub(crate) fn dataclass_initialize<'db>(
         if !dataclass.options.init || class.lookup_symbol(i_s, "__init__").is_some() {
             // If the class has an __init__ method defined, the class itself wins.
             let result = class.execute(i_s, args, result_context, on_type_error, true);
-            return Inferred::from_type(Type::gather_union(|gather| {
-                for t in result.as_cow_type(i_s).iter_with_unpacked_unions(i_s.db) {
-                    // Since we use the dataclass's class, we need to remap if that is the type
-                    // that is returned.
-                    match t {
-                        Type::Class(c) if c.link == dataclass.class.link => gather(
-                            Type::Dataclass(Dataclass::new(c.clone(), dataclass.options)),
-                        ),
-                        _ => gather(t.clone()),
-                    }
-                }
-            }));
+            return Inferred::from_type(
+                result
+                    .as_cow_type(i_s)
+                    .iter_with_unpacked_unions(i_s.db)
+                    .map(|t| {
+                        // Since we use the dataclass's class, we need to remap if that is the type
+                        // that is returned.
+                        match t {
+                            Type::Class(c) if c.link == dataclass.class.link => {
+                                Type::Dataclass(Dataclass::new(c.clone(), dataclass.options))
+                            }
+                            _ => t.clone(),
+                        }
+                    })
+                    .collect(),
+            );
         } else {
             calculate_callable_type_vars_and_return(
                 i_s,
