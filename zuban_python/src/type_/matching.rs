@@ -72,12 +72,17 @@ impl Type {
             Type::Never(_) => matches!(value_type, Type::Never(_)).into(),
             Type::Tuple(t1) => match value_type {
                 Type::Tuple(t2) => {
-                    Self::matches_tuple(i_s, matcher, t1, t2, variance).similar_if_false()
-                }
-                Type::NamedTuple(t2) => {
-                    Self::matches_tuple(i_s, matcher, t1, &t2.as_tuple(), variance)
+                    match_tuple_type_arguments(i_s, matcher, &t1.args, &t2.args, variance)
                         .similar_if_false()
                 }
+                Type::NamedTuple(t2) => match_tuple_type_arguments(
+                    i_s,
+                    matcher,
+                    &t1.args,
+                    &t2.as_tuple().args,
+                    variance,
+                )
+                .similar_if_false(),
                 _ => Match::new_false(),
             },
             Type::Union(union_type1) => {
@@ -748,16 +753,6 @@ impl Type {
             return Match::new_false();
         }
         matches
-    }
-
-    fn matches_tuple(
-        i_s: &InferenceState,
-        matcher: &mut Matcher,
-        t1: &Tuple,
-        t2: &Tuple,
-        variance: Variance,
-    ) -> Match {
-        match_tuple_type_arguments(i_s, matcher, &t1.args, &t2.args, variance)
     }
 }
 
