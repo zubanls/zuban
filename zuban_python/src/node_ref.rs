@@ -87,12 +87,7 @@ impl<'file> NodeRef<'file> {
             if point.maybe_specific() == Some(Specific::Cycle) {
                 return;
             }
-            let new = self
-                .file
-                .inference(i_s)
-                .check_point_cache(self.node_index)
-                .unwrap()
-                .simplified_union(i_s, add.clone());
+            let new = self.expect_inferred(i_s).simplified_union(i_s, add.clone());
             self.set_point(Point::new_uncalculated());
             new.save_redirect(i_s, self.file, self.node_index);
         } else {
@@ -215,6 +210,13 @@ impl<'file> NodeRef<'file> {
 
     pub fn as_named_expression(&self) -> NamedExpression<'file> {
         NamedExpression::by_index(&self.file.tree, self.node_index)
+    }
+
+    pub fn expect_inferred(&self, i_s: &InferenceState) -> Inferred {
+        self.file
+            .inference(i_s)
+            .check_point_cache(self.node_index)
+            .unwrap()
     }
 
     pub fn expect_assignment(&self) -> Assignment<'file> {

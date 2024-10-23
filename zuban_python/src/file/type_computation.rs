@@ -5055,14 +5055,7 @@ pub(super) fn check_type_name<'db: 'file, 'file>(
                 } else {
                     // This typically happens with a module __getattr__ and the type can be
                     // anything.
-                    check_module_getattr_type(
-                        i_s,
-                        name_def_ref
-                            .file
-                            .inference(i_s)
-                            .check_point_cache(name_def_ref.node_index)
-                            .unwrap(),
-                    )
+                    check_module_getattr_type(i_s, name_def_ref.expect_inferred(i_s))
                 }
             } else {
                 name_node_ref
