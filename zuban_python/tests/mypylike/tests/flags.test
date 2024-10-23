@@ -78,3 +78,11 @@ main:1:10:1:11: error: Incompatible types in assignment (expression has type "in
 # flags: --strict
 from typing import Any
 def foo(x: Any) -> None: ...
+
+[case cast_arbitrary_len_tuple_to_fixed_len]
+# flags: --warn-redundant-casts
+from typing import cast
+def foo(x: tuple[int, ...], y: tuple[int, int]) -> tuple[int, int]:
+    if bool():
+        return cast(tuple[int, int], y)  # E: Redundant cast to "tuple[int, int]"
+    return cast(tuple[int, int], x)

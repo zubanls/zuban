@@ -559,8 +559,8 @@ impl Type {
                     TypeVarLike::TypeVar(t) if variance == Variance::Contravariant => {
                         t.variance.invert()
                     }
-                    TypeVarLike::ParamSpec(_) => Variance::Covariant,
-                    _ => Variance::Invariant,
+                    TypeVarLike::TypeVar(t) => Variance::Invariant,
+                    TypeVarLike::TypeVarTuple(_) | TypeVarLike::ParamSpec(_) => Variance::Covariant,
                 };
                 matches &= t1.matches(i_s, matcher, &t2, v);
             }
@@ -811,11 +811,15 @@ fn match_tuple_type_arguments_internal(
             match_arbitrary_len_vs_unpack(i_s, matcher, t1, u2, variance)
         }
         (FixedLen(_), WithUnpack(_)) => Match::new_false(),
-        (_, ArbitraryLen(t2)) => matches!(t2.as_ref(), Type::Any(_)).into(),
-        (ArbitraryLen(t1), FixedLen(ts2)) => ts2
-            .iter()
-            .all(|t2| t1.matches(i_s, matcher, t2, variance).bool())
-            .into(),
+        (FixedLen(_), ArbitraryLen(t2)) => matches!(t2.as_ref(), Type::Any(_)).into(),
+        (ArbitraryLen(t1), FixedLen(ts2)) => {
+            if variance == Variance::Invariant {
+                return Match::new_false();
+            }
+            ts2.iter()
+                .all(|t2| t1.matches(i_s, matcher, t2, variance).bool())
+                .into()
+        }
     }
 }
 
