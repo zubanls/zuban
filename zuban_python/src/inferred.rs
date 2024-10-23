@@ -747,18 +747,19 @@ impl<'db: 'slf, 'slf> Inferred {
                 let node_ref = NodeRef::from_link(i_s.db, link);
                 let point = node_ref.point();
                 match point.kind() {
-                    PointKind::Specific => {
-                        if !matches!(
-                            point.specific(),
-                            Specific::IntLiteral
-                                | Specific::StringLiteral
-                                | Specific::BytesLiteral
-                                | Specific::BoolLiteral
-                                | Specific::AnnotationOrTypeCommentFinal
-                        ) {
-                            return self;
+                    PointKind::Specific => match point.specific() {
+                        Specific::MaybeSelfParam => {
+                            return Inferred::from_type(
+                                i_s.current_class().unwrap().as_type(i_s.db),
+                            )
                         }
-                    }
+                        Specific::IntLiteral
+                        | Specific::StringLiteral
+                        | Specific::BytesLiteral
+                        | Specific::BoolLiteral
+                        | Specific::AnnotationOrTypeCommentFinal => (),
+                        _ => return self,
+                    },
                     PointKind::Complex => {
                         if !matches!(node_ref.complex().unwrap(), ComplexPoint::TypeInstance(_)) {
                             return self;

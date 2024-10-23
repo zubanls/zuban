@@ -802,3 +802,19 @@ import lxml  # E: Library stubs not installed for "lxml"  [import-untyped] \
              # N: Hint: "python3 -m pip install lxml-stubs" \
              # N: (or run "mypy --install-types" to install all missing stub packages)
 import undefined   # E: Cannot find implementation or library stub for module named "undefined"  [import-not-found]
+
+[case assign_self_to_variable]
+from typing import Self
+
+class X:
+    def __init__(self) -> None:
+        y = self
+        y = X()
+
+        z: Self = self
+        a = z
+        reveal_type(a)  # N: Revealed type is "Self"
+
+    def foo(self: Self) -> None:
+        y = self
+        y = X()  # E: Incompatible types in assignment (expression has type "X", variable has type "Self")

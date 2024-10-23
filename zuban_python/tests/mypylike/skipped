@@ -8,6 +8,7 @@ avoid_type_computation_recursion
 testOverloadPossibleOverlapWithArgsAndKwargs
 
 testLiteralAndGenericsRespectsUpperBound
+self_instance_variable1
 
 # regressions
 testIncrementalInvalidNamedTupleInUnannotatedFunction
