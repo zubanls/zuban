@@ -286,3 +286,8 @@ def foo(x: Iterable[int], y: tuple[int, str]) -> None:
     reveal_type(tuple(x))  # N: Revealed type is "tuple[int, ...]"
     reveal_type(tuple(y))  # N: Revealed type is "tuple[int | str, ...]"
     reveal_type(tuple())  # N: Revealed type is "tuple[Never, ...]"
+
+[case tuple_execution_with_context]
+def foo(wanted: tuple[list[int], ...]) -> None:
+    wanted = tuple([[]])
+    wanted = tuple([[1]])

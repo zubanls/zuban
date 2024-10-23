@@ -812,8 +812,25 @@ pub fn execute_tuple_class<'db>(
         .db
         .python_state
         .tuple_class_with_generics_to_be_defined();
-    let class_execution_result =
-        tup_cls.execute_and_return_generics(i_s, args, result_context, on_type_error, true);
+    let context_t = result_context.with_type_if_exists_and_replace_type_var_likes(i_s, |t| {
+        t.iter_with_unpacked_unions(i_s.db)
+            .map(|t| match t {
+                Type::Tuple(tup) => tup.class(i_s.db).as_type(i_s.db),
+                _ => t.clone(),
+            })
+            .collect()
+    });
+    let mut new_result_context = match &context_t {
+        Some(t) => ResultContext::new_known(&t),
+        None => ResultContext::Unknown,
+    };
+    let class_execution_result = tup_cls.execute_and_return_generics(
+        i_s,
+        args,
+        &mut new_result_context,
+        on_type_error,
+        true,
+    );
     // While we theoretically now have a result, but that result is essentially just an instance of
     // "class tuple". We however would want a Tuple[int, ...] instead. Therefore we unpack the type
     // we got here.
