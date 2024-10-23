@@ -1394,7 +1394,9 @@ impl<'db: 'slf, 'slf> Inferred {
                                     infer_overloaded_class_method(i_s, *class, attribute_class, o)
                                 else {
                                     add_issue(IssueKind::InvalidSelfArgument {
-                                        argument_type: class.as_type_type(i_s).format_short(i_s.db),
+                                        argument_type: class
+                                            .as_type_type(i_s.db)
+                                            .format_short(i_s.db),
                                         function_name: o
                                             .iter_functions()
                                             .next()
@@ -1512,7 +1514,7 @@ impl<'db: 'slf, 'slf> Inferred {
                     let result = infer_class_method(i_s, *class, attribute_class, c, as_type_type);
                     if result.is_none() {
                         let inv = IssueKind::InvalidSelfArgument {
-                            argument_type: class.as_type_type(i_s).format_short(i_s.db),
+                            argument_type: class.as_type_type(i_s.db).format_short(i_s.db),
                             function_name: c.name(i_s.db).into(),
                             callable: t.format_short(i_s.db),
                         };
@@ -2402,7 +2404,7 @@ pub fn infer_class_method<'db: 'class, 'class>(
         },
         || match as_type_type {
             Some(as_type_type) => as_type_type(),
-            None => class.as_type_type(i_s),
+            None => class.as_type_type(i_s.db),
         },
     )
 }
@@ -2554,7 +2556,7 @@ fn type_of_complex<'db: 'x, 'x>(
                 Generics::NotDefinedYet,
                 None,
             );
-            Cow::Owned(cls.as_type_type(i_s))
+            Cow::Owned(cls.as_type_type(i_s.db))
         }
         ComplexPoint::FunctionOverload(overload) => {
             let overload = OverloadedFunction::new(&overload.functions, i_s.current_class());

@@ -1432,7 +1432,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                             &c.lookup(i_s, name, ClassLookupOptions::new(&|_| ()).with_as_type_type(&|| if other.is_subclassable(i_s.db) {
                                                 Type::Type(Rc::new(other.clone()))
                                             } else {
-                                                self.as_type_type(i_s)
+                                                self.as_type_type(i_s.db)
                                             }))
                                                 .lookup
                                                 .into_inferred()
@@ -1844,7 +1844,9 @@ impl<'db: 'a, 'a> Class<'a> {
                             i_s,
                             name,
                             InstanceLookupOptions::new(options.add_issue).with_as_self_instance(
-                                options.as_type_type.unwrap_or(&|| self.as_type_type(i_s)),
+                                options
+                                    .as_type_type
+                                    .unwrap_or(&|| self.as_type_type(i_s.db)),
                             ),
                         )
                     }
@@ -2023,7 +2025,7 @@ impl<'db: 'a, 'a> Class<'a> {
     }
 
     pub fn as_inferred(&self, i_s: &InferenceState) -> Inferred {
-        Inferred::from_type(self.as_type_type(i_s))
+        Inferred::from_type(self.as_type_type(i_s.db))
     }
 
     pub fn generics_as_list(&self, db: &Database) -> ClassGenerics {
@@ -2069,8 +2071,8 @@ impl<'db: 'a, 'a> Class<'a> {
         Type::Class(self.as_generic_class(db))
     }
 
-    pub fn as_type_type(&self, i_s: &InferenceState<'db, '_>) -> Type {
-        let class_infos = self.use_cached_class_infos(i_s.db);
+    pub fn as_type_type(&self, db: &Database) -> Type {
+        let class_infos = self.use_cached_class_infos(db);
         Type::Type(if matches!(self.generics, Generics::NotDefinedYet) {
             class_infos
                 .undefined_generics_type
@@ -2082,7 +2084,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 })
                 .clone()
         } else {
-            Rc::new(self.as_type(i_s.db))
+            Rc::new(self.as_type(db))
         })
     }
 
