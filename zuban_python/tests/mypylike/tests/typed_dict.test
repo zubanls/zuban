@@ -28,3 +28,14 @@ foo(y=1)
 bar(y=1)  # E: Missing named argument "x" for "bar"
 foo(x=1)
 bar(x=1)
+
+[case invalid_typed_dict_inference]
+# This used to lead to stack overflows
+from typing import TypeVar
+T = TypeVar("T")
+U = TypeVar("U")
+def foo(x: T) -> T:
+    def bar(x: U, y: T) -> U: ...
+
+    bar(1, {})  # E: Argument 2 to "bar" has incompatible type "dict[Never, Never]"; expected "T"
+    return x

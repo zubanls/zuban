@@ -1398,9 +1398,11 @@ impl Type {
                 .on_any_resolved_context_type(i_s, matcher, callable),
             type_ @ Type::TypeVar(_) => {
                 if matcher.might_have_defined_type_vars() {
-                    matcher
-                        .replace_type_var_likes_for_nested_context(i_s.db, type_)
-                        .on_any_resolved_context_type(i_s, matcher, callable)
+                    let new = matcher.replace_type_var_likes_for_nested_context(i_s.db, type_);
+                    if &new == type_ {
+                        return false;
+                    }
+                    new.on_any_resolved_context_type(i_s, matcher, callable)
                 } else {
                     false
                 }
