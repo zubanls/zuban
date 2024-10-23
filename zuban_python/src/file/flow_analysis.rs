@@ -3160,8 +3160,12 @@ impl Inference<'_, '_, '_> {
             )),
             PrimaryContent::Execution(_) => None,
             PrimaryContent::GetItem(slice_type) => {
-                //self.key_from_slice_type(slice_type).map(|match_index| FlowKey::Index { base_key: Rc::new(base_key), node_index: slice_type.index(), match_index })
-                None
+                self.key_from_slice_type(slice_type)
+                    .map(|match_index| FlowKey::Index {
+                        base_key: Rc::new(base_key),
+                        node_index: slice_type.index(),
+                        match_index,
+                    })
             }
         }
     }

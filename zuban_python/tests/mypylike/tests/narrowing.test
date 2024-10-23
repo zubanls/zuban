@@ -1556,3 +1556,9 @@ x: int | None = None
 def foo() -> None:
     if x is not None:
         x + 1 == 1
+
+[case narrowed_aug_assign]
+def foo(x: dict[str, object]) -> None:
+    if "foo" in x:
+        assert isinstance(x["foo"], str)
+        x["foo"] += "-a"
