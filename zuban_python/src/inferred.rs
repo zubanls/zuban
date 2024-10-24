@@ -40,6 +40,8 @@ use crate::{
     },
 };
 
+pub const NAME_DEF_TO_DEFAULTDICT_DIFF: i64 = -1;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd)]
 pub struct MroIndex(pub u32);
 
@@ -2703,14 +2705,24 @@ pub fn specific_to_type<'db>(
             definition.add_need_type_annotation_issue(i_s, specific);
             Cow::Borrowed(&i_s.db.python_state.set_of_any)
         }
-        Specific::PartialDefaultDict
-        | Specific::PartialDefaultDictWithList
-        | Specific::PartialDefaultDictWithSet => {
+        Specific::PartialDefaultDictWithList | Specific::PartialDefaultDictWithSet => {
             definition.add_need_type_annotation_issue(i_s, specific);
             Cow::Owned(new_class!(
                 i_s.db.python_state.defaultdict_link(),
                 Type::Any(AnyCause::FromError),
                 Type::Any(AnyCause::FromError),
+            ))
+        }
+        Specific::PartialDefaultDict => {
+            definition.add_need_type_annotation_issue(i_s, specific);
+            let value_node_ref = definition.add_to_node_index(NAME_DEF_TO_DEFAULTDICT_DIFF);
+            let Some(ComplexPoint::TypeInstance(value_t)) = value_node_ref.complex() else {
+                unreachable!()
+            };
+            Cow::Owned(new_class!(
+                i_s.db.python_state.defaultdict_link(),
+                Type::Any(AnyCause::FromError),
+                value_t.clone(),
             ))
         }
         Specific::BuiltinsIsinstance => Cow::Owned(i_s.db.python_state.isinstance_type(i_s.db)),

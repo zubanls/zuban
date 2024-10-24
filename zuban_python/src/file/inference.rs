@@ -24,6 +24,7 @@ use crate::{
     inference_state::InferenceState,
     inferred::{
         add_attribute_error, specific_to_type, AttributeKind, Inferred, MroIndex, UnionValue,
+        NAME_DEF_TO_DEFAULTDICT_DIFF,
     },
     matching::{
         format_got_expected, CouldBeALiteral, ErrorStrs, ErrorTypes, IteratorContent, LookupKind,
@@ -47,7 +48,6 @@ use crate::{
 };
 
 const ENUM_NAMES_OVERRIDABLE: [&str; 2] = ["value", "name"];
-const NAME_DEF_TO_DEFAULTDICT_DIFF: i64 = -1;
 
 pub struct Inference<'db: 'file, 'file, 'i_s> {
     pub(super) file: &'file PythonFile,
