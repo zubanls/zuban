@@ -6,7 +6,6 @@ self_annotation_eq_mismatch
 mypy_setup_ini_with_multiline_string
 avoid_type_computation_recursion
 testOverloadPossibleOverlapWithArgsAndKwargs
-partial_dict_on_self
 
 testLiteralAndGenericsRespectsUpperBound
 self_instance_variable1
@@ -253,10 +252,7 @@ testNarrowedVariableInNestedFunctionMore1
 # partials: OrderedDict
 testInferOrderedDictInitializedToEmpty
 # partials: defaultdict
-testPartialDefaultDictSpecialCases
 testPartialDefaultDictSpecialCases2
-testPartialDefaultDictSpecialCase3
-testDefaultDict
 # partials: No "Need type annotation for "X"", because untyped update exists
 testInferDictInitializedToEmptyAndUpdatedFromMethodUnannotated
 testCheckUntypedDefsSelf2
