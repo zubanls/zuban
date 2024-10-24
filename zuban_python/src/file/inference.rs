@@ -3062,7 +3062,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         &self,
         primary_method: Primary,
         maybe_defaultdict: bool,
-    ) -> Option<NodeRef> {
+    ) -> Option<(NodeRef, Option<Inferred>)> {
         match primary_method.first() {
             PrimaryOrAtom::Primary(prim) => {
                 let index = prim.index();
@@ -3076,23 +3076,37 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         if !matches!(prim.first(), PrimaryOrAtom::Atom(_)) {
                             return None;
                         }
-                        self.infer_primary(prim, &mut ResultContext::Unknown)
-                            .save_redirect(self.i_s, self.file, index)
-                            .maybe_saved_node_ref(self.i_s.db)
+                        Some((
+                            self.infer_primary(prim, &mut ResultContext::Unknown)
+                                .save_redirect(self.i_s, self.file, index)
+                                .maybe_saved_node_ref(self.i_s.db)?,
+                            None,
+                        ))
                     }
                     PrimaryContent::GetItem(getitem) => {
                         if maybe_defaultdict {
                             // This is for defaultdicts
-                            return self.infer_potential_partial_base(prim, false);
+                            let (base, _) = self.infer_potential_partial_base(prim, false)?;
+                            match base.point().maybe_specific()? {
+                                Specific::PartialDefaultDictWithList
+                                | Specific::PartialDefaultDictWithSet => {
+                                    let s = SliceType::new(self.file, prim.index(), getitem);
+                                    Some((base, Some(s.infer(self.i_s))))
+                                }
+                                _ => None,
+                            }
+                        } else {
+                            None
                         }
-                        None
                     }
                     PrimaryContent::Execution(_) => None,
                 }
             }
-            PrimaryOrAtom::Atom(atom) => self
-                .infer_atom(atom, &mut ResultContext::Unknown)
-                .maybe_saved_node_ref(self.i_s.db),
+            PrimaryOrAtom::Atom(atom) => Some((
+                self.infer_atom(atom, &mut ResultContext::Unknown)
+                    .maybe_saved_node_ref(self.i_s.db)?,
+                None,
+            )),
         }
     }
 
@@ -3107,7 +3121,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             return;
         };
         let i_s = self.i_s;
-        let Some(base) = self.infer_potential_partial_base(primary_method, true) else {
+        let Some((base, defaultdict_key)) = self.infer_potential_partial_base(primary_method, true)
+        else {
             return;
         };
         let first_arg_as_t = || {
@@ -3163,7 +3178,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             let t = find_container_types(unwrap_from_iterable)?;
             save_partial(new_class!(
                 i_s.db.python_state.defaultdict_link(),
-                Type::Any(AnyCause::Todo),
+                defaultdict_key?
+                    .as_type(self.i_s)
+                    .avoid_implicit_literal(self.i_s.db),
                 new_class!(container_partial_link, t)
             ))
         };

@@ -2703,7 +2703,9 @@ pub fn specific_to_type<'db>(
             definition.add_need_type_annotation_issue(i_s, specific);
             Cow::Borrowed(&i_s.db.python_state.set_of_any)
         }
-        Specific::PartialDefaultDict => {
+        Specific::PartialDefaultDict
+        | Specific::PartialDefaultDictWithList
+        | Specific::PartialDefaultDictWithSet => {
             definition.add_need_type_annotation_issue(i_s, specific);
             Cow::Owned(new_class!(
                 i_s.db.python_state.defaultdict_link(),

@@ -1241,3 +1241,10 @@ def foo(a: Any) -> None:
 y = X(list)  # E: Need type annotation for "y"
 reveal_type(y)  # N: Revealed type is "__main__.X[Any, list[Any]]"
 y[[]].append(1)
+
+[case partial_dict_on_self]
+class A:
+    def f(self) -> None:
+        self.x = dict()
+        self.x[1] = ""
+        reveal_type(self.x)
