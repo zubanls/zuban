@@ -47,6 +47,7 @@ use crate::{
 };
 
 const ENUM_NAMES_OVERRIDABLE: [&str; 2] = ["value", "name"];
+const NAME_DEF_TO_DEFAULTDICT_DIFF: i64 = -1;
 
 pub struct Inference<'db: 'file, 'file, 'i_s> {
     pub(super) file: &'file PythonFile,
@@ -1343,6 +1344,15 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     narrow(first_name_link, &declaration_t)
                 }
             };
+        let set_defaultdict_type = |name_node_ref: NodeRef, t| {
+            // It feels very weird that we're saving on the index before the defaultdict
+            // definition, but it seems to be fine since this should either be a `,` for tuple
+            // assignments or a `.` for self assignments or a star_targets / single_target that is
+            // not used.
+            let save_to = name_node_ref.add_to_node_index(NAME_DEF_TO_DEFAULTDICT_DIFF);
+            assert!(!save_to.point().calculated());
+            save_to.insert_type(t)
+        };
         let check_assign_including_partials = |first_index, original: &Inferred, base_class| {
             if let Some(saved_node_ref) = original.maybe_saved_node_ref(i_s.db) {
                 let point = saved_node_ref.point();
@@ -1373,7 +1383,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 };
                 let is_done = match point.maybe_specific() {
                     Some(Specific::PartialNone) => {
-                        if let Some(p) = value.maybe_new_nullable_partial_point(i_s) {
+                        if let Some(p) = value.maybe_new_nullable_partial_point(i_s, |t| todo!()) {
                             saved_node_ref.set_point(p);
                             return;
                         }
@@ -1629,11 +1639,13 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 return;
             }
             if assign_kind == AssignKind::Normal {
-                if let Some(partial) = value.maybe_new_partial(i_s) {
-                    FLOW_ANALYSIS.with(|fa| {
-                        fa.add_partial(PointLink::new(self.file.file_index, name_def.index()))
-                    });
+                if let Some(partial) = value.maybe_new_partial(i_s, |t| {
+                    set_defaultdict_type(NodeRef::new(self.file, name_def.index()), t)
+                }) {
                     let name_def_index = name_def.index();
+                    FLOW_ANALYSIS.with(|fa| {
+                        fa.add_partial(PointLink::new(self.file.file_index, name_def_index))
+                    });
                     save(name_def_index, &partial);
 
                     // Mypy does not flag partials in non-classes with "Need type annotation".
@@ -1927,6 +1939,24 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     ) = point.maybe_specific()
                     {
                         if !point.partial_flags().finished {
+                            let value_t = value.as_type(i_s);
+                            if specific == Specific::PartialDefaultDict {
+                                let Some(ComplexPoint::TypeInstance(original_value)) = from
+                                    .add_to_node_index(NAME_DEF_TO_DEFAULTDICT_DIFF)
+                                    .complex()
+                                else {
+                                    unreachable!(
+                                        "The defaultdict value type should always be defined"
+                                    )
+                                };
+                                if !original_value
+                                    .is_simple_same_type(self.i_s, &value_t)
+                                    .bool()
+                                {
+                                    from.add_need_type_annotation_issue(i_s, specific);
+                                    return;
+                                }
+                            }
                             let new_dict = new_class!(
                                 match specific {
                                     Specific::PartialDict =>
@@ -1934,7 +1964,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                     _ => i_s.db.python_state.defaultdict_link(),
                                 },
                                 s_t.infer(i_s).as_type(i_s).avoid_implicit_literal(i_s.db),
-                                value.as_type(i_s),
+                                value_t,
                             );
                             if new_dict.has_never_from_inference(self.i_s.db) {
                                 from.finish_partial_with_annotation_needed(i_s);

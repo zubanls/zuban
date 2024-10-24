@@ -291,7 +291,11 @@ impl<'db: 'slf, 'slf> Inferred {
         self.as_cow_type(i_s).maybe_callable(i_s)
     }
 
-    pub fn maybe_new_partial(&self, i_s: &InferenceState) -> Option<Inferred> {
+    pub fn maybe_new_partial(
+        &self,
+        i_s: &InferenceState,
+        set_defaultdict_type: impl Fn(Type),
+    ) -> Option<Inferred> {
         if self.maybe_saved_specific(i_s.db) == Some(Specific::None)
             || matches!(
                 self.state,
@@ -303,8 +307,10 @@ impl<'db: 'slf, 'slf> Inferred {
         let Some(ComplexPoint::TypeInstance(t)) = self.maybe_complex_point(i_s.db) else {
             return None;
         };
-        Self::maybe_new_partial_point_internal(i_s, t).map(|specific| Inferred {
-            state: InferredState::UnsavedSpecific(specific),
+        Self::maybe_new_partial_point_internal(i_s, t, set_defaultdict_type).map(|specific| {
+            Inferred {
+                state: InferredState::UnsavedSpecific(specific),
+            }
         })
     }
 
@@ -328,11 +334,15 @@ impl<'db: 'slf, 'slf> Inferred {
         })
     }
 
-    pub fn maybe_new_nullable_partial_point(&self, i_s: &InferenceState) -> Option<Point> {
+    pub fn maybe_new_nullable_partial_point(
+        &self,
+        i_s: &InferenceState,
+        set_defaultdict_type: impl Fn(Type),
+    ) -> Option<Point> {
         let Some(ComplexPoint::TypeInstance(t)) = self.maybe_complex_point(i_s.db) else {
             return None;
         };
-        Self::maybe_new_partial_point_internal(i_s, t).map(|specific| {
+        Self::maybe_new_partial_point_internal(i_s, t, set_defaultdict_type).map(|specific| {
             let mut p = Point::new_specific(specific, Locality::Todo);
             let mut flags = p.partial_flags();
             flags.nullable = true;
@@ -341,7 +351,11 @@ impl<'db: 'slf, 'slf> Inferred {
         })
     }
 
-    fn maybe_new_partial_point_internal(i_s: &InferenceState, t: &Type) -> Option<Specific> {
+    fn maybe_new_partial_point_internal(
+        i_s: &InferenceState,
+        t: &Type,
+        set_defaultdict_type: impl Fn(Type),
+    ) -> Option<Specific> {
         let Type::Class(
             c @ GenericClass {
                 link,
@@ -362,13 +376,15 @@ impl<'db: 'slf, 'slf> Inferred {
             let first = cls.nth_type_argument(i_s.db, 0);
             if first.is_never() {
                 let second = cls.nth_type_argument(i_s.db, 1);
-                return match Self::maybe_new_partial_point_internal(i_s, &second) {
+                fn dont_set_type(_: Type) {}
+                return match Self::maybe_new_partial_point_internal(i_s, &second, dont_set_type) {
                     Some(Specific::PartialList) => Some(Specific::PartialDefaultDictWithList),
                     Some(Specific::PartialSet) => Some(Specific::PartialDefaultDictWithSet),
                     _ => {
                         if second.has_never_from_inference(i_s.db) {
                             None
                         } else {
+                            set_defaultdict_type(second);
                             Some(Specific::PartialDefaultDict)
                         }
                     }
@@ -2686,6 +2702,14 @@ pub fn specific_to_type<'db>(
         Specific::PartialSet => {
             definition.add_need_type_annotation_issue(i_s, specific);
             Cow::Borrowed(&i_s.db.python_state.set_of_any)
+        }
+        Specific::PartialDefaultDict => {
+            definition.add_need_type_annotation_issue(i_s, specific);
+            Cow::Owned(new_class!(
+                i_s.db.python_state.defaultdict_link(),
+                Type::Any(AnyCause::FromError),
+                Type::Any(AnyCause::FromError),
+            ))
         }
         Specific::BuiltinsIsinstance => Cow::Owned(i_s.db.python_state.isinstance_type(i_s.db)),
         Specific::BuiltinsIssubclass => Cow::Owned(i_s.db.python_state.issubclass_type(i_s.db)),

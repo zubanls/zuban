@@ -254,8 +254,6 @@ testNarrowedVariableInNestedFunctionMore1
 # partials: OrderedDict
 testInferOrderedDictInitializedToEmpty
 # partials: defaultdict
-testPartialDefaultDict
-testPartialDefaultDictInconsistentValueTypes
 testPartialDefaultDictListValue
 testPartialDefaultDictListValueStrictOptional
 testPartialDefaultDictSpecialCases
