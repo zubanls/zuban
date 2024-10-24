@@ -3236,7 +3236,13 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 _ => (),
             },
             Some(Specific::PartialDefaultDictWithSet) => match method_name.as_code() {
-                _ => todo!(),
+                "add" | "discard" => {
+                    try_to_save_defaultdict(i_s.db.python_state.set_node_ref().as_link(), false);
+                }
+                "update" => {
+                    try_to_save_defaultdict(i_s.db.python_state.set_node_ref().as_link(), true);
+                }
+                _ => (),
             },
             _ => (),
         };

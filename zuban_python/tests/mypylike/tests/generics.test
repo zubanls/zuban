@@ -1248,3 +1248,13 @@ class A:
         self.x = dict()
         self.x[1] = ""
         reveal_type(self.x)  # N: Revealed type is "dict[int, str]"
+
+[case partial_defaultdict_with_set]
+from collections import defaultdict
+x = defaultdict(set)
+x[1].add("")
+reveal_type(x)  # N: Revealed type is "collections.defaultdict[int, set[str]]"
+
+y = defaultdict(set)
+y[1].update([""])
+reveal_type(x)  # N: Revealed type is "collections.defaultdict[int, set[str]]"
