@@ -3058,6 +3058,44 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         result
     }
 
+    fn infer_potential_partial_base(
+        &self,
+        primary_method: Primary,
+        maybe_defaultdict: bool,
+    ) -> Option<NodeRef> {
+        match primary_method.first() {
+            PrimaryOrAtom::Primary(prim) => {
+                let index = prim.index();
+                if self.file.points.get(index).calculated() {
+                    // This means that we have already tried so return.
+                    return None;
+                }
+                match prim.second() {
+                    PrimaryContent::Attribute(attr) => {
+                        // Only care about very specific cases here.
+                        if !matches!(prim.first(), PrimaryOrAtom::Atom(_)) {
+                            return None;
+                        }
+                        self.infer_primary(prim, &mut ResultContext::Unknown)
+                            .save_redirect(self.i_s, self.file, index)
+                            .maybe_saved_node_ref(self.i_s.db)
+                    }
+                    PrimaryContent::GetItem(getitem) => {
+                        if maybe_defaultdict {
+                            // This is for defaultdicts
+                            return self.infer_potential_partial_base(prim, false);
+                        }
+                        None
+                    }
+                    PrimaryContent::Execution(_) => None,
+                }
+            }
+            PrimaryOrAtom::Atom(atom) => self
+                .infer_atom(atom, &mut ResultContext::Unknown)
+                .maybe_saved_node_ref(self.i_s.db),
+        }
+    }
+
     fn try_to_infer_partial_from_primary(&self, primary: Primary) {
         let PrimaryContent::Execution(execution) = primary.second() else {
             return;
@@ -3069,24 +3107,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             return;
         };
         let i_s = self.i_s;
-        let base = match primary_method.first() {
-            PrimaryOrAtom::Primary(prim) => {
-                let index = prim.index();
-                if self.file.points.get(index).calculated() {
-                    // This means that we have already tried so return.
-                    return;
-                }
-                // Only care about very specific cases here.
-                if !matches!(prim.first(), PrimaryOrAtom::Atom(_)) {
-                    return;
-                }
-                if !matches!(prim.second(), PrimaryContent::Attribute(_)) {
-                    return;
-                }
-                self.infer_primary(prim, &mut ResultContext::Unknown)
-                    .save_redirect(i_s, self.file, index)
-            }
-            PrimaryOrAtom::Atom(atom) => self.infer_atom(atom, &mut ResultContext::Unknown),
+        let Some(base) = self.infer_potential_partial_base(primary_method, true) else {
+            return;
         };
         let first_arg_as_t = || {
             let args = SimpleArgs::new(*i_s, self.file, primary.index(), execution);
@@ -3094,8 +3116,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             Some(arg.as_type(i_s).avoid_implicit_literal(i_s.db))
         };
         let save_partial = |resolved_partial: Type| {
-            let from = base.maybe_saved_node_ref(i_s.db).unwrap();
-            let point = from.point();
+            let point = base.point();
             if point.kind() != PointKind::Specific {
                 // This is a nested partial like:
                 //
@@ -3109,7 +3130,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 return None;
             }
             if resolved_partial.has_never_from_inference(self.i_s.db) {
-                from.finish_partial_with_annotation_needed(i_s);
+                base.finish_partial_with_annotation_needed(i_s);
                 return Some(());
             }
             debug!(
@@ -3117,10 +3138,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 primary.as_code(),
                 resolved_partial.format_short(i_s.db)
             );
-            from.insert_type(resolved_partial);
+            base.insert_type(resolved_partial);
             Some(())
         };
-        let try_to_save = |partial_class_link, unwrap_from_iterable| {
+        let find_container_types = |unwrap_from_iterable| {
             let mut t = first_arg_as_t()?;
             if unwrap_from_iterable && !t.is_any() {
                 t = t.mro(i_s.db).find_map(|(_, type_or_class)| {
@@ -3132,9 +3153,21 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     None
                 })?;
             }
+            Some(t)
+        };
+        let try_to_save = |partial_class_link, unwrap_from_iterable| {
+            let t = find_container_types(unwrap_from_iterable)?;
             save_partial(new_class!(partial_class_link, t))
         };
-        match base.maybe_saved_specific(i_s.db) {
+        let try_to_save_defaultdict = |container_partial_link, unwrap_from_iterable| {
+            let t = find_container_types(unwrap_from_iterable)?;
+            save_partial(new_class!(
+                i_s.db.python_state.defaultdict_link(),
+                Type::Any(AnyCause::Todo),
+                new_class!(container_partial_link, t)
+            ))
+        };
+        match base.point().maybe_specific() {
             Some(Specific::PartialList) => match method_name.as_code() {
                 "append" => {
                     try_to_save(i_s.db.python_state.list_node_ref().as_link(), false);
@@ -3167,6 +3200,19 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     try_to_save(i_s.db.python_state.set_node_ref().as_link(), true);
                 }
                 _ => (),
+            },
+            Some(Specific::PartialDefaultDictWithList) => match method_name.as_code() {
+                "append" => {
+                    let t = find_container_types(false);
+                    try_to_save_defaultdict(i_s.db.python_state.list_node_ref().as_link(), false);
+                }
+                "extend" => {
+                    try_to_save_defaultdict(i_s.db.python_state.list_node_ref().as_link(), true);
+                }
+                _ => (),
+            },
+            Some(Specific::PartialDefaultDictWithSet) => match method_name.as_code() {
+                _ => todo!(),
             },
             _ => (),
         };
