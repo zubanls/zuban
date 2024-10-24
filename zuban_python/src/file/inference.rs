@@ -1919,25 +1919,35 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 let s_t = SliceType::new(self.file, primary_target.index(), slice_type);
                 if let Some(from) = base.maybe_saved_node_ref(i_s.db) {
                     let point = from.point();
-                    if point.maybe_specific() == Some(Specific::PartialDict)
-                        && !point.partial_flags().finished
+                    if let Some(
+                        specific @ (Specific::PartialDict
+                        | Specific::PartialDefaultDict
+                        | Specific::PartialDefaultDictWithList
+                        | Specific::PartialDefaultDictWithSet),
+                    ) = point.maybe_specific()
                     {
-                        let new_dict = new_class!(
-                            i_s.db.python_state.dict_node_ref().as_link(),
-                            s_t.infer(i_s).as_type(i_s).avoid_implicit_literal(i_s.db),
-                            value.as_type(i_s),
-                        );
-                        if new_dict.has_never_from_inference(self.i_s.db) {
-                            from.finish_partial_with_annotation_needed(i_s);
+                        if !point.partial_flags().finished {
+                            let new_dict = new_class!(
+                                match specific {
+                                    Specific::PartialDict =>
+                                        i_s.db.python_state.dict_node_ref().as_link(),
+                                    _ => i_s.db.python_state.defaultdict_link(),
+                                },
+                                s_t.infer(i_s).as_type(i_s).avoid_implicit_literal(i_s.db),
+                                value.as_type(i_s),
+                            );
+                            if new_dict.has_never_from_inference(self.i_s.db) {
+                                from.finish_partial_with_annotation_needed(i_s);
+                                return;
+                            }
+                            debug!(
+                                r#"Infer dict assignment partial for "{}" as "{}""#,
+                                primary_target.as_code(),
+                                new_dict.format_short(i_s.db)
+                            );
+                            from.insert_type(new_dict);
                             return;
                         }
-                        debug!(
-                            r#"Infer dict assignment partial for "{}" as "{}""#,
-                            primary_target.as_code(),
-                            new_dict.format_short(i_s.db)
-                        );
-                        from.insert_type(new_dict);
-                        return;
                     }
                 }
                 base.type_check_set_item(i_s, s_t, value);

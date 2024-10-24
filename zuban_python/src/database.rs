@@ -290,6 +290,9 @@ impl Point {
                     | Specific::PartialList
                     | Specific::PartialDict
                     | Specific::PartialSet
+                    | Specific::PartialDefaultDict
+                    | Specific::PartialDefaultDictWithList
+                    | Specific::PartialDefaultDictWithSet
             ),
             "{:?}",
             self
@@ -502,7 +505,9 @@ pub enum Specific {
     PartialList,
     PartialDict,
     PartialSet,
-    // PartialDefaultDict,
+    PartialDefaultDict,
+    PartialDefaultDictWithList,
+    PartialDefaultDictWithSet,
 }
 
 impl Specific {
@@ -513,13 +518,21 @@ impl Specific {
                 | Specific::PartialList
                 | Specific::PartialDict
                 | Specific::PartialSet
+                | Specific::PartialDefaultDict
+                | Specific::PartialDefaultDictWithList
+                | Specific::PartialDefaultDictWithSet
         )
     }
 
     pub fn is_partial_container(self) -> bool {
         matches!(
             self,
-            Specific::PartialList | Specific::PartialDict | Specific::PartialSet
+            Specific::PartialList
+                | Specific::PartialDict
+                | Specific::PartialSet
+                | Specific::PartialDefaultDict
+                | Specific::PartialDefaultDictWithList
+                | Specific::PartialDefaultDictWithSet
         )
     }
 }

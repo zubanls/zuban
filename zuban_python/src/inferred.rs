@@ -303,10 +303,9 @@ impl<'db: 'slf, 'slf> Inferred {
         let Some(ComplexPoint::TypeInstance(t)) = self.maybe_complex_point(i_s.db) else {
             return None;
         };
-        self.maybe_new_partial_point_internal(i_s, t)
-            .map(|specific| Inferred {
-                state: InferredState::UnsavedSpecific(specific),
-            })
+        Self::maybe_new_partial_point_internal(i_s, t).map(|specific| Inferred {
+            state: InferredState::UnsavedSpecific(specific),
+        })
     }
 
     pub fn maybe_never_from_inference(
@@ -333,25 +332,22 @@ impl<'db: 'slf, 'slf> Inferred {
         let Some(ComplexPoint::TypeInstance(t)) = self.maybe_complex_point(i_s.db) else {
             return None;
         };
-        self.maybe_new_partial_point_internal(i_s, t)
-            .map(|specific| {
-                let mut p = Point::new_specific(specific, Locality::Todo);
-                let mut flags = p.partial_flags();
-                flags.nullable = true;
-                p = p.set_partial_flags(flags);
-                p
-            })
+        Self::maybe_new_partial_point_internal(i_s, t).map(|specific| {
+            let mut p = Point::new_specific(specific, Locality::Todo);
+            let mut flags = p.partial_flags();
+            flags.nullable = true;
+            p = p.set_partial_flags(flags);
+            p
+        })
     }
 
-    pub fn maybe_new_partial_point_internal(
-        &self,
-        i_s: &InferenceState,
-        t: &Type,
-    ) -> Option<Specific> {
-        let Type::Class(GenericClass {
-            link,
-            generics: ClassGenerics::List(generics),
-        }) = t
+    fn maybe_new_partial_point_internal(i_s: &InferenceState, t: &Type) -> Option<Specific> {
+        let Type::Class(
+            c @ GenericClass {
+                link,
+                generics: ClassGenerics::List(generics),
+            },
+        ) = t
         else {
             return None;
         };
@@ -360,6 +356,24 @@ impl<'db: 'slf, 'slf> Inferred {
         } else if *link == i_s.db.python_state.dict_node_ref().as_link() {
             Specific::PartialDict
         } else if *link == i_s.db.python_state.set_node_ref().as_link() {
+            Specific::PartialSet
+        } else if *link == i_s.db.python_state.defaultdict_link() {
+            let cls = c.class(i_s.db);
+            let first = cls.nth_type_argument(i_s.db, 0);
+            if first.is_never() {
+                let second = cls.nth_type_argument(i_s.db, 1);
+                return match Self::maybe_new_partial_point_internal(i_s, &second) {
+                    Some(Specific::PartialList) => Some(Specific::PartialDefaultDictWithList),
+                    Some(Specific::PartialSet) => Some(Specific::PartialDefaultDictWithSet),
+                    _ => {
+                        if second.has_never_from_inference(i_s.db) {
+                            None
+                        } else {
+                            Some(Specific::PartialDefaultDict)
+                        }
+                    }
+                };
+            }
             Specific::PartialSet
         } else {
             return None;

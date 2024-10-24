@@ -316,10 +316,13 @@ impl<'file> NodeRef<'file> {
 
     pub fn add_need_type_annotation_issue(&self, i_s: &InferenceState, specific: Specific) {
         let hint = match specific {
-            Specific::PartialNone => "<type> | None",
-            Specific::PartialList => "List[<type>]",
-            Specific::PartialDict => "Dict[<type>, <type>]",
-            Specific::PartialSet => "Set[<type>]",
+            Specific::PartialNone => Some("<type> | None"),
+            Specific::PartialList => Some("List[<type>]"),
+            Specific::PartialDict => Some("Dict[<type>, <type>]"),
+            Specific::PartialSet => Some("Set[<type>]"),
+            Specific::PartialDefaultDict
+            | Specific::PartialDefaultDictWithList
+            | Specific::PartialDefaultDictWithSet => None,
             _ => unreachable!(),
         };
         let point = self.point();
@@ -331,7 +334,7 @@ impl<'file> NodeRef<'file> {
                 i_s,
                 IssueKind::NeedTypeAnnotation {
                     for_: self.as_code().into(),
-                    hint: Some(hint),
+                    hint,
                 },
             );
         }

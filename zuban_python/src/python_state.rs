@@ -170,6 +170,7 @@ pub struct PythonState {
     types_ellipsis_type_index: Option<NodeIndex>,
     typing_ellipsis_fallback_index: Option<NodeIndex>,
     collections_namedtuple_index: NodeIndex,
+    collections_defaultdict_index: NodeIndex,
     _collections_abc_dict_keys_index: NodeIndex,
     abc_abc_meta_index: NodeIndex,
     abc_abstractmethod_index: NodeIndex,
@@ -296,6 +297,7 @@ impl PythonState {
             typing_supports_index_index: 0,
             typing_typed_dict_bases: Box::new([]), // Will be set later
             collections_namedtuple_index: 0,
+            collections_defaultdict_index: 0,
             _collections_abc_dict_keys_index: 0,
             abc_abc_meta_index: 0,
             abc_abstractmethod_index: 0,
@@ -630,6 +632,7 @@ impl PythonState {
             "namedtuple",
             true
         );
+        cache_index!(collections_defaultdict_index, collections, "defaultdict");
         cache_index!(
             _collections_abc_dict_keys_index,
             _collections_abc,
@@ -908,6 +911,7 @@ impl PythonState {
     attribute_link!(typing, pub runtime_checkable_link, typing_runtime_checkable_index);
     attribute_link!(typing_extensions, pub typing_extensions_runtime_checkable_link, typing_extensions_runtime_checkable_index);
     attribute_link!(typing, pub no_type_check_link, typing_no_type_check_index);
+    attribute_link!(collections, pub defaultdict_link, collections_defaultdict_index);
     optional_attribute_link!(types, ellipsis_type_link, types_ellipsis_type_index);
     optional_attribute_link!(
         typing,
