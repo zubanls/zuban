@@ -1235,9 +1235,9 @@ class X(dict[_KT, _VT]):
     def __init__(self, c: Callable[[], _VT]) -> None: ...
 
 def foo(a: Any) -> None:
-    reveal_type(X(list)[a])  # N: Revealed type is "list[Any]"
+    reveal_type(X(list)[a])  # N: Revealed type is "list[Never]"
     reveal_type(X(list[int])[a])  # N: Revealed type is "list[int]"
 
-y = X(list)
-reveal_type(y)
+y = X(list)  # E: Need type annotation for "y"
+reveal_type(y)  # N: Revealed type is "__main__.X[Any, list[Any]]"
 y[[]].append(1)

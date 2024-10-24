@@ -734,7 +734,7 @@ pub(crate) fn dataclass_initialize<'db>(
         Dataclass::new(
             GenericClass {
                 link: dataclass.class.link,
-                generics: class_generics.type_arguments_into_class_generics(),
+                generics: class_generics.type_arguments_into_class_generics(i_s.db),
             },
             dataclass.options,
         )

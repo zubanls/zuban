@@ -226,7 +226,7 @@ impl<'db: 'a, 'a> Class<'a> {
                     Some(on_type_error),
                 );
                 ClassExecutionResult::ClassGenerics(
-                    calculated_type_args.type_arguments_into_class_generics(),
+                    calculated_type_args.type_arguments_into_class_generics(i_s.db),
                 )
             }
             FunctionOrOverload::Callable(callable_content) => {
@@ -256,7 +256,7 @@ impl<'db: 'a, 'a> Class<'a> {
                     ),
                 };
                 ClassExecutionResult::ClassGenerics(
-                    calculated_type_args.type_arguments_into_class_generics(),
+                    calculated_type_args.type_arguments_into_class_generics(i_s.db),
                 )
             }
             FunctionOrOverload::Overload(overloaded_function) => match overloaded_function
@@ -271,7 +271,7 @@ impl<'db: 'a, 'a> Class<'a> {
                     &|_, calculated_type_args| {
                         Type::new_class(
                             self.node_ref.as_link(),
-                            calculated_type_args.type_arguments_into_class_generics(),
+                            calculated_type_args.type_arguments_into_class_generics(i_s.db),
                         )
                     },
                 ) {
@@ -287,7 +287,9 @@ impl<'db: 'a, 'a> Class<'a> {
                         result_context,
                         Some(on_type_error),
                     );
-                    ClassExecutionResult::ClassGenerics(result.type_arguments_into_class_generics())
+                    ClassExecutionResult::ClassGenerics(
+                        result.type_arguments_into_class_generics(i_s.db),
+                    )
                 }
                 OverloadResult::Union(t) => ClassExecutionResult::Inferred(Inferred::from_type(t)),
                 OverloadResult::NotFound => {

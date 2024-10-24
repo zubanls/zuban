@@ -157,7 +157,7 @@ pub struct CalculatedTypeArgs {
 }
 
 impl CalculatedTypeArgs {
-    pub fn type_arguments_into_class_generics(mut self) -> ClassGenerics {
+    pub fn type_arguments_into_class_generics(mut self, db: &Database) -> ClassGenerics {
         if let Some(type_var_likes) = &self.type_var_likes {
             if let Some(type_args) = self.type_arguments.take() {
                 self.type_arguments = Some(if type_args.has_param_spec() {
@@ -172,7 +172,14 @@ impl CalculatedTypeArgs {
                     }
                     GenericsList::generics_from_vec(type_args)
                 } else {
-                    type_args
+                    type_args.replace_type_var_likes(db, &mut |usage| {
+                        let found = usage.as_type_var_like();
+                        if type_var_likes.iter().any(|tvl| tvl == &found) {
+                            found.as_never_generic_item(NeverCause::Inference)
+                        } else {
+                            usage.into_generic_item()
+                        }
+                    })
                 })
             }
         }

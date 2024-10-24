@@ -697,6 +697,15 @@ impl TupleArgs {
 }
 
 impl GenericsList {
+    pub fn replace_type_var_likes(self, db: &Database, callable: ReplaceTypeVarLike) -> Self {
+        self.replace_internal(&mut ReplaceTypeVarLikes {
+            db,
+            callable,
+            replace_self: &|| Type::Self_,
+        })
+        .unwrap_or_else(|| self)
+    }
+
     fn replace_internal(&self, replacer: &mut impl Replacer) -> Option<Self> {
         Some(GenericsList::new_generics(maybe_replace_iterable(
             self.iter(),
