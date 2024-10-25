@@ -326,13 +326,13 @@ impl<'db> NameBinder<'db> {
         for stmt_like in stmts.by_ref() {
             let return_or_yield = match stmt_like.node {
                 StmtLikeContent::Assignment(assignment) => {
-                    let unpacked = assignment.unpack_with_simple_targets();
+                    let unpacked = assignment.unpack();
                     // First we have to index the right side, before we can begin indexing the left
                     // side.
                     match &unpacked {
-                        AssignmentContentWithSimpleTargets::Normal(_, right)
-                        | AssignmentContentWithSimpleTargets::WithAnnotation(_, _, Some(right))
-                        | AssignmentContentWithSimpleTargets::AugAssign(_, _, right) => {
+                        AssignmentContent::Normal(_, right)
+                        | AssignmentContent::WithAnnotation(_, _, Some(right))
+                        | AssignmentContent::AugAssign(_, _, right) => {
                             match right {
                                 AssignmentRightSide::YieldExpr(yield_expr) => {
                                     self.index_non_block_node(yield_expr, ordered)
@@ -345,25 +345,18 @@ impl<'db> NameBinder<'db> {
                         _ => (),
                     };
                     match unpacked {
-                        AssignmentContentWithSimpleTargets::Normal(targets, _) => {
+                        AssignmentContent::Normal(targets, _) => {
                             for target in targets {
-                                self.index_non_block_node(&target, ordered);
+                                self.index_target(target, ordered, IndexingCause::Other);
                             }
                         }
-                        AssignmentContentWithSimpleTargets::WithAnnotation(
-                            target,
-                            annotation,
-                            _,
-                        ) => {
+                        AssignmentContent::WithAnnotation(target, annotation, _) => {
                             self.index_annotation_expr(&annotation.expression());
-                            self.index_non_block_node(&target, ordered)
+                            self.index_target(target, ordered, IndexingCause::Other)
                         }
-                        AssignmentContentWithSimpleTargets::AugAssign(target, _, _) => self
-                            .index_non_block_node_full(
-                                &target,
-                                ordered,
-                                IndexingCause::AugAssignment,
-                            ),
+                        AssignmentContent::AugAssign(target, _, _) => {
+                            self.index_target(target, ordered, IndexingCause::AugAssignment)
+                        }
                     }
                 }
                 StmtLikeContent::ReturnStmt(return_stmt) => {
@@ -517,6 +510,27 @@ impl<'db> NameBinder<'db> {
         for stmt_like in stmts {
             if let StmtLikeContent::YieldExpr(y) = stmt_like.node {
                 self.index_return_or_yield(y.index());
+            }
+        }
+    }
+
+    fn index_target(&mut self, target: Target<'db>, ordered: bool, cause: IndexingCause) {
+        match target {
+            Target::Name(n) => {
+                // The types are inferred later.
+                self.add_new_definition_with_cause(n, Point::new_uncalculated(), cause)
+            }
+            Target::NameExpression(primary_target, name_def) => {
+                self.index_non_block_node(&primary_target, ordered);
+            }
+            Target::IndexExpression(primary_target) => {
+                self.index_non_block_node(&primary_target, ordered)
+            }
+            Target::Starred(star_target) => self.index_non_block_node(&star_target, ordered),
+            Target::Tuple(targets) => {
+                for target in targets {
+                    self.index_target(target, ordered, cause)
+                }
             }
         }
     }
