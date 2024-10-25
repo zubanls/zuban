@@ -1278,9 +1278,30 @@ impl Inference<'_, '_, '_> {
         self.save_narrowed(key, type_, false)
     }
 
-    pub fn save_narrowed_partial_target(&self, origin: PrimaryTargetOrAtom, type_: Type) {
+    pub fn save_narrowed_partial_primary_target_or_atom(
+        &self,
+        origin: PrimaryTargetOrAtom,
+        type_: Type,
+    ) {
         self.save_narrowed(
             self.key_from_primary_target_or_atom(origin).unwrap(),
+            type_,
+            false,
+        )
+    }
+
+    pub fn save_narrowed_partial_target(&self, target: &Target, type_: Type) {
+        self.save_narrowed(
+            match target {
+                Target::Name(n) => self.key_from_name_def(*n),
+                Target::NameExpression(primary_target, name) => {
+                    let base_key = self
+                        .key_from_primary_target_or_atom(primary_target.first())
+                        .unwrap();
+                    self.key_from_attribute(base_key, name.name())
+                }
+                _ => unreachable!(),
+            },
             type_,
             false,
         )
@@ -3085,10 +3106,7 @@ impl Inference<'_, '_, '_> {
         match second {
             PrimaryContent::Attribute(attr) => {
                 if let Some(base_key) = &old_base_key {
-                    base.key = Some(FlowKey::Member(
-                        Rc::new(base_key.clone()),
-                        DbString::StringSlice(StringSlice::from_name(self.file.file_index, attr)),
-                    ));
+                    base.key = Some(self.key_from_attribute(base_key.clone(), attr));
                 }
             }
             PrimaryContent::GetItem(slice_type) => {
@@ -3172,13 +3190,17 @@ impl Inference<'_, '_, '_> {
         }
     }
 
+    fn key_from_attribute(&self, base_key: FlowKey, n: Name) -> FlowKey {
+        FlowKey::Member(
+            Rc::new(base_key),
+            DbString::StringSlice(StringSlice::from_name(self.file.file_index, n)),
+        )
+    }
+
     fn key_from_primary_target(&self, primary_target: PrimaryTarget) -> Option<FlowKey> {
         let base_key = self.key_from_primary_target_or_atom(primary_target.first())?;
         match primary_target.second() {
-            PrimaryContent::Attribute(n) => Some(FlowKey::Member(
-                Rc::new(base_key),
-                DbString::StringSlice(StringSlice::from_name(self.file.file_index, n)),
-            )),
+            PrimaryContent::Attribute(n) => Some(self.key_from_attribute(base_key, n)),
             PrimaryContent::Execution(_) => None,
             PrimaryContent::GetItem(slice_type) => {
                 self.key_from_slice_type(slice_type)

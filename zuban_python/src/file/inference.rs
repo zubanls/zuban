@@ -826,7 +826,12 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             // This adds an empty list again, which should be fine.
             return Some(());
         }
-        maybe_partial_node_ref.insert_type(right_t.clone());
+        if point.partial_flags().nullable && !self.i_s.db.project.strict_optional_partials() {
+            self.save_narrowed_partial_target(target, right_t.clone());
+            right_t.union_in_place(Type::None)
+        }
+
+        maybe_partial_node_ref.insert_type(right_t);
         Some(())
     }
 
@@ -1992,7 +1997,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             if partial_flags.nullable
                                 && !self.i_s.db.project.strict_optional_partials()
                             {
-                                self.save_narrowed_partial_target(
+                                self.save_narrowed_partial_primary_target_or_atom(
                                     primary_target.first(),
                                     new_dict.clone(),
                                 );
