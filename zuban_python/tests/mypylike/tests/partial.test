@@ -230,3 +230,17 @@ reveal_type(x)  # N: Revealed type is "set[int]"
 y = set()  # E: Need type annotation for "y" (hint: "y: Set[<type>] = ...")
 y *= [1]  # E: Unsupported operand types for * ("set[Any]" and "list[int]")
 reveal_type(y)  # N: Revealed type is "set[Any]"
+
+[case walrus_defaultdict_partial1]
+from collections import defaultdict
+walrus = (x := defaultdict(set))  # E: Need type annotation for "x"
+reveal_type(walrus)  # N: Revealed type is "collections.defaultdict[Any, Any]"
+x[1].add("")
+reveal_type(x)  # N: Revealed type is "collections.defaultdict[int, set[str]]"
+
+[case walrus_defaultdict_partial2]
+from collections import defaultdict
+walrus = (x := defaultdict(int))  # E: Need type annotation for "x"
+reveal_type(walrus)  # N: Revealed type is "collections.defaultdict[Any, int]"
+x[""] = 1
+reveal_type(x)  # N: Revealed type is "collections.defaultdict[str, int]"

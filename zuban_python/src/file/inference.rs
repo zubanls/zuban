@@ -1369,8 +1369,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         let set_defaultdict_type = |name_node_ref: NodeRef, t| {
             // It feels very weird that we're saving on the index before the defaultdict
             // definition, but it seems to be fine since this should either be a `,` for tuple
-            // assignments or a `.` for self assignments or a star_targets / single_target that is
-            // not used.
+            // assignments or a `.` for self assignments or a star_targets / single_target / walrus
+            // that is not used.
             let save_to = name_node_ref.add_to_node_index(NAME_DEF_TO_DEFAULTDICT_DIFF);
             assert!(!save_to.point().calculated());
             save_to.insert_type(t)
