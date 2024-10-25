@@ -1945,7 +1945,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         | Specific::PartialDefaultDictWithSet),
                     ) = point.maybe_specific()
                     {
-                        if !point.partial_flags().finished {
+                        let partial_flags = point.partial_flags();
+                        if !partial_flags.finished {
                             let value_t = value.as_type(i_s);
                             if specific == Specific::PartialDefaultDict {
                                 let Some(ComplexPoint::TypeInstance(original_value)) = from
@@ -1964,7 +1965,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                     return;
                                 }
                             }
-                            let new_dict = new_class!(
+                            let mut new_dict = new_class!(
                                 match specific {
                                     Specific::PartialDict =>
                                         i_s.db.python_state.dict_node_ref().as_link(),
@@ -1982,6 +1983,15 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 primary_target.as_code(),
                                 new_dict.format_short(i_s.db)
                             );
+                            if partial_flags.nullable
+                                && !self.i_s.db.project.strict_optional_partials()
+                            {
+                                self.save_narrowed_partial_target(
+                                    primary_target.first(),
+                                    new_dict.clone(),
+                                );
+                                new_dict.union_in_place(Type::None)
+                            }
                             from.insert_type(new_dict);
                             return;
                         }
@@ -3166,8 +3176,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 primary.as_code(),
                 resolved_partial.format_short(i_s.db)
             );
-            if flags.nullable && !i_s.db.project.settings.mypy_compatible {
-                // Mypy is currently just replacing the nullable partial to a non-nullable one.
+            if flags.nullable && !i_s.db.project.strict_optional_partials() {
                 self.save_narrowed_partial(primary_or_atom, resolved_partial.clone());
                 resolved_partial.union_in_place(Type::None)
             }

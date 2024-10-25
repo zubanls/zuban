@@ -1278,6 +1278,14 @@ impl Inference<'_, '_, '_> {
         self.save_narrowed(key, type_, false)
     }
 
+    pub fn save_narrowed_partial_target(&self, origin: PrimaryTargetOrAtom, type_: Type) {
+        self.save_narrowed(
+            self.key_from_primary_target_or_atom(origin).unwrap(),
+            type_,
+            false,
+        )
+    }
+
     fn save_narrowed(&self, key: FlowKey, type_: Type, widens: bool) {
         FLOW_ANALYSIS.with(|fa| {
             fa.overwrite_entry(
@@ -3157,11 +3165,15 @@ impl Inference<'_, '_, '_> {
         }
     }
 
-    fn key_from_primary_target(&self, primary_target: PrimaryTarget) -> Option<FlowKey> {
-        let base_key = match primary_target.first() {
+    fn key_from_primary_target_or_atom(&self, p: PrimaryTargetOrAtom) -> Option<FlowKey> {
+        match p {
             PrimaryTargetOrAtom::PrimaryTarget(t) => self.key_from_primary_target(t),
             PrimaryTargetOrAtom::Atom(atom) => self.key_from_atom(atom),
-        }?;
+        }
+    }
+
+    fn key_from_primary_target(&self, primary_target: PrimaryTarget) -> Option<FlowKey> {
+        let base_key = self.key_from_primary_target_or_atom(primary_target.first())?;
         match primary_target.second() {
             PrimaryContent::Attribute(n) => Some(FlowKey::Member(
                 Rc::new(base_key),

@@ -1420,6 +1420,13 @@ pub struct PythonProject {
     // is_django: bool,  // TODO maybe add?
 }
 
+impl PythonProject {
+    pub fn strict_optional_partials(&self) -> bool {
+        // Mypy is currently just replacing the nullable partial to a non-nullable one.
+        self.settings.mypy_compatible
+    }
+}
+
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum ParentScope {
     Module,

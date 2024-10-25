@@ -140,6 +140,7 @@ x.append("")
 reveal_type(x)  # N: Revealed type is "list[str]"
 
 [case narrowed_partial2_mypy_compatible]
+# flags: --mypy-compatible
 import foo
 reveal_type(foo.x)  # N: Revealed type is "dict[int, str]"
 
@@ -151,6 +152,7 @@ x[0] = ""
 reveal_type(x)  # N: Revealed type is "dict[int, str]"
 
 [case narrowed_partial2_no_mypy_compatible]
+# flags: --no-mypy-compatible
 import foo
 reveal_type(foo.x)  # N: Revealed type is "dict[int, str] | None"
 
