@@ -115,6 +115,72 @@ class A:
 
 reveal_type(A().x)  # N: Revealed type is "collections.defaultdict[int, list[str]] | None"
 
+[case partial_nullable_self_overwrite_mypy_compatible]
+# flags: --mypy-compatible
+class A:
+    def __init__(self) -> None:
+        self.x = None
+        self.x = []
+        self.x = [1]
+        reveal_type(self.x)  # N: Revealed type is "list[int]"
+
+reveal_type(A().x)  # N: Revealed type is "list[int]"
+
+[case partial_nullable_self_overwrite_no_mypy_compatible]
+# flags: --no-mypy-compatible
+class A:
+    def __init__(self) -> None:
+        self.x = None
+        self.x = []
+        self.x = [1]
+        reveal_type(self.x)  # N: Revealed type is "list[int]"
+
+reveal_type(A().x)  # N: Revealed type is "list[int] | None"
+
+[case partial_nullable_self_augassign_mypy_compatible]
+# flags: --mypy-compatible
+class A:
+    def __init__(self) -> None:
+        self.x = None
+        self.x = []
+        self.x += [1]
+        reveal_type(self.x)  # N: Revealed type is "list[int]"
+
+reveal_type(A().x)  # N: Revealed type is "list[int]"
+
+[case partial_nullable_self_augassign_no_mypy_compatible]
+# flags: --no-mypy-compatible
+class A:
+    def __init__(self) -> None:
+        self.x = None
+        self.x = []
+        self.x += [1]
+        reveal_type(self.x)  # N: Revealed type is "list[int]"
+
+reveal_type(A().x)  # N: Revealed type is "list[int] | None"
+
+[case partial_nullable_self_dict_assign_mypy_compatible]
+# flags: --mypy-compatible
+class A:
+    def __init__(self) -> None:
+        self.x = None
+        self.x = {}
+        self.x["a"] = 1
+        reveal_type(self.x)  # N: Revealed type is "dict[str, int]"
+
+reveal_type(A().x)  # N: Revealed type is "dict[str, int]"
+
+[case partial_nullable_self_dict_assign_no_mypy_compatible]
+# flags: --no-mypy-compatible
+class A:
+    def __init__(self) -> None:
+        self.x = None
+        self.x = {}
+        self.x["a"] = 1
+        reveal_type(self.x)  # N: Revealed type is "dict[str, int]"
+
+reveal_type(A().x)  # N: Revealed type is "dict[str, int] | None"
+
 [case narrowed_partial1_mypy_compatible]
 # flags: --mypy-compatible
 import foo
