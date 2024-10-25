@@ -220,3 +220,13 @@ y = None
 y = set()
 y |= {1}
 reveal_type(y)  # N: Revealed type is "set[int]"
+
+[case invalid_aug_partial_change]
+x = set()  # E: Need type annotation for "x" (hint: "x: Set[<type>] = ...")
+x |= [1]  # E: Argument 1 to "__ior__" of "set" has incompatible type "list[int]"; expected "AbstractSet[Any]"
+x |= {1}
+reveal_type(x)  # N: Revealed type is "set[int]"
+
+y = set()  # E: Need type annotation for "y" (hint: "y: Set[<type>] = ...")
+y *= [1]  # E: Unsupported operand types for * ("set[Any]" and "list[int]")
+reveal_type(y)  # N: Revealed type is "set[Any]"

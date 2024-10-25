@@ -715,7 +715,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 let (inplace_method, op_infos) = aug_assign.magic_methods();
                 let right =
                     self.infer_assignment_right_side(right_side, &mut ResultContext::Unknown);
-                if let Some(left) = self.infer_target(target.clone(), true) {
+                let lookup_and_execute = |left: Inferred| {
                     let had_lookup_error = Cell::new(false);
                     let mut result = left.type_lookup_and_execute(
                         self.i_s,
@@ -724,7 +724,6 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         &KnownArgs::new(&right, node_ref),
                         &|type_| had_lookup_error.set(true),
                     );
-                    let had_error = Cell::new(false);
                     if had_lookup_error.get() {
                         result = self.infer_detailed_operation(
                             right_side.index(),
@@ -733,6 +732,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             &right,
                         )
                     }
+                    result
+                };
+                if let Some(left) = self.infer_target(target.clone(), true) {
+                    let result = lookup_and_execute(left);
 
                     let n = NodeRef::new(self.file, right_side.index());
                     self.assign_single_target(
@@ -745,7 +748,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         },
                     )
                 } else if self
-                    .maybe_partial_aug_assignment(&target, aug_assign, right)
+                    .maybe_partial_aug_assignment(&target, aug_assign, &right, lookup_and_execute)
                     .is_none()
                 {
                     // This is essentially a bare `foo += 1` that does not have any definition and
@@ -789,7 +792,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         &self,
         target: &Target,
         aug_assign: AugAssign,
-        right: Inferred,
+        right: &Inferred,
+        lookup_and_execute: impl Fn(Inferred) -> Inferred,
     ) -> Option<()> {
         let name_index = match target {
             Target::Name(name_def) => name_def.name_index(),
@@ -811,6 +815,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             self.i_s.db.python_state.list_node_ref()
         } else if specific == Specific::PartialSet && aug_assign.as_code() == "|=" {
             self.i_s.db.python_state.set_node_ref()
+        } else if specific.is_partial() {
+            let left_inf = maybe_partial_node_ref.expect_inferred(self.i_s);
+            lookup_and_execute(left_inf);
+            return Some(());
         } else {
             return None;
         };
@@ -820,7 +828,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         }
         let class = right_t.maybe_class(self.i_s.db)?;
         if class.node_ref != wanted {
-            return None;
+            let left_inf = maybe_partial_node_ref.expect_inferred(self.i_s);
+            lookup_and_execute(left_inf);
+            return Some(());
         }
         if class.nth_type_argument(self.i_s.db, 0).is_never() {
             // This adds an empty list again, which should be fine.
