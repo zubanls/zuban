@@ -162,3 +162,27 @@ x = None
 x = {}
 x[0] = ""
 reveal_type(x)  # N: Revealed type is "dict[int, str]"
+
+[case narrowed_partial3_mypy_compatible]
+# flags: --mypy-compatible
+import foo
+reveal_type(foo.x)  # N: Revealed type is "list[int]"
+
+[file foo.py]
+from collections import defaultdict
+x = None
+x = []
+x = [1]
+reveal_type(x)  # N: Revealed type is "list[int]"
+
+[case narrowed_partial3_no_mypy_compatible]
+# flags: --no-mypy-compatible
+import foo
+reveal_type(foo.x)  # N: Revealed type is "list[int] | None"
+
+[file foo.py]
+from collections import defaultdict
+x = None
+x = []
+x = [1]
+reveal_type(x)  # N: Revealed type is "list[int]"

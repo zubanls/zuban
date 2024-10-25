@@ -1372,10 +1372,16 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     if t.maybe_class(i_s.db)
                         .is_some_and(|c| c.node_ref == class_node_ref)
                     {
+                        let mut t = t.into_owned();
                         if t.has_never_from_inference(i_s.db) {
                             saved_node_ref.finish_partial_with_annotation_needed(i_s)
                         } else {
-                            saved_node_ref.insert_type(value.as_type(i_s))
+                            if partial_flags.nullable && !i_s.db.project.strict_optional_partials()
+                            {
+                                narrow(PointLink::new(self.file.file_index, first_index), &t);
+                                t.union_in_place(Type::None)
+                            }
+                            saved_node_ref.insert_type(t)
                         }
                         return true;
                     }
@@ -1888,7 +1894,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             );
                             ancestor_lookup
                         }),
-                        |first_name_link, declaration_t| {
+                        |_, declaration_t| {
                             let current_t = value.as_cow_type(self.i_s);
                             self.narrow_or_widen_self_target(
                                 primary_target,
