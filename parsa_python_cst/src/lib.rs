@@ -2462,6 +2462,17 @@ impl AssignmentRightSide<'_> {
             },
         }
     }
+
+    pub fn is_inferrable_without_flow_analysis(&self) -> bool {
+        match self {
+            Self::StarExpressions(star_exprs) => {
+                const SEARCH_NAMES: &[PyNodeType] =
+                    &[Terminal(TerminalType::Name), Nonterminal(yield_expr)];
+                star_exprs.node.search(SEARCH_NAMES, true).next().is_some()
+            }
+            Self::YieldExpr(_) => false,
+        }
+    }
 }
 
 pub struct StarTargetsIterator<'db>(StepBy<SiblingIterator<'db>>);

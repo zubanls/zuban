@@ -252,6 +252,7 @@ impl<'db> NameBinder<'db> {
                                 IndexingCause::FunctionName
                                     | IndexingCause::ClassName
                                     | IndexingCause::Annotation
+                                    | IndexingCause::ConstantAssignment
                             )
                         },
                 );
@@ -329,7 +330,7 @@ impl<'db> NameBinder<'db> {
                     let unpacked = assignment.unpack();
                     // First we have to index the right side, before we can begin indexing the left
                     // side.
-                    match &unpacked {
+                    let cause = match &unpacked {
                         AssignmentContent::Normal(_, right)
                         | AssignmentContent::WithAnnotation(_, _, Some(right))
                         | AssignmentContent::AugAssign(_, _, right) => {
@@ -341,18 +342,23 @@ impl<'db> NameBinder<'db> {
                                     self.index_non_block_node(star_exprs, ordered)
                                 }
                             };
+                            if right.is_inferrable_without_flow_analysis() {
+                                IndexingCause::Other
+                            } else {
+                                IndexingCause::ConstantAssignment
+                            }
                         }
-                        _ => (),
+                        _ => IndexingCause::Annotation,
                     };
                     match unpacked {
                         AssignmentContent::Normal(targets, _) => {
                             for target in targets {
-                                self.index_target(target, ordered, IndexingCause::Other);
+                                self.index_target(target, ordered, cause);
                             }
                         }
                         AssignmentContent::WithAnnotation(target, annotation, _) => {
                             self.index_annotation_expr(&annotation.expression());
-                            self.index_target(target, ordered, IndexingCause::Other)
+                            self.index_target(target, ordered, cause)
                         }
                         AssignmentContent::AugAssign(target, _, _) => {
                             self.index_target(target, ordered, IndexingCause::AugAssignment)
@@ -1782,5 +1788,6 @@ enum IndexingCause {
     FunctionName,
     ClassName,
     AugAssignment,
+    ConstantAssignment,
     Other,
 }

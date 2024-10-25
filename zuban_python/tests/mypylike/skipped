@@ -7,8 +7,6 @@ mypy_setup_ini_with_multiline_string
 avoid_type_computation_recursion
 testOverloadPossibleOverlapWithArgsAndKwargs
 
-flow_analysis_circular_import_but_simple_assign_is_fine
-
 testLiteralAndGenericsRespectsUpperBound
 self_instance_variable1
 

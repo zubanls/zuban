@@ -1095,14 +1095,14 @@ import a
 # Note: imports cycle
 from b import b
 if bool():
-    a = 1
+    a = int()
 else:
     b + 1
 
 [file b.py]
 from a import a  # E: Cannot determine type of "a"
 if bool():
-    b = 1
+    b = int()
 else:
     a + 1
 
@@ -1112,14 +1112,14 @@ import a
 [file a.py]
 from b import b as x
 if bool():
-    a = 1
+    a = int()
 else:
     x + 1
 
 [file b.py]
 from a import a as y  # E: Cannot determine type of "a"
 if bool():
-    b = 1
+    b = int()
 else:
     y + 1
 
@@ -1131,7 +1131,7 @@ from b import b as x
 class A: ...
 if isinstance(x, A):
     reveal_type(x)  # N: Revealed type is "<subclass of "B" and "A">"
-    a = 1
+    a = int()
 else:
     x + 1  # E: Unsupported operand types for + ("B" and "int")
 
