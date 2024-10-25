@@ -219,6 +219,13 @@ impl<'file> NodeRef<'file> {
             .unwrap()
     }
 
+    pub fn expect_complex_type(&self) -> &Type {
+        let Some(ComplexPoint::TypeInstance(value_t)) = self.complex() else {
+            unreachable!()
+        };
+        value_t
+    }
+
     pub fn expect_assignment(&self) -> Assignment<'file> {
         Assignment::by_index(&self.file.tree, self.node_index)
     }

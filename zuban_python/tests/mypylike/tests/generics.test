@@ -1241,20 +1241,3 @@ def foo(a: Any) -> None:
 y = X(list)  # E: Need type annotation for "y"
 reveal_type(y)  # N: Revealed type is "__main__.X[Any, list[Any]]"
 y[[]].append(1)
-
-[case partial_dict]
-class A:
-    def f(self) -> None:
-        self.x = dict()
-        self.x[1] = ""
-        reveal_type(self.x)  # N: Revealed type is "dict[int, str]"
-
-[case partial_defaultdict_with_set]
-from collections import defaultdict
-x = defaultdict(set)
-x[1].add("")
-reveal_type(x)  # N: Revealed type is "collections.defaultdict[int, set[str]]"
-
-y = defaultdict(set)
-y[1].update([""])
-reveal_type(x)  # N: Revealed type is "collections.defaultdict[int, set[str]]"

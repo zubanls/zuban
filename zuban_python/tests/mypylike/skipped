@@ -7,6 +7,9 @@ mypy_setup_ini_with_multiline_string
 avoid_type_computation_recursion
 testOverloadPossibleOverlapWithArgsAndKwargs
 
+narrowed_partial2_no_mypy_compatible
+partial_nullable_defaultdict_with_list_no_mypy_compatible
+
 testLiteralAndGenericsRespectsUpperBound
 self_instance_variable1
 

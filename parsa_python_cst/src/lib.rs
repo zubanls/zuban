@@ -3160,6 +3160,7 @@ impl<'db> Iterator for ComparisonIterator<'db> {
     }
 }
 
+#[derive(Copy, Clone)]
 pub enum PrimaryOrAtom<'db> {
     Primary(Primary<'db>),
     Atom(Atom<'db>),

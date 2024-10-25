@@ -1269,6 +1269,15 @@ impl Inference<'_, '_, '_> {
         }
     }
 
+    pub fn save_narrowed_partial(&self, origin: PrimaryOrAtom, type_: Type) {
+        let key = match origin {
+            PrimaryOrAtom::Primary(p) => self.key_from_primary(p).key,
+            PrimaryOrAtom::Atom(atom) => self.key_from_atom(atom),
+        }
+        .unwrap();
+        self.save_narrowed(key, type_, false)
+    }
+
     fn save_narrowed(&self, key: FlowKey, type_: Type, widens: bool) {
         FLOW_ANALYSIS.with(|fa| {
             fa.overwrite_entry(

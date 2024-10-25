@@ -3067,10 +3067,11 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
 
     fn infer_potential_partial_base(
         &self,
-        primary_method: Primary,
+        primary_method: Primary<'file>,
         maybe_defaultdict: bool,
-    ) -> Option<(NodeRef, Option<Inferred>)> {
-        match primary_method.first() {
+    ) -> Option<(NodeRef, PrimaryOrAtom<'file>, Option<Inferred>)> {
+        let primary_or_atom = primary_method.first();
+        match primary_or_atom {
             PrimaryOrAtom::Primary(prim) => {
                 let index = prim.index();
                 if self.file.points.get(index).calculated() {
@@ -3087,18 +3088,20 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             self.infer_primary(prim, &mut ResultContext::Unknown)
                                 .save_redirect(self.i_s, self.file, index)
                                 .maybe_saved_node_ref(self.i_s.db)?,
+                            primary_or_atom,
                             None,
                         ))
                     }
                     PrimaryContent::GetItem(getitem) => {
                         if maybe_defaultdict {
                             // This is for defaultdicts
-                            let (base, _) = self.infer_potential_partial_base(prim, false)?;
+                            let (base, p_before, _) =
+                                self.infer_potential_partial_base(prim, false)?;
                             match base.point().maybe_specific()? {
                                 Specific::PartialDefaultDictWithList
                                 | Specific::PartialDefaultDictWithSet => {
                                     let s = SliceType::new(self.file, prim.index(), getitem);
-                                    Some((base, Some(s.infer(self.i_s))))
+                                    Some((base, p_before, Some(s.infer(self.i_s))))
                                 }
                                 _ => None,
                             }
@@ -3112,6 +3115,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             PrimaryOrAtom::Atom(atom) => Some((
                 self.infer_atom(atom, &mut ResultContext::Unknown)
                     .maybe_saved_node_ref(self.i_s.db)?,
+                primary_or_atom,
                 None,
             )),
         }
@@ -3128,7 +3132,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             return;
         };
         let i_s = self.i_s;
-        let Some((base, defaultdict_key)) = self.infer_potential_partial_base(primary_method, true)
+        let Some((base, primary_or_atom, defaultdict_key)) =
+            self.infer_potential_partial_base(primary_method, true)
         else {
             return;
         };
@@ -3137,7 +3142,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             let arg = args.maybe_single_positional_arg(i_s, &mut ResultContext::Unknown)?;
             Some(arg.as_type(i_s).avoid_implicit_literal(i_s.db))
         };
-        let save_partial = |resolved_partial: Type| {
+        let save_partial = |mut resolved_partial: Type| {
             let point = base.point();
             if point.kind() != PointKind::Specific {
                 // This is a nested partial like:
@@ -3147,7 +3152,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 //
                 return None;
             }
-            if point.partial_flags().finished {
+            let flags = point.partial_flags();
+            if flags.finished {
                 debug!(r#"Partial "{}" was already finished"#, primary.as_code());
                 return None;
             }
@@ -3160,6 +3166,11 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 primary.as_code(),
                 resolved_partial.format_short(i_s.db)
             );
+            if flags.nullable && !i_s.db.project.settings.mypy_compatible {
+                // Mypy is currently just replacing the nullable partial to a non-nullable one.
+                self.save_narrowed_partial(primary_or_atom, resolved_partial.clone());
+                resolved_partial.union_in_place(Type::None)
+            }
             base.insert_type(resolved_partial);
             Some(())
         };

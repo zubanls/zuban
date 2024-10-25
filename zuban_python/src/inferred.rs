@@ -2716,13 +2716,10 @@ pub fn specific_to_type<'db>(
         Specific::PartialDefaultDict => {
             definition.add_need_type_annotation_issue(i_s, specific);
             let value_node_ref = definition.add_to_node_index(NAME_DEF_TO_DEFAULTDICT_DIFF);
-            let Some(ComplexPoint::TypeInstance(value_t)) = value_node_ref.complex() else {
-                unreachable!()
-            };
             Cow::Owned(new_class!(
                 i_s.db.python_state.defaultdict_link(),
                 Type::Any(AnyCause::FromError),
-                value_t.clone(),
+                value_node_ref.expect_complex_type().clone(),
             ))
         }
         Specific::BuiltinsIsinstance => Cow::Owned(i_s.db.python_state.isinstance_type(i_s.db)),

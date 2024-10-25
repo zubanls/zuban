@@ -82,3 +82,4 @@ Debugging:
 - `a: int; callable(a)` will narrow a to be a callable that returns Any and takes any paramaters
 - Enum value when a = 1 and b = '' will be Any for no reason
 - total_ordering fills functions with an Any return type if the other functions return not None
+- non-nullable promotion of `x = None; x=[]` partials
