@@ -500,14 +500,9 @@ impl Type {
                 .match_or_add_type_var_reverse_if_responsible(i_s, type_var2, self, variance)
                 .unwrap_or(Match::new_false()),
             Type::Union(u2) => match variance {
-                Variance::Covariant => {
-                    let mut matches = Match::new_true();
-                    for g2 in u2.iter() {
-                        matches &=
-                            Match::any(u1.iter(), |g1| g1.matches(i_s, matcher, g2, variance))
-                    }
-                    matches
-                }
+                Variance::Covariant => Match::all(u2.iter(), |g2| {
+                    self.matches_union(i_s, matcher, u1, g2, variance)
+                }),
                 Variance::Invariant => {
                     self.is_super_type_of(i_s, matcher, value_type)
                         & self.is_sub_type_of(i_s, matcher, value_type)

@@ -1241,3 +1241,17 @@ def foo(a: Any) -> None:
 y = X(list)  # E: Need type annotation for "y"
 reveal_type(y)  # N: Revealed type is "__main__.X[Any, list[Any]]"
 y[[]].append(1)
+
+[case dict_get_with_context]
+def foo(x: dict[int, str]) -> str | None:
+    return x.get(1, None)
+
+[case optional_type_var_matching_with_covariant_context]
+from typing import TypeVar, Callable
+T = TypeVar("T")
+
+def wrap(lookup: Callable[[], T]) -> T | None: ...
+def get() -> int | None: ...
+
+def run() -> int | None:
+    return wrap(get)

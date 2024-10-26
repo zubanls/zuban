@@ -12,6 +12,8 @@ self_instance_variable1
 
 # regressions
 testIncrementalInvalidNamedTupleInUnannotatedFunction
+testOptionalTypeNarrowedByGenericCall3
+testGenericFunctionSubtypingWithUnions
 
 # callable matching regression
 testNoCrashOnNestedGenericCallable
