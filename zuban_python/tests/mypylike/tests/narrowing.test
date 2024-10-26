@@ -1487,3 +1487,10 @@ def foo(x: dict[str, object]) -> None:
         assert isinstance(x["foo"], str)
         x["foo"] += "-a"
 
+
+[case narrow_widen_narrow_in_if]
+def foo(x: int | None, other: int | None = None) -> int:
+    if x is None:
+        x = other
+        assert x is not None
+    return x

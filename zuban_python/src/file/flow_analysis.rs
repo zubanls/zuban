@@ -561,9 +561,11 @@ impl FlowAnalysis {
         }
 
         let entries = &mut top_frame.entries;
-        'outer: for new_entry in new_entries {
+        'outer: for mut new_entry in new_entries {
             for entry in &mut *entries {
                 if entry.key.equals(db, &new_entry.key) {
+                    new_entry.modifies_ancestors |= entry.modifies_ancestors;
+                    new_entry.widens |= entry.widens;
                     *entry = new_entry;
                     continue 'outer;
                 }
