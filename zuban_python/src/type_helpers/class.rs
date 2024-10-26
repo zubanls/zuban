@@ -48,7 +48,7 @@ use crate::{
         Variance,
     },
     type_helpers::{FirstParamProperties, Function},
-    utils::join_with_commas,
+    utils::{debug_indent, join_with_commas},
 };
 
 // Basically save the type vars on the class keyword.
@@ -2489,15 +2489,18 @@ impl<'db: 'a, 'a> Class<'a> {
             }
         }
 
-        self.type_check_dunder_init_func(
-            i_s,
-            constructor.constructor,
-            constructor.init_class,
-            args,
-            result_context,
-            on_type_error,
-            from_type_type,
-        )
+        debug!("Check {} __init__", self.name());
+        debug_indent(|| {
+            self.type_check_dunder_init_func(
+                i_s,
+                constructor.constructor,
+                constructor.init_class,
+                args,
+                result_context,
+                on_type_error,
+                from_type_type,
+            )
+        })
     }
 
     pub(crate) fn simple_lookup(

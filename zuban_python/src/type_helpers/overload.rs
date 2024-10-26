@@ -17,6 +17,7 @@ use crate::{
         ResultContext, SignatureMatch,
     },
     type_::{AnyCause, FunctionOverload, NeverCause, ReplaceSelf, Type},
+    utils::debug_indent,
 };
 
 #[derive(Debug)]
@@ -226,16 +227,19 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             // just a matter of what to display in case of failure. It's also a bit weird that we
             // run everything again, but in normal code overloads almost always do not fail, so
             // it shouldn't impact performance, really.
-            return self.find_matching_function(
-                i_s,
-                args,
-                skip_first_argument,
-                class,
-                search_init,
-                &mut ResultContext::Unknown,
-                on_type_error,
-                as_union_math_type,
-            );
+            debug!("Rerun overload without context");
+            return debug_indent(|| {
+                self.find_matching_function(
+                    i_s,
+                    args,
+                    skip_first_argument,
+                    class,
+                    search_init,
+                    &mut ResultContext::Unknown,
+                    on_type_error,
+                    as_union_math_type,
+                )
+            });
         }
         if let Some(callable) = first_similar {
             // In case of similar params, we simply use the first similar overload and calculate
@@ -530,42 +534,44 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         replace_self_type: ReplaceSelf,
     ) -> Inferred {
         debug!("Execute overloaded function {}", self.name(i_s.db));
-        match self.find_matching_function(
-            i_s,
-            args,
-            skip_first_argument,
-            None,
-            false,
-            result_context,
-            on_type_error,
-            &|callable, calculated_type_args| {
-                calculated_type_args
-                    .into_return_type(
+        debug_indent(|| {
+            match self.find_matching_function(
+                i_s,
+                args,
+                skip_first_argument,
+                None,
+                false,
+                result_context,
+                on_type_error,
+                &|callable, calculated_type_args| {
+                    calculated_type_args
+                        .into_return_type(
+                            i_s,
+                            &callable.content.return_type,
+                            self.class.as_ref(),
+                            replace_self_type,
+                        )
+                        .as_type(i_s)
+                },
+            ) {
+                OverloadResult::Single(callable) => {
+                    let result = callable.execute_internal(
                         i_s,
-                        &callable.content.return_type,
-                        self.class.as_ref(),
-                        replace_self_type,
-                    )
-                    .as_type(i_s)
-            },
-        ) {
-            OverloadResult::Single(callable) => {
-                let result = callable.execute_internal(
-                    i_s,
-                    args,
-                    skip_first_argument,
-                    on_type_error,
-                    result_context,
-                    Some(replace_self_type),
-                );
-                if callable.content.return_type.is_never() {
-                    FLOW_ANALYSIS.with(|fa| fa.mark_current_frame_unreachable())
+                        args,
+                        skip_first_argument,
+                        on_type_error,
+                        result_context,
+                        Some(replace_self_type),
+                    );
+                    if callable.content.return_type.is_never() {
+                        FLOW_ANALYSIS.with(|fa| fa.mark_current_frame_unreachable())
+                    }
+                    result
                 }
-                result
+                OverloadResult::Union(t) => Inferred::from_type(t),
+                OverloadResult::NotFound => self.fallback_type(i_s),
             }
-            OverloadResult::Union(t) => Inferred::from_type(t),
-            OverloadResult::NotFound => self.fallback_type(i_s),
-        }
+        })
     }
 
     pub fn name(&self, db: &'a Database) -> &'a str {
