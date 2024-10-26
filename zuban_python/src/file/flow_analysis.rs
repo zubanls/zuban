@@ -3843,7 +3843,11 @@ fn split_and_intersect(
                 if matched_with_any {
                     true_type.simplified_union_in_place(i_s, isinstance_type);
                 } else {
-                    true_type.union_in_place(t.clone());
+                    // This used to just use union_in_place. However this caused problems with bool
+                    // | int, which could not be added to complex. I'm still not sure what's
+                    // correct here. This feels like a very weird consequence of type promotions.
+                    // This caused issues when type checking Mypy.
+                    true_type.simplified_union_in_place(i_s, t);
                 }
             } else {
                 other_side.union_in_place(t.clone())
