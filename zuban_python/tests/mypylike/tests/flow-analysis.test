@@ -143,8 +143,30 @@ from foo import y1, y2, y3
 if bool(): # Causes flow analysis
     ...
 
-class X: ...
-
 x1 = str()
 x2 = 1
 x3: int = 1
+
+[case flow_analysis_circular_import_but_import_is_fine]
+# flags: --warn-unreachable
+import foo
+[file foo.py]
+from bar import x1, x2
+if bool(): # Causes flow analysis
+    ...
+
+import other as y1
+from other import something as y2
+
+[file bar.py]
+from foo import y1, y2
+if bool(): # Causes flow analysis
+    ...
+
+class X: ...
+
+import other as x1
+from other import something as x2
+
+[file other.py]
+something = 1

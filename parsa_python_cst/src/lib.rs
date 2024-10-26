@@ -2566,7 +2566,7 @@ impl<'db> Iterator for ImportFromTargetsIterator<'db> {
 }
 
 impl<'db> ImportFromAsName<'db> {
-    pub fn name_def(&self) -> NameDef {
+    pub fn name_def(&self) -> NameDef<'db> {
         let first = self.node.nth_child(0);
         if first.is_type(Nonterminal(name_def)) {
             NameDef::new(first)

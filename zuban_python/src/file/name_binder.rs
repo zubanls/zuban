@@ -416,10 +416,27 @@ impl<'db> NameBinder<'db> {
                         }
                         ImportFromTargets::Iterator(targets) => {
                             for target in targets {
-                                self.index_non_block_node(&target, ordered);
+                                self.add_new_definition_with_cause(
+                                    target.name_def(),
+                                    Point::new_uncalculated(),
+                                    IndexingCause::ConstantAssignment,
+                                )
                             }
                         }
                     };
+                }
+                StmtLikeContent::ImportName(i) => {
+                    for dotted in i.iter_dotted_as_names() {
+                        match dotted.unpack() {
+                            DottedAsNameContent::Simple(name_def, _)
+                            | DottedAsNameContent::WithAs(_, name_def) => self
+                                .add_new_definition_with_cause(
+                                    name_def,
+                                    Point::new_uncalculated(),
+                                    IndexingCause::ConstantAssignment,
+                                ),
+                        }
+                    }
                 }
                 StmtLikeContent::RaiseStmt(raise_stmt) => {
                     let l = self.index_non_block_node(&raise_stmt, ordered);
@@ -432,7 +449,6 @@ impl<'db> NameBinder<'db> {
                 }
                 StmtLikeContent::StarExpressions(s) => self.index_non_block_node(&s, ordered),
                 StmtLikeContent::YieldExpr(y) => self.index_non_block_node(&y, ordered),
-                StmtLikeContent::ImportName(i) => self.index_non_block_node(&i, ordered),
                 StmtLikeContent::GlobalStmt(g) => self.index_non_block_node(&g, ordered),
                 StmtLikeContent::NonlocalStmt(n) => self.index_non_block_node(&n, ordered),
                 StmtLikeContent::FunctionDef(func) => {
