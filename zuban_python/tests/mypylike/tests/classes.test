@@ -785,3 +785,36 @@ class F:
     def __init__(self, x: int) -> None: ...
 
 F(b'')
+
+[case slots_no_slots_with_dict]
+
+class A:
+    __slots__ = ('a',)
+    a: int
+    x: int
+
+class B(A):
+    b: int
+
+class C(B):
+    __slot__ = ('c',)
+    c: int
+
+def foo(a: A, b: B, c: C) -> None:
+    a.a = 1
+    a.b = 1  # E: "A" has no attribute "b"
+    a.c = 1  # E: "A" has no attribute "c"
+    a.x = 1  # E: Trying to assign name "x" that is not in "__slots__" of type "__main__.A"
+    a.undefined = 1  # E: "A" has no attribute "undefined"
+
+    b.a = 1
+    b.b = 1
+    b.c = 1  # E: "B" has no attribute "c"
+    b.x = 1
+    b.undefined = 1  # E: "B" has no attribute "undefined"
+
+    c.a = 1
+    c.b = 1
+    c.c = 1
+    c.x = 1
+    c.undefined = 1  # E: "C" has no attribute "undefined"
