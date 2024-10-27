@@ -797,7 +797,7 @@ class B(A):
     b: int
 
 class C(B):
-    __slot__ = ('c',)
+    __slots__ = ('c',)
     c: int
 
 def foo(a: A, b: B, c: C) -> None:
@@ -818,3 +818,34 @@ def foo(a: A, b: B, c: C) -> None:
     c.c = 1
     c.x = 1
     c.undefined = 1  # E: "C" has no attribute "undefined"
+
+[case slots_conflicting_with_class_var_access_with_inheritance_with__dict__]
+class A:
+    __slots__ = ('a', '__dict__')
+    a: int
+    x: int
+
+class B(A):
+    b: int
+
+class C(B):
+    __slots__ = ('c',)
+    c: int
+
+A.a  # E: "a" in __slots__ conflicts with class variable access
+A.b  # E: "Type[A]" has no attribute "b"
+A.c  # E: "Type[A]" has no attribute "c"
+A.x
+A.undefined = 1  # E: "Type[A]" has no attribute "undefined"
+
+B.a  # E: "a" in __slots__ conflicts with class variable access
+B.b
+B.c  # E: "Type[B]" has no attribute "c"
+B.x
+B.undefined = 1  # E: "Type[B]" has no attribute "undefined"
+
+C.a  # E: "a" in __slots__ conflicts with class variable access
+C.b
+C.c  # E: "c" in __slots__ conflicts with class variable access
+C.x
+C.undefined = 1  # E: "Type[C]" has no attribute "undefined"

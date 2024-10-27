@@ -2569,7 +2569,7 @@ impl<'db: 'a, 'a> Class<'a> {
                     if let Some(slots) = &class.class_storage.slots {
                         if slots.iter().any(|slot| {
                             let s = slot.as_str(db);
-                            s == name || s == "__dict__"
+                            s == name
                         }) {
                             return true;
                         }
