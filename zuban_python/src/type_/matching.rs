@@ -495,6 +495,12 @@ impl Type {
         value_type: &Self,
         variance: Variance,
     ) -> Match {
+        let matches_true_and_false = || {
+            // For covariance we want true and false to be present, for invariance, the entry count
+            // has to match.
+            u1.bool_literal_count() == 2
+                && (variance == Variance::Covariant || u1.entries.len() == 2)
+        };
         match value_type {
             Type::TypeVar(type_var2) if matcher.is_matching_reverse() => matcher
                 .match_or_add_type_var_reverse_if_responsible(i_s, type_var2, self, variance)
@@ -517,6 +523,11 @@ impl Type {
                     u.iter().map(|t| Type::Type(Rc::new(t.clone()))).collect(),
                 ));
                 self.matches_union(i_s, matcher, u1, &repacked, variance)
+            }
+            Type::Class(c2)
+                if c2.link == i_s.db.python_state.bool_link() && matches_true_and_false() =>
+            {
+                Match::new_true()
             }
             _ => match variance {
                 Variance::Covariant => {
@@ -668,6 +679,9 @@ impl Type {
                         variance,
                     )
                     .unwrap_or_else(Match::new_false)
+            }
+            Type::Union(u2) if class1.node_ref == i_s.db.python_state.bool_node_ref() => {
+                (u2.bool_literal_count() == 2 && u2.entries.len() == 2).into()
             }
             _ => Match::new_false(),
         }

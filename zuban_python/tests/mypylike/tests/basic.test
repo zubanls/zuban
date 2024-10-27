@@ -818,3 +818,26 @@ class X:
     def foo(self: Self) -> None:
         y = self
         y = X()  # E: Incompatible types in assignment (expression has type "X", variable has type "Self")
+
+[case bool_matching_false_and_true_literals]
+from typing import Literal
+def foo(x: bool, y: Literal[False, True], z: Literal[False, True, ""]) -> None:
+    if bool():
+        x = y
+    if bool():
+        y = x
+    if bool():
+        z = x
+    x = z  # E: Incompatible types in assignment (expression has type "Literal[False, True, '']", variable has type "bool")
+
+def bar(x: list[bool], y: list[Literal[False, True]], z: list[Literal[False, True, ""]]) -> None:
+    if bool():
+        x = y
+    if bool():
+        y = x
+
+    if bool():
+        z = x  # E: Incompatible types in assignment (expression has type "list[bool]", variable has type "list[Literal[False, True, '']]") \
+               # N: "List" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance \
+               # N: Consider using "Sequence" instead, which is covariant
+    x = z  # E: Incompatible types in assignment (expression has type "list[Literal[False, True, '']]", variable has type "list[bool]")

@@ -104,9 +104,6 @@ testRedundantExprTruthiness
 testInWithInvalidArgs
 # union order issues
 testNarrowingEqualityDisabledForCustomEquality
-# bool literal type matching
-assign_bool_to_false_true_literal
-testBoolInTuplesRegression
 
 # Class argument and __init__ as overloaded DbType
 testOverloadedToGeneric

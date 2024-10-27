@@ -4,7 +4,9 @@ use std::{
     rc::Rc,
 };
 
-use super::{FormatStyle, LiteralKind, NeverCause, TupleArgs, TupleUnpack, Type, WithUnpack};
+use super::{
+    FormatStyle, Literal, LiteralKind, NeverCause, TupleArgs, TupleUnpack, Type, WithUnpack,
+};
 use crate::{
     database::Database, format_data::FormatData, inference_state::InferenceState, matching::Matcher,
 };
@@ -330,6 +332,20 @@ impl UnionType {
             Type::Any(_) => 4,
             _ => t.type_.has_type_vars().into(),
         });
+    }
+
+    pub fn bool_literal_count(&self) -> usize {
+        self.iter()
+            .filter(|t| {
+                matches!(
+                    t,
+                    Type::Literal(Literal {
+                        kind: LiteralKind::Bool(_),
+                        ..
+                    })
+                )
+            })
+            .count()
     }
 
     pub fn format(&self, format_data: &FormatData) -> Box<str> {
