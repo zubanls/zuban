@@ -3498,6 +3498,7 @@ fn execute_bare_type<'db>(i_s: &InferenceState<'db, '_>, first_arg: Inferred) ->
             | Type::Dataclass(_)
             | Type::Tuple(_)
             | Type::NewType(_)
+            | Type::TypeVar(_)
             | Type::Enum(_) => type_part.union_in_place(t.clone()),
             Type::Literal(l) => type_part.union_in_place(l.fallback_type(i_s.db)),
             Type::Type(type_) => match type_.as_ref() {
