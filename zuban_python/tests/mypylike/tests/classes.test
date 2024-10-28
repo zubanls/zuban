@@ -849,3 +849,28 @@ C.b
 C.c  # E: "c" in __slots__ conflicts with class variable access
 C.x
 C.undefined = 1  # E: "Type[C]" has no attribute "undefined"
+
+[case aug_assign_with_inheritance_context]
+class Foo:
+    x: list[int | str]
+    y: list[int | str]
+
+    def __init__(self) -> None:
+        self.x += [1]
+
+    def bar(self) -> None:
+        self.x += [""]
+        self.y += [""]
+
+class Super:
+    x: list[int | str]
+
+    def __init__(self) -> None:
+        self.y: list[int | str] = []
+        self.z: list[int | str]
+
+class Sub(Super):
+    def __init__(self) -> None:
+        self.x += [1]
+        self.y += [""]
+        self.z += [""]

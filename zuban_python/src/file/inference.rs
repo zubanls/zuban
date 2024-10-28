@@ -451,28 +451,13 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     } else {
                         let t = base.as_cow_type(self.i_s);
                         if matches!(t.as_ref(), Type::Self_) {
-                            // For now giving Self a context is hard, because if we do that we have
-                            // a lot of problems with non-finished partial lists for example.
-                            let Some(cls) = self.i_s.current_class() else {
-                                continue; // TODO this should always be defined.
-                            };
-                            let had_issue = Cell::new(false);
-                            let lookup = cls
-                                .instance()
-                                .lookup(
-                                    self.i_s,
-                                    name_def.as_code(),
-                                    InstanceLookupOptions::new(&|_| had_issue.set(true))
-                                        .without_object()
-                                        .with_no_check_dunder_getattr()
-                                        .with_disallowed_lazy_bound_method(),
-                                )
-                                .lookup;
-                            if had_issue.get() {
-                                LookupResult::None
-                            } else {
-                                lookup
+                            // To make partials possible on Self, we just use the normal
+                            // infer_target mechanism, which returns None when partials are
+                            // detected.
+                            if let Some(inferred) = self.infer_target(target, false) {
+                                return Some(inferred);
                             }
+                            continue;
                         } else {
                             t.lookup(
                                 self.i_s,
@@ -3655,7 +3640,26 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         // This is the initial definition of self. The definition is not defined at
                         // this point is probably just inferred to know its context (which is not
                         // known, because this is going to be the definition).
-                        return None;
+                        let had_issue = Cell::new(false);
+                        let lookup = self
+                            .i_s
+                            .current_class()
+                            .unwrap()
+                            .instance()
+                            .lookup(
+                                self.i_s,
+                                attr.as_code(),
+                                InstanceLookupOptions::new(&|_| had_issue.set(true))
+                                    .without_object()
+                                    .with_no_check_dunder_getattr()
+                                    .with_disallowed_lazy_bound_method(),
+                            )
+                            .lookup;
+                        if had_issue.get() {
+                            return None;
+                        } else {
+                            return lookup.into_maybe_inferred();
+                        }
                     }
                 }
             }
