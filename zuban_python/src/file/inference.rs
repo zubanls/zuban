@@ -2219,10 +2219,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 {
                     // The type is already defined, just use any here, because the
                     // list really can be anything.
-                    value = Inferred::from_type(new_class!(
-                        self.i_s.db.python_state.list_node_ref().as_link(),
-                        Type::Any(AnyCause::Todo),
-                    ))
+                    value = Inferred::from_type(self.i_s.db.python_state.list_of_any.clone())
                 }
                 self.assign_targets(new_target, value, value_node_ref, assign_kind);
             } else {
