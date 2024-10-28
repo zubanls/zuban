@@ -3651,7 +3651,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 attr.as_code(),
                                 InstanceLookupOptions::new(&|_| had_issue.set(true))
                                     .without_object()
-                                    .with_no_check_dunder_getattr()
+                                    .with_skip_first_self_variables()
                                     .with_disallowed_lazy_bound_method(),
                             )
                             .lookup;

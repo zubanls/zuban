@@ -310,3 +310,24 @@ walrus = (x := defaultdict(int))  # E: Need type annotation for "x"
 reveal_type(walrus)  # N: Revealed type is "collections.defaultdict[Any, int]"
 x[""] = 1
 reveal_type(x)  # N: Revealed type is "collections.defaultdict[str, int]"
+
+[case list_no_partial_if_super_class_defines_attribute]
+class Super:
+    x: list[int]
+    def __init__(self) -> None:
+        self.y: list[int] = [1]
+        self.z = [2]
+
+class Foo(Super):
+    def cache(self) -> None:
+        self.x = []
+        self.x.append("a")  # E: Argument 1 to "append" of "list" has incompatible type "str"; expected "int"
+        self.x.append(1)
+
+        self.y = []
+        self.y.append("a")  # E: Argument 1 to "append" of "list" has incompatible type "str"; expected "int"
+        self.y.append(1)
+
+        self.z = []
+        self.z.append("a")  # E: Argument 1 to "append" of "list" has incompatible type "str"; expected "int"
+        self.z.append(1)
