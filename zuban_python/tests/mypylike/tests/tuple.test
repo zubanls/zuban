@@ -291,3 +291,15 @@ def foo(x: Iterable[int], y: tuple[int, str]) -> None:
 def foo(wanted: tuple[list[int], ...]) -> None:
     wanted = tuple([[]])
     wanted = tuple([[1]])
+
+[case tuple_in_setattr]
+def foo(dct: dict[tuple[int, str], str]) -> None:
+    dct[(1, "")] = ""
+    dct[1, ""] = ""
+    dct[1.0, ""] = "" # E: Invalid index type "tuple[float, str]" for "dict[tuple[int, str], str]"; expected type "tuple[int, str]"
+    dct[1] = ""  # E: Invalid index type "int" for "dict[tuple[int, str], str]"; expected type "tuple[int, str]"
+
+    dct[(1, "")]
+    dct[1, ""]
+    dct[1.0, ""]  # E: Invalid index type "tuple[float, str]" for "dict[tuple[int, str], str]"; expected type "tuple[int, str]"
+    dct[1]  # E: Invalid index type "int" for "dict[tuple[int, str], str]"; expected type "tuple[int, str]"

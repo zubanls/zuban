@@ -10,7 +10,7 @@ use crate::{
     debug,
     diagnostics::IssueKind,
     file::PythonFile,
-    getitem::{SliceType, SliceTypeContent, Slices},
+    getitem::SliceType,
     inferred::Inferred,
     matching::{IteratorContent, Matcher, ResultContext, UnpackedArgument},
     node_ref::NodeRef,
@@ -345,10 +345,6 @@ pub enum ArgKind<'db, 'a> {
         add_issue: CustomAddIssue<'a>,
     },
     Positional(PositionalArg<'db, 'a>),
-    SlicesTuple {
-        i_s: InferenceState<'db, 'a>,
-        slices: Slices<'a>,
-    },
     StarredWithUnpack {
         with_unpack: WithUnpack,
         node_ref: NodeRef<'a>,
@@ -458,7 +454,6 @@ impl<'db, 'a> Arg<'db, 'a> {
             | ArgKind::InferredWithCustomAddIssue { inferred, .. } => (*inferred).clone(),
             ArgKind::Positional(positional) => positional.infer(func_i_s, result_context),
             ArgKind::Keyword(kw) => kw.infer(func_i_s, result_context),
-            ArgKind::SlicesTuple { i_s, slices } => slices.infer(&i_s.use_mode_of(func_i_s)),
             ArgKind::Comprehension {
                 file,
                 comprehension,
@@ -486,7 +481,6 @@ impl<'db, 'a> Arg<'db, 'a> {
                 comprehension,
                 ..
             } => Ok(NodeRef::new(file, comprehension.index())),
-            ArgKind::SlicesTuple { slices, .. } => todo!(),
             ArgKind::Overridden { original, .. } => original.as_node_ref(),
             ArgKind::InferredWithCustomAddIssue { add_issue, .. } => Err(*add_issue),
         }
@@ -583,7 +577,6 @@ impl<'db, 'a> Arg<'db, 'a> {
             }
             ArgKind::Comprehension { .. } => "0".to_owned(),
             ArgKind::Keyword(KeywordArg { key, .. }) => format!("\"{key}\""),
-            ArgKind::SlicesTuple { .. } => todo!(),
             ArgKind::Overridden { original, .. } => original.human_readable_index(db),
         }
     }
@@ -616,9 +609,9 @@ impl<'db, 'a> Arg<'db, 'a> {
         context: &mut ResultContext,
     ) -> Option<Inferred> {
         match self.kind {
-            ArgKind::Positional { .. }
-            | ArgKind::SlicesTuple { .. }
-            | ArgKind::Comprehension { .. } => Some(self.infer_inferrable(i_s, context)),
+            ArgKind::Positional { .. } | ArgKind::Comprehension { .. } => {
+                Some(self.infer_inferrable(i_s, context))
+            }
             ArgKind::Inferred {
                 inferred,
                 in_args_or_kwargs_and_arbitrary_len: false,
@@ -711,13 +704,7 @@ impl<'db, 'a> ArgIteratorBase<'db, 'a> {
                 todo!()
             }
             Self::Finished => vec![],
-            Self::SliceType(i_s, slice_type) => slice_type
-                .iter()
-                .map(|x| {
-                    x.infer(&i_s, &mut ResultContext::Unknown)
-                        .format_short(&i_s)
-                })
-                .collect(),
+            Self::SliceType(i_s, slice_type) => vec![slice_type.infer(&i_s).format_short(&i_s)],
         }
     }
 }
@@ -892,24 +879,13 @@ impl<'db: 'a, 'a> Iterator for ArgIteratorBase<'db, 'a> {
                 let Self::SliceType(i_s, slice_type) = mem::replace(self, Self::Finished) else {
                     unreachable!()
                 };
-                match slice_type.unpack() {
-                    SliceTypeContent::Simple(s) => {
-                        let file = s.file;
-                        let named_expr = s.named_expr;
-                        Some(ArgKind::new_positional_return(i_s, 1, file, named_expr))
-                    }
-                    SliceTypeContent::Slices(slices) => {
-                        Some(BaseArgReturn::Arg(ArgKind::SlicesTuple { i_s, slices }))
-                    }
-                    SliceTypeContent::Slice(slice) => Some(BaseArgReturn::Arg(ArgKind::Inferred {
-                        inferred: slice.infer(&i_s),
-                        position: 1,
-                        node_ref: slice.as_node_ref(),
-                        in_args_or_kwargs_and_arbitrary_len: false,
-                        is_keyword: None,
-                    })),
-                    SliceTypeContent::Starred(_) => todo!(),
-                }
+                Some(BaseArgReturn::Arg(ArgKind::Inferred {
+                    inferred: slice_type.infer(&i_s),
+                    position: 1,
+                    node_ref: slice_type.as_node_ref(),
+                    in_args_or_kwargs_and_arbitrary_len: false,
+                    is_keyword: None,
+                }))
             }
             Self::InferredWithCustomAddIssue {
                 inferred,
@@ -952,6 +928,9 @@ impl<'db, 'a> ArgIterator<'db, 'a> {
     }
 
     pub fn new_slice(slice_type: SliceType<'a>, i_s: InferenceState<'db, 'a>) -> Self {
+        // If you think this can be removed and replaced with ArgIteratorBase::Inferred, please
+        // think about the fact that this will remove any way of inferring overloads with slices
+        // and contexts.
         Self {
             current: ArgIteratorBase::SliceType(i_s, slice_type),
             args_kwargs_iterator: ArgsKwargsIterator::None,

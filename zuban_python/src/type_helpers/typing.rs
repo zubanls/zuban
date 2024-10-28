@@ -677,9 +677,7 @@ fn maybe_param_spec(
                         return None;
                     }
                 }
-                ArgKind::Inferred { .. }
-                | ArgKind::SlicesTuple { .. }
-                | ArgKind::ParamSpec { .. } => unreachable!(),
+                ArgKind::Inferred { .. } | ArgKind::ParamSpec { .. } => unreachable!(),
                 ArgKind::Positional { .. } => {
                     arg.add_issue(
                         i_s,
