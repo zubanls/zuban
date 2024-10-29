@@ -97,6 +97,13 @@ impl Match {
         let mut result = Self::new_true();
         for item in items {
             result &= callable(item);
+            if !result.bool() {
+                // Remove all the past reasons why we had a mismatch, because there is no
+                // similarity if only one item is similar, for example.
+                // It is debatable if this is correct. However otherwise we have to check all
+                // entries to return a potential "similar" entry, where all entries are "similar".
+                return Match::new_false();
+            }
         }
         result
     }

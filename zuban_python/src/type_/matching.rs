@@ -426,19 +426,7 @@ impl Type {
                 if matcher.is_matching_reverse() {
                     debug!("TODO matching reverse?");
                 }
-                //return Match::all(u2.iter(), |t| self.matches(i_s, matcher, t, variance))
-                let mut result: Option<Match> = None;
-                for t in u2.iter() {
-                    let r = self.matches(i_s, matcher, t, variance);
-                    if !r.bool() {
-                        return r.bool().into();
-                    } else if let Some(old) = result {
-                        result = Some(old & r)
-                    } else {
-                        result = Some(r)
-                    }
-                }
-                return result.unwrap();
+                return Match::all(u2.iter(), |t| self.matches(i_s, matcher, t, variance));
             }
             Type::Intersection(intersection2) => {
                 return Match::any(intersection2.iter_entries(), |t| {
