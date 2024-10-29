@@ -2361,6 +2361,7 @@ impl Inference<'_, '_, '_> {
                         }
                     }
                 }
+                PrimaryContent::Execution(_) => (),
                 _ => {
                     let infos = self.key_from_primary(primary);
                     return narrow_from_key(infos.key, infos.inf, infos.parent_unions);

@@ -1508,3 +1508,16 @@ T = TypeVar("T")
 def foo(x: T, y: Any) -> T:
     assert isinstance(y, type(x))
     return y
+
+[case assert_isinstance_of_type_of_type_var]
+from typing import TypeVar, Any
+
+T = TypeVar("T")
+
+def foo(x: T, y: Any) -> T:
+    assert isinstance(y, type(x))
+    return y
+
+[case or_context]
+x = {1} or set()
+y: set[int] = {1} or set()
