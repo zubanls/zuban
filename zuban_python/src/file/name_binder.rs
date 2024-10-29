@@ -31,7 +31,7 @@ pub const FUNC_TO_RETURN_OR_YIELD_DIFF: u32 = 1;
 pub const FUNC_TO_TYPE_VAR_DIFF: i64 = NAME_TO_FUNCTION_DIFF as i64 + 1;
 pub const FUNC_TO_PARENT_DIFF: u32 = NAME_TO_FUNCTION_DIFF + 2;
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Copy, Clone)]
 enum NameBinderKind {
     Global,
     Function { is_async: bool },
@@ -187,14 +187,31 @@ impl<'db> NameBinder<'db> {
         );
         self.unresolved_nodes.extend(unresolved_nodes);
         for annotation_name in annotation_names {
-            if !try_to_process_reference_for_symbol_table(
-                &symbol_table,
-                self.db_infos.file_index,
-                self.db_infos.points,
-                annotation_name,
-                false,
-                self.in_global_scope(),
-            ) {
+            // Functions should never be considered in annotations. It is really weird that Mypy
+            // applies this logic so partially.
+            let might_be_a_type = !matches!(kind, NameBinderKind::Class) || {
+                symbol_table
+                    .lookup_symbol(annotation_name.as_code())
+                    .is_some_and(|definition| {
+                        let name_def = Name::by_index(self.db_infos.tree, definition)
+                            .name_def()
+                            .unwrap();
+                        !matches!(
+                            name_def.expect_defining_stmt(),
+                            DefiningStmt::FunctionDef(_)
+                        )
+                    })
+            };
+            if !(might_be_a_type
+                && try_to_process_reference_for_symbol_table(
+                    &symbol_table,
+                    self.db_infos.file_index,
+                    self.db_infos.points,
+                    annotation_name,
+                    false,
+                    self.in_global_scope(),
+                ))
+            {
                 self.annotation_names.push(annotation_name);
             }
         }
@@ -860,7 +877,21 @@ impl<'db> NameBinder<'db> {
                     match name.parent() {
                         NameParent::Atom => {
                             if cause == IndexingCause::Annotation {
-                                self.annotation_names.push(name);
+                                // We check for annotation_names here, which we recheck later. But
+                                // in that case only certain types are possible (e.g. not
+                                // functions)
+                                if !matches!(self.kind, NameBinderKind::Class)
+                                    || !try_to_process_reference_for_symbol_table(
+                                        &self.symbol_table,
+                                        self.db_infos.file_index,
+                                        self.db_infos.points,
+                                        name,
+                                        false,
+                                        self.in_global_scope(),
+                                    )
+                                {
+                                    self.annotation_names.push(name);
+                                }
                             } else {
                                 self.maybe_add_reference(name, ordered);
                             }

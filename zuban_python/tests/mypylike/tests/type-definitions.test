@@ -181,3 +181,15 @@ def foo(
                 # N: Suggestion: Use Tuple[T1, ..., Tn] instead of (T1, ..., Tn)
         z: (a := int),  # E: Invalid type comment or annotation
         ): ...
+
+[case func_in_class_should_not_be_looked_at_as_a_type_definition]
+bar = int
+class Foo:
+    x: foo  # E: Name "foo" is not defined
+    y: bar
+
+    def foo(self) -> None: ...
+    def bar(self) -> None: ...
+
+reveal_type(Foo().x)  # N: Revealed type is "Any"
+reveal_type(Foo().y)  # N: Revealed type is "int"
