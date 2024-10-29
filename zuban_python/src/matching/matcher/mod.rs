@@ -73,6 +73,13 @@ impl<'a> Matcher<'a> {
         }
     }
 
+    pub fn new_self_replacer(replace_self: ReplaceSelf<'a>) -> Self {
+        Self {
+            replace_self: Some(replace_self),
+            ..Self::default()
+        }
+    }
+
     pub fn new_class_matcher(i_s: &InferenceState, class: Class) -> Self {
         let type_var_likes = class.type_vars(i_s);
         if type_var_likes.is_empty() {
