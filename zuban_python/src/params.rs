@@ -520,8 +520,8 @@ pub fn matches_simple_params<
                         }
                         (x, y) => todo!("{:?} {:?}", x, y),
                     },
-                    WrappedParamType::PositionalOrKeyword(t2)
-                    | WrappedParamType::KeywordOnly(t2) => match d1 {
+                    ref specific2 @ (WrappedParamType::PositionalOrKeyword(ref t2)
+                    | WrappedParamType::KeywordOnly(ref t2)) => match d1 {
                         WrappedStarStar::UnpackTypedDict(td1) => {
                             return matches_simple_params(
                                 i_s,
@@ -531,11 +531,19 @@ pub fn matches_simple_params<
                                 variance,
                             )
                         }
+                        WrappedStarStar::ValueType(t1)
+                            if param2.has_default()
+                                && matches!(specific2, WrappedParamType::KeywordOnly(_)) =>
+                        {
+                            matches &= match_(i_s, matcher, t1, t2);
+                            continue;
+                        }
                         _ => {
                             debug!(
-                                "Params mismatch, because had {:?} vs {:?}",
+                                "Params mismatch (#{}), because had {:?} vs {:?}",
+                                line!(),
                                 param1.kind(i_s.db),
-                                param2.kind(i_s.db)
+                                param2.kind(i_s.db),
                             );
                             return Match::new_false();
                         }
@@ -543,7 +551,8 @@ pub fn matches_simple_params<
                     WrappedParamType::Star(WrappedStar::ArbitraryLen(_)) => continue,
                     _ => {
                         debug!(
-                            "Params mismatch, because had {:?} vs {:?}",
+                            "Params mismatch (#{}), because had {:?} vs {:?}",
+                            line!(),
                             param1.kind(i_s.db),
                             param2.kind(i_s.db)
                         );

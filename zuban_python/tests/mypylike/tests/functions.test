@@ -10,6 +10,18 @@ f = h
 f = i # E: Incompatible types in assignment (expression has type "Callable[[int, int], None]", variable has type "Callable[[NamedArg(int, 'x'), NamedArg(str, 'y')], None]")
 f = j
 
+[case subtyping_of_kwargs_with_defaults]
+class A:
+    def a(self, **kwargs: int): ...
+class B(A):
+    def a(self, *, x: str = "", **kwargs: int): ...  # E: Signature of "a" incompatible with supertype "A" \
+                                                     # N:      Superclass: \
+                                                     # N:          def a(self, **kwargs: int) -> Any \
+                                                     # N:      Subclass: \
+                                                     # N:          def a(self, *, x: str = ..., **kwargs: int) -> Any
+class C(A):
+    def a(self, *, x: int = 1, **kwargs: int): ...
+
 [case infer_unannotated_star_args]
 def foo(*args, **kwargs) -> None:
     reveal_type(args)  # N: Revealed type is "tuple[Any, ...]"
