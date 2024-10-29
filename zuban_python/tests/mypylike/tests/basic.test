@@ -841,3 +841,10 @@ def bar(x: list[bool], y: list[Literal[False, True]], z: list[Literal[False, Tru
                # N: "List" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance \
                # N: Consider using "Sequence" instead, which is covariant
     x = z  # E: Incompatible types in assignment (expression has type "list[Literal[False, True, '']]", variable has type "list[bool]")
+
+[case dict_comprehension_context]
+
+class A: ...
+class B(A): ...
+
+x: dict[A, A] = {B(): B() for _ in [1]}

@@ -4270,7 +4270,11 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     );
                     let t = inf.as_cow_type(i_s);
                     if expected_t.is_super_type_of(i_s, matcher, &t).bool() {
-                        Some(t.into_owned())
+                        Some(
+                            matcher
+                                .replace_type_var_likes_for_unknown_type_vars(i_s.db, &expected_t)
+                                .avoid_implicit_literal(i_s.db),
+                        )
                     } else {
                         self.add_issue(
                             expr.index(),
