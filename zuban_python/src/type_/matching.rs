@@ -420,13 +420,13 @@ impl Type {
             }
             // Necessary to e.g. match int to Literal[1, 2]
             Type::Union(u2)
-                if variance == Variance::Covariant
                 // Union matching was already done.
-                && !self.is_union_like(i_s.db) =>
+                if !self.is_union_like(i_s.db) =>
             {
                 if matcher.is_matching_reverse() {
                     debug!("TODO matching reverse?");
                 }
+                //return Match::all(u2.iter(), |t| self.matches(i_s, matcher, t, variance))
                 let mut result: Option<Match> = None;
                 for t in u2.iter() {
                     let r = self.matches(i_s, matcher, t, variance);

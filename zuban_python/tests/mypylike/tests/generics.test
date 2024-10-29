@@ -1255,3 +1255,11 @@ def get() -> int | None: ...
 
 def run() -> int | None:
     return wrap(get)
+
+[case invariant_generics_in_comparison_with_union_any]
+from typing import Any
+def foo(x: list[int | Any], y: list[int]) -> None:
+    if bool():
+        x = y
+    if bool():
+        y = x
