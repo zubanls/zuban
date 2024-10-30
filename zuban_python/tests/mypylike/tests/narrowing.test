@@ -1521,3 +1521,12 @@ def foo(x: T, y: Any) -> T:
 [case or_context]
 x = {1} or set()
 y: set[int] = {1} or set()
+
+[case self_context_should_not_be_narrowed]
+class Foo:
+    def __init__(self) -> None:
+        self.x: set[int] | None = None
+
+    def foo(self) -> None:
+        if self.x is None:
+            self.x = set()

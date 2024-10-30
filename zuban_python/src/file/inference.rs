@@ -751,7 +751,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 name: n.as_code().into(),
                                 object: format!(
                                     "\"{}\"",
-                                    self.infer_primary_target(t)
+                                    self.infer_primary_target(t, false)
                                         .unwrap_or_else(|| Inferred::from_type(Type::Self_))
                                         .format_short(self.i_s)
                                 )
@@ -991,8 +991,12 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     fn infer_target(&self, target: Target, from_aug_assign: bool) -> Option<Inferred> {
         match target {
             Target::Name(name_def) => self.infer_name_target(name_def, from_aug_assign),
-            Target::NameExpression(primary_target, _) => self.infer_primary_target(primary_target),
-            Target::IndexExpression(t) if from_aug_assign => self.infer_primary_target(t),
+            Target::NameExpression(primary_target, _) => {
+                self.infer_primary_target(primary_target, from_aug_assign)
+            }
+            Target::IndexExpression(t) if from_aug_assign => {
+                self.infer_primary_target(t, from_aug_assign)
+            }
             Target::Tuple(targets) => {
                 let out: Option<Rc<[Type]>> = targets
                     .map(|target| {
@@ -3616,12 +3620,18 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         gatherer.into_tuple(self, iterator)
     }
 
-    fn infer_primary_target(&self, primary_target: PrimaryTarget) -> Option<Inferred> {
+    fn infer_primary_target(
+        &self,
+        primary_target: PrimaryTarget,
+        use_narrows: bool,
+    ) -> Option<Inferred> {
         if let Some(inferred) = self.check_point_cache(primary_target.index()) {
             return Some(inferred);
         }
-        if let Some(inf) = self.maybe_lookup_narrowed_primary_target(primary_target) {
-            return Some(inf);
+        if use_narrows {
+            if let Some(inf) = self.maybe_lookup_narrowed_primary_target(primary_target) {
+                return Some(inf);
+            }
         }
         let first = self.infer_primary_target_or_atom(primary_target.first());
         let second = primary_target.second();
@@ -3680,7 +3690,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         match t {
             PrimaryTargetOrAtom::Atom(atom) => self.infer_atom(atom, &mut ResultContext::Unknown),
             PrimaryTargetOrAtom::PrimaryTarget(p) => self
-                .infer_primary_target(p)
+                .infer_primary_target(p, true)
                 .unwrap_or_else(|| Inferred::new_any(AnyCause::Internal)),
         }
     }
