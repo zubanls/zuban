@@ -625,7 +625,9 @@ impl Type {
                         MetaclassState::Unknown => {
                             todo!()
                         }
-                        MetaclassState::None => Match::new_false(),
+                        MetaclassState::None => {
+                            (class1.node_ref == i_s.db.python_state.bare_type_node_ref()).into()
+                        }
                     }
                 }
                 _ => Match::new_false(),

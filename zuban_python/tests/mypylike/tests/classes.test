@@ -874,3 +874,8 @@ class Sub(Super):
         self.x += [1]
         self.y += [""]
         self.z += [""]
+
+[case type_mro_lookup]
+type.mro(type(object()))
+type.mro(type(1))
+type.mro(1)  # E: Argument 1 to "mro" of "type" has incompatible type "int"; expected "type"
