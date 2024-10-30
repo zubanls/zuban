@@ -688,7 +688,15 @@ impl Type {
                 if matcher.is_matching_reverse() {
                     debug!("TODO is matching reverse for function overload?");
                 }
+                // Since only one of the overloads is going to match, but all of them can change
+                // the type var inference, we simply "backtrack" here.
+                let old_matcher = matcher.clone();
+                let mut need_matcher_backup = false;
                 Match::any(overload.iter_functions(), |c2| {
+                    if need_matcher_backup {
+                        *matcher = old_matcher.clone();
+                    }
+                    need_matcher_backup = true;
                     matcher.matches_callable(i_s, c1, c2)
                 })
             }

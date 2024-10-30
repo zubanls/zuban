@@ -44,7 +44,7 @@ use crate::{
 
 pub type CheckedTypeRecursion<'a> = AlreadySeen<'a, (&'a Type, &'a Type)>;
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct Matcher<'a> {
     type_var_matchers: Vec<TypeVarMatcher>,
     pub checking_type_recursion: Option<CheckedTypeRecursion<'a>>,
