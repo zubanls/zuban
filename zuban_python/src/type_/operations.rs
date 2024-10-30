@@ -580,6 +580,11 @@ impl Type {
             Type::Callable(content) => {
                 Callable::new(content, None).execute(i_s, args, on_type_error, result_context)
             }
+            Type::Dataclass(d) => {
+                d.class(i_s.db)
+                    .instance()
+                    .execute(i_s, args, result_context, on_type_error)
+            }
             Type::FunctionOverload(overload) => OverloadedFunction::new(overload, None).execute(
                 i_s,
                 args,

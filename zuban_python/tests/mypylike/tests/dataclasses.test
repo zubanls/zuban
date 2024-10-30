@@ -192,3 +192,15 @@ class D(Generic[T]):
     foo: T
 def foo(x: D[int]) -> None:
     reveal_type(x.foo)  # N: Revealed type is "int"
+
+[case dataclass__call__]
+from dataclasses import dataclass
+
+@dataclass
+class A:
+    x: int
+
+    def __call__(self, x: int) -> None: ...
+
+A(1)()  # E: Missing positional argument "x" in call to "__call__" of "A"
+A(1)(1)
