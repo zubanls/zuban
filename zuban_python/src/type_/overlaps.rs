@@ -103,7 +103,9 @@ impl Type {
                 {
                     Type::new_class(metaclass, ClassGenerics::None).overlaps(i_s, matcher, other)
                 } else {
-                    c.class(i_s.db).is_metaclass(i_s.db) && self.overlaps(i_s, matcher, other)
+                    other.is_object(i_s.db)
+                        || c.class(i_s.db).is_metaclass(i_s.db)
+                            && self.overlaps(i_s, matcher, other)
                 }
             }
             Type::Callable(c2) => {

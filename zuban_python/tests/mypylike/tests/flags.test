@@ -86,3 +86,10 @@ def foo(x: tuple[int, ...], y: tuple[int, int]) -> tuple[int, int]:
     if bool():
         return cast(tuple[int, int], y)  # E: Redundant cast to "tuple[int, int]"
     return cast(tuple[int, int], x)
+
+[case type_of_none_overlaps_with_object]
+# flags: --strict-equality
+#x: object = type(None)
+def foo(obj: object) -> None:
+    if obj is type(None): ...
+    if 1 is type(None): ...  # E: Non-overlapping identity check (left operand type: "int", right operand type: "Type[None]")
