@@ -570,7 +570,7 @@ fn replace_annoyances(s: String) -> String {
 }
 
 fn temporarily_skip(s: String) -> Option<String> {
-    if s.ends_with(" overlap with incompatible return types")
+    if s.contains(" overlap with incompatible return types")
         && s.contains("overloaded function signatures")
     {
         return None;

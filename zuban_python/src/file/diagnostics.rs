@@ -1056,6 +1056,8 @@ impl<'db> Inference<'db, '_, '_> {
                             &c2.params,
                         )
                     {
+                        // TODO skipping incompatible return types overload check
+                        /*
                         NodeRef::from_link(i_s.db, c1.defined_at).add_issue(
                             i_s,
                             IssueKind::OverloadIncompatibleReturnTypes {
@@ -1063,6 +1065,7 @@ impl<'db> Inference<'db, '_, '_> {
                                 second_signature_index: i + k + 2,
                             },
                         );
+                        */
                     }
                 }
             }
