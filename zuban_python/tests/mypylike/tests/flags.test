@@ -93,3 +93,40 @@ def foo(x: tuple[int, ...], y: tuple[int, int]) -> tuple[int, int]:
 def foo(obj: object) -> None:
     if obj is type(None): ...
     if 1 is type(None): ...  # E: Non-overlapping identity check (left operand type: "int", right operand type: "Type[None]")
+
+[case type_overlaps_with_type]
+# flags: --strict-equality
+from typing import Any
+
+def foo(i: type[int], x: type[Any], y: type, z: type[object]) -> None:
+    i == x
+    x == i
+    x == y
+    y == x
+    i == y
+    y == i
+
+    z == x
+    x == z
+    z == y
+    y == z
+    z == i
+    i == z
+
+    type == i  # E: Non-overlapping equality check (left operand type: "Type[type]", right operand type: "Type[int]")
+    i == type  # E: Non-overlapping equality check (left operand type: "Type[int]", right operand type: "Type[type]")
+    type == x
+    x == type
+    type == y
+    y == type
+    type == z
+    z == type
+
+    type == type(x)
+    type(x) == type
+    type == type(y)
+    type(y) == type
+    type == type(z)
+    type(z) == type
+    type == type(i)
+    type(i) == type

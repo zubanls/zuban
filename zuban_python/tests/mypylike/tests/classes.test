@@ -700,14 +700,14 @@ def foo(
         b: type[int],
         n: N,
         ):
-    reveal_type(type(a))  # N: Revealed type is "Type[Type[object]]"
-    reveal_type(type(b))  # N: Revealed type is "Type[Type[object]]"
+    reveal_type(type(a))  # N: Revealed type is "Type[Any]"
+    reveal_type(type(b))  # N: Revealed type is "Type[object]"
     reveal_type(type(()))  # N: Revealed type is "Type[tuple[()]]"
     reveal_type(type(T))  # N: Revealed type is "Type[typing.TypeVar]"
 
     reveal_type(type(n))  # N: Revealed type is "Type[__main__.N]"
-    reveal_type(type(N))  # N: Revealed type is "Type[Type[object]]"
-    reveal_type(type(N))  # N: Revealed type is "Type[Type[object]]"
+    reveal_type(type(N))  # N: Revealed type is "Type[object]"
+    reveal_type(type(N))  # N: Revealed type is "Type[object]"
     reveal_type(type(typing))  # N: Revealed type is "Type[types.ModuleType]"
     reveal_type(type(abs))  # N: Revealed type is "Type[object]"
 
@@ -744,17 +744,17 @@ class T(TypedDict):
     x: int
 
 def foo(e: E, d: D, n: N, t: T):
-    reveal_type(type(E))  # N: Revealed type is "Type[Type[object]]"
+    reveal_type(type(E))  # N: Revealed type is "Type[object]"
     reveal_type(type(e))  # N: Revealed type is "Type[__main__.E]"
     reveal_type(type(E.x))  # N: Revealed type is "Type[__main__.E]"
 
-    reveal_type(type(D))  # N: Revealed type is "Type[Type[object]]"
+    reveal_type(type(D))  # N: Revealed type is "Type[object]"
     reveal_type(type(d))  # N: Revealed type is "def (x: int) -> __main__.D"
 
-    reveal_type(type(N))  # N: Revealed type is "Type[Type[object]]"
+    reveal_type(type(N))  # N: Revealed type is "Type[object]"
     reveal_type(type(n))  # N: Revealed type is "Type[tuple[int, fallback=__main__.N]]"
 
-    reveal_type(type(T))  # N: Revealed type is "Type[Type[object]]"
+    reveal_type(type(T))  # N: Revealed type is "Type[object]"
     reveal_type(type(t))  # N: Revealed type is "Type[object]"
 
 [case self_argument_against_generics]

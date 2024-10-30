@@ -3510,9 +3510,10 @@ fn execute_bare_type<'db>(i_s: &InferenceState<'db, '_>, first_arg: Inferred) ->
                     MetaclassState::Some(link) => {
                         type_part.union_in_place(Type::new_class(*link, ClassGenerics::None))
                     }
-                    _ => type_part.union_in_place(i_s.db.python_state.type_of_object.clone()),
+                    _ => type_part.union_in_place(i_s.db.python_state.object_type().clone()),
                 },
-                _ => type_part.union_in_place(i_s.db.python_state.type_of_object.clone()),
+                Type::Any(cause) => type_part.union_in_place(Type::Any(*cause)),
+                _ => type_part.union_in_place(i_s.db.python_state.object_type()),
             },
             Type::Module(_) | Type::NamedTuple(_) => {
                 type_part.union_in_place(i_s.db.python_state.module_type())
