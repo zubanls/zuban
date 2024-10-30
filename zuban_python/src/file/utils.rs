@@ -422,9 +422,6 @@ fn check_elements_with_context<'db>(
     // Since it's a list or a set, now check all the entries if they match the given
     // result generic;
     let mut had_error = false;
-    let mut out: Option<Type> = None;
-    let out_pointer = &mut out;
-    let context_has_any = generic_t.is_any_or_any_in_union(i_s.db);
     for (item, element) in elements.enumerate() {
         let mut check_item = |i_s: &InferenceState<'db, '_>, matcher, inferred: Inferred, index| {
             generic_t.error_if_not_matches_with_matcher(
@@ -450,12 +447,6 @@ fn check_elements_with_context<'db>(
                     }
                 },
             );
-            if !had_error && context_has_any {
-                *out_pointer = Some(match out_pointer {
-                    None => inferred.as_type(i_s),
-                    Some(old) => old.common_base_type(i_s, &inferred.as_cow_type(i_s)),
-                });
-            }
         };
         let inference = file.inference(i_s);
         match element {
@@ -482,12 +473,7 @@ fn check_elements_with_context<'db>(
             StarLikeExpression::StarExpression(e) => unreachable!(),
         };
     }
-    (!had_error).then(|| {
-        out.map(|t| t.avoid_implicit_literal(i_s.db))
-            .unwrap_or_else(|| {
-                matcher.replace_type_var_likes_for_unknown_type_vars(i_s.db, generic_t)
-            })
-    })
+    (!had_error).then(|| matcher.replace_type_var_likes_for_unknown_type_vars(i_s.db, generic_t))
 }
 
 pub fn on_argument_type_error(

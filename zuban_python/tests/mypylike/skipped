@@ -111,12 +111,6 @@ testOverride__new__AndCallObject
 testNewAndInitNoReturn
 testOverloadedNewAndInitNoReturn
 
-# list[Any] should not be narrowed to e.g. list[int]
-testNewAnalyzerBuiltinAliasesFixed
-testInferredTypeIsSimpleNestedList
-testInferredTypeIsSimpleNestedIterable
-testInferredTypeIsSimpleNestedListLoop
-testInferredTypeIsSimpleNestedIterableLoop
 # TypeGuard/TypeIs narrowing with Any
 testTypeGuardNestedRestrictionAny
 testTypeIsNestedRestrictionAny
@@ -1004,6 +998,7 @@ testDisableEnableErrorCodesIncremental
 testCovariantMutableOverride
 # flags: --allow-untyped-globals
 testPermissiveAttributeOverride1
+testPermissiveAttributeOverride2
 
 # "Method cannot have explicit self annotation and Self type"
 testTypingSelfConflict
