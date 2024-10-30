@@ -159,3 +159,17 @@ def foo(x: Literal[A.x], y: Literal[A.y], z: A) -> None:
     expect_a(a7)
     a8 = {"x": A.x, "x2": y}
     expect_a(a8)
+
+[case enum__call__]
+from typing import Literal
+from enum import Enum
+
+class A(Enum):
+    x = "x"
+    def __call__(self, x: int) -> None: ...
+
+def foo(x: Literal[A.x], y: A) -> None:
+    x()  # E: Missing positional argument "x" in call to "__call__" of "A"
+    x(1)
+    y()  # E: Missing positional argument "x" in call to "__call__" of "A"
+    y(1)

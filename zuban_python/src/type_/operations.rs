@@ -585,6 +585,17 @@ impl Type {
                     .instance()
                     .execute(i_s, args, result_context, on_type_error)
             }
+            Type::Enum(e) => {
+                e.class(i_s.db)
+                    .instance()
+                    .execute(i_s, args, result_context, on_type_error)
+            }
+            Type::EnumMember(e) => {
+                e.enum_
+                    .class(i_s.db)
+                    .instance()
+                    .execute(i_s, args, result_context, on_type_error)
+            }
             Type::FunctionOverload(overload) => OverloadedFunction::new(overload, None).execute(
                 i_s,
                 args,
