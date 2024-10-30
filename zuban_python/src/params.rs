@@ -1277,7 +1277,7 @@ impl<'member> Param<'member> for TypedDictMemberParam<'member> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ParamArgument<'db, 'a> {
     None,
     Argument(Arg<'db, 'a>),
@@ -1290,7 +1290,7 @@ pub enum ParamArgument<'db, 'a> {
     ParamSpecArgs(ParamSpecUsage, Box<[Arg<'db, 'a>]>),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct InferrableParam<'db, 'a, P> {
     pub param: P,
     pub argument: ParamArgument<'db, 'a>,

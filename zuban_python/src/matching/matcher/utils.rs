@@ -560,12 +560,12 @@ pub(crate) fn match_arguments_against_params<
     let mut argument_indices_with_any = vec![];
     let mut matches = Match::new_true();
     // lambdas are analyzed at the end to improve type inference.
-    let mut delayed_lambdas = vec![];
+    let mut delayed_params = vec![];
     let mut params_iterator = args_with_params.by_ref().enumerate();
-    while let Some(((i, p), from_lambda)) = params_iterator
+    while let Some(((i, p), was_delayed)) = params_iterator
         .next()
         .map(|x| (x, false))
-        .or_else(|| delayed_lambdas.pop().map(|x| (x, true)))
+        .or_else(|| delayed_params.pop().map(|x| (x, true)))
     {
         if matches!(p.argument, ParamArgument::None) && !p.param.has_default() {
             matches = Match::new_false();
@@ -580,8 +580,8 @@ pub(crate) fn match_arguments_against_params<
                     .unwrap_or_else(|| format!("#{i}"))
             );
             continue;
-        } else if p.argument.is_lambda_argument() && !from_lambda {
-            delayed_lambdas.push((i, p));
+        } else if p.argument.is_lambda_argument() && !was_delayed {
+            delayed_params.push((i, p));
             continue;
         }
         let mut match_arg = |arg: &Arg<'db, '_>, expected: Cow<Type>| {
@@ -648,6 +648,15 @@ pub(crate) fn match_arguments_against_params<
                 }
             };
             let value_t = value.as_cow_type(i_s);
+            if matches!(value_t.as_ref(), Type::FunctionOverload(_))
+                && !was_delayed
+                && expected.has_type_vars()
+            {
+                // Function overloads are special, since they allow generics to assume multiple
+                // potential forms. To make infering easier, just check them in the end.
+                delayed_params.push((i, p.clone()));
+                return;
+            }
             let m = expected.is_super_type_of(i_s, matcher, &value_t);
             if let Match::False { reason, .. } = &m {
                 debug!(
@@ -706,7 +715,7 @@ pub(crate) fn match_arguments_against_params<
             }
             matches &= m
         };
-        match p.argument {
+        match &p.argument {
             ParamArgument::Argument(argument) => {
                 let specific = p.param.specific(i_s.db);
                 let expected = match specific {
@@ -737,7 +746,10 @@ pub(crate) fn match_arguments_against_params<
                 };
                 match_arg(&argument, expected)
             }
-            ParamArgument::ParamSpecArgs(param_spec, args) => {
+            ParamArgument::ParamSpecArgs(..) => {
+                let ParamArgument::ParamSpecArgs(param_spec, args) = p.argument else {
+                    unreachable!()
+                };
                 matches &= match matcher.match_param_spec_arguments(
                     i_s,
                     &param_spec,
@@ -858,7 +870,7 @@ pub(crate) fn match_arguments_against_params<
             } => {
                 // Checking totality for **Unpack[<TypedDict>]
                 if let Some(m) = missing_unpacked_typed_dict_names.as_mut() {
-                    m.retain(|n| *n != name)
+                    m.retain(|n| n != name)
                 } else {
                     let WrappedParamType::StarStar(WrappedStarStar::UnpackTypedDict(td)) =
                         p.param.specific(i_s.db)
@@ -869,12 +881,12 @@ pub(crate) fn match_arguments_against_params<
                     missing_unpacked_typed_dict_names = Some(
                         td.members(i_s.db)
                             .iter()
-                            .filter(|m| m.name != name && m.required)
+                            .filter(|m| &m.name != name && m.required)
                             .map(|m| m.name)
                             .collect(),
                     );
                 }
-                match_arg(&argument, Cow::Owned(type_))
+                match_arg(&argument, Cow::Borrowed(type_))
             }
             ParamArgument::None => (),
         }

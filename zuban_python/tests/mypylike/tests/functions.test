@@ -67,3 +67,22 @@ def foo(x: tuple[int, str] | list[bytes]) -> None:
     reveal_type(bar(*x))  # N: Revealed type is "tuple[int | bytes, str | bytes]"
     reveal_type(baz(*x))  # E: Missing positional argument "z" in call to "baz" \
                           # N: Revealed type is "tuple[int | bytes, str | bytes, Never]"
+
+[case avoid_wrong_inference_for_overload_when_generic]
+from typing import Callable, TypeVar, overload
+T = TypeVar("T")
+
+@overload
+def over(x: None) -> None: ...
+@overload
+def over(x: int) -> int: ...
+def over(x: object) -> int | None: ...
+
+def foo(x: Callable[[T], T], y: T): ...
+def bar(x: Callable[[T], T], y: list[T]): ...
+
+foo(over, 1)
+foo(over, None)
+
+bar(over, [1])
+bar(over, [None])
