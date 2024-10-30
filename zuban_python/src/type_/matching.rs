@@ -630,7 +630,7 @@ impl Type {
                         }
                     }
                 }
-                _ => Match::new_false(),
+                _ => (class1.node_ref == i_s.db.python_state.bare_type_node_ref()).into(),
             },
             Type::Literal(literal) if variance == Variance::Covariant => {
                 Self::matches_class_against_type(

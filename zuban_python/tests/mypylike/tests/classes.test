@@ -876,6 +876,11 @@ class Sub(Super):
         self.z += [""]
 
 [case type_mro_lookup]
+from typing import Any
+
 type.mro(type(object()))
 type.mro(type(1))
 type.mro(1)  # E: Argument 1 to "mro" of "type" has incompatible type "int"; expected "type"
+
+def foo(a: type[Any]) -> None:
+    type.mro(a)
