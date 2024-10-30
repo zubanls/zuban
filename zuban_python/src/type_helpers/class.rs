@@ -42,8 +42,8 @@ use crate::{
         infer_typed_dict_total_argument, infer_value_on_member, AnyCause, CallableContent,
         CallableLike, CallableParam, CallableParams, ClassGenerics, Dataclass, DataclassOptions,
         DbString, Enum, EnumMemberDefinition, FormatStyle, FunctionKind, FunctionOverload,
-        GenericClass, GenericItem, GenericsList, LookupResult, NamedTuple, NeverCause,
-        ParamSpecArg, ParamSpecUsage, ParamType, StringSlice, Tuple, TupleArgs, Type, TypeVarLike,
+        GenericClass, GenericsList, LookupResult, NamedTuple, NeverCause, ParamSpecArg,
+        ParamSpecUsage, ParamType, StringSlice, Tuple, TupleArgs, Type, TypeVarLike,
         TypeVarLikeUsage, TypeVarLikes, TypedDict, TypedDictMember, TypedDictMemberGatherer,
         Variance,
     },
@@ -2779,13 +2779,17 @@ pub fn linearize_mro_and_return_linearizable(
                     new_base
                         .t
                         .replace_type_var_likes(i_s.db, &mut |usage| match &bases[base_index] {
-                            Type::Tuple(_) | Type::NamedTuple(_) => {
-                                debug_assert!(matches!(
-                                    usage.as_type_var_like(),
-                                    TypeVarLike::TypeVar(_)
-                                ));
-                                GenericItem::TypeArg(i_s.db.python_state.object_type())
-                            }
+                            Type::Tuple(tup) => tup
+                                .class(i_s.db)
+                                .generics
+                                .nth_usage(i_s.db, &usage)
+                                .into_generic_item(i_s.db),
+                            Type::NamedTuple(n) => n
+                                .as_tuple_ref()
+                                .class(i_s.db)
+                                .generics
+                                .nth_usage(i_s.db, &usage)
+                                .into_generic_item(i_s.db),
                             Type::Class(GenericClass {
                                 generics: ClassGenerics::List(generics),
                                 ..

@@ -303,3 +303,14 @@ def foo(dct: dict[tuple[int, str], str]) -> None:
     dct[1, ""]
     dct[1.0, ""]  # E: Invalid index type "tuple[float, str]" for "dict[tuple[int, str], str]"; expected type "tuple[int, str]"
     dct[1]  # E: Invalid index type "int" for "dict[tuple[int, str], str]"; expected type "tuple[int, str]"
+
+[case tuple_subtype_as_iterable]
+from typing import Iterable
+class Tup(tuple[int, float]): ...
+
+def foo(t1: Tup, t2: tuple[int, float]) -> None:
+    x1: Iterable[float] = t1
+    x2: Iterable[float] = t2
+
+    y1: Iterable[int] = t1  # E: Incompatible types in assignment (expression has type "Tup", variable has type "Iterable[int]")
+    y2: Iterable[int] = t2  # E: Incompatible types in assignment (expression has type "tuple[int, float]", variable has type "Iterable[int]")
