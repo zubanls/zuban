@@ -1530,3 +1530,7 @@ class Foo:
     def foo(self) -> None:
         if self.x is None:
             self.x = set()
+
+[case narrowing_or_with_bools]
+def foo(z: str, w: bool, u: bool) -> bool:
+    return z and w or u

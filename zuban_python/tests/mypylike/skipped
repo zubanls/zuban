@@ -119,6 +119,7 @@ testAndOr
 testRestrictedBoolAndOrWithGenerics
 testOrCases
 testAndCases
+narrowing_or_with_bools
 # isinstance intersections lead sometimes to never?
 testIsInstanceAdHocIntersectionIncrementalIntersectionToUnreachable
 testIsInstanceAdHocIntersectionIncrementalUnreachaableToIntersection
