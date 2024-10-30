@@ -1269,7 +1269,12 @@ impl<'db> Inference<'db, '_, '_> {
         let function_i_s = &mut i_s.with_diagnostic_func_and_args(&function);
         let inference = self.file.inference(function_i_s);
         if function.is_typed() || flags.check_untyped_defs {
-            inference.calc_block_diagnostics(block, None, Some(&function))
+            // TODO for now we skip checking functions with TypeVar constraints
+            if function.type_vars(i_s.db).iter().any(|tv| matches!(tv, TypeVarLike::TypeVar(tv) if matches!(&tv.kind, TypeVarKind::Constraints(_)))) {
+                self.mark_current_frame_unreachable()
+            } else {
+                inference.calc_block_diagnostics(block, None, Some(&function))
+            }
         } else {
             inference.calc_untyped_block_diagnostics(block)
         }
