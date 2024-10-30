@@ -127,3 +127,35 @@ type(x)("x")
 y = A("x").foo()
 reveal_type(y)  # N: Revealed type is "__main__.A"
 type(y)("x")
+
+[case enum_members_in_dict_inference]
+from typing import Final, Literal
+from enum import Enum
+
+class A(Enum):
+    x = "x"
+    y = "y"
+    z = "z"
+
+a1 = {"x": A.x, "y": A.y}
+reveal_type(a1)  # N: Revealed type is "dict[str, __main__.A]"
+
+a2 = dict(x=A.x, y=A.y)
+reveal_type(a2)  # N: Revealed type is "dict[str, Literal[__main__.A.x]? | Literal[__main__.A.y]?]"
+
+def expect_a(x: dict[str, A]) -> None: ...
+
+def foo(x: Literal[A.x], y: Literal[A.y], z: A) -> None:
+    a3 = {"x": x, "y": y}
+    expect_a(a3)
+    a4 = {"x": x, "x2": x}
+    expect_a(a4)
+    a5 = {"x": x, "x2": A.x}
+    expect_a(a5)
+    a6 = {"x": x, "x2": A.y}
+    expect_a(a6)
+
+    a7 = {"x": A.x, "x2": y}
+    expect_a(a7)
+    a8 = {"x": A.x, "x2": y}
+    expect_a(a8)
