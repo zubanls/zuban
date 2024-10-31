@@ -467,5 +467,8 @@ fn check_constraints(
             }
         }
     }
+    if let Some(constraint) = matched_constraint {
+        return Ok(Bound::Invariant(BoundKind::TypeVar(constraint.clone())));
+    }
     Err(())
 }

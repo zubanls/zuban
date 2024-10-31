@@ -86,3 +86,12 @@ foo(over, None)
 
 bar(over, [1])
 bar(over, [None])
+
+[case type_var_constraint_with_any_input]
+from typing import TypeVar, Any
+T = TypeVar("T", int, str)
+
+def f(x: T) -> T: ...
+
+def foo(x: int | Any) -> None:
+    reveal_type(f(x))  # N: Revealed type is "int"
