@@ -422,7 +422,7 @@ impl<'db> Inference<'db, '_, '_> {
             };
             self.file.points.set(
                 stmt_like.parent_index,
-                Point::new_node_analysis(Locality::Todo),
+                Point::new_specific(Specific::Analyzed, Locality::Todo),
             );
         }
     }
@@ -1531,7 +1531,7 @@ impl<'db> Inference<'db, '_, '_> {
         self.assign_targets(star_targets.as_target(), element, from, AssignKind::Normal);
         self.file.points.set(
             star_targets.index(),
-            Point::new_node_analysis(Locality::Todo),
+            Point::new_specific(Specific::Analyzed, Locality::Todo),
         );
     }
 
@@ -2528,6 +2528,6 @@ fn diagnostics_for_scope(from: NodeRef, callable: impl FnOnce()) -> Result<(), (
     }
     from.set_point(Point::new_calculating());
     callable();
-    from.set_point(Point::new_node_analysis(Locality::Todo));
+    from.set_point(Point::new_specific(Specific::Analyzed, Locality::Todo));
     Ok(())
 }

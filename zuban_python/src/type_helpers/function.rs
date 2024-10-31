@@ -425,7 +425,8 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         }
         let (type_vars, type_guard, star_annotation) = self.cache_type_vars(i_s);
         match type_vars.len() {
-            0 => type_var_reference.set_point(Point::new_node_analysis(Locality::Todo)),
+            0 => type_var_reference
+                .set_point(Point::new_specific(Specific::Analyzed, Locality::Todo)),
             _ => type_var_reference
                 .insert_complex(ComplexPoint::TypeVarLikes(type_vars), Locality::Todo),
         }

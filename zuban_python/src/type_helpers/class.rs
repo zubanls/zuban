@@ -320,7 +320,7 @@ impl<'db: 'a, 'a> Class<'a> {
         node_ref: NodeRef<'a>,
         point: Point,
     ) -> &'a TypeVarLikes {
-        if point.kind() == PointKind::NodeAnalysis {
+        if point.kind() == PointKind::Specific {
             &db.python_state.empty_type_var_likes
         } else {
             match node_ref.complex().unwrap() {
@@ -340,7 +340,7 @@ impl<'db: 'a, 'a> Class<'a> {
         let type_vars = TypeVarFinder::find_class_type_vars(i_s, self);
         if type_vars.is_empty() {
             self.type_vars_node_ref()
-                .set_point(Point::new_node_analysis(Locality::Todo));
+                .set_point(Point::new_specific(Specific::Analyzed, Locality::Todo));
         } else {
             self.type_vars_node_ref()
                 .insert_complex(ComplexPoint::TypeVarLikes(type_vars), Locality::Todo);

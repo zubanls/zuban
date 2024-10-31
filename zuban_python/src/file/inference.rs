@@ -125,9 +125,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             }
         }
 
-        self.file
-            .points
-            .set(imp.index(), Point::new_node_analysis(Locality::Todo));
+        self.file.points.set(
+            imp.index(),
+            Point::new_specific(Specific::Analyzed, Locality::Todo),
+        );
     }
 
     fn cache_import_from_only_particular_name_def(&self, as_name: ImportFromAsName) {
@@ -236,9 +237,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 }
             }
         }
-        self.file
-            .points
-            .set(imp.index(), Point::new_node_analysis(Locality::Todo));
+        self.file.points.set(
+            imp.index(),
+            Point::new_specific(Specific::Analyzed, Locality::Todo),
+        );
     }
 
     pub fn import_from_first_part(&self, import_from: ImportFrom) -> Option<ImportResult> {
@@ -768,9 +770,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 }
             }
         }
-        self.file
-            .points
-            .set(assignment.index(), Point::new_node_analysis(Locality::Todo));
+        self.file.points.set(
+            assignment.index(),
+            Point::new_specific(Specific::Analyzed, Locality::Todo),
+        );
     }
 
     fn maybe_partial_aug_assignment(

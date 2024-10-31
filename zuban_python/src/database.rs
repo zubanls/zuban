@@ -410,6 +410,7 @@ pub enum PointKind {
 pub enum Specific {
     // This is reserved, because if everything is initialized as zero, this is the value it takes.
     ReservedBecauseUnused,
+    Analyzed, // Signals that a node has been analyzed
     Calculating,
     Cycle,
     NameOfNameDef, // Cycles for the same name definition in e.g. different branches

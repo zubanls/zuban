@@ -308,8 +308,10 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> Init
                         target,
                         NodeRef::new(file, right_side.index()),
                     );
-                    file.points
-                        .set(assignment.index(), Point::new_node_analysis(Locality::Todo));
+                    file.points.set(
+                        assignment.index(),
+                        Point::new_specific(Specific::Analyzed, Locality::Todo),
+                    );
                 }
                 with_indexes.push(Annotated {
                     name_index: *name_index,
