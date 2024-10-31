@@ -997,13 +997,7 @@ impl<'db, 'a, I, P, AI: Iterator<Item = Arg<'db, 'a>>> InferrableParamIterator<'
         if arg.in_args_or_kwargs_and_arbitrary_len() {
             self.arbitrary_length_handled = false;
             self.current_arg = Some(arg.clone());
-            if matches!(
-                arg.kind,
-                ArgKind::Inferred {
-                    is_keyword: Some(None),
-                    ..
-                }
-            ) {
+            if arg.is_arbitrary_kwargs() {
                 // A **kwargs
                 while let Some(next_arg) = self.arguments.next() {
                     if next_arg.is_from_star_star_args() {
@@ -1091,13 +1085,7 @@ where
                         }
                     } else if argument.in_args_or_kwargs_and_arbitrary_len() {
                         self.current_arg = None;
-                        if matches!(
-                            &argument.kind,
-                            ArgKind::Inferred {
-                                is_keyword: Some(None),
-                                ..
-                            }
-                        ) {
+                        if argument.is_arbitrary_kwargs() {
                             self.unused_unpack_typed_dict = UnpackTypedDictState::Used;
                             return Some(InferrableParam {
                                 param,
@@ -1145,7 +1133,7 @@ where
                             self.unused_keyword_arguments.push(arg);
                         }
                     } else {
-                        if arg.in_args_or_kwargs_and_arbitrary_len() && arg.is_keyword_argument() {
+                        if arg.is_arbitrary_kwargs() {
                             if let Some(p) = check_unused(self, param) {
                                 return Some(p);
                             }
@@ -1162,31 +1150,24 @@ where
             }
             ParamKind::KeywordOnly => {
                 while let Some(arg) = self.next_arg() {
-                    match arg.kind {
-                        ArgKind::Inferred {
-                            is_keyword: Some(None),
-                            in_args_or_kwargs_and_arbitrary_len: true,
-                            ..
-                        } => {
-                            if let Some(p) = check_unused(self, param) {
-                                return Some(p);
-                            }
-                            argument_with_index = Some(arg);
-                            break;
+                    if arg.is_arbitrary_kwargs() {
+                        if let Some(p) = check_unused(self, param) {
+                            return Some(p);
                         }
-                        _ => {
-                            if let Some(key) = arg.keyword_name(self.db) {
-                                if Some(key) == param.name(self.db) {
-                                    argument_with_index = Some(arg);
-                                    break;
-                                } else {
-                                    self.unused_keyword_arguments.push(arg);
-                                }
-                            } else if arg.in_args_or_kwargs_and_arbitrary_len() {
-                                self.current_arg = None;
+                        argument_with_index = Some(arg);
+                        break;
+                    } else {
+                        if let Some(key) = arg.keyword_name(self.db) {
+                            if Some(key) == param.name(self.db) {
+                                argument_with_index = Some(arg);
+                                break;
                             } else {
-                                self.too_many_positional_arguments = true;
+                                self.unused_keyword_arguments.push(arg);
                             }
+                        } else if arg.in_args_or_kwargs_and_arbitrary_len() {
+                            self.current_arg = None;
+                        } else {
+                            self.too_many_positional_arguments = true;
                         }
                     }
                 }

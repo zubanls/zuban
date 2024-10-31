@@ -433,6 +433,17 @@ impl<'db, 'a> Arg<'db, 'a> {
         }
     }
 
+    pub fn is_arbitrary_kwargs(&self) -> bool {
+        matches!(
+            &self.kind,
+            ArgKind::Inferred {
+                in_args_or_kwargs_and_arbitrary_len: true,
+                is_keyword: Some(None),
+                ..
+            }
+        )
+    }
+
     pub fn infer_inferrable(
         &self,
         func_i_s: &InferenceState<'db, '_>,
