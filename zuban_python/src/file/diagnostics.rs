@@ -320,7 +320,7 @@ impl<'db> Inference<'db, '_, '_> {
         for stmt_like in stmts {
             let point = self.file.points.get(stmt_like.parent_index);
             if point.calculated() {
-                debug_assert_eq!(point.kind(), PointKind::NodeAnalysis);
+                debug_assert_eq!(point.specific(), Specific::Analyzed);
                 continue;
             }
             if self.is_unreachable() {
@@ -1517,7 +1517,7 @@ impl<'db> Inference<'db, '_, '_> {
     ) {
         let star_targets_point = self.file.points.get(star_targets.index());
         if star_targets_point.calculated() {
-            debug_assert_eq!(star_targets_point.kind(), PointKind::NodeAnalysis);
+            debug_assert_eq!(star_targets_point.specific(), Specific::Analyzed);
             return;
         }
         let inf = self.infer_star_expressions(star_exprs, &mut ResultContext::Unknown);

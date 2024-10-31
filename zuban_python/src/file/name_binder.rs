@@ -1067,10 +1067,7 @@ impl<'db> NameBinder<'db> {
         let keyword_index = node_index + 1;
         self.db_infos.points.set(
             keyword_index,
-            Point::new_node_analysis_with_node_index(
-                Locality::NameBinder,
-                self.latest_return_or_yield,
-            ),
+            Point::new_analyzed_with_node_index(Locality::NameBinder, self.latest_return_or_yield),
         );
         self.latest_return_or_yield = keyword_index;
     }
@@ -1257,10 +1254,7 @@ impl<'db> NameBinder<'db> {
         // It's kind of hard to know where to store the latest reference statement.
         self.db_infos.points.set(
             func.index() + FUNC_TO_RETURN_OR_YIELD_DIFF,
-            Point::new_node_analysis_with_node_index(
-                Locality::NameBinder,
-                self.latest_return_or_yield,
-            ),
+            Point::new_analyzed_with_node_index(Locality::NameBinder, self.latest_return_or_yield),
         );
     }
 

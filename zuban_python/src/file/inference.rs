@@ -4040,11 +4040,6 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             PointKind::Complex | PointKind::FileReference => {
                 Inferred::new_saved(self.file, node_index)
             }
-            PointKind::NodeAnalysis => {
-                unreachable!(
-                    "Invalid NodeAnalysis, should not happen on node index {node_index:?}"
-                );
-            }
         }
     }
 

@@ -145,17 +145,10 @@ impl Point {
         }
     }
 
-    pub fn new_node_analysis(locality: Locality) -> Self {
+    pub fn new_analyzed_with_node_index(locality: Locality, node_index: NodeIndex) -> Self {
         Self {
-            flags: Self::calculate_flags(PointKind::NodeAnalysis, 0, locality),
-            node_index: 0,
-        }
-    }
-
-    pub fn new_node_analysis_with_node_index(locality: Locality, node_index: NodeIndex) -> Self {
-        Self {
-            flags: Self::calculate_flags(PointKind::NodeAnalysis, node_index, locality),
             node_index,
+            ..Self::new_specific(Specific::Analyzed, locality)
         }
     }
 
@@ -231,10 +224,9 @@ impl Point {
     pub fn node_index(self) -> NodeIndex {
         debug_assert!(
             self.kind() == PointKind::Redirect
-                || self.kind() == PointKind::NodeAnalysis
                 || matches!(
                     self.maybe_specific(),
-                    Some(Specific::NameOfNameDef | Specific::Parent)
+                    Some(Specific::NameOfNameDef | Specific::Parent | Specific::Analyzed)
                 )
         );
         self.node_index
@@ -401,8 +393,6 @@ pub enum PointKind {
     Complex,
     Redirect,
     FileReference,
-    // Basically stuff like if/for nodes
-    NodeAnalysis,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
