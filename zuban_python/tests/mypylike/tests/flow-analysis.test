@@ -191,3 +191,21 @@ from foo import y
 x = str()
 class X:
     member: Final = 1
+
+[case flow_analysis_member_loops]
+from foo import C
+C().definition
+
+[file foo.py]
+class P:
+    def __init__(self) -> None:
+        self.x: int = 1
+
+    def foo(self, other: C) -> None:
+        other.y
+
+class C:
+    def __init__(self) -> None:
+        P().x
+        self.y = int()
+        self.definition = 1
