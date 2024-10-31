@@ -1116,139 +1116,138 @@ where
             }
             None
         };
-        self.params.next().and_then(|param| {
-            let mut argument_with_index = None;
-            match param.kind(self.db) {
-                ParamKind::PositionalOrKeyword => {
-                    while let Some(arg) = self.next_arg() {
-                        if let Some(key) = arg.keyword_name(self.db) {
-                            if Some(key) == param.name(self.db) {
-                                argument_with_index = Some(arg);
-                                break;
-                            } else {
-                                self.unused_keyword_arguments.push(arg);
-                            }
+        let param = self.params.next()?;
+        let mut argument_with_index = None;
+        match param.kind(self.db) {
+            ParamKind::PositionalOrKeyword => {
+                while let Some(arg) = self.next_arg() {
+                    if let Some(key) = arg.keyword_name(self.db) {
+                        if Some(key) == param.name(self.db) {
+                            argument_with_index = Some(arg);
+                            break;
                         } else {
+                            self.unused_keyword_arguments.push(arg);
+                        }
+                    } else {
+                        argument_with_index = Some(arg);
+                        break;
+                    }
+                }
+                if argument_with_index.is_none() {
+                    if let Some(p) = check_unused(self, param) {
+                        return Some(p);
+                    }
+                }
+            }
+            ParamKind::KeywordOnly => {
+                while let Some(arg) = self.next_arg() {
+                    match arg.kind {
+                        ArgKind::Inferred {
+                            is_keyword: Some(None),
+                            in_args_or_kwargs_and_arbitrary_len: true,
+                            ..
+                        } => {
                             argument_with_index = Some(arg);
                             break;
                         }
-                    }
-                    if argument_with_index.is_none() {
-                        if let Some(p) = check_unused(self, param) {
-                            return Some(p);
-                        }
-                    }
-                }
-                ParamKind::KeywordOnly => {
-                    while let Some(arg) = self.next_arg() {
-                        match arg.kind {
-                            ArgKind::Inferred {
-                                is_keyword: Some(None),
-                                in_args_or_kwargs_and_arbitrary_len: true,
-                                ..
-                            } => {
-                                argument_with_index = Some(arg);
-                                break;
-                            }
-                            _ => {
-                                if let Some(key) = arg.keyword_name(self.db) {
-                                    if Some(key) == param.name(self.db) {
-                                        argument_with_index = Some(arg);
-                                        break;
-                                    } else {
-                                        self.unused_keyword_arguments.push(arg);
-                                    }
-                                } else if arg.in_args_or_kwargs_and_arbitrary_len() {
-                                    self.current_arg = None;
+                        _ => {
+                            if let Some(key) = arg.keyword_name(self.db) {
+                                if Some(key) == param.name(self.db) {
+                                    argument_with_index = Some(arg);
+                                    break;
                                 } else {
-                                    self.too_many_positional_arguments = true;
-                                }
-                            }
-                        }
-                    }
-                    if argument_with_index.is_none() {
-                        if let Some(p) = check_unused(self, param) {
-                            return Some(p);
-                        }
-                    }
-                }
-                ParamKind::PositionalOnly => {
-                    if let Some(arg) = self.next_arg() {
-                        match arg.kind {
-                            ArgKind::Positional { .. }
-                            | ArgKind::Inferred {
-                                is_keyword: None, ..
-                            }
-                            | ArgKind::InferredWithCustomAddIssue { .. }
-                            | ArgKind::Comprehension { .. } => argument_with_index = Some(arg),
-                            _ => {
-                                if arg.keyword_name(self.db).is_some() {
                                     self.unused_keyword_arguments.push(arg);
                                 }
+                            } else if arg.in_args_or_kwargs_and_arbitrary_len() {
+                                self.current_arg = None;
+                            } else {
+                                self.too_many_positional_arguments = true;
                             }
                         }
                     }
                 }
-                ParamKind::Star => match param.specific(self.db) {
-                    WrappedParamType::Star(WrappedStar::ParamSpecArgs(u)) => {
-                        let next = self.params.next();
-                        debug_assert!(matches!(
-                            next.unwrap().specific(self.db),
-                            WrappedParamType::StarStar(WrappedStarStar::ParamSpecKwargs(u)),
-                        ));
-                        return Some(InferrableParam {
-                            param,
-                            argument: ParamArgument::ParamSpecArgs(
-                                u.clone(),
-                                // TODO this is completely wrong. THERE IS ALSO current_arg
-                                self.arguments.by_ref().collect(),
-                            ),
-                        });
+                if argument_with_index.is_none() {
+                    if let Some(p) = check_unused(self, param) {
+                        return Some(p);
                     }
-                    WrappedParamType::Star(WrappedStar::UnpackedTuple(u)) => {
-                        let mut args = vec![];
-                        // Fetch all positional arguments
-                        while let Some(arg) = self.next_arg() {
-                            self.current_arg = None;
-                            if arg.is_keyword_argument() {
-                                self.current_arg = Some(arg);
-                                break;
-                            }
-                            args.push(arg);
-                        }
-                        return Some(InferrableParam {
-                            param,
-                            argument: ParamArgument::TupleUnpack(args.into()),
-                        });
-                    }
-                    WrappedParamType::Star(WrappedStar::ArbitraryLen(_)) => {
-                        self.current_starred_param = Some(param);
-                        return self.next();
-                    }
-                    _ => unreachable!(),
-                },
-                ParamKind::StarStar => {
-                    self.current_double_starred_param = Some(param);
-                    if let WrappedParamType::StarStar(WrappedStarStar::UnpackTypedDict(td)) =
-                        param.specific(self.db)
-                    {
-                        self.unused_unpack_typed_dict = UnpackTypedDictState::Unused(td);
-                    }
-                    return self.next();
                 }
             }
-            Some(
-                argument_with_index
-                    .map(|a| InferrableParam {
+            ParamKind::PositionalOnly => {
+                if let Some(arg) = self.next_arg() {
+                    match arg.kind {
+                        ArgKind::Positional { .. }
+                        | ArgKind::Inferred {
+                            is_keyword: None, ..
+                        }
+                        | ArgKind::InferredWithCustomAddIssue { .. }
+                        | ArgKind::Comprehension { .. } => argument_with_index = Some(arg),
+                        _ => {
+                            if arg.keyword_name(self.db).is_some() {
+                                self.unused_keyword_arguments.push(arg);
+                            }
+                        }
+                    }
+                }
+            }
+            ParamKind::Star => match param.specific(self.db) {
+                WrappedParamType::Star(WrappedStar::ParamSpecArgs(u)) => {
+                    let next = self.params.next();
+                    debug_assert!(matches!(
+                        next.unwrap().specific(self.db),
+                        WrappedParamType::StarStar(WrappedStarStar::ParamSpecKwargs(u)),
+                    ));
+                    return Some(InferrableParam {
                         param,
-                        argument: ParamArgument::Argument(a),
-                    })
-                    .unwrap_or_else(|| InferrableParam {
+                        argument: ParamArgument::ParamSpecArgs(
+                            u.clone(),
+                            // TODO this is completely wrong. THERE IS ALSO current_arg
+                            self.arguments.by_ref().collect(),
+                        ),
+                    });
+                }
+                WrappedParamType::Star(WrappedStar::UnpackedTuple(u)) => {
+                    let mut args = vec![];
+                    // Fetch all positional arguments
+                    while let Some(arg) = self.next_arg() {
+                        self.current_arg = None;
+                        if arg.is_keyword_argument() {
+                            self.current_arg = Some(arg);
+                            break;
+                        }
+                        args.push(arg);
+                    }
+                    return Some(InferrableParam {
                         param,
-                        argument: ParamArgument::None,
-                    }),
-            )
-        })
+                        argument: ParamArgument::TupleUnpack(args.into()),
+                    });
+                }
+                WrappedParamType::Star(WrappedStar::ArbitraryLen(_)) => {
+                    self.current_starred_param = Some(param);
+                    return self.next();
+                }
+                _ => unreachable!(),
+            },
+            ParamKind::StarStar => {
+                self.current_double_starred_param = Some(param);
+                if let WrappedParamType::StarStar(WrappedStarStar::UnpackTypedDict(td)) =
+                    param.specific(self.db)
+                {
+                    self.unused_unpack_typed_dict = UnpackTypedDictState::Unused(td);
+                }
+                return self.next();
+            }
+        }
+        Some(
+            argument_with_index
+                .map(|a| InferrableParam {
+                    param,
+                    argument: ParamArgument::Argument(a),
+                })
+                .unwrap_or_else(|| InferrableParam {
+                    param,
+                    argument: ParamArgument::None,
+                }),
+        )
     }
 }
 
