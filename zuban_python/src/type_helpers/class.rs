@@ -1687,11 +1687,25 @@ impl<'db: 'a, 'a> Class<'a> {
                 LookupResult::None
             }
             Some(node_index) => {
-                let inf = self
+                let new_i_s = i_s.with_class_context(self);
+                let inference = self.node_ref.file.inference(&new_i_s);
+                let inf = if self
                     .node_ref
                     .file
-                    .inference(&i_s.with_class_context(self))
-                    .infer_name_of_definition_by_index(node_index);
+                    .points
+                    .get(node_index)
+                    .needs_flow_analysis()
+                {
+                    inference.infer_name_of_definition_by_index(node_index)
+                } else {
+                    // If we don't need flow analysis, we need to make sure that the context is not
+                    // wrong.
+                    inference.with_correct_context(true, |_| {
+                        // TODO it is currently intentional that we do no use the changed
+                        // inference, but this should probably be changed at some point
+                        inference.infer_name_of_definition_by_index(node_index)
+                    })
+                };
                 LookupResult::GotoName {
                     name: PointLink::new(self.node_ref.file.file_index, node_index),
                     inf,

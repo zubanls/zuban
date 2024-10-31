@@ -3980,8 +3980,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             global_redirect || !point.in_global_scope() && new_p.in_global_scope(),
                         )
                         .unwrap_or_else(|| {
-                            todo!(
-                                "When does this ever happen? {}",
+                            unreachable!(
+                                "This should never happen {}",
                                 NodeRef::new(inference.file, next_node_index)
                                     .debug_info(self.i_s.db)
                             )
@@ -4046,7 +4046,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     }
 
     #[inline]
-    fn with_correct_context<T>(
+    pub fn with_correct_context<T>(
         &self,
         global_redirect: bool,
         callable: impl Fn(&Inference) -> T,

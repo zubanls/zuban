@@ -170,3 +170,24 @@ from other import something as x2
 
 [file other.py]
 something = 1
+
+[case flow_analysis_avoid_final_loop_issue_in_simple_case]
+# flags: --warn-unreachable
+import foo
+
+[file foo.py]
+from typing import Final
+from bar import X
+
+for _ in [1]:
+    X.member
+
+y = str()
+
+[file bar.py]
+from typing import Final
+from foo import y
+
+x = str()
+class X:
+    member: Final = 1
