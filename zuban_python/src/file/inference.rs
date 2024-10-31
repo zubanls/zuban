@@ -1499,7 +1499,11 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             // and cannot be redefined
             let is_special_def = !matches!(
                 maybe_complex_def,
-                None | Some(ComplexPoint::TypeInstance(_) | ComplexPoint::IndirectFinal(_))
+                None | Some(
+                    ComplexPoint::TypeInstance(_)
+                        | ComplexPoint::IndirectFinal(_)
+                        | ComplexPoint::FunctionOverload(_)
+                )
             );
             let assign_as_new_definition = match assign_kind {
                 AssignKind::Annotation { .. } => true,

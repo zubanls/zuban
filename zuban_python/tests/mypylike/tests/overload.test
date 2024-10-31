@@ -483,3 +483,12 @@ def foo(x: object, y: object) -> Any: ...
 def x(c: Callable[[T, str], T]) -> T: ...
 
 reveal_type(x(foo))  # N: Revealed type is "str"
+
+[case overload_overwrite]
+import os
+import posixpath
+
+if bool():
+    join = os.path.join
+else:
+    join = posixpath.join
