@@ -1700,11 +1700,14 @@ impl<'db: 'a, 'a> Class<'a> {
                 } else {
                     // If we don't need flow analysis, we need to make sure that the context is not
                     // wrong.
+                    /*
                     inference.with_correct_context(true, |_| {
                         // TODO it is currently intentional that we do no use the changed
                         // inference, but this should probably be changed at some point
                         inference.infer_name_of_definition_by_index(node_index)
                     })
+                    */
+                    inference.infer_name_of_definition_by_index(node_index)
                 };
                 LookupResult::GotoName {
                     name: PointLink::new(self.node_ref.file.file_index, node_index),
