@@ -993,14 +993,30 @@ impl<'db, 'a, I, P, AI: Iterator<Item = Arg<'db, 'a>>> InferrableParamIterator<'
     }
 
     pub fn next_arg(&mut self) -> Option<Arg<'db, 'a>> {
-        let arg = self.current_arg.take().or_else(|| self.arguments.next());
-        if let Some(a) = &arg {
-            if a.in_args_or_kwargs_and_arbitrary_len() {
-                self.arbitrary_length_handled = false;
-                self.current_arg.clone_from(&arg);
+        let arg = self.current_arg.take().or_else(|| self.arguments.next())?;
+        if arg.in_args_or_kwargs_and_arbitrary_len() {
+            self.arbitrary_length_handled = false;
+            self.current_arg = Some(arg.clone());
+            if matches!(
+                arg.kind,
+                ArgKind::Inferred {
+                    is_keyword: Some(None),
+                    ..
+                }
+            ) {
+                // A **kwargs
+                while let Some(next_arg) = self.arguments.next() {
+                    if next_arg.is_from_star_star_args() {
+                        debug!("TODO currently b in foo(**a, **b) is just ignored");
+                    } else {
+                        debug_assert!(next_arg.is_keyword_argument());
+                        // This is y in `foo(**x, y=3)`
+                        return Some(next_arg);
+                    }
+                }
             }
         }
-        arg
+        Some(arg)
     }
 
     fn maybe_exact_multi_arg(&mut self, is_keyword_arg: bool) -> Option<Arg<'db, 'a>> {

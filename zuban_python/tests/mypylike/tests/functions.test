@@ -95,3 +95,12 @@ def f(x: T) -> T: ...
 
 def foo(x: int | Any) -> None:
     reveal_type(f(x))  # N: Revealed type is "int"
+
+[case arg_after_kwargs]
+def foo1(x: int, y: int) -> None: ...
+def foo2(x: str, y: int) -> None: ...
+
+def bar(**kwargs: int) -> None:
+    foo1(**kwargs, x=1)
+    foo2(**kwargs, x="")
+    foo2(**kwargs)  # E: Argument 1 to "foo2" has incompatible type "**dict[str, int]"; expected "str"
