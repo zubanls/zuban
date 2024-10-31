@@ -433,7 +433,7 @@ impl Type {
                     self.matches(i_s, matcher, t, variance)
                 })
             }
-            Type::NewType(n2) => {
+            Type::NewType(n2) if variance == Variance::Covariant => {
                 let t = n2.type_(i_s);
                 return self.matches(i_s, matcher, t, variance);
             }

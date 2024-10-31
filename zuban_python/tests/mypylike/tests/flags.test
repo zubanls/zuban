@@ -130,3 +130,13 @@ def foo(i: type[int], x: type[Any], y: type, z: type[object]) -> None:
     type(z) == type
     type == type(i)
     type(i) == type
+
+[case redundant_cast_with_new_type]
+# flags: --warn-redundant-casts
+from typing import cast, NewType
+
+A = NewType("A", int)
+
+x = 1
+y = cast(A, x)
+cast(A, y) # E: Redundant cast to "A"
