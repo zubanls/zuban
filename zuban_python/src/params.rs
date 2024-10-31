@@ -1145,6 +1145,11 @@ where
                             self.unused_keyword_arguments.push(arg);
                         }
                     } else {
+                        if arg.in_args_or_kwargs_and_arbitrary_len() && arg.is_keyword_argument() {
+                            if let Some(p) = check_unused(self, param) {
+                                return Some(p);
+                            }
+                        }
                         argument_with_index = Some(arg);
                         break;
                     }
@@ -1163,6 +1168,9 @@ where
                             in_args_or_kwargs_and_arbitrary_len: true,
                             ..
                         } => {
+                            if let Some(p) = check_unused(self, param) {
+                                return Some(p);
+                            }
                             argument_with_index = Some(arg);
                             break;
                         }

@@ -96,7 +96,7 @@ def f(x: T) -> T: ...
 def foo(x: int | Any) -> None:
     reveal_type(f(x))  # N: Revealed type is "int"
 
-[case arg_after_kwargs]
+[case arg_after_kwargs_normal]
 def foo1(x: int, y: int) -> None: ...
 def foo2(x: str, y: int) -> None: ...
 
@@ -104,3 +104,24 @@ def bar(**kwargs: int) -> None:
     foo1(**kwargs, x=1)
     foo2(**kwargs, x="")
     foo2(**kwargs)  # E: Argument 1 to "foo2" has incompatible type "**dict[str, int]"; expected "str"
+
+    foo1(**kwargs, y=1)
+
+def baz(**kwargs: str) -> None:
+    foo2(**kwargs, y=1)
+    foo2(**kwargs, y="")  # E: Argument "y" to "foo2" has incompatible type "str"; expected "int"
+
+[case arg_after_kwargs_keyword_only]
+def foo1(*, x: int, y: int) -> None: ...
+def foo2(*, x: str, y: int) -> None: ...
+
+def bar(**kwargs: int) -> None:
+    foo1(**kwargs, x=1)
+    foo2(**kwargs, x="")
+    foo2(**kwargs)  # E: Argument 1 to "foo2" has incompatible type "**dict[str, int]"; expected "str"
+
+    foo1(**kwargs, y=1)
+
+def baz(**kwargs: str) -> None:
+    foo2(**kwargs, y=1)
+    foo2(**kwargs, y="")  # E: Argument "y" to "foo2" has incompatible type "str"; expected "int"
