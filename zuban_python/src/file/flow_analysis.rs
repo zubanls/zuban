@@ -1337,12 +1337,10 @@ impl Inference<'_, '_, '_> {
         if !p.calculated() {
             let func_def = func_of_self_symbol(self.file, self_symbol);
             let result = FLOW_ANALYSIS.with(|fa| {
-                fa.with_new_empty(self.i_s, || {
-                    self.ensure_func_diagnostics_for_self_attribute(
-                        fa,
-                        Function::new(NodeRef::new(self.file, func_def.index()), Some(c)),
-                    )
-                })
+                self.ensure_func_diagnostics_for_self_attribute(
+                    fa,
+                    Function::new(NodeRef::new(self.file, func_def.index()), Some(c)),
+                )
             });
             if result.is_err() {
                 // It is possible that the self variable is defined in a super class and we are
@@ -1408,8 +1406,7 @@ impl Inference<'_, '_, '_> {
             }
         }
 
-        let result = self.ensure_func_diagnostics(function);
-        result
+        fa.with_new_empty(self.i_s, || self.ensure_func_diagnostics(function))
     }
 
     pub fn flow_analysis_for_ternary(
