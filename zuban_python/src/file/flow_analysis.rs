@@ -291,7 +291,7 @@ pub struct FlowAnalysis {
 }
 
 impl FlowAnalysis {
-    pub fn with_new_empty<T>(&self, i_s: &InferenceState, callable: impl FnOnce() -> T) -> T {
+    fn with_new_empty<T>(&self, i_s: &InferenceState, callable: impl FnOnce() -> T) -> T {
         let FlowAnalysisResult {
             result,
             unfinished_partials,
@@ -300,7 +300,24 @@ impl FlowAnalysis {
         result
     }
 
-    fn with_new_empty_and_delay_functions_further<T>(
+    pub fn with_new_empty_and_process_delayed_funcs(
+        &self,
+        i_s: &InferenceState,
+        callable: impl FnOnce(),
+    ) {
+        self.with_new_empty(i_s, || {
+            callable();
+            self.process_delayed_funcs(i_s.db, |func| {
+                let result = func
+                    .node_ref
+                    .file
+                    .inference(&InferenceState::new(i_s.db))
+                    .ensure_func_diagnostics(func);
+                debug_assert!(result.is_ok());
+            });
+        })
+    }
+    pub fn with_new_empty_and_delay_functions_further<T>(
         &self,
         i_s: &InferenceState,
         callable: impl FnOnce() -> T,
@@ -382,7 +399,9 @@ impl FlowAnalysis {
                 .flatten()
                 .collect(),
         );
-        self.with_new_empty(i_s, || self.with_frame(reused_narrowings, callable));
+        self.with_new_empty_and_delay_functions_further(i_s, || {
+            self.with_frame(reused_narrowings, callable)
+        });
     }
 
     pub fn debug_assert_is_empty(&self) {
