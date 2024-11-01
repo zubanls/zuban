@@ -1535,6 +1535,16 @@ mod tests {
     }
 
     #[test]
+    fn point_masks_are_big_enough() {
+        let max_specific_kinds = 1 << SPECIFIC_MASK.count_ones();
+        let max_locality_kinds = 1 << LOCALITY_MASK.count_ones();
+        let max_point_kinds = 1 << KIND_MASK.count_ones();
+        assert_eq!(max_specific_kinds, 256);
+        assert_eq!(max_locality_kinds, 8);
+        assert_eq!(max_point_kinds, 8);
+    }
+
+    #[test]
     fn test_empty_point() {
         let p = Point::new_specific(Specific::ReservedBecauseUnused, Locality::NameBinder);
         assert_eq!(p.flags & !IS_ANALIZED_MASK, 0, "{p:?}");

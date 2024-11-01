@@ -11,8 +11,7 @@ use super::{first_defined_name, flow_analysis::FLOW_ANALYSIS, inference::await_}
 use crate::{
     arguments::{CombinedArgs, KnownArgs, NoArgs},
     database::{
-        ClassKind, ComplexPoint, Database, Locality, OverloadImplementation, Point, PointKind,
-        Specific,
+        ClassKind, ComplexPoint, Database, Locality, OverloadImplementation, Point, Specific,
     },
     debug,
     diagnostics::{Issue, IssueKind},
