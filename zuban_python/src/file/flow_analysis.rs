@@ -300,6 +300,23 @@ impl FlowAnalysis {
         result
     }
 
+    fn with_new_empty_and_delay_functions_further<T>(
+        &self,
+        i_s: &InferenceState,
+        callable: impl FnOnce() -> T,
+    ) -> T {
+        let (result, delayed_funcs) = self.with_new_empty(i_s, || {
+            let result = callable();
+            let delayed_funcs: Vec<_> =
+                std::mem::take(&mut self.delayed_func_diagnostics.borrow_mut());
+            (result, delayed_funcs)
+        });
+        self.delayed_func_diagnostics
+            .borrow_mut()
+            .extend(delayed_funcs);
+        result
+    }
+
     pub fn with_new_empty_without_unfinished_partial_checking<T>(
         &self,
         callable: impl FnOnce() -> T,
@@ -1383,19 +1400,13 @@ impl Inference<'_, '_, '_> {
                 if self.i_s.db.project.settings.mypy_compatible {
                     // The class should have self generics within the functions
                     let class = Class::with_self_generics(self.i_s.db, class.node_ref);
-                    fa.with_new_empty(self.i_s, || {
+                    fa.with_new_empty_and_delay_functions_further(self.i_s, || {
                         let new_i_s = self.i_s.with_class_context(&class);
                         let inference = self.file.inference(&new_i_s);
-                        let result = fa
-                            .with_frame_and_result(Frame::default(), || {
-                                inference.calculate_class_block_diagnostics(class, class_block)
-                            })
-                            .1;
-                        fa.process_delayed_funcs(self.i_s.db, |func| {
-                            let result = self.ensure_func_diagnostics(func);
-                            debug_assert!(result.is_ok());
-                        });
-                        result
+                        fa.with_frame_and_result(Frame::default(), || {
+                            inference.calculate_class_block_diagnostics(class, class_block)
+                        })
+                        .1
                     })?
                     // At this point we just lose reachability information for the class. This is
                     // probably the price we pay, since we allow weird (in reality impossible?) forward
@@ -1406,7 +1417,9 @@ impl Inference<'_, '_, '_> {
             }
         }
 
-        fa.with_new_empty(self.i_s, || self.ensure_func_diagnostics(function))
+        fa.with_new_empty_and_delay_functions_further(self.i_s, || {
+            self.ensure_func_diagnostics(function)
+        })
     }
 
     pub fn flow_analysis_for_ternary(

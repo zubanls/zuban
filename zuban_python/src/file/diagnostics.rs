@@ -144,7 +144,11 @@ impl<'db> Inference<'db, '_, '_> {
                         fa.check_for_unfinished_partials(self.i_s);
                     }
                     fa.process_delayed_funcs(self.i_s.db, |func| {
-                        let result = self.ensure_func_diagnostics(func);
+                        let result = func
+                            .node_ref
+                            .file
+                            .inference(&InferenceState::new(self.i_s.db))
+                            .ensure_func_diagnostics(func);
                         debug_assert!(result.is_ok());
                     });
                 })

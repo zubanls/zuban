@@ -3775,13 +3775,17 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                 .infer_expression(expr)
                 .expect_class_or_simple_generic(self.i_s),
             _ => {
-                debug_assert!(matches!(
-                    point.specific(),
-                    Specific::AnnotationOrTypeCommentWithTypeVars
-                        | Specific::AnnotationOrTypeCommentWithoutTypeVars
-                        | Specific::AnnotationOrTypeCommentClassVar
-                        | Specific::AnnotationOrTypeCommentFinal
-                ));
+                debug_assert!(
+                    matches!(
+                        point.specific(),
+                        Specific::AnnotationOrTypeCommentWithTypeVars
+                            | Specific::AnnotationOrTypeCommentWithoutTypeVars
+                            | Specific::AnnotationOrTypeCommentClassVar
+                            | Specific::AnnotationOrTypeCommentFinal
+                    ),
+                    "{:?}",
+                    point.specific()
+                );
                 self.use_cached_annotation_internal(expr.index())
             }
         }
