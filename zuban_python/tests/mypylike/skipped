@@ -119,8 +119,6 @@ testTypeIsNestedRestrictionAny
 # or/and boolean logic over multiple terms
 testAndOr
 testRestrictedBoolAndOrWithGenerics
-testOrCases
-testAndCases
 narrowing_or_with_bools
 # isinstance intersections lead sometimes to never?
 testIsInstanceAdHocIntersectionIncrementalIntersectionToUnreachable
