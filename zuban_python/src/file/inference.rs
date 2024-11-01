@@ -2692,9 +2692,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             if is_bytes_like(c1) && is_bytes_like(c2) {
                 return true;
             }
-            let mapping_link = db.python_state.mapping_link();
-            if let Some(map1) = c1.class_in_mro(db, mapping_link) {
-                if let Some(map2) = c2.class_in_mro(db, mapping_link) {
+            let mapping_node_ref = db.python_state.mapping_node_ref();
+            if let Some(map1) = c1.class_in_mro(db, mapping_node_ref) {
+                if let Some(map2) = c2.class_in_mro(db, mapping_node_ref) {
                     return self.is_strict_equality_comparison(
                         &map1.nth_type_argument(db, 0),
                         &map2.nth_type_argument(db, 0),

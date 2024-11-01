@@ -140,3 +140,11 @@ A = NewType("A", int)
 x = 1
 y = cast(A, x)
 cast(A, y) # E: Redundant cast to "A"
+
+[case mapping_against_dict_with_strict_equality]
+# flags: --strict-equality
+from typing import Mapping
+
+def foo(x: dict[int, str], y: Mapping[int, str]) -> None:
+    if x == y: ...
+    if y == x: ...

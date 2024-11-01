@@ -1971,15 +1971,15 @@ impl<'db: 'a, 'a> Class<'a> {
             .any(|b| matches!(&b.type_, Type::Class(c) if link == c.link))
     }
 
-    pub fn class_in_mro(&self, db: &'db Database, link: PointLink) -> Option<Class> {
-        if self.node_ref.as_link() == link {
-            return Some(*self);
+    pub fn class_in_mro(&self, db: &'db Database, node_ref: NodeRef) -> Option<Class> {
+        for (_, type_or_cls) in self.mro(db) {
+            if let TypeOrClass::Class(c) = type_or_cls {
+                if c.node_ref == node_ref {
+                    return Some(c);
+                }
+            }
         }
-        let class_infos = self.use_cached_class_infos(db);
-        class_infos.mro.iter().find_map(|base| match &base.type_ {
-            Type::Class(c) if link == c.link => Some(c.class(db)),
-            _ => None,
-        })
+        None
     }
 
     pub fn is_object_class(&self, db: &Database) -> bool {

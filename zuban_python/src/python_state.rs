@@ -907,7 +907,6 @@ impl PythonState {
     attribute_link!(typing, pub async_generator_link, typing_async_generator_index);
     attribute_link!(typing, pub async_iterator_link, typing_async_iterator_index);
     attribute_link!(typing, pub async_iterable_link, typing_async_iterable_index);
-    attribute_link!(typing, pub mapping_link, typing_mapping_index);
     attribute_link!(typing, pub runtime_checkable_link, typing_runtime_checkable_index);
     attribute_link!(typing_extensions, pub typing_extensions_runtime_checkable_link, typing_extensions_runtime_checkable_index);
     attribute_link!(typing, pub no_type_check_link, typing_no_type_check_index);

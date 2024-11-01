@@ -3,7 +3,6 @@ use parsa_python_cst::{Expression, SliceContent, SliceIterator, Slices};
 use super::Generic;
 use crate::{
     database::{Database, PointLink},
-    debug,
     file::{use_cached_simple_generic_type, PythonFile},
     node_ref::NodeRef,
     type_::{
@@ -73,16 +72,8 @@ impl<'a> Generics<'a> {
     ) -> Generic<'a> {
         match self {
             Self::ExpressionWithClassType(file, expr) => {
-                if n == 0 {
-                    Generic::TypeArg(use_cached_simple_generic_type(db, file, *expr))
-                } else {
-                    debug!(
-                        "Generic expr {:?} has one item, but {:?} was requested",
-                        expr.short_debug(),
-                        n,
-                    );
-                    todo!()
-                }
+                debug_assert_eq!(n, 0);
+                Generic::TypeArg(use_cached_simple_generic_type(db, file, *expr))
             }
             Self::SlicesWithClassTypes(file, slices) => Generic::TypeArg(
                 slices
@@ -92,10 +83,9 @@ impl<'a> Generics<'a> {
                         SliceContent::NamedExpression(n) => {
                             use_cached_simple_generic_type(db, file, n.expression())
                         }
-                        SliceContent::StarredExpression(n) => todo!(),
-                        SliceContent::Slice(s) => todo!(),
+                        _ => unreachable!(),
                     })
-                    .unwrap_or_else(|| todo!()),
+                    .unwrap(),
             ),
             Self::List(list, type_var_generics) => {
                 if let Some(g) = list.nth(n.into()) {
