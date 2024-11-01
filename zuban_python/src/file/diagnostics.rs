@@ -15,7 +15,7 @@ use crate::{
     },
     debug,
     diagnostics::{Issue, IssueKind},
-    file::{inference::AssignKind, Inference},
+    file::{inference::AssignKind, File, Inference},
     format_data::FormatData,
     imports::ImportResult,
     inference_state::InferenceState,
@@ -131,18 +131,25 @@ lazy_static::lazy_static! {
 impl<'db> Inference<'db, '_, '_> {
     pub fn calculate_diagnostics(&self) -> Result<(), ()> {
         diagnostics_for_scope(NodeRef::new(self.file, 0), || {
+            debug!(
+                "Diagnostics for module {} ({})",
+                self.file.file_path(&self.i_s.db),
+                self.file.file_index(),
+            );
             FLOW_ANALYSIS.with(|fa| {
-                fa.with_new_empty_and_process_delayed_funcs(self.i_s, || {
-                    fa.with_new_frame_and_return_unreachable(|| {
-                        self.calc_stmts_diagnostics(
-                            self.file.tree.root().iter_stmt_likes(),
-                            None,
-                            None,
-                        );
-                    });
-                    if self.flags().local_partial_types {
-                        fa.check_for_unfinished_partials(self.i_s);
-                    }
+                debug_indent(|| {
+                    fa.with_new_empty_and_process_delayed_funcs(self.i_s, || {
+                        fa.with_new_frame_and_return_unreachable(|| {
+                            self.calc_stmts_diagnostics(
+                                self.file.tree.root().iter_stmt_likes(),
+                                None,
+                                None,
+                            );
+                        });
+                        if self.flags().local_partial_types {
+                            fa.check_for_unfinished_partials(self.i_s);
+                        }
+                    })
                 })
             });
             for complex_point in unsafe { self.file.complex_points.iter() } {

@@ -209,3 +209,20 @@ class C:
         P().x
         self.y = int()
         self.definition = 1
+
+[case flow_analysis_base_class_calculation_should_not_lead_to_recursion]
+from x import X
+class C(X): ...
+
+[file x.py]
+from y import Z
+class X(Z): ...
+
+[file y.py]
+from z import Z
+from z import Z
+from x import X
+class Y(X): ...
+
+[file z.py]
+class Z: ...

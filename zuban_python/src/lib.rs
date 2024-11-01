@@ -106,11 +106,6 @@ impl Project {
             });
             'outer: for file_index in file_indexes {
                 let file = self.db.loaded_file(file_index);
-                debug!(
-                    "Diagnostics for module {} ({})",
-                    file.file_path(&self.db),
-                    file.file_index(),
-                );
                 let python_file = self.db.loaded_python_file(file_index);
                 if maybe_skipped(python_file.flags(&self.db), file.file_path(&self.db)) {
                     continue 'outer;
