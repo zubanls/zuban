@@ -193,7 +193,6 @@ class X:
     member: Final = 1
 
 [case flow_analysis_member_loops]
-# flags: --mypy-compatible
 from foo import C
 C().definition
 

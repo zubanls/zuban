@@ -1397,23 +1397,26 @@ impl Inference<'_, '_, '_> {
                 .get(class_block.index())
                 .calculated()
             {
-                if self.i_s.db.project.settings.mypy_compatible {
-                    // The class should have self generics within the functions
-                    let class = Class::with_self_generics(self.i_s.db, class.node_ref);
-                    fa.with_new_empty_and_delay_functions_further(self.i_s, || {
-                        let new_i_s = self.i_s.with_class_context(&class);
-                        let inference = self.file.inference(&new_i_s);
-                        fa.with_frame_and_result(Frame::default(), || {
-                            inference.calculate_class_block_diagnostics(class, class_block)
-                        })
-                        .1
-                    })?
-                    // At this point we just lose reachability information for the class. This is
-                    // probably the price we pay, since we allow weird (in reality impossible?) forward
-                    // statements in Mypy.
-                } else {
-                    return Err(());
+                if !self.i_s.db.project.settings.mypy_compatible {
+                    class
+                        .node_ref
+                        .file
+                        .inference(&self.i_s.without_context())
+                        .calculate_diagnostics()?;
                 }
+                // The class should have self generics within the functions
+                let class = Class::with_self_generics(self.i_s.db, class.node_ref);
+                fa.with_new_empty_and_delay_functions_further(self.i_s, || {
+                    let new_i_s = self.i_s.with_class_context(&class);
+                    let inference = self.file.inference(&new_i_s);
+                    fa.with_frame_and_result(Frame::default(), || {
+                        inference.calculate_class_block_diagnostics(class, class_block)
+                    })
+                    .1
+                })?
+                // At this point we just lose reachability information for the class. This is
+                // probably the price we pay, since we allow weird (in reality impossible?) forward
+                // statements in Mypy.
             }
         }
 
