@@ -848,3 +848,7 @@ class A: ...
 class B(A): ...
 
 x: dict[A, A] = {B(): B() for _ in [1]}
+
+[case for_loop_avoids_implicit_literals]
+for x in ('a', 'b'):
+    reveal_type(x)  # N: Revealed type is "str"

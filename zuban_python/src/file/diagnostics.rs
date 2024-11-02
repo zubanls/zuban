@@ -1522,7 +1522,9 @@ impl<'db> Inference<'db, '_, '_> {
             debug_assert_eq!(star_targets_point.specific(), Specific::Analyzed);
             return;
         }
-        let inf = self.infer_star_expressions(star_exprs, &mut ResultContext::Unknown);
+        let inf = self
+            .infer_star_expressions(star_exprs, &mut ResultContext::Unknown)
+            .avoid_implicit_literal(self.i_s);
         let from = NodeRef::new(self.file, star_exprs.index());
         let element = if is_async {
             await_aiter_and_next(self.i_s, inf, from)
