@@ -84,7 +84,9 @@ impl<'a> Instance<'a> {
             .lookup(
                 i_s,
                 name_str,
-                ClassLookupOptions::new(&|issue| from.add_issue(i_s, issue)).without_descriptors(),
+                ClassLookupOptions::new(&|issue| from.add_issue(i_s, issue))
+                    .without_descriptors()
+                    .with_avoid_metaclass(),
             )
             .or_else(|| {
                 self.lookup(

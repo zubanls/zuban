@@ -884,3 +884,12 @@ type.mro(1)  # E: Argument 1 to "mro" of "type" has incompatible type "int"; exp
 
 def foo(a: type[Any]) -> None:
     type.mro(a)
+
+[case mro_is_assignable_if_instance_attr]
+class Foo:
+    def __init__(self) -> None:
+        self.mro: str = ""
+
+Foo().mro = ""
+Foo.mro = ""  # E: Cannot assign to a method \
+              # E: Incompatible types in assignment (expression has type "str", variable has type "Callable[[], list[Type[Any]]]")

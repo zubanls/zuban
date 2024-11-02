@@ -1848,6 +1848,9 @@ impl<'db: 'a, 'a> Class<'a> {
         } else {
             None
         };
+        if options.avoid_metaclass {
+            return result.unwrap_or_else(|| LookupDetails::none());
+        }
         match result {
             Some(LookupDetails {
                 lookup: LookupResult::None,
@@ -3468,6 +3471,7 @@ pub struct ClassLookupOptions<'x> {
     kind: LookupKind,
     use_descriptors: bool,
     super_count: usize,
+    avoid_metaclass: bool,
     as_type_type: Option<&'x dyn Fn() -> Type>,
 }
 
@@ -3478,6 +3482,7 @@ impl<'x> ClassLookupOptions<'x> {
             kind: LookupKind::Normal,
             use_descriptors: true,
             super_count: 0,
+            avoid_metaclass: false,
             as_type_type: None,
         }
     }
@@ -3504,6 +3509,11 @@ impl<'x> ClassLookupOptions<'x> {
 
     pub fn with_super_count(mut self, super_count: usize) -> Self {
         self.super_count = super_count;
+        self
+    }
+
+    pub fn with_avoid_metaclass(mut self) -> Self {
+        self.avoid_metaclass = true;
         self
     }
 }
