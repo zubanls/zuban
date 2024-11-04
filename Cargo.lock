@@ -354,9 +354,8 @@ checksum = "3b181ba2dcf07aaccad5448e8ead58db5b742cf85dfe035e2227f137a539a189"
 
 [[package]]
 name = "rust-ini"
-version = "0.21.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0d625ed57d8f49af6cfa514c42e1a71fadcff60eb0b1c517ff82fe41aa025b41"
+version = "0.21.1"
+source = "git+https://github.com/davidhalter-archive/rust-ini.git?branch=indented-multiline-values#ae7f2cd0782bb6df1c943e022538c274ac0cdaad"
 dependencies = [
  "cfg-if",
  "ordered-multimap",

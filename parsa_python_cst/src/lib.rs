@@ -3595,7 +3595,7 @@ impl<'db> NameDef<'db> {
         } else if stmt_node.is_type(Nonterminal(for_stmt)) {
             DefiningStmt::ForStmt(ForStmt::new(stmt_node))
         } else {
-            unreachable!()
+            unreachable!("Reached a defining statement {:?}", self.node.type_())
         }
     }
 

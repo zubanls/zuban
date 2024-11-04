@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-use ini::Ini;
+use ini::{Ini, ParseOption};
 use regex::Regex;
 use toml_edit::{DocumentMut, Item, Table, Value};
 
@@ -64,7 +64,11 @@ impl ProjectOptions {
         code: &str,
         diagnostic_config: &mut DiagnosticConfig,
     ) -> Result<Self, String> {
-        let ini = Ini::load_from_str(code).map_err(|err| err.to_string())?;
+        let options = ParseOption {
+            indented_multiline_values: true,
+            ..Default::default()
+        };
+        let ini = Ini::load_from_str_opt(code, options).map_err(|err| err.to_string())?;
         let mut flags = TypeCheckerFlags::default();
         let mut settings = Settings::default();
         let mut overrides = vec![];
@@ -638,6 +642,7 @@ fn apply_from_base_config(
         | "plugins"
         | "enable_incomplete_feature"
         | "show_error_code_links"
+        | "cache_dir"
         | "warn_redundant_casts"
         | "warn_unused_configs" => {
             debug!("TODO ignored config value {key}");

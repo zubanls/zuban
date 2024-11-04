@@ -74,7 +74,7 @@ Debugging:
   - overlapping checks
 - Sequence[str] :> str have both different `__contains__` implementations (see Michi's email)
 - property narrowing with `__set__` narrows `__get__` (see testSubclassDescriptorsBinder)
-- property setter type can be != getter return type (this is not inherent)
+- property setter type can be != getter return type https://github.com/python/mypy/issues/3004
 - variables don't need to actually be initialized:
   - foo: str
   - dataclasses `__init__` is overwritten and therefore members are not necessarily initialized.
