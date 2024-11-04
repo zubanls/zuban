@@ -893,3 +893,14 @@ class Foo:
 Foo().mro = ""
 Foo.mro = ""  # E: Cannot assign to a method \
               # E: Incompatible types in assignment (expression has type "str", variable has type "Callable[[], list[Type[Any]]]")
+
+[case var_defined_on_if_in_unannotated_self_function]
+class F:
+    def foo(self) -> None:
+        self.f.read() + ""
+
+    def bar(self):
+        # This is obviously not code somebody would write, but we get a context
+        # manager that way.
+        with open("lala") as self.f:
+            ...

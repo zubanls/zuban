@@ -618,6 +618,7 @@ pub enum DefiningStmt<'db> {
     Walrus(Walrus<'db>),
     TryStmt(TryStmt<'db>),
     ForStmt(ForStmt<'db>),
+    WithItem(WithItem<'db>),
 }
 
 impl<'db> DefiningStmt<'db> {
@@ -635,6 +636,7 @@ impl<'db> DefiningStmt<'db> {
             DefiningStmt::Walrus(n) => n.index(),
             DefiningStmt::TryStmt(n) => n.index(),
             DefiningStmt::ForStmt(n) => n.index(),
+            DefiningStmt::WithItem(w) => w.index(),
         }
     }
 }
@@ -1309,6 +1311,12 @@ impl<'db> WithItem<'db> {
             Expression::new(expr),
             iterator.next().map(Target::new_non_iterator),
         )
+    }
+
+    pub fn in_async_with_stmt(&self) -> bool {
+        let with = self.node.parent().unwrap().parent().unwrap();
+        debug_assert!(with.is_type(Nonterminal(with_stmt)));
+        with.is_type(Nonterminal(async_stmt))
     }
 }
 
@@ -3570,6 +3578,7 @@ impl<'db> NameDef<'db> {
                 Nonterminal(walrus),
                 Nonterminal(for_stmt),
                 Nonterminal(try_stmt),
+                Nonterminal(with_item),
             ])
             .expect("There should always be a stmt");
         if stmt_node.is_type(Nonterminal(function_def)) {
@@ -3594,8 +3603,13 @@ impl<'db> NameDef<'db> {
             DefiningStmt::TryStmt(TryStmt::new(stmt_node))
         } else if stmt_node.is_type(Nonterminal(for_stmt)) {
             DefiningStmt::ForStmt(ForStmt::new(stmt_node))
+        } else if stmt_node.is_type(Nonterminal(with_item)) {
+            DefiningStmt::WithItem(WithItem::new(stmt_node))
         } else {
-            unreachable!("Reached a defining statement {:?}", self.node.type_())
+            unreachable!(
+                "Reached a previously unknown defining statement {:?}",
+                self.node
+            )
         }
     }
 

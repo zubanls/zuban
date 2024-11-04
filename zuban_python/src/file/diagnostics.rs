@@ -477,52 +477,7 @@ impl<'db> Inference<'db, '_, '_> {
         let (with_items, block) = with_stmt.unpack();
         let mut exceptions_maybe_suppressed = false;
         for with_item in with_items.iter() {
-            let (expr, target) = with_item.unpack();
-            let from = NodeRef::new(self.file, expr.index());
-            let result = self.infer_expression(expr);
-            let mut enter_result = result.type_lookup_and_execute_with_attribute_error(
-                self.i_s,
-                from,
-                match is_async {
-                    false => "__enter__",
-                    true => "__aenter__",
-                },
-                &NoArgs::new(from),
-            );
-            if is_async {
-                enter_result = await_(
-                    self.i_s,
-                    enter_result,
-                    from,
-                    r#""async with" for "__aenter__""#,
-                    false,
-                );
-            }
-            let mut exit_result = result.type_lookup_and_execute_with_attribute_error(
-                self.i_s,
-                from,
-                match is_async {
-                    false => "__exit__",
-                    true => "__aexit__",
-                },
-                &CombinedArgs::new(
-                    &KnownArgs::new(&Inferred::new_any(AnyCause::Todo), from),
-                    &CombinedArgs::new(
-                        // TODO don't use any here.
-                        &KnownArgs::new(&Inferred::new_any(AnyCause::Todo), from),
-                        &KnownArgs::new(&Inferred::new_any(AnyCause::Todo), from),
-                    ),
-                ),
-            );
-            if is_async {
-                exit_result = await_(
-                    self.i_s,
-                    exit_result,
-                    from,
-                    r#""async with" for "__aexit__""#,
-                    false,
-                );
-            }
+            let exit_result = self.cache_with_item(with_item, is_async);
             // Mypy comments about this:
             // Based on the return type, determine if this context manager 'swallows'
             // exceptions or not. We determine this using a heuristic based on the
@@ -535,14 +490,6 @@ impl<'db> Inference<'db, '_, '_> {
                 Type::Literal(l) if matches!(l.kind, LiteralKind::Bool(true)) => true,
                 _ => false,
             };
-            if let Some(target) = target {
-                self.assign_targets(
-                    target,
-                    enter_result,
-                    NodeRef::new(self.file, with_item.index()),
-                    AssignKind::Normal,
-                )
-            }
         }
         if exceptions_maybe_suppressed {
             // We create a new frame to swallow unreachability.
@@ -1537,6 +1484,68 @@ impl<'db> Inference<'db, '_, '_> {
             star_targets.index(),
             Point::new_specific(Specific::Analyzed, Locality::Todo),
         );
+    }
+
+    pub fn cache_with_item(&self, with_item: WithItem, is_async: bool) -> Inferred {
+        // Returns the result of __exit__.
+        if let Some(inferred) = self.check_point_cache(with_item.index()) {
+            return inferred;
+        }
+        let (expr, target) = with_item.unpack();
+        let from = NodeRef::new(self.file, expr.index());
+        let result = self.infer_expression(expr);
+        let mut enter_result = result.type_lookup_and_execute_with_attribute_error(
+            self.i_s,
+            from,
+            match is_async {
+                false => "__enter__",
+                true => "__aenter__",
+            },
+            &NoArgs::new(from),
+        );
+        if is_async {
+            enter_result = await_(
+                self.i_s,
+                enter_result,
+                from,
+                r#""async with" for "__aenter__""#,
+                false,
+            );
+        }
+        let mut exit_result = result.type_lookup_and_execute_with_attribute_error(
+            self.i_s,
+            from,
+            match is_async {
+                false => "__exit__",
+                true => "__aexit__",
+            },
+            &CombinedArgs::new(
+                &KnownArgs::new(&Inferred::new_any(AnyCause::Todo), from),
+                &CombinedArgs::new(
+                    // TODO don't use any here.
+                    &KnownArgs::new(&Inferred::new_any(AnyCause::Todo), from),
+                    &KnownArgs::new(&Inferred::new_any(AnyCause::Todo), from),
+                ),
+            ),
+        );
+        if is_async {
+            exit_result = await_(
+                self.i_s,
+                exit_result,
+                from,
+                r#""async with" for "__aexit__""#,
+                false,
+            );
+        }
+        if let Some(target) = target {
+            self.assign_targets(
+                target,
+                enter_result,
+                NodeRef::new(self.file, with_item.index()),
+                AssignKind::Normal,
+            )
+        }
+        exit_result.save_redirect(self.i_s, self.file, with_item.index())
     }
 
     pub fn calc_fstring_diagnostics(&self, fstring: FString) {

@@ -4176,6 +4176,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 // calculating the names.
                 self.cache_for_stmt_names(star_targets, star_exprs, false);
             }
+            DefiningStmt::WithItem(w) => {
+                self.cache_with_item(w, w.in_async_with_stmt());
+            }
             DefiningStmt::TryStmt(try_stmt) => {
                 for block in try_stmt.iter_blocks() {
                     match block {
