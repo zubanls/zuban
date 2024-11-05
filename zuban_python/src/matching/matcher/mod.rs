@@ -164,10 +164,10 @@ impl<'a> Matcher<'a> {
                 c2 = Cow::Owned(c2_ref.replace_type_var_likes_and_self(
                     i_s.db,
                     &mut |mut usage| {
-                        if usage.in_definition() == c2_ref.defined_at {
-                            usage.update_temporary_matcher_index(type_var_matchers_len)
-                        }
-                        usage.into_generic_item()
+                        (usage.in_definition() == c2_ref.defined_at).then(|| {
+                            usage.update_temporary_matcher_index(type_var_matchers_len);
+                            usage.into_generic_item()
+                        })
                     },
                     &|| Type::Self_,
                 ));
@@ -837,9 +837,9 @@ impl<'a> Matcher<'a> {
                             .take(index)
                             .filter(|c| !c.calculated())
                             .count();
-                        usage.into_generic_item_with_new_index(new_index.into())
+                        Some(usage.into_generic_item_with_new_index(new_index.into()))
                     } else {
-                        usage.into_generic_item()
+                        None
                     }
                 }),
                 &|| unreachable!("Self should have been remapped already"),
@@ -861,40 +861,52 @@ impl<'a> Matcher<'a> {
         callable
     }
 
-    pub fn replace_type_var_likes_for_nested_context(&self, db: &Database, t: &Type) -> Type {
-        self.replace_type_var_likes(db, t, |usage| usage.as_any_generic_item())
+    pub fn replace_type_var_likes_for_nested_context<'x>(
+        &self,
+        db: &Database,
+        t: &'x Type,
+    ) -> Cow<'x, Type> {
+        self.replace_type_var_likes(db, t, |usage| Some(usage.as_any_generic_item()))
     }
 
-    pub fn replace_type_var_likes_for_unknown_type_vars(&self, db: &Database, t: &Type) -> Type {
+    pub fn replace_type_var_likes_for_unknown_type_vars<'x>(
+        &self,
+        db: &Database,
+        t: &'x Type,
+    ) -> Cow<'x, Type> {
         self.replace_type_var_likes(db, t, |usage| {
-            usage
-                .as_type_var_like()
-                .as_never_generic_item(NeverCause::Inference)
+            Some(
+                usage
+                    .as_type_var_like()
+                    .as_never_generic_item(NeverCause::Inference),
+            )
         })
     }
 
-    fn replace_type_var_likes(
+    fn replace_type_var_likes<'x>(
         &self,
         db: &Database,
-        t: &Type,
-        on_uncalculated: impl Fn(TypeVarLikeUsage) -> GenericItem,
-    ) -> Type {
+        t: &'x Type,
+        on_uncalculated: impl Fn(TypeVarLikeUsage) -> Option<GenericItem>,
+    ) -> Cow<'x, Type> {
         t.replace_type_var_likes(db, &mut self.as_usage_closure(db, on_uncalculated))
+            .map(Cow::Owned)
+            .unwrap_or_else(|| Cow::Borrowed(t))
     }
 
     pub fn replace_usage_if_calculated(
         &self,
         db: &Database,
         usage: TypeVarLikeUsage,
-    ) -> GenericItem {
-        self.as_usage_closure(db, |usage| usage.into_generic_item())(usage)
+    ) -> Option<GenericItem> {
+        self.as_usage_closure(db, |usage| None)(usage)
     }
 
     pub fn as_usage_closure<'b>(
         &'b self,
         db: &'b Database,
-        on_uncalculated: impl Fn(TypeVarLikeUsage) -> GenericItem + 'b,
-    ) -> impl Fn(TypeVarLikeUsage) -> GenericItem + 'b {
+        on_uncalculated: impl Fn(TypeVarLikeUsage) -> Option<GenericItem> + 'b,
+    ) -> impl Fn(TypeVarLikeUsage) -> Option<GenericItem> + 'b {
         move |usage| {
             if let Some(i) = self.find_responsible_type_var_matcher_index(
                 usage.in_definition(),
@@ -905,11 +917,11 @@ impl<'a> Matcher<'a> {
                 return current
                     .type_
                     .clone()
-                    .into_generic_item(db, |_| on_uncalculated(usage));
+                    .into_maybe_generic_item(db, |_| on_uncalculated(usage));
             }
             if let Some(c) = self.class {
                 if c.node_ref.as_link() == usage.in_definition() {
-                    return c.generics().nth_usage(db, &usage).into_generic_item(db);
+                    return Some(c.generics().nth_usage(db, &usage).into_generic_item(db));
                 }
             }
             if let Some(func_class) = self.maybe_func_class_for_usage(&usage) {
@@ -918,14 +930,15 @@ impl<'a> Matcher<'a> {
                     .nth_usage(db, &usage)
                     .into_generic_item(db);
                 return match g {
-                    GenericItem::TypeArg(t) => {
-                        GenericItem::TypeArg(self.replace_type_var_likes_for_nested_context(db, &t))
-                    }
+                    GenericItem::TypeArg(t) => Some(GenericItem::TypeArg(
+                        self.replace_type_var_likes_for_nested_context(db, &t)
+                            .into_owned(),
+                    )),
                     GenericItem::TypeArgs(_) => todo!(),
                     GenericItem::ParamSpecArg(_) => todo!(),
                 };
             }
-            usage.into_generic_item()
+            None
         }
     }
 
@@ -1235,7 +1248,7 @@ impl<'a> Matcher<'a> {
                 let mut had_error = None;
                 let replaced_unresolved = unresolved.replace_type_var_likes(db, &mut |usage| {
                     if had_error.is_some() {
-                        return usage.into_generic_item();
+                        return None;
                     }
                     if let Some(matcher_index) = self.find_responsible_type_var_matcher_index(
                         usage.in_definition(),
@@ -1251,66 +1264,72 @@ impl<'a> Matcher<'a> {
                             let m = self.resolve_cycle(db, cycles, depending_on);
                             if let Err(err) = m {
                                 had_error = Some(err);
-                                return usage.into_generic_item();
+                                return None;
                             }
                         }
                         if let Some(free_type_var_index) = depending_on.free_type_var_index {
                             let in_definition = self.type_var_matchers[0].match_in_definition;
                             let index = free_type_var_index.into();
-                            return match cycles.free_type_var_likes[free_type_var_index].clone() {
-                                TypeVarLike::TypeVar(type_var) => {
-                                    GenericItem::TypeArg(Type::TypeVar(TypeVarUsage {
-                                        type_var,
-                                        index,
-                                        in_definition,
-                                        temporary_matcher_id: 0,
-                                    }))
-                                }
-                                TypeVarLike::TypeVarTuple(type_var_tuple) => {
-                                    GenericItem::TypeArgs(TypeArgs::new(TupleArgs::WithUnpack(
-                                        WithUnpack::with_empty_before_and_after(
-                                            TupleUnpack::TypeVarTuple(TypeVarTupleUsage {
-                                                type_var_tuple,
-                                                index,
-                                                in_definition,
-                                                temporary_matcher_id: 0,
-                                            }),
-                                        ),
-                                    )))
-                                }
-                                TypeVarLike::ParamSpec(param_spec) => {
-                                    GenericItem::ParamSpecArg(ParamSpecArg {
-                                        params: CallableParams::new_param_spec(ParamSpecUsage {
-                                            param_spec,
-                                            index: free_type_var_index.into(),
+                            return Some(
+                                match cycles.free_type_var_likes[free_type_var_index].clone() {
+                                    TypeVarLike::TypeVar(type_var) => {
+                                        GenericItem::TypeArg(Type::TypeVar(TypeVarUsage {
+                                            type_var,
+                                            index,
                                             in_definition,
                                             temporary_matcher_id: 0,
-                                        }),
-                                        type_vars: None,
-                                    })
-                                }
-                            };
+                                        }))
+                                    }
+                                    TypeVarLike::TypeVarTuple(type_var_tuple) => {
+                                        GenericItem::TypeArgs(TypeArgs::new(TupleArgs::WithUnpack(
+                                            WithUnpack::with_empty_before_and_after(
+                                                TupleUnpack::TypeVarTuple(TypeVarTupleUsage {
+                                                    type_var_tuple,
+                                                    index,
+                                                    in_definition,
+                                                    temporary_matcher_id: 0,
+                                                }),
+                                            ),
+                                        )))
+                                    }
+                                    TypeVarLike::ParamSpec(param_spec) => {
+                                        GenericItem::ParamSpecArg(ParamSpecArg {
+                                            params: CallableParams::new_param_spec(
+                                                ParamSpecUsage {
+                                                    param_spec,
+                                                    index: free_type_var_index.into(),
+                                                    in_definition,
+                                                    temporary_matcher_id: 0,
+                                                },
+                                            ),
+                                            type_vars: None,
+                                        })
+                                    }
+                                },
+                            );
                         } else {
                             if depending_on.set.contains(tv_in_cycle) {
                                 is_in_cycle = true;
-                                return usage.into_generic_item();
+                                return None;
                             }
                             let first_entry = depending_on.set.iter().next().unwrap();
                             let tv_matcher = &self.type_var_matchers[first_entry.matcher_index];
                             let tvl = &tv_matcher.type_var_likes[first_entry.type_var_index];
-                            return tv_matcher.calculating_type_args[first_entry.type_var_index]
-                                .clone()
-                                .into_generic_item(db, tvl);
+                            return Some(
+                                tv_matcher.calculating_type_args[first_entry.type_var_index]
+                                    .clone()
+                                    .into_generic_item(db, tvl),
+                            );
                         }
                     }
-                    usage.into_generic_item()
+                    None
                 });
                 if let Some(err) = had_error {
                     return Err(err);
                 }
                 if !is_in_cycle {
                     // This means we hit a cycle and are now just trying to merge.
-                    let m = current.merge(db, replaced_unresolved);
+                    let m = current.merge(db, replaced_unresolved.unwrap_or(unresolved));
                     if !m.bool() {
                         return Err(m);
                     }

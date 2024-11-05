@@ -1399,7 +1399,7 @@ impl Type {
             type_ @ Type::TypeVar(_) => {
                 if matcher.might_have_defined_type_vars() {
                     let new = matcher.replace_type_var_likes_for_nested_context(i_s.db, type_);
-                    if &new == type_ {
+                    if new.as_ref() == type_ {
                         return false;
                     }
                     new.on_any_resolved_context_type(i_s, matcher, callable)
@@ -1435,7 +1435,7 @@ impl Type {
             match t {
                 Type::TypeVar(_) if matcher.might_have_defined_type_vars() => {
                     let new_t = matcher.replace_type_var_likes_for_nested_context(db, t);
-                    if &new_t == t {
+                    if new_t.as_ref() == t {
                         if let Some(x) = find(t) {
                             if found.is_ok() {
                                 return Err(UniqueInUnpackedUnionError::Multiple);

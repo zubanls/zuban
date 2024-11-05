@@ -781,10 +781,11 @@ impl TypeAlias {
         if self.type_vars.is_empty() {
             type_.clone()
         } else {
-            type_.replace_type_var_likes(db, &mut |t| match t.in_definition() == self.location {
-                true => t.as_any_generic_item(),
-                false => t.into_generic_item(),
-            })
+            type_
+                .replace_type_var_likes(db, &mut |t| {
+                    (t.in_definition() == self.location).then(|| t.as_any_generic_item())
+                })
+                .unwrap_or_else(|| type_.clone())
         }
     }
 
@@ -837,7 +838,10 @@ impl TypeAlias {
         if self.type_vars.is_empty() {
             Cow::Borrowed(type_)
         } else {
-            Cow::Owned(type_.replace_type_var_likes(db, callable))
+            let replaced = type_.replace_type_var_likes(db, &mut |u| Some(callable(u)));
+            replaced
+                .map(Cow::Owned)
+                .unwrap_or_else(|| Cow::Borrowed(type_))
         }
     }
 }

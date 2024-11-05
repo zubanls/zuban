@@ -2530,29 +2530,29 @@ fn proper_classmethod_callable(
                         &mut |usage| {
                             if usage.in_definition() == class.node_ref.as_link() {
                                 let tvl = usage.as_type_var_like();
-                                ensure_classmethod_type_var_like(tvl)
+                                Some(ensure_classmethod_type_var_like(tvl))
                             } else {
-                                usage.into_generic_item()
+                                None
                             }
                         },
                         &|| todo!(),
                     );
                 }
-                result
+                Some(result)
             } else if in_definition == callable_defined_at {
                 if let Some(u) = &class_method_type_var_usage {
                     if u.index == usage.index() {
-                        return GenericItem::TypeArg(get_class_method_class());
+                        return Some(GenericItem::TypeArg(get_class_method_class()));
                     } else {
                         usage.add_to_index(-1);
                         todo!()
                     }
                 }
-                usage.into_generic_item()
+                None
             } else {
                 // This can happen for example if the return value is a Callable with its
                 // own type vars.
-                usage.into_generic_item()
+                None
             }
         },
         #[allow(clippy::redundant_closure)] // This is a clippy bug

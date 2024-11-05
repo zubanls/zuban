@@ -170,12 +170,12 @@ impl CallableParam {
                     StarParamType::ParamSpecArgs(u) => todo!(),
                     StarParamType::UnpackedTuple(tup) => {
                         if let Some(matcher) = format_data.matcher {
-                            let Type::Tuple(tup) = matcher
-                                .replace_type_var_likes_for_unknown_type_vars(
-                                    format_data.db,
-                                    &Type::Tuple(tup.clone()),
-                                )
-                            else {
+                            let tup_t = Type::Tuple(tup.clone());
+                            let replaced = matcher.replace_type_var_likes_for_unknown_type_vars(
+                                format_data.db,
+                                &tup_t,
+                            );
+                            let Type::Tuple(tup) = replaced.as_ref() else {
                                 unreachable!()
                             };
                             let result = tup.args.format(&format_data.remove_matcher());
@@ -639,13 +639,16 @@ impl CallableContent {
         if self.type_vars.is_empty() {
             Cow::Borrowed(type_)
         } else {
-            Cow::Owned(type_.replace_type_var_likes(db, &mut |usage| {
+            let replaced = type_.replace_type_var_likes(db, &mut |usage| {
                 if usage.in_definition() == self.defined_at {
-                    usage.as_any_generic_item()
+                    Some(usage.as_any_generic_item())
                 } else {
-                    usage.into_generic_item()
+                    None
                 }
-            }))
+            });
+            replaced
+                .map(Cow::Owned)
+                .unwrap_or_else(|| Cow::Borrowed(type_))
         }
     }
 
@@ -772,17 +775,18 @@ impl CallableContent {
             type_vars.push(type_var.clone());
         }
         if needs_self_type_variable {
-            let bound = Class::with_self_generics(db, class.node_ref)
-                .as_type(db)
-                .replace_type_var_likes(db, &mut |mut usage| {
-                    if usage.in_definition() == class.node_ref.as_link() {
-                        usage.add_to_index(self.type_vars.len() as i32);
-                    }
-                    usage.into_generic_item()
-                });
+            let class_t = Class::with_self_generics(db, class.node_ref).as_type(db);
+            let bound = class_t.replace_type_var_likes(db, &mut |mut usage| {
+                if usage.in_definition() == class.node_ref.as_link() {
+                    usage.add_to_index(self.type_vars.len() as i32);
+                    Some(usage.into_generic_item())
+                } else {
+                    None
+                }
+            });
             let self_type_var = Rc::new(TypeVar {
                 name_string: TypeVarName::Self_,
-                kind: TypeVarKind::Bound(bound),
+                kind: TypeVarKind::Bound(bound.unwrap_or(class_t)),
                 default: None,
                 variance: Variance::Invariant,
             });
@@ -799,24 +803,30 @@ impl CallableContent {
             &mut |usage| {
                 let in_definition = usage.in_definition();
                 if let Some(result) = maybe_class_usage(db, &attribute_class, &usage) {
-                    result.replace_type_var_likes_and_self(
-                        db,
-                        &mut |usage| {
-                            if usage.in_definition() == class.node_ref.as_link() {
-                                type_vars
-                                    .find(usage.as_type_var_like(), self.defined_at)
-                                    .unwrap()
-                                    .into_generic_item()
-                            } else {
-                                usage.into_generic_item()
-                            }
-                        },
-                        &|| todo!("Type::TypeVar(self_type_var_usage.clone().unwrap())"),
+                    Some(
+                        result
+                            .replace_type_var_likes_and_self(
+                                db,
+                                &mut |usage| {
+                                    if usage.in_definition() == class.node_ref.as_link() {
+                                        Some(
+                                            type_vars
+                                                .find(usage.as_type_var_like(), self.defined_at)
+                                                .unwrap()
+                                                .into_generic_item(),
+                                        )
+                                    } else {
+                                        None
+                                    }
+                                },
+                                &|| todo!("Type::TypeVar(self_type_var_usage.clone().unwrap())"),
+                            )
+                            .unwrap_or(result),
                     )
                 } else {
                     // This can happen for example if the return value is a Callable with its
                     // own type vars.
-                    usage.into_generic_item()
+                    None
                 }
             },
             &|| Type::TypeVar(self_type_var_usage.clone().unwrap()),

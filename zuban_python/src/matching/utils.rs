@@ -16,12 +16,11 @@ pub fn replace_class_type_vars(
 ) -> Type {
     t.replace_type_var_likes_and_self(
         db,
-        &mut |usage| {
-            maybe_class_usage(db, attribute_class, &usage)
-                .unwrap_or_else(|| usage.into_generic_item())
-        },
+        &mut |usage| maybe_class_usage(db, attribute_class, &usage),
         self_instance,
     )
+    // TODO Can we not either return an Option<Type> or Cow<Type>?
+    .unwrap_or_else(|| t.clone())
 }
 
 pub fn replace_class_type_vars_in_callable(
@@ -32,11 +31,7 @@ pub fn replace_class_type_vars_in_callable(
 ) -> CallableContent {
     callable.replace_type_var_likes_and_self(
         db,
-        &mut |usage| {
-            func_class
-                .and_then(|c| maybe_class_usage(db, c, &usage))
-                .unwrap_or_else(|| usage.into_generic_item())
-        },
+        &mut |usage| func_class.and_then(|c| maybe_class_usage(db, c, &usage)),
         as_self_instance,
     )
 }
@@ -109,6 +104,8 @@ pub fn calculate_property_return(
     Some(if callable.type_vars.is_empty() {
         t
     } else {
-        matcher.replace_type_var_likes_for_unknown_type_vars(i_s.db, &t)
+        matcher
+            .replace_type_var_likes_for_unknown_type_vars(i_s.db, &t)
+            .into_owned()
     })
 }

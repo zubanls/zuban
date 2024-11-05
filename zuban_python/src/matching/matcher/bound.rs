@@ -106,21 +106,28 @@ impl Bound {
     pub fn replace_type_var_likes(
         &self,
         db: &Database,
-        on_type_var_like: &mut impl FnMut(TypeVarLikeUsage) -> GenericItem,
-    ) -> Self {
-        match self {
-            Self::Invariant(t) => Self::Invariant(t.replace_type_var_likes(db, on_type_var_like)),
-            Self::Upper(t) => Self::Upper(t.replace_type_var_likes(db, on_type_var_like)),
-            Self::Lower(t) => Self::Upper(t.replace_type_var_likes(db, on_type_var_like)),
-            Self::UpperAndLower(upper, lower) => Self::UpperAndLower(
-                upper.replace_type_var_likes(db, on_type_var_like),
-                lower.replace_type_var_likes(db, on_type_var_like),
-            ),
+        on_type_var_like: &mut impl FnMut(TypeVarLikeUsage) -> Option<GenericItem>,
+    ) -> Option<Self> {
+        Some(match self {
+            Self::Invariant(t) => Self::Invariant(t.replace_type_var_likes(db, on_type_var_like)?),
+            Self::Upper(t) => Self::Upper(t.replace_type_var_likes(db, on_type_var_like)?),
+            Self::Lower(t) => Self::Upper(t.replace_type_var_likes(db, on_type_var_like)?),
+            Self::UpperAndLower(upper, lower) => {
+                let new_upper = upper.replace_type_var_likes(db, on_type_var_like);
+                let new_lower = lower.replace_type_var_likes(db, on_type_var_like);
+                if new_upper.is_none() && new_lower.is_none() {
+                    return None;
+                }
+                Self::UpperAndLower(
+                    new_upper.unwrap_or_else(|| upper.clone()),
+                    new_lower.unwrap_or_else(|| lower.clone()),
+                )
+            }
             Self::Uncalculated { fallback: Some(t) } => Self::Uncalculated {
-                fallback: Some(t.replace_type_var_likes(db, on_type_var_like)),
+                fallback: Some(t.replace_type_var_likes(db, on_type_var_like)?),
             },
             Self::Uncalculated { fallback: None } => Self::Uncalculated { fallback: None },
-        }
+        })
     }
 
     pub fn into_generic_item(
@@ -128,7 +135,16 @@ impl Bound {
         db: &Database,
         on_uncalculated: impl FnOnce(Option<Type>) -> GenericItem,
     ) -> GenericItem {
-        match self {
+        self.into_maybe_generic_item(db, |t| Some(on_uncalculated(t)))
+            .expect("Since we never return None in fallback, we should be able to unwrap")
+    }
+
+    pub fn into_maybe_generic_item(
+        self,
+        db: &Database,
+        on_uncalculated: impl FnOnce(Option<Type>) -> Option<GenericItem>,
+    ) -> Option<GenericItem> {
+        Some(match self {
             // If the upper bound is a literal, we do not want to use the lower bound.
             Self::UpperAndLower(t @ BoundKind::TypeVar(Type::Literal(_)), _) => {
                 t.into_generic_item()
@@ -142,8 +158,8 @@ impl Bound {
             Self::Invariant(k) | Self::Upper(k) | Self::Lower(k) | Self::UpperAndLower(_, k) => {
                 k.into_generic_item()
             }
-            Self::Uncalculated { fallback } => on_uncalculated(fallback),
-        }
+            Self::Uncalculated { fallback } => return on_uncalculated(fallback),
+        })
     }
 
     pub fn set_to_any(&mut self, tv: &TypeVarLike, cause: AnyCause) {
@@ -294,19 +310,19 @@ impl BoundKind {
     fn replace_type_var_likes(
         &self,
         db: &Database,
-        on_type_var_like: &mut impl FnMut(TypeVarLikeUsage) -> GenericItem,
-    ) -> Self {
-        match self {
-            Self::TypeVar(t) => Self::TypeVar(t.replace_type_var_likes(db, on_type_var_like)),
+        on_type_var_like: &mut impl FnMut(TypeVarLikeUsage) -> Option<GenericItem>,
+    ) -> Option<Self> {
+        Some(match self {
+            Self::TypeVar(t) => Self::TypeVar(t.replace_type_var_likes(db, on_type_var_like)?),
             Self::TypeVarTuple(tup) => {
-                Self::TypeVarTuple(tup.replace_type_var_likes(db, on_type_var_like))
+                Self::TypeVarTuple(tup.replace_type_var_likes(db, on_type_var_like)?)
             }
             Self::ParamSpec(params) => Self::ParamSpec(params.replace_type_var_likes_and_self(
                 db,
                 on_type_var_like,
                 &|| Type::Self_,
-            )),
-        }
+            )?),
+        })
     }
 
     fn has_any(&self, i_s: &InferenceState) -> bool {

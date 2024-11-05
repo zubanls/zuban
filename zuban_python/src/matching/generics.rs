@@ -14,11 +14,14 @@ macro_rules! replace_class_vars {
     ($db:expr, $g:ident, $type_var_generics:ident) => {
         match $type_var_generics {
             None | Some(Generics::None) => Generic::new($g),
-            Some(type_var_generics) => Generic::owned($g.replace_type_var_likes_and_self(
-                $db,
-                &mut |t| type_var_generics.nth_usage($db, &t).into_generic_item($db),
-                &|| Type::Self_,
-            )),
+            Some(type_var_generics) => Generic::owned(
+                $g.replace_type_var_likes_and_self(
+                    $db,
+                    &mut |t| Some(type_var_generics.nth_usage($db, &t).into_generic_item($db)),
+                    &|| Type::Self_,
+                )
+                .unwrap_or($g.clone()),
+            ),
         }
     };
 }

@@ -234,3 +234,23 @@ class Baz(Bar):
     def bar(self, other: X) -> None: ...  # E: Argument 1 of "bar" is incompatible with supertype "Bar"; supertype defines the argument type as "P" \
                                           # N: This violates the Liskov substitution principle \
                                           # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
+
+[case protocol_match_avoid_exponential_blowup]
+# This was an issue in PyTorch, where this code takes extremely long to
+# typecheck, because of an exponential blowup.
+from typing import Protocol, Union, TypeVar, Iterator
+
+T_co = TypeVar("T_co", covariant=True)
+
+class NestedSequence(Protocol[T_co]):
+    def __getitem__(self, index: int) -> T_co | NestedSequence[T_co]: ...
+    # Every additional method here doubled the time it takes to finish
+    def x_method(self) -> Iterator[T_co | NestedSequence[T_co]]: ...
+    def y_method(self) -> Iterator[T_co | NestedSequence[T_co]]: ...
+    def z_method(self) -> Iterator[T_co | NestedSequence[T_co]]: ...
+
+class Base:
+    def __getitem__(self, indices: NestedSequence[Base | None]) -> Base: ...
+
+def foo(x: Base) -> None:
+    x[::1, ::2]

@@ -108,17 +108,23 @@ impl NamedTuple {
                         let t = p.type_.expect_positional_type_as_ref();
                         match generics {
                             Generics::NotDefinedYet | Generics::None => t.format(&format_data),
-                            _ => t
-                                .replace_type_var_likes_and_self(
+                            _ => {
+                                let replaced = t.replace_type_var_likes_and_self(
                                     format_data.db,
                                     &mut |usage| {
-                                        generics
-                                            .nth_usage(format_data.db, &usage)
-                                            .into_generic_item(format_data.db)
+                                        Some(
+                                            generics
+                                                .nth_usage(format_data.db, &usage)
+                                                .into_generic_item(format_data.db),
+                                        )
                                     },
                                     &|| todo!(),
-                                )
-                                .format(&format_data),
+                                );
+                                match replaced {
+                                    Some(t) => t.format(&format_data),
+                                    None => t.format(&format_data),
+                                }
+                            }
                         }
                         .into()
                     })),

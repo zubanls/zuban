@@ -1101,12 +1101,15 @@ impl<'db> Inference<'db, '_, '_> {
                             }
                             _ => (),
                         };
-                        let erased = original.replace_type_var_likes_and_self(
-                            i_s.db,
-                            &mut |u| u.as_any_generic_item(),
-                            &|| class_t.clone(),
-                        );
-                        let erased_is_protocol = match &erased {
+                        let erased = original
+                            .replace_type_var_likes_and_self(
+                                i_s.db,
+                                &mut |u| Some(u.as_any_generic_item()),
+                                &|| class_t.clone(),
+                            )
+                            .map(Cow::Owned)
+                            .unwrap_or(original);
+                        let erased_is_protocol = match erased.as_ref() {
                             Type::Class(c) => c.class(i_s.db).is_protocol(i_s.db),
                             Type::Type(t) => {
                                 t.maybe_class(i_s.db).is_some_and(|c| c.is_protocol(i_s.db))

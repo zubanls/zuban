@@ -56,15 +56,21 @@ pub fn avoid_protocol_mismatch(
                     }
                 });
                 if had_temporary_matcher_id {
-                    let new_t = t1.replace_type_var_likes(db, &mut |mut usage| {
-                        usage.update_temporary_matcher_index(0);
-                        usage.into_generic_item()
-                    });
+                    let new_t = t1
+                        .replace_type_var_likes(db, &mut |mut usage| {
+                            usage.update_temporary_matcher_index(0);
+                            Some(usage.into_generic_item())
+                        })
+                        .map(Cow::Owned)
+                        .unwrap_or_else(|| Cow::Borrowed(t1));
                     // This case arose in
                     // testTwoUncomfortablyIncompatibleProtocolsWithoutRunningInIssue9771
                     // where it replace function type vars repeatedly with new generated type vars.
                     // I'm not 100% sure this holds for all cases, but it feels like this is fine.
-                    if current.iter().any(|(x1, x2)| x1 == &new_t && x2 == t2) {
+                    if current
+                        .iter()
+                        .any(|(x1, x2)| x1 == new_t.as_ref() && x2 == t2)
+                    {
                         return Match::new_true();
                     }
                 }
@@ -198,7 +204,7 @@ impl ErrorTypes<'_> {
         // but for now this should suffice.
         let expected_t = self
             .matcher
-            .map(|m| Cow::Owned(m.replace_type_var_likes_for_unknown_type_vars(db, self.expected)))
+            .map(|m| m.replace_type_var_likes_for_unknown_type_vars(db, self.expected))
             .unwrap_or_else(|| Cow::Borrowed(self.expected));
         let similar_types = find_similar_types(db, &[self.got.contained_type(), &expected_t]);
         let mut fmt_got = FormatData::with_types_that_need_qualified_names(db, &similar_types);

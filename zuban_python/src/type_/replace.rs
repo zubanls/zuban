@@ -15,7 +15,7 @@ use crate::{
     utils::rc_slice_into_vec,
 };
 
-pub type ReplaceTypeVarLike<'x> = &'x mut dyn FnMut(TypeVarLikeUsage) -> GenericItem;
+pub type ReplaceTypeVarLike<'x> = &'x mut dyn FnMut(TypeVarLikeUsage) -> Option<GenericItem>;
 pub type ReplaceSelf<'x> = &'x dyn Fn() -> Type;
 
 trait Replacer {
@@ -144,13 +144,12 @@ impl Type {
         db: &Database,
         callable: ReplaceTypeVarLike,
         replace_self: ReplaceSelf,
-    ) -> Self {
+    ) -> Option<Self> {
         self.replace_internal(&mut ReplaceTypeVarLikes {
             db,
             callable,
             replace_self,
         })
-        .unwrap_or_else(|| self.clone())
     }
 
     fn replace_internal(&self, replacer: &mut impl Replacer) -> Option<Self> {
@@ -252,17 +251,13 @@ impl Type {
     pub fn replace_type_var_likes(
         &self,
         db: &Database,
-        callable: &mut impl FnMut(TypeVarLikeUsage) -> GenericItem,
-    ) -> Self {
+        callable: &mut impl FnMut(TypeVarLikeUsage) -> Option<GenericItem>,
+    ) -> Option<Self> {
         self.replace_type_var_likes_and_self(db, callable, &|| Type::Self_)
     }
 
-    pub fn replace_self(&self, db: &Database, replace_self: ReplaceSelf) -> Self {
-        self.replace_type_var_likes_and_self(
-            db,
-            &mut |usage| usage.into_generic_item(),
-            replace_self,
-        )
+    pub fn replace_self(&self, db: &Database, replace_self: ReplaceSelf) -> Option<Self> {
+        self.replace_type_var_likes_and_self(db, &mut |usage| None, replace_self)
     }
 }
 
@@ -309,15 +304,14 @@ impl GenericItem {
     pub fn replace_type_var_likes_and_self(
         &self,
         db: &Database,
-        callable: &mut impl FnMut(TypeVarLikeUsage) -> GenericItem,
+        callable: &mut impl FnMut(TypeVarLikeUsage) -> Option<GenericItem>,
         replace_self: ReplaceSelf,
-    ) -> Self {
+    ) -> Option<Self> {
         self.replace_internal(&mut ReplaceTypeVarLikes {
             db,
             callable,
             replace_self,
         })
-        .unwrap_or_else(|| self.clone())
     }
 }
 
@@ -556,7 +550,7 @@ impl CallableParams {
         db: &Database,
         callable: ReplaceTypeVarLike,
         replace_self: ReplaceSelf,
-    ) -> CallableParams {
+    ) -> Option<CallableParams> {
         self.replace_internal(
             &mut ReplaceTypeVarLikes {
                 db,
@@ -567,7 +561,6 @@ impl CallableParams {
             None,
         )
         .map(|(params, _)| params)
-        .unwrap_or_else(|| self.clone())
     }
 }
 
@@ -589,7 +582,10 @@ fn replace_param_spec_internal(
     u: &ParamSpecUsage,
 ) -> CallableParams {
     let result = callable(TypeVarLikeUsage::ParamSpec(u.clone()));
-    let GenericItem::ParamSpecArg(mut new) = result else {
+    // TODO should we use the TypeVarLikeUsage like this?
+    let GenericItem::ParamSpecArg(mut new) =
+        result.unwrap_or_else(|| TypeVarLikeUsage::ParamSpec(u.clone()).into_generic_item())
+    else {
         unreachable!()
     };
     if let Some(new_spec_type_vars) = new.type_vars {
@@ -612,7 +608,7 @@ fn replace_param_spec_internal(
             } else {
                 *type_vars = Some(new_spec_type_vars.type_vars.as_vec());
             }
-            new.params = new_params;
+            new.params = new_params.unwrap_or_else(|| new.params.clone());
         } else {
             debug_assert!(type_vars.is_none());
         }
@@ -624,14 +620,15 @@ fn replace_param_spec_inner_type_var_likes(
     mut usage: TypeVarLikeUsage,
     in_definition: PointLink,
     replace_data: (PointLink, usize),
-) -> GenericItem {
-    if usage.in_definition() == replace_data.0 {
-        usage.update_in_definition_and_index(
-            in_definition,
-            (usage.index().as_usize() + replace_data.1).into(),
-        );
+) -> Option<GenericItem> {
+    if usage.in_definition() != replace_data.0 {
+        return None;
     }
-    usage.into_generic_item()
+    usage.update_in_definition_and_index(
+        in_definition,
+        (usage.index().as_usize() + replace_data.1).into(),
+    );
+    Some(usage.into_generic_item())
 }
 
 impl TupleArgs {
@@ -686,13 +683,16 @@ impl TupleArgs {
         })
     }
 
-    pub fn replace_type_var_likes(&self, db: &Database, callable: ReplaceTypeVarLike) -> Self {
+    pub fn replace_type_var_likes(
+        &self,
+        db: &Database,
+        callable: ReplaceTypeVarLike,
+    ) -> Option<Self> {
         self.replace_internal(&mut ReplaceTypeVarLikes {
             db,
             callable,
             replace_self: &|| Type::Self_,
         })
-        .unwrap_or_else(|| self.clone())
     }
 }
 
@@ -754,13 +754,15 @@ impl ReplaceTypeVarLikes<'_, '_> {
         let (params, remap_data) = new_param_data.unwrap_or_else(|| (c.params.clone(), None));
         let mut return_type = new_return_type.unwrap_or_else(|| c.return_type.clone());
         if let Some(remap_data) = remap_data {
-            return_type = return_type.replace_type_var_likes_and_self(
-                self.db,
-                &mut |usage| {
-                    replace_param_spec_inner_type_var_likes(usage, c.defined_at, remap_data)
-                },
-                self.replace_self,
-            );
+            return_type = return_type
+                .replace_type_var_likes_and_self(
+                    self.db,
+                    &mut |usage| {
+                        replace_param_spec_inner_type_var_likes(usage, c.defined_at, remap_data)
+                    },
+                    self.replace_self,
+                )
+                .unwrap_or_else(|| return_type.clone());
         }
         Some(CallableContent {
             name: c.name.clone(),
@@ -812,7 +814,7 @@ impl Replacer for ReplaceTypeVarLikes<'_, '_> {
                     highest_union_format_index,
                 ))
             }
-            Type::TypeVar(tv) => match (self.callable)(TypeVarLikeUsage::TypeVar(tv.clone())) {
+            Type::TypeVar(tv) => match (self.callable)(TypeVarLikeUsage::TypeVar(tv.clone()))? {
                 GenericItem::TypeArg(t) => Some(t),
                 GenericItem::TypeArgs(ts) => unreachable!(),
                 GenericItem::ParamSpecArg(params) => unreachable!(),
@@ -829,11 +831,12 @@ impl Replacer for ReplaceTypeVarLikes<'_, '_> {
 
     fn replace_type_var_tuple(&mut self, tvt: &TypeVarTupleUsage) -> Option<TupleArgs> {
         let GenericItem::TypeArgs(new) =
-            (self.callable)(TypeVarLikeUsage::TypeVarTuple(tvt.clone()))
+            (self.callable)(TypeVarLikeUsage::TypeVarTuple(tvt.clone()))?
         else {
             unreachable!();
         };
         let args = new.args;
+        // TODO why is this logic necessary?
         if let TupleArgs::WithUnpack(w) = &args {
             if w.before.is_empty()
                 && w.after.is_empty()

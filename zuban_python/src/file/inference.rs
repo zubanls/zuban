@@ -4288,6 +4288,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         Some(
                             matcher
                                 .replace_type_var_likes_for_unknown_type_vars(i_s.db, &expected_t)
+                                .into_owned()
                                 .avoid_implicit_literal(i_s.db),
                         )
                     } else {
@@ -4344,7 +4345,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         |issue| self.add_issue(comp_expr.index(), issue),
                         |error_types, _: &_| Some(on_mismatch(error_types)),
                     );
-                    matcher.replace_type_var_likes_for_unknown_type_vars(i_s.db, &inner_expected)
+                    matcher
+                        .replace_type_var_likes_for_unknown_type_vars(i_s.db, &inner_expected)
+                        .into_owned()
                 })
                 .unwrap_or_else(|| self.infer_named_expression(comp_expr).as_type(i_s))
                 .avoid_implicit_literal(i_s.db)

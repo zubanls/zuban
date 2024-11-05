@@ -139,13 +139,14 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> Init
         ) {
             // We need to remap generics in case of inheritance or more complex types.
             let replace = |t: &Type| {
-                t.replace_type_var_likes(i_s.db, &mut |usage| {
-                    maybe_class_usage(db, &cls, &usage).unwrap_or_else(|| usage.into_generic_item())
-                })
+                t.replace_type_var_likes(i_s.db, &mut |usage| maybe_class_usage(db, &cls, &usage))
             };
             match &mut new_param.type_ {
-                ParamType::PositionalOrKeyword(t) => *t = replace(t),
-                ParamType::KeywordOnly(t) => *t = replace(t),
+                ParamType::PositionalOrKeyword(t) | ParamType::KeywordOnly(t) => {
+                    if let Some(new_t) = replace(t) {
+                        *t = new_t
+                    }
+                }
                 _ => unreachable!(),
             }
         }

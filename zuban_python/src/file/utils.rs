@@ -81,7 +81,9 @@ impl<'db> Inference<'db, '_, '_> {
                     .unwrap();
 
                 let item = if matches!(elements, StarLikeExpressionIterator::Empty) {
-                    matcher.replace_type_var_likes_for_unknown_type_vars(i_s.db, &generic_t)
+                    matcher
+                        .replace_type_var_likes_for_unknown_type_vars(i_s.db, &generic_t)
+                        .into_owned()
                 } else {
                     let found = check_elements_with_context(
                         i_s,
@@ -93,7 +95,10 @@ impl<'db> Inference<'db, '_, '_> {
                     );
                     found.unwrap_or_else(|| {
                         generic_t
-                            .replace_type_var_likes(self.i_s.db, &mut |tv| tv.as_any_generic_item())
+                            .replace_type_var_likes(self.i_s.db, &mut |tv| {
+                                Some(tv.as_any_generic_item())
+                            })
+                            .unwrap_or(generic_t)
                     })
                 };
                 Inferred::from_type(new_class!(wanted_node_ref.as_link(), item))
@@ -227,6 +232,7 @@ impl<'db> Inference<'db, '_, '_> {
         } else {
             matcher
                 .replace_type_var_likes_for_unknown_type_vars(i_s.db, &Type::TypedDict(typed_dict))
+                .into_owned()
         })
     }
 
@@ -317,8 +323,12 @@ impl<'db> Inference<'db, '_, '_> {
         (!had_error).then(|| {
             new_class!(
                 i_s.db.python_state.dict_node_ref().as_link(),
-                matcher.replace_type_var_likes_for_unknown_type_vars(i_s.db, key_t),
-                matcher.replace_type_var_likes_for_unknown_type_vars(i_s.db, value_t),
+                matcher
+                    .replace_type_var_likes_for_unknown_type_vars(i_s.db, key_t)
+                    .into_owned(),
+                matcher
+                    .replace_type_var_likes_for_unknown_type_vars(i_s.db, value_t)
+                    .into_owned(),
             )
         })
     }
@@ -473,7 +483,11 @@ fn check_elements_with_context<'db>(
             StarLikeExpression::StarExpression(e) => unreachable!(),
         };
     }
-    (!had_error).then(|| matcher.replace_type_var_likes_for_unknown_type_vars(i_s.db, generic_t))
+    (!had_error).then(|| {
+        matcher
+            .replace_type_var_likes_for_unknown_type_vars(i_s.db, generic_t)
+            .into_owned()
+    })
 }
 
 pub fn on_argument_type_error(
@@ -563,8 +577,12 @@ pub fn infer_dict_like(
             Inferred::from_type(found.unwrap_or_else(|| {
                 new_class!(
                     i_s.db.python_state.dict_node_ref().as_link(),
-                    key_t.replace_type_var_likes(i_s.db, &mut |tv| tv.as_any_generic_item()),
-                    value_t.replace_type_var_likes(i_s.db, &mut |tv| tv.as_any_generic_item()),
+                    key_t
+                        .replace_type_var_likes(i_s.db, &mut |tv| Some(tv.as_any_generic_item()))
+                        .unwrap_or(key_t),
+                    value_t
+                        .replace_type_var_likes(i_s.db, &mut |tv| Some(tv.as_any_generic_item()))
+                        .unwrap_or(value_t)
                 )
             }))
         },

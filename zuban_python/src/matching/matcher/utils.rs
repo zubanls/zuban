@@ -174,11 +174,10 @@ impl CalculatedTypeArgs {
                 } else {
                     type_args.replace_type_var_likes(db, &mut |usage| {
                         let found = usage.as_type_var_like();
-                        if type_var_likes.iter().any(|tvl| tvl == &found) {
-                            found.as_never_generic_item(NeverCause::Inference)
-                        } else {
-                            usage.into_generic_item()
-                        }
+                        type_var_likes
+                            .iter()
+                            .any(|tvl| tvl == &found)
+                            .then(|| found.as_never_generic_item(NeverCause::Inference))
                     })
                 })
             }
@@ -223,21 +222,23 @@ impl CalculatedTypeArgs {
             }
         }
 
-        let mut type_ = return_type.replace_type_var_likes_and_self(
-            i_s.db,
-            &mut |usage| {
-                if let Some(c) = class {
-                    if let Some(generic_item) = maybe_class_usage(i_s.db, c, &usage) {
-                        return generic_item;
+        let mut type_ = return_type
+            .replace_type_var_likes_and_self(
+                i_s.db,
+                &mut |usage| {
+                    if let Some(c) = class {
+                        if let Some(generic_item) = maybe_class_usage(i_s.db, c, &usage) {
+                            return Some(generic_item);
+                        }
                     }
-                }
-                if self.in_definition == usage.in_definition() {
-                    return self.type_arguments.as_ref().unwrap()[usage.index()].clone();
-                }
-                usage.into_generic_item()
-            },
-            replace_self_type,
-        );
+                    if self.in_definition == usage.in_definition() {
+                        return Some(self.type_arguments.as_ref().unwrap()[usage.index()].clone());
+                    }
+                    None
+                },
+                replace_self_type,
+            )
+            .unwrap_or_else(|| return_type.clone());
         if let Some(type_var_likes) = self.type_var_likes {
             fn create_callable_hierarchy(
                 db: &Database,
@@ -291,15 +292,15 @@ impl CalculatedTypeArgs {
                 }
             }
             if !unused_type_vars.is_empty() {
-                type_ = type_.replace_type_var_likes(i_s.db, &mut |usage| {
-                    if usage.in_definition() == self.in_definition {
-                        usage
-                            .as_type_var_like()
-                            .as_never_generic_item(NeverCause::Inference)
-                    } else {
-                        usage.into_generic_item()
-                    }
-                });
+                type_ = type_
+                    .replace_type_var_likes(i_s.db, &mut |usage| {
+                        (usage.in_definition() == self.in_definition).then(|| {
+                            usage
+                                .as_type_var_like()
+                                .as_never_generic_item(NeverCause::Inference)
+                        })
+                    })
+                    .unwrap_or(type_);
             }
             debug_assert_eq!(manager.into_type_vars().len(), 0);
         }

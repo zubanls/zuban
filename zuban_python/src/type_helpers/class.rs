@@ -2793,37 +2793,42 @@ pub fn linearize_mro_and_return_linearizable(
                 type_: if new_base.needs_remapping {
                     new_base
                         .t
-                        .replace_type_var_likes(i_s.db, &mut |usage| match &bases[base_index] {
-                            Type::Tuple(tup) => tup
-                                .class(i_s.db)
-                                .generics
-                                .nth_usage(i_s.db, &usage)
-                                .into_generic_item(i_s.db),
-                            Type::NamedTuple(n) => n
-                                .as_tuple_ref()
-                                .class(i_s.db)
-                                .generics
-                                .nth_usage(i_s.db, &usage)
-                                .into_generic_item(i_s.db),
-                            Type::Class(GenericClass {
-                                generics: ClassGenerics::List(generics),
-                                ..
-                            }) => generics[usage.index()].clone(),
-                            // Very rare and therefore a separate case.
-                            Type::Class(c) => c
-                                .class(i_s.db)
-                                .generics
-                                .nth_usage(i_s.db, &usage)
-                                .into_generic_item(i_s.db),
-                            Type::Dataclass(d) => match &d.class.generics {
-                                ClassGenerics::List(generics) => generics[usage.index()].clone(),
+                        .replace_type_var_likes(i_s.db, &mut |usage| {
+                            Some(match &bases[base_index] {
+                                Type::Tuple(tup) => tup
+                                    .class(i_s.db)
+                                    .generics
+                                    .nth_usage(i_s.db, &usage)
+                                    .into_generic_item(i_s.db),
+                                Type::NamedTuple(n) => n
+                                    .as_tuple_ref()
+                                    .class(i_s.db)
+                                    .generics
+                                    .nth_usage(i_s.db, &usage)
+                                    .into_generic_item(i_s.db),
+                                Type::Class(GenericClass {
+                                    generics: ClassGenerics::List(generics),
+                                    ..
+                                }) => generics[usage.index()].clone(),
+                                // Very rare and therefore a separate case.
+                                Type::Class(c) => c
+                                    .class(i_s.db)
+                                    .generics
+                                    .nth_usage(i_s.db, &usage)
+                                    .into_generic_item(i_s.db),
+                                Type::Dataclass(d) => match &d.class.generics {
+                                    ClassGenerics::List(generics) => {
+                                        generics[usage.index()].clone()
+                                    }
+                                    _ => unreachable!(),
+                                },
+                                Type::TypedDict(d) => todo!("Maybe this should be implemented?"),
+                                // If we expect class generics and tuples are involved, the tuple was already
+                                // calculated.
                                 _ => unreachable!(),
-                            },
-                            Type::TypedDict(d) => todo!("Maybe this should be implemented?"),
-                            // If we expect class generics and tuples are involved, the tuple was already
-                            // calculated.
-                            _ => unreachable!(),
+                            })
                         })
+                        .unwrap_or_else(|| new_base.t.as_ref().clone())
                 } else {
                     *allowed_to_use += 1;
                     new_base.t.as_ref().clone()
@@ -3131,11 +3136,14 @@ fn apply_generics_to_base_class<'a>(
         _ if matches!(generics, Generics::None | Generics::NotDefinedYet) => {
             TypeOrClass::Type(Cow::Borrowed(t))
         }
-        _ => TypeOrClass::Type(Cow::Owned(t.replace_type_var_likes_and_self(
-            db,
-            &mut |usage| generics.nth_usage(db, &usage).into_generic_item(db),
-            &|| todo!(),
-        ))),
+        _ => {
+            let new_t = t.replace_type_var_likes_and_self(
+                db,
+                &mut |usage| Some(generics.nth_usage(db, &usage).into_generic_item(db)),
+                &|| todo!(),
+            );
+            TypeOrClass::Type(new_t.map(Cow::Owned).unwrap_or_else(|| Cow::Borrowed(t)))
+        }
     }
 }
 
@@ -3372,11 +3380,11 @@ fn init_as_callable(
                             if let Some(func_class) = init_class {
                                 if let Some(result) = maybe_class_usage(i_s.db, &func_class, &usage)
                                 {
-                                    return result;
+                                    return Some(result);
                                 }
                             }
                         }
-                        usage.into_generic_item()
+                        None
                     },
                     &|| self_.clone(),
                 )
@@ -3407,8 +3415,10 @@ fn init_as_callable(
                                 c_defined_at,
                                 (class_type_vars.len() + usage.index().as_usize()).into(),
                             )
+                        } else {
+                            return None;
                         }
-                        usage.into_generic_item()
+                        Some(usage.into_generic_item())
                     },
                     &|| unreachable!("was already replaced above"),
                 );

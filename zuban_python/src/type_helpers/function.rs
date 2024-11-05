@@ -1365,14 +1365,15 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 if needs_self_type_variable {
                     // We have to erase the type vars, because they will be part of the bound and
                     // only defined later.
-                    let t = match func_class_type {
+                    let base = match func_class_type {
                         TypeOrClass::Class(c) => c.as_type(i_s.db),
                         TypeOrClass::Type(t) => t.clone().into_owned(),
-                    }
-                    .replace_type_var_likes(i_s.db, &mut |u| u.as_any_generic_item());
+                    };
+                    let t =
+                        base.replace_type_var_likes(i_s.db, &mut |u| Some(u.as_any_generic_item()));
                     let self_type_var = Rc::new(TypeVar {
                         name_string: TypeVarName::Self_,
-                        kind: TypeVarKind::Bound(t),
+                        kind: TypeVarKind::Bound(t.unwrap_or(base)),
                         variance: Variance::Invariant,
                         default: None,
                     });
@@ -1403,16 +1404,16 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 &mut |mut usage| {
                     let in_definition = usage.in_definition();
                     if let Some(result) = maybe_class_usage(i_s.db, &func_class, &usage) {
-                        result
+                        Some(result)
                     } else if in_definition == defined_at {
-                        if self_type_var_usage.is_some() {
+                        self_type_var_usage.is_some().then(|| {
                             usage.add_to_index(1);
-                        }
-                        usage.into_generic_item()
+                            usage.into_generic_item()
+                        })
                     } else {
                         // This can happen for example if the return value is a Callable with its
                         // own type vars.
-                        usage.into_generic_item()
+                        None
                     }
                 },
                 &|| {
@@ -1427,6 +1428,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     }
                 },
             )
+            .unwrap_or_else(|| t.clone())
         };
         let return_type = as_type(&options.return_type);
         let mut callable =
@@ -1560,9 +1562,11 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                             let new = replace_param_spec(
                                 i_s.db,
                                 &mut |usage| {
-                                    c.generics()
-                                        .nth_usage(i_s.db, &usage)
-                                        .into_generic_item(i_s.db)
+                                    Some(
+                                        c.generics()
+                                            .nth_usage(i_s.db, &usage)
+                                            .into_generic_item(i_s.db),
+                                    )
                                 },
                                 u1,
                             );

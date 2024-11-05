@@ -148,7 +148,10 @@ impl TypedDict {
             .map(|m| {
                 m.replace_type(|t| {
                     m.type_
-                        .replace_type_var_likes(db, &mut |usage| generics[usage.index()].clone())
+                        .replace_type_var_likes(db, &mut |usage| {
+                            Some(generics[usage.index()].clone())
+                        })
+                        .unwrap_or_else(|| m.type_.clone())
                 })
             })
             .collect()
@@ -1145,7 +1148,9 @@ pub(crate) fn check_typed_dict_call<'db>(
     Some(if matches!(&typed_dict.generics, TypedDictGenerics::None) {
         Type::TypedDict(typed_dict)
     } else {
-        matcher.replace_type_var_likes_for_unknown_type_vars(i_s.db, &Type::TypedDict(typed_dict))
+        matcher
+            .replace_type_var_likes_for_unknown_type_vars(i_s.db, &Type::TypedDict(typed_dict))
+            .into_owned()
     })
 }
 
