@@ -1333,11 +1333,6 @@ impl<'db: 'a, 'a> Class<'a> {
         let ignore_positional_param_names_old = matcher.ignore_positional_param_names;
         matcher.ignore_positional_param_names = true;
 
-        debug!(
-            r#"Match protocol "{}" against "{}""#,
-            self.format_short(i_s.db),
-            other.format_short(i_s.db)
-        );
         let mut protocol_member_count = 0;
         for (mro_index, c) in self.mro_maybe_without_object(i_s.db, true) {
             let TypeOrClass::Class(c) = c else { todo!() };

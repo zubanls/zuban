@@ -24,6 +24,7 @@ pub use utils::{
 use crate::{
     arguments::Arg,
     database::Database,
+    debug,
     diagnostics::IssueKind,
     format_data::{find_similar_types, FormatData},
     inference_state::InferenceState,
@@ -70,6 +71,11 @@ pub fn avoid_protocol_mismatch(
             }
             current.push((t1.clone(), t2.clone()));
             drop(current);
+            debug!(
+                r#"Match protocol "{}" against "{}""#,
+                t1.format_short(db),
+                t2.format_short(db),
+            );
             let result = debug_indent(callable);
             vec.borrow_mut().pop();
             result
