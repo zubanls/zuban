@@ -199,7 +199,8 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> Init
                     };
                     *t = replace_class_type_vars(db, t, &cls, &|| {
                         Type::Dataclass(dataclass.clone())
-                    });
+                    })
+                    .into_owned();
                     let cloned_name = new_param.name.clone().unwrap();
                     let param_name = cloned_name.as_str(db);
                     if let Some(in_current_class) = class_symbol_table.lookup_symbol(param_name) {

@@ -442,7 +442,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             let d = replace_class_type_vars(i_s.db, &t, attribute_class, &|| {
                                 class.as_type(i_s.db)
                             });
-                            return Inferred::from_type(d);
+                            return Inferred::from_type(d.into_owned());
                         }
                     }
                     _ => (),
@@ -977,21 +977,20 @@ impl<'db: 'slf, 'slf> Inferred {
                         | Specific::AnnotationOrTypeCommentSimpleClassInstance
                         | Specific::AnnotationOrTypeCommentClassVar
                         | Specific::AnnotationOrTypeCommentFinal) => {
-                            let mut t = use_cached_annotation_or_type_comment(i_s, node_ref);
+                            let t = use_cached_annotation_or_type_comment(i_s, node_ref);
                             let is_remapped = matches!(
                                 specific,
                                 Specific::AnnotationOrTypeCommentWithTypeVars
                                 | Specific::AnnotationOrTypeCommentFinal
                                 if !attribute_class.needs_generic_remapping_for_attributes(i_s, &t)
                             );
-                            if is_remapped {
-                                t = Cow::Owned(replace_class_type_vars(
-                                    i_s.db,
-                                    &t,
-                                    &attribute_class,
-                                    &|| instance.clone(),
-                                ));
-                            }
+                            let t = if is_remapped {
+                                replace_class_type_vars(i_s.db, &t, &attribute_class, &|| {
+                                    instance.clone()
+                                })
+                            } else {
+                                Cow::Borrowed(t.as_ref())
+                            };
                             let is_class_var =
                                 specific == Specific::AnnotationOrTypeCommentClassVar;
                             let attr_kind = if is_class_var {
@@ -1330,8 +1329,12 @@ impl<'db: 'slf, 'slf> Inferred {
                 return Some(Some((inf, AttributeKind::Attribute)));
             }
         }
-        if let Some(new) = new {
-            return Some(Some((Inferred::from_type(new), AttributeKind::Attribute)));
+        // TODO this clone should not be necessary, but there appears to be a bug in the compiler.
+        if let Some(new) = new.clone() {
+            return Some(Some((
+                Inferred::from_type(new.into_owned()),
+                AttributeKind::Attribute,
+            )));
         }
         None
     }
@@ -1599,8 +1602,9 @@ impl<'db: 'slf, 'slf> Inferred {
                 }
             }
         }
-        if let Some(new) = new {
-            return Some(Some(Inferred::from_type(new)));
+        // TODO this clone should not be necessary, but there appears to be a bug in the compiler.
+        if let Some(new) = new.clone() {
+            return Some(Some(Inferred::from_type(new.into_owned())));
         }
         None
     }
@@ -2467,7 +2471,7 @@ fn proper_classmethod_callable(
                 {
                     return None;
                 }
-                if let Type::Type(t) = t {
+                if let Type::Type(t) = t.as_ref() {
                     if let Type::TypeVar(usage) = t.as_ref() {
                         class_method_type_var_usage = Some(usage.clone());
                         type_vars.remove(0);

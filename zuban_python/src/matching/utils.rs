@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use super::Matcher;
 use crate::{
     database::Database,
@@ -8,19 +10,19 @@ use crate::{
     type_helpers::Class,
 };
 
-pub fn replace_class_type_vars(
+pub fn replace_class_type_vars<'x>(
     db: &Database,
-    t: &Type,
+    t: &'x Type,
     attribute_class: &Class,
     self_instance: ReplaceSelf,
-) -> Type {
+) -> Cow<'x, Type> {
     t.replace_type_var_likes_and_self(
         db,
         &mut |usage| maybe_class_usage(db, attribute_class, &usage),
         self_instance,
     )
-    // TODO Can we not either return an Option<Type> or Cow<Type>?
-    .unwrap_or_else(|| t.clone())
+    .map(Cow::Owned)
+    .unwrap_or_else(|| Cow::Borrowed(t))
 }
 
 pub fn replace_class_type_vars_in_callable(
@@ -102,7 +104,7 @@ pub fn calculate_property_return(
     });
 
     Some(if callable.type_vars.is_empty() {
-        t
+        t.into_owned()
     } else {
         matcher
             .replace_type_var_likes_for_unknown_type_vars(i_s.db, &t)
