@@ -288,10 +288,20 @@ fn contract_bool_literals(db: &Database, entries: &mut Vec<UnionEntry>) {
     })
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct UnionEntry {
     pub type_: Type,
     pub format_index: usize,
+}
+
+impl PartialEq for UnionEntry {
+    fn eq(&self, other: &Self) -> bool {
+        // The format_index doesn't really matter. It is just an aesthetic thing that has no
+        // other implications than formatting the order. However for things like avoiding
+        // recursions in protocols the format_index might interfere with equality in a derive
+        // PartialEq.
+        self.type_ == other.type_
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
