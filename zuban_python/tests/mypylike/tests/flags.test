@@ -160,8 +160,8 @@ def foo(x: dict[int, str], y: Mapping[int, str]) -> None:
 [file mypy.ini]
 [mypy]
 files =
-    a.py
-    b.py
+    a.py,
+    b.py,
 
 [case files_in_pyproject_toml]
 [file a.py]

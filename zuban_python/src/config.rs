@@ -450,40 +450,15 @@ impl IniOrTomlValue<'_> {
         Ok(result != invert)
     }
 
-    fn as_str_list(&self, key: &str) -> Result<Vec<String>, String> {
-        match self {
-            Self::Toml(v) => v
-                .as_array()
-                .ok_or_else(|| format!("Expected an array for {key}"))?
-                .iter()
-                .map(|v| {
-                    v.as_str()
-                        .map(|s| s.to_string())
-                        .ok_or_else(|| "".to_string())
-                })
-                .collect(),
-            Self::Ini(s) => Ok(s
-                .split("\n")
-                .filter(|s| !s.is_empty())
-                .map(|s| s.into())
-                .collect()),
-            Self::InlineConfigNoValue => unreachable!(),
-        }
-    }
-
-    fn as_mypy_path(&self) -> Result<Vec<String>, String> {
-        let split_str = |s| {
-            split_and_trim(s, &[',', ':'])
-                .map(|x| x.to_string())
-                .collect()
-        };
+    fn as_str_list(&self, key: &str, split_on: &[char]) -> Result<Vec<String>, String> {
+        let split_str = |s| split_and_trim(s, split_on).map(|x| x.to_string()).collect();
         match self {
             Self::Toml(v) => {
                 if let Some(s) = v.as_str() {
                     return Ok(split_str(s));
                 }
                 v.as_array()
-                    .ok_or_else(|| "Expected an array or string for mypy_path".to_string())?
+                    .ok_or_else(|| format!("Expected an array or string for {key}"))?
                     .iter()
                     .map(|v| {
                         v.as_str()
@@ -667,10 +642,12 @@ fn apply_from_base_config(
         "files" => {
             settings
                 .files_or_directories_to_check
-                .extend(value.as_str_list(key)?);
+                .extend(value.as_str_list(key, &[','])?);
         }
         "mypy_path" => {
-            settings.mypy_path.extend(value.as_mypy_path()?);
+            settings
+                .mypy_path
+                .extend(value.as_str_list(key, &[',', ':'])?);
         }
         _ => return apply_from_config_part(flags, key, value),
     };
