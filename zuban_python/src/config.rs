@@ -450,6 +450,27 @@ impl IniOrTomlValue<'_> {
         Ok(result != invert)
     }
 
+    fn as_str_list(&self, key: &str) -> Result<Vec<String>, String> {
+        match self {
+            Self::Toml(v) => v
+                .as_array()
+                .ok_or_else(|| format!("Expected an array for {key}"))?
+                .iter()
+                .map(|v| {
+                    v.as_str()
+                        .map(|s| s.to_string())
+                        .ok_or_else(|| "".to_string())
+                })
+                .collect(),
+            Self::Ini(s) => Ok(s
+                .split("\n")
+                .filter(|s| !s.is_empty())
+                .map(|s| s.into())
+                .collect()),
+            Self::InlineConfigNoValue => unreachable!(),
+        }
+    }
+
     fn as_mypy_path(&self) -> Result<Vec<String>, String> {
         let split_str = |s| {
             split_and_trim(s, &[',', ':'])
@@ -623,19 +644,15 @@ fn apply_from_base_config(
     match key {
         "show_error_codes" => {
             diagnostic_config.show_error_codes = value.as_bool(false)?;
-            Ok(false)
         }
         "show_column_numbers" => {
             diagnostic_config.show_column_numbers = value.as_bool(false)?;
-            Ok(false)
         }
         "show_error_end" => {
             diagnostic_config.show_error_end = value.as_bool(false)?;
-            Ok(false)
         }
         "python_version"
         | "platform"
-        | "files"
         | "show_error_context"
         | "show_traceback"
         | "pretty"
@@ -646,14 +663,18 @@ fn apply_from_base_config(
         | "warn_redundant_casts"
         | "warn_unused_configs" => {
             debug!("TODO ignored config value {key}");
-            Ok(false)
+        }
+        "files" => {
+            settings
+                .files_or_directories_to_check
+                .extend(value.as_str_list(key)?);
         }
         "mypy_path" => {
             settings.mypy_path.extend(value.as_mypy_path()?);
-            Ok(false)
         }
-        _ => apply_from_config_part(flags, key, value),
-    }
+        _ => return apply_from_config_part(flags, key, value),
+    };
+    Ok(false)
 }
 
 fn apply_from_config_part(

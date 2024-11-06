@@ -148,3 +148,32 @@ from typing import Mapping
 def foo(x: dict[int, str], y: Mapping[int, str]) -> None:
     if x == y: ...
     if y == x: ...
+
+[case files_in_mypy_ini]
+[file a.py]
+1()  # E: "int" not callable
+[file b.py]
+1()  # E: "int" not callable
+[file c.py]
+1()
+
+[file mypy.ini]
+[mypy]
+files =
+    a.py
+    b.py
+
+[case files_in_pyproject_toml]
+[file a.py]
+1()  # E: "int" not callable
+[file b.py]
+1()  # E: "int" not callable
+[file c.py]
+1()
+
+[file pyproject.toml]
+[tool.mypy]
+files = [
+    "a.py",
+    "b.py",
+]
