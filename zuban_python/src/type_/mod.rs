@@ -322,7 +322,7 @@ impl Namespace {
     }
 
     pub fn debug_path(&self, db: &Database) -> String {
-        join_with_commas(self.directories.iter().map(|d| d.path(&*db.vfs)))
+        join_with_commas(self.directories.iter().map(|d| d.path(&*db.vfs, true)))
     }
 }
 

@@ -28,7 +28,7 @@ mod workspaces;
 pub use config::{ExcludeRegex, ProjectOptions, PythonVersion, Settings, TypeCheckerFlags};
 use database::{Database, FileIndex, PythonProject};
 pub use diagnostics::DiagnosticConfig;
-use file::{FileStateLoader, Leaf};
+use file::{File, FileStateLoader, Leaf};
 use inference_state::InferenceState;
 use inferred::Inferred;
 use name::Names;
@@ -79,7 +79,7 @@ impl Project {
             let mut to_be_loaded = vec![];
             directory.walk(&mut |file_index_or_file| {
                 if let Err(file) = file_index_or_file {
-                    let path = file.path(self.db.vfs.as_ref());
+                    let path = file.relative_path(self.db.vfs.as_ref());
                     to_be_loaded.push((file.clone(), path));
                 }
             });
@@ -105,13 +105,15 @@ impl Project {
                 }
             });
             'outer: for file_index in file_indexes {
-                let file = self.db.loaded_file(file_index);
                 let python_file = self.db.loaded_python_file(file_index);
-                if maybe_skipped(python_file.flags(&self.db), file.file_path(&self.db)) {
+                let relative = python_file
+                    .file_entry(&self.db)
+                    .relative_path(self.db.vfs.as_ref());
+                if maybe_skipped(python_file.flags(&self.db), &relative) {
                     continue 'outer;
                 }
                 checked_files += 1;
-                let mut issues = file.diagnostics(&self.db, config).into_vec();
+                let mut issues = python_file.diagnostics(&self.db, config).into_vec();
                 if !issues.is_empty() {
                     files_with_errors += 1;
                     all_diagnostics.append(&mut issues)

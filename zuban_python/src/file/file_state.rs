@@ -1,4 +1,4 @@
-use std::{any::Any, fmt, fs, pin::Pin, rc::Rc};
+use std::{any::Any, fmt, fs, path::Path, pin::Pin, rc::Rc};
 
 use parsa_python_cst::{CodeIndex, Keyword, NodeIndex};
 
@@ -38,7 +38,7 @@ pub trait Vfs {
     }
 
     fn is_sub_file_of(&self, path: &str, maybe_parent: &str) -> bool {
-        path.contains(maybe_parent)
+        Path::new(path).starts_with(Path::new(maybe_parent))
     }
 }
 

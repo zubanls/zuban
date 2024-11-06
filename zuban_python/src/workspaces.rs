@@ -297,10 +297,16 @@ impl Parent {
         }
     }
 
-    fn path(&self, vfs: &dyn Vfs) -> String {
+    fn path(&self, vfs: &dyn Vfs, add_root: bool) -> String {
         match self {
-            Self::Directory(dir) => dir.upgrade().unwrap().path(vfs),
-            Self::Workspace(workspace) => workspace.to_string(),
+            Self::Directory(dir) => dir.upgrade().unwrap().path(vfs, add_root),
+            Self::Workspace(workspace) => {
+                if add_root {
+                    workspace.to_string()
+                } else {
+                    String::new()
+                }
+            }
         }
     }
 
@@ -329,7 +335,16 @@ impl FileEntry {
     }
 
     pub fn path(&self, vfs: &dyn Vfs) -> String {
-        let mut path = self.parent.path(vfs);
+        let mut path = self.parent.path(vfs, true);
+        path.push(vfs.separator());
+        path + &self.name
+    }
+
+    pub fn relative_path(&self, vfs: &dyn Vfs) -> String {
+        let mut path = self.parent.path(vfs, false);
+        if path.is_empty() {
+            return self.name.clone().into();
+        }
         path.push(vfs.separator());
         path + &self.name
     }
@@ -545,8 +560,11 @@ impl Directory {
         }
     }
 
-    pub fn path(&self, vfs: &dyn Vfs) -> String {
-        let mut path = self.parent.path(vfs);
+    pub fn path(&self, vfs: &dyn Vfs, add_root: bool) -> String {
+        let mut path = self.parent.path(vfs, add_root);
+        if path.is_empty() {
+            return self.name.clone().into();
+        }
         path.push(vfs.separator());
         path + &self.name
     }

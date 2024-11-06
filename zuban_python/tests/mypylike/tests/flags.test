@@ -177,3 +177,17 @@ files = [
     "a.py",
     "b.py",
 ]
+
+[case files_path_in_mypy_config]
+[file a/a.py]
+1()  # E: "int" not callable
+[file b/a/b.py]
+1()
+[file c/a/c.py]
+1()  # E: "int" not callable
+
+[file mypy.ini]
+[mypy]
+files =
+    a,
+    c

@@ -1341,7 +1341,7 @@ impl Database {
         let DirectoryEntry::File(file_entry) = &entry else {
             panic!(
                 "It seems like you are using directories in typeshed for {}: {file_name}",
-                dir.path(&*self.vfs)
+                dir.path(&*self.vfs, true)
             )
         };
         let file_index = file_entry.file_index.get().unwrap_or_else(|| {
