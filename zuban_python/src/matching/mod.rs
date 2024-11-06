@@ -34,17 +34,31 @@ use crate::{
 };
 
 thread_local! {
-    static PROTOCOL_RECURSION_AVOIDANCE: RefCell<Vec<(Type, Type)>> = const { RefCell::new(vec![]) };
+    static PROTOCOL_CACHE: ProtocolCache = const { ProtocolCache::new() };
+}
+
+#[derive(Default)]
+struct ProtocolCache {
+    avoid_recursions: RefCell<Vec<(Type, Type)>>,
+}
+
+impl ProtocolCache {
+    const fn new() -> Self {
+        Self {
+            avoid_recursions: RefCell::new(vec![]),
+        }
+    }
 }
 
 pub fn avoid_protocol_mismatch(
     db: &Database,
     t1: &Type,
     t2: &Type,
+    had_type_var_matcher: bool,
     callable: impl FnOnce() -> Match,
 ) -> Match {
-    PROTOCOL_RECURSION_AVOIDANCE.with(|vec| {
-        let mut current = vec.borrow_mut();
+    PROTOCOL_CACHE.with(|cache| {
+        let mut current = cache.avoid_recursions.borrow_mut();
         if current.iter().any(|(x1, x2)| x1 == t1 && x2 == t2) {
             Match::new_true()
         } else {
@@ -75,6 +89,13 @@ pub fn avoid_protocol_mismatch(
                     }
                 }
             }
+            for (x, y) in current.iter() {
+                debug!(
+                    "Previous prot {}:{}",
+                    x.format_short(db),
+                    y.format_short(db)
+                );
+            }
             current.push((t1.clone(), t2.clone()));
             drop(current);
             debug!(
@@ -83,7 +104,7 @@ pub fn avoid_protocol_mismatch(
                 t2.format_short(db),
             );
             let result = debug_indent(callable);
-            vec.borrow_mut().pop();
+            cache.avoid_recursions.borrow_mut().pop();
             result
         }
     })
