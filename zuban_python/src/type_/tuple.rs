@@ -25,7 +25,7 @@ thread_local! {
     static ARBITRARY_TUPLE_FROM_ERROR: Rc<Tuple> = Tuple::new_arbitrary_length(Type::Any(AnyCause::FromError));
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Tuple {
     pub args: TupleArgs,
     pub(super) tuple_class_generics: OnceCell<GenericsList>,
@@ -382,7 +382,7 @@ impl Tuple {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TupleUnpack {
     TypeVarTuple(TypeVarTupleUsage),
     ArbitraryLen(Type),
@@ -399,7 +399,7 @@ impl TupleUnpack {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct WithUnpack {
     pub before: Rc<[Type]>,
     pub unpack: TupleUnpack,
@@ -454,7 +454,7 @@ impl WithUnpack {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TupleArgs {
     WithUnpack(WithUnpack),
     FixedLen(Rc<[Type]>),

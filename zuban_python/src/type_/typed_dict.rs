@@ -21,7 +21,7 @@ use crate::{
     utils::join_with_commas,
 };
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TypedDictMember {
     pub name: StringSlice,
     pub type_: Type,
@@ -46,14 +46,14 @@ impl TypedDictMember {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TypedDictGenerics {
     None,
     NotDefinedYet(TypeVarLikes),
     Generics(GenericsList),
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TypedDict {
     pub name: Option<StringSlice>,
     members: OnceCell<Box<[TypedDictMember]>>,

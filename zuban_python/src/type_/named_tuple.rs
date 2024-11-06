@@ -23,7 +23,7 @@ use crate::{
     utils::join_with_commas,
 };
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct NamedTuple {
     pub name: StringSlice,
     pub __new__: Rc<CallableContent>,

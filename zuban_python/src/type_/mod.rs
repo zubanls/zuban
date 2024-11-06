@@ -173,7 +173,7 @@ impl From<StringSlice> for DbString {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TypeArgs {
     pub args: TupleArgs,
 }
@@ -201,7 +201,7 @@ impl TypeArgs {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GenericItem {
     TypeArg(Type),
     // For TypeVarTuple
@@ -220,7 +220,7 @@ impl GenericItem {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ClassGenerics {
     List(GenericsList),
     // A class definition (no type vars or stuff like callables)
@@ -248,7 +248,7 @@ impl ClassGenerics {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GenericsList(Rc<[GenericItem]>);
 
 impl GenericsList {
@@ -332,7 +332,9 @@ impl std::cmp::PartialEq for Namespace {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+impl std::cmp::Eq for Namespace {}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FunctionOverload(Box<[Rc<CallableContent>]>);
 
 impl FunctionOverload {
@@ -361,7 +363,7 @@ impl FunctionOverload {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GenericClass {
     pub link: PointLink,
     pub generics: ClassGenerics,
@@ -424,7 +426,7 @@ impl<'a, Iter: Iterator<Item = &'a Type>> Iterator for TypeRefIterator<'a, Iter>
 
 // PartialEq is only here for optimizations, it is not a reliable way to check if a type matches
 // with another type.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 #[allow(clippy::enum_variant_names)]
 pub enum Type {
     Class(GenericClass),
@@ -1637,7 +1639,7 @@ impl FunctionKind {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NewType {
     pub name_string: PointLink,
     type_expression: PointLink,
@@ -1689,7 +1691,7 @@ impl NewType {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq)]
 pub struct Literal {
     pub kind: LiteralKind,
     pub implicit: bool,
@@ -1792,13 +1794,13 @@ type CustomBehaviorCallback = for<'db> fn(
     bound: Option<&Type>,
 ) -> Inferred;
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum CustomBehaviorKind {
     Function,
     Method { bound: Option<Rc<Type>> },
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct CustomBehavior {
     callback: CustomBehaviorCallback,
     kind: CustomBehaviorKind,

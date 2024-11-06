@@ -288,7 +288,7 @@ fn contract_bool_literals(db: &Database, entries: &mut Vec<UnionEntry>) {
     })
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq)]
 pub struct UnionEntry {
     pub type_: Type,
     pub format_index: usize,
@@ -304,7 +304,7 @@ impl PartialEq for UnionEntry {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UnionType {
     pub entries: Box<[UnionEntry]>,
 }

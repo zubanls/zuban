@@ -337,7 +337,7 @@ impl Variance {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TypeVarLikes(Rc<[TypeVarLike]>);
 
 impl TypeVarLikes {
@@ -417,7 +417,7 @@ impl std::ops::Index<usize> for TypeVarLikes {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TypeVarLike {
     TypeVar(Rc<TypeVar>),
     TypeVarTuple(Rc<TypeVarTuple>),
@@ -530,6 +530,8 @@ impl PartialEq for TypeVar {
     }
 }
 
+impl Eq for TypeVar {}
+
 impl TypeVar {
     pub fn name<'db>(&self, db: &'db Database) -> &'db str {
         match self.name_string {
@@ -587,7 +589,7 @@ impl TypeVar {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq)]
 pub struct TypeVarTuple {
     pub name_string: PointLink,
     pub default: Option<TypeArgs>,
@@ -622,7 +624,7 @@ impl PartialEq for TypeVarTuple {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq)]
 pub struct ParamSpec {
     pub name_string: PointLink,
     pub default: Option<CallableParams>,
@@ -655,7 +657,7 @@ impl PartialEq for ParamSpec {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct TypeVarUsage {
     pub type_var: Rc<TypeVar>,
     pub in_definition: PointLink,
@@ -677,7 +679,7 @@ impl TypeVarUsage {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Eq)]
 pub struct TypeVarTupleUsage {
     pub type_var_tuple: Rc<TypeVarTuple>,
     pub in_definition: PointLink,
@@ -700,7 +702,7 @@ impl TypeVarTupleUsage {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct ParamSpecUsage {
     pub param_spec: Rc<ParamSpec>,
     pub in_definition: PointLink,
@@ -726,13 +728,13 @@ impl ParamSpecUsage {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ParamSpecTypeVars {
     pub type_vars: TypeVarLikes,
     pub in_definition: PointLink,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ParamSpecArg {
     pub params: CallableParams,
     pub type_vars: Option<ParamSpecTypeVars>,

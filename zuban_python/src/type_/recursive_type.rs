@@ -8,7 +8,7 @@ use crate::{
     type_helpers::Class,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq)]
 pub struct RecursiveType {
     pub link: PointLink,
     pub generics: Option<GenericsList>,

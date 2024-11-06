@@ -22,7 +22,7 @@ use crate::{
     },
 };
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct EnumMember {
     pub enum_: Rc<Enum>,
     pub member_index: usize,
@@ -70,7 +70,7 @@ impl EnumMember {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct EnumMemberDefinition {
     name: DbString,
     pub value: Option<PointLink>,
@@ -86,7 +86,7 @@ impl EnumMemberDefinition {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Enum {
     pub name: DbString,
     pub class: PointLink,

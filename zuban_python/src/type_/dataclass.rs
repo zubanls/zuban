@@ -32,7 +32,7 @@ use crate::{
 
 const ORDER_METHOD_NAMES: [&str; 4] = ["__lt__", "__gt__", "__le__", "__ge__"];
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct DataclassOptions {
     pub init: bool,
     pub eq: bool,
@@ -59,7 +59,7 @@ impl Default for DataclassOptions {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Eq)]
 pub struct Dataclass {
     pub class: GenericClass,
     inits: OnceCell<Inits>,
@@ -114,7 +114,7 @@ impl Dataclass {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 struct Inits {
     __init__: CallableContent,
     __post_init__: CallableContent,

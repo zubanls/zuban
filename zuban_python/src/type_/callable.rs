@@ -18,21 +18,21 @@ use crate::{
     utils::join_with_commas,
 };
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StarParamType {
     ArbitraryLen(Type),
     ParamSpecArgs(ParamSpecUsage),
     UnpackedTuple(Rc<Tuple>),
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StarStarParamType {
     ValueType(Type),
     ParamSpecKwargs(ParamSpecUsage),
     UnpackTypedDict(Rc<TypedDict>),
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ParamType {
     PositionalOnly(Type),
     PositionalOrKeyword(Type),
@@ -123,7 +123,7 @@ pub enum ParamTypeDetails<'a> {
     UnpackTypedDict(Rc<TypedDict>),
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CallableParam {
     pub type_: ParamType,
     pub name: Option<DbString>,
@@ -288,7 +288,7 @@ impl CallableParam {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CallableParams {
     Simple(Rc<[CallableParam]>),
     Any(AnyCause),
@@ -452,7 +452,7 @@ impl CallableParams {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CallableContent {
     pub name: Option<DbString>,
     pub class_name: Option<StringSlice>,
@@ -467,7 +467,7 @@ pub struct CallableContent {
     pub no_type_check: bool, // Has a decorator with @typing.no_type_check
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TypeGuardInfo {
     pub type_: Type,
     pub from_type_is: bool, // true when TypeIs[...], false when TypeGuard[...]

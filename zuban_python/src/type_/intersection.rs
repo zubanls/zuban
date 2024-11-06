@@ -15,7 +15,7 @@ use crate::{
 
 use super::{AnyCause, CallableParams, IterInfos, Type, UnionEntry};
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Intersection {
     entries: Rc<[Type]>,
 }
