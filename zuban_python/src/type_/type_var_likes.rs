@@ -717,6 +717,13 @@ impl ParamSpecUsage {
             temporary_matcher_id: 0,
         }
     }
+
+    pub fn into_generic_item(self) -> GenericItem {
+        GenericItem::ParamSpecArg(ParamSpecArg::new(
+            CallableParams::new_param_spec(self),
+            None,
+        ))
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -824,10 +831,7 @@ impl TypeVarLikeUsage {
                     after: Rc::from([]),
                 }),
             }),
-            TypeVarLikeUsage::ParamSpec(usage) => GenericItem::ParamSpecArg(ParamSpecArg::new(
-                CallableParams::new_param_spec(usage),
-                None,
-            )),
+            TypeVarLikeUsage::ParamSpec(usage) => usage.into_generic_item(),
         }
     }
 

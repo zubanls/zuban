@@ -582,9 +582,8 @@ fn replace_param_spec_internal(
     u: &ParamSpecUsage,
 ) -> CallableParams {
     let result = callable(TypeVarLikeUsage::ParamSpec(u.clone()));
-    // TODO should we use the TypeVarLikeUsage like this?
     let GenericItem::ParamSpecArg(mut new) =
-        result.unwrap_or_else(|| TypeVarLikeUsage::ParamSpec(u.clone()).into_generic_item())
+        result.unwrap_or_else(|| u.clone().into_generic_item())
     else {
         unreachable!()
     };
