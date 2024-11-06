@@ -320,7 +320,7 @@ impl BoundKind {
             Self::ParamSpec(params) => Self::ParamSpec(params.replace_type_var_likes_and_self(
                 db,
                 on_type_var_like,
-                &|| Type::Self_,
+                &|| None,
             )?),
         })
     }

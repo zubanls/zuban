@@ -913,7 +913,7 @@ pub(crate) fn execute_type_of_type<'db>(
                     i_s,
                     &Type::Callable(nt.__new__.clone()),
                     None,
-                    &|| Type::Self_,
+                    &|| None,
                 );
                 let Type::Callable(__new__) = inf.as_type(i_s) else {
                     unreachable!()

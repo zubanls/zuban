@@ -440,7 +440,7 @@ impl<'db: 'slf, 'slf> Inferred {
                         let t = use_cached_annotation_or_type_comment(i_s, definition);
                         if attribute_class.needs_generic_remapping_for_attributes(i_s, &t) {
                             let d = replace_class_type_vars(i_s.db, &t, attribute_class, &|| {
-                                class.as_type(i_s.db)
+                                Some(class.as_type(i_s.db))
                             });
                             return Inferred::from_type(d.into_owned());
                         }
@@ -913,7 +913,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 })
                             }
                             return if let Some(first_type) = func.first_param_annotation_type(i_s) {
-                                let as_instance = || instance.clone();
+                                let as_instance = || Some(instance.clone());
                                 let mut matcher = Matcher::new_function_matcher(
                                     func,
                                     func.type_vars(i_s.db),
@@ -986,7 +986,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             );
                             let t = if is_remapped {
                                 replace_class_type_vars(i_s.db, &t, &attribute_class, &|| {
-                                    instance.clone()
+                                    Some(instance.clone())
                                 })
                             } else {
                                 Cow::Borrowed(t.as_ref())
@@ -1314,7 +1314,7 @@ impl<'db: 'slf, 'slf> Inferred {
                 i_s.db,
                 t,
                 &attribute_class,
-                &|| instance.clone(),
+                &|| Some(instance.clone()),
             ));
             t = new.as_ref().unwrap();
         }
@@ -1567,14 +1567,16 @@ impl<'db: 'slf, 'slf> Inferred {
                 t,
                 &attribute_class,
                 &|| {
-                    if let Some(as_type_type) = as_type_type {
-                        let Type::Type(t) = as_type_type() else {
-                            unreachable!()
-                        };
-                        (*t).clone()
-                    } else {
-                        class.as_type(i_s.db)
-                    }
+                    Some({
+                        if let Some(as_type_type) = as_type_type {
+                            let Type::Type(t) = as_type_type() else {
+                                unreachable!()
+                            };
+                            (*t).clone()
+                        } else {
+                            class.as_type(i_s.db)
+                        }
+                    })
                 },
             ));
             t = new.as_ref().unwrap();
@@ -2464,7 +2466,7 @@ fn proper_classmethod_callable(
             callable.params = CallableParams::Simple(Rc::from(vec));
             if let Some(t) = first_param.type_.maybe_positional_type() {
                 let mut matcher = Matcher::new_callable_matcher(original_callable);
-                let t = replace_class_type_vars(i_s.db, t, func_class, &as_type);
+                let t = replace_class_type_vars(i_s.db, t, func_class, &|| Some(as_type()));
                 if !t
                     .is_super_type_of(i_s, &mut matcher, &as_type_type())
                     .bool()
@@ -2481,7 +2483,7 @@ fn proper_classmethod_callable(
                     callable = callable.replace_type_var_likes_and_self_inplace(
                         i_s.db,
                         &mut |usage| matcher.replace_usage_if_calculated(i_s.db, usage),
-                        &|| Type::Self_,
+                        &|| None,
                     )
                 }
             }
@@ -2560,7 +2562,7 @@ fn proper_classmethod_callable(
             }
         },
         #[allow(clippy::redundant_closure)] // This is a clippy bug
-        &|| get_class_method_class(),
+        &|| Some(get_class_method_class()),
     );
     let type_vars = type_vars.into_inner();
     new_callable.type_vars = TypeVarLikes::from_vec(type_vars);

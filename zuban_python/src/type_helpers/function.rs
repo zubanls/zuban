@@ -1418,13 +1418,13 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 },
                 &|| {
                     if let Some(self_type_var_usage) = self_type_var_usage {
-                        Type::TypeVar(self_type_var_usage.clone())
+                        Some(Type::TypeVar(self_type_var_usage.clone()))
                     } else if let FirstParamProperties::Skip { to_self_instance } =
                         options.first_param
                     {
-                        to_self_instance()
+                        Some(to_self_instance())
                     } else {
-                        Type::Self_
+                        None
                     }
                 },
             )
@@ -1824,18 +1824,11 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 args,
                 false,
                 on_type_error,
-                &|| class.as_type(i_s.db),
+                &|| Some(class.as_type(i_s.db)),
                 result_context,
             )
         } else {
-            self.execute_internal(
-                i_s,
-                args,
-                false,
-                on_type_error,
-                &|| Type::Self_,
-                result_context,
-            )
+            self.execute_internal(i_s, args, false, on_type_error, &|| None, result_context)
         }
     }
 

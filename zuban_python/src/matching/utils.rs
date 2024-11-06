@@ -70,7 +70,9 @@ pub fn create_signature_without_self_for_callable(
     let c = callable
         .remove_first_positional_param()
         .expect("Signatures without any params should have been filtered before");
-    let c = replace_class_type_vars_in_callable(i_s.db, &c, Some(func_class), &|| instance.clone());
+    let c = replace_class_type_vars_in_callable(i_s.db, &c, Some(func_class), &|| {
+        Some(instance.clone())
+    });
     Some(matcher.remove_self_from_callable(i_s, c))
 }
 
@@ -81,7 +83,8 @@ pub fn match_self_type(
     func_class: &Class,
     first_type: &Type,
 ) -> bool {
-    let expected = replace_class_type_vars(i_s.db, first_type, func_class, &|| instance.clone());
+    let expected =
+        replace_class_type_vars(i_s.db, first_type, func_class, &|| Some(instance.clone()));
     expected.is_super_type_of(i_s, matcher, instance).bool()
 }
 
@@ -100,7 +103,7 @@ pub fn calculate_property_return(
     }
 
     let t = replace_class_type_vars(i_s.db, &callable.return_type, func_class, &|| {
-        instance.clone()
+        Some(instance.clone())
     });
 
     Some(if callable.type_vars.is_empty() {

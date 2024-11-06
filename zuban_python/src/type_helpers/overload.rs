@@ -457,7 +457,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                             i_s.db,
                             callable,
                             Some(&class),
-                            &|| Type::Self_,
+                            &|| None,
                         );
                         if let Some(init_cls) = init_cls {
                             c.return_type = init_cls.as_type(i_s.db)
@@ -487,7 +487,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
     pub fn as_type(
         &self,
         i_s: &InferenceState<'db, '_>,
-        replace_self_type: Option<ReplaceSelf>,
+        replace_self_type: Option<&dyn Fn() -> Type>,
     ) -> Type {
         if let Some(replace_self_type) = replace_self_type {
             Type::FunctionOverload(FunctionOverload::new(
@@ -498,7 +498,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                             i_s.db,
                             &callable.remove_first_positional_param().unwrap(),
                             self.class.as_ref(),
-                            replace_self_type,
+                            &|| Some(replace_self_type()),
                         );
                         callable
                             .kind
@@ -519,9 +519,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         result_context: &mut ResultContext,
         on_type_error: OnTypeError,
     ) -> Inferred {
-        self.execute_internal(i_s, args, false, result_context, on_type_error, &|| {
-            Type::Self_
-        })
+        self.execute_internal(i_s, args, false, result_context, on_type_error, &|| None)
     }
 
     pub(super) fn execute_internal(

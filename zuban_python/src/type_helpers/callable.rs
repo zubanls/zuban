@@ -103,11 +103,7 @@ impl<'a> Callable<'a> {
             i_s,
             return_type,
             self.defined_in.as_ref(),
-            as_self_type.unwrap_or(&|| {
-                self.defined_in
-                    .map(|c| c.as_type(i_s.db))
-                    .unwrap_or(Type::Self_)
-            }),
+            as_self_type.unwrap_or(&|| self.defined_in.map(|c| c.as_type(i_s.db))),
         )
     }
 }

@@ -37,12 +37,12 @@ impl<'a, 'b> BoundMethod<'a, 'b> {
                 args,
                 true,
                 on_type_error,
-                &|| self.instance.clone(),
+                &|| Some(self.instance.clone()),
                 result_context,
             ),
             BoundMethodFunction::Overload(f) => {
                 f.execute_internal(i_s, args, true, result_context, on_type_error, &|| {
-                    self.instance.clone()
+                    Some(self.instance.clone())
                 })
             }
         }

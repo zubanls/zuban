@@ -1105,7 +1105,7 @@ impl<'db> Inference<'db, '_, '_> {
                             .replace_type_var_likes_and_self(
                                 i_s.db,
                                 &mut |u| Some(u.as_any_generic_item()),
-                                &|| class_t.clone(),
+                                &|| Some(class_t.clone()),
                             )
                             .map(Cow::Owned)
                             .unwrap_or(original);
@@ -1993,9 +1993,11 @@ pub(super) fn check_override(
 
     let mut match_ = original_t.is_super_type_of(
         i_s,
-        &mut Matcher::new_self_replacer(&|| match &original_class {
-            TypeOrClass::Type(t) => t.as_ref().clone(),
-            TypeOrClass::Class(c) => c.as_type(i_s.db),
+        &mut Matcher::new_self_replacer(&|| {
+            Some(match &original_class {
+                TypeOrClass::Type(t) => t.as_ref().clone(),
+                TypeOrClass::Class(c) => c.as_type(i_s.db),
+            })
         })
         .with_ignore_positional_param_names(),
         override_t,

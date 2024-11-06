@@ -829,7 +829,7 @@ impl CallableContent {
                     None
                 }
             },
-            &|| Type::TypeVar(self_type_var_usage.clone().unwrap()),
+            &|| Some(Type::TypeVar(self_type_var_usage.clone().unwrap())),
         );
         callable.type_vars = type_vars;
         Rc::new(callable)

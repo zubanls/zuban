@@ -169,7 +169,7 @@ impl<'a> Matcher<'a> {
                             usage.into_generic_item()
                         })
                     },
-                    &|| Type::Self_,
+                    &|| None,
                 ));
             }
             self.type_var_matchers
@@ -292,7 +292,11 @@ impl<'a> Matcher<'a> {
                 } else {
                     if matches!(self.func_or_callable, Some(FunctionOrCallable::Function(_))) {
                         // In case we are working within a function, Self is bound already.
-                        self.replace_self.unwrap()().matches(i_s, self, value_type, variance)
+                        if let Some(replaced) = self.replace_self.unwrap()() {
+                            replaced.matches(i_s, self, value_type, variance)
+                        } else {
+                            Match::new_false()
+                        }
                     } else {
                         Match::new_false()
                     }

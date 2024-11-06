@@ -3386,7 +3386,7 @@ fn init_as_callable(
                         }
                         None
                     },
-                    &|| self_.clone(),
+                    &|| Some(self_.clone()),
                 )
             }
             c.return_type = self_;

@@ -198,7 +198,7 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> Init
                         _ => unreachable!(),
                     };
                     *t = replace_class_type_vars(db, t, &cls, &|| {
-                        Type::Dataclass(dataclass.clone())
+                        Some(Type::Dataclass(dataclass.clone()))
                     })
                     .into_owned();
                     let cloned_name = new_param.name.clone().unwrap();

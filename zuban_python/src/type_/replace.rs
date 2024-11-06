@@ -16,7 +16,7 @@ use crate::{
 };
 
 pub type ReplaceTypeVarLike<'x> = &'x mut dyn FnMut(TypeVarLikeUsage) -> Option<GenericItem>;
-pub type ReplaceSelf<'x> = &'x dyn Fn() -> Type;
+pub type ReplaceSelf<'x> = &'x dyn Fn() -> Option<Type>;
 
 trait Replacer {
     fn replace_type(&mut self, t: &Type) -> Option<Type>;
@@ -253,7 +253,7 @@ impl Type {
         db: &Database,
         callable: &mut impl FnMut(TypeVarLikeUsage) -> Option<GenericItem>,
     ) -> Option<Self> {
-        self.replace_type_var_likes_and_self(db, callable, &|| Type::Self_)
+        self.replace_type_var_likes_and_self(db, callable, &|| None)
     }
 
     pub fn replace_self(&self, db: &Database, replace_self: ReplaceSelf) -> Option<Self> {
@@ -569,7 +569,7 @@ pub fn replace_param_spec(
     callable: ReplaceTypeVarLike,
     u: &ParamSpecUsage,
 ) -> CallableParams {
-    replace_param_spec_internal(db, &mut None, None, callable, &|| Type::Self_, &mut None, u)
+    replace_param_spec_internal(db, &mut None, None, callable, &|| None, &mut None, u)
 }
 
 fn replace_param_spec_internal(
@@ -690,7 +690,7 @@ impl TupleArgs {
         self.replace_internal(&mut ReplaceTypeVarLikes {
             db,
             callable,
-            replace_self: &|| Type::Self_,
+            replace_self: &|| None,
         })
     }
 }
@@ -700,7 +700,7 @@ impl GenericsList {
         self.replace_internal(&mut ReplaceTypeVarLikes {
             db,
             callable,
-            replace_self: &|| Type::Self_,
+            replace_self: &|| None,
         })
         .unwrap_or_else(|| self)
     }
@@ -818,7 +818,7 @@ impl Replacer for ReplaceTypeVarLikes<'_, '_> {
                 GenericItem::TypeArgs(ts) => unreachable!(),
                 GenericItem::ParamSpecArg(params) => unreachable!(),
             },
-            Type::Self_ => Some((self.replace_self)()),
+            Type::Self_ => (self.replace_self)(),
             _ => None,
         }
     }

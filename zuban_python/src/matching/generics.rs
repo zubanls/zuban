@@ -6,7 +6,7 @@ use crate::{
     file::{use_cached_simple_generic_type, PythonFile},
     node_ref::NodeRef,
     type_::{
-        ClassGenerics, GenericItem, GenericsList, Type, TypeVarLike, TypeVarLikeUsage, TypeVarLikes,
+        ClassGenerics, GenericItem, GenericsList, TypeVarLike, TypeVarLikeUsage, TypeVarLikes,
     },
 };
 
@@ -18,7 +18,7 @@ macro_rules! replace_class_vars {
                 $g.replace_type_var_likes_and_self(
                     $db,
                     &mut |t| Some(type_var_generics.nth_usage($db, &t).into_generic_item($db)),
-                    &|| Type::Self_,
+                    &|| None,
                 )
                 .unwrap_or($g.clone()),
             ),
