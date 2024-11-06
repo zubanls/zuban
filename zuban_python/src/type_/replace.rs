@@ -835,17 +835,7 @@ impl Replacer for ReplaceTypeVarLikes<'_, '_> {
         else {
             unreachable!();
         };
-        let args = new.args;
-        // TODO why is this logic necessary?
-        if let TupleArgs::WithUnpack(w) = &args {
-            if w.before.is_empty()
-                && w.after.is_empty()
-                && matches!(&w.unpack, TupleUnpack::TypeVarTuple(tvt2) if tvt == tvt2)
-            {
-                return None;
-            }
-        }
-        Some(args)
+        Some(new.args)
     }
 
     fn replace_param_spec(
