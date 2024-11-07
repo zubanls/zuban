@@ -1,4 +1,7 @@
-use std::cell::OnceCell;
+use std::{
+    cell::OnceCell,
+    hash::{Hash, Hasher},
+};
 
 use super::{ClassGenerics, Dataclass, GenericClass, GenericsList, Type};
 use crate::{
@@ -106,6 +109,13 @@ impl RecursiveType {
 impl std::cmp::PartialEq for RecursiveType {
     fn eq(&self, other: &Self) -> bool {
         self.link == other.link && self.generics == other.generics
+    }
+}
+
+impl Hash for RecursiveType {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.link.hash(state);
+        self.generics.hash(state);
     }
 }
 

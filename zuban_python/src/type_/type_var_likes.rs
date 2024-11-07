@@ -1,4 +1,8 @@
-use std::{ops::AddAssign, rc::Rc};
+use std::{
+    hash::{Hash, Hasher},
+    ops::AddAssign,
+    rc::Rc,
+};
 
 use super::{
     AnyCause, CallableContent, CallableParams, FormatStyle, GenericItem, GenericsList, NeverCause,
@@ -11,7 +15,7 @@ use crate::{
     utils::join_with_commas,
 };
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Hash)]
 pub struct TypeVarIndex(pub(super) u32);
 
 impl TypeVarIndex {
@@ -337,7 +341,7 @@ impl Variance {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TypeVarLikes(Rc<[TypeVarLike]>);
 
 impl TypeVarLikes {
@@ -417,7 +421,7 @@ impl std::ops::Index<usize> for TypeVarLikes {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Eq)]
 pub enum TypeVarLike {
     TypeVar(Rc<TypeVar>),
     TypeVarTuple(Rc<TypeVarTuple>),
@@ -499,6 +503,27 @@ impl TypeVarLike {
                 // TODO ParamSpec: this feels wrong, should maybe be never?
                 None => GenericItem::ParamSpecArg(ParamSpecArg::new_never(cause)),
             },
+        }
+    }
+}
+
+impl std::cmp::PartialEq for TypeVarLike {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::TypeVar(t1), Self::TypeVar(t2)) => Rc::ptr_eq(t1, t2),
+            (Self::TypeVarTuple(t1), Self::TypeVarTuple(t2)) => Rc::ptr_eq(t1, t2),
+            (Self::ParamSpec(p1), Self::ParamSpec(p2)) => Rc::ptr_eq(p1, p2),
+            _ => false,
+        }
+    }
+}
+
+impl Hash for TypeVarLike {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        match self {
+            TypeVarLike::TypeVar(tv) => Rc::as_ptr(tv).hash(state),
+            TypeVarLike::TypeVarTuple(tvt) => Rc::as_ptr(tvt).hash(state),
+            TypeVarLike::ParamSpec(p) => Rc::as_ptr(p).hash(state),
         }
     }
 }
@@ -657,7 +682,7 @@ impl PartialEq for ParamSpec {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, Eq, Clone)]
 pub struct TypeVarUsage {
     pub type_var: Rc<TypeVar>,
     pub in_definition: PointLink,
@@ -676,6 +701,24 @@ impl TypeVarUsage {
             index,
             temporary_matcher_id: 0,
         }
+    }
+}
+
+impl std::cmp::PartialEq for TypeVarUsage {
+    fn eq(&self, other: &Self) -> bool {
+        Rc::ptr_eq(&self.type_var, &other.type_var)
+            && self.in_definition == other.in_definition
+            && self.index == other.index
+            && self.temporary_matcher_id == other.temporary_matcher_id
+    }
+}
+
+impl Hash for TypeVarUsage {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        Rc::as_ptr(&self.type_var).hash(state);
+        self.in_definition.hash(state);
+        self.index.hash(state);
+        self.temporary_matcher_id.hash(state);
     }
 }
 
@@ -699,6 +742,15 @@ impl TypeVarTupleUsage {
             index,
             temporary_matcher_id: 0,
         }
+    }
+}
+
+impl Hash for TypeVarTupleUsage {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        Rc::as_ptr(&self.type_var_tuple).hash(state);
+        self.in_definition.hash(state);
+        self.index.hash(state);
+        self.temporary_matcher_id.hash(state);
     }
 }
 
@@ -728,13 +780,22 @@ impl ParamSpecUsage {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+impl Hash for ParamSpecUsage {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        Rc::as_ptr(&self.param_spec).hash(state);
+        self.in_definition.hash(state);
+        self.index.hash(state);
+        self.temporary_matcher_id.hash(state);
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ParamSpecTypeVars {
     pub type_vars: TypeVarLikes,
     pub in_definition: PointLink,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ParamSpecArg {
     pub params: CallableParams,
     pub type_vars: Option<ParamSpecTypeVars>,

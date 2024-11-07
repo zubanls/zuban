@@ -1,4 +1,8 @@
-use std::{cell::OnceCell, rc::Rc};
+use std::{
+    cell::OnceCell,
+    hash::{Hash, Hasher},
+    rc::Rc,
+};
 
 use parsa_python_cst::{keywords_contain, AtomContent, CodeIndex, StarLikeExpression};
 
@@ -23,7 +27,7 @@ use crate::{
     utils::join_with_commas,
 };
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, Eq, Clone)]
 pub struct NamedTuple {
     pub name: StringSlice,
     pub __new__: Rc<CallableContent>,
@@ -319,6 +323,19 @@ impl NamedTuple {
                     .instance()
                     .lookup_with_details(i_s, add_issue, name, LookupKind::Normal)
             })
+    }
+}
+
+impl PartialEq for NamedTuple {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name && self.__new__ == other.__new__
+    }
+}
+
+impl Hash for NamedTuple {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.name.hash(state);
+        self.__new__.hash(state);
     }
 }
 

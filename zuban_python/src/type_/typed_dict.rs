@@ -1,4 +1,8 @@
-use std::{cell::OnceCell, rc::Rc};
+use std::{
+    cell::OnceCell,
+    hash::{Hash, Hasher},
+    rc::Rc,
+};
 
 use parsa_python_cst::{AtomContent, DictElement};
 
@@ -46,14 +50,14 @@ impl TypedDictMember {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TypedDictGenerics {
     None,
     NotDefinedYet(TypeVarLikes),
     Generics(GenericsList),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Eq)]
 pub struct TypedDict {
     pub name: Option<StringSlice>,
     members: OnceCell<Box<[TypedDictMember]>>,
@@ -398,6 +402,19 @@ impl TypedDict {
             }
         }
         matches
+    }
+}
+
+impl PartialEq for TypedDict {
+    fn eq(&self, other: &Self) -> bool {
+        self.defined_at == other.defined_at && self.generics == other.generics
+    }
+}
+
+impl Hash for TypedDict {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.defined_at.hash(state);
+        self.generics.hash(state);
     }
 }
 

@@ -1,4 +1,9 @@
-use std::{cell::OnceCell, ops::Deref, rc::Rc};
+use std::{
+    cell::OnceCell,
+    hash::{Hash, Hasher},
+    ops::Deref,
+    rc::Rc,
+};
 
 use super::{
     simplified_union_from_iterators, utils::method_with_fallback, ClassGenerics, CustomBehavior,
@@ -25,7 +30,7 @@ thread_local! {
     static ARBITRARY_TUPLE_FROM_ERROR: Rc<Tuple> = Tuple::new_arbitrary_length(Type::Any(AnyCause::FromError));
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Eq)]
 pub struct Tuple {
     pub args: TupleArgs,
     pub(super) tuple_class_generics: OnceCell<GenericsList>,
@@ -382,7 +387,19 @@ impl Tuple {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+impl PartialEq for Tuple {
+    fn eq(&self, other: &Self) -> bool {
+        self.args == other.args
+    }
+}
+
+impl Hash for Tuple {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.args.hash(state);
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TupleUnpack {
     TypeVarTuple(TypeVarTupleUsage),
     ArbitraryLen(Type),
@@ -399,7 +416,7 @@ impl TupleUnpack {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct WithUnpack {
     pub before: Rc<[Type]>,
     pub unpack: TupleUnpack,
@@ -454,7 +471,7 @@ impl WithUnpack {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TupleArgs {
     WithUnpack(WithUnpack),
     FixedLen(Rc<[Type]>),

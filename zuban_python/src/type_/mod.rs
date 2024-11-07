@@ -17,7 +17,14 @@ mod typed_dict;
 mod union;
 mod utils;
 
-use std::{borrow::Cow, cell::OnceCell, fmt, mem, rc::Rc};
+use std::{
+    borrow::Cow,
+    cell::OnceCell,
+    fmt,
+    hash::{Hash, Hasher},
+    mem,
+    rc::Rc,
+};
 
 use parsa_python_cst::{CodeIndex, Expression, Name, PythonString};
 
@@ -96,7 +103,7 @@ pub enum FormatStyle {
     MypyRevealType,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct StringSlice {
     pub file_index: FileIndex,
     pub start: CodeIndex,
@@ -138,7 +145,7 @@ impl fmt::Display for FileIndex {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum DbString {
     StringSlice(StringSlice),
     RcStr(Rc<str>),
@@ -173,7 +180,7 @@ impl From<StringSlice> for DbString {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TypeArgs {
     pub args: TupleArgs,
 }
@@ -201,7 +208,7 @@ impl TypeArgs {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum GenericItem {
     TypeArg(Type),
     // For TypeVarTuple
@@ -220,7 +227,7 @@ impl GenericItem {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ClassGenerics {
     List(GenericsList),
     // A class definition (no type vars or stuff like callables)
@@ -248,7 +255,7 @@ impl ClassGenerics {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct GenericsList(Rc<[GenericItem]>);
 
 impl GenericsList {
@@ -332,9 +339,15 @@ impl std::cmp::PartialEq for Namespace {
     }
 }
 
+impl Hash for Namespace {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        Rc::as_ptr(&self.directories).hash(state);
+    }
+}
+
 impl std::cmp::Eq for Namespace {}
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FunctionOverload(Box<[Rc<CallableContent>]>);
 
 impl FunctionOverload {
@@ -363,7 +376,7 @@ impl FunctionOverload {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct GenericClass {
     pub link: PointLink,
     pub generics: ClassGenerics,
@@ -426,7 +439,7 @@ impl<'a, Iter: Iterator<Item = &'a Type>> Iterator for TypeRefIterator<'a, Iter>
 
 // PartialEq is only here for optimizations, it is not a reliable way to check if a type matches
 // with another type.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[allow(clippy::enum_variant_names)]
 pub enum Type {
     Class(GenericClass),
@@ -1580,7 +1593,7 @@ impl FromIterator<Type> for Type {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum FunctionKind {
     Function {
         had_first_self_or_class_annotation: bool,
@@ -1639,7 +1652,7 @@ impl FunctionKind {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Eq)]
 pub struct NewType {
     pub name_string: PointLink,
     type_expression: PointLink,
@@ -1691,6 +1704,18 @@ impl NewType {
     }
 }
 
+impl PartialEq for NewType {
+    fn eq(&self, other: &Self) -> bool {
+        self.type_expression == other.type_expression
+    }
+}
+
+impl Hash for NewType {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.type_expression.hash(state);
+    }
+}
+
 #[derive(Debug, Clone, Eq)]
 pub struct Literal {
     pub kind: LiteralKind,
@@ -1703,7 +1728,13 @@ impl std::cmp::PartialEq for Literal {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+impl Hash for Literal {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.kind.hash(state);
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum LiteralKind {
     String(DbString),
     Int(i64), // TODO this does not work for Python ints > usize
@@ -1794,13 +1825,13 @@ type CustomBehaviorCallback = for<'db> fn(
     bound: Option<&Type>,
 ) -> Inferred;
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub enum CustomBehaviorKind {
     Function,
     Method { bound: Option<Rc<Type>> },
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct CustomBehavior {
     callback: CustomBehaviorCallback,
     kind: CustomBehaviorKind,
@@ -1903,7 +1934,7 @@ impl PartialEq for AnyCause {
     }
 }
 
-#[derive(Debug, Eq, Copy, Clone)]
+#[derive(Debug, Eq, Copy, Clone, Hash)]
 pub enum AnyCause {
     Unannotated,
     Explicit,
@@ -1913,7 +1944,7 @@ pub enum AnyCause {
     Todo, // Used for cases where it's currently unclear what the cause should be.
 }
 
-#[derive(Debug, Eq, Copy, Clone)]
+#[derive(Debug, Eq, Copy, Clone, Hash)]
 pub enum NeverCause {
     Explicit,
     Inference,

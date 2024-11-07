@@ -1,4 +1,8 @@
-use std::{cell::OnceCell, rc::Rc};
+use std::{
+    cell::OnceCell,
+    hash::{Hash, Hasher},
+    rc::Rc,
+};
 
 use parsa_python_cst::{
     AtomContent, CodeIndex, DictElement, Expression, StarLikeExpression, StarLikeExpressionIterator,
@@ -22,7 +26,7 @@ use crate::{
     },
 };
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct EnumMember {
     pub enum_: Rc<Enum>,
     pub member_index: usize,
@@ -86,7 +90,7 @@ impl EnumMemberDefinition {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, Eq, Clone)]
 pub struct Enum {
     pub name: DbString,
     pub class: PointLink,
@@ -146,6 +150,18 @@ impl Enum {
                 enum_name,
             ),
         }
+    }
+}
+
+impl PartialEq for Enum {
+    fn eq(&self, other: &Self) -> bool {
+        self.defined_at == other.defined_at
+    }
+}
+
+impl Hash for Enum {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.defined_at.hash(state);
     }
 }
 
