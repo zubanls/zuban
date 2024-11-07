@@ -44,7 +44,10 @@ struct ProtocolCache {
 }
 
 pub fn invalidate_protocol_cache() {
-    PROTOCOL_CACHE.with(|cache| cache.cached.borrow_mut().clear())
+    PROTOCOL_CACHE.with(|cache| {
+        debug_assert!(cache.avoid_recursions.borrow().is_empty());
+        cache.cached.borrow_mut().clear()
+    })
 }
 
 pub fn avoid_protocol_mismatch(
@@ -67,7 +70,7 @@ pub fn avoid_protocol_mismatch(
                     }
                 });
                 if had_temporary_matcher_id {
-                    let new_t = t1
+                    let new_t1 = t1
                         .replace_type_var_likes(db, &mut |mut usage| {
                             usage.update_temporary_matcher_index(0);
                             Some(usage.into_generic_item())
@@ -78,24 +81,35 @@ pub fn avoid_protocol_mismatch(
                     // testTwoUncomfortablyIncompatibleProtocolsWithoutRunningInIssue9771
                     // where it replace function type vars repeatedly with new generated type vars.
                     // I'm not 100% sure this holds for all cases, but it feels like this is fine.
-                    if current
-                        .iter()
-                        .any(|(x1, x2)| x1 == new_t.as_ref() && x2 == t2)
-                    {
-                        return Match::new_true();
-                    }
+                    drop(current);
+                    return avoid_protocol_mismatch(
+                        db,
+                        &new_t1,
+                        t2,
+                        had_type_var_matcher,
+                        callable,
+                    );
                 }
             }
             let new_t = (t1.clone(), t2.clone());
-            if let Some(already_known) = cache.cached.borrow().get(&new_t) {
-                return already_known.clone();
+            if !had_type_var_matcher {
+                if let Some(already_known) = cache.cached.borrow().get(&new_t) {
+                    debug!(
+                        r#"Used protocol cache "{}" against "{}": {:?}"#,
+                        t1.format_short(db),
+                        t2.format_short(db),
+                        already_known,
+                    );
+                    return already_known.clone();
+                }
             }
             current.push(new_t);
             drop(current);
             debug!(
-                r#"Match protocol "{}" against "{}""#,
+                r#"Match protocol "{}" against "{}" (TypeVarMatcher: {:?})"#,
                 t1.format_short(db),
                 t2.format_short(db),
+                had_type_var_matcher,
             );
             let result = debug_indent(callable);
             if !had_type_var_matcher {
