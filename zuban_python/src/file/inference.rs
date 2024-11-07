@@ -4221,7 +4221,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     }
                 }
             }
-            DefiningStmt::DelStmt(try_stmt) => {
+            DefiningStmt::DelStmt(del_stmt) => {
                 unreachable!("Why would a del stmt be inferrable?")
             }
         }

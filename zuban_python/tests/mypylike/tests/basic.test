@@ -857,3 +857,17 @@ for x in ('a', 'b'):
 from foo import x
 [file foo.py]
 del x  # E: Name "x" is not defined
+
+[case del_stmt_inference_with_star_import]
+from bar import Alias
+
+[file bar.py]
+from foo import *
+_Alias = Alias
+del Alias
+
+x: _Alias
+reveal_type(x)
+
+[file foo.py]
+Alias = int
