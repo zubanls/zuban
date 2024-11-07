@@ -253,4 +253,4 @@ class Base:
     def __getitem__(self, indices: NestedSequence[Base | None]) -> Base: ...
 
 def foo(x: Base) -> None:
-    x[::1, ::2]
+    x[::1, ::2]  # E: Invalid index type "tuple[slice, slice]" for "Base"; expected type "NestedSequence[Base | None]"

@@ -31,6 +31,7 @@ pub use diagnostics::DiagnosticConfig;
 use file::{File, FileStateLoader, Leaf};
 use inference_state::InferenceState;
 use inferred::Inferred;
+use matching::invalidate_protocol_cache;
 use name::Names;
 use parsa_python_cst::CodeIndex;
 
@@ -120,6 +121,7 @@ impl Project {
                 }
             }
         }
+        invalidate_protocol_cache();
         Diagnostics {
             checked_files,
             files_with_errors,

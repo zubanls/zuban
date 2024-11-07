@@ -41,7 +41,7 @@ impl From<bool> for SignatureMatch {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Match {
     False {
         similar: bool,

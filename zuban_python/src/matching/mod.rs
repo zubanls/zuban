@@ -5,7 +5,7 @@ mod matcher;
 mod result_context;
 mod utils;
 
-use std::{borrow::Cow, cell::RefCell, rc::Rc};
+use std::{borrow::Cow, cell::RefCell, collections::HashMap, rc::Rc};
 
 pub use generic::Generic;
 pub use generics::Generics;
@@ -34,20 +34,17 @@ use crate::{
 };
 
 thread_local! {
-    static PROTOCOL_CACHE: ProtocolCache = const { ProtocolCache::new() };
+    static PROTOCOL_CACHE: ProtocolCache = ProtocolCache::default();
 }
 
 #[derive(Default)]
 struct ProtocolCache {
     avoid_recursions: RefCell<Vec<(Type, Type)>>,
+    cached: RefCell<HashMap<(Type, Type), Match>>,
 }
 
-impl ProtocolCache {
-    const fn new() -> Self {
-        Self {
-            avoid_recursions: RefCell::new(vec![]),
-        }
-    }
+pub fn invalidate_protocol_cache() {
+    PROTOCOL_CACHE.with(|cache| cache.cached.borrow_mut().clear())
 }
 
 pub fn avoid_protocol_mismatch(
@@ -89,14 +86,11 @@ pub fn avoid_protocol_mismatch(
                     }
                 }
             }
-            for (x, y) in current.iter() {
-                debug!(
-                    "Previous prot {}:{}",
-                    x.format_short(db),
-                    y.format_short(db)
-                );
+            let new_t = (t1.clone(), t2.clone());
+            if let Some(already_known) = cache.cached.borrow().get(&new_t) {
+                return already_known.clone();
             }
-            current.push((t1.clone(), t2.clone()));
+            current.push(new_t);
             drop(current);
             debug!(
                 r#"Match protocol "{}" against "{}""#,
@@ -104,6 +98,12 @@ pub fn avoid_protocol_mismatch(
                 t2.format_short(db),
             );
             let result = debug_indent(callable);
+            if !had_type_var_matcher {
+                cache
+                    .cached
+                    .borrow_mut()
+                    .insert((t1.clone(), t2.clone()), result.clone());
+            }
             cache.avoid_recursions.borrow_mut().pop();
             result
         }
