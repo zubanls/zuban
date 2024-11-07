@@ -11,7 +11,7 @@ use crate::{
     type_helpers::Class,
 };
 
-#[derive(Debug, Clone, Eq)]
+#[derive(Clone, Eq)]
 pub struct RecursiveType {
     pub link: PointLink,
     pub generics: Option<GenericsList>,
@@ -116,6 +116,15 @@ impl Hash for RecursiveType {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.link.hash(state);
         self.generics.hash(state);
+    }
+}
+
+impl std::fmt::Debug for RecursiveType {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        f.debug_struct(stringify!(RecursiveType))
+            .field("link", &self.link)
+            .field("generics", &self.generics)
+            .finish()
     }
 }
 
