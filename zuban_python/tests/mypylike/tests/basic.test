@@ -867,7 +867,18 @@ _Alias = Alias
 del Alias
 
 x: _Alias
-reveal_type(x)
+reveal_type(x)  # N: Revealed type is "int"
 
 [file foo.py]
 Alias = int
+
+[case inference_with_star_import_in_def]
+def f() -> None:
+    from foo import *
+    y = x
+    reveal_type(y)  # N: Revealed type is "int"
+    def x() -> int: ...
+
+
+[file foo.py]
+x = 1

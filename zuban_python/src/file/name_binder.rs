@@ -1330,6 +1330,13 @@ impl<'db> NameBinder<'db> {
 
     fn index_unordered_references(&mut self) {
         for unordered_reference in &self.unordered_references {
+            if unordered_reference.ordered && self.has_star_imports_in_same_scope() {
+                // If there are star imports the names are currently not resolved in parents. This
+                // solution is still problematic, because there are still weird cases were names
+                // should have been resolved in parents.
+                continue;
+            }
+
             if try_to_process_reference_for_symbol_table(
                 &self.symbol_table,
                 self.db_infos.file_index,
@@ -1352,6 +1359,14 @@ impl<'db> NameBinder<'db> {
             }
         }
         self.unordered_references.truncate(0);
+    }
+
+    fn has_star_imports_in_same_scope(&self) -> bool {
+        self.db_infos
+            .star_imports
+            .borrow()
+            .iter()
+            .any(|star_import| star_import.scope == self.scope_node)
     }
 }
 
