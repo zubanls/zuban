@@ -1748,8 +1748,9 @@ impl Inference<'_, '_, '_> {
                             name: name_def.as_code().into(),
                         },
                     );
+                    self.assign_any_to_target(target, NodeRef::new(self.file, name_def.index()));
                 }
-                self.delete_name(name_def)
+                self.delete_name(name_def);
             }
             Target::NameExpression(primary_target, name_def) => {
                 // TODO this should still be implemented

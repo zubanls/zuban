@@ -619,6 +619,7 @@ pub enum DefiningStmt<'db> {
     TryStmt(TryStmt<'db>),
     ForStmt(ForStmt<'db>),
     WithItem(WithItem<'db>),
+    DelStmt(DelStmt<'db>),
 }
 
 impl<'db> DefiningStmt<'db> {
@@ -637,6 +638,7 @@ impl<'db> DefiningStmt<'db> {
             DefiningStmt::TryStmt(n) => n.index(),
             DefiningStmt::ForStmt(n) => n.index(),
             DefiningStmt::WithItem(w) => w.index(),
+            DefiningStmt::DelStmt(w) => w.index(),
         }
     }
 }
@@ -3579,6 +3581,7 @@ impl<'db> NameDef<'db> {
                 Nonterminal(for_stmt),
                 Nonterminal(try_stmt),
                 Nonterminal(with_item),
+                Nonterminal(del_stmt),
             ])
             .expect("There should always be a stmt");
         if stmt_node.is_type(Nonterminal(function_def)) {
@@ -3605,6 +3608,8 @@ impl<'db> NameDef<'db> {
             DefiningStmt::ForStmt(ForStmt::new(stmt_node))
         } else if stmt_node.is_type(Nonterminal(with_item)) {
             DefiningStmt::WithItem(WithItem::new(stmt_node))
+        } else if stmt_node.is_type(Nonterminal(del_stmt)) {
+            DefiningStmt::DelStmt(DelStmt::new(stmt_node))
         } else {
             unreachable!(
                 "Reached a previously unknown defining statement {:?}",
