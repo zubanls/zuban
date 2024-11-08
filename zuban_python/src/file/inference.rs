@@ -3586,8 +3586,12 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         gatherer.unpack = Some(unpack.unpack);
                         gatherer.extend_from_slice(&unpack.after)
                     }
-                    // TODO this is not correct. The star expression can be a union as well.
-                    IteratorContent::Union(_) => todo!(),
+                    IteratorContent::Union(all_iterators) => {
+                        // TODO once we implement --enable-incomplete-feature=PreciseTupleTypes, we
+                        // should also generalize this.
+                        gatherer.is_arbitrary_length = true;
+                        return;
+                    }
                 }
             };
             for (e, expected) in iterator.clone().zip(tuple_context_iterator) {

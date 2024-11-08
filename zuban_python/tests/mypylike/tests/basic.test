@@ -884,3 +884,8 @@ def f() -> None:
 
 [file foo.py]
 x = 1
+
+[case star_union]
+def f(x: list[bytes] | list[str]):
+    y = 1, *x
+    reveal_type(y)  # N: Revealed type is "tuple[int | bytes | str, ...]"
