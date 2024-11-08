@@ -12,7 +12,7 @@ use crate::{
     debug,
     inference_state::InferenceState,
     matching::{CheckedTypeRecursion, Match, Matcher},
-    type_::{CallableLike, TypeArgs},
+    type_::{CallableLike, ParamSpecArg, TypeArgs},
     type_helpers::{Class, TypeOrClass},
 };
 
@@ -202,8 +202,13 @@ fn common_base_class_basic(
                 generics.push(GenericItem::TypeArgs(TypeArgs::new(new)));
             }
             TypeVarLike::ParamSpec(spec) => {
-                debug!("TODO Common base types of param specs should merge somehow?");
-                generics.push(generic1.into_generic_item(i_s.db));
+                let p1 = generic1.expect_param_spec_arg();
+                let p2 = generic2.expect_param_spec_arg();
+                if p1.type_vars.is_some() || p2.type_vars.is_some() {
+                    return None;
+                }
+                let new = p1.params.common_base_type(i_s, &p2.params)?;
+                generics.push(GenericItem::ParamSpecArg(ParamSpecArg::new(new, None)));
             }
         }
     }

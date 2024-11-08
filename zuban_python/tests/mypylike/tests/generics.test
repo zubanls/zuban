@@ -1285,3 +1285,22 @@ def f(x: Foo[A, B, C, C], y: Foo[C, B, B, A], z: Foo[C, B], other: Foo[int]):
     reveal_type(g(other, x))  # N: Revealed type is "__main__.Foo[Unpack[Tuple[int | __main__.A, ...]]]"
 
 def g(x: T, y: T) -> T: ...
+
+[case param_spec_merging]
+from typing import ParamSpec, TypeVar, Generic
+
+P = ParamSpec("P")
+T = TypeVar("T")
+class Foo(Generic[P]): ...
+
+class A: ...
+class B(A): ...
+class C(B): ...
+def f(x: Foo[[A, B, C, C]], y: Foo[[C, B, B, A]], z: Foo[[C, B]]):
+    reveal_type(g(x, y))  # N: Revealed type is "__main__.Foo[[__main__.C, __main__.B, __main__.C, __main__.C]]"
+    reveal_type(g(y, x))  # N: Revealed type is "__main__.Foo[[__main__.C, __main__.B, __main__.C, __main__.C]]"
+
+    reveal_type(g(x, z))  # N: Revealed type is "object"
+    reveal_type(g(z, x))  # N: Revealed type is "object"
+
+def g(x: T, y: T) -> T: ...

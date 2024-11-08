@@ -126,6 +126,13 @@ impl<'a> Generic<'a> {
         }
     }
 
+    pub fn expect_param_spec_arg(self) -> Cow<'a, ParamSpecArg> {
+        match self {
+            Self::ParamSpecArg(p) => p,
+            _ => unreachable!(),
+        }
+    }
+
     pub fn merge_matching_parts(self, db: &Database, other: Self) -> GenericItem {
         match self {
             Self::TypeArg(t1) => {
