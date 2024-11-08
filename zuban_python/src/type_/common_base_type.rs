@@ -9,7 +9,6 @@ use super::{
 };
 use crate::{
     database::Database,
-    debug,
     inference_state::InferenceState,
     matching::{CheckedTypeRecursion, Match, Matcher},
     type_::{CallableLike, ParamSpecArg, TypeArgs},

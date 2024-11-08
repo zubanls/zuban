@@ -408,13 +408,12 @@ impl<'db: 'slf, 'slf> Inferred {
     }
 
     pub fn resolve_untyped_function_return(self, i_s: &InferenceState) -> Self {
-        todo!();
+        unimplemented!();
         /*
         if let InferredState::Saved(definition) = self.state {
             let definition = NodeRef::from_link(i_s.db, definition);
             let point = definition.point();
             if point.type_() == PointType::Specific && point.specific() == Specific::Closure {
-                todo!()
             }
         }
         self.resolve_class_type_vars(i_s, class, attribute_class)
@@ -432,7 +431,7 @@ impl<'db: 'slf, 'slf> Inferred {
             if let Some(specific) = definition.point().maybe_specific() {
                 match specific {
                     Specific::Param | Specific::MaybeSelfParam => {
-                        todo!("might not even happen - remove")
+                        unimplemented!("might not even happen - remove")
                         //return i_s.infer_param(&definition);
                     }
                     Specific::AnnotationOrTypeCommentWithTypeVars
@@ -563,7 +562,7 @@ impl<'db: 'slf, 'slf> Inferred {
             let LiteralValue::Int(i) = literal.value(i_s.db) else {
                 unreachable!();
             };
-            let index = isize::try_from(i).ok().unwrap_or_else(|| todo!());
+            let index = isize::try_from(i).ok().unwrap_or_else(|| todo!(""));
             callable(index)
         };
         match self.maybe_literal(i_s.db) {
@@ -1186,11 +1185,9 @@ impl<'db: 'slf, 'slf> Inferred {
                     }
                 }
             }
-            InferredState::UnsavedSpecific(specific) => {
-                todo!("{:?} {}", specific, instance.format_short(i_s.db))
-            }
-            InferredState::UnsavedFileReference(file_index) => todo!(),
-            InferredState::BoundMethod { .. } => todo!(),
+            InferredState::UnsavedFileReference(_)
+            | InferredState::UnsavedSpecific(_)
+            | InferredState::BoundMethod { .. } => (),
         }
         Some((self, AttributeKind::Attribute))
     }
@@ -1515,9 +1512,9 @@ impl<'db: 'slf, 'slf> Inferred {
                     }
                 }
             }
-            InferredState::UnsavedSpecific(specific) => todo!(),
-            InferredState::UnsavedFileReference(file_index) => todo!(),
-            InferredState::BoundMethod { .. } => todo!(),
+            InferredState::UnsavedFileReference(_)
+            | InferredState::UnsavedSpecific(_)
+            | InferredState::BoundMethod { .. } => (),
         }
         Some((self, attr_kind))
     }

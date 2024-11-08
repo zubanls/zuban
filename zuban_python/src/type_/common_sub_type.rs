@@ -75,7 +75,13 @@ impl Type {
                                 .collect::<Option<_>>()?,
                         })))
                     }
-                    (WithUnpack(w1), WithUnpack(w2)) => todo!(),
+                    (WithUnpack(w1), WithUnpack(w2)) => {
+                        if w1 == w2 {
+                            Type::Tuple(Tuple::new(WithUnpack(w1.clone())))
+                        } else {
+                            return None;
+                        }
+                    }
                 })
             }
             (Type::TypedDict(td1), Type::TypedDict(td2)) => Some(td1.union(i_s, td2)),
