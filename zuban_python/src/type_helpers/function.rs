@@ -196,7 +196,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             return Inferred::new_any(AnyCause::Unannotated);
         }
         if self.is_generator() {
-            todo!("Maybe not check here, because this could be precalculated and cached");
+            // TODO
         }
         let inner_i_s = i_s.with_func_and_args(self);
         for return_or_yield in self.iter_return_or_yield() {
@@ -212,7 +212,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                             .infer_star_expressions(star_expressions, &mut ResultContext::Unknown)
                             .resolve_untyped_function_return(&inner_i_s);
                     } else {
-                        todo!()
+                        // TODO
                     }
                 }
                 ReturnOrYield::Yield(yield_expr) => unreachable!(),

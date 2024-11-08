@@ -101,16 +101,13 @@ impl Type {
         name: &str,
     ) -> (Option<Class<'a>>, LookupResult) {
         match self {
-            Type::Class(c) => todo!(),
             Type::Dataclass(d) => lookup_dataclass_symbol(d, i_s, name),
-            Type::TypedDict(_) => todo!(),
             Type::Tuple(tuple) => (None, lookup_tuple_magic_methods(tuple.clone(), name).lookup),
             Type::NamedTuple(nt) => (
                 Some(i_s.db.python_state.typing_named_tuple_class()),
                 nt.type_lookup(i_s, name, None).lookup,
             ),
-            Type::Callable(t) => todo!(),
-            _ => todo!("{name:?} {self:?}"),
+            _ => unreachable!("{name:?} {self:?}"),
         }
     }
 
@@ -938,6 +935,9 @@ pub(crate) fn execute_type_of_type<'db>(
                 ))
             }
         }),
-        _ => todo!("{:?}", type_),
+        _ => unreachable!(
+            "Did we not handle a type execution for \"{}\"?",
+            type_.format_short(i_s.db)
+        ),
     }
 }

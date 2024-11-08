@@ -1335,7 +1335,10 @@ impl<'db: 'a, 'a> Class<'a> {
 
         let mut protocol_member_count = 0;
         for (mro_index, c) in self.mro_maybe_without_object(i_s.db, true) {
-            let TypeOrClass::Class(c) = c else { todo!() };
+            let TypeOrClass::Class(c) = c else {
+                debug!("Ignored a type in protocol mro. Why is it there in the first place?");
+                continue;
+            };
             let protocol_members = &c.use_cached_class_infos(i_s.db).protocol_members;
             protocol_member_count += protocol_members.len();
             for protocol_member in protocol_members.iter() {
@@ -2992,7 +2995,7 @@ impl<'a> TypeOrClass<'a> {
                 Type::Dataclass(d) => d.class(db).name(),
                 Type::NamedTuple(nt) => nt.name(db),
                 Type::Tuple(_) => "Tuple",
-                _ => todo!(),
+                _ => unreachable!(),
             },
         }
     }
@@ -3140,7 +3143,7 @@ fn apply_generics_to_base_class<'a>(
             let new_t = t.replace_type_var_likes_and_self(
                 db,
                 &mut |usage| Some(generics.nth_usage(db, &usage).into_generic_item(db)),
-                &|| todo!(),
+                &|| None,
             );
             TypeOrClass::Type(new_t.map(Cow::Owned).unwrap_or_else(|| Cow::Borrowed(t)))
         }
