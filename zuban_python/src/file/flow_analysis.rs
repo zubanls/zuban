@@ -15,7 +15,7 @@ use parsa_python_cst::{
 
 use crate::{
     arguments::SimpleArgs,
-    database::{ClassKind, Database, PointKind, PointLink, Specific},
+    database::{ClassKind, Database, Locality, Point, PointKind, PointLink, Specific},
     debug,
     diagnostics::IssueKind,
     file::MultiDefinitionIterator,
@@ -1745,6 +1745,10 @@ impl Inference<'_, '_, '_> {
                         },
                     );
                     self.assign_any_to_target(target, NodeRef::new(self.file, name_def.index()));
+                } else {
+                    // TODO this should be something like Specific::DeletedVariable
+                    NodeRef::new(self.file, name_def.index())
+                        .set_point(Point::new_specific(Specific::AnyDueToError, Locality::Todo))
                 }
                 self.delete_name(name_def);
             }

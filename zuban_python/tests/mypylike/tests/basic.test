@@ -861,6 +861,8 @@ del x  # E: Name "x" is not defined
 [case del_stmt_inference_with_star_import]
 from bar import Alias
 
+reveal_type(Alias)  # N: Revealed type is "Any"
+
 [file bar.py]
 from foo import *
 _Alias = Alias
