@@ -12,7 +12,7 @@ use crate::{
     debug,
     inference_state::InferenceState,
     matching::{CheckedTypeRecursion, Match, Matcher},
-    type_::CallableLike,
+    type_::{CallableLike, TypeArgs},
     type_helpers::{Class, TypeOrClass},
 };
 
@@ -195,7 +195,12 @@ fn common_base_class_basic(
                     }
                 }
             }
-            TypeVarLike::TypeVarTuple(_) => todo!(),
+            TypeVarLike::TypeVarTuple(_) => {
+                let ts1 = generic1.expect_type_arguments();
+                let ts2 = generic2.expect_type_arguments();
+                let new = ts1.args.simplified_union(i_s, &ts2.args);
+                generics.push(GenericItem::TypeArgs(TypeArgs::new(new)));
+            }
             TypeVarLike::ParamSpec(spec) => {
                 debug!("TODO Common base types of param specs should merge somehow?");
                 generics.push(generic1.into_generic_item(i_s.db));
