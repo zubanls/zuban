@@ -120,12 +120,14 @@ impl CallableParams {
             Some(self.clone())
         } else {
         */
-        match &self {
+        match self {
             CallableParams::Simple(params1) => match &other {
                 CallableParams::Simple(params2) => common_sub_type_params(i_s, params1, params2),
-                CallableParams::Any(_) | CallableParams::Never(_) => todo!(),
+                CallableParams::Any(_) => Some(self.clone()),
+                CallableParams::Never(_) => None,
             },
-            CallableParams::Any(_) | CallableParams::Never(_) => todo!(),
+            CallableParams::Any(_) => Some(other.clone()),
+            CallableParams::Never(_) => None,
         }
     }
 }

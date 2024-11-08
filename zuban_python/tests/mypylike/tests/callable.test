@@ -469,3 +469,31 @@ if bool():
     foo = bar  # E: Incompatible types in assignment (expression has type "Callable[[KwArg(str)], None]", variable has type "Callable[[VarArg(int), KwArg(str)], None]")
 if bool():
     bar = foo
+
+[case callable_sub_type1]
+from typing import Callable, TypeVar, ParamSpec, Generic
+T = TypeVar('T')
+
+class A: ...
+class B(A): ...
+def meet_test(x: Callable[[T], None], y: Callable[[T], None]) -> T: ...
+
+ca: Callable[[Callable[..., None]], None]
+cb: Callable[[Callable[[int], None]], None]
+reveal_type(meet_test(ca, cb)) # N: Revealed type is "def (int)"
+# TODO it is weird that these do not match
+reveal_type(meet_test(cb, ca)) # N: Revealed type is "def (*Any, **Any)"
+
+[case callable_sub_type2]
+from typing import Callable, TypeVar, ParamSpec, Generic
+T = TypeVar('T')
+
+class A: ...
+class B(A): ...
+
+def meet_test(x: Callable[[T], None], y: Callable[[T], None]) -> T: ...
+
+ca: Callable[[Callable[..., A]], None]
+cb: Callable[[Callable[[B], B]], None]
+reveal_type(meet_test(ca, cb)) # N: Revealed type is "def (__main__.B) -> __main__.B"
+reveal_type(meet_test(cb, ca)) # N: Revealed type is "def (__main__.B) -> __main__.B"
