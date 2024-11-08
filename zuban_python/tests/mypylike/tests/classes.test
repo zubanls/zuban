@@ -904,3 +904,19 @@ class F:
         # manager that way.
         with open("lala") as self.f:
             ...
+
+[case weird_invalid__new__]
+import typing
+class C1:
+    __new__ = typing  # E: Signature of "__new__" incompatible with supertype "object" \
+                      # N:      Superclass: \
+                      # N:          def [Self: object] __new__(cls) -> Self \
+                      # N:      Subclass: \
+                      # N:          ModuleType
+
+C1()
+
+import typing
+class C2:
+    def __new__() -> C1: ...  # E: Method must have at least one argument. Did you forget the "self" argument?
+C2()

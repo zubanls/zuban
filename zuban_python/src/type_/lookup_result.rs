@@ -86,18 +86,6 @@ impl LookupResult {
         self.into_maybe_inferred()
     }
 
-    /*
-     * TODO remove?
-    fn map(self, c: impl FnOnce(Inferred) -> Inferred) -> Self {
-        match self {
-            Self::GotoName(link, inf) => Self::GotoName(link, c(inf)),
-            Self::UnknownName(inf) => Self::UnknownName(c(inf)),
-            // TODO is it ok that map does not include FileReference(_)?
-            _ => self,
-        }
-    }
-    */
-
     pub fn and_then(self, c: impl FnOnce(Inferred) -> Option<Inferred>) -> Option<Self> {
         match self {
             Self::GotoName { name, inf } => c(inf).map(|inf| Self::GotoName { name, inf }),

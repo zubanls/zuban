@@ -1634,7 +1634,9 @@ impl<'db: 'slf, 'slf> Inferred {
                             if let Some(result) = result {
                                 return callable_into_inferred(result);
                             } else {
-                                todo!()
+                                // e.g. def __new__() -> X: ...
+                                // Error will be added to the class and not the caller
+                                return Self::new_any_from_error();
                             }
                         }
                         _ => (),
@@ -1644,14 +1646,14 @@ impl<'db: 'slf, 'slf> Inferred {
                             let Some(inf) =
                                 infer_overloaded_class_method(i_s, *class, attribute_class, o)
                             else {
-                                todo!()
+                                return Self::new_any_from_error();
                             };
                             return inf;
                         }
                         ComplexPoint::TypeInstance(t @ Type::Callable(c)) => {
                             let Some(c) = infer_class_method(i_s, *class, attribute_class, c, None)
                             else {
-                                todo!();
+                                return Self::new_any_from_error();
                             };
                             return Inferred::from_type(Type::Callable(Rc::new(c)));
                         }
@@ -1666,13 +1668,10 @@ impl<'db: 'slf, 'slf> Inferred {
                 if let Some(result) = result {
                     return callable_into_inferred(result);
                 } else {
-                    todo!()
+                    return Self::new_any_from_error();
                 }
             }
-            InferredState::UnsavedComplex(complex) => (),
-            InferredState::UnsavedSpecific(specific) => todo!(),
-            InferredState::UnsavedFileReference(file_index) => todo!(),
-            InferredState::BoundMethod { .. } => todo!(),
+            _ => (),
         }
         self
     }
@@ -2458,6 +2457,9 @@ fn proper_classmethod_callable(
         CallableParams::Simple(params) => {
             let mut vec = params.to_vec();
             // The first argument in a class param is not relevant if we execute descriptors.
+            if vec.is_empty() {
+                return None;
+            }
             let first_param = vec.remove(0);
 
             callable.params = CallableParams::Simple(Rc::from(vec));
