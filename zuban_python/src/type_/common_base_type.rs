@@ -9,6 +9,7 @@ use super::{
 };
 use crate::{
     database::Database,
+    debug,
     inference_state::InferenceState,
     matching::{CheckedTypeRecursion, Match, Matcher},
     type_::CallableLike,
@@ -196,7 +197,7 @@ fn common_base_class_basic(
             }
             TypeVarLike::TypeVarTuple(_) => todo!(),
             TypeVarLike::ParamSpec(spec) => {
-                // TODO Common base types of param specs should united somehow?
+                debug!("TODO Common base types of param specs should merge somehow?");
                 generics.push(generic1.into_generic_item(i_s.db));
             }
         }
@@ -281,10 +282,10 @@ impl CallableParams {
             CallableParams::Simple(params1) => match other {
                 CallableParams::Simple(params2) => common_params(i_s, params1, params2),
                 CallableParams::Any(_) => Some(other.clone()),
-                CallableParams::Never(_) => todo!(),
+                CallableParams::Never(_) => None,
             },
             CallableParams::Any(_) => Some(self.clone()),
-            CallableParams::Never(_) => todo!(),
+            CallableParams::Never(_) => None,
         }
     }
 }

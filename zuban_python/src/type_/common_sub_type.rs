@@ -7,9 +7,9 @@ use super::{
     StarParamType, StarStarParamType, Type, TypeGuardInfo, UnionType,
 };
 use crate::{
+    debug,
     inference_state::InferenceState,
-    type_,
-    type_::{Tuple, TupleArgs, TupleUnpack},
+    type_::{self, Tuple, TupleArgs, TupleUnpack},
 };
 
 impl Type {
@@ -45,7 +45,7 @@ impl Type {
                             ts.len().checked_sub(w_u.before.len() + w_u.after.len())?;
                         let mut entries = vec![];
                         let middle_t = match &w_u.unpack {
-                            TupleUnpack::TypeVarTuple(_) => todo!(),
+                            TupleUnpack::TypeVarTuple(_) => return None,
                             TupleUnpack::ArbitraryLen(t) => t,
                         };
                         let between = std::iter::repeat(middle_t).take(fetch_in_between);
@@ -65,7 +65,7 @@ impl Type {
                                 .map(|t2| t2.common_sub_type(i_s, t))
                                 .collect::<Option<_>>()?,
                             unpack: TupleUnpack::ArbitraryLen(match &w.unpack {
-                                TupleUnpack::TypeVarTuple(_) => todo!(),
+                                TupleUnpack::TypeVarTuple(_) => return None,
                                 TupleUnpack::ArbitraryLen(t2) => t2.common_sub_type(i_s, t)?,
                             }),
                             after: w
@@ -151,7 +151,8 @@ fn common_sub_type_for_callables(
     c2: &CallableContent,
 ) -> Rc<CallableContent> {
     if c1.kind != c2.kind {
-        todo!()
+        debug!("TODO when a callable kind does not match should there still be a subtype?");
+        return i_s.db.python_state.any_callable_from_error.clone();
     }
     if let Some(return_type) = c1.return_type.common_sub_type(i_s, &c2.return_type) {
         if let Some(params) = c1.params.common_sub_type(i_s, &c2.params) {
