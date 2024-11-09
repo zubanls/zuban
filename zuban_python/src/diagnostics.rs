@@ -679,21 +679,9 @@ impl<'db> Diagnostic<'db> {
         )
     }
 
-    pub fn as_string(&self, config: &DiagnosticConfig) -> String {
-        let mut kind = "error";
-        let mut path = self
-            .db
-            .file_path(self.file.file_index)
-            .trim_start_matches(&self.file.file_entry(self.db).parent.workspace_path() as &str)
-            .trim_start_matches(self.db.vfs.separator());
-        if path == "__main__" {
-            path = "main";
-        }
-        let line_column = self.start_position().line_and_column();
-        let line = line_column.0;
-        let mut additional_notes = vec![];
+    pub(crate) fn message(&self, additional_notes: &mut Vec<String>) -> String {
         use IssueKind::*;
-        let error = match &self.issue.kind {
+        match &self.issue.kind {
             InvalidSyntax => "invalid syntax".to_string(),
             InvalidSyntaxInTypeComment { type_comment } => format!(
                 r#"Syntax error in type comment "{type_comment}""#
@@ -1739,7 +1727,6 @@ impl<'db> Diagnostic<'db> {
             ),
 
             InvariantNote{actual, maybe} => {
-                kind = "note";
                 let suffix = match *actual {
                     "List" => "",
                     "Dict" => " in the value type",
@@ -1752,15 +1739,34 @@ impl<'db> Diagnostic<'db> {
                 )
             }
             AnnotationInUntypedFunction => {
-                kind = "note";
                 "By default the bodies of untyped functions are not checked, \
                  consider using --check-untyped-defs".to_string()
             }
             Note(s) => {
-                kind = "note";
                 s.clone().into()
             }
+        }
+    }
+
+    pub fn as_string(&self, config: &DiagnosticConfig) -> String {
+        let kind = match &self.issue.kind {
+            IssueKind::AnnotationInUntypedFunction
+            | IssueKind::Note(_)
+            | IssueKind::InvariantNote { .. } => "note",
+            _ => "error",
         };
+        let mut path = self
+            .db
+            .file_path(self.file.file_index)
+            .trim_start_matches(&self.file.file_entry(self.db).parent.workspace_path() as &str)
+            .trim_start_matches(self.db.vfs.separator());
+        if path == "__main__" {
+            path = "main";
+        }
+        let line_column = self.start_position().line_and_column();
+        let line = line_column.0;
+        let mut additional_notes = vec![];
+        let error = self.message(&mut additional_notes);
         let mut result = fmt_line(config, path, line_column, self.end_position(), kind, &error);
         if config.show_error_codes {
             if let Some(mypy_error_code) = self.issue.kind.mypy_error_code() {

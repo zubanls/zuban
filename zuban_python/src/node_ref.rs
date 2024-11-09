@@ -11,7 +11,7 @@ use crate::{
         ClassStorage, ComplexPoint, Database, FileIndex, Locality, Point, PointKind, PointLink,
         Specific, TypeAlias,
     },
-    diagnostics::{Issue, IssueKind},
+    diagnostics::{Diagnostic, Issue, IssueKind},
     file::{File, PythonFile},
     inference_state::InferenceState,
     inferred::Inferred,
@@ -19,6 +19,7 @@ use crate::{
     python_state::{NAME_DEF_TO_CLASS_DIFF, NAME_TO_FUNCTION_DIFF},
     type_::Type,
     type_helpers::{Class, Function, Module, CLASS_TO_CLASS_INFO_DIFFERENCE},
+    DiagnosticConfig,
 };
 
 #[derive(Clone, Copy)]
@@ -297,6 +298,15 @@ impl<'file> NodeRef<'file> {
     pub(crate) fn add_issue(&self, i_s: &InferenceState, kind: IssueKind) {
         let issue = Issue::from_node_index(&self.file.tree, self.node_index, kind);
         self.file.add_issue(i_s, issue)
+    }
+
+    pub(crate) fn issue_to_str(&self, i_s: &InferenceState, kind: IssueKind) -> String {
+        let issue = Issue::from_node_index(&self.file.tree, self.node_index, kind);
+        let config = DiagnosticConfig {
+            show_column_numbers: true,
+            ..Default::default()
+        };
+        Diagnostic::new(i_s.db, self.file, &issue).message(&mut vec![])
     }
 
     pub(crate) fn add_issue_onto_start_including_decorator(

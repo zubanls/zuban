@@ -1,6 +1,6 @@
 use std::{
     borrow::Cow,
-    cell::{Cell, OnceCell},
+    cell::{Cell, OnceCell, RefCell},
     fmt,
     rc::Rc,
 };
@@ -1347,18 +1347,29 @@ impl<'db: 'a, 'a> Class<'a> {
                 // __call__.
                 let is_call = name == "__call__";
                 let mut mismatch = false;
+                let had_error = RefCell::new(None);
                 if is_call {
                     // __call__ matching doesn't ignore param names, matching all other methods
                     // does.
                     matcher.ignore_positional_param_names = false;
                     if !matches!(other, Type::Class(_)) {
                         let inf1 = Instance::new(c, None)
-                            .type_lookup(i_s, |issue| todo!(), name)
+                            .type_lookup(
+                                i_s,
+                                |issue| {
+                                    let issue_str = self.node_ref.issue_to_str(i_s, issue);
+                                    debug!("Issue in protocol __call__: {issue_str}");
+                                    *had_error.borrow_mut() = Some(issue_str);
+                                },
+                                name,
+                            )
                             .into_inferred();
-                        let t1 = inf1.as_cow_type(i_s);
-                        if t1
+                        //Iterable[_T] :> EnumMeta Type[_EnumMemberT] :> EnumMeta
+                        if inf1
+                            .as_cow_type(i_s)
                             .matches(i_s, matcher, other, protocol_member.variance)
                             .bool()
+                            && had_error.borrow().is_none()
                         {
                             matcher.ignore_positional_param_names = true;
                             had_at_least_one_member_with_same_name = true;
@@ -1395,11 +1406,15 @@ impl<'db: 'a, 'a> Class<'a> {
                     name,
                     LookupKind::Normal,
                     &mut ResultContext::Unknown,
-                    &|issue| todo!(),
+                    &|issue| {
+                        let issue_str = self.node_ref.issue_to_str(i_s, issue);
+                        debug!("Issue in protocol: {}", issue_str);
+                        *had_error.borrow_mut() = Some(issue_str);
+                    },
                     &mut |_, lookup_details| {
                         if matches!(lookup_details.lookup, LookupResult::None) {
                             had_lookup_error = true;
-                        } else {
+                        } else if had_error.borrow().is_none() {
                             had_at_least_one_member_with_same_name = true;
                             let t1 = inf1.as_cow_type(i_s);
                             let lookup = lookup_details.lookup.into_inferred();
@@ -1575,6 +1590,12 @@ impl<'db: 'a, 'a> Class<'a> {
                         }
                     },
                 );
+                if let Some(issue) = had_error.take() {
+                    if mismatches < SHOW_MAX_MISMATCHES {
+                        notes.push(issue.into());
+                    }
+                    mismatch = true;
+                }
                 if had_lookup_error {
                     missing_members.push(name);
                 }
@@ -2823,7 +2844,6 @@ pub fn linearize_mro_and_return_linearizable(
                                     }
                                     _ => unreachable!(),
                                 },
-                                Type::TypedDict(d) => todo!("Maybe this should be implemented?"),
                                 // If we expect class generics and tuples are involved, the tuple was already
                                 // calculated.
                                 _ => unreachable!(),

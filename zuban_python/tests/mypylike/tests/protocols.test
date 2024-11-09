@@ -254,3 +254,35 @@ class Base:
 
 def foo(x: Base) -> None:
     x[::1, ::2]  # E: Invalid index type "tuple[slice, slice]" for "Base"; expected type "NestedSequence[Base | None]"
+
+[case protocol_self_types_on_both_sides]
+from typing import Protocol, TypeVar, Generic
+T = TypeVar('T')
+class Proto(Protocol):
+    def foo(self) -> int: ...
+    def bar(self) -> str: ...
+
+class Foo(Generic[T]):
+    def foo(self: Foo[int]) -> T: ...
+    def bar(self) -> str: ...
+
+class Bar(Generic[T]):
+    def foo(self: Bar[str]) -> T: ...
+    def bar(self) -> str: ...
+
+def check(foo: Foo[int], foo2: Foo[str], bar: Bar[int], bar2: Bar[str]) -> Proto:
+    if bool():
+        return foo
+    elif bool():
+        return foo2 # E: Incompatible return value type (got "Foo[str]", expected "Proto") \
+                    # N: Invalid self argument "Foo[str]" to attribute function "foo" with type "Callable[[Foo[int]], T]"
+    elif bool():
+        return bar # E: Incompatible return value type (got "Bar[int]", expected "Proto") \
+                   # N: Invalid self argument "Bar[int]" to attribute function "foo" with type "Callable[[Bar[str]], T]"
+    else:
+        return bar2 # E: Incompatible return value type (got "Bar[str]", expected "Proto") \
+                    # N: Following member(s) of "Bar[str]" have conflicts: \
+                    # N:     Expected: \
+                    # N:         def foo(self: Proto) -> int \
+                    # N:     Got: \
+                    # N:         def foo(self: Bar[str]) -> str
