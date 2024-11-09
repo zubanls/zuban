@@ -952,9 +952,31 @@ UnknownMeta[int]
 Simple[int]  # E: "Simple" expects no type arguments, but 1 given
 
 [case metaclass_with_type_var]
-from typing import Self, Generic, TypeVar
+from typing import Generic, TypeVar
 
 T = TypeVar("T")
 class Meta(Generic[T]): ...
 
 class Foo(metaclass=Meta[T]): ...  # E: Invalid metaclass "Meta[T]"
+
+[case invalid_overload_inits_used_as_callable]
+from typing import Callable, overload, Any
+
+class A:
+    @overload
+    def __init__(self, y: int) -> None: ...
+    @overload
+    def __init__() -> None: ...  # E: Method must have at least one argument. Did you forget the "self" argument?
+    def __init__(*args: Any, **kwargs: Any) -> None: ...
+
+class B:
+    @overload
+    def __init__(*, y: int) -> None: ...  # E: Method must have at least one argument. Did you forget the "self" argument?
+    @overload
+    def __init__() -> None: ...  # E: Method must have at least one argument. Did you forget the "self" argument?
+    def __init__(*args: Any, **kwargs: Any) -> None: ...
+
+def foo(x: Callable[[int], Any]) -> None: ...
+
+foo(A)
+foo(B)  # E: Argument 1 to "foo" has incompatible type "Type[B]"; expected "Callable[[int], Any]"

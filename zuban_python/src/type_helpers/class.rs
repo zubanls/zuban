@@ -3457,7 +3457,10 @@ fn init_as_callable(
                 .filter_map(|c| to_callable(c))
                 .collect();
             match funcs.len() {
-                0 | 1 => todo!(),
+                0 => None,
+                1 => Some(CallableLike::Callable(
+                    funcs.into_vec().into_iter().next().unwrap(),
+                )),
                 _ => Some(CallableLike::Overload(FunctionOverload::new(funcs))),
             }
         }
