@@ -627,7 +627,7 @@ impl Type {
                             variance,
                         ),
                         MetaclassState::Unknown => {
-                            todo!()
+                            (class1.is_metaclass(i_s.db) || class1.incomplete_mro(i_s.db)).into()
                         }
                         MetaclassState::None => {
                             (class1.node_ref == i_s.db.python_state.bare_type_node_ref()).into()

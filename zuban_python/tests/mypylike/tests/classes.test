@@ -932,3 +932,14 @@ class Bar(Foo):
             sup = super()
         if bool():
             sup = super(Foo, self)  # E: Incompatible types in assignment (expression has type "super", variable has type "super")
+
+[case type_against_unknown_metaclass_matching]
+class WithType(type): ...
+class Simple: ...
+class UnknownBase(UNDEFINED): ...  # E: Name "UNDEFINED" is not defined
+class UnknownMeta(metaclass=UNDEFINED): ...  # E: Name "UNDEFINED" is not defined
+
+def f(with_type: WithType, simple: Simple, unknown_base: UnknownBase, unknown_meta_t: type[UnknownMeta]):
+    with_type = unknown_meta_t
+    simple = unknown_meta_t  # E: Incompatible types in assignment (expression has type "Type[UnknownMeta]", variable has type "Simple")
+    unknown_base = unknown_meta_t
