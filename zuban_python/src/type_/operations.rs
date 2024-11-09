@@ -394,7 +394,19 @@ impl Type {
                     add_issue,
                     callable,
                 ),
-            Type::CustomBehavior(_) => todo!(),
+            Type::CustomBehavior(b) => {
+                Type::Callable(i_s.db.python_state.any_callable_from_error.clone())
+                    .run_after_lookup_on_each_union_member(
+                        i_s,
+                        None,
+                        from_file,
+                        name,
+                        kind,
+                        result_context,
+                        add_issue,
+                        callable,
+                    )
+            }
             Self::Intersection(i) => {
                 // We need to wrap this in a function, because otherwise the Rust compiler recurses
                 // while trying to create the impls.

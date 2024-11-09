@@ -39,3 +39,12 @@ def foo(x: T) -> T:
 
     bar(1, {})  # E: Argument 2 to "bar" has incompatible type "dict[Never, Never]"; expected "T"
     return x
+
+[case accessing_special_implementations]
+from typing import TypedDict
+
+class TD(TypedDict):
+    x: int
+
+def foo(x: TD) -> None:
+    x.get.__sizeof__
