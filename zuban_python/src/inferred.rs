@@ -2777,6 +2777,8 @@ pub fn specific_to_type<'db>(
             todo!()
         }
         Specific::MypyExtensionsFlexibleAlias => Cow::Borrowed(&Type::Any(AnyCause::Internal)),
+        // TODO dataclass transforms should probably be handled properly
+        Specific::TypingDataclassTransform => Cow::Borrowed(&Type::Any(AnyCause::Internal)),
         actual => unreachable!("{actual:?}"),
     }
 }
