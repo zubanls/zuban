@@ -27,6 +27,7 @@ use std::{
 };
 
 use parsa_python_cst::{CodeIndex, Expression, Name, PythonString};
+use typed_dict::rc_typed_dict_as_callable;
 
 pub(crate) use self::{
     callable::{
@@ -716,9 +717,9 @@ impl Type {
                 }
                 return cls.find_relevant_constructor(i_s).maybe_callable(i_s, cls);
             }
-            Type::TypedDict(_) => {
-                todo!("Once this is implemented remove the reveal_type formatting")
-            }
+            Type::TypedDict(td) => Some(CallableLike::Callable(Rc::new(
+                rc_typed_dict_as_callable(i_s.db, td.clone()),
+            ))),
             Type::NamedTuple(nt) => {
                 let mut callable = nt.__new__.remove_first_positional_param().unwrap();
                 callable.return_type = self.clone();

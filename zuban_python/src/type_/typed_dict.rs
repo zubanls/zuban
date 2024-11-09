@@ -7,8 +7,9 @@ use std::{
 use parsa_python_cst::{AtomContent, DictElement};
 
 use super::{
-    utils::method_with_fallback, AnyCause, CallableParam, CustomBehavior, DbString, FormatStyle,
-    GenericsList, LookupResult, NeverCause, ParamType, StringSlice, Type, TypeVarLikes,
+    utils::method_with_fallback, AnyCause, CallableContent, CallableParam, CallableParams,
+    CustomBehavior, DbString, FormatStyle, GenericsList, LookupResult, NeverCause, ParamType,
+    StringSlice, Type, TypeVarLikes,
 };
 use crate::{
     arguments::{ArgKind, Args},
@@ -403,6 +404,29 @@ impl TypedDict {
         }
         matches
     }
+}
+
+pub fn rc_typed_dict_as_callable(db: &Database, slf: Rc<TypedDict>) -> CallableContent {
+    CallableContent::new_simple(
+        slf.name.map(DbString::StringSlice),
+        None,
+        slf.defined_at,
+        match &slf.generics {
+            TypedDictGenerics::None | TypedDictGenerics::Generics(_) => {
+                db.python_state.empty_type_var_likes.clone()
+            }
+            TypedDictGenerics::NotDefinedYet(type_vars) => type_vars.clone(),
+        },
+        CallableParams::Simple(
+            slf.members
+                .get()
+                .unwrap()
+                .iter()
+                .map(|m| m.as_keyword_param())
+                .collect(),
+        ),
+        Type::TypedDict(slf.clone()),
+    )
 }
 
 impl PartialEq for TypedDict {

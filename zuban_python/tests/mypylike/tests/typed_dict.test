@@ -48,3 +48,33 @@ class TD(TypedDict):
 
 def foo(x: TD) -> None:
     x.get.__sizeof__
+
+[case typed_dict_passing_to_callable]
+from typing import TypedDict, Callable
+
+class TD(TypedDict):
+    x: int
+
+def foo(x: type[TD]) -> None:
+    def wanted(*, x: int) -> TD: ...
+    y = wanted
+    if bool():
+        y = x
+    y = TD
+
+[case typed_dict_passing_to_callable_generic]
+from typing import TypedDict, Callable, Generic, TypeVar
+
+T = TypeVar("T")
+
+class TD(TypedDict, Generic[T]):
+    x: T
+
+def foo(x: type[TD[int]], y: type[TD[str]]) -> None:
+    def wanted(*, x: int) -> TD: ...
+    w = wanted
+    if bool():
+        w = x
+    if bool():
+        w = y  # E: Incompatible types in assignment (expression has type "Type[__main__.TD[str]]", variable has type "Callable[[NamedArg(int, 'x')], TD]")
+    w = TD
