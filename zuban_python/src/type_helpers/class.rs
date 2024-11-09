@@ -800,7 +800,9 @@ impl<'db: 'a, 'a> Class<'a> {
                             &inference,
                             self.node_ref.as_link(),
                             &mut |i_s, _: &_, type_var_like: TypeVarLike, _| {
-                                todo!();
+                                TypeVarCallbackReturn::NotFound {
+                                    allow_late_bound_callables: false,
+                                }
                             },
                             TypeComputationOrigin::BaseClass,
                         )

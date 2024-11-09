@@ -950,3 +950,11 @@ class UnknownMeta(metaclass=UNDEFINED): ...  # E: Name "UNDEFINED" is not define
 
 UnknownMeta[int]
 Simple[int]  # E: "Simple" expects no type arguments, but 1 given
+
+[case metaclass_with_type_var]
+from typing import Self, Generic, TypeVar
+
+T = TypeVar("T")
+class Meta(Generic[T]): ...
+
+class Foo(metaclass=Meta[T]): ...  # E: Invalid metaclass "Meta[T]"
