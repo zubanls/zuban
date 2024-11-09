@@ -1304,3 +1304,14 @@ def f(x: Foo[[A, B, C, C]], y: Foo[[C, B, B, A]], z: Foo[[C, B]]):
     reveal_type(g(z, x))  # N: Revealed type is "object"
 
 def g(x: T, y: T) -> T: ...
+
+[case avoid_recursion_when_dealing_with_same_class_generics]
+from typing import Generic, Iterable, TypeVar
+
+T = TypeVar("T")
+
+class OrderedSet(Generic[T]):
+    def union(self, same: OrderedSet[T], other: Iterable[T]):
+        same |= other
+
+    def __ior__(self, other: Iterable[T]) -> OrderedSet[T]: ...

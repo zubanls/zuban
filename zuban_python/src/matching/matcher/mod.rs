@@ -361,6 +361,11 @@ impl<'a> Matcher<'a> {
                     .generics()
                     .nth_usage(i_s.db, &TypeVarLikeUsage::TypeVar(t1.clone()))
                     .expect_type_argument();
+                if g.as_ref() == value_type {
+                    // Needed to avoid recursions when matching against the same potential TypeVar
+                    // again.
+                    return Some(Match::new_true());
+                }
                 return Some(g.matches(i_s, self, value_type, variance));
             }
             // The case that the if does not hit happens e.g. for
