@@ -1998,7 +1998,7 @@ impl<'x> Param<'x> for FunctionParam<'x> {
     }
 
     fn into_callable_param(self) -> CallableParam {
-        todo!()
+        unreachable!("It feels like this might not be necessary")
     }
 }
 

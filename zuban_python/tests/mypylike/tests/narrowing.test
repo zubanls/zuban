@@ -1534,3 +1534,17 @@ class Foo:
 [case narrowing_or_with_bools]
 def foo(z: str, w: bool, u: bool) -> bool:
     return z and w or u
+
+[case issubclass_intersection_attributes]
+class A:
+    a = 1
+    def __init__(self) -> None:
+        self.c = 1
+class B: b = 1
+
+def f(x: type[A]):
+    if issubclass(x, B):
+        reveal_type(x.a)  # N: Revealed type is "int"
+        reveal_type(x.b)  # N: Revealed type is "int"
+        x.c  # E: "<subclass of "A" and "B">" has no attribute "c"
+        x.d  # E: "<subclass of "A" and "B">" has no attribute "d"

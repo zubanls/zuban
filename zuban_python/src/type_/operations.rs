@@ -21,7 +21,7 @@ use crate::{
         OnTypeError, ResultContext,
     },
     node_ref::NodeRef,
-    type_::NamedTuple,
+    type_::{Intersection, NamedTuple},
     type_helpers::{
         lookup_in_namespace, Callable, Class, ClassLookupOptions, Instance, InstanceLookupOptions,
         LookupDetails, Module, OverloadedFunction,
@@ -177,7 +177,7 @@ impl Type {
                                 &Inferred::from_type(Type::Class(*link, None)),
                             )
                             .lookup(i_s, name),
-                            _ => todo!("{:?}", type_),
+                            _ =>
                         }
                     }
                     */
@@ -395,16 +395,47 @@ impl Type {
                     callable,
                 ),
             Type::CustomBehavior(_) => todo!(),
-            Self::Intersection(i) => i.run_after_lookup_on_each_union_member(
-                i_s,
-                from_inferred,
-                from_file,
-                name,
-                kind,
-                result_context,
-                add_issue,
-                callable,
-            ),
+            Self::Intersection(i) => {
+                // We need to wrap this in a function, because otherwise the Rust compiler recurses
+                // while trying to create the impls.
+                fn on_intersection(
+                    i: &Intersection,
+                    i_s: &InferenceState,
+                    from_file: FileIndex,
+                    add_issue: &dyn Fn(IssueKind),
+                    name: &str,
+                    kind: LookupKind,
+                    result_context: &mut ResultContext,
+                    callable: &mut dyn FnMut(&Type, LookupDetails),
+                ) {
+                    i.run_after_lookup_on_each_union_member(
+                        &mut |t, add_issue, on_lookup_result| {
+                            t.run_after_lookup_on_each_union_member(
+                                i_s,
+                                None,
+                                from_file,
+                                name,
+                                kind,
+                                result_context,
+                                add_issue,
+                                &mut |t, lookup| on_lookup_result(t, lookup),
+                            );
+                        },
+                        add_issue,
+                        callable,
+                    )
+                }
+                on_intersection(
+                    i,
+                    i_s,
+                    from_file,
+                    add_issue,
+                    name,
+                    kind,
+                    result_context,
+                    callable,
+                );
+            }
         }
     }
 
@@ -815,7 +846,48 @@ pub(crate) fn attribute_access_of_type(
             name,
             ClassLookupOptions::new(&add_issue).with_kind(kind),
         ),
-        t => todo!("{name} on {t:?}"),
+        Type::Intersection(i) => {
+            // We need to wrap this in a function, because otherwise the Rust compiler recurses
+            // while trying to create the impls.
+            fn on_intersection(
+                i: &Intersection,
+                i_s: &InferenceState,
+                add_issue: &dyn Fn(IssueKind),
+                name: &str,
+                kind: LookupKind,
+                result_context: &mut ResultContext,
+                callable: &mut dyn FnMut(&Type, LookupDetails),
+                in_type: Rc<Type>,
+            ) {
+                i.run_after_lookup_on_each_union_member(
+                    &mut |t, add_issue, on_lookup_result| {
+                        attribute_access_of_type(
+                            i_s,
+                            add_issue,
+                            name,
+                            kind,
+                            result_context,
+                            &mut |t, details| on_lookup_result(t, details),
+                            Rc::new(t.clone()),
+                        );
+                    },
+                    add_issue,
+                    callable,
+                );
+            }
+            on_intersection(
+                i,
+                i_s,
+                add_issue,
+                name,
+                kind,
+                result_context,
+                callable,
+                in_type.clone(),
+            );
+            return;
+        }
+        t => unreachable!("Type getattr {name} on {t:?}"),
     };
     callable(&Type::Type(in_type.clone()), details)
 }

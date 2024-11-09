@@ -2,14 +2,13 @@ use std::{borrow::Cow, cell::Cell, rc::Rc};
 
 use crate::{
     arguments::Args,
-    database::FileIndex,
     diagnostics::IssueKind,
     file::check_multiple_inheritance,
     format_data::FormatData,
     getitem::SliceType,
     inference_state::InferenceState,
     inferred::Inferred,
-    matching::{IteratorContent, LookupKind, OnTypeError, ResultContext},
+    matching::{IteratorContent, OnTypeError, ResultContext},
     type_helpers::{linearize_mro_and_return_linearizable, LookupDetails, TypeOrClass},
 };
 
@@ -291,25 +290,19 @@ impl Intersection {
 
     pub(crate) fn run_after_lookup_on_each_union_member(
         &self,
-        i_s: &InferenceState,
-        from_inferred: Option<&Inferred>,
-        from_file: FileIndex,
-        name: &str,
-        kind: LookupKind,
-        result_context: &mut ResultContext,
+        run_on_entry: &mut dyn FnMut(
+            &Type,
+            &dyn Fn(IssueKind),
+            &mut dyn FnMut(&Type, LookupDetails),
+        ),
         add_issue: &dyn Fn(IssueKind),
         callable: &mut dyn FnMut(&Type, LookupDetails),
     ) {
         let first_issue = Cell::new(None);
         for t in self.iter_entries() {
             let had_issue = Cell::new(false);
-            t.run_after_lookup_on_each_union_member(
-                i_s,
-                None,
-                from_file,
-                name,
-                kind,
-                result_context,
+            run_on_entry(
+                t,
                 &|issue| {
                     had_issue.set(true);
                     first_issue.set(first_issue.take().or(Some(issue)));
