@@ -179,7 +179,7 @@ impl Type {
             Type::Module(file_index1) => {
                 matches!(value_type, Type::Module(file_index2) if file_index1 == file_index2).into()
             }
-            Type::Namespace(file_index) => todo!(),
+            Type::Namespace(ns1) => matches!(value_type, Type::Namespace(ns2) if ns1 == ns2).into(),
             Type::Super { .. } => match value_type {
                 Type::Super { .. } => (self == value_type).into(),
                 _ => Match::new_false(),

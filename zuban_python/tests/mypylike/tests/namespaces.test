@@ -63,3 +63,21 @@ reveal_type(f.bar.bla.x)  # N: Revealed type is "int"
 reveal_type(foo.bar.bla.x)  # N: Revealed type is "int"
 [file foo/bar/bla.py]
 x: int
+
+[case namespace_matching]
+from foo import bar
+import foo
+
+def bla() -> None:
+    import foo as foo2
+    from foo import bar as bar2
+    if bool():
+        foo2 = foo  # E: Incompatible types in assignment (expression has type "ModuleType", variable has type "ModuleType")
+    if bool():
+        bar2 = bar  # E: Incompatible types in assignment (expression has type "ModuleType", variable has type "ModuleType")
+    if bool():
+        foo2 = bar  # E: Incompatible types in assignment (expression has type "ModuleType", variable has type "ModuleType")
+    if bool():
+        bar2 = foo  # E: Incompatible types in assignment (expression has type "ModuleType", variable has type "ModuleType")
+
+[file foo/bar/bla.py]
