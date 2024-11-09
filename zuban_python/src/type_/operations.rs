@@ -966,16 +966,8 @@ pub(crate) fn execute_type_of_type<'db>(
             }
         },
         Type::NewType(n) => {
-            let mut iterator = args.iter();
-            if let Some(first) = iterator.next() {
-                if iterator.next().is_some() {
-                    todo!()
-                }
-                // TODO match
-                Inferred::from_type(type_.clone())
-            } else {
-                todo!()
-            }
+            execute_type_of_type(i_s, args, result_context, on_type_error, n.type_(i_s));
+            Inferred::from_type(type_.clone())
         }
         Type::Self_ => {
             i_s.current_class()

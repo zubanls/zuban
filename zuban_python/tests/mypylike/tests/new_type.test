@@ -78,3 +78,14 @@ def y(a: T) -> T:
                       # N: Revealed type is "__main__.X"
     reveal_type(X([a]))  # N: Revealed type is "__main__.X"
     return a
+
+[case new_type_type_initialization]
+from typing import NewType
+class Foo:
+    def __init__(self, x: int) -> None: ...
+X = NewType("X", Foo)
+
+def f(a: type[X]) -> None:
+    x1: X = a()  # E: Missing positional argument "x" in call to "Foo"
+    x2: X = a(1)
+    x3: X = a(1, 2)  # E: Too many arguments for "Foo"
