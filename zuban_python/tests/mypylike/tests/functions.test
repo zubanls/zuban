@@ -126,11 +126,15 @@ def baz(**kwargs: str) -> None:
     foo2(**kwargs, y=1)
     foo2(**kwargs, y="")  # E: Argument "y" to "foo2" has incompatible type "str"; expected "int"
 
-[case simple_type_var_getitem]
+[case simple_type_var_getitem_and_execute]
 from typing import TypeVar
 T = TypeVar("T")
-def foo(x: T) -> None:
+def foo(x: T, y: type[T]) -> None:
     x[1]  # E: Value of type "T" is not indexable
+    x()  # E: "T" not callable
+
+    y[1]  # E: Type application is only supported for generic classes
+    y()  # E: "T" not callable
 
 [case param_spec_kwargs_getitem]
 from typing import ParamSpec, Callable

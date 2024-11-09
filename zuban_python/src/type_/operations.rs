@@ -513,8 +513,7 @@ impl Type {
                     ),
                     _ => bound.get_item_internal(i_s, None, slice_type, result_context, add_issue),
                 },
-                TypeVarKind::Constraints(constraints) => todo!(),
-                TypeVarKind::Unrestricted => not_possible(false),
+                _ => not_possible(false),
             },
             Type::Type(t) => match t.as_ref() {
                 Type::Class(c) => c.class(i_s.db).get_item(i_s, slice_type, result_context),
@@ -610,6 +609,16 @@ impl Type {
         result_context: &mut ResultContext,
         on_type_error: OnTypeError,
     ) -> Inferred {
+        let not_callable = || {
+            let t = self.format_short(i_s.db);
+            args.add_issue(
+                i_s,
+                IssueKind::NotCallable {
+                    type_: format!("\"{}\"", t).into(),
+                },
+            );
+            Inferred::new_any_from_error()
+        };
         match self {
             Type::Class(c) => {
                 let cls = c.class(i_s.db);
@@ -652,7 +661,7 @@ impl Type {
                 TypeVarKind::Bound(bound) => {
                     bound.execute(i_s, None, args, result_context, on_type_error)
                 }
-                _ => todo!(),
+                _ => not_callable(),
             },
             Type::Any(cause) => {
                 args.iter().calculate_diagnostics(i_s);
@@ -668,16 +677,7 @@ impl Type {
             Type::Intersection(intersection) => {
                 intersection.execute(i_s, args, result_context, on_type_error)
             }
-            _ => {
-                let t = self.format_short(i_s.db);
-                args.add_issue(
-                    i_s,
-                    IssueKind::NotCallable {
-                        type_: format!("\"{}\"", t).into(),
-                    },
-                );
-                Inferred::new_any_from_error()
-            }
+            _ => not_callable(),
         }
     }
 
@@ -700,8 +700,7 @@ impl Type {
             }
             Type::TypeVar(tv) => match &tv.type_var.kind {
                 TypeVarKind::Bound(bound) => bound.iter(i_s, infos),
-                TypeVarKind::Constraints(_) => todo!(),
-                TypeVarKind::Unrestricted => {
+                _ => {
                     on_error(self);
                     IteratorContent::Any(AnyCause::FromError)
                 }
@@ -816,8 +815,7 @@ pub(crate) fn attribute_access_of_type(
                     )
                 }
             },
-            TypeVarKind::Constraints(_) => todo!(),
-            TypeVarKind::Unrestricted => todo!(),
+            _ => LookupDetails::none(),
         },
         Type::Class(g) => g.class(i_s.db).lookup(
             i_s,
@@ -934,7 +932,7 @@ pub(crate) fn execute_type_of_type<'db>(
                 return Inferred::from_type(tuple.clone());
             };
             if args_iterator.next().is_some() {
-                todo!()
+                TODO
             }
             let other = inferred_tup.as_cow_type(i_s);
             if let Match::False { ref reason, .. } = tuple.is_simple_super_type_of(i_s, &other) {
@@ -944,7 +942,7 @@ pub(crate) fn execute_type_of_type<'db>(
                     got: GotType::Type(tuple),
                     expected: &other,
                 };
-                (on_type_error.callback)(i_s, &|_| todo!(), &arg, error_types);
+                (on_type_error.callback)(i_s, &|_| TODO, &arg, error_types);
             }
             Inferred::from_type(tuple.clone())
             */
@@ -957,8 +955,15 @@ pub(crate) fn execute_type_of_type<'db>(
                 execute_type_of_type(i_s, args, result_context, on_type_error, bound);
                 Inferred::from_type(type_.clone())
             }
-            TypeVarKind::Constraints(constraints) => todo!(),
-            TypeVarKind::Unrestricted => todo!(),
+            _ => {
+                args.add_issue(
+                    i_s,
+                    IssueKind::NotCallable {
+                        type_: format!("\"{}\"", type_.format_short(i_s.db)).into(),
+                    },
+                );
+                Inferred::new_any_from_error()
+            }
         },
         Type::NewType(n) => {
             let mut iterator = args.iter();
