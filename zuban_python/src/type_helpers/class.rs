@@ -2564,9 +2564,7 @@ impl<'db: 'a, 'a> Class<'a> {
                     return __getitem__.execute(i_s, &slice_type.as_args(*i_s));
                 }
             }
-            MetaclassState::Unknown => {
-                todo!()
-            }
+            MetaclassState::Unknown => return Inferred::new_any_from_error(),
             MetaclassState::None => (),
         }
         slice_type

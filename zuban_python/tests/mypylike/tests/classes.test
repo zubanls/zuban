@@ -943,3 +943,10 @@ def f(with_type: WithType, simple: Simple, unknown_base: UnknownBase, unknown_me
     with_type = unknown_meta_t
     simple = unknown_meta_t  # E: Incompatible types in assignment (expression has type "Type[UnknownMeta]", variable has type "Simple")
     unknown_base = unknown_meta_t
+
+[case unknown_metaclass_getitem]
+class Simple: ...
+class UnknownMeta(metaclass=UNDEFINED): ...  # E: Name "UNDEFINED" is not defined
+
+UnknownMeta[int]
+Simple[int]  # E: "Simple" expects no type arguments, but 1 given
