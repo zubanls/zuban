@@ -4582,13 +4582,14 @@ fn gather_except_star(i_s: &InferenceState, t: &Type) -> Type {
     }
 }
 
-fn get_generator_return_type(db: &Database, t: &Type) -> Type {
+fn get_generator_return_type(db: &Database, had_issue: &mut impl FnMut(), t: &Type) -> Type {
     match t {
         Type::Class(c) => {
             if c.link == db.python_state.generator_link() {
                 c.class(db).nth_type_argument(db, 2)
             } else {
-                todo!("{t:?}")
+                had_issue();
+                Type::Any(AnyCause::FromError)
             }
         }
         Type::Any(cause) => Type::Any(*cause),
@@ -4597,7 +4598,7 @@ fn get_generator_return_type(db: &Database, t: &Type) -> Type {
                 .entries
                 .iter()
                 .map(|entry| UnionEntry {
-                    type_: get_generator_return_type(db, &entry.type_),
+                    type_: get_generator_return_type(db, had_issue, &entry.type_),
                     format_index: entry.format_index,
                 })
                 .collect(),
@@ -4646,6 +4647,16 @@ pub fn await_(
 ) -> Inferred {
     let t = get_generator_return_type(
         i_s.db,
+        &mut || {
+            from.add_issue(
+                i_s,
+                IssueKind::IncompatibleTypes {
+                    cause: "\"await\"".into(),
+                    got: inf.format_short(i_s),
+                    expected: "Awaitable[Any]".into(),
+                },
+            )
+        },
         inf.type_lookup_and_execute(i_s, from.file, "__await__", &NoArgs::new(from), &|t| {
             from.add_issue(
                 i_s,

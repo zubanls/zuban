@@ -1,0 +1,5 @@
+[case await_non_awaitable]
+class A:
+    def __await__(self) -> int: ...
+async def foo(a: A) -> None:
+    await a  # E: Incompatible types in "await" (actual type "A", expected type "Awaitable[Any]")

@@ -1777,8 +1777,7 @@ fn valid_raise_type(i_s: &InferenceState, from: NodeRef, t: &Type, allow_none: b
             }
             _ => false,
         },
-        Type::Any(_) => true,
-        Type::Never(_) => todo!(),
+        Type::Any(_) | Type::Never(_) => true,
         Type::Union(union) => union
             .iter()
             .all(|t| valid_raise_type(i_s, from, t, allow_none)),
