@@ -1548,7 +1548,9 @@ impl Type {
         for t in self.iter_with_unpacked_unions(db) {
             match t {
                 Type::Tuple(tup) => result.union_in_place(tup.fallback_type(db).clone()),
-                Type::NamedTuple(named_tup) => todo!(),
+                Type::NamedTuple(named_tup) => {
+                    result.union_in_place(named_tup.as_tuple_ref().fallback_type(db).clone())
+                }
                 _ => {
                     for (_, base) in t.mro(db) {
                         if let Some(cls) = base.as_maybe_class() {
