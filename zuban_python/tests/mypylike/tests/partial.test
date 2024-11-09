@@ -331,3 +331,11 @@ class Foo(Super):
         self.z = []
         self.z.append("a")  # E: Argument 1 to "append" of "list" has incompatible type "str"; expected "int"
         self.z.append(1)
+
+[case dict_update_fallback_if_any]
+from typing import Any
+
+def f(a: Any) -> None:
+    x = {}
+    x.update(a)
+    reveal_type(x)  # N: Revealed type is "dict[Any, Any]"

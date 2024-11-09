@@ -3238,7 +3238,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     };
                     let dct_node_ref = i_s.db.python_state.dict_node_ref();
                     if t.is_any() {
-                        save_partial(new_class!(dct_node_ref.as_link(), t))
+                        save_partial(new_class!(dct_node_ref.as_link(), t.clone(), t))
                     } else if t
                         .maybe_class(i_s.db)
                         .is_some_and(|c| c.node_ref == dct_node_ref)
