@@ -125,3 +125,9 @@ def bar(**kwargs: int) -> None:
 def baz(**kwargs: str) -> None:
     foo2(**kwargs, y=1)
     foo2(**kwargs, y="")  # E: Argument "y" to "foo2" has incompatible type "str"; expected "int"
+
+[case simple_type_var_getitem]
+from typing import TypeVar
+T = TypeVar("T")
+def foo(x: T) -> None:
+    x[1]  # E: Value of type "T" is not indexable

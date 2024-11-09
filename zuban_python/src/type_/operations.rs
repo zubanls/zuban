@@ -514,7 +514,7 @@ impl Type {
                     _ => bound.get_item_internal(i_s, None, slice_type, result_context, add_issue),
                 },
                 TypeVarKind::Constraints(constraints) => todo!(),
-                TypeVarKind::Unrestricted => todo!(),
+                TypeVarKind::Unrestricted => not_possible(false),
             },
             Type::Type(t) => match t.as_ref() {
                 Type::Class(c) => c.class(i_s.db).get_item(i_s, slice_type, result_context),
