@@ -587,7 +587,13 @@ impl Type {
                 result_context,
                 add_issue,
             ),
-            Type::ParamSpecKwargs(_) => todo!(), //i_s.db.python_state.dict_of_str_and_obj
+            Type::ParamSpecKwargs(_) => i_s.db.python_state.dict_of_str_and_obj.get_item_internal(
+                i_s,
+                None,
+                slice_type,
+                result_context,
+                add_issue,
+            ),
             _ => not_possible(false),
         }
     }

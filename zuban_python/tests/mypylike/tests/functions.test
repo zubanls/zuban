@@ -131,3 +131,15 @@ from typing import TypeVar
 T = TypeVar("T")
 def foo(x: T) -> None:
     x[1]  # E: Value of type "T" is not indexable
+
+[case param_spec_kwargs_getitem]
+from typing import ParamSpec, Callable
+P = ParamSpec("P")
+def foo(x: Callable[P, int], *args: P.args, **kwargs: P.kwargs) -> None:
+    args["x"]  # E: No overload variant of "__getitem__" of "tuple" matches argument type "str" \
+               # N: Possible overload variants: \
+               # N:     def __getitem__(self, SupportsIndex, /) -> object \
+               # N:     def __getitem__(self, slice, /) -> tuple[object, ...]
+    args[1]
+    kwargs["x"]
+    kwargs[1]  # E: Invalid index type "int" for "dict[str, object]"; expected type "str"
