@@ -1040,15 +1040,12 @@ impl Type {
                 GenericItem::ParamSpecArg(a) => a.params.has_any_internal(i_s, already_checked),
             })
         };
+        let mut search_in_generic_class = |c: &GenericClass| match &c.generics {
+            ClassGenerics::List(generics) => search_in_generics(generics, already_checked),
+            _ => false,
+        };
         match self {
-            Self::Class(GenericClass {
-                generics: ClassGenerics::List(generics),
-                ..
-            }) => search_in_generics(generics, already_checked),
-            Self::Class(GenericClass {
-                generics: ClassGenerics::NotDefinedYet,
-                ..
-            }) => false,
+            Self::Class(c) => search_in_generic_class(c),
             Self::Union(u) => u.iter().any(|t| t.has_any_internal(i_s, already_checked)),
             Self::FunctionOverload(intersection) => intersection
                 .iter_functions()
@@ -1057,16 +1054,7 @@ impl Type {
             Self::Type(type_) => type_.has_any_internal(i_s, already_checked),
             Self::Tuple(content) => content.args.has_any_internal(i_s, already_checked),
             Self::Callable(content) => content.has_any_internal(i_s, already_checked),
-            Self::Class(GenericClass {
-                generics:
-                    ClassGenerics::None
-                    | ClassGenerics::ExpressionWithClassType(_)
-                    | ClassGenerics::SlicesWithClassTypes(_),
-                ..
-            })
-            | Self::None
-            | Self::Never(_)
-            | Self::Literal { .. } => false,
+            Self::None | Self::Never(_) | Self::Literal { .. } => false,
             Self::Any(_) => true,
             Self::NewType(n) => n.type_(i_s).has_any(i_s),
             Self::RecursiveType(recursive_alias) => {
@@ -1100,11 +1088,7 @@ impl Type {
             | Self::Enum(_)
             | Self::CustomBehavior(_)
             | Self::Namespace(_) => false,
-            Self::Dataclass(d) => match &d.class.generics {
-                ClassGenerics::List(generics) => search_in_generics(generics, already_checked),
-                ClassGenerics::NotDefinedYet => todo!(),
-                _ => false,
-            },
+            Self::Dataclass(d) => search_in_generic_class(&d.class),
             Self::TypedDict(d) => {
                 debug!("TODO this should not be ");
                 d.members(i_s.db)
@@ -1113,7 +1097,7 @@ impl Type {
             }
             Self::NamedTuple(nt) => nt.__new__.has_any_internal(i_s, already_checked),
             Self::EnumMember(_) => false,
-            Self::Super { .. } => todo!(),
+            Self::Super { .. } => false,
             Self::Intersection(intersection) => intersection
                 .iter_entries()
                 .any(|t| t.has_any_internal(i_s, already_checked)),
