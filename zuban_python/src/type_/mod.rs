@@ -935,7 +935,7 @@ impl Type {
                 .format(format_data),
             Self::Intersection(intersection) => intersection.format(format_data),
             Self::Namespace(_) => "ModuleType".into(),
-            Self::Super { .. } => "TODO super".into(),
+            Self::Super { .. } => "super".into(),
             Self::CustomBehavior(_) => "TODO custombehavior".into(),
         }
     }

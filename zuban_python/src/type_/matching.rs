@@ -180,7 +180,10 @@ impl Type {
                 matches!(value_type, Type::Module(file_index2) if file_index1 == file_index2).into()
             }
             Type::Namespace(file_index) => todo!(),
-            Type::Super { .. } => todo!(),
+            Type::Super { .. } => match value_type {
+                Type::Super { .. } => (self == value_type).into(),
+                _ => Match::new_false(),
+            },
             Type::CustomBehavior(_) => Match::new_false(),
             Self::Intersection(intersection1) => Match::all(intersection1.iter_entries(), |t| {
                 t.matches(i_s, matcher, value_type, variance)

@@ -920,3 +920,15 @@ import typing
 class C2:
     def __new__() -> C1: ...  # E: Method must have at least one argument. Did you forget the "self" argument?
 C2()
+
+[case super_matching]
+class Foo: ...
+class Bar(Foo):
+    def __init__(self) -> None:
+        sup = super()
+        if bool():
+            sup = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "super")
+        if bool():
+            sup = super()
+        if bool():
+            sup = super(Foo, self)  # E: Incompatible types in assignment (expression has type "super", variable has type "super")
