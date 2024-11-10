@@ -15,9 +15,10 @@ use crate::{
     debug,
     diagnostics::{Issue, IssueKind},
     file::{
-        first_defined_name, first_defined_name_of_multi_def, use_cached_param_annotation_type,
-        PythonFile, TypeComputation, TypeComputationOrigin, TypeVarCallbackReturn, FLOW_ANALYSIS,
-        FUNC_TO_PARENT_DIFF, FUNC_TO_RETURN_OR_YIELD_DIFF, FUNC_TO_TYPE_VAR_DIFF,
+        first_defined_name, first_defined_name_of_multi_def, func_parent_scope,
+        use_cached_param_annotation_type, FuncParentScope, PythonFile, TypeComputation,
+        TypeComputationOrigin, TypeVarCallbackReturn, FLOW_ANALYSIS, FUNC_TO_RETURN_OR_YIELD_DIFF,
+        FUNC_TO_TYPE_VAR_DIFF,
     },
     format_data::FormatData,
     inference_state::InferenceState,
@@ -270,16 +271,20 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
     }
 
     fn parent(&self, db: &'db Database) -> FuncParent<'db> {
-        let parent_reference = self.node_ref.add_to_node_index(FUNC_TO_PARENT_DIFF as i64);
-        let to = parent_reference.point().node_index();
-        if to == 0 {
-            return FuncParent::Module;
-        }
-        let parent = NodeRef::new(self.node_ref.file, to).to_db_lifetime(db);
-        if parent.maybe_class().is_some() {
-            FuncParent::Class(Class::with_self_generics(db, parent))
-        } else {
-            FuncParent::Function(Function::new_with_unknown_parent(db, parent))
+        match func_parent_scope(
+            &self.node_ref.file.tree,
+            &self.node_ref.file.points,
+            self.node_ref.node_index,
+        ) {
+            FuncParentScope::Module => FuncParent::Module,
+            FuncParentScope::ClassDef(c) => {
+                let n = NodeRef::new(self.node_ref.file, c.index()).to_db_lifetime(db);
+                FuncParent::Class(Class::with_self_generics(db, n))
+            }
+            FuncParentScope::FunctionDef(f) => {
+                let n = NodeRef::new(self.node_ref.file, f.index()).to_db_lifetime(db);
+                FuncParent::Function(Function::new_with_unknown_parent(db, n))
+            }
         }
     }
 

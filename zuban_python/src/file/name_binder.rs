@@ -29,7 +29,7 @@ pub const GLOBAL_NONLOCAL_TO_NAME_DIFFERENCE: NodeIndex = 2;
 // + 1 for def; + 2 for name + 1 for (...)
 pub const FUNC_TO_RETURN_OR_YIELD_DIFF: u32 = 1;
 pub const FUNC_TO_TYPE_VAR_DIFF: i64 = NAME_TO_FUNCTION_DIFF as i64 + 1;
-pub const FUNC_TO_PARENT_DIFF: u32 = NAME_TO_FUNCTION_DIFF + 2;
+const FUNC_TO_PARENT_DIFF: u32 = NAME_TO_FUNCTION_DIFF + 2;
 
 #[derive(PartialEq, Debug, Copy, Clone)]
 enum NameBinderKind {
@@ -1843,7 +1843,7 @@ pub fn is_expr_part_reachable_for_name_binder(
     Truthiness::Unknown
 }
 
-fn func_parent_scope<'tree>(
+pub fn func_parent_scope<'tree>(
     tree: &'tree Tree,
     points: &Points,
     func_index: NodeIndex,
@@ -1862,7 +1862,7 @@ fn func_parent_scope<'tree>(
     }
 }
 
-enum FuncParentScope<'db> {
+pub enum FuncParentScope<'db> {
     Module,
     FunctionDef(FunctionDef<'db>),
     ClassDef(ClassDef<'db>),
