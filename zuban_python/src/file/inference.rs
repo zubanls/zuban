@@ -4007,10 +4007,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 }
             }
             PointKind::Specific => match point.specific() {
-                specific @ (Specific::Param | Specific::MaybeSelfParam) => self
-                    .with_correct_context(global_redirect, |inference| {
-                        inference.infer_param(node_index, specific)
-                    }),
+                specific @ (Specific::Param | Specific::MaybeSelfParam) => {
+                    self.infer_param(node_index, specific)
+                }
                 specific @ (Specific::GlobalVariable | Specific::NonlocalVariable) => {
                     let index = node_index - GLOBAL_NONLOCAL_TO_NAME_DIFFERENCE
                         + NAME_DEF_TO_NAME_DIFFERENCE;
@@ -4070,21 +4069,39 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         // parents all the time.
         match name_def.function_or_lambda_ancestor().unwrap() {
             FunctionOrLambda::Function(func_node) => {
-                let func = Function::new(
+                let func = Function::new_with_unknown_parent(
+                    self.i_s.db,
                     NodeRef::new(self.file, func_node.index()),
-                    self.i_s.current_class(),
                 );
                 func.ensure_cached_func(self.i_s);
+
+                let to_inferred = |is_classmethod: bool| {
+                    let mut t = if func.node_ref.node_index
+                        < self.i_s.current_class().unwrap().node_ref.node_index
+                    {
+                        // If the function is defined before the class, the class is part of the
+                        // function.
+                        func.class.unwrap().as_type(self.i_s.db)
+                    } else {
+                        if !is_classmethod {
+                            return Inferred::new_saved(self.file, node_index);
+                        }
+                        Type::Self_
+                    };
+                    if is_classmethod {
+                        t = Type::Type(Rc::new(t))
+                    }
+                    Inferred::from_type(t)
+                };
+                self.i_s.current_class();
 
                 if let Some(annotation) = name_def.maybe_param_annotation() {
                     self.use_cached_param_annotation(annotation)
                 } else if let Some(function) = self.i_s.current_function() {
                     if specific == Specific::MaybeSelfParam {
                         match func.first_param_kind(self.i_s) {
-                            FirstParamKind::Self_ => Inferred::new_saved(self.file, node_index),
-                            FirstParamKind::ClassOfSelf => {
-                                Inferred::from_type(Type::Type(Rc::new(Type::Self_)))
-                            }
+                            FirstParamKind::Self_ => to_inferred(false),
+                            FirstParamKind::ClassOfSelf => to_inferred(true),
                             FirstParamKind::InStaticmethod => {
                                 Inferred::from_type(Type::Any(AnyCause::Unannotated))
                             }
@@ -4108,6 +4125,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         unreachable!()
                     }
                 } else if specific == Specific::MaybeSelfParam {
+                    // Usages from lambdas might land here? This feels like a weird case.
                     Inferred::new_saved(self.file, node_index)
                 } else {
                     Inferred::new_any(AnyCause::Unannotated)
