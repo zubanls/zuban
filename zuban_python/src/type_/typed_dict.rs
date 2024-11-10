@@ -9,7 +9,7 @@ use parsa_python_cst::{AtomContent, DictElement};
 use super::{
     utils::method_with_fallback, AnyCause, CallableContent, CallableParam, CallableParams,
     CustomBehavior, DbString, FormatStyle, GenericsList, LookupResult, NeverCause, ParamType,
-    StringSlice, Type, TypeVarLikes,
+    RecursiveType, StringSlice, Type, TypeVarLikeUsage, TypeVarLikes,
 };
 use crate::{
     arguments::{ArgKind, Args},
@@ -403,6 +403,22 @@ impl TypedDict {
             }
         }
         matches
+    }
+
+    pub fn search_type_vars<C: FnMut(TypeVarLikeUsage) + ?Sized>(&self, found_type_var: &mut C) {
+        if let TypedDictGenerics::Generics(list) = &self.generics {
+            list.search_type_vars(found_type_var)
+        }
+    }
+
+    pub fn has_any_internal(
+        &self,
+        i_s: &InferenceState,
+        already_checked: &mut Vec<Rc<RecursiveType>>,
+    ) -> bool {
+        self.members(i_s.db)
+            .iter()
+            .any(|m| m.type_.has_any_internal(i_s, already_checked))
     }
 }
 

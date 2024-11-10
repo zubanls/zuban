@@ -167,7 +167,7 @@ impl CallableParam {
                     StarParamType::ArbitraryLen(t) => {
                         format!("VarArg({})", t.format(format_data))
                     }
-                    StarParamType::ParamSpecArgs(u) => todo!(),
+                    StarParamType::ParamSpecArgs(u) => "TODO ParamSpecArgs".into(),
                     StarParamType::UnpackedTuple(tup) => {
                         if let Some(matcher) = format_data.matcher {
                             let tup_t = Type::Tuple(tup.clone());
@@ -198,7 +198,7 @@ impl CallableParam {
                     StarStarParamType::UnpackTypedDict(td) => {
                         format!("**Unpack[{}]", td.format(format_data))
                     }
-                    StarStarParamType::ParamSpecKwargs(_) => todo!(),
+                    StarStarParamType::ParamSpecKwargs(_) => "TODO ParamSpecKwargs".into(),
                 }
                 .into();
             } else if let Some(name) = self.name.as_ref() {
@@ -362,8 +362,8 @@ impl CallableParams {
                     tup.args.has_any_internal(i_s, already_checked)
                 }
                 ParamType::StarStar(StarStarParamType::ParamSpecKwargs(_)) => false,
-                ParamType::StarStar(StarStarParamType::UnpackTypedDict(_)) => {
-                    todo!()
+                ParamType::StarStar(StarStarParamType::UnpackTypedDict(td)) => {
+                    td.has_any_internal(i_s, already_checked)
                 }
             }),
             Self::Any(_) => true,
@@ -420,7 +420,7 @@ impl CallableParams {
                             found_type_var(TypeVarLikeUsage::ParamSpec(u.clone()))
                         }
                         ParamType::StarStar(StarStarParamType::UnpackTypedDict(t)) => {
-                            todo!()
+                            t.search_type_vars(found_type_var)
                         }
                         ParamType::StarStar(StarStarParamType::ParamSpecKwargs(_)) => {
                             // Do nothing here, because we already found it above.

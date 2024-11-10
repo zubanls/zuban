@@ -309,6 +309,18 @@ impl GenericsList {
     pub fn into_vec(self) -> Vec<GenericItem> {
         rc_slice_into_vec(self.0)
     }
+
+    fn has_any_internal(
+        &self,
+        i_s: &InferenceState,
+        already_checked: &mut Vec<Rc<RecursiveType>>,
+    ) -> bool {
+        self.iter().any(|g| match g {
+            GenericItem::TypeArg(t) => t.has_any_internal(i_s, already_checked),
+            GenericItem::TypeArgs(ts) => ts.args.has_any_internal(i_s, already_checked),
+            GenericItem::ParamSpecArg(a) => a.params.has_any_internal(i_s, already_checked),
+        })
+    }
 }
 
 impl std::ops::Index<TypeVarIndex> for GenericsList {
@@ -996,18 +1008,7 @@ impl Type {
                 ClassGenerics::List(generics) => generics.search_type_vars(found_type_var),
                 _ => (),
             },
-            Self::TypedDict(d) => {
-                if let TypedDictGenerics::Generics(list) = &d.generics {
-                    list.search_type_vars(found_type_var)
-                }
-
-                /*
-                 * TODO is this necessary?
-                for member in d.members().iter() {
-                    member.type_.search_type_vars(found_type_var);
-                }
-                */
-            }
+            Self::TypedDict(d) => d.search_type_vars(found_type_var),
             Self::NamedTuple(_) => {
                 debug!("TODO do we need to support namedtuple searching for type vars?");
             }
@@ -1034,15 +1035,8 @@ impl Type {
         i_s: &InferenceState,
         already_checked: &mut Vec<Rc<RecursiveType>>,
     ) -> bool {
-        let search_in_generics = |generics: &GenericsList, already_checked: &mut _| {
-            generics.iter().any(|g| match g {
-                GenericItem::TypeArg(t) => t.has_any_internal(i_s, already_checked),
-                GenericItem::TypeArgs(ts) => ts.args.has_any_internal(i_s, already_checked),
-                GenericItem::ParamSpecArg(a) => a.params.has_any_internal(i_s, already_checked),
-            })
-        };
         let mut search_in_generic_class = |c: &GenericClass| match &c.generics {
-            ClassGenerics::List(generics) => search_in_generics(generics, already_checked),
+            ClassGenerics::List(generics) => generics.has_any_internal(i_s, already_checked),
             _ => false,
         };
         match self {
@@ -1060,7 +1054,7 @@ impl Type {
             Self::NewType(n) => n.type_(i_s).has_any(i_s),
             Self::RecursiveType(recursive_alias) => {
                 if let Some(generics) = &recursive_alias.generics {
-                    if search_in_generics(generics, already_checked) {
+                    if generics.has_any_internal(i_s, already_checked) {
                         return true;
                     }
                 }
@@ -1090,12 +1084,7 @@ impl Type {
             | Self::CustomBehavior(_)
             | Self::Namespace(_) => false,
             Self::Dataclass(d) => search_in_generic_class(&d.class),
-            Self::TypedDict(d) => {
-                debug!("TODO this should not be ");
-                d.members(i_s.db)
-                    .iter()
-                    .any(|m| m.type_.has_any_internal(i_s, already_checked))
-            }
+            Self::TypedDict(d) => d.has_any_internal(i_s, already_checked),
             Self::NamedTuple(nt) => nt.__new__.has_any_internal(i_s, already_checked),
             Self::EnumMember(_) => false,
             Self::Super { .. } => false,
