@@ -167,7 +167,7 @@ impl CallableParam {
                     StarParamType::ArbitraryLen(t) => {
                         format!("VarArg({})", t.format(format_data))
                     }
-                    StarParamType::ParamSpecArgs(u) => "TODO ParamSpecArgs".into(),
+                    StarParamType::ParamSpecArgs(u) => unreachable!(),
                     StarParamType::UnpackedTuple(tup) => {
                         if let Some(matcher) = format_data.matcher {
                             let tup_t = Type::Tuple(tup.clone());
@@ -198,7 +198,7 @@ impl CallableParam {
                     StarStarParamType::UnpackTypedDict(td) => {
                         format!("**Unpack[{}]", td.format(format_data))
                     }
-                    StarStarParamType::ParamSpecKwargs(_) => "TODO ParamSpecKwargs".into(),
+                    StarStarParamType::ParamSpecKwargs(_) => unreachable!(),
                 }
                 .into();
             } else if let Some(name) = self.name.as_ref() {
@@ -214,25 +214,7 @@ impl CallableParam {
                                     t.format(format_data),
                                 )
                             }
-                            // TODO these two cases are probably unreachable
-                            ParamType::Star(s) => format!(
-                                "*{}: {}",
-                                name.as_str(format_data.db),
-                                match s {
-                                    StarParamType::ArbitraryLen(t) => t.format(format_data),
-                                    StarParamType::ParamSpecArgs(_) => todo!(),
-                                    StarParamType::UnpackedTuple(u) => todo!(),
-                                }
-                            ),
-                            ParamType::StarStar(d) => format!(
-                                "**{}: {}",
-                                name.as_str(format_data.db),
-                                match d {
-                                    StarStarParamType::ValueType(t) => t.format(format_data),
-                                    StarStarParamType::UnpackTypedDict(_) => todo!(),
-                                    StarStarParamType::ParamSpecKwargs(_) => todo!(),
-                                }
-                            ),
+                            _ => unreachable!(), // Cases are handled above
                         };
                         if self.has_default {
                             string += " =";
