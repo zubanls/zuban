@@ -991,8 +991,11 @@ class Foo:
             def foo(bar) -> None:
                 reveal_type(self.x)  # N: Revealed type is "int"
                 reveal_type(self.y)  # N: Revealed type is "float"
-                reveal_type(self.z)  # N: Revealed type is "str"
-                #self.x += 1
+                self.z  # E: "Foo" has no attribute "z"
+                bar.x  # E: "Self" has no attribute "x"
+                bar.y  # E: "Self" has no attribute "y"
+                reveal_type(bar.z)  # N: Revealed type is "str"
+                self.x += 1
 
         self.y = 1.0
 
@@ -1001,7 +1004,7 @@ class Foo:
 def check(f: Foo) -> None:
     reveal_type(f.x)  # N: Revealed type is "int"
     reveal_type(f.y)  # N: Revealed type is "float"
-    reveal_type(f.z)  # E: "Bar" has no attribute "z" # N: Revealed type is "Any"
+    reveal_type(f.z)  # E: "Foo" has no attribute "z" # N: Revealed type is "Any"
     f.bar.x  # E: "Bar" has no attribute "x"
     f.bar.y  # E: "Bar" has no attribute "y"
     f.bar.z

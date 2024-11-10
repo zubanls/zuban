@@ -119,9 +119,9 @@ impl<'db> NameBinder<'db> {
         func(&mut binder);
         binder.close();
 
-        // At the end of
         while let Some(unresolved_class) = binder.unresolved_class_self_vars.pop() {
-            let self_symbol_table = binder.index_self_vars(unresolved_class.class_def);
+            let class_index = unresolved_class.class_def.index();
+            let self_symbol_table = binder.index_self_vars(class_index, unresolved_class.class_def);
             let mut slots = None;
             if let Some(slots_index) = unresolved_class
                 .class_symbol_table
@@ -135,7 +135,7 @@ impl<'db> NameBinder<'db> {
             }
             binder.db_infos.complex_points.insert(
                 binder.db_infos.points,
-                unresolved_class.class_def.index(),
+                class_index,
                 ComplexPoint::Class(Box::new(ClassStorage {
                     class_symbol_table: unresolved_class.class_symbol_table,
                     abstract_attributes: unresolved_class.abstract_attributes,
@@ -773,10 +773,10 @@ impl<'db> NameBinder<'db> {
         );
     }
 
-    fn index_self_vars(&mut self, class: ClassDef<'db>) -> SymbolTable {
+    fn index_self_vars(&mut self, class_index: NodeIndex, class: ClassDef<'db>) -> SymbolTable {
         let mut symbol_table = SymbolTable::default();
         for (self_name, name) in class.search_potential_self_assignments() {
-            if self.is_self_param(self_name) {
+            if self.is_self_param(class_index, self_name) {
                 if let Some(index) = symbol_table.lookup_symbol(name.as_code()) {
                     self.ensure_multi_definition(
                         name.name_def().unwrap(),
@@ -797,22 +797,32 @@ impl<'db> NameBinder<'db> {
         symbol_table
     }
 
-    fn is_self_param(&self, name: Name<'db>) -> bool {
+    fn is_self_param(&self, class_index: NodeIndex, name: Name<'db>) -> bool {
         let point = self.db_infos.points.get(name.index());
         if point.calculated() && point.kind() == PointKind::Redirect {
-            let param_index = point.node_index();
+            let param_name_index = point.node_index();
             // Points to the name and not the name definition, therefore check that.
             // It should be safe to check the index before, because the name binder only ever
             // redirects to ame definitions.
-            let param_point = self
-                .db_infos
-                .points
-                .get(param_index - NAME_DEF_TO_NAME_DIFFERENCE);
+            let name_def_index = param_name_index - NAME_DEF_TO_NAME_DIFFERENCE;
+            let param_point = self.db_infos.points.get(name_def_index);
             if param_point.calculated()
                 && param_point.kind() == PointKind::Specific
                 && param_point.specific() == Specific::MaybeSelfParam
             {
-                return true;
+                let name_def = NameDef::by_index(self.db_infos.tree, name_def_index);
+                let Some(FunctionOrLambda::Function(func)) = name_def.function_or_lambda_ancestor()
+                else {
+                    unreachable!();
+                };
+                let FuncParentScope::ClassDef(c) =
+                    func_parent_scope(self.db_infos.tree, self.db_infos.points, func.index())
+                else {
+                    unreachable!()
+                };
+                if c.index() == class_index {
+                    return true;
+                }
             }
         }
         false
@@ -1831,6 +1841,31 @@ pub fn is_expr_part_reachable_for_name_binder(
         _ => (),
     }
     Truthiness::Unknown
+}
+
+fn func_parent_scope<'tree>(
+    tree: &'tree Tree,
+    points: &Points,
+    func_index: NodeIndex,
+) -> FuncParentScope<'tree> {
+    debug_assert!(FunctionDef::maybe_by_index(tree, func_index).is_some());
+    let parent_index = func_index + FUNC_TO_PARENT_DIFF;
+    let p = points.get(parent_index);
+    let to = p.node_index();
+    if to == 0 {
+        return FuncParentScope::Module;
+    }
+    if let Some(class_def) = ClassDef::maybe_by_index(tree, to) {
+        FuncParentScope::ClassDef(class_def)
+    } else {
+        FuncParentScope::FunctionDef(FunctionDef::by_index(tree, to))
+    }
+}
+
+enum FuncParentScope<'db> {
+    Module,
+    FunctionDef(FunctionDef<'db>),
+    ClassDef(ClassDef<'db>),
 }
 
 struct UnorderedReference<'db> {
