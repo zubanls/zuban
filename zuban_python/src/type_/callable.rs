@@ -747,18 +747,24 @@ impl CallableContent {
         }
     }
 
+    fn has_self_type_after_first_param(&self, db: &Database) -> bool {
+        self.return_type.has_self_type(db)
+            || match &self.params {
+                CallableParams::Simple(params) => params
+                    .iter()
+                    .skip(1)
+                    .any(|p| p.type_.maybe_type().is_some_and(|t| t.has_self_type(db))),
+                CallableParams::Any(_) | CallableParams::Never(_) => false,
+            }
+    }
+
     pub fn merge_class_type_vars(
         &self,
         db: &Database,
         class: Class,
         attribute_class: Class,
     ) -> Rc<CallableContent> {
-        let mut needs_self_type_variable = self.return_type.has_self_type(db);
-        for param in self.expect_simple_params().iter().skip(1) {
-            if let Some(t) = param.type_.maybe_type() {
-                needs_self_type_variable |= t.has_self_type(db);
-            }
-        }
+        let needs_self_type_variable = self.has_self_type_after_first_param(db);
         let mut type_vars = self.type_vars.as_vec();
         let mut self_type_var_usage = None;
         for type_var in class.use_cached_type_vars(db).iter() {

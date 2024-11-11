@@ -506,10 +506,16 @@ reveal_type(as_var(foo.Foo(), 1))  # N: Revealed type is "foo.Foo"
 reveal_type(as_var(Bar(), 1))  # N: Revealed type is "__main__.Bar"
 reveal_type(as_var(foo.Foo(), ""))  # N: Revealed type is "None"
 
+c = f(foo.Foo.c)
+reveal_type(c(foo.Foo(), 1))  # N: Revealed type is "foo.Foo"
+reveal_type(c(Bar(), 1))  # N: Revealed type is "__main__.Bar"
+
 [file foo.pyi]
-from typing import overload, Self
+from typing import overload, Self, Callable, ClassVar
 class Foo:
     @overload
     def f(self, x: int) -> Self: ...
     @overload
     def f(self, y: str) -> None: ...
+
+    c: ClassVar[Callable[[Self, int], Self]]

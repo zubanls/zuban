@@ -1530,7 +1530,11 @@ impl<'db: 'slf, 'slf> Inferred {
         let mut t = t;
         if let Type::Callable(c) = t {
             match c.kind {
-                FunctionKind::Function { .. } => (),
+                FunctionKind::Function { .. } => {
+                    return Some(Some(Inferred::from_type(Type::Callable(
+                        c.merge_class_type_vars(i_s.db, *class, attribute_class),
+                    ))))
+                }
                 FunctionKind::Property { .. } => {
                     return if apply_descriptor {
                         Some(Some(Inferred::from_type(
