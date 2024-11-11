@@ -230,3 +230,18 @@ class B(A):
     # This is ok, because the constrained that Self is still A is ensured
     def copy_modified1(self) -> B: ...
     def copy_modified2(self) -> A: ...  # E: Return type "A" of "copy_modified2" incompatible with return type "B" in supertype "A"
+
+[case class_binding_of_self_with_weird_args_and_class_lookup]
+from typing import Self
+class C:
+    def foo(*args: Self) -> None: ...
+    def bar(self: Self) -> None: ...
+
+class D(C): ...
+
+reveal_type(C.foo)  # N: Revealed type is "def [Self <: __main__.C] (*args: Self)"
+C.foo(D(), C())
+C.foo(D(), D())
+D.foo(D(), C())
+D.foo(C(), C())
+reveal_type(C.bar)  # N: Revealed type is "def (self: __main__.C)"
