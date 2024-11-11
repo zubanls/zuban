@@ -758,92 +758,6 @@ impl CallableContent {
             }
     }
 
-    pub fn merge_class_type_vars(
-        &self,
-        db: &Database,
-        class: Class,
-        attribute_class: Class,
-    ) -> Rc<CallableContent> {
-        let mut attribute_class = attribute_class; // A lifetime issue
-        let needs_self_type_variable = self.has_self_type_after_first_param(db);
-        let mut type_vars = self.type_vars.as_vec();
-        let mut self_type_var_usage = None;
-        for type_var in class.use_cached_type_vars(db).iter() {
-            type_vars.push(type_var.clone());
-        }
-        if needs_self_type_variable {
-            let class_t = class.as_type_with_type_vars_for_not_yet_defined_generics(db);
-            let bound = class_t.replace_type_var_likes(db, &mut |mut usage| {
-                if usage.in_definition() == class.node_ref.as_link() {
-                    usage.add_to_index(self.type_vars.len() as i32);
-                    Some(usage.into_generic_item())
-                } else {
-                    None
-                }
-            });
-            let self_type_var = Rc::new(TypeVar {
-                name_string: TypeVarName::Self_,
-                kind: TypeVarKind::Bound(bound.unwrap_or(class_t)),
-                default: None,
-                variance: Variance::Invariant,
-            });
-            self_type_var_usage = Some(TypeVarUsage::new(
-                self_type_var.clone(),
-                self.defined_at,
-                type_vars.len().into(),
-            ));
-            type_vars.push(TypeVarLike::TypeVar(self_type_var));
-        }
-        if matches!(attribute_class.generics, Generics::NotDefinedYet) {
-            // We actually want to retain generics.
-            attribute_class.generics = Generics::Self_ {
-                class_definition: class.node_ref.as_link(),
-                type_var_likes: &class.use_cached_type_vars(db),
-            };
-        }
-        let type_vars = TypeVarLikes::from_vec(type_vars);
-        let mut callable = self.replace_type_var_likes_and_self(
-            db,
-            &mut |usage| {
-                let in_definition = usage.in_definition();
-                if let Some(result) = maybe_class_usage(db, &attribute_class, &usage) {
-                    Some(
-                        result
-                            .replace_type_var_likes_and_self(
-                                db,
-                                &mut |usage| {
-                                    if usage.in_definition() == class.node_ref.as_link() {
-                                        Some(
-                                            type_vars
-                                                .find(usage.as_type_var_like(), self.defined_at)
-                                                .unwrap()
-                                                .into_generic_item(),
-                                        )
-                                    } else {
-                                        None
-                                    }
-                                },
-                                &|| None,
-                            )
-                            .unwrap_or(result),
-                    )
-                } else {
-                    // This can happen for example if the return value is a Callable with its
-                    // own type vars.
-                    None
-                }
-            },
-            &|| {
-                Some(match &self_type_var_usage {
-                    Some(u) => Type::TypeVar(u.clone()),
-                    None => class.as_type(db),
-                })
-            },
-        );
-        callable.type_vars = type_vars;
-        Rc::new(callable)
-    }
-
     pub fn is_typed(&self, skip_first_param: bool) -> bool {
         let has_unannotated = |t: &Type| matches!(t, Type::Any(AnyCause::Unannotated));
         if !has_unannotated(&self.return_type) {
@@ -970,4 +884,96 @@ pub fn format_params_as_param_spec(
             format!("[{ps}, {name}]").into()
         }
     })
+}
+
+pub fn merge_class_type_vars(
+    db: &Database,
+    callable: &Rc<CallableContent>,
+    class: Class,
+    attribute_class: Class,
+) -> Rc<CallableContent> {
+    let mut attribute_class = attribute_class; // A lifetime issue
+    let needs_self_type_variable = callable.has_self_type_after_first_param(db);
+
+    if !needs_self_type_variable && attribute_class.use_cached_type_vars(db).is_empty() {
+        return callable.clone();
+    }
+
+    let class_type_vars = class.use_cached_type_vars(db);
+    let mut type_vars = callable.type_vars.as_vec();
+    let mut self_type_var_usage = None;
+    for type_var in class_type_vars.iter() {
+        type_vars.push(type_var.clone());
+    }
+    if needs_self_type_variable {
+        let class_t = class.as_type_with_type_vars_for_not_yet_defined_generics(db);
+        let bound = class_t.replace_type_var_likes(db, &mut |mut usage| {
+            if usage.in_definition() == class.node_ref.as_link() {
+                usage.add_to_index(callable.type_vars.len() as i32);
+                Some(usage.into_generic_item())
+            } else {
+                None
+            }
+        });
+        let self_type_var = Rc::new(TypeVar {
+            name_string: TypeVarName::Self_,
+            kind: TypeVarKind::Bound(bound.unwrap_or(class_t)),
+            default: None,
+            variance: Variance::Invariant,
+        });
+        self_type_var_usage = Some(TypeVarUsage::new(
+            self_type_var.clone(),
+            callable.defined_at,
+            type_vars.len().into(),
+        ));
+        type_vars.push(TypeVarLike::TypeVar(self_type_var));
+    }
+    if matches!(attribute_class.generics, Generics::NotDefinedYet) {
+        // We actually want to retain generics.
+        attribute_class.generics = Generics::Self_ {
+            class_definition: class.node_ref.as_link(),
+            type_var_likes: &class_type_vars,
+        };
+    }
+    let type_vars = TypeVarLikes::from_vec(type_vars);
+    let mut callable = callable.replace_type_var_likes_and_self(
+        db,
+        &mut |usage| {
+            let in_definition = usage.in_definition();
+            if let Some(result) = maybe_class_usage(db, &attribute_class, &usage) {
+                Some(
+                    result
+                        .replace_type_var_likes_and_self(
+                            db,
+                            &mut |usage| {
+                                if usage.in_definition() == class.node_ref.as_link() {
+                                    Some(
+                                        type_vars
+                                            .find(usage.as_type_var_like(), callable.defined_at)
+                                            .unwrap()
+                                            .into_generic_item(),
+                                    )
+                                } else {
+                                    None
+                                }
+                            },
+                            &|| None,
+                        )
+                        .unwrap_or(result),
+                )
+            } else {
+                // This can happen for example if the return value is a Callable with its
+                // own type vars.
+                None
+            }
+        },
+        &|| {
+            Some(match &self_type_var_usage {
+                Some(u) => Type::TypeVar(u.clone()),
+                None => class.as_type(db),
+            })
+        },
+    );
+    callable.type_vars = type_vars;
+    Rc::new(callable)
 }

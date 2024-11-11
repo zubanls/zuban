@@ -26,10 +26,11 @@ use crate::{
     node_ref::NodeRef,
     type_::{
         execute_collections_named_tuple, execute_tuple_class, execute_type_of_type,
-        execute_typing_named_tuple, new_typed_dict, AnyCause, CallableContent, CallableLike,
-        CallableParams, ClassGenerics, DbString, FunctionKind, FunctionOverload, GenericClass,
-        GenericItem, GenericsList, IterInfos, Literal as DbLiteral, LiteralKind, LiteralValue,
-        LookupResult, NeverCause, Type, TypeVarKind, TypeVarLike, TypeVarLikes,
+        execute_typing_named_tuple, merge_class_type_vars, new_typed_dict, AnyCause,
+        CallableContent, CallableLike, CallableParams, ClassGenerics, DbString, FunctionKind,
+        FunctionOverload, GenericClass, GenericItem, GenericsList, IterInfos, Literal as DbLiteral,
+        LiteralKind, LiteralValue, LookupResult, NeverCause, Type, TypeVarKind, TypeVarLike,
+        TypeVarLikes,
     },
     type_helpers::{
         execute_assert_type, execute_cast, execute_isinstance, execute_issubclass,
@@ -1406,8 +1407,9 @@ impl<'db: 'slf, 'slf> Inferred {
                                         FunctionOverload::new(
                                             o.iter_functions()
                                                 .map(|c| {
-                                                    c.merge_class_type_vars(
+                                                    merge_class_type_vars(
                                                         i_s.db,
+                                                        c,
                                                         *class,
                                                         attribute_class,
                                                     )
@@ -1532,7 +1534,7 @@ impl<'db: 'slf, 'slf> Inferred {
             match c.kind {
                 FunctionKind::Function { .. } => {
                     return Some(Some(Inferred::from_type(Type::Callable(
-                        c.merge_class_type_vars(i_s.db, *class, attribute_class),
+                        merge_class_type_vars(i_s.db, c, *class, attribute_class),
                     ))))
                 }
                 FunctionKind::Property { .. } => {
