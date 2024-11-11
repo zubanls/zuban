@@ -2755,6 +2755,11 @@ pub fn specific_to_type<'db>(
         | Specific::TypingSelf
         | Specific::TypingClassVar
         | Specific::TypingFinal
+        | Specific::TypingNeverOrNoReturn
+        | Specific::TypingUnpack
+        | Specific::TypingRequired
+        | Specific::TypingNotRequired
+        | Specific::TypingLiteralString
         | Specific::TypingCallable => Cow::Owned(i_s.db.python_state.typing_special_form_type()),
         Specific::TypingCast => todo!(), // Cow::Owned(i_s.db.python_state.cast_type(i_s.db)),
         Specific::RevealTypeFunction => Cow::Owned(i_s.db.python_state.reveal_type(i_s.db)),

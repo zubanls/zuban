@@ -564,7 +564,15 @@ impl CallableContent {
                 ParamType::PositionalOnly(t)
                 | ParamType::PositionalOrKeyword(t)
                 | ParamType::Star(StarParamType::ArbitraryLen(t)) => Some(t.clone()),
-                ParamType::Star(StarParamType::UnpackedTuple(_)) => todo!(),
+                ParamType::Star(StarParamType::UnpackedTuple(tup)) => {
+                    let TupleArgs::WithUnpack(w) = &tup.args else {
+                        return None;
+                    };
+                    if let Some(first) = w.before.first() {
+                        return Some(first.clone());
+                    }
+                    Some(Type::Never(NeverCause::Other))
+                }
                 _ => None,
             }),
             CallableParams::Any(cause) => Some(Type::Any(*cause)),

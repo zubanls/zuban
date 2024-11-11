@@ -34,9 +34,9 @@ use crate::{
     type_::{
         replace_param_spec, AnyCause, CallableContent, CallableLike, CallableParam, CallableParams,
         ClassGenerics, DbString, FunctionKind, FunctionOverload, GenericClass, GenericItem,
-        LookupResult, ParamType, ReplaceSelf, StarParamType, StarStarParamType, StringSlice,
-        TupleArgs, Type, TypeGuardInfo, TypeVar, TypeVarKind, TypeVarLike, TypeVarLikes,
-        TypeVarManager, TypeVarName, TypeVarUsage, Variance, WrongPositionalCount,
+        LookupResult, NeverCause, ParamType, ReplaceSelf, StarParamType, StarStarParamType,
+        StringSlice, TupleArgs, Type, TypeGuardInfo, TypeVar, TypeVarKind, TypeVarLike,
+        TypeVarLikes, TypeVarManager, TypeVarName, TypeVarUsage, Variance, WrongPositionalCount,
     },
     type_helpers::Class,
     utils::rc_unwrap_or_clone,
@@ -1655,7 +1655,13 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     ParamKind::Star => match t.as_ref() {
                         Type::Tuple(tup) => match &tup.args {
                             TupleArgs::ArbitraryLen(t) => return Some(Cow::Owned((**t).clone())),
-                            _ => return None,
+                            TupleArgs::WithUnpack(w) => {
+                                if let Some(first) = w.before.first() {
+                                    return Some(Cow::Owned(first.clone()));
+                                }
+                                return Some(Cow::Borrowed(&Type::Never(NeverCause::Other)));
+                            }
+                            TupleArgs::FixedLen(_) => unreachable!(),
                         },
                         _ => return None,
                     },

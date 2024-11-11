@@ -497,3 +497,36 @@ ca: Callable[[Callable[..., A]], None]
 cb: Callable[[Callable[[B], B]], None]
 reveal_type(meet_test(ca, cb)) # N: Revealed type is "def (__main__.B) -> __main__.B"
 reveal_type(meet_test(cb, ca)) # N: Revealed type is "def (__main__.B) -> __main__.B"
+
+[case first_positional_type_for_unpacked_tuples]
+from typing import Unpack, ClassVar, Callable
+class C:
+    def a(*args: Unpack[tuple[C, ...]]) -> None: ...
+    def b(*args: Unpack[tuple[str, ...]]) -> None: ...
+
+    def c(*args: Unpack[tuple[C, Unpack[tuple[int, ...]]]]) -> None: ...
+
+    def d(*args: Unpack[tuple[Unpack[tuple[int, ...]], str]]) -> None: ...
+    def e(*args: Unpack[tuple[Unpack[tuple[C, ...]], str]]) -> None: ...
+
+    def f(*args: Unpack[tuple[C, int]]) -> None: ...
+    def g(*args: Unpack[tuple[str, int]]) -> None: ...
+
+    h: ClassVar[Callable[[Unpack[tuple[int, ...]]], None]]
+    i: ClassVar[Callable[[Unpack[tuple[Unpack[tuple[C, ...]], str]]], None]]
+    j: ClassVar[Callable[[Unpack[tuple[C, Unpack[tuple[int, ...]], str]]], None]]
+    k: ClassVar[Callable[[Unpack[tuple[C, str]]], None]]
+
+c: C
+c.a
+c.b  # E: Invalid self argument "C" to attribute function "b" with type "Callable[[VarArg(str)], None]"
+c.c
+c.d  # E: Invalid self argument "C" to attribute function "d" with type "Callable[[VarArg(Unpack[tuple[Unpack[Tuple[int, ...]], str]])], None]"
+c.e  # E: Invalid self argument "C" to attribute function "e" with type "Callable[[VarArg(Unpack[tuple[Unpack[Tuple[C, ...]], str]])], None]"
+c.f
+c.g  # E: Invalid self argument "C" to attribute function "g" with type "Callable[[str, int], None]"
+
+c.h  # E: Invalid self argument "C" to attribute function "h" with type "Callable[[VarArg(int)], None]"
+c.i  # E: Invalid self argument "C" to attribute function "i" with type "Callable[[VarArg(Unpack[tuple[Unpack[Tuple[C, ...]], str]])], None]"
+c.j
+c.k

@@ -2353,16 +2353,11 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
     fn add_param(&mut self, params: &mut Vec<CallableParam>, t: TypeContent, index: NodeIndex) {
         let p = match t {
             TypeContent::Unpacked(TypeOrUnpack::Type(Type::Tuple(tup))) => match &tup.args {
-                TupleArgs::WithUnpack(with_unpack) => {
-                    /*
-                    CallableParam {
-                        type_: ParamType::Star(StarParamType::UnpackedTuple(tup)),
-                        has_default: false,
-                        name: None,
-                    }
-                    */
-                    todo!()
-                }
+                TupleArgs::WithUnpack(with_unpack) => CallableParam {
+                    type_: ParamType::Star(StarParamType::UnpackedTuple(tup)),
+                    has_default: false,
+                    name: None,
+                },
                 TupleArgs::ArbitraryLen(_) => {
                     let TupleArgs::ArbitraryLen(t) = rc_unwrap_or_clone(tup).args else {
                         unreachable!();
@@ -2374,7 +2369,13 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     }
                 }
                 TupleArgs::FixedLen(ts) => {
-                    todo!()
+                    // TODO these should also be checked.
+                    for t in ts.iter() {
+                        params.push(CallableParam::new_anonymous(ParamType::PositionalOnly(
+                            t.clone(),
+                        )));
+                    }
+                    return;
                 }
             },
             _ => self.check_param(t, NodeRef::new(self.inference.file, index)),
