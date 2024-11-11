@@ -2130,6 +2130,13 @@ impl<'db: 'a, 'a> Class<'a> {
         })
     }
 
+    pub fn as_type_with_type_vars_for_not_yet_defined_generics(&self, db: &Database) -> Type {
+        match self.generics {
+            Generics::NotDefinedYet => Class::with_self_generics(db, self.node_ref).as_type(db),
+            _ => self.as_type(db),
+        }
+    }
+
     fn named_tuple_from_class(&self, i_s: &InferenceState, cls: Class) -> Rc<NamedTuple> {
         let name = self.name_string_slice();
         Rc::new(NamedTuple::new(

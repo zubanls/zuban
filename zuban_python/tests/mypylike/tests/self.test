@@ -245,3 +245,40 @@ C.foo(D(), D())
 D.foo(D(), C())
 D.foo(C(), C())
 reveal_type(C.bar)  # N: Revealed type is "def (self: __main__.C)"
+
+[case class_lookup_with_self_generics]
+from typing import Self, Callable, TypeVar, Generic, ClassVar
+
+def simple_dec(x: T) -> T: ...
+T = TypeVar("T")
+class G(Generic[T]):
+    def foo(self, x: T) -> Self: ...
+
+    @simple_dec
+    def bar(self, x: T) -> Self: ...
+
+class C:
+    def x(self, one: type[G[int]], other: type[G[Self]]) -> None:
+        reveal_type(one.foo)  # N: Revealed type is "def [Self <: __main__.G[int]] (self: Self, x: int) -> Self"
+        reveal_type(one.bar)  # N: Revealed type is "def [T, Self <: __main__.G[int]] (self: Self, x: int) -> Self"
+
+        foo = other.foo
+        bar = other.bar
+        # The formatting is a bit confusing, but it seems to do the correct thing.
+        reveal_type(foo)  # N: Revealed type is "def [Self <: __main__.G[Self]] (self: Self, x: Self) -> Self"
+        reveal_type(bar)  # N: Revealed type is "def [T, Self <: __main__.G[Self]] (self: Self, x: Self) -> Self"
+
+        foo(C(), self)  # E: Value of type variable "Self" of "foo" of "G" cannot be "C"
+        foo(D(), self)  # E: Value of type variable "Self" of "foo" of "G" cannot be "D"
+        foo(self, self)  # E: Value of type variable "Self" of "foo" of "G" cannot be "Self"
+        foo(G(), self)
+
+        bar(C(), self)  # E: Value of type variable "Self" of "bar" of "G" cannot be "C"
+        bar(D(), self)  # E: Value of type variable "Self" of "bar" of "G" cannot be "D"
+        bar(self, self)  # E: Value of type variable "Self" of "bar" of "G" cannot be "Self"
+        bar(G(), self)
+
+        reveal_type(G.foo)  # N: Revealed type is "def [Self <: __main__.G[Any]] (self: Self, x: Any) -> Self"
+        reveal_type(G.bar)  # N: Revealed type is "def [T, Self <: __main__.G[T]] (self: Self, x: Any) -> Self"
+
+class D(C): ...

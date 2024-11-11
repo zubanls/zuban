@@ -771,7 +771,7 @@ impl CallableContent {
             type_vars.push(type_var.clone());
         }
         if needs_self_type_variable {
-            let class_t = Class::with_self_generics(db, class.node_ref).as_type(db);
+            let class_t = class.as_type_with_type_vars_for_not_yet_defined_generics(db);
             let bound = class_t.replace_type_var_likes(db, &mut |mut usage| {
                 if usage.in_definition() == class.node_ref.as_link() {
                     usage.add_to_index(self.type_vars.len() as i32);
@@ -815,7 +815,7 @@ impl CallableContent {
                                         None
                                     }
                                 },
-                                &|| todo!("Type::TypeVar(self_type_var_usage.clone().unwrap())"),
+                                &|| None,
                             )
                             .unwrap_or(result),
                     )
