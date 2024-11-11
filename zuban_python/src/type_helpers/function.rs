@@ -29,7 +29,10 @@ use crate::{
     },
     new_class,
     node_ref::NodeRef,
-    params::{InferrableParamIterator, Param, WrappedParamType, WrappedStar, WrappedStarStar},
+    params::{
+        params_have_self_type_after_self, InferrableParamIterator, Param, WrappedParamType,
+        WrappedStar, WrappedStarStar,
+    },
     python_state::NAME_TO_FUNCTION_DIFF,
     type_::{
         replace_param_spec, AnyCause, CallableContent, CallableLike, CallableParam, CallableParams,
@@ -1361,10 +1364,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         let mut type_vars = self.type_vars(i_s.db).as_vec();
         let calc_needs_self_type = || {
             self.return_type(i_s).has_self_type(i_s.db)
-                || self.iter_params().skip(1).any(|p| {
-                    p.annotation(i_s.db)
-                        .is_some_and(|t| t.has_self_type(i_s.db))
-                })
+                || params_have_self_type_after_self(i_s.db, self.iter_params())
         };
         let mut needs_self_type = false;
         match options.first_param {
@@ -2026,6 +2026,10 @@ impl<'x> Param<'x> for FunctionParam<'x> {
 
     fn into_callable_param(self) -> CallableParam {
         unreachable!("It feels like this might not be necessary")
+    }
+
+    fn has_self_type(&self, db: &Database) -> bool {
+        self.annotation(db).is_some_and(|t| t.has_self_type(db))
     }
 }
 

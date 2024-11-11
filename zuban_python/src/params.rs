@@ -22,6 +22,7 @@ pub trait Param<'x>: Copy + std::fmt::Debug {
     fn specific<'db: 'x>(&self, db: &'db Database) -> WrappedParamType<'x>;
     fn kind(&self, db: &Database) -> ParamKind;
     fn into_callable_param(self) -> CallableParam;
+    fn has_self_type(&self, db: &Database) -> bool;
 }
 
 pub fn matches_params_with_variance(
@@ -930,6 +931,10 @@ impl<'x> Param<'x> for &'x CallableParam {
     fn into_callable_param(self) -> CallableParam {
         self.clone()
     }
+
+    fn has_self_type(&self, db: &Database) -> bool {
+        self.type_.maybe_type().is_some_and(|t| t.has_self_type(db))
+    }
 }
 
 pub enum UnpackTypedDictState {
@@ -1277,7 +1282,11 @@ impl<'member> Param<'member> for TypedDictMemberParam<'member> {
     }
 
     fn into_callable_param(self) -> CallableParam {
-        todo!()
+        unreachable!()
+    }
+
+    fn has_self_type(&self, db: &Database) -> bool {
+        self.0.type_.has_self_type(db)
     }
 }
 
@@ -1334,4 +1343,18 @@ impl ParamArgument<'_, '_> {
             _ => false,
         }
     }
+}
+
+pub fn params_have_self_type_after_self<'x, P: Param<'x>>(
+    db: &'x Database,
+    params: impl Iterator<Item = P>,
+) -> bool {
+    let mut peekable = params.peekable();
+    peekable.next_if(|p| {
+        matches!(
+            p.kind(db),
+            ParamKind::PositionalOnly | ParamKind::PositionalOrKeyword
+        )
+    });
+    peekable.any(|p| p.has_self_type(db))
 }

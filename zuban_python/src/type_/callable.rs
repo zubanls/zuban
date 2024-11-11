@@ -12,7 +12,9 @@ use crate::{
     format_data::{FormatData, ParamsStyle},
     inference_state::InferenceState,
     matching::maybe_class_usage,
-    params::{Param, WrappedParamType, WrappedStar, WrappedStarStar},
+    params::{
+        params_have_self_type_after_self, Param, WrappedParamType, WrappedStar, WrappedStarStar,
+    },
     type_::{FormatStyle, TupleArgs, TypeVarLikeUsage},
     type_helpers::Class,
     utils::join_with_commas,
@@ -80,8 +82,7 @@ impl ParamType {
             | Self::KeywordOnly(t)
             | Self::Star(StarParamType::ArbitraryLen(t))
             | Self::StarStar(StarStarParamType::ValueType(t)) => Some(t),
-            Self::Star(StarParamType::ParamSpecArgs(_) | StarParamType::UnpackedTuple(_))
-            | Self::StarStar(_) => None,
+            Self::Star(_) | Self::StarStar(_) => None,
         }
     }
 
@@ -750,10 +751,9 @@ impl CallableContent {
     fn has_self_type_after_first_param(&self, db: &Database) -> bool {
         self.return_type.has_self_type(db)
             || match &self.params {
-                CallableParams::Simple(params) => params
-                    .iter()
-                    .skip(1)
-                    .any(|p| p.type_.maybe_type().is_some_and(|t| t.has_self_type(db))),
+                CallableParams::Simple(params) => {
+                    params_have_self_type_after_self(db, params.iter())
+                }
                 CallableParams::Any(_) | CallableParams::Never(_) => false,
             }
     }
