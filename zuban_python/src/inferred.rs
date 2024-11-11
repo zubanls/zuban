@@ -1249,7 +1249,6 @@ impl<'db: 'slf, 'slf> Inferred {
                 }
                 FunctionKind::Function { .. } => (),
                 FunctionKind::Property { writable, .. } => {
-                    let first = c.first_positional_type();
                     return Some(Some(
                         if let Some(t) =
                             calculate_property_return(i_s, &instance, &attribute_class, c)
