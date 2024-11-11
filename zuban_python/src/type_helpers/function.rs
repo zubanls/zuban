@@ -1434,7 +1434,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     {
                         Some(to_self_instance())
                     } else {
-                        None
+                        self.class.map(|t| t.as_type(i_s.db))
                     }
                 },
             )

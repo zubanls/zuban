@@ -1035,6 +1035,7 @@ def check(f: Foo) -> None:
 from typing import Self
 class C:
     def foo(*args: Self) -> None: ...
+    def bar(self: Self) -> None: ...
 
 class D(C): ...
 
@@ -1043,3 +1044,4 @@ C.foo(D(), C())
 C.foo(D(), D())
 D.foo(D(), C())
 D.foo(C(), C())
+reveal_type(C.bar)  # N: Revealed type is "def (self: __main__.C)"
