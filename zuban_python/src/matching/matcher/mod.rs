@@ -107,9 +107,10 @@ impl<'a> Matcher<'a> {
     }
 
     pub fn new_reverse_callable_matcher(callable: &'a CallableContent) -> Self {
-        let mut m = Self::new_callable_matcher(callable);
-        m.match_reverse = true;
-        m
+        Self {
+            match_reverse: true,
+            ..Self::new_callable_matcher(callable)
+        }
     }
 
     pub fn without_precise_matching(mut self) -> Self {

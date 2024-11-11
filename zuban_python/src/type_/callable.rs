@@ -754,7 +754,7 @@ impl CallableContent {
         attribute_class: Class,
     ) -> Rc<CallableContent> {
         let mut needs_self_type_variable = self.return_type.has_self_type(db);
-        for param in self.expect_simple_params().iter() {
+        for param in self.expect_simple_params().iter().skip(1) {
             if let Some(t) = param.type_.maybe_type() {
                 needs_self_type_variable |= t.has_self_type(db);
             }
@@ -819,7 +819,12 @@ impl CallableContent {
                     None
                 }
             },
-            &|| Some(Type::TypeVar(self_type_var_usage.clone().unwrap())),
+            &|| {
+                Some(match &self_type_var_usage {
+                    Some(u) => Type::TypeVar(u.clone()),
+                    None => class.as_type(db),
+                })
+            },
         );
         callable.type_vars = type_vars;
         Rc::new(callable)

@@ -351,7 +351,7 @@ pub(crate) enum IssueKind {
     OverloadUnmatchable { unmatchable_signature_index: usize, matchable_signature_index: usize },
     OverloadIncompatibleReturnTypes { first_signature_index: usize, second_signature_index: usize },
     OverloadImplementationReturnTypeIncomplete { signature_index: usize },
-    OverloadImplementationArgumentsNotBroadEnough { signature_index: usize },
+    OverloadImplementationParamsNotBroadEnough { signature_index: usize },
     OverloadInconsistentKind { kind: FunctionKind },
     OverloadedPropertyNotSupported,
     OverloadWithAbstractAndNonAbstract,
@@ -666,7 +666,7 @@ impl<'db> Diagnostic<'db> {
             NotIterable { .. }
                 | AttributeError { .. }
                 | OverloadUnmatchable { .. }
-                | OverloadImplementationArgumentsNotBroadEnough { .. }
+                | OverloadImplementationParamsNotBroadEnough { .. }
                 | TypeVarInReturnButNotArgument { .. }
                 | OnlyClassTypeApplication { .. }
                 | UnsupportedClassScopedImport { .. }
@@ -1693,7 +1693,7 @@ impl<'db> Diagnostic<'db> {
             OverloadImplementationReturnTypeIncomplete{signature_index} => format!(
                 "Overloaded function implementation cannot produce return type of signature {signature_index}"
             ),
-            OverloadImplementationArgumentsNotBroadEnough{signature_index} => format!(
+            OverloadImplementationParamsNotBroadEnough{signature_index} => format!(
                 "Overloaded function implementation does not accept all possible arguments of signature {signature_index}"
             ),
             OverloadInconsistentKind { kind } => format!(

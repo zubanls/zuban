@@ -1397,7 +1397,7 @@ impl<'db> Inference<'db, '_, '_> {
                 .function(self.i_s.db, None)
                 .add_issue_onto_start_including_decorator(
                     self.i_s,
-                    IssueKind::OverloadImplementationArgumentsNotBroadEnough { signature_index },
+                    IssueKind::OverloadImplementationParamsNotBroadEnough { signature_index },
                 );
         }
     }

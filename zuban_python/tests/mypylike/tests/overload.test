@@ -492,3 +492,24 @@ if bool():
     join = os.path.join
 else:
     join = posixpath.join
+
+[case overload_class_access_with_self]
+from typing import TypeVar
+T = TypeVar("T")
+import foo
+def f(x: T) -> T: ...
+
+class Bar(foo.Foo): ...
+
+as_var = f(foo.Foo.f)
+reveal_type(as_var(foo.Foo(), 1))  # N: Revealed type is "foo.Foo"
+reveal_type(as_var(Bar(), 1))  # N: Revealed type is "__main__.Bar"
+reveal_type(as_var(foo.Foo(), ""))  # N: Revealed type is "None"
+
+[file foo.pyi]
+from typing import overload, Self
+class Foo:
+    @overload
+    def f(self, x: int) -> Self: ...
+    @overload
+    def f(self, y: str) -> None: ...

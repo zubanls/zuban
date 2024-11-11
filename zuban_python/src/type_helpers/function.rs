@@ -1359,15 +1359,18 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         let mut self_type_var_usage = None;
         let defined_at = self.node_ref.as_link();
         let mut type_vars = self.type_vars(i_s.db).as_vec();
+        let calc_needs_self_type = || {
+            self.return_type(i_s).has_self_type(i_s.db)
+                || self.iter_params().skip(1).any(|p| {
+                    p.annotation(i_s.db)
+                        .is_some_and(|t| t.has_self_type(i_s.db))
+                })
+        };
+        let mut needs_self_type = false;
         match options.first_param {
             FirstParamProperties::MethodAccessedOnClass { func_class_type } => {
-                let mut needs_self_type_variable = self.return_type(i_s).has_self_type(i_s.db);
-                for param in self.iter_params().skip(1) {
-                    if let Some(t) = param.annotation(i_s.db) {
-                        needs_self_type_variable |= t.has_self_type(i_s.db);
-                    }
-                }
-                if needs_self_type_variable {
+                needs_self_type = calc_needs_self_type();
+                if needs_self_type {
                     // We have to erase the type vars, because they will be part of the bound and
                     // only defined later.
                     let base = match func_class_type {
@@ -1393,7 +1396,9 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             FirstParamProperties::Skip { .. } => {
                 params.next();
             }
-            FirstParamProperties::None => (),
+            FirstParamProperties::None => {
+                needs_self_type = calc_needs_self_type();
+            }
         }
         let self_type_var_usage = self_type_var_usage.as_ref();
 
@@ -1436,8 +1441,14 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             .unwrap_or_else(|| t.clone())
         };
         let return_type = as_type(&options.return_type);
-        let mut callable =
-            self.internal_as_type(i_s, params, self_type_var_usage, as_type, return_type);
+        let mut callable = self.internal_as_type(
+            i_s,
+            params,
+            needs_self_type,
+            self_type_var_usage,
+            as_type,
+            return_type,
+        );
         callable.type_vars = TypeVarLikes::from_vec(type_vars);
         if matches!(options.first_param, FirstParamProperties::Skip { .. }) {
             // Now the first param was removed, so everything is considered as having an
@@ -1457,6 +1468,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         &self,
         i_s: &InferenceState,
         params: impl Iterator<Item = FunctionParam<'a>>,
+        needs_self_type: bool,
         self_type_var_usage: Option<&TypeVarUsage>,
         mut as_type: impl FnMut(&Type) -> Type,
         mut return_type: Type,
@@ -1527,7 +1539,11 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                         } else {
                             match kind {
                                 FunctionKind::Function { .. } | FunctionKind::Property { .. } => {
-                                    self.class.unwrap().as_type(i_s.db)
+                                    if needs_self_type {
+                                        Type::Self_
+                                    } else {
+                                        self.class.unwrap().as_type(i_s.db)
+                                    }
                                 }
                                 FunctionKind::Classmethod { .. } => {
                                     Type::Any(AnyCause::Unannotated)
