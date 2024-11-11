@@ -11,7 +11,7 @@ use crate::{
     database::{Database, FileIndex, PointLink},
     format_data::{FormatData, ParamsStyle},
     inference_state::InferenceState,
-    matching::maybe_class_usage,
+    matching::{maybe_class_usage, Generics},
     params::{
         params_have_self_type_after_self, Param, WrappedParamType, WrappedStar, WrappedStarStar,
     },
@@ -764,6 +764,7 @@ impl CallableContent {
         class: Class,
         attribute_class: Class,
     ) -> Rc<CallableContent> {
+        let mut attribute_class = attribute_class; // A lifetime issue
         let needs_self_type_variable = self.has_self_type_after_first_param(db);
         let mut type_vars = self.type_vars.as_vec();
         let mut self_type_var_usage = None;
@@ -792,6 +793,13 @@ impl CallableContent {
                 type_vars.len().into(),
             ));
             type_vars.push(TypeVarLike::TypeVar(self_type_var));
+        }
+        if matches!(attribute_class.generics, Generics::NotDefinedYet) {
+            // We actually want to retain generics.
+            attribute_class.generics = Generics::Self_ {
+                class_definition: class.node_ref.as_link(),
+                type_var_likes: &class.use_cached_type_vars(db),
+            };
         }
         let type_vars = TypeVarLikes::from_vec(type_vars);
         let mut callable = self.replace_type_var_likes_and_self(

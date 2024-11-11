@@ -1030,3 +1030,38 @@ def check(f: Foo) -> None:
     reveal_type(f.x)  # N: Revealed type is "int"
     reveal_type(f.y)  # N: Revealed type is "float"
     reveal_type(f.z)  # E: "Foo" has no attribute "z" # N: Revealed type is "Any"
+
+[case class_lookup_of_methods_with_generics]
+from typing import Callable, TypeVar, Generic, ClassVar
+
+def simple_dec(x: T) -> T: ...
+T = TypeVar("T")
+class G(Generic[T]):
+    def foo(self, x: T) -> T: ...
+
+    @simple_dec
+    def bar(self, x: T) -> T: ...
+
+class H(G[list[T]]): ...
+
+reveal_type(G.foo)  # N: Revealed type is "def [T] (self: __main__.G[T], x: T) -> T"
+reveal_type(G.bar)  # N: Revealed type is "def [T] (self: __main__.G[T], x: T) -> T"
+
+reveal_type(H.foo)  # N: Revealed type is "def (self: __main__.G[list[Any]], x: list[Any]) -> list[Any]"
+reveal_type(H.bar)  # N: Revealed type is "def [T] (self: __main__.G[list[T]], x: list[T]) -> list[T]"
+
+def check_g(g1: G[int], g2: G[list[int]], h: H[int], x: int, y: str, l: list[int], k: list[str]) -> None:
+    G.foo(g1, x)
+    G.foo(g1, y)  # E: Argument 2 to "foo" of "G" has incompatible type "str"; expected "int"
+    G.bar(g1, x)
+    G.bar(g1, y)  # E: Argument 2 to "bar" of "G" has incompatible type "str"; expected "int"
+
+    H.foo(g2, l)
+    H.foo(g2, k)  # E: Argument 2 to "foo" of "G" has incompatible type "list[str]"; expected "list[int]"
+    H.bar(g2, l)
+    H.bar(g2, k)  # E: Argument 2 to "bar" of "G" has incompatible type "list[str]"; expected "list[int]"
+
+    H.foo(h, l)
+    H.foo(h, k)  # E: Argument 2 to "foo" of "G" has incompatible type "list[str]"; expected "list[int]"
+    H.bar(h, l)
+    H.bar(h, k)  # E: Argument 2 to "bar" of "G" has incompatible type "list[str]"; expected "list[int]"

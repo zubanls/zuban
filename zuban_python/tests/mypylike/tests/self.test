@@ -279,6 +279,6 @@ class C:
         bar(G(), self)
 
         reveal_type(G.foo)  # N: Revealed type is "def [Self <: __main__.G[Any]] (self: Self, x: Any) -> Self"
-        reveal_type(G.bar)  # N: Revealed type is "def [T, Self <: __main__.G[T]] (self: Self, x: Any) -> Self"
+        reveal_type(G.bar)  # N: Revealed type is "def [T, Self <: __main__.G[T]] (self: Self, x: T) -> Self"
 
 class D(C): ...
