@@ -1047,7 +1047,7 @@ class H(G[list[T]]): ...
 reveal_type(G.foo)  # N: Revealed type is "def [T] (self: __main__.G[T], x: T) -> T"
 reveal_type(G.bar)  # N: Revealed type is "def [T] (self: __main__.G[T], x: T) -> T"
 
-reveal_type(H.foo)  # N: Revealed type is "def (self: __main__.G[list[Any]], x: list[Any]) -> list[Any]"
+reveal_type(H.foo)  # N: Revealed type is "def [T] (self: __main__.G[list[T]], x: list[T]) -> list[T]"
 reveal_type(H.bar)  # N: Revealed type is "def [T] (self: __main__.G[list[T]], x: list[T]) -> list[T]"
 
 def check_g(g1: G[int], g2: G[list[int]], h: H[int], x: int, y: str, l: list[int], k: list[str]) -> None:

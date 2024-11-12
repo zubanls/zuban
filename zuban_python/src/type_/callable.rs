@@ -944,6 +944,14 @@ pub fn merge_class_type_vars(
     }
 
     let type_vars = TypeVarLikes::from_vec(type_vars);
+    let remap_usage = |usage: TypeVarLikeUsage| {
+        (usage.in_definition() == attribute_class.node_ref.as_link()).then(|| {
+            type_vars
+                .find(usage.as_type_var_like(), callable.defined_at)
+                .unwrap()
+                .into_generic_item()
+        })
+    };
     let mut callable = callable.replace_type_var_likes_and_self(
         db,
         &mut |usage| {
@@ -956,27 +964,21 @@ pub fn merge_class_type_vars(
             }
             Some(
                 result
-                    .replace_type_var_likes_and_self(
-                        db,
-                        &mut |usage| {
-                            (usage.in_definition() == attribute_class.node_ref.as_link()).then(
-                                || {
-                                    type_vars
-                                        .find(usage.as_type_var_like(), callable.defined_at)
-                                        .unwrap()
-                                        .into_generic_item()
-                                },
-                            )
-                        },
-                        &|| None,
-                    )
+                    .replace_type_var_likes_and_self(db, &mut |u| remap_usage(u), &|| None)
                     .unwrap_or(result),
             )
         },
         &|| {
             Some(match &self_type_var_usage {
                 Some(u) => Type::TypeVar(u.clone()),
-                None => attribute_class.as_type(db),
+                None => {
+                    let t = attribute_class.as_type(db);
+                    if !needs_additional_remap {
+                        return Some(t);
+                    }
+                    t.replace_type_var_likes(db, &mut |u| remap_usage(u))
+                        .unwrap_or(t)
+                }
             })
         },
     );
