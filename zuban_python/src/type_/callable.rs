@@ -902,9 +902,6 @@ pub fn merge_class_type_vars(
     let class_type_vars = class.use_cached_type_vars(db);
     let mut type_vars = callable.type_vars.as_vec();
     let mut self_type_var_usage = None;
-    for type_var in class_type_vars.iter() {
-        type_vars.push(type_var.clone());
-    }
     if needs_self_type_variable {
         let class_t = class.as_type_with_type_vars_for_not_yet_defined_generics(db);
         let bound = class_t.replace_type_var_likes(db, &mut |mut usage| {
@@ -928,44 +925,48 @@ pub fn merge_class_type_vars(
         ));
         type_vars.push(TypeVarLike::TypeVar(self_type_var));
     }
-    if matches!(attribute_class.generics, Generics::NotDefinedYet) {
+    let needs_additional_remap = matches!(attribute_class.generics, Generics::NotDefinedYet);
+    if needs_additional_remap {
         // We actually want to retain generics.
         attribute_class.generics = Generics::Self_ {
             class_definition: class.node_ref.as_link(),
             type_var_likes: &class_type_vars,
         };
+        for type_var in class_type_vars.iter() {
+            type_vars.push(type_var.clone());
+        }
     }
     let type_vars = TypeVarLikes::from_vec(type_vars);
     let mut callable = callable.replace_type_var_likes_and_self(
         db,
         &mut |usage| {
             let in_definition = usage.in_definition();
-            if let Some(result) = maybe_class_usage(db, &attribute_class, &usage) {
-                Some(
-                    result
-                        .replace_type_var_likes_and_self(
-                            db,
-                            &mut |usage| {
-                                if usage.in_definition() == class.node_ref.as_link() {
-                                    Some(
-                                        type_vars
-                                            .find(usage.as_type_var_like(), callable.defined_at)
-                                            .unwrap()
-                                            .into_generic_item(),
-                                    )
-                                } else {
-                                    None
-                                }
-                            },
-                            &|| None,
-                        )
-                        .unwrap_or(result),
-                )
-            } else {
-                // This can happen for example if the return value is a Callable with its
-                // own type vars.
-                None
+            // The ? can happen for example if the return value is a Callable with its
+            // own type vars.
+            let result = maybe_class_usage(db, &attribute_class, &usage)?;
+            if !needs_additional_remap {
+                return Some(result);
             }
+            Some(
+                result
+                    .replace_type_var_likes_and_self(
+                        db,
+                        &mut |usage| {
+                            if usage.in_definition() == class.node_ref.as_link() {
+                                Some(
+                                    type_vars
+                                        .find(usage.as_type_var_like(), callable.defined_at)
+                                        .unwrap()
+                                        .into_generic_item(),
+                                )
+                            } else {
+                                None
+                            }
+                        },
+                        &|| None,
+                    )
+                    .unwrap_or(result),
+            )
         },
         &|| {
             Some(match &self_type_var_usage {

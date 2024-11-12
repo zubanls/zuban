@@ -260,13 +260,13 @@ class G(Generic[T]):
 class C:
     def x(self, one: type[G[int]], other: type[G[Self]]) -> None:
         reveal_type(one.foo)  # N: Revealed type is "def [Self <: __main__.G[int]] (self: Self, x: int) -> Self"
-        reveal_type(one.bar)  # N: Revealed type is "def [T, Self <: __main__.G[int]] (self: Self, x: int) -> Self"
+        reveal_type(one.bar)  # N: Revealed type is "def [Self <: __main__.G[int]] (self: Self, x: int) -> Self"
 
         foo = other.foo
         bar = other.bar
         # The formatting is a bit confusing, but it seems to do the correct thing.
         reveal_type(foo)  # N: Revealed type is "def [Self <: __main__.G[Self]] (self: Self, x: Self) -> Self"
-        reveal_type(bar)  # N: Revealed type is "def [T, Self <: __main__.G[Self]] (self: Self, x: Self) -> Self"
+        reveal_type(bar)  # N: Revealed type is "def [Self <: __main__.G[Self]] (self: Self, x: Self) -> Self"
 
         foo(C(), self)  # E: Value of type variable "Self" of "foo" of "G" cannot be "C"
         foo(D(), self)  # E: Value of type variable "Self" of "foo" of "G" cannot be "D"
@@ -279,6 +279,6 @@ class C:
         bar(G(), self)
 
         reveal_type(G.foo)  # N: Revealed type is "def [Self <: __main__.G[Any]] (self: Self, x: Any) -> Self"
-        reveal_type(G.bar)  # N: Revealed type is "def [T, Self <: __main__.G[T]] (self: Self, x: T) -> Self"
+        reveal_type(G.bar)  # N: Revealed type is "def [Self <: __main__.G[T], T] (self: Self, x: T) -> Self"
 
 class D(C): ...
