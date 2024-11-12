@@ -896,21 +896,17 @@ pub fn format_params_as_param_spec(
 
 pub fn merge_class_type_vars(
     db: &Database,
-    callable: &Rc<CallableContent>,
+    callable: Rc<CallableContent>,
     class: Class,
     attribute_class: Class,
 ) -> Rc<CallableContent> {
     let mut attribute_class = attribute_class; // A lifetime issue
     let needs_self_type_variable = callable.has_self_type_after_first_param(db);
 
-    let attribute_class_type_vars = attribute_class.use_cached_type_vars(db);
-    if !needs_self_type_variable && attribute_class_type_vars.is_empty() {
-        return callable.clone();
-    }
-
     let mut type_vars = callable.type_vars.as_vec();
     let mut self_type_var_usage = None;
-    let needs_additional_remap = matches!(attribute_class.generics, Generics::NotDefinedYet);
+    let needs_additional_remap = matches!(attribute_class.generics, Generics::NotDefinedYet)
+        && !class.use_cached_type_vars(db).is_empty();
     if needs_self_type_variable {
         let bound = attribute_class.as_type(db);
         /*
@@ -936,6 +932,7 @@ pub fn merge_class_type_vars(
         ));
         type_vars.push(TypeVarLike::TypeVar(self_type_var));
     } else if needs_additional_remap {
+        let attribute_class_type_vars = attribute_class.use_cached_type_vars(db);
         // We actually want to retain generics.
         attribute_class.generics = Generics::Self_ {
             class_definition: attribute_class.node_ref.as_link(),

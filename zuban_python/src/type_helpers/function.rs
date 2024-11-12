@@ -1532,7 +1532,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                             if let Some(type_var_usage) = self_type_var_usage {
                                 Type::Type(Rc::new(Type::TypeVar(type_var_usage.clone())))
                             } else {
-                                self.class.unwrap().as_type_type(i_s.db)
+                                Type::Type(Rc::new(Type::Self_))
                             }
                         } else if let Some(type_var_usage) = self_type_var_usage {
                             Type::TypeVar(type_var_usage.clone())
