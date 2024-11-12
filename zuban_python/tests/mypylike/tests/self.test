@@ -281,7 +281,7 @@ class C:
         bar(G(), self)
 
         reveal_type(G.foo)  # N: Revealed type is "def [Self <: __main__.G[Any]] (self: Self, x: Any) -> Self"
-        reveal_type(G.bar)  # N: Revealed type is "def [Self <: __main__.G[Any], T] (self: Self, x: T) -> Self"
+        reveal_type(G.bar)  # N: Revealed type is "def [Self <: __main__.G[Any]] (self: Self, x: Any) -> Self"
 
 class D(C): ...
 
@@ -303,7 +303,7 @@ class C:
         reveal_type(h.foo)  # N: Revealed type is "def [Self <: __main__.G[list[str]]] (self: Self, x: list[str]) -> Self"
         reveal_type(h.bar)  # N: Revealed type is "def [Self <: __main__.G[list[str]]] (self: Self, x: list[str]) -> Self"
         reveal_type(H.foo)  # N: Revealed type is "def [Self <: __main__.G[list[Any]]] (self: Self, x: list[Any]) -> Self"
-        reveal_type(H.bar)  # N: Revealed type is "def [Self <: __main__.G[list[Any]], T] (self: Self, x: list[T]) -> Self"
+        reveal_type(H.bar)  # N: Revealed type is "def [Self <: __main__.G[list[Any]]] (self: Self, x: list[Any]) -> Self"
 
         h.bar(G(), [""])
         h.bar(H(), [""])
