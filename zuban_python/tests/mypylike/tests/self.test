@@ -281,11 +281,48 @@ class C:
         bar(G(), self)
 
         reveal_type(G.foo)  # N: Revealed type is "def [Self <: __main__.G[Any]] (self: Self, x: Any) -> Self"
-        reveal_type(G.bar)  # N: Revealed type is "def [Self <: __main__.G[T], T] (self: Self, x: T) -> Self"
+        reveal_type(G.bar)  # N: Revealed type is "def [Self <: __main__.G[Any], T] (self: Self, x: T) -> Self"
 
+class D(C): ...
+
+[case class_lookup_with_self_generics_inheritance]
+from typing import Self, Callable, TypeVar, Generic, ClassVar
+
+def simple_dec(x: T) -> T: ...
+T = TypeVar("T")
+class G(Generic[T]):
+    def foo(self, x: T) -> Self: ...
+
+    @simple_dec
+    def bar(self, x: T) -> Self: ...
+
+class H(G[list[T]]): ...
+
+class C:
+    def x(self, one: type[G[int]], other: type[G[Self]], h: type[H[str]]) -> None:
         reveal_type(h.foo)  # N: Revealed type is "def [Self <: __main__.G[list[str]]] (self: Self, x: list[str]) -> Self"
         reveal_type(h.bar)  # N: Revealed type is "def [Self <: __main__.G[list[str]]] (self: Self, x: list[str]) -> Self"
         reveal_type(H.foo)  # N: Revealed type is "def [Self <: __main__.G[list[Any]]] (self: Self, x: list[Any]) -> Self"
-        reveal_type(H.bar)  # N: Revealed type is "def [Self <: __main__.G[T], T] (self: Self, x: list[T]) -> Self"
+        reveal_type(H.bar)  # N: Revealed type is "def [Self <: __main__.G[list[Any]], T] (self: Self, x: list[T]) -> Self"
+
+        h.bar(G(), [""])
+        h.bar(H(), [""])
+        h.bar(H(), [1])  # E: List item 0 has incompatible type "int"; expected "str"
+        h.bar(C(), [""]) # E: Value of type variable "Self" of "bar" of "G" cannot be "C"
+
+        H.bar(G(), [""])
+        H.bar(H(), [""])
+        H.bar(H(), [1])
+        H.bar(C(), [""])  # E: Value of type variable "Self" of "bar" of "G" cannot be "C"
+
+        h.foo(G(), [""])
+        h.foo(H(), [""])
+        h.foo(H(), [1])   # E: List item 0 has incompatible type "int"; expected "str"
+        h.foo(C(), [""])  # E: Value of type variable "Self" of "foo" of "G" cannot be "C"
+
+        H.foo(G(), [""])
+        H.foo(H(), [""])
+        H.foo(H(), [1])
+        H.foo(C(), [""])  # E: Value of type variable "Self" of "foo" of "G" cannot be "C"
 
 class D(C): ...

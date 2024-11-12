@@ -902,19 +902,23 @@ pub fn merge_class_type_vars(
 
     let mut type_vars = callable.type_vars.as_vec();
     let mut self_type_var_usage = None;
+    let needs_additional_remap = matches!(attribute_class.generics, Generics::NotDefinedYet);
+    if needs_additional_remap {}
     if needs_self_type_variable {
-        let class_t = attribute_class.as_type_with_type_vars_for_not_yet_defined_generics(db);
-        let bound = class_t.replace_type_var_likes(db, &mut |mut usage| {
-            if usage.in_definition() == class.node_ref.as_link() {
-                usage.add_to_index(callable.type_vars.len() as i32);
-                Some(usage.into_generic_item())
-            } else {
-                None
-            }
-        });
+        let bound = attribute_class.as_type(db);
+        /*
+        let bound = attribute_class.as_type_with_type_vars_for_not_yet_defined_generics(db);
+        let bound = class_t.replace_type_var_likes(db, &mut |usage| {
+            (usage.in_definition() == class.node_ref.as_link()).then(|| {
+                usage.add_to_index(callable.type_vars.len() as i32 + 1);
+                usage.into_generic_item()
+                //usage.as_any_generic_item()
+            })
+        }).unwrap_or(class_t);
+        */
         let self_type_var = Rc::new(TypeVar {
             name_string: TypeVarName::Self_,
-            kind: TypeVarKind::Bound(bound.unwrap_or(class_t)),
+            kind: TypeVarKind::Bound(bound),
             default: None,
             variance: Variance::Invariant,
         });
@@ -925,11 +929,10 @@ pub fn merge_class_type_vars(
         ));
         type_vars.push(TypeVarLike::TypeVar(self_type_var));
     }
-    let needs_additional_remap = matches!(attribute_class.generics, Generics::NotDefinedYet);
     if needs_additional_remap {
         // We actually want to retain generics.
         attribute_class.generics = Generics::Self_ {
-            class_definition: class.node_ref.as_link(),
+            class_definition: attribute_class.node_ref.as_link(),
             type_var_likes: &attribute_class_type_vars,
         };
         for type_var in attribute_class_type_vars.iter() {
@@ -952,7 +955,7 @@ pub fn merge_class_type_vars(
                     .replace_type_var_likes_and_self(
                         db,
                         &mut |usage| {
-                            if usage.in_definition() == class.node_ref.as_link() {
+                            if usage.in_definition() == attribute_class.node_ref.as_link() {
                                 Some(
                                     type_vars
                                         .find(usage.as_type_var_like(), callable.defined_at)
