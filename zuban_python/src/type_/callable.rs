@@ -11,7 +11,7 @@ use crate::{
     database::{Database, FileIndex, PointLink},
     format_data::{FormatData, ParamsStyle},
     inference_state::InferenceState,
-    matching::maybe_class_usage,
+    matching::{maybe_class_usage, Generics},
     params::{
         params_have_self_type_after_self, Param, WrappedParamType, WrappedStar, WrappedStarStar,
     },
@@ -892,6 +892,7 @@ pub fn merge_class_type_vars(
     class: Class,
     attribute_class: Class,
 ) -> Rc<CallableContent> {
+    let mut attribute_class = attribute_class; // A lifetime issue
     let needs_self_type_variable = callable.has_self_type_after_first_param(db);
 
     let attribute_class_type_vars = attribute_class.use_cached_type_vars(db);
@@ -901,6 +902,7 @@ pub fn merge_class_type_vars(
 
     let mut type_vars = callable.type_vars.as_vec();
     let mut self_type_var_usage = None;
+    let needs_additional_remap = matches!(attribute_class.generics, Generics::NotDefinedYet);
     if needs_self_type_variable {
         let bound = attribute_class.as_type(db);
         /*
@@ -925,12 +927,47 @@ pub fn merge_class_type_vars(
             type_vars.len().into(),
         ));
         type_vars.push(TypeVarLike::TypeVar(self_type_var));
+    } else if needs_additional_remap {
+        // We actually want to retain generics.
+        attribute_class.generics = Generics::Self_ {
+            class_definition: attribute_class.node_ref.as_link(),
+            type_var_likes: &attribute_class_type_vars,
+        };
+        for type_var in attribute_class_type_vars.iter() {
+            type_vars.push(type_var.clone());
+        }
     }
 
     let type_vars = TypeVarLikes::from_vec(type_vars);
     let mut callable = callable.replace_type_var_likes_and_self(
         db,
-        &mut |usage| maybe_class_usage(db, &attribute_class, &usage),
+        &mut |usage| {
+            let in_definition = usage.in_definition();
+            // The ? can happen for example if the return value is a Callable with its
+            // own type vars.
+            let result = maybe_class_usage(db, &attribute_class, &usage)?;
+            if !needs_additional_remap {
+                return Some(result);
+            }
+            Some(
+                result
+                    .replace_type_var_likes_and_self(
+                        db,
+                        &mut |usage| {
+                            (usage.in_definition() == attribute_class.node_ref.as_link()).then(
+                                || {
+                                    type_vars
+                                        .find(usage.as_type_var_like(), callable.defined_at)
+                                        .unwrap()
+                                        .into_generic_item()
+                                },
+                            )
+                        },
+                        &|| None,
+                    )
+                    .unwrap_or(result),
+            )
+        },
         &|| {
             Some(match &self_type_var_usage {
                 Some(u) => Type::TypeVar(u.clone()),
