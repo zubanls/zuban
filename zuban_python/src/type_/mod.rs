@@ -966,20 +966,13 @@ impl Type {
             }
             Self::FunctionOverload(intersection) => {
                 for callable in intersection.iter_functions() {
-                    callable.params.search_type_vars(found_type_var);
-                    callable.return_type.search_type_vars(found_type_var)
+                    callable.search_type_vars(found_type_var);
                 }
             }
             Self::TypeVar(t) => found_type_var(TypeVarLikeUsage::TypeVar(t.clone())),
             Self::Type(type_) => type_.search_type_vars(found_type_var),
             Self::Tuple(tup) => tup.args.search_type_vars(found_type_var),
-            Self::Callable(content) => {
-                content.params.search_type_vars(found_type_var);
-                content.return_type.search_type_vars(found_type_var);
-                if let Some(guard) = content.guard.as_ref() {
-                    guard.type_.search_type_vars(found_type_var)
-                }
-            }
+            Self::Callable(c) => c.search_type_vars(found_type_var),
             Self::Class(..)
             | Self::Any(_)
             | Self::None

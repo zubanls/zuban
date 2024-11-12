@@ -773,6 +773,14 @@ impl CallableContent {
             CallableParams::Never(_) => true,
         }
     }
+
+    pub fn search_type_vars<C: FnMut(TypeVarLikeUsage) + ?Sized>(&self, found_type_var: &mut C) {
+        self.params.search_type_vars(found_type_var);
+        self.return_type.search_type_vars(found_type_var);
+        if let Some(guard) = self.guard.as_ref() {
+            guard.type_.search_type_vars(found_type_var)
+        }
+    }
 }
 
 pub enum WrongPositionalCount {
