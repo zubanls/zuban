@@ -257,8 +257,10 @@ class G(Generic[T]):
     @simple_dec
     def bar(self, x: T) -> Self: ...
 
+class H(G[list[T]]): ...
+
 class C:
-    def x(self, one: type[G[int]], other: type[G[Self]]) -> None:
+    def x(self, one: type[G[int]], other: type[G[Self]], h: type[H[str]]) -> None:
         reveal_type(one.foo)  # N: Revealed type is "def [Self <: __main__.G[int]] (self: Self, x: int) -> Self"
         reveal_type(one.bar)  # N: Revealed type is "def [Self <: __main__.G[int]] (self: Self, x: int) -> Self"
 
@@ -280,5 +282,10 @@ class C:
 
         reveal_type(G.foo)  # N: Revealed type is "def [Self <: __main__.G[Any]] (self: Self, x: Any) -> Self"
         reveal_type(G.bar)  # N: Revealed type is "def [Self <: __main__.G[T], T] (self: Self, x: T) -> Self"
+
+        reveal_type(h.foo)  # N: Revealed type is "def [Self <: __main__.G[list[str]]] (self: Self, x: list[str]) -> Self"
+        reveal_type(h.bar)  # N: Revealed type is "def [Self <: __main__.G[list[str]]] (self: Self, x: list[str]) -> Self"
+        reveal_type(H.foo)  # N: Revealed type is "def [Self <: __main__.G[list[Any]]] (self: Self, x: list[Any]) -> Self"
+        reveal_type(H.bar)  # N: Revealed type is "def [Self <: __main__.G[T], T] (self: Self, x: list[T]) -> Self"
 
 class D(C): ...

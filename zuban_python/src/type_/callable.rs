@@ -895,15 +895,15 @@ pub fn merge_class_type_vars(
     let mut attribute_class = attribute_class; // A lifetime issue
     let needs_self_type_variable = callable.has_self_type_after_first_param(db);
 
-    if !needs_self_type_variable && attribute_class.use_cached_type_vars(db).is_empty() {
+    let attribute_class_type_vars = attribute_class.use_cached_type_vars(db);
+    if !needs_self_type_variable && attribute_class_type_vars.is_empty() {
         return callable.clone();
     }
 
-    let class_type_vars = class.use_cached_type_vars(db);
     let mut type_vars = callable.type_vars.as_vec();
     let mut self_type_var_usage = None;
     if needs_self_type_variable {
-        let class_t = class.as_type_with_type_vars_for_not_yet_defined_generics(db);
+        let class_t = attribute_class.as_type_with_type_vars_for_not_yet_defined_generics(db);
         let bound = class_t.replace_type_var_likes(db, &mut |mut usage| {
             if usage.in_definition() == class.node_ref.as_link() {
                 usage.add_to_index(callable.type_vars.len() as i32);
@@ -930,9 +930,9 @@ pub fn merge_class_type_vars(
         // We actually want to retain generics.
         attribute_class.generics = Generics::Self_ {
             class_definition: class.node_ref.as_link(),
-            type_var_likes: &class_type_vars,
+            type_var_likes: &attribute_class_type_vars,
         };
-        for type_var in class_type_vars.iter() {
+        for type_var in attribute_class_type_vars.iter() {
             type_vars.push(type_var.clone());
         }
     }
