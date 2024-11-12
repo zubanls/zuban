@@ -38,14 +38,12 @@ use crate::{
         replace_param_spec, AnyCause, CallableContent, CallableLike, CallableParam, CallableParams,
         ClassGenerics, DbString, FunctionKind, FunctionOverload, GenericClass, GenericItem,
         LookupResult, NeverCause, ParamType, ReplaceSelf, StarParamType, StarStarParamType,
-        StringSlice, TupleArgs, Type, TypeGuardInfo, TypeVar, TypeVarKind, TypeVarLike,
-        TypeVarLikes, TypeVarManager, TypeVarName, TypeVarUsage, Variance, WrongPositionalCount,
+        StringSlice, TupleArgs, Type, TypeGuardInfo, TypeVarKind, TypeVarLike, TypeVarLikes,
+        TypeVarManager, WrongPositionalCount,
     },
     type_helpers::Class,
     utils::rc_unwrap_or_clone,
 };
-
-use super::TypeOrClass;
 
 #[derive(Clone, Copy)]
 pub struct Function<'a, 'class> {
@@ -1359,48 +1357,16 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         options: AsCallableOptions,
     ) -> CallableContent {
         let mut params = self.iter_params().peekable();
-        let mut self_type_var_usage = None;
-        let defined_at = self.node_ref.as_link();
-        let mut type_vars = self.type_vars(i_s.db).as_vec();
-        let calc_needs_self_type = || {
-            self.return_type(i_s).has_self_type(i_s.db)
-                || params_have_self_type_after_self(i_s.db, self.iter_params())
-        };
-        let mut needs_self_type = false;
-        match options.first_param {
-            FirstParamProperties::MethodAccessedOnClass { func_class_type } => {
-                needs_self_type = calc_needs_self_type();
-                if needs_self_type {
-                    // We have to erase the type vars, because they will be part of the bound and
-                    // only defined later.
-                    let base = match func_class_type {
-                        TypeOrClass::Class(c) => c.as_type(i_s.db),
-                        TypeOrClass::Type(t) => t.clone().into_owned(),
-                    };
-                    let t =
-                        base.replace_type_var_likes(i_s.db, &mut |u| Some(u.as_any_generic_item()));
-                    let self_type_var = Rc::new(TypeVar {
-                        name_string: TypeVarName::Self_,
-                        kind: TypeVarKind::Bound(t.unwrap_or(base)),
-                        variance: Variance::Invariant,
-                        default: None,
-                    });
-                    self_type_var_usage = Some(TypeVarUsage::new(
-                        self_type_var.clone(),
-                        defined_at,
-                        0.into(),
-                    ));
-                    type_vars.insert(0, TypeVarLike::TypeVar(self_type_var));
-                }
-            }
+        let needs_self_type = match options.first_param {
             FirstParamProperties::Skip { .. } => {
                 params.next();
+                false
             }
             FirstParamProperties::None => {
-                needs_self_type = calc_needs_self_type();
+                self.return_type(i_s).has_self_type(i_s.db)
+                    || params_have_self_type_after_self(i_s.db, self.iter_params())
             }
-        }
-        let self_type_var_usage = self_type_var_usage.as_ref();
+        };
 
         let as_type = |t: &Type| {
             if matches!(options.first_param, FirstParamProperties::None) {
@@ -1411,27 +1377,9 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             };
             t.replace_type_var_likes_and_self(
                 i_s.db,
-                &mut |mut usage| {
-                    let in_definition = usage.in_definition();
-                    if let Some(result) = maybe_class_usage(i_s.db, &func_class, &usage) {
-                        Some(result)
-                    } else if in_definition == defined_at {
-                        self_type_var_usage.is_some().then(|| {
-                            usage.add_to_index(1);
-                            usage.into_generic_item()
-                        })
-                    } else {
-                        // This can happen for example if the return value is a Callable with its
-                        // own type vars.
-                        None
-                    }
-                },
+                &mut |usage| maybe_class_usage(i_s.db, &func_class, &usage),
                 &|| {
-                    if let Some(self_type_var_usage) = self_type_var_usage {
-                        Some(Type::TypeVar(self_type_var_usage.clone()))
-                    } else if let FirstParamProperties::Skip { to_self_instance } =
-                        options.first_param
-                    {
+                    if let FirstParamProperties::Skip { to_self_instance } = options.first_param {
                         Some(to_self_instance())
                     } else {
                         self.class.map(|t| t.as_type(i_s.db))
@@ -1441,15 +1389,9 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             .unwrap_or_else(|| t.clone())
         };
         let return_type = as_type(&options.return_type);
-        let mut callable = self.internal_as_type(
-            i_s,
-            params,
-            needs_self_type,
-            self_type_var_usage,
-            as_type,
-            return_type,
-        );
-        callable.type_vars = TypeVarLikes::from_vec(type_vars);
+        let mut callable =
+            self.internal_as_type(i_s, params, needs_self_type, as_type, return_type);
+        callable.type_vars = self.type_vars(i_s.db).clone();
         if matches!(options.first_param, FirstParamProperties::Skip { .. }) {
             // Now the first param was removed, so everything is considered as having an
             // annotation (even if it's an implicit Any).
@@ -1469,7 +1411,6 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         i_s: &InferenceState,
         params: impl Iterator<Item = FunctionParam<'a>>,
         needs_self_type: bool,
-        self_type_var_usage: Option<&TypeVarUsage>,
         mut as_type: impl FnMut(&Type) -> Type,
         mut return_type: Type,
     ) -> CallableContent {
@@ -1529,13 +1470,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     let name_ref = NodeRef::new(self.node_ref.file, p.param.name_def().index());
                     if name_ref.point().maybe_specific() == Some(Specific::MaybeSelfParam) {
                         if self.is_dunder_new() {
-                            if let Some(type_var_usage) = self_type_var_usage {
-                                Type::Type(Rc::new(Type::TypeVar(type_var_usage.clone())))
-                            } else {
-                                Type::Type(Rc::new(Type::Self_))
-                            }
-                        } else if let Some(type_var_usage) = self_type_var_usage {
-                            Type::TypeVar(type_var_usage.clone())
+                            Type::Type(Rc::new(Type::Self_))
                         } else {
                             match kind {
                                 FunctionKind::Function { .. } | FunctionKind::Property { .. } => {
@@ -1888,9 +1823,6 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
 pub enum FirstParamProperties<'a> {
     Skip {
         to_self_instance: &'a dyn Fn() -> Type,
-    },
-    MethodAccessedOnClass {
-        func_class_type: &'a TypeOrClass<'a>,
     },
     None,
 }
