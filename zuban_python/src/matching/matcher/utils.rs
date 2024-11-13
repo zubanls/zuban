@@ -8,6 +8,7 @@ use super::{
         ResultContext, SignatureMatch,
     },
     type_var_matcher::{FunctionOrCallable, TypeVarMatcher},
+    ReplaceSelfInMatcher,
 };
 use crate::{
     arguments::{Arg, ArgKind, InferredArg},
@@ -111,7 +112,7 @@ fn calculate_dunder_init_type_vars_and_return<'db: 'a, 'a>(
         match_in_definition = class.node_ref.as_link();
         tv_matchers.push(TypeVarMatcher::new(match_in_definition, type_vars.clone()));
     }
-    let as_self_type = || Some(class.as_type(i_s.db));
+    let as_self_type = || class.as_type(i_s.db);
     let matcher = Matcher::new(
         Some(class),
         func_or_callable,
@@ -319,7 +320,7 @@ pub(crate) fn calculate_function_type_vars_and_return<'db: 'a, 'a>(
     skip_first_param: bool,
     type_vars: &TypeVarLikes,
     match_in_definition: PointLink,
-    replace_self: ReplaceSelf,
+    replace_self: Option<ReplaceSelfInMatcher>,
     result_context: &mut ResultContext,
     on_type_error: Option<OnTypeError>,
 ) -> CalculatedTypeArgs {
@@ -330,7 +331,7 @@ pub(crate) fn calculate_function_type_vars_and_return<'db: 'a, 'a>(
         get_matcher(
             func_or_callable,
             match_in_definition,
-            Some(replace_self),
+            replace_self,
             type_vars,
         ),
         func_or_callable,
@@ -377,7 +378,7 @@ pub(crate) fn calculate_callable_type_vars_and_return<'db: 'a, 'a>(
 fn get_matcher<'a>(
     func_or_callable: FunctionOrCallable<'a>,
     match_in_definition: PointLink,
-    replace_self: Option<ReplaceSelf<'a>>,
+    replace_self: Option<ReplaceSelfInMatcher<'a>>,
     type_vars: &TypeVarLikes,
 ) -> Matcher<'a> {
     let matcher = if type_vars.is_empty() {

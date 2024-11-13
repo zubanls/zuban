@@ -14,6 +14,7 @@ pub(crate) use matcher::{
     calculate_callable_dunder_init_type_vars_and_return, calculate_callable_type_vars_and_return,
     calculate_class_dunder_init_type_vars_and_return, calculate_function_type_vars_and_return,
     CalculatedTypeArgs, CheckedTypeRecursion, FunctionOrCallable, Matcher, MatcherFormatResult,
+    ReplaceSelfInMatcher,
 };
 pub use result_context::{CouldBeALiteral, ResultContext};
 pub use utils::{

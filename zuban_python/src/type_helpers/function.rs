@@ -25,7 +25,7 @@ use crate::{
     inferred::Inferred,
     matching::{
         calculate_function_type_vars_and_return, maybe_class_usage, CalculatedTypeArgs, ErrorStrs,
-        OnTypeError, ResultContext,
+        OnTypeError, ReplaceSelfInMatcher, ResultContext,
     },
     new_class,
     node_ref::NodeRef,
@@ -1629,7 +1629,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         args: &dyn Args<'db>,
         skip_first_argument: bool,
         on_type_error: OnTypeError,
-        replace_self_type: ReplaceSelf,
+        replace_self_type: Option<ReplaceSelfInMatcher>,
         result_context: &mut ResultContext,
     ) -> Inferred {
         let return_annotation = self.return_annotation();
@@ -1649,7 +1649,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             self.apply_type_args_in_return_annotation_and_maybe_mark_unreachable(
                 i_s,
                 calculated_type_vars,
-                replace_self_type,
+                &|| Some(replace_self_type?()),
                 return_annotation,
                 args,
                 result_context,
@@ -1786,11 +1786,11 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 args,
                 false,
                 on_type_error,
-                &|| Some(class.as_type(i_s.db)),
+                Some(&|| class.as_type(i_s.db)),
                 result_context,
             )
         } else {
-            self.execute_internal(i_s, args, false, on_type_error, &|| None, result_context)
+            self.execute_internal(i_s, args, false, on_type_error, None, result_context)
         }
     }
 

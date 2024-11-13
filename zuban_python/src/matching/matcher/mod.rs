@@ -34,14 +34,15 @@ use crate::{
     type_::{
         match_tuple_type_arguments, AnyCause, CallableContent, CallableParam, CallableParams,
         DbString, GenericItem, GenericsList, NeverCause, ParamSpecArg, ParamSpecUsage, ParamType,
-        ReplaceSelf, StarParamType, TupleArgs, TupleUnpack, Type, TypeArgs, TypeVarKind,
-        TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarTupleUsage, TypeVarUsage, TypedDict,
+        StarParamType, TupleArgs, TupleUnpack, Type, TypeArgs, TypeVarKind, TypeVarLike,
+        TypeVarLikeUsage, TypeVarLikes, TypeVarTupleUsage, TypeVarUsage, TypedDict,
         TypedDictGenerics, Variance, WithUnpack,
     },
     type_helpers::{Callable, Class, Function},
     utils::{join_with_commas, AlreadySeen},
 };
 
+pub type ReplaceSelfInMatcher<'x> = &'x dyn Fn() -> Type;
 pub type CheckedTypeRecursion<'a> = AlreadySeen<'a, (&'a Type, &'a Type)>;
 
 #[derive(Default, Clone)]
@@ -52,7 +53,7 @@ pub struct Matcher<'a> {
     pub func_or_callable: Option<FunctionOrCallable<'a>>,
     ignore_promotions: bool,
     pub precise_matching: bool, // This is what Mypy does with proper_subtype=True
-    replace_self: Option<ReplaceSelf<'a>>,
+    replace_self: Option<ReplaceSelfInMatcher<'a>>,
     pub ignore_positional_param_names: bool, // Matches `ignore_pos_arg_names` in Mypy
     match_reverse: bool,                     // For contravariance subtypes
 }
@@ -62,7 +63,7 @@ impl<'a> Matcher<'a> {
         class: Option<&'a Class<'a>>,
         func_or_callable: FunctionOrCallable<'a>,
         type_var_matchers: Vec<TypeVarMatcher>,
-        replace_self: Option<ReplaceSelf<'a>>,
+        replace_self: Option<ReplaceSelfInMatcher<'a>>,
     ) -> Self {
         Self {
             class,
@@ -73,7 +74,7 @@ impl<'a> Matcher<'a> {
         }
     }
 
-    pub fn new_self_replacer(replace_self: ReplaceSelf<'a>) -> Self {
+    pub fn new_self_replacer(replace_self: ReplaceSelfInMatcher<'a>) -> Self {
         Self {
             replace_self: Some(replace_self),
             ..Self::default()
@@ -121,7 +122,7 @@ impl<'a> Matcher<'a> {
     pub fn new_function_matcher(
         function: Function<'a, 'a>,
         type_vars: &TypeVarLikes,
-        replace_self: ReplaceSelf<'a>,
+        replace_self: ReplaceSelfInMatcher<'a>,
     ) -> Self {
         let type_var_matcher = (!type_vars.is_empty())
             .then(|| TypeVarMatcher::new(function.node_ref.as_link(), type_vars.clone()));
@@ -294,9 +295,7 @@ impl<'a> Matcher<'a> {
                     Match::new_false()
                 } else {
                     if let Some(replace_self) = self.replace_self {
-                        if let Some(replaced) = replace_self() {
-                            return replaced.matches(i_s, self, value_type, variance);
-                        }
+                        return replace_self().matches(i_s, self, value_type, variance);
                     }
                     if !matches!(self.func_or_callable, Some(FunctionOrCallable::Function(_))) {
                         // In case we are working within a function, Self is bound already.
