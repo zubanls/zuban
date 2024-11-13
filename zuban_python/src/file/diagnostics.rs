@@ -1370,7 +1370,7 @@ impl<'db> Inference<'db, '_, '_> {
         class: Option<Class>,
     ) {
         //let self_binding = OnceCell::new();
-        let replace_self = |t: &_| class.unwrap().as_type(self.i_s.db);
+        let replace_self = || class.unwrap().as_type(self.i_s.db);
         let matcher = &mut Matcher::new_reverse_callable_matcher(
             implementation_callable,
             Some(&replace_self),
@@ -1999,7 +1999,7 @@ pub(super) fn check_override(
 
     let mut match_ = original_t.is_super_type_of(
         i_s,
-        &mut Matcher::new_self_replacer(&|_| match &original_class {
+        &mut Matcher::new_self_replacer(&|| match &original_class {
             TypeOrClass::Type(t) => t.as_ref().clone(),
             TypeOrClass::Class(c) => c.as_type(i_s.db),
         })

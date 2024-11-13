@@ -42,7 +42,7 @@ use crate::{
     utils::{join_with_commas, AlreadySeen},
 };
 
-pub type ReplaceSelfInMatcher<'x> = &'x dyn Fn(&Type) -> Type;
+pub type ReplaceSelfInMatcher<'x> = &'x dyn Fn() -> Type;
 pub type CheckedTypeRecursion<'a> = AlreadySeen<'a, (&'a Type, &'a Type)>;
 
 #[derive(Default, Clone)]
@@ -299,7 +299,7 @@ impl<'a> Matcher<'a> {
                     Match::new_false()
                 } else {
                     if let Some(replace_self) = self.replace_self {
-                        return replace_self(value_type).matches(i_s, self, value_type, variance);
+                        return replace_self().matches(i_s, self, value_type, variance);
                     }
                     if !matches!(self.func_or_callable, Some(FunctionOrCallable::Function(_))) {
                         // In case we are working within a function, Self is bound already.
