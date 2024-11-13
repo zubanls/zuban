@@ -427,9 +427,6 @@ impl Type {
                 // Union matching was already done.
                 if !self.is_union_like(i_s.db) =>
             {
-                if matcher.is_matching_reverse() {
-                    debug!("TODO matching reverse?");
-                }
                 return Match::all(u2.iter(), |t| self.matches(i_s, matcher, t, variance));
             }
             Type::Intersection(intersection2) => {
@@ -443,6 +440,10 @@ impl Type {
             }
             Type::Never(_) if variance == Variance::Covariant => return Match::new_true(), // Never is assignable to anything
             Type::Self_ if variance == Variance::Covariant => {
+                if matches!(self, Type::Self_) {
+                    // This matching did already happen.
+                    return Match::new_false()
+                }
                 if matcher.is_matching_reverse() {
                     if let Some(func_or_callable) = matcher.func_or_callable {
                         return self.matches(
@@ -691,9 +692,6 @@ impl Type {
         debug_assert_ne!(variance, Variance::Contravariant);
         match value_type {
             Type::FunctionOverload(overload) if variance == Variance::Covariant => {
-                if matcher.is_matching_reverse() {
-                    debug!("TODO is matching reverse for function overload?");
-                }
                 // Since only one of the overloads is going to match, but all of them can change
                 // the type var inference, we simply "backtrack" here.
                 let old_matcher = matcher.clone();

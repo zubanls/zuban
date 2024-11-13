@@ -277,17 +277,19 @@ impl<'a> Matcher<'a> {
         variance: Variance,
     ) -> Match {
         match value_type {
-            Type::Self_ => Match::new_true(),
-            _ => {
-                if let Some(class) = value_type.maybe_class(i_s.db) {
-                    if class.use_cached_class_infos(i_s.db).is_final {
-                        if let Some(current) = i_s.current_class() {
-                            if current.node_ref == class.node_ref {
-                                return Match::new_true();
+            Type::Self_ => {
+                if let Some(func_or_callable) = self.func_or_callable {
+                    if let Some(class) = func_or_callable.class() {
+                        if let Some(other_class) = i_s.current_class() {
+                            if class.node_ref != other_class.node_ref {
+                                return Match::new_false();
                             }
                         }
                     }
                 }
+                Match::new_true()
+            }
+            _ => {
                 if self.is_matching_reverse() {
                     Match::new_false()
                 } else {
@@ -299,6 +301,15 @@ impl<'a> Matcher<'a> {
                             Match::new_false()
                         }
                     } else {
+                        if let Some(class) = value_type.maybe_class(i_s.db) {
+                            if class.use_cached_class_infos(i_s.db).is_final {
+                                if let Some(current) = i_s.current_class() {
+                                    if current.node_ref == class.node_ref {
+                                        return Match::new_true();
+                                    }
+                                }
+                            }
+                        }
                         Match::new_false()
                     }
                 }
