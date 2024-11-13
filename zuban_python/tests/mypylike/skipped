@@ -9,10 +9,6 @@ testOverloadPossibleOverlapWithArgsAndKwargs
 flow_analysis_avoid_final_loop_issue_in_simple_case
 flow_analysis_base_class_calculation_should_not_lead_to_recursion
 
-dataclass_method_binding1
-dataclass_method_binding2
-class_lookup_of_methods_with_generics
-
 testLiteralAndGenericsRespectsUpperBound
 self_instance_variable1
 
@@ -33,6 +29,9 @@ testTypingSelfOverrideVarMulti
 # Self remapped, but it shouldn't
 testTypingSelfInternalSafe
 testTypingSelfClashInBodies
+# Self callable matching missing type var matcher for Self
+class_lookup_of_methods_with_generics
+reassigning_with_self_types
 # Any base class now matches everything for union simplification
 testUnionSimplificationSpecialCases2
 # EnumMeta does not inherit from ABCMeta anymore: https://github.com/python/typeshed/pull/10577

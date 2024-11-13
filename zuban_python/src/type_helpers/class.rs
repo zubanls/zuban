@@ -3086,6 +3086,13 @@ impl<'a> TypeOrClass<'a> {
             TypeOrClass::Type(_) => true,
         }
     }
+
+    pub fn as_type(&self, db: &Database) -> Type {
+        match self {
+            TypeOrClass::Class(c) => c.as_type(db),
+            TypeOrClass::Type(t) => t.clone().into_owned(),
+        }
+    }
 }
 
 impl<'db: 'a, 'a> Iterator for MroIterator<'db, 'a> {

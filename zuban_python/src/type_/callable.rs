@@ -16,7 +16,7 @@ use crate::{
         params_have_self_type_after_self, Param, WrappedParamType, WrappedStar, WrappedStarStar,
     },
     type_::{FormatStyle, TupleArgs, TypeVarLikeUsage},
-    type_helpers::Class,
+    type_helpers::{Class, TypeOrClass},
     utils::join_with_commas,
 };
 
@@ -899,6 +899,7 @@ pub fn merge_class_type_vars(
     callable: Rc<CallableContent>,
     class: Class,
     attribute_class: Class,
+    func_class_type: &TypeOrClass,
 ) -> Rc<CallableContent> {
     let mut attribute_class = attribute_class; // A lifetime issue
     let needs_self_type_variable = callable.has_self_type_after_first_param(db);
@@ -908,7 +909,7 @@ pub fn merge_class_type_vars(
     let needs_additional_remap = matches!(attribute_class.generics, Generics::NotDefinedYet)
         && !class.use_cached_type_vars(db).is_empty();
     if needs_self_type_variable {
-        let bound = attribute_class.as_type(db);
+        let bound = func_class_type.as_type(db);
         /*
         let bound = attribute_class.as_type_with_type_vars_for_not_yet_defined_generics(db);
         let bound = class_t.replace_type_var_likes(db, &mut |usage| {
@@ -972,7 +973,7 @@ pub fn merge_class_type_vars(
             Some(match &self_type_var_usage {
                 Some(u) => Type::TypeVar(u.clone()),
                 None => {
-                    let t = attribute_class.as_type(db);
+                    let t = func_class_type.as_type(db);
                     if !needs_additional_remap {
                         return Some(t);
                     }

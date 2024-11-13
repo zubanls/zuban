@@ -1065,3 +1065,16 @@ def check_g(g1: G[int], g2: G[list[int]], h: H[int], x: int, y: str, l: list[int
     H.foo(h, k)  # E: Argument 2 to "foo" of "G" has incompatible type "list[str]"; expected "list[int]"
     H.bar(h, l)
     H.bar(h, k)  # E: Argument 2 to "bar" of "G" has incompatible type "list[str]"; expected "list[int]"
+
+[case reassigning_with_self_types]
+from typing import Callable, Self
+
+def dec(f) -> Callable[[A, int], A]: pass
+
+class A:
+    x = int()
+    if x:
+        @dec
+        def f(self): pass
+    else:
+        def f(self, x: int) -> Self: pass

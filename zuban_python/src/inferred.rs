@@ -1356,8 +1356,13 @@ impl<'db: 'slf, 'slf> Inferred {
                         Specific::Function => {
                             let func = Function::new(node_ref, Some(attribute_class));
                             let c = func.as_callable(i_s, FirstParamProperties::None);
-                            let c =
-                                merge_class_type_vars(i_s.db, Rc::new(c), *class, attribute_class);
+                            let c = merge_class_type_vars(
+                                i_s.db,
+                                Rc::new(c),
+                                *class,
+                                attribute_class,
+                                func_class_type,
+                            );
                             return Some((
                                 Inferred::from_type(Type::Callable(c)),
                                 AttributeKind::DefMethod { is_final: false },
@@ -1392,6 +1397,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 apply_descriptor,
                                 &t,
                                 as_type_type,
+                                func_class_type,
                             ) {
                                 return r.map(|inf| (inf, attr_kind));
                             }
@@ -1411,6 +1417,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                                         c.clone(),
                                                         *class,
                                                         attribute_class,
+                                                        func_class_type,
                                                     )
                                                 })
                                                 .collect(),
@@ -1474,6 +1481,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 apply_descriptor,
                                 t,
                                 as_type_type,
+                                func_class_type,
                             ) {
                                 return r.map(|inf| (inf, attr_kind));
                             }
@@ -1488,6 +1496,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 apply_descriptor,
                                 t,
                                 as_type_type,
+                                func_class_type,
                             ) {
                                 return r.map(|inf| (inf, attr_kind));
                             }
@@ -1507,6 +1516,7 @@ impl<'db: 'slf, 'slf> Inferred {
                         apply_descriptor,
                         t,
                         as_type_type,
+                        func_class_type,
                     ) {
                         return inf.map(|inf| (inf, AttributeKind::Attribute));
                     }
@@ -1527,13 +1537,20 @@ impl<'db: 'slf, 'slf> Inferred {
         apply_descriptor: bool,
         t: &Type,
         as_type_type: Option<&dyn Fn() -> Type>,
+        func_class_type: &TypeOrClass,
     ) -> Option<Option<Self>> {
         let mut t = t;
         if let Type::Callable(c) = t {
             match c.kind {
                 FunctionKind::Function { .. } => {
                     return Some(Some(Inferred::from_type(Type::Callable(
-                        merge_class_type_vars(i_s.db, c.clone(), *class, attribute_class),
+                        merge_class_type_vars(
+                            i_s.db,
+                            c.clone(),
+                            *class,
+                            attribute_class,
+                            func_class_type,
+                        ),
                     ))))
                 }
                 FunctionKind::Property { .. } => {
