@@ -1370,19 +1370,7 @@ impl<'db> Inference<'db, '_, '_> {
         class: Option<Class>,
     ) {
         //let self_binding = OnceCell::new();
-        let replace_self = |t: &_| match t {
-            // Self should always match
-            Type::Self_ => self.i_s.db.python_state.object_type(),
-            _ => {
-                /*
-                if let Some(cls) = t.maybe_class(self.i_s.db) {
-                    cls.
-                } else {
-                */
-                class.unwrap().as_type(self.i_s.db)
-                //}
-            }
-        };
+        let replace_self = |t: &_| class.unwrap().as_type(self.i_s.db);
         let matcher = &mut Matcher::new_reverse_callable_matcher(
             implementation_callable,
             Some(&replace_self),
