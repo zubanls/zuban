@@ -889,3 +889,18 @@ x = 1
 def f(x: list[bytes] | list[str]):
     y = 1, *x
     reveal_type(y)  # N: Revealed type is "tuple[int | bytes | str, ...]"
+
+[case invalid_star_star_context]
+x: dict[int, str] = {**{}}
+y: dict[int, bytes] = {**x}  # E: Unpacked dict entry 0 has incompatible type "dict[int, str]"; expected "SupportsKeysAndGetItem[int, bytes]"
+
+e1: dict[int, str] = {**1}  # E: Unpacked dict entry 0 has incompatible type "int"; expected "SupportsKeysAndGetItem[int, str]"
+
+a: dict[str, int] = dict(**{})
+#b: dict[str, int] = dict(**x)
+#e2: dict[str, int] = dict(**1)
+
+e3 = {**1}  # E: Unpacked dict entry 0 has incompatible type "int"; expected "SupportsKeysAndGetItem[Never, Never]"
+e4 = {"": 1, **1}  # E: Unpacked dict entry 1 has incompatible type "int"; expected "SupportsKeysAndGetItem[str, int]"
+reveal_type(e3)  # N: Revealed type is "dict[Any, Any]"
+reveal_type(e4)  # N: Revealed type is "dict[str, int]"

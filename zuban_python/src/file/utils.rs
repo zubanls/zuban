@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use parsa_python_cst::{
-    Dict, DictElement, DictElementIterator, Expression, FunctionDef, Int, NodeIndex,
+    Dict, DictElement, DictElementIterator, DictStarred, Expression, FunctionDef, Int, NodeIndex,
     StarLikeExpression, StarLikeExpressionIterator, NAME_DEF_TO_NAME_DIFFERENCE,
 };
 
@@ -300,22 +300,12 @@ impl<'db> Inference<'db, '_, '_> {
                             || !value_t.is_super_type_of(i_s, matcher, &value).bool()
                         {
                             had_error = true;
-                            NodeRef::new(self.file, starred.index()).add_issue(
-                                i_s,
-                                IssueKind::UnpackedDictMemberMismatch {
-                                    item: i,
-                                    got: mapping.format_short(i_s),
-                                    expected: format!(
-                                        "SupportsKeysAndGetItem[{}, {}]",
-                                        key_t.format_short(i_s.db),
-                                        value_t.format_short(i_s.db)
-                                    )
-                                    .into(),
-                                },
-                            )
                         }
                     } else {
-                        todo!("inferred did not match")
+                        had_error = true;
+                    }
+                    if had_error {
+                        self.add_unpacked_dict_member_issue(i, starred, mapping, key_t, value_t)
                     }
                 }
             }
@@ -331,6 +321,29 @@ impl<'db> Inference<'db, '_, '_> {
                     .into_owned(),
             )
         })
+    }
+
+    fn add_unpacked_dict_member_issue(
+        &self,
+        i: usize,
+        starred: DictStarred,
+        mapping: Inferred,
+        key_t: &Type,
+        value_t: &Type,
+    ) {
+        NodeRef::new(self.file, starred.index()).add_issue(
+            self.i_s,
+            IssueKind::UnpackedDictMemberMismatch {
+                item: i,
+                got: mapping.format_short(self.i_s),
+                expected: format!(
+                    "SupportsKeysAndGetItem[{}, {}]",
+                    key_t.format_short(self.i_s.db),
+                    value_t.format_short(self.i_s.db)
+                )
+                .into(),
+            },
+        )
     }
 
     // For dict(..)
@@ -362,42 +375,49 @@ impl<'db> Inference<'db, '_, '_> {
                 Type::Never(NeverCause::Inference),
             ));
         }
-        let mut values = Inferred::new_any(AnyCause::Todo);
-        let keys = Inferred::gather_base_types(i_s, |gather_keys| {
-            values = Inferred::gather_base_types(i_s, |gather_values| {
-                for child in dict_elements {
-                    match child {
-                        DictElement::KeyValue(key_value) => {
-                            gather_keys(self.infer_expression(key_value.key()));
-                            gather_values(self.infer_expression(key_value.value()));
+        let mut key_t = Type::Never(NeverCause::Inference);
+        let mut value_t = Type::Never(NeverCause::Inference);
+        for (i, child) in dict_elements.enumerate() {
+            match child {
+                DictElement::KeyValue(key_value) => {
+                    key_t = key_t.common_base_type(
+                        i_s,
+                        &self.infer_expression(key_value.key()).as_cow_type(i_s),
+                    );
+                    value_t = value_t.common_base_type(
+                        i_s,
+                        &self.infer_expression(key_value.value()).as_cow_type(i_s),
+                    );
+                }
+                DictElement::Star(starred) => {
+                    let mapping = self.infer_expression_part(starred.expression_part());
+                    if let Some((key, value)) = unpack_star_star(i_s, &mapping.as_cow_type(i_s)) {
+                        key_t = key_t.common_base_type(i_s, &key);
+                        value_t = value_t.common_base_type(i_s, &value);
+                    } else {
+                        self.add_unpacked_dict_member_issue(i, starred, mapping, &key_t, &value_t);
+                        if key_t.is_never() {
+                            key_t = Type::Any(AnyCause::FromError)
                         }
-                        DictElement::Star(starred) => {
-                            let mapping = self.infer_expression_part(starred.expression_part());
-                            if let Some((key, value)) =
-                                unpack_star_star(i_s, &mapping.as_cow_type(i_s))
-                            {
-                                gather_keys(Inferred::from_type(key));
-                                gather_values(Inferred::from_type(value));
-                            } else {
-                                todo!("inferred did not match")
-                            }
+                        if value_t.is_never() {
+                            value_t = Type::Any(AnyCause::FromError)
                         }
                     }
                 }
-            });
-        });
-        let keys = keys.as_type(i_s).avoid_implicit_literal(self.i_s.db);
-        let values = values.as_type(i_s).avoid_implicit_literal(self.i_s.db);
+            }
+        }
+        let key_t = key_t.avoid_implicit_literal(self.i_s.db);
+        let value_t = value_t.avoid_implicit_literal(self.i_s.db);
         debug!(
             "Calculated generics for {}: dict[{}, {}]",
             dict.short_debug(),
-            keys.format_short(i_s.db),
-            values.format_short(i_s.db),
+            key_t.format_short(i_s.db),
+            value_t.format_short(i_s.db),
         );
         Inferred::from_type(new_class!(
             i_s.db.python_state.dict_node_ref().as_link(),
-            keys,
-            values,
+            key_t,
+            value_t,
         ))
     }
 
