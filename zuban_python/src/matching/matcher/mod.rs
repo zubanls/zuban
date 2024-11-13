@@ -107,9 +107,13 @@ impl<'a> Matcher<'a> {
         }
     }
 
-    pub fn new_reverse_callable_matcher(callable: &'a CallableContent) -> Self {
+    pub fn new_reverse_callable_matcher(
+        callable: &'a CallableContent,
+        replace_self: Option<ReplaceSelfInMatcher<'a>>,
+    ) -> Self {
         Self {
             match_reverse: true,
+            replace_self,
             ..Self::new_callable_matcher(callable)
         }
     }

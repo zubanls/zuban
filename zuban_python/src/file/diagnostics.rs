@@ -1367,7 +1367,14 @@ impl<'db> Inference<'db, '_, '_> {
         implementation: &OverloadImplementation,
         signature_index: usize,
     ) {
-        let matcher = &mut Matcher::new_reverse_callable_matcher(implementation_callable);
+        let replace_self = |t: &_| match t {
+            Type::Self_ => self.i_s.db.python_state.object_type(),
+            _ => t.clone(),
+        };
+        let matcher = &mut Matcher::new_reverse_callable_matcher(
+            implementation_callable,
+            Some(&replace_self),
+        );
         let implementation_result = &implementation_callable.return_type;
         let item_result = &overload_item.return_type;
         // This is bivariant matching. This is how Mypy allows subtyping.
@@ -1861,7 +1868,7 @@ fn is_overload_unmatchable(
     c1: &CallableContent,
     c2: &CallableContent,
 ) -> bool {
-    let mut matcher = Matcher::new_reverse_callable_matcher(c1).without_precise_matching();
+    let mut matcher = Matcher::new_reverse_callable_matcher(c1, None).without_precise_matching();
     let result = matches_params(i_s, &mut matcher, &c2.params, &c1.params);
     matches!(result, Match::True { with_any: false })
 }
