@@ -362,3 +362,22 @@ class Bar:
 
         Foo(bar)  # E: Argument 1 to "Foo" has incompatible type "Bar"; expected "Self"
         foo.foo(bar)  # E: Argument 1 to "foo" of "Foo" has incompatible type "Bar"; expected "Self"
+
+[case class_initiation_self_matching_generic]
+from typing import Self, Generic, TypeVar
+T = TypeVar("T")
+
+class Foo(Generic[T]):
+    def __init__(self, other: Self): ...
+    def foo(self, other: Self) -> None: ...
+
+class Bar:
+    def f(self, foo_int: Foo[int], foo_str: Foo[str]) -> None:
+        foo_int.foo(self)  # E: Argument 1 to "foo" of "Foo" has incompatible type "Self"; expected "Self"
+        foo_str.foo(self)  # E: Argument 1 to "foo" of "Foo" has incompatible type "Self"; expected "Self"
+
+        Foo[int](foo_int)
+        Foo[str](foo_int)  # E: Argument 1 to "Foo" has incompatible type "Foo[int]"; expected "Self"
+
+        foo_int.foo(foo_int)
+        foo_int.foo(foo_str)  # E: Argument 1 to "foo" of "Foo" has incompatible type "Foo[str]"; expected "Self"
