@@ -983,6 +983,7 @@ impl<'db> Inference<'db, '_, '_> {
                         &c_impl,
                         implementation,
                         i + 1,
+                        function.class,
                     )
                 }
                 for (k, c2) in o.iter_functions().skip(i + 1).enumerate() {
@@ -1366,10 +1367,21 @@ impl<'db> Inference<'db, '_, '_> {
         implementation_callable: &CallableContent,
         implementation: &OverloadImplementation,
         signature_index: usize,
+        class: Option<Class>,
     ) {
+        //let self_binding = OnceCell::new();
         let replace_self = |t: &_| match t {
+            // Self should always match
             Type::Self_ => self.i_s.db.python_state.object_type(),
-            _ => t.clone(),
+            _ => {
+                /*
+                if let Some(cls) = t.maybe_class(self.i_s.db) {
+                    cls.
+                } else {
+                */
+                class.unwrap().as_type(self.i_s.db)
+                //}
+            }
         };
         let matcher = &mut Matcher::new_reverse_callable_matcher(
             implementation_callable,

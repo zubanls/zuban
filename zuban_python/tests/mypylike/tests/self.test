@@ -381,3 +381,27 @@ class Bar:
 
         foo_int.foo(foo_int)
         foo_int.foo(foo_str)  # E: Argument 1 to "foo" of "Foo" has incompatible type "Foo[str]"; expected "Self"
+
+[case overload_self_type_matching]
+from typing import Any, overload, Self
+class A: ...
+class B(A):
+    @overload
+    def foo(self, other: Self) -> Self: ...
+    @overload
+    def foo(self, other: int) -> None: ...
+    def foo(self, other: Self) -> Self | None: ...  # E: Overloaded function implementation does not accept all possible arguments of signature 2
+
+    @overload
+    def bar(self, other: Self) -> Self: ...
+    @overload
+    def bar(self, other: None) -> int: ...
+    def bar(self, other: Self) -> Self | int: ...  # E: Overloaded function implementation does not accept all possible arguments of signature 2
+
+    @overload
+    def baz(self, other: C) -> int: ...
+    @overload
+    def baz(self, other: A) -> int: ...
+    def baz(self, other: Self) -> int: ...  # E: Overloaded function implementation does not accept all possible arguments of signature 2
+
+class C(B): ...

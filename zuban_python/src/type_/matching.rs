@@ -446,12 +446,14 @@ impl Type {
                 }
                 if matcher.is_matching_reverse() {
                     if let Some(func_or_callable) = matcher.func_or_callable {
-                        return self.matches(
-                            i_s,
-                            matcher,
-                            &func_or_callable.class().unwrap().as_type(i_s.db),
-                            variance,
-                        );
+                        if let Some(func_class) = func_or_callable.class() {
+                            return self.matches(
+                                i_s,
+                                matcher,
+                                &func_class.as_type(i_s.db),
+                                variance,
+                            );
+                        }
                     }
                 } else if let Some(cls) = i_s.current_class() {
                     return self.matches(i_s, matcher, &cls.as_type(i_s.db), variance);
