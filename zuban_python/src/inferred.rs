@@ -913,7 +913,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 })
                             }
                             return if let Some(first_type) = func.first_param_annotation_type(i_s) {
-                                let as_instance = || instance.clone();
+                                let as_instance = |_: &_| instance.clone();
                                 let mut matcher = Matcher::new_function_matcher(
                                     func,
                                     func.type_vars(i_s.db),

@@ -112,7 +112,7 @@ fn calculate_dunder_init_type_vars_and_return<'db: 'a, 'a>(
         match_in_definition = class.node_ref.as_link();
         tv_matchers.push(TypeVarMatcher::new(match_in_definition, type_vars.clone()));
     }
-    let as_self_type = || class.as_type(i_s.db);
+    let as_self_type = |_: &_| class.as_type(i_s.db);
     let matcher = Matcher::new(
         Some(class),
         func_or_callable,

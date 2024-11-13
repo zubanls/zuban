@@ -1649,7 +1649,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             self.apply_type_args_in_return_annotation_and_maybe_mark_unreachable(
                 i_s,
                 calculated_type_vars,
-                &|| Some(replace_self_type?()),
+                &|| Some(replace_self_type?(&Type::Never(NeverCause::Other))),
                 return_annotation,
                 args,
                 result_context,
@@ -1786,7 +1786,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 args,
                 false,
                 on_type_error,
-                Some(&|| class.as_type(i_s.db)),
+                Some(&|_| class.as_type(i_s.db)),
                 result_context,
             )
         } else {

@@ -1992,7 +1992,7 @@ pub(super) fn check_override(
 
     let mut match_ = original_t.is_super_type_of(
         i_s,
-        &mut Matcher::new_self_replacer(&|| match &original_class {
+        &mut Matcher::new_self_replacer(&|_| match &original_class {
             TypeOrClass::Type(t) => t.as_ref().clone(),
             TypeOrClass::Class(c) => c.as_type(i_s.db),
         })
