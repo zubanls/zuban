@@ -293,14 +293,13 @@ impl<'a> Matcher<'a> {
                 if self.is_matching_reverse() {
                     Match::new_false()
                 } else {
-                    if matches!(self.func_or_callable, Some(FunctionOrCallable::Function(_))) {
-                        // In case we are working within a function, Self is bound already.
-                        if let Some(replaced) = self.replace_self.unwrap()() {
-                            replaced.matches(i_s, self, value_type, variance)
-                        } else {
-                            Match::new_false()
+                    if let Some(replace_self) = self.replace_self {
+                        if let Some(replaced) = replace_self() {
+                            return replaced.matches(i_s, self, value_type, variance);
                         }
-                    } else {
+                    }
+                    if !matches!(self.func_or_callable, Some(FunctionOrCallable::Function(_))) {
+                        // In case we are working within a function, Self is bound already.
                         if let Some(class) = value_type.maybe_class(i_s.db) {
                             if class.use_cached_class_infos(i_s.db).is_final {
                                 if let Some(current) = i_s.current_class() {
@@ -310,8 +309,8 @@ impl<'a> Matcher<'a> {
                                 }
                             }
                         }
-                        Match::new_false()
                     }
+                    Match::new_false()
                 }
             }
         }
