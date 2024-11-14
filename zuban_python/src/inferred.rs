@@ -216,41 +216,8 @@ impl<'db: 'slf, 'slf> Inferred {
         instance: &'slf Type,
         mro_index: MroIndex,
     ) -> Class<'slf> {
-        let instance_class = match instance {
-            Type::Class(c) => c.class(i_s.db),
-            Type::Type(t) => match t.as_ref() {
-                Type::Class(c) => c
-                    .class(i_s.db)
-                    .use_cached_class_infos(i_s.db)
-                    .metaclass(i_s.db),
-                Type::TypeVar(tv) => match &tv.type_var.kind {
-                    TypeVarKind::Bound(bound) => {
-                        // TODO should this case be handled?
-                        bound
-                            .maybe_class(i_s.db)
-                            .unwrap()
-                            .use_cached_class_infos(i_s.db)
-                            .metaclass(i_s.db)
-                    }
-                    _ => unreachable!(),
-                },
-                Type::Self_ => i_s
-                    .current_class()
-                    .unwrap()
-                    .use_cached_class_infos(i_s.db)
-                    .metaclass(i_s.db),
-                _ => unreachable!(),
-            },
-            Type::Self_ => i_s.current_class().unwrap(),
-            Type::TypedDict(_) => i_s.db.python_state.typed_dict_class(),
-            Type::Enum(enum_) => enum_.class(i_s.db),
-            Type::TypeVar(tv) => match &tv.type_var.kind {
-                TypeVarKind::Bound(t) => Self::load_bound_method_class(i_s, t, mro_index),
-                _ => unreachable!(),
-            },
-            Type::Dataclass(d) => d.class(i_s.db),
-            Type::NewType(n) => n.type_(i_s).maybe_class(i_s.db).unwrap(),
-            _ => unreachable!(),
+        let Some(instance_class) = instance.inner_generic_class(i_s) else {
+            unreachable!()
         };
         let class_t = instance_class
             .mro(i_s.db)

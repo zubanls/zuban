@@ -665,7 +665,7 @@ impl Type {
 
     pub fn inner_generic_class<'db: 'x, 'x>(
         &'x self,
-        i_s: &InferenceState<'db, '_>,
+        i_s: &InferenceState<'db, 'x>,
     ) -> Option<Class<'x>> {
         Some(match self {
             Type::Class(c) => c.class(i_s.db),
@@ -673,15 +673,43 @@ impl Type {
             Type::Enum(enum_) => enum_.class(i_s.db),
             Type::EnumMember(member) => member.enum_.class(i_s.db),
             Type::Type(t) => {
-                if let Some(link) = t
-                    .maybe_class(i_s.db)
-                    .and_then(|c| c.maybe_metaclass(i_s.db))
-                {
-                    Class::from_non_generic_link(i_s.db, link)
-                } else {
-                    return None;
+                pub fn inner_generic_class_of_type<'db: 'x, 'x>(
+                    t: &'x Type,
+                    i_s: &InferenceState<'db, 'x>,
+                ) -> Option<Class<'x>> {
+                    Some(match t {
+                        Type::Class(c) => c
+                            .class(i_s.db)
+                            .use_cached_class_infos(i_s.db)
+                            .metaclass(i_s.db),
+                        Type::TypeVar(tv) => match &tv.type_var.kind {
+                            TypeVarKind::Bound(bound) => {
+                                // TODO should this case be handled?
+                                bound
+                                    .maybe_class(i_s.db)
+                                    .unwrap()
+                                    .use_cached_class_infos(i_s.db)
+                                    .metaclass(i_s.db)
+                            }
+                            _ => unreachable!(),
+                        },
+                        Type::Self_ => i_s
+                            .current_class()
+                            .unwrap()
+                            .use_cached_class_infos(i_s.db)
+                            .metaclass(i_s.db),
+                        _ => return None,
+                    })
                 }
+                return inner_generic_class_of_type(&t, i_s);
             }
+            Type::TypeVar(tv) => match &tv.type_var.kind {
+                TypeVarKind::Bound(t) => return t.inner_generic_class(i_s),
+                _ => return None,
+            },
+            Type::Self_ => i_s.current_class().unwrap(),
+            Type::TypedDict(_) => i_s.db.python_state.typed_dict_class(),
+            Type::NewType(n) => return n.type_(i_s).inner_generic_class(i_s),
             _ => return None,
         })
     }
