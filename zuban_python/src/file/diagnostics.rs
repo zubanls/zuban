@@ -1567,7 +1567,9 @@ impl<'db> Inference<'db, '_, '_> {
             match content {
                 FStringContent::FStringExpr(e) => {
                     let (expressions, spec) = e.unpack();
-                    self.infer_star_expressions(expressions, &mut ResultContext::Unknown);
+                    for expr in expressions.iter() {
+                        self.infer_expression(expr);
+                    }
                     if let Some(spec) = spec {
                         self.calc_fstring_content_diagnostics(spec.iter_content());
                     }

@@ -904,3 +904,6 @@ e3 = {**1}  # E: Unpacked dict entry 0 has incompatible type "int"; expected "Su
 e4 = {"": 1, **1}  # E: Unpacked dict entry 1 has incompatible type "int"; expected "SupportsKeysAndGetItem[str, int]"
 reveal_type(e3)  # N: Revealed type is "dict[Any, Any]"
 reveal_type(e4)  # N: Revealed type is "dict[str, int]"
+
+[case fstring_tuple]
+f"{1,2}"

@@ -318,6 +318,7 @@ create_nonterminal_structs!(
     RaiseStmt: raise_stmt
     NonlocalStmt: nonlocal_stmt
 
+    Expressions: expressions
     StarExpressions: star_expressions
     StarExpressionsTuple: star_expressions
     StarExpression: star_expression
@@ -3958,12 +3959,10 @@ pub enum FStringContent<'db> {
 }
 
 impl<'db> FStringExpr<'db> {
-    pub fn unpack(&self) -> (StarExpressions<'db>, Option<FStringFormatSpec<'db>>) {
+    pub fn unpack(&self) -> (Expressions<'db>, Option<FStringFormatSpec<'db>>) {
         let mut iterator = self.node.iter_children().skip(1);
         // This is actually an `expressions` node, but `star_expressions` is a super set.
-        let exprs = StarExpressions {
-            node: iterator.next().unwrap(),
-        };
+        let exprs = Expressions::new(iterator.next().unwrap());
         let format_spec = iterator
             .find(|n| n.is_type(Nonterminal(fstring_format_spec)))
             .map(FStringFormatSpec::new);
@@ -3974,6 +3973,15 @@ impl<'db> FStringExpr<'db> {
 impl<'db> FStringFormatSpec<'db> {
     pub fn iter_content(&self) -> impl Iterator<Item = FStringContent<'db>> {
         FStringContentIterator(self.node.iter_children().skip(1))
+    }
+}
+
+impl<'db> Expressions<'db> {
+    pub fn iter(&self) -> impl Iterator<Item = Expression<'db>> {
+        self.node
+            .iter_children()
+            .step_by(2)
+            .map(|e| Expression::new(e))
     }
 }
 
