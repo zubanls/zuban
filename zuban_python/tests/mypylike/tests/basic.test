@@ -897,9 +897,8 @@ y: dict[int, bytes] = {**x}  # E: Unpacked dict entry 0 has incompatible type "d
 e1: dict[int, str] = {**1}  # E: Unpacked dict entry 0 has incompatible type "int"; expected "SupportsKeysAndGetItem[int, str]"
 
 a: dict[str, int] = dict(**{})
-# TODO why are the errors here duplicated?
-b: dict[str, int] = dict(**x)  # E: Keywords must be strings  # E: Keywords must be strings
-e2: dict[str, int] = dict(**1)  # E: Argument after ** must be a mapping, not "int" # E: Argument after ** must be a mapping, not "int"
+b: dict[str, int] = dict(**x)  # E: Keywords must be strings
+e2: dict[str, int] = dict(**1)  # E: Argument after ** must be a mapping, not "int"
 
 e3 = {**1}  # E: Unpacked dict entry 0 has incompatible type "int"; expected "SupportsKeysAndGetItem[Never, Never]"
 e4 = {"": 1, **1}  # E: Unpacked dict entry 1 has incompatible type "int"; expected "SupportsKeysAndGetItem[str, int]"

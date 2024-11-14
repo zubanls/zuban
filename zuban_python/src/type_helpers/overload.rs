@@ -245,7 +245,6 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             // In case of similar params, we simply use the first similar overload and calculate
             // its diagnostics and return its types.
             // This is also how mypy does it. See `check_overload_call` (9943444c7)
-            let calculated_type_args = match_signature(i_s, result_context, callable);
             debug!(
                 "Decided overload as first similar: {} (called on #{}): {:?}",
                 self.name(i_s.db),
