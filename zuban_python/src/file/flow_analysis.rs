@@ -858,22 +858,8 @@ fn has_explicit_literal(db: &Database, t: &Type) -> bool {
 
 pub fn has_custom_special_method(i_s: &InferenceState, t: &Type, method: &str) -> bool {
     t.iter_with_unpacked_unions(i_s.db).any(|t| {
-        let cls = match t {
-            Type::Class(c) => c.class(i_s.db),
-            Type::Dataclass(dc) => dc.class(i_s.db),
-            Type::Enum(enum_) => enum_.class(i_s.db),
-            Type::EnumMember(member) => member.enum_.class(i_s.db),
-            Type::Type(t) => {
-                if let Some(link) = t
-                    .maybe_class(i_s.db)
-                    .and_then(|c| c.maybe_metaclass(i_s.db))
-                {
-                    Class::from_non_generic_link(i_s.db, link)
-                } else {
-                    return false;
-                }
-            }
-            _ => return false,
+        let Some(cls) = t.inner_generic_class(i_s) else {
+            return false;
         };
         let details = cls.lookup(i_s, method, ClassLookupOptions::new(&|_| ()));
         details.lookup.is_some() && !details.class.originates_in_builtins_or_typing(i_s.db)

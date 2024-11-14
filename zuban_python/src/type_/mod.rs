@@ -663,6 +663,29 @@ impl Type {
         }
     }
 
+    pub fn inner_generic_class<'db: 'x, 'x>(
+        &'x self,
+        i_s: &InferenceState<'db, '_>,
+    ) -> Option<Class<'x>> {
+        Some(match self {
+            Type::Class(c) => c.class(i_s.db),
+            Type::Dataclass(dc) => dc.class(i_s.db),
+            Type::Enum(enum_) => enum_.class(i_s.db),
+            Type::EnumMember(member) => member.enum_.class(i_s.db),
+            Type::Type(t) => {
+                if let Some(link) = t
+                    .maybe_class(i_s.db)
+                    .and_then(|c| c.maybe_metaclass(i_s.db))
+                {
+                    Class::from_non_generic_link(i_s.db, link)
+                } else {
+                    return None;
+                }
+            }
+            _ => return None,
+        })
+    }
+
     #[inline]
     pub fn maybe_type_of_class<'a>(&'a self, db: &'a Database) -> Option<Class<'a>> {
         if let Type::Type(t) = self {
