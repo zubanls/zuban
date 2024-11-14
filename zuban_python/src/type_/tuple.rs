@@ -557,8 +557,6 @@ impl TupleArgs {
             (ArbitraryLen(t1), ArbitraryLen(t2)) => {
                 Self::ArbitraryLen(Box::new(t1.merge_matching_parts(db, t2)))
             }
-            (WithUnpack(_), _) => todo!(),
-            (_, WithUnpack(_)) => todo!(),
             _ => Tuple::new_arbitrary_length_with_any().args.clone(),
         }
     }
@@ -808,14 +806,18 @@ fn tuple_mul_internal<'db>(
         TupleArgs::FixedLen(ts) => first.run_on_int_literals(i_s, |int| {
             let int = int.max(0) as usize;
             if int > 10 {
-                todo!("Do we really want extremely large tuples?")
+                debug!("TODO Do we really want extremely large tuples?");
+                return None;
             }
             Some(Inferred::from_type(Type::Tuple(Tuple::new_fixed_length(
                 ts.iter().cycle().take(int * ts.len()).cloned().collect(),
             ))))
         }),
         TupleArgs::ArbitraryLen(_) => Some(Inferred::from_type(Type::Tuple(tuple))),
-        TupleArgs::WithUnpack(_) => todo!(),
+        TupleArgs::WithUnpack(_) => {
+            debug!("TODO How do we multiply with unpack tuples?");
+            return None;
+        }
     }
 }
 
