@@ -424,3 +424,13 @@ class B(A):
                                                      # E: Overloaded function implementation cannot produce return type of signature 4
 
 class C(B): ...
+
+[case self_binding_for__call__]
+from typing import Callable, TypeVar, Self
+
+T = TypeVar("T")
+class Partial:
+    def __call__(self: Callable[[Self], T], x: T) -> Self: ...
+    def foo(self) -> Self:
+        reveal_type(self.__call__(1))  # N: Revealed type is "Self"
+        return self

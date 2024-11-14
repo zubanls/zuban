@@ -865,7 +865,7 @@ impl<'a> Matcher<'a> {
                         None
                     }
                 }),
-                &|| unreachable!("Self should have been remapped already"),
+                &|| None,
             );
             let mut old_type_vars = std::mem::replace(
                 &mut callable.type_vars,
