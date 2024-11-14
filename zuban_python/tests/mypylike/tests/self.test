@@ -429,8 +429,21 @@ class C(B): ...
 from typing import Callable, TypeVar, Self
 
 T = TypeVar("T")
-class Partial:
+class C:
+    # This is not a practical use case, but it crashed.
     def __call__(self: Callable[[Self], T], x: T) -> Self: ...
     def foo(self) -> Self:
         reveal_type(self.__call__(1))  # N: Revealed type is "Self"
         return self
+
+[case self_binding_for_inheritance]
+from typing import Self
+class A:
+    def with_stack(self: Self) -> Self: ...
+
+class B(A):
+    def f(self) -> None:
+        self.with_stack()
+
+    def g(self) -> None:
+        self.with_stack()
