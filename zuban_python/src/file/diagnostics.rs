@@ -1762,7 +1762,7 @@ fn valid_raise_type(i_s: &InferenceState, from: NodeRef, t: &Type, allow_none: b
     let db = i_s.db;
     let check = |cls: Class| {
         cls.incomplete_mro(db)
-            || cls.class_link_in_mro(db, db.python_state.base_exception_node_ref().as_link())
+            || cls.class_link_in_mro(i_s, db.python_state.base_exception_node_ref().as_link())
     };
     match t {
         Type::Class(c) => check(c.class(db)),

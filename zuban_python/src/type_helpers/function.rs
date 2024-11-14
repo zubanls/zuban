@@ -2033,8 +2033,7 @@ fn infer_decorator_details(
             class.node_ref.ensure_cached_class_infos(i_s);
             let is_abstract_property = saved_link == i_s.db.python_state.abstractproperty_link();
             if is_abstract_property
-                || class
-                    .class_link_in_mro(i_s.db, i_s.db.python_state.property_node_ref().as_link())
+                || class.class_link_in_mro(i_s, i_s.db.python_state.property_node_ref().as_link())
             {
                 return InferredDecorator::FunctionKind {
                     kind: FunctionKind::Property {
@@ -2044,7 +2043,7 @@ fn infer_decorator_details(
                     is_abstract: is_abstract_property,
                 };
             }
-            if class.class_link_in_mro(i_s.db, i_s.db.python_state.cached_property_link()) {
+            if class.class_link_in_mro(i_s, i_s.db.python_state.cached_property_link()) {
                 return InferredDecorator::FunctionKind {
                     kind: FunctionKind::Property {
                         had_first_self_or_class_annotation: had_first_annotation,

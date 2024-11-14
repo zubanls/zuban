@@ -447,3 +447,17 @@ class B(A):
 
     def g(self) -> None:
         self.with_stack()
+
+[case self_binding_for_inheritance_with_dataclass]
+from dataclasses import dataclass
+from typing import Self
+@dataclass
+class A:
+    def with_stack(self: Self) -> Self: ...
+
+class B(A):
+    def f(self) -> None:
+        self.with_stack()
+
+    def g(self) -> None:
+        self.with_stack()

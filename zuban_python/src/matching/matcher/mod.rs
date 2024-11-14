@@ -286,7 +286,7 @@ impl<'a> Matcher<'a> {
                 if let Some(func_or_callable) = self.func_or_callable {
                     if let Some(class) = func_or_callable.class() {
                         if let Some(other_class) = i_s.current_class() {
-                            if !other_class.class_link_in_mro(i_s.db, class.node_ref.as_link()) {
+                            if !other_class.class_link_in_mro(i_s, class.node_ref.as_link()) {
                                 return Match::new_false();
                             }
                         }

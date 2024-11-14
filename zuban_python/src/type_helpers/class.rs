@@ -815,7 +815,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                 let c = Class::from_non_generic_link(db, link);
                                 if c.incomplete_mro(db)
                                     || c.class_link_in_mro(
-                                        db,
+                                        i_s,
                                         db.python_state.bare_type_node_ref().as_link(),
                                     )
                                 {
@@ -1215,7 +1215,7 @@ impl<'db: 'a, 'a> Class<'a> {
         {
             let has_abc_meta_metaclass = || match metaclass {
                 MetaclassState::Some(link) => Class::from_non_generic_link(i_s.db, *link)
-                    .class_link_in_mro(i_s.db, i_s.db.python_state.abc_meta_link()),
+                    .class_link_in_mro(i_s, i_s.db.python_state.abc_meta_link()),
                 _ => false,
             };
             if !has_abc_meta_metaclass() {
@@ -1300,18 +1300,19 @@ impl<'db: 'a, 'a> Class<'a> {
         }
     }
 
-    pub fn is_base_exception_group(&self, db: &Database) -> bool {
-        db.python_state
+    pub fn is_base_exception_group(&self, i_s: &InferenceState) -> bool {
+        i_s.db
+            .python_state
             .base_exception_group_node_ref()
-            .is_some_and(|g| self.class_link_in_mro(db, g.as_link()))
+            .is_some_and(|g| self.class_link_in_mro(i_s, g.as_link()))
     }
 
-    pub fn is_base_exception(&self, db: &Database) -> bool {
-        self.class_link_in_mro(db, db.python_state.base_exception_node_ref().as_link())
+    pub fn is_base_exception(&self, i_s: &InferenceState) -> bool {
+        self.class_link_in_mro(i_s, i_s.db.python_state.base_exception_node_ref().as_link())
     }
 
-    pub fn is_exception(&self, db: &Database) -> bool {
-        self.class_link_in_mro(db, db.python_state.exception_node_ref().as_link())
+    pub fn is_exception(&self, i_s: &InferenceState) -> bool {
+        self.class_link_in_mro(i_s, i_s.db.python_state.exception_node_ref().as_link())
     }
 
     pub fn is_protocol(&self, db: &Database) -> bool {
@@ -1984,15 +1985,17 @@ impl<'db: 'a, 'a> Class<'a> {
         self.mro_maybe_without_object(db, self.node_ref == db.python_state.object_node_ref())
     }
 
-    pub fn class_link_in_mro(&self, db: &'db Database, link: PointLink) -> bool {
+    pub fn class_link_in_mro(&self, i_s: &InferenceState, link: PointLink) -> bool {
         if self.node_ref.as_link() == link {
             return true;
         }
-        let class_infos = self.use_cached_class_infos(db);
-        class_infos
-            .mro
-            .iter()
-            .any(|b| matches!(&b.type_, Type::Class(c) if link == c.link))
+        let class_infos = self.use_cached_class_infos(i_s.db);
+        class_infos.mro.iter().any(|b| match &b.type_ {
+            Type::Class(c) => link == c.link,
+            t => t
+                .inner_generic_class(i_s)
+                .is_some_and(|c| c.node_ref.as_link() == link),
+        })
     }
 
     pub fn class_in_mro(&self, db: &'db Database, node_ref: NodeRef) -> Option<Class> {
