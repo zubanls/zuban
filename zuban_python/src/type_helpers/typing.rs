@@ -27,7 +27,7 @@ pub(crate) fn execute_cast<'db>(
     let mut actual = None;
     let mut count = 0;
     let mut had_non_positional = false;
-    for arg in args.iter() {
+    for arg in args.iter(i_s.mode) {
         // TODO something like *Iterable[str] looped forever and then we put in this hack
         if arg.in_args_or_kwargs_and_arbitrary_len() {
             count = 2;
@@ -95,7 +95,7 @@ pub(crate) fn execute_reveal_type<'db>(
     result_context: &mut ResultContext,
     on_type_error: OnTypeError,
 ) -> Inferred {
-    let mut iterator = args.iter();
+    let mut iterator = args.iter(i_s.mode);
     let arg = iterator.next().unwrap_or_else(|| todo!());
     if !matches!(
         &arg.kind,
@@ -183,7 +183,7 @@ pub(crate) fn execute_assert_type<'db>(
     result_context: &mut ResultContext,
     on_type_error: OnTypeError,
 ) -> Inferred {
-    if args.iter().count() != 2 {
+    if args.iter(i_s.mode).count() != 2 {
         args.add_issue(
             i_s,
             IssueKind::ArgumentIssue(Box::from("\"assert_type\" expects 2 arguments")),
@@ -191,7 +191,7 @@ pub(crate) fn execute_assert_type<'db>(
         return Inferred::new_any_from_error();
     };
 
-    let mut iterator = args.iter();
+    let mut iterator = args.iter(i_s.mode);
     let first = iterator.next().unwrap();
     let second = iterator.next().unwrap();
 
@@ -263,7 +263,7 @@ fn maybe_type_var(
         args.add_issue(i_s, IssueKind::UnexpectedTypeForTypeVar);
         return None;
     }
-    let mut iterator = args.iter();
+    let mut iterator = args.iter(i_s.mode);
     if let Some(first_arg) = iterator.next() {
         let result = if let ArgKind::Positional(pos) = &first_arg.kind {
             pos.node_ref
@@ -491,7 +491,7 @@ fn maybe_type_var_tuple(
         args.add_issue(i_s, IssueKind::UnexpectedTypeForTypeVar);
         return None;
     }
-    let mut iterator = args.iter();
+    let mut iterator = args.iter(i_s.mode);
     if let Some(first_arg) = iterator.next() {
         let result = if let ArgKind::Positional(pos) = &first_arg.kind {
             pos.node_ref
@@ -619,7 +619,7 @@ fn maybe_param_spec(
         args.add_issue(i_s, IssueKind::UnexpectedTypeForTypeVar);
         return None;
     }
-    let mut iterator = args.iter();
+    let mut iterator = args.iter(i_s.mode);
     if let Some(first_arg) = iterator.next() {
         let result = if let ArgKind::Positional(pos) = &first_arg.kind {
             pos.node_ref
@@ -729,7 +729,7 @@ pub(crate) fn execute_new_type<'db>(
 }
 
 fn maybe_new_type<'db>(i_s: &InferenceState<'db, '_>, args: &dyn Args<'db>) -> Option<NewType> {
-    let Some((first, second)) = args.maybe_two_positional_args(i_s.db) else {
+    let Some((first, second)) = args.maybe_two_positional_args(i_s) else {
         args.add_issue(
             i_s,
             IssueKind::ArgumentIssue(Box::from(

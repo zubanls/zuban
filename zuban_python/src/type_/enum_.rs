@@ -360,7 +360,7 @@ pub(crate) fn execute_functional_enum<'db>(
 ) -> Option<Inferred> {
     let mut name_infos = None;
     let mut fields_infos = None;
-    for arg in args.iter() {
+    for arg in args.iter(i_s.mode) {
         match arg.kind {
             ArgKind::Positional(positional) => {
                 let expr = positional.node_ref.as_named_expression().expression();

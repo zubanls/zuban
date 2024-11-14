@@ -1960,7 +1960,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             }
                             Specific::TypingAny => {
                                 args.add_issue(i_s, IssueKind::AnyNotCallable);
-                                args.iter().calculate_diagnostics(i_s);
+                                args.iter(i_s.mode).calculate_diagnostics(i_s);
                                 return Inferred::new_any_from_error();
                             }
                             Specific::MypyExtensionsArg
@@ -2061,7 +2061,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 return Inferred::new_any_from_error();
                             }
                             ComplexPoint::NewTypeDefinition(new_type) => {
-                                let mut iterator = args.iter();
+                                let mut iterator = args.iter(i_s.mode);
                                 if let Some(first_arg) = iterator.next() {
                                     let t = new_type.type_(i_s);
                                     let InferredArg::Inferred(inf) =

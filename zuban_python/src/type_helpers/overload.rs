@@ -66,7 +66,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     i_s,
                     class.unwrap(),
                     callable,
-                    args.iter(),
+                    args.iter(i_s.mode),
                     |issue| args.add_issue(i_s, issue),
                     true,
                     result_context,
@@ -76,7 +76,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                 calculate_callable_type_vars_and_return(
                     i_s,
                     callable,
-                    args.iter(),
+                    args.iter(i_s.mode),
                     |issue| args.add_issue(i_s, issue),
                     skip_first_argument,
                     result_context,
@@ -195,7 +195,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             match self.check_union_math(
                 i_s,
                 result_context,
-                args.iter(),
+                args.iter(i_s.mode),
                 skip_first_argument,
                 &mut non_union_args,
                 &|issue| args.add_issue(i_s, issue),
@@ -265,7 +265,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                 name: (on_type_error.generate_diagnostic_string)(&f_or_c, i_s.db)
                     .unwrap_or_else(|| todo!())
                     .into(),
-                args: args.iter().into_argument_types(i_s),
+                args: args.iter(i_s.mode).into_argument_types(i_s),
                 variants: self.variants(i_s, class.filter(|_| search_init)),
             };
             args.add_issue(i_s, t);

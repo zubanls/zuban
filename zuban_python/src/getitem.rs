@@ -9,7 +9,7 @@ use crate::{
     debug,
     diagnostics::IssueKind,
     file::{infer_index, PythonFile},
-    inference_state::InferenceState,
+    inference_state::{InferenceState, Mode},
     inferred::Inferred,
     matching::ResultContext,
     node_ref::NodeRef,
@@ -325,8 +325,8 @@ pub struct SliceArguments<'db, 'a> {
 }
 
 impl<'db> Args<'db> for SliceArguments<'db, '_> {
-    fn iter(&self) -> ArgIterator<'db, '_> {
-        ArgIterator::new_slice(*self.slice_type, self.i_s)
+    fn iter<'x>(&'x self, mode: Mode<'x>) -> ArgIterator<'db, 'x> {
+        ArgIterator::new_slice(*self.slice_type, self.i_s.with_mode(mode))
     }
 
     fn as_node_ref_internal(&self) -> Option<NodeRef> {

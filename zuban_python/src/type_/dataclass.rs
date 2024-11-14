@@ -506,7 +506,7 @@ fn field_options_from_args<'db>(
         kw_only: None,
         init: true,
     };
-    for arg in args.iter() {
+    for arg in args.iter(i_s.mode) {
         if matches!(arg.kind, ArgKind::Inferred { .. }) {
             arg.add_issue(i_s, IssueKind::DataclassUnpackingKwargsInField);
             continue;
@@ -548,7 +548,7 @@ pub fn check_dataclass_options<'db>(
             todo!()
         }
     };
-    for arg in args.iter() {
+    for arg in args.iter(i_s.mode) {
         if let Some(key) = arg.keyword_name(i_s.db) {
             match key {
                 "kw_only" => assign_option(&mut options.kw_only, arg),
@@ -580,7 +580,7 @@ pub(crate) fn dataclasses_replace<'db>(
 ) -> Inferred {
     debug_assert!(bound.is_none());
 
-    let mut arg_iterator = args.iter();
+    let mut arg_iterator = args.iter(i_s.mode);
     if let Some(first) = arg_iterator.next() {
         if let ArgKind::Positional(positional) = &first.kind {
             let inferred = positional.infer(i_s, &mut ResultContext::Unknown);
@@ -736,7 +736,7 @@ pub(crate) fn dataclass_initialize<'db>(
             calculate_callable_type_vars_and_return(
                 i_s,
                 Callable::new(__init__, Some(class)),
-                args.iter(),
+                args.iter(i_s.mode),
                 |issue| args.add_issue(i_s, issue),
                 false,
                 result_context,

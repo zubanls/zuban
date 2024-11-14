@@ -366,7 +366,7 @@ pub(crate) fn execute_collections_named_tuple<'db>(
 }
 
 fn check_named_tuple_name<'x, 'y>(
-    i_s: &InferenceState,
+    i_s: &InferenceState<'_, 'y>,
     executable_name: &'static str,
     args: &'y dyn Args<'x>,
 ) -> Option<(
@@ -375,7 +375,7 @@ fn check_named_tuple_name<'x, 'y>(
     AtomContent<'y>,
     ArgIterator<'x, 'y>,
 )> {
-    let mut iterator = args.iter();
+    let mut iterator = args.iter(i_s.mode);
     let Some(first_arg) = iterator.next() else {
         todo!()
     };
@@ -500,7 +500,7 @@ pub(crate) fn new_collections_named_tuple<'db>(
     i_s: &InferenceState<'db, '_>,
     args: &dyn Args<'db>,
 ) -> Option<Rc<NamedTuple>> {
-    let rename = args.iter().any(|arg| {
+    let rename = args.iter(i_s.mode).any(|arg| {
         matches!(arg.keyword_name(i_s.db), Some("rename"))
             && arg
                 .infer(i_s, &mut ResultContext::Unknown)
@@ -567,7 +567,7 @@ pub(crate) fn new_collections_named_tuple<'db>(
     };
     check_named_tuple_has_no_fields_with_underscore(i_s, "namedtuple", args, &params);
 
-    for arg in args.iter() {
+    for arg in args.iter(i_s.mode) {
         if let ArgKind::Keyword(KeywordArg {
             key: "defaults",
             expression,

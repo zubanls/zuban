@@ -33,7 +33,7 @@ impl<'a> Context<'a> {
 }
 
 #[derive(Clone, Copy, Debug)]
-enum Mode<'a> {
+pub enum Mode<'a> {
     Normal,
     EnumMemberCalculation,
     AvoidErrors { had_error: &'a Cell<bool> },
@@ -43,7 +43,7 @@ enum Mode<'a> {
 pub struct InferenceState<'db, 'a> {
     pub db: &'db Database,
     context: Context<'a>,
-    mode: Mode<'a>,
+    pub mode: Mode<'a>,
 }
 
 impl<'db, 'a> InferenceState<'db, 'a> {
@@ -113,7 +113,13 @@ impl<'db, 'a> InferenceState<'db, 'a> {
         }
     }
 
-    pub fn use_mode_of(&self, other: &Self) -> Self {
+    pub fn with_mode<'b: 'a>(&self, mode: Mode<'b>) -> InferenceState<'db, 'a> {
+        let mut new = *self;
+        new.mode = mode;
+        new
+    }
+
+    pub fn use_mode_of<'b: 'a>(&self, other: &InferenceState<'db, 'b>) -> InferenceState<'db, 'a> {
         let mut new = *self;
         new.mode = other.mode;
         new

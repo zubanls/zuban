@@ -664,11 +664,11 @@ impl Type {
                 _ => not_callable(),
             },
             Type::Any(cause) => {
-                args.iter().calculate_diagnostics(i_s);
+                args.iter(i_s.mode).calculate_diagnostics(i_s);
                 Inferred::new_any(*cause)
             }
             Type::Never(_) => {
-                args.iter().calculate_diagnostics(i_s);
+                args.iter(i_s.mode).calculate_diagnostics(i_s);
                 Inferred::new_any(AnyCause::Todo)
             }
             Type::CustomBehavior(custom) => {
@@ -984,7 +984,7 @@ pub(crate) fn execute_type_of_type<'db>(
             let calculated_type_vars = calculate_callable_type_vars_and_return(
                 i_s,
                 Callable::new(&nt.__new__, None),
-                args.iter(),
+                args.iter(i_s.mode),
                 |issue| args.add_issue(i_s, issue),
                 true,
                 &mut ResultContext::Unknown,

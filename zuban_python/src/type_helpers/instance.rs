@@ -706,7 +706,7 @@ fn execute_super_internal<'db>(
     i_s: &InferenceState<'db, '_>,
     args: &dyn Args<'db>,
 ) -> Result<Inferred, IssueKind> {
-    let mut iterator = args.iter();
+    let mut iterator = args.iter(i_s.mode);
     let mut next_arg = || {
         iterator.next().map(|arg| match arg.is_keyword_argument() {
             false => match arg.in_args_or_kwargs_and_arbitrary_len() {
@@ -895,7 +895,7 @@ fn execute_isinstance_or_issubclass<'db>(
     args: &dyn Args<'db>,
     issubclass: bool,
 ) -> Inferred {
-    if let Some((_, node_ref2)) = args.maybe_two_positional_args(i_s.db) {
+    if let Some((_, node_ref2)) = args.maybe_two_positional_args(i_s) {
         if node_ref2
             .file
             .inference(i_s)

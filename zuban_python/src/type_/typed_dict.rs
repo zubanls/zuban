@@ -533,7 +533,7 @@ fn new_typed_dict_internal<'db>(
     i_s: &InferenceState<'db, '_>,
     args: &dyn Args<'db>,
 ) -> Option<Inferred> {
-    let mut iterator = args.iter();
+    let mut iterator = args.iter(i_s.mode);
     let Some(first_arg) = iterator.next() else {
         todo!()
     };
@@ -713,7 +713,7 @@ fn typed_dict_setdefault_internal<'db>(
     td: &TypedDict,
     args: &dyn Args<'db>,
 ) -> Option<Inferred> {
-    let mut iterator = args.iter();
+    let mut iterator = args.iter(i_s.mode);
     let first_arg = iterator.next()?;
     let second_arg = iterator.next();
     if iterator.next().is_some() {
@@ -796,7 +796,7 @@ fn typed_dict_get_or_pop_internal<'db>(
     args: &dyn Args<'db>,
     is_pop: bool,
 ) -> Option<Inferred> {
-    let mut iterator = args.iter();
+    let mut iterator = args.iter(i_s.mode);
     let first_arg = iterator.next()?;
     let second_arg = iterator.next();
     if iterator.next().is_some() {
@@ -938,7 +938,7 @@ fn typed_dict_setitem_internal<'db>(
     td: &TypedDict,
     args: &dyn Args<'db>,
 ) -> Option<Inferred> {
-    let mut iterator = args.iter();
+    let mut iterator = args.iter(i_s.mode);
     let first_arg = iterator.next()?;
     let second_arg = iterator.next()?;
     if iterator.next().is_some() {
@@ -1056,7 +1056,7 @@ pub(crate) fn initialize_typed_dict<'db>(
     result_context: &mut ResultContext,
     on_type_error: OnTypeError,
 ) -> Inferred {
-    let mut iterator = args.iter();
+    let mut iterator = args.iter(i_s.mode);
     let mut matcher = Matcher::new_typed_dict_matcher(&typed_dict);
     if let Some(first_arg) = iterator.next().filter(|arg| !arg.is_keyword_argument()) {
         if let Some(next_arg) = iterator.next() {
@@ -1158,7 +1158,7 @@ pub(crate) fn check_typed_dict_call<'db>(
     args: &dyn Args<'db>,
 ) -> Option<Type> {
     let mut extra_keys = vec![];
-    for arg in args.iter() {
+    for arg in args.iter(i_s.mode) {
         if let Some(key) = arg.keyword_name(i_s.db) {
             infer_typed_dict_item(
                 i_s,
@@ -1184,7 +1184,7 @@ pub(crate) fn check_typed_dict_call<'db>(
         if member.required {
             let expected_name = member.name.as_str(i_s.db);
             if !args
-                .iter()
+                .iter(i_s.mode)
                 .any(|arg| arg.keyword_name(i_s.db) == Some(expected_name))
             {
                 missing_keys.push(expected_name.into())

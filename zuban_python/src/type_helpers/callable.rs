@@ -93,7 +93,7 @@ impl<'a> Callable<'a> {
         let calculated_type_vars = calculate_callable_type_vars_and_return(
             i_s,
             *self,
-            args.iter(),
+            args.iter(i_s.mode),
             |issue| args.add_issue(i_s, issue),
             skip_first_argument,
             result_context,

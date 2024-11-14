@@ -11,6 +11,7 @@ use crate::{
     diagnostics::IssueKind,
     file::PythonFile,
     getitem::SliceType,
+    inference_state::Mode,
     inferred::Inferred,
     matching::{IteratorContent, Matcher, ResultContext, UnpackedArgument},
     node_ref::NodeRef,
@@ -21,7 +22,7 @@ use crate::{
 pub(crate) trait Args<'db>: std::fmt::Debug {
     // Returns an iterator of arguments, where args are returned before kw args.
     // This is not the case in the grammar, but here we want that.
-    fn iter(&self) -> ArgIterator<'db, '_>;
+    fn iter<'x>(&'x self, mode: Mode<'x>) -> ArgIterator<'db, 'x>;
     fn as_node_ref_internal(&self) -> Option<NodeRef>;
     fn in_file(&self) -> Option<&PythonFile> {
         Some(self.as_node_ref_internal()?.file)
@@ -46,7 +47,7 @@ pub(crate) trait Args<'db>: std::fmt::Debug {
     }
 
     fn has_a_union_argument(&self, i_s: &InferenceState<'db, '_>) -> bool {
-        for arg in self.iter() {
+        for arg in self.iter(i_s.mode) {
             if let InferredArg::Inferred(inf) = arg.infer(i_s, &mut ResultContext::Unknown) {
                 if inf.is_union_like(i_s) {
                     return true;
@@ -56,8 +57,11 @@ pub(crate) trait Args<'db>: std::fmt::Debug {
         false
     }
 
-    fn maybe_two_positional_args(&self, db: &'db Database) -> Option<(NodeRef<'db>, NodeRef<'db>)> {
-        let mut iterator = self.iter();
+    fn maybe_two_positional_args(
+        &self,
+        i_s: &InferenceState<'db, '_>,
+    ) -> Option<(NodeRef<'db>, NodeRef<'db>)> {
+        let mut iterator = self.iter(i_s.mode);
         let first_arg = iterator.next()?;
         let ArgKind::Positional(PositionalArg {
             node_ref: node_ref1,
@@ -77,7 +81,10 @@ pub(crate) trait Args<'db>: std::fmt::Debug {
         if iterator.next().is_some() {
             return None;
         }
-        Some((node_ref1.to_db_lifetime(db), node_ref2.to_db_lifetime(db)))
+        Some((
+            node_ref1.to_db_lifetime(i_s.db),
+            node_ref2.to_db_lifetime(i_s.db),
+        ))
     }
 
     fn maybe_single_positional_arg(
@@ -85,7 +92,7 @@ pub(crate) trait Args<'db>: std::fmt::Debug {
         i_s: &InferenceState<'db, '_>,
         context: &mut ResultContext,
     ) -> Option<Inferred> {
-        let mut iterator = self.iter();
+        let mut iterator = self.iter(i_s.mode);
         let first = iterator.next()?;
         if iterator.next().is_some() {
             return None;
@@ -105,10 +112,10 @@ pub struct SimpleArgs<'db, 'a> {
 }
 
 impl<'db: 'a, 'a> Args<'db> for SimpleArgs<'db, 'a> {
-    fn iter(&self) -> ArgIterator<'db, '_> {
+    fn iter<'x>(&'x self, mode: Mode<'x>) -> ArgIterator<'db, 'x> {
         ArgIterator::new(match self.details {
             ArgumentsDetails::Node(arguments) => ArgIteratorBase::Iterator {
-                i_s: self.i_s,
+                i_s: self.i_s.with_mode(mode),
                 file: self.file,
                 iterator: arguments.iter().enumerate(),
                 kwargs_before_star_args: {
@@ -125,7 +132,7 @@ impl<'db: 'a, 'a> Args<'db> for SimpleArgs<'db, 'a> {
                 },
             },
             ArgumentsDetails::Comprehension(comprehension) => {
-                ArgIteratorBase::Comprehension(self.i_s, self.file, comprehension)
+                ArgIteratorBase::Comprehension(self.i_s.with_mode(mode), self.file, comprehension)
             }
             ArgumentsDetails::None => ArgIteratorBase::Finished,
         })
@@ -189,7 +196,7 @@ pub struct KnownArgs<'a> {
 }
 
 impl<'db, 'a> Args<'db> for KnownArgs<'a> {
-    fn iter(&self) -> ArgIterator<'db, '_> {
+    fn iter<'x>(&'x self, mode: Mode<'x>) -> ArgIterator<'db, 'x> {
         ArgIterator::new(ArgIteratorBase::Inferred {
             inferred: self.inferred,
             node_ref: self.node_ref,
@@ -223,7 +230,7 @@ pub(crate) struct KnownArgsWithCustomAddIssue<'a> {
 }
 
 impl<'db, 'a> Args<'db> for KnownArgsWithCustomAddIssue<'a> {
-    fn iter(&self) -> ArgIterator<'db, '_> {
+    fn iter<'x>(&'x self, mode: Mode<'x>) -> ArgIterator<'db, 'x> {
         ArgIterator::new(ArgIteratorBase::InferredWithCustomAddIssue {
             inferred: self.inferred,
             add_issue: self.add_issue,
@@ -246,10 +253,10 @@ pub struct CombinedArgs<'db, 'a> {
 }
 
 impl<'db, 'a> Args<'db> for CombinedArgs<'db, 'a> {
-    fn iter(&self) -> ArgIterator<'db, '_> {
-        let mut iterator = self.args1.iter();
+    fn iter<'x>(&'x self, mode: Mode<'x>) -> ArgIterator<'db, 'x> {
+        let mut iterator = self.args1.iter(mode);
         debug_assert!(iterator.next.is_none()); // For now this is not supported
-        iterator.next = Some(self.args2);
+        iterator.next = Some((mode, self.args2));
         iterator
     }
 
@@ -930,7 +937,7 @@ impl<'db: 'a, 'a> Iterator for ArgIteratorBase<'db, 'a> {
 pub struct ArgIterator<'db, 'a> {
     current: ArgIteratorBase<'db, 'a>,
     args_kwargs_iterator: ArgsKwargsIterator<'a>,
-    next: Option<&'a dyn Args<'db>>,
+    next: Option<(Mode<'a>, &'a dyn Args<'db>)>,
     counter: usize,
 }
 
@@ -956,12 +963,12 @@ impl<'db, 'a> ArgIterator<'db, 'a> {
         }
     }
 
-    pub fn into_argument_types(mut self, i_s: &InferenceState) -> Box<[Box<str>]> {
+    pub fn into_argument_types(mut self, i_s: &InferenceState<'db, '_>) -> Box<[Box<str>]> {
         let mut result = vec![];
         loop {
             result.extend(self.current.into_argument_types(i_s));
-            if let Some(next) = self.next {
-                self = next.iter();
+            if let Some((mode, next)) = self.next {
+                self = next.iter(mode);
             } else {
                 break;
             }
@@ -1007,9 +1014,12 @@ impl<'db, 'a> Iterator for ArgIterator<'db, 'a> {
                     self.next()
                 }
                 None => {
-                    if let Some(next) = self.next {
+                    if self.next.is_none() {
+                        return None;
+                    }
+                    if let Some((mode, next)) = self.next {
                         let old_counter = self.counter;
-                        *self = next.iter();
+                        *self = next.iter(mode);
                         self.counter += old_counter;
                         self.next()
                     } else {
@@ -1226,7 +1236,7 @@ impl std::fmt::Debug for NoArgs<'_> {
 }
 
 impl<'db, 'a> Args<'db> for NoArgs<'a> {
-    fn iter(&self) -> ArgIterator<'db, '_> {
+    fn iter<'x>(&'x self, mode: Mode<'x>) -> ArgIterator<'db, 'x> {
         ArgIterator::new(ArgIteratorBase::Finished)
     }
 

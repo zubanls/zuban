@@ -1636,7 +1636,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         let calculated_type_vars = calculate_function_type_vars_and_return(
             i_s,
             *self,
-            args.iter(),
+            args.iter(i_s.mode),
             |issue| args.add_issue(i_s, issue),
             skip_first_argument,
             self.type_vars(i_s.db),
