@@ -676,46 +676,52 @@ impl<'db, 'a> ArgIteratorBase<'db, 'a> {
             unreachable!()
         }
     }
-    fn into_argument_types(self, i_s: &InferenceState) -> Vec<Box<str>> {
+    fn into_argument_types(self, in_i_s: &InferenceState) -> Vec<Box<str>> {
         match self {
             Self::Inferred { inferred, .. } | Self::InferredWithCustomAddIssue { inferred, .. } => {
-                vec![inferred.as_cow_type(i_s).format_short(i_s.db)]
+                vec![inferred.as_cow_type(in_i_s).format_short(in_i_s.db)]
             }
             Self::Iterator {
                 i_s,
                 file,
                 iterator,
                 ..
-            } => iterator
-                .map(|(_, arg)| {
-                    let mut prefix = "".to_owned();
-                    let inference = file.inference(&i_s);
-                    let inf = match arg {
-                        CSTArgument::Positional(named_expr) => {
-                            inference.infer_named_expression(named_expr)
-                        }
-                        CSTArgument::Keyword(kwarg) => {
-                            let (name, expr) = kwarg.unpack();
-                            prefix = format!("{}=", name.as_code());
-                            inference.infer_expression(expr)
-                        }
-                        CSTArgument::Star(starred_expr) => {
-                            "*".clone_into(&mut prefix);
-                            inference.infer_expression(starred_expr.expression())
-                        }
-                        CSTArgument::StarStar(double_starred_expr) => {
-                            "*".clone_into(&mut prefix);
-                            inference.infer_expression(double_starred_expr.expression())
-                        }
-                    };
-                    format!("{prefix}{}", inf.format_short(&i_s)).into()
-                })
-                .collect(),
+            } => {
+                let i_s = i_s.use_mode_of(in_i_s);
+                iterator
+                    .map(|(_, arg)| {
+                        let mut prefix = "".to_owned();
+                        let inference = file.inference(&i_s);
+                        let inf = match arg {
+                            CSTArgument::Positional(named_expr) => {
+                                inference.infer_named_expression(named_expr)
+                            }
+                            CSTArgument::Keyword(kwarg) => {
+                                let (name, expr) = kwarg.unpack();
+                                prefix = format!("{}=", name.as_code());
+                                inference.infer_expression(expr)
+                            }
+                            CSTArgument::Star(starred_expr) => {
+                                "*".clone_into(&mut prefix);
+                                inference.infer_expression(starred_expr.expression())
+                            }
+                            CSTArgument::StarStar(double_starred_expr) => {
+                                "*".clone_into(&mut prefix);
+                                inference.infer_expression(double_starred_expr.expression())
+                            }
+                        };
+                        format!("{prefix}{}", inf.format_short(&i_s)).into()
+                    })
+                    .collect()
+            }
             Self::Comprehension(_, file, comprehension) => {
                 todo!()
             }
             Self::Finished => vec![],
-            Self::SliceType(i_s, slice_type) => vec![slice_type.infer(&i_s).format_short(&i_s)],
+            Self::SliceType(i_s, slice_type) => {
+                let i_s = i_s.use_mode_of(in_i_s);
+                vec![slice_type.infer(&i_s).format_short(&i_s)]
+            }
         }
     }
 }
