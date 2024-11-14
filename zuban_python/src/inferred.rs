@@ -2065,7 +2065,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 if let Some(first_arg) = iterator.next() {
                                     let t = new_type.type_(i_s);
                                     let InferredArg::Inferred(inf) =
-                                        first_arg.infer(i_s, &mut ResultContext::new_known(t))
+                                        first_arg.infer(&mut ResultContext::new_known(t))
                                     else {
                                         todo!()
                                     };

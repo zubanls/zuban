@@ -292,7 +292,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         as_union_math_type: &impl Fn(&Callable, CalculatedTypeArgs) -> Type,
     ) -> UnionMathResult {
         if let Some(next_arg) = args.next() {
-            let InferredArg::Inferred(inf) = next_arg.infer(i_s, result_context) else {
+            let InferredArg::Inferred(inf) = next_arg.infer(result_context) else {
                 non_union_args.push(next_arg);
                 return self.check_union_math(
                     i_s,

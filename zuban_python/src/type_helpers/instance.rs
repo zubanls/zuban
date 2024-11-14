@@ -710,7 +710,7 @@ fn execute_super_internal<'db>(
     let mut next_arg = || {
         iterator.next().map(|arg| match arg.is_keyword_argument() {
             false => match arg.in_args_or_kwargs_and_arbitrary_len() {
-                false => match arg.infer(i_s, &mut ResultContext::Unknown) {
+                false => match arg.infer(&mut ResultContext::Unknown) {
                     InferredArg::Inferred(inf) => Ok(inf),
                     _ => Err(IssueKind::SuperOnlyAcceptsPositionalArguments),
                 },

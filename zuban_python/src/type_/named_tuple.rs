@@ -502,9 +502,7 @@ pub(crate) fn new_collections_named_tuple<'db>(
 ) -> Option<Rc<NamedTuple>> {
     let rename = args.iter(i_s.mode).any(|arg| {
         matches!(arg.keyword_name(i_s.db), Some("rename"))
-            && arg
-                .infer(i_s, &mut ResultContext::Unknown)
-                .is_true_literal(i_s)
+            && arg.infer(&mut ResultContext::Unknown).is_true_literal(i_s)
     });
     let (name, second_node_ref, atom_content, _) = check_named_tuple_name(i_s, "namedtuple", args)?;
     let mut params = start_namedtuple_params(i_s.db);

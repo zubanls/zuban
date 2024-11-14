@@ -367,7 +367,7 @@ pub(crate) fn execute_functional_enum<'db>(
                 if name_infos.is_none() {
                     name_infos = Some((
                         positional.node_ref,
-                        positional.infer(i_s, &mut ResultContext::Unknown),
+                        positional.infer(&mut ResultContext::Unknown),
                         expr.in_simple_assignment(),
                     ));
                 } else if fields_infos.is_none() {
@@ -380,7 +380,7 @@ pub(crate) fn execute_functional_enum<'db>(
                 "value" => {
                     name_infos = Some((
                         kw.node_ref,
-                        kw.infer(i_s, &mut ResultContext::Unknown),
+                        kw.infer(&mut ResultContext::Unknown),
                         kw.expression.in_simple_assignment(),
                     ))
                 }

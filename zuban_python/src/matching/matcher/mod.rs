@@ -749,7 +749,7 @@ impl<'a> Matcher<'a> {
                 }
                 _ => {
                     for arg in args.iter() {
-                        let inferred = match arg.infer(i_s, &mut ResultContext::Unknown) {
+                        let inferred = match arg.infer(&mut ResultContext::Unknown) {
                             InferredArg::Inferred(inferred) => inferred,
                             InferredArg::ParamSpec(_) => unreachable!(), // Handled above
                             InferredArg::StarredWithUnpack(_) => todo!(),
@@ -1691,7 +1691,7 @@ fn infer_params_from_args<'db>(
 ) -> CallableParams {
     let mut params = vec![];
     for arg in args.iter() {
-        let inferred_arg = arg.infer(i_s, &mut ResultContext::Unknown);
+        let inferred_arg = arg.infer(&mut ResultContext::Unknown);
         let InferredArg::Inferred(inf) = inferred_arg else {
             todo!()
         };

@@ -583,7 +583,7 @@ pub(crate) fn dataclasses_replace<'db>(
     let mut arg_iterator = args.iter(i_s.mode);
     if let Some(first) = arg_iterator.next() {
         if let ArgKind::Positional(positional) = &first.kind {
-            let inferred = positional.infer(i_s, &mut ResultContext::Unknown);
+            let inferred = positional.infer(&mut ResultContext::Unknown);
             let successful = run_on_dataclass(
                 i_s,
                 Some(positional.node_ref),

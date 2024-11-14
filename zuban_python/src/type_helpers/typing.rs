@@ -44,11 +44,11 @@ pub(crate) fn execute_cast<'db>(
                         .compute_cast_target(positional.node_ref)
                         .ok()
                 } else {
-                    actual = Some(positional.infer(i_s, &mut ResultContext::ExpectUnused));
+                    actual = Some(positional.infer(&mut ResultContext::ExpectUnused));
                 }
             }
             _ => {
-                arg.infer(i_s, &mut ResultContext::ExpectUnused);
+                arg.infer(&mut ResultContext::ExpectUnused);
                 had_non_positional = true;
             }
         }
@@ -106,9 +106,9 @@ pub(crate) fn execute_reveal_type<'db>(
 
     let inferred = if matches!(result_context, ResultContext::ExpectUnused) {
         // For some reason mypy wants to generate a literal here if possible.
-        arg.infer(i_s, &mut ResultContext::RevealType)
+        arg.infer(&mut ResultContext::RevealType)
     } else {
-        arg.infer(i_s, result_context)
+        arg.infer(result_context)
     };
     let InferredArg::Inferred(inferred) = inferred else {
         unreachable!() // Not reachable, because we only allow positional args above
@@ -211,9 +211,9 @@ pub(crate) fn execute_assert_type<'db>(
         return error_non_positional();
     };
     let first = if matches!(result_context, ResultContext::ExpectUnused) {
-        first.infer(i_s, &mut ResultContext::Unknown)
+        first.infer(&mut ResultContext::Unknown)
     } else {
-        first.infer(i_s, result_context)
+        first.infer(result_context)
     };
     let first_type = first.as_cow_type(i_s);
 

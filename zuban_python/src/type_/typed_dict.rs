@@ -590,7 +590,7 @@ fn new_typed_dict_internal<'db>(
             ArgKind::Keyword(kw) if kw.key == "total" => {
                 total = infer_typed_dict_total_argument(
                     i_s,
-                    kw.infer(i_s, &mut ResultContext::Unknown),
+                    kw.infer(&mut ResultContext::Unknown),
                     |issue| next.add_issue(i_s, issue),
                 )?;
             }
@@ -721,9 +721,9 @@ fn typed_dict_setdefault_internal<'db>(
     }
     let default = match &second_arg {
         Some(second) => match &second.kind {
-            ArgKind::Positional(second) => second.infer(i_s, &mut ResultContext::Unknown),
+            ArgKind::Positional(second) => second.infer(&mut ResultContext::Unknown),
             ArgKind::Keyword(second) if second.key == "detaulf" => {
-                second.infer(i_s, &mut ResultContext::Unknown)
+                second.infer(&mut ResultContext::Unknown)
             }
             _ => return None,
         },
@@ -804,8 +804,8 @@ fn typed_dict_get_or_pop_internal<'db>(
     }
     let infer_default = |context: &mut _| match &second_arg {
         Some(second) => match &second.kind {
-            ArgKind::Positional(second) => Some(second.infer(i_s, context)),
-            ArgKind::Keyword(second) if second.key == "default" => Some(second.infer(i_s, context)),
+            ArgKind::Positional(second) => Some(second.infer(context)),
+            ArgKind::Keyword(second) if second.key == "default" => Some(second.infer(context)),
             _ => None,
         },
         None => Some(Inferred::new_none()),
@@ -1063,13 +1063,10 @@ pub(crate) fn initialize_typed_dict<'db>(
             next_arg.add_issue(i_s, IssueKind::TypedDictWrongArgumentsInConstructor);
             return Inferred::new_any_from_error();
         }
-        first_arg.infer(
-            i_s,
-            &mut ResultContext::WithMatcher {
-                matcher: &mut matcher,
-                type_: &Type::TypedDict(typed_dict.clone()),
-            },
-        );
+        first_arg.infer(&mut ResultContext::WithMatcher {
+            matcher: &mut matcher,
+            type_: &Type::TypedDict(typed_dict.clone()),
+        });
     } else {
         check_typed_dict_call(i_s, &mut matcher, typed_dict.clone(), args);
     };

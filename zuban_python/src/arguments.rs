@@ -48,7 +48,7 @@ pub(crate) trait Args<'db>: std::fmt::Debug {
 
     fn has_a_union_argument(&self, i_s: &InferenceState<'db, '_>) -> bool {
         for arg in self.iter(i_s.mode) {
-            if let InferredArg::Inferred(inf) = arg.infer(i_s, &mut ResultContext::Unknown) {
+            if let InferredArg::Inferred(inf) = arg.infer(&mut ResultContext::Unknown) {
                 if inf.is_union_like(i_s) {
                     return true;
                 }
@@ -298,14 +298,10 @@ pub struct PositionalArg<'db, 'a> {
 }
 
 impl<'db> PositionalArg<'db, '_> {
-    pub fn infer(
-        &self,
-        func_i_s: &InferenceState<'db, '_>,
-        result_context: &mut ResultContext,
-    ) -> Inferred {
+    pub fn infer(&self, result_context: &mut ResultContext) -> Inferred {
         self.node_ref
             .file
-            .inference(&self.i_s.use_mode_of(func_i_s))
+            .inference(&self.i_s)
             .infer_named_expression_with_context(self.named_expr, result_context)
     }
 }
@@ -319,14 +315,10 @@ pub struct KeywordArg<'db, 'a> {
 }
 
 impl<'db> KeywordArg<'db, '_> {
-    pub fn infer(
-        &self,
-        func_i_s: &InferenceState<'db, '_>,
-        result_context: &mut ResultContext,
-    ) -> Inferred {
+    pub fn infer(&self, result_context: &mut ResultContext) -> Inferred {
         self.node_ref
             .file
-            .inference(&self.i_s.use_mode_of(func_i_s))
+            .inference(&self.i_s)
             .infer_expression_with_context(self.expression, result_context)
     }
 
@@ -456,28 +448,24 @@ impl<'db, 'a> Arg<'db, 'a> {
         func_i_s: &InferenceState<'db, '_>,
         result_context: &mut ResultContext,
     ) -> Inferred {
-        match self.infer(func_i_s, result_context) {
+        match self.infer(result_context) {
             InferredArg::Inferred(inf) => inf,
             _ => unreachable!(),
         }
     }
 
-    pub fn infer(
-        &self,
-        func_i_s: &InferenceState<'db, '_>,
-        result_context: &mut ResultContext,
-    ) -> InferredArg {
+    pub fn infer(&self, result_context: &mut ResultContext) -> InferredArg {
         InferredArg::Inferred(match &self.kind {
             ArgKind::Inferred { inferred, .. }
             | ArgKind::InferredWithCustomAddIssue { inferred, .. } => (*inferred).clone(),
-            ArgKind::Positional(positional) => positional.infer(func_i_s, result_context),
-            ArgKind::Keyword(kw) => kw.infer(func_i_s, result_context),
+            ArgKind::Positional(positional) => positional.infer(result_context),
+            ArgKind::Keyword(kw) => kw.infer(result_context),
             ArgKind::Comprehension {
                 file,
                 comprehension,
                 i_s,
             } => file
-                .inference(&i_s.use_mode_of(func_i_s))
+                .inference(&i_s)
                 .infer_generator_comprehension(*comprehension, result_context),
             ArgKind::ParamSpec { usage, .. } => return InferredArg::ParamSpec(usage),
             ArgKind::StarredWithUnpack { with_unpack, .. } => {
@@ -693,40 +681,36 @@ impl<'db, 'a> ArgIteratorBase<'db, 'a> {
                 file,
                 iterator,
                 ..
-            } => {
-                let i_s = i_s.use_mode_of(in_i_s);
-                iterator
-                    .map(|(_, arg)| {
-                        let mut prefix = "".to_owned();
-                        let inference = file.inference(&i_s);
-                        let inf = match arg {
-                            CSTArgument::Positional(named_expr) => {
-                                inference.infer_named_expression(named_expr)
-                            }
-                            CSTArgument::Keyword(kwarg) => {
-                                let (name, expr) = kwarg.unpack();
-                                prefix = format!("{}=", name.as_code());
-                                inference.infer_expression(expr)
-                            }
-                            CSTArgument::Star(starred_expr) => {
-                                "*".clone_into(&mut prefix);
-                                inference.infer_expression(starred_expr.expression())
-                            }
-                            CSTArgument::StarStar(double_starred_expr) => {
-                                "*".clone_into(&mut prefix);
-                                inference.infer_expression(double_starred_expr.expression())
-                            }
-                        };
-                        format!("{prefix}{}", inf.format_short(&i_s)).into()
-                    })
-                    .collect()
-            }
+            } => iterator
+                .map(|(_, arg)| {
+                    let mut prefix = "".to_owned();
+                    let inference = file.inference(&i_s);
+                    let inf = match arg {
+                        CSTArgument::Positional(named_expr) => {
+                            inference.infer_named_expression(named_expr)
+                        }
+                        CSTArgument::Keyword(kwarg) => {
+                            let (name, expr) = kwarg.unpack();
+                            prefix = format!("{}=", name.as_code());
+                            inference.infer_expression(expr)
+                        }
+                        CSTArgument::Star(starred_expr) => {
+                            "*".clone_into(&mut prefix);
+                            inference.infer_expression(starred_expr.expression())
+                        }
+                        CSTArgument::StarStar(double_starred_expr) => {
+                            "*".clone_into(&mut prefix);
+                            inference.infer_expression(double_starred_expr.expression())
+                        }
+                    };
+                    format!("{prefix}{}", inf.format_short(&i_s)).into()
+                })
+                .collect(),
             Self::Comprehension(_, file, comprehension) => {
                 todo!()
             }
             Self::Finished => vec![],
             Self::SliceType(i_s, slice_type) => {
-                let i_s = i_s.use_mode_of(in_i_s);
                 vec![slice_type.infer(&i_s).format_short(&i_s)]
             }
         }
@@ -978,7 +962,7 @@ impl<'db, 'a> ArgIterator<'db, 'a> {
 
     pub fn calculate_diagnostics(self, i_s: &InferenceState<'db, '_>) {
         for arg in self {
-            arg.infer(i_s, &mut ResultContext::Unknown);
+            arg.infer(&mut ResultContext::Unknown);
         }
     }
 }

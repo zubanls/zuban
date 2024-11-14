@@ -588,15 +588,12 @@ pub(crate) fn match_arguments_against_params<
         }
         let mut match_arg = |arg: &Arg<'db, '_>, expected: Cow<Type>| {
             let value = if matcher.might_have_defined_type_vars() {
-                arg.infer(
-                    i_s,
-                    &mut ResultContext::WithMatcher {
-                        type_: &expected,
-                        matcher,
-                    },
-                )
+                arg.infer(&mut ResultContext::WithMatcher {
+                    type_: &expected,
+                    matcher,
+                })
             } else {
-                arg.infer(i_s, &mut ResultContext::new_known(&expected))
+                arg.infer(&mut ResultContext::new_known(&expected))
             };
             let value = match value {
                 InferredArg::Inferred(value) => value,
@@ -730,7 +727,7 @@ pub(crate) fn match_arguments_against_params<
                         None => {
                             // Simply infer the type to make sure type checking is done on the
                             // argument if there is no annotation.
-                            argument.infer(i_s, &mut ResultContext::Unknown);
+                            argument.infer(&mut ResultContext::Unknown);
                             continue;
                         }
                     },
@@ -789,7 +786,7 @@ pub(crate) fn match_arguments_against_params<
                             ));
                             return SignatureMatch::False { similar: false };
                         }
-                        match arg.infer(i_s, &mut ResultContext::Unknown) {
+                        match arg.infer(&mut ResultContext::Unknown) {
                             InferredArg::Inferred(inf) => {
                                 unpack = Some(TupleUnpack::ArbitraryLen(
                                     arg.infer_inferrable(i_s, &mut ResultContext::Unknown)

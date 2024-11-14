@@ -119,12 +119,6 @@ impl<'db, 'a> InferenceState<'db, 'a> {
         new
     }
 
-    pub fn use_mode_of<'b: 'a>(&self, other: &InferenceState<'db, 'b>) -> InferenceState<'db, 'a> {
-        let mut new = *self;
-        new.mode = other.mode;
-        new
-    }
-
     pub fn with_enum_calculation_mode(&self) -> Self {
         let mut new = *self;
         new.mode = Mode::EnumMemberCalculation;
