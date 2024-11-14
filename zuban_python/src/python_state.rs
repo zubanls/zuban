@@ -808,6 +808,13 @@ impl PythonState {
         Class::from_position(self.tuple_node_ref(), Generics::NotDefinedYet, None)
     }
 
+    pub fn bare_tuple_type_with_any(&self) -> Type {
+        new_class!(
+            self.tuple_node_ref().as_link(),
+            Type::Any(AnyCause::Internal),
+        )
+    }
+
     attribute_node_ref!(builtins, pub object_node_ref, builtins_object_index);
     attribute_node_ref!(builtins, pub bare_type_node_ref, builtins_type_index);
     attribute_node_ref!(builtins, pub list_node_ref, builtins_list_index);

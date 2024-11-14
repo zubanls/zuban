@@ -314,3 +314,13 @@ def foo(t1: Tup, t2: tuple[int, float]) -> None:
 
     y1: Iterable[int] = t1  # E: Incompatible types in assignment (expression has type "Tup", variable has type "Iterable[int]")
     y2: Iterable[int] = t2  # E: Incompatible types in assignment (expression has type "tuple[int, float]", variable has type "Iterable[int]")
+
+[case tuple_with_slices]
+()[1,1]  # E: No overload variant of "__getitem__" of "tuple" matches argument type "tuple[int, int]" \
+         # N: Possible overload variants: \
+         # N:     def __getitem__(self, SupportsIndex, /) -> Any \
+         # N:     def __getitem__(self, slice, /) -> tuple[Any, ...]
+(1, 1)[1,1]  # E: No overload variant of "__getitem__" of "tuple" matches argument type "tuple[int, int]" \
+             # N: Possible overload variants: \
+             # N:     def __getitem__(self, SupportsIndex, /) -> Any \
+             # N:     def __getitem__(self, slice, /) -> tuple[Any, ...]

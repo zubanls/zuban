@@ -237,9 +237,11 @@ impl Tuple {
                     }
                 }
             }
-            SliceTypeContent::Slices(_) | SliceTypeContent::Starred(_) => {
-                todo!()
-            }
+            SliceTypeContent::Slices(_) | SliceTypeContent::Starred(_) => i_s
+                .db
+                .python_state
+                .bare_tuple_type_with_any()
+                .get_item(i_s, None, slice_type, result_context),
             SliceTypeContent::Slice(slice) => slice
                 .callback_on_tuple_indexes(i_s, |start, end, step| {
                     if step == 0 {
