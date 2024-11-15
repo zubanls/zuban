@@ -108,7 +108,7 @@ z[:-5:0] # E: slice step cannot be zero
 
 [case tuple_unpack_slice_to_fixed_len_before]
 from typing import Unpack
-def f(z: tuple[int, None, bytes, Unpack[tuple[bytes, ...]], str]):
+def f(z: tuple[int, None, bytes, Unpack[tuple[float, ...]], str]):
     reveal_type(z[:0])  # N: Revealed type is "tuple[()]"
     reveal_type(z[0:0])  # N: Revealed type is "tuple[()]"
     reveal_type(z[1:0])  # N: Revealed type is "tuple[()]"
@@ -132,6 +132,34 @@ def f(z: tuple[int, None, bytes, Unpack[tuple[bytes, ...]], str]):
     reveal_type(z[2:2:-1])  # N: Revealed type is "tuple[()]"
     z[4:3:-1]  # E: Ambiguous slice of a variadic tuple
 
+[case tuple_unpack_slice_to_fixed_len_after]
+from typing import Unpack
+def f(z: tuple[str, Unpack[tuple[float, ...]], bytes, None, int]):
+    reveal_type(z[-1:-1])  # N: Revealed type is "tuple[()]"
+    reveal_type(z[-1:])  # N: Revealed type is "tuple[int]"
+    reveal_type(z[-2:])  # N: Revealed type is "tuple[None, int]"
+    reveal_type(z[-3:])  # N: Revealed type is "tuple[bytes, None, int]"
+    reveal_type(z[-3:-2])  # N: Revealed type is "tuple[bytes]"
+    reveal_type(z[-3::2])  # N: Revealed type is "tuple[bytes, int]"
+    reveal_type(z[-3:-1:2])  # N: Revealed type is "tuple[bytes]"
+    reveal_type(z[-3:-4])  # N: Revealed type is "tuple[()]"
+    z[-4:]  # E: Ambiguous slice of a variadic tuple
+    z[-4:-3]  # E: Ambiguous slice of a variadic tuple
+    z[-4:-5]  # E: Ambiguous slice of a variadic tuple
+
+    reveal_type(z[-1:-2:-1])  # N: Revealed type is "tuple[int]"
+    reveal_type(z[:-2:-1])  # N: Revealed type is "tuple[int]"
+    reveal_type(z[:-3:-1])  # N: Revealed type is "tuple[int, None]"
+    reveal_type(z[:-4:-1])  # N: Revealed type is "tuple[int, None, bytes]"
+    reveal_type(z[-3:-3:-1])  # N: Revealed type is "tuple[()]"
+    reveal_type(z[-2:-3:-1])  # N: Revealed type is "tuple[None]"
+    reveal_type(z[-2:-3:-2])  # N: Revealed type is "tuple[None]"
+    reveal_type(z[:-4:-2])  # N: Revealed type is "tuple[int, bytes]"
+    reveal_type(z[-1:-4:-2])  # N: Revealed type is "tuple[int, bytes]"
+    reveal_type(z[-1:-4:-3])  # N: Revealed type is "tuple[int]"
+    reveal_type(z[-2:-4:-2])  # N: Revealed type is "tuple[None]"
+    z[-4:-5:-1]  # E: Ambiguous slice of a variadic tuple
+
 [case tuple_unpack_slice_incompatible_signs]
 from typing import Unpack
 def f(z: tuple[int, None, Unpack[tuple[bytes, ...]], str, float]):
@@ -139,7 +167,9 @@ def f(z: tuple[int, None, Unpack[tuple[bytes, ...]], str, float]):
     z[-5:2]  # E: Ambiguous slice of a variadic tuple
     z[-1:1]  # E: Ambiguous slice of a variadic tuple
     z[-1:1]  # E: Ambiguous slice of a variadic tuple
+    z[-1:0]  # E: Ambiguous slice of a variadic tuple
     z[1:-1:-1]  # E: Ambiguous slice of a variadic tuple
+    z[-1::-1]  # E: Ambiguous slice of a variadic tuple
 
 [case tuple_reverse_slice]
 x: tuple[int, str, bytes]

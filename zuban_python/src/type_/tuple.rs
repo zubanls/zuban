@@ -303,10 +303,10 @@ impl Tuple {
                                     .unwrap_or(true);
                                 if is_same_sign {
                                     let before_len = with_unpack.before.len() as isize;
-                                    let after_len = with_unpack.before.len() as isize;
+                                    let after_len = with_unpack.after.len() as isize;
                                     if let Some(end) = end {
                                         if step < 0 {
-                                            if end < 0 && -end <= after_len {
+                                            if end < 0 && -end - 1 <= after_len {
                                                 return as_fixed_len_tuple(&with_unpack.after);
                                             }
                                         } else if end >= 0 && end <= before_len {
