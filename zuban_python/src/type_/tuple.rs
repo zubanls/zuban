@@ -250,41 +250,42 @@ impl Tuple {
                             Self::new_arbitrary_length_with_any_from_error(),
                         ));
                     }
+                    let as_fixed_len_tuple = |ts: &[Type]| {
+                        Inferred::from_type(Type::Tuple(Tuple::new_fixed_length({
+                            let len = ts.len() as isize;
+                            let remove_negative = |i: Option<isize>| {
+                                Some({
+                                    match i? {
+                                        i if i < 0 => i + len,
+                                        i => i,
+                                    }
+                                })
+                            };
+                            let as_skip = |i: Option<isize>| match i {
+                                Some(i) => i.max(0) as usize,
+                                None => 0,
+                            };
+                            let start = remove_negative(start);
+                            let end = remove_negative(end);
+                            let (skip_left, skip_right) = if step < 0 {
+                                (end.map(|e| e + 1), start.map(|s| len - s - 1))
+                            } else {
+                                (start, end.map(|e| len - e))
+                            };
+                            let iter = ts
+                                .iter()
+                                .skip(as_skip(skip_left))
+                                .rev()
+                                .skip(as_skip(skip_right));
+                            if step < 0 {
+                                iter.step_by(-step as usize).cloned().collect()
+                            } else {
+                                iter.rev().step_by(step as usize).cloned().collect()
+                            }
+                        })))
+                    };
                     match &self.args {
-                        TupleArgs::FixedLen(ts) => {
-                            Inferred::from_type(Type::Tuple(Tuple::new_fixed_length({
-                                let len = ts.len() as isize;
-                                let remove_negative = |i: Option<isize>| {
-                                    Some({
-                                        match i? {
-                                            i if i < 0 => i + len,
-                                            i => i,
-                                        }
-                                    })
-                                };
-                                let as_skip = |i: Option<isize>| match i {
-                                    Some(i) => i.max(0) as usize,
-                                    None => 0,
-                                };
-                                let start = remove_negative(start);
-                                let end = remove_negative(end);
-                                let (skip_left, skip_right) = if step < 0 {
-                                    (end.map(|e| e + 1), start.map(|s| len - s - 1))
-                                } else {
-                                    (start, end.map(|e| len - e))
-                                };
-                                let iter = ts
-                                    .iter()
-                                    .skip(as_skip(skip_left))
-                                    .rev()
-                                    .skip(as_skip(skip_right));
-                                if step < 0 {
-                                    iter.step_by(-step as usize).cloned().collect()
-                                } else {
-                                    iter.rev().step_by(step as usize).cloned().collect()
-                                }
-                            })))
-                        }
+                        TupleArgs::FixedLen(ts) => as_fixed_len_tuple(ts),
                         TupleArgs::WithUnpack(with_unpack) => {
                             Inferred::from_type(Type::Tuple(Tuple::new(TupleArgs::WithUnpack({
                                 let ambiguous = || {
@@ -293,6 +294,36 @@ impl Tuple {
                                         Self::new_arbitrary_length_with_any_from_error(),
                                     ))
                                 };
+                                // These are special cases where we know that the resulting tuple
+                                // is just part of the prefix or suffix and therefore results in a
+                                // normal fixed length tuple that can have an arbitrary step.
+                                let is_same_sign = start
+                                    .zip(end)
+                                    .map(|(s, e)| s < 0 && e < 0 || s >= 0 && e >= 0)
+                                    .unwrap_or(true);
+                                if is_same_sign {
+                                    let before_len = with_unpack.before.len() as isize;
+                                    let after_len = with_unpack.before.len() as isize;
+                                    if let Some(end) = end {
+                                        if step < 0 {
+                                            if end < 0 && -end <= after_len {
+                                                return as_fixed_len_tuple(&with_unpack.after);
+                                            }
+                                        } else if end >= 0 && end <= before_len {
+                                            return as_fixed_len_tuple(&with_unpack.before);
+                                        }
+                                    }
+                                    if let Some(start) = start {
+                                        if step < 0 {
+                                            if start >= 0 && start <= before_len {
+                                                return as_fixed_len_tuple(&with_unpack.before);
+                                            }
+                                        } else if start < 0 && -start <= after_len {
+                                            return as_fixed_len_tuple(&with_unpack.after);
+                                        }
+                                    }
+                                }
+
                                 if step == 1 {
                                     let start = start.unwrap_or(0);
                                     let before_len = with_unpack.before.len() as isize;
@@ -305,12 +336,9 @@ impl Tuple {
                                         return ambiguous();
                                     }
                                     if end > 0 {
-                                        if start < 0 {
-                                            return ambiguous();
-                                        }
-                                        todo!()
+                                        return ambiguous();
                                     } else if start < 0 {
-                                        todo!()
+                                        return ambiguous();
                                     } else {
                                         WithUnpack {
                                             before: with_unpack
@@ -332,7 +360,7 @@ impl Tuple {
                                     }
                                 } else if step == -1 {
                                     if start.is_some() || end.is_some() {
-                                        todo!()
+                                        return ambiguous();
                                     }
                                     WithUnpack {
                                         before: with_unpack.after.iter().rev().cloned().collect(),
