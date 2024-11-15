@@ -152,6 +152,8 @@ impl<'db> Inference<'db, '_, '_> {
                     })
                 })
             });
+            // TODO this unsafe feels very wrong, because a bit lower we might modify the complex
+            // points.
             for complex_point in unsafe { self.file.complex_points.iter() } {
                 if let ComplexPoint::NewTypeDefinition(n) = complex_point {
                     // Make sure types are calculated and the errors are generated.
