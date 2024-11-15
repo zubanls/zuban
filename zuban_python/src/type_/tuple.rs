@@ -324,48 +324,66 @@ impl Tuple {
                                     }
                                 }
 
+                                // These are the normal cases where we skip an or at the start/end.
                                 if step == 1 {
-                                    let start = start.unwrap_or(0);
-                                    let before_len = with_unpack.before.len() as isize;
-                                    let after_len = with_unpack.after.len() as isize;
-                                    let end = end.unwrap_or(0);
-                                    if start > before_len || end > before_len {
+                                    let skip_start = start.unwrap_or(0);
+                                    if skip_start < 0 || end.is_some_and(|e| e >= 0) {
                                         return ambiguous();
                                     }
-                                    if -end > after_len || -start > after_len {
-                                        return ambiguous();
-                                    }
-                                    if end > 0 {
-                                        return ambiguous();
-                                    } else if start < 0 {
-                                        return ambiguous();
-                                    } else {
-                                        WithUnpack {
-                                            before: with_unpack
-                                                .before
-                                                .iter()
-                                                .skip(start as usize)
-                                                .cloned()
-                                                .collect(),
-                                            unpack: with_unpack.unpack.clone(),
-                                            after: with_unpack
-                                                .after
-                                                .iter()
-                                                .rev()
-                                                .skip(-end as usize)
-                                                .rev()
-                                                .cloned()
-                                                .collect(),
-                                        }
-                                    }
-                                } else if step == -1 {
-                                    if start.is_some() || end.is_some() {
+                                    let skip_start = skip_start as usize;
+                                    let skip_end = -end.unwrap_or(0) as usize;
+
+                                    if skip_start > with_unpack.before.len()
+                                        || skip_end > with_unpack.after.len()
+                                    {
                                         return ambiguous();
                                     }
                                     WithUnpack {
-                                        before: with_unpack.after.iter().rev().cloned().collect(),
+                                        before: with_unpack
+                                            .before
+                                            .iter()
+                                            .skip(skip_start)
+                                            .cloned()
+                                            .collect(),
                                         unpack: with_unpack.unpack.clone(),
-                                        after: with_unpack.before.iter().rev().cloned().collect(),
+                                        after: with_unpack
+                                            .after
+                                            .iter()
+                                            .rev()
+                                            .skip(skip_end)
+                                            .rev()
+                                            .cloned()
+                                            .collect(),
+                                    }
+                                } else if step == -1 {
+                                    let skip_start = end.unwrap_or(0);
+                                    if skip_start < 0 || start.is_some_and(|s| s >= 0) {
+                                        return ambiguous();
+                                    }
+                                    let skip_start = skip_start as usize;
+                                    let skip_end = -start.unwrap_or(0) as usize;
+
+                                    if skip_start > with_unpack.before.len()
+                                        || skip_end > with_unpack.after.len()
+                                    {
+                                        return ambiguous();
+                                    }
+                                    WithUnpack {
+                                        before: with_unpack
+                                            .after
+                                            .iter()
+                                            .rev()
+                                            .skip(skip_end)
+                                            .cloned()
+                                            .collect(),
+                                        unpack: with_unpack.unpack.clone(),
+                                        after: with_unpack
+                                            .before
+                                            .iter()
+                                            .skip(skip_start)
+                                            .rev()
+                                            .cloned()
+                                            .collect(),
                                     }
                                 } else {
                                     return ambiguous();
