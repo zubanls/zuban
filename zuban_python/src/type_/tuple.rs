@@ -253,49 +253,35 @@ impl Tuple {
                     match &self.args {
                         TupleArgs::FixedLen(ts) => {
                             Inferred::from_type(Type::Tuple(Tuple::new_fixed_length({
-                                let (start, end) = if step < 0 {
-                                    let swapped_start = match end {
-                                        Some(end) if end < 0 => ts.len() as isize + end + 1,
-                                        Some(end) => end + 1,
-                                        None => 0,
-                                    };
-                                    let swapped_end = match start {
-                                        Some(start) if start < 0 => ts.len() as isize + start + 1,
-                                        Some(start) => start + 1,
-                                        None => ts.len() as isize,
-                                    };
-                                    (swapped_start, swapped_end)
-                                } else {
-                                    let end = match end {
-                                        Some(end) if end < 0 => ts.len() as isize + end,
-                                        Some(end) => end,
-                                        None => ts.len() as isize,
-                                    };
-                                    let start = start.unwrap_or(0);
-                                    let start = if start < 0 {
-                                        ts.len() as isize + start
-                                    } else {
-                                        start
-                                    };
-                                    (start, end)
+                                let len = ts.len() as isize;
+                                let remove_negative = |i: Option<isize>| {
+                                    Some({
+                                        match i? {
+                                            i if i < 0 => i + len,
+                                            i => i,
+                                        }
+                                    })
                                 };
-                                // Ensure tuple bounds
-                                let start = (start.max(0) as usize).min(ts.len());
-                                let end = (end.max(start as isize) as usize).min(ts.len());
-                                // Fetch tuples
-                                if step < 0 {
-                                    ts[start..end]
-                                        .iter()
-                                        .rev()
-                                        .step_by(-step as usize)
-                                        .cloned()
-                                        .collect()
+                                let as_skip = |i: Option<isize>| match i {
+                                    Some(i) => i.max(0) as usize,
+                                    None => 0,
+                                };
+                                let start = remove_negative(start);
+                                let end = remove_negative(end);
+                                let (skip_left, skip_right) = if step < 0 {
+                                    (end.map(|e| e + 1), start.map(|s| len - s - 1))
                                 } else {
-                                    ts[start..end]
-                                        .iter()
-                                        .step_by(step as usize)
-                                        .cloned()
-                                        .collect()
+                                    (start, end.map(|e| len - e))
+                                };
+                                let iter = ts
+                                    .iter()
+                                    .skip(as_skip(skip_left))
+                                    .rev()
+                                    .skip(as_skip(skip_right));
+                                if step < 0 {
+                                    iter.step_by(-step as usize).cloned().collect()
+                                } else {
+                                    iter.rev().step_by(step as usize).cloned().collect()
                                 }
                             })))
                         }
