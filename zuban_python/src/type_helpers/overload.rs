@@ -306,7 +306,9 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                 );
             };
             if inf.is_union_like(i_s) {
-                // TODO this is shit
+                // This unsafe feels very bad, but it seems to be fine, because we don't reuse the
+                // argument we add here outside of this function. It is only ever used in recursive
+                // function calls of this function.
                 let nxt_arg: &'x Arg<'db, 'x> = unsafe { std::mem::transmute(&next_arg) };
                 non_union_args.push(Arg {
                     index: next_arg.index,
