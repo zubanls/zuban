@@ -519,3 +519,16 @@ class Foo:
     def f(self, y: str) -> None: ...
 
     c: ClassVar[Callable[[Self, int], Self]]
+
+[case overload_with_type_union_math]
+from typing import overload
+
+@overload
+def foo(x: type[int]) -> int: ...
+@overload
+def foo(x: type[str]) -> str: ...
+def foo(y): ...
+
+def f(x: type[int | str], y: type[int] | type[str]) -> None:
+    reveal_type(foo(x))  # N: Revealed type is "int | str"
+    reveal_type(foo(y))  # N: Revealed type is "int | str"

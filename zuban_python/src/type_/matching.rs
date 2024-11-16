@@ -35,7 +35,14 @@ impl Type {
                 variance,
             ),
             Type::Type(t1) => match value_type {
-                Type::Type(t2) => t1.matches(i_s, matcher, t2, variance).similar_if_false(),
+                Type::Type(t2) => {
+                    let m = t1.matches(i_s, matcher, t2, variance);
+                    if t2.is_union_like(i_s.db) {
+                        m
+                    } else {
+                        m.similar_if_false()
+                    }
+                }
                 Type::Union(u2) => match t1.as_ref() {
                     Type::Union(u) => {
                         let repacked = Type::Union(UnionType::from_types(

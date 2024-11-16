@@ -305,7 +305,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     as_union_math_type,
                 );
             };
-            if inf.is_union_like(i_s) {
+            if let Some(u) = inf.as_cow_type(i_s).maybe_union_like(i_s.db) {
                 // This unsafe feels very bad, but it seems to be fine, because we don't reuse the
                 // argument we add here outside of this function. It is only ever used in recursive
                 // function calls of this function.
@@ -317,13 +317,10 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                         inferred: Inferred::new_any(AnyCause::Todo),
                     },
                 });
-                let Type::Union(u) = inf.as_type(i_s) else {
-                    unreachable!()
-                };
                 let mut unioned = Type::Never(NeverCause::Other);
                 let mut first_similar = None;
                 let mut mismatch = false;
-                for entry in u.entries.into_vec().into_iter() {
+                for entry in u.into_owned().entries.into_vec().into_iter() {
                     let non_union_args_len = non_union_args.len();
                     non_union_args.last_mut().unwrap().kind = ArgKind::Overridden {
                         original: nxt_arg,
