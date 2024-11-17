@@ -246,3 +246,12 @@ foo = 1  # type: *foo  # E: Star expressions are not allowed within a type comme
 bar = (1, b'')  # type: (int, *str)  # E: Star expressions are not allowed within a type comment
 reveal_type(foo)  # N: Revealed type is "Any"
 reveal_type(bar)  # N: Revealed type is "tuple[int, Any]"
+
+[case invalid_type_var_tuple_nesting]
+from typing import TypeAlias, TypeVarTuple, Unpack
+Ts = TypeVarTuple("Ts")
+D = list[F[tuple[*Ts]]]  # E: Invalid recursive alias: type variable nesting on right hand side \
+                      # E: Name "F" is used before definition
+F = D[Ts]  # Error reported above
+
+z: D[int]
