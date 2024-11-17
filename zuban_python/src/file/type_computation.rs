@@ -5123,7 +5123,7 @@ fn check_module_getattr_type(
     if let Type::Any(cause) = inf.as_cow_type(i_s).as_ref() {
         TypeNameLookup::Unknown(UnknownCause::AnyCause(*cause))
     } else {
-        todo!()
+        TypeNameLookup::InvalidVariable(InvalidVariableType::Other)
     }
 }
 

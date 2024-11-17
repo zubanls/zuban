@@ -193,3 +193,17 @@ class Foo:
 
 reveal_type(Foo().x)  # N: Revealed type is "Any"
 reveal_type(Foo().y)  # N: Revealed type is "int"
+
+[case invalid_module_getattr]
+from ok import undefined1
+from not_ok import undefined2  # E: "int" not callable
+reveal_type(undefined1)  # N: Revealed type is "str"
+reveal_type(undefined2)  # N: Revealed type is "Any"
+
+x: undefined1  # E: Invalid type comment or annotation
+y: undefined2
+
+[file ok.py]
+def __getattr__(name: str) -> str: ...
+[file not_ok.py]
+__getattr__ = 1  # E: Invalid signature "int" for "__getattr__"
