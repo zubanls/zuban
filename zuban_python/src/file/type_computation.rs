@@ -2875,9 +2875,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             match s.named_expr.expression().unpack() {
                 ExpressionContent::ExpressionPart(ExpressionPart::Atom(atom)) => {
                     let maybe = match atom.unpack() {
-                        AtomContent::Int(i) => {
-                            Some(LiteralKind::Int(i.parse().unwrap_or_else(|| todo!())))
-                        }
+                        AtomContent::Int(i) => Some(LiteralKind::Int(
+                            i.parse().unwrap_or_else(|| unimplemented!()),
+                        )),
                         AtomContent::Bytes(b) => Some(LiteralKind::Bytes(
                             if let Some(b) = b.maybe_single_bytes_literal() {
                                 PointLink::new(self.inference.file.file_index, b.index())
@@ -2955,7 +2955,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                                         implicit: false,
                                     }));
                                 } else {
-                                    todo!()
+                                    unimplemented!()
                                 }
                             }
                         }
@@ -3293,7 +3293,12 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         expr,
                     );
                     if result.is_none() && !expr.is_none_literal() {
-                        todo!()
+                        slf.add_issue_for_index(
+                            expr.index(),
+                            IssueKind::InvalidType(
+                                "Name argument should be a string literal".into(),
+                            ),
+                        );
                     }
                     result
                 };

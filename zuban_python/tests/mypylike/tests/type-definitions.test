@@ -217,3 +217,14 @@ z: Callable[[*Ts], int]
 reveal_type(x)  # N: Revealed type is "def [Ts] (Any) -> int"
 reveal_type(y)  # N: Revealed type is "def [Ts] (*Unpack[Ts]) -> int"
 reveal_type(z)  # N: Revealed type is "def [Ts] (*Unpack[Ts]) -> int"
+
+[case mypy_extensions_invalid_callable_param]
+from typing import Callable
+from mypy_extensions import Arg, DefaultArg
+
+x1: Callable[[Arg(int, f"{1}")], int]  # E: Name argument should be a string literal
+x2: Callable[[Arg(int, 1)], int] # E: Name argument should be a string literal \
+                                 # E: No overload variant of "Arg" matches argument types "Type[int]", "int" \
+                                 # N: Possible overload variants: \
+                                 # N:     def [_T] Arg(type: _T, name: str | None = ...) -> _T \
+                                 # N:     def Arg(*, name: str | None = ...) -> Any
