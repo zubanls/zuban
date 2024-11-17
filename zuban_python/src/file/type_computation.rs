@@ -4158,17 +4158,20 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                         },
                     }
                 }
-                StarExpressionContent::StarExpression(s) => todo!(),
+                StarExpressionContent::StarExpression(s) => {
+                    self.add_issue(
+                        s.index(),
+                        IssueKind::InvalidType(
+                            "Star expressions are not allowed within a type comment".into(),
+                        ),
+                    );
+                    return TypeCommentDetails::new_any();
+                }
             }
         } else {
             for s in f.tree.root().iter_stmt_likes() {
                 if let StmtLikeContent::Error(node_index) = s.node {
-                    return TypeCommentDetails {
-                        inferred: Inferred::new_any_from_error(),
-                        type_: TypeCommentState::Type(Cow::Borrowed(&Type::Any(
-                            AnyCause::FromError,
-                        ))),
-                    };
+                    return TypeCommentDetails::new_any();
                 }
             }
             debug!("Found non-expression in annotation: {}", f.tree.code());
@@ -4182,10 +4185,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                     },
                 },
             );
-            return TypeCommentDetails {
-                inferred: Inferred::new_any_from_error(),
-                type_: TypeCommentState::Type(Cow::Borrowed(&Type::Any(AnyCause::FromError))),
-            };
+            return TypeCommentDetails::new_any();
         }
     }
 
@@ -4198,9 +4198,17 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
             .map(|star_like| {
                 let expr = match star_like {
                     StarLikeExpression::NamedExpression(named_expr) => named_expr.expression(),
+                    StarLikeExpression::StarNamedExpression(s) => {
+                        self.add_issue(
+                            s.index(),
+                            IssueKind::InvalidType(
+                                "Star expressions are not allowed within a type comment".into(),
+                            ),
+                        );
+                        return Type::Any(AnyCause::FromError);
+                    }
                     StarLikeExpression::Expression(expr) => expr,
-                    StarLikeExpression::StarNamedExpression(_)
-                    | StarLikeExpression::StarExpression(_) => unreachable!(),
+                    StarLikeExpression::StarExpression(_) => unreachable!(),
                 };
                 if let Some(tuple) = expr.maybe_tuple() {
                     self.calc_type_comment_tuple(assignment_node_ref, tuple.iter())
@@ -5208,6 +5216,15 @@ pub enum TypeCommentState<'db> {
 pub struct TypeCommentDetails<'db> {
     pub type_: TypeCommentState<'db>,
     pub inferred: Inferred,
+}
+
+impl TypeCommentDetails<'_> {
+    fn new_any() -> Self {
+        Self {
+            inferred: Inferred::new_any_from_error(),
+            type_: TypeCommentState::Type(Cow::Borrowed(&Type::Any(AnyCause::FromError))),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
