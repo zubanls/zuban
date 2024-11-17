@@ -2539,14 +2539,13 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         }
                         StarLikeExpression::StarNamedExpression(star_expr) => {
                             let t = self.compute_type_expression_part(star_expr.expression_part());
-                            match t {
-                                TypeContent::TypeVarTuple(tvt) => todo!(),
+                            let new_t = match t {
+                                TypeContent::TypeVarTuple(tvt) => TypeOrUnpack::TypeVarTuple(tvt),
                                 _ => {
                                     let node_ref =
                                         NodeRef::new(self.inference.file, star_expr.index());
                                     let mut t = self.as_type(t, node_ref);
-                                    if matches!(t, Type::Tuple(_)) {
-                                    } else {
+                                    if !matches!(t, Type::Tuple(_)) {
                                         if !t.is_any() {
                                             self.add_issue(
                                                 node_ref,
@@ -2557,13 +2556,14 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                                         }
                                         t = Type::Tuple(Tuple::new_arbitrary_length_with_any());
                                     }
-                                    self.add_param(
-                                        &mut params,
-                                        TypeContent::Unpacked(TypeOrUnpack::Type(t)),
-                                        star_expr.index(),
-                                    )
+                                    TypeOrUnpack::Type(t)
                                 }
-                            }
+                            };
+                            self.add_param(
+                                &mut params,
+                                TypeContent::Unpacked(new_t),
+                                star_expr.index(),
+                            )
                         }
                         _ => unreachable!(),
                     }

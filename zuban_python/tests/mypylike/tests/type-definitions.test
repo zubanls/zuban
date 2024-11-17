@@ -207,3 +207,13 @@ y: undefined2
 def __getattr__(name: str) -> str: ...
 [file not_ok.py]
 __getattr__ = 1  # E: Invalid signature "int" for "__getattr__"
+
+[case type_var_tuple_unpack_in_callable]
+from typing import TypeVarTuple, Callable, Unpack
+Ts = TypeVarTuple("Ts")
+x: Callable[[Ts], int]  # E: TypeVarTuple "Ts" is only valid with an unpack
+y: Callable[[Unpack[Ts]], int]
+z: Callable[[*Ts], int]
+reveal_type(x)  # N: Revealed type is "def [Ts] (Any) -> int"
+reveal_type(y)  # N: Revealed type is "def [Ts] (*Unpack[Ts]) -> int"
+reveal_type(z)  # N: Revealed type is "def [Ts] (*Unpack[Ts]) -> int"
