@@ -785,7 +785,8 @@ impl<'a> Matcher<'a> {
                 )
             }
             CallableParams::Any(_) => SignatureMatch::new_true(),
-            CallableParams::Never(_) => todo!(), //SignatureMatch::False { similar: false },
+            // TODO is this correct?
+            CallableParams::Never(_) => SignatureMatch::False { similar: false },
         }
     }
 
@@ -1092,7 +1093,10 @@ impl<'a> Matcher<'a> {
                         let t1 = match wanted_constraint {
                             Bound::Invariant(t) => t,
                             Bound::Upper(t) => t,
-                            Bound::UpperAndLower(_, _) => todo!("Maybe unreachable?"),
+                            Bound::UpperAndLower(t, _) => {
+                                debug!("TODO Maybe unreachable?");
+                                t
+                            }
                             Bound::Lower(t) => t,
                             Bound::Uncalculated { .. } => unreachable!(),
                         };

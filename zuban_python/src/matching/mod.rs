@@ -390,7 +390,10 @@ impl IteratorContent {
                         inferred: inf1.simplified_union(i_s, inf2),
                         arbitrary_len: a1 & a2,
                     }),
-                    _ => todo!(),
+                    _ => {
+                        debug!("Unpacking a union with incompatible results");
+                        None
+                    }
                 })?,
             Self::WithUnpack {
                 unpack,

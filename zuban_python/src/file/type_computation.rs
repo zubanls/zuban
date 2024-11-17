@@ -376,7 +376,7 @@ macro_rules! compute_type_application {
                 );
                 Inferred::new_any_from_error()
             }
-            _ => todo!("type application: {t:?}"),
+            _ => unreachable!("If this happens, {t:?} was not handled."),
         }
     }}
 }
@@ -4078,7 +4078,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                 Specific::AnyDueToError => {
                     TypeNameLookup::Unknown(UnknownCause::UnknownName(AnyCause::FromError))
                 }
-                _ => todo!(),
+                _ => unreachable!("Apparently specific names do not seem to happen"),
             },
             PointKind::Redirect => {
                 check_type_name(self.i_s, point.as_redirected_node_ref(self.i_s.db))
@@ -4087,7 +4087,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                 let file = self.i_s.db.loaded_python_file(point.file_index());
                 TypeNameLookup::Module(file)
             }
-            _ => todo!("{point:?}"),
+            PointKind::Complex => unreachable!("Apparently complex names do not seem to happen"),
         }
     }
 

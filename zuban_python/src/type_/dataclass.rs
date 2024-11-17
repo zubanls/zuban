@@ -308,7 +308,7 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> Init
                 /*
                 TODO?
                 if !matches!(dataclass.class.generics, ClassGenerics::NotDefinedYet | ClassGenerics::None) {
-                    t = replace_class_type_vars(db, &t, &cls, &|| todo!());
+                    t = replace_class_type_vars(db, &t, &cls, &|| );
                 }
                 */
                 if let Some(right_side) = right_side {
