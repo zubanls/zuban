@@ -218,7 +218,7 @@ reveal_type(x)  # N: Revealed type is "def [Ts] (Any) -> int"
 reveal_type(y)  # N: Revealed type is "def [Ts] (*Unpack[Ts]) -> int"
 reveal_type(z)  # N: Revealed type is "def [Ts] (*Unpack[Ts]) -> int"
 
-[case mypy_extensions_invalid_callable_param]
+[case mypy_extensions_invalid_callable_param_positional]
 from typing import Callable
 from mypy_extensions import Arg, DefaultArg
 
@@ -228,3 +228,15 @@ x2: Callable[[Arg(int, 1)], int] # E: Name argument should be a string literal \
                                  # N: Possible overload variants: \
                                  # N:     def [_T] Arg(type: _T, name: str | None = ...) -> _T \
                                  # N:     def Arg(*, name: str | None = ...) -> Any
+
+reveal_type(x2)  # N: Revealed type is "def (int) -> int"
+
+[case mypy_extensions_invalid_callable_param_named]
+from typing import Callable
+from mypy_extensions import NamedArg, DefaultNamedArg
+
+x1: Callable[[NamedArg()], int]
+x2: Callable[[DefaultNamedArg()], int]
+
+z: int = x1  # E: Incompatible types in assignment (expression has type "Callable[[Any], int]", variable has type "int")
+z = x2  # E: Incompatible types in assignment (expression has type "Callable[[Any], int]", variable has type "int")

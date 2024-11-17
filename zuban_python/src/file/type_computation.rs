@@ -3284,80 +3284,62 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         let mut type_ = None;
         self.inference
             .infer_primary(primary, &mut ResultContext::Unknown);
-        match details {
-            ArgumentsDetails::Node(arguments) => {
-                let mut iterator = arguments.iter();
-                let name_from_expr = |slf: &mut Self, expr: Expression| {
-                    let result = StringSlice::from_string_in_expression(
-                        self.inference.file.file_index,
-                        expr,
+        if let ArgumentsDetails::Node(arguments) = details {
+            let mut iterator = arguments.iter();
+            let name_from_expr = |slf: &mut Self, expr: Expression| {
+                let result =
+                    StringSlice::from_string_in_expression(self.inference.file.file_index, expr);
+                if result.is_none() && !expr.is_none_literal() {
+                    slf.add_issue_for_index(
+                        expr.index(),
+                        IssueKind::InvalidType("Name argument should be a string literal".into()),
                     );
-                    if result.is_none() && !expr.is_none_literal() {
-                        slf.add_issue_for_index(
-                            expr.index(),
-                            IssueKind::InvalidType(
-                                "Name argument should be a string literal".into(),
-                            ),
-                        );
-                    }
-                    result
-                };
-                let type_from_expr = |slf: &mut Self, expr: Expression| {
-                    let t = slf.compute_type(expr);
-                    Some(slf.as_type(t, NodeRef::new(self.inference.file, expr.index())))
-                };
-                let arg = iterator.next().unwrap();
-                match arg {
-                    // The first arg is always there
-                    Argument::Positional(n) => type_ = type_from_expr(self, n.expression()),
-                    Argument::Keyword(kwarg) if kwarg.unpack().0.as_code() == "type" => {
-                        type_ = type_from_expr(self, kwarg.unpack().1)
+                }
+                result
+            };
+            let type_from_expr = |slf: &mut Self, expr: Expression| {
+                let t = slf.compute_type(expr);
+                Some(slf.as_type(t, NodeRef::new(self.inference.file, expr.index())))
+            };
+            let arg = iterator.next().unwrap();
+            match arg {
+                // The first arg is always there
+                Argument::Positional(n) => type_ = type_from_expr(self, n.expression()),
+                Argument::Keyword(kwarg) if kwarg.unpack().0.as_code() == "type" => {
+                    type_ = type_from_expr(self, kwarg.unpack().1)
+                }
+                Argument::Keyword(kwarg) if kwarg.unpack().0.as_code() == "name" => {
+                    name = name_from_expr(self, kwarg.unpack().1)
+                }
+                _ => (),
+            };
+            if let Some(named_arg) = iterator.next() {
+                match named_arg {
+                    Argument::Positional(named_expr) => {
+                        name = name_from_expr(self, named_expr.expression())
                     }
                     Argument::Keyword(kwarg) if kwarg.unpack().0.as_code() == "name" => {
                         name = name_from_expr(self, kwarg.unpack().1)
                     }
-                    _ => (),
-                };
-                if let Some(named_arg) = iterator.next() {
-                    match named_arg {
-                        Argument::Positional(named_expr) => {
-                            name = name_from_expr(self, named_expr.expression())
-                        }
-                        Argument::Keyword(kwarg) if kwarg.unpack().0.as_code() == "name" => {
-                            name = name_from_expr(self, kwarg.unpack().1)
-                        }
-                        Argument::Keyword(kwarg) if kwarg.unpack().0.as_code() == "type" => {
-                            type_ = type_from_expr(self, kwarg.unpack().1)
-                        }
-                        _ => (),
+                    Argument::Keyword(kwarg) if kwarg.unpack().0.as_code() == "type" => {
+                        type_ = type_from_expr(self, kwarg.unpack().1)
                     }
-                }
-            }
-            ArgumentsDetails::Comprehension(comprehension) => {
-                todo!()
-            }
-            ArgumentsDetails::None => {
-                if matches!(
-                    specific,
-                    Specific::MypyExtensionsNamedArg | Specific::MypyExtensionsDefaultNamedArg
-                ) {
-                    todo!()
+                    _ => (),
                 }
             }
         };
         let param_kind = match specific {
-            Specific::MypyExtensionsArg | Specific::MypyExtensionsDefaultArg => {
+            Specific::MypyExtensionsNamedArg if name.is_some() => ParamKind::KeywordOnly,
+            Specific::MypyExtensionsDefaultNamedArg if name.is_some() => ParamKind::KeywordOnly,
+            Specific::MypyExtensionsVarArg => ParamKind::Star,
+            Specific::MypyExtensionsKwArg => ParamKind::StarStar,
+            _ => {
                 if name.is_some() {
                     ParamKind::PositionalOrKeyword
                 } else {
                     ParamKind::PositionalOnly
                 }
             }
-            Specific::MypyExtensionsNamedArg => ParamKind::KeywordOnly,
-            Specific::MypyExtensionsDefaultNamedArg => ParamKind::KeywordOnly,
-            Specific::MypyExtensionsVarArg => ParamKind::Star,
-            Specific::MypyExtensionsKwArg => ParamKind::StarStar,
-            _ => unreachable!(),
         };
         let type_ = type_.unwrap_or(Type::Any(AnyCause::Todo));
         TypeContent::SpecialType(SpecialType::CallableParam(CallableParam {
