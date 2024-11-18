@@ -106,7 +106,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         })
     }
 
-    fn iter_non_self_args(&self, i_s: &InferenceState) -> ParamIterator<'a> {
+    fn iter_non_self_args(&self) -> ParamIterator<'a> {
         let mut iterator = self.node().params().iter();
         if self.class.is_some() && self.kind() != FunctionKind::Staticmethod {
             // The param annotation is defined implicitly as Self or Type[Self]
@@ -115,14 +115,12 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         iterator
     }
 
-    pub fn is_missing_param_annotations(&self, i_s: &InferenceState) -> bool {
-        self.iter_non_self_args(i_s)
-            .any(|p| p.annotation().is_none())
+    pub fn is_missing_param_annotations(&self) -> bool {
+        self.iter_non_self_args().any(|p| p.annotation().is_none())
     }
 
-    pub fn might_be_missing_none_return_annotation(&self, i_s: &InferenceState) -> bool {
-        self.iter_return_or_yield().next().is_none()
-            && self.iter_non_self_args(i_s).next().is_none()
+    pub fn might_be_missing_none_return_annotation(&self) -> bool {
+        self.iter_return_or_yield().next().is_none() && self.iter_non_self_args().next().is_none()
     }
 
     pub fn has_trivial_body(&self, i_s: &InferenceState) -> bool {
@@ -192,7 +190,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
     fn execute_without_annotation(
         &self,
         i_s: &InferenceState<'db, '_>,
-        args: &dyn Args<'db>,
+        _args: &dyn Args<'db>,
     ) -> Inferred {
         if i_s.db.project.settings.mypy_compatible {
             return Inferred::new_any(AnyCause::Unannotated);
@@ -217,7 +215,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                         // TODO
                     }
                 }
-                ReturnOrYield::Yield(yield_expr) => unreachable!(),
+                ReturnOrYield::Yield(_yield_expr) => unreachable!(),
             }
         }
         Inferred::new_none()
@@ -296,7 +294,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         match self.parent(db) {
             FuncParent::Module => None,
             FuncParent::Function(func) => func.parent_class(db),
-            FuncParent::Class(c) => unreachable!(), // Handled above
+            FuncParent::Class(_) => unreachable!(), // Handled above
         }
     }
 
@@ -452,7 +450,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             let options = AsCallableOptions {
                 first_param: FirstParamProperties::None,
                 return_type: match type_guard.as_ref() {
-                    Some(guard) => Cow::Owned(i_s.db.python_state.bool_type()),
+                    Some(_) => Cow::Owned(i_s.db.python_state.bool_type()),
                     None => self.return_type(i_s),
                 },
             };
@@ -682,7 +680,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         self.class.is_some() && self.name() == "__new__"
     }
 
-    pub fn first_param_kind(&self, i_s: &InferenceState<'db, '_>) -> FirstParamKind {
+    pub fn first_param_kind(&self) -> FirstParamKind {
         if self.class.is_some()
             && ["__new__", "__init_subclass__", "__class_getitem__"].contains(&self.name())
         {
@@ -711,7 +709,6 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     let first = first_defined_name(self.node_ref.file, self.node().name().index());
                     let original_func =
                         NodeRef::new(self.node_ref.file, first - NAME_TO_FUNCTION_DIFF);
-                    let point = original_func.point();
                     Function::new(original_func, self.class).kind()
                 } else {
                     FunctionKind::Function {
@@ -1796,9 +1793,9 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
 
     pub fn lookup(
         &self,
-        i_s: &InferenceState,
-        node_ref: Option<NodeRef>,
-        name: &str,
+        _i_s: &InferenceState,
+        _node_ref: Option<NodeRef>,
+        _name: &str,
     ) -> LookupResult {
         debug!("TODO Function lookup");
         LookupResult::None
@@ -1876,7 +1873,7 @@ impl<'x> Param<'x> for FunctionParam<'x> {
         self.param.default().is_some()
     }
 
-    fn name(&self, db: &'x Database) -> Option<&str> {
+    fn name(&self, _db: &'x Database) -> Option<&str> {
         Some(self.param.name_def().as_code())
     }
 
@@ -2014,7 +2011,7 @@ fn infer_decorator_details(
         }
         let node_ref = NodeRef::from_link(i_s.db, saved_link);
         // All these cases are classes.
-        if let Some(class_def) = node_ref.maybe_class() {
+        if node_ref.maybe_class().is_some() {
             if saved_link == i_s.db.python_state.classmethod_node_ref().as_link() {
                 return InferredDecorator::FunctionKind {
                     kind: FunctionKind::Classmethod {

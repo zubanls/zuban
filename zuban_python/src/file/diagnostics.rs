@@ -1120,7 +1120,7 @@ impl<'db> Inference<'db, '_, '_> {
                             _ => false,
                         };
                         if !erased_is_protocol {
-                            if function.first_param_kind(i_s) == FirstParamKind::ClassOfSelf {
+                            if function.first_param_kind() == FirstParamKind::ClassOfSelf {
                                 class_t = Type::Type(Rc::new(class_t));
                             };
                             if !erased.is_simple_super_type_of(i_s, &class_t).bool() {
@@ -1238,7 +1238,7 @@ impl<'db> Inference<'db, '_, '_> {
         }
         if flags.disallow_untyped_defs && !flags.disallow_incomplete_defs {
             match (
-                function.is_missing_param_annotations(i_s),
+                function.is_missing_param_annotations(),
                 function.return_annotation().is_none(),
             ) {
                 (true, true) => {
@@ -1250,7 +1250,7 @@ impl<'db> Inference<'db, '_, '_> {
                     function.add_issue_for_declaration(
                         i_s,
                         IssueKind::FunctionMissingReturnAnnotation {
-                            hint_return_none: function.might_be_missing_none_return_annotation(i_s),
+                            hint_return_none: function.might_be_missing_none_return_annotation(),
                         },
                     );
                 }

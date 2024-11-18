@@ -351,7 +351,7 @@ macro_rules! compute_type_application {
                 Inferred::from_type(Type::Type(Rc::new(Type::new_class(class_link, generics))))
             }
             TypeContent::Type(mut type_) => {
-                let type_var_likes = tcomp.into_type_vars(|inf, recalculate_type_vars| {
+                let type_var_likes = tcomp.into_type_vars(|_, recalculate_type_vars| {
                     type_ = recalculate_type_vars(&type_);
                 });
                 if type_var_likes.len() > 0 && $from_alias_definition  {
@@ -383,7 +383,7 @@ macro_rules! compute_type_application {
 
 fn type_computation_for_variable_annotation(
     i_s: &InferenceState,
-    manager: &TypeVarManager<PointLink>,
+    _manager: &TypeVarManager<PointLink>,
     type_var_like: TypeVarLike,
     current_callable: Option<PointLink>,
 ) -> TypeVarCallbackReturn {
@@ -474,7 +474,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         } else {
             debug!("Found non-expression in annotation: {}", f.tree.code());
             for s in f.tree.root().iter_stmt_likes() {
-                if let StmtLikeContent::Error(node_index) = s.node {
+                if let StmtLikeContent::Error(_) = s.node {
                     // There is invalid syntax (issue added previously)
                     return TypeContent::Unknown(UnknownCause::ReportedIssue);
                 }
@@ -643,7 +643,6 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         expr: Expression,
         is_implicit_optional: bool,
     ) {
-        let from = NodeRef::new(self.inference.file, expr.index());
         self.cache_annotation_or_type_comment(annotation_index, expr, is_implicit_optional, None)
     }
 
@@ -1280,8 +1279,8 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             TypeContent::TypeGuardInfo(_) => {
                 return Some(self.inference.i_s.db.python_state.bool_type())
             }
-            TypeContent::Unknown(cause) => (),
-            TypeContent::ClassVar(t) => {
+            TypeContent::Unknown(_) => (),
+            TypeContent::ClassVar(_) => {
                 self.add_issue(node_ref, IssueKind::ClassVarNestedInsideOtherType);
             }
             TypeContent::EnumMember(m) => {
@@ -1372,7 +1371,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
     fn compute_slice_type_content(&mut self, slice: SliceOrSimple<'x>) -> TypeContent<'db, 'x> {
         match slice {
             SliceOrSimple::Simple(s) => self.compute_type(s.named_expr.expression()),
-            SliceOrSimple::Slice(n) => TypeContent::InvalidVariable(InvalidVariableType::Slice),
+            SliceOrSimple::Slice(_) => TypeContent::InvalidVariable(InvalidVariableType::Slice),
             SliceOrSimple::Starred(s) => {
                 let tc = self.compute_type(s.starred_expr.expression());
                 TypeContent::Unpacked(self.wrap_in_unpack(tc, slice.as_node_ref()))
@@ -1506,22 +1505,17 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             PrimaryContent::GetItem(slice_type) => {
                 let s = SliceType::new(self.inference.file, primary.index(), slice_type);
                 match base {
-                    TypeContent::Class { node_ref, .. } => {
-                        let db = self.inference.i_s.db;
-                        self.compute_type_get_item_on_class(
-                            Class::with_undefined_generics(node_ref),
-                            s,
-                            Some(primary),
-                        )
-                    }
+                    TypeContent::Class { node_ref, .. } => self.compute_type_get_item_on_class(
+                        Class::with_undefined_generics(node_ref),
+                        s,
+                        Some(primary),
+                    ),
                     TypeContent::Dataclass(d) => {
                         self.compute_type_get_item_on_dataclass(&d, s, Some(primary))
                     }
-                    TypeContent::NamedTuple(nt) => {
-                        self.compute_type_get_item_on_named_tuple(nt, s, Some(primary))
-                    }
+                    TypeContent::NamedTuple(nt) => self.compute_type_get_item_on_named_tuple(nt, s),
                     TypeContent::TypedDictDefinition(td) => {
-                        self.compute_type_get_item_on_typed_dict(&td, s, Some(primary))
+                        self.compute_type_get_item_on_typed_dict(&td, s)
                     }
                     TypeContent::Type(d) => match d {
                         Type::Any(_) => TypeContent::Type(d),
@@ -1860,9 +1854,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             primary,
         ) {
             ClassGetItemResult::GenericClass(c) => c,
-            ClassGetItemResult::SimpleGeneric {
-                node_ref, generics, ..
-            } => GenericClass {
+            ClassGetItemResult::SimpleGeneric { generics, .. } => GenericClass {
                 link: dataclass.class.link,
                 generics,
             },
@@ -1877,7 +1869,6 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         &mut self,
         named_tuple: Rc<NamedTuple>,
         slice_type: SliceType,
-        primary: Option<Primary>,
     ) -> TypeContent<'db, 'db> {
         let db = self.inference.i_s.db;
         let mut generics = vec![];
@@ -1912,7 +1903,6 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         &mut self,
         typed_dict: &TypedDict,
         slice_type: SliceType,
-        primary: Option<Primary>,
     ) -> TypeContent<'db, 'db> {
         let db = self.inference.i_s.db;
         let mut generics = vec![];
@@ -2157,7 +2147,6 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     }
                 }
                 TypeVarLike::TypeVarTuple(tvt) => {
-                    let slice_type_len = slice_type.iter().count();
                     for (i, type_var_like) in type_var_iterator.by_ref().rev() {
                         let generic_item = match type_var_like {
                             TypeVarLike::TypeVar(type_var) => {
@@ -2356,7 +2345,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
     fn add_param(&mut self, params: &mut Vec<CallableParam>, t: TypeContent, index: NodeIndex) {
         let p = match t {
             TypeContent::Unpacked(TypeOrUnpack::Type(Type::Tuple(tup))) => match &tup.args {
-                TupleArgs::WithUnpack(with_unpack) => CallableParam {
+                TupleArgs::WithUnpack(_) => CallableParam {
                     type_: ParamType::Star(StarParamType::UnpackedTuple(tup)),
                     has_default: false,
                     name: None,
@@ -2949,7 +2938,6 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         if let ExpressionPart::Atom(atom) = e {
                             if let AtomContent::Int(i) = atom.unpack() {
                                 if let Some(mut i) = i.parse() {
-                                    let node_ref = NodeRef::new(self.inference.file, f.index());
                                     if s == "-" {
                                         i = -i;
                                     }
@@ -3126,7 +3114,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
     }
 
     fn expect_type_var_like_args(&mut self, slice_type: SliceType, class: &'static str) {
-        for (i, s) in slice_type.iter().enumerate() {
+        for s in slice_type.iter() {
             let result = self.compute_slice_type_content(s);
             let unpacked_type_var_tuple = matches!(
                 &result,
@@ -3260,7 +3248,6 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             TypeNameLookup::InvalidVariable(t) => TypeContent::InvalidVariable(t),
             TypeNameLookup::Unknown(cause) => TypeContent::Unknown(cause),
             TypeNameLookup::SpecialType(special) => {
-                let i_s = self.inference.i_s;
                 if matches!(special, SpecialType::Any)
                     && self.inference.flags().disallow_any_explicit
                 {
@@ -3363,7 +3350,6 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
 
     pub fn compute_named_tuple_initializer(
         &mut self,
-        node_ref: NodeRef,
         list: StarLikeExpressionIterator,
     ) -> Option<Vec<CallableParam>> {
         // From NamedTuple('x', [('a', int)]) to a callable that matches those params
@@ -3417,7 +3403,6 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     .add_issue(name_expr.index(), IssueKind::NamedTupleInvalidFieldName);
                 return None;
             };
-            let name_str = name.as_str(self.inference.i_s.db);
             let t = self.compute_named_expr_type(type_expr);
             add_named_tuple_param(
                 "NamedTuple",
@@ -3556,7 +3541,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
             self,
             slice_type,
             from_alias_definition,
-            compute_type_get_item_on_named_tuple(named_tuple, slice_type, None)
+            compute_type_get_item_on_named_tuple(named_tuple, slice_type)
         )
     }
 
@@ -3570,7 +3555,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
             self,
             slice_type,
             from_alias_definition,
-            compute_type_get_item_on_typed_dict(typed_dict, slice_type, None)
+            compute_type_get_item_on_typed_dict(typed_dict, slice_type)
         )
     }
 
@@ -4173,7 +4158,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
             }
         } else {
             for s in f.tree.root().iter_stmt_likes() {
-                if let StmtLikeContent::Error(node_index) = s.node {
+                if let StmtLikeContent::Error(_) = s.node {
                     return TypeCommentDetails::new_any();
                 }
             }
@@ -4228,7 +4213,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                     );
                     let t = comp.compute_type(expr);
                     let mut type_ = comp.as_type(t, expr_node_ref);
-                    let type_vars = comp.into_type_vars(|inf, recalculate_type_vars| {
+                    let type_vars = comp.into_type_vars(|_, recalculate_type_vars| {
                         type_ = recalculate_type_vars(&type_);
                     });
                     debug_assert!(type_vars.is_empty());
@@ -4290,7 +4275,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
         let Some(mut type_) = comp.as_type_or_error(t, node_ref) else {
             return Err(());
         };
-        let type_vars = comp.into_type_vars(|inf, recalculate_type_vars| {
+        let type_vars = comp.into_type_vars(|_, recalculate_type_vars| {
             type_ = recalculate_type_vars(&type_);
         });
         debug_assert!(type_vars.is_empty());
@@ -4312,7 +4297,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
         );
 
         let mut member = comp.compute_typed_dict_member(name, annotation.expression(), total);
-        let type_vars = comp.into_type_vars(|inf, recalculate_type_vars| {
+        let type_vars = comp.into_type_vars(|_, recalculate_type_vars| {
             member.type_ = recalculate_type_vars(&member.type_);
         });
         debug_assert!(type_vars.is_empty());
@@ -4753,7 +4738,7 @@ impl<'a, I: Clone + Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
         &mut self,
         type_computation: &mut TypeComputation,
     ) -> Option<ParamSpecArg> {
-        let (from, result) = self.next_back(type_computation)?;
+        let (_, result) = self.next_back(type_computation)?;
         let slice = result.err()?;
         let params = type_computation.calculate_callable_params(slice, true, false);
         Some(ParamSpecArg::new(params, None))
@@ -5062,7 +5047,6 @@ pub(super) fn check_type_name<'db: 'file, 'file>(
                     return TypeNameLookup::SpecialType(special);
                 }
             }
-            let point = name_node_ref.point();
             let func = Function::new(
                 NodeRef::new(name_node_ref.file, f.index()),
                 i_s.current_class(),

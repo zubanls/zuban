@@ -475,7 +475,7 @@ pub(crate) fn new_typing_named_tuple(
         on_type_var,
         TypeComputationOrigin::NamedTupleMember,
     );
-    if let Some(params) = comp.compute_named_tuple_initializer(second_node_ref, list_iterator) {
+    if let Some(params) = comp.compute_named_tuple_initializer(list_iterator) {
         check_named_tuple_has_no_fields_with_underscore(i_s, "NamedTuple", args, &params);
         let type_var_likes = comp.into_type_vars(|_, _| ());
         if in_type_definition && !type_var_likes.is_empty() {
