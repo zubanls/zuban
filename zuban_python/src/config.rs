@@ -60,7 +60,6 @@ impl ProjectOptions {
     }
 
     pub fn from_mypy_ini(
-        path: &str,
         code: &str,
         diagnostic_config: &mut DiagnosticConfig,
     ) -> Result<Self, String> {
@@ -102,7 +101,6 @@ impl ProjectOptions {
     }
 
     pub fn from_pyproject_toml(
-        path: &str,
         code: &str,
         diagnostic_config: &mut DiagnosticConfig,
     ) -> Result<Self, String> {

@@ -206,13 +206,12 @@ struct Cli {
 fn main() -> ExitCode {
     let cli = Cli::parse();
 
-    let in_dir = "TODO ";
     let mut diagnostic_config = DiagnosticConfig::default();
     let mut options = if let Some((name, content)) = find_mypy_config_file(&cli) {
         if name.ends_with(".toml") {
-            ProjectOptions::from_pyproject_toml(in_dir, &content, &mut diagnostic_config)
+            ProjectOptions::from_pyproject_toml(&content, &mut diagnostic_config)
         } else {
-            ProjectOptions::from_mypy_ini(in_dir, &content, &mut diagnostic_config)
+            ProjectOptions::from_mypy_ini(&content, &mut diagnostic_config)
         }
         .unwrap_or_else(|err| panic!("Problem parsing Mypy config {name}: {err}"))
     } else {
