@@ -14,6 +14,9 @@ use crate::{
 
 use super::{AnyCause, CallableParams, IterInfos, Type, UnionEntry};
 
+type RunOnUnionEntry<'a> =
+    &'a mut dyn FnMut(&Type, &dyn Fn(IssueKind), &mut dyn FnMut(&Type, LookupDetails));
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Intersection {
     entries: Rc<[Type]>,
@@ -290,11 +293,7 @@ impl Intersection {
 
     pub(crate) fn run_after_lookup_on_each_union_member(
         &self,
-        run_on_entry: &mut dyn FnMut(
-            &Type,
-            &dyn Fn(IssueKind),
-            &mut dyn FnMut(&Type, LookupDetails),
-        ),
+        run_on_entry: RunOnUnionEntry,
         add_issue: &dyn Fn(IssueKind),
         callable: &mut dyn FnMut(&Type, LookupDetails),
     ) {

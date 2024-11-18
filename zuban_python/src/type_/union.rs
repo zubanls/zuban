@@ -1,6 +1,7 @@
 use std::{
     borrow::{Borrow, Cow},
     collections::HashMap,
+    hash::{Hash, Hasher},
     rc::Rc,
 };
 
@@ -288,7 +289,7 @@ fn contract_bool_literals(db: &Database, entries: &mut Vec<UnionEntry>) {
     })
 }
 
-#[derive(Debug, Clone, Eq, Hash)]
+#[derive(Debug, Clone, Eq)]
 pub struct UnionEntry {
     pub type_: Type,
     pub format_index: usize,
@@ -301,6 +302,12 @@ impl PartialEq for UnionEntry {
         // recursions in protocols the format_index might interfere with equality in a derive
         // PartialEq.
         self.type_ == other.type_
+    }
+}
+
+impl Hash for UnionEntry {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.type_.hash(state)
     }
 }
 

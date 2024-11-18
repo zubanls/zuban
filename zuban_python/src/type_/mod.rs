@@ -1954,7 +1954,13 @@ impl PartialEq for AnyCause {
     }
 }
 
-#[derive(Debug, Eq, Copy, Clone, Hash)]
+impl Hash for AnyCause {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        // Nothing to do, because all any causes are considered to be equal
+    }
+}
+
+#[derive(Debug, Eq, Copy, Clone)]
 pub enum AnyCause {
     Unannotated,
     Explicit,
@@ -1964,7 +1970,7 @@ pub enum AnyCause {
     Todo, // Used for cases where it's currently unclear what the cause should be.
 }
 
-#[derive(Debug, Eq, Copy, Clone, Hash)]
+#[derive(Debug, Eq, Copy, Clone)]
 pub enum NeverCause {
     Explicit,
     Inference,
@@ -1974,5 +1980,11 @@ pub enum NeverCause {
 impl PartialEq for NeverCause {
     fn eq(&self, other: &Self) -> bool {
         true
+    }
+}
+
+impl Hash for NeverCause {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        // Nothing to do, because all never causes are considered to be equal
     }
 }
