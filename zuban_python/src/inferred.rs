@@ -229,7 +229,6 @@ impl<'db: 'slf, 'slf> Inferred {
             TypeOrClass::Class(class) => class,
             TypeOrClass::Type(t) => match t {
                 Cow::Borrowed(Type::Dataclass(d)) => d.class(i_s.db),
-                Cow::Borrowed(Type::TypedDict(d)) => todo!("is this even necessary?"),
                 _ => unreachable!("{t:?}"),
             },
         }
