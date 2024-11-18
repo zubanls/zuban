@@ -421,7 +421,7 @@ impl<'db> Inference<'db, '_, '_> {
         ))
     }
 
-    pub fn parse_int(&self, int: Int, result_context: &mut ResultContext) -> Option<i64> {
+    pub fn parse_int(&self, int: Int) -> Option<i64> {
         let result = int.parse();
         if result.is_none() {
             debug!("TODO Add diagnostic for unparsable ints?");
@@ -499,8 +499,8 @@ fn check_elements_with_context<'db>(
                     starred.index(),
                 )
             }
-            StarLikeExpression::Expression(e) => unreachable!(),
-            StarLikeExpression::StarExpression(e) => unreachable!(),
+            StarLikeExpression::Expression(_) => unreachable!(),
+            StarLikeExpression::StarExpression(_) => unreachable!(),
         };
     }
     (!had_error).then(|| {

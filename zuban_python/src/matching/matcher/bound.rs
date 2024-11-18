@@ -59,7 +59,7 @@ impl Bound {
         format_data: &FormatData,
         style: ParamsStyle,
     ) -> MatcherFormatResult {
-        self.format_with_fallback(format_data, style, |fallback| {
+        self.format_with_fallback(format_data, style, |_| {
             match usage.as_type_var_like() {
                 TypeVarLike::TypeVar(type_var) => {
                     if let TypeVarKind::Bound(bound) = &type_var.kind {
@@ -275,7 +275,7 @@ impl BoundKind {
                 t1.common_sub_type(i_s, t2)
                     .unwrap_or(Type::Never(NeverCause::Inference)),
             )),
-            (Self::TypeVarTuple(tup1), Self::TypeVarTuple(tup2)) => todo!(),
+            (Self::TypeVarTuple(_tup1), Self::TypeVarTuple(_tup2)) => todo!(),
             (Self::ParamSpec(params1), Self::ParamSpec(params2)) => {
                 debug!(
                     "Common subtype for ParamSpec '{}' and '{}'",

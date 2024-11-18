@@ -96,7 +96,7 @@ impl Tuple {
         format!("{base}[{}{fallback}]", self.args.format(format_data)).into()
     }
 
-    pub fn iter(&self, i_s: &InferenceState) -> IteratorContent {
+    pub fn iter(&self) -> IteratorContent {
         match &self.args {
             TupleArgs::FixedLen(ts) => IteratorContent::new_tuple(ts.clone()),
             TupleArgs::ArbitraryLen(t) => {

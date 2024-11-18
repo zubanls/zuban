@@ -3313,7 +3313,6 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     result_context,
                 )
                 .save_name(
-                    self.i_s,
                     self.file,
                     if is_target {
                         // If it's a name def it might be something like self.foo = 1, which should not
@@ -3388,7 +3387,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         use AtomContent::*;
         let specific = match atom.unpack() {
             Name(n) => return self.infer_name_reference(n),
-            Int(i) => match self.parse_int(i, result_context) {
+            Int(i) => match self.parse_int(i) {
                 Some(parsed) => {
                     return check_literal(result_context, i_s, i.index(), Specific::IntLiteral);
                 }

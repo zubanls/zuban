@@ -150,8 +150,7 @@ impl<'name, 'code> TestCase<'name, 'code> {
             );
             let ini = cleanup_mypy_issues(pyproject_toml).unwrap();
             let mut new =
-                ProjectOptions::from_pyproject_toml(BASE_PATH, &ini, &mut diagnostics_config)
-                    .unwrap();
+                ProjectOptions::from_pyproject_toml(&ini, &mut diagnostics_config).unwrap();
             set_mypy_path(&mut new);
             config = std::mem::replace(&mut new.flags, config);
             settings = std::mem::replace(&mut new.settings, settings);

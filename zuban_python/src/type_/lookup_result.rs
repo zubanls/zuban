@@ -60,14 +60,9 @@ impl LookupResult {
         }
     }
 
-    pub fn save_name(
-        self,
-        i_s: &InferenceState,
-        file: &PythonFile,
-        name_index: NodeIndex,
-    ) -> Option<Inferred> {
+    pub fn save_name(self, file: &PythonFile, name_index: NodeIndex) -> Option<Inferred> {
         match &self {
-            LookupResult::GotoName { name: link, inf } => {
+            LookupResult::GotoName { name: link, .. } => {
                 // TODO this is not correct, because there can be multiple runs, so setting
                 // it here can be overwritten.
                 file.points.set(

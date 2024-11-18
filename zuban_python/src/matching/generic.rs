@@ -101,12 +101,12 @@ impl<'a> Generic<'a> {
                 _ => unreachable!(),
             },
             Self::TypeArgs(_) => match other {
-                Self::TypeArgs(ref t2) => todo!(),
+                Self::TypeArgs(ref _t2) => todo!(),
                 _ => unreachable!(),
             },
-            Self::ParamSpecArg(spec_args1) => match other {
+            Self::ParamSpecArg(_) => match other {
                 // I'm not sure why Mypy decided that ParamSpecs always overlap.
-                Self::ParamSpecArg(spec_args2) => true,
+                Self::ParamSpecArg(_) => true,
                 _ => unreachable!(),
             },
         }
@@ -147,7 +147,7 @@ impl<'a> Generic<'a> {
                 };
                 GenericItem::TypeArgs(TypeArgs::new(ts1.args.merge_matching_parts(db, &ts2.args)))
             }
-            Self::ParamSpecArg(params) => todo!(),
+            Self::ParamSpecArg(_params) => todo!(),
         }
     }
 

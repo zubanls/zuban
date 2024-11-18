@@ -186,9 +186,6 @@ impl<'file> Slice<'file> {
         i_s: &InferenceState,
         callback: impl Fn(Option<isize>, Option<isize>, isize) -> Inferred,
     ) -> Option<Inferred> {
-        let infer = |maybe_expr: Option<_>| {
-            maybe_expr.map(|expr| self.file.inference(i_s).infer_expression(expr))
-        };
         let (first, second, third) = self.slice.unpack();
         let infer_third = |start_index, end_index| {
             if let Some(third) = third {
@@ -338,7 +335,7 @@ impl<'db> Args<'db> for SliceArguments<'db, '_> {
         None
     }
 
-    fn reset_points_from_backup(&self, backup: &Option<PointsBackup>) {
+    fn reset_points_from_backup(&self, _backup: &Option<PointsBackup>) {
         debug!("TODO implement reset_from_backup for SliceArguments");
     }
 }

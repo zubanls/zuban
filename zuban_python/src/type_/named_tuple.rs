@@ -140,7 +140,7 @@ impl NamedTuple {
     }
 
     pub fn iter(&self, i_s: &InferenceState) -> IteratorContent {
-        self.as_tuple().iter(i_s)
+        self.as_tuple().iter()
     }
 
     pub(crate) fn get_item(

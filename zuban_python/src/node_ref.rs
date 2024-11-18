@@ -53,7 +53,7 @@ impl<'file> NodeRef<'file> {
     }
 
     #[inline]
-    pub fn to_db_lifetime(self, db: &Database) -> NodeRef {
+    pub fn to_db_lifetime(self, _: &Database) -> NodeRef {
         // This should be safe, because all files are added to the database.
         unsafe { std::mem::transmute(self) }
     }
@@ -298,10 +298,6 @@ impl<'file> NodeRef<'file> {
 
     pub(crate) fn issue_to_str(&self, i_s: &InferenceState, kind: IssueKind) -> String {
         let issue = Issue::from_node_index(&self.file.tree, self.node_index, kind);
-        let config = DiagnosticConfig {
-            show_column_numbers: true,
-            ..Default::default()
-        };
         Diagnostic::new(i_s.db, self.file, &issue).message(&mut vec![])
     }
 
@@ -386,10 +382,7 @@ impl fmt::Debug for NodeRef<'_> {
         let point = self.point();
         s.field("point", &point);
         if let Some(complex_index) = point.maybe_complex_index() {
-            s.field(
-                "complex",
-                self.file.complex_points.get(point.complex_index()),
-            );
+            s.field("complex", self.file.complex_points.get(complex_index));
         }
         s.finish()
     }
