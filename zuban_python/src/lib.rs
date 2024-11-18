@@ -326,14 +326,6 @@ pub enum ValueKind {
     TypeParameter = 26,
 }
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
-    }
-}
-
 pub struct Diagnostics<'a> {
     pub checked_files: usize,
     pub files_with_errors: usize,
