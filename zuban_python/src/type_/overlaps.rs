@@ -165,7 +165,7 @@ impl Tuple {
                     .before
                     .iter()
                     .chain(unpack.after.iter())
-                    .all(|t2| t1.overlaps(i_s, matcher, t1))
+                    .all(|t2| t1.overlaps(i_s, matcher, t2))
             }
             (WithUnpack(w1), WithUnpack(w2)) => {
                 // TODO write tests for WithUnpack when the lengths do not match
