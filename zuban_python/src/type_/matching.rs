@@ -626,7 +626,7 @@ impl Type {
                         &Type::Type(Rc::new(bound.clone())),
                         variance,
                     ),
-                    TypeVarKind::Constraints(_) => todo!(),
+                    TypeVarKind::Constraints(_) => unimplemented!(),
                     TypeVarKind::Unrestricted => Match::new_false(),
                 },
                 Type::Class(c2) => {

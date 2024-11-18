@@ -66,7 +66,7 @@ impl Workspaces {
                 );
             }
         }
-        todo!()
+        unreachable!()
     }
 
     pub fn unload_file(&mut self, flags: &TypeCheckerFlags, vfs: &dyn Vfs, path: &str) {
@@ -369,7 +369,7 @@ fn ensure_dirs_and_file(parent: Parent, dir: &Directory, vfs: &dyn Vfs, path: &s
                     drop(x);
                     dir.remove_name(name);
                 }
-                _ => todo!(),
+                _ => unimplemented!("Dir overwrite of file; When does this happen?"),
             }
         };
         let dir2 = Directory::new(parent, Box::from(name));
@@ -485,7 +485,7 @@ impl Directory {
                     *entry = DirectoryEntry::File(file_entry.clone());
                     file_entry
                 }
-                DirectoryEntry::Directory(..) => todo!(),
+                DirectoryEntry::Directory(..) => unimplemented!("What happens when we want to write a file on top of a directory? When does this happen?"),
             }
         } else {
             let mut borrow = self.entries.borrow_mut();
@@ -547,7 +547,9 @@ impl Directory {
                 DirectoryEntry::MissingEntry { .. } => {
                     Err(format!("Path {path} cannot be found (missing)"))
                 }
-                t => todo!("{t:?}"),
+                DirectoryEntry::File(t) => Err(format!(
+                    "Path {path} is supposed to be a directory but is a file"
+                )),
             }
         } else {
             Err(format!("Path {path} cannot be found"))

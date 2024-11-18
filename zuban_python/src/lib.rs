@@ -165,10 +165,12 @@ impl<'a> Script<'a> {
                 if let Some(code) = code {
                     db.load_in_memory_file(path, code)
                 } else {
-                    db.in_memory_file(&path).or_else(|| todo!()).unwrap()
+                    db.in_memory_file(&path)
+                        .or_else(|| unimplemented!())
+                        .unwrap()
                 }
             }
-            None => todo!(),
+            None => unimplemented!(),
         };
         Self {
             project,
@@ -206,9 +208,9 @@ impl<'a> Script<'a> {
         let i_s = InferenceState::new(&self.project.db);
         match self.leaf(position) {
             Leaf::Name(name) => name.infer(),
-            Leaf::Number => todo!(),
+            Leaf::Number => unimplemented!(),
             Leaf::Keyword(keyword) => self.file().infer_operator_leaf(&self.project.db, keyword),
-            Leaf::None | Leaf::String => todo!(),
+            Leaf::None | Leaf::String => unimplemented!(),
         }
     }
     */
@@ -217,15 +219,15 @@ impl<'a> Script<'a> {
     pub fn infer_implementation(&self, position: Position) -> ValueNames {
         let names = self.infer_definition(position);
         //self.file.implementation(names);
-        todo!()
+        unimplemented!()
     }
     */
 
     pub fn goto_definition(&self, position: Position, follow_imports: bool) -> Names {
         match self.leaf(position) {
             Leaf::Name(name) => name.goto(),
-            Leaf::Number => todo!(),
-            Leaf::Keyword(keyword) => todo!(),
+            Leaf::Number => unimplemented!(),
+            Leaf::Keyword(keyword) => unimplemented!(),
             Leaf::None | Leaf::String => vec![],
         }
     }

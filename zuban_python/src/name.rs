@@ -125,15 +125,15 @@ impl<'db> Name<'db> for TreeName<'db, PythonFile, CSTName<'db>> {
     }
 
     fn documentation(&self) -> String {
-        todo!()
+        unimplemented!()
     }
 
     fn description(&self) -> String {
-        todo!()
+        unimplemented!()
     }
 
     fn qualified_names(&self) -> Option<Vec<String>> {
-        todo!()
+        unimplemented!()
     }
 
     /*
@@ -149,7 +149,7 @@ impl<'db> Name<'db> for TreeName<'db, PythonFile, CSTName<'db>> {
     }
 
     fn goto(&self) -> Names<'db> {
-        todo!()
+        unimplemented!()
     }
 }
 
@@ -175,43 +175,43 @@ impl fmt::Debug for WithValueName<'_, '_, '_> {
 
 impl<'db> Name<'db> for WithValueName<'db, '_, '_> {
     fn name(&self) -> &str {
-        todo!()
+        unimplemented!()
         //self.value.name()
     }
 
     fn file_path(&self) -> &str {
-        todo!()
+        unimplemented!()
         //self.value.file().path()
     }
 
     fn start_position(&self) -> TreePosition<'db> {
-        todo!()
-        //TreePosition {file: self.value.file(), position: todo!()}
+        unimplemented!()
+        //TreePosition {file: self.value.file(), position: unimplemented!()}
     }
 
     fn end_position(&self) -> TreePosition<'db> {
-        todo!()
-        //TreePosition {file: self.value.file(), position: todo!()}
+        unimplemented!()
+        //TreePosition {file: self.value.file(), position: unimplemented!()}
     }
 
     fn documentation(&self) -> String {
-        todo!()
+        unimplemented!()
     }
 
     fn description(&self) -> String {
-        todo!()
+        unimplemented!()
     }
 
     fn qualified_names(&self) -> Option<Vec<String>> {
-        todo!()
+        unimplemented!()
     }
 
     fn infer(&self) -> Inferred {
-        todo!()
+        unimplemented!()
     }
 
     fn goto(&self) -> Names<'db> {
-        todo!()
+        unimplemented!()
     }
 
     /*
