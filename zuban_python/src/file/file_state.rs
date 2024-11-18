@@ -135,7 +135,7 @@ impl<T> AsAny for T {
 
 pub trait File: std::fmt::Debug + AsAny {
     // Called each time a file is loaded
-    fn implementation<'db>(&self, names: Names<'db>) -> Names<'db> {
+    fn implementation<'db>(&self, _names: Names<'db>) -> Names<'db> {
         vec![]
     }
     fn leaf<'db>(&'db self, db: &'db Database, position: CodeIndex) -> Leaf<'db>;

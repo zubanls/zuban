@@ -470,12 +470,11 @@ impl<'db> NameBinder<'db> {
                 StmtLikeContent::NonlocalStmt(n) => self.index_non_block_node(&n, ordered),
                 StmtLikeContent::FunctionDef(func) => {
                     self.index_function_name_and_param_defaults(
-                        func, ordered, false, // decorators
-                        false, // is_async
+                        func, ordered, false, // is_async
                     );
                 }
                 StmtLikeContent::ClassDef(class) => {
-                    self.index_class(class, false);
+                    self.index_class(class);
                 }
                 StmtLikeContent::Decorated(decorated) => {
                     for decorator in decorated.decorators().iter() {
@@ -484,16 +483,16 @@ impl<'db> NameBinder<'db> {
                     match decorated.decoratee() {
                         Decoratee::FunctionDef(func) => {
                             self.index_function_name_and_param_defaults(
-                                func, ordered, true, false, // is_async
+                                func, ordered, false, // is_async
                             );
                         }
                         Decoratee::AsyncFunctionDef(func) => {
                             self.index_function_name_and_param_defaults(
-                                func, ordered, true, true, // is_async
+                                func, ordered, true, // is_async
                             );
                         }
                         Decoratee::ClassDef(cls) => {
-                            self.index_class(cls, true);
+                            self.index_class(cls);
                         }
                     }
                 }
@@ -509,12 +508,7 @@ impl<'db> NameBinder<'db> {
                 }
                 StmtLikeContent::AsyncStmt(async_stmt) => match async_stmt.unpack() {
                     AsyncStmtContent::FunctionDef(function_def) => {
-                        self.index_function_name_and_param_defaults(
-                            function_def,
-                            ordered,
-                            false, // decorators
-                            true,
-                        );
+                        self.index_function_name_and_param_defaults(function_def, ordered, true);
                     }
                     AsyncStmtContent::ForStmt(for_stmt) => {
                         if !matches!(self.kind, NameBinderKind::Function { is_async: true }) {
@@ -559,7 +553,7 @@ impl<'db> NameBinder<'db> {
                 // The types are inferred later.
                 self.add_new_definition_with_cause(n, Point::new_uncalculated(), cause)
             }
-            Target::NameExpression(primary_target, name_def) => {
+            Target::NameExpression(primary_target, _) => {
                 self.index_non_block_node(&primary_target, ordered);
             }
             Target::IndexExpression(primary_target) => {
@@ -590,7 +584,7 @@ impl<'db> NameBinder<'db> {
                         is_method,
                         is_async,
                     } => {
-                        let symbol_table = self.with_nested(
+                        self.with_nested(
                             NameBinderKind::Function { is_async },
                             func.index(),
                             |binder| binder.index_function_body(func, is_method),
@@ -742,7 +736,7 @@ impl<'db> NameBinder<'db> {
         self.index_block(block, ordered);
     }
 
-    fn index_class(&mut self, class_def: ClassDef<'db>, is_decorated: bool) {
+    fn index_class(&mut self, class_def: ClassDef<'db>) {
         let (arguments, block) = class_def.unpack();
         if let Some(arguments) = arguments {
             self.index_non_block_node(&arguments, true);
@@ -857,7 +851,7 @@ impl<'db> NameBinder<'db> {
         result.into()
     }
 
-    fn index_match_stmt(&mut self, match_stmt: MatchStmt<'db>, ordered: bool) {
+    fn index_match_stmt(&mut self, _match_stmt: MatchStmt<'db>, _ordered: bool) {
         debug!("TODO match_stmt name binding");
     }
 
@@ -1106,7 +1100,7 @@ impl<'db> NameBinder<'db> {
         }
     }
 
-    fn index_comprehension(&mut self, comp: Comprehension<'db>, ordered: bool) {
+    fn index_comprehension(&mut self, comp: Comprehension<'db>, _ordered: bool) {
         // TODO the ordered argument is not used here currently and it should probably be used.
         let (named_expr, for_if_clauses) = comp.unpack();
         let mut clauses = for_if_clauses.iter();
@@ -1115,7 +1109,7 @@ impl<'db> NameBinder<'db> {
         })
     }
 
-    fn index_dict_comprehension(&mut self, comp: DictComprehension<'db>, ordered: bool) {
+    fn index_dict_comprehension(&mut self, comp: DictComprehension<'db>, _ordered: bool) {
         let (key_value, for_if_clauses) = comp.unpack();
         let mut clauses = for_if_clauses.iter();
         self.index_comprehension_clause(&clauses.next().unwrap(), &mut clauses, |binder| {
@@ -1194,7 +1188,7 @@ impl<'db> NameBinder<'db> {
                     .points
                     .get(index)
                     .maybe_calculated_and_specific()
-                    .is_some_and(|specific| {
+                    .is_some_and(|_specific| {
                         todo!("This case is currently not reached, but probably necessary")
                     })
             })
@@ -1205,7 +1199,6 @@ impl<'db> NameBinder<'db> {
         &mut self,
         func: FunctionDef<'db>,
         ordered: bool,
-        is_decorated: bool,
         is_async: bool,
     ) {
         // If there is no parent, this does not have to be resolved immediately in theory, but for
@@ -1428,7 +1421,7 @@ fn gather_slots(file_index: FileIndex, assignment: Assignment) -> Option<Box<[St
                     AtomContent::Tuple(set) => check_expressions(set.iter()),
                     AtomContent::List(list) => check_expressions(list.unpack()),
                     AtomContent::Set(tuple) => check_expressions(tuple.unpack()),
-                    AtomContent::Strings(s) => Some(Box::new([maybe_str(expr)?])),
+                    AtomContent::Strings(_) => Some(Box::new([maybe_str(expr)?])),
                     // Invalid __slots__ will be checked elsewhere.
                     _ => None,
                 }
@@ -1645,7 +1638,7 @@ fn python_version_matches_slice(
 ) -> Truthiness {
     match slice_type {
         SliceType::Slice(slice) => {
-            let (first, second, third) = slice.unpack();
+            let (first, _, third) = slice.unpack();
             if third.is_none() {
                 let from = first.map(|expr| expr.maybe_simple_int());
                 if from != Some(None) {

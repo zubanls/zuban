@@ -375,7 +375,7 @@ impl<'db: 'slf, 'slf> Inferred {
         Some(specific)
     }
 
-    pub fn resolve_untyped_function_return(self, i_s: &InferenceState) -> Self {
+    pub fn resolve_untyped_function_return(self, _i_s: &InferenceState) -> Self {
         unimplemented!();
         /*
         if let InferredState::Saved(definition) = self.state {
@@ -440,10 +440,6 @@ impl<'db: 'slf, 'slf> Inferred {
         let point = node_ref.point();
         match point.kind() {
             PointKind::Complex => {
-                let complex = node_ref.file.complex_points.get(point.complex_index());
-                let ComplexPoint::Class(c) = complex else {
-                    unreachable!();
-                };
                 node_ref.ensure_cached_class_infos(i_s);
                 *link
             }

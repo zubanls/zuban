@@ -1000,7 +1000,7 @@ fn narrow_is_or_eq(
         */
         Type::Class(c) if c.link == i_s.db.python_state.ellipsis_link() => split(key),
         _ => match left_t {
-            left_t @ Type::Union(union) => {
+            left_t @ Type::Union(_) => {
                 // Remove None from left, if the right types match everything except None.
                 if left_t
                     .iter_with_unpacked_unions(i_s.db)
@@ -1063,7 +1063,6 @@ fn split_truthy_and_falsey_t(i_s: &InferenceState, t: &Type) -> Option<(Type, Ty
             LiteralKind::Int(i) => check(*i != 0),
             _ => None,
         };
-        let falsey = || Some((Type::Never(NeverCause::Other), t.clone()));
         match t {
             Type::None => Some((Type::Never(NeverCause::Other), Type::None)),
             Type::Literal(literal) => check_literal(literal),
@@ -1917,7 +1916,7 @@ impl Inference<'_, '_, '_> {
                             );
                         });
                     }
-                    TryBlockType::Finally(b) => (),
+                    TryBlockType::Finally(_) => (),
                 }
             }
             if let Some(try_frame) = try_frame {
@@ -1977,7 +1976,6 @@ impl Inference<'_, '_, '_> {
 
         let (left_inf, mut left_frames) = self.find_guards_in_expression_parts(left);
         let mut right_infos = None;
-        let had_first_left_entry = !left_frames.falsey.entries.is_empty();
         if left_frames.truthy.unreachable {
             if self.flags().warn_unreachable {
                 self.add_issue(
@@ -2322,7 +2320,7 @@ impl Inference<'_, '_, '_> {
                 ));
             }
             ExpressionPart::Inversion(inv) => {
-                let (inf, mut frames) = self.find_guards_in_expression_parts(inv.expression());
+                let (_, mut frames) = self.find_guards_in_expression_parts(inv.expression());
                 (frames.truthy, frames.falsey) = (frames.falsey, frames.truthy);
                 return Ok((
                     Inferred::from_type(self.i_s.db.python_state.bool_type()),
@@ -2436,7 +2434,7 @@ impl Inference<'_, '_, '_> {
                         invert = true;
                         find_comparison_guards(self.i_s, &left_infos, &right_infos, false)
                     }
-                    ComparisonContent::In(left, op, _) | ComparisonContent::NotIn(left, op, _) => {
+                    ComparisonContent::In(_, op, _) | ComparisonContent::NotIn(_, op, _) => {
                         if right_infos.inf.is_saved_partial_container(self.i_s.db) {
                             // Mypy simply disables type checking in the case of partials.
                             // Theoretically we could recheck after the partial was finished.
@@ -3460,7 +3458,7 @@ fn stdlib_container_item(db: &Database, t: &Type) -> Option<Type> {
         Type::NamedTuple(named_tup) => {
             return stdlib_container_item(db, &Type::Tuple(named_tup.as_tuple()))
         }
-        Type::TypedDict(td) => db.python_state.str_type(),
+        Type::TypedDict(_) => db.python_state.str_type(),
         _ => return None,
     };
     if matches!(item, Type::Any(_)) {
@@ -3828,10 +3826,7 @@ fn split_and_intersect(
             let mut matched = false;
             let mut matched_with_any = true;
             let mut had_any = None;
-            for (i, isinstance_t) in isinstance_type
-                .iter_with_unpacked_unions(i_s.db)
-                .enumerate()
-            {
+            for isinstance_t in isinstance_type.iter_with_unpacked_unions(i_s.db) {
                 if isinstance_t.is_any() {
                     had_any = Some(isinstance_t.clone());
                     continue;
@@ -3925,7 +3920,6 @@ enum ExceptType {
 fn except_type(i_s: &InferenceState, t: &Type, allow_tuple: bool) -> ExceptType {
     match t {
         Type::Type(t) => {
-            let db = i_s.db;
             if let Some(cls) = t.maybe_class(i_s.db) {
                 if cls.is_base_exception_group(i_s) {
                     return ExceptType::HasExceptionGroup;

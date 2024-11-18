@@ -98,7 +98,7 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd> {
                 self.find_in_expression_part(n);
             }
             ExpressionContent::Lambda(_) => todo!(),
-            ExpressionContent::Ternary(t) => todo!(),
+            ExpressionContent::Ternary(_) => todo!(),
         };
     }
 
@@ -147,7 +147,7 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd> {
                     _ => BaseLookup::Other,
                 }
             }
-            PrimaryContent::Execution(details) => BaseLookup::Other,
+            PrimaryContent::Execution(_) => BaseLookup::Other,
             PrimaryContent::GetItem(slice_type) => {
                 let s = SliceType::new(self.file, primary.index(), slice_type);
                 match base {
@@ -184,12 +184,12 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd> {
                 self.find_in_name(n)
             }
             AtomContent::Strings(s_o_b) => match s_o_b.as_python_string() {
-                PythonString::Ref(start, s) => {
+                PythonString::Ref(_start, _s) => {
                     //todo!()
                     BaseLookup::Other
                     //self.compute_forward_reference(start, s.to_owned())
                 }
-                PythonString::String(start, s) => BaseLookup::Other, // TODO this is wrong
+                PythonString::String(_start, _s) => BaseLookup::Other, // TODO this is wrong
                 PythonString::FString => todo!(),
             },
             _ => BaseLookup::Other,
@@ -208,16 +208,16 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd> {
                         .and_then(|c| c.maybe_type_var_like_in_parent(self.i_s.db, &type_var_like))
                         .is_none()
                     {
-                        if let TypeVarLike::TypeVarTuple(t) = &type_var_like {
-                            if self.type_var_manager.has_type_var_tuples() {
-                                if self.class.is_some() {
-                                    NodeRef::new(self.file, name.index()).add_issue(
-                                        self.i_s,
-                                        IssueKind::MultipleTypeVarTuplesInClassDef,
-                                    );
-                                }
-                                return BaseLookup::Other;
+                        if matches!(type_var_like, TypeVarLike::TypeVarTuple(_))
+                            && self.type_var_manager.has_type_var_tuples()
+                        {
+                            if self.class.is_some() {
+                                NodeRef::new(self.file, name.index()).add_issue(
+                                    self.i_s,
+                                    IssueKind::MultipleTypeVarTuplesInClassDef,
+                                );
                             }
+                            return BaseLookup::Other;
                         }
                         let old_index = self.type_var_manager.add(type_var_like, None);
                         if let Some(force_index) = self.current_generic_or_protocol_index {
@@ -297,14 +297,12 @@ fn follow_name<'db>(
     if let Some(name) = node_ref.maybe_name() {
         match name.expect_type() {
             TypeLike::ClassDef(c) => {
-                let name_def_node_ref =
-                    NodeRef::new(node_ref.file, name.name_def().unwrap().index());
                 return Err(BaseLookup::Class(PointLink::new(
                     node_ref.file_index(),
                     c.index(),
                 )));
             }
-            TypeLike::Assignment(assignment) => {
+            TypeLike::Assignment(_) => {
                 let inference = node_ref.file.inference(i_s);
                 let inf = inference.infer_name_of_definition(name);
                 if let Some(node_ref) = inf.maybe_saved_node_ref(i_s.db) {
@@ -313,7 +311,7 @@ fn follow_name<'db>(
                     }
                 }
             }
-            TypeLike::ImportFromAsName(import_from_as_name) => {
+            TypeLike::ImportFromAsName(_) => {
                 // TODO this can probably still recurses with module __getattr__
                 /*
                 node_ref
@@ -331,7 +329,7 @@ fn follow_name<'db>(
                     }
                 }
             }
-            TypeLike::DottedAsName(d) => {
+            TypeLike::DottedAsName(_) => {
                 let p = node_ref
                     .add_to_node_index(-(NAME_DEF_TO_NAME_DIFFERENCE as i64))
                     .point();

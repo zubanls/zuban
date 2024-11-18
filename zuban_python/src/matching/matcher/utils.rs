@@ -625,12 +625,7 @@ pub(crate) fn match_arguments_against_params<
                     let n = param_spec.param_spec.name(i_s.db);
                     arg.add_argument_issue(i_s, &format!("\"*{n}.args\""), e, &diagnostic_string);
                     let mut kwarg = arg.clone();
-                    let ArgKind::ParamSpec {
-                        usage,
-                        node_ref,
-                        position,
-                    } = &mut kwarg.kind
-                    else {
+                    let ArgKind::ParamSpec { position, .. } = &mut kwarg.kind else {
                         unreachable!()
                     };
                     *position += 1;
@@ -735,7 +730,7 @@ pub(crate) fn match_arguments_against_params<
                         }
                         continue;
                     }
-                    WrappedParamType::Star(WrappedStar::UnpackedTuple(tup)) => unreachable!(),
+                    WrappedParamType::Star(WrappedStar::UnpackedTuple(_)) => unreachable!(),
                     WrappedParamType::Star(WrappedStar::ParamSpecArgs(_))
                     | WrappedParamType::StarStar(WrappedStarStar::ParamSpecKwargs(_)) => {
                         unreachable!()
@@ -785,7 +780,7 @@ pub(crate) fn match_arguments_against_params<
                             return SignatureMatch::False { similar: false };
                         }
                         match arg.infer(&mut ResultContext::Unknown) {
-                            InferredArg::Inferred(inf) => {
+                            InferredArg::Inferred(_) => {
                                 unpack = Some(TupleUnpack::ArbitraryLen(
                                     arg.infer_inferrable(i_s, &mut ResultContext::Unknown)
                                         .as_type(i_s),

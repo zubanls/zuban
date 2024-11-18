@@ -90,7 +90,7 @@ pub struct PythonFile {
 }
 
 impl File for PythonFile {
-    fn implementation<'db>(&self, names: Names<'db>) -> Names<'db> {
+    fn implementation<'db>(&self, _names: Names<'db>) -> Names<'db> {
         todo!()
     }
 

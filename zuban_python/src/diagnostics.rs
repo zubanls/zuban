@@ -498,8 +498,8 @@ impl IssueKind {
             | FunctionMissingParamAnnotations => "no-untyped-def",
             DoesNotReturnAValue(_) => "func-returns-value",
             CallToUntypedFunction { .. } => "no-untyped-call",
-            CoroutineValueMustBeUsed { type_ } => "unused-coroutine",
-            AwaitableValueMustBeUsed { type_ } => "unused-awaitable",
+            CoroutineValueMustBeUsed { .. } => "unused-coroutine",
+            AwaitableValueMustBeUsed { .. } => "unused-awaitable",
             AnnotationInUntypedFunction => "annotation-unchecked",
             AwaitOutsideFunction => "top-level-await",
             AwaitOutsideCoroutine => "await-not-async",
@@ -606,7 +606,7 @@ impl<'db> Diagnostic<'db> {
                     file: self.file,
                     offset,
                 },
-                Some(f) => todo!(),
+                Some(_) => todo!(),
             }),
         }
     }
@@ -1764,7 +1764,6 @@ impl<'db> Diagnostic<'db> {
             path = "main";
         }
         let line_column = self.start_position().line_and_column();
-        let line = line_column.0;
         let mut additional_notes = vec![];
         let error = self.message(&mut additional_notes);
         let mut result = fmt_line(config, path, line_column, self.end_position(), kind, &error);
