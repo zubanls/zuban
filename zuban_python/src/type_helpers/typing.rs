@@ -90,12 +90,31 @@ pub(crate) fn execute_reveal_type<'db>(
     result_context: &mut ResultContext,
 ) -> Inferred {
     let mut iterator = args.iter(i_s.mode);
-    let arg = iterator.next().unwrap_or_else(|| todo!());
+    let Some(arg) = iterator.next() else {
+        args.add_issue(
+            i_s,
+            IssueKind::TooFewArguments(r#" for "reveal_type""#.into()),
+        );
+        return Inferred::new_any_from_error();
+    };
+    if iterator.next().is_some() {
+        args.add_issue(
+            i_s,
+            IssueKind::TooManyArguments(r#" for "reveal_type""#.into()),
+        );
+        return Inferred::new_any_from_error();
+    }
     if !matches!(
         &arg.kind,
         ArgKind::Positional(_) | ArgKind::Comprehension { .. }
     ) {
-        todo!()
+        args.add_issue(
+            i_s,
+            IssueKind::ArgumentIssue(
+                r#""reveal_type" only accepts one positional argument"#.into(),
+            ),
+        );
+        return Inferred::new_any_from_error();
     }
 
     let inferred = if matches!(result_context, ResultContext::ExpectUnused) {
@@ -127,9 +146,6 @@ pub(crate) fn execute_reveal_type<'db>(
         i_s,
         IssueKind::Note(format!("Revealed type is \"{s}\"").into()),
     );
-    if iterator.next().is_some() {
-        todo!()
-    }
     inferred
 }
 

@@ -907,3 +907,8 @@ reveal_type(e4)  # N: Revealed type is "dict[str, int]"
 
 [case fstring_tuple]
 f"{1,2}"
+
+[case reveal_type_bad_params]
+reveal_type()  # E: Too few arguments for "reveal_type"
+reveal_type(1, 1)  # E: Too many arguments for "reveal_type"
+reveal_type(a=1)  # E: "reveal_type" only accepts one positional argument
