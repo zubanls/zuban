@@ -4629,15 +4629,31 @@ impl<'a, I: Clone + Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
     ) -> Option<(NodeRef<'a>, Result<Type, SliceOrSimple>)> {
         if let Some(unpack) = self.current_unpack_reverse.as_mut() {
             let from = self.reverse_already_analyzed.unwrap();
+            let cannot_split_type_var_tuple = || {
+                type_computation.add_issue(
+                    self.reverse_already_analyzed.unwrap(),
+                    IssueKind::TypeVarTupleCannotBeSplit,
+                );
+                return Some((from, Ok(Type::Any(AnyCause::FromError))));
+            };
             match unpack {
-                TypeCompTupleUnpack::TypeVarTuple(_) => {
-                    type_computation.add_issue(
-                        self.reverse_already_analyzed.unwrap(),
-                        IssueKind::TypeVarTupleCannotBeSplit,
-                    );
-                    return Some((from, Ok(Type::Any(AnyCause::FromError))));
+                TypeCompTupleUnpack::TypeVarTuple(_) => return cannot_split_type_var_tuple(),
+                TypeCompTupleUnpack::WithUnpack(with_unpack) => {
+                    let mut iterator = with_unpack.after.iter();
+                    if let Some(last) = iterator.next_back() {
+                        let new_with_unpack = WithUnpack {
+                            before: with_unpack.before.clone(),
+                            unpack: with_unpack.unpack.clone(),
+                            after: iterator.cloned().collect(),
+                        };
+                        let last = last.clone();
+                        self.current_unpack_reverse =
+                            Some(TypeCompTupleUnpack::WithUnpack(new_with_unpack));
+                        return Some((from, Ok(last)));
+                    } else {
+                        return cannot_split_type_var_tuple();
+                    }
                 }
-                TypeCompTupleUnpack::WithUnpack(with_unpack) => todo!(),
                 TypeCompTupleUnpack::FixedLen(ts) => {
                     if let Some(result) = ts.pop() {
                         return Some((from, Ok(result)));

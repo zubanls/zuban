@@ -260,3 +260,15 @@ B = A[Ts]
 
 x: A[int]
 y: D[int]
+
+[case types_with_invalid_unpack]
+from typing import TypeAlias, TypeVarTuple, Unpack, TypeVar, Generic
+T = TypeVar("T")
+U = TypeVar("U")
+Ts = TypeVarTuple("Ts")
+
+class Foo(Generic[T, *Ts, U]): ...
+
+def f1(x: tuple[*Ts]) -> Foo[int, *tuple[*Ts, str]]: ...
+def f2(x: tuple[*Ts]) -> Foo[int, *tuple[*Ts]]: ...  # E: TypeVarTuple cannot be split
+def f3(x: tuple[*Ts]) -> Foo[int, *tuple[*tuple[bytes, ...]]]: ...
