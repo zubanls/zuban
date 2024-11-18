@@ -4514,6 +4514,7 @@ fn save_alias(alias_origin: NodeRef, alias: TypeAlias) {
     alias_origin.insert_complex(complex, Locality::Todo);
 }
 
+#[derive(Debug)]
 enum TypeCompTupleUnpack {
     TypeVarTuple(TypeVarTupleUsage),
     ArbitraryLen(Box<Type>),
@@ -4602,23 +4603,16 @@ impl<'a, I: Clone + Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
         match type_computation.convert_slice_type_or_tuple_unpack(t, s.as_node_ref()) {
             TuplePart::Type(t) => Some((s.as_node_ref(), t)),
             TuplePart::TupleUnpack(u) => {
-                if self.current_unpack.is_some() {
+                debug_assert!(self.current_unpack.is_none());
+                if !has_type_var_tuple && !matches!(u, TypeCompTupleUnpack::FixedLen(_)) {
                     type_computation.add_issue(
                         s.as_node_ref(),
-                        IssueKind::MoreThanOneUnpackTypeIsNotAllowed,
+                        IssueKind::UnpackOnlyValidInVariadicPosition,
                     );
-                    todo!()
-                } else {
-                    if !has_type_var_tuple && !matches!(u, TypeCompTupleUnpack::FixedLen(_)) {
-                        type_computation.add_issue(
-                            s.as_node_ref(),
-                            IssueKind::UnpackOnlyValidInVariadicPosition,
-                        );
-                        self.current_unpack = None;
-                        return Some((s.as_node_ref(), Type::Any(AnyCause::FromError)));
-                    }
-                    self.current_unpack = Some((s.as_node_ref(), u));
+                    self.current_unpack = None;
+                    return Some((s.as_node_ref(), Type::Any(AnyCause::FromError)));
                 }
+                self.current_unpack = Some((s.as_node_ref(), u));
                 self.next_type_argument(type_computation, has_type_var_tuple)
             }
         }
@@ -4710,7 +4704,9 @@ impl<'a, I: Clone + Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
         let Some(current_slice_part) = current else {
             if let Some((from, unpack)) = self.current_unpack.as_mut() {
                 match unpack {
-                    TypeCompTupleUnpack::TypeVarTuple(_) => todo!(),
+                    TypeCompTupleUnpack::TypeVarTuple(_) => {
+                        return Some((*from, Ok(cannot_split_type_var_tuple(*from))))
+                    }
                     TypeCompTupleUnpack::WithUnpack(with_unpack) => {
                         let with_unpack = with_unpack.clone();
                         return Some((

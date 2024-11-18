@@ -286,3 +286,14 @@ reveal_type(f5)  # N: Revealed type is "def [Ts] (x: tuple[Unpack[Ts]]) -> __mai
 
 def f6(x: tuple[*Ts]) -> Foo[*tuple[*Ts, str]]: ...  # E: TypeVarTuple cannot be split
 reveal_type(f6)  # N: Revealed type is "def [Ts] (x: tuple[Unpack[Ts]]) -> __main__.Foo[Any, Unpack[Ts], str]"
+
+[case types_with_invalid_unpack2]
+from typing import TypeAlias, TypeVarTuple, Unpack, TypeVar, Generic
+T = TypeVar("T")
+U = TypeVar("U")
+Ts = TypeVarTuple("Ts")
+
+class Foo(Generic[T, *Ts, U]): ...
+
+def f(x: tuple[*Ts]) -> Foo[*Ts]: ...  # E: TypeVarTuple cannot be split # E: TypeVarTuple cannot be split
+reveal_type(f)  # N: Revealed type is "def [Ts] (x: tuple[Unpack[Ts]]) -> __main__.Foo[Any, Unpack[Ts], Any]"
