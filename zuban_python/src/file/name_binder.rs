@@ -1,4 +1,4 @@
-use std::cell::RefCell;
+use std::{cell::RefCell, cmp::Ordering};
 
 use parsa_python_cst::*;
 
@@ -1598,7 +1598,7 @@ fn python_version_matches_tuple(
         // (major, minor, bugfix) is currently not supported
         return Truthiness::Unknown;
     }
-    let mut total_order = TotalOrder::Equals;
+    let mut total_order = Ordering::Equal;
     for (current, tup_entry) in [settings.python_version.major, settings.python_version.minor]
         [from..]
         .iter()
@@ -1616,8 +1616,8 @@ fn python_version_matches_tuple(
             .parse()
             .and_then(|i| <i64 as TryInto<usize>>::try_into(i).ok())
         {
-            total_order = TotalOrder::new(*current, n_in_tup);
-            if !matches!(total_order, TotalOrder::Equals) {
+            total_order = current.cmp(&n_in_tup);
+            if !matches!(total_order, Ordering::Equal) {
                 break; // We already know if it's bigger or smaller
             }
         } else {
@@ -1634,26 +1634,6 @@ fn python_version_matches_tuple(
         }
     } else {
         Truthiness::Unknown
-    }
-}
-
-#[derive(Copy, Clone, PartialEq)]
-#[repr(usize)]
-enum TotalOrder {
-    Smaller,
-    Equals,
-    Bigger,
-}
-
-impl TotalOrder {
-    fn new<T: Eq + Ord>(x: T, y: T) -> Self {
-        if x < y {
-            TotalOrder::Smaller
-        } else if x == y {
-            TotalOrder::Equals
-        } else {
-            TotalOrder::Bigger
-        }
     }
 }
 
@@ -1685,7 +1665,7 @@ fn python_version_matches_slice(
                         if let Some(result) = wanted.parse_as_usize().and_then(|x| {
                             check_operand_against_total_order(
                                 comp,
-                                TotalOrder::new(settings.python_version.major, x),
+                                settings.python_version.major.cmp(&x),
                             )
                         }) {
                             return result.into();
@@ -1699,19 +1679,19 @@ fn python_version_matches_slice(
     Truthiness::Unknown
 }
 
-fn check_operand_against_total_order(comp: ComparisonContent, order: TotalOrder) -> Option<bool> {
+fn check_operand_against_total_order(comp: ComparisonContent, order: Ordering) -> Option<bool> {
     match comp {
-        ComparisonContent::Equals(_, _, _) => Some(order == TotalOrder::Equals),
-        ComparisonContent::NotEquals(_, _, _) => Some(order != TotalOrder::Equals),
+        ComparisonContent::Equals(_, _, _) => Some(order == Ordering::Equal),
+        ComparisonContent::NotEquals(_, _, _) => Some(order != Ordering::Equal),
         ComparisonContent::Is(_, _, _) => None,
         ComparisonContent::IsNot(_, _, _) => None,
         ComparisonContent::In(_, _, _) => None,
         ComparisonContent::NotIn(_, _, _) => None,
         ComparisonContent::Ordering(op) => match op.infos.operand {
-            "<" => Some(order == TotalOrder::Smaller),
-            ">" => Some(order == TotalOrder::Bigger),
-            "<=" => Some(order != TotalOrder::Bigger),
-            ">=" => Some(order != TotalOrder::Smaller),
+            "<" => Some(order == Ordering::Less),
+            ">" => Some(order == Ordering::Greater),
+            "<=" => Some(order != Ordering::Greater),
+            ">=" => Some(order != Ordering::Less),
             _ => unreachable!(),
         },
     }
