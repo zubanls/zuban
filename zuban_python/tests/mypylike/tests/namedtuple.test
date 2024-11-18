@@ -101,3 +101,18 @@ class A(NamedTuple, Generic[T]):
 a: A[int]
 for x in a:
     reveal_type(x)  # N: Revealed type is "int"
+
+[case namedtuple_generic_matching]
+from typing import NamedTuple, Generic, TypeVar
+
+T = TypeVar("T")
+N = NamedTuple("N", [('t', T)])
+
+def f1(n1: N[int], n2: N[int]) -> None:
+    n1 = n2
+
+def f2(n1: N, n2: N) -> None:
+    n1 = n2
+
+def f3(n1: N[int], n2: N[str]) -> None:
+    n1 = n2  # E: Incompatible types in assignment (expression has type "N", variable has type "N")

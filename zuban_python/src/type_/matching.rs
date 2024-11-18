@@ -166,11 +166,12 @@ impl Type {
                 Type::NamedTuple(nt2) => {
                     let c1 = &nt1.__new__;
                     let c2 = &nt2.__new__;
-                    if !c1.type_vars.is_empty() || !c2.type_vars.is_empty() {
-                        todo!()
-                    } else {
-                        (c1.defined_at == c2.defined_at).into()
+                    if c1.defined_at != c2.defined_at {
+                        return Match::new_false();
                     }
+                    matcher.avoid_recursion(self, value_type, |m| {
+                        Type::Callable(c1.clone()).is_same_type(i_s, m, &Type::Callable(c2.clone()))
+                    })
                 }
                 _ => Match::new_false(),
             },

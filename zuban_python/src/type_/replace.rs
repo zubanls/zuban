@@ -220,6 +220,7 @@ impl Type {
                     })?;
                 let mut constructor = nt.__new__.as_ref().clone();
                 constructor.params = CallableParams::new_simple(new_params);
+                constructor.type_vars = TypeVarLikes::new(Rc::new([]));
                 Some(Type::NamedTuple(Rc::new(NamedTuple::new(
                     nt.name,
                     constructor,
