@@ -1983,7 +1983,11 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         let mut iterator = slice_type.iter();
         let mut generics = vec![];
 
-        if !type_var_likes.is_empty() {
+        if !type_var_likes.is_empty()
+            && type_var_likes
+                .iter()
+                .all(|t| matches!(t, TypeVarLike::TypeVar(_)))
+        {
             // First check if we can make a SimpleGeneric. This happens if all generics are
             // SimpleGeneric or classes.
             if let Some((node_ref, generics)) = self.maybe_generic_class_without_type_var(
@@ -4560,13 +4564,30 @@ impl<'a, I: Clone + Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
         has_type_var_tuple: bool,
     ) -> Option<(NodeRef<'a>, Type)> {
         if let Some((from, unpack)) = self.current_unpack.as_mut() {
+            let cannot_split_type_var_tuple = || {
+                type_computation.add_issue(*from, IssueKind::TypeVarTupleCannotBeSplit);
+                return Some((*from, Type::Any(AnyCause::FromError)));
+            };
             match unpack {
-                TypeCompTupleUnpack::TypeVarTuple(_) => {
-                    type_computation.add_issue(*from, IssueKind::TypeVarTupleCannotBeSplit);
-                    return Some((*from, Type::Any(AnyCause::FromError)));
-                }
+                TypeCompTupleUnpack::TypeVarTuple(_) => return cannot_split_type_var_tuple(),
                 TypeCompTupleUnpack::ArbitraryLen(t) => return Some((*from, (**t).clone())),
-                TypeCompTupleUnpack::WithUnpack(with_unpack) => todo!(),
+                TypeCompTupleUnpack::WithUnpack(with_unpack) => {
+                    let mut iterator = with_unpack.before.iter();
+                    if let Some(first) = iterator.next() {
+                        let new_with_unpack = WithUnpack {
+                            before: iterator.cloned().collect(),
+                            unpack: with_unpack.unpack.clone(),
+                            after: with_unpack.after.clone(),
+                        };
+                        let first = first.clone();
+                        let from = *from;
+                        self.current_unpack =
+                            Some((from, TypeCompTupleUnpack::WithUnpack(new_with_unpack)));
+                        return Some((from, first));
+                    } else {
+                        return cannot_split_type_var_tuple();
+                    }
+                }
                 TypeCompTupleUnpack::FixedLen(ts) => {
                     if !ts.is_empty() {
                         return Some((*from, ts.remove(0)));
@@ -4627,32 +4648,43 @@ impl<'a, I: Clone + Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
         &mut self,
         type_computation: &mut TypeComputation,
     ) -> Option<(NodeRef<'a>, Result<Type, SliceOrSimple>)> {
+        let cannot_split_type_var_tuple = |from: NodeRef| {
+            type_computation.add_issue(from, IssueKind::TypeVarTupleCannotBeSplit);
+            Type::Any(AnyCause::FromError)
+        };
+
+        let remove_next_back_from_with_unpack =
+            |from: NodeRef, overwrite: &mut _, with_unpack: WithUnpack| {
+                let mut iterator = with_unpack.after.iter();
+                if let Some(last) = iterator.next_back() {
+                    let new_with_unpack = WithUnpack {
+                        before: with_unpack.before.clone(),
+                        unpack: with_unpack.unpack.clone(),
+                        after: iterator.cloned().collect(),
+                    };
+                    let last = last.clone();
+                    *overwrite = TypeCompTupleUnpack::WithUnpack(new_with_unpack);
+                    last
+                } else {
+                    match with_unpack.unpack {
+                        TupleUnpack::TypeVarTuple(_) => cannot_split_type_var_tuple(from),
+                        TupleUnpack::ArbitraryLen(t) => t,
+                    }
+                }
+            };
+
         if let Some(unpack) = self.current_unpack_reverse.as_mut() {
             let from = self.reverse_already_analyzed.unwrap();
-            let cannot_split_type_var_tuple = || {
-                type_computation.add_issue(
-                    self.reverse_already_analyzed.unwrap(),
-                    IssueKind::TypeVarTupleCannotBeSplit,
-                );
-                return Some((from, Ok(Type::Any(AnyCause::FromError))));
-            };
             match unpack {
-                TypeCompTupleUnpack::TypeVarTuple(_) => return cannot_split_type_var_tuple(),
+                TypeCompTupleUnpack::TypeVarTuple(_) => {
+                    return Some((from, Ok(cannot_split_type_var_tuple(from))))
+                }
                 TypeCompTupleUnpack::WithUnpack(with_unpack) => {
-                    let mut iterator = with_unpack.after.iter();
-                    if let Some(last) = iterator.next_back() {
-                        let new_with_unpack = WithUnpack {
-                            before: with_unpack.before.clone(),
-                            unpack: with_unpack.unpack.clone(),
-                            after: iterator.cloned().collect(),
-                        };
-                        let last = last.clone();
-                        self.current_unpack_reverse =
-                            Some(TypeCompTupleUnpack::WithUnpack(new_with_unpack));
-                        return Some((from, Ok(last)));
-                    } else {
-                        return cannot_split_type_var_tuple();
-                    }
+                    let with_unpack = with_unpack.clone();
+                    return Some((
+                        from,
+                        Ok(remove_next_back_from_with_unpack(from, unpack, with_unpack)),
+                    ));
                 }
                 TypeCompTupleUnpack::FixedLen(ts) => {
                     if let Some(result) = ts.pop() {
@@ -4679,7 +4711,17 @@ impl<'a, I: Clone + Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
             if let Some((from, unpack)) = self.current_unpack.as_mut() {
                 match unpack {
                     TypeCompTupleUnpack::TypeVarTuple(_) => todo!(),
-                    TypeCompTupleUnpack::WithUnpack(with_unpack) => todo!(),
+                    TypeCompTupleUnpack::WithUnpack(with_unpack) => {
+                        let with_unpack = with_unpack.clone();
+                        return Some((
+                            *from,
+                            Ok(remove_next_back_from_with_unpack(
+                                *from,
+                                unpack,
+                                with_unpack,
+                            )),
+                        ));
+                    }
                     TypeCompTupleUnpack::FixedLen(ts) => {
                         if let Some(result) = ts.pop() {
                             return Some((*from, Ok(result)));
