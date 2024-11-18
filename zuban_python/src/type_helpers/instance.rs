@@ -584,7 +584,7 @@ impl<'a> Instance<'a> {
                         i_s,
                         &args,
                         &mut ResultContext::Unknown,
-                        OnTypeError::new(&|i_s, function, arg, types| {
+                        OnTypeError::new(&|i_s, _, _, types| {
                             let strs = types.as_boxed_strs(i_s.db);
                             add_issue(IssueKind::InvalidGetItem {
                                 type_: self.class.format_short(i_s.db),
@@ -777,7 +777,7 @@ fn execute_super_internal<'db>(
                     Type::Dataclass(d) => d.class.link,
                     _ => return Err(IssueKind::SuperUnsupportedArgument { argument_index: 1 }),
                 }),
-                Type::Any(cause) => None,
+                Type::Any(_) => None,
                 t => {
                     return Err(IssueKind::SuperArgument1MustBeTypeObject {
                         got: match t {
@@ -815,7 +815,7 @@ fn execute_super_internal<'db>(
             (cls, Type::Self_)
         }
         t @ Type::Class(c) => (c.class(i_s.db), t.clone()),
-        t @ Type::TypeVar(tv) => {
+        t @ Type::TypeVar(_) => {
             let Some(cls) = i_s.current_class() else {
                 return Err(IssueKind::SuperUnsupportedArgument { argument_index: 2 });
             };
@@ -833,7 +833,7 @@ fn execute_super_internal<'db>(
                 (cls, full.clone())
             }
             Type::Class(c) => (c.class(i_s.db), full.clone()),
-            Type::TypeVar(tv) => {
+            Type::TypeVar(_) => {
                 let Some(cls) = i_s.current_class() else {
                     return Err(IssueKind::SuperUnsupportedArgument { argument_index: 2 });
                 };

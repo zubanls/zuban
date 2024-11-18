@@ -1856,28 +1856,13 @@ impl<'db: 'slf, 'slf> Inferred {
                             Specific::BuiltinsIsinstance => return execute_isinstance(i_s, args),
                             Specific::BuiltinsIssubclass => return execute_issubclass(i_s, args),
                             Specific::TypingTypeVarClass => {
-                                return execute_type_var_class(
-                                    i_s,
-                                    args,
-                                    result_context,
-                                    on_type_error,
-                                )
+                                return execute_type_var_class(i_s, args, result_context)
                             }
                             Specific::TypingTypeVarTupleClass => {
-                                return execute_type_var_tuple_class(
-                                    i_s,
-                                    args,
-                                    result_context,
-                                    on_type_error,
-                                )
+                                return execute_type_var_tuple_class(i_s, args, result_context)
                             }
                             Specific::TypingParamSpecClass => {
-                                return execute_param_spec_class(
-                                    i_s,
-                                    args,
-                                    result_context,
-                                    on_type_error,
-                                )
+                                return execute_param_spec_class(i_s, args, result_context)
                             }
                             Specific::TypingNamedTuple => {
                                 return execute_typing_named_tuple(i_s, args)
@@ -1899,27 +1884,15 @@ impl<'db: 'slf, 'slf> Inferred {
                                     on_type_error,
                                 )
                             }
-                            Specific::TypingCast => {
-                                return execute_cast(i_s, args, result_context, on_type_error)
-                            }
+                            Specific::TypingCast => return execute_cast(i_s, args),
                             Specific::RevealTypeFunction => {
-                                return execute_reveal_type(
-                                    i_s,
-                                    args,
-                                    result_context,
-                                    on_type_error,
-                                )
+                                return execute_reveal_type(i_s, args, result_context)
                             }
                             Specific::AssertTypeFunction => {
-                                return execute_assert_type(
-                                    i_s,
-                                    args,
-                                    result_context,
-                                    on_type_error,
-                                )
+                                return execute_assert_type(i_s, args, result_context)
                             }
                             Specific::TypingNewType => {
-                                return execute_new_type(i_s, args, result_context, on_type_error)
+                                return execute_new_type(i_s, args, result_context)
                             }
                             Specific::TypingAny => {
                                 args.add_issue(i_s, IssueKind::AnyNotCallable);

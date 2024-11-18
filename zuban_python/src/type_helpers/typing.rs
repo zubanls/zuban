@@ -17,12 +17,7 @@ use crate::{
     utils::join_with_commas,
 };
 
-pub(crate) fn execute_cast<'db>(
-    i_s: &InferenceState<'db, '_>,
-    args: &dyn Args<'db>,
-    result_context: &mut ResultContext,
-    on_type_error: OnTypeError,
-) -> Inferred {
+pub(crate) fn execute_cast<'db>(i_s: &InferenceState<'db, '_>, args: &dyn Args<'db>) -> Inferred {
     let mut result = None;
     let mut actual = None;
     let mut count = 0;
@@ -93,7 +88,6 @@ pub(crate) fn execute_reveal_type<'db>(
     i_s: &InferenceState<'db, '_>,
     args: &dyn Args<'db>,
     result_context: &mut ResultContext,
-    on_type_error: OnTypeError,
 ) -> Inferred {
     let mut iterator = args.iter(i_s.mode);
     let arg = iterator.next().unwrap_or_else(|| todo!());
@@ -181,7 +175,6 @@ pub(crate) fn execute_assert_type<'db>(
     i_s: &InferenceState<'db, '_>,
     args: &dyn Args<'db>,
     result_context: &mut ResultContext,
-    on_type_error: OnTypeError,
 ) -> Inferred {
     if args.iter(i_s.mode).count() != 2 {
         args.add_issue(
@@ -245,7 +238,6 @@ pub(crate) fn execute_type_var_class(
     i_s: &InferenceState,
     args: &dyn Args,
     result_context: &mut ResultContext,
-    on_type_error: OnTypeError,
 ) -> Inferred {
     if let Some(t) = maybe_type_var(i_s, args, result_context) {
         Inferred::new_unsaved_complex(ComplexPoint::TypeVarLike(t))
@@ -473,7 +465,6 @@ pub(crate) fn execute_type_var_tuple_class(
     i_s: &InferenceState,
     args: &dyn Args,
     result_context: &mut ResultContext,
-    on_type_error: OnTypeError,
 ) -> Inferred {
     if let Some(t) = maybe_type_var_tuple(i_s, args, result_context) {
         Inferred::new_unsaved_complex(ComplexPoint::TypeVarLike(t))
@@ -601,7 +592,6 @@ pub(crate) fn execute_param_spec_class(
     i_s: &InferenceState,
     args: &dyn Args,
     result_context: &mut ResultContext,
-    on_type_error: OnTypeError,
 ) -> Inferred {
     if let Some(t) = maybe_param_spec(i_s, args, result_context) {
         Inferred::new_unsaved_complex(ComplexPoint::TypeVarLike(t))
@@ -715,7 +705,6 @@ pub(crate) fn execute_new_type<'db>(
     i_s: &InferenceState<'db, '_>,
     args: &dyn Args<'db>,
     result_context: &mut ResultContext,
-    on_type_error: OnTypeError,
 ) -> Inferred {
     if result_context.is_annotation_assignment() {
         args.add_issue(i_s, IssueKind::NewTypeCannotHaveTypeDeclaration);

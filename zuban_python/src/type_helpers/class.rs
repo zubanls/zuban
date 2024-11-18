@@ -797,10 +797,8 @@ impl<'db: 'a, 'a> Class<'a> {
                         let meta_base = TypeComputation::new(
                             &inference,
                             self.node_ref.as_link(),
-                            &mut |i_s, _: &_, type_var_like: TypeVarLike, _| {
-                                TypeVarCallbackReturn::NotFound {
-                                    allow_late_bound_callables: false,
-                                }
+                            &mut |_, _: &_, _: TypeVarLike, _| TypeVarCallbackReturn::NotFound {
+                                allow_late_bound_callables: false,
                             },
                             TypeComputationOrigin::BaseClass,
                         )
@@ -900,7 +898,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                         }
                                         Some(c.class(db))
                                     }
-                                    Type::Tuple(content) => {
+                                    Type::Tuple(_) => {
                                         if class_kind == ClassKind::Normal {
                                             class_kind = ClassKind::Tuple;
                                         } else {
@@ -987,8 +985,8 @@ impl<'db: 'a, 'a> Class<'a> {
                             }
                             CalculatedBaseClass::NewNamedTuple => {
                                 is_new_named_tuple = true;
-                                let named_tuple = self
-                                    .named_tuple_from_class(&i_s.with_class_context(self), *self);
+                                let named_tuple =
+                                    self.named_tuple_from_class(&i_s.with_class_context(self));
                                 bases.push(Type::NamedTuple(named_tuple));
                                 class_kind = ClassKind::NamedTuple;
                             }
@@ -1335,7 +1333,7 @@ impl<'db: 'a, 'a> Class<'a> {
         matcher.ignore_positional_param_names = true;
 
         let mut protocol_member_count = 0;
-        for (mro_index, c) in self.mro_maybe_without_object(i_s.db, true) {
+        for (_, c) in self.mro_maybe_without_object(i_s.db, true) {
             let TypeOrClass::Class(c) = c else {
                 debug!("Ignored a type in protocol mro. Why is it there in the first place?");
                 continue;
@@ -1385,7 +1383,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 let protocol_lookup_details = Instance::new(c, None).lookup(
                     i_s,
                     name,
-                    InstanceLookupOptions::new(&|issue| had_binding_error.set(true))
+                    InstanceLookupOptions::new(&|_| had_binding_error.set(true))
                         .with_as_self_instance(&|| other.clone())
                         .with_disallowed_lazy_bound_method(),
                 );
@@ -1657,7 +1655,7 @@ impl<'db: 'a, 'a> Class<'a> {
 
     pub fn non_method_protocol_members(&self, db: &Database) -> Vec<String> {
         let mut members = vec![];
-        for (mro_index, c) in self.mro_maybe_without_object(db, true) {
+        for (_, c) in self.mro_maybe_without_object(db, true) {
             let TypeOrClass::Class(c) = c else { continue };
             let protocol_members = &c.use_cached_class_infos(db).protocol_members;
             for protocol_member in protocol_members.iter() {
@@ -2138,7 +2136,7 @@ impl<'db: 'a, 'a> Class<'a> {
         }
     }
 
-    fn named_tuple_from_class(&self, i_s: &InferenceState, cls: Class) -> Rc<NamedTuple> {
+    fn named_tuple_from_class(&self, i_s: &InferenceState) -> Rc<NamedTuple> {
         let name = self.name_string_slice();
         Rc::new(NamedTuple::new(
             name,
@@ -2162,7 +2160,6 @@ impl<'db: 'a, 'a> Class<'a> {
                 )
             }
         }
-        let tvls = self.use_cached_type_vars(i_s.db);
         CallableContent::new_simple(
             Some(DbString::StringSlice(name)),
             None,
@@ -2486,7 +2483,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 let metaclass =
                     Class::from_non_generic_link(i_s.db, i_s.db.python_state.enum_meta_link())
                         .instance();
-                let call = metaclass
+                metaclass
                     .type_lookup(i_s, |issue| args.add_issue(i_s, issue), "__call__")
                     .into_inferred()
                     .execute_with_details(i_s, args, result_context, on_type_error);
@@ -3284,7 +3281,7 @@ fn find_stmt_typed_dict_types(
             StmtLikeContent::Error(_)
             | StmtLikeContent::PassStmt(_)
             | StmtLikeContent::StarExpressions(_) => (),
-            s => NodeRef::new(file, stmt_like.parent_index)
+            _ => NodeRef::new(file, stmt_like.parent_index)
                 .add_issue(i_s, IssueKind::TypedDictInvalidMember),
         }
     }
