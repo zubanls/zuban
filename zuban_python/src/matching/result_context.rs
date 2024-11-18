@@ -118,7 +118,7 @@ impl<'a> ResultContext<'a, '_> {
         .unwrap_or(CouldBeALiteral::Yes { implicit: true })
     }
 
-    pub fn expect_not_none(&mut self, i_s: &InferenceState) -> bool {
+    pub fn expect_not_none(&mut self) -> bool {
         match self {
             Self::ExpectUnused | Self::RevealType | Self::KnownLambdaReturn(_) => false,
             Self::Known { type_, .. } | Self::WithMatcher { type_, .. } => {

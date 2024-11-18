@@ -956,7 +956,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 {
                     if let Some(return_type) = other.return_type {
                         Inferred::from_type(return_type)
-                    } else if result_context.expect_not_none(i_s) {
+                    } else if result_context.expect_not_none() {
                         from.add_issue(i_s, IssueKind::DoesNotReturnAValue("Function".into()));
                         Inferred::new_any_from_error()
                     } else {
@@ -2524,7 +2524,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             ),
                             from,
                             "\"await\"",
-                            result_context.expect_not_none(self.i_s),
+                            result_context.expect_not_none(),
                         )
                     } else {
                         from.add_issue(self.i_s, IssueKind::AwaitOutsideCoroutine);

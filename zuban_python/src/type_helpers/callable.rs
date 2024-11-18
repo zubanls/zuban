@@ -58,7 +58,7 @@ impl<'a> Callable<'a> {
         as_self_type: Option<ReplaceSelf>,
     ) -> Inferred {
         let return_type = &self.content.return_type;
-        if result_context.expect_not_none(i_s) && matches!(&return_type, Type::None) {
+        if result_context.expect_not_none() && matches!(&return_type, Type::None) {
             args.add_issue(
                 i_s,
                 IssueKind::DoesNotReturnAValue(

@@ -1692,7 +1692,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             FLOW_ANALYSIS.with(|fa| fa.mark_current_frame_unreachable())
         }
 
-        if result_context.expect_not_none(i_s)
+        if result_context.expect_not_none()
             && matches!(return_type.as_ref(), Type::None)
             && !self.is_async()
         {
