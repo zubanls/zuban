@@ -2094,7 +2094,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 }
                 Generics::List(generics, None) => ClassGenerics::List((*generics).clone()),
                 generics => ClassGenerics::List(GenericsList::new_generics(
-                    generics.iter(db).map(|g| g.into_generic_item(db)).collect(),
+                    generics.iter(db).map(|g| g.into_generic_item()).collect(),
                 )),
             },
             true => ClassGenerics::None,
@@ -2825,13 +2825,13 @@ pub fn linearize_mro_and_return_linearizable(
                                     .class(i_s.db)
                                     .generics
                                     .nth_usage(i_s.db, &usage)
-                                    .into_generic_item(i_s.db),
+                                    .into_generic_item(),
                                 Type::NamedTuple(n) => n
                                     .as_tuple_ref()
                                     .class(i_s.db)
                                     .generics
                                     .nth_usage(i_s.db, &usage)
-                                    .into_generic_item(i_s.db),
+                                    .into_generic_item(),
                                 Type::Class(GenericClass {
                                     generics: ClassGenerics::List(generics),
                                     ..
@@ -2841,7 +2841,7 @@ pub fn linearize_mro_and_return_linearizable(
                                     .class(i_s.db)
                                     .generics
                                     .nth_usage(i_s.db, &usage)
-                                    .into_generic_item(i_s.db),
+                                    .into_generic_item(),
                                 Type::Dataclass(d) => match &d.class.generics {
                                     ClassGenerics::List(generics) => {
                                         generics[usage.index()].clone()
@@ -3171,7 +3171,7 @@ fn apply_generics_to_base_class<'a>(
         _ => {
             let new_t = t.replace_type_var_likes_and_self(
                 db,
-                &mut |usage| Some(generics.nth_usage(db, &usage).into_generic_item(db)),
+                &mut |usage| Some(generics.nth_usage(db, &usage).into_generic_item()),
                 &|| None,
             );
             TypeOrClass::Type(new_t.map(Cow::Owned).unwrap_or_else(|| Cow::Borrowed(t)))

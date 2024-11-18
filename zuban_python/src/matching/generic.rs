@@ -36,7 +36,7 @@ impl<'a> Generic<'a> {
         }
     }
 
-    pub fn into_generic_item(self, db: &Database) -> GenericItem {
+    pub fn into_generic_item(self) -> GenericItem {
         match self {
             Self::TypeArg(t) => GenericItem::TypeArg(t.into_owned()),
             Self::TypeArgs(ts) => GenericItem::TypeArgs(ts.into_owned()),

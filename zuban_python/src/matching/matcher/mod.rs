@@ -945,14 +945,14 @@ impl<'a> Matcher<'a> {
             }
             if let Some(c) = self.class {
                 if c.node_ref.as_link() == usage.in_definition() {
-                    return Some(c.generics().nth_usage(db, &usage).into_generic_item(db));
+                    return Some(c.generics().nth_usage(db, &usage).into_generic_item());
                 }
             }
             if let Some(func_class) = self.maybe_func_class_for_usage(&usage) {
                 let g = func_class
                     .generics()
                     .nth_usage(db, &usage)
-                    .into_generic_item(db);
+                    .into_generic_item();
                 return match g {
                     GenericItem::TypeArg(t) => Some(GenericItem::TypeArg(
                         self.replace_type_var_likes_for_nested_context(db, &t)

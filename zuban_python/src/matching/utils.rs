@@ -47,7 +47,7 @@ pub fn maybe_class_usage(
         attribute_class
             .generics()
             .nth_usage(db, usage)
-            .into_generic_item(db)
+            .into_generic_item()
     })
 }
 

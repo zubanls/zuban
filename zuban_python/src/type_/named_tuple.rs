@@ -119,7 +119,7 @@ impl NamedTuple {
                                         Some(
                                             generics
                                                 .nth_usage(format_data.db, &usage)
-                                                .into_generic_item(format_data.db),
+                                                .into_generic_item(),
                                         )
                                     },
                                     &|| todo!(),

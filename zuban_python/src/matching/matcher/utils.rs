@@ -137,7 +137,7 @@ fn calculate_dunder_init_type_vars_and_return<'db: 'a, 'a>(
             | ClassGenerics::SlicesWithClassTypes(_)) => Some(GenericsList::new_generics(
                 Generics::from_class_generics(i_s.db, &class_generics)
                     .iter(i_s.db)
-                    .map(|g| g.into_generic_item(i_s.db))
+                    .map(|g| g.into_generic_item())
                     .collect(),
             )),
             ClassGenerics::None => None,
