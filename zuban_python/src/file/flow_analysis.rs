@@ -500,17 +500,10 @@ impl FlowAnalysis {
                         continue 'outer;
                     }
                 }
-                if first_entry.widens {
-                    self.overwrite_entry(
-                        i_s,
-                        self.merge_key_with_ancestor_assignment(i_s, first_entry),
-                    )
-                } else {
-                    self.overwrite_entry(
-                        i_s,
-                        self.merge_key_with_ancestor_assignment(i_s, first_entry),
-                    )
-                }
+                self.overwrite_entry(
+                    i_s,
+                    self.merge_key_with_ancestor_assignment(i_s, first_entry),
+                )
             }
         }
     }
@@ -696,7 +689,7 @@ impl FlowAnalysis {
             })
     }
 
-    pub fn process_delayed_funcs<'db>(&self, db: &Database, callback: impl Fn(Function)) {
+    pub fn process_delayed_funcs(&self, db: &Database, callback: impl Fn(Function)) {
         while let Some(delayed) = {
             let mut borrowed = self.delayed_func_diagnostics.borrow_mut();
             let result = borrowed.pop();

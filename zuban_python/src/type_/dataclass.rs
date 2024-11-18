@@ -84,7 +84,7 @@ impl std::fmt::Debug for Dataclass {
 impl PartialEq for Dataclass {
     fn eq(&self, other: &Self) -> bool {
         // This should not compare inits, because it might recurse
-        self.class == other.class && self.options == self.options
+        self.class == other.class && self.options == other.options
     }
 }
 

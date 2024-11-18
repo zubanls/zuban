@@ -54,10 +54,6 @@ impl<'file> NodeRef<'file> {
 
     #[inline]
     pub fn to_db_lifetime(self, db: &Database) -> NodeRef {
-        if std::cfg!(debug_assertions) {
-            // Check that the file index is set, which means that it's in the database.
-            self.file.file_index;
-        }
         // This should be safe, because all files are added to the database.
         unsafe { std::mem::transmute(self) }
     }

@@ -364,7 +364,7 @@ impl OverrideConfig {
                 nth_parent(
                     // This transmute is fine, because we're only local and the parents will not
                     // change during the parent function.
-                    unsafe { std::mem::transmute(dir.name.as_ref()) },
+                    unsafe { std::mem::transmute::<&str, &str>(dir.name.as_ref()) },
                     dir.parent.maybe_dir().ok().as_deref(),
                     n - 1,
                 )

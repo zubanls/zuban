@@ -3978,10 +3978,7 @@ impl<'db> FStringFormatSpec<'db> {
 
 impl<'db> Expressions<'db> {
     pub fn iter(&self) -> impl Iterator<Item = Expression<'db>> {
-        self.node
-            .iter_children()
-            .step_by(2)
-            .map(|e| Expression::new(e))
+        self.node.iter_children().step_by(2).map(Expression::new)
     }
 }
 

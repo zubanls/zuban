@@ -648,7 +648,7 @@ fn name_and_parent_dir(entry: &FileEntry) -> (&str, Option<Rc<Directory>>) {
             // It's ok to transmute here, because dir.name will exist as the database is
             // non-mutable, which should be fine.
             return (
-                unsafe { std::mem::transmute(dir.name.as_ref()) },
+                unsafe { std::mem::transmute::<&str, &str>(dir.name.as_ref()) },
                 dir.parent.maybe_dir().ok(),
             );
         }

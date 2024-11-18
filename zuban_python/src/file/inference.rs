@@ -3154,11 +3154,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             return None;
         };
         let i_s = self.i_s;
-        let Some((base, primary_or_atom, defaultdict_key)) =
-            self.infer_potential_partial_base(primary_method, true)
-        else {
-            return None;
-        };
+        let (base, primary_or_atom, defaultdict_key) =
+            self.infer_potential_partial_base(primary_method, true)?;
         let first_arg_as_t = || {
             let args = SimpleArgs::new(*i_s, self.file, primary.index(), execution);
             let arg = args.maybe_single_positional_arg(i_s, &mut ResultContext::Unknown)?;
@@ -3231,9 +3228,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             },
             Some(Specific::PartialDict) => match method_name.as_code() {
                 "update" => {
-                    let Some(t) = first_arg_as_t() else {
-                        return None;
-                    };
+                    let t = first_arg_as_t()?;
                     let dct_node_ref = i_s.db.python_state.dict_node_ref();
                     if t.is_any() {
                         save_partial(new_class!(dct_node_ref.as_link(), t.clone(), t))
