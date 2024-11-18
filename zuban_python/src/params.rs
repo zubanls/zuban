@@ -727,7 +727,7 @@ pub fn has_overlapping_params(
 ) -> bool {
     match (params1, params2) {
         (CallableParams::Simple(params1), CallableParams::Simple(params2)) => {
-            overload_has_overlapping_params(i_s, params1.iter(), params2.iter())
+            overload_has_overlapping_params(i_s, matcher, params1.iter(), params2.iter())
         }
         (CallableParams::Any(_), _) | (_, CallableParams::Any(_)) => true,
         (CallableParams::Never(_), _) | (_, CallableParams::Never(_)) => true,
@@ -736,6 +736,7 @@ pub fn has_overlapping_params(
 
 fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
     i_s: &InferenceState<'db, '_>,
+    matcher: &mut Matcher,
     params1: impl Iterator<Item = P1>,
     params2: impl Iterator<Item = P2>,
 ) -> bool {
@@ -754,10 +755,10 @@ fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
         WrappedParamType::StarStar(WrappedStarStar::ParamSpecKwargs(_u)) => todo!(),
         WrappedParamType::StarStar(WrappedStarStar::UnpackTypedDict(_u)) => todo!(),
     };
-    let check_type = |i_s: &InferenceState<'db, '_>, t1: Option<&Type>, p2: P2| {
+    let mut check_type = |i_s: &InferenceState<'db, '_>, t1: Option<&Type>, p2: P2| {
         if let Some(t1) = t1 {
             if let Some(t2) = to_type(i_s.db, p2) {
-                return t1.simple_overlaps(i_s, &t2);
+                return t1.overlaps(i_s, matcher, &t2);
             }
         }
         true
