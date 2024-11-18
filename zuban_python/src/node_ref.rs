@@ -19,7 +19,6 @@ use crate::{
     python_state::{NAME_DEF_TO_CLASS_DIFF, NAME_TO_FUNCTION_DIFF},
     type_::Type,
     type_helpers::{Class, Function, Module, CLASS_TO_CLASS_INFO_DIFFERENCE},
-    DiagnosticConfig,
 };
 
 #[derive(Clone, Copy)]

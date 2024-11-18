@@ -693,7 +693,7 @@ impl<'a> Matcher<'a> {
                     }
                     Bound::UpperAndLower(
                         BoundKind::ParamSpec(upper),
-                        BoundKind::ParamSpec(lower),
+                        BoundKind::ParamSpec(_lower),
                     ) => {
                         // TODO also match with lower
                         upper
@@ -729,12 +729,7 @@ impl<'a> Matcher<'a> {
                             of_function,
                         );
                         let mut kwarg = arg.clone();
-                        let ArgKind::ParamSpec {
-                            usage,
-                            node_ref,
-                            position,
-                        } = &mut kwarg.kind
-                        else {
+                        let ArgKind::ParamSpec { position, .. } = &mut kwarg.kind else {
                             unreachable!()
                         };
                         *position += 1;
@@ -923,7 +918,7 @@ impl<'a> Matcher<'a> {
         db: &Database,
         usage: TypeVarLikeUsage,
     ) -> Option<GenericItem> {
-        self.as_usage_closure(db, |usage| None)(usage)
+        self.as_usage_closure(db, |_| None)(usage)
     }
 
     pub fn as_usage_closure<'b>(
@@ -976,15 +971,9 @@ impl<'a> Matcher<'a> {
             })
     }
 
-    pub fn set_all_contained_type_vars_to_any(
-        &mut self,
-        i_s: &InferenceState,
-        type_: &Type,
-        cause: AnyCause,
-    ) {
+    pub fn set_all_contained_type_vars_to_any(&mut self, type_: &Type, cause: AnyCause) {
         for (i, tvm) in self.type_var_matchers.iter_mut().enumerate() {
             tvm.set_all_contained_type_vars_to_any(
-                i_s,
                 |callback| type_.search_type_vars(callback),
                 i as u32,
                 cause,
@@ -994,13 +983,11 @@ impl<'a> Matcher<'a> {
 
     pub fn set_all_contained_type_vars_to_any_in_callable_params(
         &mut self,
-        i_s: &InferenceState,
         p: &CallableParams,
         cause: AnyCause,
     ) {
         for (i, tvm) in self.type_var_matchers.iter_mut().enumerate() {
             tvm.set_all_contained_type_vars_to_any(
-                i_s,
                 |callback| p.search_type_vars(callback),
                 i as u32,
                 cause,
@@ -1139,7 +1126,7 @@ impl<'a> Matcher<'a> {
         //   https://inria.hal.science/inria-00073205/document Definition 7.1
 
         // First we find cycles, i.e. type var likes that depend on each other.
-        let mut cycles = self.find_unresolved_transitive_constraint_cycles(db);
+        let mut cycles = self.find_unresolved_transitive_constraint_cycles();
         let before = self.constraint_count();
         // Some cases need to propagate type vars across ParamSpec and TypeVarTuple. In that case
         // we need to match constraints against each other, see for example
@@ -1148,7 +1135,7 @@ impl<'a> Matcher<'a> {
         // If constraints were added, that we rescan for cycles, because the information is out of
         // date.
         if before < self.constraint_count() {
-            cycles = self.find_unresolved_transitive_constraint_cycles(db);
+            cycles = self.find_unresolved_transitive_constraint_cycles();
         }
         // Some cycles have no bounds at all. In that case we need to "invent" type variables that
         // will take the place of the cycles.
@@ -1433,7 +1420,7 @@ impl<'a> Matcher<'a> {
         }
     }
 
-    fn find_unresolved_transitive_constraint_cycles(&self, db: &Database) -> TypeVarCycles {
+    fn find_unresolved_transitive_constraint_cycles(&self) -> TypeVarCycles {
         // To find cycles we run `add_cycles`, which recursively finds type var cycles.
         let mut cycles = TypeVarCycles::default();
         for (i, tv_matcher) in self.type_var_matchers.iter().enumerate() {

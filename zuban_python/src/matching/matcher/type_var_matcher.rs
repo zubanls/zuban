@@ -185,7 +185,7 @@ impl CalculatingTypeArg {
             match variance {
                 Variance::Invariant => self.type_ = Bound::Invariant(other),
                 Variance::Covariant => self.update_lower_bound(i_s, other),
-                Variance::Contravariant => self.update_upper_bound(i_s, other),
+                Variance::Contravariant => self.update_upper_bound(other),
             }
             matches
         } else {
@@ -204,7 +204,7 @@ impl CalculatingTypeArg {
                         }
                     }
                     Bound::Invariant(t) => t.is_simple_super_type_of(i_s, &other),
-                    Bound::Upper(t) => matches,
+                    Bound::Upper(_) => matches,
                     Bound::UpperAndLower(upper, lower) => {
                         let m = lower.is_simple_super_type_of(i_s, &other);
                         if let Some(new) = lower.common_base_type(i_s, &other) {
@@ -245,14 +245,11 @@ impl CalculatingTypeArg {
         }
     }
 
-    fn update_upper_bound(&mut self, i_s: &InferenceState, upper: BoundKind) {
-        let common = |b: &BoundKind, upper: BoundKind| {
-            b.common_sub_type(i_s, &upper).expect("See expect below")
-        };
+    fn update_upper_bound(&mut self, upper: BoundKind) {
         self.type_ = match &self.type_ {
             Bound::Upper(_) => Bound::Upper(upper),
             Bound::Lower(lower) => Bound::UpperAndLower(upper, lower.clone()),
-            Bound::UpperAndLower(old, lower) => Bound::UpperAndLower(upper, lower.clone()),
+            Bound::UpperAndLower(_, lower) => Bound::UpperAndLower(upper, lower.clone()),
             _ => unreachable!(),
         };
     }
@@ -312,7 +309,6 @@ impl TypeVarMatcher {
 
     pub fn set_all_contained_type_vars_to_any(
         &mut self,
-        i_s: &InferenceState,
         search_type_vars: impl FnOnce(&mut dyn FnMut(TypeVarLikeUsage)),
         matcher_index: u32,
         cause: AnyCause,

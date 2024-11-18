@@ -8,7 +8,7 @@ use crate::{
     format_data::FormatData,
     inference_state::InferenceState,
     inferred::Inferred,
-    matching::{CouldBeALiteral, Matcher, OnTypeError, ResultContext},
+    matching::{CouldBeALiteral, Matcher, ResultContext},
     node_ref::NodeRef,
     type_::{
         AnyCause, ClassGenerics, NewType, ParamSpec, Type, TypeVar, TypeVarKind, TypeVarLike,

@@ -95,11 +95,11 @@ fn matches_params_detailed(
             }
         }
         (Any(cause), _) => {
-            matcher.set_all_contained_type_vars_to_any_in_callable_params(i_s, params2, *cause);
+            matcher.set_all_contained_type_vars_to_any_in_callable_params(params2, *cause);
             Match::new_true()
         }
         (_, Any(cause)) => {
-            matcher.set_all_contained_type_vars_to_any_in_callable_params(i_s, params1, *cause);
+            matcher.set_all_contained_type_vars_to_any_in_callable_params(params1, *cause);
             Match::new_true()
         }
         (_, Never(_)) => Match::new_true(),

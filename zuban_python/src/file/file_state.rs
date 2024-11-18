@@ -182,7 +182,7 @@ impl<F: File + Unpin + Clone> FileState for LanguageFileState<F> {
         &self.file_entry
     }
 
-    fn file(&self, file_system_reader: &dyn Vfs) -> Option<&(dyn File + 'static)> {
+    fn file(&self, _file_system_reader: &dyn Vfs) -> Option<&(dyn File + 'static)> {
         match &self.state {
             InternalFileExistence::Unloaded => None,
             InternalFileExistence::Parsed(f) => Some(f),

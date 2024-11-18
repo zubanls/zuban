@@ -104,7 +104,7 @@ impl<'a> ResultContext<'a, '_> {
             return CouldBeALiteral::No;
         }
         self.with_type_if_exists_and_replace_type_var_likes(i_s, |type_| match type_ {
-            Type::Literal(l) => CouldBeALiteral::Yes { implicit: false },
+            Type::Literal(_) => CouldBeALiteral::Yes { implicit: false },
             Type::EnumMember(_) => CouldBeALiteral::Yes { implicit: false },
             Type::Union(items)
                 if items
