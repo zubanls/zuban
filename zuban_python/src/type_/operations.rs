@@ -686,7 +686,7 @@ impl Type {
         match self {
             Type::Class(c) => Instance::new(c.class(i_s.db), None).iter(i_s, infos),
             Type::Tuple(tuple) => tuple.iter(),
-            Type::NamedTuple(nt) => nt.iter(i_s),
+            Type::NamedTuple(nt) => nt.iter(),
             Type::Union(union) => {
                 let mut items = vec![];
                 for t in union.iter() {

@@ -378,7 +378,7 @@ fn ensure_dirs_and_file(parent: Parent, dir: &Directory, vfs: &dyn Vfs, path: &s
         result.invalidations.extend(invs);
         result
     } else {
-        dir.ensure_file(parent, vfs, name)
+        dir.ensure_file(parent, name)
     }
 }
 
@@ -464,7 +464,7 @@ impl Directory {
         }))
     }
 
-    fn ensure_file(&self, parent: Parent, vfs: &dyn Vfs, name: &str) -> AddedFile {
+    fn ensure_file(&self, parent: Parent, name: &str) -> AddedFile {
         let mut invalidations = Invalidations::default();
         let file_entry = if let Some(mut entry) = self.search(name) {
             match &mut *entry {

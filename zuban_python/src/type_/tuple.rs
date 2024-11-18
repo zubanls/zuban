@@ -47,7 +47,7 @@ impl Tuple {
     pub fn new_arbitrary_length_with_class_generics(t: Type, generics: GenericsList) -> Rc<Self> {
         Rc::new(Self {
             args: TupleArgs::ArbitraryLen(Box::new(t)),
-            tuple_class_generics: OnceCell::new(),
+            tuple_class_generics: OnceCell::from(generics),
         })
     }
 

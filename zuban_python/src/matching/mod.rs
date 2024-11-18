@@ -532,7 +532,7 @@ impl IteratorContent {
             } => Some(TupleLenInfos::FixedLen(
                 entries.as_ref().len() - current_index,
             )),
-            Self::Union(iterators) => unreachable!(),
+            Self::Union(_) => unreachable!(),
             Self::WithUnpack { unpack, .. } => Some(TupleLenInfos::WithStar {
                 before: unpack.before.len(),
                 after: unpack.after.len(),

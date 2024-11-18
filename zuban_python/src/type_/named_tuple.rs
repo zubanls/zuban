@@ -139,7 +139,7 @@ impl NamedTuple {
         }
     }
 
-    pub fn iter(&self, i_s: &InferenceState) -> IteratorContent {
+    pub fn iter(&self) -> IteratorContent {
         self.as_tuple().iter()
     }
 
@@ -607,13 +607,15 @@ pub(crate) fn new_collections_named_tuple<'db>(
 }
 
 fn check_named_tuple_has_no_fields_with_underscore(
-    i_s: &InferenceState,
-    name: &'static str,
-    args: &dyn Args,
+    _i_s: &InferenceState,
+    _name: &'static str,
+    _args: &dyn Args,
     params: &[CallableParam],
 ) {
     for param in params.iter() {
-        if let Some(param_name) = param.name.as_ref() {}
+        if let Some(param_name) = param.name.as_ref() {
+            // TODO implement
+        }
     }
 }
 

@@ -1396,7 +1396,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 };
                 let is_done = match point.maybe_specific() {
                     Some(Specific::PartialNone) => {
-                        if let Some(p) = value.maybe_new_nullable_partial_point(i_s, |t| todo!()) {
+                        if let Some(p) = value.maybe_new_nullable_partial_point(i_s, |_t| todo!()) {
                             saved_node_ref.set_point(p);
                             return;
                         }
@@ -3240,7 +3240,6 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             },
             Some(Specific::PartialDefaultDictWithList) => match method_name.as_code() {
                 "append" => {
-                    let t = find_container_types(false);
                     try_to_save_defaultdict(i_s.db.python_state.list_node_ref().as_link(), false)
                 }
                 "extend" => {
@@ -3385,7 +3384,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         let specific = match atom.unpack() {
             Name(n) => return self.infer_name_reference(n),
             Int(i) => match self.parse_int(i) {
-                Some(parsed) => {
+                Some(_) => {
                     return check_literal(result_context, i_s, i.index(), Specific::IntLiteral);
                 }
                 None => Specific::Int,

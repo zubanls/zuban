@@ -911,7 +911,6 @@ impl Database {
         };
 
         let mut workspaces = Workspaces::default();
-        let separator = vfs.separator();
         for p in project.settings.mypy_path.iter() {
             workspaces.add(vfs.as_ref(), file_state_loaders.as_ref(), p.clone(), true);
         }
