@@ -167,7 +167,7 @@ impl Type {
                         );
                     }
                 }
-                TypeVarKind::Constraints(constraints) => {
+                TypeVarKind::Constraints(_constraints) => {
                     debug!("TODO type var values");
                     /*
                     for type_ in constraints.iter() {
@@ -269,7 +269,6 @@ impl Type {
                         return;
                     }
                 }
-                let type_var_likes = current_class.type_vars(i_s);
                 let inst = Instance::new(
                     Class::with_self_generics(
                         i_s.db,
@@ -286,7 +285,7 @@ impl Type {
                 mro_index,
             } => {
                 let class = class.class(i_s.db);
-                let l = if let Type::Type(t) = bound_to.as_ref() {
+                let l = if matches!(bound_to.as_ref(), Type::Type(_)) {
                     class.lookup(
                         i_s,
                         name,
@@ -394,7 +393,7 @@ impl Type {
                     add_issue,
                     callable,
                 ),
-            Type::CustomBehavior(b) => {
+            Type::CustomBehavior(_) => {
                 Type::Callable(i_s.db.python_state.any_callable_from_error.clone())
                     .run_after_lookup_on_each_union_member(
                         i_s,
@@ -502,7 +501,7 @@ impl Type {
                     callable(t.get_item_internal(i_s, None, slice_type, result_context, add_issue))
                 }
             }),
-            t @ Type::TypeVar(tv) => match &tv.type_var.kind {
+            Type::TypeVar(tv) => match &tv.type_var.kind {
                 TypeVarKind::Bound(bound) => match bound {
                     Type::Class(c) => Instance::new(c.class(i_s.db), from_inferred).get_item(
                         i_s,
@@ -562,7 +561,7 @@ impl Type {
                 result_context,
                 add_issue,
             ),
-            Type::TypedDict(d) => d.get_item(i_s, slice_type, result_context, true, add_issue),
+            Type::TypedDict(d) => d.get_item(i_s, slice_type, true, add_issue),
             Type::Literal(l) => l.fallback_type(i_s.db).get_item_internal(
                 i_s,
                 None,
@@ -842,11 +841,9 @@ pub(crate) fn attribute_access_of_type(
             .instance()
             .lookup_with_details(i_s, add_issue, name, kind)
             .or_else(|| LookupDetails::any(*cause)),
-        t @ Type::Enum(e) => {
-            lookup_on_enum_class(i_s, add_issue, &in_type, e, name, result_context)
-        }
+        Type::Enum(e) => lookup_on_enum_class(i_s, add_issue, &in_type, e, name, result_context),
         Type::Dataclass(d) => lookup_on_dataclass_type(&in_type, d, i_s, add_issue, name, kind),
-        Type::TypedDict(d) => i_s.db.python_state.typed_dict_class().lookup(
+        Type::TypedDict(_) => i_s.db.python_state.typed_dict_class().lookup(
             i_s,
             name,
             ClassLookupOptions::new(&add_issue).with_kind(kind),
@@ -873,7 +870,6 @@ pub(crate) fn attribute_access_of_type(
                 kind: LookupKind,
                 result_context: &mut ResultContext,
                 callable: &mut dyn FnMut(&Type, LookupDetails),
-                in_type: Rc<Type>,
             ) {
                 i.run_after_lookup_on_each_union_member(
                     &mut |t, add_issue, on_lookup_result| {
@@ -891,16 +887,7 @@ pub(crate) fn attribute_access_of_type(
                     callable,
                 );
             }
-            on_intersection(
-                i,
-                i_s,
-                add_issue,
-                name,
-                kind,
-                result_context,
-                callable,
-                in_type.clone(),
-            );
+            on_intersection(i, i_s, add_issue, name, kind, result_context, callable);
             return;
         }
         t => unreachable!("Type getattr {name} on {t:?}"),
@@ -918,7 +905,7 @@ pub(crate) fn execute_type_of_type<'db>(
     match type_ {
         #![allow(unreachable_code)]
         // TODO remove this
-        tuple @ Type::Tuple(tuple_content) => {
+        tuple @ Type::Tuple(_tuple_content) => {
             debug!("TODO this does not check the arguments");
             Inferred::from_type(tuple.clone())
             /*
@@ -977,9 +964,7 @@ pub(crate) fn execute_type_of_type<'db>(
         }
         Type::Any(cause) => Inferred::new_any(*cause),
         Type::Dataclass(d) => dataclass_initialize(d, i_s, args, result_context, on_type_error),
-        Type::TypedDict(td) => {
-            initialize_typed_dict(td.clone(), i_s, args, result_context, on_type_error)
-        }
+        Type::TypedDict(td) => initialize_typed_dict(td.clone(), i_s, args),
         Type::NamedTuple(nt) => {
             let calculated_type_vars = calculate_callable_type_vars_and_return(
                 i_s,
@@ -1007,7 +992,7 @@ pub(crate) fn execute_type_of_type<'db>(
                 Rc::new(NamedTuple::new(nt.name, __new__))
             }))
         }
-        Type::Enum(enum_) => {
+        Type::Enum(_enum_) => {
             debug!("TODO did not check arguments in execution of enum");
             Inferred::from_type(type_.clone())
         }

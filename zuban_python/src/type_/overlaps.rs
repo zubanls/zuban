@@ -239,7 +239,6 @@ fn overlaps_class(
         #[inline]
         |i_s: &InferenceState, c1: Class, c2: Class| {
             (c1.node_ref == c2.node_ref).then(|| {
-                let type_vars = c1.type_vars(i_s);
                 let mut matches = true;
                 for (t1, t2) in c1.generics().iter(i_s.db).zip(c2.generics().iter(i_s.db)) {
                     matches &= t1.overlaps(i_s, matcher, t2);
@@ -275,7 +274,7 @@ impl TypedDict {
         other: &Type,
     ) -> bool {
         match other {
-            Type::TypedDict(td) => {
+            Type::TypedDict(_) => {
                 // TODO this should actually check overlaps of its content and not normal matching
                 original.is_sub_type_of(i_s, matcher, other).bool()
                     || original.is_super_type_of(i_s, matcher, other).bool()

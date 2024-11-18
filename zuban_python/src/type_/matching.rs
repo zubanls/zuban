@@ -43,7 +43,7 @@ impl Type {
                         m.similar_if_false()
                     }
                 }
-                Type::Union(u2) => match t1.as_ref() {
+                Type::Union(_) => match t1.as_ref() {
                     Type::Union(u) => {
                         let repacked = Type::Union(UnionType::from_types(
                             u.iter().map(|t| Type::Type(Rc::new(t.clone()))).collect(),
@@ -95,7 +95,7 @@ impl Type {
             Type::Union(union_type1) => {
                 self.matches_union(i_s, matcher, union_type1, value_type, variance)
             }
-            Type::FunctionOverload(overload) if variance == Variance::Invariant => self
+            Type::FunctionOverload(_) if variance == Variance::Invariant => self
                 .matches_internal(i_s, matcher, value_type, Variance::Covariant)
                 .or(|| value_type.matches_internal(i_s, matcher, self, Variance::Covariant)),
             Type::FunctionOverload(overload1) => match value_type {
@@ -223,7 +223,7 @@ impl Type {
         value_type: &Self,
     ) -> Match {
         // 1. Check if the type is part of the mro.
-        let debug_message_for_result = |matcher, result| {
+        let debug_message_for_result = |result| {
             if cfg!(feature = "zuban_debug") {
                 let ErrorStrs { got, expected } = format_got_expected(i_s.db, self, value_type);
                 debug!("Match covariant {got} :> {expected} -> {result:?}",)
@@ -269,7 +269,7 @@ impl Type {
                         *reason = MismatchReason::None;
                     }
                 }
-                debug_message_for_result(matcher, &m);
+                debug_message_for_result(&m);
                 return m;
             }
         }
@@ -300,7 +300,7 @@ impl Type {
                 }
                 Match::new_false()
             });
-        debug_message_for_result(matcher, &result);
+        debug_message_for_result(&result);
         result
     }
 
@@ -568,7 +568,7 @@ impl Type {
                     TypeVarLike::TypeVar(t) if variance == Variance::Contravariant => {
                         t.variance.invert()
                     }
-                    TypeVarLike::TypeVar(t) => Variance::Invariant,
+                    TypeVarLike::TypeVar(_) => Variance::Invariant,
                     TypeVarLike::TypeVarTuple(_) | TypeVarLike::ParamSpec(_) => Variance::Covariant,
                 };
                 matches &= t1.matches(i_s, matcher, &t2, v);
@@ -661,7 +661,7 @@ impl Type {
             {
                 Match::new_true()
             }
-            Type::TypedDict(c) if class1.node_ref == i_s.db.python_state.dict_node_ref() => {
+            Type::TypedDict(_) if class1.node_ref == i_s.db.python_state.dict_node_ref() => {
                 let m = class1
                     .nth_type_argument(i_s.db, 0)
                     .is_simple_same_type(i_s, &i_s.db.python_state.str_type());
@@ -850,7 +850,7 @@ pub fn match_arbitrary_len_vs_unpack(
     variance: Variance,
 ) -> Match {
     match &with_unpack.unpack {
-        TupleUnpack::TypeVarTuple(tvt2) => Match::new_false(),
+        TupleUnpack::TypeVarTuple(_) => Match::new_false(),
         TupleUnpack::ArbitraryLen(inner_t2) => {
             let mut matches = Match::new_true();
             for t2 in with_unpack.before.iter() {

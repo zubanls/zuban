@@ -20,21 +20,21 @@ pub type ReplaceSelf<'x> = &'x dyn Fn() -> Option<Type>;
 
 trait Replacer {
     fn replace_type(&mut self, t: &Type) -> Option<Type>;
-    fn replace_callable_params(&mut self, p: &CallableParams) -> Option<CallableParams> {
+    fn replace_callable_params(&mut self, _: &CallableParams) -> Option<CallableParams> {
         None
     }
-    fn replace_callable(&mut self, c: &Rc<CallableContent>) -> Option<Rc<CallableContent>> {
+    fn replace_callable(&mut self, _: &Rc<CallableContent>) -> Option<Rc<CallableContent>> {
         None
     }
-    fn replace_type_var_tuple(&mut self, tvt: &TypeVarTupleUsage) -> Option<TupleArgs> {
+    fn replace_type_var_tuple(&mut self, _: &TypeVarTupleUsage) -> Option<TupleArgs> {
         None
     }
     fn replace_param_spec(
         &mut self,
-        type_vars: &mut Option<Vec<TypeVarLike>>,
-        in_definition: Option<PointLink>,
-        replace_data: &mut Option<(PointLink, usize)>,
-        p: &ParamSpecUsage,
+        _type_vars: &mut Option<Vec<TypeVarLike>>,
+        _in_definition: Option<PointLink>,
+        _replace_data: &mut Option<(PointLink, usize)>,
+        _p: &ParamSpecUsage,
     ) -> Option<ReplacedParamSpec> {
         None
     }
@@ -122,9 +122,9 @@ impl Type {
             }
             fn replace_param_spec(
                 &mut self,
-                type_vars: &mut Option<Vec<TypeVarLike>>,
-                in_definition: Option<PointLink>,
-                replace_data: &mut Option<(PointLink, usize)>,
+                _type_vars: &mut Option<Vec<TypeVarLike>>,
+                _in_definition: Option<PointLink>,
+                _replace_data: &mut Option<(PointLink, usize)>,
                 p: &ParamSpecUsage,
             ) -> Option<ReplacedParamSpec> {
                 let new_param_spec = self.0.remap_param_spec(p);
@@ -258,7 +258,7 @@ impl Type {
     }
 
     pub fn replace_self(&self, db: &Database, replace_self: ReplaceSelf) -> Option<Self> {
-        self.replace_type_var_likes_and_self(db, &mut |usage| None, replace_self)
+        self.replace_type_var_likes_and_self(db, &mut |_| None, replace_self)
     }
 }
 
@@ -816,8 +816,8 @@ impl Replacer for ReplaceTypeVarLikes<'_, '_> {
             }
             Type::TypeVar(tv) => match (self.callable)(TypeVarLikeUsage::TypeVar(tv.clone()))? {
                 GenericItem::TypeArg(t) => Some(t),
-                GenericItem::TypeArgs(ts) => unreachable!(),
-                GenericItem::ParamSpecArg(params) => unreachable!(),
+                GenericItem::TypeArgs(_) => unreachable!(),
+                GenericItem::ParamSpecArg(_) => unreachable!(),
             },
             Type::Self_ => (self.replace_self)(),
             _ => None,

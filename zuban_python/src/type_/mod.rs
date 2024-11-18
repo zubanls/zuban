@@ -169,7 +169,7 @@ impl DbString {
                 code_index,
                 code_index + s.len() as CodeIndex,
             ))),
-            PythonString::String(code_index, s) => Some(Self::RcStr(s.into())),
+            PythonString::String(_, s) => Some(Self::RcStr(s.into())),
             PythonString::FString => None,
         }
     }
@@ -724,7 +724,7 @@ impl Type {
         None
     }
 
-    pub fn maybe_typed_dict(&self, db: &Database) -> Option<Rc<TypedDict>> {
+    pub fn maybe_typed_dict(&self, _: &Database) -> Option<Rc<TypedDict>> {
         match self {
             Type::TypedDict(td) => Some(td.clone()),
             _ => None,
@@ -742,7 +742,7 @@ impl Type {
             Type::Class(c) => {
                 let cls = c.class(i_s.db);
                 Instance::new(cls, None)
-                    .type_lookup(i_s, |issue| todo!(), "__call__")
+                    .type_lookup(i_s, |_issue| todo!(), "__call__")
                     .into_maybe_inferred()
                     .and_then(|i| i.as_cow_type(i_s).maybe_callable(i_s))
             }
@@ -992,7 +992,7 @@ impl Type {
             },
             Self::Enum(e) => e.format(format_data).into(),
             Self::EnumMember(e) => e.format(format_data).into(),
-            Self::Module(file_index) => format_data
+            Self::Module(_) => format_data
                 .db
                 .python_state
                 .module_type()
@@ -1090,7 +1090,7 @@ impl Type {
             Self::FunctionOverload(intersection) => intersection
                 .iter_functions()
                 .any(|callable| callable.has_any_internal(i_s, already_checked)),
-            Self::TypeVar(t) => false,
+            Self::TypeVar(_) => false,
             Self::Type(type_) => type_.has_any_internal(i_s, already_checked),
             Self::Tuple(content) => content.args.has_any_internal(i_s, already_checked),
             Self::Callable(content) => content.has_any_internal(i_s, already_checked),
@@ -1558,8 +1558,8 @@ impl Type {
                 }
                 _ => Type::Any(AnyCause::FromError),
             },
-            Type::Callable(content1) => match other {
-                Type::Callable(content2) => {
+            Type::Callable(_) => match other {
+                Type::Callable(_) => {
                     Type::Callable(db.python_state.any_callable_from_error.clone())
                 }
                 _ => Type::Any(AnyCause::FromError),
@@ -1950,13 +1950,13 @@ enum UniqueInUnpackedUnionError {
 }
 
 impl PartialEq for AnyCause {
-    fn eq(&self, other: &Self) -> bool {
+    fn eq(&self, _other: &Self) -> bool {
         true
     }
 }
 
 impl Hash for AnyCause {
-    fn hash<H: Hasher>(&self, state: &mut H) {
+    fn hash<H: Hasher>(&self, _state: &mut H) {
         // Nothing to do, because all any causes are considered to be equal
     }
 }
@@ -1979,13 +1979,13 @@ pub enum NeverCause {
 }
 
 impl PartialEq for NeverCause {
-    fn eq(&self, other: &Self) -> bool {
+    fn eq(&self, _other: &Self) -> bool {
         true
     }
 }
 
 impl Hash for NeverCause {
-    fn hash<H: Hasher>(&self, state: &mut H) {
+    fn hash<H: Hasher>(&self, _state: &mut H) {
         // Nothing to do, because all never causes are considered to be equal
     }
 }

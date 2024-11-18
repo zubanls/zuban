@@ -326,7 +326,6 @@ impl TypedDict {
         &self,
         i_s: &InferenceState,
         slice_type: &SliceType,
-        result_context: &mut ResultContext,
         add_errors: bool,
         add_issue: &dyn Fn(IssueKind),
     ) -> Inferred {
@@ -619,7 +618,7 @@ fn new_typed_dict_internal<'db>(
             return None;
         }
     };
-    let on_type_var = &mut |i_s: &InferenceState, _: &_, _, _| TypeVarCallbackReturn::NotFound {
+    let on_type_var = &mut |_: &InferenceState, _: &_, _, _| TypeVarCallbackReturn::NotFound {
         allow_late_bound_callables: false,
     };
     let inference = first.node_ref.file.inference(i_s);
@@ -1040,7 +1039,7 @@ fn typed_dict_update_internal<'db>(
         td.defined_at,
         td.generics.clone(),
     );
-    let inf_key = args.maybe_single_positional_arg(
+    args.maybe_single_positional_arg(
         i_s,
         &mut ResultContext::new_known(&Type::TypedDict(expected)),
     )?;
@@ -1051,8 +1050,6 @@ pub(crate) fn initialize_typed_dict<'db>(
     typed_dict: Rc<TypedDict>,
     i_s: &InferenceState<'db, '_>,
     args: &dyn Args<'db>,
-    result_context: &mut ResultContext,
-    on_type_error: OnTypeError,
 ) -> Inferred {
     let mut iterator = args.iter(i_s.mode);
     let mut matcher = Matcher::new_typed_dict_matcher(&typed_dict);

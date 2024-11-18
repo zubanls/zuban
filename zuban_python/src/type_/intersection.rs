@@ -50,7 +50,7 @@ impl Intersection {
                 return Self::new_instance_intersection(i_s, t1.as_ref(), t2.as_ref(), add_issue)
                     .map(|out| Type::Type(Rc::new(out)))
             }
-            (Type::Union(u), _) => {
+            (Type::Union(_), _) => {
                 unreachable!("For now this branch should not be reachable")
             }
             (_, Type::Union(u)) => {
@@ -271,7 +271,7 @@ impl Intersection {
         result_context: &mut ResultContext,
         on_type_error: OnTypeError,
     ) -> Inferred {
-        self.wrap_first_non_failing(|t, add_issue| {
+        self.wrap_first_non_failing(|t, _| {
             t.execute(i_s, None, args, result_context, on_type_error)
         })
         .unwrap_or_else(|first_issue| {

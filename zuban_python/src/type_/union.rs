@@ -245,7 +245,7 @@ fn merge_simplified_union_type(
 
 fn try_contracting_enum_members(entries: &mut Vec<UnionEntry>) {
     let mut enum_counts = HashMap::new();
-    for (i, e) in entries.iter().enumerate() {
+    for e in entries.iter() {
         if let Type::EnumMember(member) = &e.type_ {
             enum_counts
                 .entry(member.enum_.defined_at)

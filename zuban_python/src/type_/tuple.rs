@@ -182,7 +182,7 @@ impl Tuple {
                                             with_unpack.after[after_len - index - 1].clone()
                                         } else {
                                             match &with_unpack.unpack {
-                                                TupleUnpack::TypeVarTuple(tvt) => {
+                                                TupleUnpack::TypeVarTuple(_) => {
                                                     i_s.db.python_state.object_type()
                                                 }
                                                 TupleUnpack::ArbitraryLen(t) => {
@@ -209,7 +209,7 @@ impl Tuple {
                                             with_unpack.before[index].clone()
                                         } else {
                                             match &with_unpack.unpack {
-                                                TupleUnpack::TypeVarTuple(tvt) => {
+                                                TupleUnpack::TypeVarTuple(_) => {
                                                     i_s.db.python_state.object_type()
                                                 }
                                                 TupleUnpack::ArbitraryLen(t) => {
@@ -390,7 +390,7 @@ impl Tuple {
                                 }
                             }))))
                         }
-                        TupleArgs::ArbitraryLen(t) => {
+                        TupleArgs::ArbitraryLen(_) => {
                             Inferred::from_type(Type::Tuple(Rc::new(self.clone())))
                         }
                     }
@@ -635,7 +635,7 @@ impl TupleArgs {
                 ts.iter().cloned().map(|t| t.avoid_implicit_literal(i_s.db)),
             ),
             TupleArgs::WithUnpack(with_unpack) => match &with_unpack.unpack {
-                TupleUnpack::TypeVarTuple(tvt) => i_s.db.python_state.object_type(),
+                TupleUnpack::TypeVarTuple(_) => i_s.db.python_state.object_type(),
                 TupleUnpack::ArbitraryLen(t) => simplified_union_from_iterators(
                     i_s,
                     with_unpack
@@ -695,7 +695,6 @@ pub(crate) fn lookup_on_tuple<'x>(
 ) -> LookupDetails<'x> {
     lookup_tuple_magic_methods(tuple.clone(), name).or_else(|| {
         let tuple_cls = tuple.class(i_s.db);
-        let tuple_instance = Instance::new(tuple_cls, None);
         for (mro_index, class_or_type) in tuple_cls.mro(i_s.db) {
             let (cls, lookup) = class_or_type.lookup_symbol(i_s, name);
             if let Some(inf) = lookup.into_maybe_inferred() {
