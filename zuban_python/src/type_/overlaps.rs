@@ -45,10 +45,11 @@ impl Type {
                     _ => self.overlaps(i_s, matcher, &literal2.fallback_type(i_s.db)),
                 }
             }
-            Type::TypeVar(tv) => match &tv.type_var.kind {
-                TypeVarKind::Bound(b) => return self.overlaps(i_s, matcher, b),
-                _ => (),
-            },
+            Type::TypeVar(tv) => {
+                if let TypeVarKind::Bound(b) = &tv.type_var.kind {
+                    return self.overlaps(i_s, matcher, b);
+                }
+            }
             Type::Type(t2) => return t2.overlaps_type_of_type_against_other(i_s, matcher, self),
             _ => (),
         }
@@ -77,10 +78,11 @@ impl Type {
                     return t1.overlaps_tuple(i_s, matcher, t2);
                 }
             }
-            Type::TypeVar(tv) => match &tv.type_var.kind {
-                TypeVarKind::Bound(b) => return b.overlaps(i_s, matcher, other),
-                _ => (),
-            },
+            Type::TypeVar(tv) => {
+                if let TypeVarKind::Bound(b) = &tv.type_var.kind {
+                    return b.overlaps(i_s, matcher, other);
+                }
+            }
             Type::TypedDict(td) => return td.overlaps(i_s, matcher, self, other),
             _ => (),
         };

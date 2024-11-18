@@ -97,12 +97,11 @@ impl Intersection {
             _ => (),
         }
         let mut error_if_not_intersectable = |t: &Type| {
-            match t {
-                Type::None => add_issue(IssueKind::IntersectionCannotExistDueToFinalClass {
+            if t == &Type::None {
+                add_issue(IssueKind::IntersectionCannotExistDueToFinalClass {
                     intersection: format!(r#""{}" and "NoneType""#, t1.format_short(i_s.db)).into(),
                     final_class: "NoneType".into(),
-                }),
-                _ => (),
+                })
             }
             Err(())
         };

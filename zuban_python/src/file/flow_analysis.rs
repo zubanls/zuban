@@ -3896,16 +3896,10 @@ fn split_and_intersect(
                     true_type.simplified_union_in_place(i_s, isinstance_type);
                 } else if isinstance_type.is_simple_super_type_of(i_s, t).bool() {
                     true_type.simplified_union_in_place(i_s, t);
-                } else {
-                    match Intersection::new_instance_intersection(
-                        i_s,
-                        t,
-                        isinstance_type,
-                        &mut add_issue,
-                    ) {
-                        Ok(new_t) => true_type.simplified_union_in_place(i_s, &new_t),
-                        Err(()) => (),
-                    }
+                } else if let Ok(new_t) =
+                    Intersection::new_instance_intersection(i_s, t, isinstance_type, &mut add_issue)
+                {
+                    true_type.simplified_union_in_place(i_s, &new_t)
                 }
             }
         }

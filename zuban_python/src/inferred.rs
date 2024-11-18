@@ -708,11 +708,8 @@ impl<'db: 'slf, 'slf> Inferred {
         match &self.state {
             InferredState::Saved(link) => {
                 let definition = NodeRef::from_link(i_s.db, *link);
-                match definition.point().maybe_specific() {
-                    Some(Specific::Function) => {
-                        return FunctionOrOverload::Function(Function::new(definition, class));
-                    }
-                    _ => (),
+                if definition.point().maybe_specific() == Some(Specific::Function) {
+                    return FunctionOrOverload::Function(Function::new(definition, class));
                 }
                 match definition.complex() {
                     Some(ComplexPoint::FunctionOverload(overload)) => {
@@ -1609,8 +1606,8 @@ impl<'db: 'slf, 'slf> Inferred {
                 let node_ref = NodeRef::from_link(i_s.db, *definition);
                 let point = node_ref.point();
                 match point.kind() {
-                    PointKind::Specific => match point.specific() {
-                        Specific::Function => {
+                    PointKind::Specific => {
+                        if point.specific() == Specific::Function {
                             let func = Function::new(node_ref, Some(attribute_class));
                             let result = infer_class_method(
                                 i_s,
@@ -1627,8 +1624,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 return Self::new_any_from_error();
                             }
                         }
-                        _ => (),
-                    },
+                    }
                     PointKind::Complex => match node_ref.complex().unwrap() {
                         ComplexPoint::FunctionOverload(o) => {
                             let Some(inf) =
@@ -2166,21 +2162,15 @@ impl<'db: 'slf, 'slf> Inferred {
                 }
                 _ => {
                     let node_ref = NodeRef::from_link(i_s.db, link);
-                    match node_ref.complex() {
-                        Some(ComplexPoint::TypeAlias(ta)) => {
-                            return slice_type
-                                .file
-                                .inference(i_s)
-                                .compute_type_application_on_alias(
-                                    ta,
-                                    *slice_type,
-                                    matches!(
-                                        result_context,
-                                        ResultContext::AssignmentNewDefinition
-                                    ),
-                                )
-                        }
-                        _ => (),
+                    if let Some(ComplexPoint::TypeAlias(ta)) = node_ref.complex() {
+                        return slice_type
+                            .file
+                            .inference(i_s)
+                            .compute_type_application_on_alias(
+                                ta,
+                                *slice_type,
+                                matches!(result_context, ResultContext::AssignmentNewDefinition),
+                            );
                     }
                 }
             }

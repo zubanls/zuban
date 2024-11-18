@@ -594,12 +594,11 @@ impl<'a> Instance<'a> {
                         }),
                     );
                 }
-                FoundOnClass::UnresolvedType(t) => match t.as_ref() {
-                    Type::Tuple(t) => {
+                FoundOnClass::UnresolvedType(t) => {
+                    if let Type::Tuple(t) = t.as_ref() {
                         return t.get_item(i_s, slice_type, result_context, add_issue);
                     }
-                    _ => (),
-                },
+                }
             }
         }
         add_issue(IssueKind::NotIndexable {

@@ -252,26 +252,24 @@ fn common_base_type_for_non_class(
                 return Some(Type::TypedDict(td1.intersection(i_s, td2)));
             }
         }
-        Type::Type(t1) => match type2 {
-            Type::Type(t2) => {
+        Type::Type(t1) => {
+            if let Type::Type(t2) = type2 {
                 return Some(Type::Type(Rc::new(t1.common_base_type_internal(
                     i_s,
                     t2,
                     Some(checked_recursions),
-                ))))
+                ))));
             }
-            _ => (),
-        },
-        Type::RecursiveType(r1) => match type2 {
-            Type::RecursiveType(r2) => {
+        }
+        Type::RecursiveType(r1) => {
+            if let Type::RecursiveType(r2) = type2 {
                 return Some(r1.calculated_type(i_s.db).common_base_type_internal(
                     i_s,
                     r2.calculated_type(i_s.db),
                     Some(checked_recursions),
-                ))
+                ));
             }
-            _ => (),
-        },
+        }
         _ => {
             if type1.is_simple_same_type(i_s, type2).bool() {
                 return Some(type1.clone());

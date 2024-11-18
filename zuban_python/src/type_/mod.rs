@@ -1048,10 +1048,11 @@ impl Type {
             Self::ParamSpecKwargs(usage) => {
                 found_type_var(TypeVarLikeUsage::ParamSpec(usage.clone()))
             }
-            Self::Dataclass(d) => match &d.class.generics {
-                ClassGenerics::List(generics) => generics.search_type_vars(found_type_var),
-                _ => (),
-            },
+            Self::Dataclass(d) => {
+                if let ClassGenerics::List(generics) = &d.class.generics {
+                    generics.search_type_vars(found_type_var)
+                }
+            }
             Self::TypedDict(d) => d.search_type_vars(found_type_var),
             Self::NamedTuple(_) => {
                 debug!("TODO do we need to support namedtuple searching for type vars?");

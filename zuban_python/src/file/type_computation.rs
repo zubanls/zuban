@@ -714,8 +714,8 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         let previous_param_annotation = previous_param.and_then(|param| param.annotation());
         let cached_previous_param = previous_param_annotation
             .map(|annotation| self.inference.use_cached_param_annotation_type(annotation));
-        match cached_previous_param.as_deref() {
-            Some(Type::ParamSpecArgs(usage_before)) => match tc {
+        if let Some(Type::ParamSpecArgs(usage_before)) = cached_previous_param.as_deref() {
+            match tc {
                 TypeContent::ParamSpecAttr {
                     usage,
                     name: "kwargs",
@@ -740,8 +740,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         },
                     );
                 }
-            },
-            _ => (),
+            }
         }
         match tc {
             TypeContent::Unpacked(TypeOrUnpack::Type(t @ Type::TypedDict(_))) => t,

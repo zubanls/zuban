@@ -2186,26 +2186,23 @@ impl<'db: 'a, 'a> Class<'a> {
                 .filter(|t| t.is_direct_base)
                 .enumerate()
             {
-                match &base.type_ {
-                    Type::TypedDict(td) => {
-                        let node_ref =
-                            NodeRef::new(self.node_ref.file, args.iter().nth(i).unwrap().index());
-                        let Some(super_class_members) = td.maybe_calculated_members(i_s.db) else {
-                            let super_cls = Class::from_non_generic_link(i_s.db, td.defined_at);
-                            let tdd = super_cls.maybe_typed_dict_definition().unwrap();
-                            tdd.deferred_subclass_member_initializations
-                                .borrow_mut()
-                                .push(typed_dict.clone());
-                            debug!(
-                                "Defer typed dict member initialization for {:?} after {:?}",
-                                self.name(),
-                                super_cls.name(),
-                            );
-                            return;
-                        };
-                        typed_dict_members.merge(i_s, node_ref, td.members(i_s.db));
-                    }
-                    _ => (),
+                if let Type::TypedDict(td) = &base.type_ {
+                    let node_ref =
+                        NodeRef::new(self.node_ref.file, args.iter().nth(i).unwrap().index());
+                    let Some(super_class_members) = td.maybe_calculated_members(i_s.db) else {
+                        let super_cls = Class::from_non_generic_link(i_s.db, td.defined_at);
+                        let tdd = super_cls.maybe_typed_dict_definition().unwrap();
+                        tdd.deferred_subclass_member_initializations
+                            .borrow_mut()
+                            .push(typed_dict.clone());
+                        debug!(
+                            "Defer typed dict member initialization for {:?} after {:?}",
+                            self.name(),
+                            super_cls.name(),
+                        );
+                        return;
+                    };
+                    typed_dict_members.merge(i_s, node_ref, td.members(i_s.db));
                 }
             }
         }
