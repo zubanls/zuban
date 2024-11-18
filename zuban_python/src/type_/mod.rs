@@ -701,7 +701,7 @@ impl Type {
                         _ => return None,
                     })
                 }
-                return inner_generic_class_of_type(&t, i_s);
+                return inner_generic_class_of_type(t, i_s);
             }
             Type::TypeVar(tv) => match &tv.type_var.kind {
                 TypeVarKind::Bound(t) => return t.inner_generic_class(i_s),

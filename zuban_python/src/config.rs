@@ -511,7 +511,7 @@ pub fn set_flag_and_return_ignore_errors(
                     //
                     //     enable_error_code = "ignore-without-code"
                     target.push(s.value().clone());
-                    return Ok(false);
+                    Ok(false)
                 }
                 IniOrTomlValue::Ini(v) => {
                     target.extend(split_and_trim(v, &[',']).map(String::from));

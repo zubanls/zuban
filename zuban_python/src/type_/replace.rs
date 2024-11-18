@@ -385,7 +385,7 @@ impl CallableContent {
             callable,
             replace_self,
         };
-        if let Some(c) = replacer.replace_callable_without_rc(&self) {
+        if let Some(c) = replacer.replace_callable_without_rc(self) {
             return c;
         }
         self.replace_internal(replacer)
@@ -663,9 +663,9 @@ impl TupleArgs {
                         }
                         None => None,
                     },
-                    TupleUnpack::ArbitraryLen(t) => t
-                        .replace_internal(replacer)
-                        .map(|t| TupleUnpack::ArbitraryLen(t)),
+                    TupleUnpack::ArbitraryLen(t) => {
+                        t.replace_internal(replacer).map(TupleUnpack::ArbitraryLen)
+                    }
                 };
                 if inner.is_none() && new_before.is_none() && new_after.is_none() {
                     return None;
@@ -703,7 +703,7 @@ impl GenericsList {
             callable,
             replace_self: &|| None,
         })
-        .unwrap_or_else(|| self)
+        .unwrap_or(self)
     }
 
     fn replace_internal(&self, replacer: &mut impl Replacer) -> Option<Self> {
@@ -770,7 +770,7 @@ impl ReplaceTypeVarLikes<'_, '_> {
             defined_at: c.defined_at,
             kind: c.kind,
             type_vars: type_vars
-                .map(|v| TypeVarLikes::from_vec(v))
+                .map(TypeVarLikes::from_vec)
                 .unwrap_or_else(|| self.db.python_state.empty_type_var_likes.clone()),
             guard: new_guard.unwrap_or_else(|| c.guard.clone()),
             is_abstract: c.is_abstract,

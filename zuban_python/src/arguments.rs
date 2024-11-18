@@ -465,7 +465,7 @@ impl<'db, 'a> Arg<'db, 'a> {
                 comprehension,
                 i_s,
             } => file
-                .inference(&i_s)
+                .inference(i_s)
                 .infer_generator_comprehension(*comprehension, result_context),
             ArgKind::ParamSpec { usage, .. } => return InferredArg::ParamSpec(usage),
             ArgKind::StarredWithUnpack { with_unpack, .. } => {
@@ -998,9 +998,7 @@ impl<'db, 'a> Iterator for ArgIterator<'db, 'a> {
                     self.next()
                 }
                 None => {
-                    if self.next.is_none() {
-                        return None;
-                    }
+                    self.next?;
                     if let Some((mode, next)) = self.next {
                         let old_counter = self.counter;
                         *self = next.iter(mode);
@@ -1047,7 +1045,7 @@ impl<'db, 'a> Iterator for ArgIterator<'db, 'a> {
                         node_ref,
                         position,
                     };
-                    return self.next();
+                    self.next()
                 }
                 None => self.next(),
             },

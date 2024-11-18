@@ -937,7 +937,7 @@ pub fn merge_class_type_vars(
         // We actually want to retain generics.
         attribute_class.generics = Generics::Self_ {
             class_definition: attribute_class.node_ref.as_link(),
-            type_var_likes: &attribute_class_type_vars,
+            type_var_likes: attribute_class_type_vars,
         };
         for type_var in attribute_class_type_vars.iter() {
             type_vars.push(type_var.clone());
@@ -968,7 +968,7 @@ pub fn merge_class_type_vars(
             }
             Some(
                 result
-                    .replace_type_var_likes_and_self(db, &mut |u| remap_usage(u), &|| None)
+                    .replace_type_var_likes_and_self(db, &mut &remap_usage, &|| None)
                     .unwrap_or(result),
             )
         },
@@ -980,8 +980,7 @@ pub fn merge_class_type_vars(
                     if !needs_additional_remap {
                         return Some(t);
                     }
-                    t.replace_type_var_likes(db, &mut |u| remap_usage(u))
-                        .unwrap_or(t)
+                    t.replace_type_var_likes(db, &mut &remap_usage).unwrap_or(t)
                 }
             })
         },

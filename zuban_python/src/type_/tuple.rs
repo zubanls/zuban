@@ -850,7 +850,7 @@ fn tuple_mul_internal<'db>(
         TupleArgs::ArbitraryLen(_) => Some(Inferred::from_type(Type::Tuple(tuple))),
         TupleArgs::WithUnpack(_) => {
             debug!("TODO How do we multiply with unpack tuples?");
-            return None;
+            None
         }
     }
 }
@@ -874,7 +874,7 @@ pub fn execute_tuple_class<'db>(
             .collect()
     });
     let mut new_result_context = match &context_t {
-        Some(t) => ResultContext::new_known(&t),
+        Some(t) => ResultContext::new_known(t),
         None => ResultContext::Unknown,
     };
     let class_execution_result = tup_cls.execute_and_return_generics(
@@ -898,9 +898,9 @@ pub fn execute_tuple_class<'db>(
             let Some(GenericItem::TypeArg(t)) = generics_list.iter().next() else {
                 unreachable!("Expected a tuple with one type argument in typeshed")
             };
-            return Inferred::from_type(Type::Tuple(
+            Inferred::from_type(Type::Tuple(
                 Tuple::new_arbitrary_length_with_class_generics(t.clone(), generics_list.clone()),
-            ));
+            ))
         }
         _ => unreachable!("Expected tuple.__new__ to return the tuple class"),
     }

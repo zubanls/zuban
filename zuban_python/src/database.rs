@@ -872,8 +872,7 @@ impl Database {
 
         let mut sys_path = vec![];
         if let Some(exe) = &options.settings.python_executable {
-            const ERR: &'static str =
-                "Expected a custom executable to be at least two directories deep";
+            const ERR: &str = "Expected a custom executable to be at least two directories deep";
             // We cannot use cannonicalize here, because the path of the exe is often a venv path
             // that is a symlink to the actual exectuable. We however want the relative paths to
             // the symlink. Therefore cannonicalize only after getting the first dir
@@ -1371,23 +1370,23 @@ impl Database {
         };
         drop(dirs);
 
-        let builtins = self.preload_typeshed_stub(&stdlib_dir, "builtins.pyi") as *const _;
-        let typing = self.preload_typeshed_stub(&stdlib_dir, "typing.pyi") as *const _;
+        let builtins = self.preload_typeshed_stub(stdlib_dir, "builtins.pyi") as *const _;
+        let typing = self.preload_typeshed_stub(stdlib_dir, "typing.pyi") as *const _;
         let typeshed = self.preload_typeshed_stub(&typeshed_dir, "__init__.pyi") as *const _;
-        let types = self.preload_typeshed_stub(&stdlib_dir, "types.pyi") as *const _;
-        let abc = self.preload_typeshed_stub(&stdlib_dir, "abc.pyi") as *const _;
-        let functools = self.preload_typeshed_stub(&stdlib_dir, "functools.pyi") as *const _;
-        let enum_file = self.preload_typeshed_stub(&stdlib_dir, "enum.pyi") as *const _;
+        let types = self.preload_typeshed_stub(stdlib_dir, "types.pyi") as *const _;
+        let abc = self.preload_typeshed_stub(stdlib_dir, "abc.pyi") as *const _;
+        let functools = self.preload_typeshed_stub(stdlib_dir, "functools.pyi") as *const _;
+        let enum_file = self.preload_typeshed_stub(stdlib_dir, "enum.pyi") as *const _;
         let dataclasses_file =
-            self.preload_typeshed_stub(&stdlib_dir, "dataclasses.pyi") as *const _;
+            self.preload_typeshed_stub(stdlib_dir, "dataclasses.pyi") as *const _;
         let typing_extensions =
-            self.preload_typeshed_stub(&stdlib_dir, "typing_extensions.pyi") as *const _;
+            self.preload_typeshed_stub(stdlib_dir, "typing_extensions.pyi") as *const _;
         let mypy_extensions =
-            self.preload_typeshed_stub(&mypy_extensions_dir, "mypy_extensions.pyi") as *const _;
+            self.preload_typeshed_stub(mypy_extensions_dir, "mypy_extensions.pyi") as *const _;
 
         let collections = self.preload_typeshed_stub(&collections_dir, "__init__.pyi") as *const _;
         let _collections_abc =
-            self.preload_typeshed_stub(&stdlib_dir, "_collections_abc.pyi") as *const _;
+            self.preload_typeshed_stub(stdlib_dir, "_collections_abc.pyi") as *const _;
 
         PythonState::initialize(
             self,

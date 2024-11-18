@@ -223,7 +223,7 @@ pub fn bytes_repr(bytes: Cow<[u8]>) -> String {
             b'\n' => string.push_str(r"\n"),
             b'\r' => string.push_str(r"\r"),
             b'\\' => string.push_str(r"\\"),
-            b' ' => string.push_str(" "),
+            b' ' => string.push(' '),
             _ if b.is_ascii_graphic() => string.push(b as char),
             _ => string += &format!("\\x{:02x}", b),
         }

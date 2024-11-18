@@ -646,7 +646,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     let inf = self.inferred_context_for_simple_assignment(targets.clone());
                     let return_type = inf.as_ref().map(|inf| inf.as_cow_type(self.i_s));
                     let mut result_context = match &return_type {
-                        Some(t) => ResultContext::new_known(&t),
+                        Some(t) => ResultContext::new_known(t),
                         None => ResultContext::AssignmentNewDefinition,
                     };
                     self.infer_assignment_right_side(right_side, &mut result_context)
@@ -1031,7 +1031,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             self.i_s,
                             name_def.as_code(),
                             InstanceLookupOptions::new(&|_| ())
-                                .with_skip_first_of_mro(self.i_s.db, &cls),
+                                .with_skip_first_of_mro(self.i_s.db, cls),
                         )
                         .lookup
                         .into_maybe_inferred()
@@ -1197,7 +1197,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         value: &Inferred,
         assign_kind: AssignKind,
     ) {
-        self.assign_to_name_def(name_def, from, &value, assign_kind, |index, value| {
+        self.assign_to_name_def(name_def, from, value, assign_kind, |index, value| {
             value.clone().save_redirect(self.i_s, self.file, index);
         });
     }
@@ -1566,19 +1566,17 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         {
                             if reason == Some(Specific::AnnotationOrTypeCommentFinal) {
                                 from.add_issue(self.i_s, IssueKind::CannotRedefineAsFinal);
-                            } else {
-                                if let Some(link) = inf
-                                    .maybe_saved_node_ref(i_s.db)
-                                    .filter(|node_ref| node_ref.maybe_name_def().is_some())
-                                {
-                                    debug_assert_eq!(link.file_index(), self.file.file_index);
-                                    self.add_redefinition_issue(
-                                        link.node_index + NAME_DEF_TO_NAME_DIFFERENCE,
-                                        name_def.as_code(),
-                                        true,
-                                        |issue| from.add_issue(i_s, issue),
-                                    )
-                                }
+                            } else if let Some(link) = inf
+                                .maybe_saved_node_ref(i_s.db)
+                                .filter(|node_ref| node_ref.maybe_name_def().is_some())
+                            {
+                                debug_assert_eq!(link.file_index(), self.file.file_index);
+                                self.add_redefinition_issue(
+                                    link.node_index + NAME_DEF_TO_NAME_DIFFERENCE,
+                                    name_def.as_code(),
+                                    true,
+                                    |issue| from.add_issue(i_s, issue),
+                                )
                             }
                         }
                         _ => (),
@@ -3590,7 +3588,6 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         // TODO once we implement --enable-incomplete-feature=PreciseTupleTypes, we
                         // should also generalize this.
                         gatherer.is_arbitrary_length = true;
-                        return;
                     }
                 }
             };
@@ -4312,7 +4309,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     if expected_t.is_super_type_of(i_s, matcher, &t).bool() {
                         Some(
                             matcher
-                                .replace_type_var_likes_for_unknown_type_vars(i_s.db, &expected_t)
+                                .replace_type_var_likes_for_unknown_type_vars(i_s.db, expected_t)
                                 .into_owned()
                                 .avoid_implicit_literal(i_s.db),
                         )
@@ -4669,7 +4666,7 @@ pub fn await_(
             from.add_issue(
                 i_s,
                 IssueKind::IncompatibleTypes {
-                    cause: "\"await\"".into(),
+                    cause: "\"await\"",
                     got: inf.format_short(i_s),
                     expected: "Awaitable[Any]".into(),
                 },

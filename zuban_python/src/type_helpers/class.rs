@@ -86,7 +86,7 @@ const NAMEDTUPLE_PROHIBITED_NAMES: [&str; 12] = [
     "__annotations__",
 ];
 
-pub(super) const ORDERING_METHODS: [&'static str; 4] = ["__lt__", "__le__", "__gt__", "__ge__"];
+pub(super) const ORDERING_METHODS: [&str; 4] = ["__lt__", "__le__", "__gt__", "__ge__"];
 
 pub fn cache_class_name(name_def: NodeRef, class: ClassDef) {
     if !name_def.point().calculated() {
@@ -498,13 +498,11 @@ impl<'db: 'a, 'a> Class<'a> {
                 .set(Rc::new(Type::Dataclass(dataclass.clone())))
                 .unwrap();
         }
-        if total_ordering {
-            if !self.has_a_total_ordering_method_in_mro(i_s.db, &class_infos.mro) {
-                // If there is no corresponding method, we just ignore the MRO
-                NodeRef::new(self.node_ref.file, self.node().name_def().index())
-                    .add_issue(i_s, IssueKind::TotalOrderingMissingMethod);
-                total_ordering = false;
-            }
+        if total_ordering && !self.has_a_total_ordering_method_in_mro(i_s.db, &class_infos.mro) {
+            // If there is no corresponding method, we just ignore the MRO
+            NodeRef::new(self.node_ref.file, self.node().name_def().index())
+                .add_issue(i_s, IssueKind::TotalOrderingMissingMethod);
+            total_ordering = false;
         }
         class_infos.is_final |= is_final;
         class_infos.total_ordering = total_ordering;
@@ -1871,7 +1869,7 @@ impl<'db: 'a, 'a> Class<'a> {
             None
         };
         if options.avoid_metaclass {
-            return result.unwrap_or_else(|| LookupDetails::none());
+            return result.unwrap_or_else(LookupDetails::none);
         }
         match result {
             Some(LookupDetails {
@@ -3566,7 +3564,7 @@ impl<'x> ClassLookupOptions<'x> {
     }
 }
 
-fn execute_bare_type<'db>(i_s: &InferenceState<'db, '_>, first_arg: Inferred) -> Inferred {
+fn execute_bare_type(i_s: &InferenceState<'_, '_>, first_arg: Inferred) -> Inferred {
     let mut type_part = Type::Never(NeverCause::Other);
     for t in first_arg.as_cow_type(i_s).iter_with_unpacked_unions(i_s.db) {
         match t {

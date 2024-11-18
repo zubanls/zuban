@@ -133,7 +133,7 @@ impl<'db> Inference<'db, '_, '_> {
         diagnostics_for_scope(NodeRef::new(self.file, 0), || {
             debug!(
                 "Diagnostics for module {} ({})",
-                self.file.file_path(&self.i_s.db),
+                self.file.file_path(self.i_s.db),
                 self.file.file_index(),
             );
             FLOW_ANALYSIS.with(|fa| {
@@ -533,7 +533,7 @@ impl<'db> Inference<'db, '_, '_> {
                     let from = NodeRef::new(self.file, a.index());
                     let add_annotation_in_untyped_issue =
                         || from.add_issue(self.i_s, IssueKind::AnnotationInUntypedFunction);
-                    let is_type_definition = match a.unpack() {
+                    match a.unpack() {
                         AssignmentContent::Normal(targets, right) => {
                             if let Some(type_comment) = self.check_for_type_comment(a) {
                                 add_annotation_in_untyped_issue();
@@ -746,7 +746,7 @@ impl<'db> Inference<'db, '_, '_> {
                     mro_index: None,
                 };
                 check_override(
-                    &i_s,
+                    i_s,
                     from,
                     original_details,
                     &override_details,
@@ -2281,12 +2281,10 @@ pub(super) fn check_override(
             };
             if let Some(func) = maybe_func() {
                 func.add_issue_for_declaration(i_s, issue)
+            } else if matches!(override_t, Type::FunctionOverload(_)) {
+                from.add_issue_onto_start_including_decorator(i_s, issue)
             } else {
-                if matches!(override_t, Type::FunctionOverload(_)) {
-                    from.add_issue_onto_start_including_decorator(i_s, issue)
-                } else {
-                    from.add_issue(i_s, issue)
-                }
+                from.add_issue(i_s, issue)
             }
         }
     }

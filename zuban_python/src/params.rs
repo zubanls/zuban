@@ -1004,7 +1004,7 @@ impl<'db, 'a, I, P, AI: Iterator<Item = Arg<'db, 'a>>> InferrableParamIterator<'
             self.current_arg = Some(arg.clone());
             if arg.is_arbitrary_kwargs() {
                 // A **kwargs
-                while let Some(next_arg) = self.arguments.next() {
+                for next_arg in self.arguments.by_ref() {
                     if next_arg.is_from_star_star_args() {
                         debug!("TODO currently b in foo(**a, **b) is just ignored");
                     } else {
@@ -1161,19 +1161,17 @@ where
                         }
                         argument_with_index = Some(arg);
                         break;
-                    } else {
-                        if let Some(key) = arg.keyword_name(self.db) {
-                            if Some(key) == param.name(self.db) {
-                                argument_with_index = Some(arg);
-                                break;
-                            } else {
-                                self.unused_keyword_arguments.push(arg);
-                            }
-                        } else if arg.in_args_or_kwargs_and_arbitrary_len() {
-                            self.current_arg = None;
+                    } else if let Some(key) = arg.keyword_name(self.db) {
+                        if Some(key) == param.name(self.db) {
+                            argument_with_index = Some(arg);
+                            break;
                         } else {
-                            self.too_many_positional_arguments = true;
+                            self.unused_keyword_arguments.push(arg);
                         }
+                    } else if arg.in_args_or_kwargs_and_arbitrary_len() {
+                        self.current_arg = None;
+                    } else {
+                        self.too_many_positional_arguments = true;
                     }
                 }
                 if argument_with_index.is_none() {

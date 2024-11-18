@@ -175,7 +175,7 @@ impl Entry {
         let Some(t2) = other.type_.as_ref() else {
             return Some(Some(t1.clone()));
         };
-        t1.common_sub_type(i_s, t2).map(|t| Some(t))
+        t1.common_sub_type(i_s, t2).map(Some)
     }
 
     fn debug_format_type(&self, db: &Database) -> Box<str> {
@@ -374,7 +374,7 @@ impl FlowAnalysis {
                 .borrow()
                 .iter()
                 .rev()
-                .map(|frame| {
+                .flat_map(|frame| {
                     frame.entries.iter().filter_map(|entry| {
                         // We can only use narrowings of names in functions. More complex variables could
                         // have been tampered in different ways.
@@ -396,7 +396,6 @@ impl FlowAnalysis {
                         Some(entry.clone())
                     })
                 })
-                .flatten()
                 .collect(),
         );
         self.with_new_empty_and_delay_functions_further(i_s, || {
@@ -656,7 +655,7 @@ impl FlowAnalysis {
             continue_frames: vec![],
             loop_frame_index: self.frames.borrow().len(),
         });
-        let after_frame = self.with_frame(frame, || callable());
+        let after_frame = self.with_frame(frame, callable);
         let mut loop_details = self.loop_details.borrow_mut();
         let result = loop_details.take().unwrap();
         *loop_details = old;
@@ -1943,7 +1942,7 @@ impl Inference<'_, '_, '_> {
             let try_frame_for_except = fa.with_new_try_frame(|| {
                 // Create a new frame that is then thrown away. This makes sense if we consider
                 // that the end of the with statement might never be reached.
-                fa.with_new_frame_and_return_unreachable(|| callable());
+                fa.with_new_frame_and_return_unreachable(callable);
             });
             fa.overwrite_entries(self.i_s.db, try_frame_for_except.entries);
         })
@@ -2118,10 +2117,7 @@ impl Inference<'_, '_, '_> {
             if had_error {
                 return None;
             }
-            if inf
-                .as_cow_type(self.i_s)
-                .simple_overlaps(self.i_s, &child_t)
-            {
+            if inf.as_cow_type(self.i_s).simple_overlaps(self.i_s, child_t) {
                 matching_entries.push(union_entry.clone());
             }
         }
@@ -2982,15 +2978,14 @@ impl Inference<'_, '_, '_> {
                 } else if !container_item
                     .iter_with_unpacked_unions(db)
                     .any(|t| t == &Type::None)
+                    && left_t.simple_overlaps(self.i_s, &container_item)
                 {
-                    if left_t.simple_overlaps(self.i_s, &container_item) {
-                        if let Some(t) = removed_optional(db, &left_t) {
-                            return maybe_invert(
-                                Frame::from_type(left_key.clone(), t),
-                                Frame::default(),
-                                left.parent_unions.take(),
-                            );
-                        }
+                    if let Some(t) = removed_optional(db, &left_t) {
+                        return maybe_invert(
+                            Frame::from_type(left_key.clone(), t),
+                            Frame::default(),
+                            left.parent_unions.take(),
+                        );
                     }
                 }
             }

@@ -138,8 +138,7 @@ impl<'name, 'code> TestCase<'name, 'code> {
             println!("Loading mypy.ini for {} ({})", self.name, self.file_name);
             let ini = cleanup_mypy_issues(mypy_ini_config).unwrap();
             let mut new =
-                ProjectOptions::from_mypy_ini(BASE_PATH.into(), &ini, &mut diagnostics_config)
-                    .unwrap();
+                ProjectOptions::from_mypy_ini(BASE_PATH, &ini, &mut diagnostics_config).unwrap();
             set_mypy_path(&mut new);
             config = std::mem::replace(&mut new.flags, config);
             settings = std::mem::replace(&mut new.settings, settings);
@@ -151,12 +150,9 @@ impl<'name, 'code> TestCase<'name, 'code> {
                 self.name, self.file_name
             );
             let ini = cleanup_mypy_issues(pyproject_toml).unwrap();
-            let mut new = ProjectOptions::from_pyproject_toml(
-                BASE_PATH.into(),
-                &ini,
-                &mut diagnostics_config,
-            )
-            .unwrap();
+            let mut new =
+                ProjectOptions::from_pyproject_toml(BASE_PATH, &ini, &mut diagnostics_config)
+                    .unwrap();
             set_mypy_path(&mut new);
             config = std::mem::replace(&mut new.flags, config);
             settings = std::mem::replace(&mut new.settings, settings);

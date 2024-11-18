@@ -42,10 +42,9 @@ pub(crate) fn calculate_callable_dunder_init_type_vars_and_return<'db: 'a, 'a>(
     result_context: &mut ResultContext,
     on_type_error: Option<OnTypeError>,
 ) -> CalculatedTypeArgs {
-    callable
-        .defined_in
-        .as_mut()
-        .map(|c| c.set_correct_generics_if_necessary_for_init_in_superclass());
+    if let Some(c) = callable.defined_in.as_mut() {
+        c.set_correct_generics_if_necessary_for_init_in_superclass()
+    }
     calculate_dunder_init_type_vars_and_return(
         i_s,
         class,
@@ -67,10 +66,9 @@ pub(crate) fn calculate_class_dunder_init_type_vars_and_return<'db: 'a, 'a>(
     result_context: &mut ResultContext,
     on_type_error: Option<OnTypeError>,
 ) -> CalculatedTypeArgs {
-    function
-        .class
-        .as_mut()
-        .map(|c| c.set_correct_generics_if_necessary_for_init_in_superclass());
+    if let Some(c) = function.class.as_mut() {
+        c.set_correct_generics_if_necessary_for_init_in_superclass()
+    }
     calculate_dunder_init_type_vars_and_return(
         i_s,
         class,
@@ -733,7 +731,7 @@ pub(crate) fn match_arguments_against_params<
                     },
                     WrappedParamType::StarStar(WrappedStarStar::UnpackTypedDict(td)) => {
                         for member in td.members(i_s.db).iter() {
-                            match_arg(&argument, Cow::Borrowed(&member.type_))
+                            match_arg(argument, Cow::Borrowed(&member.type_))
                         }
                         continue;
                     }
@@ -743,7 +741,7 @@ pub(crate) fn match_arguments_against_params<
                         unreachable!()
                     }
                 };
-                match_arg(&argument, expected)
+                match_arg(argument, expected)
             }
             ParamArgument::ParamSpecArgs(..) => {
                 let ParamArgument::ParamSpecArgs(param_spec, args) = p.argument else {
@@ -885,7 +883,7 @@ pub(crate) fn match_arguments_against_params<
                             .collect(),
                     );
                 }
-                match_arg(&argument, Cow::Borrowed(type_))
+                match_arg(argument, Cow::Borrowed(type_))
             }
             ParamArgument::None => (),
         }

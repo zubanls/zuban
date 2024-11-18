@@ -342,7 +342,7 @@ impl<'db> NameBinder<'db> {
     fn index_stmts(&mut self, mut stmts: StmtLikeIterator<'db>, ordered: bool) {
         let mut last_was_an_error = false;
         for stmt_like in stmts.by_ref() {
-            let return_or_yield = match stmt_like.node {
+            match stmt_like.node {
                 StmtLikeContent::Assignment(assignment) => {
                     let unpacked = assignment.unpack();
                     // First we have to index the right side, before we can begin indexing the left
@@ -390,7 +390,7 @@ impl<'db> NameBinder<'db> {
                         )
                     }
                     if let Some(return_expr) = return_stmt.star_expressions() {
-                        let l = self.index_non_block_node(&return_expr, ordered);
+                        self.index_non_block_node(&return_expr, ordered);
                     }
                     self.index_return_or_yield(return_stmt.index());
                     break;
@@ -456,7 +456,7 @@ impl<'db> NameBinder<'db> {
                     }
                 }
                 StmtLikeContent::RaiseStmt(raise_stmt) => {
-                    let l = self.index_non_block_node(&raise_stmt, ordered);
+                    self.index_non_block_node(&raise_stmt, ordered);
                     break;
                 }
                 StmtLikeContent::BreakStmt(_) | StmtLikeContent::ContinueStmt(_) => break,

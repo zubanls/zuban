@@ -4567,7 +4567,7 @@ impl<'a, I: Clone + Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
         if let Some((from, unpack)) = self.current_unpack.as_mut() {
             let cannot_split_type_var_tuple = || {
                 type_computation.add_issue(*from, IssueKind::TypeVarTupleCannotBeSplit);
-                return Some((*from, Type::Any(AnyCause::FromError)));
+                Some((*from, Type::Any(AnyCause::FromError)))
             };
             match unpack {
                 TypeCompTupleUnpack::TypeVarTuple(_) => return cannot_split_type_var_tuple(),

@@ -263,10 +263,10 @@ impl CalculatingTypeArg {
                 .expect("It feels like this should never happend, because matching happened before")
         };
         self.type_ = match &self.type_ {
-            Bound::Lower(old) => Bound::Lower(common(&old, lower)),
+            Bound::Lower(old) => Bound::Lower(common(old, lower)),
             Bound::Upper(upper) => Bound::UpperAndLower(upper.clone(), lower),
             Bound::UpperAndLower(upper, old) => {
-                Bound::UpperAndLower(upper.clone(), common(&old, lower))
+                Bound::UpperAndLower(upper.clone(), common(old, lower))
             }
             _ => unreachable!(),
         };
