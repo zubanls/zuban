@@ -3557,7 +3557,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         result_context.with_tuple_context_iterator(self.i_s, |tuple_context_iterator| {
             let add_from_stars = |gatherer: &mut TupleGatherer, inferred: Inferred, from_index| {
                 match inferred.iter(self.i_s, NodeRef::new(self.file, from_index)) {
-                    it @ (IteratorContent::Inferred(_) | IteratorContent::Any(_)) => {
+                    IteratorContent::Inferred(_) | IteratorContent::Any(_) => {
                         if gatherer.unpack.is_some() {
                             gatherer.is_arbitrary_length = true;
                             return;
@@ -3579,7 +3579,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         gatherer.unpack = Some(unpack.unpack);
                         gatherer.extend_from_slice(&unpack.after)
                     }
-                    IteratorContent::Union(all_iterators) => {
+                    IteratorContent::Union(_) => {
                         // TODO once we implement --enable-incomplete-feature=PreciseTupleTypes, we
                         // should also generalize this.
                         gatherer.is_arbitrary_length = true;

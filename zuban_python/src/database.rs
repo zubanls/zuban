@@ -951,7 +951,7 @@ impl Database {
         };
         let files = InsertOnlyVec::<dyn FileState>::default();
         let mut workspaces = self.workspaces.clone_with_new_rcs();
-        for (i, file_state) in unsafe { self.files.iter() }.enumerate() {
+        for file_state in unsafe { self.files.iter() } {
             fn search_parent(
                 workspaces: &Workspaces,
                 parent: Parent,
@@ -985,7 +985,7 @@ impl Database {
                         };
                         Parent::Directory(Rc::downgrade(&new_dir))
                     }
-                    Parent::Workspace(workspace) => parent.clone(),
+                    Parent::Workspace(_) => parent.clone(),
                 }
             }
             let current_entry = file_state.file_entry();
@@ -1329,13 +1329,12 @@ impl Database {
 
     pub fn unload_all_in_memory_files(&mut self) {
         let in_memory_files = mem::take(&mut self.in_memory_files);
-        for (path, file_index) in in_memory_files.into_iter() {
+        for (_path, file_index) in in_memory_files.into_iter() {
             self.unload_file(file_index);
         }
     }
 
     fn preload_typeshed_stub(&self, dir: &Directory, file_name: &'static str) -> &PythonFile {
-        let loader = self.loader(file_name).unwrap();
         let entry = dir.search(file_name).unwrap().clone();
         let DirectoryEntry::File(file_entry) = &entry else {
             panic!(
@@ -1437,8 +1436,7 @@ impl ParentScope {
                 let parent_class = Class::with_undefined_generics(NodeRef::new(file, node_index));
                 format!("{}.{}", parent_class.qualified_name(db), name)
             }
-            ParentScope::Function(node_index) => {
-                let node_ref = NodeRef::new(file, node_index);
+            ParentScope::Function(_) => {
                 let line = file.byte_to_line_column(defined_at.node_start_position()).0;
                 // Add the position like `foo.Bar@7`
                 format!("{}.{name}@{line}", file.qualified_name(db))
@@ -1513,7 +1511,7 @@ impl ClassInfos {
 }
 
 impl std::cmp::PartialEq for ClassStorage {
-    fn eq(&self, other: &Self) -> bool {
+    fn eq(&self, _other: &Self) -> bool {
         unreachable!("Should never happen with classes")
     }
 }

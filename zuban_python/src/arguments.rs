@@ -41,7 +41,7 @@ pub(crate) trait Args<'db>: std::fmt::Debug {
     fn points_backup(&self) -> Option<PointsBackup> {
         None
     }
-    fn reset_points_from_backup(&self, backup: &Option<PointsBackup>) {
+    fn reset_points_from_backup(&self, _backup: &Option<PointsBackup>) {
         // This is a bit special, but we use this to reset the type cache of the expressions to
         // avoid overload context inference issues.
     }
@@ -196,7 +196,7 @@ pub struct KnownArgs<'a> {
 }
 
 impl<'db, 'a> Args<'db> for KnownArgs<'a> {
-    fn iter<'x>(&'x self, mode: Mode<'x>) -> ArgIterator<'db, 'x> {
+    fn iter<'x>(&'x self, _: Mode<'x>) -> ArgIterator<'db, 'x> {
         ArgIterator::new(ArgIteratorBase::Inferred {
             inferred: self.inferred,
             node_ref: self.node_ref,
@@ -230,14 +230,14 @@ pub(crate) struct KnownArgsWithCustomAddIssue<'a> {
 }
 
 impl<'db, 'a> Args<'db> for KnownArgsWithCustomAddIssue<'a> {
-    fn iter<'x>(&'x self, mode: Mode<'x>) -> ArgIterator<'db, 'x> {
+    fn iter<'x>(&'x self, _: Mode<'x>) -> ArgIterator<'db, 'x> {
         ArgIterator::new(ArgIteratorBase::InferredWithCustomAddIssue {
             inferred: self.inferred,
             add_issue: self.add_issue,
         })
     }
 
-    fn add_issue(&self, i_s: &InferenceState, issue: IssueKind) {
+    fn add_issue(&self, _: &InferenceState, issue: IssueKind) {
         self.add_issue.0(issue)
     }
 
@@ -445,7 +445,7 @@ impl<'db, 'a> Arg<'db, 'a> {
 
     pub fn infer_inferrable(
         &self,
-        func_i_s: &InferenceState<'db, '_>,
+        _func_i_s: &InferenceState<'db, '_>,
         result_context: &mut ResultContext,
     ) -> Inferred {
         match self.infer(result_context) {
@@ -706,7 +706,7 @@ impl<'db, 'a> ArgIteratorBase<'db, 'a> {
                     format!("{prefix}{}", inf.format_short(&i_s)).into()
                 })
                 .collect(),
-            Self::Comprehension(_, file, comprehension) => {
+            Self::Comprehension(_, _file, _comprehension) => {
                 todo!()
             }
             Self::Finished => vec![],
@@ -895,10 +895,7 @@ impl<'db: 'a, 'a> Iterator for ArgIteratorBase<'db, 'a> {
                     is_keyword: None,
                 }))
             }
-            Self::InferredWithCustomAddIssue {
-                inferred,
-                add_issue,
-            } => {
+            Self::InferredWithCustomAddIssue { .. } => {
                 if let Self::InferredWithCustomAddIssue {
                     inferred,
                     add_issue,
@@ -960,7 +957,7 @@ impl<'db, 'a> ArgIterator<'db, 'a> {
         result.into_boxed_slice()
     }
 
-    pub fn calculate_diagnostics(self, i_s: &InferenceState<'db, '_>) {
+    pub fn calculate_diagnostics(self, _: &InferenceState<'db, '_>) {
         for arg in self {
             arg.infer(&mut ResultContext::Unknown);
         }
@@ -1218,7 +1215,7 @@ impl std::fmt::Debug for NoArgs<'_> {
 }
 
 impl<'db, 'a> Args<'db> for NoArgs<'a> {
-    fn iter<'x>(&'x self, mode: Mode<'x>) -> ArgIterator<'db, 'x> {
+    fn iter<'x>(&'x self, _: Mode<'x>) -> ArgIterator<'db, 'x> {
         ArgIterator::new(ArgIteratorBase::Finished)
     }
 

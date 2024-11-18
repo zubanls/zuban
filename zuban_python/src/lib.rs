@@ -1,4 +1,3 @@
-#![allow(unused_variables)] // TODO remove this
 #![allow(clippy::nonminimal_bool)] // I don't like this rule
 #![allow(clippy::too_many_arguments)] // TODO For now this is easier, but probably enable again
 
@@ -43,9 +42,9 @@ impl Project {
         Self { db }
     }
 
-    pub fn search(&self, string: &str, all_scopes: bool) {}
+    pub fn search(&self, _string: &str, _all_scopes: bool) {}
 
-    pub fn complete_search(&self, string: &str, all_scopes: bool) {}
+    pub fn complete_search(&self, _string: &str, _all_scopes: bool) {}
 
     pub fn load_in_memory_file(&mut self, path: Box<str>, code: Box<str>) {
         self.db.load_in_memory_file(path, code);
@@ -195,7 +194,7 @@ impl<'a> Script<'a> {
         leaf
     }
 
-    pub fn complete(&self, position: Position) {}
+    pub fn complete(&self, _position: Position) {}
 
     /*
     pub fn infer_definition<C: Fn(&dyn ValueName<'a>) -> T, T>(
@@ -221,11 +220,11 @@ impl<'a> Script<'a> {
     }
     */
 
-    pub fn goto_definition(&self, position: Position, follow_imports: bool) -> Names {
+    pub fn goto_definition(&self, position: Position, _follow_imports: bool) -> Names {
         match self.leaf(position) {
             Leaf::Name(name) => name.goto(),
             Leaf::Number => unimplemented!(),
-            Leaf::Keyword(keyword) => unimplemented!(),
+            Leaf::Keyword(_keyword) => unimplemented!(),
             Leaf::None | Leaf::String => vec![],
         }
     }
@@ -235,17 +234,17 @@ impl<'a> Script<'a> {
         self.file().implementation(names)
     }
 
-    pub fn search(&self, text: String, all_scopes: bool, fuzzy: bool) {}
+    pub fn search(&self, _text: String, _all_scopes: bool, _fuzzy: bool) {}
 
-    pub fn complete_search(&self, text: String, all_scopes: bool, fuzzy: bool) {}
+    pub fn complete_search(&self, _text: String, _all_scopes: bool, _fuzzy: bool) {}
 
-    pub fn help(&self, position: Position) {}
+    pub fn help(&self, _position: Position) {}
 
-    pub fn references(&self, position: Position /*, scope='project'*/) {}
+    pub fn references(&self, _position: Position /*, scope='project'*/) {}
 
-    pub fn signatures(&self, position: Position) {}
+    pub fn signatures(&self, _position: Position) {}
 
-    pub fn context(&self, position: Position) {}
+    pub fn context(&self, _position: Position) {}
 
     pub fn names(&self /*all_scopes=False, definitions=True, references=False*/) {}
 
@@ -255,27 +254,27 @@ impl<'a> Script<'a> {
 
     pub fn errors(&self) {}
 
-    pub fn rename(&self, position: Position, new_name: &str) {}
+    pub fn rename(&self, _position: Position, _new_name: &str) {}
 
     pub fn extract_variable(
         &self,
-        position: Position,
-        new_name: &str,
-        until_line: Option<usize>,
-        until_column: Option<usize>,
+        _position: Position,
+        _new_name: &str,
+        _until_line: Option<usize>,
+        _until_column: Option<usize>,
     ) {
     }
 
     pub fn extract_function(
         &self,
-        position: Position,
-        new_name: &str,
-        until_line: Option<usize>,
-        until_column: Option<usize>,
+        _position: Position,
+        _new_name: &str,
+        _until_line: Option<usize>,
+        _until_column: Option<usize>,
     ) {
     }
 
-    pub fn inline(&self, position: Position) {}
+    pub fn inline(&self, _position: Position) {}
 
     /*
     pub fn selection_ranges() {

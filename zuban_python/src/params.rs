@@ -102,8 +102,8 @@ fn matches_params_detailed(
             matcher.set_all_contained_type_vars_to_any_in_callable_params(i_s, params1, *cause);
             Match::new_true()
         }
-        (_, Never(cause)) => Match::new_true(),
-        (Never(cause), _) => Match::new_false(),
+        (_, Never(_)) => Match::new_true(),
+        (Never(_), _) => Match::new_false(),
     }
 }
 
@@ -191,7 +191,7 @@ pub fn matches_simple_params<
                             matches &= match_(i_s, matcher, t1, t2);
                             continue;
                         }
-                        WrappedStar::ParamSpecArgs(u) => todo!(),
+                        WrappedStar::ParamSpecArgs(_) => todo!(),
                         WrappedStar::UnpackedTuple(_) => {
                             debug!("Params mismatch because PositionalOnly vs. UnpackedTuple");
                             return Match::new_false();
@@ -516,7 +516,7 @@ pub fn matches_simple_params<
                                 }
                             }
                         }
-                        (WrappedStarStar::ValueType(td1), WrappedStarStar::UnpackTypedDict(t2)) => {
+                        (WrappedStarStar::ValueType(_), WrappedStarStar::UnpackTypedDict(_)) => {
                             return Match::new_false()
                         }
                         (x, y) => todo!("{:?} {:?}", x, y),
@@ -705,7 +705,7 @@ fn gather_unpack_args<'db: 'x, 'x, P: Param<'x>>(
                 unpacked_tup = Some(tup);
             }
             WrappedParamType::Star(WrappedStar::ArbitraryLen(t)) => todo!(),
-            WrappedParamType::Star(WrappedStar::ParamSpecArgs(t)) => return None,
+            WrappedParamType::Star(WrappedStar::ParamSpecArgs(_)) => return None,
             _ => break,
         }
         params.next();
@@ -898,7 +898,7 @@ impl<'x> Param<'x> for &'x CallableParam {
         self.name.as_ref().map(|n| n.as_str(db))
     }
 
-    fn specific<'db: 'x>(&self, db: &Database) -> WrappedParamType<'x> {
+    fn specific<'db: 'x>(&self, _: &Database) -> WrappedParamType<'x> {
         match &self.type_ {
             ParamType::PositionalOnly(t) => {
                 WrappedParamType::PositionalOnly(Some(Cow::Borrowed(t)))
@@ -924,7 +924,7 @@ impl<'x> Param<'x> for &'x CallableParam {
         }
     }
 
-    fn kind(&self, db: &Database) -> ParamKind {
+    fn kind(&self, _: &Database) -> ParamKind {
         self.type_.param_kind()
     }
 
@@ -1202,7 +1202,7 @@ where
                     let next = self.params.next();
                     debug_assert!(matches!(
                         next.unwrap().specific(self.db),
-                        WrappedParamType::StarStar(WrappedStarStar::ParamSpecKwargs(u)),
+                        WrappedParamType::StarStar(WrappedStarStar::ParamSpecKwargs(_)),
                     ));
                     return Some(InferrableParam {
                         param,
@@ -1213,7 +1213,7 @@ where
                         ),
                     });
                 }
-                WrappedParamType::Star(WrappedStar::UnpackedTuple(u)) => {
+                WrappedParamType::Star(WrappedStar::UnpackedTuple(_)) => {
                     let mut args = vec![];
                     // Fetch all positional arguments
                     while let Some(arg) = self.next_arg() {
@@ -1271,11 +1271,11 @@ impl<'member> Param<'member> for TypedDictMemberParam<'member> {
         Some(self.0.name.as_str(db))
     }
 
-    fn specific<'db: 'member>(&self, db: &'db Database) -> WrappedParamType<'member> {
+    fn specific<'db: 'member>(&self, _: &'db Database) -> WrappedParamType<'member> {
         WrappedParamType::KeywordOnly(Some(Cow::Borrowed(&self.0.type_)))
     }
 
-    fn kind(&self, db: &Database) -> ParamKind {
+    fn kind(&self, _: &Database) -> ParamKind {
         ParamKind::KeywordOnly
     }
 
