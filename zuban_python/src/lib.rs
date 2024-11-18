@@ -1,5 +1,4 @@
 #![allow(unused_variables)] // TODO remove this
-#![allow(clippy::needless_option_as_deref)] // This is simply wrong in some cases
 #![allow(clippy::nonminimal_bool)] // I don't like this rule
 #![allow(clippy::too_many_arguments)] // TODO For now this is easier, but probably enable again
 #![allow(clippy::single_match)] // TODO this is probably just practical during development
