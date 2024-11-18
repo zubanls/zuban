@@ -965,7 +965,6 @@ impl<'db: 'slf, 'slf> Inferred {
                                 instance,
                                 attribute_class,
                                 add_issue,
-                                mro_index,
                                 &t,
                                 if is_class_var {
                                     ApplyDescriptorsKind::All
@@ -1107,7 +1106,6 @@ impl<'db: 'slf, 'slf> Inferred {
                                     instance,
                                     attribute_class,
                                     add_issue,
-                                    mro_index,
                                     t,
                                     apply_descriptors_kind,
                                 ) {
@@ -1115,7 +1113,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 }
                             }
                             ComplexPoint::Class(cls_storage) => {
-                                let class = Class::new(
+                                let _class = Class::new(
                                     node_ref,
                                     cls_storage,
                                     Generics::NotDefinedYet,
@@ -1137,7 +1135,6 @@ impl<'db: 'slf, 'slf> Inferred {
                         instance,
                         attribute_class,
                         add_issue,
-                        mro_index,
                         t,
                         apply_descriptors_kind,
                     ) {
@@ -1158,7 +1155,6 @@ impl<'db: 'slf, 'slf> Inferred {
         instance: Type,
         attribute_class: Class,
         add_issue: impl Fn(IssueKind),
-        mro_index: MroIndex,
         t: &Type,
         apply_descriptors_kind: ApplyDescriptorsKind,
     ) -> Option<Option<(Self, AttributeKind)>> {
@@ -1629,7 +1625,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             };
                             return inf;
                         }
-                        ComplexPoint::TypeInstance(t @ Type::Callable(c)) => {
+                        ComplexPoint::TypeInstance(Type::Callable(c)) => {
                             let Some(c) = infer_class_method(i_s, *class, attribute_class, c, None)
                             else {
                                 return Self::new_any_from_error();
@@ -2168,7 +2164,7 @@ impl<'db: 'slf, 'slf> Inferred {
                     IssueKind::UnsupportedSetItemTarget(self.format_short(i_s)),
                 )
             },
-            OnTypeError::new(&|i_s, function, arg, types| {
+            OnTypeError::new(&|i_s, _, arg, types| {
                 let ErrorStrs { got, expected } = types.as_boxed_strs(i_s.db);
                 let type_ = if arg.index == 1 {
                     IssueKind::InvalidGetItem {
@@ -2748,7 +2744,7 @@ pub fn add_attribute_error(
     name: &str,
 ) {
     let object = match t {
-        Type::Module(f) => {
+        Type::Module(_) => {
             if !node_ref.file.flags(i_s.db).ignore_missing_imports {
                 node_ref.add_issue(i_s, IssueKind::ModuleAttributeError { name: name.into() });
             }

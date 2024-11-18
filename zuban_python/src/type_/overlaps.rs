@@ -189,7 +189,7 @@ impl Tuple {
                             TupleUnpack::TypeVarTuple(_) => todo!(),
                             TupleUnpack::ArbitraryLen(t2) => t1.overlaps(i_s, matcher, t2),
                         },
-                        TupleUnpack::TypeVarTuple(tvt1) => {
+                        TupleUnpack::TypeVarTuple(_tvt1) => {
                             /*
                             let tup_args2 = TupleArgs::WithUnpack(super::WithUnpack {
                                 before: before2_it.cloned().collect(),
@@ -221,7 +221,7 @@ impl Tuple {
                         TupleUnpack::ArbitraryLen(t1) => {
                             middle2.iter().all(|t2| t1.overlaps(i_s, matcher, t2))
                         }
-                        TupleUnpack::TypeVarTuple(tvt1) => todo!(),
+                        TupleUnpack::TypeVarTuple(_tvt1) => todo!(),
                     }
             }
             (FixedLen(_), WithUnpack(_)) => other.overlaps_tuple(i_s, matcher, self),

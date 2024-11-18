@@ -490,8 +490,8 @@ pub fn matches_simple_params<
                             matches &= match_(i_s, matcher, t1, &t2)
                         }
                         (
-                            WrappedStarStar::ParamSpecKwargs(u1),
-                            WrappedStarStar::ParamSpecKwargs(u2),
+                            WrappedStarStar::ParamSpecKwargs(_u1),
+                            WrappedStarStar::ParamSpecKwargs(_u2),
                         ) => {
                             //debug_assert!(*u1 != u2, "Args should have been checked earlier")
                         }
@@ -704,7 +704,7 @@ fn gather_unpack_args<'db: 'x, 'x, P: Param<'x>>(
             WrappedParamType::Star(WrappedStar::UnpackedTuple(tup)) => {
                 unpacked_tup = Some(tup);
             }
-            WrappedParamType::Star(WrappedStar::ArbitraryLen(t)) => todo!(),
+            WrappedParamType::Star(WrappedStar::ArbitraryLen(_t)) => todo!(),
             WrappedParamType::Star(WrappedStar::ParamSpecArgs(_)) => return None,
             _ => break,
         }
@@ -749,10 +749,10 @@ fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
         | WrappedParamType::KeywordOnly(t2)
         | WrappedParamType::Star(WrappedStar::ArbitraryLen(t2))
         | WrappedParamType::StarStar(WrappedStarStar::ValueType(t2)) => t2,
-        WrappedParamType::Star(WrappedStar::ParamSpecArgs(u)) => todo!(),
-        WrappedParamType::Star(WrappedStar::UnpackedTuple(u)) => todo!(),
-        WrappedParamType::StarStar(WrappedStarStar::ParamSpecKwargs(u)) => todo!(),
-        WrappedParamType::StarStar(WrappedStarStar::UnpackTypedDict(u)) => todo!(),
+        WrappedParamType::Star(WrappedStar::ParamSpecArgs(_u)) => todo!(),
+        WrappedParamType::Star(WrappedStar::UnpackedTuple(_u)) => todo!(),
+        WrappedParamType::StarStar(WrappedStarStar::ParamSpecKwargs(_u)) => todo!(),
+        WrappedParamType::StarStar(WrappedStarStar::UnpackTypedDict(_u)) => todo!(),
     };
     let check_type = |i_s: &InferenceState<'db, '_>, t1: Option<&Type>, p2: P2| {
         if let Some(t1) = t1 {
@@ -861,10 +861,10 @@ fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
                     }
                 }
             }
-            WrappedParamType::Star(WrappedStar::UnpackedTuple(u)) => {
+            WrappedParamType::Star(WrappedStar::UnpackedTuple(_u)) => {
                 todo!()
             }
-            WrappedParamType::Star(WrappedStar::ParamSpecArgs(u)) => todo!(),
+            WrappedParamType::Star(WrappedStar::ParamSpecArgs(_u)) => todo!(),
             WrappedParamType::StarStar(WrappedStarStar::ValueType(t1)) => {
                 for param2 in params2 {
                     if !check_type(i_s, t1.as_deref(), param2) {
@@ -873,10 +873,10 @@ fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
                 }
                 return !had_any_fallback_with_default;
             }
-            WrappedParamType::StarStar(WrappedStarStar::ParamSpecKwargs(u)) => {
+            WrappedParamType::StarStar(WrappedStarStar::ParamSpecKwargs(_u)) => {
                 todo!()
             }
-            WrappedParamType::StarStar(WrappedStarStar::UnpackTypedDict(u)) => {
+            WrappedParamType::StarStar(WrappedStarStar::UnpackTypedDict(_u)) => {
                 // TODO
             }
         }

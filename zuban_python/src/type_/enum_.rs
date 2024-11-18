@@ -485,7 +485,7 @@ fn gather_functional_enum_members(
         let Some(first) = iterator.next() else {
             todo!()
         };
-        let Some(second) = iterator.next() else {
+        let Some(_second) = iterator.next() else {
             todo!()
         };
         if iterator.next().is_some() {

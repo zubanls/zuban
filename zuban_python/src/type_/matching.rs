@@ -1036,7 +1036,7 @@ fn match_unpack_internal(
                     )
                 }
                 TupleUnpack::ArbitraryLen(inner_t1) => match &with_unpack2.unpack {
-                    TupleUnpack::TypeVarTuple(tvt2) => todo!(),
+                    TupleUnpack::TypeVarTuple(_tvt2) => todo!(),
                     TupleUnpack::ArbitraryLen(inner_t2) => {
                         for t2 in before2_it {
                             matches &= inner_t1.matches(i_s, matcher, t2, variance)
@@ -1061,7 +1061,7 @@ fn match_unpack_internal(
                     matches &=
                         check_type_var_tuple(matcher, tvt, TupleArgs::ArbitraryLen(t2.clone()))
                 }
-                TupleUnpack::ArbitraryLen(inner_t1) => {
+                TupleUnpack::ArbitraryLen(_inner_t1) => {
                     todo!()
                 }
             }

@@ -341,7 +341,7 @@ impl CallableContent {
         if new_guard.is_none() && new_param_data.is_none() && new_return_type.is_none() {
             return None;
         }
-        let (params, remap_data) = new_param_data.unwrap_or_else(|| (self.params.clone(), None));
+        let (params, _) = new_param_data.unwrap_or_else(|| (self.params.clone(), None));
         Some(CallableContent {
             name: self.name.clone(),
             class_name: self.class_name,

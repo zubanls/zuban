@@ -1363,7 +1363,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         let check_assign_including_partials = |first_index, original: &Inferred, base_class| {
             if let Some(saved_node_ref) = original.maybe_saved_node_ref(i_s.db) {
                 let point = saved_node_ref.point();
-                let maybe_overwrite_partial = |class_node_ref, type_when_any: &Type| {
+                let maybe_overwrite_partial = |class_node_ref| {
                     let mut partial_flags = point.partial_flags();
                     if partial_flags.finished {
                         return false;
@@ -1420,18 +1420,15 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         }
                         return;
                     }
-                    Some(Specific::PartialList) => maybe_overwrite_partial(
-                        i_s.db.python_state.list_node_ref(),
-                        &i_s.db.python_state.list_of_any,
-                    ),
-                    Some(Specific::PartialDict) => maybe_overwrite_partial(
-                        i_s.db.python_state.dict_node_ref(),
-                        &i_s.db.python_state.dict_of_any,
-                    ),
-                    Some(Specific::PartialSet) => maybe_overwrite_partial(
-                        i_s.db.python_state.set_node_ref(),
-                        &i_s.db.python_state.set_of_any,
-                    ),
+                    Some(Specific::PartialList) => {
+                        maybe_overwrite_partial(i_s.db.python_state.list_node_ref())
+                    }
+                    Some(Specific::PartialDict) => {
+                        maybe_overwrite_partial(i_s.db.python_state.dict_node_ref())
+                    }
+                    Some(Specific::PartialSet) => {
+                        maybe_overwrite_partial(i_s.db.python_state.set_node_ref())
+                    }
                     _ => false,
                 };
                 if is_done {
@@ -2478,7 +2475,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 }));
                             }
                         }
-                        UnionValue::Multiple(literals) => todo!(),
+                        UnionValue::Multiple(_literals) => todo!(),
                         UnionValue::Any => (),
                     }
                 }
@@ -2719,7 +2716,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             from.file,
             "__contains__",
             LookupKind::OnlyType,
-            &|issue| todo!(),
+            &|_issue| todo!(),
             &mut |r_type, lookup_result| {
                 if let Some(method) = lookup_result.lookup.into_maybe_inferred() {
                     for l_type in left_inf.as_cow_type(i_s).iter_with_unpacked_unions(i_s.db) {
@@ -2921,7 +2918,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 from.file,
                 op_infos.magic_method,
                 LookupKind::OnlyType,
-                &|issue| todo!(),
+                &|_issue| todo!(),
                 &mut |l_type, lookup_result| {
                     let left_op_method = lookup_result.lookup.into_maybe_inferred();
                     for r_type in right.as_cow_type(i_s).iter_with_unpacked_unions(i_s.db) {
@@ -4225,7 +4222,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     }
                 }
             }
-            DefiningStmt::DelStmt(del_stmt) => {
+            DefiningStmt::DelStmt(_del_stmt) => {
                 unreachable!("Why would a del stmt be inferrable?")
             }
         }
