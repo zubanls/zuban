@@ -384,9 +384,6 @@ fn check_named_tuple_name<'x, 'y>(
         return None;
     };
     let expr = pos.node_ref.as_named_expression().expression();
-    let first = expr
-        .maybe_single_string_literal()
-        .map(|py_string| (pos.node_ref, py_string));
     let Some(mut string_slice) =
         StringSlice::from_string_in_expression(pos.node_ref.file_index(), expr)
     else {
@@ -613,7 +610,7 @@ fn check_named_tuple_has_no_fields_with_underscore(
     params: &[CallableParam],
 ) {
     for param in params.iter() {
-        if let Some(param_name) = param.name.as_ref() {
+        if let Some(_param_name) = param.name.as_ref() {
             // TODO implement
         }
     }
