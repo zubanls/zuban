@@ -1318,7 +1318,7 @@ impl Type {
                 mro.class = Some(TypeOrClass::Type(Cow::Borrowed(self)));
                 mro
             }
-            Type::TypedDict(td) => MroIterator::new(
+            Type::TypedDict(_) => MroIterator::new(
                 db,
                 TypeOrClass::Type(Cow::Borrowed(self)),
                 Generics::None,
@@ -1370,7 +1370,7 @@ impl Type {
             &mut Matcher::default(),
             value,
             add_issue,
-            |error_types, reason: &MismatchReason| on_error(error_types),
+            |error_types, _reason: &MismatchReason| on_error(error_types),
         );
     }
 

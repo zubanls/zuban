@@ -131,11 +131,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                         // If multiple signatures match because of Any, we should just return
                         // without an error message, there is no clear choice, i.e. it's ambiguous,
                         // but there should also not be an error.
-                        if are_any_arguments_ambiguous_in_overload(
-                            i_s.db,
-                            old_indices,
-                            &argument_indices,
-                        ) {
+                        if are_any_arguments_ambiguous_in_overload(old_indices, &argument_indices) {
                             if had_error {
                                 args.reset_points_from_backup(&points_backup);
                                 // Need to run the whole thing again to generate errors, because
@@ -583,7 +579,6 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
 }
 
 fn are_any_arguments_ambiguous_in_overload(
-    db: &Database,
     a: &[ArgumentIndexWithParam],
     b: &[ArgumentIndexWithParam],
 ) -> bool {

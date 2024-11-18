@@ -168,7 +168,7 @@ impl CallableParam {
                     StarParamType::ArbitraryLen(t) => {
                         format!("VarArg({})", t.format(format_data))
                     }
-                    StarParamType::ParamSpecArgs(u) => unreachable!(),
+                    StarParamType::ParamSpecArgs(_) => unreachable!(),
                     StarParamType::UnpackedTuple(tup) => {
                         if let Some(matcher) = format_data.matcher {
                             let tup_t = Type::Tuple(tup.clone());
@@ -182,7 +182,7 @@ impl CallableParam {
                             let result = tup.args.format(&format_data.remove_matcher());
                             match &tup.args {
                                 TupleArgs::FixedLen(ts) if ts.is_empty() => "".to_owned(),
-                                TupleArgs::FixedLen(ts) => result.into(),
+                                TupleArgs::FixedLen(_) => result.into(),
                                 _ => format!("VarArg(Unpack[Tuple[{result}]])"),
                             }
                         } else {
@@ -300,7 +300,7 @@ impl CallableParams {
                 }
                 let mut out_params = Vec::with_capacity(params.len());
                 // Display a star only if we are displaying a "normal" function signature
-                for (i, param) in params.iter().enumerate() {
+                for param in params.iter() {
                     match &param.type_ {
                         ParamType::Star(StarParamType::ParamSpecArgs(usage)) => {
                             out_params.push(format_data.format_param_spec(usage, style));
@@ -959,7 +959,6 @@ pub fn merge_class_type_vars(
     let mut callable = callable.replace_type_var_likes_and_self(
         db,
         &mut |usage| {
-            let in_definition = usage.in_definition();
             // The ? can happen for example if the return value is a Callable with its
             // own type vars.
             let result = maybe_class_usage(db, &attribute_class, &usage)?;

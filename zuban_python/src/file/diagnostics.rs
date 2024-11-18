@@ -373,9 +373,9 @@ impl<'db> Inference<'db, '_, '_> {
                 StmtLikeContent::ImportName(import_name) => {
                     self.cache_import_name(import_name);
                 }
-                StmtLikeContent::PassStmt(x) => {}
-                StmtLikeContent::GlobalStmt(x) => {}
-                StmtLikeContent::NonlocalStmt(x) => {}
+                StmtLikeContent::PassStmt(_) => {}
+                StmtLikeContent::GlobalStmt(_) => {}
+                StmtLikeContent::NonlocalStmt(_) => {}
                 StmtLikeContent::AssertStmt(assert_stmt) => {
                     self.flow_analysis_for_assert(assert_stmt);
                 }
@@ -408,7 +408,7 @@ impl<'db> Inference<'db, '_, '_> {
                 StmtLikeContent::WithStmt(with_stmt) => {
                     self.calc_with_stmt(with_stmt, class, func, false)
                 }
-                StmtLikeContent::MatchStmt(match_stmt) => {
+                StmtLikeContent::MatchStmt(_match_stmt) => {
                     debug!("TODO match_stmt diagnostics");
                 }
                 StmtLikeContent::AsyncStmt(async_stmt) => match async_stmt.unpack() {
@@ -534,7 +534,7 @@ impl<'db> Inference<'db, '_, '_> {
                     let add_annotation_in_untyped_issue =
                         || from.add_issue(self.i_s, IssueKind::AnnotationInUntypedFunction);
                     match a.unpack() {
-                        AssignmentContent::Normal(targets, right) => {
+                        AssignmentContent::Normal(targets, _) => {
                             if let Some(type_comment) = self.check_for_type_comment(a) {
                                 add_annotation_in_untyped_issue();
                                 for target in targets {
@@ -583,10 +583,10 @@ impl<'db> Inference<'db, '_, '_> {
                 }
                 RelevantUntypedNode::ImportFrom(i) => self.cache_import_from(i),
                 RelevantUntypedNode::ImportName(i) => self.cache_import_name(i),
-                RelevantUntypedNode::FunctionDef(func) => {
+                RelevantUntypedNode::FunctionDef(_func) => {
                     // TODO
                 }
-                RelevantUntypedNode::ClassDef(class) => {
+                RelevantUntypedNode::ClassDef(_class) => {
                     // TODO
                 }
             }
@@ -603,7 +603,7 @@ impl<'db> Inference<'db, '_, '_> {
                     self.assign_any_to_untyped_target(target)
                 }
             }
-            Target::Starred(star_target) => self.assign_any_to_untyped_target(target),
+            Target::Starred(_) => self.assign_any_to_untyped_target(target),
             Target::IndexExpression(_) => (),
         }
     }
@@ -732,7 +732,7 @@ impl<'db> Inference<'db, '_, '_> {
             if let Some(dataclass) = c.maybe_dataclass(i_s.db) {
                 let override_details = Instance::new(c, None).lookup_on_self(
                     self.i_s,
-                    &|issue| todo!(),
+                    &|_issue| todo!(),
                     name,
                     LookupKind::OnlyType,
                 );
@@ -1223,7 +1223,6 @@ impl<'db> Inference<'db, '_, '_> {
             )
         }
 
-        let args = NoArgs::new(function.node_ref);
         let function_i_s = &mut i_s.with_diagnostic_func_and_args(&function);
         let inference = self.file.inference(function_i_s);
         if function.is_typed() || flags.check_untyped_defs {
@@ -1301,7 +1300,7 @@ impl<'db> Inference<'db, '_, '_> {
                 .skip((function.class.is_some() && func_kind != FunctionKind::Staticmethod).into())
             {
                 if let Some(annotation) = param.annotation() {
-                    let t = self.use_cached_param_annotation_type(annotation);
+                    let _t = self.use_cached_param_annotation_type(annotation);
                     // TODO implement --disallow-any-unimported
                 }
             }
@@ -1627,7 +1626,7 @@ impl<'db> Inference<'db, '_, '_> {
             normal_magic,
             LookupKind::OnlyType,
             &mut ResultContext::Unknown,
-            &|issue| todo!(),
+            &|_issue| todo!(),
             &mut |forward, lookup_details| {
                 let check = |callable: &CallableContent| {
                     // Can only overlap if the classes differ. On the same class __radd__ will
@@ -1901,9 +1900,8 @@ fn find_and_check_override(
     name: &str,
     has_override_decorator: bool,
 ) {
-    let override_class_infos = override_class.use_cached_class_infos(i_s.db);
     let instance = Instance::new(override_class, None);
-    let add_lookup_issue = |issue| {
+    let add_lookup_issue = |_issue| {
         // TODO we need to work on this, see testSelfTypeOverrideCompatibility
     };
     let mut original_details = instance.lookup(
@@ -1995,7 +1993,7 @@ pub(super) fn check_override(
             let node_ref = NodeRef::from_link(i_s.db, c.defined_at);
             node_ref
                 .maybe_function()
-                .map(|func| Function::new(node_ref, None))
+                .map(|_| Function::new(node_ref, None))
                 .filter(|func| func.node().name_def().name_index() == from.node_index)
         }
         _ => None,
@@ -2426,7 +2424,7 @@ pub fn check_multiple_inheritance<'x, BASES: Iterator<Item = TypeOrClass<'x>>>(
     for (i, base1) in bases().enumerate() {
         let cls1 = match base1 {
             TypeOrClass::Class(c) => c,
-            TypeOrClass::Type(t) => {
+            TypeOrClass::Type(_) => {
                 debug!("TODO check complex base types");
                 continue;
             }
@@ -2454,11 +2452,11 @@ pub fn check_multiple_inheritance<'x, BASES: Iterator<Item = TypeOrClass<'x>>>(
         for base2 in bases().skip(i + 1) {
             let instance2 = match base2 {
                 TypeOrClass::Class(c) => Instance::new(c, None),
-                TypeOrClass::Type(t) => continue,
+                TypeOrClass::Type(_) => continue,
             };
             instance1.run_on_symbols(|name| {
                 if let Some(inner) = name.strip_prefix("__") {
-                    if let Some(inner) = inner.strip_suffix("__") {
+                    if inner.strip_suffix("__").is_some() {
                         if IGNORED_INHERITANCE_NAMES.contains(&name) {
                             return;
                         }

@@ -2491,7 +2491,7 @@ impl<'db: 'a, 'a> Class<'a> {
                     return ClassExecutionResult::Inferred(Inferred::new_any_from_error());
                 }
                 return ClassExecutionResult::Inferred(
-                    execute_functional_enum(i_s, *self, args, result_context)
+                    execute_functional_enum(i_s, *self, args)
                         .unwrap_or_else(Inferred::new_invalid_type_definition),
                 );
             }

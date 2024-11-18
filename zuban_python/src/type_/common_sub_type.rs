@@ -223,9 +223,9 @@ fn common_sub_type_params(
 }
 
 fn common_sub_type_for_guard(
-    i_s: &InferenceState,
-    guard1: &Option<TypeGuardInfo>,
-    guard2: &Option<TypeGuardInfo>,
+    _i_s: &InferenceState,
+    _guard1: &Option<TypeGuardInfo>,
+    _guard2: &Option<TypeGuardInfo>,
 ) -> Option<TypeGuardInfo> {
     // For now do nothing.
     None

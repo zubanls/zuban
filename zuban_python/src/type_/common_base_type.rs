@@ -200,7 +200,7 @@ fn common_base_class_basic(
                 let new = ts1.args.simplified_union(i_s, &ts2.args);
                 generics.push(GenericItem::TypeArgs(TypeArgs::new(new)));
             }
-            TypeVarLike::ParamSpec(spec) => {
+            TypeVarLike::ParamSpec(_) => {
                 let p1 = generic1.expect_param_spec_arg();
                 let p2 = generic2.expect_param_spec_arg();
                 if p1.type_vars.is_some() || p2.type_vars.is_some() {
@@ -436,7 +436,7 @@ fn common_params_by_iterable<'x>(
                     }
                     _ => return None,
                 },
-                ParamTypeDetails::ParamSpecUsage(u1) => {
+                ParamTypeDetails::ParamSpecUsage(_) => {
                     if p1.type_ == p2.type_ {
                         new_params.push(p1.clone());
                         continue;
@@ -463,9 +463,9 @@ fn common_params_by_iterable<'x>(
 }
 
 fn common_base_guard(
-    i_s: &InferenceState,
-    guard1: &Option<TypeGuardInfo>,
-    guard2: &Option<TypeGuardInfo>,
+    _i_s: &InferenceState,
+    _guard1: &Option<TypeGuardInfo>,
+    _guard2: &Option<TypeGuardInfo>,
 ) -> Option<TypeGuardInfo> {
     // For now do nothing.
     None

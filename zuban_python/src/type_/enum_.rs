@@ -171,13 +171,12 @@ pub(crate) fn lookup_on_enum_class<'a>(
     in_type: &Rc<Type>,
     enum_: &Rc<Enum>,
     name: &str,
-    result_context: &mut ResultContext,
 ) -> LookupDetails<'a> {
     match name {
         "_ignore_" | "_order_" | "__order__" => LookupDetails::none(),
         _ => LookupDetails::new(
             Type::Enum(enum_.clone()),
-            lookup_members_on_enum(i_s, enum_, name, result_context),
+            lookup_members_on_enum(i_s, enum_, name),
             AttributeKind::Attribute,
         )
         .or_else(|| {
@@ -196,7 +195,6 @@ pub(crate) fn lookup_on_enum_instance<'a>(
     add_issue: &dyn Fn(IssueKind),
     enum_: &'a Rc<Enum>,
     name: &str,
-    result_context: &mut ResultContext,
 ) -> LookupDetails<'a> {
     match name {
         "value" | "_value_" => LookupDetails::new(
@@ -210,7 +208,7 @@ pub(crate) fn lookup_on_enum_instance<'a>(
         ),
         "_ignore_" => LookupDetails::none(),
         _ => {
-            let lookup = lookup_members_on_enum(i_s, enum_, name, result_context);
+            let lookup = lookup_members_on_enum(i_s, enum_, name);
             if lookup.is_some() {
                 LookupDetails::new(Type::Enum(enum_.clone()), lookup, AttributeKind::Attribute)
             } else {
@@ -340,12 +338,7 @@ pub(crate) fn lookup_on_enum_member_instance<'a>(
     lookup_on_enum_instance_fallback(i_s, add_issue, &member.enum_, name)
 }
 
-fn lookup_members_on_enum(
-    i_s: &InferenceState,
-    enum_: &Rc<Enum>,
-    name: &str,
-    result_context: &mut ResultContext,
-) -> LookupResult {
+fn lookup_members_on_enum(i_s: &InferenceState, enum_: &Rc<Enum>, name: &str) -> LookupResult {
     match Enum::lookup(enum_, i_s.db, name, true) {
         Some(m) => LookupResult::UnknownName(Inferred::from_type(Type::EnumMember(m))),
         None => LookupResult::None,
@@ -356,7 +349,6 @@ pub(crate) fn execute_functional_enum<'db>(
     i_s: &InferenceState<'db, '_>,
     class: Class,
     args: &dyn Args<'db>,
-    result_context: &mut ResultContext,
 ) -> Option<Inferred> {
     let mut name_infos = None;
     let mut fields_infos = None;

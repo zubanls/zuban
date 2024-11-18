@@ -345,10 +345,7 @@ impl Type {
                     )
                 }
             }
-            Type::Enum(e) => callable(
-                self,
-                lookup_on_enum_instance(i_s, add_issue, e, name, result_context),
-            ),
+            Type::Enum(e) => callable(self, lookup_on_enum_instance(i_s, add_issue, e, name)),
             Type::EnumMember(member) => callable(
                 self,
                 lookup_on_enum_member_instance(i_s, add_issue, member, name),
@@ -841,7 +838,7 @@ pub(crate) fn attribute_access_of_type(
             .instance()
             .lookup_with_details(i_s, add_issue, name, kind)
             .or_else(|| LookupDetails::any(*cause)),
-        Type::Enum(e) => lookup_on_enum_class(i_s, add_issue, &in_type, e, name, result_context),
+        Type::Enum(e) => lookup_on_enum_class(i_s, add_issue, &in_type, e, name),
         Type::Dataclass(d) => lookup_on_dataclass_type(&in_type, d, i_s, add_issue, name, kind),
         Type::TypedDict(_) => i_s.db.python_state.typed_dict_class().lookup(
             i_s,
