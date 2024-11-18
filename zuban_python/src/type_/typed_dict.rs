@@ -151,7 +151,7 @@ impl TypedDict {
         original_members
             .iter()
             .map(|m| {
-                m.replace_type(|t| {
+                m.replace_type(|_| {
                     m.type_
                         .replace_type_var_likes(db, &mut |usage| {
                             Some(generics[usage.index()].clone())
@@ -162,18 +162,16 @@ impl TypedDict {
             .collect()
     }
 
-    pub fn maybe_calculated_members(&self, db: &Database) -> Option<&[TypedDictMember]> {
+    pub fn has_calculated_members(&self, db: &Database) -> bool {
         let members = self.members.get().map(|m| m.as_ref());
-        if members.is_none() {
-            if let TypedDictGenerics::Generics(list) = &self.generics {
-                let class = Class::from_non_generic_link(db, self.defined_at);
-                let original_typed_dict = class.maybe_typed_dict().unwrap();
-                if original_typed_dict.maybe_calculated_members(db).is_some() {
-                    return Some(self.members(db));
-                }
+        if members.is_none() && matches!(&self.generics, TypedDictGenerics::Generics(_)) {
+            let class = Class::from_non_generic_link(db, self.defined_at);
+            let original_typed_dict = class.maybe_typed_dict().unwrap();
+            if original_typed_dict.has_calculated_members(db) {
+                return true;
             }
         }
-        members
+        members.is_some()
     }
 
     pub fn calculating(&self) -> bool {

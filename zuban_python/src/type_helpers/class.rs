@@ -2189,7 +2189,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 if let Type::TypedDict(td) = &base.type_ {
                     let node_ref =
                         NodeRef::new(self.node_ref.file, args.iter().nth(i).unwrap().index());
-                    let Some(super_class_members) = td.maybe_calculated_members(i_s.db) else {
+                    if !td.has_calculated_members(i_s.db) {
                         let super_cls = Class::from_non_generic_link(i_s.db, td.defined_at);
                         let tdd = super_cls.maybe_typed_dict_definition().unwrap();
                         tdd.deferred_subclass_member_initializations
