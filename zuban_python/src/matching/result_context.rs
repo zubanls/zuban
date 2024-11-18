@@ -118,20 +118,6 @@ impl<'a> ResultContext<'a, '_> {
         .unwrap_or(CouldBeALiteral::Yes { implicit: true })
     }
 
-    pub fn expects_union(&self, i_s: &InferenceState) -> bool {
-        match self {
-            Self::Known { type_, .. }
-            | Self::KnownLambdaReturn(type_)
-            | Self::WithMatcher { type_, .. } => {
-                matches!(type_, Type::Union(_))
-            }
-            Self::Unknown
-            | Self::ExpectUnused
-            | Self::RevealType
-            | Self::AssignmentNewDefinition => false,
-        }
-    }
-
     pub fn expect_not_none(&mut self, i_s: &InferenceState) -> bool {
         match self {
             Self::ExpectUnused | Self::RevealType | Self::KnownLambdaReturn(_) => false,
