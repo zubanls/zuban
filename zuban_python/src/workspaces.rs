@@ -107,10 +107,7 @@ impl Workspaces {
                         new_file.parent = Parent::Directory(Rc::downgrade(&dir));
                         *file = Rc::new(new_file);
                     }
-                    DirectoryEntry::MissingEntry {
-                        name,
-                        invalidations,
-                    } => (),
+                    DirectoryEntry::MissingEntry { .. } => (),
                     DirectoryEntry::Directory(dir) => {
                         let mut new = dir.as_ref().clone();
                         new.parent = Parent::Directory(Rc::downgrade(dir));
@@ -220,7 +217,7 @@ impl Workspace {
                                 .push(DirectoryEntry::File(FileEntry::new(parent, name.into())));
                         }
                     }
-                    Err(e) => {
+                    Err(_) => {
                         // Just ignore it for now
                         panic!("Need to investigate")
                     }
@@ -293,7 +290,7 @@ impl Parent {
                 let d = dir.upgrade().unwrap();
                 d.parent.most_outer_dir().or_else(|| Some(d))
             }
-            Self::Workspace(w) => None,
+            Self::Workspace(_) => None,
         }
     }
 
@@ -547,7 +544,7 @@ impl Directory {
                 DirectoryEntry::MissingEntry { .. } => {
                     Err(format!("Path {path} cannot be found (missing)"))
                 }
-                DirectoryEntry::File(t) => Err(format!(
+                DirectoryEntry::File(_) => Err(format!(
                     "Path {path} is supposed to be a directory but is a file"
                 )),
             }

@@ -165,7 +165,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         );
                     }
                 };
-                match self.lookup_import_from_target(imp, import_name, name_def) {
+                match self.lookup_import_from_target(imp, import_name) {
                     LookupResult::GotoName { name: link, inf } => {
                         if self
                             .file
@@ -263,7 +263,6 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         &self,
         from_first_part: &ImportResult,
         import_name: Name,
-        import_name_def: NameDef,
     ) -> LookupResult {
         let name = import_name.as_str();
         match from_first_part {
@@ -500,7 +499,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     .points
                     .set(name_def.index(), Point::new_calculating());
             }
-            Target::IndexExpression(t) => (),
+            Target::IndexExpression(_) => (),
             Target::Tuple(targets) => {
                 for target in targets {
                     self.set_calculating_on_target(target);
@@ -591,15 +590,15 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         }
         debug!("Cache assignment {}", assignment.as_code());
         match assignment.unpack() {
-            AssignmentContent::Normal(targets, right_side) => {
+            AssignmentContent::Normal(targets, _) => {
                 for target in targets {
                     self.set_calculating_on_target(target);
                 }
             }
-            AssignmentContent::WithAnnotation(target, _, right_side) => {
+            AssignmentContent::WithAnnotation(target, _, _) => {
                 self.set_calculating_on_target(target);
             }
-            AssignmentContent::AugAssign(target, aug_assign, right_side) => (),
+            AssignmentContent::AugAssign(..) => (),
         };
         match assignment.unpack() {
             AssignmentContent::Normal(targets, right_side) => {
@@ -709,7 +708,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         node_ref.file,
                         inplace_method,
                         &KnownArgs::new(&right, node_ref),
-                        &|type_| had_lookup_error.set(true),
+                        &|_type| had_lookup_error.set(true),
                     );
                     if had_lookup_error.get() {
                         result = self.infer_detailed_operation(
@@ -725,15 +724,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     let result = lookup_and_execute(left);
 
                     let n = NodeRef::new(self.file, right_side.index());
-                    self.assign_single_target(
-                        target,
-                        n,
-                        &result,
-                        AssignKind::AugAssign,
-                        |index, _| {
-                            // There is no need to save this, because it's never used
-                        },
-                    )
+                    self.assign_single_target(target, n, &result, AssignKind::AugAssign, |_, _| {
+                        // There is no need to save this, because it's never used
+                    })
                 } else if self
                     .maybe_partial_aug_assignment(&target, aug_assign, &right, lookup_and_execute)
                     .is_none()
@@ -1242,7 +1235,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 let ancestor_lookup = class.instance().lookup(
                     i_s,
                     name_str,
-                    InstanceLookupOptions::new(&|issue| ()).with_skip_first_of_mro(i_s.db, class),
+                    InstanceLookupOptions::new(&|_| ()).with_skip_first_of_mro(i_s.db, class),
                 );
                 // __hash__ is allowed to be rewritten to None
                 if let Some(ancestor_inf) = ancestor_lookup.lookup.maybe_inferred().filter(|_| {
@@ -1652,7 +1645,6 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 let original = star_imp.as_inferred(self.i_s);
                 match star_imp {
                     StarImportResult::Link(star_link) => {
-                        let node_ref = NodeRef::from_link(self.i_s.db, star_link);
                         check_assign_to_known_definition(star_link, &original, None);
                     }
                     StarImportResult::AnyDueToError => (),
@@ -2163,7 +2155,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     );
                     true
                 }
-                (FixedLen(expected), WithStar { before, after }) => {
+                (FixedLen(_), WithStar { .. }) => {
                     value_node_ref.add_issue(
                         self.i_s,
                         IssueKind::VariadicTupleUnpackingRequiresStarTarget,
@@ -2265,7 +2257,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     ) -> Inferred {
         match named_expr.unpack() {
             NamedExpressionContent::Expression(expr) => {
-                self.infer_expression_with_context(named_expr.expression(), result_context)
+                self.infer_expression_with_context(expr, result_context)
             }
             NamedExpressionContent::Walrus(walrus) => {
                 self.infer_walrus(walrus, Some(result_context))
@@ -2334,7 +2326,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         }
         let first_name_def = first_ref.as_name().name_def().unwrap();
         let suffix = match first_name_def.maybe_import() {
-            Some(import_parent) => {
+            Some(_) => {
                 let mut s = "(possibly by an import)";
                 if matches!(
                     self.infer_name_def(first_name_def)
@@ -2592,8 +2584,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     },
                 )
             }
-            ComparisonContent::Is(l, op, r) | ComparisonContent::IsNot(l, op, r) => {
-                let from = NodeRef::new(self.file, op.index());
+            ComparisonContent::Is(l, _, r) | ComparisonContent::IsNot(l, _, r) => {
                 if let Some(formatted_err) = needs_strict_equality_error() {
                     self.file.add_issue(
                         self.i_s,
@@ -2737,7 +2728,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             i_s,
                             &KnownArgs::new(&Inferred::from_type(l_type.clone()), from),
                             &mut ResultContext::Unknown,
-                            OnTypeError::new(&|i_s, _, _, types| {
+                            OnTypeError::new(&|_, _, _, _| {
                                 had_local_error.set(true);
                             }),
                         );
@@ -2795,7 +2786,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
 
     fn infer_lambda(&self, lambda: Lambda, result_context: &mut ResultContext) -> Inferred {
         let check_defaults = || {
-            let (params, expr) = lambda.unpack();
+            let (params, _) = lambda.unpack();
             for param in params {
                 if let Some(default) = param.default() {
                     self.infer_expression(default);
@@ -3101,7 +3092,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     return None;
                 }
                 match prim.second() {
-                    PrimaryContent::Attribute(attr) => {
+                    PrimaryContent::Attribute(_) => {
                         // Only care about very specific cases here.
                         if !matches!(prim.first(), PrimaryOrAtom::Atom(_)) {
                             return None;
@@ -3853,7 +3844,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         }
         if let Some(super_file) = &self.file.super_file {
             // This sub file currently means we're in a type definition.
-            if let Some(func) = self.i_s.current_function() {
+            if let Some(_func) = self.i_s.current_function() {
                 debug!("TODO lookup in func of sub file")
             } else if let Some(class) = self.i_s.current_class() {
                 if let Some(index) = class.class_storage.class_symbol_table.lookup_symbol(name) {
@@ -4089,7 +4080,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
 
                 if let Some(annotation) = name_def.maybe_param_annotation() {
                     self.use_cached_param_annotation(annotation)
-                } else if let Some(function) = self.i_s.current_function() {
+                } else if self.i_s.current_function().is_some() {
                     if specific == Specific::MaybeSelfParam {
                         match func.first_param_kind(self.i_s) {
                             FirstParamKind::Self_ => to_inferred(false),
