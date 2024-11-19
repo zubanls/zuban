@@ -481,18 +481,26 @@ fn gather_functional_enum_members(
 ) -> Option<Box<[EnumMemberDefinition]>> {
     let mut members = EnumMembers::default();
 
+    let expects_string_pairs = || {
+        NodeRef::new(node_ref.file, expression.index()).add_issue(
+            i_s,
+            IssueKind::EnumWithTupleOrListExpectsStringPairs {
+                name: class.name().into(),
+            },
+        )
+    };
+
     let get_tuple_like = |mut iterator: StarLikeExpressionIterator| -> Option<StringSlice> {
-        let Some(first) = iterator.next() else {
-            todo!()
-        };
-        let Some(_second) = iterator.next() else {
-            todo!()
-        };
+        let first = iterator.next()?;
+        let second = iterator.next()?;
         if iterator.next().is_some() {
             return None;
         }
         let StarLikeExpression::NamedExpression(n) = first else {
-            todo!()
+            return None;
+        };
+        if !matches!(second, StarLikeExpression::NamedExpression(_)) {
+            return None;
         };
         StringSlice::from_string_in_expression(node_ref.file.file_index, n.expression())
     };
@@ -500,7 +508,7 @@ fn gather_functional_enum_members(
     let mut add_from_iterator = |iterator| -> Option<()> {
         for element in iterator {
             let StarLikeExpression::NamedExpression(ne) = element else {
-                todo!()
+                return None;
             };
             let expression = ne.expression();
             let name = match expression.maybe_unpacked_atom() {
@@ -521,12 +529,7 @@ fn gather_functional_enum_members(
 
     let mut add_from_iterator_with_error = |iterator| -> Option<()> {
         if add_from_iterator(iterator).is_none() {
-            NodeRef::new(node_ref.file, expression.index()).add_issue(
-                i_s,
-                IssueKind::EnumWithTupleOrListExpectsStringPairs {
-                    name: class.name().into(),
-                },
-            );
+            expects_string_pairs();
             None
         } else {
             Some(())
@@ -549,7 +552,10 @@ fn gather_functional_enum_members(
                     &mut members,
                     &s,
                 ),
-                _ => todo!(),
+                _ => {
+                    node_ref.add_issue(i_s, IssueKind::EnumInvalidSecondArgument);
+                    return None;
+                }
             }
         }
         Some(AtomContent::Dict(d)) => {

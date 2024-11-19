@@ -173,3 +173,16 @@ def foo(x: Literal[A.x], y: A) -> None:
     x(1)
     y()  # E: Missing positional argument "x" in call to "__call__" of "A"
     y(1)
+
+[case enum_member_issues]
+from enum import Enum
+A = Enum("A", [[]])  # E: Enum() with tuple or list expects strings or (name, value) pairs
+B = Enum("B", [["foo"]])  # E: Enum() with tuple or list expects strings or (name, value) pairs
+lst = [""]
+C = Enum("C", [[*lst]])  # E: Enum() with tuple or list expects strings or (name, value) pairs
+D = Enum("D", [["x", *lst]])  # E: Enum() with tuple or list expects strings or (name, value) pairs
+E = Enum("E", [[*lst, *lst]])  # E: Enum() with tuple or list expects strings or (name, value) pairs
+F = Enum("F", [*lst])  # E: Enum() with tuple or list expects strings or (name, value) pairs
+G = Enum("G", f"x {1}")  # E: Second argument of Enum() must be string, tuple, list or dict literal for mypy to determine Enum members
+
+def f(x: A, y: B, z: C) -> None: ...

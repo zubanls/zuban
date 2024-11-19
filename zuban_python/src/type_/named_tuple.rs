@@ -122,7 +122,7 @@ impl NamedTuple {
                                                 .into_generic_item(),
                                         )
                                     },
-                                    &|| todo!(),
+                                    &|| None,
                                 );
                                 match replaced {
                                     Some(t) => t.format(&format_data),
