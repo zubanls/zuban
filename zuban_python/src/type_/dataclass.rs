@@ -696,7 +696,7 @@ fn run_on_dataclass(
                 }
                 result
             }
-            TypeVarKind::Constraints(_) => todo!(),
+            TypeVarKind::Constraints(_) => unimplemented!(),
             TypeVarKind::Unrestricted => type_var_error(&tv.type_var),
         },
         _ => {

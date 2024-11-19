@@ -116,3 +116,17 @@ def f2(n1: N, n2: N) -> None:
 
 def f3(n1: N[int], n2: N[str]) -> None:
     n1 = n2  # E: Incompatible types in assignment (expression has type "N", variable has type "N")
+
+[case namedtuple_invalid_init]
+from typing import NamedTuple
+from collections import namedtuple
+
+x = NamedTuple()  # E: Too few arguments for "NamedTuple()"
+y = namedtuple()  # E: Missing positional arguments "typename", "field_names" in call to "namedtuple"
+
+A = NamedTuple("A", *[{}])  # E: List or tuple literal expected as the second argument to "NamedTuple()"
+B = namedtuple("B", *[{}])  # E: List or tuple literal expected as the second argument to "namedtuple()"
+
+C = NamedTuple("C", lambda: 1)  # E: List or tuple literal expected as the second argument to "NamedTuple()"
+D = namedtuple("D", lambda: 1)  # E: List or tuple literal expected as the second argument to "namedtuple()" \
+                                # E: Argument 2 to "namedtuple" has incompatible type "Callable[[], int]"; expected "str | Iterable[str]"

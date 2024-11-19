@@ -375,9 +375,19 @@ fn check_named_tuple_name<'x, 'y>(
     AtomContent<'y>,
     ArgIterator<'x, 'y>,
 )> {
+    let too_few_args = || {
+        if executable_name != "namedtuple" {
+            // For namedtuple this is already handled by type checking.
+            args.add_issue(
+                i_s,
+                IssueKind::TooFewArguments(r#" for "NamedTuple()""#.into()),
+            );
+        }
+        None
+    };
     let mut iterator = args.iter(i_s.mode);
     let Some(first_arg) = iterator.next() else {
-        todo!()
+        return too_few_args();
     };
     let ArgKind::Positional(pos) = first_arg.kind else {
         first_arg.add_issue(i_s, IssueKind::UnexpectedArgumentsTo { name: "namedtuple" });
@@ -411,17 +421,16 @@ fn check_named_tuple_name<'x, 'y>(
         }
     }
     let Some(second_arg) = iterator.next() else {
-        if executable_name != "namedtuple" {
-            // For namedtuple this is already handled by type checking.
-            args.add_issue(
-                i_s,
-                IssueKind::TooFewArguments(r#" for "NamedTuple()""#.into()),
-            );
-        }
-        return None;
+        return too_few_args();
     };
     let ArgKind::Positional(second) = second_arg.kind else {
-        todo!()
+        second_arg.add_issue(
+            i_s,
+            IssueKind::InvalidSecondArgumentToNamedTuple {
+                name: executable_name,
+            },
+        );
+        return None;
     };
     let Some(atom_content) = second
         .node_ref
@@ -429,7 +438,13 @@ fn check_named_tuple_name<'x, 'y>(
         .expression()
         .maybe_unpacked_atom()
     else {
-        todo!()
+        second.node_ref.add_issue(
+            i_s,
+            IssueKind::InvalidSecondArgumentToNamedTuple {
+                name: executable_name,
+            },
+        );
+        return None;
     };
     Some((string_slice, second.node_ref, atom_content, iterator))
 }
