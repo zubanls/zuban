@@ -595,7 +595,12 @@ fn maybe_type_var_tuple(
                     arg.add_issue(i_s, IssueKind::UnexpectedComprehension);
                     return None;
                 }
-                _ => todo!(),
+                _ => arg.add_issue(
+                    i_s,
+                    IssueKind::UnexpectedArgumentTo {
+                        name: "TypeVarTuple",
+                    },
+                ),
             }
         }
         Some(TypeVarLike::TypeVarTuple(Rc::new(TypeVarTuple {
@@ -701,7 +706,6 @@ fn maybe_param_spec(
                         return None;
                     }
                 }
-                ArgKind::Inferred { .. } | ArgKind::ParamSpec { .. } => unreachable!(),
                 ArgKind::Positional { .. } => {
                     arg.add_issue(
                         i_s,
@@ -711,10 +715,17 @@ fn maybe_param_spec(
                     );
                     return None;
                 }
-                _ => {
-                    arg.add_issue(i_s, IssueKind::ParamSpecTooManyKeywordArguments);
+                ArgKind::Keyword(KeywordArg {
+                    key: "covariant" | "contravariant" | "bound",
+                    ..
+                }) => {
+                    arg.add_issue(
+                        i_s,
+                        IssueKind::ParamSpecKeywordArgumentWithoutDefinedSemantics,
+                    );
                     return None;
                 }
+                _ => arg.add_issue(i_s, IssueKind::UnexpectedArgumentTo { name: "ParamSpec" }),
             }
         }
         Some(TypeVarLike::ParamSpec(Rc::new(ParamSpec {

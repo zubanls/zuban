@@ -307,3 +307,9 @@ def foo(x: A): ...  # E: Invalid type comment or annotation
 C, D = TypeVarTuple("C")  # E: Invalid assignment form for TypeVarTuple, please use the simple form "X = TypeVarTuple(..)"
 
 E, F = ParamSpec("E")  # E: Invalid assignment form for ParamSpec, please use the simple form "X = ParamSpec(..)"
+
+[case type_var_likes_invalid_param]
+from typing import TypeVar, TypeVarTuple, ParamSpec
+T = TypeVar("T", **{"x": "y"})  # E: Unexpected argument to "TypeVar()"
+Ts = TypeVarTuple("Ts", **{"x": "y"})  # E: Unexpected argument to "TypeVarTuple()"
+P = ParamSpec("P", **{"x": "y"})  # E: Unexpected argument to "ParamSpec()"
