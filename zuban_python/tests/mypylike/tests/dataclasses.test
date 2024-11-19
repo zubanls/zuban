@@ -204,3 +204,23 @@ class A:
 
 A(1)()  # E: Missing positional argument "x" in call to "__call__" of "A"
 A(1)(1)
+
+[case dataclass_invalid_options]
+from dataclasses import dataclass
+def f(b: bool):
+    @dataclass(init=b)  # E: "init" argument must be a True or False literal
+    class B:
+        y: str
+
+    @dataclass(**{'undefined': b})  # E: Unexpected argument to "dataclass()"
+    class C:
+        y: str
+
+[case dataclass_invalid_field_options]
+from dataclasses import dataclass, field
+
+def f(b: bool):
+    @dataclass
+    class B:
+        y: str = field(init=b)  # E: "init" argument must be a True or False literal
+        z: str = field(kw_only=b)  # E: "kw_only" argument must be a True or False literal

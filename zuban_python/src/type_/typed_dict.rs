@@ -686,7 +686,9 @@ pub(crate) fn infer_typed_dict_total_argument(
     if let Some(total) = inf.maybe_bool_literal(i_s) {
         Some(total)
     } else {
-        add_issue(IssueKind::TypedDictTotalMustBeTrueOrFalse);
+        add_issue(IssueKind::ArgumentMustBeTrueOrFalse {
+            key: "total".into(),
+        });
         None
     }
 }

@@ -323,7 +323,6 @@ pub(crate) enum IssueKind {
     TypedDictInvalidFieldName,
     TypedDictSelfNotAllowed,
     TypedDictNameMismatch { string_name: Box<str>, variable_name: Box<str> },
-    TypedDictTotalMustBeTrueOrFalse,
     TypedDictWrongArgumentsInConstructor,
     TypedDictKeysMustBeStringLiteral,
     TypedDictAccessKeyMustBeStringLiteral { keys: Box<str> },
@@ -343,6 +342,7 @@ pub(crate) enum IssueKind {
     TypedDictArgumentNameOverlapWithUnpack { names: Box<str> },
     UnpackItemInStarStarMustBeTypedDict,
     TypedDictSetdefaultWrongDefaultType { got: Box<str>, expected: Box<str> },
+    ArgumentMustBeTrueOrFalse { key: Box<str> },
 
     OverloadMismatch { name: Box<str>, args: Box<[Box<str>]>, variants: Box<[Box<str>]> },
     OverloadImplementationNotLast,
@@ -1622,8 +1622,6 @@ impl<'db> Diagnostic<'db> {
             TypedDictNameMismatch { string_name, variable_name } => format!(
                 r#"First argument "{string_name}" to TypedDict() does not match variable name "{variable_name}""#
             ),
-            TypedDictTotalMustBeTrueOrFalse =>
-                r#""total" argument must be a True or False literal"#.to_string(),
             TypedDictWrongArgumentsInConstructor =>
                 "Expected keyword arguments, {...}, or dict(...) in TypedDict constructor".to_string(),
             TypedDictKeysMustBeStringLiteral =>
@@ -1676,6 +1674,9 @@ impl<'db> Diagnostic<'db> {
                 "Unpack item in ** argument must be a TypedDict".to_string(),
             TypedDictSetdefaultWrongDefaultType { got, expected } => format!(
                 r#"Argument 2 to "setdefault" of "TypedDict" has incompatible type "{got}"; expected "{expected}""#,
+            ),
+            ArgumentMustBeTrueOrFalse { key } => format!(
+                r#""{key}" argument must be a True or False literal"#
             ),
 
             OverloadImplementationNotLast =>

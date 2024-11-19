@@ -519,13 +519,21 @@ fn field_options_from_args<'db>(
                     if let Some(bool_) = result.maybe_bool_literal(i_s) {
                         options.kw_only = Some(bool_);
                     } else {
-                        todo!()
+                        arg.add_issue(
+                            i_s,
+                            IssueKind::ArgumentMustBeTrueOrFalse { key: key.into() },
+                        )
                     }
                 }
                 "init" => {
                     let result = arg.infer_inferrable(i_s, &mut ResultContext::Unknown);
                     if let Some(bool_) = result.maybe_bool_literal(i_s) {
                         options.init = bool_
+                    } else {
+                        arg.add_issue(
+                            i_s,
+                            IssueKind::ArgumentMustBeTrueOrFalse { key: key.into() },
+                        )
                     }
                 }
                 _ => (), // Type checking is done in a separate place.
@@ -545,7 +553,8 @@ pub fn check_dataclass_options<'db>(
         if let Some(bool_) = result.maybe_bool_literal(i_s) {
             *target = bool_;
         } else {
-            todo!()
+            let key = arg.keyword_name(i_s.db).unwrap().into();
+            arg.add_issue(i_s, IssueKind::ArgumentMustBeTrueOrFalse { key })
         }
     };
     for arg in args.iter(i_s.mode) {
@@ -558,10 +567,11 @@ pub fn check_dataclass_options<'db>(
                 "init" => assign_option(&mut options.init, arg),
                 "match_args" => assign_option(&mut options.match_args, arg),
                 "slots" => assign_option(&mut options.slots, arg),
+                // The other names should not go through while type checking
                 _ => (),
             }
         } else {
-            todo!("{:?}", arg)
+            arg.add_issue(i_s, IssueKind::UnexpectedArgumentTo { name: "dataclass" })
         }
     }
     if !options.eq && options.order {
@@ -845,9 +855,6 @@ pub fn lookup_symbol_internal(
             order_func(self_.clone(), i_s),
             AttributeKind::DefMethod { is_final: false },
         );
-    }
-    if self_.options.slots {
-        todo!()
     }
     if self_.options.init && name == "__init__" {
         return (
