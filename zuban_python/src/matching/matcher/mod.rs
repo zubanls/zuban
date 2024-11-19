@@ -33,10 +33,10 @@ use crate::{
     },
     type_::{
         match_tuple_type_arguments, AnyCause, CallableContent, CallableParam, CallableParams,
-        DbString, GenericItem, GenericsList, NeverCause, ParamSpecArg, ParamSpecUsage, ParamType,
-        StarParamType, TupleArgs, TupleUnpack, Type, TypeArgs, TypeVarKind, TypeVarLike,
-        TypeVarLikeUsage, TypeVarLikes, TypeVarTupleUsage, TypeVarUsage, TypedDict,
-        TypedDictGenerics, Variance, WithUnpack,
+        DbString, GenericItem, NeverCause, ParamSpecArg, ParamSpecUsage, ParamType, StarParamType,
+        TupleArgs, TupleUnpack, Type, TypeArgs, TypeVarKind, TypeVarLike, TypeVarLikeUsage,
+        TypeVarLikes, TypeVarTupleUsage, TypeVarUsage, TypedDict, TypedDictGenerics, Variance,
+        WithUnpack,
     },
     type_helpers::{Callable, Class, Function},
     utils::{join_with_commas, AlreadySeen},
@@ -1557,16 +1557,29 @@ impl<'a> Matcher<'a> {
     pub fn into_type_arguments(
         self,
         db: &Database,
-    ) -> (Match, Option<GenericsList>, Option<TypeVarLikes>) {
+        in_definition: PointLink,
+    ) -> CalculatedTypeArgs {
         let (slf, result) = self.finish_matcher(db);
-        let type_args = slf
+        let type_arguments = slf
             .type_var_matchers
             .into_iter()
             .next()
             .map(|m| m.into_generics_list(db));
+        let mut type_var_likes = None;
+        let mut matches = SignatureMatch::new_true();
         match result {
-            Ok(tvls) => (Match::new_true(), type_args, tvls),
-            Err(m) => (m, type_args, None),
+            Ok(tvls) => type_var_likes = tvls,
+            Err(m) => {
+                if let Match::False { similar, .. } = m {
+                    matches = SignatureMatch::False { similar };
+                }
+            }
+        }
+        CalculatedTypeArgs {
+            in_definition,
+            matches,
+            type_arguments,
+            type_var_likes,
         }
     }
 }

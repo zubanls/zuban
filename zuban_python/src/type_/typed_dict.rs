@@ -1081,10 +1081,9 @@ pub(crate) fn initialize_typed_dict<'db>(
         check_typed_dict_call(i_s, &mut matcher, typed_dict.clone(), args);
     };
     let td = if matcher.has_type_var_matcher() {
-        let (m, generics, _) = matcher.into_type_arguments(i_s.db);
-        if !m.bool() {
-            unimplemented!("Probably TypedDict matching higher order")
-        }
+        let generics = matcher
+            .into_type_arguments(i_s.db, typed_dict.defined_at)
+            .type_arguments_into_generics(i_s.db);
         typed_dict.apply_generics(i_s.db, generics.unwrap())
     } else {
         typed_dict.clone()

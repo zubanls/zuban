@@ -149,14 +149,21 @@ fn calculate_dunder_init_type_vars_and_return<'db: 'a, 'a>(
 
 #[derive(Debug)]
 pub struct CalculatedTypeArgs {
-    in_definition: PointLink,
+    pub(super) in_definition: PointLink,
     pub matches: SignatureMatch,
-    type_arguments: Option<GenericsList>,
-    type_var_likes: Option<TypeVarLikes>,
+    pub(super) type_arguments: Option<GenericsList>,
+    pub(super) type_var_likes: Option<TypeVarLikes>,
 }
 
 impl CalculatedTypeArgs {
-    pub fn type_arguments_into_class_generics(mut self, db: &Database) -> ClassGenerics {
+    pub fn type_arguments_into_class_generics(self, db: &Database) -> ClassGenerics {
+        match self.type_arguments_into_generics(db) {
+            Some(generics) => ClassGenerics::List(generics),
+            None => ClassGenerics::None,
+        }
+    }
+
+    pub fn type_arguments_into_generics(mut self, db: &Database) -> Option<GenericsList> {
         if let Some(type_var_likes) = &self.type_var_likes {
             if let Some(type_args) = self.type_arguments.take() {
                 self.type_arguments = Some(if type_args.has_param_spec() {
@@ -181,10 +188,7 @@ impl CalculatedTypeArgs {
                 })
             }
         }
-        match self.type_arguments {
-            Some(g) => ClassGenerics::List(g),
-            None => ClassGenerics::None,
-        }
+        self.type_arguments
     }
 
     pub fn into_return_type(
@@ -476,7 +480,7 @@ fn calculate_type_vars<'db: 'a, 'a>(
             );
         });
     }
-    let mut matches = match func_or_callable {
+    let matches = match func_or_callable {
         FunctionOrCallable::Function(function) => match_arguments_against_params(
             i_s,
             &mut matcher,
@@ -501,20 +505,22 @@ fn calculate_type_vars<'db: 'a, 'a>(
             CallableParams::Any(_) | CallableParams::Never(_) => SignatureMatch::new_true(),
         },
     };
-    let (m, type_arguments, type_var_likes) = matcher.into_type_arguments(i_s.db);
-    if !m.bool() {
+    let mut result = matcher.into_type_arguments(i_s.db, match_in_definition);
+    if matches!(result.matches, SignatureMatch::False { .. }) {
         if on_type_error.is_some() {
             add_issue(IssueKind::ArgumentTypeIssue(
                 "Incompatible callable argument with type vars".into(),
             ))
         }
-        matches = SignatureMatch::False { similar: false };
+        result.matches = SignatureMatch::False { similar: false };
+    } else {
+        result.matches = matches;
     }
     if had_wrong_init_type_var {
-        matches = SignatureMatch::False { similar: false };
+        result.matches = SignatureMatch::False { similar: false };
     }
     if cfg!(feature = "zuban_debug") {
-        if let Some(type_arguments) = &type_arguments {
+        if let Some(type_arguments) = &result.type_arguments {
             debug!(
                 "Calculated type vars for {}: [{}]",
                 func_or_callable
@@ -525,12 +531,7 @@ fn calculate_type_vars<'db: 'a, 'a>(
             );
         }
     }
-    CalculatedTypeArgs {
-        in_definition: match_in_definition,
-        matches,
-        type_arguments,
-        type_var_likes,
-    }
+    result
 }
 
 pub(crate) fn match_arguments_against_params<

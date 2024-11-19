@@ -2524,9 +2524,11 @@ impl<'db: 'a, 'a> Class<'a> {
                 Self::with_self_generics(i_s.db, self.node_ref)
                     .as_type(i_s.db)
                     .is_sub_type_of(i_s, &mut matcher, &result);
-                return ClassExecutionResult::ClassGenerics(ClassGenerics::List(
-                    matcher.into_type_arguments(i_s.db).1.unwrap(),
-                ));
+                return ClassExecutionResult::ClassGenerics(
+                    matcher
+                        .into_type_arguments(i_s.db, self.node_ref.as_link())
+                        .type_arguments_into_class_generics(i_s.db),
+                );
             } else {
                 return ClassExecutionResult::ClassGenerics(self.generics_as_list(i_s.db));
             }
