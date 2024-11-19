@@ -326,7 +326,6 @@ impl TypedDict {
         &self,
         i_s: &InferenceState,
         slice_type: &SliceType,
-        add_errors: bool,
         add_issue: &dyn Fn(IssueKind),
     ) -> Inferred {
         match slice_type.unpack() {
@@ -338,23 +337,20 @@ impl TypedDict {
                         if let Some(member) = self.find_member(i_s.db, key) {
                             Inferred::from_type(member.type_.clone())
                         } else {
-                            if add_errors {
-                                add_issue(IssueKind::TypedDictHasNoKeyForGet {
-                                    typed_dict: self.format(&FormatData::new_short(i_s.db)).into(),
-                                    key: key.into(),
-                                });
-                            }
+                            add_issue(IssueKind::TypedDictHasNoKeyForGet {
+                                typed_dict: self.format(&FormatData::new_short(i_s.db)).into(),
+                                key: key.into(),
+                            });
                             Inferred::new_any_from_error()
                         }
                     })
                 },
-                || {
-                    if add_errors {
-                        add_access_key_must_be_string_literal_issue(i_s.db, self, add_issue)
-                    }
-                },
+                || add_access_key_must_be_string_literal_issue(i_s.db, self, add_issue),
             ),
-            _ => todo!(),
+            _ => {
+                add_access_key_must_be_string_literal_issue(i_s.db, self, add_issue);
+                Inferred::new_any_from_error()
+            }
         }
     }
 

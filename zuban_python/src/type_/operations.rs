@@ -558,7 +558,7 @@ impl Type {
                 result_context,
                 add_issue,
             ),
-            Type::TypedDict(d) => d.get_item(i_s, slice_type, true, add_issue),
+            Type::TypedDict(d) => d.get_item(i_s, slice_type, add_issue),
             Type::Literal(l) => l.fallback_type(i_s.db).get_item_internal(
                 i_s,
                 None,

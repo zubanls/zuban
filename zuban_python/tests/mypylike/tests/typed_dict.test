@@ -86,3 +86,13 @@ A = TypedDict()  # E: TypedDict() expects a string literal as the first argument
 B, C = TypedDict("B", {'x': int})  # E: Invalid assignment form for TypedDict, please use the simple form "X = TypedDict(..)"
 D = TypedDict("D", x=int)  # E: TypedDict() expects a dictionary literal as the second argument
 E = TypedDict("E", lambda: None)  # E: TypedDict() expects a dictionary literal as the second argument
+
+[case typed_dict_slice_index]
+from typing import TypedDict
+
+class TD(TypedDict):
+    x: int
+
+def f(x: TD):
+    x['x']
+    x['x':'x']  # E: TypedDict key must be a string literal; expected one of ("x")
