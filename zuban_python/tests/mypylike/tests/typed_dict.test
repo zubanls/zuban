@@ -78,3 +78,11 @@ def foo(x: type[TD[int]], y: type[TD[str]]) -> None:
     if bool():
         w = y  # E: Incompatible types in assignment (expression has type "Type[__main__.TD[str]]", variable has type "Callable[[NamedArg(int, 'x')], TD]")
     w = TD
+
+[case invalid_typed_dict]
+from typing import TypedDict
+
+A = TypedDict()  # E: TypedDict() expects a string literal as the first argument
+B, C = TypedDict("B", {'x': int})  # E: Invalid assignment form for TypedDict, please use the simple form "X = TypedDict(..)"
+D = TypedDict("D", x=int)  # E: TypedDict() expects a dictionary literal as the second argument
+E = TypedDict("E", lambda: None)  # E: TypedDict() expects a dictionary literal as the second argument

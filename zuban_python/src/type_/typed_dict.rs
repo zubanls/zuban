@@ -532,7 +532,8 @@ fn new_typed_dict_internal<'db>(
 ) -> Option<Inferred> {
     let mut iterator = args.iter(i_s.mode);
     let Some(first_arg) = iterator.next() else {
-        todo!()
+        args.add_issue(i_s, IssueKind::TypedDictFirstArgMustBeString);
+        return None;
     };
     let ArgKind::Positional(first) = first_arg.kind else {
         args.add_issue(i_s, IssueKind::UnexpectedArgumentsToTypedDict);
@@ -563,7 +564,13 @@ fn new_typed_dict_internal<'db>(
             );
         }
     } else {
-        todo!()
+        first.node_ref.add_issue(
+            i_s,
+            IssueKind::InvalidAssignmentForm {
+                class_name: "TypedDict",
+            },
+        );
+        return None;
     }
 
     let Some(second_arg) = iterator.next() else {
@@ -571,7 +578,8 @@ fn new_typed_dict_internal<'db>(
         return None;
     };
     let ArgKind::Positional(second) = second_arg.kind else {
-        todo!()
+        second_arg.add_issue(i_s, IssueKind::TypedDictSecondArgMustBeDict);
+        return None;
     };
     let Some(atom_content) = second
         .node_ref
@@ -579,7 +587,10 @@ fn new_typed_dict_internal<'db>(
         .expression()
         .maybe_unpacked_atom()
     else {
-        todo!()
+        second
+            .node_ref
+            .add_issue(i_s, IssueKind::TypedDictSecondArgMustBeDict);
+        return None;
     };
     let mut total = true;
     if let Some(next) = iterator.next() {
