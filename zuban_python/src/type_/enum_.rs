@@ -15,6 +15,7 @@ use super::{
 use crate::{
     arguments::{ArgKind, Args},
     database::{Database, ParentScope, PointLink},
+    debug,
     diagnostics::IssueKind,
     format_data::FormatData,
     inference_state::InferenceState,
@@ -274,7 +275,10 @@ pub fn infer_value_on_member(
                             })
                             .map(|callable| match callable {
                                 CallableLike::Callable(c) => c.return_type.clone(),
-                                CallableLike::Overload(_) => todo!(),
+                                CallableLike::Overload(_) => {
+                                    debug!("TODO overloads are currently not supported for _generate_next_value_");
+                                    Type::Any(AnyCause::Internal)
+                                }
                             })
                             .unwrap_or(i_s.db.python_state.int_type()),
                     )
