@@ -297,3 +297,13 @@ class Foo(Generic[T, *Ts, U]): ...
 
 def f(x: tuple[*Ts]) -> Foo[*Ts]: ...  # E: TypeVarTuple cannot be split # E: TypeVarTuple cannot be split
 reveal_type(f)  # N: Revealed type is "def [Ts] (x: tuple[Unpack[Ts]]) -> __main__.Foo[Any, Unpack[Ts], Any]"
+
+[case type_var_likes_invalid_assignment]
+from typing import TypeVar, TypeVarTuple, ParamSpec
+
+A, B = TypeVar("A", bound=int)  # E: Invalid assignment form for TypeVar, please use the simple form "X = TypeVar(..)"
+def foo(x: A): ...  # E: Invalid type comment or annotation
+
+C, D = TypeVarTuple("C")  # E: Invalid assignment form for TypeVarTuple, please use the simple form "X = TypeVarTuple(..)"
+
+E, F = ParamSpec("E")  # E: Invalid assignment form for ParamSpec, please use the simple form "X = ParamSpec(..)"

@@ -188,6 +188,7 @@ pub(crate) enum IssueKind {
     TypeVarLikeTooFewArguments { class_name: &'static str },
     TypeVarLikeFirstArgMustBeString{ class_name: &'static str },
     TypeVarVarianceMustBeBool { argument: &'static str },
+    TypeVarLikeInvalidAssignmentForm { class_name: &'static str },
     TypeVarTypeExpected,
     TypeVarInvalidDefault,
     TypeVarTupleInvalidDefault,
@@ -1286,6 +1287,10 @@ impl<'db> Diagnostic<'db> {
                 "{class_name}() expects a string literal as first argument"),
             TypeVarVarianceMustBeBool{argument} => format!(
                 "TypeVar \"{argument}\" may only be a literal bool"
+            ),
+            TypeVarLikeInvalidAssignmentForm { class_name } => format!(
+                "Invalid assignment form for {class_name}, please use the simple \
+                 form \"X = {class_name}(..)\""
             ),
             TypeVarTypeExpected => "Type expected".to_string(),
             TypeVarInvalidDefault => "TypeVar \"default\" must be a type".to_string(),

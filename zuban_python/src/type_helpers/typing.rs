@@ -306,7 +306,13 @@ fn maybe_type_var(
                 );
             }
         } else {
-            todo!()
+            first_arg.add_issue(
+                i_s,
+                IssueKind::TypeVarLikeInvalidAssignmentForm {
+                    class_name: "TypeVar",
+                },
+            );
+            return None;
         }
 
         let mut constraints = vec![];
@@ -533,7 +539,13 @@ fn maybe_type_var_tuple(
                 );
             }
         } else {
-            todo!()
+            first_arg.add_issue(
+                i_s,
+                IssueKind::TypeVarLikeInvalidAssignmentForm {
+                    class_name: "TypeVarTuple",
+                },
+            );
+            return None;
         }
 
         let mut default = None;
@@ -660,7 +672,13 @@ fn maybe_param_spec(
                 );
             }
         } else {
-            todo!()
+            first_arg.add_issue(
+                i_s,
+                IssueKind::TypeVarLikeInvalidAssignmentForm {
+                    class_name: "ParamSpec",
+                },
+            );
+            return None;
         }
 
         let mut default = None;
