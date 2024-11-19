@@ -534,7 +534,9 @@ pub(crate) fn new_collections_named_tuple<'db>(
     let mut add_from_iterator = |iterator| {
         for element in iterator {
             let StarLikeExpression::NamedExpression(ne) = element else {
-                todo!()
+                NodeRef::new(second_node_ref.file, element.index())
+                    .add_issue(i_s, IssueKind::StringLiteralExpectedAsNamedTupleItem);
+                continue;
             };
             let Some(string_slice) = StringSlice::from_string_in_expression(
                 second_node_ref.file.file_index,
@@ -565,7 +567,12 @@ pub(crate) fn new_collections_named_tuple<'db>(
                     start += part.len() as CodeIndex + 1;
                 }
             }
-            _ => todo!(),
+            _ => {
+                second_node_ref.add_issue(
+                    i_s,
+                    IssueKind::InvalidSecondArgumentToNamedTuple { name: "namedtuple" },
+                );
+            }
         },
         _ => {
             second_node_ref.add_issue(

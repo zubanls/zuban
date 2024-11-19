@@ -130,3 +130,8 @@ B = namedtuple("B", *[{}])  # E: List or tuple literal expected as the second ar
 C = NamedTuple("C", lambda: 1)  # E: List or tuple literal expected as the second argument to "NamedTuple()"
 D = namedtuple("D", lambda: 1)  # E: List or tuple literal expected as the second argument to "namedtuple()" \
                                 # E: Argument 2 to "namedtuple" has incompatible type "Callable[[], int]"; expected "str | Iterable[str]"
+
+str_lst = ['']
+E = namedtuple("E", [*str_lst])  # E: String literal expected as "namedtuple()" item
+
+F = namedtuple("F", f'x, {1}')  # E: List or tuple literal expected as the second argument to "namedtuple()"
