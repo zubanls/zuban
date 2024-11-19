@@ -96,3 +96,22 @@ class TD(TypedDict):
 def f(x: TD):
     x['x']
     x['x':'x']  # E: TypedDict key must be a string literal; expected one of ("x")
+
+[case typed_dict_invalid_arguments]
+from typing import TypedDict
+
+class TD(TypedDict):
+    x: int
+    y: str
+
+TD(x=3, y="")
+TD(3)  # E: Expected keyword arguments, {...}, or dict(...) in TypedDict constructor
+TD(3, "")  # E: Expected keyword arguments, {...}, or dict(...) in TypedDict constructor
+TD(x=3, **{"y": ""})  # E: Unexpected argument to "TD"
+TD(x=3, **{"z": ""})  # E: Unexpected argument to "TD"
+
+class Other(TypedDict):
+    z: int
+
+TD(Other(z=1))  # E: Expected keyword arguments, {...}, or dict(...) in TypedDict constructor
+TD(TD(x=1, y=""))

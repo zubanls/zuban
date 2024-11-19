@@ -12,7 +12,7 @@ use super::{
     RecursiveType, StringSlice, Type, TypeVarLikeUsage, TypeVarLikes,
 };
 use crate::{
-    arguments::{ArgKind, Args},
+    arguments::{ArgKind, Args, InferredArg},
     database::{ComplexPoint, Database, PointLink, TypedDictDefinition},
     diagnostics::IssueKind,
     file::{infer_string_index, TypeComputation, TypeComputationOrigin, TypeVarCallbackReturn},
@@ -1065,17 +1065,25 @@ pub(crate) fn initialize_typed_dict<'db>(
             next_arg.add_issue(i_s, IssueKind::TypedDictWrongArgumentsInConstructor);
             return Inferred::new_any_from_error();
         }
-        first_arg.infer(&mut ResultContext::WithMatcher {
+        let InferredArg::Inferred(x) = first_arg.infer(&mut ResultContext::WithMatcher {
             matcher: &mut matcher,
             type_: &Type::TypedDict(typed_dict.clone()),
-        });
+        }) else {
+            first_arg.add_issue(i_s, IssueKind::TypedDictWrongArgumentsInConstructor);
+            return Inferred::new_any_from_error();
+        };
+        if !matches!(x.as_cow_type(i_s).as_ref(), Type::TypedDict(td) if td.defined_at == typed_dict.defined_at)
+        {
+            first_arg.add_issue(i_s, IssueKind::TypedDictWrongArgumentsInConstructor);
+            return Inferred::new_any_from_error();
+        }
     } else {
         check_typed_dict_call(i_s, &mut matcher, typed_dict.clone(), args);
     };
     let td = if matcher.has_type_var_matcher() {
         let (m, generics, _) = matcher.into_type_arguments(i_s.db);
         if !m.bool() {
-            todo!()
+            unimplemented!("Probably TypedDict matching higher order")
         }
         typed_dict.apply_generics(i_s.db, generics.unwrap())
     } else {
@@ -1169,7 +1177,17 @@ pub(crate) fn check_typed_dict_call<'db>(
                 |context| arg.infer_inferrable(i_s, context),
             );
         } else {
-            todo!()
+            arg.add_issue(
+                i_s,
+                IssueKind::ArgumentIssue(
+                    format!(
+                        "Unexpected argument to \"{}\"",
+                        typed_dict.name_or_fallback(&FormatData::new_short(i_s.db))
+                    )
+                    .into(),
+                ),
+            );
+            return None;
         }
     }
     maybe_add_extra_keys_issue(
