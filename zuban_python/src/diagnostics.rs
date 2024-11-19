@@ -185,10 +185,10 @@ pub(crate) enum IssueKind {
     TypeVarValuesAndUpperBound,
     TypeVarOnlySingleRestriction,
     UnexpectedArgument { class_name: &'static str, argument_name: Box<str> },
+    InvalidAssignmentForm { class_name: &'static str },
     TypeVarLikeTooFewArguments { class_name: &'static str },
     TypeVarLikeFirstArgMustBeString{ class_name: &'static str },
     TypeVarVarianceMustBeBool { argument: &'static str },
-    TypeVarLikeInvalidAssignmentForm { class_name: &'static str },
     TypeVarTypeExpected,
     TypeVarInvalidDefault,
     TypeVarTupleInvalidDefault,
@@ -1282,15 +1282,15 @@ impl<'db> Diagnostic<'db> {
                  "Type variable must have at least two constrained types".to_string(),
             UnexpectedArgument{class_name, argument_name} => format!(
                  "Unexpected argument to \"{class_name}()\": \"{argument_name}\""),
+            InvalidAssignmentForm { class_name } => format!(
+                "Invalid assignment form for {class_name}, please use the simple \
+                 form \"X = {class_name}(..)\""
+            ),
             TypeVarLikeTooFewArguments{class_name} => format!("Too few arguments for {class_name}()"),
             TypeVarLikeFirstArgMustBeString{class_name} => format!(
                 "{class_name}() expects a string literal as first argument"),
             TypeVarVarianceMustBeBool{argument} => format!(
                 "TypeVar \"{argument}\" may only be a literal bool"
-            ),
-            TypeVarLikeInvalidAssignmentForm { class_name } => format!(
-                "Invalid assignment form for {class_name}, please use the simple \
-                 form \"X = {class_name}(..)\""
             ),
             TypeVarTypeExpected => "Type expected".to_string(),
             TypeVarInvalidDefault => "TypeVar \"default\" must be a type".to_string(),

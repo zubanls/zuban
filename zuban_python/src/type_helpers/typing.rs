@@ -308,7 +308,7 @@ fn maybe_type_var(
         } else {
             first_arg.add_issue(
                 i_s,
-                IssueKind::TypeVarLikeInvalidAssignmentForm {
+                IssueKind::InvalidAssignmentForm {
                     class_name: "TypeVar",
                 },
             );
@@ -541,7 +541,7 @@ fn maybe_type_var_tuple(
         } else {
             first_arg.add_issue(
                 i_s,
-                IssueKind::TypeVarLikeInvalidAssignmentForm {
+                IssueKind::InvalidAssignmentForm {
                     class_name: "TypeVarTuple",
                 },
             );
@@ -679,7 +679,7 @@ fn maybe_param_spec(
         } else {
             first_arg.add_issue(
                 i_s,
-                IssueKind::TypeVarLikeInvalidAssignmentForm {
+                IssueKind::InvalidAssignmentForm {
                     class_name: "ParamSpec",
                 },
             );
@@ -800,7 +800,13 @@ fn maybe_new_type<'db>(i_s: &InferenceState<'db, '_>, args: &dyn Args<'db>) -> O
             );
         }
     } else {
-        todo!()
+        first.add_issue(
+            i_s,
+            IssueKind::InvalidAssignmentForm {
+                class_name: "NewType",
+            },
+        );
+        return None;
     }
     let type_node_ref = NodeRef::new(
         second.file,
