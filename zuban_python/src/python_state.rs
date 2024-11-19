@@ -862,7 +862,7 @@ impl PythonState {
     attribute_node_ref!(typing, type_var_tuple_node_ref, typing_type_var_tuple_index);
     attribute_node_ref!(typing, param_spec_node_ref, typing_param_spec_index);
     attribute_node_ref!(typing, new_type_node_ref, typing_new_type_index);
-    attribute_node_ref!(typing, cast_node_ref, typing_cast_index);
+    //attribute_node_ref!(typing, cast_node_ref, typing_cast_index);
     attribute_node_ref!(typing, reveal_type_node_ref, typing_reveal_type_index);
     attribute_node_ref!(typing, supports_index_node_ref, typing_supports_index_index);
     attribute_node_ref!(typing, typed_dict_node_ref, typing_typed_dict_index);
@@ -989,8 +989,10 @@ impl PythonState {
         Class::with_self_generics(db, self.supports_keys_and_get_item_node_ref())
     }
 
-    pub fn collections_namedtuple_function(&self) -> Function {
-        Function::new(self.collections_named_tuple_node_ref(), None)
+    pub fn collections_namedtuple_function(&self, i_s: &InferenceState) -> Function {
+        let func = Function::new(self.collections_named_tuple_node_ref(), None);
+        func.ensure_cached_func(i_s);
+        func
     }
 
     pub fn mapping_get_function<'class>(&self, class: Class<'class>) -> Function<'_, 'class> {
@@ -1043,10 +1045,6 @@ impl PythonState {
 
     pub fn issubclass_type(&self, db: &Database) -> Type {
         node_ref_to_global_func_type(db, self.issubclass_node_ref())
-    }
-
-    pub fn cast_type(&self, db: &Database) -> Type {
-        node_ref_to_global_func_type(db, self.cast_node_ref())
     }
 
     pub fn reveal_type(&self, db: &Database) -> Type {

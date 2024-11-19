@@ -354,8 +354,7 @@ pub(crate) fn execute_collections_named_tuple<'db>(
     result_context: &mut ResultContext,
     on_type_error: OnTypeError,
 ) -> Inferred {
-    let func = i_s.db.python_state.collections_namedtuple_function();
-    func.ensure_cached_func(i_s);
+    let func = i_s.db.python_state.collections_namedtuple_function(i_s);
     func.execute(i_s, args, result_context, on_type_error);
     match new_collections_named_tuple(i_s, args) {
         Some(rc) => Inferred::new_unsaved_complex(ComplexPoint::NamedTupleDefinition(Rc::new(

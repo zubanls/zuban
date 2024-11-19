@@ -912,3 +912,11 @@ f"{1,2}"
 reveal_type()  # E: Too few arguments for "reveal_type"
 reveal_type(1, 1)  # E: Too many arguments for "reveal_type"
 reveal_type(a=1)  # E: "reveal_type" only accepts one positional argument
+
+[case basic_access_of_special_types]
+from typing import cast
+from collections import namedtuple
+from mypy_extensions import DefaultArg
+x: str = namedtuple  # E: Incompatible types in assignment (expression has type "Callable[[str, str | Iterable[str], DefaultNamedArg(bool, 'rename'), DefaultNamedArg(str | None, 'module'), DefaultNamedArg(Iterable[Any] | None, 'defaults')], Type[tuple[Any, ...]]]", variable has type "str")
+y: str = cast  # E: Incompatible types in assignment (expression has type "object", variable has type "str")
+z: str = DefaultArg  # E: Incompatible types in assignment (expression has type "overloaded function", variable has type "str")

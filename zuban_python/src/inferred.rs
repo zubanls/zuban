@@ -630,8 +630,8 @@ impl<'db: 'slf, 'slf> Inferred {
                         return self;
                     }
                     let node_ref = NodeRef::new(file, index);
-                    todo!(
-                        "{self:?} >>>> {p:?} {}:{index:?}, {}, {:?}",
+                    panic!(
+                        "Overwrite of something assigned {self:?} >>>> {p:?} {}:{index:?}, {}, {:?}",
                         file.file_index,
                         file.tree.short_debug_of_index(index),
                         node_ref.complex()
@@ -2685,7 +2685,12 @@ pub fn specific_to_type<'db>(
             Cow::Owned(Type::Type(Rc::new(i_s.db.python_state.bare_type_type())))
         }
         Specific::TypingTuple => Cow::Borrowed(&i_s.db.python_state.type_of_arbitrary_tuple),
-        Specific::CollectionsNamedTuple => todo!(),
+        Specific::CollectionsNamedTuple => Cow::Owned(
+            i_s.db
+                .python_state
+                .collections_namedtuple_function(i_s)
+                .as_type(i_s, FirstParamProperties::None),
+        ),
         Specific::TypingProtocol
         | Specific::TypingGeneric
         | Specific::TypingType
@@ -2704,7 +2709,8 @@ pub fn specific_to_type<'db>(
         | Specific::TypingNotRequired
         | Specific::TypingLiteralString
         | Specific::TypingCallable => Cow::Owned(i_s.db.python_state.typing_special_form_type()),
-        Specific::TypingCast => todo!(), // Cow::Owned(i_s.db.python_state.cast_type(i_s.db)),
+        // TODO (low prio) this should return the cast overload within typeshed
+        Specific::TypingCast => Cow::Owned(i_s.db.python_state.object_type()),
         Specific::RevealTypeFunction => Cow::Owned(i_s.db.python_state.reveal_type(i_s.db)),
         Specific::None => Cow::Borrowed(&Type::None),
         Specific::TypingNewType => {
@@ -2717,13 +2723,12 @@ pub fn specific_to_type<'db>(
         | Specific::MypyExtensionsNamedArg
         | Specific::MypyExtensionsDefaultNamedArg
         | Specific::MypyExtensionsVarArg
-        | Specific::MypyExtensionsKwArg => {
+        | Specific::MypyExtensionsKwArg => Cow::Owned(
             i_s.db
                 .python_state
                 .mypy_extensions_arg_func(i_s.db, specific)
-                .as_cow_type(i_s);
-            todo!()
-        }
+                .as_type(i_s),
+        ),
         Specific::MypyExtensionsFlexibleAlias => Cow::Borrowed(&Type::Any(AnyCause::Internal)),
         // TODO dataclass transforms should probably be handled properly
         Specific::TypingDataclassTransform => Cow::Borrowed(&Type::Any(AnyCause::Internal)),
