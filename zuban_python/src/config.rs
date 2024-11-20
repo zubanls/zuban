@@ -437,11 +437,13 @@ impl IniOrTomlValue<'_> {
 
     fn as_bool(&self, invert: bool) -> Result<bool, String> {
         let result = match self {
-            Self::Toml(v) => v.as_bool().unwrap_or_else(|| todo!()),
+            Self::Toml(v) => v
+                .as_bool()
+                .ok_or_else(|| format!("Expected bool, got {}", v.to_string().trim()))?,
             Self::Ini(value) => match value.to_lowercase().as_str() {
                 "true" | "1" | "yes" | "on" => true,
                 "false" | "0" | "no" | "off" => false,
-                _ => todo!(),
+                _ => return Err(format!("Expected bool, got \"{value}\"")),
             },
             Self::InlineConfigNoValue => true,
         };
@@ -693,5 +695,34 @@ fn add_excludes(excludes: &mut Vec<ExcludeRegex>, value: IniOrTomlValue) -> Conf
         IniOrTomlValue::Toml(Value::String(s)) => compile_str(s.value()),
         IniOrTomlValue::Ini(v) => compile_str(v),
         _ => Err("TODO expected string".to_string()),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_invalid_toml_bool() {
+        use super::*;
+        let code = "\
+            [tool.mypy]\n\
+            disallow_any_generics = \"what\"
+        ";
+        assert_eq!(
+            ProjectOptions::from_pyproject_toml(code, &mut DiagnosticConfig::default()).err(),
+            Some("Expected bool, got \"what\"".into())
+        );
+    }
+
+    #[test]
+    fn test_invalid_ini_bool() {
+        use super::*;
+        let code = "\
+            [mypy]\n\
+            disallow_any_generics = what
+        ";
+        assert_eq!(
+            ProjectOptions::from_mypy_ini(code, &mut DiagnosticConfig::default()).err(),
+            Some("Expected bool, got \"what\"".into())
+        );
     }
 }
