@@ -734,27 +734,51 @@ struct DirectiveSplitter<'db, 'code> {
 impl<'code> Iterator for DirectiveSplitter<'_, 'code> {
     type Item = (&'code str, Option<&'code str>);
     fn next(&mut self) -> Option<Self::Item> {
-        let split_name_value = |directive: &'code str, had_quotation_marks: bool| {
-            let (name, value) = if let Some((first, second)) = directive.split_once('=') {
-                let mut second = second.trim();
-                if had_quotation_marks {
-                    if second.chars().next().is_some_and(|first| first == '"')
-                        && second.chars().last().is_some_and(|last| last == '"')
-                    {
-                        second = &second[1..second.len() - 1];
-                    } else {
-                        todo!("weird quotes")
+        let split_name_value =
+            |start_position: CodeIndex, directive: &'code str, had_quotation_marks: bool| {
+                let (name, value) = if let Some((first, second)) = directive.split_once('=') {
+                    let mut second = second.trim();
+                    if had_quotation_marks {
+                        if second.chars().next().is_some_and(|first| first == '"')
+                            && second.chars().last().is_some_and(|last| last == '"')
+                        {
+                            second = &second[1..second.len() - 1];
+                        } else {
+                            self.issues
+                                .add_if_not_ignored(
+                                    Issue {
+                                        kind: IssueKind::DirectiveSyntaxError(
+                                            "Content after quote in configuration comment".into(),
+                                        ),
+                                        start_position: start_position - 1,
+                                        end_position: start_position,
+                                    },
+                                    None,
+                                )
+                                .ok();
+                            second = &second[1..];
+                        }
                     }
+                    (first.trim(), Some(second))
+                } else {
+                    (directive.trim(), None)
+                };
+                if name.contains('"') {
+                    self.issues
+                        .add_if_not_ignored(
+                            Issue {
+                                kind: IssueKind::DirectiveSyntaxError(
+                                    "Quotes should not be part of the key".into(),
+                                ),
+                                start_position: start_position - 1,
+                                end_position: start_position,
+                            },
+                            None,
+                        )
+                        .ok();
                 }
-                (first.trim(), Some(second))
-            } else {
-                (directive.trim(), None)
+                Some((name, value))
             };
-            if name.contains('"') {
-                todo!("weird quotes")
-            }
-            Some((name, value))
-        };
         let mut opened_quotation_mark = false;
         let mut had_quotation_marks = false;
         for (i, n) in self.rest.chars().enumerate() {
@@ -769,7 +793,7 @@ impl<'code> Iterator for DirectiveSplitter<'_, 'code> {
                 self.start_position += i as CodeIndex;
                 let result = &self.rest[..i];
                 self.rest = &self.rest[i + 1..];
-                return split_name_value(result, had_quotation_marks);
+                return split_name_value(self.start_position, result, had_quotation_marks);
             }
         }
         if opened_quotation_mark {
@@ -789,7 +813,7 @@ impl<'code> Iterator for DirectiveSplitter<'_, 'code> {
             let rest = self.rest.trim();
             if !rest.is_empty() {
                 self.rest = "";
-                return split_name_value(rest, had_quotation_marks);
+                return split_name_value(self.start_position, rest, had_quotation_marks);
             }
         }
         self.rest = "";

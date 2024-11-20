@@ -94,3 +94,13 @@ a =
   c
 [mypy]
 implicit_optional = True
+
+[case invalid_directives]
+# mypy: always-false="FOO,BAR";,
+# mypy: always-false="FOO,BAR""bla",
+# mypy: "always-true=foo"
+[out]
+main:1: error: Content after quote in configuration comment
+main:3: error: Content after quote in configuration comment
+main:3: error: Quotes should not be part of the key
+main:3: error: Unrecognized option: "always_true = oo"
