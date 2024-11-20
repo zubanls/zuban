@@ -281,14 +281,20 @@ impl<'a> Instance<'a> {
         for found_on_class in finder {
             match found_on_class {
                 FoundOnClass::Attribute(inf) => {
+                    let dunder_next = "__next__";
                     return IteratorContent::Inferred(
                         inf.execute(i_s, &infos.as_no_args())
                             .type_lookup_and_execute(
                                 i_s,
                                 infos.file(),
-                                "__next__",
+                                dunder_next,
                                 &infos.as_no_args(),
-                                &|_| todo!(),
+                                &|t| {
+                                    infos.add_issue(IssueKind::AttributeError {
+                                        object: t.format_short(i_s.db),
+                                        name: dunder_next.into(),
+                                    })
+                                },
                             ),
                     );
                 }
