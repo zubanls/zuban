@@ -2488,7 +2488,7 @@ fn proper_classmethod_callable(
                                 None
                             }
                         },
-                        &|| todo!(),
+                        &|| None,
                     );
                 }
                 Some(result)

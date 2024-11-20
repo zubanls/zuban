@@ -91,7 +91,7 @@ pub struct PythonFile {
 
 impl File for PythonFile {
     fn implementation<'db>(&self, _names: Names<'db>) -> Names<'db> {
-        todo!()
+        unimplemented!()
     }
 
     fn leaf<'db>(&'db self, db: &'db Database, position: CodeIndex) -> Leaf<'db> {
@@ -114,7 +114,7 @@ impl File for PythonFile {
                     .infer_primary(primary, &mut ResultContext::Unknown);
             }
         }
-        todo!()
+        unimplemented!()
     }
 
     fn file_index(&self) -> FileIndex {
