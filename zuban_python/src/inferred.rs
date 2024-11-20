@@ -153,6 +153,10 @@ impl<'db: 'slf, 'slf> Inferred {
         Self::from_type(Type::Any(cause))
     }
 
+    pub fn new_never(cause: NeverCause) -> Self {
+        Self::from_type(Type::Never(cause))
+    }
+
     pub fn new_bool(db: &Database) -> Self {
         Self::from_type(db.python_state.bool_type())
     }
@@ -525,7 +529,9 @@ impl<'db: 'slf, 'slf> Inferred {
             let LiteralValue::Int(i) = literal.value(i_s.db) else {
                 unreachable!();
             };
-            let index = isize::try_from(i).ok().unwrap_or_else(|| todo!(""));
+            let index = isize::try_from(i)
+                .ok()
+                .unwrap_or_else(|| unimplemented!("int too big"));
             callable(index)
         };
         match self.maybe_literal(i_s.db) {
@@ -780,7 +786,7 @@ impl<'db: 'slf, 'slf> Inferred {
                 None => inferred,
             });
         });
-        result.unwrap_or_else(|| Inferred::from_type(Type::Never(NeverCause::Other)))
+        result.unwrap_or_else(|| Inferred::new_never(NeverCause::Other))
     }
 
     pub fn simplified_union(self, i_s: &InferenceState, other: Self) -> Self {
@@ -803,7 +809,7 @@ impl<'db: 'slf, 'slf> Inferred {
                 None => inferred,
             });
         });
-        result.unwrap_or_else(|| Inferred::from_type(Type::Never(NeverCause::Other)))
+        result.unwrap_or_else(|| Inferred::new_never(NeverCause::Other))
     }
 
     fn common_base_type(&self, i_s: &InferenceState, other: &Self) -> Self {
@@ -1774,7 +1780,7 @@ impl<'db: 'slf, 'slf> Inferred {
         })
     }
 
-    pub(crate) fn type_lookup_and_execute_with_details(
+    fn type_lookup_and_execute_with_details(
         &self,
         i_s: &InferenceState<'db, '_>,
         in_file: &PythonFile,
@@ -1808,7 +1814,7 @@ impl<'db: 'slf, 'slf> Inferred {
                 }
             },
         );
-        result.unwrap_or_else(|| todo!())
+        result.unwrap_or_else(|| Self::new_never(NeverCause::Other))
     }
 
     pub(crate) fn execute(&self, i_s: &InferenceState<'db, '_>, args: &dyn Args<'db>) -> Self {

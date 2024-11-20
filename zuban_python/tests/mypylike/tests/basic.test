@@ -920,3 +920,11 @@ from mypy_extensions import DefaultArg
 x: str = namedtuple  # E: Incompatible types in assignment (expression has type "Callable[[str, str | Iterable[str], DefaultNamedArg(bool, 'rename'), DefaultNamedArg(str | None, 'module'), DefaultNamedArg(Iterable[Any] | None, 'defaults')], Type[tuple[Any, ...]]]", variable has type "str")
 y: str = cast  # E: Incompatible types in assignment (expression has type "object", variable has type "str")
 z: str = DefaultArg  # E: Incompatible types in assignment (expression has type "overloaded function", variable has type "str")
+
+[case never_operation]
+from typing import Never
+
+def foo(x: Never) -> None:
+    +x
+    -x
+    x+x
