@@ -968,10 +968,11 @@ impl PythonState {
     node_ref_to_type_class_without_generic!(pub supports_index_type, supports_index_node_ref);
 
     pub fn none_instance(&self) -> Instance {
-        Instance::new(
-            Class::from_non_generic_node_ref(self.none_type_node_ref().unwrap_or_else(|| todo!())),
-            None,
-        )
+        let Some(none_node_ref) = self.none_type_node_ref() else {
+            // TODO this might not be correct, but does it really matter?
+            return self.object_class().instance();
+        };
+        Instance::new(Class::from_non_generic_node_ref(none_node_ref), None)
     }
 
     pub fn ellipsis_link(&self) -> PointLink {
