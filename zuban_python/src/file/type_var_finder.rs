@@ -93,13 +93,11 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd> {
     }
 
     fn find_in_expr(&mut self, expr: Expression<'d>) {
-        match expr.unpack() {
-            ExpressionContent::ExpressionPart(n) => {
-                self.find_in_expression_part(n);
-            }
-            ExpressionContent::Lambda(_) => todo!(),
-            ExpressionContent::Ternary(_) => todo!(),
-        };
+        // Only expressions are valid in types, lambdas and ternaries are not relevant
+        // (though correct syntax)
+        if let ExpressionContent::ExpressionPart(n) = expr.unpack() {
+            self.find_in_expression_part(n);
+        }
     }
 
     fn find_in_expression_part(&mut self, node: ExpressionPart<'d>) {
@@ -185,12 +183,11 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd> {
             }
             AtomContent::Strings(s_o_b) => match s_o_b.as_python_string() {
                 PythonString::Ref(_start, _s) => {
-                    //todo!()
                     BaseLookup::Other
                     //self.compute_forward_reference(start, s.to_owned())
                 }
                 PythonString::String(_start, _s) => BaseLookup::Other, // TODO this is wrong
-                PythonString::FString => todo!(),
+                PythonString::FString => BaseLookup::Other,
             },
             _ => BaseLookup::Other,
         }

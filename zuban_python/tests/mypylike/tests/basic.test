@@ -928,3 +928,6 @@ def foo(x: Never) -> None:
     +x
     -x
     x+x
+
+[case fstring_forward_reference_invalid]
+class C(list[f'{"int"}']): ...  # E: Type expected within [...]
