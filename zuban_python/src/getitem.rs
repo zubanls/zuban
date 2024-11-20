@@ -105,7 +105,7 @@ impl<'db, 'file> SliceType<'file> {
             SliceTypeContent::Simple(s) => s.infer(i_s, result_context),
             SliceTypeContent::Slice(s) => s.infer(i_s),
             SliceTypeContent::Slices(s) => s.infer(i_s),
-            SliceTypeContent::Starred(_) => todo!(),
+            SliceTypeContent::Starred(s) => s.infer(i_s),
         }
     }
 }
