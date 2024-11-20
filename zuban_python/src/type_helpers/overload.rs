@@ -132,13 +132,6 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                         // without an error message, there is no clear choice, i.e. it's ambiguous,
                         // but there should also not be an error.
                         if are_any_arguments_ambiguous_in_overload(old_indices, &argument_indices) {
-                            if had_error {
-                                args.reset_points_from_backup(&points_backup);
-                                // Need to run the whole thing again to generate errors, because
-                                // the function is not going to be checked.
-                                match_signature(i_s, result_context, callable);
-                                todo!("Add a test")
-                            }
                             debug!(
                                 "Decided overload with any for {} (called on #{}): {:?}",
                                 self.name(i_s.db),
@@ -387,33 +380,28 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             let mut first_similar = None;
             for (i, callable) in self.overload.iter_functions().enumerate() {
                 let callable = Callable::new(callable, self.class);
-                let (calculated_type_args, had_error) = i_s.avoid_errors_within(|i_s| {
-                    if search_init {
-                        calculate_callable_dunder_init_type_vars_and_return(
-                            i_s,
-                            class.unwrap(),
-                            callable,
-                            non_union_args.clone().into_iter(),
-                            add_issue,
-                            true,
-                            result_context,
-                            None,
-                        )
-                    } else {
-                        calculate_callable_type_vars_and_return(
-                            i_s,
-                            callable,
-                            non_union_args.clone().into_iter(),
-                            add_issue,
-                            skip_first_argument,
-                            result_context,
-                            None,
-                        )
-                    }
-                });
-                if had_error {
-                    todo!()
-                }
+                let calculated_type_args = if search_init {
+                    calculate_callable_dunder_init_type_vars_and_return(
+                        i_s,
+                        class.unwrap(),
+                        callable,
+                        non_union_args.clone().into_iter(),
+                        add_issue,
+                        true,
+                        result_context,
+                        None,
+                    )
+                } else {
+                    calculate_callable_type_vars_and_return(
+                        i_s,
+                        callable,
+                        non_union_args.clone().into_iter(),
+                        add_issue,
+                        skip_first_argument,
+                        result_context,
+                        None,
+                    )
+                };
                 match calculated_type_args.matches {
                     SignatureMatch::TrueWithAny { .. } | SignatureMatch::True { .. } => {
                         return UnionMathResult::Match {
