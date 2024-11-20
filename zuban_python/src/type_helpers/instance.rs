@@ -183,13 +183,7 @@ impl<'a> Instance<'a> {
                 return match c.kind {
                     FunctionKind::Property {
                         writable: false, ..
-                    } => {
-                        if let TypeOrClass::Class(class) = lookup_details.class {
-                            property_is_read_only(class.name().into())
-                        } else {
-                            todo!()
-                        }
-                    }
+                    } => property_is_read_only(lookup_details.class.name(i_s.db).into()),
                     FunctionKind::Property { writable: true, .. } => {
                         check_compatible(&c.return_type, value)
                     }
@@ -298,13 +292,7 @@ impl<'a> Instance<'a> {
                             ),
                     );
                 }
-                FoundOnClass::UnresolvedType(t) => {
-                    if let Type::Tuple(tup) = t.as_ref() {
-                        return tup.iter();
-                    } else {
-                        todo!();
-                    }
-                }
+                FoundOnClass::UnresolvedType(t) => return t.iter(i_s, infos),
             }
         }
         if !self.class.incomplete_mro(i_s.db) {
