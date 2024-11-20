@@ -15,7 +15,7 @@ use crate::{
         PythonFile, ANNOTATION_TO_EXPR_DIFFERENCE,
     },
     format_data::FormatData,
-    getitem::{SliceType, SliceTypeContent},
+    getitem::SliceType,
     inference_state::InferenceState,
     matching::{
         calculate_property_return, create_signature_without_self_for_callable, match_self_type,
@@ -2114,17 +2114,6 @@ impl<'db: 'slf, 'slf> Inferred {
                         return result;
                     }
                     return Inferred::from_type(i_s.db.python_state.typing_special_form_type());
-                }
-                Some(Specific::TypingClassVar) => {
-                    return match slice_type.unpack() {
-                        SliceTypeContent::Simple(simple) => {
-                            // TODO if it is a (), it's am empty tuple
-                            simple.infer(i_s, &mut ResultContext::Unknown)
-                        }
-                        _ => {
-                            todo!()
-                        }
-                    };
                 }
                 _ => {
                     let node_ref = NodeRef::from_link(i_s.db, link);
