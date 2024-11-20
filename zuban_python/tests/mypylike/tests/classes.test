@@ -1094,3 +1094,16 @@ reveal_type(f2)  # N: Revealed type is "def [U] (other: U) -> tuple[__main__.F, 
 
 reveal_type(f1(1))  # N: Revealed type is "tuple[__main__.F, int]"
 reveal_type(f2(1))  # N: Revealed type is "tuple[__main__.F, int]"
+
+[case overloaded_setattr]
+from typing import overload
+class Foo:
+    @overload
+    def __setattr__(self, name: str, other: int) -> None: ...
+    @overload
+    def __setattr__(self, name: str, other: str) -> None: ...
+    def __setattr__(self, name: str, other) -> None: ...
+
+Foo().x = 3
+Foo().x = ""
+Foo().x = b""  # E: Incompatible types in assignment (expression has type "bytes", variable has type "int | str")

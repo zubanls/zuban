@@ -235,7 +235,7 @@ fn short_type_name_with_link<'x>(db: &'x Database, t: &'x Type) -> Option<NameIn
         Type::Class(c) => NameInfos::new(c.class(db).name(), c.link),
         Type::RecursiveType(rec) => NameInfos::new(
             match rec.origin(db) {
-                RecursiveTypeOrigin::TypeAlias(alias) => alias.name(db).unwrap_or_else(|| todo!()),
+                RecursiveTypeOrigin::TypeAlias(alias) => alias.name(db)?,
                 RecursiveTypeOrigin::Class(c) => c.name(),
             },
             rec.link,

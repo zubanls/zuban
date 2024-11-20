@@ -121,7 +121,13 @@ impl<'a> Instance<'a> {
                                 return check_compatible(&second, value);
                             }
                         }
-                        Some(CallableLike::Overload(_)) => todo!(),
+                        Some(CallableLike::Overload(o)) => {
+                            let new_t = Type::from_iter(
+                                o.iter_functions()
+                                    .filter_map(|c| c.second_positional_type()),
+                            );
+                            return check_compatible(&new_t, value);
+                        }
                         None => (),
                     };
                 }
