@@ -144,7 +144,11 @@ impl ProjectOptions {
                             }
                         }
                     }
-                    _ => todo!("{item:?}"),
+                    Item::None | Item::Table(_) | Item::ArrayOfTables(_) => {
+                        return Err(
+                            "Expected tool.mypy to be simple table in pyproject.toml".to_string()
+                        );
+                    }
                 }
             }
             Ok(ProjectOptions {
@@ -723,6 +727,16 @@ mod tests {
         assert_eq!(
             ProjectOptions::from_mypy_ini(code, &mut DiagnosticConfig::default()).err(),
             Some("Expected bool, got \"what\"".into())
+        );
+    }
+
+    #[test]
+    fn test_invalid_toml_none() {
+        use super::*;
+        let code = "[tool.mypy.foo]\nx=1";
+        assert_eq!(
+            ProjectOptions::from_pyproject_toml(code, &mut DiagnosticConfig::default()).err(),
+            Some("Expected tool.mypy to be simple table in pyproject.toml".into())
         );
     }
 }
