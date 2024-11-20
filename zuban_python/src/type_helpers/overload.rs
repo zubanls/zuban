@@ -258,7 +258,10 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             ));
             let t = IssueKind::OverloadMismatch {
                 name: (on_type_error.generate_diagnostic_string)(&f_or_c, i_s.db)
-                    .unwrap_or_else(|| todo!())
+                    .expect(
+                        "The diagnostic string should always be set for overloads, \
+                             because the name is always defined",
+                    )
                     .into(),
                 args: args.iter(i_s.mode).into_argument_types(i_s),
                 variants: self.variants(i_s, class.filter(|_| search_init)),
@@ -573,7 +576,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             .unwrap()
             .name
             .as_ref()
-            .unwrap_or_else(|| todo!())
+            .expect("The name for an overload should always be set")
             .as_str(db)
     }
 }
