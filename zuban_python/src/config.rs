@@ -664,7 +664,7 @@ fn apply_from_config_part(
     value: IniOrTomlValue,
 ) -> ConfigResult {
     if key == "strict" {
-        if value.as_bool(false).unwrap_or_else(|_| todo!()) {
+        if value.as_bool(false)? {
             flags.enable_all_strict_flags();
         }
         Ok(false)
