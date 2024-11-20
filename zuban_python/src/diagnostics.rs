@@ -576,6 +576,8 @@ impl Issue {
         }
     }
 }
+
+#[derive(Copy, Clone)]
 struct SubFileOffset<'db> {
     file: &'db PythonFile,
     offset: CodeIndex,
@@ -608,7 +610,15 @@ impl<'db> Diagnostic<'db> {
                     file: self.file,
                     offset,
                 },
-                Some(_) => todo!(),
+                Some(other) => {
+                    return Diagnostic {
+                        file: other.file,
+                        db: self.db,
+                        in_sub_file: None,
+                        issue: self.issue,
+                    }
+                    .wrap_subfile(file, offset + other.offset);
+                }
             }),
         }
     }

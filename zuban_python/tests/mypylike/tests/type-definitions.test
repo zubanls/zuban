@@ -317,3 +317,11 @@ P = ParamSpec("P", **{"x": "y"})  # E: Unexpected argument to "ParamSpec()"
 [case new_type_invalid_assignment_form]
 from typing import NewType
 A, B = NewType("A", int)  # E: Invalid assignment form for NewType, please use the simple form "X = NewType(..)"
+
+[case double_string_in_annotation]
+# flags: --show-column-numbers
+x: 'list["str"]'
+y: 'list["undefined"]'
+
+[out]
+main:3:11: error: Name "undefined" is not defined
