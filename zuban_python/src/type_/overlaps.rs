@@ -140,7 +140,6 @@ impl Tuple {
                     if matcher.might_have_defined_type_vars() {
                         match type1 {
                             Type::TypeVarLike(t) if t.is_type_var_tuple() => {
-                                todo!()
                             }
                             _ => (),
                         }
@@ -184,22 +183,20 @@ impl Tuple {
                         .iter()
                         .zip(after2_it.by_ref())
                         .all(|(t1, t2)| t1.overlaps(i_s, matcher, t2))
-                    && match &w1.unpack {
-                        TupleUnpack::ArbitraryLen(t1) => match &w2.unpack {
-                            TupleUnpack::TypeVarTuple(_) => todo!(),
-                            TupleUnpack::ArbitraryLen(t2) => t1.overlaps(i_s, matcher, t2),
-                        },
-                        TupleUnpack::TypeVarTuple(_tvt1) => {
-                            /*
-                            let tup_args2 = TupleArgs::WithUnpack(super::WithUnpack {
-                                before: before2_it.cloned().collect(),
-                                unpack: w2.unpack.clone(),
-                                after: after2_it.cloned().collect(),
-                            });
-                            matcher.match_or_add_type_var_tuple(i_s, tvt1, tup_args2, Variance::Invariant).bool()
-                            */
-                            todo!()
+                    && match (&w1.unpack, &w2.unpack) {
+                        (TupleUnpack::ArbitraryLen(t1), TupleUnpack::ArbitraryLen(t2)) => {
+                            t1.overlaps(i_s, matcher, t2)
                         }
+                        // TODO use something like this:
+                        /*
+                        let tup_args2 = TupleArgs::WithUnpack(super::WithUnpack {
+                            before: before2_it.cloned().collect(),
+                            unpack: w2.unpack.clone(),
+                            after: after2_it.cloned().collect(),
+                        });
+                        matcher.match_or_add_type_var_tuple(i_s, tvt1, tup_args2, Variance::Invariant).bool()
+                        */
+                        _ => true,
                     }
             }
             (WithUnpack(w1), FixedLen(ts2)) => {
@@ -221,7 +218,7 @@ impl Tuple {
                         TupleUnpack::ArbitraryLen(t1) => {
                             middle2.iter().all(|t2| t1.overlaps(i_s, matcher, t2))
                         }
-                        TupleUnpack::TypeVarTuple(_tvt1) => todo!(),
+                        TupleUnpack::TypeVarTuple(_tvt1) => true,
                     }
             }
             (FixedLen(_), WithUnpack(_)) => other.overlaps_tuple(i_s, matcher, self),
