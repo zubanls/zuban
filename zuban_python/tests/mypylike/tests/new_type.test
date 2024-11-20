@@ -89,3 +89,15 @@ def f(a: type[X]) -> None:
     x1: X = a()  # E: Missing positional argument "x" in call to "Foo"
     x2: X = a(1)
     x3: X = a(1, 2)  # E: Too many arguments for "Foo"
+
+[case new_type_invalid_params]
+from typing import NewType, TypeVarTuple
+Ts = TypeVarTuple("Ts")
+
+N = NewType("N", int)
+N(1)
+N(a=1)  # E: NewTypes expect a single positional argument
+N(*[1])  # E: NewTypes expect a single positional argument
+
+def unpack(x: tuple[*Ts]):
+    N(*x)  # E: NewTypes expect a single positional argument

@@ -3,7 +3,7 @@ use std::{borrow::Cow, cell::RefCell, rc::Rc};
 use parsa_python_cst::{NodeIndex, ParamKind, PrimaryContent, SliceType as CSTSliceType};
 
 use crate::{
-    arguments::{Args, CombinedArgs, InferredArg, KnownArgs, KnownArgsWithCustomAddIssue},
+    arguments::{Args, CombinedArgs, KnownArgs, KnownArgsWithCustomAddIssue},
     database::{
         ComplexPoint, Database, FileIndex, Locality, OverloadDefinition, Point, PointKind,
         PointLink, Specific,
@@ -1994,49 +1994,45 @@ impl<'db: 'slf, 'slf> Inferred {
                                 return Inferred::new_any_from_error();
                             }
                             ComplexPoint::NewTypeDefinition(new_type) => {
-                                let mut iterator = args.iter(i_s.mode);
-                                if let Some(first_arg) = iterator.next() {
-                                    let t = new_type.type_(i_s);
-                                    let InferredArg::Inferred(inf) =
-                                        first_arg.infer(&mut ResultContext::new_known(t))
-                                    else {
-                                        todo!()
-                                    };
-                                    let other = inf.as_cow_type(i_s);
-                                    if let Match::False { ref reason, .. } =
-                                        t.is_simple_super_type_of(i_s, &other)
-                                    {
-                                        (on_type_error.callback)(
-                                            i_s,
-                                            &|_| {
-                                                Some(
-                                                    format!(" to \"{}\"", new_type.name(i_s.db))
-                                                        .into(),
-                                                )
-                                            },
-                                            &first_arg,
-                                            ErrorTypes {
-                                                matcher: None,
-                                                reason,
-                                                got: GotType::Type(&other),
-                                                expected: t,
-                                            },
-                                        );
-                                    }
-                                } else {
+                                let t = new_type.type_(i_s);
+                                let Some(inf) = args.maybe_single_positional_arg(
+                                    i_s,
+                                    &mut ResultContext::new_known(t),
+                                ) else {
                                     args.add_issue(
                                         i_s,
-                                        IssueKind::TooFewArguments(
-                                            format!(" for \"{}\"", new_type.name(i_s.db)).into(),
-                                        ),
+                                        match args.iter(i_s.mode).count() {
+                                            0 => IssueKind::TooFewArguments(
+                                                format!(" for \"{}\"", new_type.name(i_s.db))
+                                                    .into(),
+                                            ),
+                                            1 => IssueKind::NewTypesExpectSinglePositionalArgument,
+                                            _ => IssueKind::TooManyArguments(
+                                                format!(" for \"{}\"", new_type.name(i_s.db))
+                                                    .into(),
+                                            ),
+                                        },
                                     );
-                                }
-                                if iterator.next().is_some() {
-                                    args.add_issue(
+                                    return Self::from_type(Type::NewType(new_type.clone()));
+                                };
+                                let other = inf.as_cow_type(i_s);
+                                if let Match::False { ref reason, .. } =
+                                    t.is_simple_super_type_of(i_s, &other)
+                                {
+                                    (on_type_error.callback)(
                                         i_s,
-                                        IssueKind::TooManyArguments(
-                                            format!(" for \"{}\"", new_type.name(i_s.db)).into(),
-                                        ),
+                                        &|_| {
+                                            Some(
+                                                format!(" to \"{}\"", new_type.name(i_s.db)).into(),
+                                            )
+                                        },
+                                        &args.iter(i_s.mode).next().unwrap(),
+                                        ErrorTypes {
+                                            matcher: None,
+                                            reason,
+                                            got: GotType::Type(&other),
+                                            expected: t,
+                                        },
                                     );
                                 }
                                 return Self::from_type(Type::NewType(new_type.clone()));

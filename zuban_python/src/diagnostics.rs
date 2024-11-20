@@ -150,6 +150,7 @@ pub(crate) enum IssueKind {
     NewTypeInvalidType,
     NewTypeMustBeSubclassable { got: Box<str> },
     NewTypeCannotUseProtocols,
+    NewTypesExpectSinglePositionalArgument,
     BasesOfProtocolMustBeProtocol,
     MustHaveOneArgument { name: &'static str },
     TypeCannotContainAnotherType,
@@ -1193,6 +1194,8 @@ impl<'db> Diagnostic<'db> {
                 "Argument 2 to NewType(...) must be subclassable (got \"{got}\")"
             ),
             NewTypeCannotUseProtocols => "NewType cannot be used with protocol classes".to_string(),
+            NewTypesExpectSinglePositionalArgument =>
+                "NewTypes expect a single positional argument".to_string(),
             BasesOfProtocolMustBeProtocol => "All bases of a protocol must be protocols".to_string(),
             MustHaveOneArgument { name } => format!(
                 "{name} must have exactly one type argument"
