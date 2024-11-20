@@ -81,3 +81,16 @@ def bla() -> None:
         bar2 = foo  # E: Incompatible types in assignment (expression has type "ModuleType", variable has type "ModuleType")
 
 [file foo/bar/bla.py]
+
+[case namespace_submodule_lookup]
+import foo
+from foo import bar
+
+foo.bar.bla.lala
+foo.bar.undefined  # E: "ModuleType" has no attribute "undefined"
+bar.bla.lala
+bar.bla.undefined  # E: Module has no attribute "undefined"
+
+[file foo/__init__.py]
+[file foo/bar/bla.py]
+lala = 1

@@ -65,7 +65,9 @@ impl<'a> Module<'a> {
     fn sub_module_lookup(&self, db: &'a Database, name: &str) -> Option<LookupResult> {
         Some(match self.sub_module(db, name)? {
             ImportResult::File(file_index) => LookupResult::FileReference(file_index),
-            ImportResult::Namespace { .. } => todo!(),
+            ImportResult::Namespace(ns) => {
+                LookupResult::UnknownName(Inferred::from_type(Type::Namespace(ns)))
+            }
         })
     }
 
