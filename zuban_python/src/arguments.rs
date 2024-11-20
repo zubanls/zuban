@@ -706,8 +706,11 @@ impl<'db, 'a> ArgIteratorBase<'db, 'a> {
                     format!("{prefix}{}", inf.format_short(&i_s)).into()
                 })
                 .collect(),
-            Self::Comprehension(_, _file, _comprehension) => {
-                todo!()
+            Self::Comprehension(i_s, file, comprehension) => {
+                vec![file
+                    .inference(&i_s)
+                    .infer_generator_comprehension(comprehension, &mut ResultContext::Unknown)
+                    .format_short(&i_s)]
             }
             Self::Finished => vec![],
             Self::SliceType(i_s, slice_type) => {
