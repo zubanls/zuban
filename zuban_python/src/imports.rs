@@ -205,7 +205,10 @@ pub fn find_ancestor(db: &Database, file: &PythonFile, level: usize) -> Option<I
     for _ in 1..level {
         parent = parent.parent.maybe_dir().ok()?;
     }
-    Some(ImportResult::File(
-        load_init_file(db, &parent).unwrap_or_else(|| todo!()),
-    ))
+    Some(match load_init_file(db, &parent) {
+        Some(index) => ImportResult::File(index),
+        None => ImportResult::Namespace(Rc::new(Namespace {
+            directories: [parent].into(),
+        })),
+    })
 }

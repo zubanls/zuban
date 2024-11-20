@@ -94,3 +94,11 @@ bar.bla.undefined  # E: Module has no attribute "undefined"
 [file foo/__init__.py]
 [file foo/bar/bla.py]
 lala = 1
+
+[case namespace_parent_lookup]
+[file foo/bar/baz.py]
+[file foo/bar/bla.py]
+from . import baz
+from ..bar import baz
+from ..bar import undefined  # E: Module "foo.bar" has no attribute "undefined"
+from ...foo.bar import baz  # E: No parent module -- cannot perform relative import
