@@ -1078,3 +1078,19 @@ class A:
         def f(self): pass
     else:
         def f(self, x: int) -> Self: pass
+
+[case classmethod_self_type_with_additional_type_vars]
+from typing import TypeVar
+T = TypeVar("T")
+U = TypeVar("U")
+class F:
+    @classmethod
+    def foo(cls: type[T], other: U) -> tuple[T, U]: ...
+
+f1 = F.foo
+f2 = F().foo
+reveal_type(f1)  # N: Revealed type is "def [U] (other: U) -> tuple[__main__.F, U]"
+reveal_type(f2)  # N: Revealed type is "def [U] (other: U) -> tuple[__main__.F, U]"
+
+reveal_type(f1(1))  # N: Revealed type is "tuple[__main__.F, int]"
+reveal_type(f2(1))  # N: Revealed type is "tuple[__main__.F, int]"

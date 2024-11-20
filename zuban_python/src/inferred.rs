@@ -2479,12 +2479,12 @@ fn proper_classmethod_callable(
                 Some(result)
             } else if in_definition == callable_defined_at {
                 if let Some(u) = &class_method_type_var_usage {
-                    if u.index == usage.index() {
-                        return Some(GenericItem::TypeArg(get_class_method_class()));
+                    return if u.index == usage.index() {
+                        Some(GenericItem::TypeArg(get_class_method_class()))
                     } else {
                         usage.add_to_index(-1);
-                        todo!()
-                    }
+                        Some(usage.into_generic_item())
+                    };
                 }
                 None
             } else {
