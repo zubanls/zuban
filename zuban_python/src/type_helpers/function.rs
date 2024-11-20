@@ -1018,10 +1018,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 continue;
             };
             let next_func = Self::new(func_ref, self.class);
-            let new_t = next_func.ensure_cached_type_vars(i_s);
-            if new_t.is_some() {
-                todo!()
-            }
+            next_func.ensure_cached_type_vars(i_s);
 
             // Make sure this is not calculated again.
             next_func.node_ref.set_point(Point::new_specific(
@@ -1066,9 +1063,10 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         let mut has_abstract = false;
         let mut has_non_abstract = false;
         let mut is_override = details.is_override;
+        let should_error_out = Cell::new(false);
         let mut add_func = |func: &Function, inf: Inferred, is_first: bool| {
-            if let Some(CallableLike::Callable(callable)) = inf.as_cow_type(i_s).maybe_callable(i_s)
-            {
+            let base = inf.as_cow_type(i_s);
+            if let Some(CallableLike::Callable(callable)) = base.maybe_callable(i_s) {
                 if callable.is_final && !(in_stub && is_first) {
                     for decorator in func.node().maybe_decorated().unwrap().decorators().iter() {
                         if matches!(
@@ -1094,13 +1092,18 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 }
                 functions.push(callable)
             } else {
-                todo!()
+                func.add_issue_onto_start_including_decorator(
+                    i_s,
+                    IssueKind::NotCallable {
+                        type_: format!("\"{}\"", base.format_short(i_s.db)).into(),
+                    },
+                );
+                should_error_out.set(true);
             }
         };
         let mut inconsistent_function_kind = None;
         add_func(self, details.inferred, true);
         let mut implementation: Option<OverloadImplementation> = None;
-        let mut should_error_out = false;
         loop {
             let point = file.points.get(current_name_index);
             if !point.calculated() {
@@ -1113,7 +1116,9 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             }
             let func_ref = NodeRef::new(file, current_name_index - NAME_TO_FUNCTION_DIFF);
             let Some(next_func_def) = func_ref.maybe_function() else {
-                todo!("probably just some other definition like foo = 3?")
+                // This is a statement like foo = 3, which is essentially a redefinition of the
+                // overload as an int
+                break;
             };
             let next_func = Self::new(func_ref, self.class);
             let new_t = next_func.ensure_cached_type_vars(i_s);
@@ -1124,7 +1129,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 Some(d) => d,
                 None => {
                     if next_maybe_decorated.is_some() {
-                        should_error_out = true;
+                        should_error_out.set(true);
                         next_func.node_ref.set_point(Point::new_specific(
                             Specific::OverloadUnreachable,
                             Locality::File,
@@ -1217,8 +1222,9 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             NodeRef::new(self.node_ref.file, self.expect_decorated_node().index())
                 .add_issue(i_s, IssueKind::OverloadInconsistentKind { kind })
         }
-        if functions.len() < 2 && !should_error_out {
+        if functions.len() < 2 && !should_error_out.get() {
             self.add_issue_onto_start_including_decorator(i_s, IssueKind::OverloadSingleNotAllowed);
+            should_error_out.set(true);
         } else if implementation.is_none()
             && !in_stub
             && self.class.map(|c| !c.is_protocol(i_s.db)).unwrap_or(true)
@@ -1248,9 +1254,11 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 .is_some_and(|implementation| implementation.callable.is_final)
         };
 
-        debug_assert!(!functions.is_empty());
-        (!should_error_out).then(|| OverloadDefinition {
-            functions: FunctionOverload::new(functions.into_boxed_slice()),
+        (!should_error_out.get()).then(|| OverloadDefinition {
+            functions: {
+                debug_assert!(functions.len() > 1);
+                FunctionOverload::new(functions.into_boxed_slice())
+            },
             implementation,
             is_final,
             is_override,

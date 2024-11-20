@@ -532,3 +532,29 @@ def foo(y): ...
 def f(x: type[int | str], y: type[int] | type[str]) -> None:
     reveal_type(foo(x))  # N: Revealed type is "int | str"
     reveal_type(foo(y))  # N: Revealed type is "int | str"
+
+[case invalid_overloads]
+from typing import overload
+
+def non_callable(func) -> int: ...
+
+@overload
+def foo(x: int) -> int: ...
+@overload
+def foo(x: str) -> str: ...  # E: An overloaded function outside a stub file must have an implementation
+foo = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "overloaded function")
+
+@overload  # E: "int" not callable
+@non_callable
+def bar(x: int) -> int: ...
+@overload
+def bar(x: str) -> str: ...
+def bar(x: object) -> object: ...
+
+@overload  # E: "int" not callable
+@non_callable
+def baz(x: int) -> int: ...
+@overload  # E: "int" not callable
+@non_callable
+def baz(x: str) -> str: ...
+def baz(x: object) -> object: ...
