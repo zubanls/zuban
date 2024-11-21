@@ -2148,7 +2148,7 @@ impl<'db: 'slf, 'slf> Inferred {
             from.file,
             "__setitem__",
             &CombinedArgs::new(&args, &KnownArgs::new(value, from)),
-            &|_| todo!(),
+            &|issue| from.add_issue(i_s, issue),
             &|_| {
                 slice_type.as_node_ref().add_issue(
                     i_s,

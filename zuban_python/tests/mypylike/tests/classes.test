@@ -664,6 +664,21 @@ def f(x: Callable[[], bool]) -> None: ...
 f(aint)
 f(astr)  # E: Argument 1 to "f" has incompatible type "A[str]"; expected "Callable[[], bool]"
 
+[case self_annotation_setitem_mismatch]
+from typing import Generic, TypeVar
+
+T = TypeVar("T")
+class A(Generic[T]):
+    def __init__(self, x: T):
+        self.x = x
+    def __setitem__(self: A[int], index, other) -> None: ...
+
+aint = A(1)
+astr = A("")
+
+aint[1] = 1
+astr[1] = 1  # E: Invalid self argument "A[str]" to attribute function "__setitem__" with type "Callable[[A[int], Any, Any], None]"
+
 [case unannotated_class_init_with_self_def_no_check_untyped_defs]
 class C:
     def __init__(self):
