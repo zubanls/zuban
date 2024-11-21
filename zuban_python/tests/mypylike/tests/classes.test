@@ -615,6 +615,24 @@ astr + astr  # E: Invalid self argument "A[str]" to attribute function "__add__"
 aint += aint
 astr += astr  # E: Invalid self argument "A[str]" to attribute function "__add__" with type "Callable[[A[int], object], Self]"
 
+[case self_annotation_radd_mismatch]
+from typing import Generic, TypeVar, Self
+
+T = TypeVar("T")
+class A(Generic[T]):
+    def __init__(self, x: T):
+        self.x = x
+    def __radd__(self: A[int], other: object) -> int: ...
+
+x = 1
+y = 1
+aint = A(1)
+astr = A("")
+x + aint
+y + astr  # E: Invalid self argument "A[str]" to attribute function "__radd__" with type "Callable[[A[int], object], int]"
+
+x += aint
+y += astr  # E: Invalid self argument "A[str]" to attribute function "__radd__" with type "Callable[[A[int], object], int]"
 
 [case unannotated_class_init_with_self_def_no_check_untyped_defs]
 class C:

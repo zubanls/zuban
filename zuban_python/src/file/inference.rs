@@ -2901,16 +2901,12 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         let mut had_error = false;
         let i_s = self.i_s;
         let result = Inferred::gather_simplified_union(i_s, |add_to_union| {
-            let had_self_binding_error = Cell::new(false);
             left.run_after_lookup_on_each_union_member(
                 i_s,
                 from.file,
                 op_infos.magic_method,
                 LookupKind::OnlyType,
-                &|issue| {
-                    from.add_issue(i_s, issue);
-                    had_self_binding_error.set(true)
-                },
+                &|issue| from.add_issue(i_s, issue),
                 &mut |l_type, lookup_result| {
                     let left_op_method = lookup_result.lookup.into_maybe_inferred();
                     for r_type in right.as_cow_type(i_s).iter_with_unpacked_unions(i_s.db) {
@@ -2938,7 +2934,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                         op_infos.reverse_magic_method,
                                         LookupKind::OnlyType,
                                         &mut ResultContext::Unknown,
-                                        &|_| todo!(),
+                                        &|issue| from.add_issue(i_s, issue),
                                         &|_| {},
                                     )
                                     .into_maybe_inferred(),
