@@ -7,7 +7,7 @@ use crate::{
     inference_state::InferenceState,
     params::matches_params_with_variance,
     type_::{
-        format_callable_params, format_params_as_param_spec, match_tuple_type_arguments,
+        format_callable_params, format_params_as_param_spec, match_tuple_type_arguments, AnyCause,
         CallableParams, GenericItem, ParamSpecArg, TupleArgs, Type, TypeArgs, Variance,
     },
 };
@@ -147,7 +147,12 @@ impl<'a> Generic<'a> {
                 };
                 GenericItem::TypeArgs(TypeArgs::new(ts1.args.merge_matching_parts(db, &ts2.args)))
             }
-            Self::ParamSpecArg(_params) => todo!(),
+            // TODO This is not correct, we could try to merge, but is it really important? It's
+            // not a big issue that Any is returned here, because this is only for fallbacks in case
+            // of errors.
+            Self::ParamSpecArg(_) => {
+                GenericItem::ParamSpecArg(ParamSpecArg::new_any(AnyCause::FromError))
+            }
         }
     }
 
