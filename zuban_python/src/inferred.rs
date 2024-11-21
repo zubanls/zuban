@@ -1762,7 +1762,7 @@ impl<'db: 'slf, 'slf> Inferred {
             in_file,
             name,
             args,
-            &|_| todo!(),
+            &|issue| args.add_issue(i_s, issue),
             on_lookup_error,
             OnTypeError::new(&on_argument_type_error),
         )

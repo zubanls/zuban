@@ -596,7 +596,7 @@ class A(Generic[T]):
 aint = A(1)
 astr = A("")
 aint == None
-astr == None
+astr == None  # E: Invalid self argument "A[str]" to attribute function "__eq__" with type "Callable[[A[int], object], bool]"
 
 [case unannotated_class_init_with_self_def_no_check_untyped_defs]
 class C:
