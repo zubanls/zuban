@@ -934,12 +934,11 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         }
                     },
                 );
-                let yields = iter_result.type_lookup_and_execute(
+                let yields = iter_result.type_lookup_and_execute_with_attribute_error(
                     i_s,
-                    from.file,
+                    from,
                     "__next__",
                     &NoArgs::new(from),
-                    &|_| todo!(),
                 );
                 generator.yield_type.error_if_not_matches(
                     i_s,

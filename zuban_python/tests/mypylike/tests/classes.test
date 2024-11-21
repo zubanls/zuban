@@ -1149,4 +1149,12 @@ from typing import Self
 class Foo:
     def __iter__(self) -> Self: ...
 
-for x in Foo(): ...  # E: Foo has no attribute "__next__"
+for x in Foo(): ...  # E: "Foo" has no attribute "__next__"
+
+[case yield_from_iter_without_next]
+from typing import Self
+class Foo:
+    def __iter__(self) -> Self: ...
+
+def f(x: int):
+    yield from Foo()  # E: "Foo" has no attribute "__next__"

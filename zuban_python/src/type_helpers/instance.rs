@@ -291,7 +291,7 @@ impl<'a> Instance<'a> {
                                 &infos.as_no_args(),
                                 &|t| {
                                     infos.add_issue(IssueKind::AttributeError {
-                                        object: t.format_short(i_s.db),
+                                        object: format!("\"{}\"", t.format_short(i_s.db)).into(),
                                         name: dunder_next.into(),
                                     })
                                 },
