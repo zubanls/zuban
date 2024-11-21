@@ -634,6 +634,20 @@ y + astr  # E: Invalid self argument "A[str]" to attribute function "__radd__" w
 x += aint
 y += astr  # E: Invalid self argument "A[str]" to attribute function "__radd__" with type "Callable[[A[int], object], int]"
 
+[case self_annotation_contains_mismatch]
+from typing import Generic, TypeVar, Self
+
+T = TypeVar("T")
+class A(Generic[T]):
+    def __init__(self, x: T):
+        self.x = x
+    def __contains__(self: A[int], other: object) -> bool: ...
+
+aint = A(1)
+astr = A("")
+1 in aint
+"" in astr  # E: Invalid self argument "A[str]" to attribute function "__contains__" with type "Callable[[A[int], object], bool]"
+
 [case unannotated_class_init_with_self_def_no_check_untyped_defs]
 class C:
     def __init__(self):
