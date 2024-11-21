@@ -1626,7 +1626,9 @@ impl<'db> Inference<'db, '_, '_> {
             normal_magic,
             LookupKind::OnlyType,
             &mut ResultContext::Unknown,
-            &|_issue| todo!(),
+            // Theoretically this should not be ignored, but for now I'm not sure if self types are
+            // working anyway.
+            &|_| (),
             &mut |forward, lookup_details| {
                 let check = |callable: &CallableContent| {
                     // Can only overlap if the classes differ. On the same class __radd__ will

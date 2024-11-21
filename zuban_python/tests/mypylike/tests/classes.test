@@ -1211,3 +1211,13 @@ class Foo:
 
 def f(x: int):
     1 in Foo()  # E: "Foo" has no attribute "__next__"
+
+[case overlapping_of_ops_with_incompatible_self_types]
+from typing import TypeVar, Generic, Any
+T = TypeVar('T')
+
+class A(Generic[T]):
+    def __add__(self: A[int], other: Any) -> int: ...
+
+class B(A[T]):
+    def __radd__(self: A[str], other: A[str]) -> str: ...  # E: Signatures of "__radd__" of "B[T]" and "__add__" of "A[str]" are unsafely overlapping
