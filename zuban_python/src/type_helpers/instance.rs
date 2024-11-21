@@ -395,8 +395,11 @@ impl<'a> Instance<'a> {
                     {
                         let i_s = i_s.with_class_context(&c);
                         let inference = c.node_ref.file.inference(&i_s);
-                        let Ok(inf) = inference.self_lookup_with_flow_analysis(c, self_symbol)
-                        else {
+                        let Ok(inf) = inference.self_lookup_with_flow_analysis(
+                            c,
+                            self_symbol,
+                            options.add_issue,
+                        ) else {
                             (options.add_issue)(IssueKind::CannotDetermineType {
                                 for_: name.into(),
                             });

@@ -1337,10 +1337,11 @@ impl Inference<'_, '_, '_> {
         })
     }
 
-    pub fn self_lookup_with_flow_analysis(
+    pub(crate) fn self_lookup_with_flow_analysis(
         &self,
         c: Class,
         self_symbol: NodeIndex,
+        add_issue: &dyn Fn(IssueKind),
     ) -> Result<Inferred, ()> {
         let name_def_node_ref = NodeRef::new(self.file, self_symbol - NAME_DEF_TO_NAME_DIFFERENCE);
         let p = name_def_node_ref.point();
@@ -1364,7 +1365,8 @@ impl Inference<'_, '_, '_> {
                     .lookup(
                         self.i_s,
                         name_def_node_ref.as_code(),
-                        InstanceLookupOptions::new(&|_| todo!())
+                        // It seems like this is not necessary, because it is added anyway
+                        InstanceLookupOptions::new(add_issue)
                             .with_skip_first_of_mro(self.i_s.db, &c)
                             .with_no_check_dunder_getattr(),
                     )
@@ -1493,14 +1495,9 @@ impl Inference<'_, '_, '_> {
             }
 
             fa.merge_conditional(self.i_s, true_frame, false_frame);
-            let Some(if_inf) = if_inf else {
-                return else_inf.unwrap_or_else(|| todo!("This is probably unlikely to happen"));
-            };
-            let Some(else_inf) = else_inf else {
-                return if_inf;
-            };
-
-            if_inf.simplified_union(self.i_s, else_inf)
+            if_inf
+                .unwrap()
+                .simplified_union(self.i_s, else_inf.unwrap())
         })
     }
 

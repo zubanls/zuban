@@ -1291,6 +1291,24 @@ class B(A):
         reveal_type(self.x)  # N: Revealed type is "int"
         self.x = 2
 
+[case self_access_before_assignment3]
+from typing import TypeVar, Generic
+
+T = TypeVar("T")
+class A(Generic[T]):
+    def foo(self: A[int]) -> int: ...
+
+class B(A[str]):
+    def __init__(self) -> None:
+        reveal_type(self.foo)  # E: Invalid self argument "B" to attribute function "foo" with type "Callable[[A[int]], int]" \
+                               # N: Revealed type is "def () -> int"
+        self.foo = lambda: 1  # E: Invalid self argument "B" to attribute function "foo" with type "Callable[[A[int]], int]" \
+                              # E: Property "foo" defined in "A" is read-only
+        reveal_type(self.foo)  # N: Revealed type is "def () -> Literal[1]?"
+
+    def bar(self) -> None:
+        reveal_type(self.foo)  # N: Revealed type is "def () -> int"
+
 [case sys_version_defined_smaller_than]
 import sys
 if sys.version_info < (3, 200):
