@@ -916,7 +916,7 @@ impl<'db> NameBinder<'db> {
                                     if let Some(local_index) =
                                         self.symbol_table.lookup_symbol(name_str)
                                     {
-                                        if self.has_specific_in_multi_definitions(
+                                        if self.has_specific_on_name_def(
                                             local_index,
                                             Specific::NonlocalVariable,
                                         ) {
@@ -963,7 +963,7 @@ impl<'db> NameBinder<'db> {
                                         if let Some(local_index) =
                                             self.symbol_table.lookup_symbol(name_str)
                                         {
-                                            let issue = if self.has_specific_in_multi_definitions(
+                                            let issue = if self.has_specific_on_name_def(
                                                 local_index,
                                                 Specific::GlobalVariable,
                                             ) {
@@ -1178,26 +1178,14 @@ impl<'db> NameBinder<'db> {
         }
     }
 
-    fn has_specific_in_multi_definitions(&self, name_index: NodeIndex, search: Specific) -> bool {
+    fn has_specific_on_name_def(&self, name_index: NodeIndex, search: Specific) -> bool {
         let p = self.db_infos.points.get(name_index);
         debug_assert_eq!(p.specific(), Specific::NameOfNameDef);
-        if p.node_index() == name_index {
-            self.db_infos
-                .points
-                .get(name_index - NAME_DEF_TO_NAME_DIFFERENCE)
-                .maybe_calculated_and_specific()
-                .is_some_and(|specific| specific == search)
-        } else {
-            MultiDefinitionIterator::new(self.db_infos.points, name_index).any(|index| {
-                self.db_infos
-                    .points
-                    .get(index)
-                    .maybe_calculated_and_specific()
-                    .is_some_and(|_specific| {
-                        todo!("This case is currently not reached, but probably necessary")
-                    })
-            })
-        }
+        self.db_infos
+            .points
+            .get(name_index - NAME_DEF_TO_NAME_DIFFERENCE)
+            .maybe_calculated_and_specific()
+            .is_some_and(|specific| specific == search)
     }
 
     fn index_function_name_and_param_defaults(
