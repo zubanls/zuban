@@ -217,7 +217,7 @@ impl<'file> NodeRef<'file> {
 
     pub fn expect_complex_type(&self) -> &Type {
         let Some(ComplexPoint::TypeInstance(value_t)) = self.complex() else {
-            unreachable!()
+            unreachable!("{:?}", self)
         };
         value_t
     }

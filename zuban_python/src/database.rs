@@ -313,7 +313,14 @@ impl fmt::Debug for Point {
                 .field("node_index", &self.node_index)
                 .field("needs_flow_analysis", &self.needs_flow_analysis());
             if self.kind() == PointKind::Specific {
-                s.field("specific", &self.specific());
+                let specific = self.specific();
+                s.field("specific", &specific);
+                if specific.is_partial() {
+                    let partial = self.partial_flags();
+                    s.field("partial: nullable", &partial.nullable);
+                    s.field("partial: reported_error", &partial.reported_error);
+                    s.field("partial: finished", &partial.finished);
+                }
             }
             if self.kind() == PointKind::Redirect || self.kind() == PointKind::FileReference {
                 s.field("file_index", &self.file_index().0);

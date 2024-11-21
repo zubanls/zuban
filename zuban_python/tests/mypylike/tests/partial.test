@@ -115,6 +115,17 @@ class A:
 
 reveal_type(A().x)  # N: Revealed type is "collections.defaultdict[int, list[str]] | None"
 
+[case partial_nullable_defaultdict_with_initialized_list]
+from foo import x
+reveal_type(x)  # N: Revealed type is "collections.defaultdict[Any, list[int]]"
+
+[file foo.py]
+from collections import defaultdict
+x = None  # E: Need type annotation for "x"
+x = defaultdict(list[int])
+x['?'].append(1)
+reveal_type(x)  # N: Revealed type is "collections.defaultdict[Any, list[int]]"
+
 [case partial_nullable_self_overwrite_mypy_compatible]
 # flags: --mypy-compatible
 class A:

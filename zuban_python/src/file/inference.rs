@@ -1359,7 +1359,11 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             // assignments or a `.` for self assignments or a star_targets / single_target / walrus
             // that is not used.
             let save_to = name_node_ref.add_to_node_index(NAME_DEF_TO_DEFAULTDICT_DIFF);
-            assert!(!save_to.point().calculated());
+            assert!(
+                !save_to.point().calculated()
+                    || save_to.point().maybe_calculated_and_specific()
+                        == Some(Specific::PartialNone)
+            );
             save_to.insert_type(t)
         };
         let check_assign_including_partials = |first_index, original: &Inferred, base_class| {
@@ -1398,7 +1402,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 };
                 let is_done = match point.maybe_specific() {
                     Some(Specific::PartialNone) => {
-                        if let Some(p) = value.maybe_new_nullable_partial_point(i_s, |_t| todo!()) {
+                        if let Some(p) = value.maybe_new_nullable_partial_point(i_s, |t| {
+                            set_defaultdict_type(saved_node_ref, t)
+                        }) {
                             saved_node_ref.set_point(p);
                             return;
                         }
