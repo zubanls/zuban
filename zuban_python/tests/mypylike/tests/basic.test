@@ -931,3 +931,10 @@ def foo(x: Never) -> None:
 
 [case fstring_forward_reference_invalid]
 class C(list[f'{"int"}']): ...  # E: Type expected within [...]
+
+[case global_after_name_def]
+x = 1
+def foo() -> None:
+    x = ""
+    global x  # E: SyntaxError: name 'x' is assigned to before global declaration
+    x = ""

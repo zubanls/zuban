@@ -927,7 +927,12 @@ impl<'db> NameBinder<'db> {
                                                 },
                                             )
                                         } else {
-                                            todo!()
+                                            self.add_issue(
+                                                name_index,
+                                                IssueKind::NameAssignedBeforeGlobalDeclaration {
+                                                    name: name_str.into(),
+                                                },
+                                            );
                                         }
                                     } else {
                                         let p = if let Some(i) =

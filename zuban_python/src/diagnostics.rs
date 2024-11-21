@@ -116,6 +116,7 @@ pub(crate) enum IssueKind {
     NonlocalAtModuleLevel,
     NonlocalNoBindingFound { name: Box<str> },
     NonlocalAndGlobal { name: Box<str> },
+    NameAssignedBeforeGlobalDeclaration { name: Box<str> },
     NameDefinedInLocalScopeBeforeNonlocal { name: Box<str> },
     OnlyClassTypeApplication,
     InvalidBaseClass,
@@ -1138,6 +1139,9 @@ impl<'db> Diagnostic<'db> {
             NonlocalAtModuleLevel => "nonlocal declaration not allowed at module level".to_string(),
             NonlocalNoBindingFound { name } => format!(r#"No binding for nonlocal "{name}" found"#),
             NonlocalAndGlobal { name } => format!(r#"Name "{name}" is nonlocal and global"#),
+            NameAssignedBeforeGlobalDeclaration { name } => format!(
+                r#"SyntaxError: name '{name}' is assigned to before global declaration"#
+            ),
             NameDefinedInLocalScopeBeforeNonlocal { name } => format!(
                 r#"Name "{name}" is already defined in local scope before nonlocal declaration"#
             ),
