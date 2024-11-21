@@ -2740,12 +2740,11 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             )
                             .into_inferred()
                             .execute(i_s, &NoArgs::new(from))
-                            .type_lookup_and_execute(
+                            .type_lookup_and_execute_with_attribute_error(
                                 i_s,
-                                from.file,
+                                from,
                                 "__next__",
                                 &NoArgs::new(from),
-                                &|_| todo!(),
                             )
                             .as_cow_type(i_s)
                             .is_simple_super_type_of(i_s, l_type);
