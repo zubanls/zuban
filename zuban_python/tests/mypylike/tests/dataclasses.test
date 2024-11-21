@@ -224,3 +224,16 @@ def f(b: bool):
     class B:
         y: str = field(init=b)  # E: "init" argument must be a True or False literal
         z: str = field(kw_only=b)  # E: "kw_only" argument must be a True or False literal
+
+[case dataclass_post_init_invalid_self_type_override]
+from typing import TypeVar, Generic, List
+from dataclasses import dataclass
+
+T = TypeVar("T")
+
+@dataclass
+class A(Generic[T]):
+    x: T
+
+    def __post_init__(self: A[int]) -> None: ...  # E: Invalid self argument "Self" to attribute function "__post_init__" with type "Callable[[A[int]], None]"
+    def y(self: A[int]) -> None: ...

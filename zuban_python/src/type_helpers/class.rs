@@ -2110,6 +2110,15 @@ impl<'db: 'a, 'a> Class<'a> {
     }
 
     pub fn as_type(&self, db: &Database) -> Type {
+        if matches!(self.generics, Generics::NotDefinedYet) {
+            let class_infos = self.use_cached_class_infos(db);
+            if let Some(t) = class_infos.undefined_generics_type.get() {
+                let t = t.as_ref();
+                if !matches!(t, Type::Class(_)) {
+                    return t.clone();
+                }
+            }
+        }
         Type::Class(self.as_generic_class(db))
     }
 
@@ -3163,7 +3172,14 @@ fn apply_generics_to_base_class<'a>(
                 ClassGenerics::None => {
                     Class::from_position(NodeRef::from_link(db, c.link), generics, None)
                 }
-                _ => unreachable!(),
+                _ => unreachable!(
+                    "{}",
+                    NodeRef::from_link(db, c.link)
+                        .maybe_class()
+                        .unwrap()
+                        .name()
+                        .as_code()
+                ),
             })
         }
         // TODO is this needed?
