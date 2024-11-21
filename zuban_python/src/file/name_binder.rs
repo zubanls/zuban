@@ -17,8 +17,6 @@ use crate::{
     TypeCheckerFlags,
 };
 
-use super::python_file::MultiDefinitionIterator;
-
 // We set global/nonlocal redirects on the points of "global" or "," literals.
 pub const GLOBAL_NONLOCAL_TO_NAME_DIFFERENCE: NodeIndex = 2;
 // Functions use the following points:

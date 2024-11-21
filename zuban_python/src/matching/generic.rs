@@ -100,8 +100,8 @@ impl<'a> Generic<'a> {
                 Self::TypeArg(ref t2) => t1.overlaps(i_s, matcher, t2),
                 _ => unreachable!(),
             },
-            Self::TypeArgs(_) => match other {
-                Self::TypeArgs(ref _t2) => todo!(),
+            Self::TypeArgs(ts1) => match other {
+                Self::TypeArgs(ts2) => ts1.args.overlaps(i_s, matcher, &ts2.args),
                 _ => unreachable!(),
             },
             Self::ParamSpecArg(_) => match other {

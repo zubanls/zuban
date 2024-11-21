@@ -7,7 +7,7 @@ use crate::{
     type_helpers::{Class, TypeOrClass},
 };
 
-use super::{CallableContent, CallableLike, ClassGenerics, Tuple, Type, TypeVarKind, TypedDict};
+use super::{CallableContent, CallableLike, ClassGenerics, Type, TypeVarKind, TypedDict};
 
 impl Type {
     pub fn simple_overlaps(&self, i_s: &InferenceState, other: &Self) -> bool {
@@ -75,7 +75,7 @@ impl Type {
             }
             Type::Tuple(t1) => {
                 if let Type::Tuple(t2) = other {
-                    return t1.overlaps_tuple(i_s, matcher, t2);
+                    return t1.args.overlaps(i_s, matcher, &t2.args);
                 }
             }
             Type::TypeVar(tv) => {
@@ -128,10 +128,10 @@ impl Type {
     }
 }
 
-impl Tuple {
-    fn overlaps_tuple(&self, i_s: &InferenceState, matcher: &mut Matcher, other: &Tuple) -> bool {
+impl TupleArgs {
+    pub fn overlaps(&self, i_s: &InferenceState, matcher: &mut Matcher, other: &Self) -> bool {
         use TupleArgs::*;
-        match (&self.args, &other.args) {
+        match (&self, &other) {
             (FixedLen(ts1), FixedLen(ts2)) => {
                 let mut value_generics = ts2.iter();
                 let mut overlaps = true;
@@ -221,7 +221,7 @@ impl Tuple {
                         TupleUnpack::TypeVarTuple(_tvt1) => true,
                     }
             }
-            (FixedLen(_), WithUnpack(_)) => other.overlaps_tuple(i_s, matcher, self),
+            (FixedLen(_), WithUnpack(_)) => other.overlaps(i_s, matcher, self),
         }
     }
 }
