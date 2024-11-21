@@ -2219,19 +2219,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     ) -> Inferred {
         match exprs.unpack() {
             StarExpressionContent::Expression(expr) => {
-                if true {
-                    self.infer_expression_with_context(expr, result_context)
-                } else {
-                    // TODO use this somewhere
-                    /*
-                    debug!("Found {} type vars in {}", type_vars.len(), expr.as_code());
-                    ComplexPoint::TypeAlias(Box::new(TypeAlias {
-                        type_vars: type_vars.into_boxed_slice(),
-                        type_: self.infer_expression(expr).as_type(self.i_s),
-                    }))
-                    */
-                    todo!()
-                }
+                self.infer_expression_with_context(expr, result_context)
             }
             StarExpressionContent::StarExpression(expr) => {
                 self.add_issue(expr.index(), IssueKind::StarredExpressionOnlyNoTarget);
