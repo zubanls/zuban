@@ -902,7 +902,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                         if class_kind == ClassKind::Normal {
                                             class_kind = ClassKind::Tuple;
                                         } else {
-                                            todo!()
+                                            debug!("TODO Tuple overwrite with other");
                                         }
                                         None
                                     }
@@ -963,7 +963,8 @@ impl<'db: 'a, 'a> Class<'a> {
                                                 ) {
                                                     class_kind = ClassKind::NamedTuple;
                                                 } else {
-                                                    todo!()
+                                                    debug!("TODO NamedTuple overwrite with other");
+                                                    class_kind = ClassKind::NamedTuple;
                                                 }
                                             }
                                             ClassKind::TypedDict => unreachable!(),
