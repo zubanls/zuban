@@ -2599,7 +2599,7 @@ impl Inference<'_, '_, '_> {
     ) -> Option<Type> {
         let expr = match arg.unpack() {
             NamedExpressionContent::Expression(expr) => expr,
-            NamedExpressionContent::Walrus(_) => todo!(),
+            NamedExpressionContent::Walrus(w) => w.expression(),
         };
 
         // One might think that we could just use type computation here for isinstance types. This
@@ -3911,10 +3911,25 @@ fn split_and_intersect(
     })
 }
 
+#[derive(PartialEq)]
 enum ExceptType {
     ContainsOnlyBaseExceptions,
     HasExceptionGroup,
     Invalid,
+}
+
+impl ExceptType {
+    fn from_types<'x>(i_s: &InferenceState, types: impl Iterator<Item = &'x Type>) -> Self {
+        let mut result = ExceptType::ContainsOnlyBaseExceptions;
+        for t in types {
+            match except_type(i_s, t, false) {
+                ExceptType::ContainsOnlyBaseExceptions => (),
+                x @ ExceptType::HasExceptionGroup => result = x,
+                ExceptType::Invalid => return ExceptType::Invalid,
+            }
+        }
+        result
+    }
 }
 
 fn except_type(i_s: &InferenceState, t: &Type, allow_tuple: bool) -> ExceptType {
@@ -3931,19 +3946,18 @@ fn except_type(i_s: &InferenceState, t: &Type, allow_tuple: bool) -> ExceptType 
         }
         Type::Any(_) => ExceptType::ContainsOnlyBaseExceptions,
         Type::Tuple(content) if allow_tuple => match &content.args {
-            TupleArgs::FixedLen(ts) => {
-                let mut result = ExceptType::ContainsOnlyBaseExceptions;
-                for t in ts.iter() {
-                    match except_type(i_s, t, false) {
-                        ExceptType::ContainsOnlyBaseExceptions => (),
-                        x @ ExceptType::HasExceptionGroup => result = x,
-                        ExceptType::Invalid => return ExceptType::Invalid,
-                    }
-                }
-                result
-            }
+            TupleArgs::FixedLen(ts) => ExceptType::from_types(i_s, ts.iter()),
             TupleArgs::ArbitraryLen(t) => except_type(i_s, t, false),
-            TupleArgs::WithUnpack(_) => todo!(),
+            TupleArgs::WithUnpack(w) => match &w.unpack {
+                TupleUnpack::TypeVarTuple(_) => ExceptType::Invalid,
+                TupleUnpack::ArbitraryLen(t) => ExceptType::from_types(
+                    i_s,
+                    w.before
+                        .iter()
+                        .chain(w.after.iter())
+                        .chain(std::iter::once(t)),
+                ),
+            },
         },
         Type::Union(union) => {
             let mut result = ExceptType::ContainsOnlyBaseExceptions;

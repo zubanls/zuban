@@ -1548,3 +1548,18 @@ def f(x: type[A]):
         reveal_type(x.b)  # N: Revealed type is "int"
         x.c  # E: "<subclass of "A" and "B">" has no attribute "c"
         x.d  # E: "<subclass of "A" and "B">" has no attribute "d"
+
+[case try_stmt_except_type]
+from typing import TypeVarTuple, Any
+Ts = TypeVarTuple("Ts")
+
+def f(a: Any, x: tuple[type[ValueError], *Ts], y: tuple[type[TypeError], *tuple[type[NotImplementedError], ...], type[ValueError]]):
+    try:
+        ...
+    except x as a:  # E: Exception type must be derived from BaseException (or be a tuple of exception classes)
+        reveal_type(a)  # N: Revealed type is "Any"
+
+    try:
+        ...
+    except y as b:
+        reveal_type(b)  # N: Revealed type is "TypeError | NotImplementedError | ValueError"

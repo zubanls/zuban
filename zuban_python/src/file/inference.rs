@@ -4484,7 +4484,19 @@ pub fn instantiate_except(i_s: &InferenceState, t: &Type) -> Type {
                 }
             }
             TupleArgs::ArbitraryLen(t) => add(Inferred::from_type(instantiate_except(i_s, t))),
-            TupleArgs::WithUnpack(_) => add(Inferred::new_any_from_error()),
+            TupleArgs::WithUnpack(w) => match &w.unpack {
+                TupleUnpack::TypeVarTuple(_) => add(Inferred::new_any_from_error()),
+                TupleUnpack::ArbitraryLen(t) => {
+                    for t in w
+                        .before
+                        .iter()
+                        .chain(std::iter::once(t))
+                        .chain(w.after.iter())
+                    {
+                        add(Inferred::from_type(instantiate_except(i_s, t)))
+                    }
+                }
+            },
         })
         .as_cow_type(i_s)
         .into_owned(),
