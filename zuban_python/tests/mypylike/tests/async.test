@@ -3,3 +3,9 @@ class A:
     def __await__(self) -> int: ...
 async def foo(a: A) -> None:
     await a  # E: Incompatible types in "await" (actual type "A", expected type "Awaitable[Any]")
+
+[case await_invalid_generator_type]
+class X:
+    def __await__(self) -> tuple[int]: ...
+async def foo() -> None:
+    await X()  # E: Incompatible types in "await" (actual type "X", expected type "Awaitable[Any]")

@@ -4514,13 +4514,15 @@ pub fn instantiate_except_star(i_s: &InferenceState, t: &Type) -> Type {
                 .db
                 .python_state
                 .exception_group_node_ref()
-                .unwrap_or_else(|| todo!("Star syntax without stdlib valid symbol"))
+                .unwrap_or_else(|| unimplemented!("Star syntax without builtins.ExceptionGroup"))
                 .as_link(),
             true => i_s
                 .db
                 .python_state
                 .base_exception_group_node_ref()
-                .unwrap_or_else(|| todo!("Star syntax without stdlib valid symbol"))
+                .unwrap_or_else(|| unimplemented!(
+                    "Star syntax without builtins.BaseExceptionGroup"
+                ))
                 .as_link(),
         },
         result,
@@ -4579,7 +4581,7 @@ fn gather_except_star(i_s: &InferenceState, t: &Type) -> Type {
     }
 }
 
-fn get_generator_return_type(db: &Database, had_issue: &mut impl FnMut(), t: &Type) -> Type {
+fn get_generator_return_type(db: &Database, had_issue: &impl Fn(), t: &Type) -> Type {
     match t {
         Type::Class(c) => {
             if c.link == db.python_state.generator_link() {
@@ -4600,7 +4602,10 @@ fn get_generator_return_type(db: &Database, had_issue: &mut impl FnMut(), t: &Ty
                 })
                 .collect(),
         )),
-        _ => todo!("{t:?}"),
+        _ => {
+            had_issue();
+            Type::Any(AnyCause::FromError)
+        }
     }
 }
 
@@ -4644,7 +4649,7 @@ pub fn await_(
 ) -> Inferred {
     let t = get_generator_return_type(
         i_s.db,
-        &mut || {
+        &|| {
             from.add_issue(
                 i_s,
                 IssueKind::IncompatibleTypes {
