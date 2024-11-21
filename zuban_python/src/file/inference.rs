@@ -2465,7 +2465,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 }));
                             }
                         }
-                        UnionValue::Multiple(_literals) => todo!(),
+                        UnionValue::Multiple(_) => (), // I'm unsure if we need logic here to match Mypy
                         UnionValue::Any => (),
                     }
                 }
