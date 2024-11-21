@@ -719,12 +719,11 @@ impl Type {
                 )
                 .into_inferred()
                 .execute(i_s, &infos.as_no_args())
-                .type_lookup_and_execute(
+                .type_lookup_and_execute_with_attribute_error(
                     i_s,
-                    infos.file(),
+                    infos.from,
                     "__next__",
                     &infos.as_no_args(),
-                    &|_| todo!(),
                 ),
             ),
         }
