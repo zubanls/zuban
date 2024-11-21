@@ -648,6 +648,22 @@ astr = A("")
 1 in aint
 "" in astr  # E: Invalid self argument "A[str]" to attribute function "__contains__" with type "Callable[[A[int], object], bool]"
 
+[case self_annotation_call_mismatch]
+from typing import Generic, TypeVar, Callable
+
+T = TypeVar("T")
+class A(Generic[T]):
+    def __init__(self, x: T):
+        self.x = x
+    def __call__(self: A[int]) -> bool: ...
+
+aint = A(1)
+astr = A("")
+
+def f(x: Callable[[], bool]) -> None: ...
+f(aint)
+f(astr)  # E: Argument 1 to "f" has incompatible type "A[str]"; expected "Callable[[], bool]"
+
 [case unannotated_class_init_with_self_def_no_check_untyped_defs]
 class C:
     def __init__(self):

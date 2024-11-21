@@ -19,7 +19,7 @@ mod utils;
 
 use std::{
     borrow::Cow,
-    cell::OnceCell,
+    cell::{Cell, OnceCell},
     fmt,
     hash::{Hash, Hasher},
     mem,
@@ -741,9 +741,18 @@ impl Type {
             )))),
             Type::Class(c) => {
                 let cls = c.class(i_s.db);
+                let had_issue = Cell::new(false);
                 Instance::new(cls, None)
-                    .type_lookup(i_s, |_issue| todo!(), "__call__")
+                    .type_lookup(
+                        i_s,
+                        |issue| {
+                            debug!("Caught issue: {issue:?}");
+                            had_issue.set(true);
+                        },
+                        "__call__",
+                    )
                     .into_maybe_inferred()
+                    .filter(|_| !had_issue.get())
                     .and_then(|i| i.as_cow_type(i_s).maybe_callable(i_s))
             }
             Type::FunctionOverload(overload) => Some(CallableLike::Overload(overload.clone())),
