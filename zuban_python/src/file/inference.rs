@@ -226,7 +226,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     Some(ImportResult::File(file_index)) => {
                         Point::new_file_reference(file_index, Locality::Todo)
                     }
-                    Some(ImportResult::Namespace { .. }) => todo!("Star import on namespace"),
+                    // Currently we don't support namespace star imports
+                    Some(ImportResult::Namespace { .. }) => {
+                        Point::new_specific(Specific::ModuleNotFound, Locality::Todo)
+                    }
                     None => Point::new_specific(Specific::ModuleNotFound, Locality::Todo),
                 };
                 self.file.points.set(keyword.index(), point);

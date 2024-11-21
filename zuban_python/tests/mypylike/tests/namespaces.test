@@ -102,3 +102,9 @@ from . import baz
 from ..bar import baz
 from ..bar import undefined  # E: Module "foo.bar" has no attribute "undefined"
 from ...foo.bar import baz  # E: No parent module -- cannot perform relative import
+
+[case namespace_star_import]
+from foo import bar as blub
+from foo import *
+bar  # E: Name "bar" is not defined
+[file foo/bar.py]
