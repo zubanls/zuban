@@ -755,6 +755,36 @@ class B:
 class M1(B, A[int]): ...  # E: Definition of "foo" in base class "B" is incompatible with definition in base class "A"
 class M2(A[int], B): ...
 
+[case multi_inheritance_self_type_mismatch]
+from typing import Generic, TypeVar
+from abc import abstractmethod
+
+T = TypeVar("T")
+
+class A(Generic[T]):
+    def foo(self: A[int]) -> None: ...
+
+class B(Generic[T]):
+    def foo(self: B[int]) -> None: ...
+
+class C(Generic[T]):
+    def bar(self: C[int]) -> None: ...
+
+class D(Generic[T]):
+    def bar(self: D[str]) -> None: ...
+
+class M1(B[int], A[int]): ...
+class M2(A[int], B[int]): ...
+
+class M3(C[int], D[int]): ...  # E: Definition of "bar" in base class "C" is incompatible with definition in base class "D"
+class M4(D[int], C[int]): ...  # E: Definition of "bar" in base class "D" is incompatible with definition in base class "C"
+
+class M5(B[str], A[int]): ...  # E: Definition of "foo" in base class "B" is incompatible with definition in base class "A"
+class M6(A[int], B[str]): ...  # E: Definition of "foo" in base class "A" is incompatible with definition in base class "B"
+
+class M7(D[str], C[int]): ...
+class M8(C[int], D[str]): ...
+
 [case closure_self_access]
 class Foo:
     x: int

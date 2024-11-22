@@ -2474,21 +2474,21 @@ pub fn check_multiple_inheritance<'x, BASES: Iterator<Item = TypeOrClass<'x>>>(
                     // Everything can inherit from object and it should therefore be fine to ignore
                     // it.
                     InstanceLookupOptions::new(&|issue| {
-                        debug!("Multi inheritance bind issue on name {name}: {issue:?}");
+                        debug!("Multi inheritance bind issue(inst2) on name {name}: {issue:?}");
                         had_lookup_issue.set(true)
                     })
                     .without_object(),
                 );
-                if had_lookup_issue.get() {
-                    /*
+                let mut add_multi_inheritance_issue = || {
                     add_issue(IssueKind::MultipleInheritanceIncompatibility {
                         name: name.into(),
                         class1: base1.name(db).into(),
                         class2: base2.name(db).into(),
-                    });
+                    })
+                };
+                if had_lookup_issue.get() {
+                    add_multi_inheritance_issue();
                     return;
-                    */
-                    todo!("{name}")
                 }
                 if let Some(inf) = inst2_lookup.lookup.into_maybe_inferred() {
                     if !should_check(name) {
@@ -2498,10 +2498,14 @@ pub fn check_multiple_inheritance<'x, BASES: Iterator<Item = TypeOrClass<'x>>>(
                     let inst1_lookup = instance1.lookup(
                         i_s,
                         name,
-                        InstanceLookupOptions::new(&|_| had_lookup_issue.set(true)),
+                        InstanceLookupOptions::new(&|issue| {
+                            debug!("Multi inheritance bind issue(inst1) on name {name}: {issue:?}");
+                            had_lookup_issue.set(true)
+                        }),
                     );
                     if had_lookup_issue.get() {
-                        todo!()
+                        add_multi_inheritance_issue();
+                        return;
                     }
                     if let Some(first) = inst1_lookup.lookup.into_maybe_inferred() {
                         if inst2_lookup.attr_kind.is_final() {
@@ -2529,11 +2533,7 @@ pub fn check_multiple_inheritance<'x, BASES: Iterator<Item = TypeOrClass<'x>>>(
                             || !inst1_lookup.attr_kind.is_writable()
                                 && inst2_lookup.attr_kind.is_writable()
                         {
-                            add_issue(IssueKind::MultipleInheritanceIncompatibility {
-                                name: name.into(),
-                                class1: base1.name(db).into(),
-                                class2: base2.name(db).into(),
-                            });
+                            add_multi_inheritance_issue()
                         }
                     }
                 }
