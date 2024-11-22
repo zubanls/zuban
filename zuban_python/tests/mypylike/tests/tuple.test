@@ -427,6 +427,13 @@ Ts = TypeVarTuple("Ts")
 def foo(*args: *tuple[*Ts, int, str]): ...
 
 def bar(*ts: *Ts):
-    bar(*(*ts, 1, ""))
-    bar(*(*ts, 1))
-    bar(*ts)
+    foo(*(*ts, 1, ""))
+    foo(*(*ts, ""))  # E: Too few arguments for "foo"
+    foo(*ts)  # E: Too few arguments for "foo"
+
+    foo(*ts, 1, "")
+    foo(*ts, 1)  # E: Too few arguments for "foo"  # E: Argument 2 to "foo" has incompatible type "int"; expected "str"
+    foo(*ts, "")  # E: Too few arguments for "foo"
+    foo(*ts, "", "")  # E: Argument 2 to "foo" has incompatible type "str"; expected "int"
+    foo(*ts, 1, 1)  # E: Argument 3 to "foo" has incompatible type "int"; expected "str"
+    foo(1, *ts, 1, 1)  # E: Argument 4 to "foo" has incompatible type "int"; expected "str"

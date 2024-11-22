@@ -1017,13 +1017,10 @@ fn match_unpack_internal(
                         }
                         return Match::new_false();
                     } else if with_unpack1.after.len() > with_unpack2.after.len() {
-                        /*
                         if let Some(on_too_few_args) = on_too_few_args {
                             on_too_few_args()
                         }
-                        return Match::new_false()
-                        */
-                        todo!()
+                        return Match::new_false();
                     }
                     matches &= check_type_var_tuple(
                         matcher,

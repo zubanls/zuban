@@ -836,7 +836,11 @@ pub(crate) fn match_arguments_against_params<
                                     }
                                     &args[(index as usize).min(arg_len - 1)]
                                 } else {
-                                    todo!()
+                                    let mut index = index + args.len() as isize;
+                                    if index < 0 {
+                                        index = 0;
+                                    }
+                                    &args[index as usize]
                                 };
                                 if let Some(star_t) = argument.maybe_star_type(i_s) {
                                     error_types.got = GotType::Starred(star_t)
