@@ -829,12 +829,17 @@ pub(crate) fn match_arguments_against_params<
                                     return;
                                 };
                                 let argument = if index >= 0 {
-                                    let arg_len = args.len();
-                                    if arg_len == 0 {
+                                    if args.len() == 0 {
                                         too_few_arguments();
                                         return;
                                     }
-                                    &args[(index as usize).min(arg_len - 1)]
+                                    // I'm pretty sure there were good reasons at the time why we
+                                    // have to limit ourselfs to the len. It would be nice if
+                                    // somebody eventually investigated and wrote a better comment
+                                    // here, but it is likely that there are some cases that are so
+                                    // complicated that it's just not worth it to 100% get the
+                                    // index correct.
+                                    &args[(index as usize).min(args.len() - 1)]
                                 } else {
                                     let mut index = index + args.len() as isize;
                                     if index < 0 {
