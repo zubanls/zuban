@@ -3718,17 +3718,28 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
         &self,
         annotation: ParamAnnotation,
     ) -> Cow<'file, Type> {
-        match annotation.maybe_starred() {
+        self.use_cached_maybe_starred_annotation_type_internal(
+            annotation.index(),
+            annotation.maybe_starred(),
+        )
+    }
+
+    fn use_cached_maybe_starred_annotation_type_internal(
+        &self,
+        annotation_index: NodeIndex,
+        maybe_starred: Result<StarExpression, Expression>,
+    ) -> Cow<'file, Type> {
+        match maybe_starred {
             Ok(star_expr) => {
                 debug_assert!(matches!(
-                    self.file.points.get(annotation.index()).specific(),
+                    self.file.points.get(annotation_index).specific(),
                     Specific::AnnotationOrTypeCommentWithTypeVars
                         | Specific::AnnotationOrTypeCommentWithoutTypeVars
                 ));
                 self.use_cached_annotation_internal(star_expr.index())
             }
             Err(expr) => {
-                self.use_cached_annotation_or_type_comment_type_internal(annotation.index(), expr)
+                self.use_cached_annotation_or_type_comment_type_internal(annotation_index, expr)
             }
         }
     }
@@ -5213,15 +5224,15 @@ pub fn use_cached_annotation_or_type_comment<'db: 'file, 'file>(
             | Specific::AnnotationOrTypeCommentClassVar
             | Specific::AnnotationOrTypeCommentFinal
     ));
+    let n = definition.add_to_node_index(ANNOTATION_TO_EXPR_DIFFERENCE as i64);
+    let maybe_starred = match n.maybe_expression() {
+        Some(expr) => Err(expr),
+        None => Ok(n.as_star_expression()),
+    };
     definition
         .file
         .inference(i_s)
-        .use_cached_annotation_or_type_comment_type_internal(
-            definition.node_index,
-            definition
-                .add_to_node_index(ANNOTATION_TO_EXPR_DIFFERENCE as i64)
-                .as_expression(),
-        )
+        .use_cached_maybe_starred_annotation_type_internal(definition.node_index, maybe_starred)
 }
 
 pub fn maybe_saved_annotation(node_ref: NodeRef) -> Option<&Type> {

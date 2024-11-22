@@ -419,3 +419,14 @@ def foo(t1: Tup, t2: tuple[int, float]) -> None:
               # N: Possible overload variants: \
               # N:     def __getitem__(self, SupportsIndex, /) -> Any \
               # N:     def __getitem__(self, slice, /) -> tuple[Any, ...]
+
+[case with_unpack_tuple_args_too_few_args]
+from typing import TypeVarTuple
+Ts = TypeVarTuple("Ts")
+
+def foo(*args: *tuple[*Ts, int, str]): ...
+
+def bar(*ts: *Ts):
+    bar(*(*ts, 1, ""))
+    bar(*(*ts, 1))
+    bar(*ts)
