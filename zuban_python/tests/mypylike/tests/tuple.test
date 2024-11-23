@@ -437,3 +437,30 @@ def bar(*ts: *Ts):
     foo(*ts, "", "")  # E: Argument 2 to "foo" has incompatible type "str"; expected "int"
     foo(*ts, 1, 1)  # E: Argument 3 to "foo" has incompatible type "int"; expected "str"
     foo(1, *ts, 1, 1)  # E: Argument 4 to "foo" has incompatible type "int"; expected "str"
+
+[case tuple_arbitrary_len_against_unpack_matching_with_type_var_tuple]
+from typing import TypeVarTuple, TypeVar
+Ts = TypeVarTuple("Ts")
+T = TypeVar("T")
+
+def f1(*args: int): ...
+def f2(*args: int | str): ...
+def f3(*args: int | str | bytes): ...
+
+def b(*args: *tuple[*Ts, int | str]): ...
+
+f1 = b
+f2 = b
+f3 = b  # E: Incompatible types in assignment (expression has type "Callable[[VarArg(Unpack[tuple[Unpack[Ts], int | str]])], Any]", variable has type "Callable[[VarArg(int | str | bytes)], Any]")
+
+def g1(tup: tuple[int, int], *args: int): ...
+def g2(tup: tuple[str, str], *args: int): ...
+def g3(tup: tuple[int, ...], *args: int): ...
+def g4(tup: tuple[str, ...], *args: int): ...
+
+def c(tup: tuple[*Ts], *args: *tuple[*Ts, int]): ...
+
+g1 = c  # E: Incompatible types in assignment (expression has type "Callable[[tuple[Unpack[Ts]], VarArg(Unpack[tuple[Unpack[Ts], int]])], Any]", variable has type "Callable[[tuple[int, int], VarArg(int)], Any]")
+g2 = c  # E: Incompatible types in assignment (expression has type "Callable[[tuple[Unpack[Ts]], VarArg(Unpack[tuple[Unpack[Ts], int]])], Any]", variable has type "Callable[[tuple[str, str], VarArg(int)], Any]")
+g3 = c
+g4 = c  # E: Incompatible types in assignment (expression has type "Callable[[tuple[Unpack[Ts]], VarArg(Unpack[tuple[Unpack[Ts], int]])], Any]", variable has type "Callable[[tuple[str, ...], VarArg(int)], Any]")

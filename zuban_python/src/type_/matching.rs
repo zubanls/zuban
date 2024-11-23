@@ -1032,18 +1032,26 @@ fn match_unpack_internal(
                         }),
                     )
                 }
-                TupleUnpack::ArbitraryLen(inner_t1) => match &with_unpack2.unpack {
-                    TupleUnpack::TypeVarTuple(_tvt2) => todo!(),
-                    TupleUnpack::ArbitraryLen(inner_t2) => {
-                        for t2 in before2_it {
-                            matches &= inner_t1.matches(i_s, matcher, t2, variance)
-                        }
-                        for t2 in after2_it {
-                            matches &= inner_t1.matches(i_s, matcher, t2, variance)
-                        }
-                        matches &= inner_t1.matches(i_s, matcher, inner_t2, variance);
+                TupleUnpack::ArbitraryLen(inner_t1) => {
+                    for (i, t2) in before2_it.enumerate() {
+                        matches &= check_type(matcher, inner_t1, t2, i as isize);
                     }
-                },
+                    for (i, t2) in after2_it.enumerate() {
+                        matches &= check_type(matcher, inner_t1, t2, -(i as isize));
+                    }
+                    match &with_unpack2.unpack {
+                        TupleUnpack::TypeVarTuple(tvt2) => {
+                            matches &= check_type_var_tuple(
+                                matcher,
+                                tvt2,
+                                TupleArgs::ArbitraryLen(Box::new(inner_t1.clone())),
+                            )
+                        }
+                        TupleUnpack::ArbitraryLen(inner_t2) => {
+                            matches &= inner_t1.matches(i_s, matcher, inner_t2, variance);
+                        }
+                    }
+                }
             };
         }
         TupleArgs::ArbitraryLen(t2) => {
@@ -1058,8 +1066,11 @@ fn match_unpack_internal(
                     matches &=
                         check_type_var_tuple(matcher, tvt, TupleArgs::ArbitraryLen(t2.clone()))
                 }
-                TupleUnpack::ArbitraryLen(_inner_t1) => {
-                    todo!()
+                TupleUnpack::ArbitraryLen(_) => {
+                    unreachable!(
+                        "Arbitrary len with unpacks should not exist without before and \
+                                  after. They should be simplified to normal arbitrary len"
+                    )
                 }
             }
         }

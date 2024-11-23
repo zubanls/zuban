@@ -450,8 +450,8 @@ pub fn matches_simple_params<
                                 }
                                 _ => {
                                     debug!("Param mismatch, because arbitrary len {:?} vs Unpack[{:?}]", t1.as_ref().map(|t| t.format_short(i_s.db)), tup2.format(&FormatData::new_short(i_s.db)));
-                                    matches &= Match::new_false();
                                     todo!()
+                                    //return Match::new_false();
                                 }
                             };
                         }
@@ -702,17 +702,25 @@ fn gather_unpack_args<'db: 'x, 'x, P: Param<'x>>(
                 }
             }
             WrappedParamType::Star(WrappedStar::UnpackedTuple(tup)) => {
-                unpacked_tup = Some(tup);
+                unpacked_tup = Some(tup.args.clone());
             }
-            WrappedParamType::Star(WrappedStar::ArbitraryLen(_t)) => todo!(),
+            WrappedParamType::Star(WrappedStar::ArbitraryLen(t)) => {
+                unpacked_tup = Some(TupleArgs::WithUnpack(WithUnpack {
+                    before: Default::default(),
+                    unpack: TupleUnpack::ArbitraryLen(
+                        t.map(|t| t.into_owned())
+                            .unwrap_or(Type::Any(AnyCause::Unannotated)),
+                    ),
+                    after: Default::default(),
+                }));
+            }
             WrappedParamType::Star(WrappedStar::ParamSpecArgs(_)) => return None,
             _ => break,
         }
         params.next();
     }
-    Some(if let Some(unpacked_tup) = &unpacked_tup {
-        let new_args = unpacked_tup.args.clone();
-        new_args.add_before_and_after(before, after)
+    Some(if let Some(unpacked_tup) = unpacked_tup {
+        unpacked_tup.add_before_and_after(before, after)
     } else {
         debug_assert!(after.is_empty());
         TupleArgs::FixedLen(before.into())
