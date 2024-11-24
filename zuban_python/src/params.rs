@@ -11,8 +11,9 @@ use crate::{
     matching::{Match, Matcher},
     type_::{
         empty_types, match_tuple_type_arguments, AnyCause, CallableParam, CallableParams,
-        ParamSpecUsage, ParamType, StarParamType, StarStarParamType, StringSlice, Tuple, TupleArgs,
-        TupleUnpack, Type, TypedDict, TypedDictMember, Variance, WithUnpack,
+        MaybeUnpackGatherer, ParamSpecUsage, ParamType, StarParamType, StarStarParamType,
+        StringSlice, Tuple, TupleArgs, TupleUnpack, Type, TypedDict, TypedDictMember, Variance,
+        WithUnpack,
     },
 };
 
@@ -686,45 +687,30 @@ fn gather_unpack_args<'db: 'x, 'x, P: Param<'x>>(
     db: &'db Database,
     params: &mut Peekable<impl Iterator<Item = P>>,
 ) -> Option<TupleArgs> {
-    let mut before = vec![];
-    let mut unpacked_tup = None;
-    let mut after = vec![];
+    let mut gatherer = MaybeUnpackGatherer::default();
     while let Some(next) = params.peek() {
         match next.specific(db) {
             WrappedParamType::PositionalOnly(t2) | WrappedParamType::PositionalOrKeyword(t2) => {
                 let t2 = t2
                     .map(|t2| t2.into_owned())
                     .unwrap_or(Type::Any(AnyCause::Unannotated));
-                if unpacked_tup.is_none() {
-                    before.push(t2)
-                } else {
-                    after.push(t2)
-                }
+                gatherer.add_type(t2)
             }
-            WrappedParamType::Star(WrappedStar::UnpackedTuple(tup)) => {
-                unpacked_tup = Some(tup.args.clone());
-            }
-            WrappedParamType::Star(WrappedStar::ArbitraryLen(t)) => {
-                unpacked_tup = Some(TupleArgs::WithUnpack(WithUnpack {
-                    before: Default::default(),
-                    unpack: TupleUnpack::ArbitraryLen(
-                        t.map(|t| t.into_owned())
-                            .unwrap_or(Type::Any(AnyCause::Unannotated)),
-                    ),
-                    after: Default::default(),
-                }));
-            }
+            WrappedParamType::Star(WrappedStar::UnpackedTuple(tup)) => gatherer
+                .add_tuple_args(&tup.args)
+                .expect("There shouldn't ever be an unpack after an unpack"),
+            WrappedParamType::Star(WrappedStar::ArbitraryLen(t)) => gatherer
+                .add_unpack(TupleUnpack::ArbitraryLen(
+                    t.map(|t| t.into_owned())
+                        .unwrap_or(Type::Any(AnyCause::Unannotated)),
+                ))
+                .expect("There shouldn't ever be an unpack after an unpack"),
             WrappedParamType::Star(WrappedStar::ParamSpecArgs(_)) => return None,
             _ => break,
         }
         params.next();
     }
-    Some(if let Some(unpacked_tup) = unpacked_tup {
-        unpacked_tup.add_before_and_after(before, after)
-    } else {
-        debug_assert!(after.is_empty());
-        TupleArgs::FixedLen(before.into())
-    })
+    Some(gatherer.as_tuple_args())
 }
 
 pub fn has_overlapping_params(

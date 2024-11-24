@@ -849,20 +849,27 @@ pub fn match_arbitrary_len_vs_unpack(
     with_unpack: &WithUnpack,
     variance: Variance,
 ) -> Match {
+    let mut matches = Match::new_true();
+    for t2 in with_unpack.before.iter() {
+        matches &= t1.matches(i_s, matcher, t2, variance)
+    }
     match &with_unpack.unpack {
-        TupleUnpack::TypeVarTuple(_) => Match::new_false(),
+        TupleUnpack::TypeVarTuple(tvt) => {
+            matches &= matcher.match_or_add_type_var_tuple(
+                i_s,
+                tvt,
+                TupleArgs::ArbitraryLen(t1.clone().into()),
+                variance,
+            )
+        }
         TupleUnpack::ArbitraryLen(inner_t2) => {
-            let mut matches = Match::new_true();
-            for t2 in with_unpack.before.iter() {
-                matches &= t1.matches(i_s, matcher, t2, variance)
-            }
             matches &= t1.matches(i_s, matcher, inner_t2, variance);
-            for t2 in with_unpack.after.iter() {
-                matches &= t1.matches(i_s, matcher, t2, variance)
-            }
-            matches
         }
     }
+    for t2 in with_unpack.after.iter() {
+        matches &= t1.matches(i_s, matcher, t2, variance)
+    }
+    matches
 }
 
 type OnMismatch<'x> = &'x dyn Fn(ErrorTypes, isize);

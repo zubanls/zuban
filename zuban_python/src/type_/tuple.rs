@@ -905,7 +905,7 @@ pub fn execute_tuple_class<'db>(
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct MaybeUnpackGatherer {
     before: Vec<Type>,
     unpack: Option<TupleUnpack>,
@@ -926,6 +926,19 @@ impl MaybeUnpackGatherer {
             self.before.extend(types);
         } else {
             self.after.extend(types);
+        }
+    }
+
+    pub fn add_tuple_args(&mut self, tup: &TupleArgs) -> Result<(), TupleUnpack> {
+        match tup {
+            TupleArgs::FixedLen(ts) => {
+                self.add_types(ts.iter().cloned());
+                Ok(())
+            }
+            TupleArgs::ArbitraryLen(t) => {
+                self.add_unpack(TupleUnpack::ArbitraryLen(t.as_ref().clone()))
+            }
+            TupleArgs::WithUnpack(w) => self.add_with_unpack(w.clone()),
         }
     }
 
