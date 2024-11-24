@@ -21,15 +21,15 @@ use crate::{
     new_class,
     node_ref::NodeRef,
     type_::{
-        add_named_tuple_param, new_collections_named_tuple, new_typing_named_tuple, AnyCause,
-        CallableContent, CallableParam, CallableParams, CallableWithParent, ClassGenerics,
-        Dataclass, DbString, Enum, EnumMember, FunctionKind, GenericClass, GenericItem,
-        GenericsList, Literal, LiteralKind, MaybeUnpackGatherer, NamedTuple, Namespace, NeverCause,
-        NewType, ParamSpecArg, ParamSpecUsage, ParamType, RecursiveType, StarParamType,
-        StarStarParamType, StringSlice, Tuple, TupleArgs, TupleUnpack, Type, TypeArgs,
-        TypeGuardInfo, TypeVar, TypeVarKind, TypeVarLike, TypeVarLikeUsage, TypeVarLikes,
-        TypeVarManager, TypeVarTupleUsage, TypeVarUsage, TypedDict, TypedDictGenerics,
-        TypedDictMember, UnionEntry, UnionType, WithUnpack,
+        add_named_tuple_param, add_param_spec_to_params, new_collections_named_tuple,
+        new_typing_named_tuple, AnyCause, CallableContent, CallableParam, CallableParams,
+        CallableWithParent, ClassGenerics, Dataclass, DbString, Enum, EnumMember, FunctionKind,
+        GenericClass, GenericItem, GenericsList, Literal, LiteralKind, MaybeUnpackGatherer,
+        NamedTuple, Namespace, NeverCause, NewType, ParamSpecArg, ParamSpecUsage, ParamType,
+        RecursiveType, StarParamType, StarStarParamType, StringSlice, Tuple, TupleArgs,
+        TupleUnpack, Type, TypeArgs, TypeGuardInfo, TypeVar, TypeVarKind, TypeVarLike,
+        TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypeVarTupleUsage, TypeVarUsage, TypedDict,
+        TypedDictGenerics, TypedDictMember, UnionEntry, UnionType, WithUnpack,
     },
     type_helpers::{
         cache_class_name, is_reexport_issue_if_check_needed, start_namedtuple_params, Class,
@@ -2795,12 +2795,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             .collect();
         match self.compute_slice_type_content(iterator.next().unwrap()) {
             TypeContent::ParamSpec(p) => {
-                params.push(CallableParam::new_anonymous(ParamType::Star(
-                    StarParamType::ParamSpecArgs(p.clone()),
-                )));
-                params.push(CallableParam::new_anonymous(ParamType::StarStar(
-                    StarStarParamType::ParamSpecKwargs(p),
-                )));
+                add_param_spec_to_params(&mut params, p);
                 TypeContent::Concatenate(CallableParams::Simple(params.into()))
             }
             TypeContent::Concatenate(_) => {

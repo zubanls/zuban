@@ -1,12 +1,13 @@
 use std::rc::Rc;
 
 use super::{
-    simplified_union_from_iterators_with_format_index, type_var_likes::CallableId, CallableContent,
-    CallableParam, CallableParams, ClassGenerics, Dataclass, FunctionOverload, GenericClass,
-    GenericItem, GenericsList, Intersection, NamedTuple, ParamSpecArg, ParamSpecTypeVars,
-    ParamSpecUsage, ParamType, RecursiveType, StarParamType, StarStarParamType, Tuple, TupleArgs,
-    Type, TypeArgs, TypeGuardInfo, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager,
-    TypeVarTupleUsage, TypedDict, TypedDictGenerics, UnionEntry, UnionType,
+    callable::add_param_spec_to_params, simplified_union_from_iterators_with_format_index,
+    type_var_likes::CallableId, CallableContent, CallableParam, CallableParams, ClassGenerics,
+    Dataclass, FunctionOverload, GenericClass, GenericItem, GenericsList, Intersection, NamedTuple,
+    ParamSpecArg, ParamSpecTypeVars, ParamSpecUsage, ParamType, RecursiveType, StarParamType,
+    StarStarParamType, Tuple, TupleArgs, Type, TypeArgs, TypeGuardInfo, TypeVarLike,
+    TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypeVarTupleUsage, TypedDict,
+    TypedDictGenerics, UnionEntry, UnionType,
 };
 use crate::{
     database::{Database, PointLink},
@@ -480,16 +481,7 @@ impl CallableParams {
                                 }
                                 match result {
                                     ReplacedParamSpec::ParamSpec(p) => {
-                                        new_params.push(CallableParam::new_anonymous(
-                                            ParamType::Star(StarParamType::ParamSpecArgs(
-                                                p.clone(),
-                                            )),
-                                        ));
-                                        new_params.push(CallableParam::new_anonymous(
-                                            ParamType::StarStar(
-                                                StarStarParamType::ParamSpecKwargs(p),
-                                            ),
-                                        ));
+                                        add_param_spec_to_params(new_params, p)
                                     }
                                     ReplacedParamSpec::Params(new) => match new {
                                         CallableParams::Simple(params) => {

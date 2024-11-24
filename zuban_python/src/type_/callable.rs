@@ -987,3 +987,12 @@ pub fn merge_class_type_vars(
     callable.type_vars = type_vars;
     Rc::new(callable)
 }
+
+pub fn add_param_spec_to_params(params: &mut Vec<CallableParam>, p: ParamSpecUsage) {
+    params.push(CallableParam::new_anonymous(ParamType::Star(
+        StarParamType::ParamSpecArgs(p.clone()),
+    )));
+    params.push(CallableParam::new_anonymous(ParamType::StarStar(
+        StarStarParamType::ParamSpecKwargs(p),
+    )));
+}

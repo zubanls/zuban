@@ -31,9 +31,9 @@ use typed_dict::rc_typed_dict_as_callable;
 
 pub(crate) use self::{
     callable::{
-        format_callable_params, format_params_as_param_spec, merge_class_type_vars,
-        CallableContent, CallableParam, CallableParams, ParamType, ParamTypeDetails, StarParamType,
-        StarStarParamType, TypeGuardInfo, WrongPositionalCount,
+        add_param_spec_to_params, format_callable_params, format_params_as_param_spec,
+        merge_class_type_vars, CallableContent, CallableParam, CallableParams, ParamType,
+        ParamTypeDetails, StarParamType, StarStarParamType, TypeGuardInfo, WrongPositionalCount,
     },
     dataclass::{
         check_dataclass_options, dataclass_init_func, dataclass_initialize, dataclasses_replace,
