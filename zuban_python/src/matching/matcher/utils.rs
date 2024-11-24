@@ -25,9 +25,9 @@ use crate::{
     },
     type_::{
         match_arbitrary_len_vs_unpack, match_unpack, CallableContent, CallableParams,
-        CallableWithParent, ClassGenerics, GenericItem, GenericsList, NeverCause,
-        ParamSpecTypeVars, ReplaceSelf, Tuple, TupleArgs, TupleUnpack, Type, TypeVarLikes,
-        TypeVarManager, Variance, WithUnpack,
+        CallableWithParent, ClassGenerics, GenericItem, GenericsList, MaybeUnpackGatherer,
+        NeverCause, ParamSpecTypeVars, ReplaceSelf, Tuple, TupleArgs, TupleUnpack, Type,
+        TypeVarLikes, TypeVarManager, Variance,
     },
     type_helpers::{Callable, Class, Function},
 };
@@ -768,52 +768,37 @@ pub(crate) fn match_arguments_against_params<
                     unreachable!()
                 };
 
-                let mut before = vec![];
-                let mut unpack = None;
-                let mut after = vec![];
+                let mut gatherer = MaybeUnpackGatherer::default();
                 for arg in args.iter() {
                     if arg.in_args_or_kwargs_and_arbitrary_len() {
-                        if unpack.is_some() {
+                        let maybe_err = match arg.infer(&mut ResultContext::Unknown) {
+                            InferredArg::Inferred(_) => {
+                                gatherer.add_unpack(TupleUnpack::ArbitraryLen(
+                                    arg.infer_inferrable(i_s, &mut ResultContext::Unknown)
+                                        .as_type(i_s),
+                                ))
+                            }
+                            InferredArg::StarredWithUnpack(with_unpack) => {
+                                gatherer.add_with_unpack(with_unpack)
+                            }
+                            InferredArg::ParamSpec { .. } => unreachable!(),
+                        };
+                        if maybe_err.is_err() {
                             add_issue(IssueKind::ArgumentIssue(
                                 "Passing multiple variadic unpacks in a call is not supported"
                                     .into(),
                             ));
                             return SignatureMatch::False { similar: false };
                         }
-                        match arg.infer(&mut ResultContext::Unknown) {
-                            InferredArg::Inferred(_) => {
-                                unpack = Some(TupleUnpack::ArbitraryLen(
-                                    arg.infer_inferrable(i_s, &mut ResultContext::Unknown)
-                                        .as_type(i_s),
-                                ))
-                            }
-                            InferredArg::StarredWithUnpack(with_unpack) => {
-                                before.extend_from_slice(&with_unpack.before);
-                                unpack = Some(with_unpack.unpack);
-                                after.extend_from_slice(&with_unpack.after);
-                            }
-                            InferredArg::ParamSpec { .. } => unreachable!(),
-                        }
                     } else {
                         let inf = arg.infer_inferrable(i_s, &mut ResultContext::Unknown);
                         let t = inf.as_type(i_s);
-                        if unpack.is_some() {
-                            after.push(t)
-                        } else {
-                            before.push(t)
-                        }
+                        gatherer.add_type(t)
                     }
                 }
                 match &expected.args {
                     TupleArgs::WithUnpack(with_unpack) => {
-                        let actual = match unpack {
-                            Some(unpack) => TupleArgs::WithUnpack(WithUnpack {
-                                before: before.into(),
-                                unpack,
-                                after: after.into(),
-                            }),
-                            None => TupleArgs::FixedLen(before.into()),
-                        };
+                        let actual = gatherer.as_tuple_args();
                         let match_ = match_unpack(
                             i_s,
                             matcher,
