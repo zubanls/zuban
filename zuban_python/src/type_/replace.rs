@@ -624,6 +624,18 @@ fn replace_param_spec_inner_type_var_likes(
 }
 
 impl TupleArgs {
+    pub fn replace_type_var_likes_and_self(
+        &self,
+        db: &Database,
+        callable: ReplaceTypeVarLike,
+    ) -> Option<Self> {
+        self.replace_internal(&mut ReplaceTypeVarLikes {
+            db,
+            callable,
+            replace_self: &|| None,
+        })
+    }
+
     fn replace_internal(&self, replacer: &mut impl Replacer) -> Option<Self> {
         Some(match self {
             TupleArgs::FixedLen(ts) => {

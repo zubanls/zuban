@@ -888,6 +888,35 @@ impl<'a> Matcher<'a> {
         self.replace_type_var_likes(db, t, |usage| Some(usage.as_any_generic_item()))
     }
 
+    pub fn replace_type_var_likes_for_nested_context_in_type_args(
+        &self,
+        db: &Database,
+        ts: TypeArgs,
+    ) -> TypeArgs {
+        ts.args
+            .replace_type_var_likes(
+                db,
+                &mut self.as_usage_closure(db, |usage| Some(usage.as_any_generic_item())),
+            )
+            .map(TypeArgs::new)
+            .unwrap_or(ts)
+    }
+
+    pub fn replace_type_var_likes_for_nested_context_in_param_spec(
+        &self,
+        db: &Database,
+        p: ParamSpecArg,
+    ) -> ParamSpecArg {
+        p.params
+            .replace_type_var_likes_and_self(
+                db,
+                &mut self.as_usage_closure(db, |usage| Some(usage.as_any_generic_item())),
+                &|| None,
+            )
+            .map(|p| ParamSpecArg::new(p, None))
+            .unwrap_or(p)
+    }
+
     pub fn replace_type_var_likes_for_unknown_type_vars<'x>(
         &self,
         db: &Database,
@@ -948,14 +977,18 @@ impl<'a> Matcher<'a> {
                     .generics()
                     .nth_usage(db, &usage)
                     .into_generic_item();
-                return match g {
-                    GenericItem::TypeArg(t) => Some(GenericItem::TypeArg(
+                return Some(match g {
+                    GenericItem::TypeArg(t) => GenericItem::TypeArg(
                         self.replace_type_var_likes_for_nested_context(db, &t)
                             .into_owned(),
-                    )),
-                    GenericItem::TypeArgs(_) => todo!(),
-                    GenericItem::ParamSpecArg(_) => todo!(),
-                };
+                    ),
+                    GenericItem::TypeArgs(ts) => GenericItem::TypeArgs(
+                        self.replace_type_var_likes_for_nested_context_in_type_args(db, ts),
+                    ),
+                    GenericItem::ParamSpecArg(p) => GenericItem::ParamSpecArg(
+                        self.replace_type_var_likes_for_nested_context_in_param_spec(db, p),
+                    ),
+                });
             }
             None
         }
