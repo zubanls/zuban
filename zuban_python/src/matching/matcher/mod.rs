@@ -32,11 +32,11 @@ use crate::{
         WrappedStarStar,
     },
     type_::{
-        match_tuple_type_arguments, AnyCause, CallableContent, CallableParam, CallableParams,
-        DbString, GenericItem, NeverCause, ParamSpecArg, ParamSpecUsage, ParamType, StarParamType,
-        Tuple, TupleArgs, TupleUnpack, Type, TypeArgs, TypeVarKind, TypeVarLike, TypeVarLikeUsage,
-        TypeVarLikes, TypeVarTupleUsage, TypeVarUsage, TypedDict, TypedDictGenerics, Variance,
-        WithUnpack,
+        add_param_spec_to_params, match_tuple_type_arguments, AnyCause, CallableContent,
+        CallableParam, CallableParams, DbString, GenericItem, NeverCause, ParamSpecArg,
+        ParamSpecUsage, ParamType, StarParamType, Tuple, TupleArgs, TupleUnpack, Type, TypeArgs,
+        TypeVarKind, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarTupleUsage, TypeVarUsage,
+        TypedDict, TypedDictGenerics, Variance, WithUnpack,
     },
     type_helpers::{Callable, Class, Function},
     utils::{join_with_commas, AlreadySeen},
@@ -1754,7 +1754,7 @@ fn infer_params_from_args<'db>(
                     StarParamType::UnpackedTuple(Tuple::new(TupleArgs::WithUnpack(u))),
                 )))
             }
-            InferredArg::ParamSpec(u) => todo!(),
+            InferredArg::ParamSpec(u) => add_param_spec_to_params(&mut params, u.clone()),
         };
     }
     CallableParams::new_simple(params.into())

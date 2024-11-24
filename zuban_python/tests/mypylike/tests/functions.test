@@ -174,3 +174,4 @@ def f(with_unpack1: tuple[int, *tuple[int, ...]],
     reveal_type(foo(*with_unpack2, *with_unpack2))  # N: Revealed type is "Never"
     reveal_type(foo(*with_unpack2, *arbitrary_len))  # N: Revealed type is "Never"
     reveal_type(foo(*with_unpack2, *args, **kwargs))  # N: Revealed type is "Never"
+    reveal_type(foo(1, *args, **kwargs))  # N: Revealed type is "def (Literal[1]?, *P.args, **P.kwargs)"
