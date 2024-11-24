@@ -190,7 +190,7 @@ a.f(1) # E: Argument 1 to "f" of "A" has incompatible type "tuple[int]"; expecte
 a.f(2, '')
 
 x: A[list[int]]
--- TODO x.f([""]) # E: Argument 1 to "f" of "A" has incompatible type "tuple[list[str]]"; expected "tuple[list[int]]"
+x.f([""]) # E: Argument 1 to "f" of "A" has incompatible type "tuple[list[str]]"; expected "tuple[list[int]]"
 -- TODO x.f([])
 
 [case param_spec_context_from_func]
@@ -205,7 +205,7 @@ a: A[int, str]
 
 def f(x: int) -> None: ...
 def g(x: int, y: str) -> None: ...
-a.f(f) # E: Argument 1 to "f" of "A" has incompatible type "tuple[int]"; expected "tuple[int, str]"
+a.f(f) # E: Argument 1 to "f" of "A" has incompatible type "Callable[[int], None]"; expected "Callable[[int, str], Any]" 
 a.f(g)
 
 a.g(1)  # E: Too few arguments for "g" of "A"

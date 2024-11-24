@@ -522,11 +522,12 @@ impl<'a> Matcher<'a> {
         }
 
         if !self.match_reverse {
+            let usage = TypeVarLikeUsage::TypeVarTuple(tvt.clone());
             if let Some(class) = self.class {
                 if class.node_ref.as_link() == tvt.in_definition {
                     let ts1 = class
                         .generics()
-                        .nth_usage(i_s.db, &TypeVarLikeUsage::TypeVarTuple(tvt.clone()))
+                        .nth_usage(i_s.db, &usage)
                         .expect_type_arguments();
                     return match_tuple_type_arguments(
                         i_s,
@@ -538,12 +539,10 @@ impl<'a> Matcher<'a> {
                 }
             }
             // If we're in a class context, we must also be in a method.
-            if let Some(func_class) =
-                self.maybe_func_class_for_usage(&TypeVarLikeUsage::TypeVarTuple(tvt.clone()))
-            {
+            if let Some(func_class) = self.maybe_func_class_for_usage(&usage) {
                 let ts1 = func_class
                     .generics()
-                    .nth_usage(i_s.db, &TypeVarLikeUsage::TypeVarTuple(tvt.clone()))
+                    .nth_usage(i_s.db, &usage)
                     .expect_type_arguments();
                 return match_tuple_type_arguments(
                     i_s,
@@ -599,6 +598,14 @@ impl<'a> Matcher<'a> {
                         &new_params(),
                     );
                 }
+            }
+            let usage = &TypeVarLikeUsage::ParamSpec(p1.clone());
+            if let Some(func_class) = self.maybe_func_class_for_usage(usage) {
+                let ts1 = func_class
+                    .generics()
+                    .nth_usage(i_s.db, usage)
+                    .expect_param_spec_arg();
+                return matches_params(i_s, &mut Matcher::default(), &ts1.params, &new_params());
             }
         }
         let mut star_count = 0;
