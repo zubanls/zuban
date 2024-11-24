@@ -24,12 +24,12 @@ use crate::{
         add_named_tuple_param, new_collections_named_tuple, new_typing_named_tuple, AnyCause,
         CallableContent, CallableParam, CallableParams, CallableWithParent, ClassGenerics,
         Dataclass, DbString, Enum, EnumMember, FunctionKind, GenericClass, GenericItem,
-        GenericsList, Literal, LiteralKind, NamedTuple, Namespace, NeverCause, NewType,
-        ParamSpecArg, ParamSpecUsage, ParamType, RecursiveType, StarParamType, StarStarParamType,
-        StringSlice, Tuple, TupleArgs, TupleUnpack, Type, TypeArgs, TypeGuardInfo, TypeVar,
-        TypeVarKind, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager,
-        TypeVarTupleUsage, TypeVarUsage, TypedDict, TypedDictGenerics, TypedDictMember, UnionEntry,
-        UnionType, WithUnpack,
+        GenericsList, Literal, LiteralKind, MaybeUnpackGatherer, NamedTuple, Namespace, NeverCause,
+        NewType, ParamSpecArg, ParamSpecUsage, ParamType, RecursiveType, StarParamType,
+        StarStarParamType, StringSlice, Tuple, TupleArgs, TupleUnpack, Type, TypeArgs,
+        TypeGuardInfo, TypeVar, TypeVarKind, TypeVarLike, TypeVarLikeUsage, TypeVarLikes,
+        TypeVarManager, TypeVarTupleUsage, TypeVarUsage, TypedDict, TypedDictGenerics,
+        TypedDictMember, UnionEntry, UnionType, WithUnpack,
     },
     type_helpers::{
         cache_class_name, is_reexport_issue_if_check_needed, start_namedtuple_params, Class,
@@ -4760,46 +4760,35 @@ impl<'a, I: Clone + Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
         type_computation: &mut TypeComputation,
         allow_empty_tuple: bool,
     ) -> TupleArgsDetails {
-        let mut before = vec![];
-        let mut after = vec![];
-        let mut unpack = None;
+        let mut gatherer = MaybeUnpackGatherer::default();
 
         let empty_not_explicit = Cell::new(true);
         let add_unpack = |type_computation: &mut TypeComputation,
                           from,
                           u,
-                          before: &mut Vec<_>,
-                          unpack: &mut Option<TupleUnpack>,
-                          after: &mut Vec<_>| {
-            let new_unpack = match u {
-                TypeCompTupleUnpack::TypeVarTuple(tvt) => TupleUnpack::TypeVarTuple(tvt),
-                TypeCompTupleUnpack::ArbitraryLen(t) => TupleUnpack::ArbitraryLen(*t),
-                TypeCompTupleUnpack::WithUnpack(with_unpack) => {
-                    before.extend(with_unpack.before.iter().cloned());
-                    after.extend(with_unpack.after.iter().cloned());
-                    with_unpack.unpack
+                          gatherer: &mut MaybeUnpackGatherer| {
+            let maybe_err = match u {
+                TypeCompTupleUnpack::TypeVarTuple(tvt) => {
+                    gatherer.add_unpack(TupleUnpack::TypeVarTuple(tvt))
                 }
-                TypeCompTupleUnpack::FixedLen(mut ts) => {
-                    before.append(&mut ts);
+                TypeCompTupleUnpack::ArbitraryLen(t) => {
+                    gatherer.add_unpack(TupleUnpack::ArbitraryLen(*t))
+                }
+                TypeCompTupleUnpack::WithUnpack(with_unpack) => {
+                    gatherer.add_with_unpack(with_unpack)
+                }
+                TypeCompTupleUnpack::FixedLen(ts) => {
+                    gatherer.add_types(ts.into_iter());
                     return;
                 }
             };
-            if unpack.is_some() {
+            if maybe_err.is_err() {
                 type_computation.add_issue(from, IssueKind::MoreThanOneUnpackTypeIsNotAllowed)
-            } else {
-                *unpack = Some(new_unpack);
             }
             empty_not_explicit.set(false);
         };
         if let Some((from, current_unpack)) = self.current_unpack.take() {
-            add_unpack(
-                type_computation,
-                from,
-                current_unpack,
-                &mut before,
-                &mut unpack,
-                &mut after,
-            )
+            add_unpack(type_computation, from, current_unpack, &mut gatherer)
         }
         for s in self.slices.by_ref() {
             empty_not_explicit.set(false);
@@ -4818,21 +4807,10 @@ impl<'a, I: Clone + Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
                 break;
             }
             match type_computation.convert_slice_type_or_tuple_unpack(t, s.as_node_ref()) {
-                TuplePart::Type(t) => {
-                    if unpack.is_none() {
-                        before.push(t)
-                    } else {
-                        after.push(t)
-                    }
+                TuplePart::Type(t) => gatherer.add_type(t),
+                TuplePart::TupleUnpack(u) => {
+                    add_unpack(type_computation, s.as_node_ref(), u, &mut gatherer)
                 }
-                TuplePart::TupleUnpack(u) => add_unpack(
-                    type_computation,
-                    s.as_node_ref(),
-                    u,
-                    &mut before,
-                    &mut unpack,
-                    &mut after,
-                ),
             }
         }
         if let Some(u) = self.current_unpack_reverse.take() {
@@ -4840,27 +4818,12 @@ impl<'a, I: Clone + Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
                 type_computation,
                 self.reverse_already_analyzed.unwrap(),
                 u,
-                &mut before,
-                &mut unpack,
-                &mut after,
+                &mut gatherer,
             )
         }
         TupleArgsDetails {
             empty_not_explicit: empty_not_explicit.get(),
-            args: if let Some(unpack) = unpack {
-                match unpack {
-                    TupleUnpack::ArbitraryLen(t) if before.is_empty() && after.is_empty() => {
-                        TupleArgs::ArbitraryLen(Box::new(t))
-                    }
-                    _ => TupleArgs::WithUnpack(WithUnpack {
-                        before: before.into(),
-                        unpack,
-                        after: after.into(),
-                    }),
-                }
-            } else {
-                TupleArgs::FixedLen(before.into())
-            },
+            args: gatherer.as_tuple_args(),
         }
     }
 }

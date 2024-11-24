@@ -904,3 +904,66 @@ pub fn execute_tuple_class<'db>(
         _ => unreachable!("Expected tuple.__new__ to return the tuple class"),
     }
 }
+
+#[derive(Default)]
+pub struct MaybeUnpackGatherer {
+    before: Vec<Type>,
+    unpack: Option<TupleUnpack>,
+    after: Vec<Type>,
+}
+
+impl MaybeUnpackGatherer {
+    pub fn add_type(&mut self, t: Type) {
+        if self.unpack.is_none() {
+            self.before.push(t)
+        } else {
+            self.after.push(t)
+        }
+    }
+
+    pub fn add_types(&mut self, types: impl Iterator<Item = Type>) {
+        if self.unpack.is_none() {
+            self.before.extend(types);
+        } else {
+            self.after.extend(types);
+        }
+    }
+
+    pub fn add_unpack(&mut self, unpack: TupleUnpack) -> Result<(), TupleUnpack> {
+        if self.unpack.is_some() {
+            Err(unpack)
+        } else {
+            self.unpack = Some(unpack);
+            Ok(())
+        }
+    }
+
+    pub fn add_with_unpack(&mut self, u: WithUnpack) -> Result<(), TupleUnpack> {
+        if self.unpack.is_some() {
+            return Err(u.unpack);
+        }
+        self.before.extend(u.before.iter().cloned());
+        self.unpack = Some(u.unpack);
+        self.after.extend(u.after.iter().cloned());
+        Ok(())
+    }
+
+    pub fn as_tuple_args(self) -> TupleArgs {
+        match self.unpack {
+            Some(unpack) => match unpack {
+                TupleUnpack::ArbitraryLen(t) if self.before.is_empty() && self.after.is_empty() => {
+                    TupleArgs::ArbitraryLen(Box::new(t))
+                }
+                _ => TupleArgs::WithUnpack(WithUnpack {
+                    before: self.before.into(),
+                    unpack,
+                    after: self.after.into(),
+                }),
+            },
+            None => {
+                debug_assert!(self.after.is_empty());
+                TupleArgs::FixedLen(self.before.into())
+            }
+        }
+    }
+}
