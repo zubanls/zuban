@@ -187,17 +187,10 @@ pub fn matches_simple_params<
                     | WrappedParamType::PositionalOrKeyword(t2) => {
                         matches &= match_(i_s, matcher, t1, t2)
                     }
-                    WrappedParamType::Star(s2) => match s2 {
-                        WrappedStar::ArbitraryLen(t2) => {
-                            matches &= match_(i_s, matcher, t1, t2);
-                            continue;
-                        }
-                        WrappedStar::ParamSpecArgs(_) => todo!(),
-                        WrappedStar::UnpackedTuple(_) => {
-                            debug!("Params mismatch because PositionalOnly vs. UnpackedTuple");
-                            return Match::new_false();
-                        }
-                    },
+                    WrappedParamType::Star(WrappedStar::ArbitraryLen(t2)) => {
+                        matches &= match_(i_s, matcher, t1, t2);
+                        continue;
+                    }
                     _ => {
                         debug!(
                             "Params mismatch, because had {:?} vs {:?}",
@@ -395,9 +388,6 @@ pub fn matches_simple_params<
                         (WrappedStar::ArbitraryLen(t1), WrappedStar::ArbitraryLen(t2)) => {
                             matches &= match_(i_s, matcher, t1, t2)
                         }
-                        (WrappedStar::ArbitraryLen(_), WrappedStar::ParamSpecArgs(_)) => {
-                            todo!()
-                        }
                         (WrappedStar::UnpackedTuple(tup1), WrappedStar::UnpackedTuple(tup2)) => {
                             matches &= Type::Tuple(tup1.clone()).matches(
                                 i_s,
@@ -456,7 +446,9 @@ pub fn matches_simple_params<
                                 }
                             };
                         }
-                        _ => todo!("{s1:?} {s2:?}"),
+                        (_, WrappedStar::ParamSpecArgs(_)) | (WrappedStar::ParamSpecArgs(_), _) => {
+                            unreachable!()
+                        }
                     },
                     _ => match s1 {
                         WrappedStar::UnpackedTuple(tup1) => {
@@ -491,12 +483,6 @@ pub fn matches_simple_params<
                             matches &= match_(i_s, matcher, t1, &t2)
                         }
                         (
-                            WrappedStarStar::ParamSpecKwargs(_u1),
-                            WrappedStarStar::ParamSpecKwargs(_u2),
-                        ) => {
-                            //debug_assert!(*u1 != u2, "Args should have been checked earlier")
-                        }
-                        (
                             WrappedStarStar::UnpackTypedDict(td1),
                             WrappedStarStar::UnpackTypedDict(td2),
                         ) => {
@@ -520,7 +506,10 @@ pub fn matches_simple_params<
                         (WrappedStarStar::ValueType(_), WrappedStarStar::UnpackTypedDict(_)) => {
                             return Match::new_false()
                         }
-                        (x, y) => todo!("{:?} {:?}", x, y),
+                        (_, WrappedStarStar::ParamSpecKwargs(_))
+                        | (WrappedStarStar::ParamSpecKwargs(_), _) => {
+                            unreachable!()
+                        }
                     },
                     ref specific2 @ (WrappedParamType::PositionalOrKeyword(ref t2)
                     | WrappedParamType::KeywordOnly(ref t2)) => match d1 {
@@ -744,10 +733,11 @@ fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
         | WrappedParamType::KeywordOnly(t2)
         | WrappedParamType::Star(WrappedStar::ArbitraryLen(t2))
         | WrappedParamType::StarStar(WrappedStarStar::ValueType(t2)) => t2,
-        WrappedParamType::Star(WrappedStar::ParamSpecArgs(_u)) => todo!(),
-        WrappedParamType::Star(WrappedStar::UnpackedTuple(_u)) => todo!(),
-        WrappedParamType::StarStar(WrappedStarStar::ParamSpecKwargs(_u)) => todo!(),
-        WrappedParamType::StarStar(WrappedStarStar::UnpackTypedDict(_u)) => todo!(),
+        // TODO work on these
+        WrappedParamType::Star(WrappedStar::ParamSpecArgs(_u)) => unimplemented!(),
+        WrappedParamType::Star(WrappedStar::UnpackedTuple(_u)) => unimplemented!(),
+        WrappedParamType::StarStar(WrappedStarStar::ParamSpecKwargs(_u)) => unimplemented!(),
+        WrappedParamType::StarStar(WrappedStarStar::UnpackTypedDict(_u)) => unimplemented!(),
     };
     let mut check_type = |i_s: &InferenceState<'db, '_>, t1: Option<&Type>, p2: P2| {
         if let Some(t1) = t1 {
@@ -857,9 +847,11 @@ fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
                 }
             }
             WrappedParamType::Star(WrappedStar::UnpackedTuple(_u)) => {
-                todo!()
+                // TODO
             }
-            WrappedParamType::Star(WrappedStar::ParamSpecArgs(_u)) => todo!(),
+            WrappedParamType::Star(WrappedStar::ParamSpecArgs(_u)) => {
+                // TODO
+            }
             WrappedParamType::StarStar(WrappedStarStar::ValueType(t1)) => {
                 for param2 in params2 {
                     if !check_type(i_s, t1.as_deref(), param2) {
@@ -869,7 +861,7 @@ fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
                 return !had_any_fallback_with_default;
             }
             WrappedParamType::StarStar(WrappedStarStar::ParamSpecKwargs(_u)) => {
-                todo!()
+                // TODO
             }
             WrappedParamType::StarStar(WrappedStarStar::UnpackTypedDict(_u)) => {
                 // TODO
