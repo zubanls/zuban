@@ -418,8 +418,8 @@ pub fn matches_simple_params<
                                             }
                                         }
                                         TupleUnpack::TypeVarTuple(tvt) => {
-                                            if !u1.before.is_empty() || !u1.after.is_empty() {
-                                                todo!()
+                                            for t1 in u1.before.iter().chain(u1.after.iter()) {
+                                                matches &= t1.matches(i_s, matcher, t2, variance);
                                             }
                                             matches &= matcher.match_or_add_type_var_tuple(
                                                 i_s,

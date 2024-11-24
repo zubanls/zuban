@@ -236,3 +236,22 @@ def b3(*args: *tuple[*tuple[int, ...], str]) -> None: ...
 f = b1
 f = b2  # E: Incompatible types in assignment (expression has type "Callable[[VarArg(Unpack[tuple[Unpack[Tuple[str, ...]], int]])], None]", variable has type "Callable[[VarArg(int)], None]")
 f = b3  # E: Incompatible types in assignment (expression has type "Callable[[VarArg(Unpack[tuple[Unpack[Tuple[int, ...]], str]])], None]", variable has type "Callable[[VarArg(int)], None]")
+
+[case func_unpack_with_type_var_tuple_vs_arbitrary_len]
+from typing import TypeVarTuple, Callable
+Ts = TypeVarTuple('Ts')
+def a1(*args: *tuple[*Ts, int]) -> None: ...
+def a2(*args: *tuple[*Ts, str]) -> None: ...
+
+def b(*args: int) -> None: ...
+
+if bool():
+    b = a1
+    b = a2  # E: Incompatible types in assignment (expression has type "Callable[[VarArg(Unpack[tuple[Unpack[Ts], str]])], None]", variable has type "Callable[[VarArg(int)], None]")
+a1 = b  # E: Incompatible types in assignment (expression has type "Callable[[VarArg(int)], None]", variable has type "Callable[[VarArg(Unpack[Tuple[Unpack[Ts], int]])], None]")
+
+def foo1(x: Callable[[*tuple[*Ts, int]], None]) -> tuple[*Ts]: ...
+def foo2(x: Callable[[*tuple[*Ts, str]], None]) -> tuple[*Ts]: ...
+reveal_type(foo1(b))  # N: Revealed type is "tuple[int, ...]"
+reveal_type(foo2(b))  # E: Argument 1 to "foo2" has incompatible type "Callable[[VarArg(int)], None]"; expected "Callable[[VarArg(Unpack[Tuple[Unpack[Tuple[int, ...]], str]])], None]" \
+                      # N: Revealed type is "tuple[int, ...]"
