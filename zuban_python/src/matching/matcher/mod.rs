@@ -746,8 +746,11 @@ impl<'a> Matcher<'a> {
                     for arg in args.iter() {
                         let inferred = match arg.infer(&mut ResultContext::Unknown) {
                             InferredArg::Inferred(inferred) => inferred,
-                            InferredArg::ParamSpec(_) => unreachable!(), // Handled above
-                            InferredArg::StarredWithUnpack(_) => todo!(),
+                            // It seems like simply skipping these is fine and it's not necessary
+                            // to add an issue here, because I was not able to create a case where
+                            // these are needed.
+                            InferredArg::ParamSpec(_) => continue,
+                            InferredArg::StarredWithUnpack(_) => continue,
                         };
                         let got_t = inferred.as_cow_type(i_s);
                         let got = GotType::from_arg(i_s, arg, &got_t);
