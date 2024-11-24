@@ -157,3 +157,20 @@ def f(x: tuple[int, *tuple[int, ...]],
     foo(*x)
     foo(*y)  # E: Argument 1 to "foo" has incompatible type "*tuple[Unpack[Tuple[str, ...]]]"; expected "int"
     foo(*z)  # E: Argument 1 to "foo" has incompatible type "*tuple[str, Unpack[Tuple[int, ...]]]"; expected "int"
+
+[case param_spec_matching_with_unpack]
+from typing import ParamSpec, Generic, Callable
+P = ParamSpec('P')
+
+def foo(*args: P.args, **kwargs: P.kwargs) -> Callable[P, None]: ...
+
+def f(with_unpack1: tuple[int, *tuple[int, ...]],
+      with_unpack2: tuple[str, *tuple[str, ...]],
+      arbitrary_len: tuple[int, ...],
+      *args: P.args,
+      **kwargs: P.kwargs):
+    reveal_type(foo(*with_unpack1))  # N: Revealed type is "def (int, *Unpack[Tuple[int, ...]])"
+    reveal_type(foo(*with_unpack2, 1))  # N: Revealed type is "def (str, *Unpack[tuple[Unpack[Tuple[str, ...]], Literal[1]?]])"
+    reveal_type(foo(*with_unpack2, *with_unpack2))  # N: Revealed type is "Never"
+    reveal_type(foo(*with_unpack2, *arbitrary_len))  # N: Revealed type is "Never"
+    reveal_type(foo(*with_unpack2, *args, **kwargs))  # N: Revealed type is "Never"

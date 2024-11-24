@@ -34,7 +34,7 @@ use crate::{
     type_::{
         match_tuple_type_arguments, AnyCause, CallableContent, CallableParam, CallableParams,
         DbString, GenericItem, NeverCause, ParamSpecArg, ParamSpecUsage, ParamType, StarParamType,
-        TupleArgs, TupleUnpack, Type, TypeArgs, TypeVarKind, TypeVarLike, TypeVarLikeUsage,
+        Tuple, TupleArgs, TupleUnpack, Type, TypeArgs, TypeVarKind, TypeVarLike, TypeVarLikeUsage,
         TypeVarLikes, TypeVarTupleUsage, TypeVarUsage, TypedDict, TypedDictGenerics, Variance,
         WithUnpack,
     },
@@ -1694,33 +1694,68 @@ fn infer_params_from_args<'db>(
     args: &[Arg<'db, '_>],
 ) -> CallableParams {
     let mut params = vec![];
-    for arg in args.iter() {
-        let inferred_arg = arg.infer(&mut ResultContext::Unknown);
-        let InferredArg::Inferred(inf) = inferred_arg else {
-            todo!()
-        };
-        let t = inf.as_type(i_s);
-        let p = match (
-            arg.is_keyword_argument(),
-            arg.in_args_or_kwargs_and_arbitrary_len(),
-        ) {
-            (false, false) => CallableParam::new_anonymous(ParamType::PositionalOnly(t)),
-            (true, false) => {
-                let Some(key) = arg.keyword_name(i_s.db) else {
-                    unreachable!()
+    let mut iterator = args.iter().peekable();
+    while let Some(arg) = iterator.next() {
+        match arg.infer(&mut ResultContext::Unknown) {
+            InferredArg::Inferred(inf) => {
+                let t = inf.as_type(i_s);
+                let p = match (
+                    arg.is_keyword_argument(),
+                    arg.in_args_or_kwargs_and_arbitrary_len(),
+                ) {
+                    (false, false) => CallableParam::new_anonymous(ParamType::PositionalOnly(t)),
+                    (true, false) => {
+                        let Some(key) = arg.keyword_name(i_s.db) else {
+                            unreachable!()
+                        };
+                        CallableParam {
+                            type_: ParamType::KeywordOnly(t),
+                            name: Some(DbString::RcStr(key.into())),
+                            has_default: false,
+                        }
+                    }
+                    (false, true) => CallableParam::new_anonymous(ParamType::Star(
+                        StarParamType::ArbitraryLen(t),
+                    )),
+                    (true, true) => todo!(),
                 };
-                CallableParam {
-                    type_: ParamType::KeywordOnly(t),
-                    name: Some(DbString::RcStr(key.into())),
-                    has_default: false,
+                params.push(p);
+            }
+            InferredArg::StarredWithUnpack(mut u) => {
+                let mut after: Result<std::rc::Rc<[Type]>, _> = u
+                    .after
+                    .iter()
+                    .map(|t| Ok(t.clone()))
+                    .chain(
+                        std::iter::from_fn(|| {
+                            iterator.next_if(|arg| {
+                                !arg.is_keyword_argument()
+                                    && !arg.in_args_or_kwargs_and_arbitrary_len()
+                            })
+                        })
+                        .map(|a| {
+                            match a.infer(&mut ResultContext::Unknown) {
+                                InferredArg::Inferred(inf) => Ok(inf.as_type(i_s)),
+                                _ => Err(()),
+                            }
+                        }),
+                    )
+                    .collect();
+                if let Some(next) = iterator.peek() {
+                    if !next.is_keyword_argument() && next.in_args_or_kwargs_and_arbitrary_len() {
+                        after = Err(())
+                    }
                 }
+                match after {
+                    Ok(after) => u.after = after,
+                    Err(()) => return CallableParams::Never(NeverCause::Inference),
+                };
+                params.push(CallableParam::new_anonymous(ParamType::Star(
+                    StarParamType::UnpackedTuple(Tuple::new(TupleArgs::WithUnpack(u))),
+                )))
             }
-            (false, true) => {
-                CallableParam::new_anonymous(ParamType::Star(StarParamType::ArbitraryLen(t)))
-            }
-            (true, true) => todo!(),
+            InferredArg::ParamSpec(u) => todo!(),
         };
-        params.push(p);
     }
     CallableParams::new_simple(params.into())
 }
