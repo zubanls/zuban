@@ -769,7 +769,11 @@ pub(crate) fn match_arguments_against_params<
                 };
 
                 let mut gatherer = MaybeUnpackGatherer::default();
-                for arg in args.iter() {
+                let context_args = matcher.replace_type_var_likes_for_nested_context_in_tuple_args(
+                    i_s.db,
+                    expected.args.clone(),
+                );
+                for (i, arg) in args.iter().enumerate() {
                     if arg.in_args_or_kwargs_and_arbitrary_len() {
                         let maybe_err = match arg.infer(&mut ResultContext::Unknown) {
                             InferredArg::Inferred(_) => {
@@ -791,7 +795,19 @@ pub(crate) fn match_arguments_against_params<
                             return SignatureMatch::False { similar: false };
                         }
                     } else {
-                        let inf = arg.infer_inferrable(i_s, &mut ResultContext::Unknown);
+                        // The context might not be correct, because there might have been a star
+                        // arg and we would therefore need negative indexing. But since this only
+                        // affects the context it might not be that urgent to change it.
+                        let context_t = match &context_args {
+                            TupleArgs::ArbitraryLen(t) => Some(t.as_ref()),
+                            TupleArgs::FixedLen(ts) => ts.get(i),
+                            TupleArgs::WithUnpack(with_unpack) => with_unpack.before.get(i),
+                        };
+                        let mut result_context = match context_t {
+                            Some(t) => ResultContext::new_known(t),
+                            None => ResultContext::Unknown,
+                        };
+                        let inf = arg.infer_inferrable(i_s, &mut result_context);
                         let t = inf.as_type(i_s);
                         gatherer.add_type(t)
                     }

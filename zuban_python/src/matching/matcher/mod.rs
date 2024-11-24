@@ -895,18 +895,16 @@ impl<'a> Matcher<'a> {
         self.replace_type_var_likes(db, t, |usage| Some(usage.as_any_generic_item()))
     }
 
-    pub fn replace_type_var_likes_for_nested_context_in_type_args(
+    pub fn replace_type_var_likes_for_nested_context_in_tuple_args(
         &self,
         db: &Database,
-        ts: TypeArgs,
-    ) -> TypeArgs {
-        ts.args
-            .replace_type_var_likes(
-                db,
-                &mut self.as_usage_closure(db, |usage| Some(usage.as_any_generic_item())),
-            )
-            .map(TypeArgs::new)
-            .unwrap_or(ts)
+        ts: TupleArgs,
+    ) -> TupleArgs {
+        ts.replace_type_var_likes(
+            db,
+            &mut self.as_usage_closure(db, |usage| Some(usage.as_any_generic_item())),
+        )
+        .unwrap_or(ts)
     }
 
     pub fn replace_type_var_likes_for_nested_context_in_param_spec(
@@ -989,9 +987,9 @@ impl<'a> Matcher<'a> {
                         self.replace_type_var_likes_for_nested_context(db, &t)
                             .into_owned(),
                     ),
-                    GenericItem::TypeArgs(ts) => GenericItem::TypeArgs(
-                        self.replace_type_var_likes_for_nested_context_in_type_args(db, ts),
-                    ),
+                    GenericItem::TypeArgs(ts) => GenericItem::TypeArgs(TypeArgs::new(
+                        self.replace_type_var_likes_for_nested_context_in_tuple_args(db, ts.args),
+                    )),
                     GenericItem::ParamSpecArg(p) => GenericItem::ParamSpecArg(
                         self.replace_type_var_likes_for_nested_context_in_param_spec(db, p),
                     ),

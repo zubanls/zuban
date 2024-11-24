@@ -190,8 +190,16 @@ a.f(1) # E: Argument 1 to "f" of "A" has incompatible type "tuple[int]"; expecte
 a.f(2, '')
 
 x: A[list[int]]
-x.f([""]) # E: Argument 1 to "f" of "A" has incompatible type "tuple[list[str]]"; expected "tuple[list[int]]"
--- TODO x.f([])
+x.f([""]) # E: List item 0 has incompatible type "str"; expected "int"
+x.f([])
+
+y: A[*tuple[list[int], ...]]
+y.f([], [""]) # E: List item 0 has incompatible type "str"; expected "int"
+y.f([], [])
+
+z: A[int, *tuple[list[int], ...], str]
+z.f(1, [""])  # E: Argument 1 to "f" of "A" has incompatible type "tuple[int, list[str]]"; expected "tuple[int, Unpack[Tuple[list[int], ...]], str]"
+z.f(1, [1], "")
 
 [case param_spec_context_from_func]
 from typing import ParamSpec, Generic, Callable, Any
