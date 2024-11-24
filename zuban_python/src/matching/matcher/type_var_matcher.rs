@@ -248,8 +248,20 @@ impl CalculatingTypeArg {
     fn update_upper_bound(&mut self, upper: BoundKind) {
         self.type_ = match &self.type_ {
             Bound::Upper(_) => Bound::Upper(upper),
-            Bound::Lower(lower) => Bound::UpperAndLower(upper, lower.clone()),
-            Bound::UpperAndLower(_, lower) => Bound::UpperAndLower(upper, lower.clone()),
+            Bound::Lower(lower) => {
+                if &upper == lower {
+                    Bound::Invariant(upper)
+                } else {
+                    Bound::UpperAndLower(upper, lower.clone())
+                }
+            }
+            Bound::UpperAndLower(_, lower) => {
+                if &upper == lower {
+                    Bound::Invariant(upper)
+                } else {
+                    Bound::UpperAndLower(upper, lower.clone())
+                }
+            }
             _ => unreachable!(),
         };
     }
@@ -261,9 +273,20 @@ impl CalculatingTypeArg {
         };
         self.type_ = match &self.type_ {
             Bound::Lower(old) => Bound::Lower(common(old, lower)),
-            Bound::Upper(upper) => Bound::UpperAndLower(upper.clone(), lower),
+            Bound::Upper(upper) => {
+                if upper == &lower {
+                    Bound::Invariant(lower)
+                } else {
+                    Bound::UpperAndLower(upper.clone(), lower)
+                }
+            }
             Bound::UpperAndLower(upper, old) => {
-                Bound::UpperAndLower(upper.clone(), common(old, lower))
+                let new_lower = common(old, lower);
+                if upper == &new_lower {
+                    Bound::Invariant(new_lower)
+                } else {
+                    Bound::UpperAndLower(upper.clone(), new_lower)
+                }
             }
             _ => unreachable!(),
         };

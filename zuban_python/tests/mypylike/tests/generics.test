@@ -844,6 +844,31 @@ reveal_type(foo.f)  # N: Revealed type is "builtins.int"
 reveal_type(bar.f)  # E: Invalid self argument "Foo[str]" to attribute function "f" with type "Callable[[Foo[int]], T]" \
                     # N: Revealed type is "Any"
 
+[case self_type_var_tuple_not_fixed]
+from typing import TypeVar, TypeVarTuple, Generic
+
+T = TypeVar("T")
+Ts = TypeVarTuple("Ts")
+class Foo(Generic[T, *Ts]):
+    def f(self: Foo[int, *Ts]) -> tuple[T, *Ts]: ...
+
+foo: Foo[int, bytes, float]
+bar: Foo[str, bytes, float]
+reveal_type(foo.f())  # N: Revealed type is "tuple[int, bytes, float]"
+bar.f()  # E: Invalid self argument "Foo[str, bytes, float]" to attribute function "f" with type "Callable[[Foo[int, Unpack[Ts]]], tuple[T, Unpack[Ts]]]"
+
+[case self_type_var_tuple_init_not_fixed]
+from typing import TypeVar, TypeVarTuple, Generic
+
+T = TypeVar("T")
+Ts = TypeVarTuple("Ts")
+class Foo(Generic[T, *Ts]):
+    def __init__(self: Foo[int, *Ts], *args: *Ts) -> None: ...
+
+
+bar: Foo[str, bytes, float]
+reveal_type(Foo(b'', 1.0))  # N: Revealed type is "__main__.Foo[int, Literal[b'']?, float]"
+
 [case generic_method_on_class_access_no_overload]
 from typing import TypeVar, Generic, Self, Tuple
 

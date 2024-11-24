@@ -7,8 +7,8 @@ use crate::{
     params::matches_params_with_variance,
     type_::{
         match_tuple_type_arguments, AnyCause, CallableParams, GenericItem, NeverCause,
-        ParamSpecArg, ParamType, StarStarParamType, TupleArgs, Type, TypeArgs, TypeVarKind,
-        TypeVarLike, TypeVarLikeUsage, Variance,
+        ParamSpecArg, ParamType, StarStarParamType, TupleArgs, TupleUnpack, Type, TypeArgs,
+        TypeVarKind, TypeVarLike, TypeVarLikeUsage, Variance,
     },
     type_helpers::Class,
 };
@@ -180,9 +180,24 @@ impl Bound {
                 {
                     true
                 }
-                BoundKind::TypeVarTuple(_) => todo!(),
+                BoundKind::TypeVarTuple(tuple_args) => match tuple_args {
+                    TupleArgs::WithUnpack(t) if t.before.is_empty() && t.after.is_empty() => {
+                        matches!(
+                            &t.unpack,
+                            TupleUnpack::TypeVarTuple(u)
+                            if u.in_definition == class.node_ref.as_link()
+                        )
+                    }
+                    _ => false,
+                },
                 BoundKind::ParamSpec(CallableParams::Simple(params)) => {
-                    params.last().is_some_and(|p| matches!(&p.type_, ParamType::StarStar(StarStarParamType::ParamSpecKwargs(u)) if u.in_definition == class.node_ref.as_link()))
+                    params.last().is_some_and(|p| {
+                        matches!(
+                            &p.type_,
+                            ParamType::StarStar(StarStarParamType::ParamSpecKwargs(u))
+                            if u.in_definition == class.node_ref.as_link()
+                        )
+                    })
                 }
                 _ => false,
             },
