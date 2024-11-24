@@ -164,14 +164,15 @@ P = ParamSpec('P')
 
 def foo(*args: P.args, **kwargs: P.kwargs) -> Callable[P, None]: ...
 
-def f(with_unpack1: tuple[int, *tuple[int, ...]],
-      with_unpack2: tuple[str, *tuple[str, ...]],
+def f(with_unpack: tuple[str, *tuple[str, ...]],
       arbitrary_len: tuple[int, ...],
+      dct: dict[str, int],
       *args: P.args,
       **kwargs: P.kwargs):
-    reveal_type(foo(*with_unpack1))  # N: Revealed type is "def (int, *Unpack[Tuple[int, ...]])"
-    reveal_type(foo(*with_unpack2, 1))  # N: Revealed type is "def (str, *Unpack[tuple[Unpack[Tuple[str, ...]], Literal[1]?]])"
-    reveal_type(foo(*with_unpack2, *with_unpack2))  # N: Revealed type is "Never"
-    reveal_type(foo(*with_unpack2, *arbitrary_len))  # N: Revealed type is "Never"
-    reveal_type(foo(*with_unpack2, *args, **kwargs))  # N: Revealed type is "Never"
+    reveal_type(foo(*with_unpack))  # N: Revealed type is "def (str, *Unpack[Tuple[str, ...]])"
+    reveal_type(foo(*with_unpack, 1))  # N: Revealed type is "def (str, *Unpack[tuple[Unpack[Tuple[str, ...]], Literal[1]?]])"
+    reveal_type(foo(*with_unpack, *with_unpack))  # N: Revealed type is "Never"
+    reveal_type(foo(*with_unpack, *arbitrary_len))  # N: Revealed type is "Never"
+    reveal_type(foo(*with_unpack, *args, **kwargs))  # N: Revealed type is "Never"
     reveal_type(foo(1, *args, **kwargs))  # N: Revealed type is "def (Literal[1]?, *P.args, **P.kwargs)"
+    reveal_type(foo(*with_unpack, **dct))  # N: Revealed type is "def (str, *Unpack[Tuple[str, ...]], **int)"
