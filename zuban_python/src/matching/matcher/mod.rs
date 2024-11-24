@@ -675,33 +675,30 @@ impl<'a> Matcher<'a> {
     ) -> SignatureMatch {
         let func_class;
         let param_spec_usage;
-        let params = if let Some(type_var_matcher) = self.type_var_matchers.first_mut() {
-            if type_var_matcher.match_in_definition == usage.in_definition {
-                let t = &mut type_var_matcher.calculating_type_args[usage.index.as_usize()].type_;
-                match t {
-                    // TODO fix variance for matching
-                    Bound::Invariant(BoundKind::ParamSpec(p))
-                    | Bound::Upper(BoundKind::ParamSpec(p))
-                    | Bound::Lower(BoundKind::ParamSpec(p)) => p,
-                    Bound::Uncalculated { .. } => {
-                        // TODO fix variance
-                        *t = Bound::new_param_spec(
-                            infer_params_from_args(i_s, &args),
-                            Variance::Contravariant,
-                        );
-                        return SignatureMatch::new_true();
-                    }
-                    Bound::UpperAndLower(
-                        BoundKind::ParamSpec(upper),
-                        BoundKind::ParamSpec(_lower),
-                    ) => {
-                        // TODO also match with lower
-                        upper
-                    }
-                    _ => unreachable!(),
+        let params = if let Some(matcher_index) = self.find_responsible_type_var_matcher_index(
+            usage.in_definition,
+            usage.temporary_matcher_id,
+        ) {
+            let tv_matcher = &mut self.type_var_matchers[matcher_index];
+            let t = &mut tv_matcher.calculating_type_args[usage.index.as_usize()].type_;
+            match t {
+                // TODO fix variance for matching
+                Bound::Invariant(BoundKind::ParamSpec(p))
+                | Bound::Upper(BoundKind::ParamSpec(p))
+                | Bound::Lower(BoundKind::ParamSpec(p)) => p,
+                Bound::Uncalculated { .. } => {
+                    // TODO fix variance
+                    *t = Bound::new_param_spec(
+                        infer_params_from_args(i_s, &args),
+                        Variance::Contravariant,
+                    );
+                    return SignatureMatch::new_true();
                 }
-            } else {
-                todo!("why?")
+                Bound::UpperAndLower(BoundKind::ParamSpec(upper), BoundKind::ParamSpec(_lower)) => {
+                    // TODO also match with lower
+                    upper
+                }
+                _ => unreachable!(),
             }
         } else if let Some(class) = self.class {
             param_spec_usage = class.nth_param_spec_usage(i_s.db, usage);
