@@ -225,3 +225,14 @@ x.f(lambda y: reveal_type(y))  # N: Revealed type is "list[int]"
 x.g([])
 x.g([1])
 x.g([2])
+
+[case func_arbitrary_len_args_vs_unpack]
+def f(*args: int) -> None: ...
+
+def b1(*args: *tuple[*tuple[int, ...], int]) -> None: ...
+def b2(*args: *tuple[*tuple[str, ...], int]) -> None: ...
+def b3(*args: *tuple[*tuple[int, ...], str]) -> None: ...
+
+f = b1
+f = b2  # E: Incompatible types in assignment (expression has type "Callable[[VarArg(Unpack[tuple[Unpack[Tuple[str, ...]], int]])], None]", variable has type "Callable[[VarArg(int)], None]")
+f = b3  # E: Incompatible types in assignment (expression has type "Callable[[VarArg(Unpack[tuple[Unpack[Tuple[int, ...]], str]])], None]", variable has type "Callable[[VarArg(int)], None]")

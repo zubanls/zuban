@@ -10,10 +10,10 @@ use crate::{
     inference_state::InferenceState,
     matching::{Match, Matcher},
     type_::{
-        empty_types, match_tuple_type_arguments, AnyCause, CallableParam, CallableParams,
-        MaybeUnpackGatherer, ParamSpecUsage, ParamType, StarParamType, StarStarParamType,
-        StringSlice, Tuple, TupleArgs, TupleUnpack, Type, TypedDict, TypedDictMember, Variance,
-        WithUnpack,
+        empty_types, match_arbitrary_len_vs_unpack, match_tuple_type_arguments, AnyCause,
+        CallableParam, CallableParams, MaybeUnpackGatherer, ParamSpecUsage, ParamType,
+        StarParamType, StarStarParamType, StringSlice, Tuple, TupleArgs, TupleUnpack, Type,
+        TypedDict, TypedDictMember, Variance, WithUnpack,
     },
 };
 
@@ -434,15 +434,15 @@ pub fn matches_simple_params<
                         }
                         (WrappedStar::ArbitraryLen(t1), WrappedStar::UnpackedTuple(tup2)) => {
                             match &tup2.args {
-                                TupleArgs::ArbitraryLen(t2) => {
+                                TupleArgs::WithUnpack(u2) => {
                                     if let Some(t1) = t1 {
-                                        matches &= t1.matches(i_s, matcher, t2, variance);
+                                        matches &= match_arbitrary_len_vs_unpack(
+                                            i_s, matcher, t1, u2, variance,
+                                        )
                                     }
                                 }
-                                _ => {
-                                    debug!("Param mismatch, because arbitrary len {:?} vs Unpack[{:?}]", t1.as_ref().map(|t| t.format_short(i_s.db)), tup2.format(&FormatData::new_short(i_s.db)));
-                                    todo!()
-                                    //return Match::new_false();
+                                TupleArgs::FixedLen(_) | TupleArgs::ArbitraryLen(_) => {
+                                    unreachable!()
                                 }
                             };
                         }
