@@ -476,17 +476,7 @@ pub fn matches_simple_params<
                         (
                             WrappedStarStar::UnpackTypedDict(td1),
                             WrappedStarStar::UnpackTypedDict(td2),
-                        ) => {
-                            let td1 = td1.clone();
-                            let mut check = |td_x: &TypedDict, td_y: &TypedDict| {
-                                td_x.matches(i_s, matcher, td_y, true)
-                            };
-                            matches &= match variance {
-                                Variance::Contravariant => check(&td2, &td1),
-                                Variance::Covariant => todo!(),
-                                Variance::Invariant => todo!(),
-                            }
-                        }
+                        ) => matches &= td2.matches(i_s, matcher, td1, true),
                         (WrappedStarStar::UnpackTypedDict(td1), WrappedStarStar::ValueType(t2)) => {
                             if let Some(t2) = t2 {
                                 for member in td1.members(i_s.db).iter() {
