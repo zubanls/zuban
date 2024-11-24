@@ -49,14 +49,7 @@ pub fn matches_params(
     params1: &CallableParams,
     params2: &CallableParams,
 ) -> Match {
-    let result = matches_params_detailed(
-        i_s,
-        matcher,
-        params1,
-        params2,
-        Variance::Contravariant,
-        false,
-    );
+    let result = matches_params_detailed(i_s, matcher, params1, params2, false);
     debug!(
         "Matched params {} against {}: {result:?}",
         params1.format(&FormatData::new_short(i_s.db), ParamsStyle::CallableParams),
@@ -70,8 +63,6 @@ fn matches_params_detailed(
     matcher: &mut Matcher,
     params1: &CallableParams,
     params2: &CallableParams,
-    // TODO it seems like this param is currently unused and always Contravariant
-    inner_variance: Variance, // Variance of the types of the params
     skip_first_of_params2: bool,
 ) -> Match {
     use CallableParams::*;
@@ -83,7 +74,7 @@ fn matches_params_detailed(
                     matcher,
                     params1.iter(),
                     params2.iter().skip(1).peekable(),
-                    inner_variance,
+                    Variance::Contravariant,
                 )
             } else {
                 matches_simple_params(
@@ -91,7 +82,7 @@ fn matches_params_detailed(
                     matcher,
                     params1.iter(),
                     params2.iter().peekable(),
-                    inner_variance,
+                    Variance::Contravariant,
                 )
             }
         }
