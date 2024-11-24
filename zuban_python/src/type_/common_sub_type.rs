@@ -17,73 +17,9 @@ impl Type {
         match (self, other) {
             (Type::Union(union), _) => common_sub_type_for_union(i_s, union, other),
             (_, Type::Union(union)) => common_sub_type_for_union(i_s, union, self),
-            (Type::Tuple(tup1), Type::Tuple(tup2)) => {
-                use TupleArgs::*;
-                Some(match (&tup1.args, &tup2.args) {
-                    (FixedLen(ts1), FixedLen(ts2)) => {
-                        if ts1.len() != ts2.len() {
-                            return None;
-                        }
-                        let mut entries = vec![];
-                        for (t1, t2) in ts1.iter().zip(ts2.iter()) {
-                            entries.push(t1.common_sub_type(i_s, t2)?)
-                        }
-                        Type::Tuple(Tuple::new_fixed_length(entries.into()))
-                    }
-                    (ArbitraryLen(t1), ArbitraryLen(t2)) => {
-                        Type::Tuple(Tuple::new_arbitrary_length(t1.common_sub_type(i_s, t2)?))
-                    }
-                    (ArbitraryLen(t2), FixedLen(ts1)) | (FixedLen(ts1), ArbitraryLen(t2)) => {
-                        let mut entries = vec![];
-                        for t1 in ts1.iter() {
-                            entries.push(t1.common_sub_type(i_s, t2)?)
-                        }
-                        Type::Tuple(Tuple::new_fixed_length(entries.into()))
-                    }
-                    (FixedLen(ts), WithUnpack(w_u)) | (WithUnpack(w_u), FixedLen(ts)) => {
-                        let fetch_in_between =
-                            ts.len().checked_sub(w_u.before.len() + w_u.after.len())?;
-                        let mut entries = vec![];
-                        let middle_t = match &w_u.unpack {
-                            TupleUnpack::TypeVarTuple(_) => return None,
-                            TupleUnpack::ArbitraryLen(t) => t,
-                        };
-                        let between = std::iter::repeat(middle_t).take(fetch_in_between);
-                        for (t1, t2) in ts
-                            .iter()
-                            .zip(w_u.before.iter().chain(between).chain(w_u.after.iter()))
-                        {
-                            entries.push(t1.common_sub_type(i_s, t2)?)
-                        }
-                        Type::Tuple(Tuple::new_fixed_length(entries.into()))
-                    }
-                    (WithUnpack(w), ArbitraryLen(t)) | (ArbitraryLen(t), WithUnpack(w)) => {
-                        Type::Tuple(Tuple::new(TupleArgs::WithUnpack(type_::WithUnpack {
-                            before: w
-                                .before
-                                .iter()
-                                .map(|t2| t2.common_sub_type(i_s, t))
-                                .collect::<Option<_>>()?,
-                            unpack: TupleUnpack::ArbitraryLen(match &w.unpack {
-                                TupleUnpack::TypeVarTuple(_) => return None,
-                                TupleUnpack::ArbitraryLen(t2) => t2.common_sub_type(i_s, t)?,
-                            }),
-                            after: w
-                                .after
-                                .iter()
-                                .map(|t2| t2.common_sub_type(i_s, t))
-                                .collect::<Option<_>>()?,
-                        })))
-                    }
-                    (WithUnpack(w1), WithUnpack(w2)) => {
-                        if w1 == w2 {
-                            Type::Tuple(Tuple::new(WithUnpack(w1.clone())))
-                        } else {
-                            return None;
-                        }
-                    }
-                })
-            }
+            (Type::Tuple(tup1), Type::Tuple(tup2)) => Some(Type::Tuple(Tuple::new(
+                tup1.args.common_sub_type(i_s, &tup2.args)?,
+            ))),
             (Type::TypedDict(td1), Type::TypedDict(td2)) => Some(td1.union(i_s, td2)),
             (Type::Callable(c1), _) => common_sub_type_for_callable_against_type(i_s, c1, other),
             (_, Type::Callable(c2)) => common_sub_type_for_callable_against_type(i_s, c2, self),
@@ -109,6 +45,75 @@ impl Type {
                 }
             }
         }
+    }
+}
+
+impl TupleArgs {
+    pub fn common_sub_type(&self, i_s: &InferenceState, other: &Self) -> Option<Self> {
+        use TupleArgs::*;
+        Some(match (self, other) {
+            (FixedLen(ts1), FixedLen(ts2)) => {
+                if ts1.len() != ts2.len() {
+                    return None;
+                }
+                let mut entries = vec![];
+                for (t1, t2) in ts1.iter().zip(ts2.iter()) {
+                    entries.push(t1.common_sub_type(i_s, t2)?)
+                }
+                FixedLen(entries.into())
+            }
+            (ArbitraryLen(t1), ArbitraryLen(t2)) => {
+                ArbitraryLen(t1.common_sub_type(i_s, t2)?.into())
+            }
+            (ArbitraryLen(t2), FixedLen(ts1)) | (FixedLen(ts1), ArbitraryLen(t2)) => {
+                let mut entries = vec![];
+                for t1 in ts1.iter() {
+                    entries.push(t1.common_sub_type(i_s, t2)?)
+                }
+                FixedLen(entries.into())
+            }
+            (FixedLen(ts), WithUnpack(w_u)) | (WithUnpack(w_u), FixedLen(ts)) => {
+                let fetch_in_between = ts.len().checked_sub(w_u.before.len() + w_u.after.len())?;
+                let mut entries = vec![];
+                let middle_t = match &w_u.unpack {
+                    TupleUnpack::TypeVarTuple(_) => return None,
+                    TupleUnpack::ArbitraryLen(t) => t,
+                };
+                let between = std::iter::repeat(middle_t).take(fetch_in_between);
+                for (t1, t2) in ts
+                    .iter()
+                    .zip(w_u.before.iter().chain(between).chain(w_u.after.iter()))
+                {
+                    entries.push(t1.common_sub_type(i_s, t2)?)
+                }
+                FixedLen(entries.into())
+            }
+            (WithUnpack(w), ArbitraryLen(t)) | (ArbitraryLen(t), WithUnpack(w)) => {
+                WithUnpack(type_::WithUnpack {
+                    before: w
+                        .before
+                        .iter()
+                        .map(|t2| t2.common_sub_type(i_s, t))
+                        .collect::<Option<_>>()?,
+                    unpack: TupleUnpack::ArbitraryLen(match &w.unpack {
+                        TupleUnpack::TypeVarTuple(_) => return None,
+                        TupleUnpack::ArbitraryLen(t2) => t2.common_sub_type(i_s, t)?,
+                    }),
+                    after: w
+                        .after
+                        .iter()
+                        .map(|t2| t2.common_sub_type(i_s, t))
+                        .collect::<Option<_>>()?,
+                })
+            }
+            (WithUnpack(w1), WithUnpack(w2)) => {
+                if w1 == w2 {
+                    WithUnpack(w1.clone())
+                } else {
+                    return None;
+                }
+            }
+        })
     }
 }
 
