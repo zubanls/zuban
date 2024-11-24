@@ -861,7 +861,9 @@ pub(crate) fn match_arguments_against_params<
                         );
                         matches &= match_;
                     }
-                    TupleArgs::ArbitraryLen(_) => todo!(),
+                    // I tried to figure out a way to make this reachable, but it seems like it
+                    // isn't.
+                    TupleArgs::ArbitraryLen(_) => unreachable!(""),
                     TupleArgs::FixedLen(_) => unreachable!(),
                 }
             }

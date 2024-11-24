@@ -147,3 +147,13 @@ def foo(x: Callable[P, int], *args: P.args, **kwargs: P.kwargs) -> None:
     args[1]
     kwargs["x"]
     kwargs[1]  # E: Invalid index type "int" for "dict[str, object]"; expected type "str"
+
+[case with_unpack_arg_vs_arbitary_len_param]
+def foo(*args: int): ...
+
+def f(x: tuple[int, *tuple[int, ...]],
+      y: tuple[int, *tuple[str, ...]],
+      z: tuple[str, *tuple[int, ...]]):
+    foo(*x)
+    foo(*y)  # E: Argument 1 to "foo" has incompatible type "*tuple[Unpack[Tuple[str, ...]]]"; expected "int"
+    foo(*z)  # E: Argument 1 to "foo" has incompatible type "*tuple[str, Unpack[Tuple[int, ...]]]"; expected "int"
