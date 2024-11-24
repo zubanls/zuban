@@ -290,7 +290,9 @@ impl BoundKind {
                 t1.common_sub_type(i_s, t2)
                     .unwrap_or(Type::Never(NeverCause::Inference)),
             )),
-            (Self::TypeVarTuple(_tup1), Self::TypeVarTuple(_tup2)) => todo!(),
+            (Self::TypeVarTuple(tup1), Self::TypeVarTuple(tup2)) => {
+                Some(Self::TypeVarTuple(tup1.common_sub_type(i_s, tup2)?))
+            }
             (Self::ParamSpec(params1), Self::ParamSpec(params2)) => {
                 debug!(
                     "Common subtype for ParamSpec '{}' and '{}'",

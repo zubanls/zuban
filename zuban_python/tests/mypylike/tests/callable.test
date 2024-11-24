@@ -498,6 +498,26 @@ cb: Callable[[Callable[[B], B]], None]
 reveal_type(meet_test(ca, cb)) # N: Revealed type is "def (__main__.B) -> __main__.B"
 reveal_type(meet_test(cb, ca)) # N: Revealed type is "def (__main__.B) -> __main__.B"
 
+[case sub_type_of_type_var_tuples]
+from typing import Callable, TypeVarTuple, ParamSpec, Generic
+Ts = TypeVarTuple('Ts')
+
+class A: ...
+class B(A): ...
+class C(B): ...
+
+def meet_test(x: Callable[[*Ts], None], y: Callable[[*Ts], None]) -> tuple[*Ts]: ...
+
+ca: Callable[[A], None]
+cb: Callable[[A, B], None]
+cc: Callable[[C, A], None]
+
+meet_test(ca, cb)  # E: Argument 2 to "meet_test" has incompatible type "Callable[[A, B], None]"; expected "Callable[[A], None]"
+meet_test(cb, ca)  # E: Argument 2 to "meet_test" has incompatible type "Callable[[A], None]"; expected "Callable[[A, B], None]"
+
+reveal_type(meet_test(cb, cc)) # N: Revealed type is "tuple[__main__.C, __main__.B]"
+reveal_type(meet_test(cc, cb)) # N: Revealed type is "tuple[__main__.C, __main__.B]"
+
 [case first_positional_type_for_unpacked_tuples]
 from typing import Unpack, ClassVar, Callable
 class C:
