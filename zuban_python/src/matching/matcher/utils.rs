@@ -788,10 +788,6 @@ pub(crate) fn match_arguments_against_params<
                                 ))
                             }
                             InferredArg::StarredWithUnpack(with_unpack) => {
-                                if unpack.is_some() {
-                                    add_issue(IssueKind::ArgumentIssue("Passing multiple variadic unpacks in a call is not supported".into()));
-                                    return SignatureMatch::False { similar: false };
-                                }
                                 before.extend_from_slice(&with_unpack.before);
                                 unpack = Some(with_unpack.unpack);
                                 after.extend_from_slice(&with_unpack.after);
