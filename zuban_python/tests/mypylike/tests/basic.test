@@ -874,6 +874,20 @@ reveal_type(x)  # N: Revealed type is "int"
 [file foo.py]
 Alias = int
 
+[case del_stmt_inference_of_self_name]
+class C:
+    def foo(self) -> None:
+        here = 1
+        del self.cache1  # E: Cannot determine type of "cache1"
+        del (self.cache2, foo, here)  # E: Cannot determine type of "cache2" \
+                                      # E: Name "foo" is not defined
+
+    def bar(self) -> None:
+        self.cache1 = 1
+        self.cache2 = 1
+
+reveal_type(C().cache1)  # N: Revealed type is "Any"
+
 [case inference_with_star_import_in_def]
 def f() -> None:
     from foo import *

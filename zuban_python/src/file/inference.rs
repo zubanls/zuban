@@ -4216,8 +4216,24 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     }
                 }
             }
-            DefiningStmt::DelStmt(_del_stmt) => {
-                unreachable!("Why would a del stmt be inferrable?")
+            DefiningStmt::DelStmt(del_stmt) => {
+                // This should basically only happen for self assignments where the del self is the
+                // first defined name in the chain.
+                // Apparently assigning any here is enough for everything to be working well.
+                // Errors are raised in the proper places anyway, see test
+                // `del_stmt_inference_of_self_name`.
+                self.assign_any_to_del_stmts(del_stmt.targets());
+            }
+        }
+    }
+
+    pub fn assign_any_to_del_stmts(&self, del_targets: DelTargets) {
+        for d in del_targets.iter() {
+            match d {
+                DelTarget::Target(target) => {
+                    self.assign_any_to_target(target, NodeRef::new(self.file, del_targets.index()))
+                }
+                DelTarget::DelTargets(del_targets) => self.assign_any_to_del_stmts(del_targets),
             }
         }
     }
