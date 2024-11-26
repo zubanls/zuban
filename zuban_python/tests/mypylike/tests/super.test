@@ -143,3 +143,17 @@ class B(A):
 
 def foo(t: Type[T]) -> None:
     super(B, t)  # E: Unsupported argument 2 for "super"
+
+[case super_init_on_object_with_protocol]
+from typing import Protocol
+
+class Proto(Protocol):
+    def foo(self, x: int): ...
+
+class C1:
+    def __init__(self: Proto, x: int) -> None:
+        super().__init__(x)  # E: Too many arguments for "__init__" of "object"
+
+class C2:
+    def __init__(self: Proto) -> None:
+        super().__init__()

@@ -223,11 +223,11 @@ impl<'db: 'slf, 'slf> Inferred {
         let Some(instance_class) = instance.inner_generic_class(i_s) else {
             unreachable!()
         };
-        let class_t = instance_class
-            .mro(i_s.db)
-            .nth(mro_index.0 as usize)
-            .unwrap()
-            .1;
+        let Some((_, class_t)) = instance_class.mro(i_s.db).nth(mro_index.0 as usize) else {
+            // Happens with super().__init__ when self: SomeProtocol.
+            return i_s.db.python_state.object_class();
+        };
+
         // Mro classes are never owned, because they are saved on classes.
         match class_t {
             TypeOrClass::Class(class) => class,
