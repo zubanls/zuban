@@ -369,11 +369,7 @@ impl<'db> Inference<'db, '_, '_> {
         let dict_elements = dict.iter_elements();
         let i_s = self.i_s;
         if matches!(dict_elements, DictElementIterator::Empty) {
-            return Inferred::from_type(new_class!(
-                i_s.db.python_state.dict_node_ref().as_link(),
-                Type::Never(NeverCause::Inference),
-                Type::Never(NeverCause::Inference),
-            ));
+            return Inferred::from_type(i_s.db.python_state.dict_of_never.clone());
         }
         let mut key_t = Type::Never(NeverCause::Inference);
         let mut value_t = Type::Never(NeverCause::Inference);

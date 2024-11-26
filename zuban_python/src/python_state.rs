@@ -11,7 +11,7 @@ use crate::{
     node_ref::NodeRef,
     type_::{
         dataclasses_replace, AnyCause, CallableContent, CallableParam, CallableParams,
-        ClassGenerics, CustomBehavior, ParamType, Tuple, Type, TypeVarLikes,
+        ClassGenerics, CustomBehavior, NeverCause, ParamType, Tuple, Type, TypeVarLikes,
     },
     type_helpers::{cache_class_name, Class, FirstParamProperties, Function, Instance},
     InferenceState,
@@ -200,6 +200,8 @@ pub struct PythonState {
     pub list_of_any: Type,
     pub dict_of_any: Type,
     pub set_of_any: Type,
+    pub list_of_never: Type,
+    pub dict_of_never: Type,
     pub tuple_of_obj: Type,
     pub tuple_of_unannotated_any: Type,
     pub dict_of_str_and_obj: Type,
@@ -327,9 +329,11 @@ impl PythonState {
             ))),
             list_of_any: Type::None, // Will be set later
             any_or_none: Type::Any(AnyCause::FromError).union(Type::None),
-            dict_of_any: Type::None,  // Will be set later
-            set_of_any: Type::None,   // Will be set later
-            tuple_of_obj: Type::None, // Will be set later
+            dict_of_any: Type::None,   // Will be set later
+            set_of_any: Type::None,    // Will be set later
+            list_of_never: Type::None, // Will be set later
+            dict_of_never: Type::None, // Will be set later
+            tuple_of_obj: Type::None,  // Will be set later
             tuple_of_unannotated_any: Type::Tuple(Tuple::new_arbitrary_length(Type::Any(
                 AnyCause::Unannotated,
             ))),
@@ -664,6 +668,15 @@ impl PythonState {
             Type::Any(AnyCause::FromError)
         );
         s.set_of_any = new_class!(s.set_node_ref().as_link(), Type::Any(AnyCause::FromError));
+        s.list_of_never = new_class!(
+            s.list_node_ref().as_link(),
+            Type::Never(NeverCause::Inference)
+        );
+        s.dict_of_never = new_class!(
+            s.dict_node_ref().as_link(),
+            Type::Never(NeverCause::Inference),
+            Type::Never(NeverCause::Inference),
+        );
         s.tuple_of_obj = Type::Tuple(Tuple::new_arbitrary_length(s.object_type()));
         s.dict_of_str_and_obj =
             new_class!(s.dict_node_ref().as_link(), s.str_type(), s.object_type(),);

@@ -350,3 +350,15 @@ def f(a: Any) -> None:
     x = {}
     x.update(a)
     reveal_type(x)  # N: Revealed type is "dict[Any, Any]"
+
+[case partials_in_for_loop_input]
+from collections import defaultdict
+
+for _, x in ((1, {}), ("", {})):  # E: Need type annotation for "x" (hint: "x: Dict[<type>, <type>] = ...")
+    reveal_type(x)  # N: Revealed type is "dict[Any, Any] | dict[Never, Never]"
+
+for _, y in ((1, []), ("", [])):  # E: Need type annotation for "y" (hint: "y: List[<type>] = ...")
+    reveal_type(y)  # N: Revealed type is "list[Any] | list[Never]"
+
+for _, z in ((1, set()), ("", set())):
+    reveal_type(z)  # N: Revealed type is "set[Any]"

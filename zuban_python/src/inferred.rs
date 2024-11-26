@@ -183,6 +183,8 @@ impl<'db: 'slf, 'slf> Inferred {
                 Specific::Cycle | Specific::ModuleNotFound => {
                     Cow::Borrowed(&Type::Any(AnyCause::Todo))
                 }
+                Specific::PartialList => Cow::Borrowed(&i_s.db.python_state.list_of_never),
+                Specific::PartialDict => Cow::Borrowed(&i_s.db.python_state.dict_of_never),
                 _ => unreachable!("{:?}", specific),
             },
             InferredState::UnsavedFileReference(file_index) => {
