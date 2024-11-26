@@ -226,3 +226,39 @@ class Y(X): ...
 
 [file z.py]
 class Z: ...
+
+[case star_import_overwrite_regression1]
+from f import C
+
+[file f.py]
+from h import C
+from g import *
+
+[file g.py]
+from h import C
+[file h.py]
+class C: ...
+
+[case star_import_overwrite_regression2]
+from f import C
+
+[file f.py]
+from g import *
+from h import C
+
+[file g.py]
+from h import C
+[file h.py]
+class C: ...
+
+[case star_import_overwrite_regression3]
+from f import C
+
+[file f.py]
+from h import C
+from g import *
+
+[file g.py]
+class C: ...
+[file h.py]
+class C: ...

@@ -1646,7 +1646,11 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     }
                     return;
                 }
-            } else if let Some(star_imp) = self.lookup_from_star_import(name_def.as_code(), true) {
+            } else if let Some(star_imp) = self.lookup_from_star_import_with_node_index(
+                name_def.as_code(),
+                true,
+                Some(name_def.index()),
+            ) {
                 let original = star_imp.as_inferred(self.i_s);
                 match star_imp {
                     StarImportResult::Link(star_link) => {
@@ -3807,6 +3811,15 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         name: &str,
         check_local: bool,
     ) -> Option<StarImportResult> {
+        self.lookup_from_star_import_with_node_index(name, check_local, None)
+    }
+
+    pub fn lookup_from_star_import_with_node_index(
+        &self,
+        name: &str,
+        check_local: bool,
+        node_index: Option<NodeIndex>,
+    ) -> Option<StarImportResult> {
         for star_import in self.file.star_imports.iter() {
             // TODO these feel a bit weird and do not include parent functions (when in a
             // closure)
@@ -3824,6 +3837,11 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             })
                         }))
             {
+                continue;
+            }
+            let in_mod = self.i_s.in_module_context();
+            let in_same_scope = star_import.scope == 0 && in_mod || !in_mod;
+            if in_same_scope && node_index.is_some_and(|n| n < star_import.star_node) {
                 continue;
             }
             if let Some(result) =
