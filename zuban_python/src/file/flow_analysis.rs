@@ -536,6 +536,10 @@ impl FlowAnalysis {
             }
         }
 
+        if self.frames.borrow().is_empty() {
+            // TODO why this????
+            return;
+        }
         let mut top_frame = self.tos_frame();
         invalidate_child_entries(&mut top_frame.entries, i_s.db, &new_entry.key);
         let entries = &mut top_frame.entries;

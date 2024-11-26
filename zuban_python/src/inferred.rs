@@ -638,12 +638,7 @@ impl<'db: 'slf, 'slf> Inferred {
                         return self;
                     }
                     let node_ref = NodeRef::new(file, index);
-                    panic!(
-                        "Overwrite of something assigned {self:?} >>>> {p:?} {}:{index:?}, {}, {:?}",
-                        file.file_index,
-                        file.tree.short_debug_of_index(index),
-                        node_ref.complex()
-                    );
+                    panic!("Why overwrite? New: {self:?} Previous: {node_ref:?}");
                 }
                 file.points.set(
                     index,
