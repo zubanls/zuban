@@ -262,3 +262,21 @@ from g import *
 class C: ...
 [file h.py]
 class C: ...
+
+[case avoid_crash_on_aug_assign_access1]
+class C:
+    x: int
+class D(C):
+    def f(self) -> None:
+        self.x *= 3
+
+reveal_type(D().x)  # N: Revealed type is "int"
+
+[case avoid_crash_on_aug_assign_access2]
+class C:
+    x: int
+class D(C):
+    def f(self) -> None:
+        self.x *= ""  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+reveal_type(D().x)  # N: Revealed type is "int"

@@ -727,9 +727,25 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     let result = lookup_and_execute(left);
 
                     let n = NodeRef::new(self.file, right_side.index());
-                    self.assign_single_target(target, n, &result, AssignKind::AugAssign, |_, _| {
-                        // There is no need to save this, because it's never used
-                    })
+                    self.assign_single_target(
+                        target.clone(),
+                        n,
+                        &result,
+                        AssignKind::AugAssign,
+                        |index, inf| {
+                            if let Target::NameExpression(_, n) = target {
+                                if !self.file.points.get(n.index()).calculated()
+                                    && first_defined_name_of_multi_def(self.file, n.name_index())
+                                        .is_none()
+                                {
+                                    // In some cases where we have a self.foo += 1 where foo is defined
+                                    // in the super class we need to save.
+                                    inf.clone().save_redirect(self.i_s, self.file, index);
+                                }
+                            }
+                            // There is no need to save this in other cases, because it's never used
+                        },
+                    )
                 } else if self
                     .maybe_partial_aug_assignment(&target, aug_assign, &right, lookup_and_execute)
                     .is_none()
@@ -1896,13 +1912,12 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             let Some(c) = i_s.current_class() else {
                                 return LookupDetails::any(AnyCause::Internal);
                             };
-                            let ancestor_lookup = c.instance().lookup(
+                            c.instance().lookup(
                                 self.i_s,
                                 name_def.as_code(),
                                 InstanceLookupOptions::new(&|issue| from.add_issue(i_s, issue))
                                     .with_skip_first_self_variables(),
-                            );
-                            ancestor_lookup
+                            )
                         }),
                         |_, declaration_t| {
                             let current_t = value.as_cow_type(self.i_s);
