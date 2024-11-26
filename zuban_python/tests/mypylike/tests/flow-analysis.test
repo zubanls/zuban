@@ -280,3 +280,12 @@ class D(C):
         self.x *= ""  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 reveal_type(D().x)  # N: Revealed type is "int"
+
+[case avoid_walrus_crash_when_variable_is_used_in_closure]
+a = 1
+
+def f() -> None:
+    def g() -> None:
+        y
+
+    if y := a: ...

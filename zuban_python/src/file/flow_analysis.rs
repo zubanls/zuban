@@ -2150,6 +2150,11 @@ impl Inference<'_, '_, '_> {
                     };
                 FLOW_ANALYSIS.with(|fa| {
                     let (walrus_frame, inf) = fa.with_frame_and_result(Frame::default(), || {
+                        // This can happen in weird closures. I'm not currently sure how we should
+                        // best handle that, see avoid_walrus_crash_when_variable_is_used_in_closure
+                        if self.file.points.get(name_def.index()).calculated() {
+                            return inf;
+                        }
                         self.save_walrus(name_def, inf)
                     });
                     if let Some((walrus_truthy, walrus_falsey)) =
