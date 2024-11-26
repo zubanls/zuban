@@ -1228,11 +1228,10 @@ impl Type {
                     {
                         let mut gathered = vec![];
                         for t in ts.iter() {
-                            if let Some(new_t) = t.maybe_avoid_implicit_literal(db) {
-                                gathered.push(new_t);
-                                continue;
-                            }
-                            gathered.push(t.clone())
+                            gathered.push(
+                                t.maybe_avoid_implicit_literal(db)
+                                    .unwrap_or_else(|| t.clone()),
+                            )
                         }
                         return Some(Type::Tuple(Tuple::new_fixed_length(gathered.into())));
                     }
