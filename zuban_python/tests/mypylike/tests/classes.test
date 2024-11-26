@@ -1251,3 +1251,10 @@ class A(Generic[T]):
 
 class B(A[T]):
     def __radd__(self: A[str], other: A[str]) -> str: ...  # E: Signatures of "__radd__" of "B[T]" and "__add__" of "A[str]" are unsafely overlapping
+
+[case avoid_complex_decorator_crash_on_method]
+from typing import no_type_check
+class C:
+    @no_type_check
+    @undefined   # E: Name "undefined" is not defined
+    def foo(self) -> None: ...

@@ -4479,9 +4479,13 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
 
     pub fn is_no_type_check(&self, decorated: Decorated) -> bool {
         let no_type_check_link = self.i_s.db.python_state.no_type_check_link();
-        decorated.decorators().iter().any(|decorator| {
-            self.infer_decorator(decorator).maybe_saved_link() == Some(no_type_check_link)
-        })
+        let mut is_no_type_check = false;
+        // We cannot simply run an iter().any(..), because that would not infer some decorators.
+        for decorator in decorated.decorators().iter() {
+            is_no_type_check |=
+                self.infer_decorator(decorator).maybe_saved_link() == Some(no_type_check_link)
+        }
+        is_no_type_check
     }
 
     pub(crate) fn add_issue(&self, node_index: NodeIndex, issue: IssueKind) {
