@@ -8,7 +8,6 @@ flow_analysis_avoid_final_loop_issue_in_simple_case
 flow_analysis_base_class_calculation_should_not_lead_to_recursion
 
 star_import_overwrite_regression2
-avoid_long_literal_test
 
 testLiteralAndGenericsRespectsUpperBound
 self_instance_variable1

@@ -484,5 +484,11 @@ fn common_base_for_tuple_against_type(
 }
 
 fn common_base_for_tuples(i_s: &InferenceState, tup1: &Tuple, tup2: &Tuple) -> Rc<Tuple> {
-    Tuple::new(tup1.args.simplified_union(i_s, &tup2.args))
+    if let Some(tup1) = tup1.maybe_avoid_implicit_literal(i_s.db) {
+        common_base_for_tuples(i_s, &tup1, tup2)
+    } else if let Some(tup2) = tup2.maybe_avoid_implicit_literal(i_s.db) {
+        common_base_for_tuples(i_s, tup1, &tup2)
+    } else {
+        Tuple::new(tup1.args.simplified_union(i_s, &tup2.args))
+    }
 }

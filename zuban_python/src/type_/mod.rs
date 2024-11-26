@@ -1220,24 +1220,7 @@ impl Type {
         match self {
             Type::Literal(l) if l.implicit => Some(l.fallback_type(db)),
             Type::EnumMember(m) if m.implicit => Some(Type::Enum(m.enum_.clone())),
-            Type::Tuple(tup) => {
-                if let TupleArgs::FixedLen(ts) = &tup.args {
-                    if ts
-                        .iter()
-                        .any(|t| t.maybe_avoid_implicit_literal(db).is_some())
-                    {
-                        let mut gathered = vec![];
-                        for t in ts.iter() {
-                            gathered.push(
-                                t.maybe_avoid_implicit_literal(db)
-                                    .unwrap_or_else(|| t.clone()),
-                            )
-                        }
-                        return Some(Type::Tuple(Tuple::new_fixed_length(gathered.into())));
-                    }
-                }
-                None
-            }
+            Type::Tuple(tup) => Some(Type::Tuple(tup.maybe_avoid_implicit_literal(db)?)),
             Type::Union(union) => {
                 if union
                     .iter()
@@ -1619,6 +1602,27 @@ impl FromIterator<Type> for Type {
             result.union_in_place(t)
         }
         result
+    }
+}
+
+impl Tuple {
+    pub fn maybe_avoid_implicit_literal(&self, db: &Database) -> Option<Rc<Self>> {
+        if let TupleArgs::FixedLen(ts) = &self.args {
+            if ts
+                .iter()
+                .any(|t| t.maybe_avoid_implicit_literal(db).is_some())
+            {
+                let mut gathered = vec![];
+                for t in ts.iter() {
+                    gathered.push(
+                        t.maybe_avoid_implicit_literal(db)
+                            .unwrap_or_else(|| t.clone()),
+                    )
+                }
+                return Some(Tuple::new_fixed_length(gathered.into()));
+            }
+        }
+        None
     }
 }
 
