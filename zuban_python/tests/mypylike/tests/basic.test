@@ -952,3 +952,17 @@ def foo() -> None:
     x = ""
     global x  # E: SyntaxError: name 'x' is assigned to before global declaration
     x = ""
+
+[case py_not_checked_if_pyi_exists]
+import foo
+
+reveal_type(foo.foo)  # N: Revealed type is "def (x: str, y: int)"
+
+[file foo.py]
+def foo(x, y: bytes):
+    reveal_type(y.foo)
+
+1()
+
+[file foo.pyi]
+def foo(x: str, y: int) -> None: ...

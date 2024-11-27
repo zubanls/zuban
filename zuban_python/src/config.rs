@@ -162,7 +162,7 @@ impl ProjectOptions {
     }
 }
 
-#[derive(Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct TypeCheckerFlags {
     pub strict_optional: bool,
     pub strict_equality: bool,

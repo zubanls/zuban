@@ -31,6 +31,7 @@ use inferred::Inferred;
 use matching::invalidate_protocol_cache;
 use name::Names;
 use parsa_python_cst::CodeIndex;
+use workspaces::{Directory, DirectoryEntry, FileEntry};
 
 pub struct Project {
     db: Database,
@@ -74,9 +75,18 @@ impl Project {
         let mut checked_files = 0;
         let mut files_with_errors = 0;
         for directory in self.db.workspaces.directories_to_type_check() {
+            let ignore_py_if_overwritten_by_pyi = |in_dir: &Directory, file: &FileEntry| {
+                if !file.name.ends_with(".py") {
+                    return false;
+                }
+                in_dir
+                    .search(&format!("{}i", &file.name))
+                    .is_some_and(|e| matches!(*e, DirectoryEntry::File(_)))
+            };
             let mut to_be_loaded = vec![];
-            directory.walk(&mut |file_index_or_file| {
-                if let Err(file) = file_index_or_file {
+            directory.walk(&mut |in_dir, file| {
+                if file.file_index.get().is_none() && !ignore_py_if_overwritten_by_pyi(in_dir, file)
+                {
                     let path = file.relative_path(self.db.vfs.as_ref());
                     to_be_loaded.push((file.clone(), path));
                 }
@@ -97,9 +107,13 @@ impl Project {
             }
 
             let mut file_indexes = vec![];
-            directory.walk(&mut |file_index| {
-                if let Ok(file_index) = file_index {
-                    file_indexes.push(file_index);
+            directory.walk(&mut |in_dir, file| {
+                if let Some(file_index) = file.file_index.get() {
+                    // We need to recheck here, because some modules might have been loaded
+                    // previously in the current db and we don't want to check them.
+                    if !ignore_py_if_overwritten_by_pyi(in_dir, file) {
+                        file_indexes.push(file_index);
+                    }
                 }
             });
             'outer: for file_index in file_indexes {

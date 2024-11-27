@@ -1,5 +1,5 @@
 use std::{
-    cell::{Cell, RefCell, RefMut},
+    cell::{Cell, Ref, RefCell, RefMut},
     path::PathBuf,
     rc::{Rc, Weak},
 };
@@ -401,15 +401,9 @@ impl DirectoryEntry {
         }
     }
 
-    pub fn walk(&self, callable: &mut impl FnMut(Result<FileIndex, &Rc<FileEntry>>)) {
+    pub fn walk(&self, in_dir: &Directory, callable: &mut impl FnMut(&Directory, &Rc<FileEntry>)) {
         match self {
-            DirectoryEntry::File(file) => {
-                if let Some(index) = file.file_index.get() {
-                    callable(Ok(index))
-                } else {
-                    callable(Err(file))
-                }
-            }
+            DirectoryEntry::File(file) => callable(in_dir, file),
             DirectoryEntry::Directory(dir) => dir.walk(callable),
             DirectoryEntry::MissingEntry { .. } => (),
         }
@@ -454,7 +448,17 @@ impl Directory {
         self.entries.borrow_mut().retain(|f| f.name() != name)
     }
 
-    pub fn search(&self, name: &str) -> Option<RefMut<DirectoryEntry>> {
+    pub fn search(&self, name: &str) -> Option<Ref<DirectoryEntry>> {
+        let borrow = self.entries.borrow();
+        // We need to run this search twice, because Rust needs #![feature(cell_filter_map)]
+        // https://github.com/rust-lang/rust/issues/81061
+        borrow.iter().find(|entry| entry.name() == name)?;
+        Some(Ref::map(borrow, |dir| {
+            dir.iter().find(|entry| entry.name() == name).unwrap()
+        }))
+    }
+
+    pub fn search_mut(&self, name: &str) -> Option<RefMut<DirectoryEntry>> {
         let borrow = self.entries.borrow_mut();
         // We need to run this search twice, because Rust needs #![feature(cell_filter_map)]
         // https://github.com/rust-lang/rust/issues/81061
@@ -466,7 +470,7 @@ impl Directory {
 
     fn ensure_file(&self, parent: Parent, name: &str) -> AddedFile {
         let mut invalidations = Invalidations::default();
-        let file_entry = if let Some(mut entry) = self.search(name) {
+        let file_entry = if let Some(mut entry) = self.search_mut(name) {
             match &mut *entry {
                 DirectoryEntry::File(file_entry) => file_entry.clone(),
                 DirectoryEntry::MissingEntry {
@@ -553,9 +557,9 @@ impl Directory {
         }
     }
 
-    pub fn walk(&self, callable: &mut impl FnMut(Result<FileIndex, &Rc<FileEntry>>)) {
-        for n in self.entries.borrow_mut().iter_mut() {
-            n.walk(callable)
+    pub fn walk(&self, callable: &mut impl FnMut(&Directory, &Rc<FileEntry>)) {
+        for n in self.entries.borrow().iter() {
+            n.walk(self, callable)
         }
     }
 
