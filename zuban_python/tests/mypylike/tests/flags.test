@@ -191,3 +191,10 @@ files = [
 files =
     a,
     c
+
+[case error_code_for_invalid_optional_unpack]
+# flags: --show-error-codes
+from typing import Optional, Tuple
+def x() -> Optional[Tuple[int, str]]: ...
+
+a, b = x()  # E: "None" object is not iterable  [misc]

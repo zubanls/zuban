@@ -443,8 +443,7 @@ impl IssueKind {
             | ImportAttributeError { .. }
             | ModuleAttributeError { .. }
             | ImportStubNoExplicitReexport { .. }
-            | AsyncNotIterable { .. }
-            | NotIterable { .. } => "attr-defined",
+            | AsyncNotIterable { .. } => "attr-defined",
             NameError { .. } => "name-defined",
             Redefinition { .. } => "no-redef",
             NameUsedBeforeDefinition { .. } => "used-before-def",
