@@ -1258,3 +1258,10 @@ class C:
     @no_type_check
     @undefined   # E: Name "undefined" is not defined
     def foo(self) -> None: ...
+
+[case __init_subclass__with_never_or_any_return]
+from typing import Any, Never
+class C:
+    def __init_subclass__(self) -> Never: ...
+class D:
+    def __init_subclass__(self) -> Any: ...  # E: The return type of "__init_subclass__" must be None

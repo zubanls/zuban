@@ -1323,7 +1323,10 @@ impl<'db> Inference<'db, '_, '_> {
                 match magic_name {
                     "init" | "init_subclass" => {
                         if let Some(return_annotation) = function.return_annotation() {
-                            if !matches!(function.return_type(i_s).as_ref(), Type::None) {
+                            if !matches!(
+                                function.return_type(i_s).as_ref(),
+                                Type::None | Type::Never(_)
+                            ) {
                                 // __init__ and __init_subclass__ must return None
                                 NodeRef::new(self.file, return_annotation.expression().index())
                                     .add_issue(
