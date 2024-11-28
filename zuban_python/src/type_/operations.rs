@@ -9,7 +9,7 @@ use super::{
 };
 use crate::{
     arguments::{Args, NoArgs},
-    database::{FileIndex, Specific},
+    database::{Database, FileIndex, Specific},
     debug,
     diagnostics::IssueKind,
     file::PythonFile,
@@ -678,35 +678,27 @@ impl Type {
     }
 
     pub(crate) fn iter(&self, i_s: &InferenceState, infos: IterInfos) -> IteratorContent {
-        let on_error = |t: &Type| {
-            let type_ = t.format_short(i_s.db);
-            infos.add_issue(match infos.cause {
-                IterCause::Unpack => IssueKind::UnpackNotIterable {
-                    type_: format!("\"{type_}\"").into(),
-                },
-                IterCause::Iter => IssueKind::NotIterableMissingIter { type_ },
-            })
-        };
         match self {
-            Type::Class(c) => Instance::new(c.class(i_s.db), None).iter(i_s, infos),
+            Type::Class(c) => Instance::new(c.class(i_s.db), None).iter(i_s, self, infos),
             Type::Tuple(tuple) => tuple.iter(),
             Type::NamedTuple(nt) => nt.iter(),
             Type::Union(union) => {
                 let mut items = vec![];
+                let with_union_infos = infos.with_in_union(self);
                 for t in union.iter() {
-                    items.push(t.iter(i_s, infos));
+                    items.push(t.iter(i_s, with_union_infos));
                 }
                 IteratorContent::Union(items)
             }
             Type::TypeVar(tv) => match &tv.type_var.kind {
                 TypeVarKind::Bound(bound) => bound.iter(i_s, infos),
                 _ => {
-                    on_error(self);
+                    infos.add_not_iterable_issue(i_s.db, self);
                     IteratorContent::Any(AnyCause::FromError)
                 }
             },
             Type::NewType(n) => n.type_(i_s).iter(i_s, infos),
-            Type::Self_ => Instance::new(i_s.current_class().unwrap(), None).iter(i_s, infos),
+            Type::Self_ => Instance::new(i_s.current_class().unwrap(), None).iter(i_s, self, infos),
             Type::RecursiveType(rec) => rec.calculated_type(i_s.db).iter(i_s, infos),
             Type::Intersection(i) => i.iter(i_s, infos),
             _ => IteratorContent::Inferred(
@@ -717,9 +709,7 @@ impl Type {
                     LookupKind::OnlyType,
                     &mut ResultContext::Unknown,
                     infos.add_issue,
-                    &|t| {
-                        on_error(t);
-                    },
+                    &|t| infos.add_not_iterable_issue(i_s.db, t),
                 )
                 .into_inferred()
                 .execute(i_s, &infos.as_no_args())
@@ -744,6 +734,7 @@ pub enum IterCause {
 pub(crate) struct IterInfos<'x> {
     from: NodeRef<'x>,
     cause: IterCause,
+    in_union: Option<&'x Type>,
     pub add_issue: &'x dyn Fn(IssueKind),
 }
 
@@ -757,17 +748,40 @@ impl<'x> IterInfos<'x> {
             from,
             add_issue,
             cause,
+            in_union: None,
         }
+    }
+
+    pub fn add_not_iterable_issue(&self, db: &Database, t: &Type) {
+        let type_ = t.format_short(db);
+        self.add_issue(match self.cause {
+            IterCause::Unpack => IssueKind::UnpackNotIterable {
+                type_: format!("\"{type_}\"").into(),
+            },
+            IterCause::Iter => {
+                if let Some(in_union) = self.in_union {
+                    IssueKind::NotIterableMissingIterInUnion {
+                        object: type_,
+                        union: in_union.format_short(db),
+                    }
+                } else {
+                    IssueKind::NotIterableMissingIter { type_ }
+                }
+            }
+        })
     }
 
     pub(crate) fn with_different_add_issue<'y: 'x>(
         &'y self,
         add_issue: &'y dyn Fn(IssueKind),
     ) -> IterInfos<'y> {
+        Self { add_issue, ..*self }
+    }
+
+    pub(crate) fn with_in_union<'y: 'x>(&'y self, in_union: &'y Type) -> IterInfos<'y> {
         Self {
-            from: self.from,
-            cause: self.cause,
-            add_issue,
+            in_union: Some(in_union),
+            ..*self
         }
     }
 

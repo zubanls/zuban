@@ -264,7 +264,12 @@ impl<'a> Instance<'a> {
         }
     }
 
-    pub(crate) fn iter(&self, i_s: &InferenceState, infos: IterInfos) -> IteratorContent {
+    pub(crate) fn iter(
+        &self,
+        i_s: &InferenceState,
+        original_t: &Type,
+        infos: IterInfos,
+    ) -> IteratorContent {
         if let Some(tup) = self.class.maybe_tuple_base(i_s.db) {
             // TODO this doesn't take care of the mro and could not be the first __iter__
             return tup.iter();
@@ -302,9 +307,7 @@ impl<'a> Instance<'a> {
             }
         }
         if !self.class.incomplete_mro(i_s.db) {
-            infos.add_issue(IssueKind::UnpackNotIterable {
-                type_: format!("{:?}", self.class.format_short(i_s.db)).into(),
-            });
+            infos.add_not_iterable_issue(i_s.db, original_t);
         }
         IteratorContent::Any(AnyCause::Todo)
     }

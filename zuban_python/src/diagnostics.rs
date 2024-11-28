@@ -930,7 +930,7 @@ impl<'db> Diagnostic<'db> {
             UnpackNotIterable{type_} => format!("{type_} object is not iterable"),
             NotIterableMissingIter { type_ } => format!(r#""{type_}" has no attribute "__iter__" (not iterable)"#),
             NotIterableMissingIterInUnion { object, union } => format!(
-                r#"Item {object} of "{union}" has no attribute "__iter__" (not iterable)"#
+                r#"Item "{object}" of "{union}" has no attribute "__iter__" (not iterable)"#
             ),
             AsyncNotIterable{type_} => format!(
                 r#""{type_}" has no attribute "__aiter__" (not async iterable)"#

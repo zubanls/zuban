@@ -9,9 +9,6 @@ flow_analysis_base_class_calculation_should_not_lead_to_recursion
 
 star_import_overwrite_regression2
 
-testUnpackUnionNoCrashOnPartialNone
-testUnpackUnionNoCrashOnPartialNone2
-
 testLiteralAndGenericsRespectsUpperBound
 self_instance_variable1
 
