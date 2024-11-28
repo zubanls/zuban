@@ -220,3 +220,52 @@ def f(x: tuple[int, str] | None, y: tuple[int, str] | int):
     (*1, )  # E: List or tuple expected as variadic arguments  [misc]  # E: List or tuple expected as variadic arguments  [misc]
     (*x, )  # E: List or tuple expected as variadic arguments  [misc]  # E: List or tuple expected as variadic arguments  [misc]
     (*y, )  # E: List or tuple expected as variadic arguments  [misc]  # E: List or tuple expected as variadic arguments  [misc]
+
+[case untyped_override_check_untyped_defs_no_mypy_compatible]
+# flags: --check-untyped-defs --no-mypy-compatible
+import m
+
+[file m.py]
+from typing import Any
+
+class C():
+    @staticmethod
+    def f(s, *x: Any) -> Any: ...
+    def g(self, *x: Any) -> Any: ...
+
+class D(C):
+    @staticmethod
+    def f(s, grad_output, *, foo): ...  # E: Signature of "f" incompatible with supertype "C" \
+                                        # N:      Superclass: \
+                                        # N:          @staticmethod \
+                                        # N:          def f(s: Any, *x: Any) -> Any \
+                                        # N:      Subclass: \
+                                        # N:          @staticmethod \
+                                        # N:          def f(s: Any, grad_output: Any, *, foo: Any) -> Any
+
+    def g(self, grad_output, *, foo): ...  # E: Signature of "g" incompatible with supertype "C" \
+                                           # N:      Superclass: \
+                                           # N:          def g(self, *x: Any) -> Any \
+                                           # N:      Subclass: \
+                                           # N:          def g(self, grad_output: Any, *, foo: Any) -> Any
+
+[case untyped_override_check_untyped_defs_mypy_compatible]
+# flags: --check-untyped-defs --mypy-compatible
+import m
+
+[file m.py]
+from typing import Any
+
+class C():
+    @staticmethod
+    def f(s, *x: Any) -> Any: ...
+    def g(self, *x: Any) -> Any: ...
+
+class D(C):
+    @staticmethod
+    def f(s, grad_output, *, foo): ...
+    def g(self, grad_output, *, foo): ...  # E: Signature of "g" incompatible with supertype "C" \
+                                           # N:      Superclass: \
+                                           # N:          def g(self, *x: Any) -> Any \
+                                           # N:      Subclass: \
+                                           # N:          def g(self, grad_output: Any, *, foo: Any) -> Any

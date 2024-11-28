@@ -766,10 +766,15 @@ impl<'db> Inference<'db, '_, '_> {
             }
         }
 
+        let should_check_func_override = || {
+            func_def.is_typed()
+                || self.flags().check_untyped_defs
+                    && (func_def.maybe_decorated().is_none()
+                        || !self.i_s.db.project.settings.mypy_compatible)
+        };
+
         // Mypy completely ignores untyped functions.
-        if IGNORED_INHERITANCE_NAMES.contains(&name)
-            || !func_def.is_typed() && !self.flags().check_untyped_defs
-        {
+        if IGNORED_INHERITANCE_NAMES.contains(&name) || !should_check_func_override() {
             let original_details = c.lookup(
                 i_s,
                 name,
@@ -1227,7 +1232,10 @@ impl<'db> Inference<'db, '_, '_> {
         let inference = self.file.inference(function_i_s);
         if function.is_typed() || flags.check_untyped_defs {
             // TODO for now we skip checking functions with TypeVar constraints
-            if function.type_vars(i_s.db).iter().any(|tv| matches!(tv, TypeVarLike::TypeVar(tv) if matches!(&tv.kind, TypeVarKind::Constraints(_)))) {
+            if function.type_vars(i_s.db).iter().any(|tv| {
+                matches!(tv, TypeVarLike::TypeVar(tv)
+                              if matches!(&tv.kind, TypeVarKind::Constraints(_)))
+            }) {
                 self.mark_current_frame_unreachable()
             } else {
                 inference.calc_block_diagnostics(block, None, Some(&function))

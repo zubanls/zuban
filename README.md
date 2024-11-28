@@ -83,3 +83,14 @@ Debugging:
 - `a: int; callable(a)` will narrow a to be a callable that returns Any and takes any paramaters
 - Enum value when a = 1 and b = '' will be Any for no reason
 - total_ordering fills functions with an Any return type if the other functions return not None
+
+### Questionable, maybe change behind flag?
+
+- `.py` not type-checked if `.pyi` exists
+- Method Overrides param signatures are not type checked if they are not annotated
+
+
+# Mypy: Please change!!
+
+- Untyped decorated methods are not checked when `--check-untyped-defs`, see also test
+  `untyped_override_check_untyped_defs_mypy_compatible`
