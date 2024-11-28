@@ -302,7 +302,7 @@ impl<'a> Instance<'a> {
             }
         }
         if !self.class.incomplete_mro(i_s.db) {
-            infos.add_issue(IssueKind::NotIterable {
+            infos.add_issue(IssueKind::UnpackNotIterable {
                 type_: format!("{:?}", self.class.format_short(i_s.db)).into(),
             });
         }

@@ -85,7 +85,9 @@ pub(crate) enum IssueKind {
     NotCallable { type_: Box<str> },
     UnknownFunctionNotCallable,
     AnyNotCallable,
-    NotIterable { type_: Box<str> },
+    UnpackNotIterable { type_: Box<str> },
+    NotIterableMissingIter { type_: Box<str> },
+    NotIterableMissingIterInUnion { object: Box<str>, union: Box<str> },
     AsyncNotIterable { type_: Box<str> },
     InvalidCallableArgCount,
     UnsupportedOperand { operand: Box<str>, left: Box<str>, right: Box<str> },
@@ -443,11 +445,14 @@ impl IssueKind {
             | ImportAttributeError { .. }
             | ModuleAttributeError { .. }
             | ImportStubNoExplicitReexport { .. }
-            | AsyncNotIterable { .. } => "attr-defined",
+            | AsyncNotIterable { .. }
+            | NotIterableMissingIter { .. } => "attr-defined",
             NameError { .. } => "name-defined",
             Redefinition { .. } => "no-redef",
             NameUsedBeforeDefinition { .. } => "used-before-def",
-            UnionAttributeError { .. } | UnionAttributeErrorOfUpperBound(..) => "union-attr",
+            UnionAttributeError { .. }
+            | UnionAttributeErrorOfUpperBound(..)
+            | NotIterableMissingIterInUnion { .. } => "union-attr",
             ArgumentTypeIssue(_) | SuperArgument1MustBeTypeObject { .. } => "arg-type",
             ArgumentIssue { .. } | TooManyArguments { .. } | TooFewArguments { .. } => "call-arg",
             InvalidType(_) => "valid-type",
@@ -675,7 +680,9 @@ impl<'db> Diagnostic<'db> {
             .contains(&c)
         }) && !matches!(
             self.issue.kind,
-            NotIterable { .. }
+            UnpackNotIterable { .. }
+                | NotIterableMissingIter { .. }
+                | NotIterableMissingIterInUnion { .. }
                 | AttributeError { .. }
                 | OverloadUnmatchable { .. }
                 | OverloadImplementationParamsNotBroadEnough { .. }
@@ -920,7 +927,11 @@ impl<'db> Diagnostic<'db> {
             NotCallable{type_} => format!("{type_} not callable"),
             UnknownFunctionNotCallable => "Cannot call function of unknown type".to_string(),
             AnyNotCallable => "Any(...) is no longer supported. Use cast(Any, ...) instead".to_string(),
-            NotIterable{type_} => format!("{type_} object is not iterable"),
+            UnpackNotIterable{type_} => format!("{type_} object is not iterable"),
+            NotIterableMissingIter { type_ } => format!(r#""{type_}" has no attribute "__iter__" (not iterable)"#),
+            NotIterableMissingIterInUnion { object, union } => format!(
+                r#"Item {object} of "{union}" has no attribute "__iter__" (not iterable)"#
+            ),
             AsyncNotIterable{type_} => format!(
                 r#""{type_}" has no attribute "__aiter__" (not async iterable)"#
             ),

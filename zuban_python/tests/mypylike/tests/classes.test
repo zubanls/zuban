@@ -123,8 +123,8 @@ def check_bound2(x: Type[U]) -> None:
 
 V = TypeVar("V", bound=Bar | Baz | Spam)
 def check_bound3(x: Type[V]) -> None:
-    for var in x:  # E: "Type[Baz]" object is not iterable \
-                   # E: "Type[Spam]" object is not iterable
+    for var in x:  # E: "Type[Baz]" has no attribute "__iter__" (not iterable) \
+                   # E: "Type[Spam]" has no attribute "__iter__" (not iterable)
         reveal_type(var)  # N: Revealed type is "builtins.str | Any"
 
 [case kwargs_base_class]

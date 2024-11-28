@@ -52,7 +52,7 @@ pub(crate) use self::{
         add_named_tuple_param, execute_collections_named_tuple, execute_typing_named_tuple,
         new_collections_named_tuple, new_typing_named_tuple, NamedTuple,
     },
-    operations::{execute_type_of_type, IterInfos},
+    operations::{execute_type_of_type, IterCause, IterInfos},
     recursive_type::{RecursiveType, RecursiveTypeOrigin},
     replace::{replace_param_spec, ReplaceSelf},
     tuple::{execute_tuple_class, MaybeUnpackGatherer, Tuple, TupleArgs, TupleUnpack, WithUnpack},

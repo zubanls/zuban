@@ -34,9 +34,10 @@ use crate::{
     node_ref::NodeRef,
     params::matches_simple_params,
     type_::{
-        AnyCause, CallableContent, CallableParam, CallableParams, IterInfos, Literal, LiteralKind,
-        LookupResult, NeverCause, ParamType, StarParamType, StarStarParamType, StringSlice, Tuple,
-        TupleArgs, TupleUnpack, Type, UnionEntry, UnionType, Variance, WithUnpack,
+        AnyCause, CallableContent, CallableParam, CallableParams, IterCause, IterInfos, Literal,
+        LiteralKind, LookupResult, NeverCause, ParamType, StarParamType, StarStarParamType,
+        StringSlice, Tuple, TupleArgs, TupleUnpack, Type, UnionEntry, UnionType, Variance,
+        WithUnpack,
     },
     type_helpers::{
         cache_class_name, is_private, is_private_import, is_reexport_issue_if_check_needed,
@@ -2065,7 +2066,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     }
                     let value_iterator = union_part.iter(
                         self.i_s,
-                        IterInfos::new(value_node_ref, &|issue| {
+                        IterInfos::new(value_node_ref, IterCause::Unpack, &|issue| {
                             value_node_ref.add_issue(self.i_s, issue)
                         }),
                     );

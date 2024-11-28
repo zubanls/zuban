@@ -679,9 +679,13 @@ impl Type {
 
     pub(crate) fn iter(&self, i_s: &InferenceState, infos: IterInfos) -> IteratorContent {
         let on_error = |t: &Type| {
-            infos.add_issue(IssueKind::NotIterable {
-                type_: format!("\"{}\"", t.format_short(i_s.db)).into(),
-            });
+            let type_ = t.format_short(i_s.db);
+            infos.add_issue(match infos.cause {
+                IterCause::Unpack => IssueKind::UnpackNotIterable {
+                    type_: format!("\"{type_}\"").into(),
+                },
+                IterCause::Iter => IssueKind::NotIterableMissingIter { type_ },
+            })
         };
         match self {
             Type::Class(c) => Instance::new(c.class(i_s.db), None).iter(i_s, infos),
@@ -731,14 +735,29 @@ impl Type {
 }
 
 #[derive(Copy, Clone)]
+pub enum IterCause {
+    Iter,
+    Unpack,
+}
+
+#[derive(Copy, Clone)]
 pub(crate) struct IterInfos<'x> {
     from: NodeRef<'x>,
+    cause: IterCause,
     pub add_issue: &'x dyn Fn(IssueKind),
 }
 
 impl<'x> IterInfos<'x> {
-    pub(crate) fn new(from: NodeRef<'x>, add_issue: &'x dyn Fn(IssueKind)) -> IterInfos<'x> {
-        Self { from, add_issue }
+    pub(crate) fn new(
+        from: NodeRef<'x>,
+        cause: IterCause,
+        add_issue: &'x dyn Fn(IssueKind),
+    ) -> IterInfos<'x> {
+        Self {
+            from,
+            add_issue,
+            cause,
+        }
     }
 
     pub(crate) fn with_different_add_issue<'y: 'x>(
@@ -747,6 +766,7 @@ impl<'x> IterInfos<'x> {
     ) -> IterInfos<'y> {
         Self {
             from: self.from,
+            cause: self.cause,
             add_issue,
         }
     }

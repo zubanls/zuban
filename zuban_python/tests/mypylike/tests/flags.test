@@ -192,9 +192,13 @@ files =
     a,
     c
 
-[case error_code_for_invalid_optional_unpack]
+[case error_code_for_invalid_unpack_and_iter]
 # flags: --show-error-codes
-from typing import Optional, Tuple
-def x() -> Optional[Tuple[int, str]]: ...
+def f(x: tuple[int, str] | None):
+    a, b = x  # E: "None" object is not iterable  [misc]
+    c, d = 1  # E: "int" object is not iterable  [misc]
+    c, d = None  # E: "None" object is not iterable  [misc]
 
-a, b = x()  # E: "None" object is not iterable  [misc]
+--    [y for y in x]  # E: Item "None" of "Tuple[str, str] | None" has no attribute "__iter__" (not iterable)
+    [y for y in 1]  # E: "int" has no attribute "__iter__" (not iterable)  [attr-defined]
+    [y for y in None]  # E: "None" has no attribute "__iter__" (not iterable)  [attr-defined]

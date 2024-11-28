@@ -28,9 +28,9 @@ use crate::{
         execute_collections_named_tuple, execute_tuple_class, execute_type_of_type,
         execute_typing_named_tuple, merge_class_type_vars, new_typed_dict, AnyCause,
         CallableContent, CallableLike, CallableParams, ClassGenerics, DbString, FunctionKind,
-        FunctionOverload, GenericClass, GenericItem, GenericsList, IterInfos, Literal as DbLiteral,
-        LiteralKind, LiteralValue, LookupResult, NeverCause, Type, TypeVarKind, TypeVarLike,
-        TypeVarLikes,
+        FunctionOverload, GenericClass, GenericItem, GenericsList, IterCause, IterInfos,
+        Literal as DbLiteral, LiteralKind, LiteralValue, LookupResult, NeverCause, Type,
+        TypeVarKind, TypeVarLike, TypeVarLikes,
     },
     type_helpers::{
         execute_assert_type, execute_cast, execute_isinstance, execute_issubclass,
@@ -2204,7 +2204,7 @@ impl<'db: 'slf, 'slf> Inferred {
     pub fn iter(self, i_s: &InferenceState, from: NodeRef) -> IteratorContent {
         self.as_cow_type(i_s).iter(
             i_s,
-            IterInfos::new(from, &|issue| from.add_issue(i_s, issue)),
+            IterInfos::new(from, IterCause::Iter, &|issue| from.add_issue(i_s, issue)),
         )
     }
 
