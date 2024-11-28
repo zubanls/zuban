@@ -237,3 +237,49 @@ class A(Generic[T]):
 
     def __post_init__(self: A[int]) -> None: ...  # E: Invalid self argument "Self" to attribute function "__post_init__" with type "Callable[[A[int]], None]"
     def y(self: A[int]) -> None: ...
+
+[case dataclass_init_with_self_type]
+from typing import TypeVar, Generic, overload, Any
+from dataclasses import dataclass
+
+T = TypeVar("T")
+
+@dataclass()
+class C(Generic[T]):
+    lower: T
+    upper: T
+    what: bool
+
+    def __repr__(self) -> str:
+        return f"VR[{self.lower}, {self.upper}]"
+
+    def __init__(self: C[int], lower: T, upper: T) -> None: ...
+
+reveal_type(C(1, 1))  # N: Revealed type is "__main__.C[int]"
+reveal_type(C('', ''))  # E: Argument 1 to "C" has incompatible type "str"; expected "int" \
+                        # E: Argument 2 to "C" has incompatible type "str"; expected "int" \
+                        # N: Revealed type is "__main__.C[Any]"
+
+[case dataclass_init_with_self_type_overloaded]
+from typing import TypeVar, Generic, overload, Any
+from dataclasses import dataclass
+
+T = TypeVar("T")
+
+@dataclass()
+class C(Generic[T]):
+    lower: T
+    upper: T
+    what: bool
+
+    def __repr__(self) -> str:
+        return f"VR[{self.lower}, {self.upper}]"
+
+    @overload
+    def __init__(self: C[int], lower: int, upper: int) -> None: ...
+    @overload
+    def __init__(self: C[str], lower: str, upper: str) -> None: ...
+    def __init__(self, lower: Any, upper: Any) -> None: ...
+
+reveal_type(C(1, 1))  # N: Revealed type is "__main__.C[int]"
+reveal_type(C('', ''))  # N: Revealed type is "__main__.C[str]"
