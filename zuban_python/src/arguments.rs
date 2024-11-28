@@ -15,7 +15,7 @@ use crate::{
     inferred::Inferred,
     matching::{IteratorContent, Matcher, ResultContext, UnpackedArgument},
     node_ref::NodeRef,
-    type_::{AnyCause, ParamSpecUsage, StringSlice, Type, TypedDict, WithUnpack},
+    type_::{AnyCause, IterCause, ParamSpecUsage, StringSlice, Type, TypedDict, WithUnpack},
     InferenceState,
 };
 
@@ -796,7 +796,7 @@ impl<'db: 'a, 'a> Iterator for ArgIteratorBase<'db, 'a> {
                                     }))
                                 }
                                 _ => Some(BaseArgReturn::ArgsKwargs(ArgsKwargsIterator::Args {
-                                    iterator: inf.iter(i_s, node_ref),
+                                    iterator: inf.iter(i_s, node_ref, IterCause::VariadicUnpack),
                                     node_ref,
                                     position: i + 1,
                                 })),

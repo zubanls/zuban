@@ -27,7 +27,7 @@ use crate::{
     params::{has_overlapping_params, matches_params, Param, WrappedParamType, WrappedStar},
     type_::{
         format_callable_params, AnyCause, CallableContent, CallableParams, ClassGenerics, DbString,
-        FunctionKind, FunctionOverload, GenericItem, GenericsList, Literal, LiteralKind,
+        FunctionKind, FunctionOverload, GenericItem, GenericsList, IterCause, Literal, LiteralKind,
         LookupResult, NeverCause, ParamType, Type, TypeVarKind, TypeVarLike, Variance,
     },
     type_helpers::{
@@ -1487,7 +1487,8 @@ impl<'db> Inference<'db, '_, '_> {
         let element = if is_async {
             await_aiter_and_next(self.i_s, inf, from)
         } else {
-            inf.iter(self.i_s, from).infer_all(self.i_s)
+            inf.iter(self.i_s, from, IterCause::Iter)
+                .infer_all(self.i_s)
         };
         debug!("For loop input: {}", element.format_short(self.i_s));
         self.assign_targets(star_targets.as_target(), element, from, AssignKind::Normal);

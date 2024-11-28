@@ -2201,10 +2201,10 @@ impl<'db: 'slf, 'slf> Inferred {
         }
     }
 
-    pub fn iter(self, i_s: &InferenceState, from: NodeRef) -> IteratorContent {
+    pub fn iter(self, i_s: &InferenceState, from: NodeRef, cause: IterCause) -> IteratorContent {
         self.as_cow_type(i_s).iter(
             i_s,
-            IterInfos::new(from, IterCause::Iter, &|issue| from.add_issue(i_s, issue)),
+            IterInfos::new(from, cause, &|issue| from.add_issue(i_s, issue)),
         )
     }
 

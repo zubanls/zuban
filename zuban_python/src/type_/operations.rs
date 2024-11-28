@@ -726,8 +726,9 @@ impl Type {
 
 #[derive(Copy, Clone)]
 pub enum IterCause {
-    Iter,
-    Unpack,
+    Iter,             // for i in *x
+    AssignmentUnpack, // a, b = *x
+    VariadicUnpack,   // [*x] or foo(*x)
 }
 
 #[derive(Copy, Clone)]
@@ -755,7 +756,7 @@ impl<'x> IterInfos<'x> {
     pub fn add_not_iterable_issue(&self, db: &Database, t: &Type) {
         let type_ = t.format_short(db);
         self.add_issue(match self.cause {
-            IterCause::Unpack => IssueKind::UnpackNotIterable {
+            IterCause::AssignmentUnpack => IssueKind::UnpackNotIterable {
                 type_: format!("\"{type_}\"").into(),
             },
             IterCause::Iter => {
@@ -768,6 +769,7 @@ impl<'x> IterInfos<'x> {
                     IssueKind::NotIterableMissingIter { type_ }
                 }
             }
+            IterCause::VariadicUnpack => IssueKind::ListOrTupleExpectedAsVariadicArgs,
         })
     }
 

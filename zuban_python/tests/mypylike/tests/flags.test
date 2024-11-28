@@ -194,6 +194,9 @@ files =
 
 [case error_code_for_invalid_unpack_and_iter]
 # flags: --show-error-codes
+
+def foo(*x) -> None: ...
+
 def f(x: tuple[int, str] | None, y: tuple[int, str] | int):
     a, b = x  # E: "None" object is not iterable  [misc]
     a, b = y  # E: "int" object is not iterable  [misc]
@@ -204,3 +207,16 @@ def f(x: tuple[int, str] | None, y: tuple[int, str] | int):
     [n for n in y]  # E: Item "int" of "Tuple[int, str] | int" has no attribute "__iter__" (not iterable)  [union-attr]
     [n for n in 1]  # E: "int" has no attribute "__iter__" (not iterable)  [attr-defined]
     [n for n in None]  # E: "None" has no attribute "__iter__" (not iterable)  [attr-defined]
+
+    foo(*1)  # E: List or tuple expected as variadic arguments  [misc]
+    foo(*x)  # E: List or tuple expected as variadic arguments  [misc]
+    foo(*y)  # E: List or tuple expected as variadic arguments  [misc]
+
+    [*1]  # E: List or tuple expected as variadic arguments  [misc]
+    [*x]  # E: List or tuple expected as variadic arguments  [misc]
+    [*y]  # E: List or tuple expected as variadic arguments  [misc]
+
+    # TODO these errors shouldn't be duplicated
+    (*1, )  # E: List or tuple expected as variadic arguments  [misc]  # E: List or tuple expected as variadic arguments  [misc]
+    (*x, )  # E: List or tuple expected as variadic arguments  [misc]  # E: List or tuple expected as variadic arguments  [misc]
+    (*y, )  # E: List or tuple expected as variadic arguments  [misc]  # E: List or tuple expected as variadic arguments  [misc]

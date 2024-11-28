@@ -2066,7 +2066,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     }
                     let value_iterator = union_part.iter(
                         self.i_s,
-                        IterInfos::new(value_node_ref, IterCause::Unpack, &|issue| {
+                        IterInfos::new(value_node_ref, IterCause::AssignmentUnpack, &|issue| {
                             value_node_ref.add_issue(self.i_s, issue)
                         }),
                     );
@@ -3557,7 +3557,11 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
 
         result_context.with_tuple_context_iterator(self.i_s, |tuple_context_iterator| {
             let add_from_stars = |gatherer: &mut TupleGatherer, inferred: Inferred, from_index| {
-                match inferred.iter(self.i_s, NodeRef::new(self.file, from_index)) {
+                match inferred.iter(
+                    self.i_s,
+                    NodeRef::new(self.file, from_index),
+                    IterCause::VariadicUnpack,
+                ) {
                     IteratorContent::Inferred(_) | IteratorContent::Any(_) => {
                         if gatherer.unpack.is_some() {
                             gatherer.is_arbitrary_length = true;
@@ -4291,8 +4295,12 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             let inf = if needs_await {
                 await_aiter_and_next(self.i_s, base, clause_node_ref)
             } else {
-                base.iter(self.i_s, NodeRef::new(self.file, expr_part.index()))
-                    .infer_all(self.i_s)
+                base.iter(
+                    self.i_s,
+                    NodeRef::new(self.file, expr_part.index()),
+                    IterCause::Iter,
+                )
+                .infer_all(self.i_s)
             };
             self.assign_targets(
                 targets.as_target(),

@@ -20,7 +20,8 @@ use crate::{
     node_ref::NodeRef,
     type_::{
         check_typed_dict_call, infer_typed_dict_item, maybe_add_extra_keys_issue, AnyCause,
-        Literal, LiteralKind, LiteralValue, NeverCause, Type, TypedDict, TypedDictGenerics,
+        IterCause, Literal, LiteralKind, LiteralValue, NeverCause, Type, TypedDict,
+        TypedDictGenerics,
     },
     Inferred,
 };
@@ -34,7 +35,11 @@ impl<'db> Inference<'db, '_, '_> {
         for child in elements {
             let from_stars = |inferred: Inferred, from_index| {
                 inferred
-                    .iter(self.i_s, NodeRef::new(self.file, from_index))
+                    .iter(
+                        self.i_s,
+                        NodeRef::new(self.file, from_index),
+                        IterCause::VariadicUnpack,
+                    )
                     .infer_all(self.i_s)
                     .as_type(self.i_s)
             };
@@ -491,7 +496,9 @@ fn check_elements_with_context<'db>(
                 check_item(
                     i_s,
                     matcher,
-                    inferred.iter(i_s, from).infer_all(i_s),
+                    inferred
+                        .iter(i_s, from, IterCause::VariadicUnpack)
+                        .infer_all(i_s),
                     starred.index(),
                 )
             }
