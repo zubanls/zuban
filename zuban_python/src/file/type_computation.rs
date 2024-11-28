@@ -32,8 +32,7 @@ use crate::{
         TypedDictGenerics, TypedDictMember, UnionEntry, UnionType, WithUnpack,
     },
     type_helpers::{
-        cache_class_name, is_reexport_issue_if_check_needed, start_namedtuple_params, Class,
-        Function, Module,
+        cache_class_name, is_reexport_issue, start_namedtuple_params, Class, Function, Module,
     },
     utils::{rc_slice_into_vec, rc_unwrap_or_clone, AlreadySeen},
 };
@@ -1624,7 +1623,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             TypeContent::Module(f) => {
                 if let Some(link) = f
                     .lookup_global(name.as_str())
-                    .filter(|link| !is_reexport_issue_if_check_needed(db, f, (*link).into()))
+                    .filter(|link| !is_reexport_issue(db, f, (*link).into()))
                     .or_else(|| {
                         match f
                             .inference(self.inference.i_s)

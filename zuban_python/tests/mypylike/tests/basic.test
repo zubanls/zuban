@@ -966,3 +966,38 @@ def foo(x, y: bytes):
 
 [file foo.pyi]
 def foo(x: str, y: int) -> None: ...
+
+[case underscored_reexport_import_with__all__]
+import foo
+import bar
+
+[file foo.py]
+from m import _C  # E: Module "m" does not explicitly export attribute "_C"
+from m import _D  # E: Module "m" does not explicitly export attribute "_D"
+from k import _C as C2
+from k import _D as D2
+
+x: _C
+reveal_type(x)  # N: Revealed type is "n.C"
+
+[file bar.pyi]
+from m import _C  # E: Module "m" does not explicitly export attribute "_C"
+from m import _D  # E: Module "m" does not explicitly export attribute "_D"
+from k import _C as C2
+from k import _D as D2
+
+[file k.py]
+__all__ = ()
+from n import C as _C
+from o import D as _D
+
+[file m.pyi]
+__all__ = ()
+from n import C as _C
+from o import D as _D
+
+[file n.pyi]
+class C: ...
+
+[file o.py]
+class D: ...

@@ -108,7 +108,7 @@ impl<'a> Module<'a> {
                 }
             }
             let link = link.into();
-            if is_reexport_issue_if_check_needed(i_s.db, self.file, link) {
+            if is_reexport_issue(i_s.db, self.file, link) {
                 if let Some(import) =
                     NodeRef::from_link(i_s.db, link).maybe_import_of_name_in_symbol_table()
                 {
@@ -253,19 +253,18 @@ pub fn lookup_in_namespace(
     }
 }
 
-pub fn is_reexport_issue_if_check_needed(
-    db: &Database,
-    file: &PythonFile,
-    link: PointLink,
-) -> bool {
-    let check_reexport = match file.maybe_dunder_all(db) {
-        Some(dunder_all) => {
-            let name = NodeRef::from_link(db, link).as_name().as_code();
-            !(dunder_all.iter().any(|d| d.as_str(db) == name) || name == "__all__")
+pub fn is_reexport_issue(db: &Database, file: &PythonFile, link: PointLink) -> bool {
+    if !file.is_stub() && !file.flags(db).no_implicit_reexport {
+        return false;
+    }
+    if let Some(dunder_all) = file.maybe_dunder_all(db) {
+        let name = NodeRef::from_link(db, link).as_name().as_code();
+        if dunder_all.iter().any(|d| d.as_str(db) == name) || name == "__all__" {
+            // Name was exported in __all__
+            return false;
         }
-        None => file.is_stub() || file.flags(db).no_implicit_reexport,
-    };
-    check_reexport && is_private_import(db, link)
+    }
+    is_private_import(db, link)
 }
 
 pub fn is_private_import(db: &Database, link: PointLink) -> bool {

@@ -40,9 +40,9 @@ use crate::{
         WithUnpack,
     },
     type_helpers::{
-        cache_class_name, is_private, is_private_import, is_reexport_issue_if_check_needed,
-        lookup_in_namespace, Class, ClassLookupOptions, FirstParamKind, Function, GeneratorType,
-        Instance, InstanceLookupOptions, LookupDetails, Module, TypeOrClass,
+        cache_class_name, is_private, is_private_import, is_reexport_issue, lookup_in_namespace,
+        Class, ClassLookupOptions, FirstParamKind, Function, GeneratorType, Instance,
+        InstanceLookupOptions, LookupDetails, Module, TypeOrClass,
     },
     utils::debug_indent,
     TypeCheckerFlags,
@@ -3912,7 +3912,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         }
 
         if let Some(link) = other_file.lookup_global(name) {
-            if !is_reexport_issue_if_check_needed(self.i_s.db, other_file, link.into()) {
+            if !is_reexport_issue(self.i_s.db, other_file, link.into()) {
                 let mut result = StarImportResult::Link(link.into());
                 if is_class_star_import
                     && result
