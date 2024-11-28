@@ -2110,29 +2110,18 @@ impl<'db: 'a, 'a> Class<'a> {
     }
 
     pub fn as_type(&self, db: &Database) -> Type {
-        match self.generics {
-            Generics::NotDefinedYet => {
-                let class_infos = self.use_cached_class_infos(db);
-                if let Some(t) = class_infos.undefined_generics_type.get() {
-                    let t = t.as_ref();
-                    // For classes we use the default mechanism, otherwise we would have NotDefinedYet
-                    // as generics, which we currently don't use in instances (only in Type::Type(..))
-                    if !matches!(t, Type::Class(_)) {
-                        return t.clone();
-                    }
-                }
+        let class_infos = self.use_cached_class_infos(db);
+        match class_infos
+            .undefined_generics_type
+            .get()
+            .map(|t| t.as_ref())
+        {
+            Some(Type::Dataclass(d)) => {
+                Type::Dataclass(Dataclass::new(self.as_generic_class(db), d.options))
             }
-            Generics::Self_ { .. } => {
-                if let Some(dataclass) = self.maybe_dataclass(db) {
-                    return Type::Dataclass(Dataclass::new(
-                        self.as_generic_class(db),
-                        dataclass.options,
-                    ));
-                }
-            }
-            _ => (),
+            None | Some(Type::Class(_)) => Type::Class(self.as_generic_class(db)),
+            Some(t) => t.clone(),
         }
-        Type::Class(self.as_generic_class(db))
     }
 
     pub fn as_type_type(&self, db: &Database) -> Type {
