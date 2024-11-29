@@ -1,0 +1,37 @@
+---
+source: parsa_python/tests/test_grammar.rs
+expression: tree_to_string(tree)
+---
+file: 0-30
+ stmt: 1-30
+  with_stmt: 1-30
+   Keyword: 1-5 "with"
+   with_items: 6-23
+    with_item: 6-11
+     expression: 6-11
+      atom: 6-11
+       Keyword: 6-7 "("
+       named_expression: 7-10
+        expression: 7-10
+         atom: 7-10
+          Name: 7-10 "foo"
+       Keyword: 10-11 ")"
+    Keyword: 11-12 ","
+    with_item: 13-23
+     expression: 13-16
+      atom: 13-16
+       Name: 13-16 "bar"
+     Keyword: 17-19 "as"
+     name_def: 20-23
+      Name: 20-23 "baz"
+   Keyword: 23-24 ":"
+   block: 26-30
+    simple_stmts: 26-30
+     simple_stmt: 26-29
+      star_expressions: 26-29
+       expression: 26-29
+        atom: 26-29
+         Keyword: 26-29 "..."
+     Newline: 29-30 "\n"
+ Endmarker: 30-30 ""
+

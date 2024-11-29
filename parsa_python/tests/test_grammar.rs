@@ -307,6 +307,9 @@ parametrize_snapshots!(
         with (i for i in 42): ...
         with (yield y): ...
         ");
+    with_items_single_items_parens: dedent("
+        with (foo), bar as baz:  ...
+        ");
     string_literals_in_strings: dedent(r#"
         '"""'
         "'''"
