@@ -4110,7 +4110,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     self.use_cached_param_annotation(annotation)
                 } else if self.i_s.current_function().is_some() {
                     if specific == Specific::MaybeSelfParam {
-                        match func.first_param_kind() {
+                        match func.first_param_kind(self.i_s) {
                             FirstParamKind::Self_ => to_inferred(false),
                             FirstParamKind::ClassOfSelf => to_inferred(true),
                             FirstParamKind::InStaticmethod => {

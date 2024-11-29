@@ -912,6 +912,9 @@ impl PythonState {
     attribute_link!(builtins, pub object_link, builtins_object_index);
     attribute_link!(builtins, pub bool_link, builtins_bool_index);
     attribute_link!(builtins, pub notimplementederror, builtins_notimplementederror);
+    attribute_link!(builtins, pub staticmethod_link, builtins_staticmethod_index);
+    attribute_link!(builtins, pub classmethod_link, builtins_staticmethod_index);
+    attribute_link!(builtins, pub property_link, builtins_staticmethod_index);
     attribute_link!(abc, pub abc_meta_link, abc_abc_meta_index);
     attribute_link!(abc, pub abstractmethod_link, abc_abstractmethod_index);
     attribute_link!(abc, pub abstractproperty_link, abc_abstractproperty_index);

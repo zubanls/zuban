@@ -738,7 +738,7 @@ fn execute_super_internal<'db>(
     let fallback = |assume_instance| {
         if let Some(func) = i_s.current_function() {
             if let Some(cls) = func.class {
-                let first_param_kind = func.first_param_kind();
+                let first_param_kind = func.first_param_kind(i_s);
                 if first_param_kind == FirstParamKind::InStaticmethod {
                     return Err(
                         IssueKind::SuperRequiresOneOrTwoPositionalArgumentsInEnclosingFunction,

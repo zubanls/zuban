@@ -106,21 +106,23 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         })
     }
 
-    fn iter_non_self_args(&self) -> ParamIterator<'a> {
+    fn iter_non_self_args(&self, i_s: &InferenceState) -> ParamIterator<'a> {
         let mut iterator = self.node().params().iter();
-        if self.class.is_some() && self.kind() != FunctionKind::Staticmethod {
+        if self.class.is_some() && self.kind(i_s) != FunctionKind::Staticmethod {
             // The param annotation is defined implicitly as Self or Type[Self]
             iterator.next();
         }
         iterator
     }
 
-    pub fn is_missing_param_annotations(&self) -> bool {
-        self.iter_non_self_args().any(|p| p.annotation().is_none())
+    pub fn is_missing_param_annotations(&self, i_s: &InferenceState) -> bool {
+        self.iter_non_self_args(i_s)
+            .any(|p| p.annotation().is_none())
     }
 
-    pub fn might_be_missing_none_return_annotation(&self) -> bool {
-        self.iter_return_or_yield().next().is_none() && self.iter_non_self_args().next().is_none()
+    pub fn might_be_missing_none_return_annotation(&self, i_s: &InferenceState) -> bool {
+        self.iter_return_or_yield().next().is_none()
+            && self.iter_non_self_args(i_s).next().is_none()
     }
 
     pub fn has_trivial_body(&self, i_s: &InferenceState) -> bool {
@@ -680,39 +682,65 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         self.class.is_some() && self.name() == "__new__"
     }
 
-    pub fn first_param_kind(&self) -> FirstParamKind {
+    pub fn first_param_kind(&self, i_s: &InferenceState) -> FirstParamKind {
         if self.class.is_some()
             && ["__new__", "__init_subclass__", "__class_getitem__"].contains(&self.name())
         {
             return FirstParamKind::ClassOfSelf;
         }
-        match self.kind() {
+        match self.kind(i_s) {
             FunctionKind::Function { .. } | FunctionKind::Property { .. } => FirstParamKind::Self_,
             FunctionKind::Classmethod { .. } => FirstParamKind::ClassOfSelf,
             FunctionKind::Staticmethod => FirstParamKind::InStaticmethod,
         }
     }
 
-    pub fn kind(&self) -> FunctionKind {
-        let had_first_annotation = self.class.is_none()
-            || self
-                .node()
-                .params()
-                .iter()
-                .next()
-                .is_some_and(|p| p.annotation().is_some());
+    pub fn kind(&self, i_s: &InferenceState) -> FunctionKind {
+        if self.class.is_none() {
+            return FunctionKind::Function {
+                had_first_self_or_class_annotation: true,
+            };
+        }
+        let node = self.node();
+        let had_first_self_or_class_annotation = node
+            .params()
+            .iter()
+            .next()
+            .is_some_and(|p| p.annotation().is_some());
+
         match self.node_ref.complex() {
             Some(ComplexPoint::TypeInstance(Type::Callable(c))) => c.kind,
             Some(ComplexPoint::FunctionOverload(o)) => o.kind(),
+            Some(_) => {
+                // We have a type, probably an instance and we need to recheck if it was mapped by
+                // a classmethod or not.
+                if let Some(decorated) = self.node().maybe_decorated() {
+                    for dec in decorated.decorators().iter() {
+                        if let InferredDecorator::FunctionKind { kind, .. } =
+                            infer_decorator_details(
+                                i_s,
+                                self.node_ref.file,
+                                dec,
+                                had_first_self_or_class_annotation,
+                            )
+                        {
+                            return kind;
+                        }
+                    }
+                }
+                FunctionKind::Function {
+                    had_first_self_or_class_annotation,
+                }
+            }
             _ => {
                 if self.node_ref.point().maybe_specific() == Some(Specific::OverloadUnreachable) {
-                    let first = first_defined_name(self.node_ref.file, self.node().name().index());
+                    let first = first_defined_name(self.node_ref.file, node.name().index());
                     let original_func =
                         NodeRef::new(self.node_ref.file, first - NAME_TO_FUNCTION_DIFF);
-                    Function::new(original_func, self.class).kind()
+                    Function::new(original_func, self.class).kind(i_s)
                 } else {
                     FunctionKind::Function {
-                        had_first_self_or_class_annotation: had_first_annotation,
+                        had_first_self_or_class_annotation,
                     }
                 }
             }

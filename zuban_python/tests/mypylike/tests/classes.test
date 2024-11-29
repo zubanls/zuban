@@ -1265,3 +1265,15 @@ class C:
     def __init_subclass__(self) -> Never: ...
 class D:
     def __init_subclass__(self) -> Any: ...  # E: The return type of "__init_subclass__" must be None
+
+[case class_decorator_after_staticmethod_without_args]
+from typing import Any
+class Decorator:
+    def __init__(self, other: Any): ...
+    def __call__(self, other: int) -> int: ...
+class C:
+    @staticmethod
+    @Decorator
+    def s() -> None: ...
+
+reveal_type(C().s(1))  # N: Revealed type is "int"
