@@ -879,7 +879,7 @@ impl Database {
         let vfs = Box::<FileSystemReader>::default();
 
         let project = PythonProject {
-            sys_path: sys_path::create_sys_path(options.settings.python_executable.as_deref()),
+            sys_path: sys_path::create_sys_path(&options.settings),
             settings: options.settings,
             flags: options.flags,
             overrides: options.overrides,

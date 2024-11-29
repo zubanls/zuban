@@ -1,12 +1,14 @@
 use std::path::{Path, PathBuf};
 
-pub(crate) fn create_sys_path(python_executable: Option<&str>) -> Vec<Box<str>> {
+use crate::{PythonVersion, Settings};
+
+pub(crate) fn create_sys_path(settings: &Settings) -> Vec<Box<str>> {
     let mut sys_path = vec![];
-    if let Some(exe) = python_executable {
+    if let Some(exe) = &settings.python_executable {
         // We cannot use cannonicalize here, because the path of the exe is often a venv path
         // that is a symlink to the actual exectuable. We however want the relative paths to
         // the symlink. Therefore cannonicalize only after getting the first dir
-        let p = site_packages_path_from_venv(exe);
+        let p = site_packages_path_from_venv(exe, settings.python_version);
         sys_path.push(
             p.into_os_string()
                 .into_string()
@@ -27,16 +29,38 @@ pub(crate) fn create_sys_path(python_executable: Option<&str>) -> Vec<Box<str>> 
     sys_path
 }
 
-fn site_packages_path_from_venv(executable: &str) -> PathBuf {
+fn site_packages_path_from_venv(executable: &str, version: PythonVersion) -> PathBuf {
     const ERR: &str = "Expected a custom executable to be at least two directories deep";
-    Path::new(executable)
+    let lib = Path::new(executable)
         .parent()
         .expect(ERR)
         .canonicalize()
         .expect("Expected chdir to be possible with a custom python executable")
         .parent()
         .expect(ERR)
-        .join("lib")
-        .join("python3.12")
-        .join("site-packages")
+        .join("lib");
+
+    let expected_path = lib
+        .join(format!("python{}.{}", version.major, version.minor))
+        .join("site-packages");
+
+    if expected_path.exists() {
+        return expected_path;
+    }
+    // Since the path we wanted doesn't exist, we fall back to trying to find a folder in the lib,
+    // because we are probably not always using the correct PythonVersion.
+    match lib.read_dir() {
+        Ok(dir) => {
+            for path_in_dir in dir {
+                if let Ok(path_in_dir) = path_in_dir {
+                    let n = path_in_dir.file_name();
+                    if n.as_encoded_bytes().starts_with(b"python") {
+                        return lib.join(n).join("site-packages");
+                    }
+                }
+            }
+        }
+        Err(err) => panic!("Expected {lib:?} to be a directory: {err}"),
+    }
+    expected_path
 }
