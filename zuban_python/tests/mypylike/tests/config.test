@@ -81,6 +81,15 @@ exclude = "lala/a.*pkg"
 module = 'lala.a.*'
 exclude = "inherited_exclude"
 
+[case mypy_ini_excluded_file_can_have_syntax_errors]
+[file m.py]
+1[]
+[file n.py]
+1[]  # E: invalid syntax
+[file mypy.ini]
+\[mypy]
+exclude = m
+
 [case mypy_setup_ini_with_multiline_string]
 # See also https://github.com/zonyitoo/rust-ini/issues/138
 def foo(x: int = None) -> None: ...
