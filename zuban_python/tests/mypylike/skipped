@@ -320,7 +320,6 @@ testRecursiveTypedDictWithList
 # enum member gathering
 testFinalWithMethodAssignment
 
-dataclass_init_with_self_type_overloaded
 # dataclass classmethod
 testDataclassesClassmethods
 testClassmethodShadowingFieldDoesNotCrash

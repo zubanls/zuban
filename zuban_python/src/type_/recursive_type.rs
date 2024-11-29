@@ -3,7 +3,7 @@ use std::{
     hash::{Hash, Hasher},
 };
 
-use super::{ClassGenerics, Dataclass, GenericClass, GenericsList, Type};
+use super::{GenericsList, Type};
 use crate::{
     database::{Database, PointLink, TypeAlias},
     matching::Generics,
@@ -78,29 +78,9 @@ impl RecursiveType {
                     })
                 }
             }
-            RecursiveTypeOrigin::Class(class) => self.calculated_type.get_or_init(|| {
-                let class_generics = if let Some(generics) = &self.generics {
-                    ClassGenerics::List(generics.clone())
-                } else {
-                    ClassGenerics::None
-                };
-                if let Some(dataclass) = class.maybe_dataclass(db) {
-                    Type::Dataclass(Dataclass::new(
-                        GenericClass {
-                            link: self.link,
-                            generics: class_generics,
-                        },
-                        dataclass.options,
-                    ))
-                } else if let Some(td) = class.maybe_typed_dict() {
-                    Type::TypedDict(match self.generics.clone() {
-                        Some(list) => td.apply_generics(db, list),
-                        None => td,
-                    })
-                } else {
-                    Type::new_class(self.link, class_generics)
-                }
-            }),
+            RecursiveTypeOrigin::Class(class) => {
+                self.calculated_type.get_or_init(|| class.as_type(db))
+            }
         }
     }
 }
