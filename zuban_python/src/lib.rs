@@ -17,6 +17,7 @@ mod name;
 mod node_ref;
 mod params;
 mod python_state;
+mod sys_path;
 mod type_;
 mod type_helpers;
 mod utils;

@@ -20,6 +20,7 @@ use crate::{
     },
     node_ref::NodeRef,
     python_state::PythonState,
+    sys_path,
     type_::{
         CallableContent, FunctionKind, FunctionOverload, GenericItem, GenericsList, NewType,
         ParamSpecUsage, RecursiveType, StringSlice, Type, TypeVarLike, TypeVarLikeUsage,
@@ -877,41 +878,8 @@ impl Database {
     pub fn new(file_state_loaders: FileStateLoaders, options: ProjectOptions) -> Self {
         let vfs = Box::<FileSystemReader>::default();
 
-        let mut sys_path = vec![];
-        if let Some(exe) = &options.settings.python_executable {
-            const ERR: &str = "Expected a custom executable to be at least two directories deep";
-            // We cannot use cannonicalize here, because the path of the exe is often a venv path
-            // that is a symlink to the actual exectuable. We however want the relative paths to
-            // the symlink. Therefore cannonicalize only after getting the first dir
-            let p = Path::new(exe)
-                .parent()
-                .expect(ERR)
-                .canonicalize()
-                .expect("Expected chdir to be possible with a custom python executable")
-                .parent()
-                .expect(ERR)
-                .join("lib")
-                .join("python3.12")
-                .join("site-packages");
-            sys_path.push(
-                p.into_os_string()
-                    .into_string()
-                    .expect("Should never happen, because we only put together valid unicode paths")
-                    .into(),
-            );
-        } else {
-            // TODO use a real sys path
-            //"../typeshed/stubs".into(),
-            //"/usr/lib/python3/dist-packages".into(),
-            //"/usr/local/lib/python3.8/dist-packages/pip-20.0.2-py3.8.egg".into(),
-            //"/usr/lib/python3.8".into(),
-            //"/home/dave/.local/lib/python3.8/site-packages".into(),
-            //"/usr/local/lib/python3.8/dist-packages".into(),
-        }
-        sys_path.push("/home/dave/source/rust/zuban/typeshed/stdlib".into());
-        sys_path.push("/home/dave/source/rust/zuban/typeshed/stubs/mypy-extensions".into());
         let project = PythonProject {
-            sys_path,
+            sys_path: sys_path::create_sys_path(options.settings.python_executable.as_deref()),
             settings: options.settings,
             flags: options.flags,
             overrides: options.overrides,
