@@ -1330,9 +1330,9 @@ impl Database {
 
     fn generate_python_state(&mut self) {
         // TODO this is wrong, because it's just a random dir...
-        let mut dirs = self.workspaces.directories().rev();
-        let mypy_extensions_dir = dirs.next().unwrap().1;
-        let stdlib_dir = dirs.next().unwrap().1;
+        let mut dirs = self.workspaces.directories_not_type_checked();
+        let stdlib_dir = dirs.next().unwrap();
+        let mypy_extensions_dir = dirs.next().unwrap();
         let collections_dir = match &*stdlib_dir.search("collections").unwrap() {
             DirectoryEntry::Directory(c) => c.clone(),
             _ => unreachable!(),

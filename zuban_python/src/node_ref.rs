@@ -247,7 +247,7 @@ impl<'file> NodeRef<'file> {
         let complex = self.complex().unwrap_or_else(|| {
             panic!(
                 "Node {:?} ({}:{}) is not a complex class",
-                self.as_code(),
+                self.file.tree.debug_info(self.node_index),
                 self.file_index(),
                 self.node_index
             )

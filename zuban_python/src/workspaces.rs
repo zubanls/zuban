@@ -42,6 +42,13 @@ impl Workspaces {
         self.0.iter().map(|x| (x.root_path(), &x.directory))
     }
 
+    pub fn directories_not_type_checked(&self) -> impl Iterator<Item = &Directory> {
+        self.0
+            .iter()
+            .filter(|x| !x.is_type_checked)
+            .map(|x| &x.directory)
+    }
+
     pub fn directories_to_type_check(&self) -> impl Iterator<Item = &Directory> {
         self.0
             .iter()
