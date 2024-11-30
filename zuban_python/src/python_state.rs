@@ -921,7 +921,11 @@ impl PythonState {
         ellipsis_fallback_link,
         typing_ellipsis_fallback_index
     );
-    attribute_link!(dataclasses_file, pub dataclasses_capital_field_link, dataclasses_capital_field_index);
+    attribute_link!(
+        dataclasses_file,
+        dataclasses_capital_field_link,
+        dataclasses_capital_field_index
+    );
 
     node_ref_to_class!(pub object_class, object_node_ref);
     node_ref_to_class!(int, int_node_ref);
