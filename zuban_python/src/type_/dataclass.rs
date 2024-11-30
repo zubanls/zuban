@@ -300,7 +300,11 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> Init
                     .into_owned();
                 let mut is_init_var = false;
                 if let Type::Class(c) = &t {
-                    if c.link == db.python_state.dataclasses_init_var_link() {
+                    if c.class(i_s.db).node_ref.maybe_name_defined_in_module(
+                        i_s.db,
+                        "dataclasses",
+                        "InitVar",
+                    ) {
                         t = c.class(db).nth_type_argument(db, 0);
                         is_init_var = true;
                     }
@@ -907,7 +911,15 @@ pub(crate) fn lookup_on_dataclass<'a>(
         .and_then(|inf| match inf.as_cow_type(i_s).as_ref() {
             // Init vars are not actually available on the class. They are just passed to __init__
             // and are not class members.
-            Type::Class(c) if c.link == i_s.db.python_state.dataclasses_init_var_link() => None,
+            Type::Class(c)
+                if c.class(i_s.db).node_ref.maybe_name_defined_in_module(
+                    i_s.db,
+                    "dataclasses",
+                    "InitVar",
+                ) =>
+            {
+                None
+            }
             _ => Some(inf),
         })
         .unwrap_or(LookupResult::None);
