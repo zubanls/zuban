@@ -891,7 +891,7 @@ impl PythonState {
     attribute_node_ref!(typing, pub typing_named_tuple_node_ref, typing_namedtuple_index);
     attribute_node_ref!(
         typing,
-        typing_special_form_node_ref,
+        pub typing_special_form_node_ref,
         typing_special_form_index
     );
     optional_attribute_node_ref!(types, none_type_node_ref, types_none_type_index);

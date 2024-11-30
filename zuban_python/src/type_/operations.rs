@@ -540,7 +540,10 @@ impl Type {
                     .compute_type_application_on_typed_dict(
                         td,
                         *slice_type,
-                        matches!(result_context, ResultContext::AssignmentNewDefinition),
+                        matches!(
+                            result_context,
+                            ResultContext::AssignmentNewDefinition { .. }
+                        ),
                     ),
                 _ => not_possible(true),
             },

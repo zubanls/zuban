@@ -650,7 +650,12 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     let return_type = inf.as_ref().map(|inf| inf.as_cow_type(self.i_s));
                     let mut result_context = match &return_type {
                         Some(t) => ResultContext::new_known(t),
-                        None => ResultContext::AssignmentNewDefinition,
+                        None => ResultContext::AssignmentNewDefinition {
+                            assignment_definition: PointLink::new(
+                                self.file.file_index,
+                                assignment.index(),
+                            ),
+                        },
                     };
                     self.infer_assignment_right_side(right_side, &mut result_context)
                         .avoid_implicit_literal(self.i_s)

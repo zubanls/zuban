@@ -1,7 +1,8 @@
-use std::fmt;
+use core::fmt;
 
 use super::Matcher;
 use crate::{
+    database::PointLink,
     node_ref::NodeRef,
     type_::{AnyCause, TupleArgs, Type},
     type_helpers::Class,
@@ -18,7 +19,9 @@ pub enum ResultContext<'a, 'b> {
         matcher: &'a mut Matcher<'b>,
         type_: &'a Type,
     },
-    AssignmentNewDefinition,
+    AssignmentNewDefinition {
+        assignment_definition: PointLink,
+    },
     Unknown,
     ExpectUnused,
     RevealType,
@@ -44,7 +47,7 @@ impl<'a> ResultContext<'a, '_> {
                 Some(callable(&t))
             }
             Self::Unknown
-            | Self::AssignmentNewDefinition
+            | Self::AssignmentNewDefinition { .. }
             | Self::ExpectUnused
             | Self::RevealType => None,
         }
@@ -60,7 +63,7 @@ impl<'a> ResultContext<'a, '_> {
             }
             Self::WithMatcher { matcher, type_ } => Some(callable(type_, matcher)),
             Self::Unknown
-            | Self::AssignmentNewDefinition
+            | Self::AssignmentNewDefinition { .. }
             | Self::ExpectUnused
             | Self::RevealType => None,
         }
@@ -100,7 +103,9 @@ impl<'a> ResultContext<'a, '_> {
     }
 
     pub fn could_be_a_literal(&self, i_s: &InferenceState<'_, '_>) -> CouldBeALiteral {
-        if matches!(self, Self::AssignmentNewDefinition) && !i_s.is_calculating_enum_members() {
+        if matches!(self, Self::AssignmentNewDefinition { .. })
+            && !i_s.is_calculating_enum_members()
+        {
             return CouldBeALiteral::No;
         }
         self.with_type_if_exists_and_replace_type_var_likes(i_s, |type_| match type_ {
@@ -124,7 +129,7 @@ impl<'a> ResultContext<'a, '_> {
             Self::Known { type_, .. } | Self::WithMatcher { type_, .. } => {
                 !matches!(type_, Type::None)
             }
-            Self::AssignmentNewDefinition | Self::Unknown => true,
+            Self::AssignmentNewDefinition { .. } | Self::Unknown => true,
         }
     }
 
@@ -187,7 +192,7 @@ impl fmt::Debug for ResultContext<'_, '_> {
             Self::Unknown => write!(f, "Unknown"),
             Self::ExpectUnused => write!(f, "ExpectUnused"),
             Self::RevealType => write!(f, "RevealType"),
-            Self::AssignmentNewDefinition => write!(f, "AssignmentNewDefinition"),
+            Self::AssignmentNewDefinition { .. } => write!(f, "AssignmentNewDefinition"),
         }
     }
 }

@@ -325,3 +325,20 @@ y: 'list["undefined"]'
 
 [out]
 main:3:11: error: Name "undefined" is not defined
+
+[case union_alias_attr_access]
+# flags: --show-error-codes
+from typing import Union
+X = Union[int, str]
+Y = int | str
+
+reveal_type(X.__args__)  # E: "_SpecialForm" has no attribute "__args__"  [attr-defined] \
+                         # N: Revealed type is "Any"
+reveal_type(Y.__args__)  # N: Revealed type is "tuple[Any, ...]"
+
+reveal_type(Union[int, str].__args__)  # E: "_SpecialForm" has no attribute "__args__"  [attr-defined] \
+                                       # N: Revealed type is "Any"
+reveal_type((int | str).__args__)  # N: Revealed type is "tuple[Any, ...]"
+
+X.undefined  # E: "_SpecialForm" has no attribute "undefined"  [attr-defined]
+Y.undefined  # E: "UnionType" has no attribute "undefined"  [attr-defined]

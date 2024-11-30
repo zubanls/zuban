@@ -2092,21 +2092,35 @@ impl<'db: 'slf, 'slf> Inferred {
                     | Specific::TypingCallable
                     | Specific::MypyExtensionsFlexibleAlias),
                 ) => {
+                    if let ResultContext::AssignmentNewDefinition {
+                        assignment_definition,
+                    } = result_context
+                    {
+                        // In these casees it's pretty obvious that we are defining a TypeAlias.
+                        // Therefore simply compute it as such.
+                        let node_ref = NodeRef::from_link(i_s.db, *assignment_definition);
+                        let assignment = node_ref.expect_assignment();
+                        return node_ref
+                            .file
+                            .inference(i_s)
+                            .compute_explicit_type_assignment(assignment);
+                    }
                     let result = slice_type
                         .file
                         .inference(i_s)
                         .compute_type_application_on_typing_class(
                             specific,
                             *slice_type,
-                            matches!(result_context, ResultContext::AssignmentNewDefinition),
+                            matches!(
+                                result_context,
+                                ResultContext::AssignmentNewDefinition { .. }
+                            ),
                         );
                     if matches!(
                         specific,
                         Specific::TypingAnnotated
                             | Specific::TypingTuple
-                            | Specific::TypingUnion
                             | Specific::TypingCallable
-                            | Specific::TypingOptional
                     ) {
                         return result;
                     }
@@ -2121,7 +2135,10 @@ impl<'db: 'slf, 'slf> Inferred {
                             .compute_type_application_on_alias(
                                 ta,
                                 *slice_type,
-                                matches!(result_context, ResultContext::AssignmentNewDefinition),
+                                matches!(
+                                    result_context,
+                                    ResultContext::AssignmentNewDefinition { .. }
+                                ),
                             );
                     }
                 }

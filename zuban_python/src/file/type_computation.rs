@@ -3862,7 +3862,6 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                     NodeRef::new(file, name_def.index()),
                 ));
             }
-            debug_assert!(file.points.get(name_def.index()).calculated() || annotation.is_some());
 
             let check_for_alias = || {
                 cached_type_node_ref.set_point(Point::new_calculating());
@@ -4042,7 +4041,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
         }
     }
 
-    pub(super) fn compute_explicit_type_assignment(&self, assignment: Assignment) -> Inferred {
+    pub(crate) fn compute_explicit_type_assignment(&self, assignment: Assignment) -> Inferred {
         self.compute_type_assignment(assignment, true);
         Inferred::from_saved_node_ref(assignment_type_node_ref(self.file, assignment))
     }
