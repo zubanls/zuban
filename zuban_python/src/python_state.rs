@@ -186,7 +186,6 @@ pub struct PythonState {
     mypy_extensions_default_named_arg_func: NodeIndex,
     mypy_extensions_kw_arg_func: NodeIndex,
     mypy_extensions_var_arg_func: NodeIndex,
-    dataclasses_kw_only_index: Option<NodeIndex>,
     dataclasses_init_var_index: NodeIndex,
     dataclasses_field_index: NodeIndex,
     dataclasses_capital_field_index: NodeIndex,
@@ -314,7 +313,6 @@ impl PythonState {
             mypy_extensions_default_named_arg_func: 0,
             mypy_extensions_kw_arg_func: 0,
             mypy_extensions_var_arg_func: 0,
-            dataclasses_kw_only_index: None,
             dataclasses_init_var_index: 0,
             dataclasses_field_index: 0,
             dataclasses_capital_field_index: 0,
@@ -601,7 +599,6 @@ impl PythonState {
             functools,
             "cached_property"
         );
-        cache_optional_index!(dataclasses_kw_only_index, dataclasses_file, "KW_ONLY");
         cache_index!(dataclasses_init_var_index, dataclasses_file, "InitVar");
         cache_index!(dataclasses_capital_field_index, dataclasses_file, "Field");
 
@@ -930,7 +927,6 @@ impl PythonState {
         ellipsis_fallback_link,
         typing_ellipsis_fallback_index
     );
-    optional_attribute_link!(dataclasses_file, pub dataclasses_kw_only_link, dataclasses_kw_only_index);
     attribute_link!(dataclasses_file, pub dataclasses_init_var_link, dataclasses_init_var_index);
     attribute_link!(dataclasses_file, pub dataclasses_field_link, dataclasses_field_index);
     attribute_link!(dataclasses_file, pub dataclasses_capital_field_link, dataclasses_capital_field_index);

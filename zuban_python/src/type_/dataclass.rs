@@ -344,7 +344,13 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> Init
     let mut had_kw_only_marker = false;
     for infos in with_indexes.into_iter() {
         match infos.t {
-            Type::Class(c) if Some(c.link) == db.python_state.dataclasses_kw_only_link() => {
+            Type::Class(c)
+                if c.class(i_s.db).node_ref.maybe_name_defined_in_module(
+                    i_s.db,
+                    "dataclasses",
+                    "KW_ONLY",
+                ) =>
+            {
                 if had_kw_only_marker {
                     NodeRef::new(file, infos.name_index)
                         .add_issue(i_s, IssueKind::DataclassMultipleKwOnly);
