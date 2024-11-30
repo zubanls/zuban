@@ -2116,12 +2116,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 ResultContext::AssignmentNewDefinition { .. }
                             ),
                         );
-                    if matches!(
-                        specific,
-                        Specific::TypingAnnotated
-                            | Specific::TypingTuple
-                            | Specific::TypingCallable
-                    ) {
+                    if matches!(specific, Specific::TypingTuple) {
                         return result;
                     }
                     return Inferred::from_type(i_s.db.python_state.typing_special_form_type());
