@@ -23,6 +23,7 @@ pub(crate) trait Args<'db>: std::fmt::Debug {
     // Returns an iterator of arguments, where args are returned before kw args.
     // This is not the case in the grammar, but here we want that.
     fn iter<'x>(&'x self, mode: Mode<'x>) -> ArgIterator<'db, 'x>;
+    fn calculate_diagnostics_for_any_callable(&self);
     fn as_node_ref_internal(&self) -> Option<NodeRef>;
     fn in_file(&self) -> Option<&PythonFile> {
         Some(self.as_node_ref_internal()?.file)
@@ -138,6 +139,43 @@ impl<'db: 'a, 'a> Args<'db> for SimpleArgs<'db, 'a> {
         })
     }
 
+    fn calculate_diagnostics_for_any_callable(&self) {
+        // Mypy does not generate errors for `<any func>(*1)`. It however type checks the
+        // expression after `*`>. It is debatable if this makes sense, because especially in
+        // untyped code it's possible that there's a None in there that might annoy users.
+        if self.i_s.db.project.settings.mypy_compatible {
+            let inference = self.file.inference(&self.i_s);
+            match self.details {
+                ArgumentsDetails::Node(arguments) => {
+                    for arg in arguments.iter() {
+                        match arg {
+                            CSTArgument::Positional(named_expr) => {
+                                inference.infer_named_expression(named_expr);
+                            }
+                            CSTArgument::Keyword(kwarg) => {
+                                inference.infer_expression(kwarg.unpack().1);
+                            }
+                            CSTArgument::Star(s) => {
+                                inference.infer_expression(s.expression());
+                            }
+                            CSTArgument::StarStar(ss) => {
+                                inference.infer_expression(ss.expression());
+                            }
+                        }
+                    }
+                }
+                ArgumentsDetails::Comprehension(comp) => {
+                    inference.infer_generator_comprehension(comp, &mut ResultContext::Unknown);
+                }
+                ArgumentsDetails::None => (),
+            }
+        } else {
+            for arg in self.iter(self.i_s.mode) {
+                arg.infer(&mut ResultContext::Unknown);
+            }
+        }
+    }
+
     fn as_node_ref_internal(&self) -> Option<NodeRef> {
         Some(NodeRef::new(self.file, self.primary_node_index))
     }
@@ -203,6 +241,8 @@ impl<'db, 'a> Args<'db> for KnownArgs<'a> {
         })
     }
 
+    fn calculate_diagnostics_for_any_callable(&self) {}
+
     fn as_node_ref_internal(&self) -> Option<NodeRef> {
         Some(self.node_ref)
     }
@@ -236,6 +276,7 @@ impl<'db, 'a> Args<'db> for KnownArgsWithCustomAddIssue<'a> {
             add_issue: self.add_issue,
         })
     }
+    fn calculate_diagnostics_for_any_callable(&self) {}
 
     fn add_issue(&self, _: &InferenceState, issue: IssueKind) {
         self.add_issue.0(issue)
@@ -258,6 +299,11 @@ impl<'db, 'a> Args<'db> for CombinedArgs<'db, 'a> {
         debug_assert!(iterator.next.is_none()); // For now this is not supported
         iterator.next = Some((mode, self.args2));
         iterator
+    }
+
+    fn calculate_diagnostics_for_any_callable(&self) {
+        self.args1.calculate_diagnostics_for_any_callable();
+        self.args2.calculate_diagnostics_for_any_callable();
     }
 
     fn as_node_ref_internal(&self) -> Option<NodeRef> {
@@ -959,12 +1005,6 @@ impl<'db, 'a> ArgIterator<'db, 'a> {
         }
         result.into_boxed_slice()
     }
-
-    pub fn calculate_diagnostics(self, _: &InferenceState<'db, '_>) {
-        for arg in self {
-            arg.infer(&mut ResultContext::Unknown);
-        }
-    }
 }
 
 impl<'db, 'a> Iterator for ArgIterator<'db, 'a> {
@@ -1221,6 +1261,8 @@ impl<'db, 'a> Args<'db> for NoArgs<'a> {
     fn iter<'x>(&'x self, _: Mode<'x>) -> ArgIterator<'db, 'x> {
         ArgIterator::new(ArgIteratorBase::Finished)
     }
+
+    fn calculate_diagnostics_for_any_callable(&self) {}
 
     fn as_node_ref_internal(&self) -> Option<NodeRef> {
         Some(self.node_ref)

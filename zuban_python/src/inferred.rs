@@ -1890,7 +1890,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             }
                             Specific::TypingAny => {
                                 args.add_issue(i_s, IssueKind::AnyNotCallable);
-                                args.iter(i_s.mode).calculate_diagnostics(i_s);
+                                args.calculate_diagnostics_for_any_callable();
                                 return Inferred::new_any_from_error();
                             }
                             Specific::MypyExtensionsArg

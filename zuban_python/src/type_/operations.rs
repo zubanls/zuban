@@ -663,11 +663,11 @@ impl Type {
                 _ => not_callable(),
             },
             Type::Any(cause) => {
-                args.iter(i_s.mode).calculate_diagnostics(i_s);
+                args.calculate_diagnostics_for_any_callable();
                 Inferred::new_any(*cause)
             }
             Type::Never(_) => {
-                args.iter(i_s.mode).calculate_diagnostics(i_s);
+                args.calculate_diagnostics_for_any_callable();
                 Inferred::new_any(AnyCause::Todo)
             }
             Type::CustomBehavior(custom) => {

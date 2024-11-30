@@ -255,3 +255,26 @@ def foo2(x: Callable[[*tuple[*Ts, str]], None]) -> tuple[*Ts]: ...
 reveal_type(foo1(b))  # N: Revealed type is "tuple[int, ...]"
 reveal_type(foo2(b))  # E: Argument 1 to "foo2" has incompatible type "Callable[[VarArg(int)], None]"; expected "Callable[[VarArg(Unpack[Tuple[Unpack[Tuple[int, ...]], str]])], None]" \
                       # N: Revealed type is "tuple[int, ...]"
+
+[case any_call_with_invalid_args_kwargs_mypy_compatible]
+# flags: --mypy-compatible
+from typing import Any
+
+def f(x: Any) -> None:
+    x(*1)
+    x(**1)
+    x(*1, **1)
+    x(*undefined)  # E: Name "undefined" is not defined
+    x(**undefined)  # E: Name "undefined" is not defined
+
+[case any_call_with_invalid_args_kwargs_no_mypy_compatible]
+# flags: --no-mypy-compatible
+from typing import Any
+
+def f(x: Any) -> None:
+    x(*1)  # E: List or tuple expected as variadic arguments
+    x(**1) # E: Argument after ** must be a mapping, not "int"
+    x(*1, **1)  # E: List or tuple expected as variadic arguments \
+                # E: Argument after ** must be a mapping, not "int"
+    x(*undefined)  # E: Name "undefined" is not defined
+    x(**undefined)  # E: Name "undefined" is not defined
