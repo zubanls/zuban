@@ -186,7 +186,6 @@ pub struct PythonState {
     mypy_extensions_default_named_arg_func: NodeIndex,
     mypy_extensions_kw_arg_func: NodeIndex,
     mypy_extensions_var_arg_func: NodeIndex,
-    dataclasses_field_index: NodeIndex,
     dataclasses_capital_field_index: NodeIndex,
     dataclasses_replace_index: NodeIndex,
     pub type_of_object: Type, // TODO currently unused
@@ -312,7 +311,6 @@ impl PythonState {
             mypy_extensions_default_named_arg_func: 0,
             mypy_extensions_kw_arg_func: 0,
             mypy_extensions_var_arg_func: 0,
-            dataclasses_field_index: 0,
             dataclasses_capital_field_index: 0,
             dataclasses_replace_index: 0,
             type_of_object: Type::None, // Will be set later
@@ -608,7 +606,6 @@ impl PythonState {
 
         cache_optional_index!(typing_override_index, typing, "override", true);
 
-        cache_index!(dataclasses_field_index, dataclasses_file, "field", true);
         cache_index!(dataclasses_replace_index, dataclasses_file, "replace", true);
 
         cache_index!(abc_abstractmethod_index, abc, "abstractmethod", true);
@@ -924,7 +921,6 @@ impl PythonState {
         ellipsis_fallback_link,
         typing_ellipsis_fallback_index
     );
-    attribute_link!(dataclasses_file, pub dataclasses_field_link, dataclasses_field_index);
     attribute_link!(dataclasses_file, pub dataclasses_capital_field_link, dataclasses_capital_field_index);
 
     node_ref_to_class!(pub object_class, object_node_ref);

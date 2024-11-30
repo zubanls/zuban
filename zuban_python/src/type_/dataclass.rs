@@ -491,8 +491,7 @@ fn calculate_field_arg(
             {
                 if let PrimaryContent::Execution(details) = primary.second() {
                     let left = file.inference(i_s).infer_primary_or_atom(primary.first());
-                    if left.maybe_saved_link() == Some(i_s.db.python_state.dataclasses_field_link())
-                    {
+                    if left.maybe_name_defined_in_module(i_s.db, "dataclasses", "field") {
                         let args = SimpleArgs::new(*i_s, file, primary.index(), details);
                         return field_options_from_args(i_s, args);
                     }
