@@ -426,7 +426,6 @@ impl<'db: 'a, 'a> Class<'a> {
             let inference = self.node_ref.file.inference(i_s);
 
             let mut dataclass_options = None;
-            let dataclass_link = i_s.db.python_state.dataclasses_dataclass();
             for decorator in decorated.decorators().iter() {
                 let expr = decorator.named_expression().expression();
                 if let ExpressionContent::ExpressionPart(ExpressionPart::Primary(primary)) =
@@ -434,8 +433,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 {
                     if inference
                         .infer_primary_or_atom(primary.first())
-                        .maybe_saved_link()
-                        == Some(dataclass_link)
+                        .maybe_name_defined_in_module(i_s.db, "dataclasses", "dataclass")
                     {
                         if let PrimaryContent::Execution(exec) = primary.second() {
                             let args =
@@ -462,7 +460,7 @@ impl<'db: 'a, 'a> Class<'a> {
                     }
                 }
 
-                if inf.maybe_saved_link() == Some(dataclass_link) {
+                if inf.maybe_name_defined_in_module(i_s.db, "dataclasses", "dataclass") {
                     dataclass_options = Some(DataclassOptions::default());
                 }
             }

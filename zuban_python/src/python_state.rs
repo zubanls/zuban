@@ -186,7 +186,6 @@ pub struct PythonState {
     mypy_extensions_default_named_arg_func: NodeIndex,
     mypy_extensions_kw_arg_func: NodeIndex,
     mypy_extensions_var_arg_func: NodeIndex,
-    dataclasses_dataclass_index: NodeIndex,
     dataclasses_kw_only_index: Option<NodeIndex>,
     dataclasses_init_var_index: NodeIndex,
     dataclasses_field_index: NodeIndex,
@@ -315,7 +314,6 @@ impl PythonState {
             mypy_extensions_default_named_arg_func: 0,
             mypy_extensions_kw_arg_func: 0,
             mypy_extensions_var_arg_func: 0,
-            dataclasses_dataclass_index: 0,
             dataclasses_kw_only_index: None,
             dataclasses_init_var_index: 0,
             dataclasses_field_index: 0,
@@ -412,14 +410,6 @@ impl PythonState {
             set_mypy_extension_specific(mypy_extensions, "VarArg", Specific::MypyExtensionsVarArg);
         s.mypy_extensions_kw_arg_func =
             set_mypy_extension_specific(mypy_extensions, "KwArg", Specific::MypyExtensionsKwArg);
-
-        db.python_state.dataclasses_dataclass_index = db
-            .python_state
-            .dataclasses_file()
-            .symbol_table
-            .lookup_symbol("dataclass")
-            .unwrap()
-            - NAME_TO_FUNCTION_DIFF;
 
         // Set class indexes and calculate the base types.
         // This needs to be done before it gets accessed, because we expect the MRO etc. to be
@@ -1014,14 +1004,6 @@ impl PythonState {
 
     pub fn mapping_get_function<'class>(&self, class: Class<'class>) -> Function<'_, 'class> {
         Function::new(self.mapping_get_node_ref(), Some(class))
-    }
-
-    pub fn dataclasses_dataclass(&self) -> PointLink {
-        debug_assert!(self.dataclasses_dataclass_index != 0);
-        PointLink::new(
-            self.dataclasses_file().file_index,
-            self.dataclasses_dataclass_index,
-        )
     }
 
     pub fn dataclasses_replace(&self, i_s: &InferenceState) -> Function {

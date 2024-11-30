@@ -376,6 +376,23 @@ impl<'file> NodeRef<'file> {
         debug_assert!(p.calculated());
         (p.kind() == PointKind::Redirect).then(|| p.as_redirected_node_ref(db))
     }
+
+    pub(crate) fn maybe_name_defined_in_module(
+        &self,
+        db: &Database,
+        module_name: &str,
+        symbol_name: &str,
+    ) -> bool {
+        let (name, parent_dir) = self.file.name_and_parent_dir(db);
+        if parent_dir.is_some() || name != module_name {
+            return false;
+        }
+        self.maybe_function()
+            .is_some_and(|f| f.name().as_code() == symbol_name)
+            || self
+                .maybe_class()
+                .is_some_and(|c| c.name().as_code() == symbol_name)
+    }
 }
 
 impl fmt::Debug for NodeRef<'_> {

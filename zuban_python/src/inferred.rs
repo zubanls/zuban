@@ -252,6 +252,17 @@ impl<'db: 'slf, 'slf> Inferred {
             .map(|link| NodeRef::from_link(db, link))
     }
 
+    pub fn maybe_name_defined_in_module(
+        &self,
+        db: &'db Database,
+        module_name: &str,
+        symbol_name: &str,
+    ) -> bool {
+        self.maybe_saved_node_ref(db).is_some_and(|node_ref| {
+            node_ref.maybe_name_defined_in_module(db, module_name, symbol_name)
+        })
+    }
+
     pub fn maybe_saved_specific(&self, db: &Database) -> Option<Specific> {
         self.maybe_saved_node_ref(db)
             .and_then(|node_ref| node_ref.point().maybe_specific())

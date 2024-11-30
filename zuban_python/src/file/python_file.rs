@@ -437,7 +437,7 @@ impl<'db> PythonFile {
                     global_import_without_stubs_first(db, original_file_index, name)
                 }
             }
-            let (name, parent_dir) = name_and_parent_dir(self.file_entry(db));
+            let (name, parent_dir) = name_and_parent_dir(self.file_entry(db), false);
             match try_to_import(db, self.file_index, parent_dir, name)? {
                 ImportResult::File(file_index) => {
                     assert_ne!(file_index, self.file_index);
@@ -594,8 +594,15 @@ impl<'db> PythonFile {
         }
     }
 
+    pub(crate) fn name_and_parent_dir(
+        &self,
+        db: &'db Database,
+    ) -> (&'db str, Option<Rc<Directory>>) {
+        name_and_parent_dir(self.file_entry(db), true)
+    }
+
     pub fn qualified_name(&self, db: &Database) -> String {
-        let (name, parent_dir) = name_and_parent_dir(self.file_entry(db));
+        let (name, parent_dir) = name_and_parent_dir(self.file_entry(db), true);
         if let Some(parent_dir) = parent_dir {
             dotted_path_from_dir(&parent_dir) + "." + name
         } else {
@@ -637,7 +644,7 @@ pub fn dotted_path_from_dir(dir: &Directory) -> String {
     }
 }
 
-fn name_and_parent_dir(entry: &FileEntry) -> (&str, Option<Rc<Directory>>) {
+fn name_and_parent_dir(entry: &FileEntry, skip_stubs: bool) -> (&str, Option<Rc<Directory>>) {
     let name = &entry.name;
     let name = name
         .strip_suffix(".py")
@@ -647,10 +654,11 @@ fn name_and_parent_dir(entry: &FileEntry) -> (&str, Option<Rc<Directory>>) {
         if let Ok(dir) = entry.parent.maybe_dir() {
             // It's ok to transmute here, because dir.name will exist as the database is
             // non-mutable, which should be fine.
-            return (
-                unsafe { std::mem::transmute::<&str, &str>(dir.name.as_ref()) },
-                dir.parent.maybe_dir().ok(),
-            );
+            let mut dir_name = unsafe { std::mem::transmute::<&str, &str>(dir.name.as_ref()) };
+            if skip_stubs {
+                dir_name = dir_name.strip_suffix("-stubs").unwrap_or(dir_name);
+            }
+            return (dir_name, dir.parent.maybe_dir().ok());
         }
     }
     (name, entry.parent.maybe_dir().ok())
@@ -667,7 +675,7 @@ fn info_from_directives<'x>(
     let mut flags = None;
 
     if !project.overrides.is_empty() {
-        let (name, parent_dir) = name_and_parent_dir(file_entry);
+        let (name, parent_dir) = name_and_parent_dir(file_entry, true);
         for override_ in &project.overrides {
             if override_.matches_file_path(name, parent_dir.as_deref()) {
                 if flags.is_none() {

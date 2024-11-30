@@ -283,3 +283,18 @@ class C(Generic[T]):
 
 reveal_type(C(1, 1))  # N: Revealed type is "__main__.C[int]"
 reveal_type(C('', ''))  # N: Revealed type is "__main__.C[str]"
+
+[case custom_dataclass_stubs]
+from dataclasses import dataclass
+
+@dataclass
+class A:
+    x: int
+
+A(1)
+A(x=1)
+A(1, y=1)  # E: Unexpected keyword argument "y" for "A"
+
+[file dataclasses-stubs/__init__.pyi]
+from typing import Any
+def dataclass(cls: type[Any], /) -> type[Any]: ...
