@@ -2513,7 +2513,6 @@ fn proper_classmethod_callable(
                 None
             }
         },
-        #[allow(clippy::redundant_closure)] // This is a clippy bug
         &|| Some(get_class_method_class()),
     );
     let type_vars = type_vars.into_inner();
