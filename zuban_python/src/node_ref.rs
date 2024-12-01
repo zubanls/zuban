@@ -377,7 +377,7 @@ impl<'file> NodeRef<'file> {
         (p.kind() == PointKind::Redirect).then(|| p.as_redirected_node_ref(db))
     }
 
-    pub(crate) fn maybe_name_defined_in_module(
+    pub(crate) fn is_name_defined_in_module(
         &self,
         db: &Database,
         module_name: &str,

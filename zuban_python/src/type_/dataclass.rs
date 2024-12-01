@@ -300,7 +300,7 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> Init
                     .into_owned();
                 let mut is_init_var = false;
                 if let Type::Class(c) = &t {
-                    if c.class(i_s.db).node_ref.maybe_name_defined_in_module(
+                    if c.class(i_s.db).node_ref.is_name_defined_in_module(
                         i_s.db,
                         "dataclasses",
                         "InitVar",
@@ -349,7 +349,7 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> Init
     for infos in with_indexes.into_iter() {
         match infos.t {
             Type::Class(c)
-                if c.class(i_s.db).node_ref.maybe_name_defined_in_module(
+                if c.class(i_s.db).node_ref.is_name_defined_in_module(
                     i_s.db,
                     "dataclasses",
                     "KW_ONLY",
@@ -491,7 +491,7 @@ fn calculate_field_arg(
             {
                 if let PrimaryContent::Execution(details) = primary.second() {
                     let left = file.inference(i_s).infer_primary_or_atom(primary.first());
-                    if left.maybe_name_defined_in_module(i_s.db, "dataclasses", "field") {
+                    if left.is_name_defined_in_module(i_s.db, "dataclasses", "field") {
                         let args = SimpleArgs::new(*i_s, file, primary.index(), details);
                         return field_options_from_args(i_s, args);
                     }
@@ -911,7 +911,7 @@ pub(crate) fn lookup_on_dataclass<'a>(
             // Init vars are not actually available on the class. They are just passed to __init__
             // and are not class members.
             Type::Class(c)
-                if c.class(i_s.db).node_ref.maybe_name_defined_in_module(
+                if c.class(i_s.db).node_ref.is_name_defined_in_module(
                     i_s.db,
                     "dataclasses",
                     "InitVar",

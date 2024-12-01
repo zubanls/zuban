@@ -433,7 +433,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 {
                     if inference
                         .infer_primary_or_atom(primary.first())
-                        .maybe_name_defined_in_module(i_s.db, "dataclasses", "dataclass")
+                        .is_name_defined_in_module(i_s.db, "dataclasses", "dataclass")
                     {
                         if let PrimaryContent::Execution(exec) = primary.second() {
                             let args =
@@ -460,7 +460,7 @@ impl<'db: 'a, 'a> Class<'a> {
                     }
                 }
 
-                if inf.maybe_name_defined_in_module(i_s.db, "dataclasses", "dataclass") {
+                if inf.is_name_defined_in_module(i_s.db, "dataclasses", "dataclass") {
                     dataclass_options = Some(DataclassOptions::default());
                 }
             }
