@@ -1,0 +1,171 @@
+[case imports_dunder_all_imports_modified1]
+from m1 import *
+C()
+D  # E: Name "D" is not defined
+E  # E: Name "E" is not defined
+[file m1.pyi]
+from m2 import *
+from m2 import __all__ as __all__
+__all__.remove("D")
+[file m2.pyi]
+__all__ = ['C', 'D']
+class C: pass
+class D: pass
+class E: pass
+
+[case imports_dunder_all_imports_modified2]
+from m1 import C
+from m1 import D
+from m1 import E  # E: Module "m1" has no attribute "E"
+C()
+[file m1.pyi]
+from m2 import *
+from m2 import __all__ as __all__
+__all__.append("D")
+class D: pass
+[file m2.pyi]
+__all__ = ['C']
+class C: pass
+class E: pass
+
+[case import_no_reexport_if_importing_submodule]
+# A bit like testReExportChildStubs, but without relative imports
+from mod import submod
+reveal_type(submod.C().a)  # N: Revealed type is "builtins.str"
+
+[file mod/__init__.pyi]
+from mod import submod
+
+[file mod/submod.pyi]
+class C:
+    a: str
+
+[case import_no_reexport_if_importing_submodule_with_import_as]
+# A bit like testReExportChildStubs, but without relative imports
+from mod import submod
+reveal_type(submod.C().a)  # N: Revealed type is "builtins.str"
+
+[file mod/__init__.pyi]
+import mod.submod as submod
+
+[file mod/submod.pyi]
+class C:
+    a: str
+
+[case use_context_of_star_import]
+from foo import *
+
+x = [""]
+y = []
+z = [""]  # E: List item 0 has incompatible type "str"; expected "int"
+[file foo.py]
+x: list[object]
+y: list[int]
+z: list[int]
+
+[case import_recursion_usage1]
+# A bit like testCyclicUndefinedImportWithName, but with a usage
+import a
+[file a.py]
+from b import no_such_export  # E: Module "b" has no attribute "no_such_export"
+reveal_type(no_such_export)  # N: Revealed type is "Any"
+[file b.py]
+from a import no_such_export
+
+[case import_recursion_usage2]
+import a
+[file a.py]
+from b import no_such_export  # E: Module "b" has no attribute "no_such_export"
+[file b.py]
+from a import no_such_export
+reveal_type(no_such_export)  # N: Revealed type is "Any"
+
+[case import_recursion_usage3]
+import a
+reveal_type(a.no_such_export)  # N: Revealed type is "Any"
+[file a.py]
+from b import no_such_export  # E: Module "b" has no attribute "no_such_export"
+[file b.py]
+from a import no_such_export
+
+[case inference_context_with_star_import]
+import module3
+from module1 import *
+class X:
+    def foo(self) -> None:
+        from module2 import *
+        m1
+        m2
+    from module3 import *  # E: Unsupported class scoped import
+    m3
+
+[file module1.py]
+from typing import Self
+def m1() -> Self: ...  # E: Self type is only allowed in annotations within class definition
+[file module2.py]
+from typing import Self
+def m2() -> Self: ...  # E: Self type is only allowed in annotations within class definition
+[file module3.py]
+from typing import Self
+def m3() -> Self: ...  # E: Self type is only allowed in annotations within class definition
+
+[case import_from_module_with_empty_all]
+import foo
+foo.X
+
+[file foo.pyi]
+__all__ = ()
+class X: ...
+
+[case import_code]
+# flags: --show-error-codes
+import lxml  # E: Library stubs not installed for "lxml"  [import-untyped] \
+             # N: Hint: "python3 -m pip install lxml-stubs" \
+             # N: (or run "mypy --install-types" to install all missing stub packages)
+import undefined   # E: Cannot find implementation or library stub for module named "undefined"  [import-not-found]
+
+[case inference_with_star_import_in_def]
+def f() -> None:
+    from foo import *
+    y = x
+    reveal_type(y)  # N: Revealed type is "int"
+    def x() -> int: ...
+
+
+[file foo.py]
+x = 1
+
+[case underscored_reexport_import_with__all__]
+import foo
+import bar
+
+[file foo.py]
+from m import _C  # E: Module "m" does not explicitly export attribute "_C"
+from m import _D  # E: Module "m" does not explicitly export attribute "_D"
+from k import _C as C2
+from k import _D as D2
+
+x: _C
+reveal_type(x)  # N: Revealed type is "n.C"
+
+[file bar.pyi]
+from m import _C  # E: Module "m" does not explicitly export attribute "_C"
+from m import _D  # E: Module "m" does not explicitly export attribute "_D"
+from k import _C as C2
+from k import _D as D2
+
+[file k.py]
+__all__ = ()
+from n import C as _C
+from o import D as _D
+
+[file m.pyi]
+__all__ = ()
+from n import C as _C
+from o import D as _D
+
+[file n.pyi]
+class C: ...
+
+[file o.py]
+class D: ...
