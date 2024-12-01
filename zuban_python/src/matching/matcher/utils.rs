@@ -814,7 +814,7 @@ pub(crate) fn match_arguments_against_params<
                 }
                 match &expected.args {
                     TupleArgs::WithUnpack(with_unpack) => {
-                        let actual = gatherer.as_tuple_args();
+                        let actual = gatherer.into_tuple_args();
                         let match_ = match_unpack(
                             i_s,
                             matcher,

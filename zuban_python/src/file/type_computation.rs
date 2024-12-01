@@ -4816,7 +4816,7 @@ impl<'a, I: Clone + Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
         }
         TupleArgsDetails {
             empty_not_explicit: empty_not_explicit.get(),
-            args: gatherer.as_tuple_args(),
+            args: gatherer.into_tuple_args(),
         }
     }
 }

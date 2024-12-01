@@ -680,7 +680,7 @@ fn gather_unpack_args<'db: 'x, 'x, P: Param<'x>>(
         }
         params.next();
     }
-    Some(gatherer.as_tuple_args())
+    Some(gatherer.into_tuple_args())
 }
 
 pub fn has_overlapping_params(

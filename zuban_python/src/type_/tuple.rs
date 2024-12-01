@@ -961,7 +961,7 @@ impl MaybeUnpackGatherer {
         Ok(())
     }
 
-    pub fn as_tuple_args(self) -> TupleArgs {
+    pub fn into_tuple_args(self) -> TupleArgs {
         match self.unpack {
             Some(unpack) => match unpack {
                 TupleUnpack::ArbitraryLen(t) if self.before.is_empty() && self.after.is_empty() => {

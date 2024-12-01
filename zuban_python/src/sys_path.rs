@@ -55,12 +55,10 @@ fn site_packages_path_from_venv(executable: &str, version: PythonVersion) -> Pat
     // because we are probably not always using the correct PythonVersion.
     match lib.read_dir() {
         Ok(dir) => {
-            for path_in_dir in dir {
-                if let Ok(path_in_dir) = path_in_dir {
-                    let n = path_in_dir.file_name();
-                    if n.as_encoded_bytes().starts_with(b"python") {
-                        return lib.join(n).join("site-packages");
-                    }
+            for path_in_dir in dir.flatten() {
+                let n = path_in_dir.file_name();
+                if n.as_encoded_bytes().starts_with(b"python") {
+                    return lib.join(n).join("site-packages");
                 }
             }
         }
