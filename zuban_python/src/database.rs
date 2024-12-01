@@ -889,6 +889,16 @@ impl Database {
         for p in project.settings.mypy_path.iter() {
             workspaces.add(vfs.as_ref(), file_state_loaders.as_ref(), p.clone(), true);
         }
+
+        // Theoretically according to PEP 561 (Distributing and Packaging Type Information), this
+        // should be last, but for now this should be good enough.
+        for p in [
+            "/home/dave/source/rust/zuban/typeshed/stdlib",
+            "/home/dave/source/rust/zuban/typeshed/stubs/mypy-extensions",
+        ] {
+            workspaces.add(vfs.as_ref(), file_state_loaders.as_ref(), p.into(), false)
+        }
+
         for p in &project.sys_path {
             workspaces.add(
                 vfs.as_ref(),

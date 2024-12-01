@@ -5,11 +5,6 @@ use crate::{PythonVersion, Settings};
 pub(crate) fn create_sys_path(settings: &Settings) -> Vec<Box<str>> {
     let mut sys_path = vec![];
 
-    // Theoretically according to PEP 561 (Distributing and Packaging Type Information), this
-    // should be last, but for now this should be good enough.
-    sys_path.push("/home/dave/source/rust/zuban/typeshed/stdlib".into());
-    sys_path.push("/home/dave/source/rust/zuban/typeshed/stubs/mypy-extensions".into());
-
     if let Some(exe) = &settings.python_executable {
         // We cannot use cannonicalize here, because the path of the exe is often a venv path
         // that is a symlink to the actual exectuable. We however want the relative paths to
