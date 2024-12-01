@@ -28,7 +28,9 @@ use crate::{
     },
     type_helpers::{Class, Function},
     utils::{InsertOnlyVec, SymbolTable},
-    workspaces::{Directory, DirectoryEntry, FileEntry, Invalidations, Parent, Workspaces},
+    workspaces::{
+        Directory, DirectoryEntry, FileEntry, Invalidations, Parent, WorkspaceKind, Workspaces,
+    },
     ProjectOptions, TypeCheckerFlags,
 };
 
@@ -887,7 +889,12 @@ impl Database {
 
         let mut workspaces = Workspaces::default();
         for p in project.settings.mypy_path.iter() {
-            workspaces.add(vfs.as_ref(), file_state_loaders.as_ref(), p.clone(), true);
+            workspaces.add(
+                vfs.as_ref(),
+                file_state_loaders.as_ref(),
+                p.clone(),
+                WorkspaceKind::TypeChecking,
+            );
         }
 
         // Theoretically according to PEP 561 (Distributing and Packaging Type Information), this
@@ -896,7 +903,12 @@ impl Database {
             "/home/dave/source/rust/zuban/typeshed/stdlib",
             "/home/dave/source/rust/zuban/typeshed/stubs/mypy-extensions",
         ] {
-            workspaces.add(vfs.as_ref(), file_state_loaders.as_ref(), p.into(), false)
+            workspaces.add(
+                vfs.as_ref(),
+                file_state_loaders.as_ref(),
+                p.into(),
+                WorkspaceKind::Typeshed,
+            )
         }
 
         for p in &project.sys_path {
@@ -904,7 +916,7 @@ impl Database {
                 vfs.as_ref(),
                 file_state_loaders.as_ref(),
                 p.clone().into(),
-                false,
+                WorkspaceKind::SitePackages,
             )
         }
 
@@ -991,7 +1003,12 @@ impl Database {
             project.settings.mypy_path
         );
         for p in mypy_path_iter.rev() {
-            workspaces.add_at_start(self.vfs.as_ref(), file_state_loaders.as_ref(), p.clone())
+            workspaces.add_at_start(
+                self.vfs.as_ref(),
+                file_state_loaders.as_ref(),
+                p.clone(),
+                WorkspaceKind::TypeChecking,
+            )
         }
 
         let mut python_state = self.python_state.clone();

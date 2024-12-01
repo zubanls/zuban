@@ -14,6 +14,13 @@ use crate::{
     TypeCheckerFlags,
 };
 
+#[derive(Debug, Copy, Clone)]
+pub enum WorkspaceKind {
+    TypeChecking,
+    SitePackages,
+    Typeshed,
+}
+
 #[derive(Debug, Default, Clone)]
 pub struct Workspaces(Vec<Workspace>);
 
@@ -23,10 +30,9 @@ impl Workspaces {
         vfs: &dyn Vfs,
         loaders: &[Box<dyn FileStateLoader>],
         root: String,
-        is_type_checked: bool,
+        kind: WorkspaceKind,
     ) {
-        self.0
-            .push(Workspace::new(vfs, loaders, root, is_type_checked))
+        self.0.push(Workspace::new(vfs, loaders, root, kind))
     }
 
     pub fn add_at_start(
@@ -34,8 +40,9 @@ impl Workspaces {
         vfs: &dyn Vfs,
         loaders: &[Box<dyn FileStateLoader>],
         root: String,
+        kind: WorkspaceKind,
     ) {
-        self.0.insert(0, Workspace::new(vfs, loaders, root, true))
+        self.0.insert(0, Workspace::new(vfs, loaders, root, kind))
     }
 
     pub fn directories(&self) -> impl DoubleEndedIterator<Item = (&str, &Directory)> {
@@ -45,14 +52,14 @@ impl Workspaces {
     pub fn directories_not_type_checked(&self) -> impl Iterator<Item = &Directory> {
         self.0
             .iter()
-            .filter(|x| !x.is_type_checked)
+            .filter(|x| !matches!(x.kind, WorkspaceKind::TypeChecking))
             .map(|x| &x.directory)
     }
 
     pub fn directories_to_type_check(&self) -> impl Iterator<Item = &Directory> {
         self.0
             .iter()
-            .filter(|x| x.is_type_checked)
+            .filter(|x| matches!(x.kind, WorkspaceKind::TypeChecking))
             .map(|x| &x.directory)
     }
 
@@ -149,7 +156,7 @@ impl Workspaces {
 pub struct Workspace {
     root_path: Rc<Box<str>>,
     directory: Directory,
-    pub is_type_checked: bool,
+    pub kind: WorkspaceKind,
     //watcher: dyn notify::Watcher,
 }
 
@@ -158,7 +165,7 @@ impl Workspace {
         vfs: &dyn Vfs,
         loaders: &[Box<dyn FileStateLoader>],
         mut root_path: String,
-        is_type_checked: bool,
+        kind: WorkspaceKind,
     ) -> Self {
         let separator = vfs.separator();
         if root_path.ends_with(separator) {
@@ -241,7 +248,7 @@ impl Workspace {
                 return Self {
                     directory: rc_unwrap_or_clone(current.1),
                     root_path,
-                    is_type_checked,
+                    kind,
                 };
             }
         }
