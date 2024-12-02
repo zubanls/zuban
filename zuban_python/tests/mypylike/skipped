@@ -383,11 +383,6 @@ testIterableProtocolOnMetaclass
 testMetaclassConflictingInstanceVars
 testInferenceOfDunderDictOnClassObjects
 
-# Typed packages within Namespaces shouldn't be Any (please also revisit module_finding_with_py_typed)
-testTypedPkgNamespaceImportFrom
-testTypedPkgNamespaceImportAs
-testTypedPkgNamespaceRegImport
-
 # Star import override of local scope
 testImportStarWithinFunction
 # Star import check what we override
@@ -991,6 +986,9 @@ testTypedPkgNoSitePkgsIgnoredImports
 testNamespacePkgWStubs
 # __import__("pkg_resources").declare_namespace(__name__)
 testNamespacePkgWStubsWithNamespacePackagesFlag
+testTypedPkgNamespaceImportFrom
+testTypedPkgNamespaceImportAs
+testTypedPkgNamespaceRegImport
 
 # --enable-error-code redundant-self
 # "Redundant "Self" annotation for the first method argument"
