@@ -286,7 +286,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             ImportResult::Namespace(namespace) => {
                 lookup_in_namespace(self.i_s.db, self.file.file_index, namespace, name)
             }
-            ImportResult::PyTypedMissing => todo!(), //LookupResult::any(AnyCause::FromError),
+            ImportResult::PyTypedMissing => LookupResult::any(AnyCause::FromError),
         }
     }
 
@@ -376,7 +376,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     namespace.directories.iter().cloned(),
                     name.as_str(),
                 ),
-                ImportResult::PyTypedMissing => todo!(),
+                ImportResult::PyTypedMissing => Some(ImportResult::PyTypedMissing),
             };
             if let Some(imported) = &result {
                 debug!(
@@ -417,7 +417,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 node_ref.set_point(Point::new_file_reference(*f, Locality::Complex))
             }
             Some(ImportResult::Namespace(n)) => node_ref.insert_type(Type::Namespace(n.clone())),
-            Some(ImportResult::PyTypedMissing) => todo!(),
+            Some(ImportResult::PyTypedMissing) => node_ref.set_point(Point::new_specific(
+                Specific::AnyDueToError,
+                Locality::Complex,
+            )),
             None => node_ref.set_point(Point::new_specific(
                 Specific::ModuleNotFound,
                 Locality::Complex,

@@ -27,6 +27,7 @@ pub struct Settings {
     pub python_version: PythonVersion,
     pub python_executable: Option<String>,
     pub mypy_path: Vec<String>,
+    pub prepended_site_packages: Vec<String>,
     pub mypy_compatible: bool,
     pub files_or_directories_to_check: Vec<String>,
 }
@@ -40,6 +41,7 @@ impl Default for Settings {
             mypy_path: vec![],
             mypy_compatible: false,
             files_or_directories_to_check: vec![],
+            prepended_site_packages: vec![],
         }
     }
 }

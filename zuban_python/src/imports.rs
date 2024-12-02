@@ -52,7 +52,7 @@ impl ImportResult {
             ImportResult::Namespace(namespace) => {
                 Inferred::from_type(Type::Namespace(namespace.clone()))
             }
-            Self::PyTypedMissing => todo!(),
+            Self::PyTypedMissing => Inferred::new_any_from_error(),
         }
     }
 
@@ -68,7 +68,7 @@ impl ImportResult {
         match self {
             Self::File(f) => Cow::Borrowed(db.loaded_python_file(*f).file_path(db)),
             Self::Namespace(namespace) => Cow::Owned(namespace.debug_path(db)),
-            Self::PyTypedMissing => todo!(),
+            Self::PyTypedMissing => Cow::Borrowed("<py.typed missing>"),
         }
     }
 }

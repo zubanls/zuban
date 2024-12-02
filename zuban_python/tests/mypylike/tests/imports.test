@@ -169,3 +169,88 @@ class C: ...
 
 [file o.py]
 class D: ...
+
+[case module_finding_with_py_typed]
+# pkgs: modulefinder-site-packages
+
+# Test copied from test__packages_with_ns, some parts omitted, because they are not really relevant
+
+# Namespace package with py.typed
+def ns_pkg_typed() -> None:
+    import ns_pkg_typed
+    import ns_pkg_typed.a as a
+    import ns_pkg_typed.b as b
+    import ns_pkg_typed.b.c as c
+    import ns_pkg_typed.a.a_var as d  # E: Cannot find implementation or library stub for module named "ns_pkg_typed.a.a_var"
+
+    reveal_type(ns_pkg_typed)  # N: Revealed type is "ModuleType"
+    reveal_type(a)  # N: Revealed type is "types.ModuleType"
+    reveal_type(b)  # N: Revealed type is "ModuleType"
+    reveal_type(c)  # N: Revealed type is "types.ModuleType"
+    reveal_type(d)  # N: Revealed type is "Any"
+
+# Namespace package without py.typed
+def ns_pkg_untyped() -> None:
+    import ns_pkg_untyped
+    import ns_pkg_untyped.a as a
+    import ns_pkg_untyped.b as b
+    import ns_pkg_untyped.b.c as c
+    import ns_pkg_untyped.a.a_var as d
+
+    reveal_type(ns_pkg_untyped)  # N: Revealed type is "Any"
+    reveal_type(a)  # N: Revealed type is "Any"
+    reveal_type(b)  # N: Revealed type is "Any"
+    reveal_type(c)  # N: Revealed type is "Any"
+    reveal_type(d)  # N: Revealed type is "Any"
+
+# Namespace package without stub package
+def ns_pkg_w_stubs() -> None:
+    import ns_pkg_w_stubs
+    import ns_pkg_w_stubs.typed as a
+-- TODO enable these
+--     import ns_pkg_w_stubs.typed_inline as b
+--     import ns_pkg_w_stubs.untyped as c
+
+    reveal_type(ns_pkg_w_stubs)  # N: Revealed type is "ModuleType"
+    reveal_type(a)  # N: Revealed type is "types.ModuleType"
+--     reveal_type(b)  # N: Revealed type is "types.ModuleType"
+--     reveal_type(c)  # N: Revealed type is "Any"
+
+# Regular package with py.typed
+def pkg_typed() -> None:
+    import pkg_typed
+    import pkg_typed.a as a
+    import pkg_typed.b as b
+    import pkg_typed.b.c as c
+    import pkg_typed.a.a_var as d  # E: Cannot find implementation or library stub for module named "pkg_typed.a.a_var"
+
+    reveal_type(pkg_typed)  # N: Revealed type is "types.ModuleType"
+    reveal_type(a)  # N: Revealed type is "types.ModuleType"
+    reveal_type(b)  # N: Revealed type is "types.ModuleType"
+    reveal_type(c)  # N: Revealed type is "types.ModuleType"
+    reveal_type(d)  # N: Revealed type is "Any"
+
+# Regular package without py.typed
+def pkg_untyped() -> None:
+    import pkg_untyped
+    import pkg_untyped.a as a
+    import pkg_untyped.b as b
+    import pkg_untyped.b.c as c
+    import pkg_untyped.a.a_var as d
+
+    reveal_type(pkg_untyped)  # N: Revealed type is "Any"
+    reveal_type(a)  # N: Revealed type is "Any"
+    reveal_type(b)  # N: Revealed type is "Any"
+    reveal_type(c)  # N: Revealed type is "Any"
+    reveal_type(d)  # N: Revealed type is "Any"
+
+
+# Top-level Python file in site-packages
+def standalone() -> None:
+    import standalone
+    import standalone.standalone_var as s
+    reveal_type(standalone)  # N: Revealed type is "Any"
+    reveal_type(s)  # N: Revealed type is "Any"
+
+# Something that doesn't exist
+import does_not_exist  # E: Cannot find implementation or library stub for module named "does_not_exist"

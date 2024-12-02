@@ -383,6 +383,11 @@ testIterableProtocolOnMetaclass
 testMetaclassConflictingInstanceVars
 testInferenceOfDunderDictOnClassObjects
 
+# Typed packages within Namespaces shouldn't be Any (please also revisit module_finding_with_py_typed)
+testTypedPkgNamespaceImportFrom
+testTypedPkgNamespaceImportAs
+testTypedPkgNamespaceRegImport
+
 # Star import override of local scope
 testImportStarWithinFunction
 # Star import check what we override

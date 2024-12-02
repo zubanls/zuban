@@ -940,7 +940,7 @@ impl Database {
         options: ProjectOptions,
     ) -> Self {
         let project = PythonProject {
-            sys_path: self.project.sys_path.clone(),
+            sys_path: sys_path::create_sys_path(&options.settings),
             settings: options.settings,
             flags: options.flags,
             overrides: options.overrides,
@@ -1008,6 +1008,14 @@ impl Database {
                 file_state_loaders.as_ref(),
                 p.clone(),
                 WorkspaceKind::TypeChecking,
+            )
+        }
+        for p in &project.sys_path {
+            workspaces.add(
+                self.vfs.as_ref(),
+                file_state_loaders.as_ref(),
+                p.clone().into(),
+                WorkspaceKind::SitePackages,
             )
         }
 

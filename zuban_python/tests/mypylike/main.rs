@@ -157,16 +157,15 @@ impl<'name, 'code> TestCase<'name, 'code> {
             project_options = Some(new);
         }
 
-        if self.file_name == "pep561" {
+        if matches!(self.file_name, "pep561" | "imports") {
             let first_line = self.code.split('\n').next().unwrap();
-            let Some(suffix) = first_line.strip_prefix("# pkgs:") else {
-                unreachable!()
+            if let Some(suffix) = first_line.strip_prefix("# pkgs:") {
+                settings.prepended_site_packages.extend(
+                    suffix
+                        .split([';', ','])
+                        .map(|s| MYPY_TEST_DATA_PACKAGES_FOLDER.to_string() + s.trim()),
+                );
             };
-            settings.mypy_path.extend(
-                suffix
-                    .split([';', ','])
-                    .map(|s| MYPY_TEST_DATA_PACKAGES_FOLDER.to_string() + s.trim()),
-            );
         }
 
         if self.file_name == "check-errorcodes" || steps.flags.contains(&"--show-error-codes") {
