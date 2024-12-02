@@ -14,7 +14,7 @@ use crate::{
     TypeCheckerFlags,
 };
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, PartialEq, Copy, Clone)]
 pub enum WorkspaceKind {
     TypeChecking,
     SitePackages,
@@ -45,8 +45,8 @@ impl Workspaces {
         self.0.insert(0, Workspace::new(vfs, loaders, root, kind))
     }
 
-    pub fn directories(&self) -> impl DoubleEndedIterator<Item = (&str, &Directory)> {
-        self.0.iter().map(|x| (x.root_path(), &x.directory))
+    pub fn iter(&self) -> impl DoubleEndedIterator<Item = &Workspace> {
+        self.0.iter()
     }
 
     pub fn directories_not_type_checked(&self) -> impl Iterator<Item = &Directory> {
@@ -155,7 +155,7 @@ impl Workspaces {
 #[derive(Debug, Clone)]
 pub struct Workspace {
     root_path: Rc<Box<str>>,
-    directory: Directory,
+    pub directory: Directory,
     pub kind: WorkspaceKind,
     //watcher: dyn notify::Watcher,
 }
@@ -259,7 +259,7 @@ impl Workspace {
         &self.directory
     }
 
-    fn root_path(&self) -> &str {
+    pub(crate) fn root_path(&self) -> &str {
         &self.root_path
     }
 }

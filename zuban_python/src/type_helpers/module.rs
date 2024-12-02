@@ -47,7 +47,7 @@ impl<'a> Module<'a> {
             Parent::Directory(dir) => python_import_with_needs_exact_case(
                 db,
                 self.file.file_index,
-                std::iter::once(dir.upgrade().unwrap()),
+                std::iter::once((dir.upgrade().unwrap(), false)),
                 name,
                 true,
             )
@@ -68,6 +68,7 @@ impl<'a> Module<'a> {
             ImportResult::Namespace(ns) => {
                 LookupResult::UnknownName(Inferred::from_type(Type::Namespace(ns)))
             }
+            ImportResult::PyTypedMissing => todo!(),
         })
     }
 
@@ -246,6 +247,7 @@ pub fn lookup_in_namespace(
         Some(ImportResult::Namespace(namespace)) => {
             LookupResult::UnknownName(Inferred::from_type(Type::Namespace(namespace)))
         }
+        Some(ImportResult::PyTypedMissing) => todo!(),
         None => {
             debug!("TODO namespace basic lookups");
             LookupResult::None

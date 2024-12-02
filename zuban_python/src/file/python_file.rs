@@ -444,6 +444,7 @@ impl<'db> PythonFile {
                     Some(file_index)
                 }
                 ImportResult::Namespace(_) => None,
+                ImportResult::PyTypedMissing => unreachable!(),
             }
         });
         Some(db.loaded_python_file(file_index?))

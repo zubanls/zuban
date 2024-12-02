@@ -1654,6 +1654,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             TypeContent::Module(db.loaded_python_file(file_index))
                         }
                         Some(ImportResult::Namespace(ns)) => TypeContent::Namespace(ns),
+                        Some(ImportResult::PyTypedMissing) => todo!(),
                         None => {
                             let node_ref = NodeRef::new(self.inference.file, primary.index());
                             if let Some(inf) = module
@@ -1692,6 +1693,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         TypeContent::Module(file)
                     }
                     Some(ImportResult::Namespace(ns)) => TypeContent::Namespace(ns),
+                    Some(ImportResult::PyTypedMissing) => todo!(),
                     None => {
                         self.add_issue_for_index(primary.index(), IssueKind::TypeNotFound);
                         TypeContent::Unknown(UnknownCause::ReportedIssue)

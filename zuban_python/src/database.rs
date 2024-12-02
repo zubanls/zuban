@@ -959,12 +959,12 @@ impl Database {
                         tmp = dir.upgrade().unwrap();
                         &tmp
                     }
-                    Parent::Workspace(w) => {
-                        workspaces
-                            .directories()
-                            .find(|(name, _)| **name == **w)
+                    Parent::Workspace(w_name) => {
+                        &workspaces
+                            .iter()
+                            .find(|workspace| *workspace.root_path() == **w_name)
                             .unwrap()
-                            .1
+                            .directory
                     }
                 };
                 let x = parent_dir.search(name).unwrap().clone();

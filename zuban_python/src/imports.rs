@@ -9,7 +9,7 @@ use crate::{
     inferred::Inferred,
     type_::{Namespace, Type},
     type_helpers::Module,
-    workspaces::{Directory, DirectoryEntry},
+    workspaces::{Directory, DirectoryEntry, WorkspaceKind},
     TypeCheckerFlags,
 };
 
@@ -21,6 +21,7 @@ const INIT_PYI: &str = "__init__.pyi";
 pub enum ImportResult {
     File(FileIndex),
     Namespace(Rc<Namespace>), // A Python Namespace package, i.e. a directory
+    PyTypedMissing,           // Files exist, but the py.typed marker is missing.
 }
 
 impl ImportResult {
@@ -41,6 +42,7 @@ impl ImportResult {
                 ns.directories.iter().cloned(),
                 name,
             ),
+            Self::PyTypedMissing => todo!(),
         }
     }
 
@@ -50,6 +52,7 @@ impl ImportResult {
             ImportResult::Namespace(namespace) => {
                 Inferred::from_type(Type::Namespace(namespace.clone()))
             }
+            Self::PyTypedMissing => todo!(),
         }
     }
 
@@ -57,6 +60,7 @@ impl ImportResult {
         match self {
             Self::File(file_index) => db.loaded_python_file(*file_index).qualified_name(db),
             Self::Namespace(ns) => ns.qualified_name(),
+            Self::PyTypedMissing => todo!(),
         }
     }
 
@@ -64,6 +68,7 @@ impl ImportResult {
         match self {
             Self::File(f) => Cow::Borrowed(db.loaded_python_file(*f).file_path(db)),
             Self::Namespace(namespace) => Cow::Owned(namespace.debug_path(db)),
+            Self::PyTypedMissing => todo!(),
         }
     }
 }
@@ -73,8 +78,20 @@ pub fn global_import<'a>(
     from_file: FileIndex,
     name: &'a str,
 ) -> Option<ImportResult> {
-    global_import_without_stubs_first(db, from_file, &format!("{name}{STUBS_SUFFIX}"))
-        .or_else(|| global_import_without_stubs_first(db, from_file, name))
+    // First try <package>-stubs
+    global_import_without_stubs_first(db, from_file, &format!("{name}{STUBS_SUFFIX}")).or_else(
+        || {
+            python_import_with_needs_exact_case(
+                db,
+                from_file,
+                db.workspaces
+                    .iter()
+                    .map(|w| (&w.directory, matches!(w.kind, WorkspaceKind::SitePackages))),
+                name,
+                false,
+            )
+        },
+    )
 }
 
 pub fn global_import_without_stubs_first<'a>(
@@ -85,7 +102,7 @@ pub fn global_import_without_stubs_first<'a>(
     python_import(
         db,
         from_file,
-        db.workspaces.directories().map(|(_, d)| d),
+        db.workspaces.iter().map(|d| &d.directory),
         name,
     )
 }
@@ -96,26 +113,30 @@ pub fn python_import(
     dirs: impl Iterator<Item = impl Borrow<Directory>>,
     name: &str,
 ) -> Option<ImportResult> {
-    python_import_with_needs_exact_case(db, from_file, dirs, name, false)
+    python_import_with_needs_exact_case(db, from_file, dirs.map(|d| (d, false)), name, false)
 }
 
 pub fn python_import_with_needs_exact_case(
     db: &Database,
     from_file: FileIndex,
-    dirs: impl Iterator<Item = impl Borrow<Directory>>,
+    // Directory / Needs py.typed pairing
+    dirs: impl Iterator<Item = (impl Borrow<Directory>, bool)>,
     name: &str,
     needs_exact_case: bool,
 ) -> Option<ImportResult> {
     let mut python_file_index = None;
     let mut stub_file_index = None;
     let mut namespace_directories = vec![];
-    for dir in dirs {
+    for (dir, needs_py_typed) in dirs {
         let mut had_namespace_dir = false;
         let dir = dir.borrow();
         for entry in &dir.iter() {
             match entry {
                 DirectoryEntry::Directory(dir2) => {
                     if match_c(db, dir2.name.as_ref(), name, needs_exact_case) {
+                        if needs_py_typed && dir2.search("py.typed").is_none() {
+                            return Some(ImportResult::PyTypedMissing);
+                        }
                         let result = load_init_file(db, dir2);
                         if let Some(file_index) = &result {
                             db.add_invalidates(*file_index, from_file);
@@ -135,6 +156,9 @@ pub fn python_import_with_needs_exact_case(
                     if is_py_file
                         || match_c(db, &file.name, &format!("{name}.pyi"), needs_exact_case)
                     {
+                        if needs_py_typed {
+                            return Some(ImportResult::PyTypedMissing);
+                        }
                         if file.file_index.get().is_none() {
                             db.load_file_from_workspace(file.clone(), false);
                         }
