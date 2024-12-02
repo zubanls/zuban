@@ -42,7 +42,7 @@ impl ImportResult {
                 ns.directories.iter().cloned(),
                 name,
             ),
-            Self::PyTypedMissing => todo!(),
+            Self::PyTypedMissing => unreachable!(),
         }
     }
 
@@ -60,7 +60,7 @@ impl ImportResult {
         match self {
             Self::File(file_index) => db.loaded_python_file(*file_index).qualified_name(db),
             Self::Namespace(ns) => ns.qualified_name(),
-            Self::PyTypedMissing => todo!(),
+            Self::PyTypedMissing => unreachable!(),
         }
     }
 

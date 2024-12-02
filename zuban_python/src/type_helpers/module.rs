@@ -68,7 +68,7 @@ impl<'a> Module<'a> {
             ImportResult::Namespace(ns) => {
                 LookupResult::UnknownName(Inferred::from_type(Type::Namespace(ns)))
             }
-            ImportResult::PyTypedMissing => todo!(),
+            ImportResult::PyTypedMissing => unreachable!(),
         })
     }
 
