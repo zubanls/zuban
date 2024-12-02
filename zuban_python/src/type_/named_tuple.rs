@@ -319,7 +319,7 @@ impl NamedTuple {
             .or_else(move || {
                 i_s.db
                     .python_state
-                    .typing_named_tuple_class()
+                    .typing_named_tuple_class(i_s.db)
                     .instance()
                     .lookup_with_details(i_s, add_issue, name, LookupKind::Normal)
             })

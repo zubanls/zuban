@@ -3,6 +3,7 @@ use std::{ptr::null, rc::Rc};
 use parsa_python_cst::{FunctionDef, NodeIndex, NAME_DEF_TO_NAME_DIFFERENCE};
 
 use crate::{
+    config::PythonVersion,
     database::{BaseClass, Database, FileIndex, Locality, Point, PointLink, Specific},
     file::PythonFile,
     inferred::Inferred,
@@ -86,6 +87,16 @@ macro_rules! node_ref_to_type_class_without_generic {
     };
 }
 
+macro_rules! link_to_type_class_without_generic {
+    ($vis:vis $name:ident, $access:ident) => {
+        #[inline]
+        $vis fn $name(&self) -> Type {
+            debug_assert_ne!(self.$access.node_index, 0);
+            Type::new_class(self.$access, ClassGenerics::None)
+        }
+    };
+}
+
 #[derive(Clone)]
 pub struct PythonState {
     pub builtins: *const PythonFile,
@@ -137,13 +148,13 @@ pub struct PythonState {
     pub builtins_str_mro: Box<[BaseClass]>,
     pub builtins_bytes_mro: Box<[BaseClass]>,
     typeshed_supports_keys_and_get_item_index: NodeIndex,
-    typing_namedtuple_index: NodeIndex,
     typing_type_var_index: NodeIndex,
-    typing_type_var_tuple_index: NodeIndex,
-    typing_param_spec_index: NodeIndex,
-    typing_new_type_index: NodeIndex,
+    type_var_tuple_link: PointLink,
+    param_spec_link: PointLink,
+    pub typinglike_namedtuple_link: PointLink,
+    new_type_link: PointLink,
+    reveal_type_link: PointLink,
     typing_cast_index: NodeIndex,
-    typing_reveal_type_index: NodeIndex,
     typing_coroutine_index: NodeIndex,
     typing_iterator_index: NodeIndex,
     typing_iterable_index: NodeIndex,
@@ -266,13 +277,13 @@ impl PythonState {
             types_ellipsis_type_index: None,
             typing_ellipsis_fallback_index: None,
             typeshed_supports_keys_and_get_item_index: 0,
-            typing_namedtuple_index: 0,
             typing_type_var_index: 0,
-            typing_type_var_tuple_index: 0,
-            typing_param_spec_index: 0,
-            typing_new_type_index: 0,
+            type_var_tuple_link: PointLink::new(FileIndex(0), 0),
+            param_spec_link: PointLink::new(FileIndex(0).into(), 0),
+            typinglike_namedtuple_link: PointLink::new(FileIndex(0).into(), 0),
+            new_type_link: PointLink::new(FileIndex(0).into(), 0),
+            reveal_type_link: PointLink::new(FileIndex(0).into(), 0),
             typing_cast_index: 0,
-            typing_reveal_type_index: 0,
             typing_overload_index: 0,
             typing_override_index: None,
             typing_final_index: 0,
@@ -476,13 +487,53 @@ impl PythonState {
                     db,
                     |db| db.python_state.$module_name(),
                     $name,
-                    |db, class_index| {
-                        db.python_state.$attr_name = class_index.unwrap();
+                    |db, new_index| {
+                        db.python_state.$attr_name =
+                            new_index.unwrap_or_else(|| panic!("Expected {}", $name));
                     },
                     $is_func,
                 );
             };
         }
+        macro_rules! cache_typing_link_with_typing_extensions_fallback {
+            ($attr_name:ident, $name:literal, $is_func:expr) => {
+                cache_index(
+                    db,
+                    |db| {
+                        // NewType is special, because the fallback is a function in current
+                        // Typeshed, so use TypingExtensions for now...
+                        if $name == "NewType"
+                            && db.project.settings.python_version < PythonVersion::new(3, 10)
+                        {
+                            return db.python_state.typing_extensions();
+                        }
+                        db.python_state.typing()
+                    },
+                    $name,
+                    |db, new_index| {
+                        let Some(new_index) = new_index else {
+                            cache_index(
+                                db,
+                                |db| db.python_state.typing_extensions(),
+                                $name,
+                                |db, new_index| {
+                                    db.python_state.$attr_name = PointLink::new(
+                                        db.python_state.typing_extensions().file_index,
+                                        new_index.unwrap_or_else(|| panic!("Expected {}", $name)),
+                                    );
+                                },
+                                $is_func,
+                            );
+                            return;
+                        };
+                        db.python_state.$attr_name =
+                            PointLink::new(db.python_state.typing().file_index, new_index);
+                    },
+                    $is_func,
+                );
+            };
+        }
+
         macro_rules! cache_optional_index {
             ($attr_name:ident, $module_name:ident, $name:literal) => {
                 cache_optional_index!($attr_name, $module_name, $name, false)
@@ -566,13 +617,21 @@ impl PythonState {
             typeshed,
             "SupportsKeysAndGetItem"
         );
-        cache_index!(typing_namedtuple_index, typing, "NamedTuple");
         cache_index!(typing_type_var_index, typing, "TypeVar");
-        cache_index!(typing_type_var_tuple_index, typing, "TypeVarTuple");
-        cache_index!(typing_param_spec_index, typing, "ParamSpec");
-        cache_index!(typing_new_type_index, typing, "NewType");
+        cache_typing_link_with_typing_extensions_fallback!(
+            type_var_tuple_link,
+            "TypeVarTuple",
+            false
+        );
+        cache_typing_link_with_typing_extensions_fallback!(param_spec_link, "ParamSpec", false);
+        cache_typing_link_with_typing_extensions_fallback!(
+            typinglike_namedtuple_link,
+            "NamedTuple",
+            false
+        );
+        cache_typing_link_with_typing_extensions_fallback!(new_type_link, "NewType", false);
+        cache_typing_link_with_typing_extensions_fallback!(reveal_type_link, "reveal_type", true);
         cache_index!(typing_cast_index, typing, "cast", true);
-        cache_index!(typing_reveal_type_index, typing, "reveal_type", true);
         cache_index!(typing_coroutine_index, typing, "Coroutine");
         cache_index!(typing_iterator_index, typing, "Iterator");
         cache_index!(typing_iterable_index, typing, "Iterable");
@@ -853,11 +912,7 @@ impl PythonState {
     );
 
     attribute_node_ref!(typing, type_var_node_ref, typing_type_var_index);
-    attribute_node_ref!(typing, type_var_tuple_node_ref, typing_type_var_tuple_index);
-    attribute_node_ref!(typing, param_spec_node_ref, typing_param_spec_index);
-    attribute_node_ref!(typing, new_type_node_ref, typing_new_type_index);
     //attribute_node_ref!(typing, cast_node_ref, typing_cast_index);
-    attribute_node_ref!(typing, reveal_type_node_ref, typing_reveal_type_index);
     attribute_node_ref!(typing, supports_index_node_ref, typing_supports_index_index);
     attribute_node_ref!(typing, typed_dict_node_ref, typing_typed_dict_index);
     attribute_node_ref!(typing, pub container_node_ref, typing_container_index);
@@ -869,7 +924,6 @@ impl PythonState {
     attribute_node_ref!(typing, pub typing_final, typing_final_index);
     attribute_node_ref!(typing, pub generator_node_ref, typing_generator_index);
     attribute_node_ref!(typing, pub iterable_node_ref, typing_iterable_index);
-    attribute_node_ref!(typing, pub typing_named_tuple_node_ref, typing_namedtuple_index);
     attribute_node_ref!(
         typing,
         pub typing_special_form_node_ref,
@@ -938,7 +992,6 @@ impl PythonState {
     node_ref_to_class!(pub function_class, function_node_ref);
     node_ref_to_class!(pub bare_type_class, bare_type_node_ref);
     node_ref_to_class!(pub typed_dict_class, typed_dict_node_ref);
-    node_ref_to_class!(pub typing_named_tuple_class, typing_named_tuple_node_ref);
 
     node_ref_to_type_class_without_generic!(pub object_type, object_node_ref);
     node_ref_to_type_class_without_generic!(pub slice_type, slice_node_ref);
@@ -957,13 +1010,22 @@ impl PythonState {
     node_ref_to_type_class_without_generic!(pub bare_type_type, bare_type_node_ref);
     node_ref_to_type_class_without_generic!(pub typed_dict_type, typed_dict_node_ref);
     node_ref_to_type_class_without_generic!(pub type_var_type, type_var_node_ref);
-    node_ref_to_type_class_without_generic!(pub type_var_tuple_type, type_var_tuple_node_ref);
-    node_ref_to_type_class_without_generic!(pub param_spec_type, param_spec_node_ref);
-    node_ref_to_type_class_without_generic!(pub new_type_type, new_type_node_ref);
-    node_ref_to_type_class_without_generic!(pub typing_named_tuple_type, typing_named_tuple_node_ref);
     node_ref_to_type_class_without_generic!(pub typing_special_form_type, typing_special_form_node_ref);
 
     node_ref_to_type_class_without_generic!(pub supports_index_type, supports_index_node_ref);
+
+    link_to_type_class_without_generic!(pub type_var_tuple_type, type_var_tuple_link);
+    link_to_type_class_without_generic!(pub param_spec_type, param_spec_link);
+    link_to_type_class_without_generic!(pub new_type_type, new_type_link);
+    link_to_type_class_without_generic!(pub typing_named_tuple_type, typinglike_namedtuple_link);
+
+    pub fn typing_named_tuple_class<'db>(&self, db: &'db Database) -> Class<'db> {
+        Class::from_position(
+            NodeRef::from_link(db, self.typinglike_namedtuple_link),
+            Generics::None,
+            None,
+        )
+    }
 
     pub fn none_instance(&self) -> Instance {
         let Some(none_node_ref) = self.none_type_node_ref() else {
@@ -1039,7 +1101,7 @@ impl PythonState {
     }
 
     pub fn reveal_type(&self, db: &Database) -> Type {
-        node_ref_to_global_func_type(db, self.reveal_type_node_ref())
+        node_ref_to_global_func_type(db, NodeRef::from_link(db, self.reveal_type_link))
     }
 }
 

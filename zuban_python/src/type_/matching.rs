@@ -657,7 +657,7 @@ impl Type {
                 )
             }
             Type::NamedTuple(_)
-                if class1.node_ref == i_s.db.python_state.typing_named_tuple_node_ref() =>
+                if class1.node_ref.as_link() == i_s.db.python_state.typinglike_namedtuple_link =>
             {
                 Match::new_true()
             }

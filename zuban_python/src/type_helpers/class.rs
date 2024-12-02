@@ -1763,7 +1763,7 @@ impl<'db: 'a, 'a> Class<'a> {
                     // TODO why?
                     TypeOrClass::Type(t) if matches!(t.as_ref(), Type::NamedTuple(_)) => bind(
                         result,
-                        TypeOrClass::Class(i_s.db.python_state.typing_named_tuple_class()),
+                        TypeOrClass::Class(i_s.db.python_state.typing_named_tuple_class(i_s.db)),
                         mro_index,
                     ),
                     _ => bind(result, c.clone(), mro_index),

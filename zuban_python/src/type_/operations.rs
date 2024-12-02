@@ -104,7 +104,7 @@ impl Type {
             Type::Dataclass(d) => lookup_dataclass_symbol(d, i_s, name),
             Type::Tuple(tuple) => (None, lookup_tuple_magic_methods(tuple.clone(), name).lookup),
             Type::NamedTuple(nt) => (
-                Some(i_s.db.python_state.typing_named_tuple_class()),
+                Some(i_s.db.python_state.typing_named_tuple_class(i_s.db)),
                 nt.type_lookup(i_s, name, None).lookup,
             ),
             _ => unreachable!("{name:?} {self:?}"),
