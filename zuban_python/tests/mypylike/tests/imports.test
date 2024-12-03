@@ -183,9 +183,9 @@ def ns_pkg_typed() -> None:
     import ns_pkg_typed.b.c as c
     import ns_pkg_typed.a.a_var as d  # E: Cannot find implementation or library stub for module named "ns_pkg_typed.a.a_var"
 
-    reveal_type(ns_pkg_typed)  # N: Revealed type is "ModuleType"
+    reveal_type(ns_pkg_typed)  # N: Revealed type is "types.ModuleType"
     reveal_type(a)  # N: Revealed type is "types.ModuleType"
-    reveal_type(b)  # N: Revealed type is "ModuleType"
+    reveal_type(b)  # N: Revealed type is "types.ModuleType"
     reveal_type(c)  # N: Revealed type is "types.ModuleType"
     reveal_type(d)  # N: Revealed type is "Any"
 
@@ -211,7 +211,7 @@ def ns_pkg_w_stubs() -> None:
 --     import ns_pkg_w_stubs.typed_inline as b
 --     import ns_pkg_w_stubs.untyped as c
 
-    reveal_type(ns_pkg_w_stubs)  # N: Revealed type is "ModuleType"
+    reveal_type(ns_pkg_w_stubs)  # N: Revealed type is "types.ModuleType"
     reveal_type(a)  # N: Revealed type is "types.ModuleType"
 --     reveal_type(b)  # N: Revealed type is "types.ModuleType"
 --     reveal_type(c)  # N: Revealed type is "Any"

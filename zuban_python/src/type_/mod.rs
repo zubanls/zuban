@@ -1007,7 +1007,10 @@ impl Type {
                 .module_type()
                 .format(format_data),
             Self::Intersection(intersection) => intersection.format(format_data),
-            Self::Namespace(_) => "ModuleType".into(),
+            Self::Namespace(_) => match format_data.style {
+                FormatStyle::Short => "ModuleType".into(),
+                FormatStyle::MypyRevealType => "types.ModuleType".into(),
+            },
             Self::Super { .. } => "super".into(),
             Self::CustomBehavior(_) => "TODO custombehavior".into(),
         }
