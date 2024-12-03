@@ -107,6 +107,44 @@ pub fn global_import_without_stubs_first<'a>(
     )
 }
 
+pub fn namespace_import(
+    db: &Database,
+    from_file: FileIndex,
+    namespace: &Namespace,
+    name: &str,
+) -> Option<ImportResult> {
+    let result = python_import(db, from_file, namespace.directories.iter().cloned(), name);
+    // Since we are in a namespace, we need to verify the case where a namespace within
+    // site-packages has a py.typed in one of the subdirectories.
+    if let Some(ImportResult::File(file_index)) = result {
+        let file = db.loaded_python_file(file_index);
+        let mut parent = file.file_entry(db).parent.clone();
+        loop {
+            match parent.maybe_dir() {
+                Ok(dir) => {
+                    if dir.search("py.typed").is_some() || dir.name.ends_with(STUBS_SUFFIX) {
+                        return result;
+                    }
+                    parent = dir.parent.clone();
+                }
+                Err(workspace_root) => {
+                    for workspace in db.workspaces.iter() {
+                        if *workspace.root_path() == ***workspace_root {
+                            if workspace.kind == WorkspaceKind::SitePackages {
+                                return Some(ImportResult::PyTypedMissing);
+                            } else {
+                                return result;
+                            }
+                        }
+                    }
+                    unreachable!()
+                }
+            }
+        }
+    }
+    result
+}
+
 pub fn python_import(
     db: &Database,
     from_file: FileIndex,
@@ -134,11 +172,11 @@ pub fn python_import_with_needs_exact_case(
             match entry {
                 DirectoryEntry::Directory(dir2) => {
                     if match_c(db, dir2.name.as_ref(), name, needs_exact_case) {
-                        if needs_py_typed && dir2.search("py.typed").is_none() {
-                            return Some(ImportResult::PyTypedMissing);
-                        }
                         let result = load_init_file(db, dir2);
                         if let Some(file_index) = &result {
+                            if needs_py_typed && dir2.search("py.typed").is_none() {
+                                return Some(ImportResult::PyTypedMissing);
+                            }
                             db.add_invalidates(*file_index, from_file);
                             return result.map(ImportResult::File);
                         }

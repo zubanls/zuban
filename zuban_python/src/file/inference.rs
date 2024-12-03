@@ -20,7 +20,7 @@ use crate::{
     file::type_computation::TypeCommentState,
     format_data::FormatData,
     getitem::SliceType,
-    imports::{find_ancestor, global_import, python_import, ImportResult},
+    imports::{find_ancestor, global_import, namespace_import, ImportResult},
     inference_state::InferenceState,
     inferred::{
         add_attribute_error, specific_to_type, AttributeKind, Inferred, MroIndex, UnionValue,
@@ -370,12 +370,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     }
                     r
                 }
-                ImportResult::Namespace(namespace) => python_import(
-                    i_s.db,
-                    file_index,
-                    namespace.directories.iter().cloned(),
-                    name.as_str(),
-                ),
+                ImportResult::Namespace(namespace) => {
+                    namespace_import(i_s.db, file_index, namespace, name.as_str())
+                }
                 ImportResult::PyTypedMissing => Some(ImportResult::PyTypedMissing),
             };
             if let Some(imported) = &result {
