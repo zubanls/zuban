@@ -443,7 +443,7 @@ impl<'db: 'a, 'a> Class<'a> {
                         }
                     }
                 }
-                let inf = inference.infer_expression(expr);
+                let inf = inference.infer_decorator(decorator);
                 if let Some(maybe_link) = inf.maybe_saved_link() {
                     if maybe_link == i_s.db.python_state.typing_final().as_link() {
                         is_final = true;
@@ -583,11 +583,7 @@ impl<'db: 'a, 'a> Class<'a> {
             // TODO we pretty much just ignore the fact that a decorated class can also be an enum.
             let mut inferred = Inferred::from_saved_node_ref(self.node_ref);
             for decorator in decorated.decorators().iter_reverse() {
-                let decorate = self
-                    .node_ref
-                    .file
-                    .inference(i_s)
-                    .infer_named_expression(decorator.named_expression());
+                let decorate = self.node_ref.file.inference(i_s).infer_decorator(decorator);
                 inferred = decorate.execute(
                     i_s,
                     &KnownArgs::new(
