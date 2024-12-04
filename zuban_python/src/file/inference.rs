@@ -232,8 +232,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         Point::new_specific(Specific::ModuleNotFound, Locality::Todo)
                     }
                     Some(ImportResult::PyTypedMissing) => {
-                        todo!();
-                        //Point::new_specific(Specific::AnyDueToError, Locality::Todo)
+                        Point::new_specific(Specific::ModuleNotFound, Locality::Todo)
                     }
                     None => Point::new_specific(Specific::ModuleNotFound, Locality::Todo),
                 };

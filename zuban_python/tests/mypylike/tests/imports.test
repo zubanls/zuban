@@ -286,3 +286,21 @@ from ns_pkg_w_stubs import typed_inline
 reveal_type(untyped)  # N: Revealed type is "Any"
 reveal_type(typed)  # N: Revealed type is "types.ModuleType"
 reveal_type(typed_inline)  # N: Revealed type is "types.ModuleType"
+
+[case namespace_star_attributes_should_not_error]
+# pkgs: modulefinder-site-packages
+
+def untyped() -> None:
+    from ns_pkg_w_stubs.untyped import *
+    ZubanCls  # E: Name "ZubanCls" is not defined
+    z: ZubanCls  # E: Name "ZubanCls" is not defined
+
+def typed() -> None:
+    from ns_pkg_w_stubs.typed import *
+    ZubanCls
+    z: ZubanCls
+
+def typed_inline() -> None:
+    from ns_pkg_w_stubs.typed_inline import *
+    ZubanCls
+    z: ZubanCls
