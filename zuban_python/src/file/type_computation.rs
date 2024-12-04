@@ -14,7 +14,7 @@ use crate::{
     file::{Inference, PythonFile},
     format_data::FormatData,
     getitem::{SliceOrSimple, SliceType, SliceTypeIterator},
-    imports::{python_import, ImportResult},
+    imports::{namespace_import, ImportResult},
     inference_state::InferenceState,
     inferred::Inferred,
     matching::{Generics, ResultContext},
@@ -1654,7 +1654,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             TypeContent::Module(db.loaded_python_file(file_index))
                         }
                         Some(ImportResult::Namespace(ns)) => TypeContent::Namespace(ns),
-                        Some(ImportResult::PyTypedMissing) => todo!(),
+                        Some(ImportResult::PyTypedMissing) => {
+                            unreachable!("Submodules can never miss py.typed")
+                        }
                         None => {
                             let node_ref = NodeRef::new(self.inference.file, primary.index());
                             if let Some(inf) = module
@@ -1682,18 +1684,15 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 }
             }
             TypeContent::Namespace(n) => {
-                match python_import(
-                    db,
-                    self.inference.file.file_index,
-                    n.directories.iter().cloned(),
-                    name.as_str(),
-                ) {
+                match namespace_import(db, self.inference.file.file_index, &n, name.as_str()) {
                     Some(ImportResult::File(file_index)) => {
                         let file = db.loaded_python_file(file_index);
                         TypeContent::Module(file)
                     }
                     Some(ImportResult::Namespace(ns)) => TypeContent::Namespace(ns),
-                    Some(ImportResult::PyTypedMissing) => todo!(),
+                    Some(ImportResult::PyTypedMissing) => {
+                        TypeContent::Unknown(UnknownCause::ReportedIssue)
+                    }
                     None => {
                         self.add_issue_for_index(primary.index(), IssueKind::TypeNotFound);
                         TypeContent::Unknown(UnknownCause::ReportedIssue)

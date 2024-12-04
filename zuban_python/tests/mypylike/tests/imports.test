@@ -254,3 +254,19 @@ def standalone() -> None:
 
 # Something that doesn't exist
 import does_not_exist  # E: Cannot find implementation or library stub for module named "does_not_exist"
+
+[case type_def_with_with_site_package_without_py_typed]
+# pkgs: modulefinder-site-packages
+
+import ns_pkg_w_stubs
+
+a: ns_pkg_w_stubs.untyped
+b: ns_pkg_w_stubs.untyped.A
+c: ns_pkg_w_stubs.typed  # E: Module "ns_pkg_w_stubs-stubs.typed" is not valid as a type \
+                         # N: Perhaps you meant to use a protocol matching the module structure?
+d: ns_pkg_w_stubs.typed.A  # E: Name "ns_pkg_w_stubs.typed.A" is not defined
+
+reveal_type(a)  # N: Revealed type is "Any"
+reveal_type(b)  # N: Revealed type is "Any"
+reveal_type(c)  # N: Revealed type is "Any"
+reveal_type(d)  # N: Revealed type is "Any"
