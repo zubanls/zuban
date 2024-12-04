@@ -8,7 +8,7 @@ use crate::{
     debug,
     diagnostics::IssueKind,
     file::{process_unfinished_partials, PythonFile, FLOW_ANALYSIS},
-    imports::{python_import, python_import_with_needs_exact_case, ImportResult},
+    imports::{namespace_import, python_import_with_needs_exact_case, ImportResult},
     inference_state::InferenceState,
     inferred::Inferred,
     node_ref::NodeRef,
@@ -242,12 +242,12 @@ pub fn lookup_in_namespace(
     namespace: &Namespace,
     name: &str,
 ) -> LookupResult {
-    match python_import(db, from_file, namespace.directories.iter().cloned(), name) {
+    match namespace_import(db, from_file, namespace, name) {
         Some(ImportResult::File(file_index)) => LookupResult::FileReference(file_index),
         Some(ImportResult::Namespace(namespace)) => {
             LookupResult::UnknownName(Inferred::from_type(Type::Namespace(namespace)))
         }
-        Some(ImportResult::PyTypedMissing) => todo!(),
+        Some(ImportResult::PyTypedMissing) => LookupResult::any(AnyCause::FromError),
         None => {
             debug!("TODO namespace basic lookups");
             LookupResult::None

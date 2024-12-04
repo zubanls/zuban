@@ -270,3 +270,19 @@ reveal_type(a)  # N: Revealed type is "Any"
 reveal_type(b)  # N: Revealed type is "Any"
 reveal_type(c)  # N: Revealed type is "Any"
 reveal_type(d)  # N: Revealed type is "Any"
+
+[case namespace_attributes]
+# pkgs: modulefinder-site-packages
+
+import ns_pkg_w_stubs
+
+reveal_type(ns_pkg_w_stubs.untyped)  # N: Revealed type is "Any"
+reveal_type(ns_pkg_w_stubs.typed)  # N: Revealed type is "types.ModuleType"
+reveal_type(ns_pkg_w_stubs.typed_inline)  # N: Revealed type is "types.ModuleType"
+
+from ns_pkg_w_stubs import untyped
+from ns_pkg_w_stubs import typed
+from ns_pkg_w_stubs import typed_inline
+reveal_type(untyped)  # N: Revealed type is "Any"
+reveal_type(typed)  # N: Revealed type is "types.ModuleType"
+reveal_type(typed_inline)  # N: Revealed type is "types.ModuleType"

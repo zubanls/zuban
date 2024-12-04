@@ -181,7 +181,7 @@ pub fn namespace_import(
     result
 }
 
-pub fn python_import(
+fn python_import(
     db: &Database,
     from_file: FileIndex,
     dirs: impl Iterator<Item = impl Borrow<Directory>>,
