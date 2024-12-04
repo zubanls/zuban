@@ -208,14 +208,13 @@ def ns_pkg_untyped() -> None:
 def ns_pkg_w_stubs() -> None:
     import ns_pkg_w_stubs
     import ns_pkg_w_stubs.typed as a
--- TODO enable these
---     import ns_pkg_w_stubs.typed_inline as b
---     import ns_pkg_w_stubs.untyped as c
+    import ns_pkg_w_stubs.typed_inline as b
+    import ns_pkg_w_stubs.untyped as c
 
     reveal_type(ns_pkg_w_stubs)  # N: Revealed type is "types.ModuleType"
     reveal_type(a)  # N: Revealed type is "types.ModuleType"
---     reveal_type(b)  # N: Revealed type is "types.ModuleType"
---     reveal_type(c)  # N: Revealed type is "Any"
+    reveal_type(b)  # N: Revealed type is "types.ModuleType"
+    reveal_type(c)  # N: Revealed type is "Any"
 
 # Regular package with py.typed
 def pkg_typed() -> None:

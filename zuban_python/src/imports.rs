@@ -46,6 +46,26 @@ impl ImportResult {
         }
     }
 
+    pub(crate) fn import_non_stub_for_stub_package(
+        db: &Database,
+        original_file_index: FileIndex,
+        parent_dir: Option<Rc<Directory>>,
+        name: &str,
+    ) -> Option<Self> {
+        if let Some(parent_dir) = parent_dir {
+            Self::import_non_stub_for_stub_package(
+                db,
+                original_file_index,
+                parent_dir.parent.maybe_dir().ok(),
+                &parent_dir.name,
+            )?
+            .import(db, original_file_index, name)
+        } else {
+            let name = name.strip_suffix(STUBS_SUFFIX)?;
+            global_import_without_stubs_first(db, original_file_index, name)
+        }
+    }
+
     pub fn as_inferred(&self) -> Inferred {
         match self {
             ImportResult::File(file_index) => Inferred::new_file_reference(*file_index),
@@ -113,7 +133,23 @@ pub fn namespace_import(
     namespace: &Namespace,
     name: &str,
 ) -> Option<ImportResult> {
-    let result = python_import(db, from_file, namespace.directories.iter().cloned(), name);
+    let result =
+        python_import(db, from_file, namespace.directories.iter().cloned(), name).or_else(|| {
+            // If the namespace does not have a specific import, we check if we are in a
+            // <foo>-stubs package and import the non-stubs version of that package.
+            namespace
+                .directories
+                .iter()
+                .filter_map(|dir| {
+                    ImportResult::import_non_stub_for_stub_package(
+                        db,
+                        from_file,
+                        Some(dir.clone()),
+                        name,
+                    )
+                })
+                .next()
+        });
     // Since we are in a namespace, we need to verify the case where a namespace within
     // site-packages has a py.typed in one of the subdirectories.
     if let Some(ImportResult::File(file_index)) = result {

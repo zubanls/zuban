@@ -20,7 +20,7 @@ use crate::{
     },
     debug,
     diagnostics::{Diagnostic, DiagnosticConfig, Diagnostics, Issue, IssueKind},
-    imports::{global_import_without_stubs_first, ImportResult, STUBS_SUFFIX},
+    imports::{ImportResult, STUBS_SUFFIX},
     inference_state::InferenceState,
     inferred::Inferred,
     lines::NewlineIndices,
@@ -418,27 +418,13 @@ impl<'db> PythonFile {
     pub fn normal_file_of_stub_file(&self, db: &'db Database) -> Option<&'db PythonFile> {
         let stub_cache = self.stub_cache.as_ref()?;
         let file_index = *stub_cache.non_stub.get_or_init(|| {
-            fn try_to_import(
-                db: &Database,
-                original_file_index: FileIndex,
-                parent_dir: Option<Rc<Directory>>,
-                name: &str,
-            ) -> Option<ImportResult> {
-                if let Some(parent_dir) = parent_dir {
-                    try_to_import(
-                        db,
-                        original_file_index,
-                        parent_dir.parent.maybe_dir().ok(),
-                        &parent_dir.name,
-                    )?
-                    .import(db, original_file_index, name)
-                } else {
-                    let name = name.strip_suffix(STUBS_SUFFIX)?;
-                    global_import_without_stubs_first(db, original_file_index, name)
-                }
-            }
             let (name, parent_dir) = name_and_parent_dir(self.file_entry(db), false);
-            match try_to_import(db, self.file_index, parent_dir, name)? {
+            match ImportResult::import_non_stub_for_stub_package(
+                db,
+                self.file_index,
+                parent_dir,
+                name,
+            )? {
                 ImportResult::File(file_index) => {
                     assert_ne!(file_index, self.file_index);
                     Some(file_index)
