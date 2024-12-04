@@ -431,11 +431,11 @@ impl<'db: 'a, 'a> Class<'a> {
                 if let ExpressionContent::ExpressionPart(ExpressionPart::Primary(primary)) =
                     expr.unpack()
                 {
-                    if inference
-                        .infer_primary_or_atom(primary.first())
-                        .is_name_defined_in_module(i_s.db, "dataclasses", "dataclass")
-                    {
-                        if let PrimaryContent::Execution(exec) = primary.second() {
+                    if let PrimaryContent::Execution(exec) = primary.second() {
+                        if inference
+                            .infer_primary_or_atom(primary.first())
+                            .is_name_defined_in_module(i_s.db, "dataclasses", "dataclass")
+                        {
                             let args =
                                 SimpleArgs::new(*i_s, self.node_ref.file, primary.index(), exec);
                             dataclass_options = Some(check_dataclass_options(i_s, &args));
