@@ -1006,7 +1006,6 @@ impl DataclassTransformObj {
             } else {
                 let key = arg.keyword_name(i_s.db).unwrap().into();
                 arg.add_issue(i_s, IssueKind::ArgumentMustBeTrueOrFalse { key });
-                todo!()
             }
         };
         for arg in args.iter(i_s.mode) {
