@@ -432,14 +432,19 @@ impl<'db: 'a, 'a> Class<'a> {
                     expr.unpack()
                 {
                     if let PrimaryContent::Execution(exec) = primary.second() {
-                        if inference
-                            .infer_primary_or_atom(primary.first())
-                            .is_name_defined_in_module(i_s.db, "dataclasses", "dataclass")
-                        {
+                        let inf = inference.infer_primary_or_atom(primary.first());
+                        if inf.is_name_defined_in_module(i_s.db, "dataclasses", "dataclass") {
                             let args =
                                 SimpleArgs::new(*i_s, self.node_ref.file, primary.index(), exec);
                             dataclass_options = Some(check_dataclass_options(i_s, &args));
                             continue;
+                        }
+                        if let Some(ComplexPoint::TypeInstance(Type::DataclassTransformObj(_))) =
+                            inf.maybe_complex_point(i_s.db)
+                        {
+                            let args =
+                                SimpleArgs::new(*i_s, self.node_ref.file, primary.index(), exec);
+                            dataclass_options = Some(check_dataclass_options(i_s, &args));
                         }
                     }
                 }
@@ -462,6 +467,11 @@ impl<'db: 'a, 'a> Class<'a> {
 
                 if inf.is_name_defined_in_module(i_s.db, "dataclasses", "dataclass") {
                     dataclass_options = Some(DataclassOptions::default());
+                }
+                if let Some(ComplexPoint::TypeInstance(Type::DataclassTransformObj(d))) =
+                    inf.maybe_complex_point(i_s.db)
+                {
+                    dataclass_options = Some(d.as_dataclass_options());
                 }
             }
             if let Some(dataclass_options) = dataclass_options {

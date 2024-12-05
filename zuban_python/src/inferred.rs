@@ -27,10 +27,10 @@ use crate::{
     type_::{
         execute_collections_named_tuple, execute_tuple_class, execute_type_of_type,
         execute_typing_named_tuple, merge_class_type_vars, new_typed_dict, AnyCause,
-        CallableContent, CallableLike, CallableParams, ClassGenerics, DbString, FunctionKind,
-        FunctionOverload, GenericClass, GenericItem, GenericsList, IterCause, IterInfos,
-        Literal as DbLiteral, LiteralKind, LiteralValue, LookupResult, NeverCause, Type,
-        TypeVarKind, TypeVarLike, TypeVarLikes,
+        CallableContent, CallableLike, CallableParams, ClassGenerics, DataclassTransformObj,
+        DbString, FunctionKind, FunctionOverload, GenericClass, GenericItem, GenericsList,
+        IterCause, IterInfos, Literal as DbLiteral, LiteralKind, LiteralValue, LookupResult,
+        NeverCause, Type, TypeVarKind, TypeVarLike, TypeVarLikes,
     },
     type_helpers::{
         execute_assert_type, execute_cast, execute_isinstance, execute_issubclass,
@@ -1931,6 +1931,11 @@ impl<'db: 'slf, 'slf> Inferred {
                                 );
                                 return Inferred::new_any_from_error();
                             }
+                            Specific::TypingDataclassTransform => {
+                                return Inferred::from_type(Type::DataclassTransformObj(
+                                    DataclassTransformObj::from_args(i_s, args),
+                                ))
+                            }
                             _ => (),
                         }
                     }
@@ -2741,7 +2746,7 @@ pub fn specific_to_type<'db>(
         ),
         Specific::MypyExtensionsFlexibleAlias => Cow::Borrowed(&Type::Any(AnyCause::Internal)),
         // TODO dataclass transforms should probably be handled properly
-        Specific::TypingDataclassTransform => Cow::Borrowed(&Type::Any(AnyCause::Internal)),
+        Specific::TypingDataclassTransform => Cow::Owned(i_s.db.python_state.function_type()),
         actual => unreachable!("{actual:?}"),
     }
 }

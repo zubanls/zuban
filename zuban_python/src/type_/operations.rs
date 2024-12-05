@@ -444,6 +444,7 @@ impl Type {
                     callable,
                 );
             }
+            Type::DataclassTransformObj(_) => callable(self, LookupDetails::none()),
         }
     }
 
@@ -676,6 +677,7 @@ impl Type {
             Type::Intersection(intersection) => {
                 intersection.execute(i_s, args, result_context, on_type_error)
             }
+            Type::DataclassTransformObj(_) => Inferred::from_type(self.clone()),
             _ => not_callable(),
         }
     }

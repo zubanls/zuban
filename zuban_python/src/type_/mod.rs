@@ -38,7 +38,7 @@ pub(crate) use self::{
     dataclass::{
         check_dataclass_options, dataclass_init_func, dataclass_initialize, dataclasses_replace,
         lookup_dataclass_symbol, lookup_on_dataclass, lookup_on_dataclass_type, Dataclass,
-        DataclassOptions,
+        DataclassOptions, DataclassTransformObj,
     },
     enum_::{
         execute_functional_enum, infer_value_on_member, lookup_on_enum_class,
@@ -481,6 +481,7 @@ pub enum Type {
         mro_index: usize,
     },
     CustomBehavior(CustomBehavior),
+    DataclassTransformObj(DataclassTransformObj),
     Self_,
     None,
     Any(AnyCause),
@@ -1013,6 +1014,7 @@ impl Type {
             },
             Self::Super { .. } => "super".into(),
             Self::CustomBehavior(_) => "TODO custombehavior".into(),
+            Self::DataclassTransformObj(_) => "TODO dataclass_transform".into(),
         }
     }
 
@@ -1046,6 +1048,7 @@ impl Type {
             | Self::Namespace(_)
             | Self::Super { .. }
             | Self::CustomBehavior(_)
+            | Self::DataclassTransformObj(_)
             | Self::Enum(_)
             | Self::EnumMember(_)
             | Self::NewType(_) => (),
@@ -1102,11 +1105,9 @@ impl Type {
             Self::FunctionOverload(intersection) => intersection
                 .iter_functions()
                 .any(|callable| callable.has_any_internal(i_s, already_checked)),
-            Self::TypeVar(_) => false,
             Self::Type(type_) => type_.has_any_internal(i_s, already_checked),
             Self::Tuple(content) => content.args.has_any_internal(i_s, already_checked),
             Self::Callable(content) => content.has_any_internal(i_s, already_checked),
-            Self::None | Self::Never(_) | Self::Literal { .. } => false,
             Self::Any(_) => true,
             Self::NewType(n) => n.type_(i_s).has_any(i_s),
             Self::RecursiveType(recursive_alias) => {
@@ -1134,17 +1135,22 @@ impl Type {
                 debug!("TODO Self could contain Any?");
                 false
             }
-            Self::ParamSpecArgs(_)
+            Self::TypeVar(_)
+            | Self::None
+            | Self::Never(_)
+            | Self::Literal { .. }
+            | Self::ParamSpecArgs(_)
             | Self::ParamSpecKwargs(_)
             | Self::Module(_)
             | Self::Enum(_)
             | Self::CustomBehavior(_)
+            | Self::DataclassTransformObj(_)
+            | Self::EnumMember(_)
+            | Self::Super { .. }
             | Self::Namespace(_) => false,
             Self::Dataclass(d) => search_in_generic_class(&d.class),
             Self::TypedDict(d) => d.has_any_internal(i_s, already_checked),
             Self::NamedTuple(nt) => nt.__new__.has_any_internal(i_s, already_checked),
-            Self::EnumMember(_) => false,
-            Self::Super { .. } => false,
             Self::Intersection(intersection) => intersection
                 .iter_entries()
                 .any(|t| t.has_any_internal(i_s, already_checked)),

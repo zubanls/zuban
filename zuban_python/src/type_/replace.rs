@@ -245,6 +245,7 @@ impl Type {
             | Type::NewType(_)
             | Type::Super { .. }
             | Type::CustomBehavior(_)
+            | Type::DataclassTransformObj(_)
             | Type::ParamSpecArgs(_)
             | Type::ParamSpecKwargs(_) => None,
         }

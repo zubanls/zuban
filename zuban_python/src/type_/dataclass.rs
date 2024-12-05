@@ -972,3 +972,67 @@ fn type_order_func(self_: Rc<Dataclass>, i_s: &InferenceState) -> LookupResult {
         ),
     ))))
 }
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct DataclassTransformObj {
+    eq_default: bool,
+    order_default: bool,
+    kw_only_default: bool,
+    frozen_default: bool,
+    field_specifiers: Rc<[()]>,
+}
+
+impl Default for DataclassTransformObj {
+    fn default() -> Self {
+        Self {
+            eq_default: true,
+            order_default: false,
+            kw_only_default: false,
+            frozen_default: false,
+            field_specifiers: Rc::default(),
+        }
+    }
+}
+
+impl DataclassTransformObj {
+    pub(crate) fn from_args<'db>(i_s: &InferenceState<'db, '_>, args: &dyn Args<'db>) -> Self {
+        // Checks dataclass_transform(...)
+        let mut options = Self::default();
+        let assign_option = |target: &mut _, arg: Arg<'db, '_>| {
+            let result = arg.infer_inferrable(i_s, &mut ResultContext::Unknown);
+            if let Some(bool_) = result.maybe_bool_literal(i_s) {
+                *target = bool_;
+            } else {
+                let key = arg.keyword_name(i_s.db).unwrap().into();
+                arg.add_issue(i_s, IssueKind::ArgumentMustBeTrueOrFalse { key });
+                todo!()
+            }
+        };
+        for arg in args.iter(i_s.mode) {
+            if let Some(key) = arg.keyword_name(i_s.db) {
+                match key {
+                    "eq_default" => assign_option(&mut options.eq_default, arg),
+                    "order_default" => assign_option(&mut options.order_default, arg),
+                    "kw_only_default" => assign_option(&mut options.kw_only_default, arg),
+                    "frozen_default" => assign_option(&mut options.frozen_default, arg),
+                    "field_specifiers" => todo!(),
+                    _ => todo!(),
+                }
+            } else {
+                todo!()
+                //arg.add_issue(i_s, IssueKind::UnexpectedArgumentTo { name: "dataclass_transform" })
+            }
+        }
+        options
+    }
+
+    pub(crate) fn as_dataclass_options(&self) -> DataclassOptions {
+        DataclassOptions {
+            eq: self.eq_default,
+            order: self.order_default,
+            kw_only: self.kw_only_default,
+            frozen: self.frozen_default,
+            ..Default::default()
+        }
+    }
+}

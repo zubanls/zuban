@@ -331,11 +331,8 @@ testDataclassInitVarCannotBeSet
 # dataclass weird replace case
 testReplaceIsDataclass
 # dataclass transform
-updateDataclassTransformParameterViaDecorator
 updateDataclassTransformParameterViaParentClass
 updateBaseClassToUseDataclassTransform
-frozenInheritanceViaDefault
-testDataclassReplaceOptional
 # dataclass __replace__
 testDunderReplacePresent
 

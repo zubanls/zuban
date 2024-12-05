@@ -192,7 +192,7 @@ impl Type {
                 Type::Super { .. } => (self == value_type).into(),
                 _ => Match::new_false(),
             },
-            Type::CustomBehavior(_) => Match::new_false(),
+            Type::CustomBehavior(_) | Type::DataclassTransformObj(_) => Match::new_false(),
             Self::Intersection(intersection1) => Match::all(intersection1.iter_entries(), |t| {
                 t.matches(i_s, matcher, value_type, variance)
             }),
