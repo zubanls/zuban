@@ -6,8 +6,8 @@ use std::{
 };
 
 use parsa_python_cst::{
-    AssignmentContent, AssignmentRightSide, ExpressionContent, ExpressionPart, NodeIndex,
-    ParamKind, PrimaryContent, StarExpressionContent, StarLikeExpression,
+    ArgumentsDetails, AssignmentContent, AssignmentRightSide, ExpressionContent, ExpressionPart,
+    NodeIndex, ParamKind, PrimaryContent, StarExpressionContent, StarLikeExpression,
 };
 
 use super::{
@@ -27,6 +27,7 @@ use crate::{
         calculate_callable_type_vars_and_return, maybe_class_usage, replace_class_type_vars,
         Generics, LookupKind, OnTypeError, ResultContext,
     },
+    new_class,
     node_ref::NodeRef,
     python_state::NAME_TO_FUNCTION_DIFF,
     type_helpers::{
@@ -256,7 +257,7 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> Init
     struct Annotated {
         name_index: NodeIndex,
         t: Type,
-        name: StringSlice,
+        name: DbString,
         field_options: FieldOptions,
         is_init_var: bool, // e.g. InitVar[int]
     }
@@ -334,10 +335,13 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> Init
                         Point::new_specific(Specific::Analyzed, Locality::Todo),
                     );
                 }
+                let name = field_options.alias_name.clone().unwrap_or_else(|| {
+                    DbString::StringSlice(StringSlice::from_name(cls.node_ref.file_index(), name))
+                });
                 with_indexes.push(Annotated {
                     name_index: *name_index,
                     t,
-                    name: StringSlice::from_name(cls.node_ref.file_index(), name),
+                    name,
                     field_options,
                     is_init_var,
                 });
@@ -375,7 +379,7 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> Init
                     post_init_params.push(CallableParam {
                         // This is what Mypy uses, apparently for practical reasons.
                         type_: ParamType::PositionalOrKeyword(infos.t.clone()),
-                        name: Some(infos.name.into()),
+                        name: Some(infos.name.clone()),
                         has_default: false,
                     })
                 }
@@ -387,7 +391,7 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> Init
                                 false => ParamType::PositionalOrKeyword(infos.t),
                                 true => ParamType::KeywordOnly(infos.t),
                             },
-                            name: Some(infos.name.into()),
+                            name: Some(infos.name),
                             has_default: infos.field_options.has_default,
                         },
                     );
@@ -481,6 +485,8 @@ struct FieldOptions {
     has_default: bool,
     kw_only: Option<bool>,
     init: bool,
+    // These are only used within dataclass_transform
+    alias_name: Option<DbString>,
 }
 
 impl Default for FieldOptions {
@@ -489,6 +495,7 @@ impl Default for FieldOptions {
             has_default: false,
             kw_only: None,
             init: true,
+            alias_name: None,
         }
     }
 }
@@ -507,10 +514,19 @@ fn calculate_field_arg(
                 if let PrimaryContent::Execution(details) = primary.second() {
                     let left = file.inference(i_s).infer_primary_or_atom(primary.first());
                     if let Some(specifiers) = &options.transform_field_specifiers {
-                        // TODO
+                        for specifier in specifiers.iter() {
+                            if left.maybe_saved_link() == Some(*specifier) {
+                                return field_options_from_args(
+                                    i_s,
+                                    file,
+                                    primary.index(),
+                                    details,
+                                    true,
+                                );
+                            }
+                        }
                     } else if left.is_name_defined_in_module(i_s.db, "dataclasses", "field") {
-                        let args = SimpleArgs::new(*i_s, file, primary.index(), details);
-                        return field_options_from_args(i_s, args);
+                        return field_options_from_args(i_s, file, primary.index(), details, false);
                     }
                 }
             }
@@ -522,10 +538,14 @@ fn calculate_field_arg(
     }
 }
 
-fn field_options_from_args<'db>(
-    i_s: &InferenceState<'db, '_>,
-    args: SimpleArgs<'db, '_>,
+fn field_options_from_args(
+    i_s: &InferenceState,
+    file: &PythonFile,
+    primary_index: NodeIndex,
+    details: ArgumentsDetails,
+    in_dataclass_transform: bool,
 ) -> FieldOptions {
+    let args = SimpleArgs::new(*i_s, file, primary_index, details);
     let mut options = FieldOptions::default();
     for arg in args.iter(i_s.mode) {
         if matches!(arg.kind, ArgKind::Inferred { .. }) {
@@ -557,6 +577,18 @@ fn field_options_from_args<'db>(
                         )
                     }
                 }
+                "alias" if in_dataclass_transform => {
+                    let result = arg.infer_inferrable(i_s, &mut ResultContext::Unknown);
+                    if let Some(alias) = result.maybe_string_literal(i_s) {
+                        options.alias_name = Some(alias);
+                    } else {
+                        arg.add_issue(
+                            i_s,
+                            IssueKind::DataclassTransformFieldAliasParamMustBeString,
+                        )
+                    }
+                }
+                "factory" if in_dataclass_transform => options.has_default = true,
                 _ => (), // Type checking is done in a separate place.
             }
         }
@@ -806,11 +838,19 @@ pub(crate) fn lookup_on_dataclass_type<'a>(
     kind: LookupKind,
 ) -> LookupDetails<'a> {
     if name == "__dataclass_fields__" && kind == LookupKind::Normal {
+        let t = if dataclass.options.transform_field_specifiers.is_some() {
+            // For dataclass_transform the values are always Any
+            new_class!(
+                i_s.db.python_state.dict_node_ref().as_link(),
+                i_s.db.python_state.str_type(),
+                Type::Any(AnyCause::Internal),
+            )
+        } else {
+            i_s.db.python_state.dataclass_fields_type.clone()
+        };
         return LookupDetails::new(
             Type::Dataclass(dataclass.clone()),
-            LookupResult::UnknownName(Inferred::from_type(
-                i_s.db.python_state.dataclass_fields_type.clone(),
-            )),
+            LookupResult::UnknownName(Inferred::from_type(t)),
             AttributeKind::Attribute,
         );
     }

@@ -405,6 +405,7 @@ pub(crate) enum IssueKind {
     DataclassTransformUnknownParam { name: Box<str> },
     DataclassTransformFieldSpecifiersMustBeTuple,
     DataclassTransformFieldSpecifiersMustOnlyContainIdentifiers,
+    DataclassTransformFieldAliasParamMustBeString,
 
     // From --disallow-untyped-defs
     FunctionIsDynamic,
@@ -1054,6 +1055,8 @@ impl<'db> Diagnostic<'db> {
                 r#""field_specifiers" argument must be a tuple literal"#.to_string(),
             DataclassTransformFieldSpecifiersMustOnlyContainIdentifiers =>
                 r#""field_specifiers" must only contain identifiers"#.to_string(),
+            DataclassTransformFieldAliasParamMustBeString =>
+                r#""alias" argument to dataclass field must be a string literal"#.to_string(),
 
             FunctionIsDynamic => "Function is missing a type annotation".to_string(),
             FunctionMissingReturnAnnotation { hint_return_none } => {
