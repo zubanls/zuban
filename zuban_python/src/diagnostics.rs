@@ -403,6 +403,8 @@ pub(crate) enum IssueKind {
     DataclassAttributeMayOnlyBeOverriddenByAnotherAttribute,
     DataclassPlusExplicitSlots { class_name: Box<str> },
     DataclassTransformUnknownParam { name: Box<str> },
+    DataclassTransformFieldSpecifiersMustBeTuple,
+    DataclassTransformFieldSpecifiersMustOnlyContainIdentifiers,
 
     // From --disallow-untyped-defs
     FunctionIsDynamic,
@@ -1048,6 +1050,10 @@ impl<'db> Diagnostic<'db> {
             DataclassTransformUnknownParam { name } => format!(
                 r#"Unrecognized dataclass_transform parameter "{name}""#
             ),
+            DataclassTransformFieldSpecifiersMustBeTuple =>
+                r#""field_specifiers" argument must be a tuple literal"#.to_string(),
+            DataclassTransformFieldSpecifiersMustOnlyContainIdentifiers =>
+                r#""field_specifiers" must only contain identifiers"#.to_string(),
 
             FunctionIsDynamic => "Function is missing a type annotation".to_string(),
             FunctionMissingReturnAnnotation { hint_return_none } => {

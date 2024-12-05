@@ -7,7 +7,7 @@ use std::{
 
 use parsa_python_cst::{
     AssignmentContent, AssignmentRightSide, ExpressionContent, ExpressionPart, NodeIndex,
-    ParamKind, PrimaryContent, StarExpressionContent,
+    ParamKind, PrimaryContent, StarExpressionContent, StarLikeExpression,
 };
 
 use super::{
@@ -18,7 +18,7 @@ use super::{
 };
 use crate::{
     arguments::{Arg, ArgKind, Args, SimpleArgs},
-    database::{Database, Locality, Point, Specific},
+    database::{Database, Locality, Point, PointLink, Specific},
     diagnostics::{Issue, IssueKind},
     file::PythonFile,
     inference_state::InferenceState,
@@ -980,7 +980,7 @@ pub struct DataclassTransformObj {
     order_default: bool,
     kw_only_default: bool,
     frozen_default: bool,
-    field_specifiers: Rc<[()]>,
+    field_specifiers: Rc<[PointLink]>,
 }
 
 impl Default for DataclassTransformObj {
@@ -1015,7 +1015,11 @@ impl DataclassTransformObj {
                     "order_default" => assign_option(&mut options.order_default, arg),
                     "kw_only_default" => assign_option(&mut options.kw_only_default, arg),
                     "frozen_default" => assign_option(&mut options.frozen_default, arg),
-                    "field_specifiers" => todo!(),
+                    "field_specifiers" => fill_dataclass_transform_field_specifiers(
+                        i_s,
+                        arg,
+                        &mut options.field_specifiers,
+                    ),
                     _ => arg.add_issue(
                         i_s,
                         IssueKind::DataclassTransformUnknownParam { name: key.into() },
@@ -1037,5 +1041,35 @@ impl DataclassTransformObj {
             frozen: self.frozen_default,
             ..Default::default()
         }
+    }
+}
+
+fn fill_dataclass_transform_field_specifiers(
+    i_s: &InferenceState,
+    arg: Arg,
+    field_specifiers: &mut Rc<[PointLink]>,
+) {
+    let check =
+        || -> Result<Rc<[_]>, IssueKind> {
+            if let ArgKind::Keyword(kwarg) = &arg.kind {
+                if let Some(tuple) = kwarg.expression.maybe_tuple() {
+                    return tuple.iter().map(|s| {
+                    if let StarLikeExpression::NamedExpression(ne) = s {
+                        let inf = kwarg.node_ref.file.inference(i_s).infer_named_expression(ne);
+                        if let Some(from) = inf.maybe_saved_node_ref(i_s.db) {
+                            if from.maybe_function().is_some() || from.maybe_class().is_some() {
+                                return Ok(from.as_link())
+                            }
+                        }
+                    }
+                    Err(IssueKind::DataclassTransformFieldSpecifiersMustOnlyContainIdentifiers)
+                }).collect();
+                }
+            }
+            Err(IssueKind::DataclassTransformFieldSpecifiersMustBeTuple)
+        };
+    match check() {
+        Ok(new_specifiers) => *field_specifiers = new_specifiers,
+        Err(issue) => arg.add_issue(i_s, issue),
     }
 }

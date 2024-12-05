@@ -1921,7 +1921,7 @@ impl CustomBehavior {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq, Hash)]
 pub enum CallableLike {
     Callable(Rc<CallableContent>),
     Overload(Rc<FunctionOverload>),
