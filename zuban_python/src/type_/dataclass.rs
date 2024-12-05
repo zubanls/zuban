@@ -1016,7 +1016,10 @@ impl DataclassTransformObj {
                     "kw_only_default" => assign_option(&mut options.kw_only_default, arg),
                     "frozen_default" => assign_option(&mut options.frozen_default, arg),
                     "field_specifiers" => todo!(),
-                    _ => todo!(),
+                    _ => arg.add_issue(
+                        i_s,
+                        IssueKind::DataclassTransformUnknownParam { name: key.into() },
+                    ),
                 }
             } else {
                 todo!()

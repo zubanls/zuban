@@ -402,6 +402,7 @@ pub(crate) enum IssueKind {
     DataclassUnpackingKwargsInField,
     DataclassAttributeMayOnlyBeOverriddenByAnotherAttribute,
     DataclassPlusExplicitSlots { class_name: Box<str> },
+    DataclassTransformUnknownParam { name: Box<str> },
 
     // From --disallow-untyped-defs
     FunctionIsDynamic,
@@ -1043,6 +1044,9 @@ impl<'db> Diagnostic<'db> {
                 "Dataclass attribute may only be overridden by another attribute".to_string(),
             DataclassPlusExplicitSlots { class_name } => format!(
                 r#""{class_name}" both defines "__slots__" and is used with "slots=True""#
+            ),
+            DataclassTransformUnknownParam { name } => format!(
+                r#"Unrecognized dataclass_transform parameter "{name}""#
             ),
 
             FunctionIsDynamic => "Function is missing a type annotation".to_string(),
