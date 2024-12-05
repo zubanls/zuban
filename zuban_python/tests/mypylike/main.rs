@@ -14,12 +14,11 @@ use zuban_python::{
     DiagnosticConfig, Project, ProjectOptions, PythonVersion, Settings, TypeCheckerFlags,
 };
 
-const SKIP_MYPY_TEST_FILES: [&str; 29] = [
+const SKIP_MYPY_TEST_FILES: [&str; 28] = [
     // Narrowing tests
     "check-redefine.test",
     // Python special features
     "check-formatting.test",
-    "check-dataclass-transform.test",
     "check-plugin-attrs.test",
     // Python syntax
     "check-python310.test",
