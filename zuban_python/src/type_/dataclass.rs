@@ -108,6 +108,24 @@ impl Dataclass {
         })
     }
 
+    pub fn new_uninitialized(
+        link: PointLink,
+        type_vars: &TypeVarLikes,
+        options: DataclassOptions,
+    ) -> Rc<Self> {
+        Self::new(
+            GenericClass {
+                link,
+                generics: if type_vars.is_empty() {
+                    ClassGenerics::None
+                } else {
+                    ClassGenerics::NotDefinedYet
+                },
+            },
+            options,
+        )
+    }
+
     pub fn class<'a>(&'a self, db: &'a Database) -> Class<'a> {
         self.class.class(db)
     }
@@ -1028,11 +1046,13 @@ fn type_order_func(self_: Rc<Dataclass>, i_s: &InferenceState) -> LookupResult {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct DataclassTransformObj {
-    eq_default: bool,
-    order_default: bool,
-    kw_only_default: bool,
-    frozen_default: bool,
-    field_specifiers: FieldSpecifiers,
+    pub eq_default: bool,
+    pub order_default: bool,
+    pub kw_only_default: bool,
+    pub frozen_default: bool,
+    pub field_specifiers: FieldSpecifiers,
+    // Whether it was use before a def foo()
+    pub executed_by_function: bool,
 }
 
 impl Default for DataclassTransformObj {
@@ -1043,6 +1063,7 @@ impl Default for DataclassTransformObj {
             kw_only_default: false,
             frozen_default: false,
             field_specifiers: Rc::default(),
+            executed_by_function: false,
         }
     }
 }

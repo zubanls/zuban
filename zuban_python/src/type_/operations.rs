@@ -5,7 +5,7 @@ use super::{
     lookup_on_dataclass_type, lookup_on_enum_class, lookup_on_enum_instance,
     lookup_on_enum_member_instance, lookup_on_typed_dict,
     tuple::{lookup_on_tuple, lookup_tuple_magic_methods},
-    AnyCause, LookupResult, Type, TypeVarKind,
+    AnyCause, DataclassTransformObj, LookupResult, Type, TypeVarKind,
 };
 use crate::{
     arguments::{Args, NoArgs},
@@ -677,7 +677,13 @@ impl Type {
             Type::Intersection(intersection) => {
                 intersection.execute(i_s, args, result_context, on_type_error)
             }
-            Type::DataclassTransformObj(_) => Inferred::from_type(self.clone()),
+            Type::DataclassTransformObj(d) => Inferred::from_type({
+                let d = DataclassTransformObj {
+                    executed_by_function: true,
+                    ..d.clone()
+                };
+                Type::DataclassTransformObj(d)
+            }),
             _ => not_callable(),
         }
     }

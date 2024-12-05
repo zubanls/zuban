@@ -422,6 +422,7 @@ impl<'db: 'a, 'a> Class<'a> {
         let mut is_final = false;
         let mut total_ordering = false;
         let mut is_runtime_checkable = false;
+        let mut dataclass_transform = None;
         if let Some(decorated) = maybe_decorated {
             let inference = self.node_ref.file.inference(i_s);
 
@@ -479,19 +480,17 @@ impl<'db: 'a, 'a> Class<'a> {
                 if let Some(ComplexPoint::TypeInstance(Type::DataclassTransformObj(d))) =
                     inf.maybe_complex_point(i_s.db)
                 {
-                    dataclass_options = Some(d.as_dataclass_options());
+                    if d.executed_by_function {
+                        dataclass_options = Some(d.as_dataclass_options());
+                    } else {
+                        dataclass_transform = Some(Box::new(d.clone()));
+                    }
                 }
             }
             if let Some(dataclass_options) = dataclass_options {
-                let dataclass = Dataclass::new(
-                    GenericClass {
-                        link: self.node_ref.as_link(),
-                        generics: if type_vars.is_empty() {
-                            ClassGenerics::None
-                        } else {
-                            ClassGenerics::NotDefinedYet
-                        },
-                    },
+                let dataclass = Dataclass::new_uninitialized(
+                    self.node_ref.as_link(),
+                    type_vars,
                     dataclass_options,
                 );
                 let class = dataclass.class(i_s.db);
@@ -514,6 +513,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 .set(Rc::new(Type::Dataclass(dataclass.clone())))
                 .unwrap();
         }
+        class_infos.dataclass_transform = dataclass_transform;
         if total_ordering && !self.has_a_total_ordering_method_in_mro(i_s.db, &class_infos.mro) {
             // If there is no corresponding method, we just ignore the MRO
             NodeRef::new(self.node_ref.file, self.node().name_def().index())
@@ -796,6 +796,7 @@ impl<'db: 'a, 'a> Class<'a> {
         let mut metaclass = MetaclassState::None;
         let mut has_slots = self.class_storage.slots.is_some();
         let mut is_final = false;
+        let undefined_generics_type = OnceCell::new();
         let arguments = self.node().arguments();
         if let Some(arguments) = arguments {
             // Check metaclass before checking all the arguments, because it has a preference over
@@ -982,6 +983,17 @@ impl<'db: 'a, 'a> Class<'a> {
                                             ClassKind::TypedDict => unreachable!(),
                                             _ => (),
                                         }
+                                        if let Some(dc) = &cached_class_infos.dataclass_transform {
+                                            undefined_generics_type
+                                                .set(Rc::new(Type::Dataclass(
+                                                    Dataclass::new_uninitialized(
+                                                        self.node_ref.as_link(),
+                                                        type_vars,
+                                                        dc.as_dataclass_options(),
+                                                    ),
+                                                )))
+                                                .ok();
+                                        }
                                     }
                                 }
                             }
@@ -1140,7 +1152,8 @@ impl<'db: 'a, 'a> Class<'a> {
                 total_ordering: false,
                 is_runtime_checkable: true,
                 abstract_attributes,
-                undefined_generics_type: OnceCell::new(),
+                dataclass_transform: None,
+                undefined_generics_type,
             }),
             typed_dict_total,
         )
