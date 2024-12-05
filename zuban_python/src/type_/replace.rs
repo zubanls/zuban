@@ -202,7 +202,7 @@ impl Type {
                         link: d.class.link,
                         generics: ClassGenerics::List(l.replace_internal(replacer)?),
                     },
-                    d.options,
+                    d.options.clone(),
                 ))),
                 _ => None,
             },

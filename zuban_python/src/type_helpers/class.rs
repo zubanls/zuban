@@ -2125,7 +2125,7 @@ impl<'db: 'a, 'a> Class<'a> {
         let class_infos = self.maybe_cached_class_infos(db);
         match class_infos.and_then(|c| c.undefined_generics_type.get().map(|t| t.as_ref())) {
             Some(Type::Dataclass(d)) => {
-                Type::Dataclass(Dataclass::new(self.as_generic_class(db), d.options))
+                Type::Dataclass(Dataclass::new(self.as_generic_class(db), d.options.clone()))
             }
             None | Some(Type::Class(_)) => Type::Class(self.as_generic_class(db)),
             Some(Type::TypedDict(td)) => Type::TypedDict(match &self.generics {

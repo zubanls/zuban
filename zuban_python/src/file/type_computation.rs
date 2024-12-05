@@ -1035,7 +1035,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     } else {
                         Dataclass::new(
                             class.as_generic_class(db), // We need to make all the generics Any
-                            d.options,
+                            d.options.clone(),
                         )
                     }
                 }));
@@ -1862,7 +1862,10 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 return TypeContent::InvalidVariable(InvalidVariableType::Other)
             }
         };
-        TypeContent::Type(Type::Dataclass(Dataclass::new(c, dataclass.options)))
+        TypeContent::Type(Type::Dataclass(Dataclass::new(
+            c,
+            dataclass.options.clone(),
+        )))
     }
 
     fn compute_type_get_item_on_named_tuple(

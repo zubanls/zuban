@@ -35,9 +35,11 @@ use crate::{
     },
 };
 
+type FieldSpecifiers = Rc<[PointLink]>;
+
 const ORDER_METHOD_NAMES: [&str; 4] = ["__lt__", "__gt__", "__le__", "__ge__"];
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DataclassOptions {
     pub init: bool,
     pub eq: bool,
@@ -46,6 +48,7 @@ pub struct DataclassOptions {
     pub match_args: bool,
     pub kw_only: bool,
     pub slots: bool,
+    pub transform_field_specifiers: Option<FieldSpecifiers>,
     // the keyword arguments `weakref_slot = false` and `repr = true` are ignored here, because
     // they are not relevant for us as a typechecker.
 }
@@ -60,6 +63,7 @@ impl Default for DataclassOptions {
             match_args: true,
             kw_only: false,
             slots: false,
+            transform_field_specifiers: None,
         }
     }
 }
@@ -264,7 +268,7 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> Init
                 assignment.unpack()
             {
                 inference.ensure_cached_annotation(annotation, right_side.is_some());
-                let field_options = calculate_field_arg(i_s, file, right_side);
+                let field_options = calculate_field_arg(i_s, file, right_side, &dataclass.options);
                 let point = file.points.get(annotation.index());
                 match point.maybe_specific() {
                     Some(Specific::AnnotationOrTypeCommentClassVar) => {
@@ -479,10 +483,21 @@ struct FieldOptions {
     init: bool,
 }
 
+impl Default for FieldOptions {
+    fn default() -> Self {
+        Self {
+            has_default: false,
+            kw_only: None,
+            init: true,
+        }
+    }
+}
+
 fn calculate_field_arg(
     i_s: &InferenceState,
     file: &PythonFile,
     right_side: Option<AssignmentRightSide>,
+    options: &DataclassOptions,
 ) -> FieldOptions {
     if let Some(AssignmentRightSide::StarExpressions(star_exprs)) = right_side {
         if let StarExpressionContent::Expression(expr) = star_exprs.unpack() {
@@ -491,7 +506,9 @@ fn calculate_field_arg(
             {
                 if let PrimaryContent::Execution(details) = primary.second() {
                     let left = file.inference(i_s).infer_primary_or_atom(primary.first());
-                    if left.is_name_defined_in_module(i_s.db, "dataclasses", "field") {
+                    if let Some(specifiers) = &options.transform_field_specifiers {
+                        // TODO
+                    } else if left.is_name_defined_in_module(i_s.db, "dataclasses", "field") {
                         let args = SimpleArgs::new(*i_s, file, primary.index(), details);
                         return field_options_from_args(i_s, args);
                     }
@@ -501,8 +518,7 @@ fn calculate_field_arg(
     }
     FieldOptions {
         has_default: right_side.is_some(),
-        kw_only: None,
-        init: true,
+        ..Default::default()
     }
 }
 
@@ -510,11 +526,7 @@ fn field_options_from_args<'db>(
     i_s: &InferenceState<'db, '_>,
     args: SimpleArgs<'db, '_>,
 ) -> FieldOptions {
-    let mut options = FieldOptions {
-        has_default: false,
-        kw_only: None,
-        init: true,
-    };
+    let mut options = FieldOptions::default();
     for arg in args.iter(i_s.mode) {
         if matches!(arg.kind, ArgKind::Inferred { .. }) {
             arg.add_issue(i_s, IssueKind::DataclassUnpackingKwargsInField);
@@ -744,9 +756,9 @@ pub(crate) fn dataclass_initialize<'db>(
                         // Since we use the dataclass's class, we need to remap if that is the type
                         // that is returned.
                         match t {
-                            Type::Class(c) if c.link == dataclass.class.link => {
-                                Type::Dataclass(Dataclass::new(c.clone(), dataclass.options))
-                            }
+                            Type::Class(c) if c.link == dataclass.class.link => Type::Dataclass(
+                                Dataclass::new(c.clone(), dataclass.options.clone()),
+                            ),
                             _ => t.clone(),
                         }
                     })
@@ -771,7 +783,7 @@ pub(crate) fn dataclass_initialize<'db>(
                 link: dataclass.class.link,
                 generics: class_generics.type_arguments_into_class_generics(i_s.db),
             },
-            dataclass.options,
+            dataclass.options.clone(),
         )
     }))
 }
@@ -980,7 +992,7 @@ pub struct DataclassTransformObj {
     order_default: bool,
     kw_only_default: bool,
     frozen_default: bool,
-    field_specifiers: Rc<[PointLink]>,
+    field_specifiers: FieldSpecifiers,
 }
 
 impl Default for DataclassTransformObj {
@@ -1039,6 +1051,7 @@ impl DataclassTransformObj {
             order: self.order_default,
             kw_only: self.kw_only_default,
             frozen: self.frozen_default,
+            transform_field_specifiers: Some(self.field_specifiers.clone()),
             ..Default::default()
         }
     }
@@ -1057,7 +1070,7 @@ fn fill_dataclass_transform_field_specifiers(
                     if let StarLikeExpression::NamedExpression(ne) = s {
                         let inf = kwarg.node_ref.file.inference(i_s).infer_named_expression(ne);
                         if let Some(from) = inf.maybe_saved_node_ref(i_s.db) {
-                            if from.maybe_function().is_some() || from.maybe_class().is_some() {
+                            if from.maybe_function().is_some() {
                                 return Ok(from.as_link())
                             }
                         }
