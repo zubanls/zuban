@@ -436,15 +436,23 @@ impl<'db: 'a, 'a> Class<'a> {
                         if inf.is_name_defined_in_module(i_s.db, "dataclasses", "dataclass") {
                             let args =
                                 SimpleArgs::new(*i_s, self.node_ref.file, primary.index(), exec);
-                            dataclass_options = Some(check_dataclass_options(i_s, &args));
+                            dataclass_options = Some(check_dataclass_options(
+                                i_s,
+                                &args,
+                                DataclassOptions::default(),
+                            ));
                             continue;
                         }
-                        if let Some(ComplexPoint::TypeInstance(Type::DataclassTransformObj(_))) =
+                        if let Some(ComplexPoint::TypeInstance(Type::DataclassTransformObj(d))) =
                             inf.maybe_complex_point(i_s.db)
                         {
                             let args =
                                 SimpleArgs::new(*i_s, self.node_ref.file, primary.index(), exec);
-                            dataclass_options = Some(check_dataclass_options(i_s, &args));
+                            dataclass_options = Some(check_dataclass_options(
+                                i_s,
+                                &args,
+                                d.as_dataclass_options(),
+                            ));
                         }
                     }
                 }

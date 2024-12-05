@@ -555,8 +555,9 @@ fn field_options_from_args<'db>(
 pub fn check_dataclass_options<'db>(
     i_s: &InferenceState<'db, '_>,
     args: &SimpleArgs<'db, '_>,
+    default_options: DataclassOptions,
 ) -> DataclassOptions {
-    let mut options = DataclassOptions::default();
+    let mut options = default_options;
     let assign_option = |target: &mut _, arg: Arg<'db, '_>| {
         let result = arg.infer_inferrable(i_s, &mut ResultContext::Unknown);
         if let Some(bool_) = result.maybe_bool_literal(i_s) {
