@@ -513,7 +513,9 @@ impl<'db: 'a, 'a> Class<'a> {
                 .set(Rc::new(Type::Dataclass(dataclass.clone())))
                 .unwrap();
         }
-        class_infos.dataclass_transform = dataclass_transform;
+        if dataclass_transform.is_some() {
+            class_infos.dataclass_transform = dataclass_transform;
+        }
         if total_ordering && !self.has_a_total_ordering_method_in_mro(i_s.db, &class_infos.mro) {
             // If there is no corresponding method, we just ignore the MRO
             NodeRef::new(self.node_ref.file, self.node().name_def().index())
@@ -861,6 +863,9 @@ impl<'db: 'a, 'a> Class<'a> {
                                         &mut metaclass,
                                         MetaclassState::Some(link),
                                     );
+                                    if let Some(infos) = c.maybe_cached_class_infos(db) {
+                                        dataclass_transform = infos.dataclass_transform.clone();
+                                    }
                                 } else {
                                     node_ref
                                         .add_issue(i_s, IssueKind::MetaclassMustInheritFromType);
@@ -1019,6 +1024,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                                 // transform passes through a metaclass.
                                                 dataclass_transform = Some(dt.clone());
                                             } else {
+                                                dataclass_transform = Some(dt.clone());
                                                 set_type_to_dataclass(dt)
                                             }
                                         }
@@ -1166,15 +1172,6 @@ impl<'db: 'a, 'a> Class<'a> {
         } else {
             Default::default()
         };
-        if let MetaclassState::Some(link) = metaclass {
-            if let Some(infos) =
-                Class::from_non_generic_link(i_s.db, link).maybe_cached_class_infos(db)
-            {
-                if let Some(dt) = &infos.dataclass_transform {
-                    set_type_to_dataclass(dt)
-                }
-            }
-        }
         let abstract_attributes =
             self.calculate_abstract_attributes(i_s, &metaclass, &class_kind, &mro);
         (
