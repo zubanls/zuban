@@ -13,7 +13,7 @@ use parsa_python_cst::{
 
 use super::{overload::OverloadResult, Callable, Instance, InstanceLookupOptions, LookupDetails};
 use crate::{
-    arguments::{Args, KnownArgs, SimpleArgs},
+    arguments::{Args, KnownArgs},
     database::{
         BaseClass, ClassInfos, ClassKind, ClassStorage, ComplexPoint, Database, Locality,
         MetaclassState, ParentScope, Point, PointKind, PointLink, ProtocolMember, Specific,
@@ -435,11 +435,11 @@ impl<'db: 'a, 'a> Class<'a> {
                     if let PrimaryContent::Execution(exec) = primary.second() {
                         let inf = inference.infer_primary_or_atom(primary.first());
                         if inf.is_name_defined_in_module(i_s.db, "dataclasses", "dataclass") {
-                            let args =
-                                SimpleArgs::new(*i_s, self.node_ref.file, primary.index(), exec);
                             dataclass_options = Some(check_dataclass_options(
                                 i_s,
-                                &args,
+                                self.node_ref.file,
+                                primary.index(),
+                                exec,
                                 DataclassOptions::default(),
                             ));
                             continue;
@@ -447,11 +447,11 @@ impl<'db: 'a, 'a> Class<'a> {
                         if let Some(ComplexPoint::TypeInstance(Type::DataclassTransformObj(d))) =
                             inf.maybe_complex_point(i_s.db)
                         {
-                            let args =
-                                SimpleArgs::new(*i_s, self.node_ref.file, primary.index(), exec);
                             dataclass_options = Some(check_dataclass_options(
                                 i_s,
-                                &args,
+                                self.node_ref.file,
+                                primary.index(),
+                                exec,
                                 d.as_dataclass_options(),
                             ));
                         }

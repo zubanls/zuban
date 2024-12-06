@@ -616,7 +616,9 @@ fn field_options_from_args(
 
 pub fn check_dataclass_options<'db>(
     i_s: &InferenceState<'db, '_>,
-    args: &SimpleArgs<'db, '_>,
+    file: &PythonFile,
+    primary_index: NodeIndex,
+    details: ArgumentsDetails,
     default_options: DataclassOptions,
 ) -> DataclassOptions {
     let mut options = default_options;
@@ -629,6 +631,7 @@ pub fn check_dataclass_options<'db>(
             arg.add_issue(i_s, IssueKind::ArgumentMustBeTrueOrFalse { key })
         }
     };
+    let args = SimpleArgs::new(*i_s, file, primary_index, details);
     for arg in args.iter(i_s.mode) {
         if let Some(key) = arg.keyword_name(i_s.db) {
             match key {
