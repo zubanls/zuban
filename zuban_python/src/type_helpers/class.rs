@@ -41,9 +41,9 @@ use crate::{
         check_dataclass_options, dataclass_init_func, execute_functional_enum,
         infer_typed_dict_total_argument, infer_value_on_member, AnyCause, CallableContent,
         CallableLike, CallableParam, CallableParams, ClassGenerics, Dataclass, DataclassOptions,
-        DbString, Enum, EnumMemberDefinition, FormatStyle, FunctionKind, FunctionOverload,
-        GenericClass, GenericsList, LookupResult, NamedTuple, NeverCause, ParamSpecArg,
-        ParamSpecUsage, ParamType, StringSlice, Tuple, TupleArgs, Type, TypeVarLike,
+        DataclassTransformObj, DbString, Enum, EnumMemberDefinition, FormatStyle, FunctionKind,
+        FunctionOverload, GenericClass, GenericsList, LookupResult, NamedTuple, NeverCause,
+        ParamSpecArg, ParamSpecUsage, ParamType, StringSlice, Tuple, TupleArgs, Type, TypeVarLike,
         TypeVarLikeUsage, TypeVarLikes, TypedDict, TypedDictMember, TypedDictMemberGatherer,
         Variance,
     },
@@ -796,7 +796,18 @@ impl<'db: 'a, 'a> Class<'a> {
         let mut metaclass = MetaclassState::None;
         let mut has_slots = self.class_storage.slots.is_some();
         let mut is_final = false;
+        let mut dataclass_transform = None;
         let undefined_generics_type = OnceCell::new();
+        let set_type_to_dataclass = |dc: &DataclassTransformObj| {
+            undefined_generics_type
+                .set(Rc::new(Type::Dataclass(Dataclass::new_uninitialized(
+                    self.node_ref.as_link(),
+                    type_vars,
+                    dc.as_dataclass_options(),
+                ))))
+                // Errors are ignored for now, whatever was first takes precedence.
+                .ok();
+        };
         let arguments = self.node().arguments();
         if let Some(arguments) = arguments {
             // Check metaclass before checking all the arguments, because it has a preference over
@@ -833,7 +844,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                         node_ref,
                                         &mut metaclass,
                                         MetaclassState::Some(link),
-                                    )
+                                    );
                                 } else {
                                     node_ref
                                         .add_issue(i_s, IssueKind::MetaclassMustInheritFromType);
@@ -983,16 +994,17 @@ impl<'db: 'a, 'a> Class<'a> {
                                             ClassKind::TypedDict => unreachable!(),
                                             _ => (),
                                         }
-                                        if let Some(dc) = &cached_class_infos.dataclass_transform {
-                                            undefined_generics_type
-                                                .set(Rc::new(Type::Dataclass(
-                                                    Dataclass::new_uninitialized(
-                                                        self.node_ref.as_link(),
-                                                        type_vars,
-                                                        dc.as_dataclass_options(),
-                                                    ),
-                                                )))
-                                                .ok();
+                                        if let Some(dt) = &cached_class_infos.dataclass_transform {
+                                            if class.class_link_in_mro(
+                                                i_s,
+                                                db.python_state.bare_type_node_ref().as_link(),
+                                            ) {
+                                                // This is the metaclass case where dataclass
+                                                // transform passes through a metaclass.
+                                                dataclass_transform = Some(dt.clone());
+                                            } else {
+                                                set_type_to_dataclass(dt)
+                                            }
                                         }
                                     }
                                 }
@@ -1138,6 +1150,15 @@ impl<'db: 'a, 'a> Class<'a> {
         } else {
             Default::default()
         };
+        if let MetaclassState::Some(link) = metaclass {
+            if let Some(infos) =
+                Class::from_non_generic_link(i_s.db, link).maybe_cached_class_infos(db)
+            {
+                if let Some(dt) = &infos.dataclass_transform {
+                    set_type_to_dataclass(dt)
+                }
+            }
+        }
         let abstract_attributes =
             self.calculate_abstract_attributes(i_s, &metaclass, &class_kind, &mro);
         (
@@ -1152,7 +1173,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 total_ordering: false,
                 is_runtime_checkable: true,
                 abstract_attributes,
-                dataclass_transform: None,
+                dataclass_transform,
                 undefined_generics_type,
             }),
             typed_dict_total,
