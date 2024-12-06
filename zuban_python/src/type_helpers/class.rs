@@ -800,8 +800,11 @@ impl<'db: 'a, 'a> Class<'a> {
         let mut is_final = false;
         let mut dataclass_transform = None;
         let undefined_generics_type = OnceCell::new();
-        let set_type_to_dataclass = |dc: &DataclassTransformObj| {
+        let set_type_to_dataclass = |dc: &DataclassTransformObj, set_frozen_state_unknown: bool| {
             let mut options = dc.as_dataclass_options();
+            if set_frozen_state_unknown {
+                options.frozen = None;
+            }
             if let Some(args) = self.node().arguments() {
                 let args = SimpleArgs::new(
                     *i_s,
@@ -865,7 +868,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                     );
                                     if let Some(infos) = c.maybe_cached_class_infos(db) {
                                         if let Some(dt) = &infos.dataclass_transform {
-                                            set_type_to_dataclass(dt);
+                                            set_type_to_dataclass(dt, true);
                                             dataclass_transform = infos.dataclass_transform.clone();
                                         }
                                     }
@@ -1026,7 +1029,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                                 db.python_state.bare_type_node_ref().as_link(),
                                             ) {
                                                 dataclass_transform = Some(dt.clone());
-                                                set_type_to_dataclass(dt)
+                                                set_type_to_dataclass(dt, false)
                                             }
                                         }
                                     }
@@ -3143,7 +3146,7 @@ impl<'a> TypeOrClass<'a> {
     pub fn is_frozen_dataclass(&self) -> bool {
         match self {
             Self::Type(t) => match t.as_ref() {
-                Type::Dataclass(d) => d.options.frozen,
+                Type::Dataclass(d) => d.options.frozen == Some(true),
                 _ => false,
             },
             Self::Class(_) => false,

@@ -52,7 +52,9 @@ pub struct DataclassOptions {
     pub init: bool,
     pub eq: bool,
     pub order: bool,
-    pub frozen: bool,
+    // dataclass_transform can cause states that are undefined, see
+    // testDataclassTransformDirectMetaclassNeitherFrozenNorNotFrozen
+    pub frozen: Option<bool>,
     pub match_args: bool,
     pub kw_only: bool,
     pub slots: bool,
@@ -67,7 +69,7 @@ impl Default for DataclassOptions {
             init: true,
             eq: true,
             order: false,
-            frozen: false,
+            frozen: Some(false),
             match_args: true,
             kw_only: false,
             slots: false,
@@ -94,7 +96,11 @@ impl DataclassOptions {
         };
         match key {
             "kw_only" => assign_option(&mut self.kw_only, arg),
-            "frozen" => assign_option(&mut self.frozen, arg),
+            "frozen" => {
+                let mut new_frozen = false;
+                assign_option(&mut new_frozen, arg);
+                self.frozen = Some(new_frozen);
+            }
             "order" => assign_option(&mut self.order, arg),
             "eq" => assign_option(&mut self.eq, arg),
             "init" => assign_option(&mut self.init, arg),
@@ -240,15 +246,19 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> Init
     for (_, c) in cls.mro(db).rev() {
         if let TypeOrClass::Type(t) = c {
             if let Type::Dataclass(super_dataclass) = t.as_ref() {
-                if dataclass.options.frozen != super_dataclass.options.frozen {
-                    let arguments = cls.node().arguments().unwrap();
-                    NodeRef::new(file, arguments.index()).add_issue(
-                        i_s,
-                        match dataclass.options.frozen {
-                            false => IssueKind::DataclassCannotInheritNonFrozenFromFrozen,
-                            true => IssueKind::DataclassCannotInheritFrozenFromNonFrozen,
-                        },
-                    );
+                if let Some((frozen1, frozen2)) =
+                    dataclass.options.frozen.zip(super_dataclass.options.frozen)
+                {
+                    if frozen1 != frozen2 {
+                        let arguments = cls.node().arguments().unwrap();
+                        NodeRef::new(file, arguments.index()).add_issue(
+                            i_s,
+                            match frozen1 {
+                                false => IssueKind::DataclassCannotInheritNonFrozenFromFrozen,
+                                true => IssueKind::DataclassCannotInheritFrozenFromNonFrozen,
+                            },
+                        );
+                    }
                 }
                 let cls = super_dataclass.class(db);
                 let init = dataclass_init_func(super_dataclass, db);
@@ -1125,7 +1135,7 @@ impl DataclassTransformObj {
             eq: self.eq_default,
             order: self.order_default,
             kw_only: self.kw_only_default,
-            frozen: self.frozen_default,
+            frozen: Some(self.frozen_default),
             transform_field_specifiers: Some(self.field_specifiers.clone()),
             ..Default::default()
         }

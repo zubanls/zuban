@@ -1792,11 +1792,27 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     continue;
                 }
                 Type::Dataclass(d) => {
-                    if d.options.frozen {
-                        had_error = true;
-                        property_is_read_only(d.class(i_s.db).name().into())
+                    let inst = Instance::new(d.class(i_s.db), None);
+                    if d.options.frozen == Some(true) {
+                        // For dataclass_transform there are dataclasses that are initialized by a
+                        // metaclass and have an unknown frozen state. See also
+                        // testDataclassTransformDirectMetaclassNeitherFrozenNorNotFrozen
+                        let is_unknown = match inst
+                            .lookup(i_s, name_str, InstanceLookupOptions::new(&|_| ()))
+                            .class
+                        {
+                            TypeOrClass::Type(t) => matches!(
+                                t.as_ref(),
+                                Type::Dataclass(dc) if dc.options.frozen.is_none(),
+                            ),
+                            _ => false,
+                        };
+                        if !is_unknown {
+                            had_error = true;
+                            property_is_read_only(d.class(i_s.db).name().into())
+                        }
                     }
-                    had_error |= Instance::new(d.class(i_s.db), None)
+                    had_error |= inst
                         .check_set_descriptor(i_s, node_ref, name_def.name(), value)
                         .is_err();
                     continue;
