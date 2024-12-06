@@ -864,7 +864,10 @@ impl<'db: 'a, 'a> Class<'a> {
                                         MetaclassState::Some(link),
                                     );
                                     if let Some(infos) = c.maybe_cached_class_infos(db) {
-                                        dataclass_transform = infos.dataclass_transform.clone();
+                                        if let Some(dt) = &infos.dataclass_transform {
+                                            set_type_to_dataclass(dt);
+                                            dataclass_transform = infos.dataclass_transform.clone();
+                                        }
                                     }
                                 } else {
                                     node_ref
@@ -1016,14 +1019,12 @@ impl<'db: 'a, 'a> Class<'a> {
                                             _ => (),
                                         }
                                         if let Some(dt) = &cached_class_infos.dataclass_transform {
-                                            if class.class_link_in_mro(
+                                            // Metaclasses don't inherit the dataclass_transform
+                                            // state. See e.g. testDataclassTransformViaSubclassOfMetaclass
+                                            if !class.class_link_in_mro(
                                                 i_s,
                                                 db.python_state.bare_type_node_ref().as_link(),
                                             ) {
-                                                // This is the metaclass case where dataclass
-                                                // transform passes through a metaclass.
-                                                dataclass_transform = Some(dt.clone());
-                                            } else {
                                                 dataclass_transform = Some(dt.clone());
                                                 set_type_to_dataclass(dt)
                                             }
