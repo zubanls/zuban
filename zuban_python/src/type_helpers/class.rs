@@ -6,14 +6,14 @@ use std::{
 };
 
 use parsa_python_cst::{
-    Argument, Arguments as CSTArguments, Assignment, AssignmentContent, AsyncStmtContent, ClassDef,
-    Decoratee, ExpressionContent, ExpressionPart, PrimaryContent, StmtLikeContent,
-    StmtLikeIterator, Target, TypeLike,
+    Argument, Arguments as CSTArguments, ArgumentsDetails, Assignment, AssignmentContent,
+    AsyncStmtContent, ClassDef, Decoratee, ExpressionContent, ExpressionPart, PrimaryContent,
+    StmtLikeContent, StmtLikeIterator, Target, TypeLike,
 };
 
 use super::{overload::OverloadResult, Callable, Instance, InstanceLookupOptions, LookupDetails};
 use crate::{
-    arguments::{Args, KnownArgs},
+    arguments::{Args, KnownArgs, SimpleArgs},
     database::{
         BaseClass, ClassInfos, ClassKind, ClassStorage, ComplexPoint, Database, Locality,
         MetaclassState, ParentScope, Point, PointKind, PointLink, ProtocolMember, Specific,
@@ -799,11 +799,27 @@ impl<'db: 'a, 'a> Class<'a> {
         let mut dataclass_transform = None;
         let undefined_generics_type = OnceCell::new();
         let set_type_to_dataclass = |dc: &DataclassTransformObj| {
+            let mut options = dc.as_dataclass_options();
+            if let Some(args) = self.node().arguments() {
+                let args = SimpleArgs::new(
+                    *i_s,
+                    self.node_ref.file,
+                    args.index(),
+                    ArgumentsDetails::Node(args),
+                );
+                for arg in args.iter(i_s.mode) {
+                    if let Some(key) = arg.keyword_name(i_s.db) {
+                        options.assign_keyword_arg_to_dataclass_options(i_s, key, &arg);
+                    }
+                    // If another option is present, just ignore it. It is either checked by
+                    // __init_subclass__ or it's a complex metaclass and we're screwed.
+                }
+            }
             undefined_generics_type
                 .set(Rc::new(Type::Dataclass(Dataclass::new_uninitialized(
                     self.node_ref.as_link(),
                     type_vars,
-                    dc.as_dataclass_options(),
+                    options,
                 ))))
                 // Errors are ignored for now, whatever was first takes precedence.
                 .ok();

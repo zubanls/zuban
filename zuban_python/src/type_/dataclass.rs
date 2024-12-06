@@ -40,6 +40,13 @@ type FieldSpecifiers = Rc<[PointLink]>;
 
 const ORDER_METHOD_NAMES: [&str; 4] = ["__lt__", "__gt__", "__le__", "__ge__"];
 
+#[derive(Clone, Eq)]
+pub struct Dataclass {
+    pub class: GenericClass,
+    inits: OnceCell<Inits>,
+    pub options: DataclassOptions,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DataclassOptions {
     pub init: bool,
@@ -69,11 +76,34 @@ impl Default for DataclassOptions {
     }
 }
 
-#[derive(Clone, Eq)]
-pub struct Dataclass {
-    pub class: GenericClass,
-    inits: OnceCell<Inits>,
-    pub options: DataclassOptions,
+impl DataclassOptions {
+    pub fn assign_keyword_arg_to_dataclass_options<'db>(
+        &mut self,
+        i_s: &InferenceState,
+        key: &str,
+        arg: &Arg<'db, '_>,
+    ) {
+        let assign_option = |target: &mut _, arg: &Arg<'db, '_>| {
+            let result = arg.infer_inferrable(i_s, &mut ResultContext::Unknown);
+            if let Some(bool_) = result.maybe_bool_literal(i_s) {
+                *target = bool_;
+            } else {
+                let key = arg.keyword_name(i_s.db).unwrap().into();
+                arg.add_issue(i_s, IssueKind::ArgumentMustBeTrueOrFalse { key })
+            }
+        };
+        match key {
+            "kw_only" => assign_option(&mut self.kw_only, arg),
+            "frozen" => assign_option(&mut self.frozen, arg),
+            "order" => assign_option(&mut self.order, arg),
+            "eq" => assign_option(&mut self.eq, arg),
+            "init" => assign_option(&mut self.init, arg),
+            "match_args" => assign_option(&mut self.match_args, arg),
+            "slots" => assign_option(&mut self.slots, arg),
+            // The other names should not go through while type checking
+            _ => (),
+        }
+    }
 }
 
 impl std::fmt::Debug for Dataclass {
@@ -614,37 +644,18 @@ fn field_options_from_args(
     options
 }
 
-pub fn check_dataclass_options<'db>(
-    i_s: &InferenceState<'db, '_>,
+pub fn check_dataclass_options(
+    i_s: &InferenceState,
     file: &PythonFile,
     primary_index: NodeIndex,
     details: ArgumentsDetails,
     default_options: DataclassOptions,
 ) -> DataclassOptions {
     let mut options = default_options;
-    let assign_option = |target: &mut _, arg: Arg<'db, '_>| {
-        let result = arg.infer_inferrable(i_s, &mut ResultContext::Unknown);
-        if let Some(bool_) = result.maybe_bool_literal(i_s) {
-            *target = bool_;
-        } else {
-            let key = arg.keyword_name(i_s.db).unwrap().into();
-            arg.add_issue(i_s, IssueKind::ArgumentMustBeTrueOrFalse { key })
-        }
-    };
     let args = SimpleArgs::new(*i_s, file, primary_index, details);
     for arg in args.iter(i_s.mode) {
         if let Some(key) = arg.keyword_name(i_s.db) {
-            match key {
-                "kw_only" => assign_option(&mut options.kw_only, arg),
-                "frozen" => assign_option(&mut options.frozen, arg),
-                "order" => assign_option(&mut options.order, arg),
-                "eq" => assign_option(&mut options.eq, arg),
-                "init" => assign_option(&mut options.init, arg),
-                "match_args" => assign_option(&mut options.match_args, arg),
-                "slots" => assign_option(&mut options.slots, arg),
-                // The other names should not go through while type checking
-                _ => (),
-            }
+            options.assign_keyword_arg_to_dataclass_options(i_s, key, &arg);
         } else {
             arg.add_issue(i_s, IssueKind::UnexpectedArgumentTo { name: "dataclass" })
         }
