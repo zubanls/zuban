@@ -30,6 +30,7 @@ use crate::{
     new_class,
     node_ref::NodeRef,
     python_state::NAME_TO_FUNCTION_DIFF,
+    type_::CallableLike,
     type_helpers::{
         Callable, Class, ClassLookupOptions, Instance, InstanceLookupOptions, LookupDetails,
         TypeOrClass,
@@ -441,15 +442,21 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> Init
                     })
                 }
                 if infos.field_options.init {
+                    let mut t = infos.t;
+                    let has_default = infos.field_options.has_default;
+                    if has_default {
+                        // Descriptors are handled as a special case.
+                        set_descriptor_update_for_init(i_s, &mut t)
+                    }
                     add_param(
                         &mut params,
                         CallableParam {
                             type_: match kw_only {
-                                false => ParamType::PositionalOrKeyword(infos.t),
-                                true => ParamType::KeywordOnly(infos.t),
+                                false => ParamType::PositionalOrKeyword(t),
+                                true => ParamType::KeywordOnly(t),
                             },
                             name: Some(infos.name),
-                            has_default: infos.field_options.has_default,
+                            has_default,
                         },
                     );
                 }
@@ -536,6 +543,33 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> Init
             Type::None,
         ),
     }
+}
+
+fn set_descriptor_update_for_init(i_s: &InferenceState, t: &mut Type) {
+    let Some(cls) = t.maybe_class(i_s.db) else {
+        return;
+    };
+    let lookup = cls
+        .lookup(i_s, "__set__", ClassLookupOptions::new(&|_| ()))
+        .lookup;
+    let Some(inf) = lookup.maybe_inferred() else {
+        return;
+    };
+    // TODO Currently overloads arg ignored, but theoretically we should
+    // support this as well.
+    if let Some(CallableLike::Callable(c)) = inf.as_cow_type(i_s).maybe_callable(i_s) {
+        if let CallableParams::Simple(s) = &c.params {
+            if let Some(third_param) = s.get(2) {
+                if let ParamType::PositionalOnly(new) | ParamType::PositionalOrKeyword(new) =
+                    &third_param.type_
+                {
+                    *t = new.clone();
+                    return;
+                }
+            }
+        }
+    }
+    *t = Type::Any(AnyCause::Internal);
 }
 
 struct FieldOptions {

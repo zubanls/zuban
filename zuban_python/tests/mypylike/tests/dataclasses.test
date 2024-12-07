@@ -298,3 +298,24 @@ A(1, y=1)  # E: Unexpected keyword argument "y" for "A"
 [file dataclasses-stubs/__init__.pyi]
 from typing import Any
 def dataclass(cls: type[Any], /) -> type[Any]: ...
+
+[case dataclass_descriptor_call]
+from dataclasses import dataclass
+
+class MyDescriptor:
+    def __get__(self, obj: object | None, owner) -> "int | MyDescriptor": ...
+    def __set__(self, obj: object | None, value: int) -> None: ...
+
+@dataclass
+class Foo:
+    x: MyDescriptor
+    y: MyDescriptor = MyDescriptor()
+
+Foo(3, 3)  # E: Argument 1 to "Foo" has incompatible type "int"; expected "MyDescriptor"
+Foo(MyDescriptor(), MyDescriptor())  # E: Argument 2 to "Foo" has incompatible type "MyDescriptor"; expected "int"
+f = Foo(MyDescriptor(), 3)  # Currently a false positive error in pyright (and mypy)
+
+f.y = 4
+
+reveal_type(f.y)  # N: Revealed type is "int | __main__.MyDescriptor"
+reveal_type(Foo.y)  # N: Revealed type is "int | __main__.MyDescriptor"
