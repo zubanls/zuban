@@ -444,8 +444,11 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> Init
                 if infos.field_options.init {
                     let mut t = infos.t;
                     let has_default = infos.field_options.has_default;
-                    if has_default {
-                        // Descriptors are handled as a special case.
+                    // Descriptors are assigned to in __init__, see
+                    // https://github.com/microsoft/pyright/issues/3245
+                    // Both Mypy and Pyright handle dataclass_transform always, which is
+                    // questionable, since it doesn't appear in the PEP, but we just imitate that.
+                    if has_default || dataclass.options.transform_field_specifiers.is_some() {
                         set_descriptor_update_for_init(i_s, &mut t)
                     }
                     add_param(
