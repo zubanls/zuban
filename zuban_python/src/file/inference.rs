@@ -4709,24 +4709,26 @@ fn get_generator_return_type(db: &Database, had_issue: &impl Fn(), t: &Type) -> 
 }
 
 pub fn first_defined_name(file: &PythonFile, name_index: NodeIndex) -> NodeIndex {
-    let point = file.points.get(name_index);
+    let mut point = file.points.get(name_index);
     if !point.calculated() || point.specific() != Specific::NameOfNameDef {
         // Happens e.g. for the definition of builtins.type (overwritten in python_state.rs)
         // Or definitions of names that look like self (e.g. in testInferAttributeInitializedToEmptyNonSelf)
         return name_index;
     }
-    let mut current = point.node_index();
+    let mut first = name_index;
+    // Here we circle through multi definitions to find the first one.
+    // Note that multi definition links loop, i.e. A -> B -> C -> A.
     loop {
-        let point = file.points.get(current);
         debug_assert!(point.calculated());
         debug_assert_eq!(point.specific(), Specific::NameOfNameDef);
-        // Here we circle through multi definitions to find the first one.
-        // Note that multi definition links loop, i.e. A -> B -> C -> A.
         let next = point.node_index();
-        if next <= current {
-            return next;
+        if next < first {
+            first = next;
         }
-        current = next;
+        if next == name_index {
+            return first;
+        }
+        point = file.points.get(next);
     }
 }
 
