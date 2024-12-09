@@ -1581,3 +1581,12 @@ def f(a: Any, x: tuple[type[ValueError], *Ts], y: tuple[type[TypeError], *tuple[
         ...
     except y as b:
         reveal_type(b)  # N: Revealed type is "TypeError | NotImplementedError | ValueError"
+
+[case should_not_narrow_any]
+from typing import Any
+
+def f(x: Any) -> None:
+    x = 1
+    reveal_type(x)  # N: Revealed type is "Any"
+    for x in [1]:
+        reveal_type(x)  # N: Revealed type is "Any"

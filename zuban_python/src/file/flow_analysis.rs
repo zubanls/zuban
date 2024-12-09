@@ -1235,6 +1235,11 @@ impl Inference<'_, '_, '_> {
         check_for_error: impl FnOnce() -> bool,
     ) {
         let widens = false;
+        if declaration_t.is_any() {
+            // Still check for stuff like Final reassignments
+            check_for_error();
+            return;
+        }
         if new_t.is_any() && !declaration_t.is_any_or_any_in_union(self.i_s.db) {
             let lookup = FLOW_ANALYSIS
                 .with(|fa| fa.lookup_narrowed_key_and_deleted(self.i_s.db, key.clone()));

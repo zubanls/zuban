@@ -1412,8 +1412,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         } else {
                             if partial_flags.nullable && !i_s.db.project.strict_optional_partials()
                             {
+                                t.union_in_place(Type::None);
                                 narrow(PointLink::new(self.file.file_index, first_index), &t);
-                                t.union_in_place(Type::None)
                             }
                             saved_node_ref.insert_type(t)
                         }
@@ -1451,8 +1451,12 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 }
                                 return;
                             }
-                            saved_node_ref.insert_type(value_t.simplified_union(i_s, &Type::None));
-                            narrow(PointLink::new(self.file.file_index, first_index), &value_t);
+                            let new_declaration = value_t.simplified_union(i_s, &Type::None);
+                            narrow(
+                                PointLink::new(self.file.file_index, first_index),
+                                &new_declaration,
+                            );
+                            saved_node_ref.insert_type(new_declaration);
                         }
                         return;
                     }
