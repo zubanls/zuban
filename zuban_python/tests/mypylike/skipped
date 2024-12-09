@@ -330,8 +330,7 @@ testDataclassWithSlotsArg
 testDataclassInitVarCannotBeSet
 # dataclass weird replace case
 testReplaceIsDataclass
-# dataclass_transform use function default params
-testDataclassTransformDefaultsCanBeOverridden
+# dataclass_transform used with overload
 testDataclassTransformOverloadsDecoratorOnOverload
 testDataclassTransformOverloadsDecoratorOnImpl
 # dataclass_transform __set__ descriptor needs to be type checked

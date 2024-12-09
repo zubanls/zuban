@@ -454,6 +454,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                 exec,
                                 d.as_dataclass_options(),
                             ));
+                            continue;
                         }
                     }
                 }
