@@ -122,15 +122,13 @@ impl Tree {
     pub fn mypy_inline_config_directives(&self) -> impl Iterator<Item = (CodeIndex, &str)> {
         const PREFIX: &str = "# mypy: ";
         let mut code_index_start = 0;
-        self.before_first_statement()
-            .split('\n')
-            .filter_map(move |line| {
-                let result = line
-                    .strip_prefix(PREFIX)
-                    .map(|rest| (code_index_start + PREFIX.len() as CodeIndex, rest));
-                code_index_start += line.len() as CodeIndex + 1;
-                result
-            })
+        self.code().split('\n').filter_map(move |line| {
+            let result = line
+                .strip_prefix(PREFIX)
+                .map(|rest| (code_index_start + PREFIX.len() as CodeIndex, rest));
+            code_index_start += line.len() as CodeIndex + 1;
+            result
+        })
     }
 
     pub fn debug_info(&self, index: NodeIndex) -> String {

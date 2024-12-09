@@ -269,3 +269,20 @@ class D(C):
                                            # N:          def g(self, *x: Any) -> Any \
                                            # N:      Subclass: \
                                            # N:          def g(self, grad_output: Any, *, foo: Any) -> Any
+
+[case mypy_comment_flag_change_after_docstring]
+# flags: --disallow-untyped-defs
+
+[file m.py]
+def f(x): ...  # E: Function is missing a type annotation
+[file n.py]
+"hi"
+# mypy: allow-untyped-defs
+def f(x): ...
+[file l.py]
+"""
+hi
+"""
+
+# mypy: allow-untyped-defs
+def f(x): ...
