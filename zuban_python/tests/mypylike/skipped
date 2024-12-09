@@ -331,7 +331,6 @@ testDataclassInitVarCannotBeSet
 # dataclass weird replace case
 testReplaceIsDataclass
 # dataclass_transform use function default params
-testDataclassTransformFieldSpecifierImplicitInit
 testDataclassTransformDefaultsCanBeOverridden
 testDataclassTransformOverloadsDecoratorOnOverload
 testDataclassTransformOverloadsDecoratorOnImpl

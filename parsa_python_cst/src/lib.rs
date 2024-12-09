@@ -927,6 +927,13 @@ impl<'db> Expression<'db> {
         }
     }
 
+    pub fn maybe_simple_bool(&self) -> Option<bool> {
+        match self.maybe_unpacked_atom()? {
+            AtomContent::Bool(b) => Some(b.as_code() == "True"),
+            _ => None,
+        }
+    }
+
     pub fn maybe_tuple(&self) -> Option<Tuple<'db>> {
         match self.maybe_unpacked_atom() {
             Some(AtomContent::Tuple(t)) => Some(t),

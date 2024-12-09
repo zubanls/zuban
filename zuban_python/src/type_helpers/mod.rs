@@ -20,7 +20,7 @@ pub(crate) use instance::{
     LookupDetails,
 };
 pub use module::{is_private_import, is_reexport_issue, lookup_in_namespace, Module};
-pub use overload::OverloadedFunction;
+pub use overload::{OverloadResult, OverloadedFunction};
 pub(crate) use typing::{
     execute_assert_type, execute_cast, execute_new_type, execute_param_spec_class,
     execute_reveal_type, execute_type_var_class, execute_type_var_tuple_class,

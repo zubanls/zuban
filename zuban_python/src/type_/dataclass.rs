@@ -12,9 +12,9 @@ use parsa_python_cst::{
 
 use super::{
     AnyCause, CallableContent, CallableParam, CallableParams, ClassGenerics, DbString,
-    GenericClass, Literal, LiteralKind, LookupResult, ParamType, StarParamType, StarStarParamType,
-    StringSlice, Tuple, Type, TypeVar, TypeVarKind, TypeVarLike, TypeVarLikes, TypeVarName,
-    TypeVarUsage, Variance,
+    GenericClass, Literal, LiteralKind, LookupResult, NeverCause, ParamType, StarParamType,
+    StarStarParamType, StringSlice, Tuple, Type, TypeVar, TypeVarKind, TypeVarLike, TypeVarLikes,
+    TypeVarName, TypeVarUsage, Variance,
 };
 use crate::{
     arguments::{Arg, ArgKind, Args, SimpleArgs},
@@ -33,7 +33,7 @@ use crate::{
     type_::CallableLike,
     type_helpers::{
         Callable, Class, ClassLookupOptions, Instance, InstanceLookupOptions, LookupDetails,
-        TypeOrClass,
+        OverloadResult, OverloadedFunction, TypeOrClass,
     },
 };
 
@@ -610,17 +610,32 @@ fn calculate_field_arg(
                     if let Some(specifiers) = &options.transform_field_specifiers {
                         for specifier in specifiers.iter() {
                             if left.maybe_saved_link() == Some(*specifier) {
+                                let mut options = FieldOptions::default();
+                                apply_default_options_from_dataclass_transform_field(
+                                    i_s,
+                                    left,
+                                    &mut options,
+                                    &SimpleArgs::from_primary(*i_s, file, primary),
+                                );
                                 return field_options_from_args(
                                     i_s,
                                     file,
                                     primary.index(),
                                     details,
                                     true,
+                                    options,
                                 );
                             }
                         }
                     } else if left.is_name_defined_in_module(i_s.db, "dataclasses", "field") {
-                        return field_options_from_args(i_s, file, primary.index(), details, false);
+                        return field_options_from_args(
+                            i_s,
+                            file,
+                            primary.index(),
+                            details,
+                            false,
+                            FieldOptions::default(),
+                        );
                     }
                 }
             }
@@ -638,9 +653,9 @@ fn field_options_from_args(
     primary_index: NodeIndex,
     details: ArgumentsDetails,
     in_dataclass_transform: bool,
+    mut options: FieldOptions,
 ) -> FieldOptions {
     let args = SimpleArgs::new(*i_s, file, primary_index, details);
-    let mut options = FieldOptions::default();
     for arg in args.iter(i_s.mode) {
         if matches!(arg.kind, ArgKind::Inferred { .. }) {
             arg.add_issue(i_s, IssueKind::DataclassUnpackingKwargsInField);
@@ -688,6 +703,48 @@ fn field_options_from_args(
         }
     }
     options
+}
+
+fn apply_default_options_from_dataclass_transform_field<'db>(
+    i_s: &InferenceState<'db, '_>,
+    inferred_field: Inferred,
+    options: &mut FieldOptions,
+    args: &dyn Args<'db>,
+) {
+    let mut apply_from_callable = |c: &CallableContent| {
+        if let Some(func) = NodeRef::from_link(i_s.db, c.defined_at).maybe_function() {
+            for p in func.params().iter() {
+                // Currently this is only applied for init in Mypy.
+                if p.name_def().as_code() == "init" {
+                    if let Some(default) = p.default() {
+                        if let Some(b) = default.maybe_simple_bool() {
+                            options.init = b;
+                        }
+                    }
+                }
+            }
+        }
+    };
+    match inferred_field.as_cow_type(i_s).maybe_callable(i_s) {
+        Some(CallableLike::Callable(c)) => apply_from_callable(&c),
+        Some(CallableLike::Overload(o)) => {
+            if let OverloadResult::Single(c) = OverloadedFunction::new(&o, None)
+                .find_matching_function(
+                    i_s,
+                    args,
+                    false,
+                    None,
+                    false,
+                    &mut ResultContext::Unknown,
+                    OnTypeError::new(&|_, _, _, _| ()),
+                    &|_, _| Type::Never(NeverCause::Other),
+                )
+            {
+                apply_from_callable(c.content)
+            }
+        }
+        None => (),
+    }
 }
 
 pub fn check_dataclass_options(

@@ -47,7 +47,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         Self { overload, class }
     }
 
-    pub(super) fn find_matching_function(
+    pub(crate) fn find_matching_function(
         &self,
         i_s: &InferenceState<'db, '_>,
         args: &dyn Args<'db>,
