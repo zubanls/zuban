@@ -1,0 +1,22 @@
+[package]
+name = "zubanls"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+homepage.workspace = true
+authors.workspace = true
+
+[dependencies]
+anyhow = "1.0.94"
+lsp-server = "0.7.7"
+lsp-types = { version = "0.97.0", features = ["proposed"]}
+serde = "1.0.216"
+serde_json = "1.0.133"
+tracing = "0.1.41"
+tracing-subscriber = "0.3.19"
+clap = "4.5.18"
+zuban_python = { path = "../zuban_python" }
+shellexpand = "3.1.0"
+
+[features]
+zuban_debug = ["zuban_python/zuban_debug"]

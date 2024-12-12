@@ -6,8 +6,9 @@ members = [
     "parsa_python",
     "parsa_python_cst",
     "zuban_python",
-    "scripts",
+    "zubanls",
     "zmypy",
+    "scripts",
 ]
 
 [workspace.package]
