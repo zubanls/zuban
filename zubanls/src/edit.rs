@@ -2,8 +2,6 @@
 
 use lsp_types::PositionEncodingKind;
 
-use crate::PositionEncoding;
-
 use zuban_source_file::LineIndex;
 use zuban_source_file::OneIndexed;
 use zuban_source_file::{LineIndex, SourceLocation};

@@ -1,33 +1,29 @@
 //! Data model, state management, and configuration resolution.
 
+use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+use crate::{
+    edit::DocumentVersion,
+    system::{url_to_any_system_path, AnySystemPath, LSPSystem},
+    PositionEncoding, TextDocument,
+};
+
+use super::ClientSettings;
+
 use anyhow::anyhow;
 use lsp_types::{ClientCapabilities, TextDocumentContentChangeEvent, Uri};
+use rustc_hash::FxHashMap;
+use serde::Deserialize;
 
 use red_knot_workspace::db::RootDatabase;
 use red_knot_workspace::workspace::WorkspaceMetadata;
 use zuban_db::files::{system_path_to_file, File};
 use zuban_db::system::SystemPath;
 use zuban_db::Db;
-
-use crate::edit::DocumentVersion;
-use crate::system::{url_to_any_system_path, AnySystemPath, LSPSystem};
-use crate::{PositionEncoding, TextDocument};
-
-pub(crate) use self::capabilities::ResolvedClientCapabilities;
-pub(crate) use self::settings::AllSettings;
-pub use self::settings::ClientSettings;
-
-mod capabilities;
-pub(crate) mod index;
-mod settings;
-
-// TODO(dhruvmanila): In general, the server shouldn't use any salsa queries directly and instead
-// should use methods on `RootDatabase`.
 
 /// The global state for the LSP
 pub struct Session {
@@ -236,7 +232,7 @@ impl Drop for MutIndexGuard<'_> {
 #[derive(Debug)]
 pub struct DocumentSnapshot {
     resolved_client_capabilities: Arc<ResolvedClientCapabilities>,
-    document_ref: index::DocumentQuery,
+    document_ref: DocumentQuery,
     position_encoding: PositionEncoding,
 }
 
@@ -245,7 +241,7 @@ impl DocumentSnapshot {
         &self.resolved_client_capabilities
     }
 
-    pub fn query(&self) -> &index::DocumentQuery {
+    pub fn query(&self) -> &DocumentQuery {
         &self.document_ref
     }
 
@@ -260,6 +256,343 @@ impl DocumentSnapshot {
                 .files()
                 .try_virtual_file(&virtual_path)
                 .map(|virtual_file| virtual_file.file()),
+        }
+    }
+}
+
+/// Maps a workspace URI to its associated client settings. Used during server initialization.
+pub(crate) type WorkspaceSettingsMap = FxHashMap<Uri, ClientSettings>;
+
+/// This is a direct representation of the settings schema sent by the client.
+#[derive(Debug, Deserialize, Default)]
+#[cfg_attr(test, derive(PartialEq, Eq))]
+#[serde(rename_all = "camelCase")]
+pub struct ClientSettings {
+    // These settings are only needed for tracing, and are only read from the global configuration.
+    // These will not be in the resolved settings.
+    #[serde(flatten)]
+    pub(crate) tracing: TracingSettings,
+}
+
+/// Settings needed to initialize tracing. These will only be
+/// read from the global configuration.
+#[derive(Debug, Deserialize, Default)]
+#[cfg_attr(test, derive(PartialEq, Eq))]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct TracingSettings {
+    pub(crate) log_level: Option<crate::trace::LogLevel>,
+    /// Path to the log file - tildes and environment variables are supported.
+    pub(crate) log_file: Option<PathBuf>,
+}
+
+/// This is a direct representation of the workspace settings schema,
+/// which inherits the schema of [`ClientSettings`] and adds extra fields
+/// to describe the workspace it applies to.
+#[derive(Debug, Deserialize)]
+#[cfg_attr(test, derive(PartialEq, Eq))]
+#[serde(rename_all = "camelCase")]
+struct WorkspaceSettings {
+    #[serde(flatten)]
+    settings: ClientSettings,
+    workspace: Uri,
+}
+
+/// This is the exact schema for initialization options sent in by the client
+/// during initialization.
+#[derive(Debug, Deserialize)]
+#[cfg_attr(test, derive(PartialEq, Eq))]
+#[serde(untagged)]
+enum InitializationOptions {
+    #[serde(rename_all = "camelCase")]
+    HasWorkspaces {
+        global_settings: ClientSettings,
+        #[serde(rename = "settings")]
+        workspace_settings: Vec<WorkspaceSettings>,
+    },
+    GlobalOnly {
+        #[serde(default)]
+        settings: ClientSettings,
+    },
+}
+
+/// Built from the initialization options provided by the client.
+#[derive(Debug)]
+pub(crate) struct AllSettings {
+    pub(crate) global_settings: ClientSettings,
+    /// If this is `None`, the client only passed in global settings.
+    pub(crate) workspace_settings: Option<WorkspaceSettingsMap>,
+}
+
+impl AllSettings {
+    /// Initializes the controller from the serialized initialization options.
+    /// This fails if `options` are not valid initialization options.
+    pub(crate) fn from_value(options: serde_json::Value) -> Self {
+        Self::from_init_options(
+            serde_json::from_value(options)
+                .map_err(|err| {
+                    tracing::error!("Failed to deserialize initialization options: {err}. Falling back to default client settings...");
+                    show_err_msg!("ZubanLS received invalid client settings - falling back to default client settings.");
+                })
+                .unwrap_or_default(),
+        )
+    }
+
+    fn from_init_options(options: InitializationOptions) -> Self {
+        let (global_settings, workspace_settings) = match options {
+            InitializationOptions::GlobalOnly { settings } => (settings, None),
+            InitializationOptions::HasWorkspaces {
+                global_settings,
+                workspace_settings,
+            } => (global_settings, Some(workspace_settings)),
+        };
+
+        Self {
+            global_settings,
+            workspace_settings: workspace_settings.map(|workspace_settings| {
+                workspace_settings
+                    .into_iter()
+                    .map(|settings| (settings.workspace, settings.settings))
+                    .collect()
+            }),
+        }
+    }
+}
+
+impl Default for InitializationOptions {
+    fn default() -> Self {
+        Self::GlobalOnly {
+            settings: ClientSettings::default(),
+        }
+    }
+}
+
+/// Stores and tracks all open documents in a session, along with their associated settings.
+#[derive(Default, Debug)]
+struct Index {
+    /// Maps all document file URLs to the associated document controller
+    documents: FxHashMap<Uri, DocumentController>,
+
+    /// Global settings provided by the client.
+    global_settings: ClientSettings,
+}
+
+impl Index {
+    pub(super) fn new(global_settings: ClientSettings) -> Self {
+        Self {
+            documents: FxHashMap::default(),
+            global_settings,
+        }
+    }
+
+    pub(super) fn update_text_document(
+        &mut self,
+        key: &Uri,
+        content_changes: Vec<lsp_types::TextDocumentContentChangeEvent>,
+        new_version: DocumentVersion,
+        encoding: PositionEncoding,
+    ) -> crate::ZResult<()> {
+        let controller = self.document_controller_for_key(key)?;
+        let Some(document) = controller.as_text_mut() else {
+            anyhow::bail!("Text document URI does not point to a text document");
+        };
+
+        if content_changes.is_empty() {
+            document.update_version(new_version);
+            return Ok(());
+        }
+
+        document.apply_changes(content_changes, new_version, encoding);
+
+        Ok(())
+    }
+
+    pub(crate) fn make_document_ref(&self, uri: Uri) -> Option<DocumentQuery> {
+        let controller = self.documents.get(&uri)?;
+        Some(controller.make_ref(uri))
+    }
+
+    pub(super) fn open_text_document(&mut self, uri: Uri, document: TextDocument) {
+        self.documents
+            .insert(uri, DocumentController::new_text(document));
+    }
+
+    pub(super) fn close_document(&mut self, key: &Uri) -> crate::ZResult<()> {
+        let Some(uri) = self.url_for_key(key).cloned() else {
+            anyhow::bail!("Tried to close unavailable document `{key}`");
+        };
+
+        let Some(_) = self.documents.remove(&uri) else {
+            anyhow::bail!("tried to close document that didn't exist at {}", uri)
+        };
+        Ok(())
+    }
+
+    fn document_controller_for_key(
+        &mut self,
+        uri: &Uri,
+    ) -> crate::ZResult<&mut DocumentController> {
+        let Some(controller) = self.documents.get_mut(&uri) else {
+            anyhow::bail!("Document controller not available at `{}`", uri);
+        };
+        Ok(controller)
+    }
+}
+
+/// A mutable handler to an underlying document.
+#[derive(Debug)]
+enum DocumentController {
+    Text(Arc<TextDocument>),
+}
+
+impl DocumentController {
+    fn new_text(document: TextDocument) -> Self {
+        Self::Text(Arc::new(document))
+    }
+
+    fn make_ref(&self) -> DocumentQuery {
+        match &self {
+            Self::Text(document) => DocumentQuery::Text {
+                file_url,
+                document: document.clone(),
+            },
+        }
+    }
+
+    #[allow(dead_code)]
+    pub(crate) fn as_text(&self) -> Option<&TextDocument> {
+        match self {
+            Self::Text(document) => Some(document),
+        }
+    }
+
+    pub(crate) fn as_text_mut(&mut self) -> Option<&mut TextDocument> {
+        Some(match self {
+            Self::Text(document) => Arc::make_mut(document),
+        })
+    }
+}
+
+/// A read-only query to an open document.
+/// It also includes document settings.
+#[derive(Debug, Clone)]
+pub enum DocumentQuery {
+    Text {
+        file_url: Uri,
+        document: Arc<TextDocument>,
+    },
+}
+
+impl DocumentQuery {
+    /// Get the source type of the document associated with this query.
+    pub(crate) fn source_type(&self) -> zuban_python_ast::PySourceType {
+        match self {
+            Self::Text { .. } => zuban_python_ast::PySourceType::from(self.virtual_file_path()),
+        }
+    }
+
+    /// Get the version of document selected by this query.
+    pub(crate) fn version(&self) -> DocumentVersion {
+        match self {
+            Self::Text { document, .. } => document.version(),
+        }
+    }
+
+    /// Get the URL for the document selected by this query.
+    pub(crate) fn file_url(&self) -> &Uri {
+        match self {
+            Self::Text { file_url, .. } => file_url,
+        }
+    }
+
+    /// Get the path for the document selected by this query.
+    ///
+    /// Returns `None` if this is an unsaved (untitled) document.
+    ///
+    /// The path isn't guaranteed to point to a real path on the filesystem. This is the case
+    /// for unsaved (untitled) documents.
+    pub(crate) fn file_path(&self) -> Option<PathBuf> {
+        self.file_url().to_file_path().ok()
+    }
+
+    /// Get the path for the document selected by this query, ignoring whether the file exists on disk.
+    ///
+    /// Returns the URL's path if this is an unsaved (untitled) document.
+    pub(crate) fn virtual_file_path(&self) -> Cow<Path> {
+        self.file_path()
+            .map(Cow::Owned)
+            .unwrap_or_else(|| Cow::Borrowed(Path::new(self.file_url().path())))
+    }
+
+    /// Attempt to access the single inner text document selected by the query.
+    pub(crate) fn as_single_document(&self) -> Option<&TextDocument> {
+        match self {
+            Self::Text { document, .. } => Some(document),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[allow(clippy::struct_excessive_bools)]
+pub(crate) struct ResolvedClientCapabilities {
+    pub(crate) code_action_deferred_edit_resolution: bool,
+    pub(crate) apply_edit: bool,
+    pub(crate) document_changes: bool,
+    pub(crate) workspace_refresh: bool,
+    pub(crate) pull_diagnostics: bool,
+}
+
+impl ResolvedClientCapabilities {
+    pub(super) fn new(client_capabilities: &ClientCapabilities) -> Self {
+        let code_action_settings = client_capabilities
+            .text_document
+            .as_ref()
+            .and_then(|doc_settings| doc_settings.code_action.as_ref());
+        let code_action_data_support = code_action_settings
+            .and_then(|code_action_settings| code_action_settings.data_support)
+            .unwrap_or_default();
+        let code_action_edit_resolution = code_action_settings
+            .and_then(|code_action_settings| code_action_settings.resolve_support.as_ref())
+            .is_some_and(|resolve_support| resolve_support.properties.contains(&"edit".into()));
+
+        let apply_edit = client_capabilities
+            .workspace
+            .as_ref()
+            .and_then(|workspace| workspace.apply_edit)
+            .unwrap_or_default();
+
+        let document_changes = client_capabilities
+            .workspace
+            .as_ref()
+            .and_then(|workspace| workspace.workspace_edit.as_ref())
+            .and_then(|workspace_edit| workspace_edit.document_changes)
+            .unwrap_or_default();
+
+        let workspace_refresh = true;
+
+        // TODO(jane): Once the bug involving workspace.diagnostic(s) deserialization has been fixed,
+        // uncomment this.
+        /*
+        let workspace_refresh = client_capabilities
+            .workspace
+            .as_ref()
+            .and_then(|workspace| workspace.diagnostic.as_ref())
+            .and_then(|diagnostic| diagnostic.refresh_support)
+            .unwrap_or_default();
+        */
+
+        let pull_diagnostics = client_capabilities
+            .text_document
+            .as_ref()
+            .and_then(|text_document| text_document.diagnostic.as_ref())
+            .is_some();
+
+        Self {
+            code_action_deferred_edit_resolution: code_action_data_support
+                && code_action_edit_resolution,
+            apply_edit,
+            document_changes,
+            workspace_refresh,
+            pull_diagnostics,
         }
     }
 }
