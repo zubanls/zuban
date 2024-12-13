@@ -13,7 +13,6 @@ use lsp_types::{
 };
 
 use self::connection::{Connection, ConnectionInitializer};
-use self::schedule::event_loop_thread;
 use crate::session::{AllSettings, ClientSettings, Session};
 use crate::PositionEncoding;
 
@@ -39,6 +38,24 @@ const DIAGNOSTIC_NAME: &str = "ZubanLS";
 
 fn version() -> &'static str {
     env!("CARGO_PKG_VERSION")
+}
+
+/// The event loop thread is actually a secondary thread that we spawn from the
+/// _actual_ main thread. This secondary thread has a larger stack size
+/// than some OS defaults (Windows, for example) and is also designated as
+/// high-priority.
+pub(crate) fn event_loop_thread(
+    func: impl FnOnce() -> crate::ZResult<()> + Send + 'static,
+) -> crate::ZResult<thread::JoinHandle<crate::ZResult<()>>> {
+    // Override OS defaults to avoid stack overflows on platforms with low stack size defaults.
+    const MAIN_THREAD_STACK_SIZE: usize = 2 * 1024 * 1024;
+    const MAIN_THREAD_NAME: &str = "zubanls:main";
+    Ok(
+        thread::Builder::new(thread::ThreadPriority::LatencySensitive)
+            .name(MAIN_THREAD_NAME.into())
+            .stack_size(MAIN_THREAD_STACK_SIZE)
+            .spawn(func)?,
+    )
 }
 
 impl Server {

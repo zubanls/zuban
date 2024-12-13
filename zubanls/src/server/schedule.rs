@@ -1,112 +1,51 @@
-use std::num::NonZeroUsize;
-
-use crate::session::Session;
-
-mod task;
-mod thread;
-
-pub(super) use task::{BackgroundSchedule, Task};
-
 use self::{
     task::{BackgroundTaskBuilder, SyncTask},
     thread::ThreadPriority,
 };
+use super::{client::Client, ClientSender};
 
-use super::{cluent::Client, ClientSender};
+use lsp_server::RequestId;
+use serde::Serialize;
 
-/// The event loop thread is actually a secondary thread that we spawn from the
-/// _actual_ main thread. This secondary thread has a larger stack size
-/// than some OS defaults (Windows, for example) and is also designated as
-/// high-priority.
-pub(crate) fn event_loop_thread(
-    func: impl FnOnce() -> crate::ZResult<()> + Send + 'static,
-) -> crate::ZResult<thread::JoinHandle<crate::ZResult<()>>> {
-    // Override OS defaults to avoid stack overflows on platforms with low stack size defaults.
-    const MAIN_THREAD_STACK_SIZE: usize = 2 * 1024 * 1024;
-    const MAIN_THREAD_NAME: &str = "zubanls:main";
-    Ok(
-        thread::Builder::new(thread::ThreadPriority::LatencySensitive)
-            .name(MAIN_THREAD_NAME.into())
-            .stack_size(MAIN_THREAD_STACK_SIZE)
-            .spawn(func)?,
-    )
+use crate::{
+    server::client::{Notifier, Requester, Responder},
+    session::Session,
+};
+
+type LocalFn<'s> = Box<dyn FnOnce(&mut Session, Notifier, &mut Requester, Responder) + 's>;
+
+pub(in crate::server) enum Task<'s> {
+    Sync(SyncTask<'s>),
 }
 
-pub(crate) struct Scheduler<'s> {
-    session: &'s mut Session,
-    client: Client<'s>,
-    fmt_pool: thread::Pool,
-    background_pool: thread::Pool,
+pub(in crate::server) struct SyncTask<'s> {
+    pub(super) func: LocalFn<'s>,
 }
 
-impl<'s> Scheduler<'s> {
-    pub(super) fn new(
-        session: &'s mut Session,
-        worker_threads: NonZeroUsize,
-        sender: ClientSender,
+impl<'s> Task<'s> {
+    /// Creates a new local task.
+    pub(crate) fn local(
+        func: impl FnOnce(&mut Session, Notifier, &mut Requester, Responder) + 's,
     ) -> Self {
-        const FMT_THREADS: usize = 1;
-        Self {
-            session,
-            fmt_pool: thread::Pool::new(NonZeroUsize::try_from(FMT_THREADS).unwrap()),
-            background_pool: thread::Pool::new(worker_threads),
-            client: Client::new(sender),
-        }
+        Self::Sync(SyncTask {
+            func: Box::new(func),
+        })
     }
-
-    /// Immediately sends a request of kind `R` to the client, with associated parameters.
-    /// The task provided by `response_handler` will be dispatched as soon as the response
-    /// comes back from the client.
-    pub(super) fn request<R>(
-        &mut self,
-        params: R::Params,
-        response_handler: impl Fn(R::Result) -> Task<'s> + 'static,
-    ) -> crate::ZResult<()>
+    /// Creates a local task that immediately
+    /// responds with the provided `request`.
+    pub(crate) fn immediate<R>(id: RequestId, result: crate::server::Result<R>) -> Self
     where
-        R: lsp_types::request::Request,
+        R: Serialize + Send + 'static,
     {
-        self.client.requester.request::<R>(params, response_handler)
+        Self::local(move |_, _, _, responder| {
+            if let Err(err) = responder.respond(id, result) {
+                tracing::error!("Unable to send immediate response: {err}");
+            }
+        })
     }
 
-    /// Creates a task to handle a response from the client.
-    pub(super) fn response(&mut self, response: lsp_server::Response) -> Task<'s> {
-        self.client.requester.pop_response_task(response)
-    }
-
-    /// Dispatches a `task` by either running it as a blocking function or
-    /// executing it on a background thread pool.
-    pub(super) fn dispatch(&mut self, task: task::Task<'s>) {
-        match task {
-            Task::Sync(SyncTask { func }) => {
-                let notifier = self.client.notifier();
-                let responder = self.client.responder();
-                func(
-                    self.session,
-                    notifier,
-                    &mut self.client.requester,
-                    responder,
-                );
-            }
-            Task::Background(BackgroundTaskBuilder {
-                schedule,
-                builder: func,
-            }) => {
-                let static_func = func(self.session);
-                let notifier = self.client.notifier();
-                let responder = self.client.responder();
-                let task = move || static_func(notifier, responder);
-                match schedule {
-                    BackgroundSchedule::Worker => {
-                        self.background_pool.spawn(ThreadPriority::Worker, task);
-                    }
-                    BackgroundSchedule::LatencySensitive => self
-                        .background_pool
-                        .spawn(ThreadPriority::LatencySensitive, task),
-                    BackgroundSchedule::Fmt => {
-                        self.fmt_pool.spawn(ThreadPriority::LatencySensitive, task);
-                    }
-                }
-            }
-        }
+    /// Creates a local task that does nothing.
+    pub(crate) fn nothing() -> Self {
+        Self::local(move |_, _, _, _| {})
     }
 }
