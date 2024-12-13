@@ -19,7 +19,6 @@ use crate::system::{url_to_any_system_path, AnySystemPath, LSPSystem};
 use crate::{PositionEncoding, TextDocument};
 
 pub(crate) use self::capabilities::ResolvedClientCapabilities;
-pub use self::index::DocumentQuery;
 pub(crate) use self::settings::AllSettings;
 pub use self::settings::ClientSettings;
 

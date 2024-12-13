@@ -3,7 +3,7 @@
 mod range;
 mod text_document;
 
-use lsp_types::{PositionEncodingKind, Uri};
+use lsp_types::PositionEncodingKind;
 pub(crate) use range::{RangeExt, ToRangeExt};
 pub(crate) use text_document::DocumentVersion;
 pub use text_document::TextDocument;

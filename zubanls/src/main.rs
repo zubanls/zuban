@@ -1,12 +1,8 @@
-#![allow(dead_code)]
-
 use anyhow::Context;
 use edit::{PositionEncoding, TextDocument};
-use session::{ClientSettings, DocumentQuery, DocumentSnapshot, Session};
 use std::num::NonZeroUsize;
 
 use crate::server::Server;
-use std::error::Error;
 
 use lsp_types::OneOf;
 use lsp_types::{

@@ -27,12 +27,6 @@ impl Index {
         }
     }
 
-    pub(super) fn text_document_urls(&self) -> impl Iterator<Item = &Uri> + '_ {
-        self.documents
-            .iter()
-            .filter_map(|(url, doc)| doc.as_text().and(Some(url)))
-    }
-
     pub(super) fn update_text_document(
         &mut self,
         key: &Uri,
@@ -55,27 +49,23 @@ impl Index {
         Ok(())
     }
 
-    pub(super) fn num_documents(&self) -> usize {
-        self.documents.len()
-    }
-
     pub(crate) fn make_document_ref(&self, uri: Uri) -> Option<DocumentQuery> {
         let controller = self.documents.get(&uri)?;
-        Some(controller.make_ref(url))
+        Some(controller.make_ref(uri))
     }
 
-    pub(super) fn open_text_document(&mut self, url: Uri, document: TextDocument) {
+    pub(super) fn open_text_document(&mut self, uri: Uri, document: TextDocument) {
         self.documents
-            .insert(url, DocumentController::new_text(document));
+            .insert(uri, DocumentController::new_text(document));
     }
 
     pub(super) fn close_document(&mut self, key: &Uri) -> crate::ZResult<()> {
-        let Some(url) = self.url_for_key(key).cloned() else {
+        let Some(uri) = self.url_for_key(key).cloned() else {
             anyhow::bail!("Tried to close unavailable document `{key}`");
         };
 
-        let Some(_) = self.documents.remove(&url) else {
-            anyhow::bail!("tried to close document that didn't exist at {}", url)
+        let Some(_) = self.documents.remove(&uri) else {
+            anyhow::bail!("tried to close document that didn't exist at {}", uri)
         };
         Ok(())
     }
@@ -85,7 +75,7 @@ impl Index {
         uri: &Uri,
     ) -> crate::ZResult<&mut DocumentController> {
         let Some(controller) = self.documents.get_mut(&uri) else {
-            anyhow::bail!("Document controller not available at `{}`", url);
+            anyhow::bail!("Document controller not available at `{}`", uri);
         };
         Ok(controller)
     }
