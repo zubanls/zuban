@@ -1,36 +1,34 @@
 //! Scheduling, I/O, and API endpoints.
 
-use std::num::NonZeroUsize;
+use std::thread;
 // The new PanicInfoHook name requires MSRV >= 1.82
 #[allow(deprecated)]
 use std::panic::PanicInfo;
 
-use lsp_server::Message;
+use anyhow::anyhow;
+use crossbeam_channel::Sender;
+use lsp_server::{Connection, ExtractError, Message, Request};
 use lsp_types::{
     ClientCapabilities, DiagnosticOptions, DiagnosticServerCapabilities, MessageType,
     ServerCapabilities, TextDocumentSyncCapability, TextDocumentSyncKind, TextDocumentSyncOptions,
     Uri,
 };
 
-use self::connection::{Connection, ConnectionInitializer};
-use crate::session::{AllSettings, ClientSettings, Session};
-use crate::PositionEncoding;
+//use crate::session::{AllSettings, ClientSettings, Session};
+//use crate::PositionEncoding;
 
-mod api;
-mod client;
-mod connection;
-mod schedule;
+//mod api;
+//mod client;
+//mod connection;
+//mod schedule;
 
-use crate::message::try_show_message;
-pub(crate) use connection::ClientSender;
-
-pub(crate) type Result<T> = std::result::Result<T, api::Error>;
+//use crate::message::try_show_message;
+//pub(crate) use connection::ClientSender;
 
 pub(crate) struct Server {
-    connection: Connection,
+    //connection: Connection,
     client_capabilities: ClientCapabilities,
-    worker_threads: NonZeroUsize,
-    session: Session,
+    //session: Session,
 }
 
 const SERVER_NAME: &str = "zubanls";
@@ -45,31 +43,29 @@ fn version() -> &'static str {
 /// than some OS defaults (Windows, for example) and is also designated as
 /// high-priority.
 pub(crate) fn event_loop_thread(
-    func: impl FnOnce() -> crate::ZResult<()> + Send + 'static,
-) -> crate::ZResult<thread::JoinHandle<crate::ZResult<()>>> {
+    func: impl FnOnce() -> anyhow::Result<()> + Send + 'static,
+) -> anyhow::Result<()> {
     // Override OS defaults to avoid stack overflows on platforms with low stack size defaults.
     const MAIN_THREAD_STACK_SIZE: usize = 2 * 1024 * 1024;
     const MAIN_THREAD_NAME: &str = "zubanls:main";
-    Ok(
-        thread::Builder::new(thread::ThreadPriority::LatencySensitive)
-            .name(MAIN_THREAD_NAME.into())
-            .stack_size(MAIN_THREAD_STACK_SIZE)
-            .spawn(func)?,
-    )
+    let handle = thread::Builder::new()
+        .name(MAIN_THREAD_NAME.into())
+        .stack_size(MAIN_THREAD_STACK_SIZE)
+        .spawn(func)?;
+
+    handle
+        .join()
+        .map_err(|e| anyhow!("Error while joining the thread: {e:?}"))?
 }
 
 impl Server {
-    pub(crate) fn new(worker_threads: NonZeroUsize) -> crate::ZResult<Self> {
-        let connection = ConnectionInitializer::stdio();
-
-        let (id, init_params) = connection.initialize_start()?;
-
+    pub(crate) fn new() -> anyhow::Result<Self> {
+        todo!()
+        /*
         let client_capabilities = init_params.capabilities;
         let position_encoding = Self::find_best_position_encoding(&client_capabilities);
         let server_capabilities = Self::server_capabilities(position_encoding);
 
-        let connection =
-            connection.initialize_finish(id, &server_capabilities, SERVER_NAME, version())?;
 
         if let Some(trace) = init_params.trace {
             crate::trace::set_trace_value(trace);
@@ -123,24 +119,17 @@ impl Server {
             })?;
 
         if workspaces.len() > 1 {
-            // TODO(dhruvmanila): Support multi-root workspaces
+            // TODO
             anyhow::bail!("Multi-root workspaces are not supported yet");
         }
 
         Ok(Self {
-            connection,
-            worker_threads,
-            session: Session::new(
-                &client_capabilities,
-                position_encoding,
-                global_settings,
-                &workspaces,
-            )?,
             client_capabilities,
         })
+        */
     }
 
-    pub(crate) fn run(self) -> crate::ZResult<()> {
+    pub(crate) fn run(self) -> anyhow::Result<()> {
         // The new PanicInfoHook name requires MSRV >= 1.82
         #[allow(deprecated)]
         type PanicHook = Box<dyn Fn(&PanicInfo<'_>) + 'static + Sync + Send>;
@@ -164,6 +153,7 @@ impl Server {
 
         // When we panic, try to notify the client.
         std::panic::set_hook(Box::new(move |panic_info| {
+            /*
             use std::io::Write;
 
             let backtrace = std::backtrace::Backtrace::force_capture();
@@ -181,46 +171,46 @@ impl Server {
                 MessageType::ERROR,
             )
             .ok();
+            */
+            todo!()
         }));
 
         event_loop_thread(move || {
             Self::event_loop(
-                &self.connection,
-                &self.client_capabilities,
-                self.session,
-                self.worker_threads,
+                //&self.client_capabilities,
+                //self.session,
             )?;
-            self.connection.close()?;
+            //self.connection.close()?;
             Ok(())
-        })?
-        .join()
+        })
     }
 
-    #[allow(clippy::needless_pass_by_value)] // this is because we aren't using `next_request_id` yet.
-    fn event_loop(
-        connection: &Connection,
-        _client_capabilities: &ClientCapabilities,
-        mut session: Session,
-        worker_threads: NonZeroUsize,
-    ) -> crate::ZResult<()> {
-        let mut scheduler =
-            schedule::Scheduler::new(&mut session, worker_threads, connection.make_sender());
-
-        for msg in connection.incoming() {
-            if connection.handle_shutdown(&msg)? {
-                break;
+    fn event_loop(//_client_capabilities: &ClientCapabilities,
+        //mut session: Session,
+    ) -> anyhow::Result<()> {
+        let (connection, threads) = lsp_server::Connection::stdio();
+        let mut global_state = GlobalState::new(connection.sender);
+        for msg in connection.receiver.iter() {
+            use lsp_types::notification::Notification;
+            if matches!(
+                &msg,
+                lsp_server::Message::Notification(lsp_server::Notification { method, .. })
+                if method == lsp_types::notification::Exit::METHOD
+            ) {
+                return Ok(());
             }
-            let task = match msg {
-                Message::Request(req) => api::request(req),
-                Message::Notification(notification) => api::notification(notification),
-                Message::Response(response) => scheduler.response(response),
-            };
-            scheduler.dispatch(task);
+
+            match msg {
+                Message::Request(r) => global_state.on_request(r),
+                Message::Notification(n) => global_state.on_notification(n),
+                Message::Response(r) => global_state.complete_request(r),
+            }
         }
 
         Ok(())
     }
 
+    /*
     fn find_best_position_encoding(client_capabilities: &ClientCapabilities) -> PositionEncoding {
         client_capabilities
             .general
@@ -250,6 +240,98 @@ impl Server {
                 },
             )),
             ..Default::default()
+        }
+    }
+    */
+}
+pub(crate) struct NotificationDispatcher<'a> {
+    pub(crate) not: Option<lsp_server::Notification>,
+    pub(crate) global_state: &'a mut GlobalState,
+}
+
+pub(crate) struct GlobalState {
+    sender: Sender<lsp_server::Message>,
+}
+
+impl GlobalState {
+    fn new(sender: Sender<lsp_server::Message>) -> Self {
+        GlobalState { sender }
+    }
+
+    /// Handles an incoming notification.
+    fn on_notification(&mut self, not: lsp_server::Notification) {
+        use lsp_types::notification::*;
+
+        NotificationDispatcher {
+            not: Some(not),
+            global_state: self,
+        }
+        //.on_sync_mut::<Cancel>(GlobalState::handle_cancel)
+        //.on_sync_mut::<WorkDoneProgressCancel>(GlobalState::handle_work_done_progress_cancel)
+        .on_sync_mut::<DidOpenTextDocument>(GlobalState::handle_did_open_text_document)
+        .on_sync_mut::<DidChangeTextDocument>(GlobalState::handle_did_change_text_document)
+        .on_sync_mut::<DidCloseTextDocument>(GlobalState::handle_did_close_text_document)
+        .on_sync_mut::<DidSaveTextDocument>(GlobalState::handle_did_save_text_document)
+        //.on_sync_mut::<DidChangeWorkspaceFolders>(GlobalState::handle_did_change_workspace_folders)
+        //.on_sync_mut::<notifs::DidChangeWatchedFiles>(GlobalState::handle_did_change_watched_files)
+        .finish();
+    }
+
+    fn on_request(&mut self, req: Request) {
+        todo!()
+    }
+    fn complete_request(&mut self, response: lsp_server::Response) {
+        todo!()
+    }
+}
+
+impl NotificationDispatcher<'_> {
+    pub(crate) fn on_sync_mut<N>(
+        &mut self,
+        f: fn(&mut GlobalState, N::Params) -> anyhow::Result<()>,
+    ) -> &mut Self
+    where
+        N: lsp_types::notification::Notification,
+        N::Params: serde::de::DeserializeOwned + Send + std::fmt::Debug,
+    {
+        let not = match self.not.take() {
+            Some(it) => it,
+            None => return self,
+        };
+
+        let _guard = tracing::info_span!("notification", method = ?not.method).entered();
+
+        let params = match not.extract::<N::Params>(N::METHOD) {
+            Ok(it) => it,
+            Err(ExtractError::JsonError { method, error }) => {
+                panic!("Invalid request\nMethod: {method}\n error: {error}",)
+            }
+            Err(ExtractError::MethodMismatch(not)) => {
+                self.not = Some(not);
+                return self;
+            }
+        };
+
+        tracing::debug!(?params);
+
+        /*
+        let _pctx = stdx::panic_context::enter(format!(
+            "\nversion: {}\nnotification: {}",
+            version(),
+            N::METHOD
+        ));
+        */
+        if let Err(e) = f(self.global_state, params) {
+            tracing::error!(handler = %N::METHOD, error = %e, "notification handler failed");
+        }
+        self
+    }
+
+    pub(crate) fn finish(&mut self) {
+        if let Some(not) = &self.not {
+            if !not.method.starts_with("$/") {
+                tracing::error!("unhandled notification: {:?}", not);
+            }
         }
     }
 }

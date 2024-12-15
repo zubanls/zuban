@@ -1,5 +1,13 @@
+//#[macro_use]
+//mod message;
+//mod edit;
+mod notification_handlers;
+mod server;
+//mod session;
+//mod system;
+//mod trace;
+
 use anyhow::Context;
-use edit::{PositionEncoding, TextDocument};
 use std::num::NonZeroUsize;
 
 use crate::server::Server;
@@ -11,33 +19,13 @@ use lsp_types::{
 
 use lsp_server::{Connection, ExtractError, Message, Request, RequestId, Response};
 
-#[macro_use]
-mod message;
-
-mod edit;
-mod server;
-mod session;
-mod system;
-mod trace;
-
-/// A common result type used in most cases where a
-/// result type is needed.
-pub(crate) type ZResult<T> = anyhow::Result<T>;
-
-fn main() -> ZResult<()> {
+fn main() -> anyhow::Result<()> {
     // Logging to stderr.
     eprintln!("Starting ZubanLS server");
 
     let four = NonZeroUsize::new(4).unwrap();
 
-    // by default, we set the number of worker threads to `num_cpus`, with a maximum of 4.
-    let worker_threads = std::thread::available_parallelism()
-        .unwrap_or(four)
-        .max(four);
-
-    Server::new(worker_threads)
-        .context("Failed to start server")?
-        .run()?;
+    Server::new().context("Failed to start server")?.run()?;
 
     return Ok(());
 
@@ -68,7 +56,7 @@ fn main() -> ZResult<()> {
     Ok(())
 }
 
-fn main_loop(connection: Connection, params: serde_json::Value) -> ZResult<()> {
+fn main_loop(connection: Connection, params: serde_json::Value) -> anyhow::Result<()> {
     let _params: InitializeParams = serde_json::from_value(params).unwrap();
     eprintln!("starting example main loop");
     for msg in &connection.receiver {
@@ -108,7 +96,7 @@ fn main_loop(connection: Connection, params: serde_json::Value) -> ZResult<()> {
     Ok(())
 }
 
-fn cast<R>(req: Request) -> ZResult<(RequestId, R::Params), ExtractError<Request>>
+fn cast<R>(req: Request) -> anyhow::Result<(RequestId, R::Params), ExtractError<Request>>
 where
     R: lsp_types::request::Request,
     R::Params: serde::de::DeserializeOwned,

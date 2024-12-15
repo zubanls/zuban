@@ -56,7 +56,7 @@ impl SyncNotificationHandler for DidChangeTextDocumentHandler {
             }
         }
 
-        // TODO(dhruvmanila): Publish diagnostics if the client doesn't support pull diagnostics
+        // TODO Publish diagnostics if the client doesn't support pull diagnostics
 
         Ok(())
     }

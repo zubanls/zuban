@@ -15,9 +15,6 @@ pub(crate) struct Client<'s> {
 }
 
 #[derive(Clone)]
-pub(crate) struct Notifier(ClientSender);
-
-#[derive(Clone)]
 pub(crate) struct Responder(ClientSender);
 
 pub(crate) struct Requester<'s> {
@@ -45,28 +42,6 @@ impl Client<'_> {
 
     pub(super) fn responder(&self) -> Responder {
         self.responder.clone()
-    }
-}
-
-#[allow(dead_code)] // we'll need to use `Notifier` in the future
-impl Notifier {
-    pub(crate) fn notify<N>(&self, params: N::Params) -> crate::ZResult<()>
-    where
-        N: lsp_types::notification::Notification,
-    {
-        let method = N::METHOD.to_string();
-
-        let message = lsp_server::Message::Notification(Notification::new(method, params));
-
-        self.0.send(message)
-    }
-
-    pub(crate) fn notify_method(&self, method: String) -> crate::ZResult<()> {
-        self.0
-            .send(lsp_server::Message::Notification(Notification::new(
-                method,
-                Value::Null,
-            )))
     }
 }
 

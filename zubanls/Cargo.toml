@@ -17,6 +17,7 @@ tracing-subscriber = "0.3.19"
 clap = "4.5.18"
 zuban_python = { path = "../zuban_python" }
 shellexpand = "3.1.0"
+crossbeam-channel = "0.5.13"
 
 [features]
 zuban_debug = ["zuban_python/zuban_debug"]
