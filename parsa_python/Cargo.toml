@@ -7,9 +7,9 @@ homepage.workspace = true
 authors.workspace = true
 
 [dependencies]
-parsa = { path = "../parsa" }
-lazy_static = "*"
-regex = "*"
+parsa.workspace = true
+lazy_static.workspace = true
+regex.workspace = true
 
 [dev-dependencies]
-insta = "*"
+insta.workspace = true

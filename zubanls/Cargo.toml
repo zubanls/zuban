@@ -7,17 +7,17 @@ homepage.workspace = true
 authors.workspace = true
 
 [dependencies]
-anyhow = "1.0.94"
+anyhow.workspace = true
 lsp-server = "0.7.7"
 lsp-types = { version = "0.97.0", features = ["proposed"]}
-serde = "1.0.216"
-serde_json = "1.0.133"
-tracing = "0.1.41"
-tracing-subscriber = "0.3.19"
-clap = "4.5.18"
+serde.workspace = true
+serde_json.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+clap.workspace = true
 zuban_python = { path = "../zuban_python" }
-shellexpand = "3.1.0"
-crossbeam-channel = "0.5.13"
+shellexpand.workspace = true
+crossbeam-channel.workspace = true
 
 [features]
 zuban_debug = ["zuban_python/zuban_debug"]

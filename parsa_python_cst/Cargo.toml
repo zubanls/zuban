@@ -7,4 +7,4 @@ homepage.workspace = true
 authors.workspace = true
 
 [dependencies]
-parsa_python = { path = "../parsa_python" }
+parsa_python.workspace = true

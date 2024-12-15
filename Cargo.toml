@@ -16,3 +16,28 @@ edition = "2021"
 rust-version = "1.81"
 homepage = "https://zubanls.com"
 authors = ["Dave Halter <davidhalter88@gmail.com>"]
+
+[workspace.dependencies]
+# Internal crates
+parsa = { path = "./parsa" }
+parsa_python = { path = "./parsa_python" }
+parsa_python_cst = { path = "./parsa_python_cst" }
+zuban_python = { path = "./zuban_python" }
+
+# General third party dependencies
+anyhow = "*"
+clap = { version = "4.5.4", features = ["derive"] }
+crossbeam-channel = "*"
+lazy_static = "*"
+fnv = "*"
+regex = "*"
+serde = "*"
+serde_json = "*"
+shellexpand = "*"
+toml_edit = "*"
+tracing = "*"
+tracing-subscriber = "*"
+walkdir = "2"
+
+# Dev dependencies
+insta = "*"

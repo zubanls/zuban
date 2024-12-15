@@ -7,13 +7,15 @@ homepage.workspace = true
 authors.workspace = true
 
 [dependencies]
-parsa_python_cst = { path = "../parsa_python_cst" }
-lazy_static = "*"
-regex = "*"
-walkdir = "2"
+parsa_python_cst.workspace = true
+lazy_static.workspace = true
+regex.workspace = true
+walkdir.workspace = true
 rust-ini = { version = "0.21.0", features = ["inline-comment"], git = "https://github.com/davidhalter-archive/rust-ini.git", branch="indented-multiline-values" }
-toml_edit = "0.22.13"
-clap = { version = "4.5.4", features = ["derive"] }
+toml_edit.workspace = true
+
+[dev-dependencies]
+clap.workspace = true
 
 [features]
 zuban_debug = []
