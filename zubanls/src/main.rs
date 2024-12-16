@@ -1,14 +1,19 @@
+#![allow(unused)] // TODO remove
+#![allow(unused_imports)] // TODO remove
+
 //#[macro_use]
 //mod message;
 //mod edit;
 mod notification_handlers;
+mod request_handlers;
 mod server;
 //mod session;
 //mod system;
 //mod trace;
 
-use anyhow::Context;
+use anyhow::{anyhow, Context};
 use std::num::NonZeroUsize;
+use std::thread;
 
 use crate::server::Server;
 
@@ -53,7 +58,30 @@ fn main() -> anyhow::Result<()> {
 
     // Shut down gracefully.
     eprintln!("shutting down server");
-    Ok(())
+    event_loop_thread(move || {
+        server::event_loop()?;
+        Ok(())
+    })
+}
+
+/// The event loop thread is actually a secondary thread that we spawn from the
+/// _actual_ main thread. This secondary thread has a larger stack size
+/// than some OS defaults (Windows, for example) and is also designated as
+/// high-priority.
+pub(crate) fn event_loop_thread(
+    func: impl FnOnce() -> anyhow::Result<()> + Send + 'static,
+) -> anyhow::Result<()> {
+    // Override OS defaults to avoid stack overflows on platforms with low stack size defaults.
+    const MAIN_THREAD_STACK_SIZE: usize = 2 * 1024 * 1024;
+    const MAIN_THREAD_NAME: &str = "zubanls:main";
+    let handle = thread::Builder::new()
+        .name(MAIN_THREAD_NAME.into())
+        .stack_size(MAIN_THREAD_STACK_SIZE)
+        .spawn(func)?;
+
+    handle
+        .join()
+        .map_err(|e| anyhow!("Error while joining the thread: {e:?}"))?
 }
 
 fn main_loop(connection: Connection, params: serde_json::Value) -> anyhow::Result<()> {

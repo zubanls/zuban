@@ -15,9 +15,9 @@ serde_json.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
 clap.workspace = true
-zuban_python = { path = "../zuban_python" }
+#zuban_python = { path = "../zuban_python" }
 shellexpand.workspace = true
 crossbeam-channel.workspace = true
 
 [features]
-zuban_debug = ["zuban_python/zuban_debug"]
+zuban_debug = []#["zuban_python/zuban_debug"]

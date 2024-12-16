@@ -1,18 +1,18 @@
 //! Scheduling, I/O, and API endpoints.
 
-use std::thread;
 // The new PanicInfoHook name requires MSRV >= 1.82
 #[allow(deprecated)]
 use std::panic::PanicInfo;
 
-use anyhow::anyhow;
 use crossbeam_channel::Sender;
 use lsp_server::{Connection, ExtractError, Message, Request};
 use lsp_types::{
-    ClientCapabilities, DiagnosticOptions, DiagnosticServerCapabilities, MessageType,
-    ServerCapabilities, TextDocumentSyncCapability, TextDocumentSyncKind, TextDocumentSyncOptions,
-    Uri,
+    request::DocumentDiagnosticRequest, ClientCapabilities, Diagnostic, DiagnosticOptions,
+    DiagnosticServerCapabilities, DocumentDiagnosticReport, DocumentDiagnosticReportResult,
+    MessageType, ServerCapabilities, TextDocumentSyncCapability, TextDocumentSyncKind,
+    TextDocumentSyncOptions, Uri,
 };
+use serde::{de::DeserializeOwned, Serialize};
 
 //use crate::session::{AllSettings, ClientSettings, Session};
 //use crate::PositionEncoding;
@@ -38,24 +38,27 @@ fn version() -> &'static str {
     env!("CARGO_PKG_VERSION")
 }
 
-/// The event loop thread is actually a secondary thread that we spawn from the
-/// _actual_ main thread. This secondary thread has a larger stack size
-/// than some OS defaults (Windows, for example) and is also designated as
-/// high-priority.
-pub(crate) fn event_loop_thread(
-    func: impl FnOnce() -> anyhow::Result<()> + Send + 'static,
-) -> anyhow::Result<()> {
-    // Override OS defaults to avoid stack overflows on platforms with low stack size defaults.
-    const MAIN_THREAD_STACK_SIZE: usize = 2 * 1024 * 1024;
-    const MAIN_THREAD_NAME: &str = "zubanls:main";
-    let handle = thread::Builder::new()
-        .name(MAIN_THREAD_NAME.into())
-        .stack_size(MAIN_THREAD_STACK_SIZE)
-        .spawn(func)?;
+pub(crate) fn event_loop() -> anyhow::Result<()> {
+    let (connection, threads) = lsp_server::Connection::stdio();
+    let mut global_state = GlobalState::new(connection.sender);
+    for msg in connection.receiver.iter() {
+        use lsp_types::notification::Notification;
+        if matches!(
+            &msg,
+            lsp_server::Message::Notification(lsp_server::Notification { method, .. })
+            if method == lsp_types::notification::Exit::METHOD
+        ) {
+            return Ok(());
+        }
 
-    handle
-        .join()
-        .map_err(|e| anyhow!("Error while joining the thread: {e:?}"))?
+        match msg {
+            Message::Request(r) => global_state.on_request(r),
+            Message::Notification(n) => global_state.on_notification(n),
+            Message::Response(r) => global_state.complete_request(r),
+        }
+    }
+    threads.join()?;
+    Ok(())
 }
 
 impl Server {
@@ -174,39 +177,6 @@ impl Server {
             */
             todo!()
         }));
-
-        event_loop_thread(move || {
-            Self::event_loop(
-                //&self.client_capabilities,
-                //self.session,
-            )?;
-            //self.connection.close()?;
-            Ok(())
-        })
-    }
-
-    fn event_loop(//_client_capabilities: &ClientCapabilities,
-        //mut session: Session,
-    ) -> anyhow::Result<()> {
-        let (connection, threads) = lsp_server::Connection::stdio();
-        let mut global_state = GlobalState::new(connection.sender);
-        for msg in connection.receiver.iter() {
-            use lsp_types::notification::Notification;
-            if matches!(
-                &msg,
-                lsp_server::Message::Notification(lsp_server::Notification { method, .. })
-                if method == lsp_types::notification::Exit::METHOD
-            ) {
-                return Ok(());
-            }
-
-            match msg {
-                Message::Request(r) => global_state.on_request(r),
-                Message::Notification(n) => global_state.on_notification(n),
-                Message::Response(r) => global_state.complete_request(r),
-            }
-        }
-
         Ok(())
     }
 
@@ -244,13 +214,13 @@ impl Server {
     }
     */
 }
-pub(crate) struct NotificationDispatcher<'a> {
-    pub(crate) not: Option<lsp_server::Notification>,
-    pub(crate) global_state: &'a mut GlobalState,
+struct NotificationDispatcher<'a> {
+    not: Option<lsp_server::Notification>,
+    global_state: &'a mut GlobalState,
 }
 
 pub(crate) struct GlobalState {
-    sender: Sender<lsp_server::Message>,
+    pub sender: Sender<lsp_server::Message>,
 }
 
 impl GlobalState {
@@ -277,16 +247,31 @@ impl GlobalState {
         .finish();
     }
 
-    fn on_request(&mut self, req: Request) {
-        todo!()
+    fn on_request(&mut self, request: Request) {
+        RequestDispatcher {
+            request: Some(request),
+            global_state: self,
+        }
+        .on_sync_mut::<DocumentDiagnosticRequest>(GlobalState::handle_document_diagnostics)
+        .finish();
     }
-    fn complete_request(&mut self, response: lsp_server::Response) {
+
+    fn respond(&mut self, response: lsp_server::Response) {
+        if let Some(err) = &response.error {
+            if err.message.starts_with("server panicked") {
+                //self.poke_rust_analyzer_developer(format!("{}, check the log", err.message))
+            }
+        }
+        self.sender.send(response.into()).unwrap()
+    }
+
+    fn complete_request(&mut self, _response: lsp_server::Response) {
         todo!()
     }
 }
 
 impl NotificationDispatcher<'_> {
-    pub(crate) fn on_sync_mut<N>(
+    fn on_sync_mut<N>(
         &mut self,
         f: fn(&mut GlobalState, N::Params) -> anyhow::Result<()>,
     ) -> &mut Self
@@ -327,11 +312,128 @@ impl NotificationDispatcher<'_> {
         self
     }
 
-    pub(crate) fn finish(&mut self) {
+    fn finish(&mut self) {
         if let Some(not) = &self.not {
             if !not.method.starts_with("$/") {
                 tracing::error!("unhandled notification: {:?}", not);
             }
         }
     }
+}
+
+struct RequestDispatcher<'a> {
+    request: Option<lsp_server::Request>,
+    global_state: &'a mut GlobalState,
+}
+
+impl RequestDispatcher<'_> {
+    fn on_sync_mut<R>(
+        &mut self,
+        f: fn(&mut GlobalState, R::Params) -> anyhow::Result<R::Result>,
+    ) -> &mut Self
+    where
+        R: lsp_types::request::Request,
+        R::Params: DeserializeOwned + std::panic::UnwindSafe + std::fmt::Debug,
+        R::Result: Serialize,
+    {
+        let (req, params, _panic_context) = match self.parse::<R>() {
+            Some(it) => it,
+            None => return self,
+        };
+        let _guard =
+            tracing::info_span!("request", method = ?req.method, "request_id" = ?req.id).entered();
+        tracing::debug!(?params);
+        let result = {
+            //let _pctx = stdx::panic_context::enter(panic_context);
+            f(self.global_state, params)
+        };
+        if let Ok(response) = result_to_response::<R>(req.id, result) {
+            self.global_state.respond(response);
+        }
+
+        self
+    }
+
+    fn parse<R>(&mut self) -> Option<(lsp_server::Request, R::Params, String)>
+    where
+        R: lsp_types::request::Request,
+        R::Params: DeserializeOwned + std::fmt::Debug,
+    {
+        let req = self.request.take_if(|it| it.method == R::METHOD)?;
+        let res = from_json(R::METHOD, &req.params);
+        match res {
+            Ok(params) => {
+                let panic_context = format!(
+                    "\nversion: {}\nrequest: {} {params:#?}",
+                    version(),
+                    R::METHOD
+                );
+                Some((req, params, panic_context))
+            }
+            Err(err) => {
+                let response = lsp_server::Response::new_err(
+                    req.id,
+                    lsp_server::ErrorCode::InvalidParams as i32,
+                    err.to_string(),
+                );
+                self.global_state.respond(response);
+                None
+            }
+        }
+    }
+
+    fn finish(&mut self) {
+        if let Some(req) = self.request.take() {
+            tracing::error!("unknown request: {:?}", req);
+            let response = lsp_server::Response::new_err(
+                req.id,
+                lsp_server::ErrorCode::MethodNotFound as i32,
+                "unknown request".to_owned(),
+            );
+            self.global_state.respond(response);
+        }
+    }
+}
+
+pub fn from_json<T: DeserializeOwned>(
+    what: &'static str,
+    json: &serde_json::Value,
+) -> anyhow::Result<T> {
+    serde_json::from_value(json.clone())
+        .map_err(|e| anyhow::format_err!("Failed to deserialize {what}: {e}; {json}"))
+}
+
+struct Cancelled(); // TODO currently unused
+
+fn result_to_response<R>(
+    id: lsp_server::RequestId,
+    result: anyhow::Result<R::Result>,
+) -> Result<lsp_server::Response, Cancelled>
+where
+    R: lsp_types::request::Request,
+    R::Params: DeserializeOwned,
+    R::Result: Serialize,
+{
+    let res = match result {
+        Ok(resp) => lsp_server::Response::new_ok(id, &resp),
+        /*
+        Err(e) => match e.downcast::<LspError>() {
+            Ok(lsp_error) => lsp_server::Response::new_err(id, lsp_error.code, lsp_error.message),
+            Err(e) => match e.downcast::<Cancelled>() {
+                Ok(cancelled) => return Err(cancelled),
+                Err(e) => lsp_server::Response::new_err(
+                    id,
+                    lsp_server::ErrorCode::InternalError as i32,
+                    e.to_string(),
+                ),
+            },
+        },
+        */
+        Err(e) => lsp_server::Response::new_err(
+            id,
+            lsp_server::ErrorCode::InternalError as i32,
+            e.to_string(),
+        ),
+    };
+    Ok(res)
 }
