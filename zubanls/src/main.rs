@@ -1,21 +1,5 @@
-#![allow(unused)] // TODO remove
-#![allow(unused_imports)] // TODO remove
-
-//#[macro_use]
-//mod message;
-//mod edit;
-mod notification_handlers;
-mod request_handlers;
-mod server;
-//mod session;
-//mod system;
-//mod trace;
-
-use anyhow::{anyhow, Context};
-use std::num::NonZeroUsize;
+use anyhow::anyhow;
 use std::thread;
-
-use crate::server::Server;
 
 use lsp_types::OneOf;
 use lsp_types::{
@@ -28,11 +12,12 @@ fn main() -> anyhow::Result<()> {
     // Logging to stderr.
     eprintln!("Starting ZubanLS server");
 
-    let four = NonZeroUsize::new(4).unwrap();
+    //Server::new().context("Failed to start server")?.run()?;
 
-    Server::new().context("Failed to start server")?.run()?;
-
-    return Ok(());
+    return event_loop_thread(move || {
+        zubanls::run_server()?;
+        Ok(())
+    });
 
     // Create the transport. Includes the stdio (stdin and stdout) versions but this could
     // also be implemented to use sockets or HTTP.
@@ -58,10 +43,6 @@ fn main() -> anyhow::Result<()> {
 
     // Shut down gracefully.
     eprintln!("shutting down server");
-    event_loop_thread(move || {
-        server::event_loop()?;
-        Ok(())
-    })
 }
 
 /// The event loop thread is actually a secondary thread that we spawn from the

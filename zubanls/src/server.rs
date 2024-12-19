@@ -3,16 +3,18 @@
 // The new PanicInfoHook name requires MSRV >= 1.82
 #[allow(deprecated)]
 use std::panic::PanicInfo;
+use std::path::PathBuf;
 
 use crossbeam_channel::Sender;
 use lsp_server::{Connection, ExtractError, Message, Request};
 use lsp_types::{
-    request::DocumentDiagnosticRequest, ClientCapabilities, Diagnostic, DiagnosticOptions,
+    request::DocumentDiagnosticRequest, Diagnostic, DiagnosticOptions,
     DiagnosticServerCapabilities, DocumentDiagnosticReport, DocumentDiagnosticReportResult,
     MessageType, ServerCapabilities, TextDocumentSyncCapability, TextDocumentSyncKind,
     TextDocumentSyncOptions, Uri,
 };
 use serde::{de::DeserializeOwned, Serialize};
+use zuban_python::{Project, ProjectOptions};
 
 //use crate::session::{AllSettings, ClientSettings, Session};
 //use crate::PositionEncoding;
@@ -24,6 +26,7 @@ use serde::{de::DeserializeOwned, Serialize};
 
 //use crate::message::try_show_message;
 //pub(crate) use connection::ClientSender;
+use crate::capabilities::{server_capabilities, ClientCapabilities};
 
 pub(crate) struct Server {
     //connection: Connection,
@@ -38,8 +41,118 @@ fn version() -> &'static str {
     env!("CARGO_PKG_VERSION")
 }
 
-pub(crate) fn event_loop() -> anyhow::Result<()> {
-    let (connection, threads) = lsp_server::Connection::stdio();
+pub fn run_server_with_custom_connection(
+    connection: Connection,
+    cleanup: impl FnOnce() -> anyhow::Result<()>,
+) -> anyhow::Result<()> {
+    tracing::info!("Server version {} will start", version());
+
+    let (initialize_id, initialize_params) = match connection.initialize_start() {
+        Ok(it) => it,
+        Err(e) => {
+            if e.channel_is_disconnected() {
+                cleanup()?;
+            }
+            return Err(e.into());
+        }
+    };
+
+    tracing::info!("InitializeParams: {}", initialize_params);
+    #[expect(deprecated)]
+    let lsp_types::InitializeParams {
+        root_uri,
+        capabilities,
+        workspace_folders,
+        client_info,
+        ..
+    } = from_json::<lsp_types::InitializeParams>("InitializeParams", &initialize_params)?;
+
+    if let Some(client_info) = &client_info {
+        tracing::info!(
+            "Client '{}' {}",
+            client_info.name,
+            client_info.version.as_deref().unwrap_or_default()
+        );
+    }
+
+    let workspace_roots = workspace_folders
+        .map(|workspaces| {
+            workspaces
+                .into_iter()
+                .map(|workspace| patch_path_prefix(&workspace.uri))
+                .collect::<Vec<_>>()
+        })
+        .filter(|workspaces| !workspaces.is_empty());
+    let workspace_roots = match workspace_roots {
+        Some(r) => r,
+        None => {
+            let root_path = match root_uri.as_ref().map(patch_path_prefix) {
+                Some(it) => it,
+                None => {
+                    let cwd = std::env::current_dir()?;
+                    cwd.into_os_string().into_string().map_err(|e| {
+                        anyhow::anyhow!("Invalid non utf-8 working directory: {e:?}")
+                    })?
+                }
+            };
+            vec![root_path.clone()]
+        }
+    };
+
+    let options = find_project_options().unwrap_or_else(|err| {
+        use lsp_types::{
+            notification::{Notification, ShowMessage},
+            MessageType, ShowMessageParams,
+        };
+        let not = lsp_server::Notification::new(
+            ShowMessage::METHOD.to_owned(),
+            ShowMessageParams {
+                typ: MessageType::WARNING,
+                message: err.to_string(),
+            },
+        );
+        connection
+            .sender
+            .send(lsp_server::Message::Notification(not))
+            .unwrap();
+        ProjectOptions::default()
+    });
+
+    let server_capabilities = server_capabilities(&ClientCapabilities::new(capabilities));
+
+    let initialize_result = lsp_types::InitializeResult {
+        capabilities: server_capabilities,
+        server_info: Some(lsp_types::ServerInfo {
+            name: String::from("zubanls"),
+            version: Some(version().to_string()),
+        }),
+        offset_encoding: None,
+    };
+
+    let initialize_result = serde_json::to_value(initialize_result).unwrap();
+
+    if let Err(e) = connection.initialize_finish(initialize_id, initialize_result) {
+        if e.channel_is_disconnected() {
+            cleanup()?;
+        }
+        return Err(e.into());
+    }
+
+    // If the io_threads have an error, there's usually an error on the main
+    // loop too because the channels are closed. Ensure we report both errors.
+    event_loop(options, connection)?;
+    cleanup();
+    tracing::info!("Server did successfully shut down");
+    Ok(())
+}
+
+pub fn run_server() -> anyhow::Result<()> {
+    let (connection, io_threads) = Connection::stdio();
+    run_server_with_custom_connection(connection, || Ok(io_threads.join()?))
+}
+
+fn event_loop(options: ProjectOptions, connection: lsp_server::Connection) -> anyhow::Result<()> {
+    let project = Project::new(options);
     let mut global_state = GlobalState::new(connection.sender);
     for msg in connection.receiver.iter() {
         use lsp_types::notification::Notification;
@@ -57,8 +170,11 @@ pub(crate) fn event_loop() -> anyhow::Result<()> {
             Message::Response(r) => global_state.complete_request(r),
         }
     }
-    threads.join()?;
     Ok(())
+}
+
+fn find_project_options() -> anyhow::Result<ProjectOptions> {
+    Ok(ProjectOptions::default())
 }
 
 impl Server {
@@ -195,25 +311,9 @@ impl Server {
             .unwrap_or_default()
     }
 
-    fn server_capabilities(position_encoding: PositionEncoding) -> ServerCapabilities {
-        ServerCapabilities {
-            position_encoding: Some(position_encoding.into()),
-            diagnostic_provider: Some(DiagnosticServerCapabilities::Options(DiagnosticOptions {
-                identifier: Some(DIAGNOSTIC_NAME.into()),
-                ..Default::default()
-            })),
-            text_document_sync: Some(TextDocumentSyncCapability::Options(
-                TextDocumentSyncOptions {
-                    open_close: Some(true),
-                    change: Some(TextDocumentSyncKind::INCREMENTAL),
-                    ..Default::default()
-                },
-            )),
-            ..Default::default()
-        }
-    }
     */
 }
+
 struct NotificationDispatcher<'a> {
     not: Option<lsp_server::Notification>,
     global_state: &'a mut GlobalState,
@@ -436,4 +536,52 @@ where
         ),
     };
     Ok(res)
+}
+
+fn patch_path_prefix(path: &Uri) -> String {
+    let path = path.as_str();
+    use std::path::{Component, Prefix};
+    if cfg!(windows) {
+        // VSCode might report paths with the file drive in lowercase, but this can mess
+        // with env vars set by tools and build scripts executed by r-a such that it invalidates
+        // cargo's compilations unnecessarily. https://github.com/rust-lang/rust-analyzer/issues/14683
+        // So we just uppercase the drive letter here unconditionally.
+        // (doing it conditionally is a pain because std::path::Prefix always reports uppercase letters on windows)
+        let buf = PathBuf::from(path);
+        let mut comps = buf.components();
+        match comps.next() {
+            Some(Component::Prefix(prefix)) => {
+                let prefix = match prefix.kind() {
+                    Prefix::Disk(d) => {
+                        format!("{}:", d.to_ascii_uppercase() as char)
+                    }
+                    Prefix::VerbatimDisk(d) => {
+                        format!(r"\\?\{}:", d.to_ascii_uppercase() as char)
+                    }
+                    _ => return path.to_string(),
+                };
+                let mut path = PathBuf::new();
+                path.push(prefix);
+                path.extend(comps);
+                // The path before was utf-8, so we can unwrap.
+                path.into_os_string().into_string().unwrap()
+            }
+            _ => path.to_string(),
+        }
+    } else {
+        path.to_string()
+    }
+}
+
+#[test]
+#[cfg(windows)]
+fn patch_path_prefix_works() {
+    assert_eq!(
+        patch_path_prefix(r"c:\foo\bar".into()),
+        PathBuf::from(r"C:\foo\bar")
+    );
+    assert_eq!(
+        patch_path_prefix(r"\\?\c:\foo\bar".into()),
+        PathBuf::from(r"\\?\C:\foo\bar")
+    );
 }
