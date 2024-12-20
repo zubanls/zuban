@@ -23,4 +23,9 @@ impl GlobalState {
         ));
         Ok(resp)
     }
+
+    pub(crate) fn handle_shutdown(&mut self, _: ()) -> anyhow::Result<()> {
+        self.shutdown_requested = true;
+        Ok(())
+    }
 }

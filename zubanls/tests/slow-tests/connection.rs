@@ -1,7 +1,8 @@
-use std::time::Duration;
+use std::{str::FromStr, time::Duration};
 
 use crossbeam_channel::RecvTimeoutError;
 use lsp_server::Message;
+use lsp_types::{InitializeResult, Uri};
 use serde::{de::DeserializeOwned, Serialize};
 
 pub(crate) struct Connection {
@@ -26,18 +27,69 @@ impl Connection {
         }
     }
 
-    pub(crate) fn request<R>(&mut self, params: R::Params) -> R::Result
+    pub(crate) fn initialized() -> Self {
+        let mut slf = Self::new();
+        slf.initialize();
+        slf
+    }
+
+    pub(crate) fn with_running(callable: impl FnOnce(&mut Self)) {
+        let mut slf = Self::initialized();
+        callable(&mut slf);
+        slf.shutdown_and_exit();
+    }
+
+    pub(crate) fn initialize(&mut self) -> InitializeResult {
+        #[expect(deprecated)]
+        let initialize_params = lsp_types::InitializeParams {
+            root_uri: Some(Uri::from_str("file:///foo/bar").unwrap()),
+            capabilities: lsp_types::ClientCapabilities {
+                workspace: Some(lsp_types::WorkspaceClientCapabilities {
+                    did_change_watched_files: Some(
+                        lsp_types::DidChangeWatchedFilesClientCapabilities {
+                            dynamic_registration: Some(true),
+                            relative_pattern_support: None,
+                        },
+                    ),
+                    workspace_edit: Some(lsp_types::WorkspaceEditClientCapabilities {
+                        resource_operations: Some(vec![
+                            lsp_types::ResourceOperationKind::Create,
+                            lsp_types::ResourceOperationKind::Delete,
+                            lsp_types::ResourceOperationKind::Rename,
+                        ]),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        let response = self.request::<lsp_types::request::Initialize>(initialize_params);
+        self.notify::<lsp_types::notification::Initialized>(lsp_types::InitializedParams {});
+        response
+    }
+
+    pub(crate) fn request_with_response<R>(&mut self, params: R::Params) -> lsp_server::Response
     where
         R: lsp_types::request::Request,
         R::Params: Serialize,
-        R::Result: DeserializeOwned,
     {
         self.request_id_counter += 1;
         let id = self.request_id_counter;
         let r = lsp_server::Request::new(id.into(), R::METHOD.to_string(), params);
         self.send(r);
 
-        let response = self.expect_response();
+        self.expect_response()
+    }
+
+    pub(crate) fn request<R>(&mut self, params: R::Params) -> R::Result
+    where
+        R: lsp_types::request::Request,
+        R::Params: Serialize,
+        R::Result: DeserializeOwned,
+    {
+        let response = self.request_with_response::<R>(params);
         if let Some(error) = response.error {
             panic!("Unexpected error: {error:?}")
         }
@@ -72,6 +124,11 @@ impl Connection {
     fn recv_timeout(&self) -> Result<Message, RecvTimeoutError> {
         let timeout = Duration::from_secs(5);
         self.client.receiver.recv_timeout(timeout)
+    }
+
+    pub(crate) fn shutdown_and_exit(&mut self) {
+        self.request::<lsp_types::request::Shutdown>(());
+        self.notify::<lsp_types::notification::Exit>(());
     }
 }
 

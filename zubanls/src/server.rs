@@ -8,10 +8,9 @@ use std::path::PathBuf;
 use crossbeam_channel::Sender;
 use lsp_server::{Connection, ExtractError, Message, Request};
 use lsp_types::{
-    request::DocumentDiagnosticRequest, Diagnostic, DiagnosticOptions,
-    DiagnosticServerCapabilities, DocumentDiagnosticReport, DocumentDiagnosticReportResult,
-    MessageType, ServerCapabilities, TextDocumentSyncCapability, TextDocumentSyncKind,
-    TextDocumentSyncOptions, Uri,
+    DiagnosticOptions, DiagnosticServerCapabilities, DocumentDiagnosticReport,
+    DocumentDiagnosticReportResult, MessageType, ServerCapabilities, TextDocumentSyncCapability,
+    TextDocumentSyncKind, TextDocumentSyncOptions, Uri,
 };
 use serde::{de::DeserializeOwned, Serialize};
 use zuban_python::{Project, ProjectOptions};
@@ -156,17 +155,14 @@ fn event_loop(options: ProjectOptions, connection: lsp_server::Connection) -> an
     let mut global_state = GlobalState::new(connection.sender);
     for msg in connection.receiver.iter() {
         use lsp_types::notification::Notification;
-        if matches!(
-            &msg,
-            lsp_server::Message::Notification(lsp_server::Notification { method, .. })
-            if method == lsp_types::notification::Exit::METHOD
-        ) {
-            return Ok(());
-        }
-
         match msg {
             Message::Request(r) => global_state.on_request(r),
-            Message::Notification(n) => global_state.on_notification(n),
+            Message::Notification(n) => {
+                if n.method == lsp_types::notification::Exit::METHOD {
+                    return Ok(());
+                }
+                global_state.on_notification(n)
+            }
             Message::Response(r) => global_state.complete_request(r),
         }
     }
@@ -321,11 +317,15 @@ struct NotificationDispatcher<'a> {
 
 pub(crate) struct GlobalState {
     pub sender: Sender<lsp_server::Message>,
+    pub shutdown_requested: bool,
 }
 
 impl GlobalState {
     fn new(sender: Sender<lsp_server::Message>) -> Self {
-        GlobalState { sender }
+        GlobalState {
+            sender,
+            shutdown_requested: false,
+        }
     }
 
     /// Handles an incoming notification.
@@ -348,11 +348,23 @@ impl GlobalState {
     }
 
     fn on_request(&mut self, request: Request) {
+        if self.shutdown_requested {
+            self.respond(lsp_server::Response::new_err(
+                request.id.clone(),
+                lsp_server::ErrorCode::InvalidRequest as i32,
+                "Shutdown already requested.".to_owned(),
+            ));
+            return;
+        }
+
+        use lsp_types::request::*;
+
         RequestDispatcher {
             request: Some(request),
             global_state: self,
         }
         .on_sync_mut::<DocumentDiagnosticRequest>(GlobalState::handle_document_diagnostics)
+        .on_sync_mut::<Shutdown>(GlobalState::handle_shutdown)
         .finish();
     }
 

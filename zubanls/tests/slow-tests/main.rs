@@ -9,7 +9,11 @@
 
 use std::str::FromStr;
 
-use lsp_types::{DiagnosticServerCapabilities, PositionEncodingKind, Uri};
+use lsp_server::Response;
+use lsp_types::{
+    DiagnosticServerCapabilities, DocumentDiagnosticParams, PartialResultParams,
+    PositionEncodingKind, TextDocumentIdentifier, Uri, WorkDoneProgressParams,
+};
 
 mod connection;
 
@@ -18,33 +22,8 @@ use connection::Connection;
 #[test]
 fn basic_server_setup() {
     let mut con = Connection::new();
+    let response = con.initialize();
 
-    #[expect(deprecated)]
-    let initialize_params = lsp_types::InitializeParams {
-        root_uri: Some(Uri::from_str("file:///foo/bar").unwrap()),
-        capabilities: lsp_types::ClientCapabilities {
-            workspace: Some(lsp_types::WorkspaceClientCapabilities {
-                did_change_watched_files: Some(
-                    lsp_types::DidChangeWatchedFilesClientCapabilities {
-                        dynamic_registration: Some(true),
-                        relative_pattern_support: None,
-                    },
-                ),
-                workspace_edit: Some(lsp_types::WorkspaceEditClientCapabilities {
-                    resource_operations: Some(vec![
-                        lsp_types::ResourceOperationKind::Create,
-                        lsp_types::ResourceOperationKind::Delete,
-                        lsp_types::ResourceOperationKind::Rename,
-                    ]),
-                    ..Default::default()
-                }),
-                ..Default::default()
-            }),
-            ..Default::default()
-        },
-        ..Default::default()
-    };
-    let response = con.request::<lsp_types::request::Initialize>(initialize_params);
     // Check diagnostic capabilities
     {
         assert_eq!(
@@ -64,7 +43,36 @@ fn basic_server_setup() {
         assert!(!diagnostics.workspace_diagnostics);
     }
     assert_eq!(response.server_info.expect("server_info").name, "zubanls");
+    con.shutdown_and_exit()
+}
 
-    con.notify::<lsp_types::notification::Initialized>(lsp_types::InitializedParams {});
+#[test]
+fn request_after_shutdown_is_invalid() {
+    let mut con = Connection::initialized();
+    con.request::<lsp_types::request::Shutdown>(());
+
+    let expect_shutdown_already_requested = |response: Response| {
+        let error = response.error.unwrap();
+        assert_eq!(error.message, "Shutdown already requested.");
+        assert_eq!(error.code, lsp_server::ErrorCode::InvalidRequest as i32);
+        assert!(response.result.is_none());
+    };
+
+    // Invalid, because there was already a shutdown request.
+    let r = con.request_with_response::<lsp_types::request::Shutdown>(());
+    expect_shutdown_already_requested(r);
+
+    let r = con.request_with_response::<lsp_types::request::DocumentDiagnosticRequest>(
+        DocumentDiagnosticParams {
+            text_document: TextDocumentIdentifier::new(Uri::from_str("does-not-exist").unwrap()),
+            identifier: None,
+            previous_result_id: None,
+            work_done_progress_params: WorkDoneProgressParams::default(),
+            partial_result_params: PartialResultParams::default(),
+        },
+    );
+    expect_shutdown_already_requested(r);
+
+    // This is ok.
     con.notify::<lsp_types::notification::Exit>(());
 }
