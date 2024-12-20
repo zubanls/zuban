@@ -94,6 +94,15 @@ impl Drop for Connection {
     fn drop(&mut self) {
         assert!(self.client.receiver.is_empty());
         if let Some(server_thread) = self.server_thread.take() {
+            let mut counter = 0;
+            const MAX_MS: usize = 5000;
+            while !server_thread.is_finished() && counter < MAX_MS {
+                std::thread::sleep(Duration::from_millis(1));
+                counter += 1;
+            }
+            if counter >= MAX_MS {
+                panic!("A thread was not joined properly");
+            }
             server_thread
                 .join()
                 .expect("The thread was not properly finished");
