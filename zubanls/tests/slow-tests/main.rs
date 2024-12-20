@@ -76,3 +76,9 @@ fn request_after_shutdown_is_invalid() {
     // This is ok.
     con.notify::<lsp_types::notification::Exit>(());
 }
+
+#[test]
+fn exit_without_shutdown() {
+    let mut con = Connection::initialized();
+    con.notify::<lsp_types::notification::Exit>(());
+}
