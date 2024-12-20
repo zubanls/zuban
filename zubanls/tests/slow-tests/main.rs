@@ -11,7 +11,7 @@ use std::{str::FromStr, time::Duration};
 
 use crossbeam_channel::RecvTimeoutError;
 use lsp_server::{Message, Notification, Response};
-use lsp_types::{PositionEncodingKind, Uri};
+use lsp_types::{DiagnosticServerCapabilities, PositionEncodingKind, Uri};
 use serde::{de::DeserializeOwned, Serialize};
 
 mod support;
@@ -132,14 +132,26 @@ fn basic_server_setup() {
         ..Default::default()
     };
     let response = con.request::<lsp_types::request::Initialize>(initialize_params);
-    assert_eq!(
-        response
-            .capabilities
-            .position_encoding
-            .expect("position_encoding"),
-        PositionEncodingKind::UTF16
-    );
+    // Check diagnostic capabilities
+    {
+        assert_eq!(
+            response
+                .capabilities
+                .position_encoding
+                .expect("position_encoding"),
+            PositionEncodingKind::UTF16
+        );
+        let Some(DiagnosticServerCapabilities::Options(diagnostics)) =
+            response.capabilities.diagnostic_provider
+        else {
+            unreachable!()
+        };
+        assert!(diagnostics.inter_file_dependencies);
+        // For now this is false, but this might change
+        assert!(!diagnostics.workspace_diagnostics);
+    }
     assert_eq!(response.server_info.expect("server_info").name, "zubanls");
+
     con.notify::<lsp_types::notification::Initialized>(lsp_types::InitializedParams {});
     con.notify::<lsp_types::notification::Exit>(());
 }
