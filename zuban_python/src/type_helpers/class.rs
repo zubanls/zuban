@@ -3130,7 +3130,7 @@ impl<'a> TypeOrClass<'a> {
         }
     }
 
-    pub fn as_base_class<'x>(&'x self, db: &'x Database, cls: &Class<'x>) -> Option<Class> {
+    pub fn as_base_class<'x>(&'x self, db: &'x Database, cls: &Class<'x>) -> Option<Class<'x>> {
         match self {
             TypeOrClass::Class(c) => Some(*c),
             TypeOrClass::Type(t) => match t.as_ref() {

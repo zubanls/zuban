@@ -597,7 +597,7 @@ impl<'db> PythonFile {
         }
     }
 
-    pub fn flags<'x>(&'x self, db: &'x Database) -> &TypeCheckerFlags {
+    pub fn flags<'x>(&'x self, db: &'x Database) -> &'x TypeCheckerFlags {
         if let Some(super_file) = self.super_file {
             debug_assert!(self.flags.is_none());
             db.loaded_python_file(super_file).flags(db)

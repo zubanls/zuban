@@ -510,7 +510,7 @@ impl Type {
         }
     }
 
-    pub fn maybe_union_like<'x>(&'x self, db: &'x Database) -> Option<Cow<UnionType>> {
+    pub fn maybe_union_like<'x>(&'x self, db: &'x Database) -> Option<Cow<'x, UnionType>> {
         match self {
             Type::Union(u) => Some(Cow::Borrowed(u)),
             Type::Type(t) => t.maybe_union_like(db).map(|u| {
@@ -603,7 +603,7 @@ impl Type {
     pub fn iter_with_unpacked_unions<'a>(
         &'a self,
         db: &'a Database,
-    ) -> impl Iterator<Item = &Type> {
+    ) -> impl Iterator<Item = &'a Type> {
         self.iter_with_unpacked_unions_and_maybe_include_never(db, false)
     }
 
@@ -611,7 +611,7 @@ impl Type {
         &'a self,
         db: &'a Database,
         include_never: bool,
-    ) -> impl Iterator<Item = &Type> {
+    ) -> impl Iterator<Item = &'a Type> {
         match self {
             Type::Union(items) => TypeRefIterator::Union(items.iter()),
             Type::Never(_) if !include_never => TypeRefIterator::Finished,
@@ -1350,7 +1350,7 @@ impl Type {
         }
     }
 
-    pub fn find_class_in_mro<'x>(&'x self, db: &'x Database, target: NodeRef) -> Option<Class> {
+    pub fn find_class_in_mro<'x>(&'x self, db: &'x Database, target: NodeRef) -> Option<Class<'x>> {
         self.mro(db)
             .find_map(|(_, type_or_class)| match type_or_class {
                 TypeOrClass::Class(cls) if cls.node_ref == target => Some(cls),

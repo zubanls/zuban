@@ -27,7 +27,7 @@ impl RecursiveType {
         }
     }
 
-    pub(super) fn name<'x>(&'x self, db: &'x Database) -> &str {
+    pub(super) fn name<'x>(&'x self, db: &'x Database) -> &'x str {
         match self.origin(db) {
             RecursiveTypeOrigin::TypeAlias(alias) => alias.name(db).unwrap(),
             RecursiveTypeOrigin::Class(class) => class.name(),
