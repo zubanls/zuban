@@ -9,6 +9,7 @@ members = [
     "zubanls",
     "zmypy",
     "scripts",
+    "test_utils",
 ]
 
 [workspace.package]
@@ -23,6 +24,7 @@ parsa = { path = "./parsa" }
 parsa_python = { path = "./parsa_python" }
 parsa_python_cst = { path = "./parsa_python_cst" }
 zuban_python = { path = "./zuban_python" }
+test_utils = { path = "./test_utils" }
 
 # General third party dependencies
 anyhow = "*"

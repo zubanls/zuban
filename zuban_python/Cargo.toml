@@ -16,6 +16,7 @@ toml_edit.workspace = true
 
 [dev-dependencies]
 clap.workspace = true
+test_utils.workspace = true
 
 [features]
 zuban_debug = []

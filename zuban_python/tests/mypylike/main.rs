@@ -10,6 +10,7 @@ use std::{
 use clap::Parser;
 
 use regex::{Captures, Regex, Replacer};
+use test_utils::{calculate_steps, Step};
 use zuban_python::{
     DiagnosticConfig, Project, ProjectOptions, PythonVersion, Settings, TypeCheckerFlags,
 };
@@ -61,14 +62,6 @@ const MYPY_TEST_DATA_PACKAGES_FOLDER: &str = "tests/mypylike/mypy/test-data/pack
 
 lazy_static::lazy_static! {
     static ref CASE: Regex = Regex::new(r"(?m)^\[case ([a-zA-Z_0-9-]+)\][ \t]*\n").unwrap();
-    // This is how I found out about possible "commands in mypy, executed in
-    // mypy/test-data/unit:
-    // find . | grep check | xargs cat | grep '^\[' | grep -Ev '\[(out|case|file)'
-    static ref CASE_PART: Regex = Regex::new(concat!(
-        r"(?m)^\[(file|out\d*|builtins|typing|stale\d*|rechecked|targets\d?|delete|triggered|fixture)",
-        r"(?: ([^\]]*))?\][ \t]*\n"
-    )).unwrap();
-    static ref SPLIT_OUT: Regex = Regex::new(r"(\n|^)==").unwrap();
     static ref REPLACE_COMMENTS: Regex = Regex::new(r"(?m)^--.*$\n").unwrap();
     static ref REPLACE_TUPLE: Regex = Regex::new(r"\bTuple\b").unwrap();
     static ref REPLACE_MYPY: Regex = Regex::new(r"`-?\d+").unwrap();
@@ -95,13 +88,6 @@ struct CliArgs {
     stop_after_first_error: bool,
 }
 
-#[derive(Default, Clone, Debug)]
-struct Step<'code> {
-    deletions: Vec<&'code str>,
-    files: HashMap<&'code str, &'code str>,
-    out: &'code str,
-}
-
 #[derive(Debug)]
 struct TestCase<'name, 'code> {
     file_name: &'name str,
@@ -109,14 +95,9 @@ struct TestCase<'name, 'code> {
     code: &'code str,
 }
 
-struct Steps<'code> {
-    steps: Vec<Step<'code>>,
-    flags: Vec<&'code str>,
-}
-
 impl<'name, 'code> TestCase<'name, 'code> {
     fn run(&self, projects: &mut ProjectsCache, mypy_compatible: bool) -> Result<bool, String> {
-        let steps = self.calculate_steps();
+        let steps = calculate_steps(self.file_name, self.code);
         let mut diagnostics_config = DiagnosticConfig::default();
 
         if steps.flags.contains(&"--mypy-compatible") && !mypy_compatible
@@ -447,114 +428,6 @@ impl<'name, 'code> TestCase<'name, 'code> {
             _ => PythonVersion::new(3, 8),
         }
     }
-
-    fn calculate_steps(&self) -> Steps {
-        let mut steps = HashMap::<usize, Step>::new();
-        steps.insert(1, Default::default());
-        let mut current_step_index = 1;
-        let mut current_type = "file";
-        let mut current_rest = "__main__";
-        let mut current_step_start = 0;
-        let mut flags = vec![];
-
-        let mut process_step_part2 = |step_index, type_, in_between, rest: &'code str| {
-            let step = if let Some(s) = steps.get_mut(&step_index) {
-                s
-            } else {
-                steps.insert(step_index, Default::default());
-                steps.get_mut(&step_index).unwrap()
-            };
-            if type_ == "file" || type_ == "fixture" {
-                step.files.insert(rest, in_between);
-            } else if type_ == "out" {
-                if !((self.file_name.contains("semanal-") || self.file_name.starts_with("parse"))
-                    && (in_between.starts_with("MypyFile:1")
-                        || in_between.starts_with("TypeInfoMap(")))
-                {
-                    // Semanal files print the AST in success cases. We only care about the
-                    // errors, because zuban's tree is probably different. We still test however
-                    // that there are no errors in those cases.
-                    step.out = in_between;
-                }
-                if self.file_name.starts_with("pythoneval") && !in_between.contains(".py:") {
-                    // pythoneval.test and pythoneval-asyncio.test
-                    step.out = "";
-                }
-            } else if type_ == "delete" {
-                step.deletions.push(rest)
-            }
-        };
-
-        let mut process_step = |step_index, type_, step_start, step_end, rest: &'code str| {
-            let in_between = &self.code[step_start..step_end];
-
-            if type_ == "out" && step_index == 1 && !self.file_name.contains("semanal-") {
-                // For now just ignore different versions and overwrite the out. This works,
-                // because we always target the latest version and older versions are currently
-                // listed below newer ones (by convention?).
-                if !rest.starts_with("version>=")
-                    && !rest.starts_with("version==")
-                    && rest != "skip-path-normalization"
-                {
-                    assert_eq!(rest, "");
-                }
-                for (i, part) in SPLIT_OUT.split(in_between).enumerate() {
-                    process_step_part2(i + 1, "out", part, rest)
-                }
-            } else {
-                process_step_part2(step_index, type_, in_between, rest)
-            }
-            if rest == "__main__" {
-                if let Some(flags_str) = find_flags(in_between) {
-                    flags = flags_str.split(' ').collect();
-                }
-            }
-        };
-
-        for capture in CASE_PART.captures_iter(self.code) {
-            process_step(
-                current_step_index,
-                current_type,
-                current_step_start,
-                capture.get(0).unwrap().start(),
-                current_rest,
-            );
-
-            current_type = capture.get(1).unwrap().as_str();
-            current_rest = capture.get(2).map(|x| x.as_str()).unwrap_or("");
-            current_step_start = capture.get(0).unwrap().end();
-
-            current_step_index = 1;
-            if current_type == "file" || current_type == "delete" {
-                let last = current_rest.chars().last().unwrap();
-                if let Some(digit) = last.to_digit(10) {
-                    current_step_index = digit as usize;
-                    current_rest = &current_rest[..current_rest.len() - 2];
-                }
-            } else if current_type.starts_with("out") && current_type.len() > 3 {
-                if let Some(digit) = current_type.chars().nth(3).unwrap().to_digit(10) {
-                    current_step_index = digit as usize;
-                    current_type = "out";
-                }
-            }
-        }
-        process_step(
-            current_step_index,
-            current_type,
-            current_step_start,
-            self.code.len(),
-            current_rest,
-        );
-
-        let mut result_steps = vec![];
-        for i in 1..steps.len() + 1 {
-            result_steps.push(steps[&i].clone());
-        }
-        Steps {
-            steps: result_steps,
-            flags,
-        }
-    }
 }
 
 fn replace_annoyances(s: String) -> String {
@@ -775,18 +648,6 @@ impl Replacer for TypeStuffReplacer {
             dst.push_str("builtins.tuple")
         }
     }
-}
-
-fn find_flags(string: &str) -> Option<&str> {
-    for line in string.split('\n') {
-        if !line.starts_with('#') {
-            break;
-        }
-        if let Some(flags) = line.strip_prefix("# flags: ") {
-            return Some(flags);
-        }
-    }
-    None
 }
 
 fn calculate_filters(args: Vec<String>) -> Vec<String> {

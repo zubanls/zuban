@@ -620,6 +620,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "test_utils"
+version = "0.1.0"
+dependencies = [
+ "lazy_static",
+ "regex",
+]
+
+[[package]]
 name = "thiserror"
 version = "1.0.69"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -968,6 +976,7 @@ dependencies = [
  "parsa_python_cst",
  "regex",
  "rust-ini",
+ "test_utils",
  "toml_edit",
  "walkdir",
 ]
