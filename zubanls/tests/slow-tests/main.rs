@@ -92,15 +92,15 @@ fn exit_without_shutdown() {
 fn diagnostics_for_saved_files() {
     let server = Project::with_fixture(
         r#"
-        //- /pyproject.toml
+        [file pyproject.toml]
 
-        //- /pkg/__init__.py
+        [file /pkg/__init__.py]
         from foo import Foo
         from foo import Bar
 
         1()
 
-        //- /pkg/foo.py
+        [file] /pkg/foo.py]
         class Foo: ...
         lala
         "#,
@@ -118,7 +118,8 @@ fn diagnostics_for_saved_files() {
         },
         json!([
             {
-                "diagnostics": ["TODO", "TODO"],
+                "items": ["TODO", "TODO"],
+                "kind": "full"
             }
         ]),
     );

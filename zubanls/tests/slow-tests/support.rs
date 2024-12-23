@@ -8,6 +8,7 @@ use std::{
 use lsp_types::{TextDocumentIdentifier, Uri};
 use serde::Serialize;
 use serde_json::{to_string_pretty, Value};
+use test_utils::calculate_steps;
 
 use crate::{connection::Connection, testdir::TestDir};
 
@@ -127,7 +128,19 @@ struct FileEntry<'x> {
 }
 
 fn fixture_to_file_entry(fixture: &str) -> impl Iterator<Item = FileEntry> {
-    fixture.split("// TODO").map(|_part| todo!())
+    let steps = calculate_steps(None, fixture);
+    assert!(
+        steps.flags.is_empty(),
+        "For now flags in fixtures are not supported"
+    );
+    assert_eq!(steps.steps.len(), 1, "For now we only support one step");
+    let first = steps.steps.into_iter().next().unwrap();
+    assert!(first.out.is_empty());
+    assert!(first.deletions.is_empty());
+    first
+        .files
+        .into_iter()
+        .map(|(path, text)| FileEntry { path, text })
 }
 
 fn join(path: &str, other: &str) -> String {

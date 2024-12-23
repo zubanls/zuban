@@ -25,7 +25,8 @@ pub struct Step<'code> {
     pub out: &'code str,
 }
 
-pub fn calculate_steps<'code>(file_name: &str, code: &'code str) -> Steps<'code> {
+pub fn calculate_steps<'code>(file_name: Option<&str>, code: &'code str) -> Steps<'code> {
+    let file_name = file_name.unwrap_or("We don't know the name but it shouldn't matter");
     let mut steps = HashMap::<usize, Step>::new();
     steps.insert(1, Default::default());
     let mut current_step_index = 1;

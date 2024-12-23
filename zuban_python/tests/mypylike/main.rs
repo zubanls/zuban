@@ -97,7 +97,7 @@ struct TestCase<'name, 'code> {
 
 impl<'name, 'code> TestCase<'name, 'code> {
     fn run(&self, projects: &mut ProjectsCache, mypy_compatible: bool) -> Result<bool, String> {
-        let steps = calculate_steps(self.file_name, self.code);
+        let steps = calculate_steps(Some(self.file_name), self.code);
         let mut diagnostics_config = DiagnosticConfig::default();
 
         if steps.flags.contains(&"--mypy-compatible") && !mypy_compatible

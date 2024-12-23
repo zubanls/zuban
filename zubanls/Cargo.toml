@@ -19,5 +19,8 @@ zuban_python = { path = "../zuban_python" }
 shellexpand.workspace = true
 crossbeam-channel.workspace = true
 
+[dev-dependencies]
+test_utils.workspace = true
+
 [features]
 zuban_debug = ["zuban_python/zuban_debug"]

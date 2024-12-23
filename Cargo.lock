@@ -993,6 +993,7 @@ dependencies = [
  "serde",
  "serde_json",
  "shellexpand",
+ "test_utils",
  "tracing",
  "tracing-subscriber",
  "zuban_python",
