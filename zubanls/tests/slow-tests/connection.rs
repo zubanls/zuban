@@ -1,4 +1,4 @@
-use std::{str::FromStr, time::Duration};
+use std::{cell::Cell, str::FromStr, time::Duration};
 
 use crossbeam_channel::RecvTimeoutError;
 use lsp_server::Message;
@@ -8,7 +8,7 @@ use serde::{de::DeserializeOwned, Serialize};
 pub(crate) struct Connection {
     client: lsp_server::Connection,
     server_thread: Option<std::thread::JoinHandle<()>>,
-    request_id_counter: i32,
+    request_id_counter: Cell<i32>,
 }
 
 impl Connection {
@@ -23,23 +23,17 @@ impl Connection {
         Self {
             client: connection2,
             server_thread,
-            request_id_counter: 0,
+            request_id_counter: Cell::new(0),
         }
     }
 
     pub(crate) fn initialized() -> Self {
-        let mut slf = Self::new();
+        let slf = Self::new();
         slf.initialize();
         slf
     }
 
-    pub(crate) fn with_running(callable: impl FnOnce(&mut Self)) {
-        let mut slf = Self::initialized();
-        callable(&mut slf);
-        slf.shutdown_and_exit();
-    }
-
-    pub(crate) fn initialize(&mut self) -> InitializeResult {
+    pub(crate) fn initialize(&self) -> InitializeResult {
         #[expect(deprecated)]
         let initialize_params = lsp_types::InitializeParams {
             root_uri: Some(Uri::from_str("file:///foo/bar").unwrap()),
@@ -70,20 +64,21 @@ impl Connection {
         response
     }
 
-    pub(crate) fn request_with_response<R>(&mut self, params: R::Params) -> lsp_server::Response
+    pub(crate) fn request_with_response<R>(&self, params: R::Params) -> lsp_server::Response
     where
         R: lsp_types::request::Request,
         R::Params: Serialize,
     {
-        self.request_id_counter += 1;
-        let id = self.request_id_counter;
+        let id = self.request_id_counter.get();
+        self.request_id_counter.set(id.wrapping_add(1));
+
         let r = lsp_server::Request::new(id.into(), R::METHOD.to_string(), params);
         self.send(r);
 
         self.expect_response()
     }
 
-    pub(crate) fn request<R>(&mut self, params: R::Params) -> R::Result
+    pub(crate) fn request<R>(&self, params: R::Params) -> R::Result
     where
         R: lsp_types::request::Request,
         R::Params: Serialize,
@@ -98,7 +93,7 @@ impl Connection {
             .unwrap_or_else(|e| panic!("Failed to deserialize {}: {e}; {value}", R::METHOD))
     }
 
-    pub(crate) fn notify<R>(&mut self, params: R::Params)
+    pub(crate) fn notify<R>(&self, params: R::Params)
     where
         R: lsp_types::notification::Notification,
         R::Params: Serialize,
@@ -106,7 +101,7 @@ impl Connection {
         self.send(lsp_server::Notification::new(R::METHOD.to_string(), params));
     }
 
-    fn send(&mut self, message: impl Into<Message>) {
+    fn send(&self, message: impl Into<Message>) {
         self.client
             .sender
             .send(message.into())
@@ -126,7 +121,7 @@ impl Connection {
         self.client.receiver.recv_timeout(timeout)
     }
 
-    pub(crate) fn shutdown_and_exit(&mut self) {
+    pub(crate) fn shutdown_and_exit(&self) {
         self.request::<lsp_types::request::Shutdown>(());
         self.notify::<lsp_types::notification::Exit>(());
     }

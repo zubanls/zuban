@@ -11,17 +11,22 @@ use std::str::FromStr;
 
 use lsp_server::Response;
 use lsp_types::{
-    DiagnosticServerCapabilities, DocumentDiagnosticParams, PartialResultParams,
+    request::DocumentDiagnosticRequest, DiagnosticServerCapabilities, DocumentDiagnosticParams,
+    DocumentDiagnosticReport, DocumentDiagnosticReportResult, PartialResultParams,
     PositionEncodingKind, TextDocumentIdentifier, Uri, WorkDoneProgressParams,
 };
 
 mod connection;
+mod support;
+mod testdir;
 
 use connection::Connection;
+use serde_json::json;
+use support::Project;
 
 #[test]
 fn basic_server_setup() {
-    let mut con = Connection::new();
+    let con = Connection::new();
     let response = con.initialize();
 
     // Check diagnostic capabilities
@@ -48,7 +53,7 @@ fn basic_server_setup() {
 
 #[test]
 fn request_after_shutdown_is_invalid() {
-    let mut con = Connection::initialized();
+    let con = Connection::initialized();
     con.request::<lsp_types::request::Shutdown>(());
 
     let expect_shutdown_already_requested = |response: Response| {
@@ -79,6 +84,79 @@ fn request_after_shutdown_is_invalid() {
 
 #[test]
 fn exit_without_shutdown() {
-    let mut con = Connection::initialized();
+    let con = Connection::initialized();
     con.notify::<lsp_types::notification::Exit>(());
+}
+
+#[test]
+fn diagnostics_for_saved_files() {
+    let server = Project::with_fixture(
+        r#"
+        //- /pyproject.toml
+
+        //- /pkg/__init__.py
+        from foo import Foo
+        from foo import Bar
+
+        1()
+
+        //- /pkg/foo.py
+        class Foo: ...
+        lala
+        "#,
+    )
+    .into_server();
+
+    // Diagnostics for __init__.py (Check JSON)
+    server.request_and_expect_json::<DocumentDiagnosticRequest>(
+        DocumentDiagnosticParams {
+            text_document: server.doc_id("pkg/__init__.py"),
+            identifier: None,
+            previous_result_id: None,
+            partial_result_params: PartialResultParams::default(),
+            work_done_progress_params: WorkDoneProgressParams::default(),
+        },
+        json!([
+            {
+                "diagnostics": ["TODO", "TODO"],
+            }
+        ]),
+    );
+
+    // Diagnostics for foo.py (Check full serialization)
+    {
+        let res = server.request::<DocumentDiagnosticRequest>(DocumentDiagnosticParams {
+            text_document: server.doc_id("pkg/foo.py"),
+            identifier: None,
+            previous_result_id: None,
+            partial_result_params: PartialResultParams::default(),
+            work_done_progress_params: WorkDoneProgressParams::default(),
+        });
+        let DocumentDiagnosticReportResult::Report(DocumentDiagnosticReport::Full(report)) = res
+        else {
+            unreachable!()
+        };
+        // For now
+        assert!(report.related_documents.is_none());
+        let items = report.full_document_diagnostic_report.items;
+        assert_eq!(items.len(), 1);
+        let diagnostic = &items[0];
+        assert_eq!(&diagnostic.message, "TODO please match");
+    }
+
+    // Diagnostics for a file that does not exist
+    {
+        let response =
+            server.request_with_response::<DocumentDiagnosticRequest>(DocumentDiagnosticParams {
+                text_document: server.doc_id("pkg/undefined.py"),
+                identifier: None,
+                previous_result_id: None,
+                partial_result_params: PartialResultParams::default(),
+                work_done_progress_params: WorkDoneProgressParams::default(),
+            });
+        assert!(response.result.is_none());
+        let error = response.error.unwrap();
+        assert_eq!(&error.message, "TODO ");
+        assert_eq!(error.code, -32602);
+    }
 }
