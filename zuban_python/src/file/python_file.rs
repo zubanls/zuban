@@ -25,7 +25,7 @@ use crate::{
     inferred::Inferred,
     lines::NewlineIndices,
     matching::ResultContext,
-    name::{Names, TreeName, TreePosition},
+    name::{FilePosition, Names, TreeName},
     node_ref::NodeRef,
     type_::DbString,
     utils::{InsertOnlyVec, SymbolTable},
@@ -121,12 +121,12 @@ impl File for PythonFile {
         self.file_index
     }
 
-    fn node_start_position(&self, n: NodeIndex) -> TreePosition {
-        TreePosition::new(self, self.tree.node_start_position(n))
+    fn node_start_position(&self, n: NodeIndex) -> FilePosition {
+        FilePosition::new(self, self.tree.node_start_position(n))
     }
 
-    fn node_end_position(&self, n: NodeIndex) -> TreePosition {
-        TreePosition::new(self, self.tree.node_end_position(n))
+    fn node_end_position(&self, n: NodeIndex) -> FilePosition {
+        FilePosition::new(self, self.tree.node_end_position(n))
     }
 
     fn line_column_to_byte(&self, line: usize, column: usize) -> CodeIndex {

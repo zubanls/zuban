@@ -1,8 +1,10 @@
 use lsp_server::Message;
 use lsp_types::{
-    DocumentDiagnosticParams, DocumentDiagnosticReport, DocumentDiagnosticReportResult,
-    FullDocumentDiagnosticReport, RelatedFullDocumentDiagnosticReport,
+    Diagnostic, DiagnosticSeverity, DocumentDiagnosticParams, DocumentDiagnosticReport,
+    DocumentDiagnosticReportResult, FullDocumentDiagnosticReport, Position,
+    RelatedFullDocumentDiagnosticReport,
 };
+use zuban_python::{DiagnosticConfig, Severity};
 
 use crate::server::GlobalState;
 
@@ -11,7 +13,42 @@ impl GlobalState {
         &mut self,
         params: DocumentDiagnosticParams,
     ) -> anyhow::Result<lsp_types::DocumentDiagnosticReportResult> {
-        let diagnostics = vec![];
+        let project = self.project();
+        let diagnostic_config = DiagnosticConfig::default();
+        let diagnostics = project
+            .diagnostics(&diagnostic_config)
+            .issues
+            .iter()
+            .map(|issue| Diagnostic {
+                range: {
+                    let to_lsp_position = |pos: zuban_python::FilePosition| {
+                        let (line, column) = pos.line_and_column();
+                        Position::new(line as u32, column as u32)
+                    };
+                    let start = issue.start_position();
+                    let end = issue.end_position();
+                    lsp_types::Range {
+                        start: to_lsp_position(issue.start_position()),
+                        end: to_lsp_position(issue.end_position()),
+                    }
+                },
+                severity: Some(match issue.severity() {
+                    Severity::Error => DiagnosticSeverity::ERROR,
+                    Severity::Warning => DiagnosticSeverity::WARNING,
+                    Severity::Information => DiagnosticSeverity::INFORMATION,
+                    Severity::Hint => DiagnosticSeverity::HINT,
+                }),
+                code: Some(lsp_types::NumberOrString::String(
+                    issue.mypy_error_code().to_string(),
+                )),
+                code_description: None,
+                source: Some("zubanls".to_owned()),
+                message: issue.as_string(&diagnostic_config),
+                related_information: None,
+                tags: None,
+                data: None,
+            })
+            .collect();
         let resp = DocumentDiagnosticReportResult::Report(DocumentDiagnosticReport::Full(
             RelatedFullDocumentDiagnosticReport {
                 related_documents: None,

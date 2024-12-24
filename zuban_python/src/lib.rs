@@ -25,11 +25,12 @@ mod workspaces;
 
 pub use config::{ExcludeRegex, ProjectOptions, PythonVersion, Settings, TypeCheckerFlags};
 use database::{Database, FileIndex, PythonProject};
-pub use diagnostics::DiagnosticConfig;
+pub use diagnostics::{DiagnosticConfig, Severity};
 use file::{File, FileStateLoader, Leaf};
 use inference_state::InferenceState;
 use inferred::Inferred;
 use matching::invalidate_protocol_cache;
+pub use name::FilePosition;
 use name::Names;
 use parsa_python_cst::CodeIndex;
 use workspaces::{Directory, DirectoryEntry, FileEntry};

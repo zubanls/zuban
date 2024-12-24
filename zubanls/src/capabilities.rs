@@ -13,6 +13,7 @@ use lsp_types::{
     WorkspaceFoldersServerCapabilities, WorkspaceServerCapabilities,
 };
 use serde_json::json;
+use zuban_python::ProjectOptions;
 
 pub(crate) fn server_capabilities(client_capabilities: &ClientCapabilities) -> ServerCapabilities {
     ServerCapabilities {
@@ -75,14 +76,14 @@ pub(crate) fn server_capabilities(client_capabilities: &ClientCapabilities) -> S
 }
 
 #[derive(Debug, PartialEq, Clone, Default)]
-pub struct ClientCapabilities(lsp_types::ClientCapabilities);
+pub(crate) struct ClientCapabilities(lsp_types::ClientCapabilities);
 
 impl ClientCapabilities {
-    pub fn new(caps: lsp_types::ClientCapabilities) -> Self {
+    pub(crate) fn new(caps: lsp_types::ClientCapabilities) -> Self {
         Self(caps)
     }
 
-    pub fn negotiated_encoding(&self) -> PositionEncodingKind {
+    pub(crate) fn negotiated_encoding(&self) -> PositionEncodingKind {
         let client_encodings = match &self.0.general {
             Some(general) => general.position_encodings.as_deref().unwrap_or_default(),
             None => &[],
@@ -100,7 +101,7 @@ impl ClientCapabilities {
         PositionEncodingKind::UTF16
     }
 
-    pub fn workspace_edit_resource_operations(
+    pub(crate) fn workspace_edit_resource_operations(
         &self,
     ) -> Option<&[lsp_types::ResourceOperationKind]> {
         self.0
@@ -112,13 +113,13 @@ impl ClientCapabilities {
             .as_deref()
     }
 
-    pub fn did_save_text_document_dynamic_registration(&self) -> bool {
+    pub(crate) fn did_save_text_document_dynamic_registration(&self) -> bool {
         let caps = (|| -> _ { self.0.text_document.as_ref()?.synchronization.clone() })()
             .unwrap_or_default();
         caps.did_save == Some(true) && caps.dynamic_registration == Some(true)
     }
 
-    pub fn did_change_watched_files_dynamic_registration(&self) -> bool {
+    pub(crate) fn did_change_watched_files_dynamic_registration(&self) -> bool {
         (|| -> _ {
             self.0
                 .workspace
@@ -130,7 +131,7 @@ impl ClientCapabilities {
         .unwrap_or_default()
     }
 
-    pub fn did_change_watched_files_relative_pattern_support(&self) -> bool {
+    pub(crate) fn did_change_watched_files_relative_pattern_support(&self) -> bool {
         (|| -> _ {
             self.0
                 .workspace
@@ -142,11 +143,11 @@ impl ClientCapabilities {
         .unwrap_or_default()
     }
 
-    pub fn location_link(&self) -> bool {
+    pub(crate) fn location_link(&self) -> bool {
         (|| -> _ { self.0.text_document.as_ref()?.definition?.link_support })().unwrap_or_default()
     }
 
-    pub fn line_folding_only(&self) -> bool {
+    pub(crate) fn line_folding_only(&self) -> bool {
         (|| -> _ {
             self.0
                 .text_document
@@ -158,7 +159,7 @@ impl ClientCapabilities {
         .unwrap_or_default()
     }
 
-    pub fn hierarchical_symbols(&self) -> bool {
+    pub(crate) fn hierarchical_symbols(&self) -> bool {
         (|| -> _ {
             self.0
                 .text_document
@@ -170,7 +171,7 @@ impl ClientCapabilities {
         .unwrap_or_default()
     }
 
-    pub fn code_action_literals(&self) -> bool {
+    pub(crate) fn code_action_literals(&self) -> bool {
         (|| -> _ {
             self.0
                 .text_document
@@ -183,11 +184,11 @@ impl ClientCapabilities {
         .is_some()
     }
 
-    pub fn work_done_progress(&self) -> bool {
+    pub(crate) fn work_done_progress(&self) -> bool {
         (|| -> _ { self.0.window.as_ref()?.work_done_progress })().unwrap_or_default()
     }
 
-    pub fn will_rename(&self) -> bool {
+    pub(crate) fn will_rename(&self) -> bool {
         (|| -> _ {
             self.0
                 .workspace
@@ -199,7 +200,7 @@ impl ClientCapabilities {
         .unwrap_or_default()
     }
 
-    pub fn change_annotation_support(&self) -> bool {
+    pub(crate) fn change_annotation_support(&self) -> bool {
         (|| -> _ {
             self.0
                 .workspace
@@ -212,7 +213,7 @@ impl ClientCapabilities {
         .is_some()
     }
 
-    pub fn code_action_resolve(&self) -> bool {
+    pub(crate) fn code_action_resolve(&self) -> bool {
         (|| -> _ {
             Some(
                 self.0
@@ -231,7 +232,7 @@ impl ClientCapabilities {
         .any(|it| it == "edit")
     }
 
-    pub fn signature_help_label_offsets(&self) -> bool {
+    pub(crate) fn signature_help_label_offsets(&self) -> bool {
         (|| -> _ {
             self.0
                 .text_document
@@ -247,11 +248,11 @@ impl ClientCapabilities {
         .unwrap_or_default()
     }
 
-    pub fn text_document_diagnostic(&self) -> bool {
+    pub(crate) fn text_document_diagnostic(&self) -> bool {
         (|| -> _ { self.0.text_document.as_ref()?.diagnostic.as_ref() })().is_some()
     }
 
-    pub fn text_document_diagnostic_related_document_support(&self) -> bool {
+    pub(crate) fn text_document_diagnostic_related_document_support(&self) -> bool {
         (|| -> _ {
             self.0
                 .text_document
@@ -262,7 +263,7 @@ impl ClientCapabilities {
         })() == Some(true)
     }
 
-    pub fn diagnostics_refresh(&self) -> bool {
+    pub(crate) fn diagnostics_refresh(&self) -> bool {
         (|| -> _ {
             self.0
                 .workspace
@@ -274,7 +275,7 @@ impl ClientCapabilities {
         .unwrap_or_default()
     }
 
-    pub fn insert_replace_support(&self) -> bool {
+    pub(crate) fn insert_replace_support(&self) -> bool {
         (|| -> _ {
             self.0
                 .text_document
@@ -286,5 +287,9 @@ impl ClientCapabilities {
                 .insert_replace_support
         })()
         .unwrap_or_default()
+    }
+
+    pub(crate) fn find_project_options(&self) -> anyhow::Result<ProjectOptions> {
+        Ok(ProjectOptions::default())
     }
 }

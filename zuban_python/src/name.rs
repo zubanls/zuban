@@ -15,12 +15,12 @@ type Signatures = Vec<()>;
 pub type Names<'db> = Vec<Box<dyn Name<'db>>>;
 
 #[derive(Debug)]
-pub struct TreePosition<'db> {
+pub struct FilePosition<'db> {
     file: &'db dyn File,
     position: CodeIndex,
 }
 
-impl<'db> TreePosition<'db> {
+impl<'db> FilePosition<'db> {
     pub(crate) fn new(file: &'db dyn File, position: CodeIndex) -> Self {
         Self { file, position }
     }
@@ -46,9 +46,9 @@ pub trait Name<'db>: fmt::Debug {
 
     fn file_path(&self) -> &str;
 
-    fn start_position(&self) -> TreePosition<'db>;
+    fn start_position(&self) -> FilePosition<'db>;
 
-    fn end_position(&self) -> TreePosition<'db>;
+    fn end_position(&self) -> FilePosition<'db>;
 
     // TODO
     //fn definition_start_and_end_position(&self) -> (TreePosition, TreePosition);
@@ -110,15 +110,15 @@ impl<'db> Name<'db> for TreeName<'db, PythonFile, CSTName<'db>> {
         self.db.file_path(self.file.file_index)
     }
 
-    fn start_position(&self) -> TreePosition<'db> {
-        TreePosition {
+    fn start_position(&self) -> FilePosition<'db> {
+        FilePosition {
             file: self.file,
             position: self.cst_name.start(),
         }
     }
 
-    fn end_position(&self) -> TreePosition<'db> {
-        TreePosition {
+    fn end_position(&self) -> FilePosition<'db> {
+        FilePosition {
             file: self.file,
             position: self.cst_name.end(),
         }

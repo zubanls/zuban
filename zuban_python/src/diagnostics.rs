@@ -5,7 +5,7 @@ use parsa_python_cst::{CodeIndex, NodeIndex, Tree};
 use crate::{
     database::{Database, PointLink},
     file::{GenericCounts, PythonFile, OVERLAPPING_REVERSE_TO_NORMAL_METHODS},
-    name::TreePosition,
+    name::FilePosition,
     node_ref::NodeRef,
     type_::{FunctionKind, TypeVarLike, Variance},
     utils::{join_with_commas, InsertOnlyVec},
@@ -593,6 +593,15 @@ struct SubFileOffset<'db> {
     offset: CodeIndex,
 }
 
+// These roughly correspond to LSP DiagnosticSeverity:
+// https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#diagnosticSeverity
+pub enum Severity {
+    Error,
+    Warning,
+    Information,
+    Hint,
+}
+
 pub struct Diagnostic<'db> {
     db: &'db Database,
     file: &'db PythonFile,
@@ -633,23 +642,30 @@ impl<'db> Diagnostic<'db> {
         }
     }
 
-    fn account_for_sub_file(&self, pos: TreePosition<'db>) -> TreePosition<'db> {
+    fn account_for_sub_file(&self, pos: FilePosition<'db>) -> FilePosition<'db> {
         if let Some(s) = &self.in_sub_file {
             pos.wrap_sub_file(self.file, s.offset)
         } else {
             pos
         }
     }
-    fn start_position(&self) -> TreePosition<'db> {
-        self.account_for_sub_file(TreePosition::new(
+
+    pub fn start_position(&self) -> FilePosition<'db> {
+        self.account_for_sub_file(FilePosition::new(
             self.node_file(),
             self.issue.start_position,
         ))
     }
 
-    #[allow(dead_code)] // TODO remove this
-    fn end_position(&self) -> TreePosition<'db> {
-        self.account_for_sub_file(TreePosition::new(self.node_file(), self.issue.end_position))
+    pub fn end_position(&self) -> FilePosition<'db> {
+        self.account_for_sub_file(FilePosition::new(self.node_file(), self.issue.end_position))
+    }
+
+    pub fn severity(&self) -> Severity {
+        match &self.issue.kind {
+            IssueKind::Note(_) | IssueKind::InvariantNote { .. } => Severity::Information,
+            _ => Severity::Error,
+        }
     }
 
     fn code_under_issue(&self) -> &'db str {
@@ -1840,7 +1856,7 @@ fn fmt_line(
     config: &DiagnosticConfig,
     path: &str,
     (line, column): (usize, usize),
-    end_position: TreePosition,
+    end_position: FilePosition,
     type_: &str,
     error: &str,
 ) -> String {

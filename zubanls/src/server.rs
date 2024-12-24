@@ -98,26 +98,8 @@ pub fn run_server_with_custom_connection(
         }
     };
 
-    let options = find_project_options().unwrap_or_else(|err| {
-        use lsp_types::{
-            notification::{Notification, ShowMessage},
-            MessageType, ShowMessageParams,
-        };
-        let not = lsp_server::Notification::new(
-            ShowMessage::METHOD.to_owned(),
-            ShowMessageParams {
-                typ: MessageType::WARNING,
-                message: err.to_string(),
-            },
-        );
-        connection
-            .sender
-            .send(lsp_server::Message::Notification(not))
-            .unwrap();
-        ProjectOptions::default()
-    });
-
-    let server_capabilities = server_capabilities(&ClientCapabilities::new(capabilities));
+    let client_capabilities = ClientCapabilities::new(capabilities);
+    let server_capabilities = server_capabilities(&client_capabilities);
 
     let initialize_result = lsp_types::InitializeResult {
         capabilities: server_capabilities,
@@ -139,7 +121,7 @@ pub fn run_server_with_custom_connection(
 
     // If the io_threads have an error, there's usually an error on the main
     // loop too because the channels are closed. Ensure we report both errors.
-    event_loop(options, connection)?;
+    event_loop(client_capabilities, connection)?;
     cleanup();
     tracing::info!("Server did successfully shut down");
     Ok(())
@@ -150,9 +132,11 @@ pub fn run_server() -> anyhow::Result<()> {
     run_server_with_custom_connection(connection, || Ok(io_threads.join()?))
 }
 
-fn event_loop(options: ProjectOptions, connection: lsp_server::Connection) -> anyhow::Result<()> {
-    let project = Project::new(options);
-    let mut global_state = GlobalState::new(connection.sender);
+fn event_loop(
+    capabilities: ClientCapabilities,
+    connection: lsp_server::Connection,
+) -> anyhow::Result<()> {
+    let mut global_state = GlobalState::new(connection.sender, capabilities);
     for msg in connection.receiver.iter() {
         use lsp_types::notification::Notification;
         match msg {
@@ -167,10 +151,6 @@ fn event_loop(options: ProjectOptions, connection: lsp_server::Connection) -> an
         }
     }
     Ok(())
-}
-
-fn find_project_options() -> anyhow::Result<ProjectOptions> {
-    Ok(ProjectOptions::default())
 }
 
 impl Server {
@@ -317,14 +297,48 @@ struct NotificationDispatcher<'a> {
 
 pub(crate) struct GlobalState {
     pub sender: Sender<lsp_server::Message>,
+    pub capabilities: ClientCapabilities,
+    pub project: Option<Project>,
     pub shutdown_requested: bool,
 }
 
 impl GlobalState {
-    fn new(sender: Sender<lsp_server::Message>) -> Self {
+    fn new(sender: Sender<lsp_server::Message>, capabilities: ClientCapabilities) -> Self {
         GlobalState {
             sender,
+            capabilities,
+            project: None,
             shutdown_requested: false,
+        }
+    }
+
+    pub(crate) fn project(&mut self) -> &mut Project {
+        let project = &mut self.project;
+        if let Some(p) = project {
+            return p;
+        } else {
+            let options = self
+                .capabilities
+                .find_project_options()
+                .unwrap_or_else(|err| {
+                    use lsp_types::{
+                        notification::{Notification, ShowMessage},
+                        MessageType, ShowMessageParams,
+                    };
+                    let not = lsp_server::Notification::new(
+                        ShowMessage::METHOD.to_owned(),
+                        ShowMessageParams {
+                            typ: MessageType::WARNING,
+                            message: err.to_string(),
+                        },
+                    );
+                    self.sender
+                        .send(lsp_server::Message::Notification(not))
+                        .unwrap();
+                    ProjectOptions::default()
+                });
+            *project = Some(Project::new(options));
+            project.as_mut().unwrap()
         }
     }
 
@@ -377,8 +391,8 @@ impl GlobalState {
         self.sender.send(response.into()).unwrap()
     }
 
-    fn complete_request(&mut self, _response: lsp_server::Response) {
-        todo!()
+    fn complete_request(&mut self, response: lsp_server::Response) {
+        tracing::error!("unhandled request: {:?}", response);
     }
 }
 

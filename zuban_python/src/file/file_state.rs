@@ -9,7 +9,7 @@ use crate::{
     file::PythonFile,
     imports::STUBS_SUFFIX,
     inferred::Inferred,
-    name::{Name, Names, TreePosition},
+    name::{FilePosition, Name, Names},
     workspaces::{FileEntry, Invalidations},
     PythonProject,
 };
@@ -142,8 +142,8 @@ pub trait File: std::fmt::Debug + AsAny {
     fn infer_operator_leaf<'db>(&'db self, db: &'db Database, keyword: Keyword<'db>) -> Inferred;
     fn file_index(&self) -> FileIndex;
 
-    fn node_start_position(&self, n: NodeIndex) -> TreePosition;
-    fn node_end_position(&self, n: NodeIndex) -> TreePosition;
+    fn node_start_position(&self, n: NodeIndex) -> FilePosition;
+    fn node_end_position(&self, n: NodeIndex) -> FilePosition;
     fn line_column_to_byte(&self, line: usize, column: usize) -> CodeIndex;
     fn byte_to_line_column(&self, byte: CodeIndex) -> (usize, usize);
 
