@@ -20,6 +20,7 @@ pub(crate) struct Project<'a> {
 
 impl<'a> Project<'a> {
     pub(crate) fn with_fixture(fixture: &'a str) -> Self {
+        logging_config::setup_logging_for_tests();
         Self {
             fixture,
             roots: vec![],

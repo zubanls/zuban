@@ -13,6 +13,7 @@ pub(crate) struct Connection {
 
 impl Connection {
     pub(crate) fn new() -> Self {
+        logging_config::setup_logging_for_tests();
         let (connection1, connection2) = lsp_server::Connection::memory();
 
         let server_thread = Some(std::thread::spawn(move || {

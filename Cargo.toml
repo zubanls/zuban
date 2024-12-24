@@ -10,6 +10,7 @@ members = [
     "zmypy",
     "scripts",
     "test_utils",
+    "logging_config",
 ]
 
 [workspace.package]
@@ -25,6 +26,7 @@ parsa_python = { path = "./parsa_python" }
 parsa_python_cst = { path = "./parsa_python_cst" }
 zuban_python = { path = "./zuban_python" }
 test_utils = { path = "./test_utils" }
+logging_config = { path = "./logging_config" }
 
 # General third party dependencies
 anyhow = "*"
@@ -38,7 +40,7 @@ serde_json = "*"
 shellexpand = "*"
 toml_edit = "*"
 tracing = "*"
-tracing-subscriber = "*"
+tracing-subscriber = { version = "*", features = ["time", "local-time"] }
 walkdir = "2"
 
 # Dev dependencies
