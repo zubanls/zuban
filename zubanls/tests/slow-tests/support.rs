@@ -68,7 +68,9 @@ impl<'a> Project<'a> {
         }
         Server {
             tmp_dir,
-            connection: Connection::initialized(),
+            connection: Connection::initialized(
+                &roots.iter().map(|root| root.as_str()).collect::<Vec<_>>(),
+            ),
         }
     }
 }

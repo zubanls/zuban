@@ -1,8 +1,8 @@
-use std::{cell::Cell, str::FromStr, time::Duration};
+use std::{cell::Cell, path::Path, str::FromStr, time::Duration};
 
 use crossbeam_channel::RecvTimeoutError;
 use lsp_server::Message;
-use lsp_types::{InitializeResult, Uri};
+use lsp_types::{InitializeResult, Uri, WorkspaceFolder};
 use serde::{de::DeserializeOwned, Serialize};
 
 pub(crate) struct Connection {
@@ -28,16 +28,28 @@ impl Connection {
         }
     }
 
-    pub(crate) fn initialized() -> Self {
+    pub(crate) fn initialized(roots: &[&str]) -> Self {
         let slf = Self::new();
-        slf.initialize();
+        slf.initialize(roots);
         slf
     }
 
-    pub(crate) fn initialize(&self) -> InitializeResult {
-        #[expect(deprecated)]
+    pub(crate) fn initialize(&self, roots: &[&str]) -> InitializeResult {
         let initialize_params = lsp_types::InitializeParams {
-            root_uri: Some(Uri::from_str("file:///foo/bar").unwrap()),
+            workspace_folders: Some(
+                roots
+                    .iter()
+                    .map(|root| WorkspaceFolder {
+                        uri: Uri::from_str(root).unwrap(),
+                        name: Path::new(root)
+                            .file_name()
+                            .unwrap()
+                            .to_str()
+                            .unwrap()
+                            .to_owned(),
+                    })
+                    .collect(),
+            ),
             capabilities: lsp_types::ClientCapabilities {
                 workspace: Some(lsp_types::WorkspaceClientCapabilities {
                     did_change_watched_files: Some(

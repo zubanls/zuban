@@ -44,17 +44,7 @@ use tracing::{
     span::Attributes,
     Event, Id, Level, Subscriber,
 };
-use tracing_subscriber::{
-    filter,
-    layer::{Context, SubscriberExt},
-    registry::LookupSpan,
-    Layer, Registry,
-};
-
-pub fn init(spec: &str) -> tracing::subscriber::DefaultGuard {
-    let subscriber = Registry::default().with(SpanTree::new(spec));
-    tracing::subscriber::set_default(subscriber)
-}
+use tracing_subscriber::{filter, layer::Context, registry::LookupSpan, Layer};
 
 #[derive(Debug)]
 pub(crate) struct SpanTree<S> {
