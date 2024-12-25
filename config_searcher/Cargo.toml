@@ -1,5 +1,5 @@
 [package]
-name = "zmypy"
+name = "config_searcher"
 version = "0.1.0"
 edition.workspace = true
 rust-version.workspace = true
@@ -8,8 +8,3 @@ authors.workspace = true
 
 [dependencies]
 zuban_python.workspace = true
-config_searcher.workspace = true
-clap.workspace = true
-
-[features]
-zuban_debug = ["zuban_python/zuban_debug"]

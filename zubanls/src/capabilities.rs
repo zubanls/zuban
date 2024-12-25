@@ -290,6 +290,7 @@ impl ClientCapabilities {
     }
 
     pub(crate) fn find_project_options(&self) -> anyhow::Result<ProjectOptions> {
-        Ok(ProjectOptions::default())
+        let (config, _) = config_searcher::find_config_or_default(None);
+        Ok(config)
     }
 }

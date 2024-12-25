@@ -9,6 +9,7 @@ authors.workspace = true
 [dependencies]
 zuban_python.workspace = true
 logging_config.workspace = true
+config_searcher.workspace = true
 
 anyhow.workspace = true
 lsp-server = "0.7.7"

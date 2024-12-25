@@ -11,6 +11,7 @@ members = [
     "scripts",
     "test_utils",
     "logging_config",
+    "config_searcher",
 ]
 
 [workspace.package]
@@ -27,6 +28,7 @@ parsa_python_cst = { path = "./parsa_python_cst" }
 zuban_python = { path = "./zuban_python" }
 test_utils = { path = "./test_utils" }
 logging_config = { path = "./logging_config" }
+config_searcher = { path = "./config_searcher" }
 
 # General third party dependencies
 anyhow = "*"
