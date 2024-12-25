@@ -134,6 +134,7 @@ impl Project {
                 }
             }
         }
+        tracing::info!("Checked {checked_files} files ({files_with_errors} files had errors)");
         invalidate_protocol_cache();
         Diagnostics {
             checked_files,

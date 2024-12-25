@@ -1,12 +1,13 @@
 use std::borrow::Cow;
 
+use anyhow::bail;
 use ini::{Ini, ParseOption};
 use regex::Regex;
 use toml_edit::{DocumentMut, Item, Table, Value};
 
 use crate::{debug, workspaces::Directory, DiagnosticConfig};
 
-type ConfigResult = Result<bool, String>;
+type ConfigResult = anyhow::Result<bool>;
 
 const OPTIONS_STARTING_WITH_ALLOW: [&str; 3] = [
     "allow_untyped_globals",
@@ -64,12 +65,12 @@ impl ProjectOptions {
     pub fn from_mypy_ini(
         code: &str,
         diagnostic_config: &mut DiagnosticConfig,
-    ) -> Result<Self, String> {
+    ) -> anyhow::Result<Self> {
         let options = ParseOption {
             indented_multiline_values: true,
             ..Default::default()
         };
-        let ini = Ini::load_from_str_opt(code, options).map_err(|err| err.to_string())?;
+        let ini = Ini::load_from_str_opt(code, options)?;
         let mut flags = TypeCheckerFlags::default();
         let mut settings = Settings::default();
         let mut overrides = vec![];
@@ -105,13 +106,13 @@ impl ProjectOptions {
     pub fn from_pyproject_toml(
         code: &str,
         diagnostic_config: &mut DiagnosticConfig,
-    ) -> Result<Self, String> {
-        let document = code.parse::<DocumentMut>().map_err(|err| err.to_string())?;
+    ) -> anyhow::Result<Self> {
+        let document = code.parse::<DocumentMut>()?;
         let mut flags = TypeCheckerFlags::default();
         let mut settings = Settings::default();
         if let Some(config) = document.get("tool").and_then(|item| item.get("mypy")) {
             let Item::Table(table) = config else {
-                return Err("Expected tool.mypy to be a table in pyproject.toml".to_string());
+                bail!("Expected tool.mypy to be a table in pyproject.toml");
             };
 
             let mut overrides = vec![];
@@ -133,11 +134,12 @@ impl ProjectOptions {
                                 for (key, part) in override_table.iter() {
                                     if key != "module" {
                                         match part {
-                                            Item::Value(v) => {
-                                                config.push((key.into(), OverrideIniOrTomlValue::Toml(v.clone())))
-                                            }
+                                            Item::Value(v) => config.push((
+                                                key.into(),
+                                                OverrideIniOrTomlValue::Toml(v.clone()),
+                                            )),
                                             _ => {
-                                                return Err("Found unexpected value in override in pyproject.toml".to_string())
+                                                bail!("Found unexpected value in override in pyproject.toml".to_string())
                                             }
                                         }
                                     }
@@ -147,9 +149,7 @@ impl ProjectOptions {
                         }
                     }
                     Item::None | Item::Table(_) | Item::ArrayOfTables(_) => {
-                        return Err(
-                            "Expected tool.mypy to be simple table in pyproject.toml".to_string()
-                        );
+                        bail!("Expected tool.mypy to be simple table in pyproject.toml");
                     }
                 }
             }
@@ -407,7 +407,7 @@ impl OverrideConfig {
     }
 }
 
-fn pyproject_toml_override_module_names(table: &Table) -> Result<Vec<OverridePath>, String> {
+fn pyproject_toml_override_module_names(table: &Table) -> anyhow::Result<Vec<OverridePath>> {
     match table.get("module") {
         Some(Item::Value(Value::String(s))) => Ok(vec![s.value().as_str().into()]),
         Some(Item::Value(Value::Array(list))) => {
@@ -415,13 +415,13 @@ fn pyproject_toml_override_module_names(table: &Table) -> Result<Vec<OverridePat
             for entry in list {
                 match entry {
                     Value::String(s) => result.push(s.value().as_str().into()),
-                    _ => return Err("".to_string()),
+                    _ => bail!("TODO find an error name here"),
                 }
             }
             Ok(result)
         }
-        Some(_) => Err("Unexpected value for module in override in pyproject.toml".to_string()),
-        None => Err("Expected a module entry for every override in pyproject.toml".to_string()),
+        Some(_) => bail!("Unexpected value for module in override in pyproject.toml"),
+        None => bail!("Expected a module entry for every override in pyproject.toml"),
     }
 }
 
@@ -441,22 +441,22 @@ impl IniOrTomlValue<'_> {
         }
     }
 
-    fn as_bool(&self, invert: bool) -> Result<bool, String> {
+    fn as_bool(&self, invert: bool) -> anyhow::Result<bool> {
         let result = match self {
             Self::Toml(v) => v
                 .as_bool()
-                .ok_or_else(|| format!("Expected bool, got {}", v.to_string().trim()))?,
+                .ok_or_else(|| anyhow::anyhow!("Expected bool, got {}", v.to_string().trim()))?,
             Self::Ini(value) => match value.to_lowercase().as_str() {
                 "true" | "1" | "yes" | "on" => true,
                 "false" | "0" | "no" | "off" => false,
-                _ => return Err(format!("Expected bool, got \"{value}\"")),
+                _ => bail!("Expected bool, got \"{value}\""),
             },
             Self::InlineConfigNoValue => true,
         };
         Ok(result != invert)
     }
 
-    fn as_str_list(&self, key: &str, split_on: &[char]) -> Result<Vec<String>, String> {
+    fn as_str_list(&self, key: &str, split_on: &[char]) -> anyhow::Result<Vec<String>> {
         let split_str = |s| split_and_trim(s, split_on).map(|x| x.to_string()).collect();
         match self {
             Self::Toml(v) => {
@@ -464,12 +464,12 @@ impl IniOrTomlValue<'_> {
                     return Ok(split_str(s));
                 }
                 v.as_array()
-                    .ok_or_else(|| format!("Expected an array or string for {key}"))?
+                    .ok_or_else(|| anyhow::anyhow!("Expected an array or string for {key}"))?
                     .iter()
                     .map(|v| {
                         v.as_str()
                             .map(|s| s.to_string())
-                            .ok_or_else(|| "".to_string())
+                            .ok_or_else(|| anyhow::anyhow!("TODO error"))
                     })
                     .collect()
             }
@@ -500,14 +500,14 @@ pub fn set_flag_and_return_ignore_errors(
     let (invert, option_name) = maybe_invert(name);
     let add_list_of_str = |target: &mut Vec<String>| {
         if invert {
-            Err(format!("Can not invert non-boolean key {option_name}"))
+            bail!("Can not invert non-boolean key {option_name}")
         } else {
             match &value {
                 IniOrTomlValue::Toml(Value::Array(lst)) => {
                     for entry in lst.iter() {
                         match entry {
                             Value::String(s) => target.push(s.value().clone()),
-                            _ => return Err(format!("TODO expected string array for {name}")),
+                            _ => bail!("TODO expected string array for {name}"),
                         }
                     }
                     Ok(false)
@@ -523,14 +523,14 @@ pub fn set_flag_and_return_ignore_errors(
                     target.extend(split_and_trim(v, &[',']).map(String::from));
                     Ok(false)
                 }
-                _ => Err(format!("TODO expected string for {name}")),
+                _ => bail!("TODO expected string for {name}"),
             }
         }
     };
     match option_name.as_ref() {
         "exclude" => {
             if invert {
-                return Err(format!("Can not invert non-boolean key {option_name}"));
+                bail!("Can not invert non-boolean key {option_name}")
             }
             add_excludes(&mut flags.excludes, value)
         }
@@ -538,12 +538,11 @@ pub fn set_flag_and_return_ignore_errors(
         "always_false" => add_list_of_str(&mut flags.always_false_symbols),
         "enable_error_code" => add_list_of_str(&mut flags.enabled_error_codes),
         "disable_error_code" => add_list_of_str(&mut flags.disabled_error_codes),
-        "strict" => Err(concat!(
+        "strict" => bail!(concat!(
             r#"Setting "strict" not supported in inline configuration: "#,
             r#"specify it in a configuration file instead, or set individual "#,
             r#"inline flags (see "mypy -h" for the list of flags enabled in strict mode)"#
-        )
-        .into()),
+        )),
         _ => set_bool_init_flags(flags, name, &option_name, value, invert),
     }
 }
@@ -596,13 +595,7 @@ fn set_bool_init_flags(
         // Will always be irrelevant
         "cache_fine_grained" => (),
         "ignore_errors" => return value.as_bool(invert),
-        _ => {
-            return Err(format!(
-                "Unrecognized option: {} = {}",
-                original_name,
-                value.as_repr()
-            ))
-        }
+        _ => bail!("Unrecognized option: {original_name} = {}", value.as_repr()),
     }
     Ok(false)
 }
@@ -684,7 +677,7 @@ fn add_excludes(excludes: &mut Vec<ExcludeRegex>, value: IniOrTomlValue) -> Conf
             });
             Ok(false)
         }
-        Err(err) => Err(err.to_string()),
+        Err(err) => bail!(err),
     };
     match &value {
         IniOrTomlValue::Toml(Value::Array(lst)) => {
@@ -693,14 +686,14 @@ fn add_excludes(excludes: &mut Vec<ExcludeRegex>, value: IniOrTomlValue) -> Conf
                     Value::String(s) => {
                         compile_str(s.value())?;
                     }
-                    _ => return Err("TODO expected string array".to_string()),
+                    _ => bail!("TODO expected string array".to_string()),
                 }
             }
             Ok(false)
         }
         IniOrTomlValue::Toml(Value::String(s)) => compile_str(s.value()),
         IniOrTomlValue::Ini(v) => compile_str(v),
-        _ => Err("TODO expected string".to_string()),
+        _ => bail!("TODO expected string"),
     }
 }
 
@@ -713,10 +706,11 @@ mod tests {
             [tool.mypy]\n\
             disallow_any_generics = \"what\"
         ";
-        assert_eq!(
-            ProjectOptions::from_pyproject_toml(code, &mut DiagnosticConfig::default()).err(),
-            Some("Expected bool, got \"what\"".into())
-        );
+        let Err(err) = ProjectOptions::from_pyproject_toml(code, &mut DiagnosticConfig::default())
+        else {
+            unreachable!()
+        };
+        assert_eq!(err.to_string(), "Expected bool, got \"what\"");
     }
 
     #[test]
@@ -726,19 +720,23 @@ mod tests {
             [mypy]\n\
             disallow_any_generics = what
         ";
-        assert_eq!(
-            ProjectOptions::from_mypy_ini(code, &mut DiagnosticConfig::default()).err(),
-            Some("Expected bool, got \"what\"".into())
-        );
+        let Err(err) = ProjectOptions::from_mypy_ini(code, &mut DiagnosticConfig::default()) else {
+            unreachable!()
+        };
+        assert_eq!(err.to_string(), "Expected bool, got \"what\"");
     }
 
     #[test]
     fn test_invalid_toml_none() {
         use super::*;
         let code = "[tool.mypy.foo]\nx=1";
+        let Err(err) = ProjectOptions::from_pyproject_toml(code, &mut DiagnosticConfig::default())
+        else {
+            unreachable!()
+        };
         assert_eq!(
-            ProjectOptions::from_pyproject_toml(code, &mut DiagnosticConfig::default()).err(),
-            Some("Expected tool.mypy to be simple table in pyproject.toml".into())
+            err.to_string(),
+            "Expected tool.mypy to be simple table in pyproject.toml"
         );
     }
 }

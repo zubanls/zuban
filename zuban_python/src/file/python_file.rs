@@ -686,7 +686,7 @@ fn info_from_directives<'x>(
             if flags.is_none() {
                 flags = Some(project.flags.clone());
             }
-            let mut check = || {
+            let mut check = || -> anyhow::Result<_> {
                 let value = match value {
                     Some(value) => IniOrTomlValue::Ini(value),
                     None => IniOrTomlValue::InlineConfigNoValue,
@@ -699,7 +699,7 @@ fn info_from_directives<'x>(
                 issues
                     .add_if_not_ignored(
                         Issue {
-                            kind: IssueKind::DirectiveSyntaxError(err),
+                            kind: IssueKind::DirectiveSyntaxError(err.to_string().into()),
                             start_position,
                             end_position: start_position + rest.len() as CodeIndex,
                         },

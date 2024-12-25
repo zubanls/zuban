@@ -11,22 +11,23 @@ const CONFIG_PATHS: [&str; 6] = [
     "~/.mypy.ini",
 ];
 
-pub fn find_config_or_default(config_file: Option<&Path>) -> (ProjectOptions, DiagnosticConfig) {
+pub fn find_config_or_default(
+    config_file: Option<&Path>,
+) -> anyhow::Result<(ProjectOptions, DiagnosticConfig)> {
     let _p = tracing::info_span!("find_config_or_default").entered();
     let mut diagnostic_config = DiagnosticConfig::default();
     let options = if let Some((path, content)) = find_mypy_config_file(config_file) {
         tracing::info!("Config found: {path}");
         if path.ends_with(".toml") {
-            ProjectOptions::from_pyproject_toml(&content, &mut diagnostic_config)
+            ProjectOptions::from_pyproject_toml(&content, &mut diagnostic_config)?
         } else {
-            ProjectOptions::from_mypy_ini(&content, &mut diagnostic_config)
+            ProjectOptions::from_mypy_ini(&content, &mut diagnostic_config)?
         }
-        .unwrap_or_else(|err| panic!("Problem parsing Mypy config {path}: {err}"))
     } else {
         tracing::info!("No config found");
         ProjectOptions::default()
     };
-    (options, diagnostic_config)
+    Ok((options, diagnostic_config))
 }
 
 fn find_mypy_config_file(config_file: Option<&Path>) -> Option<(&str, String)> {

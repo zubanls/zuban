@@ -758,7 +758,7 @@ macro_rules! create_grammar {
             }
 
             #[inline]
-            fn node<'a>(&'a self, index: $crate::NodeIndex, internal_node: &'a $crate::InternalNode) -> $Node {
+            fn node<'a>(&'a self, index: $crate::NodeIndex, internal_node: &'a $crate::InternalNode) -> $Node<'a> {
                 $Node {
                     internal_tree: &self.internal_tree,
                     internal_node,

@@ -9,3 +9,4 @@ authors.workspace = true
 [dependencies]
 zuban_python.workspace = true
 tracing.workspace = true
+anyhow.workspace = true

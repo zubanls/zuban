@@ -134,6 +134,7 @@ checksum = "5b63caa9aa9397e2d9480a9b13673856c78d8ac123288526c37d7839f2a86990"
 name = "config_searcher"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "tracing",
  "zuban_python",
 ]
@@ -1053,6 +1054,7 @@ dependencies = [
 name = "zuban_python"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "clap",
  "lazy_static",
  "parsa_python_cst",
@@ -1060,6 +1062,7 @@ dependencies = [
  "rust-ini",
  "test_utils",
  "toml_edit",
+ "tracing",
  "walkdir",
 ]
 
