@@ -8,7 +8,7 @@ use std::{
 use lsp_types::{TextDocumentIdentifier, Uri};
 use serde::Serialize;
 use serde_json::{to_string_pretty, Value};
-use test_utils::calculate_steps;
+use test_utils::{calculate_steps, dedent};
 
 use crate::{connection::Connection, testdir::TestDir};
 
@@ -44,7 +44,8 @@ impl<'a> Project<'a> {
         } else {
             TestDir::new()
         };
-        for entry in fixture_to_file_entry(self.fixture) {
+        let dedented_fixture = dedent(&self.fixture);
+        for entry in fixture_to_file_entry(&dedented_fixture) {
             let path = Path::new(tmp_dir.path()).join(&entry.path['/'.len_utf8()..]);
             fs::create_dir_all(path.parent().unwrap()).unwrap();
             fs::write(path.as_path(), entry.text.as_bytes()).unwrap();

@@ -13,6 +13,30 @@ lazy_static::lazy_static! {
     static ref SPLIT_OUT: Regex = Regex::new(r"(\n|^)==").unwrap();
 }
 
+pub fn dedent(s: &str) -> String {
+    let mut indent = usize::MAX;
+    let lines: &Vec<_> = &s.split('\n').collect();
+    for line in lines {
+        if !line.trim().is_empty() {
+            indent = std::cmp::min(indent, line.len() - line.trim_start().len());
+        }
+    }
+    if indent == usize::MAX {
+        return s.to_string();
+    }
+    let new_lines: Vec<_> = lines
+        .iter()
+        .map(|line| {
+            if line.len() >= indent {
+                &line[indent..]
+            } else {
+                line
+            }
+        })
+        .collect();
+    new_lines.join("\n")
+}
+
 pub struct Steps<'code> {
     pub steps: Vec<Step<'code>>,
     pub flags: Vec<&'code str>,

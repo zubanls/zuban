@@ -1,30 +1,7 @@
 extern crate insta;
 
 use parsa_python::*;
-
-fn dedent(s: &'static str) -> String {
-    let mut indent = usize::MAX;
-    let lines: &Vec<_> = &s.split('\n').collect();
-    for line in lines {
-        if !line.trim().is_empty() {
-            indent = std::cmp::min(indent, line.len() - line.trim_start().len());
-        }
-    }
-    if indent == usize::MAX {
-        return s.to_string();
-    }
-    let new_lines: Vec<_> = lines
-        .iter()
-        .map(|line| {
-            if line.len() >= indent {
-                &line[indent..]
-            } else {
-                line
-            }
-        })
-        .collect();
-    new_lines.join("\n")
-}
+use test_utils::dedent;
 
 fn tree_to_string(tree: PyTree) -> String {
     fn recurse(code: &mut String, node: &PyNode, depth: usize) {

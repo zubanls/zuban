@@ -94,13 +94,13 @@ fn diagnostics_for_saved_files() {
         r#"
         [file pyproject.toml]
 
-        [file /pkg/__init__.py]
+        [file pkg/__init__.py]
         from foo import Foo
         from foo import Bar
 
         1()
 
-        [file] /pkg/foo.py]
+        [file pkg/foo.py]
         class Foo: ...
         lala
         "#,

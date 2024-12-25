@@ -13,3 +13,4 @@ regex.workspace = true
 
 [dev-dependencies]
 insta.workspace = true
+test_utils.workspace = true
