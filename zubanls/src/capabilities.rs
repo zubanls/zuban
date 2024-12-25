@@ -76,15 +76,18 @@ pub(crate) fn server_capabilities(client_capabilities: &ClientCapabilities) -> S
 }
 
 #[derive(Debug, PartialEq, Clone, Default)]
-pub(crate) struct ClientCapabilities(lsp_types::ClientCapabilities);
+pub(crate) struct ClientCapabilities {
+    caps: lsp_types::ClientCapabilities,
+    roots: Vec<String>,
+}
 
 impl ClientCapabilities {
-    pub(crate) fn new(caps: lsp_types::ClientCapabilities) -> Self {
-        Self(caps)
+    pub(crate) fn new(caps: lsp_types::ClientCapabilities, roots: Vec<String>) -> Self {
+        Self { caps, roots }
     }
 
     pub(crate) fn negotiated_encoding(&self) -> PositionEncodingKind {
-        let client_encodings = match &self.0.general {
+        let client_encodings = match &self.caps.general {
             Some(general) => general.position_encodings.as_deref().unwrap_or_default(),
             None => &[],
         };
@@ -104,7 +107,7 @@ impl ClientCapabilities {
     pub(crate) fn workspace_edit_resource_operations(
         &self,
     ) -> Option<&[lsp_types::ResourceOperationKind]> {
-        self.0
+        self.caps
             .workspace
             .as_ref()?
             .workspace_edit
@@ -114,14 +117,14 @@ impl ClientCapabilities {
     }
 
     pub(crate) fn did_save_text_document_dynamic_registration(&self) -> bool {
-        let caps = (|| -> _ { self.0.text_document.as_ref()?.synchronization.clone() })()
+        let caps = (|| -> _ { self.caps.text_document.as_ref()?.synchronization.clone() })()
             .unwrap_or_default();
         caps.did_save == Some(true) && caps.dynamic_registration == Some(true)
     }
 
     pub(crate) fn did_change_watched_files_dynamic_registration(&self) -> bool {
         (|| -> _ {
-            self.0
+            self.caps
                 .workspace
                 .as_ref()?
                 .did_change_watched_files
@@ -133,7 +136,7 @@ impl ClientCapabilities {
 
     pub(crate) fn did_change_watched_files_relative_pattern_support(&self) -> bool {
         (|| -> _ {
-            self.0
+            self.caps
                 .workspace
                 .as_ref()?
                 .did_change_watched_files
@@ -144,12 +147,13 @@ impl ClientCapabilities {
     }
 
     pub(crate) fn location_link(&self) -> bool {
-        (|| -> _ { self.0.text_document.as_ref()?.definition?.link_support })().unwrap_or_default()
+        (|| -> _ { self.caps.text_document.as_ref()?.definition?.link_support })()
+            .unwrap_or_default()
     }
 
     pub(crate) fn line_folding_only(&self) -> bool {
         (|| -> _ {
-            self.0
+            self.caps
                 .text_document
                 .as_ref()?
                 .folding_range
@@ -161,7 +165,7 @@ impl ClientCapabilities {
 
     pub(crate) fn hierarchical_symbols(&self) -> bool {
         (|| -> _ {
-            self.0
+            self.caps
                 .text_document
                 .as_ref()?
                 .document_symbol
@@ -173,7 +177,7 @@ impl ClientCapabilities {
 
     pub(crate) fn code_action_literals(&self) -> bool {
         (|| -> _ {
-            self.0
+            self.caps
                 .text_document
                 .as_ref()?
                 .code_action
@@ -185,12 +189,12 @@ impl ClientCapabilities {
     }
 
     pub(crate) fn work_done_progress(&self) -> bool {
-        (|| -> _ { self.0.window.as_ref()?.work_done_progress })().unwrap_or_default()
+        (|| -> _ { self.caps.window.as_ref()?.work_done_progress })().unwrap_or_default()
     }
 
     pub(crate) fn will_rename(&self) -> bool {
         (|| -> _ {
-            self.0
+            self.caps
                 .workspace
                 .as_ref()?
                 .file_operations
@@ -202,7 +206,7 @@ impl ClientCapabilities {
 
     pub(crate) fn change_annotation_support(&self) -> bool {
         (|| -> _ {
-            self.0
+            self.caps
                 .workspace
                 .as_ref()?
                 .workspace_edit
@@ -216,7 +220,7 @@ impl ClientCapabilities {
     pub(crate) fn code_action_resolve(&self) -> bool {
         (|| -> _ {
             Some(
-                self.0
+                self.caps
                     .text_document
                     .as_ref()?
                     .code_action
@@ -234,7 +238,7 @@ impl ClientCapabilities {
 
     pub(crate) fn signature_help_label_offsets(&self) -> bool {
         (|| -> _ {
-            self.0
+            self.caps
                 .text_document
                 .as_ref()?
                 .signature_help
@@ -249,12 +253,12 @@ impl ClientCapabilities {
     }
 
     pub(crate) fn text_document_diagnostic(&self) -> bool {
-        (|| -> _ { self.0.text_document.as_ref()?.diagnostic.as_ref() })().is_some()
+        (|| -> _ { self.caps.text_document.as_ref()?.diagnostic.as_ref() })().is_some()
     }
 
     pub(crate) fn text_document_diagnostic_related_document_support(&self) -> bool {
         (|| -> _ {
-            self.0
+            self.caps
                 .text_document
                 .as_ref()?
                 .diagnostic
@@ -265,7 +269,7 @@ impl ClientCapabilities {
 
     pub(crate) fn diagnostics_refresh(&self) -> bool {
         (|| -> _ {
-            self.0
+            self.caps
                 .workspace
                 .as_ref()?
                 .diagnostic
@@ -277,7 +281,7 @@ impl ClientCapabilities {
 
     pub(crate) fn insert_replace_support(&self) -> bool {
         (|| -> _ {
-            self.0
+            self.caps
                 .text_document
                 .as_ref()?
                 .completion
@@ -290,7 +294,13 @@ impl ClientCapabilities {
     }
 
     pub(crate) fn find_project_options(&self) -> anyhow::Result<ProjectOptions> {
-        let (config, _) = config_searcher::find_config_or_default(None)?;
+        let first_root = self
+            .roots
+            .first()
+            .expect("There should always be at least one root at this point");
+        let mut config = config_searcher::find_workspace_config(first_root)?;
+        tracing::info!("Using workspace roots {:?}", &self.roots);
+        config.settings.mypy_path = self.roots.clone();
         Ok(config)
     }
 }

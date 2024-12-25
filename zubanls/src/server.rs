@@ -98,7 +98,7 @@ pub fn run_server_with_custom_connection(
         }
     };
 
-    let client_capabilities = ClientCapabilities::new(capabilities);
+    let client_capabilities = ClientCapabilities::new(capabilities, workspace_roots);
     let server_capabilities = server_capabilities(&client_capabilities);
 
     let initialize_result = lsp_types::InitializeResult {

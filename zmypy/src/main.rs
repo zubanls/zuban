@@ -1,4 +1,4 @@
-use config_searcher::find_config_or_default;
+use config_searcher::find_cli_config;
 use std::path::PathBuf;
 use std::process::ExitCode;
 use zuban_python::{DiagnosticConfig, ExcludeRegex, Project, ProjectOptions, PythonVersion};
@@ -197,7 +197,7 @@ struct Cli {
 fn main() -> ExitCode {
     let cli = Cli::parse();
 
-    let (mut options, mut diagnostic_config) = find_config_or_default(cli.config_file.as_deref())
+    let (mut options, mut diagnostic_config) = find_cli_config(cli.config_file.as_deref())
         .unwrap_or_else(|err| panic!("Problem parsing Mypy config: {err}"));
     options.settings.mypy_compatible = true;
     apply_flags(&mut options, &mut diagnostic_config, cli);
