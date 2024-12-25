@@ -12,15 +12,18 @@ const CONFIG_PATHS: [&str; 6] = [
 ];
 
 pub fn find_config_or_default(config_file: Option<&Path>) -> (ProjectOptions, DiagnosticConfig) {
+    let _p = tracing::info_span!("find_config_or_default").entered();
     let mut diagnostic_config = DiagnosticConfig::default();
-    let options = if let Some((name, content)) = find_mypy_config_file(config_file) {
-        if name.ends_with(".toml") {
+    let options = if let Some((path, content)) = find_mypy_config_file(config_file) {
+        tracing::info!("Config found: {path}");
+        if path.ends_with(".toml") {
             ProjectOptions::from_pyproject_toml(&content, &mut diagnostic_config)
         } else {
             ProjectOptions::from_mypy_ini(&content, &mut diagnostic_config)
         }
-        .unwrap_or_else(|err| panic!("Problem parsing Mypy config {name}: {err}"))
+        .unwrap_or_else(|err| panic!("Problem parsing Mypy config {path}: {err}"))
     } else {
+        tracing::info!("No config found");
         ProjectOptions::default()
     };
     (options, diagnostic_config)
