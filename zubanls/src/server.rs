@@ -98,7 +98,7 @@ pub fn run_server_with_custom_connection(
         }
     };
 
-    let client_capabilities = ClientCapabilities::new(capabilities, workspace_roots);
+    let client_capabilities = ClientCapabilities::new(capabilities);
     let server_capabilities = server_capabilities(&client_capabilities);
 
     let initialize_result = lsp_types::InitializeResult {
@@ -121,7 +121,7 @@ pub fn run_server_with_custom_connection(
 
     // If the io_threads have an error, there's usually an error on the main
     // loop too because the channels are closed. Ensure we report both errors.
-    event_loop(client_capabilities, connection)?;
+    event_loop(client_capabilities, connection, workspace_roots)?;
     cleanup();
     tracing::info!("Server did successfully shut down");
     Ok(())
@@ -135,8 +135,9 @@ pub fn run_server() -> anyhow::Result<()> {
 fn event_loop(
     capabilities: ClientCapabilities,
     connection: lsp_server::Connection,
+    roots: Vec<String>,
 ) -> anyhow::Result<()> {
-    let mut global_state = GlobalState::new(connection.sender, capabilities);
+    let mut global_state = GlobalState::new(connection.sender, capabilities, roots);
     for msg in connection.receiver.iter() {
         use lsp_types::notification::Notification;
         match msg {
@@ -298,15 +299,21 @@ struct NotificationDispatcher<'a> {
 pub(crate) struct GlobalState {
     pub sender: Sender<lsp_server::Message>,
     pub capabilities: ClientCapabilities,
+    pub roots: Vec<String>,
     pub project: Option<Project>,
     pub shutdown_requested: bool,
 }
 
 impl GlobalState {
-    fn new(sender: Sender<lsp_server::Message>, capabilities: ClientCapabilities) -> Self {
+    fn new(
+        sender: Sender<lsp_server::Message>,
+        capabilities: ClientCapabilities,
+        roots: Vec<String>,
+    ) -> Self {
         GlobalState {
             sender,
             capabilities,
+            roots,
             project: None,
             shutdown_requested: false,
         }
@@ -317,10 +324,12 @@ impl GlobalState {
         if let Some(p) = project {
             return p;
         } else {
-            let options = self
-                .capabilities
-                .find_project_options()
-                .unwrap_or_else(|err| {
+            let first_root = self
+                .roots
+                .first()
+                .expect("There should always be at least one root at this point");
+            let mut config =
+                config_searcher::find_workspace_config(first_root).unwrap_or_else(|err| {
                     use lsp_types::{
                         notification::{Notification, ShowMessage},
                         MessageType, ShowMessageParams,
@@ -337,7 +346,19 @@ impl GlobalState {
                         .unwrap();
                     ProjectOptions::default()
                 });
-            *project = Some(Project::new(options));
+
+            tracing::info!("Using workspace roots {:?}", &self.roots);
+            // I'm not sure if this is correct. The problem is that the mypy_path currently does
+            // two things:
+            //
+            // 1. Adds it as a workspace to be type-checked
+            // 2. Adds it to the "sys path"
+            //
+            // It's questionable that we want those two things. And maybe there will also be a need
+            // for the type checker to understand what the mypy_path originally was.
+            config.settings.mypy_path = self.roots.clone();
+
+            *project = Some(Project::new(config));
             project.as_mut().unwrap()
         }
     }

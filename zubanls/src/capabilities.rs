@@ -78,12 +78,11 @@ pub(crate) fn server_capabilities(client_capabilities: &ClientCapabilities) -> S
 #[derive(Debug, PartialEq, Clone, Default)]
 pub(crate) struct ClientCapabilities {
     caps: lsp_types::ClientCapabilities,
-    roots: Vec<String>,
 }
 
 impl ClientCapabilities {
-    pub(crate) fn new(caps: lsp_types::ClientCapabilities, roots: Vec<String>) -> Self {
-        Self { caps, roots }
+    pub(crate) fn new(caps: lsp_types::ClientCapabilities) -> Self {
+        Self { caps }
     }
 
     pub(crate) fn negotiated_encoding(&self) -> PositionEncodingKind {
@@ -291,16 +290,5 @@ impl ClientCapabilities {
                 .insert_replace_support
         })()
         .unwrap_or_default()
-    }
-
-    pub(crate) fn find_project_options(&self) -> anyhow::Result<ProjectOptions> {
-        let first_root = self
-            .roots
-            .first()
-            .expect("There should always be at least one root at this point");
-        let mut config = config_searcher::find_workspace_config(first_root)?;
-        tracing::info!("Using workspace roots {:?}", &self.roots);
-        config.settings.mypy_path = self.roots.clone();
-        Ok(config)
     }
 }
