@@ -46,7 +46,7 @@ impl<'a> Project<'a> {
         };
         let dedented_fixture = dedent(&self.fixture);
         for entry in fixture_to_file_entry(&dedented_fixture) {
-            let path = Path::new(tmp_dir.path()).join(&entry.path['/'.len_utf8()..]);
+            let path = Path::new(tmp_dir.path()).join(&entry.path);
             fs::create_dir_all(path.parent().unwrap()).unwrap();
             fs::write(path.as_path(), entry.text.as_bytes()).unwrap();
         }
@@ -138,9 +138,14 @@ fn fixture_to_file_entry(fixture: &str) -> impl Iterator<Item = FileEntry> {
         "For now flags in fixtures are not supported"
     );
     assert_eq!(steps.steps.len(), 1, "For now we only support one step");
-    let first = steps.steps.into_iter().next().unwrap();
+    let mut first = steps.steps.into_iter().next().unwrap();
     assert!(first.out.is_empty());
     assert!(first.deletions.is_empty());
+    let main_content = first
+        .files
+        .remove("__main__")
+        .expect("Should always be there");
+    assert_eq!(main_content.trim(), "");
     first
         .files
         .into_iter()

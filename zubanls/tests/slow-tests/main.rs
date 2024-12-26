@@ -12,7 +12,7 @@ use std::str::FromStr;
 use lsp_server::Response;
 use lsp_types::{
     request::DocumentDiagnosticRequest, DiagnosticServerCapabilities, DocumentDiagnosticParams,
-    DocumentDiagnosticReport, DocumentDiagnosticReportResult, PartialResultParams,
+    DocumentDiagnosticReport, DocumentDiagnosticReportResult, NumberOrString, PartialResultParams,
     PositionEncodingKind, TextDocumentIdentifier, Uri, WorkDoneProgressParams,
 };
 
@@ -95,8 +95,8 @@ fn diagnostics_for_saved_files() {
         [file pyproject.toml]
 
         [file pkg/__init__.py]
-        from foo import Foo
-        from foo import Bar
+        from pkg.foo import Foo
+        from pkg.foo import Bar
 
         1()
 
@@ -118,7 +118,40 @@ fn diagnostics_for_saved_files() {
         },
         json!([
             {
-                "items": ["TODO", "TODO"],
+                "items": [
+                    {
+                      "code": "attr-defined",
+                      "message": "Module \"pkg.foo\" has no attribute \"Bar\"",
+                      "range": {
+                        "start": {
+                          "line": 2,
+                          "character": 21,
+                        },
+                        "end": {
+                          "line": 2,
+                          "character": 24,
+                        },
+                      },
+                      "severity": 1,
+                      "source": "zubanls"
+                    },
+                    {
+                      "code": "operator",
+                      "message": "\"int\" not callable",
+                      "range": {
+                        "start": {
+                          "line": 4,
+                          "character": 1,
+                        },
+                        "end": {
+                          "line": 4,
+                          "character": 4,
+                        },
+                      },
+                      "severity": 1,
+                      "source": "zubanls"
+                    },
+                ],
                 "kind": "full"
             }
         ]),
@@ -142,7 +175,11 @@ fn diagnostics_for_saved_files() {
         let items = report.full_document_diagnostic_report.items;
         assert_eq!(items.len(), 1);
         let diagnostic = &items[0];
-        assert_eq!(&diagnostic.message, "TODO please match");
+        assert_eq!(diagnostic.message, "Name \"lala\" is not defined");
+        assert_eq!(
+            diagnostic.code,
+            Some(NumberOrString::String("name-defined".into()))
+        );
     }
 
     // Diagnostics for a file that does not exist
@@ -157,7 +194,7 @@ fn diagnostics_for_saved_files() {
             });
         assert!(response.result.is_none());
         let error = response.error.unwrap();
-        assert_eq!(&error.message, "TODO ");
+        assert_eq!(error.message, "TODO ");
         assert_eq!(error.code, -32602);
     }
 }
