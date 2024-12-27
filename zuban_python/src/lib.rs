@@ -153,6 +153,32 @@ impl Project {
             .try_to_reuse_project_resources_for_tests(get_loaders(), options);
         Project { db }
     }
+
+    pub fn document(&mut self, path: &str) -> Option<Document> {
+        let file_entry =
+            self.db
+                .workspaces
+                .search_file(&self.db.project.flags, self.db.vfs.as_ref(), path)?;
+
+        self.db.load_file_from_workspace(file_entry.clone(), false);
+        let file_index = file_entry.file_index.get().unwrap();
+        Some(Document {
+            project: self,
+            file_index,
+        })
+    }
+}
+
+pub struct Document<'a> {
+    project: &'a mut Project,
+    file_index: FileIndex,
+}
+
+impl Document<'_> {
+    pub fn diagnostics(&mut self, config: &DiagnosticConfig) -> Box<[diagnostics::Diagnostic]> {
+        let python_file = self.project.db.loaded_python_file(self.file_index);
+        python_file.diagnostics(&self.project.db, config)
+    }
 }
 
 fn get_loaders() -> Box<[Box<dyn FileStateLoader>; 1]> {

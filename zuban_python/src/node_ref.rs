@@ -306,7 +306,7 @@ impl<'file> NodeRef<'file> {
 
     pub(crate) fn issue_to_str(&self, i_s: &InferenceState, kind: IssueKind) -> String {
         let issue = Issue::from_node_index(&self.file.tree, self.node_index, kind);
-        Diagnostic::new(i_s.db, self.file, &issue).message(&mut vec![])
+        Diagnostic::new(i_s.db, self.file, &issue).message_with_notes(&mut vec![])
     }
 
     pub(crate) fn add_issue_onto_start_including_decorator(

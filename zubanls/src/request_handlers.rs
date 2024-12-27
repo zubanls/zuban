@@ -1,3 +1,4 @@
+use anyhow::bail;
 use lsp_server::Message;
 use lsp_types::{
     Diagnostic, DiagnosticSeverity, DocumentDiagnosticParams, DocumentDiagnosticReport,
@@ -6,7 +7,7 @@ use lsp_types::{
 };
 use zuban_python::{DiagnosticConfig, Severity};
 
-use crate::server::GlobalState;
+use crate::server::{GlobalState, LspError};
 
 impl GlobalState {
     pub(crate) fn handle_document_diagnostics(
@@ -14,10 +15,16 @@ impl GlobalState {
         params: DocumentDiagnosticParams,
     ) -> anyhow::Result<lsp_types::DocumentDiagnosticReportResult> {
         let project = self.project();
-        let diagnostic_config = DiagnosticConfig::default();
-        let diagnostics = project
-            .diagnostics(&diagnostic_config)
-            .issues
+        let path = params.text_document.uri.path().as_str();
+        let Some(mut document) = project.document(path) else {
+            tracing::error!("File does not exist");
+            bail!(LspError {
+                code: lsp_server::ErrorCode::InvalidParams as i32,
+                message: "File does not exist".into()
+            });
+        };
+        let diagnostics = document
+            .diagnostics(&DiagnosticConfig::default())
             .iter()
             .map(|issue| Diagnostic {
                 range: {
@@ -43,7 +50,7 @@ impl GlobalState {
                 )),
                 code_description: None,
                 source: Some("zubanls".to_owned()),
-                message: issue.as_string(&diagnostic_config),
+                message: issue.message(),
                 related_information: None,
                 tags: None,
                 data: None,

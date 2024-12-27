@@ -63,6 +63,18 @@ impl Workspaces {
             .map(|x| &x.directory)
     }
 
+    pub fn search_file(
+        &mut self,
+        flags: &TypeCheckerFlags,
+        vfs: &dyn Vfs,
+        path: &str,
+    ) -> Option<Rc<FileEntry>> {
+        self.0.iter().find_map(|workspace| {
+            let p = strip_path_prefix(flags, vfs, path, workspace.root_path())?;
+            workspace.directory.search_path(vfs, p)
+        })
+    }
+
     pub fn ensure_file(
         &mut self,
         flags: &TypeCheckerFlags,
@@ -85,7 +97,7 @@ impl Workspaces {
 
     pub fn unload_file(&mut self, flags: &TypeCheckerFlags, vfs: &dyn Vfs, path: &str) {
         // TODO for now we always unload, fix that.
-        for workspace in &mut self.0 {
+        for workspace in &self.0 {
             if let Some(p) = strip_path_prefix(flags, vfs, path, workspace.root_path()) {
                 workspace.directory.unload_file(vfs, p);
             }
@@ -469,6 +481,20 @@ impl Directory {
         Some(Ref::map(borrow, |dir| {
             dir.iter().find(|entry| entry.name() == name).unwrap()
         }))
+    }
+
+    pub fn search_path(&self, vfs: &dyn Vfs, path: &str) -> Option<Rc<FileEntry>> {
+        let (name, rest) = vfs.split_off_folder(path);
+        if let Some(entry) = self.search(name) {
+            if let Some(rest) = rest {
+                if let DirectoryEntry::Directory(dir) = &*entry {
+                    return dir.search_path(vfs, rest);
+                }
+            } else if let DirectoryEntry::File(entry) = &*entry {
+                return Some(entry.clone());
+            }
+        }
+        None
     }
 
     pub fn search_mut(&self, name: &str) -> Option<RefMut<DirectoryEntry>> {

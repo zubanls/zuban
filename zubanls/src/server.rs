@@ -563,11 +563,10 @@ where
 {
     let res = match result {
         Ok(resp) => lsp_server::Response::new_ok(id, &resp),
-        /*
         Err(e) => match e.downcast::<LspError>() {
             Ok(lsp_error) => lsp_server::Response::new_err(id, lsp_error.code, lsp_error.message),
-            Err(e) => match e.downcast::<Cancelled>() {
-                Ok(cancelled) => return Err(cancelled),
+            Err(e) => match e.downcast::<u8/*TODO Cancelled*/>() {
+                Ok(cancelled) => todo!(), // return Err(cancelled),
                 Err(e) => lsp_server::Response::new_err(
                     id,
                     lsp_server::ErrorCode::InternalError as i32,
@@ -575,7 +574,6 @@ where
                 ),
             },
         },
-        */
         Err(e) => lsp_server::Response::new_err(
             id,
             lsp_server::ErrorCode::InternalError as i32,
@@ -584,6 +582,30 @@ where
     };
     Ok(res)
 }
+
+#[derive(Debug)]
+pub(crate) struct LspError {
+    pub(crate) code: i32,
+    pub(crate) message: String,
+}
+
+impl LspError {
+    pub(crate) fn new(code: i32, message: String) -> LspError {
+        LspError { code, message }
+    }
+}
+
+impl std::fmt::Display for LspError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "Language Server request failed with {}. ({})",
+            self.code, self.message
+        )
+    }
+}
+
+impl std::error::Error for LspError {}
 
 fn patch_path_prefix(path: &Uri) -> String {
     let path = path.as_str();

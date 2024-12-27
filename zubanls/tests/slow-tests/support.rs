@@ -161,7 +161,7 @@ fn join(path: &str, other: &str) -> String {
 }
 
 fn path_to_uri(path: &str) -> String {
-    format!("file:///{path}")
+    format!("file://{path}")
 }
 
 // Comparison functionality borrowed from cargo:

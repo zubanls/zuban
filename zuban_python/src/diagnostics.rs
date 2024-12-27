@@ -720,7 +720,7 @@ impl<'db> Diagnostic<'db> {
         )
     }
 
-    pub(crate) fn message(&self, additional_notes: &mut Vec<String>) -> String {
+    pub(crate) fn message_with_notes(&self, additional_notes: &mut Vec<String>) -> String {
         use IssueKind::*;
         match &self.issue.kind {
             InvalidSyntax => "invalid syntax".to_string(),
@@ -1813,6 +1813,16 @@ impl<'db> Diagnostic<'db> {
         }
     }
 
+    pub fn message(&self) -> String {
+        let mut additional_notes = vec![];
+        let mut msg = self.message_with_notes(&mut additional_notes);
+        for additional_note in additional_notes {
+            msg.push('\n');
+            msg.push_str(&additional_note);
+        }
+        msg
+    }
+
     pub fn as_string(&self, config: &DiagnosticConfig) -> String {
         let kind = match &self.issue.kind {
             IssueKind::AnnotationInUntypedFunction
@@ -1830,7 +1840,7 @@ impl<'db> Diagnostic<'db> {
         }
         let line_column = self.start_position().line_and_column();
         let mut additional_notes = vec![];
-        let error = self.message(&mut additional_notes);
+        let error = self.message_with_notes(&mut additional_notes);
         let mut result = fmt_line(config, path, line_column, self.end_position(), kind, &error);
         if config.show_error_codes {
             if let Some(mypy_error_code) = self.issue.kind.mypy_error_code() {

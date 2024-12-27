@@ -116,45 +116,43 @@ fn diagnostics_for_saved_files() {
             partial_result_params: PartialResultParams::default(),
             work_done_progress_params: WorkDoneProgressParams::default(),
         },
-        json!([
-            {
-                "items": [
-                    {
-                      "code": "attr-defined",
-                      "message": "Module \"pkg.foo\" has no attribute \"Bar\"",
-                      "range": {
-                        "start": {
-                          "line": 2,
-                          "character": 21,
-                        },
-                        "end": {
-                          "line": 2,
-                          "character": 24,
-                        },
-                      },
-                      "severity": 1,
-                      "source": "zubanls"
+        json!({
+            "items": [
+                {
+                  "code": "attr-defined",
+                  "message": "Module \"pkg.foo\" has no attribute \"Bar\"",
+                  "range": {
+                    "start": {
+                      "line": 2,
+                      "character": 21,
                     },
-                    {
-                      "code": "operator",
-                      "message": "\"int\" not callable",
-                      "range": {
-                        "start": {
-                          "line": 4,
-                          "character": 1,
-                        },
-                        "end": {
-                          "line": 4,
-                          "character": 4,
-                        },
-                      },
-                      "severity": 1,
-                      "source": "zubanls"
+                    "end": {
+                      "line": 2,
+                      "character": 24,
                     },
-                ],
-                "kind": "full"
-            }
-        ]),
+                  },
+                  "severity": 1,
+                  "source": "zubanls"
+                },
+                {
+                  "code": "operator",
+                  "message": "\"int\" not callable",
+                  "range": {
+                    "start": {
+                      "line": 4,
+                      "character": 1,
+                    },
+                    "end": {
+                      "line": 4,
+                      "character": 4,
+                    },
+                  },
+                  "severity": 1,
+                  "source": "zubanls"
+                },
+            ],
+            "kind": "full"
+        }),
     );
 
     // Diagnostics for foo.py (Check full serialization)
@@ -192,9 +190,8 @@ fn diagnostics_for_saved_files() {
                 partial_result_params: PartialResultParams::default(),
                 work_done_progress_params: WorkDoneProgressParams::default(),
             });
-        assert!(response.result.is_none());
         let error = response.error.unwrap();
-        assert_eq!(error.message, "TODO ");
-        assert_eq!(error.code, -32602);
+        assert_eq!(error.message, "File does not exist");
+        assert_eq!(error.code, lsp_server::ErrorCode::InvalidParams as i32);
     }
 }
