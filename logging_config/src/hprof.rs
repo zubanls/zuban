@@ -6,7 +6,7 @@
 //!
 //! Usage:
 //!
-//! ```rust
+//! ```text
 //! let layer = hprof::SpanTree::default();
 //! Registry::default().with(layer).init();
 //! ```

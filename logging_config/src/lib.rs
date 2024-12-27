@@ -89,7 +89,7 @@ struct Config<T> {
     writer: T,
     filter: String,
     /// Filtering syntax, set in a shell:
-    /// ```
+    /// ```bash
     /// env ZUBAN_PROFILE=*             // dump everything
     /// env ZUBAN_PROFILE=foo|bar|baz   // enabled only selected entries
     /// env ZUBAN_PROFILE=*@3>10        // dump everything, up to depth 3, if it takes more than 10
