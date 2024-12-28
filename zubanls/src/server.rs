@@ -7,18 +7,11 @@ use std::path::PathBuf;
 
 use crossbeam_channel::Sender;
 use lsp_server::{Connection, ExtractError, Message, Request};
-use lsp_types::{
-    DiagnosticOptions, DiagnosticServerCapabilities, DocumentDiagnosticReport,
-    DocumentDiagnosticReportResult, MessageType, ServerCapabilities, TextDocumentSyncCapability,
-    TextDocumentSyncKind, TextDocumentSyncOptions, Uri,
-};
+use lsp_types::Uri;
 use serde::{de::DeserializeOwned, Serialize};
 use zuban_python::{Project, ProjectOptions};
 
 use crate::capabilities::{server_capabilities, ClientCapabilities};
-
-const SERVER_NAME: &str = "zubanls";
-const DIAGNOSTIC_NAME: &str = "ZubanLS";
 
 fn version() -> &'static str {
     env!("CARGO_PKG_VERSION")
@@ -106,7 +99,7 @@ pub fn run_server_with_custom_connection(
     // If the io_threads have an error, there's usually an error on the main
     // loop too because the channels are closed. Ensure we report both errors.
     event_loop(client_capabilities, connection, workspace_roots)?;
-    cleanup();
+    cleanup()?;
     tracing::info!("Server did successfully shut down");
     Ok(())
 }
@@ -205,7 +198,6 @@ struct NotificationDispatcher<'a> {
 
 pub(crate) struct GlobalState {
     pub sender: Sender<lsp_server::Message>,
-    pub capabilities: ClientCapabilities,
     pub roots: Vec<String>,
     pub project: Option<Project>,
     pub shutdown_requested: bool,
@@ -214,12 +206,11 @@ pub(crate) struct GlobalState {
 impl GlobalState {
     fn new(
         sender: Sender<lsp_server::Message>,
-        capabilities: ClientCapabilities,
+        _capabilities: ClientCapabilities,
         roots: Vec<String>,
     ) -> Self {
         GlobalState {
             sender,
-            capabilities,
             roots,
             project: None,
             shutdown_requested: false,
@@ -476,7 +467,7 @@ where
         Err(e) => match e.downcast::<LspError>() {
             Ok(lsp_error) => lsp_server::Response::new_err(id, lsp_error.code, lsp_error.message),
             Err(e) => match e.downcast::<u8/*TODO Cancelled*/>() {
-                Ok(cancelled) => todo!(), // return Err(cancelled),
+                Ok(_cancelled) => todo!(), // return Err(cancelled),
                 Err(e) => lsp_server::Response::new_err(
                     id,
                     lsp_server::ErrorCode::InternalError as i32,
@@ -484,11 +475,6 @@ where
                 ),
             },
         },
-        Err(e) => lsp_server::Response::new_err(
-            id,
-            lsp_server::ErrorCode::InternalError as i32,
-            e.to_string(),
-        ),
     };
     Ok(res)
 }
@@ -497,12 +483,6 @@ where
 pub(crate) struct LspError {
     pub(crate) code: i32,
     pub(crate) message: String,
-}
-
-impl LspError {
-    pub(crate) fn new(code: i32, message: String) -> LspError {
-        LspError { code, message }
-    }
 }
 
 impl std::fmt::Display for LspError {

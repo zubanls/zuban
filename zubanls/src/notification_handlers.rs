@@ -1,7 +1,6 @@
 use anyhow::bail;
 use lsp_types::{
     DidChangeTextDocumentParams, DidCloseTextDocumentParams, DidOpenTextDocumentParams,
-    DidSaveTextDocumentParams,
 };
 
 use crate::server::GlobalState;

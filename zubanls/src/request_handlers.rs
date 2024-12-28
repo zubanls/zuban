@@ -1,5 +1,4 @@
 use anyhow::bail;
-use lsp_server::Message;
 use lsp_types::{
     Diagnostic, DiagnosticSeverity, DocumentDiagnosticParams, DocumentDiagnosticReport,
     DocumentDiagnosticReportResult, FullDocumentDiagnosticReport, Position,
@@ -32,8 +31,6 @@ impl GlobalState {
                         let (line, column) = pos.line_and_column();
                         Position::new(line as u32, column as u32)
                     };
-                    let start = issue.start_position();
-                    let end = issue.end_position();
                     lsp_types::Range {
                         start: to_lsp_position(issue.start_position()),
                         end: to_lsp_position(issue.end_position()),

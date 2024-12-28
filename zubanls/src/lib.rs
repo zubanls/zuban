@@ -1,6 +1,3 @@
-#![allow(unused)] // TODO remove
-#![allow(unused_imports)] // TODO remove
-
 mod capabilities;
 mod notification_handlers;
 mod request_handlers;
