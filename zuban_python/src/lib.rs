@@ -53,6 +53,12 @@ impl Project {
         self.db.load_in_memory_file(path, code);
     }
 
+    pub fn code_of_in_memory_file(&mut self, path: &str) -> Option<&str> {
+        let file_index = self.db.in_memory_file(path)?;
+        let python_file = self.db.loaded_python_file(file_index);
+        Some(python_file.tree.code())
+    }
+
     pub fn delete_directory(&mut self, path: &str) -> Result<(), String> {
         self.db.delete_directory(path)
     }

@@ -1,5 +1,6 @@
 use std::{
     fs, io,
+    path::Path,
     sync::atomic::{AtomicUsize, Ordering},
 };
 
@@ -71,6 +72,12 @@ impl TestDir {
     }
     pub(crate) fn path(&self) -> &str {
         &self.path
+    }
+
+    pub fn write_file(&self, rel_path: &str, text: &str) {
+        let path = Path::new(&self.path).join(rel_path);
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        fs::write(path.as_path(), text.as_bytes()).unwrap();
     }
 }
 

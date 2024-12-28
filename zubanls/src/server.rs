@@ -376,7 +376,6 @@ impl GlobalState {
         .on_sync_mut::<DidOpenTextDocument>(GlobalState::handle_did_open_text_document)
         .on_sync_mut::<DidChangeTextDocument>(GlobalState::handle_did_change_text_document)
         .on_sync_mut::<DidCloseTextDocument>(GlobalState::handle_did_close_text_document)
-        .on_sync_mut::<DidSaveTextDocument>(GlobalState::handle_did_save_text_document)
         //.on_sync_mut::<DidChangeWorkspaceFolders>(GlobalState::handle_did_change_workspace_folders)
         //.on_sync_mut::<notifs::DidChangeWatchedFiles>(GlobalState::handle_did_change_watched_files)
         .finish();
@@ -414,6 +413,10 @@ impl GlobalState {
 
     fn complete_request(&mut self, response: lsp_server::Response) {
         tracing::error!("unhandled request: {:?}", response);
+    }
+
+    pub(crate) fn uri_to_path<'uri>(&self, uri: &'uri lsp_types::Uri) -> &'uri str {
+        uri.path().as_str()
     }
 }
 

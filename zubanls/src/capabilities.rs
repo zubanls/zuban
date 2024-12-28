@@ -21,10 +21,10 @@ pub(crate) fn server_capabilities(client_capabilities: &ClientCapabilities) -> S
         text_document_sync: Some(TextDocumentSyncCapability::Options(
             TextDocumentSyncOptions {
                 open_close: Some(true),
-                change: Some(TextDocumentSyncKind::INCREMENTAL),
+                change: Some(TextDocumentSyncKind::FULL),
                 will_save: None,
                 will_save_wait_until: None,
-                save: Some(SaveOptions::default().into()),
+                save: None, // Currently not needed
             },
         )),
         workspace: Some(WorkspaceServerCapabilities {
@@ -36,26 +36,8 @@ pub(crate) fn server_capabilities(client_capabilities: &ClientCapabilities) -> S
                 did_create: None,
                 will_create: None,
                 did_rename: None,
-                will_rename: Some(FileOperationRegistrationOptions {
-                    filters: vec![
-                        FileOperationFilter {
-                            scheme: Some(String::from("file")),
-                            pattern: FileOperationPattern {
-                                glob: String::from("**/*.rs"),
-                                matches: Some(FileOperationPatternKind::File),
-                                options: None,
-                            },
-                        },
-                        FileOperationFilter {
-                            scheme: Some(String::from("file")),
-                            pattern: FileOperationPattern {
-                                glob: String::from("**"),
-                                matches: Some(FileOperationPatternKind::Folder),
-                                options: None,
-                            },
-                        },
-                    ],
-                }),
+                // TODO do we need this?
+                will_rename: None,
                 did_delete: None,
                 will_delete: None,
             }),

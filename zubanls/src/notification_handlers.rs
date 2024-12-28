@@ -1,3 +1,4 @@
+use anyhow::bail;
 use lsp_types::{
     DidChangeTextDocumentParams, DidCloseTextDocumentParams, DidOpenTextDocumentParams,
     DidSaveTextDocumentParams,
@@ -7,61 +8,53 @@ use crate::server::GlobalState;
 
 impl GlobalState {
     pub(crate) fn handle_did_open_text_document(
-        state: &mut GlobalState,
+        &mut self,
         params: DidOpenTextDocumentParams,
     ) -> anyhow::Result<()> {
         let _p = tracing::info_span!("handle_did_open_text_document").entered();
-        /*
-
-        if let Ok(path) = from_proto::vfs_path(&params.text_document.uri) {
-            let already_exists = state
-                .mem_docs
-                .insert(
-                    path.clone(),
-                    DocumentData::new(
-                        params.text_document.version,
-                        params.text_document.text.clone().into_bytes(),
-                    ),
-                )
-                .is_err();
-            if already_exists {
-                tracing::error!("duplicate DidOpenTextDocument: {}", path);
-            }
-
-            tracing::info!("New file content set {:?}", params.text_document.text);
-            state.vfs.write().0.set_file_contents(path, Some(params.text_document.text.into_bytes()));
-            /*
-            if state.config.discover_workspace_config().is_some() {
-                tracing::debug!("queuing task");
-                let _ = state
-                    .deferred_task_queue
-                    .sender
-                    .send(crate::main_loop::QueuedTask::CheckIfIndexed(params.text_document.uri));
-            }
-            */
-        }
-        */
+        let path = self.uri_to_path(&params.text_document.uri);
+        self.project()
+            .load_in_memory_file(path.into(), params.text_document.text.into());
         Ok(())
     }
 
     pub(crate) fn handle_did_change_text_document(
-        state: &mut GlobalState,
+        &mut self,
         params: DidChangeTextDocumentParams,
     ) -> anyhow::Result<()> {
-        todo!()
+        let _p = tracing::info_span!("handle_did_change_text_document").entered();
+        let path = self.uri_to_path(&params.text_document.uri);
+        let len = params.content_changes.len();
+        if len == 0 {
+            bail!("Expected there to be at least one config change")
+        }
+        /*
+         * TODO do something like this (check rust-analyzer as a reference)
+        let Some(code) = self.project().code_of_in_memory_file(path) else {
+            bail!("Should be an in memory file, because we have opened it before")
+        };
+        let code = apply_document_changes(encoding, code, params.content_changes);
+        */
+        let change = params.content_changes.into_iter().next().unwrap();
+        if len != 1 || change.range.is_some() || change.range_length.is_some() {
+            bail!(
+                "Expected there to be exactly one content change, because we \
+                   don't support TextDocumentSyncKind::INCREMENTAL yet"
+            )
+        }
+        self.project()
+            .load_in_memory_file(path.into(), change.text.into());
+        Ok(())
     }
 
     pub(crate) fn handle_did_close_text_document(
-        state: &mut GlobalState,
+        &mut self,
         params: DidCloseTextDocumentParams,
     ) -> anyhow::Result<()> {
-        todo!()
-    }
-
-    pub(crate) fn handle_did_save_text_document(
-        state: &mut GlobalState,
-        params: DidSaveTextDocumentParams,
-    ) -> anyhow::Result<()> {
-        todo!()
+        let _p = tracing::info_span!("handle_did_change_text_document").entered();
+        let path = self.uri_to_path(&params.text_document.uri);
+        self.project()
+            .unload_in_memory_file(path)
+            .map_err(|err| anyhow::anyhow!("{err}"))
     }
 }

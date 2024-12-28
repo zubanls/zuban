@@ -1,11 +1,14 @@
 use std::{
-    fs,
     ops::Deref,
     path::{Path, PathBuf},
     str::FromStr,
 };
 
-use lsp_types::{TextDocumentIdentifier, Uri};
+use lsp_types::{
+    request::DocumentDiagnosticRequest, DocumentDiagnosticParams, DocumentDiagnosticReport,
+    DocumentDiagnosticReportResult, PartialResultParams, TextDocumentIdentifier, Uri,
+    WorkDoneProgressParams,
+};
 use serde::Serialize;
 use serde_json::{to_string_pretty, Value};
 use test_utils::{calculate_steps, dedent};
@@ -46,9 +49,7 @@ impl<'a> Project<'a> {
         };
         let dedented_fixture = dedent(&self.fixture);
         for entry in fixture_to_file_entry(&dedented_fixture) {
-            let path = Path::new(tmp_dir.path()).join(&entry.path);
-            fs::create_dir_all(path.parent().unwrap()).unwrap();
-            fs::write(path.as_path(), entry.text.as_bytes()).unwrap();
+            tmp_dir.write_file(entry.path, entry.text)
         }
         // TODO let tmp_dir_path = AbsPathBuf::assert(tmp_dir.path().to_path_buf());
         let tmp_dir_path = tmp_dir.path();
@@ -123,6 +124,27 @@ impl Server {
                 to_string_pretty(actual_part).unwrap(),
             );
         }
+    }
+
+    pub(crate) fn diagnostics_for_file(&self, rel_path: &str) -> Vec<String> {
+        let res = self.request::<DocumentDiagnosticRequest>(DocumentDiagnosticParams {
+            text_document: self.doc_id(rel_path),
+            identifier: None,
+            previous_result_id: None,
+            partial_result_params: PartialResultParams::default(),
+            work_done_progress_params: WorkDoneProgressParams::default(),
+        });
+        let DocumentDiagnosticReportResult::Report(DocumentDiagnosticReport::Full(report)) = res
+        else {
+            unreachable!()
+        };
+        assert!(report.related_documents.is_none());
+        let items = report.full_document_diagnostic_report.items;
+        items.into_iter().map(|d| d.message).collect()
+    }
+
+    pub(crate) fn write_file(&self, rel_path: &str, code: &str) {
+        self.tmp_dir.write_file(rel_path, code)
     }
 }
 
