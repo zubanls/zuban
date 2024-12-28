@@ -15,23 +15,7 @@ use lsp_types::{
 use serde::{de::DeserializeOwned, Serialize};
 use zuban_python::{Project, ProjectOptions};
 
-//use crate::session::{AllSettings, ClientSettings, Session};
-//use crate::PositionEncoding;
-
-//mod api;
-//mod client;
-//mod connection;
-//mod schedule;
-
-//use crate::message::try_show_message;
-//pub(crate) use connection::ClientSender;
 use crate::capabilities::{server_capabilities, ClientCapabilities};
-
-pub(crate) struct Server {
-    //connection: Connection,
-    client_capabilities: ClientCapabilities,
-    //session: Session,
-}
 
 const SERVER_NAME: &str = "zubanls";
 const DIAGNOSTIC_NAME: &str = "ZubanLS";
@@ -154,142 +138,65 @@ fn event_loop(
     Ok(())
 }
 
-impl Server {
-    pub(crate) fn new() -> anyhow::Result<Self> {
-        todo!()
-        /*
-        let client_capabilities = init_params.capabilities;
-        let position_encoding = Self::find_best_position_encoding(&client_capabilities);
-        let server_capabilities = Self::server_capabilities(position_encoding);
+/*
+let client_capabilities = init_params.capabilities;
+let position_encoding = Self::find_best_position_encoding(&client_capabilities);
+let server_capabilities = Self::server_capabilities(position_encoding);
 
 
-        if let Some(trace) = init_params.trace {
-            crate::trace::set_trace_value(trace);
-        }
-
-        crate::message::init_messenger(connection.make_sender());
-
-        let AllSettings {
-            global_settings,
-            mut workspace_settings,
-        } = AllSettings::from_value(
-            init_params
-                .initialization_options
-                .unwrap_or_else(|| serde_json::Value::Object(serde_json::Map::default())),
-        );
-
-        crate::trace::init_tracing(
-            connection.make_sender(),
-            global_settings
-                .tracing
-                .log_level
-                .unwrap_or(crate::trace::LogLevel::Info),
-            global_settings.tracing.log_file.as_deref(),
-            init_params.client_info.as_ref(),
-        );
-
-        let mut workspace_for_url = |url: Uri| {
-            let Some(workspace_settings) = workspace_settings.as_mut() else {
-                return (url, ClientSettings::default());
-            };
-            let settings = workspace_settings.remove(&url).unwrap_or_else(|| {
-                tracing::warn!("No workspace settings found for {}", url);
-                ClientSettings::default()
-            });
-            (url, settings)
-        };
-
-        let workspaces = init_params
-            .workspace_folders
-            .filter(|folders| !folders.is_empty())
-            .map(|folders| folders.into_iter().map(|folder| {
-                workspace_for_url(folder.uri)
-            }).collect())
-            .or_else(|| {
-                tracing::warn!("No workspace(s) were provided during initialization. Using the current working directory as a default workspace...");
-                let uri = Uri::from_file_path(std::env::current_dir().ok()?).ok()?;
-                Some(vec![workspace_for_url(uri)])
-            })
-            .ok_or_else(|| {
-                anyhow::anyhow!("Failed to get the current working directory while creating a default workspace.")
-            })?;
-
-        if workspaces.len() > 1 {
-            // TODO
-            anyhow::bail!("Multi-root workspaces are not supported yet");
-        }
-
-        Ok(Self {
-            client_capabilities,
-        })
-        */
-    }
-
-    pub(crate) fn run(self) -> anyhow::Result<()> {
-        // The new PanicInfoHook name requires MSRV >= 1.82
-        #[allow(deprecated)]
-        type PanicHook = Box<dyn Fn(&PanicInfo<'_>) + 'static + Sync + Send>;
-        struct RestorePanicHook {
-            hook: Option<PanicHook>,
-        }
-
-        impl Drop for RestorePanicHook {
-            fn drop(&mut self) {
-                if let Some(hook) = self.hook.take() {
-                    std::panic::set_hook(hook);
-                }
-            }
-        }
-
-        // Unregister any previously registered panic hook
-        // The hook will be restored when this function exits.
-        let _ = RestorePanicHook {
-            hook: Some(std::panic::take_hook()),
-        };
-
-        // When we panic, try to notify the client.
-        std::panic::set_hook(Box::new(move |panic_info| {
-            /*
-            use std::io::Write;
-
-            let backtrace = std::backtrace::Backtrace::force_capture();
-            tracing::error!("{panic_info}\n{backtrace}");
-
-            // We also need to print to stderr directly for when using `$logTrace` because
-            // the message won't be sent to the client.
-            // But don't use `eprintln` because `eprintln` itself may panic if the pipe is broken.
-            let mut stderr = std::io::stderr().lock();
-            writeln!(stderr, "{panic_info}\n{backtrace}").ok();
-
-            try_show_message(
-                "The ZubanLS server exited with a panic. Check the logs for more details."
-                    .to_string(),
-                MessageType::ERROR,
-            )
-            .ok();
-            */
-            todo!()
-        }));
-        Ok(())
-    }
-
-    /*
-    fn find_best_position_encoding(client_capabilities: &ClientCapabilities) -> PositionEncoding {
-        client_capabilities
-            .general
-            .as_ref()
-            .and_then(|general_capabilities| general_capabilities.position_encodings.as_ref())
-            .and_then(|encodings| {
-                encodings
-                    .iter()
-                    .filter_map(|encoding| PositionEncoding::try_from(encoding).ok())
-                    .max() // this selects the highest priority position encoding
-            })
-            .unwrap_or_default()
-    }
-
-    */
+if let Some(trace) = init_params.trace {
+    crate::trace::set_trace_value(trace);
 }
+
+...
+
+// The new PanicInfoHook name requires MSRV >= 1.82
+#[allow(deprecated)]
+type PanicHook = Box<dyn Fn(&PanicInfo<'_>) + 'static + Sync + Send>;
+struct RestorePanicHook {
+    hook: Option<PanicHook>,
+}
+
+impl Drop for RestorePanicHook {
+    fn drop(&mut self) {
+        if let Some(hook) = self.hook.take() {
+            std::panic::set_hook(hook);
+        }
+    }
+}
+
+// Unregister any previously registered panic hook
+// The hook will be restored when this function exits.
+let _ = RestorePanicHook {
+    hook: Some(std::panic::take_hook()),
+};
+
+// When we panic, try to notify the client.
+std::panic::set_hook(Box::new(move |panic_info| {
+    /*
+    use std::io::Write;
+
+    let backtrace = std::backtrace::Backtrace::force_capture();
+    tracing::error!("{panic_info}\n{backtrace}");
+
+    // We also need to print to stderr directly for when using `$logTrace` because
+    // the message won't be sent to the client.
+    // But don't use `eprintln` because `eprintln` itself may panic if the pipe is broken.
+    let mut stderr = std::io::stderr().lock();
+    writeln!(stderr, "{panic_info}\n{backtrace}").ok();
+
+    try_show_message(
+        "The ZubanLS server exited with a panic. Check the logs for more details."
+            .to_string(),
+        MessageType::ERROR,
+    )
+    .ok();
+    */
+    todo!()
+}));
+Ok(())
+
+*/
 
 struct NotificationDispatcher<'a> {
     not: Option<lsp_server::Notification>,

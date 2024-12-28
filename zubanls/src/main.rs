@@ -7,8 +7,6 @@ fn main() -> anyhow::Result<()> {
     // Logging to stderr.
     tracing::info!("Starting ZubanLS server");
 
-    //Server::new().context("Failed to start server")?.run()?;
-
     event_loop_thread(move || {
         zubanls::run_server()?;
         Ok(())
