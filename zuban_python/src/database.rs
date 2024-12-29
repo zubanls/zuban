@@ -1198,16 +1198,27 @@ impl Database {
     }
 
     pub fn load_in_memory_file(&mut self, path: Box<str>, code: Box<str>) -> FileIndex {
-        // First unload the old file, if there is already one
-        let in_mem_file = self.in_memory_file(&path);
-        if let Some(file_index) = in_mem_file {
-            self.unload_file(file_index);
-        }
-
-        // Then load the new one
         let ensured = self
             .workspaces
             .ensure_file(&self.project.flags, &*self.vfs, &path);
+
+        let in_mem_file = self.in_memory_file(&path);
+        debug_assert!(
+            in_mem_file.is_none()
+                || in_mem_file.is_some() && ensured.file_entry.file_index.get().is_some(),
+            "{path}; in_mem_file: {in_mem_file:?}; ensured file_index: {:?}",
+            ensured.file_entry.file_index.get(),
+        );
+
+        let in_mem_file = in_mem_file.or_else(|| {
+            let file_index = ensured.file_entry.file_index.get()?;
+            self.in_memory_files.insert(path.clone(), file_index);
+            Some(file_index)
+        });
+        if let Some(file_index) = in_mem_file {
+            self.unload_file_and_maybe_workspace_part(file_index, false);
+        }
+
         // TODO there could be no loader...
         let loader = self.loader(&path).unwrap();
         let new_file_state = |file_index| {
@@ -1223,13 +1234,14 @@ impl Database {
         let file_index = if let Some(file_index) = in_mem_file {
             self.files
                 .set(file_index.0 as usize, new_file_state(file_index));
+            debug_assert!(ensured.file_entry.file_index.get().is_some(), "for {path}");
             file_index
         } else {
             let file_index = self.with_add_file_state(new_file_state);
             self.in_memory_files.insert(path.clone(), file_index);
+            ensured.set_file_index(file_index);
             file_index
         };
-        ensured.set_file_index(file_index);
         if cfg!(feature = "zuban_debug") {
             for invalidation in &ensured.invalidations.iter() {
                 let p = self.file_state_mut(*invalidation).path();
@@ -1245,9 +1257,19 @@ impl Database {
     }
 
     fn unload_file(&mut self, file_index: FileIndex) {
+        self.unload_file_and_maybe_workspace_part(file_index, true)
+    }
+
+    fn unload_file_and_maybe_workspace_part(
+        &mut self,
+        file_index: FileIndex,
+        maybe_workspace: bool,
+    ) {
         let file_state = &mut self.files[file_index.0 as usize];
-        self.workspaces
-            .unload_file(&self.project.flags, &*self.vfs, file_state.path());
+        if maybe_workspace {
+            self.workspaces
+                .unload_file(&self.project.flags, &*self.vfs, file_state.path());
+        }
         let invalidations = file_state
             .unload_and_return_invalidations()
             .expect("We don't support rebuilding/unloading after changing of typeshed, yet.");
@@ -1307,20 +1329,20 @@ impl Database {
             dir_path = p;
         }
 
-        let indexes: Vec<_> = self
+        let in_mem_paths: Vec<_> = self
             .in_memory_files
             .iter()
-            .filter_map(|(path, file_index)| {
+            .filter_map(|(path, _)| {
                 let matches = path.starts_with(dir_path)
                     && path
                         .as_bytes()
                         .get(dir_path.len())
                         .is_some_and(|chr| *chr == self.vfs.separator_u8());
-                matches.then_some(*file_index)
+                matches.then_some(path.clone())
             })
             .collect();
-        for index in indexes {
-            self.unload_file(index);
+        for path in in_mem_paths {
+            self.unload_in_memory_file(&path);
         }
         self.workspaces
             .delete_directory(&self.project.flags, &*self.vfs, dir_path)

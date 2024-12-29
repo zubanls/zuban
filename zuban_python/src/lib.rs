@@ -166,7 +166,9 @@ impl Project {
                 .workspaces
                 .search_file(&self.db.project.flags, self.db.vfs.as_ref(), path)?;
 
-        self.db.load_file_from_workspace(file_entry.clone(), false);
+        if file_entry.file_index.get().is_none() {
+            self.db.load_file_from_workspace(file_entry.clone(), false);
+        }
         let file_index = file_entry.file_index.get().unwrap();
         Some(Document {
             project: self,

@@ -12,6 +12,7 @@ impl GlobalState {
     ) -> anyhow::Result<()> {
         let _p = tracing::info_span!("handle_did_open_text_document").entered();
         let path = self.uri_to_path(&params.text_document.uri);
+        tracing::info!("Opening {path}");
         self.project()
             .load_in_memory_file(path.into(), params.text_document.text.into());
         Ok(())
@@ -23,6 +24,8 @@ impl GlobalState {
     ) -> anyhow::Result<()> {
         let _p = tracing::info_span!("handle_did_change_text_document").entered();
         let path = self.uri_to_path(&params.text_document.uri);
+        tracing::info!("Changing {path}");
+
         let len = params.content_changes.len();
         if len == 0 {
             bail!("Expected there to be at least one config change")
@@ -52,8 +55,11 @@ impl GlobalState {
     ) -> anyhow::Result<()> {
         let _p = tracing::info_span!("handle_did_change_text_document").entered();
         let path = self.uri_to_path(&params.text_document.uri);
-        self.project()
+        tracing::info!("Closing {path}");
+        let result = self
+            .project()
             .unload_in_memory_file(path)
-            .map_err(|err| anyhow::anyhow!("{err}"))
+            .map_err(|err| anyhow::anyhow!("{err}"));
+        result
     }
 }

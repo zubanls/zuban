@@ -74,10 +74,15 @@ impl TestDir {
         &self.path
     }
 
-    pub fn write_file(&self, rel_path: &str, text: &str) {
+    pub(crate) fn write_file(&self, rel_path: &str, text: &str) {
         let path = Path::new(&self.path).join(rel_path);
         fs::create_dir_all(path.parent().unwrap()).unwrap();
         fs::write(path.as_path(), text.as_bytes()).unwrap();
+    }
+
+    pub(crate) fn remove_file(&self, rel_path: &str) {
+        let path = Path::new(&self.path).join(rel_path);
+        fs::remove_file(path.as_path()).unwrap();
     }
 }
 

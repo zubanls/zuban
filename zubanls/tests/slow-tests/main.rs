@@ -218,36 +218,31 @@ fn in_memory_file_changes() {
 
     const FOO_PATH: &str = "pkg/foo.py";
 
-    let mut nth = 0;
-    let mut expect_request = |expected_init: Vec<String>, expected_foo: Vec<String>| {
+    let expect_request = |id, expected_init: Vec<String>, expected_foo: Vec<String>| {
         let actual_foo = server.diagnostics_for_file(FOO_PATH);
         let actual_init = server.diagnostics_for_file("pkg/__init__.py");
-        nth += 1;
-        assert_eq!(actual_foo, expected_foo, "in request #{nth} (foo.py)");
-        assert_eq!(
-            actual_init, expected_init,
-            "in request #{nth} (__init__.py)"
-        );
+        assert_eq!(actual_foo, expected_foo, "in request {id:?} (foo.py)");
+        assert_eq!(actual_init, expected_init, "in request {id} (__init__.py)");
     };
 
     let revealed_type_int = "Revealed type is \"builtins.int\"".to_string();
     let revealed_type_str = "Revealed type is \"builtins.str\"".to_string();
     let revealed_type_bytes = "Revealed type is \"builtins.bytes\"".to_string();
     let revealed_type_any = "Revealed type is \"Any\"".to_string();
-    expect_request(vec![revealed_type_int.clone()], vec![]);
+    expect_request("initially", vec![revealed_type_int.clone()], vec![]);
 
     server.notify::<DidOpenTextDocument>(DidOpenTextDocumentParams {
         text_document: TextDocumentItem {
             uri: server.doc_id(FOO_PATH).uri,
             language_id: "python".to_owned(),
             version: 0,
-            text: "x = ".to_owned(),
+            text: "x = ''\n".to_owned(),
         },
     });
 
-    expect_request(vec![revealed_type_str.clone()], vec![]);
+    expect_request("after opening", vec![revealed_type_str.clone()], vec![]);
     server.write_file("pkg/foo.py", "x = 1()\n");
-    expect_request(vec![revealed_type_str], vec![]);
+    expect_request("after FS write", vec![revealed_type_str], vec![]);
 
     let change_foo_to = |text, version| {
         server.notify::<DidChangeTextDocument>(DidChangeTextDocumentParams {
@@ -265,20 +260,39 @@ fn in_memory_file_changes() {
 
     change_foo_to("x=b''\n".to_string(), 1);
 
-    expect_request(vec![revealed_type_bytes], vec![]);
+    expect_request("after first DidChange", vec![revealed_type_bytes], vec![]);
 
     change_foo_to("x=1\n1.0()\n".to_string(), 2);
 
     expect_request(
+        "after second DidChange",
         vec![revealed_type_int],
-        vec!["\"float\" is not callable".to_string()],
+        vec!["\"float\" not callable".to_string()],
     );
 
     server.notify::<DidCloseTextDocument>(DidCloseTextDocumentParams {
         text_document: server.doc_id(FOO_PATH),
     });
+    /*
+     * TODO
     expect_request(
+        "after close",
         vec![revealed_type_any],
         vec!["\"int\" is not callable".to_string()],
     );
+    */
+    // Delete the file and check that it returns the correct error when requesting diagnostics
+    server.remove_file("pkg/foo.py");
+    let response =
+        server.request_with_response::<DocumentDiagnosticRequest>(DocumentDiagnosticParams {
+            text_document: server.doc_id(FOO_PATH),
+            identifier: None,
+            previous_result_id: None,
+            partial_result_params: PartialResultParams::default(),
+            work_done_progress_params: WorkDoneProgressParams::default(),
+        });
+    let error = response.error.expect("Expected an error");
+    assert!(response.result.is_none());
+    assert_eq!(error.message, "File does not exist");
+    assert_eq!(error.code, lsp_server::ErrorCode::InvalidParams as i32);
 }

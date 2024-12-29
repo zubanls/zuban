@@ -146,6 +146,10 @@ impl Server {
     pub(crate) fn write_file(&self, rel_path: &str, code: &str) {
         self.tmp_dir.write_file(rel_path, code)
     }
+
+    pub(crate) fn remove_file(&self, rel_path: &str) {
+        self.tmp_dir.remove_file(rel_path)
+    }
 }
 
 struct FileEntry<'x> {

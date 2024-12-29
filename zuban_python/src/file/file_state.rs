@@ -47,6 +47,7 @@ pub struct FileSystemReader {}
 
 impl Vfs for FileSystemReader {
     fn read_file(&self, path: &str) -> std::io::Result<String> {
+        tracing::debug!("Read from FS: {path}");
         fs::read_to_string(path)
     }
 }
