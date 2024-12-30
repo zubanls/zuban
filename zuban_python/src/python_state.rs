@@ -478,6 +478,7 @@ impl PythonState {
                 }
             }
         }
+        #[collapse_debuginfo(yes)]
         macro_rules! cache_index {
             ($attr_name:ident, $module_name:ident, $name:literal) => {
                 cache_index!($attr_name, $module_name, $name, false)
