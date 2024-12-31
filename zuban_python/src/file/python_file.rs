@@ -248,6 +248,18 @@ impl fmt::Debug for PythonFile {
 }
 
 impl<'db> PythonFile {
+    pub fn from_path_and_code(
+        project: &PythonProject,
+        file_index: FileIndex,
+        file_entry: &FileEntry,
+        path: &str,
+        code: Box<str>,
+    ) -> Self {
+        debug!("Initialize {path} ({file_index})");
+        let is_stub = path.ends_with(".pyi");
+        PythonFile::new(project, file_index, &file_entry, code, is_stub)
+    }
+
     pub fn new(
         project_options: &PythonProject,
         file_index: FileIndex,

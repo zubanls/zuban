@@ -4,7 +4,6 @@ use parsa_python_cst::{CodeIndex, Keyword, NodeIndex};
 
 use crate::{
     database::{Database, FileIndex},
-    debug,
     diagnostics::{Diagnostic, DiagnosticConfig},
     file::PythonFile,
     imports::STUBS_SUFFIX,
@@ -107,13 +106,11 @@ impl FileStateLoader for PythonFileLoader {
         code: Box<str>,
         invalidates_db: bool,
     ) -> Pin<Box<FileState>> {
-        let is_stub = path.ends_with(".pyi");
-        debug!("Initialize {path} ({file_index})");
-        let new_python_file = PythonFile::new(project, file_index, &file_entry, code, is_stub);
+        let file = PythonFile::from_path_and_code(project, file_index, &file_entry, &path, code);
         Box::pin(FileState::new_parsed(
             file_entry,
             path,
-            new_python_file,
+            file,
             invalidates_db,
         ))
     }
@@ -166,7 +163,7 @@ pub trait File: std::fmt::Debug + AsAny {
 #[derive(Debug, Clone)]
 pub struct FileState {
     path: Box<str>,
-    file_entry: Rc<FileEntry>,
+    pub file_entry: Rc<FileEntry>,
     state: InternalFileExistence,
     invalidates: Option<Invalidations>,
 }

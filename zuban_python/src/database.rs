@@ -1258,11 +1258,18 @@ impl Database {
         self.invalidate_files(file_index, invalidations)
     }
 
-    fn update_file(&mut self, file_index: FileIndex, new_code: String) {
+    fn update_file(&mut self, file_index: FileIndex, new_code: Box<str>) {
         let file_state = &mut self.files[file_index.0 as usize];
         let invalidations = file_state.unload_and_return_invalidations();
+        let new_file = PythonFile::from_path_and_code(
+            &self.project,
+            file_index,
+            &file_state.file_entry,
+            file_state.path(),
+            new_code,
+        );
+        file_state.update(new_file);
         self.invalidate_files(file_index, invalidations);
-        //file_state.update(new_code)
     }
 
     fn invalidate_files(&mut self, original_file_index: FileIndex, invalidations: Invalidations) {
@@ -1331,7 +1338,7 @@ impl Database {
             })
             .collect();
         for path in in_mem_paths {
-            self.unload_in_memory_file(&path);
+            self.unload_in_memory_file(&path).unwrap();
         }
         self.workspaces
             .delete_directory(&self.project.flags, &*self.vfs, dir_path)
@@ -1345,8 +1352,7 @@ impl Database {
                 // This is the very typical case of closing a buffer after saving it and therefore
                 // unloading the file from memory and using the file from the file system.
                 if Some(on_file_system_code.as_str()) != file_state.code() {
-                    // TODO
-                    // file_state.update(new_code);
+                    self.update_file(file_index, on_file_system_code.into())
                 }
             } else {
                 self.unload_file(file_index);
