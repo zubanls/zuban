@@ -14,10 +14,7 @@ use parsa_python_cst::NodeIndex;
 use crate::{
     config::{OverrideConfig, Settings},
     debug,
-    file::{
-        File, FileState, FileStateLoader, FileSystemReader, LanguageFileState, PythonFile,
-        PythonFileLoader, Vfs,
-    },
+    file::{File, FileState, FileStateLoader, FileSystemReader, PythonFile, PythonFileLoader, Vfs},
     node_ref::NodeRef,
     python_state::PythonState,
     sys_path,
@@ -868,7 +865,7 @@ pub struct Database {
     in_use: bool,
     pub vfs: Box<dyn Vfs>,
     file_state_loaders: FileStateLoaders,
-    pub files: InsertOnlyVec<dyn FileState>,
+    pub files: InsertOnlyVec<FileState>,
     pub workspaces: Workspaces,
     in_memory_files: HashMap<Box<str>, FileIndex>,
 
@@ -945,7 +942,7 @@ impl Database {
             flags: options.flags,
             overrides: options.overrides,
         };
-        let files = InsertOnlyVec::<dyn FileState>::default();
+        let files = InsertOnlyVec::<FileState>::default();
         let mut workspaces = self.workspaces.clone_with_new_rcs();
         for file_state in unsafe { self.files.iter() } {
             fn search_parent(
@@ -1101,11 +1098,11 @@ impl Database {
         // todo handle watcher events here
     }
 
-    pub fn file_state(&self, index: FileIndex) -> &(dyn FileState + 'static) {
+    pub fn file_state(&self, index: FileIndex) -> &FileState {
         self.files.get(index.0 as usize).unwrap()
     }
 
-    pub fn file_state_mut(&mut self, index: FileIndex) -> &mut (dyn FileState + 'static) {
+    pub fn file_state_mut(&mut self, index: FileIndex) -> &mut FileState {
         &mut self.files[index.0 as usize]
     }
 
@@ -1138,10 +1135,7 @@ impl Database {
         None
     }
 
-    fn with_add_file_state(
-        &self,
-        add: impl FnOnce(FileIndex) -> Pin<Box<dyn FileState>>,
-    ) -> FileIndex {
+    fn with_add_file_state(&self, add: impl FnOnce(FileIndex) -> Pin<Box<FileState>>) -> FileIndex {
         let file_index = FileIndex(self.files.len() as u32);
         self.files.push(add(file_index));
         file_index
@@ -1153,7 +1147,7 @@ impl Database {
         add: impl FnOnce(FileIndex) -> PythonFile,
     ) -> &PythonFile {
         let index = self.with_add_file_state(|file_index| {
-            Box::pin(LanguageFileState::new_parsed(
+            Box::pin(FileState::new_parsed(
                 self.file_state(super_file.file_index).file_entry().clone(),
                 "".into(),
                 add(file_index),

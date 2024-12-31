@@ -1,4 +1,4 @@
-use std::{any::Any, fmt, fs, path::Path, pin::Pin, rc::Rc};
+use std::{any::Any, fs, path::Path, pin::Pin, rc::Rc};
 
 use parsa_python_cst::{CodeIndex, Keyword, NodeIndex};
 
@@ -75,7 +75,7 @@ pub trait FileStateLoader {
         path: Box<str>,
         code: Box<str>,
         invalidates_db: bool,
-    ) -> Pin<Box<dyn FileState>>;
+    ) -> Pin<Box<FileState>>;
 }
 
 #[derive(Default, Clone)]
@@ -106,11 +106,11 @@ impl FileStateLoader for PythonFileLoader {
         path: Box<str>,
         code: Box<str>,
         invalidates_db: bool,
-    ) -> Pin<Box<dyn FileState>> {
+    ) -> Pin<Box<FileState>> {
         let is_stub = path.ends_with(".pyi");
         debug!("Initialize {path} ({file_index})");
         let new_python_file = PythonFile::new(project, file_index, &file_entry, code, is_stub);
-        Box::pin(LanguageFileState::new_parsed(
+        Box::pin(FileState::new_parsed(
             file_entry,
             path,
             new_python_file,
@@ -163,101 +163,51 @@ pub trait File: std::fmt::Debug + AsAny {
     fn has_super_file(&self) -> bool;
 }
 
-pub trait FileState: fmt::Debug + Unpin {
-    fn path(&self) -> &str;
-    fn file_entry(&self) -> &Rc<FileEntry>;
-    fn file(&self) -> Option<&(dyn File + 'static)>;
-    fn maybe_loaded_file_mut(&mut self) -> Option<&mut dyn File>;
-    fn unload_and_return_invalidations(&mut self) -> Invalidations;
-    fn add_invalidates(&self, file_index: FileIndex);
-    fn code(&self) -> Option<&str>;
-    fn take_invalidations(&mut self) -> Option<Invalidations>;
-    fn invalidate_invalidates_db(&self) -> bool;
-    fn update(&mut self, file: PythonFile);
-    fn clone_box(&self, new_file_entry: Rc<FileEntry>) -> Pin<Box<dyn FileState>>;
+#[derive(Debug, Clone)]
+pub struct FileState {
+    path: Box<str>,
+    file_entry: Rc<FileEntry>,
+    state: InternalFileExistence,
+    invalidates: Option<Invalidations>,
 }
 
-impl<F: File + Unpin + Clone> FileState for LanguageFileState<F> {
-    fn path(&self) -> &str {
+impl FileState {
+    pub(crate) fn path(&self) -> &str {
         &self.path
     }
 
-    fn file_entry(&self) -> &Rc<FileEntry> {
+    pub(crate) fn file_entry(&self) -> &Rc<FileEntry> {
         &self.file_entry
     }
 
-    fn code(&self) -> Option<&str> {
+    pub(crate) fn code(&self) -> Option<&str> {
         Some(self.file()?.code())
     }
 
-    fn file(&self) -> Option<&(dyn File + 'static)> {
-        match &self.state {
-            InternalFileExistence::Unloaded => None,
-            InternalFileExistence::Parsed(f) => Some(f),
-        }
-    }
-
-    fn maybe_loaded_file_mut(&mut self) -> Option<&mut dyn File> {
-        match &mut self.state {
-            InternalFileExistence::Parsed(f) => Some(f),
-            _ => None,
-        }
-    }
-
-    fn unload_and_return_invalidations(&mut self) -> Invalidations {
+    pub(crate) fn unload_and_return_invalidations(&mut self) -> Invalidations {
         let invalidates = self.take_invalidations();
         self.state = InternalFileExistence::Unloaded;
         invalidates.expect("We don't support rebuilding/unloading after changing of typeshed, yet.")
     }
 
-    fn take_invalidations(&mut self) -> Option<Invalidations> {
+    pub(crate) fn take_invalidations(&mut self) -> Option<Invalidations> {
         self.invalidates.as_mut().map(std::mem::take)
     }
 
-    fn add_invalidates(&self, file_index: FileIndex) {
+    pub(crate) fn add_invalidates(&self, file_index: FileIndex) {
         if let Some(invalidates) = &self.invalidates {
             invalidates.add(file_index)
         }
     }
 
-    fn invalidate_invalidates_db(&self) -> bool {
+    pub(crate) fn invalidate_invalidates_db(&self) -> bool {
         self.invalidates.is_none()
     }
 
-    fn update(&mut self, file: PythonFile) {
-        //self.update(file)
-    }
-
-    fn clone_box(&self, new_file_entry: Rc<FileEntry>) -> Pin<Box<dyn FileState>> {
-        let mut new = self.clone();
-        new.file_entry = new_file_entry;
-        Box::pin(new)
-    }
-}
-
-#[derive(Clone)]
-pub struct LanguageFileState<F: 'static + Clone> {
-    path: Box<str>,
-    file_entry: Rc<FileEntry>,
-    state: InternalFileExistence<F>,
-    invalidates: Option<Invalidations>,
-}
-
-impl<F: Clone> fmt::Debug for LanguageFileState<F> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("LanguageFileState")
-            .field("path", &self.path)
-            .field("state", &self.state)
-            .field("invalidates", &self.invalidates)
-            .finish()
-    }
-}
-
-impl<F: File + Clone> LanguageFileState<F> {
-    pub fn new_parsed(
+    pub(crate) fn new_parsed(
         file_entry: Rc<FileEntry>,
         path: Box<str>,
-        file: F,
+        file: PythonFile,
         invalidates_db: bool,
     ) -> Self {
         Self {
@@ -268,25 +218,33 @@ impl<F: File + Clone> LanguageFileState<F> {
         }
     }
 
-    pub fn update(&mut self, file: F) {
+    pub(crate) fn update(&mut self, file: PythonFile) {
         debug_assert!(matches!(self.state, InternalFileExistence::Unloaded));
         self.state = InternalFileExistence::Parsed(file)
     }
-}
-
-#[derive(Clone)]
-enum InternalFileExistence<F: 'static + Clone> {
-    Unloaded,
-    Parsed(F),
-}
-
-impl<F: Clone> fmt::Debug for InternalFileExistence<F> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        // Intentionally remove the T here, because it's usually huge and we are usually not
-        // interested in that while debugging.
-        match *self {
-            Self::Unloaded => write!(f, "Unloaded"),
-            Self::Parsed(_) => write!(f, "Parsed(_)"),
+    pub(crate) fn file(&self) -> Option<&(dyn File + 'static)> {
+        match &self.state {
+            InternalFileExistence::Unloaded => None,
+            InternalFileExistence::Parsed(f) => Some(f),
         }
     }
+
+    pub(crate) fn maybe_loaded_file_mut(&mut self) -> Option<&mut dyn File> {
+        match &mut self.state {
+            InternalFileExistence::Parsed(f) => Some(f),
+            _ => None,
+        }
+    }
+
+    pub(crate) fn clone_box(&self, new_file_entry: Rc<FileEntry>) -> Pin<Box<FileState>> {
+        let mut new = self.clone();
+        new.file_entry = new_file_entry;
+        Box::pin(new)
+    }
+}
+
+#[derive(Clone, Debug)]
+enum InternalFileExistence {
+    Unloaded,
+    Parsed(PythonFile),
 }
