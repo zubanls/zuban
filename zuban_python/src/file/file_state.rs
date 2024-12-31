@@ -167,7 +167,7 @@ pub trait FileState: fmt::Debug + Unpin {
     fn file_entry(&self) -> &Rc<FileEntry>;
     fn file(&self, reader: &dyn Vfs) -> Option<&(dyn File + 'static)>;
     fn maybe_loaded_file_mut(&mut self) -> Option<&mut dyn File>;
-    fn unload_and_return_invalidations(&mut self) -> Option<Invalidations>;
+    fn unload_and_return_invalidations(&mut self) -> Invalidations;
     fn add_invalidates(&self, file_index: FileIndex);
     fn take_invalidations(&mut self) -> Option<Invalidations>;
     fn invalidate_invalidates_db(&self) -> bool;
@@ -197,10 +197,10 @@ impl<F: File + Unpin + Clone> FileState for LanguageFileState<F> {
         }
     }
 
-    fn unload_and_return_invalidations(&mut self) -> Option<Invalidations> {
+    fn unload_and_return_invalidations(&mut self) -> Invalidations {
         let invalidates = self.take_invalidations();
         self.state = InternalFileExistence::Unloaded;
-        invalidates
+        invalidates.expect("We don't support rebuilding/unloading after changing of typeshed, yet.")
     }
 
     fn take_invalidations(&mut self) -> Option<Invalidations> {

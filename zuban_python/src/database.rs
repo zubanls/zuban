@@ -1198,6 +1198,7 @@ impl Database {
     }
 
     pub fn load_in_memory_file(&mut self, path: Box<str>, code: Box<str>) -> FileIndex {
+        debug!("Loading in memory file: {path}");
         let ensured = self
             .workspaces
             .ensure_file(&self.project.flags, &*self.vfs, &path);
@@ -1215,8 +1216,10 @@ impl Database {
             self.in_memory_files.insert(path.clone(), file_index);
             Some(file_index)
         });
+        let mut file_invalidations = Default::default();
         if let Some(file_index) = in_mem_file {
-            self.unload_file_and_maybe_workspace_part(file_index, false);
+            let file_state = &mut self.files[file_index.0 as usize];
+            file_invalidations = file_state.unload_and_return_invalidations();
         }
 
         // TODO there could be no loader...
@@ -1249,6 +1252,7 @@ impl Database {
             }
         }
         self.invalidate_files(file_index, ensured.invalidations);
+        self.invalidate_files(file_index, file_invalidations);
         file_index
     }
 
@@ -1257,22 +1261,10 @@ impl Database {
     }
 
     fn unload_file(&mut self, file_index: FileIndex) {
-        self.unload_file_and_maybe_workspace_part(file_index, true)
-    }
-
-    fn unload_file_and_maybe_workspace_part(
-        &mut self,
-        file_index: FileIndex,
-        maybe_workspace: bool,
-    ) {
         let file_state = &mut self.files[file_index.0 as usize];
-        if maybe_workspace {
-            self.workspaces
-                .unload_file(&self.project.flags, &*self.vfs, file_state.path());
-        }
-        let invalidations = file_state
-            .unload_and_return_invalidations()
-            .expect("We don't support rebuilding/unloading after changing of typeshed, yet.");
+        self.workspaces
+            .unload_file(&self.project.flags, &*self.vfs, file_state.path());
+        let invalidations = file_state.unload_and_return_invalidations();
         self.invalidate_files(file_index, invalidations)
     }
 
