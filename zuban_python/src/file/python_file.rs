@@ -121,6 +121,10 @@ impl File for PythonFile {
         self.file_index
     }
 
+    fn code(&self) -> &str {
+        self.tree.code()
+    }
+
     fn node_start_position(&self, n: NodeIndex) -> FilePosition {
         FilePosition::new(self, self.tree.node_start_position(n))
     }

@@ -1030,12 +1030,7 @@ impl Database {
                         .is_ok_and(|dir| dir.name.as_ref() == name)
                     || !is_package && entry.name.as_ref() == name
                 {
-                    *pointer_ref = file_state
-                        .file(&*self.vfs)
-                        .unwrap()
-                        .as_any()
-                        .downcast_ref()
-                        .unwrap();
+                    *pointer_ref = file_state.file().unwrap().as_any().downcast_ref().unwrap();
                     debug_assert!(i < 12);
                     return;
                 }
@@ -1121,7 +1116,7 @@ impl Database {
     pub fn loaded_file(&self, index: FileIndex) -> &(dyn File + 'static) {
         let state = self.file_state(index);
         let f = state
-            .file(&*self.vfs)
+            .file()
             .unwrap_or_else(|| panic!("file #{index}: {}", state.path()));
         f
     }
@@ -1262,10 +1257,18 @@ impl Database {
 
     fn unload_file(&mut self, file_index: FileIndex) {
         let file_state = &mut self.files[file_index.0 as usize];
+        let path = file_state.path();
         self.workspaces
-            .unload_file(&self.project.flags, &*self.vfs, file_state.path());
+            .unload_file(&self.project.flags, &*self.vfs, path);
         let invalidations = file_state.unload_and_return_invalidations();
         self.invalidate_files(file_index, invalidations)
+    }
+
+    fn update_file(&mut self, file_index: FileIndex, new_code: String) {
+        let file_state = &mut self.files[file_index.0 as usize];
+        let invalidations = file_state.unload_and_return_invalidations();
+        self.invalidate_files(file_index, invalidations);
+        //file_state.update(new_code)
     }
 
     fn invalidate_files(&mut self, original_file_index: FileIndex, invalidations: Invalidations) {
@@ -1341,9 +1344,19 @@ impl Database {
     }
 
     pub fn unload_in_memory_file(&mut self, path: &str) -> Result<(), &'static str> {
-        if let Some(file_index) = self.in_memory_files.get(path) {
-            self.unload_file(*file_index);
-            self.in_memory_files.remove(path);
+        if let Some(file_index) = self.in_memory_files.remove(path) {
+            if let Ok(on_file_system_code) = self.vfs.read_file(path) {
+                let file_state = &mut self.files[file_index.0 as usize];
+                // In case the code matches the one already in the file, we don't have to do anything.
+                // This is the very typical case of closing a buffer after saving it and therefore
+                // unloading the file from memory and using the file from the file system.
+                if Some(on_file_system_code.as_str()) != file_state.code() {
+                    // TODO
+                    // file_state.update(new_code);
+                }
+            } else {
+                self.unload_file(file_index);
+            }
             Ok(())
         } else {
             Err("The path is not known to be an in memory file")

@@ -151,6 +151,7 @@ pub trait File: std::fmt::Debug + AsAny {
     fn file_path<'db>(&self, db: &'db Database) -> &'db str {
         db.file_path(self.file_index())
     }
+    fn code(&self) -> &str;
 
     fn diagnostics<'db>(
         &'db self,
@@ -165,12 +166,14 @@ pub trait File: std::fmt::Debug + AsAny {
 pub trait FileState: fmt::Debug + Unpin {
     fn path(&self) -> &str;
     fn file_entry(&self) -> &Rc<FileEntry>;
-    fn file(&self, reader: &dyn Vfs) -> Option<&(dyn File + 'static)>;
+    fn file(&self) -> Option<&(dyn File + 'static)>;
     fn maybe_loaded_file_mut(&mut self) -> Option<&mut dyn File>;
     fn unload_and_return_invalidations(&mut self) -> Invalidations;
     fn add_invalidates(&self, file_index: FileIndex);
+    fn code(&self) -> Option<&str>;
     fn take_invalidations(&mut self) -> Option<Invalidations>;
     fn invalidate_invalidates_db(&self) -> bool;
+    fn update(&mut self, file: PythonFile);
     fn clone_box(&self, new_file_entry: Rc<FileEntry>) -> Pin<Box<dyn FileState>>;
 }
 
@@ -183,7 +186,11 @@ impl<F: File + Unpin + Clone> FileState for LanguageFileState<F> {
         &self.file_entry
     }
 
-    fn file(&self, _file_system_reader: &dyn Vfs) -> Option<&(dyn File + 'static)> {
+    fn code(&self) -> Option<&str> {
+        Some(self.file()?.code())
+    }
+
+    fn file(&self) -> Option<&(dyn File + 'static)> {
         match &self.state {
             InternalFileExistence::Unloaded => None,
             InternalFileExistence::Parsed(f) => Some(f),
@@ -215,6 +222,10 @@ impl<F: File + Unpin + Clone> FileState for LanguageFileState<F> {
 
     fn invalidate_invalidates_db(&self) -> bool {
         self.invalidates.is_none()
+    }
+
+    fn update(&mut self, file: PythonFile) {
+        //self.update(file)
     }
 
     fn clone_box(&self, new_file_entry: Rc<FileEntry>) -> Pin<Box<dyn FileState>> {
@@ -255,6 +266,11 @@ impl<F: File + Clone> LanguageFileState<F> {
             state: InternalFileExistence::Parsed(file),
             invalidates: (!invalidates_db).then(Invalidations::default),
         }
+    }
+
+    pub fn update(&mut self, file: F) {
+        debug_assert!(matches!(self.state, InternalFileExistence::Unloaded));
+        self.state = InternalFileExistence::Parsed(file)
     }
 }
 
