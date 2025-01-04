@@ -1,6 +1,6 @@
 [submodule "typeshed"]
 	path = typeshed
 	url = https://github.com/python/typeshed
-[submodule "zuban_python/tests/mypylike/mypy"]
-	path = zuban_python/tests/mypylike/mypy
+[submodule "crates/zuban_python/tests/mypylike/mypy"]
+	path = crates/zuban_python/tests/mypylike/mypy
 	url = https://github.com/davidhalter/mypy

@@ -1,18 +1,7 @@
 [workspace]
 
 resolver = "2"
-members = [
-    "parsa",
-    "parsa_python",
-    "parsa_python_cst",
-    "zuban_python",
-    "zubanls",
-    "zmypy",
-    "scripts",
-    "test_utils",
-    "logging_config",
-    "config_searcher",
-]
+members = ["crates/*"]
 
 [workspace.package]
 edition = "2021"
@@ -22,13 +11,13 @@ authors = ["Dave Halter <davidhalter88@gmail.com>"]
 
 [workspace.dependencies]
 # Internal crates
-parsa = { path = "./parsa" }
-parsa_python = { path = "./parsa_python" }
-parsa_python_cst = { path = "./parsa_python_cst" }
-zuban_python = { path = "./zuban_python" }
-test_utils = { path = "./test_utils" }
-logging_config = { path = "./logging_config" }
-config_searcher = { path = "./config_searcher" }
+parsa = { path = "./crates/parsa" }
+parsa_python = { path = "./crates/parsa_python" }
+parsa_python_cst = { path = "./crates/parsa_python_cst" }
+zuban_python = { path = "./crates/zuban_python" }
+test_utils = { path = "./crates/test_utils" }
+logging_config = { path = "./crates/logging_config" }
+config_searcher = { path = "./crates/config_searcher" }
 
 # General third party dependencies
 anyhow = "*"

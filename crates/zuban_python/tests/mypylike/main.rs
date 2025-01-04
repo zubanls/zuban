@@ -815,7 +815,7 @@ fn mypy_style_cases<'a, 'b>(file_name: &'a str, code: &'b str) -> Vec<TestCase<'
 
 fn get_base() -> PathBuf {
     // TODO windows, this slash probably makes problems...
-    let mut base = PathBuf::from(file!().replace("zuban_python/", ""));
+    let mut base = PathBuf::from(file!().replace("crates/zuban_python/", ""));
     assert!(base.pop());
     base
 }
