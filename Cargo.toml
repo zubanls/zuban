@@ -32,7 +32,7 @@ shellexpand = "*"
 toml_edit = "*"
 tracing = "*"
 tracing-subscriber = { version = "*", features = ["time", "local-time"] }
-walkdir = "2"
+walkdir = "*"
 
 # Dev dependencies
 insta = "*"

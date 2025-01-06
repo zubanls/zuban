@@ -421,6 +421,7 @@ impl<'db> PythonFile {
                     return false;
                 }
                 dir.search("py.typed").is_some_and(|entry| match &*entry {
+                    // TODO we are currently never invalidating this file, when it changes
                     DirectoryEntry::File(entry) => db
                         .vfs
                         .read_file(&entry.path(db.vfs.as_ref()))

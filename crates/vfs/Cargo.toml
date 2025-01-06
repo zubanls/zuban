@@ -1,0 +1,13 @@
+[package]
+name = "vfs"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+homepage.workspace = true
+authors.workspace = true
+
+[dependencies]
+tracing.workspace = true
+crossbeam-channel.workspace = true
+notify = "*"
+walkdir = "*"
