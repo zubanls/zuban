@@ -189,17 +189,13 @@ impl Workspace {
             PathBuf::from(&**root_path),
             Directory::new(Parent::Workspace(root_path.clone()), "".into()),
         )];
+        let mut walk_dir = WalkDir::new(&**root_path).follow_links(true).into_iter();
+        // The first entry needs to be ignored, because it's the directory itself.
+        walk_dir.next();
         let mut first = true;
         // TODO optimize if there are a lot of files
-        for entry in WalkDir::new(&**root_path)
-            .follow_links(true)
-            .into_iter()
+        for entry in walk_dir
             .filter_entry(|entry| {
-                if first {
-                    // The first entry needs to be ignored, because it's the directory itself.
-                    first = false;
-                    return true;
-                }
                 entry.file_name().to_str().is_some_and(|name| {
                     !loaders.iter().any(|l| l.should_be_ignored(name))
                         && loaders.iter().any(|l| l.might_be_relevant(name))
@@ -207,7 +203,6 @@ impl Workspace {
             })
             // TODO is it ok that we filter out all errors?
             .filter_map(|e| e.ok())
-            .skip(1)
         {
             while !entry.path().starts_with(&stack.last().unwrap().0) {
                 let n = stack.pop().unwrap().1;
