@@ -192,7 +192,6 @@ impl Workspace {
         let mut walk_dir = WalkDir::new(&**root_path).follow_links(true).into_iter();
         // The first entry needs to be ignored, because it's the directory itself.
         walk_dir.next();
-        let mut first = true;
         // TODO optimize if there are a lot of files
         for entry in walk_dir
             .filter_entry(|entry| {
