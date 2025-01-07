@@ -1,8 +1,6 @@
 //! Scheduling, I/O, and API endpoints.
 
-// The new PanicInfoHook name requires MSRV >= 1.82
-#[allow(deprecated)]
-use std::panic::PanicInfo;
+use std::panic::PanicHookInfo;
 use std::{path::PathBuf, rc::Rc};
 use vfs::{LocalFS, NotifyEvent, Vfs};
 
@@ -165,7 +163,6 @@ if let Some(trace) = init_params.trace {
 
 ...
 
-// The new PanicInfoHook name requires MSRV >= 1.82
 #[allow(deprecated)]
 type PanicHook = Box<dyn Fn(&PanicInfo<'_>) + 'static + Sync + Send>;
 struct RestorePanicHook {
