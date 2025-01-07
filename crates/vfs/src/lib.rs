@@ -2,13 +2,17 @@
 
 mod local_fs;
 
+use crossbeam_channel::Receiver;
 pub use local_fs::LocalFS;
+
+pub type NotifyEvent = notify::Result<notify::Event>;
 
 /// Interface for reading and watching files.                                  
 pub trait Vfs {
     /// Load the content of the given file, returning [`None`] if it does not  
     /// exists.                                                                
-    fn read_and_watch_file(&mut self, path: &str) -> Option<String>;
+    fn read_and_watch_file(&self, path: &str) -> Option<String>;
+    fn notify_receiver(&self) -> Option<&Receiver<NotifyEvent>>;
 }
 
 /*

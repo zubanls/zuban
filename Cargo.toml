@@ -18,13 +18,15 @@ zuban_python = { path = "./crates/zuban_python" }
 test_utils = { path = "./crates/test_utils" }
 logging_config = { path = "./crates/logging_config" }
 config_searcher = { path = "./crates/config_searcher" }
+vfs = { path = "./crates/vfs" }
 
 # General third party dependencies
 anyhow = "*"
 clap = { version = "4.5.4", features = ["derive"] }
 crossbeam-channel = "*"
-lazy_static = "*"
 fnv = "*"
+lazy_static = "*"
+notify = "*"
 regex = "*"
 serde = "*"
 serde_json = "*"

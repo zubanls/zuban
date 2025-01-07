@@ -1,21 +1,19 @@
-use std::path::Path;
+use std::{cell::RefCell, path::Path};
 
 use crossbeam_channel::{unbounded, Receiver, Sender};
 use notify::{recommended_watcher, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use walkdir::WalkDir;
 
-use crate::Vfs;
-
-type NotifyEvent = notify::Result<notify::Event>;
+use crate::{NotifyEvent, Vfs};
 
 const STUBS_SUFFIX: &str = "-stubs";
 
 pub struct LocalFS {
-    watcher: Option<(RecommendedWatcher, Receiver<NotifyEvent>)>,
+    watcher: Option<(RefCell<RecommendedWatcher>, Receiver<NotifyEvent>)>,
 }
 
 impl Vfs for LocalFS {
-    fn read_and_watch_file(&mut self, path: &str) -> Option<String> {
+    fn read_and_watch_file(&self, path: &str) -> Option<String> {
         tracing::debug!("Read from FS: {path}");
         // Need to watch first, because otherwise the file might be read deleted and then watched.
         self.watch(path);
@@ -24,6 +22,10 @@ impl Vfs for LocalFS {
             tracing::error!("Tried to read {path} but failed: {error}");
         }
         result.ok()
+    }
+
+    fn notify_receiver(&self) -> Option<&Receiver<NotifyEvent>> {
+        self.watcher.as_ref().map(|(_, r)| r)
     }
 }
 
@@ -40,7 +42,7 @@ impl LocalFS {
             }
         }));
         Self {
-            watcher: watcher.map(|w| (w, watcher_receiver)),
+            watcher: watcher.map(|w| (RefCell::new(w), watcher_receiver)),
         }
     }
 
@@ -66,9 +68,13 @@ impl LocalFS {
             });
     }
 
-    fn watch(&mut self, path: &str) {
-        if let Some((watcher, _)) = &mut self.watcher {
-            log_notify_error(watcher.watch(Path::new(path), RecursiveMode::NonRecursive));
+    fn watch(&self, path: &str) {
+        if let Some((watcher, _)) = &self.watcher {
+            log_notify_error(
+                watcher
+                    .borrow_mut()
+                    .watch(Path::new(path), RecursiveMode::NonRecursive),
+            );
         }
     }
 }

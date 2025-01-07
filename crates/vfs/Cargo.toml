@@ -9,5 +9,5 @@ authors.workspace = true
 [dependencies]
 tracing.workspace = true
 crossbeam-channel.workspace = true
-notify = "*"
+notify.workspace = true
 walkdir = "*"

@@ -1223,5 +1223,6 @@ dependencies = [
  "test_utils",
  "tracing",
  "tracing-subscriber",
+ "vfs",
  "zuban_python",
 ]

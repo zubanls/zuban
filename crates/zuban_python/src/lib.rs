@@ -45,6 +45,10 @@ impl Project {
         Self { db }
     }
 
+    pub fn invalidate_path(&mut self, path: &str) {
+        todo!()
+    }
+
     pub fn search(&self, _string: &str, _all_scopes: bool) {}
 
     pub fn complete_search(&self, _string: &str, _all_scopes: bool) {}

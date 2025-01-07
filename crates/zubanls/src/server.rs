@@ -3,9 +3,10 @@
 // The new PanicInfoHook name requires MSRV >= 1.82
 #[allow(deprecated)]
 use std::panic::PanicInfo;
-use std::path::PathBuf;
+use std::{path::PathBuf, rc::Rc};
+use vfs::{LocalFS, NotifyEvent, Vfs};
 
-use crossbeam_channel::Sender;
+use crossbeam_channel::{never, select, Sender};
 use lsp_server::{Connection, ExtractError, Message, Request};
 use lsp_types::Uri;
 use serde::{de::DeserializeOwned, Serialize};
@@ -109,26 +110,46 @@ pub fn run_server() -> anyhow::Result<()> {
     run_server_with_custom_connection(connection, || Ok(io_threads.join()?))
 }
 
+enum Event {
+    Lsp(Message),
+    Notify(NotifyEvent),
+}
+
 fn event_loop(
     capabilities: ClientCapabilities,
     connection: lsp_server::Connection,
     roots: Vec<String>,
 ) -> anyhow::Result<()> {
     let mut global_state = GlobalState::new(connection.sender, capabilities, roots);
-    for msg in connection.receiver.iter() {
-        use lsp_types::notification::Notification;
-        match msg {
-            Message::Request(r) => global_state.on_request(r),
-            Message::Notification(n) => {
-                if n.method == lsp_types::notification::Exit::METHOD {
-                    return Ok(());
+    loop {
+        let event = select! {
+            recv(connection.receiver) -> msg => Event::Lsp(msg?),
+            recv(global_state.vfs.notify_receiver().unwrap_or(&never())) -> msg =>
+                Event::Notify(msg?),
+        };
+        match event {
+            Event::Lsp(msg) => {
+                use lsp_types::notification::Notification;
+                match msg {
+                    Message::Request(r) => global_state.on_request(r),
+                    Message::Notification(n) => {
+                        if n.method == lsp_types::notification::Exit::METHOD {
+                            return Ok(());
+                        }
+                        global_state.on_notification(n)
+                    }
+                    Message::Response(r) => global_state.complete_request(r),
                 }
-                global_state.on_notification(n)
             }
-            Message::Response(r) => global_state.complete_request(r),
+            Event::Notify(event) => {
+                global_state.on_notify_event(event);
+                // Check all events in the Notify queue
+                while let Ok(next) = global_state.vfs.notify_receiver().unwrap().try_recv() {
+                    global_state.on_notify_event(next);
+                }
+            }
         }
     }
-    Ok(())
 }
 
 /*
@@ -199,6 +220,7 @@ struct NotificationDispatcher<'a> {
 pub(crate) struct GlobalState {
     pub sender: Sender<lsp_server::Message>,
     pub roots: Vec<String>,
+    pub vfs: Rc<dyn Vfs>,
     pub project: Option<Project>,
     pub shutdown_requested: bool,
 }
@@ -213,6 +235,7 @@ impl GlobalState {
             sender,
             roots,
             project: None,
+            vfs: Rc::new(LocalFS::with_watcher()),
             shutdown_requested: false,
         }
     }
@@ -298,6 +321,22 @@ impl GlobalState {
         .on_sync_mut::<DocumentDiagnosticRequest>(GlobalState::handle_document_diagnostics)
         .on_sync_mut::<Shutdown>(GlobalState::handle_shutdown)
         .finish();
+    }
+
+    fn on_notify_event(&mut self, event: NotifyEvent) {
+        if let Some(project) = &mut self.project {
+            match event {
+                Ok(event) => {
+                    //project.invalidate_path()
+                }
+                Err(err) => {
+                    tracing::error!(
+                        "Invalidating project, because of a notify event error: {err:?}"
+                    );
+                    self.project = None;
+                }
+            }
+        }
     }
 
     fn respond(&mut self, response: lsp_server::Response) {
