@@ -5,7 +5,7 @@ use ini::{Ini, ParseOption};
 use regex::Regex;
 use toml_edit::{DocumentMut, Item, Table, Value};
 
-use crate::{debug, workspaces::Directory, DiagnosticConfig};
+use crate::DiagnosticConfig;
 
 type ConfigResult = anyhow::Result<bool>;
 
@@ -319,9 +319,9 @@ impl std::hash::Hash for ExcludeRegex {
 }
 
 #[derive(Clone)]
-struct OverridePath {
-    path: Vec<Box<str>>,
-    star: bool, // For things like foo.bar.*
+pub struct OverridePath {
+    pub path: Vec<Box<str>>,
+    pub star: bool, // For things like foo.bar.*
 }
 
 impl From<&str> for OverridePath {
@@ -346,48 +346,12 @@ enum OverrideIniOrTomlValue {
 
 #[derive(Clone)]
 pub(crate) struct OverrideConfig {
-    module: OverridePath, // Path like foo.bar or foo.bar.*
+    pub module: OverridePath, // Path like foo.bar or foo.bar.*
     // Key/Value mappings
     config: Vec<(Box<str>, OverrideIniOrTomlValue)>,
 }
 
 impl OverrideConfig {
-    pub fn matches_file_path(&self, name: &str, parent_dir: Option<&Directory>) -> bool {
-        fn parent_count(dir: Option<&Directory>) -> usize {
-            if let Some(dir) = dir {
-                parent_count(dir.parent.maybe_dir().ok().as_deref()) + 1
-            } else {
-                0
-            }
-        }
-        fn nth_parent<'x>(name: &'x str, dir: Option<&Directory>, n: usize) -> &'x str {
-            if n == 0 {
-                name
-            } else {
-                let dir = dir.unwrap();
-                nth_parent(
-                    // This transmute is fine, because we're only local and the parents will not
-                    // change during the parent function.
-                    unsafe { std::mem::transmute::<&str, &str>(dir.name.as_ref()) },
-                    dir.parent.maybe_dir().ok().as_deref(),
-                    n - 1,
-                )
-            }
-        }
-        let actual_path_count = parent_count(parent_dir) + 1;
-        if actual_path_count != self.module.path.len() && !self.module.star
-            || self.module.path.len() > actual_path_count
-        {
-            return false;
-        }
-        for (i, override_part) in self.module.path.iter().enumerate() {
-            if override_part.as_ref() != nth_parent(name, parent_dir, actual_path_count - i - 1) {
-                return false;
-            }
-        }
-        true
-    }
-
     pub fn apply_to_flags_and_return_ignore_errors(
         &self,
         flags: &mut TypeCheckerFlags,
@@ -586,7 +550,7 @@ fn set_bool_init_flags(
         | "explicit_package_bases"
         | "site_packages"
         | "silence_site_packages" => {
-            debug!("TODO ignored config value {name}");
+            tracing::warn!("TODO ignored config value {name}");
         }
 
         "extra_checks" => flags.extra_checks = value.as_bool(invert)?,
@@ -636,7 +600,7 @@ fn apply_from_base_config(
         | "cache_dir"
         | "warn_redundant_casts"
         | "warn_unused_configs" => {
-            debug!("TODO ignored config value {key}");
+            tracing::warn!("TODO ignored config value {key}");
         }
         "files" => {
             settings

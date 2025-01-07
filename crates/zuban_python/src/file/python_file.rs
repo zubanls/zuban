@@ -13,7 +13,7 @@ use super::{
     name_binder::{DbInfos, NameBinder},
 };
 use crate::{
-    config::{set_flag_and_return_ignore_errors, IniOrTomlValue},
+    config::{set_flag_and_return_ignore_errors, IniOrTomlValue, OverrideConfig},
     database::{
         ComplexPoint, Database, FileIndex, Locality, LocalityLink, Point, PointLink, Points,
         PythonProject, Specific,
@@ -681,7 +681,7 @@ fn info_from_directives<'x>(
     if !project.overrides.is_empty() {
         let (name, parent_dir) = name_and_parent_dir(file_entry, true);
         for override_ in &project.overrides {
-            if override_.matches_file_path(name, parent_dir.as_deref()) {
+            if override_config_matches_file_path(override_, name, parent_dir.as_deref()) {
                 if flags.is_none() {
                     flags = Some(project.flags.clone());
                 }
@@ -730,6 +730,46 @@ fn info_from_directives<'x>(
         flags,
         ignore_errors,
     }
+}
+
+pub fn override_config_matches_file_path(
+    config: &OverrideConfig,
+    name: &str,
+    parent_dir: Option<&Directory>,
+) -> bool {
+    fn parent_count(dir: Option<&Directory>) -> usize {
+        if let Some(dir) = dir {
+            parent_count(dir.parent.maybe_dir().ok().as_deref()) + 1
+        } else {
+            0
+        }
+    }
+    fn nth_parent<'x>(name: &'x str, dir: Option<&Directory>, n: usize) -> &'x str {
+        if n == 0 {
+            name
+        } else {
+            let dir = dir.unwrap();
+            nth_parent(
+                // This transmute is fine, because we're only local and the parents will not
+                // change during the parent function.
+                unsafe { std::mem::transmute::<&str, &str>(dir.name.as_ref()) },
+                dir.parent.maybe_dir().ok().as_deref(),
+                n - 1,
+            )
+        }
+    }
+    let actual_path_count = parent_count(parent_dir) + 1;
+    if actual_path_count != config.module.path.len() && !config.module.star
+        || config.module.path.len() > actual_path_count
+    {
+        return false;
+    }
+    for (i, override_part) in config.module.path.iter().enumerate() {
+        if override_part.as_ref() != nth_parent(name, parent_dir, actual_path_count - i - 1) {
+            return false;
+        }
+    }
+    true
 }
 
 struct DirectivesInfos {

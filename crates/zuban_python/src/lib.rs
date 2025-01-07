@@ -45,7 +45,7 @@ impl Project {
         Self { db }
     }
 
-    pub fn invalidate_path(&mut self, path: &str) {
+    pub fn invalidate_path(&mut self, _path: &str) {
         todo!()
     }
 
