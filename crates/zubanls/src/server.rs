@@ -231,11 +231,15 @@ impl GlobalState {
         _capabilities: ClientCapabilities,
         roots: Vec<String>,
     ) -> Self {
+        let vfs = LocalFS::with_watcher();
+        for r in &roots {
+            vfs.walk_and_watch_dirs(r);
+        }
         GlobalState {
             sender,
             roots,
             project: None,
-            vfs: Rc::new(LocalFS::with_watcher()),
+            vfs: Rc::new(vfs),
             shutdown_requested: false,
         }
     }
@@ -327,7 +331,12 @@ impl GlobalState {
         if let Some(project) = &mut self.project {
             match event {
                 Ok(event) => {
-                    //project.invalidate_path()
+                    tracing::debug!("Notify Event: {event:?}")
+                    /*
+                    if let EventKind::Create(_) | EventKind::Modify(_) | EventKind::Remove(_) = event.kind {
+                        project.invalidate_path()
+                    }
+                    */
                 }
                 Err(err) => {
                     tracing::error!(

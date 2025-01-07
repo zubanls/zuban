@@ -24,6 +24,37 @@ impl Vfs for LocalFS {
         result.ok()
     }
 
+    fn walk_and_watch_dirs(&self, path: &str) {
+        let walker = WalkDir::new(path)
+            .follow_links(true)
+            .into_iter()
+            .filter_entry(|entry| {
+                entry.file_name().to_str().is_some_and(|name| {
+                    if name.ends_with(".py") || name.ends_with(".pyi") || name == "py.typed" {
+                        return true;
+                    }
+                    if name == "__pycache__" {
+                        return false;
+                    }
+                    // Keep potential folders around
+                    !name.contains('.') && (!name.contains('-') || name.ends_with(STUBS_SUFFIX))
+                })
+            });
+        for e in walker {
+            match e {
+                Ok(dir_entry) => {
+                    let p = dir_entry.path();
+                    if let Some(path) = p.to_str() {
+                        self.watch(path)
+                    } else {
+                        tracing::info!("Walkdir ignored {p:?}, because it's not UTF-8")
+                    }
+                }
+                Err(e) => tracing::error!("Walkdir error (base: {path}): {e}"),
+            }
+        }
+    }
+
     fn notify_receiver(&self) -> Option<&Receiver<NotifyEvent>> {
         self.watcher.as_ref().map(|(_, r)| r)
     }
@@ -50,26 +81,9 @@ impl LocalFS {
         Self { watcher: None }
     }
 
-    pub fn walk_and_watch_dirs(path: &str) {
-        let x = WalkDir::new(path)
-            .follow_links(true)
-            .into_iter()
-            .filter_entry(|entry| {
-                entry.file_name().to_str().is_some_and(|name| {
-                    if name.ends_with(".py") || name.ends_with(".pyi") || name == "py.typed" {
-                        return true;
-                    }
-                    if name == "__pycache__" {
-                        return false;
-                    }
-                    // Keep potential folders around
-                    !name.contains('.') && (!name.contains('-') || name.ends_with(STUBS_SUFFIX))
-                })
-            });
-    }
-
     fn watch(&self, path: &str) {
         if let Some((watcher, _)) = &self.watcher {
+            tracing::debug!("Added watch for {path}");
             log_notify_error(
                 watcher
                     .borrow_mut()

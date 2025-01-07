@@ -13,6 +13,7 @@ pub trait Vfs {
     /// exists.                                                                
     fn read_and_watch_file(&self, path: &str) -> Option<String>;
     fn notify_receiver(&self) -> Option<&Receiver<NotifyEvent>>;
+    fn walk_and_watch_dirs(&self, path: &str);
 }
 
 /*

@@ -280,6 +280,9 @@ fn in_memory_file_changes() {
     );
     // Delete the file and check that it returns the correct error when requesting diagnostics
     server.remove_file("pkg/foo.py");
+    // Make sure the removal event appears before the LSP event.
+    std::thread::sleep_ms(1);
+
     /*
     let response =
         server.request_with_response::<DocumentDiagnosticRequest>(DocumentDiagnosticParams {
