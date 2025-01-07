@@ -7,6 +7,6 @@ homepage.workspace = true
 authors.workspace = true
 
 [dependencies]
-zuban_python.workspace = true
+config.workspace = true
 tracing.workspace = true
 anyhow.workspace = true

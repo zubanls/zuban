@@ -9,10 +9,10 @@ use std::{
     rc::Rc,
 };
 
+use config::{OverrideConfig, Settings};
 use parsa_python_cst::NodeIndex;
 
 use crate::{
-    config::{OverrideConfig, Settings},
     debug,
     file::{File, FileState, FileStateLoader, FileSystemReader, PythonFile, PythonFileLoader, Vfs},
     node_ref::NodeRef,

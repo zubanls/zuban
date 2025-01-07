@@ -5,6 +5,7 @@ use std::{
     rc::Rc,
 };
 
+use config::{set_flag_and_return_ignore_errors, DiagnosticConfig, IniOrTomlValue, OverrideConfig};
 use parsa_python_cst::*;
 
 use super::{
@@ -13,13 +14,12 @@ use super::{
     name_binder::{DbInfos, NameBinder},
 };
 use crate::{
-    config::{set_flag_and_return_ignore_errors, IniOrTomlValue, OverrideConfig},
     database::{
         ComplexPoint, Database, FileIndex, Locality, LocalityLink, Point, PointLink, Points,
         PythonProject, Specific,
     },
     debug,
-    diagnostics::{Diagnostic, DiagnosticConfig, Diagnostics, Issue, IssueKind},
+    diagnostics::{Diagnostic, Diagnostics, Issue, IssueKind},
     imports::{ImportResult, STUBS_SUFFIX},
     inference_state::InferenceState,
     inferred::Inferred,
@@ -159,7 +159,7 @@ impl File for PythonFile {
         let mut vec: Vec<_> = unsafe {
             self.issues
                 .iter()
-                .filter(|i| config.should_be_reported(flags, &i.kind))
+                .filter(|i| i.kind.should_be_reported(flags))
                 .map(|i| Diagnostic::new(db, self, i))
                 .collect()
         };

@@ -1,0 +1,14 @@
+[package]
+name = "config"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+homepage.workspace = true
+authors.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+rust-ini = { version = "0.21.0", features = ["inline-comment"], git = "https://github.com/davidhalter-archive/rust-ini.git", branch="indented-multiline-values" }
+regex.workspace = true
+tracing.workspace = true
+toml_edit.workspace = true

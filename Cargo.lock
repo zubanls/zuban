@@ -131,12 +131,23 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5b63caa9aa9397e2d9480a9b13673856c78d8ac123288526c37d7839f2a86990"
 
 [[package]]
+name = "config"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "regex",
+ "rust-ini",
+ "toml_edit",
+ "tracing",
+]
+
+[[package]]
 name = "config_searcher"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "config",
  "tracing",
- "zuban_python",
 ]
 
 [[package]]
@@ -1196,12 +1207,11 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "clap",
+ "config",
  "lazy_static",
  "parsa_python_cst",
  "regex",
- "rust-ini",
  "test_utils",
- "toml_edit",
  "tracing",
  "walkdir",
 ]
@@ -1212,6 +1222,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "clap",
+ "config",
  "config_searcher",
  "crossbeam-channel",
  "logging_config",

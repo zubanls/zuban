@@ -9,11 +9,10 @@ use std::{
 
 use clap::Parser;
 
+use config::{DiagnosticConfig, ProjectOptions, PythonVersion, Settings, TypeCheckerFlags};
 use regex::{Captures, Regex, Replacer};
 use test_utils::{calculate_steps, Step};
-use zuban_python::{
-    DiagnosticConfig, Project, ProjectOptions, PythonVersion, Settings, TypeCheckerFlags,
-};
+use zuban_python::Project;
 
 const SKIP_MYPY_TEST_FILES: [&str; 28] = [
     // Narrowing tests

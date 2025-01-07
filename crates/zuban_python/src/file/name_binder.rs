@@ -1,9 +1,9 @@
 use std::{cell::RefCell, cmp::Ordering};
 
+use config::Settings;
 use parsa_python_cst::*;
 
 use crate::{
-    config::Settings,
     database::{
         ClassStorage, ComplexPoint, FileIndex, Locality, ParentScope, Point, PointKind, Points,
         Specific,

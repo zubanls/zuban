@@ -5,8 +5,6 @@ use ini::{Ini, ParseOption};
 use regex::Regex;
 use toml_edit::{DocumentMut, Item, Table, Value};
 
-use crate::DiagnosticConfig;
-
 type ConfigResult = anyhow::Result<bool>;
 
 const OPTIONS_STARTING_WITH_ALLOW: [&str; 3] = [
@@ -15,11 +13,18 @@ const OPTIONS_STARTING_WITH_ALLOW: [&str; 3] = [
     "allow_empty_bodies",
 ];
 
+#[derive(Default)]
+pub struct DiagnosticConfig {
+    pub show_error_codes: bool,
+    pub show_error_end: bool,
+    pub show_column_numbers: bool,
+}
+
 #[derive(Clone, Default)]
 pub struct ProjectOptions {
     pub settings: Settings,
     pub flags: TypeCheckerFlags,
-    pub(crate) overrides: Vec<OverrideConfig>,
+    pub overrides: Vec<OverrideConfig>,
 }
 
 #[derive(Clone, Hash, PartialEq, Eq)]
@@ -48,7 +53,7 @@ impl Default for Settings {
 }
 
 impl Settings {
-    pub(crate) fn computed_platform(&self) -> &str {
+    pub fn computed_platform(&self) -> &str {
         self.platform.as_deref().unwrap_or("posix")
     }
 }
@@ -264,8 +269,8 @@ impl TypeCheckerFlags {
 
 #[derive(Copy, Clone, Hash, PartialEq, Eq, PartialOrd)]
 pub struct PythonVersion {
-    pub(crate) major: usize,
-    pub(crate) minor: usize,
+    pub major: usize,
+    pub minor: usize,
 }
 
 impl PythonVersion {
@@ -295,8 +300,8 @@ impl std::str::FromStr for PythonVersion {
 
 #[derive(Debug, Clone)]
 pub struct ExcludeRegex {
-    pub(crate) regex_str: String,
-    pub(crate) regex: Regex,
+    pub regex_str: String,
+    pub regex: Regex,
 }
 
 impl ExcludeRegex {
@@ -345,7 +350,7 @@ enum OverrideIniOrTomlValue {
 }
 
 #[derive(Clone)]
-pub(crate) struct OverrideConfig {
+pub struct OverrideConfig {
     pub module: OverridePath, // Path like foo.bar or foo.bar.*
     // Key/Value mappings
     config: Vec<(Box<str>, OverrideIniOrTomlValue)>,

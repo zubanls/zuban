@@ -1,6 +1,6 @@
 use std::{io::Read, path::Path};
 
-use zuban_python::{DiagnosticConfig, ProjectOptions};
+use config::{DiagnosticConfig, ProjectOptions};
 
 const CONFIG_PATHS: [&str; 6] = [
     "mypy.ini",

@@ -11,8 +11,7 @@ parsa_python_cst.workspace = true
 lazy_static.workspace = true
 regex.workspace = true
 walkdir.workspace = true
-rust-ini = { version = "0.21.0", features = ["inline-comment"], git = "https://github.com/davidhalter-archive/rust-ini.git", branch="indented-multiline-values" }
-toml_edit.workspace = true
+config.workspace = true
 tracing.workspace = true
 anyhow.workspace = true
 

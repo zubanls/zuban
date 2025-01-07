@@ -1,10 +1,11 @@
 use anyhow::bail;
+use config::DiagnosticConfig;
 use lsp_types::{
     Diagnostic, DiagnosticSeverity, DocumentDiagnosticParams, DocumentDiagnosticReport,
     DocumentDiagnosticReportResult, FullDocumentDiagnosticReport, Position,
     RelatedFullDocumentDiagnosticReport,
 };
-use zuban_python::{DiagnosticConfig, Severity};
+use zuban_python::Severity;
 
 use crate::server::{GlobalState, LspError};
 

@@ -1,9 +1,9 @@
 use std::{ptr::null, rc::Rc};
 
+use config::PythonVersion;
 use parsa_python_cst::{FunctionDef, NodeIndex, NAME_DEF_TO_NAME_DIFFERENCE};
 
 use crate::{
-    config::PythonVersion,
     database::{BaseClass, Database, FileIndex, Locality, Point, PointLink, Specific},
     file::PythonFile,
     inferred::Inferred,

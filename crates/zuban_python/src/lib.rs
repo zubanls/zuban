@@ -2,7 +2,6 @@
 #![allow(clippy::too_many_arguments)] // TODO For now this is easier, but probably enable again
 
 mod arguments;
-mod config;
 mod database;
 mod diagnostics;
 mod file;
@@ -23,9 +22,9 @@ mod type_helpers;
 mod utils;
 mod workspaces;
 
-pub use config::{ExcludeRegex, ProjectOptions, PythonVersion, Settings, TypeCheckerFlags};
+use config::{DiagnosticConfig, ProjectOptions, PythonVersion, Settings, TypeCheckerFlags};
 use database::{Database, FileIndex, PythonProject};
-pub use diagnostics::{DiagnosticConfig, Severity};
+pub use diagnostics::Severity;
 use file::{File, FileStateLoader, Leaf};
 use inference_state::InferenceState;
 use inferred::Inferred;

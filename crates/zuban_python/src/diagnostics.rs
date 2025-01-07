@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use config::DiagnosticConfig;
 use parsa_python_cst::{CodeIndex, NodeIndex, Tree};
 
 use crate::{
@@ -555,6 +556,28 @@ impl IssueKind {
             DecoratorOnTopOfPropertyNotSupported => "misc",
             _ => return None,
         })
+    }
+
+    pub(crate) fn should_be_reported(&self, flags: &TypeCheckerFlags) -> bool {
+        if !flags.disabled_error_codes.is_empty() {
+            let should_not_report = |code| {
+                if let Some(code) = code {
+                    if flags.disabled_error_codes.iter().any(|c| c == code)
+                        && !flags.enabled_error_codes.iter().any(|c| c == code)
+                    {
+                        return true;
+                    }
+                }
+                false
+            };
+            if should_not_report(self.mypy_error_code()) {
+                return false;
+            }
+            if should_not_report(self.mypy_error_supercode()) {
+                return false;
+            }
+        }
+        true
     }
 }
 
@@ -1889,37 +1912,6 @@ fn fmt_line(
 impl std::fmt::Debug for Diagnostic<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}", &self.as_string(&DiagnosticConfig::default()))
-    }
-}
-
-#[derive(Default)]
-pub struct DiagnosticConfig {
-    pub show_error_codes: bool,
-    pub show_error_end: bool,
-    pub show_column_numbers: bool,
-}
-
-impl DiagnosticConfig {
-    pub(crate) fn should_be_reported(&self, flags: &TypeCheckerFlags, type_: &IssueKind) -> bool {
-        if !flags.disabled_error_codes.is_empty() {
-            let should_not_report = |code| {
-                if let Some(code) = code {
-                    if flags.disabled_error_codes.iter().any(|c| c == code)
-                        && !flags.enabled_error_codes.iter().any(|c| c == code)
-                    {
-                        return true;
-                    }
-                }
-                false
-            };
-            if should_not_report(type_.mypy_error_code()) {
-                return false;
-            }
-            if should_not_report(type_.mypy_error_supercode()) {
-                return false;
-            }
-        }
-        true
     }
 }
 

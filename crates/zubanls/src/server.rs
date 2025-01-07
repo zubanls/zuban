@@ -6,11 +6,12 @@ use std::panic::PanicInfo;
 use std::{path::PathBuf, rc::Rc};
 use vfs::{LocalFS, NotifyEvent, Vfs};
 
+use config::ProjectOptions;
 use crossbeam_channel::{never, select, Sender};
 use lsp_server::{Connection, ExtractError, Message, Request};
 use lsp_types::Uri;
 use serde::{de::DeserializeOwned, Serialize};
-use zuban_python::{Project, ProjectOptions};
+use zuban_python::Project;
 
 use crate::capabilities::{server_capabilities, ClientCapabilities};
 

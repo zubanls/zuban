@@ -7,7 +7,8 @@ use std::{
     time::Instant,
 };
 
-use zuban_python::{Project, ProjectOptions, TypeCheckerFlags};
+use config::{ProjectOptions, TypeCheckerFlags};
+use zuban_python::Project;
 
 #[derive(Debug)]
 pub struct Filter {

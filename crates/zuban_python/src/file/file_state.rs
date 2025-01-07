@@ -1,10 +1,11 @@
 use std::{any::Any, fs, path::Path, pin::Pin, rc::Rc};
 
+use config::DiagnosticConfig;
 use parsa_python_cst::{CodeIndex, Keyword, NodeIndex};
 
 use crate::{
     database::{Database, FileIndex},
-    diagnostics::{Diagnostic, DiagnosticConfig},
+    diagnostics::Diagnostic,
     file::PythonFile,
     imports::STUBS_SUFFIX,
     inferred::Inferred,
