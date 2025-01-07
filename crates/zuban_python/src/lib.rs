@@ -209,7 +209,6 @@ pub struct Script<'a> {
 impl<'a> Script<'a> {
     pub fn new(project: &'a mut Project, path: Option<Box<str>>, code: Option<Box<str>>) -> Self {
         let db = &mut project.db;
-        db.acquire();
         let file_index = match path {
             Some(path) => {
                 if let Some(code) = code {
@@ -336,12 +335,6 @@ impl<'a> Script<'a> {
     pub fn errors() {
     }
     */
-}
-
-impl<'a> Drop for Script<'a> {
-    fn drop(&mut self) {
-        self.project.db.release()
-    }
 }
 
 #[derive(Debug, Eq, PartialEq)]

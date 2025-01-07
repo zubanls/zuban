@@ -862,7 +862,6 @@ impl fmt::Debug for Database {
 }
 
 pub struct Database {
-    in_use: bool,
     pub vfs: Box<dyn Vfs>,
     file_state_loaders: FileStateLoaders,
     pub files: InsertOnlyVec<FileState>,
@@ -918,7 +917,6 @@ impl Database {
         }
 
         let mut this = Self {
-            in_use: false,
             vfs,
             file_state_loaders,
             files: Default::default(),
@@ -1061,7 +1059,6 @@ impl Database {
             false,
         );
         let db = Self {
-            in_use: false,
             vfs: Box::<FileSystemReader>::default(),
             file_state_loaders,
             files,
@@ -1085,17 +1082,6 @@ impl Database {
                 .set(None);
         }
         db
-    }
-
-    pub fn acquire(&mut self) {
-        assert!(!self.in_use);
-        self.in_use = true;
-    }
-
-    pub fn release(&mut self) {
-        assert!(self.in_use);
-        self.in_use = false;
-        // todo handle watcher events here
     }
 
     pub fn file_state(&self, index: FileIndex) -> &FileState {
