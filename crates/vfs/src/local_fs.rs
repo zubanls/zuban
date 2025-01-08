@@ -59,10 +59,6 @@ impl Vfs for LocalFS {
         self.watcher.as_ref().map(|(_, r)| r)
     }
 
-    fn separator(&self) -> char {
-        '/'
-    }
-
     fn split_off_folder<'a>(&self, path: &'a str) -> (&'a str, Option<&'a str>) {
         if let Some(pos) = path.find(self.separator()) {
             (&path[..pos], Some(&path[pos + 1..]))

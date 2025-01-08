@@ -9,7 +9,7 @@ mod type_var_finder;
 mod utils;
 
 pub use diagnostics::{check_multiple_inheritance, OVERLAPPING_REVERSE_TO_NORMAL_METHODS};
-pub use file_state::{File, FileState, FileSystemReader, Leaf, Vfs};
+pub use file_state::{File, FileState, Leaf};
 pub use flow_analysis::{process_unfinished_partials, FLOW_ANALYSIS};
 use inference::Inference;
 pub use inference::{first_defined_name, first_defined_name_of_multi_def};

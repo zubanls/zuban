@@ -1,4 +1,4 @@
-use std::{any::Any, fs, path::Path, pin::Pin, rc::Rc};
+use std::{any::Any, pin::Pin, rc::Rc};
 
 use config::DiagnosticConfig;
 use parsa_python_cst::{CodeIndex, Keyword, NodeIndex};
@@ -12,44 +12,6 @@ use crate::{
     name::{FilePosition, Name, Names},
     PythonProject,
 };
-
-pub trait Vfs {
-    fn read_file(&self, path: &str) -> std::io::Result<String>;
-
-    fn separator(&self) -> char {
-        self.separator_u8().into()
-    }
-
-    fn separator_u8(&self) -> u8 {
-        b'/'
-    }
-
-    fn split_off_folder<'a>(&self, path: &'a str) -> (&'a str, Option<&'a str>) {
-        if let Some(pos) = path.find(self.separator()) {
-            (&path[..pos], Some(&path[pos + 1..]))
-        } else {
-            (path, None)
-        }
-    }
-
-    fn dir_path<'a>(&self, path: &'a str) -> Option<&'a str> {
-        path.rfind(self.separator()).map(|index| &path[..index])
-    }
-
-    fn is_sub_file_of(&self, path: &str, maybe_parent: &str) -> bool {
-        Path::new(path).starts_with(Path::new(maybe_parent))
-    }
-}
-
-#[derive(Default)]
-pub struct FileSystemReader {}
-
-impl Vfs for FileSystemReader {
-    fn read_file(&self, path: &str) -> std::io::Result<String> {
-        tracing::debug!("Read from FS: {path}");
-        fs::read_to_string(path)
-    }
-}
 
 #[derive(Debug)]
 pub enum Leaf<'db> {

@@ -5,6 +5,8 @@ mod tree;
 mod utils;
 mod workspaces;
 
+use std::path::Path;
+
 use crossbeam_channel::Receiver;
 
 pub use local_fs::LocalFS;
@@ -20,8 +22,14 @@ pub trait Vfs {
     fn read_and_watch_file(&self, path: &str) -> Option<String>;
     fn notify_receiver(&self) -> Option<&Receiver<NotifyEvent>>;
     fn walk_and_watch_dirs(&self, path: &str);
-    fn separator(&self) -> char;
+
+    fn separator(&self) -> char {
+        std::path::MAIN_SEPARATOR
+    }
     fn split_off_folder<'a>(&self, path: &'a str) -> (&'a str, Option<&'a str>);
+    fn is_sub_file_of(&self, path: &str, maybe_parent: &str) -> bool {
+        Path::new(path).starts_with(Path::new(maybe_parent))
+    }
 }
 
 /*

@@ -17,7 +17,7 @@ use vfs::{
 
 use crate::{
     debug,
-    file::{File, FileState, FileSystemReader, PythonFile, Vfs as OldVfs},
+    file::{File, FileState, PythonFile},
     node_ref::NodeRef,
     python_state::PythonState,
     sys_path,
@@ -858,8 +858,7 @@ impl fmt::Debug for Database {
 }
 
 pub struct Database {
-    pub vfs: Box<dyn OldVfs>,
-    pub new_vfs: Box<dyn Vfs>,
+    pub vfs: Box<dyn Vfs>,
     pub files: InsertOnlyVec<FileState>,
     pub workspaces: Workspaces,
     in_memory_files: HashMap<Box<str>, FileIndex>,
@@ -869,9 +868,7 @@ pub struct Database {
 }
 
 impl Database {
-    pub fn new(new_vfs: Box<dyn Vfs>, options: ProjectOptions) -> Self {
-        let vfs = Box::<FileSystemReader>::default();
-
+    pub fn new(vfs: Box<dyn Vfs>, options: ProjectOptions) -> Self {
         let project = PythonProject {
             sys_path: sys_path::create_sys_path(&options.settings),
             settings: options.settings,
@@ -881,7 +878,7 @@ impl Database {
 
         let mut workspaces = Workspaces::default();
         for p in project.settings.mypy_path.iter() {
-            workspaces.add(&*new_vfs, p.clone(), WorkspaceKind::TypeChecking);
+            workspaces.add(&*vfs, p.clone(), WorkspaceKind::TypeChecking);
         }
 
         // Theoretically according to PEP 561 (Distributing and Packaging Type Information), this
@@ -890,16 +887,15 @@ impl Database {
             "/home/dave/source/rust/zuban/typeshed/stdlib",
             "/home/dave/source/rust/zuban/typeshed/stubs/mypy-extensions",
         ] {
-            workspaces.add(&*new_vfs, p.into(), WorkspaceKind::Typeshed)
+            workspaces.add(&*vfs, p.into(), WorkspaceKind::Typeshed)
         }
 
         for p in &project.sys_path {
-            workspaces.add(&*new_vfs, p.clone().into(), WorkspaceKind::SitePackages)
+            workspaces.add(&*vfs, p.clone().into(), WorkspaceKind::SitePackages)
         }
 
         let mut this = Self {
             vfs,
-            new_vfs,
             files: Default::default(),
             workspaces,
             in_memory_files: Default::default(),
@@ -975,15 +971,11 @@ impl Database {
             project.settings.mypy_path
         );
         for p in mypy_path_iter.rev() {
-            workspaces.add_at_start(
-                self.new_vfs.as_ref(),
-                p.clone(),
-                WorkspaceKind::TypeChecking,
-            )
+            workspaces.add_at_start(self.vfs.as_ref(), p.clone(), WorkspaceKind::TypeChecking)
         }
         for p in &project.sys_path {
             workspaces.add(
-                self.new_vfs.as_ref(),
+                self.vfs.as_ref(),
                 p.clone().into(),
                 WorkspaceKind::SitePackages,
             )
@@ -1034,8 +1026,7 @@ impl Database {
             false,
         );
         let db = Self {
-            vfs: Box::<FileSystemReader>::default(),
-            new_vfs: Box::new(LocalFS::without_watcher()),
+            vfs: Box::new(LocalFS::without_watcher()),
             files,
             workspaces,
             in_memory_files: Default::default(),
@@ -1108,23 +1099,18 @@ impl Database {
         invalidates_db: bool,
     ) -> Option<FileIndex> {
         // A loader should be available for all files in the workspace.
-        let path = file_entry.path(&*self.new_vfs);
-        let file_index = match self.vfs.read_file(&path) {
-            Ok(code) => self.with_add_file_state(|file_index| {
-                load_parsed(
-                    &self.project,
-                    file_index,
-                    file_entry.clone(),
-                    path.into(),
-                    code.into(),
-                    invalidates_db,
-                )
-            }),
-            Err(err) => {
-                debug!("Tried to load file, but failed: {err}");
-                return None;
-            }
-        };
+        let path = file_entry.path(&*self.vfs);
+        let code = self.vfs.read_and_watch_file(&path)?;
+        let file_index = self.with_add_file_state(|file_index| {
+            load_parsed(
+                &self.project,
+                file_index,
+                file_entry.clone(),
+                path.into(),
+                code.into(),
+                invalidates_db,
+            )
+        });
         file_entry.file_index.set(file_index);
         Some(file_index)
     }
@@ -1133,7 +1119,7 @@ impl Database {
         debug!("Loading in memory file: {path}");
         let ensured = self
             .workspaces
-            .ensure_file(&self.project.flags, &*self.new_vfs, &path);
+            .ensure_file(&self.project.flags, &*self.vfs, &path);
 
         let in_mem_file = self.in_memory_file(&path);
         debug_assert!(
@@ -1194,7 +1180,7 @@ impl Database {
         let file_state = &mut self.files[file_index.0 as usize];
         let path = file_state.path();
         self.workspaces
-            .unload_file(&self.project.flags, &*self.new_vfs, path);
+            .unload_file(&self.project.flags, &*self.vfs, path);
         let invalidations = file_state.unload_and_return_invalidations();
         self.invalidate_files(file_index, invalidations)
     }
@@ -1270,11 +1256,11 @@ impl Database {
             .in_memory_files
             .iter()
             .filter_map(|(path, _)| {
+                let l = dir_path.len();
                 let matches = path.starts_with(dir_path)
                     && path
-                        .as_bytes()
-                        .get(dir_path.len())
-                        .is_some_and(|chr| *chr == self.vfs.separator_u8());
+                        .get(l..l + 1)
+                        .is_some_and(|chr| chr.starts_with(self.vfs.separator()));
                 matches.then_some(path.clone())
             })
             .collect();
@@ -1282,12 +1268,12 @@ impl Database {
             self.unload_in_memory_file(&path).unwrap();
         }
         self.workspaces
-            .delete_directory(&self.project.flags, &*self.new_vfs, dir_path)
+            .delete_directory(&self.project.flags, &*self.vfs, dir_path)
     }
 
     pub fn unload_in_memory_file(&mut self, path: &str) -> Result<(), &'static str> {
         if let Some(file_index) = self.in_memory_files.remove(path) {
-            if let Ok(on_file_system_code) = self.vfs.read_file(path) {
+            if let Some(on_file_system_code) = self.vfs.read_and_watch_file(path) {
                 let file_state = &mut self.files[file_index.0 as usize];
                 // In case the code matches the one already in the file, we don't have to do anything.
                 // This is the very typical case of closing a buffer after saving it and therefore
@@ -1316,7 +1302,7 @@ impl Database {
         let DirectoryEntry::File(file_entry) = &entry else {
             panic!(
                 "It seems like you are using directories in typeshed for {}: {file_name}",
-                dir.path(&*self.new_vfs, true)
+                dir.path(&*self.vfs, true)
             )
         };
         let file_index = file_entry.file_index.get().unwrap_or_else(|| {
