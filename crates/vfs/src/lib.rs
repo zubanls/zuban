@@ -5,8 +5,9 @@ mod tree;
 mod utils;
 mod workspaces;
 
-use std::path::Path;
+use std::{path::Path, rc::Rc};
 
+use config::TypeCheckerFlags;
 use crossbeam_channel::Receiver;
 
 pub use local_fs::LocalFS;
@@ -15,8 +16,30 @@ pub use workspaces::*;
 
 pub type NotifyEvent = notify::Result<notify::Event>;
 
+pub struct Vfs {
+    pub handler: Box<dyn VfsHandler>,
+    pub workspaces: Workspaces,
+}
+
+impl Vfs {
+    pub fn new(handler: Box<dyn VfsHandler>) -> Self {
+        Self {
+            handler,
+            workspaces: Default::default(),
+        }
+    }
+
+    pub fn add_workspace(&mut self, root_path: String, kind: WorkspaceKind) {
+        self.workspaces.add(&*self.handler, root_path, kind)
+    }
+
+    pub fn search_file(&self, flags: &TypeCheckerFlags, path: &str) -> Option<Rc<FileEntry>> {
+        self.workspaces.search_file(flags, &*self.handler, path)
+    }
+}
+
 /// Interface for reading and watching files.                                  
-pub trait Vfs {
+pub trait VfsHandler {
     /// Load the content of the given file, returning [`None`] if it does not  
     /// exists.                                                                
     fn read_and_watch_file(&self, path: &str) -> Option<String>;
@@ -33,19 +56,6 @@ pub trait Vfs {
 }
 
 /*
-struct ZubanPart {
-    initial_dir_walkers: Vec<WalkDir>,
-    read_file: Box,
-}
-
-fn spawn(workspaces: &[&str]) -> (ZubanPart, NotifyPart) {}
-
-enum WorkspaceChange {
-    File(path),
-}
-
-enum Read {}
-
 enum VFSUpdate {
     Vec<WorkspaceChange>,
     ProjectChanged,

@@ -104,7 +104,8 @@ pub fn global_import<'a>(
             python_import_with_needs_exact_case(
                 db,
                 from_file,
-                db.workspaces
+                db.vfs
+                    .workspaces
                     .iter()
                     .map(|w| (&w.directory, matches!(w.kind, WorkspaceKind::SitePackages))),
                 name,
@@ -122,7 +123,7 @@ pub fn global_import_without_stubs_first<'a>(
     python_import(
         db,
         from_file,
-        db.workspaces.iter().map(|d| &d.directory),
+        db.vfs.workspaces.iter().map(|d| &d.directory),
         name,
     )
 }
@@ -164,7 +165,7 @@ pub fn namespace_import(
                     parent = dir.parent.clone();
                 }
                 Err(workspace_root) => {
-                    for workspace in db.workspaces.iter() {
+                    for workspace in db.vfs.workspaces.iter() {
                         if *workspace.root_path() == ***workspace_root {
                             if workspace.kind == WorkspaceKind::SitePackages {
                                 return Some(ImportResult::PyTypedMissing);

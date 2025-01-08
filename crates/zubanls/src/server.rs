@@ -2,7 +2,7 @@
 
 use std::panic::PanicHookInfo;
 use std::{path::PathBuf, rc::Rc};
-use vfs::{LocalFS, NotifyEvent, Vfs};
+use vfs::{LocalFS, NotifyEvent, VfsHandler};
 
 use config::ProjectOptions;
 use crossbeam_channel::{never, select, Sender};
@@ -218,7 +218,7 @@ struct NotificationDispatcher<'a> {
 pub(crate) struct GlobalState {
     pub sender: Sender<lsp_server::Message>,
     pub roots: Vec<String>,
-    pub vfs: Rc<dyn Vfs>,
+    pub vfs: Rc<dyn VfsHandler>,
     pub project: Option<Project>,
     pub shutdown_requested: bool,
 }

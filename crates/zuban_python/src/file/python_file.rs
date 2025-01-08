@@ -424,7 +424,8 @@ impl<'db> PythonFile {
                     // TODO we are currently never invalidating this file, when it changes
                     DirectoryEntry::File(entry) => db
                         .vfs
-                        .read_and_watch_file(&entry.path(&*db.vfs))
+                        .handler
+                        .read_and_watch_file(&entry.path(&*db.vfs.handler))
                         .is_some_and(|code| code.contains("partial\n")),
                     _ => false,
                 })

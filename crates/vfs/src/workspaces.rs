@@ -3,7 +3,7 @@ use std::{path::PathBuf, rc::Rc};
 use config::TypeCheckerFlags;
 use walkdir::WalkDir;
 
-use crate::{AddedFile, Directory, DirectoryEntry, FileEntry, Parent, Vfs};
+use crate::{AddedFile, Directory, DirectoryEntry, FileEntry, Parent, VfsHandler};
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub enum WorkspaceKind {
@@ -16,11 +16,11 @@ pub enum WorkspaceKind {
 pub struct Workspaces(Vec<Workspace>);
 
 impl Workspaces {
-    pub fn add(&mut self, vfs: &dyn Vfs, root: String, kind: WorkspaceKind) {
+    pub fn add(&mut self, vfs: &dyn VfsHandler, root: String, kind: WorkspaceKind) {
         self.0.push(Workspace::new(vfs, root, kind))
     }
 
-    pub fn add_at_start(&mut self, vfs: &dyn Vfs, root: String, kind: WorkspaceKind) {
+    pub fn add_at_start(&mut self, vfs: &dyn VfsHandler, root: String, kind: WorkspaceKind) {
         self.0.insert(0, Workspace::new(vfs, root, kind))
     }
 
@@ -43,9 +43,9 @@ impl Workspaces {
     }
 
     pub fn search_file(
-        &mut self,
+        &self,
         flags: &TypeCheckerFlags,
-        vfs: &dyn Vfs,
+        vfs: &dyn VfsHandler,
         path: &str,
     ) -> Option<Rc<FileEntry>> {
         self.0.iter().find_map(|workspace| {
@@ -57,7 +57,7 @@ impl Workspaces {
     pub fn ensure_file(
         &mut self,
         flags: &TypeCheckerFlags,
-        vfs: &dyn Vfs,
+        vfs: &dyn VfsHandler,
         path: &str,
     ) -> AddedFile {
         for workspace in &mut self.0 {
@@ -74,7 +74,7 @@ impl Workspaces {
         unreachable!()
     }
 
-    pub fn unload_file(&mut self, flags: &TypeCheckerFlags, vfs: &dyn Vfs, path: &str) {
+    pub fn unload_file(&mut self, flags: &TypeCheckerFlags, vfs: &dyn VfsHandler, path: &str) {
         // TODO for now we always unload, fix that.
         for workspace in &self.0 {
             if let Some(p) = strip_path_prefix(flags, vfs, path, workspace.root_path()) {
@@ -86,7 +86,7 @@ impl Workspaces {
     pub fn delete_directory(
         &mut self,
         flags: &TypeCheckerFlags,
-        vfs: &dyn Vfs,
+        vfs: &dyn VfsHandler,
         path: &str,
     ) -> Result<(), String> {
         for workspace in &mut self.0 {
@@ -151,7 +151,7 @@ pub struct Workspace {
 }
 
 impl Workspace {
-    fn new(vfs: &dyn Vfs, mut root_path: String, kind: WorkspaceKind) -> Self {
+    fn new(vfs: &dyn VfsHandler, mut root_path: String, kind: WorkspaceKind) -> Self {
         let separator = vfs.separator();
         if root_path.ends_with(separator) {
             root_path.pop();
@@ -250,7 +250,12 @@ impl Workspace {
     }
 }
 
-fn ensure_dirs_and_file(parent: Parent, dir: &Directory, vfs: &dyn Vfs, path: &str) -> AddedFile {
+fn ensure_dirs_and_file(
+    parent: Parent,
+    dir: &Directory,
+    vfs: &dyn VfsHandler,
+    path: &str,
+) -> AddedFile {
     let (name, rest) = vfs.split_off_folder(path);
     if let Some(rest) = rest {
         let mut invs = Default::default();
@@ -287,7 +292,7 @@ fn ensure_dirs_and_file(parent: Parent, dir: &Directory, vfs: &dyn Vfs, path: &s
 
 fn strip_path_prefix<'x>(
     flags: &TypeCheckerFlags,
-    vfs: &dyn Vfs,
+    vfs: &dyn VfsHandler,
     path: &'x str,
     to_strip: &str,
 ) -> Option<&'x str> {

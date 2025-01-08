@@ -4,7 +4,7 @@ use crossbeam_channel::{unbounded, Receiver};
 use notify::{recommended_watcher, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use walkdir::WalkDir;
 
-use crate::{NotifyEvent, Vfs};
+use crate::{NotifyEvent, VfsHandler};
 
 const STUBS_SUFFIX: &str = "-stubs";
 
@@ -12,7 +12,7 @@ pub struct LocalFS {
     watcher: Option<(RefCell<RecommendedWatcher>, Receiver<NotifyEvent>)>,
 }
 
-impl Vfs for LocalFS {
+impl VfsHandler for LocalFS {
     fn read_and_watch_file(&self, path: &str) -> Option<String> {
         tracing::debug!("Read from FS: {path}");
         // Need to watch first, because otherwise the file might be read deleted and then watched.

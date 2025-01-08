@@ -1857,7 +1857,7 @@ impl<'db> Diagnostic<'db> {
             .db
             .file_path(self.file.file_index)
             .trim_start_matches(&self.file.file_entry(self.db).parent.workspace_path() as &str)
-            .trim_start_matches(self.db.vfs.separator());
+            .trim_start_matches(self.db.vfs.handler.separator());
         if path == "__main__" {
             path = "main";
         }

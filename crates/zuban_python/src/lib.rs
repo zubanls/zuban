@@ -22,7 +22,7 @@ mod type_helpers;
 mod utils;
 
 use parsa_python_cst::CodeIndex;
-use vfs::{Directory, DirectoryEntry, FileEntry, FileIndex, LocalFS, Vfs};
+use vfs::{Directory, DirectoryEntry, FileEntry, FileIndex, LocalFS, VfsHandler};
 
 use config::{DiagnosticConfig, ProjectOptions, PythonVersion, Settings, TypeCheckerFlags};
 use database::{Database, PythonProject};
@@ -39,7 +39,7 @@ pub struct Project {
 }
 
 impl Project {
-    pub fn new(vfs: Box<dyn Vfs>, options: ProjectOptions) -> Self {
+    pub fn new(vfs: Box<dyn VfsHandler>, options: ProjectOptions) -> Self {
         let db = Database::new(vfs, options);
         Self { db }
     }
@@ -89,7 +89,7 @@ impl Project {
         let mut all_diagnostics: Vec<diagnostics::Diagnostic> = vec![];
         let mut checked_files = 0;
         let mut files_with_errors = 0;
-        for directory in self.db.workspaces.directories_to_type_check() {
+        for directory in self.db.vfs.workspaces.directories_to_type_check() {
             let ignore_py_if_overwritten_by_pyi = |in_dir: &Directory, file: &FileEntry| {
                 if !file.name.ends_with(".py") {
                     return false;
@@ -102,7 +102,7 @@ impl Project {
             directory.walk(&mut |in_dir, file| {
                 if file.file_index.get().is_none() && !ignore_py_if_overwritten_by_pyi(in_dir, file)
                 {
-                    let path = file.relative_path(&*self.db.vfs);
+                    let path = file.relative_path(&*self.db.vfs.handler);
                     to_be_loaded.push((file.clone(), path));
                 }
             });
@@ -112,7 +112,7 @@ impl Project {
                 !check_files.is_empty()
                     && !check_files
                         .iter()
-                        .any(|p| self.db.vfs.is_sub_file_of(path, p))
+                        .any(|p| self.db.vfs.handler.is_sub_file_of(path, p))
                     || flags.excludes.iter().any(|e| e.regex.is_match(path))
             };
             for (file, path) in to_be_loaded {
@@ -135,7 +135,7 @@ impl Project {
                 let python_file = self.db.loaded_python_file(file_index);
                 let relative = python_file
                     .file_entry(&self.db)
-                    .relative_path(&*self.db.vfs);
+                    .relative_path(&*self.db.vfs.handler);
                 if maybe_skipped(python_file.flags(&self.db), &relative) {
                     continue 'outer;
                 }
@@ -166,10 +166,7 @@ impl Project {
     }
 
     pub fn document(&mut self, path: &str) -> Option<Document> {
-        let file_entry =
-            self.db
-                .workspaces
-                .search_file(&self.db.project.flags, &*self.db.vfs, path)?;
+        let file_entry = self.db.vfs.search_file(&self.db.project.flags, path)?;
 
         if file_entry.file_index.get().is_none() {
             self.db.load_file_from_workspace(file_entry.clone(), false);

@@ -3,7 +3,7 @@ use std::{
     rc::{Rc, Weak},
 };
 
-use crate::{utils::VecRefWrapper, Vfs};
+use crate::{utils::VecRefWrapper, VfsHandler};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct FileIndex(pub u32);
@@ -57,7 +57,7 @@ impl Parent {
         }
     }
 
-    fn path(&self, vfs: &dyn Vfs, add_root: bool) -> String {
+    fn path(&self, vfs: &dyn VfsHandler, add_root: bool) -> String {
         match self {
             Self::Directory(dir) => dir.upgrade().unwrap().path(vfs, add_root),
             Self::Workspace(workspace) => {
@@ -94,13 +94,13 @@ impl FileEntry {
         })
     }
 
-    pub fn path(&self, vfs: &dyn Vfs) -> String {
+    pub fn path(&self, vfs: &dyn VfsHandler) -> String {
         let mut path = self.parent.path(vfs, true);
         path.push(vfs.separator());
         path + &self.name
     }
 
-    pub fn relative_path(&self, vfs: &dyn Vfs) -> String {
+    pub fn relative_path(&self, vfs: &dyn VfsHandler) -> String {
         let mut path = self.parent.path(vfs, false);
         if path.is_empty() {
             return self.name.clone().into();
@@ -186,7 +186,7 @@ impl Directory {
         }))
     }
 
-    pub fn search_path(&self, vfs: &dyn Vfs, path: &str) -> Option<Rc<FileEntry>> {
+    pub fn search_path(&self, vfs: &dyn VfsHandler, path: &str) -> Option<Rc<FileEntry>> {
         let (name, rest) = vfs.split_off_folder(path);
         if let Some(entry) = self.search(name) {
             if let Some(rest) = rest {
@@ -242,7 +242,7 @@ impl Directory {
         }
     }
 
-    pub(crate) fn unload_file(&self, vfs: &dyn Vfs, path: &str) {
+    pub(crate) fn unload_file(&self, vfs: &dyn VfsHandler, path: &str) {
         let (name, rest) = vfs.split_off_folder(path);
         if let Some(entry) = self.search(name) {
             if let Some(rest) = rest {
@@ -274,7 +274,7 @@ impl Directory {
         }
     }
 
-    pub(crate) fn delete_directory(&self, vfs: &dyn Vfs, path: &str) -> Result<(), String> {
+    pub(crate) fn delete_directory(&self, vfs: &dyn VfsHandler, path: &str) -> Result<(), String> {
         let (name, rest) = vfs.split_off_folder(path);
         if let Some(inner) = self.search(name) {
             match &*inner {
@@ -305,7 +305,7 @@ impl Directory {
         }
     }
 
-    pub fn path(&self, vfs: &dyn Vfs, add_root: bool) -> String {
+    pub fn path(&self, vfs: &dyn VfsHandler, add_root: bool) -> String {
         let mut path = self.parent.path(vfs, add_root);
         if path.is_empty() {
             return self.name.clone().into();
