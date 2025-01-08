@@ -3,7 +3,7 @@ use std::{path::PathBuf, rc::Rc};
 use config::TypeCheckerFlags;
 use walkdir::WalkDir;
 
-use crate::{AddedFile, Directory, DirectoryEntryKind, FileEntry, Parent, VfsHandler};
+use crate::{AddedFile, Directory, DirectoryEntry, FileEntry, Parent, VfsHandler};
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub enum WorkspaceKind {
@@ -106,14 +106,14 @@ impl Workspaces {
         fn clone_inner_rcs(dir: Directory) -> Rc<Directory> {
             let dir = Rc::new(dir);
             for entry in dir.entries.borrow_mut().iter_mut() {
-                match &mut entry.kind {
-                    DirectoryEntryKind::File(file) => {
+                match entry {
+                    DirectoryEntry::File(file) => {
                         let mut new_file = file.as_ref().clone();
                         new_file.parent = Parent::Directory(Rc::downgrade(&dir));
                         *file = Rc::new(new_file);
                     }
-                    DirectoryEntryKind::MissingEntry { .. } => (),
-                    DirectoryEntryKind::Directory(dir) => {
+                    DirectoryEntry::MissingEntry { .. } => (),
+                    DirectoryEntry::Directory(dir) => {
                         let mut new = dir.as_ref().clone();
                         new.parent = Parent::Directory(Rc::downgrade(dir));
                         *dir = clone_inner_rcs(new);
@@ -126,16 +126,16 @@ impl Workspaces {
         for workspace in new.0.iter_mut() {
             workspace.directory.entries = workspace.directory.entries.clone();
             for entry in workspace.directory.entries.borrow_mut().iter_mut() {
-                match &mut entry.kind {
-                    DirectoryEntryKind::Directory(dir) => {
+                match entry {
+                    DirectoryEntry::Directory(dir) => {
                         debug_assert!(matches!(dir.parent, Parent::Workspace(_)));
                         *dir = clone_inner_rcs(dir.as_ref().clone())
                     }
-                    DirectoryEntryKind::File(file) => {
+                    DirectoryEntry::File(file) => {
                         *file = Rc::new(file.as_ref().clone());
                         debug_assert!(matches!(file.parent, Parent::Workspace(_)));
                     }
-                    DirectoryEntryKind::MissingEntry { .. } => (), // has no RCs
+                    DirectoryEntry::MissingEntry { .. } => (), // has no RCs
                 }
             }
         }
@@ -191,7 +191,7 @@ impl Workspace {
                     .1
                     .entries
                     .borrow_mut()
-                    .push(DirectoryEntryKind::Directory(n).into());
+                    .push(DirectoryEntry::Directory(n));
             }
             let name = entry.file_name();
             if let Some(name) = name.to_str() {
@@ -207,10 +207,13 @@ impl Workspace {
                                 Directory::new(parent, name.into()),
                             ));
                         } else {
-                            stack.last_mut().unwrap().1.entries.borrow_mut().push(
-                                DirectoryEntryKind::File(FileEntry::new(parent, name.into()))
-                                    .into(),
-                            );
+                            stack
+                                .last_mut()
+                                .unwrap()
+                                .1
+                                .entries
+                                .borrow_mut()
+                                .push(DirectoryEntry::File(FileEntry::new(parent, name.into())));
                         }
                     }
                     Err(_) => {
@@ -226,7 +229,7 @@ impl Workspace {
                     .1
                     .entries
                     .borrow_mut()
-                    .push(DirectoryEntryKind::Directory(current.1).into())
+                    .push(DirectoryEntry::Directory(current.1))
             } else {
                 return Self {
                     directory: Rc::unwrap_or_clone(current.1),
@@ -257,8 +260,8 @@ fn ensure_dirs_and_file(
     if let Some(rest) = rest {
         let mut invs = Default::default();
         if let Some(x) = dir.search(name) {
-            match &x.kind {
-                DirectoryEntryKind::Directory(rc) => {
+            match &*x {
+                DirectoryEntry::Directory(rc) => {
                     return ensure_dirs_and_file(
                         Parent::Directory(Rc::downgrade(rc)),
                         rc,
@@ -266,7 +269,7 @@ fn ensure_dirs_and_file(
                         rest,
                     )
                 }
-                DirectoryEntryKind::MissingEntry { invalidations, .. } => {
+                DirectoryEntry::MissingEntry { invalidations, .. } => {
                     invs = invalidations.take();
                     drop(x);
                     dir.remove_name(name);
@@ -279,7 +282,7 @@ fn ensure_dirs_and_file(
             ensure_dirs_and_file(Parent::Directory(Rc::downgrade(&dir2)), &dir2, vfs, rest);
         dir.entries
             .borrow_mut()
-            .push(DirectoryEntryKind::Directory(dir2).into());
+            .push(DirectoryEntry::Directory(dir2));
         result.invalidations.extend(invs);
         result
     } else {

@@ -22,7 +22,7 @@ mod type_helpers;
 mod utils;
 
 use parsa_python_cst::CodeIndex;
-use vfs::{Directory, DirectoryEntryKind, FileEntry, FileIndex, LocalFS, VfsHandler};
+use vfs::{Directory, DirectoryEntry, FileEntry, FileIndex, LocalFS, VfsHandler};
 
 use config::{DiagnosticConfig, ProjectOptions, PythonVersion, Settings, TypeCheckerFlags};
 use database::{Database, PythonProject};
@@ -96,7 +96,7 @@ impl Project {
                 }
                 in_dir
                     .search(&format!("{}i", &file.name))
-                    .is_some_and(|e| matches!(e.kind, DirectoryEntryKind::File(_)))
+                    .is_some_and(|e| matches!(*e, DirectoryEntry::File(_)))
             };
             let mut to_be_loaded = vec![];
             directory.walk(&mut |in_dir, file| {
