@@ -113,22 +113,21 @@ impl FileEntry {
 #[derive(Debug, Clone)]
 pub struct DirectoryEntry {
     pub kind: DirectoryEntryKind,
-    pub invalidations: Invalidations,
 }
 
 #[derive(Debug, Clone)]
 pub enum DirectoryEntryKind {
     File(Rc<FileEntry>),
-    MissingEntry { name: Box<str> },
+    MissingEntry {
+        name: Box<str>,
+        invalidations: Invalidations,
+    },
     Directory(Rc<Directory>),
 }
 
 impl From<DirectoryEntryKind> for DirectoryEntry {
     fn from(kind: DirectoryEntryKind) -> Self {
-        Self {
-            kind,
-            invalidations: Default::default(),
-        }
+        Self { kind }
     }
 }
 
@@ -225,13 +224,13 @@ impl Directory {
     pub(crate) fn ensure_file(&self, parent: Parent, name: &str) -> AddedFile {
         let mut invalidations = Invalidations::default();
         let file_entry = if let Some(mut entry) = self.search_mut(name) {
-            match &entry.kind {
+            match &mut entry.kind {
                 DirectoryEntryKind::File(file_entry) => file_entry.clone(),
-                DirectoryEntryKind::MissingEntry { .. } => {
-                    invalidations = entry.invalidations.take();
-                    let DirectoryEntryKind::MissingEntry { name } = &mut entry.kind else {
-                        unreachable!()
-                    };
+                DirectoryEntryKind::MissingEntry {
+                    invalidations: inv,
+                    name,
+                } => {
+                    invalidations = inv.take();
                     let file_entry = Rc::new(FileEntry {
                         parent,
                         name: std::mem::take(name),
@@ -244,9 +243,9 @@ impl Directory {
             }
         } else {
             let mut borrow = self.entries.borrow_mut();
-            let file_entry = FileEntry::new(parent, name.into());
-            borrow.push(DirectoryEntryKind::File(file_entry.clone()).into());
-            file_entry
+            let entry = FileEntry::new(parent, name.into());
+            borrow.push(DirectoryEntryKind::File(entry.clone()).into());
+            entry
         };
         AddedFile {
             invalidations,
@@ -271,14 +270,21 @@ impl Directory {
     pub fn add_missing_entry(&self, name: Box<str>, invalidates: FileIndex) {
         let mut vec = self.entries.borrow_mut();
         if let Some(pos) = vec.iter().position(|x| x.name() == name.as_ref()) {
-            vec[pos].invalidations.add(invalidates)
+            if let DirectoryEntryKind::MissingEntry { invalidations, .. } = &vec[pos].kind {
+                invalidations.add(invalidates)
+            } else {
+                unreachable!("{:?}", &vec[pos])
+            }
         } else {
             let invalidations = Invalidations::default();
             invalidations.add(invalidates);
-            vec.push(DirectoryEntry {
-                kind: DirectoryEntryKind::MissingEntry { name },
-                invalidations,
-            })
+            vec.push(
+                DirectoryEntryKind::MissingEntry {
+                    invalidations,
+                    name,
+                }
+                .into(),
+            )
         }
     }
 
