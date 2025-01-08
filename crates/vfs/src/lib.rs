@@ -3,40 +3,19 @@
 mod local_fs;
 mod tree;
 mod utils;
+mod vfs;
 mod workspaces;
 
-use std::{path::Path, rc::Rc};
+use std::path::Path;
 
-use config::TypeCheckerFlags;
 use crossbeam_channel::Receiver;
 
 pub use local_fs::LocalFS;
 pub use tree::*;
+pub use vfs::Vfs;
 pub use workspaces::*;
 
 pub type NotifyEvent = notify::Result<notify::Event>;
-
-pub struct Vfs {
-    pub handler: Box<dyn VfsHandler>,
-    pub workspaces: Workspaces,
-}
-
-impl Vfs {
-    pub fn new(handler: Box<dyn VfsHandler>) -> Self {
-        Self {
-            handler,
-            workspaces: Default::default(),
-        }
-    }
-
-    pub fn add_workspace(&mut self, root_path: String, kind: WorkspaceKind) {
-        self.workspaces.add(&*self.handler, root_path, kind)
-    }
-
-    pub fn search_file(&self, flags: &TypeCheckerFlags, path: &str) -> Option<Rc<FileEntry>> {
-        self.workspaces.search_file(flags, &*self.handler, path)
-    }
-}
 
 /// Interface for reading and watching files.                                  
 pub trait VfsHandler {
