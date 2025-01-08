@@ -4,7 +4,6 @@ use std::{
     collections::HashMap,
     fmt, mem,
     ops::Range,
-    path::Path,
     pin::Pin,
     rc::Rc,
 };
@@ -18,10 +17,7 @@ use vfs::{
 
 use crate::{
     debug,
-    file::{
-        File, FileState, FileStateLoader, FileSystemReader, PythonFile, PythonFileLoader,
-        Vfs as OldVfs,
-    },
+    file::{File, FileState, FileSystemReader, PythonFile, Vfs as OldVfs},
     node_ref::NodeRef,
     python_state::PythonState,
     sys_path,
@@ -34,8 +30,6 @@ use crate::{
     utils::{InsertOnlyVec, SymbolTable},
     ProjectOptions, TypeCheckerFlags,
 };
-
-type FileStateLoaders = Box<[Box<dyn FileStateLoader>]>;
 
 // Most significant bits
 // 27 bits = 134217728; 20 bits = 1048576
@@ -866,7 +860,6 @@ impl fmt::Debug for Database {
 pub struct Database {
     pub vfs: Box<dyn OldVfs>,
     pub new_vfs: Box<dyn Vfs>,
-    file_state_loaders: FileStateLoaders,
     pub files: InsertOnlyVec<FileState>,
     pub workspaces: Workspaces,
     in_memory_files: HashMap<Box<str>, FileIndex>,
@@ -876,11 +869,7 @@ pub struct Database {
 }
 
 impl Database {
-    pub fn new(
-        new_vfs: Box<dyn Vfs>,
-        file_state_loaders: FileStateLoaders,
-        options: ProjectOptions,
-    ) -> Self {
+    pub fn new(new_vfs: Box<dyn Vfs>, options: ProjectOptions) -> Self {
         let vfs = Box::<FileSystemReader>::default();
 
         let project = PythonProject {
@@ -911,7 +900,6 @@ impl Database {
         let mut this = Self {
             vfs,
             new_vfs,
-            file_state_loaders,
             files: Default::default(),
             workspaces,
             in_memory_files: Default::default(),
@@ -922,11 +910,7 @@ impl Database {
         this
     }
 
-    pub fn try_to_reuse_project_resources_for_tests(
-        &self,
-        file_state_loaders: FileStateLoaders,
-        options: ProjectOptions,
-    ) -> Self {
+    pub fn try_to_reuse_project_resources_for_tests(&self, options: ProjectOptions) -> Self {
         let project = PythonProject {
             sys_path: sys_path::create_sys_path(&options.settings),
             settings: options.settings,
@@ -1052,7 +1036,6 @@ impl Database {
         let db = Self {
             vfs: Box::<FileSystemReader>::default(),
             new_vfs: Box::new(LocalFS::without_watcher()),
-            file_state_loaders,
             files,
             workspaces,
             in_memory_files: Default::default(),
@@ -1096,23 +1079,6 @@ impl Database {
         f
     }
 
-    fn loader(&self, path: &str) -> Option<&dyn FileStateLoader> {
-        for loader in self.file_state_loaders.iter() {
-            let extension = Path::new(path).extension().and_then(|e| e.to_str());
-            if let Some(e) = extension {
-                if loader.responsible_for_file_endings().contains(&e) {
-                    return Some(loader.as_ref());
-                }
-            } else if Path::new(path)
-                .file_name()
-                .is_some_and(|n| n.to_str() == Some("__main__"))
-            {
-                return Some(&PythonFileLoader {});
-            }
-        }
-        None
-    }
-
     fn with_add_file_state(&self, add: impl FnOnce(FileIndex) -> Pin<Box<FileState>>) -> FileIndex {
         let file_index = FileIndex(self.files.len() as u32);
         self.files.push(add(file_index));
@@ -1143,10 +1109,9 @@ impl Database {
     ) -> Option<FileIndex> {
         // A loader should be available for all files in the workspace.
         let path = file_entry.path(&*self.new_vfs);
-        let loader = self.loader(&path)?;
         let file_index = match self.vfs.read_file(&path) {
             Ok(code) => self.with_add_file_state(|file_index| {
-                loader.load_parsed(
+                load_parsed(
                     &self.project,
                     file_index,
                     file_entry.clone(),
@@ -1189,10 +1154,8 @@ impl Database {
             file_invalidations = file_state.unload_and_return_invalidations();
         }
 
-        // TODO there could be no loader...
-        let loader = self.loader(&path).unwrap();
         let new_file_state = |file_index| {
-            loader.load_parsed(
+            load_parsed(
                 &self.project,
                 file_index,
                 ensured.file_entry.clone(),
@@ -1417,6 +1380,23 @@ impl Database {
             mypy_extensions,
         );
     }
+}
+
+fn load_parsed(
+    project: &PythonProject,
+    file_index: FileIndex,
+    file_entry: Rc<FileEntry>,
+    path: Box<str>,
+    code: Box<str>,
+    invalidates_db: bool,
+) -> Pin<Box<FileState>> {
+    let file = PythonFile::from_path_and_code(project, file_index, &file_entry, &path, code);
+    Box::pin(FileState::new_parsed(
+        file_entry,
+        path,
+        file,
+        invalidates_db,
+    ))
 }
 
 pub struct PythonProject {

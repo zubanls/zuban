@@ -8,7 +8,6 @@ use crate::{
     database::Database,
     diagnostics::Diagnostic,
     file::PythonFile,
-    imports::STUBS_SUFFIX,
     inferred::Inferred,
     name::{FilePosition, Name, Names},
     PythonProject,
@@ -59,62 +58,6 @@ pub enum Leaf<'db> {
     Number,
     Keyword(Keyword<'db>),
     None,
-}
-
-pub trait FileStateLoader {
-    fn responsible_for_file_endings(&self) -> Vec<&str>;
-
-    fn might_be_relevant(&self, name: &str) -> bool;
-    fn should_be_ignored(&self, name: &str) -> bool;
-
-    fn load_parsed(
-        &self,
-        project: &PythonProject,
-        file_index: FileIndex,
-        file_entry: Rc<FileEntry>,
-        path: Box<str>,
-        code: Box<str>,
-        invalidates_db: bool,
-    ) -> Pin<Box<FileState>>;
-}
-
-#[derive(Default, Clone)]
-pub struct PythonFileLoader {}
-
-impl FileStateLoader for PythonFileLoader {
-    fn responsible_for_file_endings(&self) -> Vec<&str> {
-        vec!["py", "pyi"]
-    }
-
-    fn might_be_relevant(&self, name: &str) -> bool {
-        if name.ends_with(".py") || name.ends_with(".pyi") {
-            return true;
-        }
-        !name.contains('.') && (!name.contains('-') || name.ends_with(STUBS_SUFFIX))
-            || name == "py.typed"
-    }
-
-    fn should_be_ignored(&self, name: &str) -> bool {
-        name == "__pycache__" && !name.ends_with(".pyc")
-    }
-
-    fn load_parsed(
-        &self,
-        project: &PythonProject,
-        file_index: FileIndex,
-        file_entry: Rc<FileEntry>,
-        path: Box<str>,
-        code: Box<str>,
-        invalidates_db: bool,
-    ) -> Pin<Box<FileState>> {
-        let file = PythonFile::from_path_and_code(project, file_index, &file_entry, &path, code);
-        Box::pin(FileState::new_parsed(
-            file_entry,
-            path,
-            file,
-            invalidates_db,
-        ))
-    }
 }
 
 pub trait AsAny {

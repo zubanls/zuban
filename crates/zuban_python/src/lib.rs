@@ -27,7 +27,7 @@ use vfs::{Directory, DirectoryEntry, FileEntry, FileIndex, LocalFS, Vfs};
 use config::{DiagnosticConfig, ProjectOptions, PythonVersion, Settings, TypeCheckerFlags};
 use database::{Database, PythonProject};
 pub use diagnostics::Severity;
-use file::{File, FileStateLoader, Leaf};
+use file::{File, Leaf};
 use inference_state::InferenceState;
 use inferred::Inferred;
 use matching::invalidate_protocol_cache;
@@ -40,12 +40,12 @@ pub struct Project {
 
 impl Project {
     pub fn new(vfs: Box<dyn Vfs>, options: ProjectOptions) -> Self {
-        let db = Database::new(vfs, get_loaders(), options);
+        let db = Database::new(vfs, options);
         Self { db }
     }
 
     pub fn without_watcher(options: ProjectOptions) -> Self {
-        let db = Database::new(Box::new(LocalFS::without_watcher()), get_loaders(), options);
+        let db = Database::new(Box::new(LocalFS::without_watcher()), options);
         Self { db }
     }
 
@@ -161,9 +161,7 @@ impl Project {
     /// It currently is for example a big issue that HashableRawStr used in the name binder is very
     /// unsafe and will lead to SEGFAULTS if the original project is not kept.
     pub fn try_to_reuse_project_resources_for_tests(&self, options: ProjectOptions) -> Self {
-        let db = self
-            .db
-            .try_to_reuse_project_resources_for_tests(get_loaders(), options);
+        let db = self.db.try_to_reuse_project_resources_for_tests(options);
         Project { db }
     }
 
@@ -194,10 +192,6 @@ impl Document<'_> {
         let python_file = self.project.db.loaded_python_file(self.file_index);
         python_file.diagnostics(&self.project.db, config)
     }
-}
-
-fn get_loaders() -> Box<[Box<dyn FileStateLoader>; 1]> {
-    Box::new([Box::<file::PythonFileLoader>::default() as Box<_>])
 }
 
 #[derive(Debug, Clone, Copy)]
