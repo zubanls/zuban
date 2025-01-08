@@ -7,7 +7,7 @@ use std::{
 
 use config::{set_flag_and_return_ignore_errors, DiagnosticConfig, IniOrTomlValue, OverrideConfig};
 use parsa_python_cst::*;
-use vfs::{Directory, DirectoryEntry, FileEntry, FileIndex};
+use vfs::{Directory, DirectoryEntryKind, FileEntry, FileIndex};
 
 use super::{
     file_state::{File, Leaf},
@@ -420,15 +420,16 @@ impl<'db> PythonFile {
                     // partial is only relevant for -stubs, otherwise we don't really care.
                     return false;
                 }
-                dir.search("py.typed").is_some_and(|entry| match &*entry {
-                    // TODO we are currently never invalidating this file, when it changes
-                    DirectoryEntry::File(entry) => db
-                        .vfs
-                        .handler
-                        .read_and_watch_file(&entry.path(&*db.vfs.handler))
-                        .is_some_and(|code| code.contains("partial\n")),
-                    _ => false,
-                })
+                dir.search("py.typed")
+                    .is_some_and(|entry| match &entry.kind {
+                        // TODO we are currently never invalidating this file, when it changes
+                        DirectoryEntryKind::File(entry) => db
+                            .vfs
+                            .handler
+                            .read_and_watch_file(&entry.path(&*db.vfs.handler))
+                            .is_some_and(|code| code.contains("partial\n")),
+                        _ => false,
+                    })
             })
         })
     }

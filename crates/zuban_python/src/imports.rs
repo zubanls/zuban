@@ -3,7 +3,7 @@ use std::{
     rc::Rc,
 };
 
-use vfs::{Directory, DirectoryEntry, FileIndex, WorkspaceKind};
+use vfs::{Directory, DirectoryEntryKind, FileIndex, WorkspaceKind};
 
 use crate::{
     database::Database,
@@ -206,8 +206,8 @@ pub fn python_import_with_needs_exact_case(
         let mut had_namespace_dir = false;
         let dir = dir.borrow();
         for entry in &dir.iter() {
-            match entry {
-                DirectoryEntry::Directory(dir2) => {
+            match &entry.kind {
+                DirectoryEntryKind::Directory(dir2) => {
                     if match_c(db, dir2.name.as_ref(), name, needs_exact_case) {
                         let result = load_init_file(db, dir2);
                         if let Some(file_index) = &result {
@@ -224,7 +224,7 @@ pub fn python_import_with_needs_exact_case(
                         continue;
                     }
                 }
-                DirectoryEntry::File(file) => {
+                DirectoryEntryKind::File(file) => {
                     // TODO these format!() always allocate a lot and don't seem to be necessary
                     let is_py_file =
                         match_c(db, &file.name, &format!("{name}.py"), needs_exact_case);
@@ -245,7 +245,7 @@ pub fn python_import_with_needs_exact_case(
                         }
                     }
                 }
-                DirectoryEntry::MissingEntry { .. } => (),
+                DirectoryEntryKind::MissingEntry { .. } => (),
             }
         }
         if let Some(file_index) = stub_file_index.or(python_file_index) {
@@ -278,7 +278,7 @@ fn match_c(db: &Database, x: &str, y: &str, needs_exact_case: bool) -> bool {
 
 fn load_init_file(db: &Database, content: &Directory) -> Option<FileIndex> {
     for child in &content.iter() {
-        if let DirectoryEntry::File(file) = child {
+        if let DirectoryEntryKind::File(file) = &child.kind {
             if match_c(db, &file.name, INIT_PY, false) || match_c(db, &file.name, INIT_PYI, false) {
                 if file.file_index.get().is_none() {
                     db.load_file_from_workspace(file.clone(), false);

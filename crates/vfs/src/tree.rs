@@ -111,7 +111,12 @@ impl FileEntry {
 }
 
 #[derive(Debug, Clone)]
-pub enum DirectoryEntry {
+pub struct DirectoryEntry {
+    pub kind: DirectoryEntryKind,
+}
+
+#[derive(Debug, Clone)]
+pub enum DirectoryEntryKind {
     File(Rc<FileEntry>),
     MissingEntry {
         name: Box<str>,
@@ -120,20 +125,26 @@ pub enum DirectoryEntry {
     Directory(Rc<Directory>),
 }
 
+impl From<DirectoryEntryKind> for DirectoryEntry {
+    fn from(kind: DirectoryEntryKind) -> Self {
+        Self { kind }
+    }
+}
+
 impl DirectoryEntry {
     fn name(&self) -> &str {
-        match self {
-            DirectoryEntry::File(file) => &file.name,
-            DirectoryEntry::Directory(dir) => &dir.name,
-            DirectoryEntry::MissingEntry { name, .. } => name,
+        match &self.kind {
+            DirectoryEntryKind::File(file) => &file.name,
+            DirectoryEntryKind::Directory(dir) => &dir.name,
+            DirectoryEntryKind::MissingEntry { name, .. } => name,
         }
     }
 
     pub fn walk(&self, in_dir: &Directory, callable: &mut impl FnMut(&Directory, &Rc<FileEntry>)) {
-        match self {
-            DirectoryEntry::File(file) => callable(in_dir, file),
-            DirectoryEntry::Directory(dir) => dir.walk(callable),
-            DirectoryEntry::MissingEntry { .. } => (),
+        match &self.kind {
+            DirectoryEntryKind::File(file) => callable(in_dir, file),
+            DirectoryEntryKind::Directory(dir) => dir.walk(callable),
+            DirectoryEntryKind::MissingEntry { .. } => (),
         }
     }
 }
@@ -190,10 +201,10 @@ impl Directory {
         let (name, rest) = vfs.split_off_folder(path);
         if let Some(entry) = self.search(name) {
             if let Some(rest) = rest {
-                if let DirectoryEntry::Directory(dir) = &*entry {
+                if let DirectoryEntryKind::Directory(dir) = &entry.kind {
                     return dir.search_path(vfs, rest);
                 }
-            } else if let DirectoryEntry::File(entry) = &*entry {
+            } else if let DirectoryEntryKind::File(entry) = &entry.kind {
                 return Some(entry.clone());
             }
         }
@@ -213,9 +224,9 @@ impl Directory {
     pub(crate) fn ensure_file(&self, parent: Parent, name: &str) -> AddedFile {
         let mut invalidations = Invalidations::default();
         let file_entry = if let Some(mut entry) = self.search_mut(name) {
-            match &mut *entry {
-                DirectoryEntry::File(file_entry) => file_entry.clone(),
-                DirectoryEntry::MissingEntry {
+            match &mut entry.kind {
+                DirectoryEntryKind::File(file_entry) => file_entry.clone(),
+                DirectoryEntryKind::MissingEntry {
                     invalidations: inv,
                     name,
                 } => {
@@ -225,15 +236,15 @@ impl Directory {
                         name: std::mem::take(name),
                         file_index: WorkspaceFileIndex::none(),
                     });
-                    *entry = DirectoryEntry::File(file_entry.clone());
+                    *entry = DirectoryEntryKind::File(file_entry.clone()).into();
                     file_entry
                 }
-                DirectoryEntry::Directory(..) => unimplemented!("What happens when we want to write a file on top of a directory? When does this happen?"),
+                DirectoryEntryKind::Directory(..) => unimplemented!("What happens when we want to write a file on top of a directory? When does this happen?"),
             }
         } else {
             let mut borrow = self.entries.borrow_mut();
             let entry = FileEntry::new(parent, name.into());
-            borrow.push(DirectoryEntry::File(entry.clone()));
+            borrow.push(DirectoryEntryKind::File(entry.clone()).into());
             entry
         };
         AddedFile {
@@ -246,10 +257,10 @@ impl Directory {
         let (name, rest) = vfs.split_off_folder(path);
         if let Some(entry) = self.search(name) {
             if let Some(rest) = rest {
-                if let DirectoryEntry::Directory(dir) = &*entry {
+                if let DirectoryEntryKind::Directory(dir) = &entry.kind {
                     dir.unload_file(vfs, rest);
                 }
-            } else if matches!(*entry, DirectoryEntry::File(_)) {
+            } else if matches!(entry.kind, DirectoryEntryKind::File(_)) {
                 drop(entry);
                 self.remove_name(name);
             }
@@ -259,7 +270,7 @@ impl Directory {
     pub fn add_missing_entry(&self, name: Box<str>, invalidates: FileIndex) {
         let mut vec = self.entries.borrow_mut();
         if let Some(pos) = vec.iter().position(|x| x.name() == name.as_ref()) {
-            if let DirectoryEntry::MissingEntry { invalidations, .. } = &vec[pos] {
+            if let DirectoryEntryKind::MissingEntry { invalidations, .. } = &vec[pos].kind {
                 invalidations.add(invalidates)
             } else {
                 unreachable!("{:?}", &vec[pos])
@@ -267,18 +278,21 @@ impl Directory {
         } else {
             let invalidations = Invalidations::default();
             invalidations.add(invalidates);
-            vec.push(DirectoryEntry::MissingEntry {
-                invalidations,
-                name,
-            })
+            vec.push(
+                DirectoryEntryKind::MissingEntry {
+                    invalidations,
+                    name,
+                }
+                .into(),
+            )
         }
     }
 
     pub(crate) fn delete_directory(&self, vfs: &dyn VfsHandler, path: &str) -> Result<(), String> {
         let (name, rest) = vfs.split_off_folder(path);
         if let Some(inner) = self.search(name) {
-            match &*inner {
-                DirectoryEntry::Directory(dir) => {
+            match &inner.kind {
+                DirectoryEntryKind::Directory(dir) => {
                     if let Some(rest) = rest {
                         dir.delete_directory(vfs, rest)
                     } else {
@@ -287,10 +301,10 @@ impl Directory {
                         Ok(())
                     }
                 }
-                DirectoryEntry::MissingEntry { .. } => {
+                DirectoryEntryKind::MissingEntry { .. } => {
                     Err(format!("Path {path} cannot be found (missing)"))
                 }
-                DirectoryEntry::File(_) => Err(format!(
+                DirectoryEntryKind::File(_) => Err(format!(
                     "Path {path} is supposed to be a directory but is a file"
                 )),
             }

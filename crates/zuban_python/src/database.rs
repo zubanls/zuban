@@ -11,7 +11,7 @@ use std::{
 use config::{OverrideConfig, Settings};
 use parsa_python_cst::NodeIndex;
 use vfs::{
-    Directory, DirectoryEntry, FileEntry, FileIndex, Invalidations, LocalFS, Parent, Vfs,
+    Directory, DirectoryEntryKind, FileEntry, FileIndex, Invalidations, LocalFS, Parent, Vfs,
     VfsHandler, WorkspaceKind, Workspaces,
 };
 
@@ -919,7 +919,7 @@ impl Database {
                 workspaces: &Workspaces,
                 parent: Parent,
                 name: &str,
-            ) -> DirectoryEntry {
+            ) -> DirectoryEntryKind {
                 let tmp;
                 let parent_dir = match parent {
                     Parent::Directory(dir) => {
@@ -934,7 +934,7 @@ impl Database {
                             .directory
                     }
                 };
-                let x = parent_dir.search(name).unwrap().clone();
+                let x = parent_dir.search(name).unwrap().clone().kind;
                 x
             }
             fn replace_from_new_workspace(workspaces: &Workspaces, parent: &Parent) -> Parent {
@@ -943,7 +943,7 @@ impl Database {
                         let dir = dir.upgrade().unwrap();
                         let replaced = replace_from_new_workspace(workspaces, &dir.parent);
                         let search = search_parent(workspaces, replaced, &dir.name);
-                        let DirectoryEntry::Directory(new_dir) = search else {
+                        let DirectoryEntryKind::Directory(new_dir) = search else {
                             unreachable!();
                         };
                         Parent::Directory(Rc::downgrade(&new_dir))
@@ -953,7 +953,7 @@ impl Database {
             }
             let current_entry = file_state.file_entry();
             let parent_dir = replace_from_new_workspace(&workspaces, &current_entry.parent);
-            let DirectoryEntry::File(new_file_entry) =
+            let DirectoryEntryKind::File(new_file_entry) =
                 search_parent(&workspaces, parent_dir, &current_entry.name)
             else {
                 unreachable!()
@@ -1303,7 +1303,7 @@ impl Database {
 
     fn preload_typeshed_stub(&self, dir: &Directory, file_name: &'static str) -> &PythonFile {
         let entry = dir.search(file_name).unwrap().clone();
-        let DirectoryEntry::File(file_entry) = &entry else {
+        let DirectoryEntryKind::File(file_entry) = &entry.kind else {
             panic!(
                 "It seems like you are using directories in typeshed for {}: {file_name}",
                 dir.path(&*self.vfs.handler, true)
@@ -1326,12 +1326,12 @@ impl Database {
         let mut dirs = self.vfs.workspaces.directories_not_type_checked();
         let stdlib_dir = dirs.next().unwrap();
         let mypy_extensions_dir = dirs.next().unwrap();
-        let collections_dir = match &*stdlib_dir.search("collections").unwrap() {
-            DirectoryEntry::Directory(c) => c.clone(),
+        let collections_dir = match &stdlib_dir.search("collections").unwrap().kind {
+            DirectoryEntryKind::Directory(c) => c.clone(),
             _ => unreachable!(),
         };
-        let typeshed_dir = match &*stdlib_dir.search("_typeshed").unwrap() {
-            DirectoryEntry::Directory(c) => c.clone(),
+        let typeshed_dir = match &stdlib_dir.search("_typeshed").unwrap().kind {
+            DirectoryEntryKind::Directory(c) => c.clone(),
             _ => unreachable!(),
         };
         drop(dirs);
