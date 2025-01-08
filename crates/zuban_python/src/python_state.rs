@@ -2,9 +2,10 @@ use std::{ptr::null, rc::Rc};
 
 use config::PythonVersion;
 use parsa_python_cst::{FunctionDef, NodeIndex, NAME_DEF_TO_NAME_DIFFERENCE};
+use vfs::FileIndex;
 
 use crate::{
-    database::{BaseClass, Database, FileIndex, Locality, Point, PointLink, Specific},
+    database::{BaseClass, Database, Locality, Point, PointLink, Specific},
     file::PythonFile,
     inferred::Inferred,
     matching::Generics,

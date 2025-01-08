@@ -1,10 +1,11 @@
 use std::rc::Rc;
 
 use parsa_python_cst::{DottedAsNameContent, DottedNameContent, NameImportParent};
+use vfs::{FileEntry, FileIndex, Parent};
 
 use crate::{
     arguments::KnownArgsWithCustomAddIssue,
-    database::{Database, FileIndex, PointLink},
+    database::{Database, PointLink},
     debug,
     diagnostics::IssueKind,
     file::{process_unfinished_partials, PythonFile, FLOW_ANALYSIS},
@@ -13,7 +14,6 @@ use crate::{
     inferred::Inferred,
     node_ref::NodeRef,
     type_::{AnyCause, LookupResult, Namespace, Type},
-    workspaces::{FileEntry, Parent},
 };
 
 #[derive(Copy, Clone)]

@@ -1,5 +1,7 @@
 use std::rc::Rc;
 
+use vfs::FileIndex;
+
 use super::{
     dataclass_initialize, initialize_typed_dict, lookup_dataclass_symbol, lookup_on_dataclass,
     lookup_on_dataclass_type, lookup_on_enum_class, lookup_on_enum_instance,
@@ -9,7 +11,7 @@ use super::{
 };
 use crate::{
     arguments::{Args, NoArgs},
-    database::{Database, FileIndex, Specific},
+    database::{Database, Specific},
     debug,
     diagnostics::IssueKind,
     file::PythonFile,

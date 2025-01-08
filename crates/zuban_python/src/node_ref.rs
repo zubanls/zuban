@@ -6,11 +6,12 @@ use parsa_python_cst::{
     Primary, PrimaryTarget, Slices, StarExpression, StarStarExpression, StarredExpression,
     StringLiteral,
 };
+use vfs::FileIndex;
 
 use crate::{
     database::{
-        ClassStorage, ComplexPoint, Database, FileIndex, Locality, Point, PointKind, PointLink,
-        Specific, TypeAlias,
+        ClassStorage, ComplexPoint, Database, Locality, Point, PointKind, PointLink, Specific,
+        TypeAlias,
     },
     diagnostics::{Diagnostic, Issue, IssueKind},
     file::{File, PythonFile},

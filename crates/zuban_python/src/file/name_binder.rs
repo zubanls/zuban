@@ -2,11 +2,11 @@ use std::{cell::RefCell, cmp::Ordering};
 
 use config::Settings;
 use parsa_python_cst::*;
+use vfs::FileIndex;
 
 use crate::{
     database::{
-        ClassStorage, ComplexPoint, FileIndex, Locality, ParentScope, Point, PointKind, Points,
-        Specific,
+        ClassStorage, ComplexPoint, Locality, ParentScope, Point, PointKind, Points, Specific,
     },
     debug,
     diagnostics::{Diagnostics, Issue, IssueKind},

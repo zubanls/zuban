@@ -7,6 +7,7 @@ use std::{
 
 use config::{set_flag_and_return_ignore_errors, DiagnosticConfig, IniOrTomlValue, OverrideConfig};
 use parsa_python_cst::*;
+use vfs::{Directory, DirectoryEntry, FileEntry, FileIndex};
 
 use super::{
     file_state::{File, Leaf},
@@ -15,8 +16,8 @@ use super::{
 };
 use crate::{
     database::{
-        ComplexPoint, Database, FileIndex, Locality, LocalityLink, Point, PointLink, Points,
-        PythonProject, Specific,
+        ComplexPoint, Database, Locality, LocalityLink, Point, PointLink, Points, PythonProject,
+        Specific,
     },
     debug,
     diagnostics::{Diagnostic, Diagnostics, Issue, IssueKind},
@@ -29,7 +30,6 @@ use crate::{
     node_ref::NodeRef,
     type_::DbString,
     utils::{InsertOnlyVec, SymbolTable},
-    workspaces::{Directory, DirectoryEntry, FileEntry},
     TypeCheckerFlags,
 };
 
@@ -424,7 +424,7 @@ impl<'db> PythonFile {
                     // TODO we are currently never invalidating this file, when it changes
                     DirectoryEntry::File(entry) => db
                         .vfs
-                        .read_file(&entry.path(db.vfs.as_ref()))
+                        .read_file(&entry.path(&*db.new_vfs))
                         .is_ok_and(|code| code.contains("partial\n")),
                     _ => false,
                 })

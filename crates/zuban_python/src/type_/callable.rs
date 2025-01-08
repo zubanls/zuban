@@ -1,6 +1,7 @@
 use std::{borrow::Cow, rc::Rc};
 
 use parsa_python_cst::ParamKind;
+use vfs::FileIndex;
 
 use super::{
     AnyCause, DbString, FunctionKind, NeverCause, ParamSpecUsage, RecursiveType, StringSlice,
@@ -8,7 +9,7 @@ use super::{
     TypedDict, Variance,
 };
 use crate::{
-    database::{Database, FileIndex, PointLink},
+    database::{Database, PointLink},
     format_data::{FormatData, ParamsStyle},
     inference_state::InferenceState,
     matching::{maybe_class_usage, Generics},

@@ -3,14 +3,14 @@ use std::{
     rc::Rc,
 };
 
+use vfs::{Directory, DirectoryEntry, FileIndex, WorkspaceKind};
+
 use crate::{
-    database::{Database, FileIndex},
+    database::Database,
     file::{File, PythonFile},
     inferred::Inferred,
     type_::{Namespace, Type},
     type_helpers::Module,
-    workspaces::{Directory, DirectoryEntry, WorkspaceKind},
-    TypeCheckerFlags,
 };
 
 pub const STUBS_SUFFIX: &str = "-stubs";
@@ -271,15 +271,7 @@ fn match_c(db: &Database, x: &str, y: &str, needs_exact_case: bool) -> bool {
     if needs_exact_case {
         x == y
     } else {
-        match_case(&db.project.flags, x, y)
-    }
-}
-
-pub fn match_case(flags: &TypeCheckerFlags, x: &str, y: &str) -> bool {
-    if flags.case_sensitive {
-        x == y
-    } else {
-        x.eq_ignore_ascii_case(y)
+        db.project.flags.match_case(x, y)
     }
 }
 

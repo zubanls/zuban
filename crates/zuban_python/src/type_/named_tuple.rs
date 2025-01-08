@@ -5,6 +5,7 @@ use std::{
 };
 
 use parsa_python_cst::{keywords_contain, AtomContent, CodeIndex, StarLikeExpression};
+use vfs::FileIndex;
 
 use super::{
     tuple::lookup_tuple_magic_methods, AnyCause, CallableContent, CallableParam, CallableParams,
@@ -13,7 +14,7 @@ use super::{
 };
 use crate::{
     arguments::{ArgIterator, ArgKind, Args, KeywordArg},
-    database::{ComplexPoint, Database, FileIndex, PointLink},
+    database::{ComplexPoint, Database, PointLink},
     diagnostics::IssueKind,
     file::{TypeComputation, TypeComputationOrigin, TypeVarCallbackReturn},
     format_data::{AvoidRecursionFor, FormatData},

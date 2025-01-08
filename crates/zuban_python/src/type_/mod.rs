@@ -20,7 +20,6 @@ mod utils;
 use std::{
     borrow::Cow,
     cell::{Cell, OnceCell},
-    fmt,
     hash::{Hash, Hasher},
     mem,
     rc::Rc,
@@ -28,6 +27,7 @@ use std::{
 
 use parsa_python_cst::{CodeIndex, Expression, Name, PythonString};
 use typed_dict::rc_typed_dict_as_callable;
+use vfs::{Directory, FileIndex};
 
 pub(crate) use self::{
     callable::{
@@ -73,7 +73,7 @@ pub(crate) use self::{
 };
 use crate::{
     arguments::Args,
-    database::{Database, FileIndex, PointLink},
+    database::{Database, PointLink},
     debug,
     diagnostics::IssueKind,
     file::dotted_path_from_dir,
@@ -87,7 +87,6 @@ use crate::{
     node_ref::NodeRef,
     type_helpers::{Class, Instance, MroIterator, TypeOrClass},
     utils::{bytes_repr, join_with_commas, rc_slice_into_vec, str_repr},
-    workspaces::Directory,
 };
 
 thread_local! {
@@ -137,12 +136,6 @@ impl StringSlice {
     pub fn as_str(self, db: &Database) -> &str {
         let file = db.loaded_python_file(self.file_index);
         &file.tree.code()[self.start as usize..self.end as usize]
-    }
-}
-
-impl fmt::Display for FileIndex {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.0)
     }
 }
 
@@ -342,7 +335,7 @@ impl Namespace {
     }
 
     pub fn debug_path(&self, db: &Database) -> String {
-        join_with_commas(self.directories.iter().map(|d| d.path(&*db.vfs, true)))
+        join_with_commas(self.directories.iter().map(|d| d.path(&*db.new_vfs, true)))
     }
 }
 

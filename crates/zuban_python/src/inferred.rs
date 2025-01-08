@@ -1,12 +1,12 @@
 use std::{borrow::Cow, cell::RefCell, rc::Rc};
 
 use parsa_python_cst::{NodeIndex, ParamKind, PrimaryContent, SliceType as CSTSliceType};
+use vfs::FileIndex;
 
 use crate::{
     arguments::{Args, CombinedArgs, KnownArgs, KnownArgsWithCustomAddIssue},
     database::{
-        ComplexPoint, Database, FileIndex, Locality, OverloadDefinition, Point, PointKind,
-        PointLink, Specific,
+        ComplexPoint, Database, Locality, OverloadDefinition, Point, PointKind, PointLink, Specific,
     },
     debug,
     diagnostics::IssueKind,

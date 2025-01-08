@@ -7,6 +7,8 @@ homepage.workspace = true
 authors.workspace = true
 
 [dependencies]
+config.workspace = true
+
 tracing.workspace = true
 crossbeam-channel.workspace = true
 notify.workspace = true

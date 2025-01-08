@@ -1,9 +1,15 @@
 // Some parts are copied from rust-analyzer
 
 mod local_fs;
+mod tree;
+mod utils;
+mod workspaces;
 
 use crossbeam_channel::Receiver;
+
 pub use local_fs::LocalFS;
+pub use tree::*;
+pub use workspaces::*;
 
 pub type NotifyEvent = notify::Result<notify::Event>;
 
@@ -14,6 +20,8 @@ pub trait Vfs {
     fn read_and_watch_file(&self, path: &str) -> Option<String>;
     fn notify_receiver(&self) -> Option<&Receiver<NotifyEvent>>;
     fn walk_and_watch_dirs(&self, path: &str);
+    fn separator(&self) -> char;
+    fn split_off_folder<'a>(&self, path: &'a str) -> (&'a str, Option<&'a str>);
 }
 
 /*

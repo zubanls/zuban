@@ -1,6 +1,6 @@
 use std::{cell::RefCell, path::Path};
 
-use crossbeam_channel::{unbounded, Receiver, Sender};
+use crossbeam_channel::{unbounded, Receiver};
 use notify::{recommended_watcher, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use walkdir::WalkDir;
 
@@ -57,6 +57,18 @@ impl Vfs for LocalFS {
 
     fn notify_receiver(&self) -> Option<&Receiver<NotifyEvent>> {
         self.watcher.as_ref().map(|(_, r)| r)
+    }
+
+    fn separator(&self) -> char {
+        '/'
+    }
+
+    fn split_off_folder<'a>(&self, path: &'a str) -> (&'a str, Option<&'a str>) {
+        if let Some(pos) = path.find(self.separator()) {
+            (&path[..pos], Some(&path[pos + 1..]))
+        } else {
+            (path, None)
+        }
     }
 }
 

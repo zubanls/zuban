@@ -281,7 +281,7 @@ impl GlobalState {
             // for the type checker to understand what the mypy_path originally was.
             config.settings.mypy_path = self.roots.clone();
 
-            *project = Some(Project::new(config));
+            *project = Some(Project::without_watcher(config));
             project.as_mut().unwrap()
         }
     }

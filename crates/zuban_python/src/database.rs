@@ -11,10 +11,17 @@ use std::{
 
 use config::{OverrideConfig, Settings};
 use parsa_python_cst::NodeIndex;
+use vfs::{
+    Directory, DirectoryEntry, FileEntry, FileIndex, Invalidations, LocalFS, Parent, Vfs,
+    WorkspaceKind, Workspaces,
+};
 
 use crate::{
     debug,
-    file::{File, FileState, FileStateLoader, FileSystemReader, PythonFile, PythonFileLoader, Vfs},
+    file::{
+        File, FileState, FileStateLoader, FileSystemReader, PythonFile, PythonFileLoader,
+        Vfs as OldVfs,
+    },
     node_ref::NodeRef,
     python_state::PythonState,
     sys_path,
@@ -25,14 +32,9 @@ use crate::{
     },
     type_helpers::{Class, Function},
     utils::{InsertOnlyVec, SymbolTable},
-    workspaces::{
-        Directory, DirectoryEntry, FileEntry, Invalidations, Parent, WorkspaceKind, Workspaces,
-    },
     ProjectOptions, TypeCheckerFlags,
 };
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct FileIndex(pub u32);
 type FileStateLoaders = Box<[Box<dyn FileStateLoader>]>;
 
 // Most significant bits
@@ -862,7 +864,8 @@ impl fmt::Debug for Database {
 }
 
 pub struct Database {
-    pub vfs: Box<dyn Vfs>,
+    pub vfs: Box<dyn OldVfs>,
+    pub new_vfs: Box<dyn Vfs>,
     file_state_loaders: FileStateLoaders,
     pub files: InsertOnlyVec<FileState>,
     pub workspaces: Workspaces,
@@ -873,7 +876,11 @@ pub struct Database {
 }
 
 impl Database {
-    pub fn new(file_state_loaders: FileStateLoaders, options: ProjectOptions) -> Self {
+    pub fn new(
+        new_vfs: Box<dyn Vfs>,
+        file_state_loaders: FileStateLoaders,
+        options: ProjectOptions,
+    ) -> Self {
         let vfs = Box::<FileSystemReader>::default();
 
         let project = PythonProject {
@@ -885,12 +892,7 @@ impl Database {
 
         let mut workspaces = Workspaces::default();
         for p in project.settings.mypy_path.iter() {
-            workspaces.add(
-                vfs.as_ref(),
-                file_state_loaders.as_ref(),
-                p.clone(),
-                WorkspaceKind::TypeChecking,
-            );
+            workspaces.add(&*new_vfs, p.clone(), WorkspaceKind::TypeChecking);
         }
 
         // Theoretically according to PEP 561 (Distributing and Packaging Type Information), this
@@ -899,25 +901,16 @@ impl Database {
             "/home/dave/source/rust/zuban/typeshed/stdlib",
             "/home/dave/source/rust/zuban/typeshed/stubs/mypy-extensions",
         ] {
-            workspaces.add(
-                vfs.as_ref(),
-                file_state_loaders.as_ref(),
-                p.into(),
-                WorkspaceKind::Typeshed,
-            )
+            workspaces.add(&*new_vfs, p.into(), WorkspaceKind::Typeshed)
         }
 
         for p in &project.sys_path {
-            workspaces.add(
-                vfs.as_ref(),
-                file_state_loaders.as_ref(),
-                p.clone().into(),
-                WorkspaceKind::SitePackages,
-            )
+            workspaces.add(&*new_vfs, p.clone().into(), WorkspaceKind::SitePackages)
         }
 
         let mut this = Self {
             vfs,
+            new_vfs,
             file_state_loaders,
             files: Default::default(),
             workspaces,
@@ -999,16 +992,14 @@ impl Database {
         );
         for p in mypy_path_iter.rev() {
             workspaces.add_at_start(
-                self.vfs.as_ref(),
-                file_state_loaders.as_ref(),
+                self.new_vfs.as_ref(),
                 p.clone(),
                 WorkspaceKind::TypeChecking,
             )
         }
         for p in &project.sys_path {
             workspaces.add(
-                self.vfs.as_ref(),
-                file_state_loaders.as_ref(),
+                self.new_vfs.as_ref(),
                 p.clone().into(),
                 WorkspaceKind::SitePackages,
             )
@@ -1060,6 +1051,7 @@ impl Database {
         );
         let db = Self {
             vfs: Box::<FileSystemReader>::default(),
+            new_vfs: Box::new(LocalFS::without_watcher()),
             file_state_loaders,
             files,
             workspaces,
@@ -1150,7 +1142,7 @@ impl Database {
         invalidates_db: bool,
     ) -> Option<FileIndex> {
         // A loader should be available for all files in the workspace.
-        let path = file_entry.path(&*self.vfs);
+        let path = file_entry.path(&*self.new_vfs);
         let loader = self.loader(&path)?;
         let file_index = match self.vfs.read_file(&path) {
             Ok(code) => self.with_add_file_state(|file_index| {
@@ -1176,7 +1168,7 @@ impl Database {
         debug!("Loading in memory file: {path}");
         let ensured = self
             .workspaces
-            .ensure_file(&self.project.flags, &*self.vfs, &path);
+            .ensure_file(&self.project.flags, &*self.new_vfs, &path);
 
         let in_mem_file = self.in_memory_file(&path);
         debug_assert!(
@@ -1239,7 +1231,7 @@ impl Database {
         let file_state = &mut self.files[file_index.0 as usize];
         let path = file_state.path();
         self.workspaces
-            .unload_file(&self.project.flags, &*self.vfs, path);
+            .unload_file(&self.project.flags, &*self.new_vfs, path);
         let invalidations = file_state.unload_and_return_invalidations();
         self.invalidate_files(file_index, invalidations)
     }
@@ -1327,7 +1319,7 @@ impl Database {
             self.unload_in_memory_file(&path).unwrap();
         }
         self.workspaces
-            .delete_directory(&self.project.flags, &*self.vfs, dir_path)
+            .delete_directory(&self.project.flags, &*self.new_vfs, dir_path)
     }
 
     pub fn unload_in_memory_file(&mut self, path: &str) -> Result<(), &'static str> {
@@ -1361,7 +1353,7 @@ impl Database {
         let DirectoryEntry::File(file_entry) = &entry else {
             panic!(
                 "It seems like you are using directories in typeshed for {}: {file_name}",
-                dir.path(&*self.vfs, true)
+                dir.path(&*self.new_vfs, true)
             )
         };
         let file_index = file_entry.file_index.get().unwrap_or_else(|| {

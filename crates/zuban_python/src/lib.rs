@@ -20,10 +20,12 @@ mod sys_path;
 mod type_;
 mod type_helpers;
 mod utils;
-mod workspaces;
+
+use parsa_python_cst::CodeIndex;
+use vfs::{Directory, DirectoryEntry, FileEntry, FileIndex, LocalFS, Vfs};
 
 use config::{DiagnosticConfig, ProjectOptions, PythonVersion, Settings, TypeCheckerFlags};
-use database::{Database, FileIndex, PythonProject};
+use database::{Database, PythonProject};
 pub use diagnostics::Severity;
 use file::{File, FileStateLoader, Leaf};
 use inference_state::InferenceState;
@@ -31,16 +33,19 @@ use inferred::Inferred;
 use matching::invalidate_protocol_cache;
 pub use name::FilePosition;
 use name::Names;
-use parsa_python_cst::CodeIndex;
-use workspaces::{Directory, DirectoryEntry, FileEntry};
 
 pub struct Project {
     db: Database,
 }
 
 impl Project {
-    pub fn new(options: ProjectOptions) -> Self {
-        let db = Database::new(get_loaders(), options);
+    pub fn new(vfs: Box<dyn Vfs>, options: ProjectOptions) -> Self {
+        let db = Database::new(vfs, get_loaders(), options);
+        Self { db }
+    }
+
+    pub fn without_watcher(options: ProjectOptions) -> Self {
+        let db = Database::new(Box::new(LocalFS::without_watcher()), get_loaders(), options);
         Self { db }
     }
 
@@ -97,7 +102,7 @@ impl Project {
             directory.walk(&mut |in_dir, file| {
                 if file.file_index.get().is_none() && !ignore_py_if_overwritten_by_pyi(in_dir, file)
                 {
-                    let path = file.relative_path(self.db.vfs.as_ref());
+                    let path = file.relative_path(&*self.db.new_vfs);
                     to_be_loaded.push((file.clone(), path));
                 }
             });
@@ -130,7 +135,7 @@ impl Project {
                 let python_file = self.db.loaded_python_file(file_index);
                 let relative = python_file
                     .file_entry(&self.db)
-                    .relative_path(self.db.vfs.as_ref());
+                    .relative_path(&*self.db.new_vfs);
                 if maybe_skipped(python_file.flags(&self.db), &relative) {
                     continue 'outer;
                 }
@@ -166,7 +171,7 @@ impl Project {
         let file_entry =
             self.db
                 .workspaces
-                .search_file(&self.db.project.flags, self.db.vfs.as_ref(), path)?;
+                .search_file(&self.db.project.flags, &*self.db.new_vfs, path)?;
 
         if file_entry.file_index.get().is_none() {
             self.db.load_file_from_workspace(file_entry.clone(), false);

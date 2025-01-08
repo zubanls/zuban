@@ -68,7 +68,7 @@ fn main() {
         return;
     }
 
-    let mut project = Project::new(ProjectOptions::new(
+    let mut project = Project::without_watcher(ProjectOptions::new(
         Default::default(),
         //"tests/blackbox/".into(),
         TypeCheckerFlags {

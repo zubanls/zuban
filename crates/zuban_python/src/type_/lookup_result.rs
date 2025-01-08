@@ -1,9 +1,10 @@
 use std::borrow::Cow;
 
 use parsa_python_cst::NodeIndex;
+use vfs::FileIndex;
 
 use crate::{
-    database::{FileIndex, Locality, Point, PointLink},
+    database::{Locality, Point, PointLink},
     file::PythonFile,
     inference_state::InferenceState,
     inferred::Inferred,

@@ -2,15 +2,15 @@ use std::{any::Any, fs, path::Path, pin::Pin, rc::Rc};
 
 use config::DiagnosticConfig;
 use parsa_python_cst::{CodeIndex, Keyword, NodeIndex};
+use vfs::{FileEntry, FileIndex, Invalidations};
 
 use crate::{
-    database::{Database, FileIndex},
+    database::Database,
     diagnostics::Diagnostic,
     file::PythonFile,
     imports::STUBS_SUFFIX,
     inferred::Inferred,
     name::{FilePosition, Name, Names},
-    workspaces::{FileEntry, Invalidations},
     PythonProject,
 };
 

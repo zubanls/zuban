@@ -982,6 +982,7 @@ checksum = "830b7e5d4d90034032940e4ace0d9a9a057e7a45cd94e6c007832e39edb82f6d"
 name = "vfs"
 version = "0.1.0"
 dependencies = [
+ "config",
  "crossbeam-channel",
  "notify",
  "tracing",
@@ -1197,6 +1198,7 @@ name = "zmypy"
 version = "0.1.0"
 dependencies = [
  "clap",
+ "config",
  "config_searcher",
  "zuban_python",
 ]
@@ -1213,6 +1215,7 @@ dependencies = [
  "regex",
  "test_utils",
  "tracing",
+ "vfs",
  "walkdir",
 ]
 

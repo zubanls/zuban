@@ -679,7 +679,7 @@ impl ProjectsCache {
         let mut po = ProjectOptions::default();
         set_mypy_path(&mut po);
         Self {
-            base_project: reuse_db.then(|| Project::new(po)),
+            base_project: reuse_db.then(|| Project::without_watcher(po)),
             map: Default::default(),
         }
     }
@@ -699,7 +699,7 @@ impl ProjectsCache {
         if let Some(base_project) = self.base_project.as_ref() {
             base_project.try_to_reuse_project_resources_for_tests(options)
         } else {
-            Project::new(options)
+            Project::without_watcher(options)
         }
     }
 }

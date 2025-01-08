@@ -1,7 +1,9 @@
-use config_searcher::find_cli_config;
 use std::path::PathBuf;
 use std::process::ExitCode;
-use zuban_python::{DiagnosticConfig, ExcludeRegex, Project, ProjectOptions, PythonVersion};
+
+use config::{DiagnosticConfig, ExcludeRegex, ProjectOptions, PythonVersion};
+use config_searcher::find_cli_config;
+use zuban_python::Project;
 
 use clap::Parser;
 
@@ -202,7 +204,7 @@ fn main() -> ExitCode {
     options.settings.mypy_compatible = true;
     apply_flags(&mut options, &mut diagnostic_config, cli);
 
-    let mut project = Project::new(options);
+    let mut project = Project::without_watcher(options);
     let diagnostics = project.diagnostics(&diagnostic_config);
     for diagnostic in diagnostics.issues.iter() {
         println!("{}", diagnostic.as_string(&diagnostic_config))
