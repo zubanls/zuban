@@ -11,8 +11,8 @@ use std::{
 use config::{OverrideConfig, Settings};
 use parsa_python_cst::NodeIndex;
 use vfs::{
-    Directory, DirectoryEntry, FileEntry, FileIndex, Invalidations, LocalFS, Parent, Vfs,
-    VfsHandler, WorkspaceKind, Workspaces,
+    Directory, DirectoryEntry, FileEntry, FileIndex, InvalidationDetail, Invalidations, LocalFS,
+    Parent, Vfs, VfsHandler, WorkspaceKind, Workspaces,
 };
 
 use crate::{
@@ -1088,7 +1088,9 @@ impl Database {
                 "".into(),
                 add(file_index),
                 self.file_state(super_file.file_index)
-                    .invalidate_invalidates_db(),
+                    .file_entry
+                    .invalidations
+                    .invalidates_db(),
             ))
         });
         self.loaded_python_file(index)
@@ -1164,9 +1166,11 @@ impl Database {
             file_index
         };
         if cfg!(feature = "zuban_debug") {
-            for invalidation in &ensured.invalidations.iter() {
-                let p = self.file_state_mut(*invalidation).path();
-                debug!("Invalidate {p} because we're loading {path}");
+            if let InvalidationDetail::Some(invs) = ensured.invalidations.iter() {
+                for invalidation in &invs {
+                    let p = self.file_state_mut(*invalidation).path();
+                    debug!("Invalidate {p} because we're loading {path}");
+                }
             }
         }
         self.invalidate_files(file_index, ensured.invalidations);
@@ -1203,32 +1207,39 @@ impl Database {
     }
 
     fn invalidate_files(&mut self, original_file_index: FileIndex, invalidations: Invalidations) {
-        for invalid_index in invalidations.into_iter() {
+        let InvalidationDetail::Some(invalidations) = invalidations.into_iter() else {
+            // This means that the file was created with `invalidates_db = true`, which
+            // means we have to invalidate the whole database.
+            debug!(
+                "Invalidate whole db because we have invalidated {}",
+                self.file_state(original_file_index).path()
+            );
+            self.invalidate_db();
+            return;
+        };
+        for invalid_index in invalidations {
             let file_state = self.file_state_mut(invalid_index);
-            let Some(invalidations) = file_state.take_invalidations() else {
-                // None here means that the file was created with `invalidates_db = true`, which
-                // means we have to invalidate the whole database.
-                debug!(
-                    "Invalidate whole db because we have invalidated {}",
-                    self.file_state(invalid_index).path()
-                );
-                self.invalidate_db();
-                return;
-            };
+            let new_invalidations = file_state.file_entry.invalidations.take();
             if let Some(file) = file_state.maybe_loaded_file_mut() {
                 file.invalidate_references_to(original_file_index);
             }
 
             if cfg!(feature = "zuban_debug") {
-                for invalidation in &invalidations.iter() {
-                    let p = self.file_state(*invalidation).path();
-                    debug!(
-                        "Invalidate {p} because we have invalidated {}",
-                        self.file_state(invalid_index).path()
-                    );
+                if let InvalidationDetail::Some(invs) = new_invalidations.iter() {
+                    for invalidation in &invs {
+                        let p = self.file_state(*invalidation).path();
+                        debug!(
+                            "Invalidate {p} because we have invalidated {}",
+                            self.file_state(invalid_index).path()
+                        );
+                    }
                 }
             }
-            self.invalidate_files(original_file_index, invalidations);
+            let invalidated_db = new_invalidations.invalidates_db();
+            self.invalidate_files(original_file_index, new_invalidations);
+            if invalidated_db {
+                return;
+            }
         }
     }
 
@@ -1247,7 +1258,10 @@ impl Database {
     }
 
     pub fn add_invalidates(&self, file: FileIndex, invalidates: FileIndex) {
-        self.file_state(file).add_invalidates(invalidates)
+        self.file_state(file)
+            .file_entry
+            .invalidations
+            .add(invalidates)
     }
 
     pub fn delete_directory(&mut self, mut dir_path: &str) -> Result<(), String> {

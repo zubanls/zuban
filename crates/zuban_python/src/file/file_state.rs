@@ -71,7 +71,6 @@ pub struct FileState {
     path: Box<str>,
     pub file_entry: Rc<FileEntry>,
     state: InternalFileExistence,
-    invalidates: Option<Invalidations>,
 }
 
 impl FileState {
@@ -88,23 +87,8 @@ impl FileState {
     }
 
     pub(crate) fn unload_and_return_invalidations(&mut self) -> Invalidations {
-        let invalidates = self.take_invalidations();
         self.state = InternalFileExistence::Unloaded;
-        invalidates.expect("We don't support rebuilding/unloading after changing of typeshed, yet.")
-    }
-
-    pub(crate) fn take_invalidations(&mut self) -> Option<Invalidations> {
-        self.invalidates.as_mut().map(std::mem::take)
-    }
-
-    pub(crate) fn add_invalidates(&self, file_index: FileIndex) {
-        if let Some(invalidates) = &self.invalidates {
-            invalidates.add(file_index)
-        }
-    }
-
-    pub(crate) fn invalidate_invalidates_db(&self) -> bool {
-        self.invalidates.is_none()
+        self.file_entry.invalidations.take()
     }
 
     pub(crate) fn new_parsed(
@@ -113,11 +97,13 @@ impl FileState {
         file: PythonFile,
         invalidates_db: bool,
     ) -> Self {
+        if invalidates_db {
+            file_entry.invalidations.set_invalidates_db();
+        }
         Self {
             file_entry,
             path,
             state: InternalFileExistence::Parsed(file),
-            invalidates: (!invalidates_db).then(Invalidations::default),
         }
     }
 

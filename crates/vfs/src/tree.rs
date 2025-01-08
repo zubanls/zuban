@@ -82,6 +82,7 @@ impl Parent {
 pub struct FileEntry {
     pub name: Box<str>,
     pub file_index: WorkspaceFileIndex,
+    pub invalidations: Invalidations,
     pub parent: Parent,
 }
 
@@ -90,6 +91,7 @@ impl FileEntry {
         Rc::new(Self {
             name,
             file_index: WorkspaceFileIndex::none(),
+            invalidations: Default::default(),
             parent,
         })
     }
@@ -220,11 +222,10 @@ impl Directory {
                     name,
                 } => {
                     invalidations = inv.take();
-                    let file_entry = Rc::new(FileEntry {
+                    let file_entry = FileEntry::new(
                         parent,
-                        name: std::mem::take(name),
-                        file_index: WorkspaceFileIndex::none(),
-                    });
+                        std::mem::take(name),
+                    );
                     *entry = DirectoryEntry::File(file_entry.clone());
                     file_entry
                 }
@@ -316,28 +317,81 @@ impl Directory {
 }
 
 #[derive(Debug, Default, Clone)]
-pub struct Invalidations(RefCell<Vec<FileIndex>>);
+pub struct Invalidations(RefCell<InvalidationDetail<Vec<FileIndex>>>);
+
+#[derive(Debug, Clone)]
+pub enum InvalidationDetail<T> {
+    InvalidatesDb,
+    Some(T),
+}
+
+impl<T: Default> Default for InvalidationDetail<T> {
+    fn default() -> Self {
+        Self::Some(Default::default())
+    }
+}
+
+impl<T> InvalidationDetail<T> {
+    pub fn map<U, F>(self, f: F) -> InvalidationDetail<U>
+    where
+        F: FnOnce(T) -> U,
+    {
+        match self {
+            InvalidationDetail::Some(x) => InvalidationDetail::Some(f(x)),
+            InvalidationDetail::InvalidatesDb => InvalidationDetail::InvalidatesDb,
+        }
+    }
+}
 
 impl Invalidations {
+    pub fn set_invalidates_db(&self) {
+        *self.0.borrow_mut() = InvalidationDetail::InvalidatesDb;
+    }
+
+    pub fn invalidates_db(&self) -> bool {
+        matches!(&*self.0.borrow(), InvalidationDetail::InvalidatesDb)
+    }
+
     pub fn add(&self, element: FileIndex) {
-        if !self.0.borrow().contains(&element) {
-            self.0.borrow_mut().push(element);
+        if let InvalidationDetail::Some(invs) = &mut *self.0.borrow_mut() {
+            if !invs.contains(&element) {
+                invs.push(element);
+            }
         }
     }
 
     pub fn extend(&mut self, other: Self) {
-        self.0.get_mut().extend(other.0.into_inner())
+        match (self.0.get_mut(), other.0.into_inner()) {
+            (InvalidationDetail::Some(invs), InvalidationDetail::Some(other)) => invs.extend(other),
+            _ => self.0 = RefCell::new(InvalidationDetail::InvalidatesDb),
+        }
     }
 
     pub fn take(&self) -> Self {
+        if self.invalidates_db() {
+            return self.clone();
+        }
         Self(RefCell::new(self.0.take()))
     }
 
-    pub fn iter(&self) -> VecRefWrapper<FileIndex> {
-        VecRefWrapper(self.0.borrow())
+    pub fn iter(&self) -> InvalidationDetail<VecRefWrapper<FileIndex>> {
+        let r = self.0.borrow();
+        if let InvalidationDetail::InvalidatesDb = &*r {
+            return InvalidationDetail::InvalidatesDb;
+        }
+        InvalidationDetail::Some(VecRefWrapper(Ref::map(r, |r| {
+            let InvalidationDetail::Some(vec) = r else {
+                unreachable!()
+            };
+            vec
+        })))
     }
 
-    pub fn into_iter(self) -> impl Iterator<Item = FileIndex> {
-        self.0.into_inner().into_iter()
+    pub fn into_inner(self) -> InvalidationDetail<Vec<FileIndex>> {
+        self.0.into_inner()
+    }
+
+    pub fn into_iter(self) -> InvalidationDetail<impl Iterator<Item = FileIndex>> {
+        self.0.into_inner().map(|invs| invs.into_iter())
     }
 }
