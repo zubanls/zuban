@@ -147,6 +147,24 @@ impl<F: VfsFile> Vfs<F> {
     pub fn in_memory_file(&mut self, path: &str) -> Option<FileIndex> {
         self.in_memory_files.get(path).cloned()
     }
+
+    pub fn with_added_file(
+        &self,
+        file_entry: Rc<FileEntry>,
+        path: Box<str>,
+        invalidates_db: bool,
+        new_file: impl FnOnce(&str, FileIndex) -> F,
+    ) -> FileIndex {
+        let file_index = FileIndex(self.files.len() as u32);
+        let new_file = new_file(&path, file_index);
+        self.files.push(Box::pin(FileState::new_parsed(
+            file_entry,
+            path,
+            new_file,
+            invalidates_db,
+        )));
+        file_index
+    }
 }
 
 #[must_use]

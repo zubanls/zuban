@@ -384,7 +384,7 @@ impl<'db> PythonFile {
         // TODO should probably not need a newline
         let tree = Tree::parse(Box::from(code.into_string() + "\n"));
         let points = Points::new(tree.length());
-        let f = db.load_sub_file(self, |file_index| {
+        let f = db.load_sub_file(self, |_, file_index| {
             let mut file = PythonFile::new_internal(
                 file_index,
                 tree,

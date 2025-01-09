@@ -1050,32 +1050,21 @@ impl Database {
         self.vfs.file(index).path()
     }
 
-    fn with_add_file_state(
-        &self,
-        add: impl FnOnce(FileIndex) -> Pin<Box<FileState<PythonFile>>>,
-    ) -> FileIndex {
-        let file_index = FileIndex(self.vfs.files.len() as u32);
-        self.vfs.files.push(add(file_index));
-        file_index
-    }
-
     pub fn load_sub_file(
         &self,
         super_file: &PythonFile,
-        add: impl FnOnce(FileIndex) -> PythonFile,
+        add: impl FnOnce(&str, FileIndex) -> PythonFile,
     ) -> &PythonFile {
-        let index = self.with_add_file_state(|file_index| {
-            Box::pin(FileState::new_parsed(
-                self.vfs.file(super_file.file_index).file_entry().clone(),
-                "".into(),
-                add(file_index),
-                self.vfs
-                    .file(super_file.file_index)
-                    .file_entry()
-                    .invalidations
-                    .invalidates_db(),
-            ))
-        });
+        let index = self.vfs.with_added_file(
+            self.vfs.file(super_file.file_index).file_entry().clone(),
+            "".into(),
+            self.vfs
+                .file(super_file.file_index)
+                .file_entry()
+                .invalidations
+                .invalidates_db(),
+            add,
+        );
         self.loaded_python_file(index)
     }
 
@@ -1087,16 +1076,20 @@ impl Database {
         // A loader should be available for all files in the workspace.
         let path = file_entry.path(&*self.vfs.handler);
         let code = self.vfs.handler.read_and_watch_file(&path)?;
-        let file_index = self.with_add_file_state(|file_index| {
-            load_parsed(
-                &self.project,
-                file_index,
-                file_entry.clone(),
-                path.into(),
-                code.into(),
-                invalidates_db,
-            )
-        });
+        let file_index = self.vfs.with_added_file(
+            file_entry.clone(),
+            path.into(),
+            invalidates_db,
+            |path, file_index| {
+                PythonFile::from_path_and_code(
+                    &self.project,
+                    file_index,
+                    &file_entry,
+                    path,
+                    code.into(),
+                )
+            },
+        );
         file_entry.file_index.set(file_index);
         Some(file_index)
     }
@@ -1128,24 +1121,37 @@ impl Database {
             file_invalidations = file_state.unload_and_return_invalidations();
         }
 
-        let new_file_state = |file_index| {
-            load_parsed(
-                &self.project,
-                file_index,
-                ensured.file_entry.clone(),
-                path.clone(),
-                code,
-                false,
-            )
-        };
         let file_index = if let Some(file_index) = in_mem_file {
+            let new_file_state = |file_index| {
+                load_parsed(
+                    &self.project,
+                    file_index,
+                    ensured.file_entry.clone(),
+                    path.clone(),
+                    code,
+                    false,
+                )
+            };
             self.vfs
                 .files
                 .set(file_index.0 as usize, new_file_state(file_index));
             debug_assert!(ensured.file_entry.file_index.get().is_some(), "for {path}");
             file_index
         } else {
-            let file_index = self.with_add_file_state(new_file_state);
+            let file_index = self.vfs.with_added_file(
+                ensured.file_entry.clone(),
+                path.clone(),
+                false,
+                |path, file_index| {
+                    PythonFile::from_path_and_code(
+                        &self.project,
+                        file_index,
+                        &ensured.file_entry,
+                        path,
+                        code.into(),
+                    )
+                },
+            );
             self.vfs.in_memory_files.insert(path.clone(), file_index);
             ensured.set_file_index(file_index);
             file_index
