@@ -1,6 +1,6 @@
 use std::{path::PathBuf, rc::Rc};
 
-use config::TypeCheckerFlags;
+use utils::match_case;
 use walkdir::WalkDir;
 
 use crate::{AddedFile, Directory, DirectoryEntry, FileEntry, Parent, VfsHandler};
@@ -44,25 +44,25 @@ impl Workspaces {
 
     pub fn search_file(
         &self,
-        flags: &TypeCheckerFlags,
         vfs: &dyn VfsHandler,
+        case_sensitive: bool,
         path: &str,
     ) -> Option<Rc<FileEntry>> {
         self.0.iter().find_map(|workspace| {
-            let p = strip_path_prefix(flags, vfs, path, workspace.root_path())?;
+            let p = strip_path_prefix(vfs, case_sensitive, path, workspace.root_path())?;
             workspace.directory.search_path(vfs, p)
         })
     }
 
     pub fn ensure_file(
         &mut self,
-        flags: &TypeCheckerFlags,
         vfs: &dyn VfsHandler,
+        case_sensitive: bool,
         path: &str,
     ) -> AddedFile {
         for workspace in &mut self.0 {
             let root_path = workspace.root_path();
-            if let Some(p) = strip_path_prefix(flags, vfs, path, root_path) {
+            if let Some(p) = strip_path_prefix(vfs, case_sensitive, path, root_path) {
                 return ensure_dirs_and_file(
                     Parent::Workspace(workspace.root_path.clone()),
                     &workspace.directory,
@@ -74,10 +74,10 @@ impl Workspaces {
         unreachable!()
     }
 
-    pub fn unload_file(&mut self, flags: &TypeCheckerFlags, vfs: &dyn VfsHandler, path: &str) {
+    pub fn unload_file(&mut self, vfs: &dyn VfsHandler, case_sensitive: bool, path: &str) {
         // TODO for now we always unload, fix that.
         for workspace in &self.0 {
-            if let Some(p) = strip_path_prefix(flags, vfs, path, workspace.root_path()) {
+            if let Some(p) = strip_path_prefix(vfs, case_sensitive, path, workspace.root_path()) {
                 workspace.directory.unload_file(vfs, p);
             }
         }
@@ -85,12 +85,12 @@ impl Workspaces {
 
     pub fn delete_directory(
         &mut self,
-        flags: &TypeCheckerFlags,
         vfs: &dyn VfsHandler,
+        case_sensitive: bool,
         path: &str,
     ) -> Result<(), String> {
         for workspace in &mut self.0 {
-            if let Some(p) = strip_path_prefix(flags, vfs, path, workspace.root_path()) {
+            if let Some(p) = strip_path_prefix(vfs, case_sensitive, path, workspace.root_path()) {
                 return workspace.directory.delete_directory(vfs, p);
             }
         }
@@ -291,16 +291,16 @@ fn ensure_dirs_and_file(
 }
 
 fn strip_path_prefix<'x>(
-    flags: &TypeCheckerFlags,
     vfs: &dyn VfsHandler,
+    case_sensitive: bool,
     path: &'x str,
     to_strip: &str,
 ) -> Option<&'x str> {
-    let path = if flags.case_sensitive {
+    let path = if case_sensitive {
         path.strip_prefix(to_strip)?
     } else {
         let p = path.get(..to_strip.len())?;
-        if !flags.match_case(to_strip, p) {
+        if !match_case(case_sensitive, to_strip, p) {
             return None;
         }
         path.get(to_strip.len()..)?

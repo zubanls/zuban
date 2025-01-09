@@ -88,3 +88,11 @@ where
         }
     }
 }
+
+pub fn match_case(case_sensitive: bool, x: &str, y: &str) -> bool {
+    if case_sensitive {
+        x == y
+    } else {
+        x.eq_ignore_ascii_case(y)
+    }
+}

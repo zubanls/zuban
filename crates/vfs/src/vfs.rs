@@ -1,6 +1,5 @@
 use std::{collections::HashMap, rc::Rc};
 
-use config::TypeCheckerFlags;
 use utils::InsertOnlyVec;
 
 use crate::{
@@ -36,8 +35,9 @@ impl<F: VfsFile> Vfs<F> {
         self.workspaces.add(&*self.handler, root_path, kind)
     }
 
-    pub fn search_file(&self, flags: &TypeCheckerFlags, path: &str) -> Option<Rc<FileEntry>> {
-        self.workspaces.search_file(flags, &*self.handler, path)
+    pub fn search_file(&self, case_sensitive: bool, path: &str) -> Option<Rc<FileEntry>> {
+        self.workspaces
+            .search_file(&*self.handler, case_sensitive, path)
     }
 
     pub fn invalidate_files(

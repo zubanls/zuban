@@ -3,6 +3,7 @@ use std::{
     rc::Rc,
 };
 
+use utils::match_case;
 use vfs::{Directory, DirectoryEntry, FileIndex, WorkspaceKind};
 
 use crate::{
@@ -270,7 +271,7 @@ fn match_c(db: &Database, x: &str, y: &str, needs_exact_case: bool) -> bool {
     if needs_exact_case {
         x == y
     } else {
-        db.project.flags.match_case(x, y)
+        match_case(db.project.flags.case_sensitive, x, y)
     }
 }
 

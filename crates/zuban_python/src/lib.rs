@@ -166,7 +166,10 @@ impl Project {
     }
 
     pub fn document(&mut self, path: &str) -> Option<Document> {
-        let file_entry = self.db.vfs.search_file(&self.db.project.flags, path)?;
+        let file_entry = self
+            .db
+            .vfs
+            .search_file(self.db.project.flags.case_sensitive, path)?;
 
         if file_entry.file_index.get().is_none() {
             self.db.load_file_from_workspace(file_entry.clone(), false);

@@ -1100,10 +1100,11 @@ impl Database {
 
     pub fn load_in_memory_file(&mut self, path: Box<str>, code: Box<str>) -> FileIndex {
         debug!("Loading in memory file: {path}");
-        let ensured =
-            self.vfs
-                .workspaces
-                .ensure_file(&self.project.flags, &*self.vfs.handler, &path);
+        let ensured = self.vfs.workspaces.ensure_file(
+            &*self.vfs.handler,
+            self.project.flags.case_sensitive,
+            &path,
+        );
 
         let in_mem_file = self.vfs.in_memory_file(&path);
         debug_assert!(
@@ -1162,9 +1163,11 @@ impl Database {
     fn unload_file(&mut self, file_index: FileIndex) {
         let file_state = &mut self.vfs.files[file_index.0 as usize];
         let path = file_state.path();
-        self.vfs
-            .workspaces
-            .unload_file(&self.project.flags, &*self.vfs.handler, path);
+        self.vfs.workspaces.unload_file(
+            &*self.vfs.handler,
+            self.project.flags.case_sensitive,
+            path,
+        );
         let invalidations = file_state.unload_and_return_invalidations();
         self.invalidate_files(file_index, invalidations)
     }
@@ -1228,9 +1231,11 @@ impl Database {
         for path in in_mem_paths {
             self.unload_in_memory_file(&path).unwrap();
         }
-        self.vfs
-            .workspaces
-            .delete_directory(&self.project.flags, &*self.vfs.handler, dir_path)
+        self.vfs.workspaces.delete_directory(
+            &*self.vfs.handler,
+            self.project.flags.case_sensitive,
+            dir_path,
+        )
     }
 
     pub fn unload_in_memory_file(&mut self, path: &str) -> Result<(), &'static str> {

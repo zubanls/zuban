@@ -248,14 +248,6 @@ impl Default for TypeCheckerFlags {
 }
 
 impl TypeCheckerFlags {
-    pub fn match_case(&self, x: &str, y: &str) -> bool {
-        if self.case_sensitive {
-            x == y
-        } else {
-            x.eq_ignore_ascii_case(y)
-        }
-    }
-
     pub fn enable_all_strict_flags(&mut self) {
         // Use for --strict
         // self.warn_unused_configs = true;
