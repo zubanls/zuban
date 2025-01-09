@@ -1089,77 +1089,21 @@ impl Database {
     }
 
     pub fn load_in_memory_file(&mut self, path: Box<str>, code: Box<str>) -> FileIndex {
-        debug!("Loading in memory file: {path}");
-        let ensured = self.vfs.workspaces.ensure_file(
-            &*self.vfs.handler,
+        let (file_index, invalidation) = self.vfs.load_in_memory_file(
             self.project.flags.case_sensitive,
-            &path,
-        );
-
-        let in_mem_file = self.vfs.in_memory_file(&path);
-        debug_assert!(
-            in_mem_file.is_none()
-                || in_mem_file.is_some() && ensured.file_entry.file_index.get().is_some(),
-            "{path}; in_mem_file: {in_mem_file:?}; ensured file_index: {:?}",
-            ensured.file_entry.file_index.get(),
-        );
-
-        let in_mem_file = in_mem_file.or_else(|| {
-            let file_index = ensured.file_entry.file_index.get()?;
-            self.vfs.in_memory_files.insert(path.clone(), file_index);
-            Some(file_index)
-        });
-        let mut file_invalidations = Default::default();
-        if let Some(file_index) = in_mem_file {
-            let file_state = &mut self.vfs.files[file_index.0 as usize];
-            file_invalidations = file_state.unload_and_return_invalidations();
-        }
-
-        let file_index = if let Some(file_index) = in_mem_file {
-            let new_file_state = |file_index| {
-                load_parsed(
+            path,
+            code,
+            |file_index, file_entry, path, new_code| {
+                PythonFile::from_path_and_code(
                     &self.project,
                     file_index,
-                    ensured.file_entry.clone(),
-                    path.clone(),
-                    code,
-                    false,
+                    file_entry,
+                    path,
+                    new_code,
                 )
-            };
-            self.vfs
-                .files
-                .set(file_index.0 as usize, new_file_state(file_index));
-            debug_assert!(ensured.file_entry.file_index.get().is_some(), "for {path}");
-            file_index
-        } else {
-            let file_index = self.vfs.with_added_file(
-                ensured.file_entry.clone(),
-                path.clone(),
-                false,
-                |path, file_index| {
-                    PythonFile::from_path_and_code(
-                        &self.project,
-                        file_index,
-                        &ensured.file_entry,
-                        path,
-                        code.into(),
-                    )
-                },
-            );
-            self.vfs.in_memory_files.insert(path.clone(), file_index);
-            ensured.set_file_index(file_index);
-            file_index
-        };
-        if cfg!(feature = "zuban_debug") {
-            if let InvalidationDetail::Some(invs) = ensured.invalidations.iter() {
-                for invalidation in &invs {
-                    let p = self.vfs.file(*invalidation).path();
-                    debug!("Invalidate {p} because we're loading {path}");
-                }
-            }
-        }
-        self.invalidate_files(file_index, ensured.invalidations);
-        self.invalidate_files(file_index, file_invalidations);
+            },
+        );
+        self.handle_invalidation(invalidation);
         file_index
     }
 
@@ -1167,13 +1111,6 @@ impl Database {
         if invalidation_result == InvalidationResult::InvalidatedDb {
             self.invalidate_db();
         }
-    }
-
-    fn invalidate_files(&mut self, original_file_index: FileIndex, invalidations: Invalidations) {
-        let result = self
-            .vfs
-            .invalidate_files(original_file_index, invalidations);
-        self.handle_invalidation(result)
     }
 
     fn invalidate_db(&mut self) {
@@ -1315,23 +1252,6 @@ impl Database {
             mypy_extensions,
         );
     }
-}
-
-fn load_parsed(
-    project: &PythonProject,
-    file_index: FileIndex,
-    file_entry: Rc<FileEntry>,
-    path: Box<str>,
-    code: Box<str>,
-    invalidates_db: bool,
-) -> Pin<Box<FileState<PythonFile>>> {
-    let file = PythonFile::from_path_and_code(project, file_index, &file_entry, &path, code);
-    Box::pin(FileState::new_parsed(
-        file_entry,
-        path,
-        file,
-        invalidates_db,
-    ))
 }
 
 pub struct PythonProject {

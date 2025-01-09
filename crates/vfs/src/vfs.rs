@@ -1,5 +1,6 @@
 use std::{collections::HashMap, ops::BitOrAssign, pin::Pin, rc::Rc};
 
+use tracing::Level;
 use utils::InsertOnlyVec;
 
 use crate::{
@@ -103,6 +104,86 @@ impl<F: VfsFile> Vfs<F> {
 
     pub fn in_memory_file(&mut self, path: &str) -> Option<FileIndex> {
         self.in_memory_files.get(path).cloned()
+    }
+
+    pub fn load_in_memory_file(
+        &mut self,
+        case_sensitive: bool,
+        path: Box<str>,
+        code: Box<str>,
+        new_file: impl FnOnce(FileIndex, &FileEntry, &str, Box<str>) -> F,
+    ) -> (FileIndex, InvalidationResult) {
+        tracing::info!("Loading in memory file: {path}");
+        let ensured = self
+            .workspaces
+            .ensure_file(&*self.handler, case_sensitive, &path);
+
+        let in_mem_file = self.in_memory_file(&path);
+        debug_assert!(
+            in_mem_file.is_none()
+                || in_mem_file.is_some() && ensured.file_entry.file_index.get().is_some(),
+            "{path}; in_mem_file: {in_mem_file:?}; ensured file_index: {:?}",
+            ensured.file_entry.file_index.get(),
+        );
+
+        let in_mem_file = in_mem_file.or_else(|| {
+            let file_index = ensured.file_entry.file_index.get()?;
+            self.in_memory_files.insert(path.clone(), file_index);
+            Some(file_index)
+        });
+        let mut file_invalidations = Default::default();
+        if let Some(file_index) = in_mem_file {
+            if self.file(file_index).code() == Some(&code) {
+                // It already exists with the same code, we can therefore skip generating a new
+                // file.
+                return (file_index, InvalidationResult::InvalidatedFiles);
+            }
+
+            let file_state = &mut self.files[file_index.0 as usize];
+            file_invalidations = file_state.unload_and_return_invalidations();
+        }
+
+        let file_index = if let Some(file_index) = in_mem_file {
+            let file = new_file(file_index, &ensured.file_entry, &path, code);
+            let new_file_state = Box::pin(FileState::new_parsed(
+                ensured.file_entry,
+                path,
+                file,
+                file_invalidations.invalidates_db(),
+            ));
+            self.files.set(file_index.0 as usize, new_file_state);
+            if std::cfg!(debug_assertions) {
+                let new = self.file(file_index);
+                debug_assert!(
+                    new.file_entry.file_index.get().is_some(),
+                    "for {}",
+                    new.path
+                );
+            }
+            file_index
+        } else {
+            let file_index = self.with_added_file(
+                ensured.file_entry.clone(),
+                path.clone(),
+                false,
+                |path, file_index| new_file(file_index, &ensured.file_entry, &path, code),
+            );
+            self.in_memory_files.insert(path.clone(), file_index);
+            ensured.set_file_index(file_index);
+            file_index
+        };
+        if tracing::enabled!(Level::INFO) {
+            if let InvalidationDetail::Some(invs) = ensured.invalidations.iter() {
+                for invalidation in &invs {
+                    let p = self.file(*invalidation).path();
+                    let path = self.file(file_index).path();
+                    tracing::info!("Invalidate {p} because we're loading {path}");
+                }
+            }
+        }
+        let mut result = self.invalidate_files(file_index, ensured.invalidations);
+        result |= self.invalidate_files(file_index, file_invalidations);
+        (file_index, result)
     }
 
     fn unload_in_memory_file_internal(
