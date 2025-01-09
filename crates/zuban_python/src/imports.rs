@@ -209,12 +209,11 @@ pub fn python_import_with_needs_exact_case(
             match entry {
                 DirectoryEntry::Directory(dir2) => {
                     if match_c(db, dir2.name.as_ref(), name, needs_exact_case) {
-                        let result = load_init_file(db, dir2);
+                        let result = load_init_file(db, dir2, from_file);
                         if let Some(file_index) = &result {
                             if needs_py_typed && dir2.search("py.typed").is_none() {
                                 return Some(ImportResult::PyTypedMissing);
                             }
-                            db.add_invalidates(*file_index, from_file);
                             return result.map(ImportResult::File);
                         }
                         dir2.add_missing_entry(Box::from(INIT_PY), from_file);
@@ -276,14 +275,18 @@ fn match_c(db: &Database, x: &str, y: &str, needs_exact_case: bool) -> bool {
     }
 }
 
-fn load_init_file(db: &Database, content: &Directory) -> Option<FileIndex> {
+fn load_init_file(db: &Database, content: &Directory, from_file: FileIndex) -> Option<FileIndex> {
     for child in &content.iter() {
         if let DirectoryEntry::File(file) = child {
             if match_c(db, &file.name, INIT_PY, false) || match_c(db, &file.name, INIT_PYI, false) {
                 if file.file_index.get().is_none() {
                     db.load_file_from_workspace(file.clone(), false);
                 }
-                return file.file_index.get();
+                let found_file_index = file.file_index.get();
+                if let Some(f) = found_file_index {
+                    db.add_invalidates(f, from_file);
+                }
+                return found_file_index;
             }
         }
     }
@@ -296,7 +299,7 @@ pub fn find_ancestor(db: &Database, file: &PythonFile, level: usize) -> Option<I
     for _ in 1..level {
         parent = parent.parent.maybe_dir().ok()?;
     }
-    Some(match load_init_file(db, &parent) {
+    Some(match load_init_file(db, &parent, file.file_index) {
         Some(index) => ImportResult::File(index),
         None => ImportResult::Namespace(Rc::new(Namespace {
             directories: [parent].into(),

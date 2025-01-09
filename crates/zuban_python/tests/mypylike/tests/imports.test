@@ -304,3 +304,20 @@ def typed_inline() -> None:
     from ns_pkg_w_stubs.typed_inline import *
     ZubanCls
     z: ZubanCls
+
+[case invalidation_of_relative_paths]
+from foo import bar
+
+[file foo/__init__.py]
+a = 1
+[file foo/__init__.py.2]
+a = ""
+
+[file foo/bar.py]
+from . import a
+reveal_type(a)
+
+[out]
+foo/bar.py:2: note: Revealed type is "int"
+[out2]
+foo/bar.py:2: note: Revealed type is "str"
