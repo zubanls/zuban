@@ -62,7 +62,7 @@ impl Project {
     }
 
     pub fn code_of_in_memory_file(&mut self, path: &str) -> Option<&str> {
-        let file_index = self.db.in_memory_file(path)?;
+        let file_index = self.db.vfs.in_memory_file(path)?;
         Some(self.db.loaded_file(file_index).code())
     }
 
@@ -210,7 +210,8 @@ impl<'a> Script<'a> {
                 if let Some(code) = code {
                     db.load_in_memory_file(path, code)
                 } else {
-                    db.in_memory_file(&path)
+                    db.vfs
+                        .in_memory_file(&path)
                         .or_else(|| unimplemented!())
                         .unwrap()
                 }

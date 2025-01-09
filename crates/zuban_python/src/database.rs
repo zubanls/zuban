@@ -1,7 +1,6 @@
 use std::{
     borrow::Cow,
     cell::{Cell, OnceCell, RefCell},
-    collections::HashMap,
     fmt, mem,
     ops::Range,
     pin::Pin,
@@ -860,8 +859,6 @@ impl fmt::Debug for Database {
 
 pub struct Database {
     pub vfs: Vfs<FileState>,
-    in_memory_files: HashMap<Box<str>, FileIndex>,
-
     pub python_state: PythonState,
     pub project: PythonProject,
 }
@@ -896,7 +893,6 @@ impl Database {
 
         let mut this = Self {
             vfs,
-            in_memory_files: Default::default(),
             python_state: PythonState::reserve(),
             project,
         };
@@ -1028,8 +1024,8 @@ impl Database {
                 handler: Box::new(LocalFS::without_watcher()),
                 files,
                 workspaces,
+                in_memory_files: Default::default(),
             },
-            in_memory_files: Default::default(),
             python_state,
             project,
         };
@@ -1117,7 +1113,7 @@ impl Database {
                 .workspaces
                 .ensure_file(&self.project.flags, &*self.vfs.handler, &path);
 
-        let in_mem_file = self.in_memory_file(&path);
+        let in_mem_file = self.vfs.in_memory_file(&path);
         debug_assert!(
             in_mem_file.is_none()
                 || in_mem_file.is_some() && ensured.file_entry.file_index.get().is_some(),
@@ -1127,7 +1123,7 @@ impl Database {
 
         let in_mem_file = in_mem_file.or_else(|| {
             let file_index = ensured.file_entry.file_index.get()?;
-            self.in_memory_files.insert(path.clone(), file_index);
+            self.vfs.in_memory_files.insert(path.clone(), file_index);
             Some(file_index)
         });
         let mut file_invalidations = Default::default();
@@ -1154,7 +1150,7 @@ impl Database {
             file_index
         } else {
             let file_index = self.with_add_file_state(new_file_state);
-            self.in_memory_files.insert(path.clone(), file_index);
+            self.vfs.in_memory_files.insert(path.clone(), file_index);
             ensured.set_file_index(file_index);
             file_index
         };
@@ -1169,10 +1165,6 @@ impl Database {
         self.invalidate_files(file_index, ensured.invalidations);
         self.invalidate_files(file_index, file_invalidations);
         file_index
-    }
-
-    pub fn in_memory_file(&mut self, path: &str) -> Option<FileIndex> {
-        self.in_memory_files.get(path).cloned()
     }
 
     fn unload_file(&mut self, file_index: FileIndex) {
@@ -1229,6 +1221,7 @@ impl Database {
         }
 
         let in_mem_paths: Vec<_> = self
+            .vfs
             .in_memory_files
             .iter()
             .filter_map(|(path, _)| {
@@ -1249,7 +1242,7 @@ impl Database {
     }
 
     pub fn unload_in_memory_file(&mut self, path: &str) -> Result<(), &'static str> {
-        if let Some(file_index) = self.in_memory_files.remove(path) {
+        if let Some(file_index) = self.vfs.in_memory_files.remove(path) {
             if let Some(on_file_system_code) = self.vfs.handler.read_and_watch_file(path) {
                 let file_state = &mut self.vfs.files[file_index.0 as usize];
                 // In case the code matches the one already in the file, we don't have to do anything.
@@ -1268,7 +1261,7 @@ impl Database {
     }
 
     pub fn unload_all_in_memory_files(&mut self) {
-        let in_memory_files = mem::take(&mut self.in_memory_files);
+        let in_memory_files = mem::take(&mut self.vfs.in_memory_files);
         for (_path, file_index) in in_memory_files.into_iter() {
             self.unload_file(file_index);
         }

@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::{collections::HashMap, rc::Rc};
 
 use config::TypeCheckerFlags;
 use utils::InsertOnlyVec;
@@ -19,6 +19,7 @@ pub struct Vfs<F: VfsFile> {
     pub handler: Box<dyn VfsHandler>,
     pub workspaces: Workspaces,
     pub files: InsertOnlyVec<F>,
+    pub in_memory_files: HashMap<Box<str>, FileIndex>,
 }
 
 impl<F: VfsFile> Vfs<F> {
@@ -27,6 +28,7 @@ impl<F: VfsFile> Vfs<F> {
             handler,
             workspaces: Default::default(),
             files: Default::default(),
+            in_memory_files: Default::default(),
         }
     }
 
@@ -81,6 +83,10 @@ impl<F: VfsFile> Vfs<F> {
 
     fn file_mut(&mut self, index: FileIndex) -> &mut F {
         &mut self.files[index.0 as usize]
+    }
+
+    pub fn in_memory_file(&mut self, path: &str) -> Option<FileIndex> {
+        self.in_memory_files.get(path).cloned()
     }
 }
 
