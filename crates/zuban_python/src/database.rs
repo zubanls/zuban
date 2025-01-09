@@ -1160,40 +1160,17 @@ impl Database {
         file_index
     }
 
-    fn unload_in_memory_file_internal(&mut self, file_index: FileIndex) {
-        let file_state = &mut self.vfs.files[file_index.0 as usize];
-        let path = file_state.path();
-        self.vfs.workspaces.unload_file(
-            &*self.vfs.handler,
-            self.project.flags.case_sensitive,
-            path,
-        );
-        let invalidations = file_state.unload_and_return_invalidations();
-        self.invalidate_files(file_index, invalidations)
-    }
-
-    fn update_file(&mut self, file_index: FileIndex, new_code: Box<str>) {
-        let file_state = &mut self.vfs.files[file_index.0 as usize];
-        let invalidations = file_state.unload_and_return_invalidations();
-        let new_file = PythonFile::from_path_and_code(
-            &self.project,
-            file_index,
-            &file_state.file_entry,
-            file_state.path(),
-            new_code,
-        );
-        file_state.update(new_file);
-        self.invalidate_files(file_index, invalidations);
+    fn handle_invalidation(&mut self, invalidation_result: InvalidationResult) {
+        if invalidation_result == InvalidationResult::InvalidatedDb {
+            self.invalidate_db();
+        }
     }
 
     fn invalidate_files(&mut self, original_file_index: FileIndex, invalidations: Invalidations) {
-        if self
+        let result = self
             .vfs
-            .invalidate_files(original_file_index, invalidations)
-            == InvalidationResult::InvalidatedDb
-        {
-            self.invalidate_db();
-        }
+            .invalidate_files(original_file_index, invalidations);
+        self.handle_invalidation(result)
     }
 
     fn invalidate_db(&mut self) {
@@ -1239,29 +1216,29 @@ impl Database {
     }
 
     pub fn unload_in_memory_file(&mut self, path: &str) -> Result<(), &'static str> {
-        if let Some(file_index) = self.vfs.in_memory_files.remove(path) {
-            if let Some(on_file_system_code) = self.vfs.handler.read_and_watch_file(path) {
-                let file_state = &mut self.vfs.files[file_index.0 as usize];
-                // In case the code matches the one already in the file, we don't have to do anything.
-                // This is the very typical case of closing a buffer after saving it and therefore
-                // unloading the file from memory and using the file from the file system.
-                if Some(on_file_system_code.as_str()) != file_state.code() {
-                    self.update_file(file_index, on_file_system_code.into())
-                }
-            } else {
-                self.unload_in_memory_file_internal(file_index);
-            }
-            Ok(())
-        } else {
-            Err("The path is not known to be an in memory file")
-        }
+        let result = self.vfs.unload_in_memory_file(
+            self.project.flags.case_sensitive,
+            path,
+            |file_state, file_index, new_code| {
+                let new_file = PythonFile::from_path_and_code(
+                    &self.project,
+                    file_index,
+                    &file_state.file_entry(),
+                    file_state.path(),
+                    new_code,
+                );
+                file_state.update(new_file);
+            },
+        )?;
+        self.handle_invalidation(result);
+        Ok(())
     }
 
     pub fn unload_all_in_memory_files(&mut self) {
-        let in_memory_files = mem::take(&mut self.vfs.in_memory_files);
-        for (_path, file_index) in in_memory_files.into_iter() {
-            self.unload_in_memory_file_internal(file_index);
-        }
+        let result = self
+            .vfs
+            .unload_all_in_memory_files(self.project.flags.case_sensitive);
+        self.handle_invalidation(result);
     }
 
     fn preload_typeshed_stub(&self, dir: &Directory, file_name: &'static str) -> &PythonFile {
