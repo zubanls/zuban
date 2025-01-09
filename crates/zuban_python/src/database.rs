@@ -1054,16 +1054,7 @@ impl Database {
         super_file: &PythonFile,
         add: impl FnOnce(&str, FileIndex) -> PythonFile,
     ) -> &PythonFile {
-        let index = self.vfs.with_added_file(
-            self.vfs.file(super_file.file_index).file_entry().clone(),
-            "".into(),
-            self.vfs
-                .file(super_file.file_index)
-                .file_entry()
-                .invalidations
-                .invalidates_db(),
-            add,
-        );
+        let index = self.vfs.create_sub_file(super_file.file_index, add);
         self.loaded_python_file(index)
     }
 

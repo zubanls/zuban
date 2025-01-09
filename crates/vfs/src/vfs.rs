@@ -282,7 +282,7 @@ impl<F: VfsFile> Vfs<F> {
         self.invalidate_files(file_index, invalidations)
     }
 
-    pub fn with_added_file(
+    fn with_added_file(
         &self,
         file_entry: Rc<FileEntry>,
         path: Box<str>,
@@ -298,6 +298,16 @@ impl<F: VfsFile> Vfs<F> {
             invalidates_db,
         )));
         file_index
+    }
+
+    pub fn create_sub_file(
+        &self,
+        super_file_index: FileIndex,
+        add: impl FnOnce(&str, FileIndex) -> F,
+    ) -> FileIndex {
+        let file_entry = self.file(super_file_index).file_entry.clone();
+        let invalidates_db = file_entry.invalidations.invalidates_db();
+        self.with_added_file(file_entry, "".into(), invalidates_db, add)
     }
 }
 
