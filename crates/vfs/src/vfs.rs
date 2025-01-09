@@ -1,4 +1,4 @@
-use std::{collections::HashMap, ops::BitOrAssign, rc::Rc};
+use std::{collections::HashMap, ops::BitOrAssign, pin::Pin, rc::Rc};
 
 use utils::InsertOnlyVec;
 
@@ -7,17 +7,14 @@ use crate::{
 };
 
 pub trait VfsFile: Unpin {
-    fn code(&self) -> Option<&str>;
-    fn path(&self) -> &str;
-    fn file_entry(&self) -> &Rc<FileEntry>;
-    fn unload(&mut self);
+    fn code(&self) -> &str;
     fn invalidate_references_to(&mut self, file_index: FileIndex);
 }
 
 pub struct Vfs<F: VfsFile> {
     pub handler: Box<dyn VfsHandler>,
     pub workspaces: Workspaces,
-    pub files: InsertOnlyVec<F>,
+    pub files: InsertOnlyVec<FileState<F>>,
     pub in_memory_files: HashMap<Box<str>, FileIndex>,
 }
 
@@ -56,7 +53,7 @@ impl<F: VfsFile> Vfs<F> {
         };
         for invalid_index in invalidations {
             let file = self.file_mut(invalid_index);
-            let new_invalidations = file.file_entry().invalidations.take();
+            let new_invalidations = file.file_entry.invalidations.take();
             file.invalidate_references_to(original_file_index);
 
             if let InvalidationDetail::Some(invs) = new_invalidations.iter() {
@@ -77,11 +74,11 @@ impl<F: VfsFile> Vfs<F> {
         InvalidationResult::InvalidatedFiles
     }
 
-    pub fn file(&self, index: FileIndex) -> &F {
+    pub fn file(&self, index: FileIndex) -> &FileState<F> {
         self.files.get(index.0 as usize).unwrap()
     }
 
-    fn file_mut(&mut self, index: FileIndex) -> &mut F {
+    fn file_mut(&mut self, index: FileIndex) -> &mut FileState<F> {
         &mut self.files[index.0 as usize]
     }
 
@@ -95,7 +92,7 @@ impl<F: VfsFile> Vfs<F> {
         self.workspaces
             .unload_file(&*self.handler, case_sensitive, path);
         file_state.unload();
-        let invalidations = file_state.file_entry().invalidations.take();
+        let invalidations = file_state.file_entry.invalidations.take();
         self.invalidate_files(file_index, invalidations)
     }
 
@@ -103,7 +100,7 @@ impl<F: VfsFile> Vfs<F> {
         &mut self,
         case_sensitive: bool,
         path: &str,
-        to_file: impl FnOnce(&mut F, FileIndex, Box<str>),
+        to_file: impl FnOnce(&FileState<F>, FileIndex, Box<str>) -> F,
     ) -> Result<InvalidationResult, &'static str> {
         if let Some(file_index) = self.in_memory_files.remove(path) {
             if let Some(on_file_system_code) = self.handler.read_and_watch_file(path) {
@@ -137,12 +134,13 @@ impl<F: VfsFile> Vfs<F> {
         &mut self,
         file_index: FileIndex,
         new_code: Box<str>,
-        to_file: impl FnOnce(&mut F, FileIndex, Box<str>),
+        to_file: impl FnOnce(&FileState<F>, FileIndex, Box<str>) -> F,
     ) -> InvalidationResult {
         let file_state = self.file_mut(file_index);
         file_state.unload();
-        let invalidations = file_state.file_entry().invalidations.take();
-        to_file(file_state, file_index, new_code);
+        let invalidations = file_state.file_entry.invalidations.take();
+        let new_file = to_file(file_state, file_index, new_code);
+        file_state.update(new_file);
         self.invalidate_files(file_index, invalidations)
     }
 
@@ -164,4 +162,89 @@ impl BitOrAssign for InvalidationResult {
             *self = rhs;
         }
     }
+}
+
+#[derive(Debug, Clone)]
+pub struct FileState<F> {
+    path: Box<str>,
+    file_entry: Rc<FileEntry>,
+    state: InternalFileExistence<F>,
+}
+
+impl<F: VfsFile> FileState<F> {
+    pub fn unload_and_return_invalidations(&mut self) -> Invalidations {
+        self.state = InternalFileExistence::Unloaded;
+        self.file_entry.invalidations.take()
+    }
+
+    pub fn new_parsed(
+        file_entry: Rc<FileEntry>,
+        path: Box<str>,
+        file: F,
+        invalidates_db: bool,
+    ) -> Self {
+        if invalidates_db {
+            file_entry.invalidations.set_invalidates_db();
+        }
+        Self {
+            file_entry,
+            path,
+            state: InternalFileExistence::Parsed(file),
+        }
+    }
+
+    fn update(&mut self, file: F) {
+        debug_assert!(matches!(self.state, InternalFileExistence::Unloaded));
+        self.state = InternalFileExistence::Parsed(file)
+    }
+
+    pub fn file(&self) -> Option<&F> {
+        match &self.state {
+            InternalFileExistence::Unloaded => None,
+            InternalFileExistence::Parsed(f) => Some(f),
+        }
+    }
+
+    pub fn maybe_loaded_file_mut(&mut self) -> Option<&mut F> {
+        match &mut self.state {
+            InternalFileExistence::Parsed(f) => Some(f),
+            _ => None,
+        }
+    }
+
+    fn code(&self) -> Option<&str> {
+        Some(self.file()?.code())
+    }
+
+    pub fn path(&self) -> &str {
+        &self.path
+    }
+
+    pub fn file_entry(&self) -> &Rc<FileEntry> {
+        &self.file_entry
+    }
+
+    fn unload(&mut self) {
+        self.state = InternalFileExistence::Unloaded;
+    }
+
+    fn invalidate_references_to(&mut self, file_index: FileIndex) {
+        if let InternalFileExistence::Parsed(f) = &mut self.state {
+            f.invalidate_references_to(file_index)
+        }
+    }
+}
+
+impl<F: Clone> FileState<F> {
+    pub fn clone_box(&self, new_file_entry: Rc<FileEntry>) -> Pin<Box<Self>> {
+        let mut new = self.clone();
+        new.file_entry = new_file_entry;
+        Box::pin(new)
+    }
+}
+
+#[derive(Clone, Debug)]
+enum InternalFileExistence<F> {
+    Unloaded,
+    Parsed(F),
 }

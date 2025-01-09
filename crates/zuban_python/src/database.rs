@@ -11,13 +11,13 @@ use config::{OverrideConfig, Settings};
 use parsa_python_cst::NodeIndex;
 use utils::InsertOnlyVec;
 use vfs::{
-    Directory, DirectoryEntry, FileEntry, FileIndex, InvalidationDetail, InvalidationResult,
-    Invalidations, LocalFS, Parent, Vfs, VfsFile as _, VfsHandler, WorkspaceKind, Workspaces,
+    Directory, DirectoryEntry, FileEntry, FileIndex, FileState, InvalidationDetail,
+    InvalidationResult, Invalidations, LocalFS, Parent, Vfs, VfsHandler, WorkspaceKind, Workspaces,
 };
 
 use crate::{
     debug,
-    file::{File, FileState, PythonFile},
+    file::{File, PythonFile},
     node_ref::NodeRef,
     python_state::PythonState,
     sys_path,
@@ -858,7 +858,7 @@ impl fmt::Debug for Database {
 }
 
 pub struct Database {
-    pub vfs: Vfs<FileState>,
+    pub vfs: Vfs<PythonFile>,
     pub python_state: PythonState,
     pub project: PythonProject,
 }
@@ -907,7 +907,7 @@ impl Database {
             flags: options.flags,
             overrides: options.overrides,
         };
-        let files = InsertOnlyVec::<FileState>::default();
+        let files = InsertOnlyVec::default();
         let mut workspaces = self.vfs.workspaces.clone_with_new_rcs();
         for file_state in unsafe { self.vfs.files.iter() } {
             fn search_parent(
@@ -1050,7 +1050,10 @@ impl Database {
         self.vfs.file(index).path()
     }
 
-    fn with_add_file_state(&self, add: impl FnOnce(FileIndex) -> Pin<Box<FileState>>) -> FileIndex {
+    fn with_add_file_state(
+        &self,
+        add: impl FnOnce(FileIndex) -> Pin<Box<FileState<PythonFile>>>,
+    ) -> FileIndex {
         let file_index = FileIndex(self.vfs.files.len() as u32);
         self.vfs.files.push(add(file_index));
         file_index
@@ -1068,7 +1071,7 @@ impl Database {
                 add(file_index),
                 self.vfs
                     .file(super_file.file_index)
-                    .file_entry
+                    .file_entry()
                     .invalidations
                     .invalidates_db(),
             ))
@@ -1220,14 +1223,13 @@ impl Database {
             self.project.flags.case_sensitive,
             path,
             |file_state, file_index, new_code| {
-                let new_file = PythonFile::from_path_and_code(
+                PythonFile::from_path_and_code(
                     &self.project,
                     file_index,
                     &file_state.file_entry(),
                     file_state.path(),
                     new_code,
-                );
-                file_state.update(new_file);
+                )
             },
         )?;
         self.handle_invalidation(result);
@@ -1322,7 +1324,7 @@ fn load_parsed(
     path: Box<str>,
     code: Box<str>,
     invalidates_db: bool,
-) -> Pin<Box<FileState>> {
+) -> Pin<Box<FileState<PythonFile>>> {
     let file = PythonFile::from_path_and_code(project, file_index, &file_entry, &path, code);
     Box::pin(FileState::new_parsed(
         file_entry,

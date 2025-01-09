@@ -8,7 +8,7 @@ use std::{
 use config::{set_flag_and_return_ignore_errors, DiagnosticConfig, IniOrTomlValue, OverrideConfig};
 use parsa_python_cst::*;
 use utils::InsertOnlyVec;
-use vfs::{Directory, DirectoryEntry, FileEntry, FileIndex, VfsFile as _};
+use vfs::{Directory, DirectoryEntry, FileEntry, FileIndex};
 
 use super::{
     file_state::{File, Leaf},
@@ -177,14 +177,6 @@ impl File for PythonFile {
         vec.into_boxed_slice()
     }
 
-    fn invalidate_references_to(&mut self, file_index: FileIndex) {
-        self.points.invalidate_references_to(file_index);
-        self.issues.clear();
-        if let Some(cache) = self.stub_cache.as_mut() {
-            *cache = StubCache::default();
-        }
-    }
-
     fn invalidate_full_db(&mut self, project: &PythonProject) {
         debug_assert!(self.super_file.is_none());
         let mut points = std::mem::take(&mut self.points);
@@ -205,6 +197,20 @@ impl File for PythonFile {
 
     fn has_super_file(&self) -> bool {
         self.super_file.is_some()
+    }
+}
+
+impl vfs::VfsFile for PythonFile {
+    fn code(&self) -> &str {
+        self.tree.code()
+    }
+
+    fn invalidate_references_to(&mut self, file_index: FileIndex) {
+        self.points.invalidate_references_to(file_index);
+        self.issues.clear();
+        if let Some(cache) = self.stub_cache.as_mut() {
+            *cache = StubCache::default();
+        }
     }
 }
 
