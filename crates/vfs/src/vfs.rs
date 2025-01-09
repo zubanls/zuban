@@ -140,7 +140,8 @@ impl<F: VfsFile> Vfs<F> {
             }
 
             let file_state = &mut self.files[file_index.0 as usize];
-            file_invalidations = file_state.unload_and_return_invalidations();
+            file_invalidations = file_state.file_entry.invalidations.take();
+            file_state.unload();
         }
 
         let file_index = if let Some(file_index) = in_mem_file {
@@ -334,11 +335,6 @@ pub struct FileState<F> {
 }
 
 impl<F: VfsFile> FileState<F> {
-    pub fn unload_and_return_invalidations(&mut self) -> Invalidations {
-        self.state = InternalFileExistence::Unloaded;
-        self.file_entry.invalidations.take()
-    }
-
     pub fn new_parsed(
         file_entry: Rc<FileEntry>,
         path: Box<str>,
@@ -386,7 +382,7 @@ impl<F: VfsFile> FileState<F> {
         &self.file_entry
     }
 
-    fn unload(&mut self) {
+    pub fn unload(&mut self) {
         self.state = InternalFileExistence::Unloaded;
     }
 

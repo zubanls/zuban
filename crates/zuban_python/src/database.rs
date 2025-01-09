@@ -1107,7 +1107,7 @@ impl Database {
         for file_state in self.vfs.files.iter_mut() {
             if let Some(file) = file_state.maybe_loaded_file_mut() {
                 if file.has_super_file() {
-                    file_state.unload_and_return_invalidations();
+                    file_state.unload();
                 } else {
                     file.invalidate_full_db(&self.project);
                 }
