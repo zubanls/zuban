@@ -12,8 +12,8 @@ use config::{OverrideConfig, Settings};
 use parsa_python_cst::NodeIndex;
 use utils::InsertOnlyVec;
 use vfs::{
-    Directory, DirectoryEntry, FileEntry, FileIndex, InvalidationDetail, Invalidations, LocalFS,
-    Parent, Vfs, VfsFile as _, VfsHandler, WorkspaceKind, Workspaces,
+    Directory, DirectoryEntry, FileEntry, FileIndex, InvalidationDetail, InvalidationResult,
+    Invalidations, LocalFS, Parent, Vfs, VfsFile as _, VfsHandler, WorkspaceKind, Workspaces,
 };
 
 use crate::{
@@ -1050,20 +1050,12 @@ impl Database {
         db
     }
 
-    pub fn file_state(&self, index: FileIndex) -> &FileState {
-        self.vfs.files.get(index.0 as usize).unwrap()
-    }
-
-    pub fn file_state_mut(&mut self, index: FileIndex) -> &mut FileState {
-        &mut self.vfs.files[index.0 as usize]
-    }
-
     pub fn file_path(&self, index: FileIndex) -> &str {
-        self.file_state(index).path()
+        self.vfs.file(index).path()
     }
 
     pub fn loaded_file(&self, index: FileIndex) -> &(dyn File + 'static) {
-        let state = self.file_state(index);
+        let state = self.vfs.file(index);
         let f = state
             .file()
             .unwrap_or_else(|| panic!("file #{index}: {}", state.path()));
@@ -1083,10 +1075,11 @@ impl Database {
     ) -> &PythonFile {
         let index = self.with_add_file_state(|file_index| {
             Box::pin(FileState::new_parsed(
-                self.file_state(super_file.file_index).file_entry().clone(),
+                self.vfs.file(super_file.file_index).file_entry().clone(),
                 "".into(),
                 add(file_index),
-                self.file_state(super_file.file_index)
+                self.vfs
+                    .file(super_file.file_index)
                     .file_entry
                     .invalidations
                     .invalidates_db(),
@@ -1168,7 +1161,7 @@ impl Database {
         if cfg!(feature = "zuban_debug") {
             if let InvalidationDetail::Some(invs) = ensured.invalidations.iter() {
                 for invalidation in &invs {
-                    let p = self.file_state_mut(*invalidation).path();
+                    let p = self.vfs.file(*invalidation).path();
                     debug!("Invalidate {p} because we're loading {path}");
                 }
             }
@@ -1207,39 +1200,12 @@ impl Database {
     }
 
     fn invalidate_files(&mut self, original_file_index: FileIndex, invalidations: Invalidations) {
-        let InvalidationDetail::Some(invalidations) = invalidations.into_iter() else {
-            // This means that the file was created with `invalidates_db = true`, which
-            // means we have to invalidate the whole database.
-            debug!(
-                "Invalidate whole db because we have invalidated {}",
-                self.file_state(original_file_index).path()
-            );
+        if self
+            .vfs
+            .invalidate_files(original_file_index, invalidations)
+            == InvalidationResult::InvalidatedDb
+        {
             self.invalidate_db();
-            return;
-        };
-        for invalid_index in invalidations {
-            let file_state = self.file_state_mut(invalid_index);
-            let new_invalidations = file_state.file_entry.invalidations.take();
-            if let Some(file) = file_state.maybe_loaded_file_mut() {
-                file.invalidate_references_to(original_file_index);
-            }
-
-            if cfg!(feature = "zuban_debug") {
-                if let InvalidationDetail::Some(invs) = new_invalidations.iter() {
-                    for invalidation in &invs {
-                        let p = self.file_state(*invalidation).path();
-                        debug!(
-                            "Invalidate {p} because we have invalidated {}",
-                            self.file_state(invalid_index).path()
-                        );
-                    }
-                }
-            }
-            let invalidated_db = new_invalidations.invalidates_db();
-            self.invalidate_files(original_file_index, new_invalidations);
-            if invalidated_db {
-                return;
-            }
         }
     }
 
@@ -1258,7 +1224,8 @@ impl Database {
     }
 
     pub fn add_invalidates(&self, file: FileIndex, invalidates: FileIndex) {
-        self.file_state(file)
+        self.vfs
+            .file(file)
             .file_entry
             .invalidations
             .add(invalidates)

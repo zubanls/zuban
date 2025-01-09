@@ -3,11 +3,16 @@ use std::rc::Rc;
 use config::TypeCheckerFlags;
 use utils::InsertOnlyVec;
 
-use crate::{FileEntry, VfsHandler, WorkspaceKind, Workspaces};
+use crate::{
+    FileEntry, FileIndex, InvalidationDetail, Invalidations, VfsHandler, WorkspaceKind, Workspaces,
+};
 
-pub trait VfsFile {
+pub trait VfsFile: Unpin {
     fn code(&self) -> Option<&str>;
+    fn path(&self) -> &str;
+    fn file_entry(&self) -> &Rc<FileEntry>;
     fn unload(&mut self);
+    fn invalidate_references_to(&mut self, file_index: FileIndex);
 }
 
 pub struct Vfs<F: VfsFile> {
@@ -32,4 +37,55 @@ impl<F: VfsFile> Vfs<F> {
     pub fn search_file(&self, flags: &TypeCheckerFlags, path: &str) -> Option<Rc<FileEntry>> {
         self.workspaces.search_file(flags, &*self.handler, path)
     }
+
+    pub fn invalidate_files(
+        &mut self,
+        original_file_index: FileIndex,
+        invalidations: Invalidations,
+    ) -> InvalidationResult {
+        let InvalidationDetail::Some(invalidations) = invalidations.into_iter() else {
+            // This means that the file was created with `invalidates_db = true`, which
+            // means we have to invalidate the whole database.
+            tracing::info!(
+                "Invalidate whole db because we have invalidated {}",
+                self.file(original_file_index).path()
+            );
+            return InvalidationResult::InvalidatedDb;
+        };
+        for invalid_index in invalidations {
+            let file = self.file_mut(invalid_index);
+            let new_invalidations = file.file_entry().invalidations.take();
+            file.invalidate_references_to(original_file_index);
+
+            if let InvalidationDetail::Some(invs) = new_invalidations.iter() {
+                for invalidation in &invs {
+                    let p = self.file(*invalidation).path();
+                    tracing::debug!(
+                        "Invalidate {p} because we have invalidated {}",
+                        self.file(invalid_index).path()
+                    );
+                }
+            }
+            if self.invalidate_files(original_file_index, new_invalidations)
+                == InvalidationResult::InvalidatedDb
+            {
+                return InvalidationResult::InvalidatedDb;
+            }
+        }
+        InvalidationResult::InvalidatedFiles
+    }
+
+    pub fn file(&self, index: FileIndex) -> &F {
+        self.files.get(index.0 as usize).unwrap()
+    }
+
+    fn file_mut(&mut self, index: FileIndex) -> &mut F {
+        &mut self.files[index.0 as usize]
+    }
+}
+
+#[derive(PartialEq)]
+pub enum InvalidationResult {
+    InvalidatedFiles,
+    InvalidatedDb,
 }

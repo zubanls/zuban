@@ -78,20 +78,26 @@ impl VfsFile for FileState {
         Some(self.file()?.code())
     }
 
+    fn path(&self) -> &str {
+        &self.path
+    }
+
     fn unload(&mut self) {
         self.state = InternalFileExistence::Unloaded;
+    }
+
+    fn invalidate_references_to(&mut self, file_index: FileIndex) {
+        if let InternalFileExistence::Parsed(f) = &mut self.state {
+            f.invalidate_references_to(file_index)
+        }
+    }
+
+    fn file_entry(&self) -> &Rc<FileEntry> {
+        &self.file_entry
     }
 }
 
 impl FileState {
-    pub(crate) fn path(&self) -> &str {
-        &self.path
-    }
-
-    pub(crate) fn file_entry(&self) -> &Rc<FileEntry> {
-        &self.file_entry
-    }
-
     pub(crate) fn unload_and_return_invalidations(&mut self) -> Invalidations {
         self.state = InternalFileExistence::Unloaded;
         self.file_entry.invalidations.take()
