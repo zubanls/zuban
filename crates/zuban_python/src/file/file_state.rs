@@ -2,7 +2,7 @@ use std::{any::Any, pin::Pin, rc::Rc};
 
 use config::DiagnosticConfig;
 use parsa_python_cst::{CodeIndex, Keyword, NodeIndex};
-use vfs::{FileEntry, FileIndex, Invalidations};
+use vfs::{FileEntry, FileIndex, Invalidations, VfsFile};
 
 use crate::{
     database::Database,
@@ -73,6 +73,16 @@ pub struct FileState {
     state: InternalFileExistence,
 }
 
+impl VfsFile for FileState {
+    fn code(&self) -> Option<&str> {
+        Some(self.file()?.code())
+    }
+
+    fn unload(&mut self) {
+        self.state = InternalFileExistence::Unloaded;
+    }
+}
+
 impl FileState {
     pub(crate) fn path(&self) -> &str {
         &self.path
@@ -80,10 +90,6 @@ impl FileState {
 
     pub(crate) fn file_entry(&self) -> &Rc<FileEntry> {
         &self.file_entry
-    }
-
-    pub(crate) fn code(&self) -> Option<&str> {
-        Some(self.file()?.code())
     }
 
     pub(crate) fn unload_and_return_invalidations(&mut self) -> Invalidations {

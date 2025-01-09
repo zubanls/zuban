@@ -10,9 +10,10 @@ use std::{
 
 use config::{OverrideConfig, Settings};
 use parsa_python_cst::NodeIndex;
+use utils::InsertOnlyVec;
 use vfs::{
     Directory, DirectoryEntry, FileEntry, FileIndex, InvalidationDetail, Invalidations, LocalFS,
-    Parent, Vfs, VfsHandler, WorkspaceKind, Workspaces,
+    Parent, Vfs, VfsFile as _, VfsHandler, WorkspaceKind, Workspaces,
 };
 
 use crate::{
@@ -27,7 +28,7 @@ use crate::{
         TypeVarLikeUsage, TypeVarLikes, TypeVarTupleUsage, TypeVarUsage, TypedDict, Variance,
     },
     type_helpers::{Class, Function},
-    utils::{InsertOnlyVec, SymbolTable},
+    utils::SymbolTable,
     ProjectOptions, TypeCheckerFlags,
 };
 
@@ -852,14 +853,13 @@ impl TypeAlias {
 impl fmt::Debug for Database {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("Database")
-            .field("file_count", &self.files.len())
+            .field("file_count", &self.vfs.files.len())
             .finish()
     }
 }
 
 pub struct Database {
-    pub vfs: Vfs,
-    pub files: InsertOnlyVec<FileState>,
+    pub vfs: Vfs<FileState>,
     in_memory_files: HashMap<Box<str>, FileIndex>,
 
     pub python_state: PythonState,
@@ -896,7 +896,6 @@ impl Database {
 
         let mut this = Self {
             vfs,
-            files: Default::default(),
             in_memory_files: Default::default(),
             python_state: PythonState::reserve(),
             project,
@@ -914,7 +913,7 @@ impl Database {
         };
         let files = InsertOnlyVec::<FileState>::default();
         let mut workspaces = self.vfs.workspaces.clone_with_new_rcs();
-        for file_state in unsafe { self.files.iter() } {
+        for file_state in unsafe { self.vfs.files.iter() } {
             fn search_parent(
                 workspaces: &Workspaces,
                 parent: Parent,
@@ -1027,9 +1026,9 @@ impl Database {
         let db = Self {
             vfs: Vfs {
                 handler: Box::new(LocalFS::without_watcher()),
+                files,
                 workspaces,
             },
-            files,
             in_memory_files: Default::default(),
             python_state,
             project,
@@ -1052,11 +1051,11 @@ impl Database {
     }
 
     pub fn file_state(&self, index: FileIndex) -> &FileState {
-        self.files.get(index.0 as usize).unwrap()
+        self.vfs.files.get(index.0 as usize).unwrap()
     }
 
     pub fn file_state_mut(&mut self, index: FileIndex) -> &mut FileState {
-        &mut self.files[index.0 as usize]
+        &mut self.vfs.files[index.0 as usize]
     }
 
     pub fn file_path(&self, index: FileIndex) -> &str {
@@ -1072,8 +1071,8 @@ impl Database {
     }
 
     fn with_add_file_state(&self, add: impl FnOnce(FileIndex) -> Pin<Box<FileState>>) -> FileIndex {
-        let file_index = FileIndex(self.files.len() as u32);
-        self.files.push(add(file_index));
+        let file_index = FileIndex(self.vfs.files.len() as u32);
+        self.vfs.files.push(add(file_index));
         file_index
     }
 
@@ -1140,7 +1139,7 @@ impl Database {
         });
         let mut file_invalidations = Default::default();
         if let Some(file_index) = in_mem_file {
-            let file_state = &mut self.files[file_index.0 as usize];
+            let file_state = &mut self.vfs.files[file_index.0 as usize];
             file_invalidations = file_state.unload_and_return_invalidations();
         }
 
@@ -1155,7 +1154,8 @@ impl Database {
             )
         };
         let file_index = if let Some(file_index) = in_mem_file {
-            self.files
+            self.vfs
+                .files
                 .set(file_index.0 as usize, new_file_state(file_index));
             debug_assert!(ensured.file_entry.file_index.get().is_some(), "for {path}");
             file_index
@@ -1183,7 +1183,7 @@ impl Database {
     }
 
     fn unload_file(&mut self, file_index: FileIndex) {
-        let file_state = &mut self.files[file_index.0 as usize];
+        let file_state = &mut self.vfs.files[file_index.0 as usize];
         let path = file_state.path();
         self.vfs
             .workspaces
@@ -1193,7 +1193,7 @@ impl Database {
     }
 
     fn update_file(&mut self, file_index: FileIndex, new_code: Box<str>) {
-        let file_state = &mut self.files[file_index.0 as usize];
+        let file_state = &mut self.vfs.files[file_index.0 as usize];
         let invalidations = file_state.unload_and_return_invalidations();
         let new_file = PythonFile::from_path_and_code(
             &self.project,
@@ -1244,7 +1244,7 @@ impl Database {
     }
 
     fn invalidate_db(&mut self) {
-        for file_state in self.files.iter_mut() {
+        for file_state in self.vfs.files.iter_mut() {
             if let Some(file) = file_state.maybe_loaded_file_mut() {
                 if file.has_super_file() {
                     file_state.unload_and_return_invalidations();
@@ -1292,7 +1292,7 @@ impl Database {
     pub fn unload_in_memory_file(&mut self, path: &str) -> Result<(), &'static str> {
         if let Some(file_index) = self.in_memory_files.remove(path) {
             if let Some(on_file_system_code) = self.vfs.handler.read_and_watch_file(path) {
-                let file_state = &mut self.files[file_index.0 as usize];
+                let file_state = &mut self.vfs.files[file_index.0 as usize];
                 // In case the code matches the one already in the file, we don't have to do anything.
                 // This is the very typical case of closing a buffer after saving it and therefore
                 // unloading the file from memory and using the file from the file system.

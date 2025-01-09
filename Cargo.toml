@@ -20,6 +20,7 @@ logging_config = { path = "./crates/logging_config" }
 config = { path = "./crates/config" }
 config_searcher = { path = "./crates/config_searcher" }
 vfs = { path = "./crates/vfs" }
+utils = { path = "./crates/utils" }
 
 # General third party dependencies
 anyhow = "*"

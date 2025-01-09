@@ -8,6 +8,7 @@ authors.workspace = true
 
 [dependencies]
 parsa_python_cst.workspace = true
+utils.workspace = true
 vfs.workspace = true
 
 lazy_static.workspace = true

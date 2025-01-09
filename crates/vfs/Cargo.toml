@@ -8,6 +8,7 @@ authors.workspace = true
 
 [dependencies]
 config.workspace = true
+utils.workspace = true
 
 tracing.workspace = true
 crossbeam-channel.workspace = true

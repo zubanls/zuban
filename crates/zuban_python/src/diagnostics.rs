@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use config::DiagnosticConfig;
 use parsa_python_cst::{CodeIndex, NodeIndex, Tree};
+use utils::InsertOnlyVec;
 
 use crate::{
     database::{Database, PointLink},
@@ -9,7 +10,7 @@ use crate::{
     name::FilePosition,
     node_ref::NodeRef,
     type_::{FunctionKind, TypeVarLike, Variance},
-    utils::{join_with_commas, InsertOnlyVec},
+    utils::join_with_commas,
     PythonVersion, TypeCheckerFlags,
 };
 

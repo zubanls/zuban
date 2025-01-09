@@ -7,6 +7,7 @@ use std::{
 
 use config::{set_flag_and_return_ignore_errors, DiagnosticConfig, IniOrTomlValue, OverrideConfig};
 use parsa_python_cst::*;
+use utils::InsertOnlyVec;
 use vfs::{Directory, DirectoryEntry, FileEntry, FileIndex};
 
 use super::{
@@ -29,7 +30,7 @@ use crate::{
     name::{FilePosition, Names, TreeName},
     node_ref::NodeRef,
     type_::DbString,
-    utils::{InsertOnlyVec, SymbolTable},
+    utils::SymbolTable,
     TypeCheckerFlags,
 };
 

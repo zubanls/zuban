@@ -1,19 +1,27 @@
 use std::rc::Rc;
 
 use config::TypeCheckerFlags;
+use utils::InsertOnlyVec;
 
 use crate::{FileEntry, VfsHandler, WorkspaceKind, Workspaces};
 
-pub struct Vfs {
-    pub handler: Box<dyn VfsHandler>,
-    pub workspaces: Workspaces,
+pub trait VfsFile {
+    fn code(&self) -> Option<&str>;
+    fn unload(&mut self);
 }
 
-impl Vfs {
+pub struct Vfs<F: VfsFile> {
+    pub handler: Box<dyn VfsHandler>,
+    pub workspaces: Workspaces,
+    pub files: InsertOnlyVec<F>,
+}
+
+impl<F: VfsFile> Vfs<F> {
     pub fn new(handler: Box<dyn VfsHandler>) -> Self {
         Self {
             handler,
             workspaces: Default::default(),
+            files: Default::default(),
         }
     }
 
