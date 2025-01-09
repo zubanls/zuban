@@ -1,3 +1,4 @@
+#![allow(unused_imports, dead_code)] // TODO remove this
 use std::{any::Any, pin::Pin, rc::Rc};
 
 use config::DiagnosticConfig;
@@ -22,22 +23,7 @@ pub enum Leaf<'db> {
     None,
 }
 
-pub trait AsAny {
-    fn as_any(&self) -> &dyn Any
-    where
-        Self: 'static;
-}
-
-impl<T> AsAny for T {
-    fn as_any(&self) -> &dyn Any
-    where
-        Self: 'static,
-    {
-        self
-    }
-}
-
-pub trait File: std::fmt::Debug + AsAny {
+pub trait File: std::fmt::Debug {
     // Called each time a file is loaded
     fn implementation<'db>(&self, _names: Names<'db>) -> Names<'db> {
         vec![]
@@ -123,14 +109,14 @@ impl FileState {
         debug_assert!(matches!(self.state, InternalFileExistence::Unloaded));
         self.state = InternalFileExistence::Parsed(file)
     }
-    pub(crate) fn file(&self) -> Option<&(dyn File + 'static)> {
+    pub(crate) fn file(&self) -> Option<&PythonFile> {
         match &self.state {
             InternalFileExistence::Unloaded => None,
             InternalFileExistence::Parsed(f) => Some(f),
         }
     }
 
-    pub(crate) fn maybe_loaded_file_mut(&mut self) -> Option<&mut dyn File> {
+    pub(crate) fn maybe_loaded_file_mut(&mut self) -> Option<&mut PythonFile> {
         match &mut self.state {
             InternalFileExistence::Parsed(f) => Some(f),
             _ => None,

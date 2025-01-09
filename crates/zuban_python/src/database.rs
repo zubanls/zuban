@@ -986,7 +986,7 @@ impl Database {
                         .is_ok_and(|dir| dir.name.as_ref() == name)
                     || !is_package && entry.name.as_ref() == name
                 {
-                    *pointer_ref = file_state.file().unwrap().as_any().downcast_ref().unwrap();
+                    *pointer_ref = file_state.file().unwrap();
                     debug_assert!(i < 12);
                     return;
                 }
@@ -1048,14 +1048,6 @@ impl Database {
 
     pub fn file_path(&self, index: FileIndex) -> &str {
         self.vfs.file(index).path()
-    }
-
-    pub fn loaded_file(&self, index: FileIndex) -> &(dyn File + 'static) {
-        let state = self.vfs.file(index);
-        let f = state
-            .file()
-            .unwrap_or_else(|| panic!("file #{index}: {}", state.path()));
-        f
     }
 
     fn with_add_file_state(&self, add: impl FnOnce(FileIndex) -> Pin<Box<FileState>>) -> FileIndex {
@@ -1284,7 +1276,10 @@ impl Database {
     }
 
     pub fn loaded_python_file(&self, index: FileIndex) -> &PythonFile {
-        self.loaded_file(index).as_any().downcast_ref().unwrap()
+        let state = self.vfs.file(index);
+        state
+            .file()
+            .unwrap_or_else(|| panic!("file #{index}: {}", state.path()))
     }
 
     fn generate_python_state(&mut self) {

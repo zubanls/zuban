@@ -27,7 +27,7 @@ use vfs::{Directory, DirectoryEntry, FileEntry, FileIndex, LocalFS, VfsHandler};
 use config::{DiagnosticConfig, ProjectOptions, PythonVersion, Settings, TypeCheckerFlags};
 use database::{Database, PythonProject};
 pub use diagnostics::Severity;
-use file::{File, Leaf};
+use file::{File, Leaf, PythonFile};
 use inference_state::InferenceState;
 use inferred::Inferred;
 use matching::invalidate_protocol_cache;
@@ -63,7 +63,7 @@ impl Project {
 
     pub fn code_of_in_memory_file(&mut self, path: &str) -> Option<&str> {
         let file_index = self.db.vfs.in_memory_file(path)?;
-        Some(self.db.loaded_file(file_index).code())
+        Some(self.db.loaded_python_file(file_index).code())
     }
 
     pub fn delete_directory(&mut self, path: &str) -> Result<(), String> {
@@ -231,8 +231,8 @@ impl<'a> Script<'a> {
         }
     }
 
-    fn file(&self) -> &dyn file::File {
-        self.project.db.loaded_file(self.file_index)
+    fn file(&self) -> &PythonFile {
+        self.project.db.loaded_python_file(self.file_index)
     }
 
     fn leaf(&self, position: Position) -> Leaf {
