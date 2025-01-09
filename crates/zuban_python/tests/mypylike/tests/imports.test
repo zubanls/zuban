@@ -305,7 +305,7 @@ def typed_inline() -> None:
     ZubanCls
     z: ZubanCls
 
-[case invalidation_of_relative_paths]
+[case invalidation_of_relative_paths1]
 from foo import bar
 
 [file foo/__init__.py]
@@ -321,3 +321,39 @@ reveal_type(a)
 foo/bar.py:2: note: Revealed type is "int"
 [out2]
 foo/bar.py:2: note: Revealed type is "str"
+
+[case invalidation_of_relative_paths2]
+from foo import bar
+
+[file foo/__init__.py.2]
+a = ""
+
+[file foo/a.py]
+
+[file foo/bar.py]
+from . import a
+reveal_type(a)
+
+[out]
+foo/bar.py:2: note: Revealed type is "types.ModuleType"
+[out2]
+foo/bar.py:2: note: Revealed type is "str"
+
+[case invalidation_of_relative_paths3]
+from foo import bar
+
+[file foo/__init__.py]
+a = ""
+
+[delete foo/__init__.py.2]
+
+[file foo/a.py]
+
+[file foo/bar.py]
+from . import a
+reveal_type(a)
+
+[out]
+foo/bar.py:2: note: Revealed type is "str"
+[out2]
+foo/bar.py:2: note: Revealed type is "types.ModuleType"

@@ -210,14 +210,12 @@ pub fn python_import_with_needs_exact_case(
                 DirectoryEntry::Directory(dir2) => {
                     if match_c(db, dir2.name.as_ref(), name, needs_exact_case) {
                         let result = load_init_file(db, dir2, from_file);
-                        if result.is_some() {
+                        if let Some(file_index) = result {
                             if needs_py_typed && dir2.search("py.typed").is_none() {
                                 return Some(ImportResult::PyTypedMissing);
                             }
-                            return result.map(ImportResult::File);
+                            return Some(ImportResult::File(file_index));
                         }
-                        dir2.add_missing_entry(Box::from(INIT_PY), from_file);
-                        dir2.add_missing_entry(Box::from(INIT_PYI), from_file);
                         had_namespace_dir = true;
                         namespace_directories.push(dir2.clone());
                         continue;
@@ -284,13 +282,13 @@ fn load_init_file(db: &Database, content: &Directory, from_file: FileIndex) -> O
                     db.load_file_from_workspace(file.clone(), false);
                 }
                 let found_file_index = file.file_index.get();
-                if found_file_index.is_some() {
-                    file.invalidations.add(from_file);
-                }
+                file.invalidations.add(from_file);
                 return found_file_index;
             }
         }
     }
+    content.add_missing_entry(Box::from(INIT_PY), from_file);
+    content.add_missing_entry(Box::from(INIT_PYI), from_file);
     None
 }
 
