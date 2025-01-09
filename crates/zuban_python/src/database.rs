@@ -1073,14 +1073,10 @@ impl Database {
         file_entry: Rc<FileEntry>,
         invalidates_db: bool,
     ) -> Option<FileIndex> {
-        // A loader should be available for all files in the workspace.
-        let path = file_entry.path(&*self.vfs.handler);
-        let code = self.vfs.handler.read_and_watch_file(&path)?;
-        let file_index = self.vfs.with_added_file(
+        self.vfs.load_file_from_workspace(
             file_entry.clone(),
-            path.into(),
             invalidates_db,
-            |path, file_index| {
+            |file_index, path, code| {
                 PythonFile::from_path_and_code(
                     &self.project,
                     file_index,
@@ -1089,9 +1085,7 @@ impl Database {
                     code.into(),
                 )
             },
-        );
-        file_entry.file_index.set(file_index);
-        Some(file_index)
+        )
     }
 
     pub fn load_in_memory_file(&mut self, path: Box<str>, code: Box<str>) -> FileIndex {

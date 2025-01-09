@@ -82,6 +82,29 @@ impl<F: VfsFile> Vfs<F> {
         &mut self.files[index.0 as usize]
     }
 
+    pub fn load_file_from_workspace(
+        &self,
+        file_entry: Rc<FileEntry>,
+        invalidates_db: bool,
+        new_file: impl FnOnce(FileIndex, &str, Box<str>) -> F,
+    ) -> Option<FileIndex> {
+        // A loader should be available for all files in the workspace.
+        let path = file_entry.path(&*self.handler);
+        let code = self.handler.read_and_watch_file(&path)?;
+        let file_index = self.with_added_file(
+            file_entry.clone(),
+            path.into(),
+            invalidates_db,
+            |path, file_index| new_file(file_index, path, code.into()),
+        );
+        file_entry.file_index.set(file_index);
+        Some(file_index)
+    }
+
+    pub fn in_memory_file(&mut self, path: &str) -> Option<FileIndex> {
+        self.in_memory_files.get(path).cloned()
+    }
+
     fn unload_in_memory_file_internal(
         &mut self,
         case_sensitive: bool,
@@ -142,10 +165,6 @@ impl<F: VfsFile> Vfs<F> {
         let new_file = to_file(file_state, file_index, new_code);
         file_state.update(new_file);
         self.invalidate_files(file_index, invalidations)
-    }
-
-    pub fn in_memory_file(&mut self, path: &str) -> Option<FileIndex> {
-        self.in_memory_files.get(path).cloned()
     }
 
     pub fn with_added_file(
