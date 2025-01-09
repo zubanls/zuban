@@ -22,7 +22,7 @@ impl WorkspaceFileIndex {
         Self(Cell::new(None))
     }
 
-    pub fn set(&self, index: FileIndex) {
+    pub(crate) fn set(&self, index: FileIndex) {
         self.0.set(Some(index));
     }
 
@@ -82,12 +82,12 @@ impl Parent {
 pub struct FileEntry {
     pub name: Box<str>,
     pub file_index: WorkspaceFileIndex,
-    pub invalidations: Invalidations,
+    pub(crate) invalidations: Invalidations,
     pub parent: Parent,
 }
 
 impl FileEntry {
-    pub fn new(parent: Parent, name: Box<str>) -> Rc<Self> {
+    pub(crate) fn new(parent: Parent, name: Box<str>) -> Rc<Self> {
         Rc::new(Self {
             name,
             file_index: WorkspaceFileIndex::none(),
@@ -152,13 +152,13 @@ pub struct Directory {
 }
 
 #[derive(Debug)]
-pub struct AddedFile {
-    pub invalidations: Invalidations,
-    pub file_entry: Rc<FileEntry>,
+pub(crate) struct AddedFile {
+    pub(crate) invalidations: Invalidations,
+    pub(crate) file_entry: Rc<FileEntry>,
 }
 
 impl AddedFile {
-    pub fn set_file_index(&self, index: FileIndex) {
+    pub(crate) fn set_file_index(&self, index: FileIndex) {
         // Theoretically we could just search in the directory for the entry again, but I'm too
         // lazy for that and it's faster this way.
         debug_assert!(self.file_entry.file_index.get().is_none());
@@ -192,7 +192,7 @@ impl Directory {
         }))
     }
 
-    pub fn search_path(&self, vfs: &dyn VfsHandler, path: &str) -> Option<Rc<FileEntry>> {
+    pub(crate) fn search_path(&self, vfs: &dyn VfsHandler, path: &str) -> Option<Rc<FileEntry>> {
         let (name, rest) = vfs.split_off_folder(path);
         if let Some(entry) = self.search(name) {
             if let Some(rest) = rest {
@@ -321,7 +321,7 @@ impl Directory {
 }
 
 #[derive(Debug, Default, Clone)]
-pub struct Invalidations(RefCell<InvalidationDetail<Vec<FileIndex>>>);
+pub(crate) struct Invalidations(RefCell<InvalidationDetail<Vec<FileIndex>>>);
 
 #[derive(Debug, Clone)]
 pub(crate) enum InvalidationDetail<T> {
@@ -336,7 +336,7 @@ impl<T: Default> Default for InvalidationDetail<T> {
 }
 
 impl<T> InvalidationDetail<T> {
-    pub fn map<U, F>(self, f: F) -> InvalidationDetail<U>
+    pub(crate) fn map<U, F>(self, f: F) -> InvalidationDetail<U>
     where
         F: FnOnce(T) -> U,
     {
@@ -352,7 +352,7 @@ impl Invalidations {
         *self.0.borrow_mut() = InvalidationDetail::InvalidatesDb;
     }
 
-    pub fn invalidates_db(&self) -> bool {
+    pub(crate) fn invalidates_db(&self) -> bool {
         matches!(&*self.0.borrow(), InvalidationDetail::InvalidatesDb)
     }
 

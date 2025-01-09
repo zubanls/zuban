@@ -3,7 +3,7 @@ use std::{path::PathBuf, rc::Rc};
 use utils::match_case;
 use walkdir::WalkDir;
 
-use crate::{AddedFile, Directory, DirectoryEntry, FileEntry, Parent, VfsHandler};
+use crate::{tree::AddedFile, Directory, DirectoryEntry, FileEntry, Parent, VfsHandler};
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub enum WorkspaceKind {
@@ -54,7 +54,7 @@ impl Workspaces {
         })
     }
 
-    pub fn ensure_file(
+    pub(crate) fn ensure_file(
         &mut self,
         vfs: &dyn VfsHandler,
         case_sensitive: bool,
@@ -74,7 +74,7 @@ impl Workspaces {
         unreachable!()
     }
 
-    pub fn unload_file(&mut self, vfs: &dyn VfsHandler, case_sensitive: bool, path: &str) {
+    pub(crate) fn unload_file(&mut self, vfs: &dyn VfsHandler, case_sensitive: bool, path: &str) {
         // TODO for now we always unload, fix that.
         for workspace in &self.0 {
             if let Some(p) = strip_path_prefix(vfs, case_sensitive, path, workspace.root_path()) {
@@ -83,7 +83,7 @@ impl Workspaces {
         }
     }
 
-    pub fn delete_directory(
+    pub(crate) fn delete_directory(
         &mut self,
         vfs: &dyn VfsHandler,
         case_sensitive: bool,

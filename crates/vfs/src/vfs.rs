@@ -4,7 +4,8 @@ use tracing::Level;
 use utils::InsertOnlyVec;
 
 use crate::{
-    FileEntry, FileIndex, InvalidationDetail, Invalidations, VfsHandler, WorkspaceKind, Workspaces,
+    tree::{InvalidationDetail, Invalidations},
+    FileEntry, FileIndex, VfsHandler, WorkspaceKind, Workspaces,
 };
 
 pub trait VfsFile: Unpin {
@@ -38,7 +39,7 @@ impl<F: VfsFile> Vfs<F> {
             .search_file(&*self.handler, case_sensitive, path)
     }
 
-    pub fn invalidate_files(
+    fn invalidate_files(
         &mut self,
         original_file_index: FileIndex,
         invalidations: Invalidations,
