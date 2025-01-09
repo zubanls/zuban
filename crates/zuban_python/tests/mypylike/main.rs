@@ -308,7 +308,7 @@ impl<'name, 'code> TestCase<'name, 'code> {
                     .unload_in_memory_file(&(BASE_PATH.to_owned() + path))
                     .unwrap_or_else(|_| {
                         project
-                            .delete_directory(&(BASE_PATH.to_owned() + path))
+                            .delete_directory_of_in_memory_files(&(BASE_PATH.to_owned() + path))
                             .unwrap()
                     });
             }
@@ -407,7 +407,9 @@ impl<'name, 'code> TestCase<'name, 'code> {
                 // packages for other tests.
                 if path.contains('/') {
                     let before_slash = path.split('/').next().unwrap();
-                    let _ = project.delete_directory(&(BASE_PATH.to_owned() + before_slash));
+                    let _ = project.delete_directory_of_in_memory_files(
+                        &(BASE_PATH.to_owned() + before_slash),
+                    );
                 } else {
                     let _ = project.unload_in_memory_file(&(BASE_PATH.to_owned() + path));
                 }

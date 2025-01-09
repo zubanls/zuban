@@ -1126,32 +1126,21 @@ impl Database {
         self.generate_python_state();
     }
 
-    pub fn delete_directory(&mut self, mut dir_path: &str) -> Result<(), String> {
-        if let Some(p) = dir_path.strip_suffix('/') {
-            dir_path = p;
-        }
-
-        let in_mem_paths: Vec<_> = self
-            .vfs
-            .in_memory_files
-            .iter()
-            .filter_map(|(path, _)| {
-                let l = dir_path.len();
-                let matches = path.starts_with(dir_path)
-                    && path
-                        .get(l..l + 1)
-                        .is_some_and(|chr| chr.starts_with(self.vfs.handler.separator()));
-                matches.then_some(path.clone())
-            })
-            .collect();
-        for path in in_mem_paths {
-            self.unload_in_memory_file(&path).unwrap();
-        }
-        self.vfs.workspaces.delete_directory(
-            &*self.vfs.handler,
+    pub fn delete_directory_of_in_memory_files(&mut self, dir_path: &str) -> Result<(), String> {
+        let invalidation = self.vfs.delete_in_memory_files_directory(
             self.project.flags.case_sensitive,
             dir_path,
-        )
+            |file_state, file_index, new_code| {
+                PythonFile::from_path_and_code(
+                    &self.project,
+                    file_index,
+                    &file_state.file_entry(),
+                    file_state.path(),
+                    new_code,
+                )
+            },
+        )?;
+        Ok(self.handle_invalidation(invalidation))
     }
 
     pub fn unload_in_memory_file(&mut self, path: &str) -> Result<(), &'static str> {
@@ -1168,8 +1157,7 @@ impl Database {
                 )
             },
         )?;
-        self.handle_invalidation(result);
-        Ok(())
+        Ok(self.handle_invalidation(result))
     }
 
     pub fn unload_all_in_memory_files(&mut self) {

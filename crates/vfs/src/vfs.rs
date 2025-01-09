@@ -234,6 +234,40 @@ impl<F: VfsFile> Vfs<F> {
         result
     }
 
+    pub fn delete_in_memory_files_directory(
+        &mut self,
+        case_sensitive: bool,
+        mut dir_path: &str,
+        to_file: impl Fn(&FileState<F>, FileIndex, Box<str>) -> F,
+    ) -> Result<InvalidationResult, String> {
+        // TODO this method feels weird
+        if let Some(p) = dir_path.strip_suffix('/') {
+            dir_path = p;
+        }
+
+        let in_mem_paths: Vec<_> = self
+            .in_memory_files
+            .iter()
+            .filter_map(|(path, _)| {
+                let l = dir_path.len();
+                let matches = path.starts_with(dir_path)
+                    && path
+                        .get(l..l + 1)
+                        .is_some_and(|chr| chr.starts_with(self.handler.separator()));
+                matches.then_some(path.clone())
+            })
+            .collect();
+        let mut invalidation_result = InvalidationResult::InvalidatedFiles;
+        for path in in_mem_paths {
+            invalidation_result |= self
+                .unload_in_memory_file(case_sensitive, &path, &to_file)
+                .unwrap();
+        }
+        self.workspaces
+            .delete_directory(&*self.handler, case_sensitive, dir_path)?;
+        Ok(invalidation_result)
+    }
+
     fn update_file(
         &mut self,
         file_index: FileIndex,

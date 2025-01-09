@@ -66,8 +66,8 @@ impl Project {
         Some(self.db.loaded_python_file(file_index).code())
     }
 
-    pub fn delete_directory(&mut self, path: &str) -> Result<(), String> {
-        self.db.delete_directory(path)
+    pub fn delete_directory_of_in_memory_files(&mut self, path: &str) -> Result<(), String> {
+        self.db.delete_directory_of_in_memory_files(path)
     }
 
     pub fn unload_in_memory_file(&mut self, path: &str) -> Result<(), &'static str> {
