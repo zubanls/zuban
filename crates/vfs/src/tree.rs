@@ -110,6 +110,10 @@ impl FileEntry {
         path.push(vfs.separator());
         path + &self.name
     }
+
+    pub fn add_invalidation(&self, element: FileIndex) {
+        self.invalidations.add(element)
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -320,7 +324,7 @@ impl Directory {
 pub struct Invalidations(RefCell<InvalidationDetail<Vec<FileIndex>>>);
 
 #[derive(Debug, Clone)]
-pub enum InvalidationDetail<T> {
+pub(crate) enum InvalidationDetail<T> {
     InvalidatesDb,
     Some(T),
 }
@@ -344,7 +348,7 @@ impl<T> InvalidationDetail<T> {
 }
 
 impl Invalidations {
-    pub fn set_invalidates_db(&self) {
+    pub(crate) fn set_invalidates_db(&self) {
         *self.0.borrow_mut() = InvalidationDetail::InvalidatesDb;
     }
 
@@ -352,7 +356,7 @@ impl Invalidations {
         matches!(&*self.0.borrow(), InvalidationDetail::InvalidatesDb)
     }
 
-    pub fn add(&self, element: FileIndex) {
+    pub(crate) fn add(&self, element: FileIndex) {
         if let InvalidationDetail::Some(invs) = &mut *self.0.borrow_mut() {
             if !invs.contains(&element) {
                 invs.push(element);
@@ -360,21 +364,21 @@ impl Invalidations {
         }
     }
 
-    pub fn extend(&mut self, other: Self) {
+    pub(crate) fn extend(&mut self, other: Self) {
         match (self.0.get_mut(), other.0.into_inner()) {
             (InvalidationDetail::Some(invs), InvalidationDetail::Some(other)) => invs.extend(other),
             _ => self.0 = RefCell::new(InvalidationDetail::InvalidatesDb),
         }
     }
 
-    pub fn take(&self) -> Self {
+    pub(crate) fn take(&self) -> Self {
         if self.invalidates_db() {
             return self.clone();
         }
         Self(RefCell::new(self.0.take()))
     }
 
-    pub fn iter(&self) -> InvalidationDetail<VecRefWrapper<FileIndex>> {
+    pub(crate) fn iter(&self) -> InvalidationDetail<VecRefWrapper<FileIndex>> {
         let r = self.0.borrow();
         if let InvalidationDetail::InvalidatesDb = &*r {
             return InvalidationDetail::InvalidatesDb;
@@ -387,11 +391,7 @@ impl Invalidations {
         })))
     }
 
-    pub fn into_inner(self) -> InvalidationDetail<Vec<FileIndex>> {
-        self.0.into_inner()
-    }
-
-    pub fn into_iter(self) -> InvalidationDetail<impl Iterator<Item = FileIndex>> {
+    pub(crate) fn into_iter(self) -> InvalidationDetail<impl Iterator<Item = FileIndex>> {
         self.0.into_inner().map(|invs| invs.into_iter())
     }
 }

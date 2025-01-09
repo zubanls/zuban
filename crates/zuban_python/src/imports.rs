@@ -248,7 +248,7 @@ pub fn python_import_with_needs_exact_case(
         }
         if let Some((file_entry, file_index)) = stub_file_index.take().or(python_file_index.take())
         {
-            file_entry.invalidations.add(from_file);
+            file_entry.add_invalidation(from_file);
             return Some(ImportResult::File(file_index));
         }
         dir.add_missing_entry((name.to_string() + ".py").into(), from_file);
@@ -283,7 +283,7 @@ fn load_init_file(db: &Database, content: &Directory, from_file: FileIndex) -> O
                     db.load_file_from_workspace(file.clone(), false);
                 }
                 let found_file_index = file.file_index.get();
-                file.invalidations.add(from_file);
+                file.add_invalidation(from_file);
                 return found_file_index;
             }
         }

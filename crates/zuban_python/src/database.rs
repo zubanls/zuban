@@ -3,7 +3,6 @@ use std::{
     cell::{Cell, OnceCell, RefCell},
     fmt, mem,
     ops::Range,
-    pin::Pin,
     rc::Rc,
 };
 
@@ -11,8 +10,8 @@ use config::{OverrideConfig, Settings};
 use parsa_python_cst::NodeIndex;
 use utils::InsertOnlyVec;
 use vfs::{
-    Directory, DirectoryEntry, FileEntry, FileIndex, FileState, InvalidationDetail,
-    InvalidationResult, Invalidations, LocalFS, Parent, Vfs, VfsHandler, WorkspaceKind, Workspaces,
+    Directory, DirectoryEntry, FileEntry, FileIndex, InvalidationResult, LocalFS, Parent, Vfs,
+    VfsHandler, WorkspaceKind, Workspaces,
 };
 
 use crate::{

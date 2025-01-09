@@ -3,7 +3,7 @@ use std::{any::Any, pin::Pin, rc::Rc};
 
 use config::DiagnosticConfig;
 use parsa_python_cst::{CodeIndex, Keyword, NodeIndex};
-use vfs::{FileEntry, FileIndex, Invalidations, VfsFile};
+use vfs::FileIndex;
 
 use crate::{
     database::Database,
