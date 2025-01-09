@@ -1223,14 +1223,6 @@ impl Database {
         self.generate_python_state();
     }
 
-    pub fn add_invalidates(&self, file: FileIndex, invalidates: FileIndex) {
-        self.vfs
-            .file(file)
-            .file_entry
-            .invalidations
-            .add(invalidates)
-    }
-
     pub fn delete_directory(&mut self, mut dir_path: &str) -> Result<(), String> {
         if let Some(p) = dir_path.strip_suffix('/') {
             dir_path = p;

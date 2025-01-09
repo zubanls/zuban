@@ -210,7 +210,7 @@ pub fn python_import_with_needs_exact_case(
                 DirectoryEntry::Directory(dir2) => {
                     if match_c(db, dir2.name.as_ref(), name, needs_exact_case) {
                         let result = load_init_file(db, dir2, from_file);
-                        if let Some(file_index) = &result {
+                        if result.is_some() {
                             if needs_py_typed && dir2.search("py.typed").is_none() {
                                 return Some(ImportResult::PyTypedMissing);
                             }
@@ -238,17 +238,18 @@ pub fn python_import_with_needs_exact_case(
                         }
                         debug_assert!(file.file_index.get().is_some());
                         if is_py_file {
-                            python_file_index = file.file_index.get();
+                            python_file_index = file.file_index.get().map(|f| (file.clone(), f));
                         } else {
-                            stub_file_index = file.file_index.get();
+                            stub_file_index = file.file_index.get().map(|f| (file.clone(), f));
                         }
                     }
                 }
                 DirectoryEntry::MissingEntry { .. } => (),
             }
         }
-        if let Some(file_index) = stub_file_index.or(python_file_index) {
-            db.add_invalidates(file_index, from_file);
+        if let Some((file_entry, file_index)) = stub_file_index.take().or(python_file_index.take())
+        {
+            file_entry.invalidations.add(from_file);
             return Some(ImportResult::File(file_index));
         }
         dir.add_missing_entry((name.to_string() + ".py").into(), from_file);
@@ -283,8 +284,8 @@ fn load_init_file(db: &Database, content: &Directory, from_file: FileIndex) -> O
                     db.load_file_from_workspace(file.clone(), false);
                 }
                 let found_file_index = file.file_index.get();
-                if let Some(f) = found_file_index {
-                    db.add_invalidates(f, from_file);
+                if found_file_index.is_some() {
+                    file.invalidations.add(from_file);
                 }
                 return found_file_index;
             }
