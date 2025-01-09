@@ -1160,7 +1160,7 @@ impl Database {
         file_index
     }
 
-    fn unload_file(&mut self, file_index: FileIndex) {
+    fn unload_in_memory_file_internal(&mut self, file_index: FileIndex) {
         let file_state = &mut self.vfs.files[file_index.0 as usize];
         let path = file_state.path();
         self.vfs.workspaces.unload_file(
@@ -1249,7 +1249,7 @@ impl Database {
                     self.update_file(file_index, on_file_system_code.into())
                 }
             } else {
-                self.unload_file(file_index);
+                self.unload_in_memory_file_internal(file_index);
             }
             Ok(())
         } else {
@@ -1260,7 +1260,7 @@ impl Database {
     pub fn unload_all_in_memory_files(&mut self) {
         let in_memory_files = mem::take(&mut self.vfs.in_memory_files);
         for (_path, file_index) in in_memory_files.into_iter() {
-            self.unload_file(file_index);
+            self.unload_in_memory_file_internal(file_index);
         }
     }
 
