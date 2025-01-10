@@ -905,55 +905,6 @@ impl Database {
             flags: options.flags,
             overrides: options.overrides,
         };
-        let mut files = vec![];
-        let mut workspaces = self.vfs.workspaces.clone_with_new_rcs();
-        for file_state in self.vfs.files.iter_mut() {
-            fn search_parent(
-                workspaces: &Workspaces,
-                parent: Parent,
-                name: &str,
-            ) -> DirectoryEntry {
-                let tmp;
-                let parent_dir = match parent {
-                    Parent::Directory(dir) => {
-                        tmp = dir.upgrade().unwrap();
-                        &tmp
-                    }
-                    Parent::Workspace(w_name) => {
-                        &workspaces
-                            .iter()
-                            .find(|workspace| *workspace.root_path() == **w_name)
-                            .unwrap()
-                            .directory
-                    }
-                };
-                let x = parent_dir.search(name).unwrap().clone();
-                x
-            }
-            fn replace_from_new_workspace(workspaces: &Workspaces, parent: &Parent) -> Parent {
-                match parent {
-                    Parent::Directory(dir) => {
-                        let dir = dir.upgrade().unwrap();
-                        let replaced = replace_from_new_workspace(workspaces, &dir.parent);
-                        let search = search_parent(workspaces, replaced, &dir.name);
-                        let DirectoryEntry::Directory(new_dir) = search else {
-                            unreachable!();
-                        };
-                        Parent::Directory(Rc::downgrade(&new_dir))
-                    }
-                    Parent::Workspace(_) => parent.clone(),
-                }
-            }
-            let current_entry = file_state.file_entry();
-            let parent_dir = replace_from_new_workspace(&workspaces, &current_entry.parent);
-            let DirectoryEntry::File(new_file_entry) =
-                search_parent(&workspaces, parent_dir, &current_entry.name)
-            else {
-                unreachable!()
-            };
-            //debug_assert_ne!(new_file_entry.as_ref() as *const _, current_entry.as_ref() as *const _);
-            files.push(file_state.clone_box(new_file_entry.clone()));
-        }
 
         let mut mypy_path_iter = project.settings.mypy_path.iter();
         assert_eq!(
@@ -962,26 +913,20 @@ impl Database {
             "{:?}",
             project.settings.mypy_path
         );
-        for p in mypy_path_iter.rev() {
-            workspaces.add_at_start(&*self.vfs.handler, p.clone(), WorkspaceKind::TypeChecking)
-        }
-        for p in &project.sys_path {
-            workspaces.add(
-                &*self.vfs.handler,
-                p.clone().into(),
-                WorkspaceKind::SitePackages,
-            )
-        }
-
+        let vfs = self
+            .vfs
+            .with_reused_test_resources(Box::new(LocalFS::without_watcher()), mypy_path_iter);
         let mut new_db = Self {
-            vfs: Vfs::new_reused_test_resources(
-                Box::new(LocalFS::without_watcher()),
-                workspaces,
-                files.into(),
-            ),
+            vfs,
             python_state: self.python_state.clone(),
             project,
         };
+
+        for p in &new_db.project.sys_path {
+            new_db
+                .vfs
+                .add_workspace(p.clone().into(), WorkspaceKind::SitePackages)
+        }
 
         let mut set_pointer = |pointer_ref: &mut *const PythonFile, name, is_package| {
             for (i, file_state) in new_db.vfs.files.iter_mut().enumerate() {

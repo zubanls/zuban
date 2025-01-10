@@ -20,7 +20,7 @@ impl Workspaces {
         self.0.push(Workspace::new(vfs, root, kind))
     }
 
-    pub fn add_at_start(&mut self, vfs: &dyn VfsHandler, root: String, kind: WorkspaceKind) {
+    pub(crate) fn add_at_start(&mut self, vfs: &dyn VfsHandler, root: String, kind: WorkspaceKind) {
         self.0.insert(0, Workspace::new(vfs, root, kind))
     }
 
@@ -97,7 +97,7 @@ impl Workspaces {
         Err(format!("Workspace of path {path} cannot be found"))
     }
 
-    pub fn clone_with_new_rcs(&self) -> Self {
+    pub(crate) fn clone_with_new_rcs(&self) -> Self {
         fn clone_inner_rcs(dir: Directory) -> Rc<Directory> {
             let dir = Rc::new(dir);
             for entry in dir.entries.borrow_mut().iter_mut() {
