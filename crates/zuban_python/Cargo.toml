@@ -11,12 +11,12 @@ parsa_python_cst.workspace = true
 utils.workspace = true
 vfs.workspace = true
 
+anyhow.workspace = true
+config.workspace = true
 lazy_static.workspace = true
 regex.workspace = true
-walkdir.workspace = true
-config.workspace = true
 tracing.workspace = true
-anyhow.workspace = true
+walkdir.workspace = true
 
 [dev-dependencies]
 clap.workspace = true

@@ -177,6 +177,10 @@ impl Project {
             file_index,
         })
     }
+
+    pub fn vfs_handler(&self) -> &dyn VfsHandler {
+        self.db.vfs.handler.as_ref()
+    }
 }
 
 pub struct Document<'a> {

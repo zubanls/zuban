@@ -1,14 +1,14 @@
 //! Scheduling, I/O, and API endpoints.
 
 use std::panic::PanicHookInfo;
-use std::{path::PathBuf, rc::Rc};
-use vfs::{LocalFS, NotifyEvent, VfsHandler};
+use std::path::PathBuf;
 
 use config::ProjectOptions;
 use crossbeam_channel::{never, select, Receiver, Sender};
 use lsp_server::{Connection, ExtractError, Message, Request};
 use lsp_types::Uri;
 use serde::{de::DeserializeOwned, Serialize};
+use vfs::NotifyEvent;
 use zuban_python::Project;
 
 use crate::capabilities::{server_capabilities, ClientCapabilities};
@@ -183,7 +183,6 @@ struct NotificationDispatcher<'a> {
 pub(crate) struct GlobalState {
     pub sender: Sender<lsp_server::Message>,
     pub roots: Vec<String>,
-    pub vfs: Rc<dyn VfsHandler>,
     pub project: Option<Project>,
     pub shutdown_requested: bool,
 }
@@ -194,24 +193,22 @@ impl GlobalState {
         _capabilities: ClientCapabilities,
         roots: Vec<String>,
     ) -> Self {
-        let vfs = LocalFS::with_watcher();
-        for r in &roots {
-            vfs.walk_and_watch_dirs(r);
-        }
         GlobalState {
             sender,
             roots,
             project: None,
-            vfs: Rc::new(vfs),
             shutdown_requested: false,
         }
     }
 
     fn event_loop(&mut self, receiver: Receiver<Message>) -> anyhow::Result<()> {
         loop {
+            // Make sure the project is basically loaded
+            self.project();
+
             let event = select! {
                 recv(receiver) -> msg => Event::Lsp(msg?),
-                recv(self.vfs.notify_receiver().unwrap_or(&never())) -> msg =>
+                recv(self.notify_receiver().unwrap_or(&never())) -> msg =>
                     Event::Notify(msg?),
             };
             match event {
@@ -231,12 +228,16 @@ impl GlobalState {
                 Event::Notify(event) => {
                     self.on_notify_event(event);
                     // Check all events in the Notify queue
-                    while let Ok(next) = self.vfs.notify_receiver().unwrap().try_recv() {
+                    while let Some(next) = self.notify_receiver().and_then(|n| n.try_recv().ok()) {
                         self.on_notify_event(next);
                     }
                 }
             }
         }
+    }
+
+    fn notify_receiver(&self) -> Option<&Receiver<NotifyEvent>> {
+        self.project.as_ref()?.vfs_handler().notify_receiver()
     }
 
     pub(crate) fn project(&mut self) -> &mut Project {
