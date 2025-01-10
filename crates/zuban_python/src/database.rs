@@ -1052,7 +1052,7 @@ impl Database {
     pub fn load_sub_file(
         &self,
         super_file: &PythonFile,
-        add: impl FnOnce(&str, FileIndex) -> PythonFile,
+        add: impl FnOnce(FileIndex) -> PythonFile,
     ) -> &PythonFile {
         let index = self.vfs.create_sub_file(super_file.file_index, add);
         self.loaded_python_file(index)
@@ -1063,19 +1063,15 @@ impl Database {
         file_entry: Rc<FileEntry>,
         invalidates_db: bool,
     ) -> Option<FileIndex> {
-        self.vfs.load_file_from_workspace(
-            file_entry.clone(),
-            invalidates_db,
-            |file_index, path, code| {
-                PythonFile::from_path_and_code(
+        self.vfs
+            .load_file_from_workspace(file_entry.clone(), invalidates_db, |file_index, code| {
+                PythonFile::from_file_entry_and_code(
                     &self.project,
                     file_index,
                     &file_entry,
-                    path,
                     code.into(),
                 )
-            },
-        )
+            })
     }
 
     pub fn load_in_memory_file(&mut self, path: Box<str>, code: Box<str>) -> FileIndex {
@@ -1083,12 +1079,11 @@ impl Database {
             self.project.flags.case_sensitive,
             path,
             code,
-            |file_index, file_entry, path, new_code| {
-                PythonFile::from_path_and_code(
+            |file_index, file_entry, new_code| {
+                PythonFile::from_file_entry_and_code(
                     &self.project,
                     file_index,
                     file_entry,
-                    path,
                     new_code,
                 )
             },
@@ -1122,11 +1117,10 @@ impl Database {
             self.project.flags.case_sensitive,
             dir_path,
             |file_state, file_index, new_code| {
-                PythonFile::from_path_and_code(
+                PythonFile::from_file_entry_and_code(
                     &self.project,
                     file_index,
                     &file_state.file_entry(),
-                    file_state.path(),
                     new_code,
                 )
             },
@@ -1139,11 +1133,10 @@ impl Database {
             self.project.flags.case_sensitive,
             path,
             |file_state, file_index, new_code| {
-                PythonFile::from_path_and_code(
+                PythonFile::from_file_entry_and_code(
                     &self.project,
                     file_index,
                     &file_state.file_entry(),
-                    file_state.path(),
                     new_code,
                 )
             },

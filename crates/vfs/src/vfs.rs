@@ -100,7 +100,7 @@ impl<F: VfsFile> Vfs<F> {
         &self,
         file_entry: Rc<FileEntry>,
         invalidates_db: bool,
-        new_file: impl FnOnce(FileIndex, &str, Box<str>) -> F,
+        new_file: impl FnOnce(FileIndex, Box<str>) -> F,
     ) -> Option<FileIndex> {
         // A loader should be available for all files in the workspace.
         let path = file_entry.path(&*self.handler);
@@ -109,7 +109,7 @@ impl<F: VfsFile> Vfs<F> {
             file_entry.clone(),
             path.into(),
             invalidates_db,
-            |path, file_index| new_file(file_index, path, code.into()),
+            |file_index| new_file(file_index, code.into()),
         );
         file_entry.file_index.set(file_index);
         Some(file_index)
@@ -124,7 +124,7 @@ impl<F: VfsFile> Vfs<F> {
         case_sensitive: bool,
         path: Box<str>,
         code: Box<str>,
-        new_file: impl FnOnce(FileIndex, &FileEntry, &str, Box<str>) -> F,
+        new_file: impl FnOnce(FileIndex, &FileEntry, Box<str>) -> F,
     ) -> (FileIndex, InvalidationResult) {
         tracing::info!("Loading in memory file: {path}");
         let ensured = self
@@ -158,7 +158,7 @@ impl<F: VfsFile> Vfs<F> {
         }
 
         let file_index = if let Some(file_index) = in_mem_file {
-            let file = new_file(file_index, &ensured.file_entry, &path, code);
+            let file = new_file(file_index, &ensured.file_entry, code);
             let new_file_state = Box::pin(FileState::new_parsed(
                 ensured.file_entry,
                 path,
@@ -180,7 +180,7 @@ impl<F: VfsFile> Vfs<F> {
                 ensured.file_entry.clone(),
                 path.clone(),
                 false,
-                |path, file_index| new_file(file_index, &ensured.file_entry, &path, code),
+                |file_index| new_file(file_index, &ensured.file_entry, code),
             );
             self.in_memory_files.insert(path.clone(), file_index);
             ensured.set_file_index(file_index);
@@ -300,10 +300,10 @@ impl<F: VfsFile> Vfs<F> {
         file_entry: Rc<FileEntry>,
         path: Box<str>,
         invalidates_db: bool,
-        new_file: impl FnOnce(&str, FileIndex) -> F,
+        new_file: impl FnOnce(FileIndex) -> F,
     ) -> FileIndex {
         let file_index = FileIndex(self.files.len() as u32);
-        let new_file = new_file(&path, file_index);
+        let new_file = new_file(file_index);
         self.files.push(Box::pin(FileState::new_parsed(
             file_entry,
             path,
@@ -316,7 +316,7 @@ impl<F: VfsFile> Vfs<F> {
     pub fn create_sub_file(
         &self,
         super_file_index: FileIndex,
-        add: impl FnOnce(&str, FileIndex) -> F,
+        add: impl FnOnce(FileIndex) -> F,
     ) -> FileIndex {
         let file_entry = self.file_state(super_file_index).file_entry.clone();
         let invalidates_db = file_entry.invalidations.invalidates_db();
@@ -384,10 +384,6 @@ impl<F: VfsFile> FileState<F> {
 
     fn code(&self) -> Option<&str> {
         Some(self.file()?.code())
-    }
-
-    pub fn path(&self) -> &str {
-        &self.path
     }
 
     pub fn file_entry(&self) -> &Rc<FileEntry> {

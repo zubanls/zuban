@@ -255,15 +255,14 @@ impl fmt::Debug for PythonFile {
 }
 
 impl<'db> PythonFile {
-    pub fn from_path_and_code(
+    pub fn from_file_entry_and_code(
         project: &PythonProject,
         file_index: FileIndex,
         file_entry: &FileEntry,
-        path: &str,
         code: Box<str>,
     ) -> Self {
-        debug!("Initialize {path} ({file_index})");
-        let is_stub = path.ends_with(".pyi");
+        debug!("Initialize {} ({file_index})", file_entry.name);
+        let is_stub = file_entry.name.ends_with(".pyi");
         PythonFile::new(project, file_index, &file_entry, code, is_stub)
     }
 
@@ -384,7 +383,7 @@ impl<'db> PythonFile {
         // TODO should probably not need a newline
         let tree = Tree::parse(Box::from(code.into_string() + "\n"));
         let points = Points::new(tree.length());
-        let f = db.load_sub_file(self, |_, file_index| {
+        let f = db.load_sub_file(self, |file_index| {
             let mut file = PythonFile::new_internal(
                 file_index,
                 tree,
