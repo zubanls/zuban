@@ -1159,7 +1159,7 @@ impl Database {
                 dir.path(&*self.vfs.handler, true)
             )
         };
-        let file_index = file_entry.file_index.get().unwrap_or_else(|| {
+        let file_index = file_entry.get_file_index().unwrap_or_else(|| {
             self.load_file_from_workspace(file_entry.clone(), true)
                 .unwrap()
         });

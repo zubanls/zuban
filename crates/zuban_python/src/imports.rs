@@ -232,14 +232,15 @@ pub fn python_import_with_needs_exact_case(
                         if needs_py_typed {
                             return Some(ImportResult::PyTypedMissing);
                         }
-                        if file.file_index.get().is_none() {
+                        if file.get_file_index().is_none() {
                             db.load_file_from_workspace(file.clone(), false);
                         }
-                        debug_assert!(file.file_index.get().is_some());
+                        let file_index = file.get_file_index();
+                        debug_assert!(file.get_file_index().is_some());
                         if is_py_file {
-                            python_file_index = file.file_index.get().map(|f| (file.clone(), f));
+                            python_file_index = file_index.map(|f| (file.clone(), f));
                         } else {
-                            stub_file_index = file.file_index.get().map(|f| (file.clone(), f));
+                            stub_file_index = file_index.map(|f| (file.clone(), f));
                         }
                     }
                 }
@@ -279,10 +280,10 @@ fn load_init_file(db: &Database, content: &Directory, from_file: FileIndex) -> O
     for child in &content.iter() {
         if let DirectoryEntry::File(file) = child {
             if match_c(db, &file.name, INIT_PY, false) || match_c(db, &file.name, INIT_PYI, false) {
-                if file.file_index.get().is_none() {
+                if file.get_file_index().is_none() {
                     db.load_file_from_workspace(file.clone(), false);
                 }
-                let found_file_index = file.file_index.get();
+                let found_file_index = file.get_file_index();
                 file.add_invalidation(from_file);
                 return found_file_index;
             }

@@ -15,23 +15,6 @@ impl std::fmt::Display for FileIndex {
 }
 
 #[derive(Debug, Clone)]
-pub struct WorkspaceFileIndex(Cell<Option<FileIndex>>);
-
-impl WorkspaceFileIndex {
-    fn none() -> Self {
-        Self(Cell::new(None))
-    }
-
-    pub(crate) fn set(&self, index: FileIndex) {
-        self.0.set(Some(index));
-    }
-
-    pub fn get(&self) -> Option<FileIndex> {
-        self.0.get()
-    }
-}
-
-#[derive(Debug, Clone)]
 pub enum Parent {
     Directory(Weak<Directory>),
     // This is not an Rc<str>, because that would make the enum 8 bytes bigger. It's used a lot, so
@@ -81,7 +64,7 @@ impl Parent {
 #[derive(Debug, Clone)]
 pub struct FileEntry {
     pub name: Box<str>,
-    pub file_index: WorkspaceFileIndex,
+    file_index: Cell<Option<FileIndex>>,
     pub(crate) invalidations: Invalidations,
     pub parent: Parent,
 }
@@ -90,7 +73,7 @@ impl FileEntry {
     pub(crate) fn new(parent: Parent, name: Box<str>) -> Rc<Self> {
         Rc::new(Self {
             name,
-            file_index: WorkspaceFileIndex::none(),
+            file_index: Default::default(),
             invalidations: Default::default(),
             parent,
         })
@@ -113,6 +96,14 @@ impl FileEntry {
 
     pub fn add_invalidation(&self, element: FileIndex) {
         self.invalidations.add(element)
+    }
+
+    pub fn get_file_index(&self) -> Option<FileIndex> {
+        self.file_index.get()
+    }
+
+    pub(crate) fn set_file_index(&self, index: FileIndex) {
+        self.file_index.set(Some(index));
     }
 }
 
@@ -165,7 +156,7 @@ impl AddedFile {
         // Theoretically we could just search in the directory for the entry again, but I'm too
         // lazy for that and it's faster this way.
         debug_assert!(self.file_entry.file_index.get().is_none());
-        self.file_entry.file_index.set(index);
+        self.file_entry.set_file_index(index);
     }
 }
 

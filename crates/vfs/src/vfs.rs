@@ -111,7 +111,7 @@ impl<F: VfsFile> Vfs<F> {
             invalidates_db,
             |file_index| new_file(file_index, code.into()),
         );
-        file_entry.file_index.set(file_index);
+        file_entry.set_file_index(file_index);
         Some(file_index)
     }
 
@@ -134,13 +134,13 @@ impl<F: VfsFile> Vfs<F> {
         let in_mem_file = self.in_memory_file(&path);
         debug_assert!(
             in_mem_file.is_none()
-                || in_mem_file.is_some() && ensured.file_entry.file_index.get().is_some(),
+                || in_mem_file.is_some() && ensured.file_entry.get_file_index().is_some(),
             "{path}; in_mem_file: {in_mem_file:?}; ensured file_index: {:?}",
-            ensured.file_entry.file_index.get(),
+            ensured.file_entry.get_file_index(),
         );
 
         let in_mem_file = in_mem_file.or_else(|| {
-            let file_index = ensured.file_entry.file_index.get()?;
+            let file_index = ensured.file_entry.get_file_index()?;
             self.in_memory_files.insert(path.clone(), file_index);
             Some(file_index)
         });
@@ -169,7 +169,7 @@ impl<F: VfsFile> Vfs<F> {
             if std::cfg!(debug_assertions) {
                 let new = self.file_state(file_index);
                 debug_assert!(
-                    new.file_entry.file_index.get().is_some(),
+                    new.file_entry.get_file_index().is_some(),
                     "for {}",
                     new.path
                 );

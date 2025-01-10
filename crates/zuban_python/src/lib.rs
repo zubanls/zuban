@@ -100,7 +100,7 @@ impl Project {
             };
             let mut to_be_loaded = vec![];
             directory.walk(&mut |in_dir, file| {
-                if file.file_index.get().is_none() && !ignore_py_if_overwritten_by_pyi(in_dir, file)
+                if file.get_file_index().is_none() && !ignore_py_if_overwritten_by_pyi(in_dir, file)
                 {
                     let path = file.relative_path(&*self.db.vfs.handler);
                     to_be_loaded.push((file.clone(), path));
@@ -123,7 +123,7 @@ impl Project {
 
             let mut file_indexes = vec![];
             directory.walk(&mut |in_dir, file| {
-                if let Some(file_index) = file.file_index.get() {
+                if let Some(file_index) = file.get_file_index() {
                     // We need to recheck here, because some modules might have been loaded
                     // previously in the current db and we don't want to check them.
                     if !ignore_py_if_overwritten_by_pyi(in_dir, file) {
@@ -171,10 +171,10 @@ impl Project {
             .vfs
             .search_file(self.db.project.flags.case_sensitive, path)?;
 
-        if file_entry.file_index.get().is_none() {
+        if file_entry.get_file_index().is_none() {
             self.db.load_file_from_workspace(file_entry.clone(), false);
         }
-        let file_index = file_entry.file_index.get().unwrap();
+        let file_index = file_entry.get_file_index().unwrap();
         Some(Document {
             project: self,
             file_index,
