@@ -4,6 +4,14 @@ pub struct InsertOnlyVec<T: ?Sized> {
     vec: UnsafeCell<Vec<Pin<Box<T>>>>,
 }
 
+impl<T: ?Sized> From<Vec<Pin<Box<T>>>> for InsertOnlyVec<T> {
+    fn from(value: Vec<Pin<Box<T>>>) -> Self {
+        Self {
+            vec: UnsafeCell::new(value),
+        }
+    }
+}
+
 impl<T: ?Sized> Default for InsertOnlyVec<T> {
     fn default() -> Self {
         Self {
