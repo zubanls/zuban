@@ -42,7 +42,6 @@ use crate::{
         TypeVarManager, WrongPositionalCount,
     },
     type_helpers::Class,
-    utils::rc_unwrap_or_clone,
 };
 
 #[derive(Clone, Copy)]
@@ -1219,7 +1218,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     } else if let Some(CallableLike::Callable(callable)) = t.maybe_callable(i_s) {
                         implementation = Some(OverloadImplementation {
                             function_link: func_ref.as_link(),
-                            callable: rc_unwrap_or_clone(callable),
+                            callable: Rc::unwrap_or_clone(callable),
                         });
                     } else {
                         implementation = Some(OverloadImplementation {
@@ -1537,7 +1536,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     };
                     ParamType::Star(match &tup.args {
                         TupleArgs::ArbitraryLen(_) => {
-                            let TupleArgs::ArbitraryLen(t) = rc_unwrap_or_clone(tup).args else {
+                            let TupleArgs::ArbitraryLen(t) = Rc::unwrap_or_clone(tup).args else {
                                 unreachable!()
                             };
                             StarParamType::ArbitraryLen(*t)

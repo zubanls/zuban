@@ -28,7 +28,6 @@ use crate::{
         lookup_in_namespace, Callable, Class, ClassLookupOptions, Instance, InstanceLookupOptions,
         LookupDetails, Module, OverloadedFunction,
     },
-    utils::rc_unwrap_or_clone,
 };
 
 impl Type {
@@ -1032,7 +1031,7 @@ pub(crate) fn execute_type_of_type<'db>(
                 let Type::Callable(__new__) = inf.as_type(i_s) else {
                     unreachable!()
                 };
-                let mut __new__ = rc_unwrap_or_clone(__new__);
+                let mut __new__ = Rc::unwrap_or_clone(__new__);
                 __new__.type_vars = i_s.db.python_state.empty_type_var_likes.clone();
                 Rc::new(NamedTuple::new(nt.name, __new__))
             }))

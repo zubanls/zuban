@@ -152,11 +152,6 @@ pub fn str_repr(content: &str) -> String {
     format!("'{repr}'")
 }
 
-// Tracking Issue for arc_unwrap_or_clone is unstable, see https://github.com/rust-lang/rust/issues/93610
-pub fn rc_unwrap_or_clone<T: Clone>(this: Rc<T>) -> T {
-    Rc::try_unwrap(this).unwrap_or_else(|arc| (*arc).clone())
-}
-
 pub fn join_with_commas(input: impl Iterator<Item = String>) -> String {
     input.collect::<Vec<_>>().join(", ")
 }

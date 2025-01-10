@@ -34,7 +34,7 @@ use crate::{
     type_helpers::{
         cache_class_name, is_reexport_issue, start_namedtuple_params, Class, Function, Module,
     },
-    utils::{rc_slice_into_vec, rc_unwrap_or_clone, AlreadySeen},
+    utils::{rc_slice_into_vec, AlreadySeen},
 };
 
 const ASSIGNMENT_TYPE_CACHE_OFFSET: u32 = 1;
@@ -1390,7 +1390,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
     ) -> TypeCompTupleUnpack {
         match type_or_unpack {
             TypeOrUnpack::TypeVarTuple(tvt) => TypeCompTupleUnpack::TypeVarTuple(tvt),
-            TypeOrUnpack::Type(Type::Tuple(tup)) => match rc_unwrap_or_clone(tup).args {
+            TypeOrUnpack::Type(Type::Tuple(tup)) => match Rc::unwrap_or_clone(tup).args {
                 TupleArgs::WithUnpack(w) => TypeCompTupleUnpack::WithUnpack(w),
                 TupleArgs::ArbitraryLen(t) => TypeCompTupleUnpack::ArbitraryLen(t),
                 TupleArgs::FixedLen(ts) => TypeCompTupleUnpack::FixedLen(rc_slice_into_vec(ts)),
@@ -2354,7 +2354,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     name: None,
                 },
                 TupleArgs::ArbitraryLen(_) => {
-                    let TupleArgs::ArbitraryLen(t) = rc_unwrap_or_clone(tup).args else {
+                    let TupleArgs::ArbitraryLen(t) = Rc::unwrap_or_clone(tup).args else {
                         unreachable!();
                     };
                     CallableParam {
@@ -2389,7 +2389,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         let previous = params.pop().unwrap();
                         let tup_args = match previous.type_ {
                             ParamType::Star(StarParamType::UnpackedTuple(tup)) => {
-                                rc_unwrap_or_clone(tup).args
+                                Rc::unwrap_or_clone(tup).args
                             }
                             ParamType::Star(StarParamType::ArbitraryLen(t)) => {
                                 TupleArgs::ArbitraryLen(Box::new(t))
