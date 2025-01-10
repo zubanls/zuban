@@ -8,7 +8,6 @@ use std::{
 
 use config::{OverrideConfig, Settings};
 use parsa_python_cst::NodeIndex;
-use utils::InsertOnlyVec;
 use vfs::{
     Directory, DirectoryEntry, FileEntry, FileIndex, InvalidationResult, LocalFS, Parent, Vfs,
     VfsHandler, WorkspaceKind, Workspaces,
@@ -906,7 +905,7 @@ impl Database {
             flags: options.flags,
             overrides: options.overrides,
         };
-        let files = InsertOnlyVec::default();
+        let mut files = vec![];
         let mut workspaces = self.vfs.workspaces.clone_with_new_rcs();
         for file_state in self.vfs.files.iter_mut() {
             fn search_parent(
@@ -976,7 +975,7 @@ impl Database {
 
         let mut python_state = self.python_state.clone();
         let set_pointer = |pointer_ref: &mut *const PythonFile, name, is_package| {
-            for (i, file_state) in unsafe { files.iter() }.enumerate() {
+            for (i, file_state) in files.iter().enumerate() {
                 let entry = file_state.file_entry();
                 if is_package
                     && entry
@@ -1021,7 +1020,7 @@ impl Database {
         let db = Self {
             vfs: Vfs {
                 handler: Box::new(LocalFS::without_watcher()),
-                files,
+                files: files.into(),
                 workspaces,
                 in_memory_files: Default::default(),
             },
