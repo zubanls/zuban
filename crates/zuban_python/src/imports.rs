@@ -232,11 +232,7 @@ pub fn python_import_with_needs_exact_case(
                         if needs_py_typed {
                             return Some(ImportResult::PyTypedMissing);
                         }
-                        if file.get_file_index().is_none() {
-                            db.load_file_from_workspace(&file, false);
-                        }
-                        let file_index = file.get_file_index();
-                        debug_assert!(file.get_file_index().is_some());
+                        let file_index = db.load_file_from_workspace(&file, false);
                         if is_py_file {
                             python_file_index = file_index.map(|f| (file.clone(), f));
                         } else {
@@ -281,10 +277,7 @@ fn load_init_file(db: &Database, content: &Directory, from_file: FileIndex) -> O
         if let DirectoryEntry::File(entry) = child {
             if match_c(db, &entry.name, INIT_PY, false) || match_c(db, &entry.name, INIT_PYI, false)
             {
-                if entry.get_file_index().is_none() {
-                    db.load_file_from_workspace(entry, false);
-                }
-                let found_file_index = entry.get_file_index();
+                let found_file_index = db.load_file_from_workspace(entry, false);
                 entry.add_invalidation(from_file);
                 return found_file_index;
             }

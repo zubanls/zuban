@@ -1013,15 +1013,20 @@ impl Database {
         file_entry: &Rc<FileEntry>,
         invalidates_db: bool,
     ) -> Option<FileIndex> {
-        self.vfs
-            .load_file_from_workspace(file_entry.clone(), invalidates_db, |file_index, code| {
-                PythonFile::from_file_entry_and_code(
-                    &self.project,
-                    file_index,
-                    &file_entry,
-                    code.into(),
-                )
-            })
+        file_entry.get_file_index().or_else(|| {
+            self.vfs.load_file_from_workspace(
+                file_entry.clone(),
+                invalidates_db,
+                |file_index, code| {
+                    PythonFile::from_file_entry_and_code(
+                        &self.project,
+                        file_index,
+                        &file_entry,
+                        code.into(),
+                    )
+                },
+            )
+        })
     }
 
     pub fn load_in_memory_file(&mut self, path: Box<str>, code: Box<str>) -> FileIndex {
@@ -1109,9 +1114,7 @@ impl Database {
                 dir.path(&*self.vfs.handler, true)
             )
         };
-        let file_index = file_entry
-            .get_file_index()
-            .unwrap_or_else(|| self.load_file_from_workspace(file_entry, true).unwrap());
+        let file_index = self.load_file_from_workspace(file_entry, true).unwrap();
         debug!("Preloaded typeshed stub {file_name} as #{}", file_index.0);
         self.loaded_python_file(file_index)
     }

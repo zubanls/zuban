@@ -171,10 +171,7 @@ impl Project {
             .vfs
             .search_file(self.db.project.flags.case_sensitive, path)?;
 
-        if file_entry.get_file_index().is_none() {
-            self.db.load_file_from_workspace(&file_entry, false);
-        }
-        let file_index = file_entry.get_file_index().unwrap();
+        let file_index = self.db.load_file_from_workspace(&file_entry, false)?;
         Some(Document {
             project: self,
             file_index,
