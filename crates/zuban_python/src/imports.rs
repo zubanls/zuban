@@ -233,7 +233,7 @@ pub fn python_import_with_needs_exact_case(
                             return Some(ImportResult::PyTypedMissing);
                         }
                         if file.get_file_index().is_none() {
-                            db.load_file_from_workspace(file.clone(), false);
+                            db.load_file_from_workspace(&file, false);
                         }
                         let file_index = file.get_file_index();
                         debug_assert!(file.get_file_index().is_some());
@@ -278,13 +278,14 @@ fn match_c(db: &Database, x: &str, y: &str, needs_exact_case: bool) -> bool {
 
 fn load_init_file(db: &Database, content: &Directory, from_file: FileIndex) -> Option<FileIndex> {
     for child in &content.iter() {
-        if let DirectoryEntry::File(file) = child {
-            if match_c(db, &file.name, INIT_PY, false) || match_c(db, &file.name, INIT_PYI, false) {
-                if file.get_file_index().is_none() {
-                    db.load_file_from_workspace(file.clone(), false);
+        if let DirectoryEntry::File(entry) = child {
+            if match_c(db, &entry.name, INIT_PY, false) || match_c(db, &entry.name, INIT_PYI, false)
+            {
+                if entry.get_file_index().is_none() {
+                    db.load_file_from_workspace(entry, false);
                 }
-                let found_file_index = file.get_file_index();
-                file.add_invalidation(from_file);
+                let found_file_index = entry.get_file_index();
+                entry.add_invalidation(from_file);
                 return found_file_index;
             }
         }

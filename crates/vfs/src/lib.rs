@@ -13,7 +13,7 @@ use crossbeam_channel::Receiver;
 pub use local_fs::LocalFS;
 pub use tree::{Directory, DirectoryEntry, FileEntry, FileIndex, Parent};
 pub use vfs::{InvalidationResult, Vfs, VfsFile};
-pub use workspaces::{Workspace, WorkspaceKind, Workspaces};
+pub use workspaces::{Workspace, WorkspaceKind};
 
 pub type NotifyEvent = notify::Result<notify::Event>;
 

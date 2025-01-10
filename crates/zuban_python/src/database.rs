@@ -9,8 +9,8 @@ use std::{
 use config::{OverrideConfig, Settings};
 use parsa_python_cst::NodeIndex;
 use vfs::{
-    Directory, DirectoryEntry, FileEntry, FileIndex, InvalidationResult, LocalFS, Parent, Vfs,
-    VfsHandler, WorkspaceKind, Workspaces,
+    Directory, DirectoryEntry, FileEntry, FileIndex, InvalidationResult, LocalFS, Vfs, VfsHandler,
+    WorkspaceKind,
 };
 
 use crate::{
@@ -1010,7 +1010,7 @@ impl Database {
 
     pub fn load_file_from_workspace(
         &self,
-        file_entry: Rc<FileEntry>,
+        file_entry: &Rc<FileEntry>,
         invalidates_db: bool,
     ) -> Option<FileIndex> {
         self.vfs
@@ -1109,10 +1109,9 @@ impl Database {
                 dir.path(&*self.vfs.handler, true)
             )
         };
-        let file_index = file_entry.get_file_index().unwrap_or_else(|| {
-            self.load_file_from_workspace(file_entry.clone(), true)
-                .unwrap()
-        });
+        let file_index = file_entry
+            .get_file_index()
+            .unwrap_or_else(|| self.load_file_from_workspace(file_entry, true).unwrap());
         debug!("Preloaded typeshed stub {file_name} as #{}", file_index.0);
         self.loaded_python_file(file_index)
     }

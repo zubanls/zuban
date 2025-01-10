@@ -5,7 +5,8 @@ use utils::InsertOnlyVec;
 
 use crate::{
     tree::{InvalidationDetail, Invalidations},
-    DirectoryEntry, FileEntry, FileIndex, Parent, VfsHandler, WorkspaceKind, Workspaces,
+    workspaces::Workspaces,
+    DirectoryEntry, FileEntry, FileIndex, Parent, VfsHandler, WorkspaceKind,
 };
 
 pub trait VfsFile: Unpin {
