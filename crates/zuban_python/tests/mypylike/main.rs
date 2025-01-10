@@ -69,6 +69,7 @@ lazy_static::lazy_static! {
     static ref REPLACE_MYPY_SUBTYPE_NUMBERS: Regex = Regex::new(r"(<subclass[^<]+>)\d+").unwrap();
     static ref REPLACE_MYPY_SUBTYPE: Regex = Regex::new(r"\w+\.(<subclass|<callable subtype)").unwrap();
     static ref REPLACE_ESCAPES: Regex = Regex::new(r"(?m)^\\\[").unwrap();
+    static ref REPLACE_MAIN: Regex = Regex::new(r"^main:").unwrap();
 }
 
 /// Simple program to greet a person
@@ -338,7 +339,7 @@ impl<'name, 'code> TestCase<'name, 'code> {
             let mut actual = replace_annoyances(diagnostics.join("\n"));
             if is_parse_test && self.file_name == "parse-errors" {
                 // For whatever reason mypy uses a different file name for these tests
-                actual = actual.replace("main:", "file:")
+                actual = actual.replace("__main__:", "file:")
             }
             if self.file_name.starts_with("pythoneval") {
                 // pythoneval tests use different file names, because in mypy these are actually
@@ -348,8 +349,8 @@ impl<'name, 'code> TestCase<'name, 'code> {
                 let file_name_dot_py = format!("_{}.py:", name);
                 let file_name_qualified = format!("_{}.", name);
                 for line in wanted.iter_mut() {
-                    *line = line.replace("_program.py:", "main:");
-                    *line = line.replace(&file_name_dot_py, "main:");
+                    *line = line.replace("_program.py:", "__main__:");
+                    *line = line.replace(&file_name_dot_py, "__main__:");
                     // Since the file name can be in a reveal_type like _fooTest.A, but it should
                     // actually be __main__.A to be closer to what we do.
                     *line = line.replace(&file_name_qualified, "__main__.");
@@ -357,7 +358,7 @@ impl<'name, 'code> TestCase<'name, 'code> {
             } else if self.file_name == "pep561" {
                 let file_name_dot_py = format!("{}.py:", self.name);
                 for line in wanted.iter_mut() {
-                    *line = line.replace(&file_name_dot_py, "main:");
+                    *line = line.replace(&file_name_dot_py, "__main__:");
                 }
             }
             let mut actual_lines = actual
@@ -487,12 +488,6 @@ fn initialize_and_return_wanted_output(project: &mut Project, step: &Step) -> Ve
 }
 
 fn add_inline_errors(wanted: &mut Vec<String>, path: &str, code: &str) {
-    let p = if path == "__main__" {
-        // TODO this if is so weird. Why is this shit needed???
-        "main"
-    } else {
-        path
-    };
     let lines: Box<_> = code.split('\n').collect();
     for (line_nr, column, mut type_, comment) in
         ErrorCommentsOnCode(&lines, lines.iter().enumerate())
@@ -505,11 +500,11 @@ fn add_inline_errors(wanted: &mut Vec<String>, path: &str, code: &str) {
                 if let Some(comment) = cleanup_mypy_issues(comment) {
                     if let Some(column) = column {
                         wanted.push(format!(
-                            "{p}:{line_nr}:{column}: {type_}: {}",
+                            "{path}:{line_nr}:{column}: {type_}: {}",
                             comment.trim_end()
                         ))
                     } else {
-                        wanted.push(format!("{p}:{line_nr}: {type_}: {}", comment.trim_end()))
+                        wanted.push(format!("{path}:{line_nr}: {type_}: {}", comment.trim_end()))
                     }
                 }
             }
@@ -633,6 +628,7 @@ fn cleanup_mypy_issues(mut s: &str) -> Option<String> {
     let s = REPLACE_MYPY_SUBTYPE_NUMBERS.replace_all(&s, "$1");
     let s = REPLACE_MYPY_SUBTYPE.replace_all(&s, "$1");
     let s = REPLACE_ESCAPES.replace_all(&s, "[");
+    let s = REPLACE_MAIN.replace(&s, "__main__:");
     Some(replace_annoyances(s.replace("tmp/", "")))
 }
 

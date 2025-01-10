@@ -1854,14 +1854,11 @@ impl<'db> Diagnostic<'db> {
             | IssueKind::InvariantNote { .. } => "note",
             _ => "error",
         };
-        let mut path = self
+        let path = self
             .db
             .file_path(self.file.file_index)
             .trim_start_matches(&self.file.file_entry(self.db).parent.workspace_path() as &str)
             .trim_start_matches(self.db.vfs.handler.separator());
-        if path == "__main__" {
-            path = "main";
-        }
         let line_column = self.start_position().line_and_column();
         let mut additional_notes = vec![];
         let error = self.message_with_notes(&mut additional_notes);
