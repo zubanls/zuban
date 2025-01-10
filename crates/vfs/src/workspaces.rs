@@ -97,11 +97,6 @@ impl Workspaces {
         Err(format!("Workspace of path {path} cannot be found"))
     }
 
-    // TODO this should probably not be needed
-    pub fn first(&self) -> &Workspace {
-        self.0.first().unwrap()
-    }
-
     pub fn clone_with_new_rcs(&self) -> Self {
         fn clone_inner_rcs(dir: Directory) -> Rc<Directory> {
             let dir = Rc::new(dir);
@@ -239,10 +234,6 @@ impl Workspace {
             }
         }
         unreachable!()
-    }
-
-    pub fn directory(&self) -> &Directory {
-        &self.directory
     }
 
     pub fn root_path(&self) -> &str {
