@@ -693,8 +693,8 @@ impl ProjectsCache {
         self.map.get_mut(&key).unwrap()
     }
 
-    fn try_to_reuse_project_parts(&self, options: ProjectOptions) -> Project {
-        if let Some(base_project) = self.base_project.as_ref() {
+    fn try_to_reuse_project_parts(&mut self, options: ProjectOptions) -> Project {
+        if let Some(base_project) = self.base_project.as_mut() {
             base_project.try_to_reuse_project_resources_for_tests(options)
         } else {
             Project::without_watcher(options)

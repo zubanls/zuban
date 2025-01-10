@@ -899,7 +899,7 @@ impl Database {
         this
     }
 
-    pub fn try_to_reuse_project_resources_for_tests(&self, options: ProjectOptions) -> Self {
+    pub fn try_to_reuse_project_resources_for_tests(&mut self, options: ProjectOptions) -> Self {
         let project = PythonProject {
             sys_path: sys_path::create_sys_path(&options.settings),
             settings: options.settings,
@@ -908,7 +908,7 @@ impl Database {
         };
         let files = InsertOnlyVec::default();
         let mut workspaces = self.vfs.workspaces.clone_with_new_rcs();
-        for file_state in unsafe { self.vfs.files.iter() } {
+        for file_state in self.vfs.files.iter_mut() {
             fn search_parent(
                 workspaces: &Workspaces,
                 parent: Parent,
