@@ -5,7 +5,7 @@ use std::{path::PathBuf, rc::Rc};
 use vfs::{LocalFS, NotifyEvent, VfsHandler};
 
 use config::ProjectOptions;
-use crossbeam_channel::{never, select, Sender};
+use crossbeam_channel::{never, select, Receiver, Sender};
 use lsp_server::{Connection, ExtractError, Message, Request};
 use lsp_types::Uri;
 use serde::{de::DeserializeOwned, Serialize};
@@ -98,7 +98,9 @@ pub fn run_server_with_custom_connection(
 
     // If the io_threads have an error, there's usually an error on the main
     // loop too because the channels are closed. Ensure we report both errors.
-    event_loop(client_capabilities, connection, workspace_roots)?;
+    let mut global_state =
+        GlobalState::new(connection.sender, client_capabilities, workspace_roots);
+    global_state.event_loop(connection.receiver)?;
     cleanup()?;
     tracing::info!("Server did successfully shut down");
     Ok(())
@@ -112,43 +114,6 @@ pub fn run_server() -> anyhow::Result<()> {
 enum Event {
     Lsp(Message),
     Notify(NotifyEvent),
-}
-
-fn event_loop(
-    capabilities: ClientCapabilities,
-    connection: lsp_server::Connection,
-    roots: Vec<String>,
-) -> anyhow::Result<()> {
-    let mut global_state = GlobalState::new(connection.sender, capabilities, roots);
-    loop {
-        let event = select! {
-            recv(connection.receiver) -> msg => Event::Lsp(msg?),
-            recv(global_state.vfs.notify_receiver().unwrap_or(&never())) -> msg =>
-                Event::Notify(msg?),
-        };
-        match event {
-            Event::Lsp(msg) => {
-                use lsp_types::notification::Notification;
-                match msg {
-                    Message::Request(r) => global_state.on_request(r),
-                    Message::Notification(n) => {
-                        if n.method == lsp_types::notification::Exit::METHOD {
-                            return Ok(());
-                        }
-                        global_state.on_notification(n)
-                    }
-                    Message::Response(r) => global_state.complete_request(r),
-                }
-            }
-            Event::Notify(event) => {
-                global_state.on_notify_event(event);
-                // Check all events in the Notify queue
-                while let Ok(next) = global_state.vfs.notify_receiver().unwrap().try_recv() {
-                    global_state.on_notify_event(next);
-                }
-            }
-        }
-    }
 }
 
 /*
@@ -239,6 +204,38 @@ impl GlobalState {
             project: None,
             vfs: Rc::new(vfs),
             shutdown_requested: false,
+        }
+    }
+
+    fn event_loop(&mut self, receiver: Receiver<Message>) -> anyhow::Result<()> {
+        loop {
+            let event = select! {
+                recv(receiver) -> msg => Event::Lsp(msg?),
+                recv(self.vfs.notify_receiver().unwrap_or(&never())) -> msg =>
+                    Event::Notify(msg?),
+            };
+            match event {
+                Event::Lsp(msg) => {
+                    use lsp_types::notification::Notification;
+                    match msg {
+                        Message::Request(r) => self.on_request(r),
+                        Message::Notification(n) => {
+                            if n.method == lsp_types::notification::Exit::METHOD {
+                                return Ok(());
+                            }
+                            self.on_notification(n)
+                        }
+                        Message::Response(r) => self.complete_request(r),
+                    }
+                }
+                Event::Notify(event) => {
+                    self.on_notify_event(event);
+                    // Check all events in the Notify queue
+                    while let Ok(next) = self.vfs.notify_receiver().unwrap().try_recv() {
+                        self.on_notify_event(next);
+                    }
+                }
+            }
         }
     }
 
