@@ -580,7 +580,7 @@ impl<'db> PythonFile {
     }
 
     pub fn file_entry(&self, db: &'db Database) -> &'db Rc<FileEntry> {
-        db.vfs.file(self.file_index).file_entry()
+        db.vfs.file_entry(self.file_index)
     }
 
     pub fn add_issue(&self, i_s: &InferenceState, issue: Issue) {

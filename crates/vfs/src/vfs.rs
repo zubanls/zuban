@@ -49,21 +49,21 @@ impl<F: VfsFile> Vfs<F> {
             // means we have to invalidate the whole database.
             tracing::info!(
                 "Invalidate whole db because we have invalidated {}",
-                self.file(original_file_index).path()
+                self.file_state(original_file_index).path
             );
             return InvalidationResult::InvalidatedDb;
         };
         for invalid_index in invalidations {
-            let file = self.file_mut(invalid_index);
+            let file = self.file_state_mut(invalid_index);
             let new_invalidations = file.file_entry.invalidations.take();
             file.invalidate_references_to(original_file_index);
 
             if let InvalidationDetail::Some(invs) = new_invalidations.iter() {
                 for invalidation in &invs {
-                    let p = self.file(*invalidation).path();
+                    let p = &self.file_state(*invalidation).path;
                     tracing::debug!(
                         "Invalidate {p} because we have invalidated {}",
-                        self.file(invalid_index).path()
+                        self.file_state(invalid_index).path
                     );
                 }
             }
@@ -76,11 +76,23 @@ impl<F: VfsFile> Vfs<F> {
         InvalidationResult::InvalidatedFiles
     }
 
-    pub fn file(&self, index: FileIndex) -> &FileState<F> {
+    pub fn file(&self, index: FileIndex) -> Option<&F> {
+        self.files.get(index.0 as usize).unwrap().file()
+    }
+
+    pub fn file_path(&self, index: FileIndex) -> &str {
+        &self.file_state(index).path
+    }
+
+    pub fn file_entry(&self, index: FileIndex) -> &Rc<FileEntry> {
+        &self.file_state(index).file_entry
+    }
+
+    fn file_state(&self, index: FileIndex) -> &FileState<F> {
         self.files.get(index.0 as usize).unwrap()
     }
 
-    fn file_mut(&mut self, index: FileIndex) -> &mut FileState<F> {
+    fn file_state_mut(&mut self, index: FileIndex) -> &mut FileState<F> {
         &mut self.files[index.0 as usize]
     }
 
@@ -134,7 +146,7 @@ impl<F: VfsFile> Vfs<F> {
         });
         let mut file_invalidations = Default::default();
         if let Some(file_index) = in_mem_file {
-            if self.file(file_index).code() == Some(&code) {
+            if self.file_state(file_index).code() == Some(&code) {
                 // It already exists with the same code, we can therefore skip generating a new
                 // file.
                 return (file_index, InvalidationResult::InvalidatedFiles);
@@ -155,7 +167,7 @@ impl<F: VfsFile> Vfs<F> {
             ));
             self.files.set(file_index.0 as usize, new_file_state);
             if std::cfg!(debug_assertions) {
-                let new = self.file(file_index);
+                let new = self.file_state(file_index);
                 debug_assert!(
                     new.file_entry.file_index.get().is_some(),
                     "for {}",
@@ -177,8 +189,8 @@ impl<F: VfsFile> Vfs<F> {
         if tracing::enabled!(Level::INFO) {
             if let InvalidationDetail::Some(invs) = ensured.invalidations.iter() {
                 for invalidation in &invs {
-                    let p = self.file(*invalidation).path();
-                    let path = self.file(file_index).path();
+                    let p = &self.file_state(*invalidation).path;
+                    let path = &self.file_state(file_index).path;
                     tracing::info!("Invalidate {p} because we're loading {path}");
                 }
             }
@@ -194,9 +206,8 @@ impl<F: VfsFile> Vfs<F> {
         file_index: FileIndex,
     ) -> InvalidationResult {
         let file_state = &mut self.files[file_index.0 as usize];
-        let path = file_state.path();
         self.workspaces
-            .unload_file(&*self.handler, case_sensitive, path);
+            .unload_file(&*self.handler, case_sensitive, &file_state.path);
         file_state.unload();
         let invalidations = file_state.file_entry.invalidations.take();
         self.invalidate_files(file_index, invalidations)
@@ -276,7 +287,7 @@ impl<F: VfsFile> Vfs<F> {
         new_code: Box<str>,
         to_file: impl FnOnce(&FileState<F>, FileIndex, Box<str>) -> F,
     ) -> InvalidationResult {
-        let file_state = self.file_mut(file_index);
+        let file_state = self.file_state_mut(file_index);
         file_state.unload();
         let invalidations = file_state.file_entry.invalidations.take();
         let new_file = to_file(file_state, file_index, new_code);
@@ -307,7 +318,7 @@ impl<F: VfsFile> Vfs<F> {
         super_file_index: FileIndex,
         add: impl FnOnce(&str, FileIndex) -> F,
     ) -> FileIndex {
-        let file_entry = self.file(super_file_index).file_entry.clone();
+        let file_entry = self.file_state(super_file_index).file_entry.clone();
         let invalidates_db = file_entry.invalidations.invalidates_db();
         self.with_added_file(file_entry, "".into(), invalidates_db, add)
     }
@@ -364,7 +375,7 @@ impl<F: VfsFile> FileState<F> {
         }
     }
 
-    pub fn maybe_loaded_file_mut(&mut self) -> Option<&mut F> {
+    pub fn file_mut(&mut self) -> Option<&mut F> {
         match &mut self.state {
             InternalFileExistence::Parsed(f) => Some(f),
             _ => None,

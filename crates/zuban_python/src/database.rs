@@ -1046,7 +1046,7 @@ impl Database {
     }
 
     pub fn file_path(&self, index: FileIndex) -> &str {
-        self.vfs.file(index).path()
+        self.vfs.file_path(index)
     }
 
     pub fn load_sub_file(
@@ -1105,7 +1105,7 @@ impl Database {
 
     fn invalidate_db(&mut self) {
         for file_state in self.vfs.files.iter_mut() {
-            if let Some(file) = file_state.maybe_loaded_file_mut() {
+            if let Some(file) = file_state.file_mut() {
                 if file.has_super_file() {
                     file_state.unload();
                 } else {
@@ -1175,10 +1175,9 @@ impl Database {
     }
 
     pub fn loaded_python_file(&self, index: FileIndex) -> &PythonFile {
-        let state = self.vfs.file(index);
-        state
-            .file()
-            .unwrap_or_else(|| panic!("file #{index}: {}", state.path()))
+        self.vfs
+            .file(index)
+            .unwrap_or_else(|| panic!("file #{index}: {}", self.vfs.file_path(index)))
     }
 
     fn generate_python_state(&mut self) {
