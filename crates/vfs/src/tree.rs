@@ -117,12 +117,15 @@ impl FileEntry {
 }
 
 #[derive(Debug, Clone)]
+pub struct MissingEntry {
+    name: Box<str>,
+    pub(crate) invalidations: Invalidations,
+}
+
+#[derive(Debug, Clone)]
 pub enum DirectoryEntry {
     File(Rc<FileEntry>),
-    MissingEntry {
-        name: Box<str>,
-        invalidations: Invalidations,
-    },
+    MissingEntry(MissingEntry),
     Directory(Rc<Directory>),
 }
 
@@ -131,7 +134,7 @@ impl DirectoryEntry {
         match self {
             DirectoryEntry::File(file) => &file.name,
             DirectoryEntry::Directory(dir) => &dir.name,
-            DirectoryEntry::MissingEntry { name, .. } => name,
+            DirectoryEntry::MissingEntry(MissingEntry { name, .. }) => name,
         }
     }
 
@@ -221,10 +224,10 @@ impl Directory {
         let file_entry = if let Some(mut entry) = self.search_mut(name) {
             match &mut *entry {
                 DirectoryEntry::File(file_entry) => file_entry.clone(),
-                DirectoryEntry::MissingEntry {
+                DirectoryEntry::MissingEntry(MissingEntry {
                     invalidations: inv,
                     name,
-                } => {
+                }) => {
                     invalidations = inv.take();
                     let file_entry = FileEntry::new(
                         parent,
@@ -264,18 +267,18 @@ impl Directory {
     pub fn add_missing_entry(&self, name: Box<str>, invalidates: FileIndex) {
         let mut vec = self.entries.borrow_mut();
         if let Some(pos) = vec.iter().position(|x| x.name() == name.as_ref()) {
-            if let DirectoryEntry::MissingEntry { invalidations, .. } = &vec[pos] {
-                invalidations.add(invalidates)
+            if let DirectoryEntry::MissingEntry(missing) = &vec[pos] {
+                missing.invalidations.add(invalidates)
             } else {
                 unreachable!("{:?}", &vec[pos])
             }
         } else {
             let invalidations = Invalidations::default();
             invalidations.add(invalidates);
-            vec.push(DirectoryEntry::MissingEntry {
+            vec.push(DirectoryEntry::MissingEntry(MissingEntry {
                 invalidations,
                 name,
-            })
+            }))
         }
     }
 

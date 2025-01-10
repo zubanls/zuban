@@ -269,8 +269,8 @@ fn ensure_dirs_and_file(
                         rest,
                     )
                 }
-                DirectoryEntry::MissingEntry { invalidations, .. } => {
-                    invs = invalidations.take();
+                DirectoryEntry::MissingEntry(missing) => {
+                    invs = missing.invalidations.take();
                     drop(x);
                     dir.remove_name(name);
                 }
