@@ -973,9 +973,19 @@ impl Database {
             )
         }
 
-        let mut python_state = self.python_state.clone();
-        let set_pointer = |pointer_ref: &mut *const PythonFile, name, is_package| {
-            for (i, file_state) in files.iter().enumerate() {
+        let mut new_db = Self {
+            vfs: Vfs {
+                handler: Box::new(LocalFS::without_watcher()),
+                files: files.into(),
+                workspaces,
+                in_memory_files: Default::default(),
+            },
+            python_state: self.python_state.clone(),
+            project,
+        };
+
+        let mut set_pointer = |pointer_ref: &mut *const PythonFile, name, is_package| {
+            for (i, file_state) in new_db.vfs.files.iter_mut().enumerate() {
                 let entry = file_state.file_entry();
                 if is_package
                     && entry
@@ -991,57 +1001,54 @@ impl Database {
             }
             unreachable!()
         };
-        set_pointer(&mut python_state.builtins, "builtins.pyi", false);
-        set_pointer(&mut python_state.typing, "typing.pyi", false);
+        set_pointer(&mut new_db.python_state.builtins, "builtins.pyi", false);
+        set_pointer(&mut new_db.python_state.typing, "typing.pyi", false);
         // Since those files are loaded in the beginning, we can just match against that and the
         // first __init__.pyi will automaticall be the typeshed module
-        set_pointer(&mut python_state.typeshed, "_typeshed", true);
-        set_pointer(&mut python_state.collections, "collections", true);
+        set_pointer(&mut new_db.python_state.typeshed, "_typeshed", true);
+        set_pointer(&mut new_db.python_state.collections, "collections", true);
         set_pointer(
-            &mut python_state._collections_abc,
+            &mut new_db.python_state._collections_abc,
             "_collections_abc.pyi",
             false,
         );
-        set_pointer(&mut python_state.types, "types.pyi", false);
-        set_pointer(&mut python_state.abc, "abc.pyi", false);
-        set_pointer(&mut python_state.functools, "functools.pyi", false);
-        set_pointer(&mut python_state.enum_file, "enum.pyi", false);
-        set_pointer(&mut python_state.dataclasses_file, "dataclasses.pyi", false);
+        set_pointer(&mut new_db.python_state.types, "types.pyi", false);
+        set_pointer(&mut new_db.python_state.abc, "abc.pyi", false);
+        set_pointer(&mut new_db.python_state.functools, "functools.pyi", false);
+        set_pointer(&mut new_db.python_state.enum_file, "enum.pyi", false);
         set_pointer(
-            &mut python_state.typing_extensions,
+            &mut new_db.python_state.dataclasses_file,
+            "dataclasses.pyi",
+            false,
+        );
+        set_pointer(
+            &mut new_db.python_state.typing_extensions,
             "typing_extensions.pyi",
             false,
         );
         set_pointer(
-            &mut python_state.mypy_extensions,
+            &mut new_db.python_state.mypy_extensions,
             "mypy_extensions.pyi",
             false,
         );
-        let db = Self {
-            vfs: Vfs {
-                handler: Box::new(LocalFS::without_watcher()),
-                files: files.into(),
-                workspaces,
-                in_memory_files: Default::default(),
-            },
-            python_state,
-            project,
-        };
-        if db.project.flags.disable_bytearray_promotion {
-            db.python_state
+
+        if new_db.project.flags.disable_bytearray_promotion {
+            new_db
+                .python_state
                 .bytearray()
                 .class_storage
                 .promote_to
                 .set(None);
         }
-        if db.project.flags.disable_memoryview_promotion {
-            db.python_state
+        if new_db.project.flags.disable_memoryview_promotion {
+            new_db
+                .python_state
                 .memoryview()
                 .class_storage
                 .promote_to
                 .set(None);
         }
-        db
+        new_db
     }
 
     pub fn file_path(&self, index: FileIndex) -> &str {
