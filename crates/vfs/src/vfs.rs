@@ -17,7 +17,7 @@ pub struct Vfs<F: VfsFile> {
     pub handler: Box<dyn VfsHandler>,
     pub workspaces: Workspaces,
     pub files: InsertOnlyVec<FileState<F>>,
-    pub in_memory_files: HashMap<Box<str>, FileIndex>,
+    in_memory_files: HashMap<Box<str>, FileIndex>,
 }
 
 impl<F: VfsFile> Vfs<F> {
@@ -26,6 +26,19 @@ impl<F: VfsFile> Vfs<F> {
             handler,
             workspaces: Default::default(),
             files: Default::default(),
+            in_memory_files: Default::default(),
+        }
+    }
+
+    pub fn new_reused_test_resources(
+        handler: Box<dyn VfsHandler>,
+        workspaces: Workspaces,
+        files: InsertOnlyVec<FileState<F>>,
+    ) -> Self {
+        Self {
+            handler,
+            workspaces,
+            files: files.into(),
             in_memory_files: Default::default(),
         }
     }

@@ -974,12 +974,11 @@ impl Database {
         }
 
         let mut new_db = Self {
-            vfs: Vfs {
-                handler: Box::new(LocalFS::without_watcher()),
-                files: files.into(),
+            vfs: Vfs::new_reused_test_resources(
+                Box::new(LocalFS::without_watcher()),
                 workspaces,
-                in_memory_files: Default::default(),
-            },
+                files.into(),
+            ),
             python_state: self.python_state.clone(),
             project,
         };
