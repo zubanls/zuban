@@ -1,7 +1,6 @@
-use std::{path::PathBuf, rc::Rc};
+use std::rc::Rc;
 
 use utils::match_case;
-use walkdir::WalkDir;
 
 use crate::{tree::AddedFile, Directory, DirectoryEntry, FileEntry, Parent, VfsHandler};
 
@@ -147,93 +146,18 @@ pub struct Workspace {
 
 impl Workspace {
     fn new(vfs: &dyn VfsHandler, mut root_path: String, kind: WorkspaceKind) -> Self {
-        let separator = vfs.separator();
-        if root_path.ends_with(separator) {
+        if root_path.ends_with(vfs.separator()) {
             root_path.pop();
         }
+        tracing::debug!("Add workspace {root_path}");
         let root_path = Rc::<Box<str>>::new(root_path.into());
 
-        let mut stack = vec![(
-            PathBuf::from(&**root_path),
-            Directory::new(Parent::Workspace(root_path.clone()), "".into()),
-        )];
-        let mut walk_dir = WalkDir::new(&**root_path).follow_links(true).into_iter();
-        // The first entry needs to be ignored, because it's the directory itself.
-        walk_dir.next();
-        // TODO optimize if there are a lot of files
-        for entry in walk_dir
-            .filter_entry(|entry| {
-                entry.file_name().to_str().is_some_and(|name| {
-                    if name.ends_with(".py") || name.ends_with(".pyi") || name == "py.typed" {
-                        return true;
-                    }
-                    if name == "__pycache__" {
-                        return false;
-                    }
-                    const STUBS_SUFFIX: &str = "-stubs";
-                    // Keep potential folders around
-                    !name.contains('.') && (!name.contains('-') || name.ends_with(STUBS_SUFFIX))
-                })
-            })
-            // TODO is it ok that we filter out all errors?
-            .filter_map(|e| e.ok())
-        {
-            while !entry.path().starts_with(&stack.last().unwrap().0) {
-                let n = stack.pop().unwrap().1;
-                stack
-                    .last_mut()
-                    .unwrap()
-                    .1
-                    .entries
-                    .borrow_mut()
-                    .push(DirectoryEntry::Directory(n));
-            }
-            let name = entry.file_name();
-            if let Some(name) = name.to_str() {
-                match entry.metadata() {
-                    Ok(m) => {
-                        let parent = match stack.len() {
-                            1 => Parent::Workspace(root_path.clone()),
-                            _ => Parent::Directory(Rc::downgrade(&stack.last().unwrap().1)),
-                        };
-                        if m.is_dir() {
-                            stack.push((
-                                entry.path().to_owned(),
-                                Directory::new(parent, name.into()),
-                            ));
-                        } else {
-                            stack
-                                .last_mut()
-                                .unwrap()
-                                .1
-                                .entries
-                                .borrow_mut()
-                                .push(DirectoryEntry::File(FileEntry::new(parent, name.into())));
-                        }
-                    }
-                    Err(_) => {
-                        // Just ignore it for now
-                        panic!("Need to investigate")
-                    }
-                }
-            }
+        let dir = vfs.walk_and_watch_dirs(&root_path, Parent::Workspace(root_path.clone()));
+        Self {
+            directory: Rc::unwrap_or_clone(dir),
+            root_path,
+            kind,
         }
-        while let Some(current) = stack.pop() {
-            if let Some(parent) = stack.last_mut() {
-                parent
-                    .1
-                    .entries
-                    .borrow_mut()
-                    .push(DirectoryEntry::Directory(current.1))
-            } else {
-                return Self {
-                    directory: Rc::unwrap_or_clone(current.1),
-                    root_path,
-                    kind,
-                };
-            }
-        }
-        unreachable!()
     }
 
     pub fn root_path(&self) -> &str {
