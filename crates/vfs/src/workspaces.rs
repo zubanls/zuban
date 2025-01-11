@@ -16,7 +16,7 @@ pub enum WorkspaceKind {
 pub struct Workspaces(Vec<Workspace>);
 
 impl Workspaces {
-    pub fn add(&mut self, vfs: &dyn VfsHandler, root: String, kind: WorkspaceKind) {
+    pub(crate) fn add(&mut self, vfs: &dyn VfsHandler, root: String, kind: WorkspaceKind) {
         self.0.push(Workspace::new(vfs, root, kind))
     }
 
