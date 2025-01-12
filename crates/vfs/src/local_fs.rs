@@ -20,7 +20,7 @@ impl VfsHandler for LocalFS {
     fn read_and_watch_file(&self, path: &str) -> Option<String> {
         tracing::debug!("Read from FS: {path}");
         // Need to watch first, because otherwise the file might be read deleted and then watched.
-        self.watch(path);
+        self.watch(Path::new(path));
         let result = std::fs::read_to_string(path);
         if let Err(error) = &result {
             tracing::error!("Tried to read {path} but failed: {error}");
@@ -61,12 +61,7 @@ impl VfsHandler for LocalFS {
             match e {
                 Ok(dir_entry) => {
                     let p = dir_entry.path();
-                    if let Some(path) = p.to_str() {
-                        self.watch(path)
-                    } else {
-                        tracing::info!("Walkdir ignored {p:?}, because it's not UTF-8")
-                    }
-                    while !dir_entry.path().starts_with(&stack.last().unwrap().0) {
+                    while !p.starts_with(&stack.last().unwrap().0) {
                         let n = stack.pop().unwrap().1;
                         stack
                             .last_mut()
@@ -88,21 +83,20 @@ impl VfsHandler for LocalFS {
                                     _ => Parent::Directory(Rc::downgrade(parent_dir)),
                                 };
                                 if m.is_dir() {
-                                    stack.push((
-                                        dir_entry.path().to_owned(),
-                                        Directory::new(parent, name.into()),
-                                    ));
+                                    self.watch(p);
+                                    stack.push((p.to_owned(), Directory::new(parent, name.into())));
                                 } else {
                                     stack.last_mut().unwrap().1.entries.borrow_mut().push(
                                         DirectoryEntry::File(FileEntry::new(parent, name.into())),
                                     );
                                 }
                             }
-                            Err(_) => {
-                                // Just ignore it for now
-                                panic!("Need to investigate")
+                            Err(err) => {
+                                tracing::error!("Walkdir metadata error (base: {path}): {err}")
                             }
                         }
+                    } else {
+                        tracing::info!("Walkdir ignored {p:?}, because it's not UTF-8")
                     }
                 }
                 Err(e) => tracing::error!("Walkdir error (base: {path}): {e}"),
@@ -156,13 +150,13 @@ impl LocalFS {
         Self { watcher: None }
     }
 
-    fn watch(&self, path: &str) {
+    fn watch(&self, path: &Path) {
         if let Some((watcher, _)) = &self.watcher {
-            tracing::debug!("Added watch for {path}");
+            tracing::debug!("Added watch for {path:?}");
             log_notify_error(
                 watcher
                     .borrow_mut()
-                    .watch(Path::new(path), RecursiveMode::NonRecursive),
+                    .watch(path, RecursiveMode::NonRecursive),
             );
         }
     }
