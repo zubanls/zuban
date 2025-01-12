@@ -5,7 +5,7 @@ use std::{
 };
 
 use crossbeam_channel::{unbounded, Receiver};
-use notify::{recommended_watcher, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
+use notify::{recommended_watcher, RecommendedWatcher, RecursiveMode, Watcher};
 use walkdir::WalkDir;
 
 use crate::{Directory, DirectoryEntry, FileEntry, NotifyEvent, Parent, VfsHandler};

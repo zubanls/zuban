@@ -1106,6 +1106,11 @@ impl Database {
         self.handle_invalidation(result);
     }
 
+    pub fn invalidate_path(&mut self, path: &str) {
+        let invalidation = self.vfs.invalidate_path(path);
+        self.handle_invalidation(invalidation);
+    }
+
     fn preload_typeshed_stub(&self, dir: &Directory, file_name: &'static str) -> &PythonFile {
         let entry = dir.search(file_name).unwrap().clone();
         let DirectoryEntry::File(file_entry) = &entry else {

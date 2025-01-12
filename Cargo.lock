@@ -1236,6 +1236,7 @@ dependencies = [
  "logging_config",
  "lsp-server",
  "lsp-types",
+ "notify",
  "serde",
  "serde_json",
  "shellexpand",

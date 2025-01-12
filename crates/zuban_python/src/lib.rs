@@ -49,8 +49,8 @@ impl Project {
         Self { db }
     }
 
-    pub fn invalidate_path(&mut self, _path: &str) {
-        todo!()
+    pub fn invalidate_path(&mut self, path: &str) {
+        self.db.invalidate_path(path)
     }
 
     pub fn search(&self, _string: &str, _all_scopes: bool) {}

@@ -7,8 +7,9 @@ use config::ProjectOptions;
 use crossbeam_channel::{never, select, Receiver, Sender};
 use lsp_server::{Connection, ExtractError, Message, Request};
 use lsp_types::Uri;
+use notify::EventKind;
 use serde::{de::DeserializeOwned, Serialize};
-use vfs::NotifyEvent;
+use vfs::{LocalFS, NotifyEvent};
 use zuban_python::Project;
 
 use crate::capabilities::{server_capabilities, ClientCapabilities};
@@ -279,7 +280,7 @@ impl GlobalState {
             // for the type checker to understand what the mypy_path originally was.
             config.settings.mypy_path = self.roots.clone();
 
-            *project = Some(Project::without_watcher(config));
+            *project = Some(Project::new(Box::new(LocalFS::with_watcher()), config));
             project.as_mut().unwrap()
         }
     }
@@ -327,12 +328,16 @@ impl GlobalState {
         if let Some(project) = &mut self.project {
             match event {
                 Ok(event) => {
-                    tracing::debug!("Notify Event: {event:?}")
-                    /*
-                    if let EventKind::Create(_) | EventKind::Modify(_) | EventKind::Remove(_) = event.kind {
-                        project.invalidate_path()
+                    tracing::debug!("Notify Event: {event:?}");
+                    if let EventKind::Create(_) | EventKind::Modify(_) | EventKind::Remove(_) =
+                        event.kind
+                    {
+                        for path in event.paths.into_iter() {
+                            if let Some(path) = path.to_str() {
+                                project.invalidate_path(path)
+                            }
+                        }
                     }
-                    */
                 }
                 Err(err) => {
                     tracing::error!(

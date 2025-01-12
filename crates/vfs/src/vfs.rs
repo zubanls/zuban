@@ -352,6 +352,16 @@ impl<F: VfsFile> Vfs<F> {
         Ok(invalidation_result)
     }
 
+    pub fn invalidate_path(&mut self, path: &str) -> InvalidationResult {
+        //search_file(&self, case_sensitive: bool, path: &str) -> Option<Rc<FileEntry>> {
+        if let Some(new_code) = self.handler.read_and_watch_file(path) {
+            // TODO
+        } else {
+            //update_file
+        }
+        InvalidationResult::InvalidatedFiles
+    }
+
     fn update_file(
         &mut self,
         file_index: FileIndex,
