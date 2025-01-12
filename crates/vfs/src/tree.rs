@@ -257,11 +257,11 @@ impl Directory {
 
     pub fn add_missing_entry(&self, name: Box<str>, invalidates: FileIndex) {
         let mut vec = self.entries.borrow_mut();
-        if let Some(pos) = vec.iter().position(|x| x.name() == name.as_ref()) {
-            if let DirectoryEntry::MissingEntry(missing) = &vec[pos] {
+        if let Some(item) = vec.iter_mut().find(|x| x.name() == name.as_ref()) {
+            if let DirectoryEntry::MissingEntry(missing) = &item {
                 missing.invalidations.add(invalidates)
             } else {
-                unreachable!("{:?}", &vec[pos])
+                unreachable!("{:?}", &item)
             }
         } else {
             let invalidations = Invalidations::default();
