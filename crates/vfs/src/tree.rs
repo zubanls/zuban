@@ -178,12 +178,10 @@ impl Directory {
 
     pub fn search(&self, name: &str) -> Option<Ref<DirectoryEntry>> {
         let borrow = self.entries.borrow();
-        // We need to run this search twice, because Rust needs #![feature(cell_filter_map)]
+        // We need to do this indirectly, because Rust needs #![feature(cell_filter_map)]
         // https://github.com/rust-lang/rust/issues/81061
-        borrow.iter().find(|entry| entry.name() == name)?;
-        Some(Ref::map(borrow, |dir| {
-            dir.iter().find(|entry| entry.name() == name).unwrap()
-        }))
+        let pos = borrow.iter().position(|entry| entry.name() == name)?;
+        Some(Ref::map(borrow, |dir| &dir[pos]))
     }
 
     pub(crate) fn search_path(&self, vfs: &dyn VfsHandler, path: &str) -> Option<Rc<FileEntry>> {
