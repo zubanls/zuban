@@ -43,8 +43,12 @@ impl VfsHandler for LocalFS {
                 if name == "__pycache__" {
                     return false;
                 }
-                // Keep potential folders around
-                !name.contains('.') && (!name.contains('-') || name.ends_with(STUBS_SUFFIX))
+                // Keep potential folders around. Most punctuation characters are not allowed
+                !name.chars().any(|c| match c {
+                    '-' => !name.ends_with(STUBS_SUFFIX),
+                    '_' => false,
+                    _ => c.is_ascii_punctuation(),
+                })
             })
         });
 
