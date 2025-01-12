@@ -169,7 +169,7 @@ impl Project {
         let file_entry = self
             .db
             .vfs
-            .search_file(self.db.project.flags.case_sensitive, path)?;
+            .search_path(self.db.project.flags.case_sensitive, path)?;
 
         let file_index = self.db.load_file_from_workspace(&file_entry, false)?;
         Some(Document {

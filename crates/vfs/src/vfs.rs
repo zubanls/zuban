@@ -105,9 +105,9 @@ impl<F: VfsFile> Vfs<F> {
         self.workspaces.add(&*self.handler, root_path, kind)
     }
 
-    pub fn search_file(&self, case_sensitive: bool, path: &str) -> Option<Rc<FileEntry>> {
+    pub fn search_path(&self, case_sensitive: bool, path: &str) -> Option<Rc<FileEntry>> {
         self.workspaces
-            .search_file(&*self.handler, case_sensitive, path)
+            .search_path(&*self.handler, case_sensitive, path)
     }
 
     fn invalidate_files(

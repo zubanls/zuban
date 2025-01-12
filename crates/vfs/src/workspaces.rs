@@ -41,7 +41,7 @@ impl Workspaces {
             .map(|x| &x.directory)
     }
 
-    pub fn search_file(
+    pub fn search_path(
         &self,
         vfs: &dyn VfsHandler,
         case_sensitive: bool,
