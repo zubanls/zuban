@@ -1,5 +1,10 @@
 use std::{cell::UnsafeCell, fmt, pin::Pin};
 
+use fnv::{FnvHashMap, FnvHashSet};
+
+pub type FastHashMap<K, V> = FnvHashMap<K, V>;
+pub type FastHashSet<T> = FnvHashSet<T>;
+
 pub struct InsertOnlyVec<T: ?Sized> {
     vec: UnsafeCell<Vec<Pin<Box<T>>>>,
 }

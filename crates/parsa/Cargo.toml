@@ -8,7 +8,7 @@ authors.workspace = true
 
 [dependencies]
 lazy_static.workspace = true
-fnv.workspace = true
+utils.workspace = true
 
 [dev-dependencies]
 regex.workspace = true

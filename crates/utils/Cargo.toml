@@ -7,3 +7,4 @@ homepage.workspace = true
 authors.workspace = true
 
 [dependencies]
+fnv.workspace = true

@@ -1,11 +1,12 @@
 use std::{cell::UnsafeCell, fmt, marker::PhantomData};
 
+use utils::FastHashMap;
+
 use crate::{
     automaton::{
-        generate_automatons, Automatons, DFAState, FastHashMap, InternalNonterminalType,
-        InternalSquashedType, InternalStrToNode, InternalStrToToken, InternalTerminalType,
-        Keywords, Plan, PlanMode, Rule, RuleAutomaton, RuleMap, SoftKeywords, Squashable,
-        StackMode,
+        generate_automatons, Automatons, DFAState, InternalNonterminalType, InternalSquashedType,
+        InternalStrToNode, InternalStrToToken, InternalTerminalType, Keywords, Plan, PlanMode,
+        Rule, RuleAutomaton, RuleMap, SoftKeywords, Squashable, StackMode,
     },
     backtracking::BacktrackingTokenizer,
 };
