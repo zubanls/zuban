@@ -109,7 +109,7 @@ impl FileEntry {
 
 #[derive(Debug, Clone)]
 pub struct MissingEntry {
-    name: Box<str>,
+    pub(crate) name: Box<str>,
     pub(crate) invalidations: Invalidations,
 }
 
@@ -121,7 +121,7 @@ pub enum DirectoryEntry {
 }
 
 impl DirectoryEntry {
-    fn name(&self) -> &str {
+    pub(crate) fn name(&self) -> &str {
         match self {
             DirectoryEntry::File(file) => &file.name,
             DirectoryEntry::Directory(dir) => &dir.name,

@@ -152,9 +152,16 @@ impl Workspace {
         tracing::debug!("Add workspace {root_path}");
         let root_path = Rc::<Box<str>>::new(root_path.into());
 
-        let dir = vfs.walk_and_watch_dirs(&root_path, Parent::Workspace(root_path.clone()));
+        let dir = match vfs.walk_and_watch_dirs(&root_path, Parent::Workspace(root_path.clone())) {
+            DirectoryEntry::Directory(dir) => Rc::unwrap_or_clone(dir),
+            e => Directory {
+                parent: Parent::Workspace(root_path.clone()),
+                name: e.name().into(),
+                entries: Default::default(),
+            },
+        };
         Self {
-            directory: Rc::unwrap_or_clone(dir),
+            directory: dir,
             root_path,
             kind,
         }

@@ -8,7 +8,9 @@ use crossbeam_channel::{unbounded, Receiver};
 use notify::{recommended_watcher, RecommendedWatcher, RecursiveMode, Watcher};
 use walkdir::WalkDir;
 
-use crate::{Directory, DirectoryEntry, FileEntry, NotifyEvent, Parent, VfsHandler};
+use crate::{
+    tree::MissingEntry, Directory, DirectoryEntry, FileEntry, NotifyEvent, Parent, VfsHandler,
+};
 
 const STUBS_SUFFIX: &str = "-stubs";
 
@@ -28,59 +30,68 @@ impl VfsHandler for LocalFS {
         result.ok()
     }
 
-    fn walk_and_watch_dirs(&self, path: &str, initial_parent: Parent) -> Rc<Directory> {
+    fn walk_and_watch_dirs(&self, path: &str, initial_parent: Parent) -> DirectoryEntry {
         let path = path.trim_end_matches(self.separator());
 
-        let mut walker = WalkDir::new(path).follow_links(true).into_iter();
-        // The first entry needs to be ignored, because it's the directory itself.
-        walker.next();
-
-        let walker = walker.filter_entry(|entry| {
-            entry.file_name().to_str().is_some_and(|name| {
-                if name.ends_with(".py") || name.ends_with(".pyi") || name == "py.typed" {
-                    return true;
-                }
-                if name == "__pycache__" {
-                    return false;
-                }
-                // Keep potential folders around. Most punctuation characters are not allowed
-                !name.chars().any(|c| match c {
-                    '-' => !name.ends_with(STUBS_SUFFIX),
-                    '_' => false,
-                    _ => c.is_ascii_punctuation(),
+        let mut is_first = true;
+        self.watch(Path::new(path));
+        let walker = WalkDir::new(path)
+            .follow_links(true)
+            .into_iter()
+            .filter_entry(|entry| {
+                entry.file_name().to_str().is_some_and(|name| {
+                    if is_first {
+                        // We always want the base dir
+                        is_first = false;
+                        return true;
+                    }
+                    if name.ends_with(".py") || name.ends_with(".pyi") || name == "py.typed" {
+                        return true;
+                    }
+                    if name == "__pycache__" {
+                        return false;
+                    }
+                    // Keep potential folders around. Most punctuation characters are not allowed
+                    !name.chars().any(|c| match c {
+                        '-' => !name.ends_with(STUBS_SUFFIX),
+                        '_' => false,
+                        _ => c.is_ascii_punctuation(),
+                    })
                 })
-            })
-        });
+            });
 
-        let mut stack = vec![(
-            PathBuf::from(path),
-            Directory::new(initial_parent, "".into()),
-        )];
+        let mut stack: Vec<(PathBuf, Rc<Directory>)> = vec![];
 
         for e in walker {
             match e {
                 Ok(dir_entry) => {
                     let p = dir_entry.path();
-                    while !p.starts_with(&stack.last().unwrap().0) {
-                        let n = stack.pop().unwrap().1;
-                        stack
-                            .last_mut()
-                            .unwrap()
-                            .1
-                            .entries
-                            .borrow_mut()
-                            .push(DirectoryEntry::Directory(n));
+                    if !stack.is_empty() {
+                        while !p.starts_with(&stack.last().unwrap().0) {
+                            let n = stack.pop().unwrap().1;
+                            stack
+                                .last_mut()
+                                .unwrap()
+                                .1
+                                .entries
+                                .borrow_mut()
+                                .push(DirectoryEntry::Directory(n));
+                        }
                     }
                     let name = dir_entry.file_name();
                     if let Some(name) = name.to_str() {
                         match dir_entry.metadata() {
                             Ok(m) => {
-                                let parent_dir = &stack.last().unwrap().1;
-                                let parent = match &parent_dir.parent {
-                                    Parent::Workspace(root) if stack.len() == 1 => {
-                                        Parent::Workspace(root.clone())
+                                let parent = if let Some(last) = stack.last() {
+                                    let parent_dir = &last.1;
+                                    match &parent_dir.parent {
+                                        Parent::Workspace(root) if stack.len() == 1 => {
+                                            Parent::Workspace(root.clone())
+                                        }
+                                        _ => Parent::Directory(Rc::downgrade(parent_dir)),
                                     }
-                                    _ => Parent::Directory(Rc::downgrade(parent_dir)),
+                                } else {
+                                    initial_parent.clone()
                                 };
                                 if m.is_dir() {
                                     self.watch(p);
@@ -110,10 +121,15 @@ impl VfsHandler for LocalFS {
                     .borrow_mut()
                     .push(DirectoryEntry::Directory(current.1))
             } else {
-                return current.1;
+                return DirectoryEntry::Directory(current.1);
             }
         }
-        unreachable!()
+        // TODO There is a chance that the dir does not exist and might be created later. We
+        // should actually "watch" for that.
+        DirectoryEntry::MissingEntry(MissingEntry {
+            name: "".into(),
+            invalidations: Default::default(),
+        })
     }
 
     fn notify_receiver(&self) -> Option<&Receiver<NotifyEvent>> {

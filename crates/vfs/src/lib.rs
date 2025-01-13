@@ -6,7 +6,7 @@ mod utils;
 mod vfs;
 mod workspaces;
 
-use std::{path::Path, rc::Rc};
+use std::path::Path;
 
 use crossbeam_channel::Receiver;
 
@@ -23,7 +23,7 @@ pub trait VfsHandler {
     /// exists.                                                                
     fn read_and_watch_file(&self, path: &str) -> Option<String>;
     fn notify_receiver(&self) -> Option<&Receiver<NotifyEvent>>;
-    fn walk_and_watch_dirs(&self, path: &str, initial_parent: Parent) -> Rc<Directory>;
+    fn walk_and_watch_dirs(&self, path: &str, initial_parent: Parent) -> DirectoryEntry;
 
     fn separator(&self) -> char {
         std::path::MAIN_SEPARATOR
@@ -33,10 +33,3 @@ pub trait VfsHandler {
         Path::new(path).starts_with(Path::new(maybe_parent))
     }
 }
-
-/*
-enum VFSUpdate {
-    Vec<WorkspaceChange>,
-    ProjectChanged,
-}
-*/
