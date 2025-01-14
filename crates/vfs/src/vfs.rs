@@ -302,12 +302,7 @@ impl<F: VfsFile> Vfs<F> {
                 // This is the very typical case of closing a buffer after saving it and therefore
                 // unloading the file from memory and using the file from the file system.
                 if Some(on_file_system_code.as_str()) != file_state.code() {
-                    Ok(self.update_file(
-                        case_sensitive,
-                        file_index,
-                        on_file_system_code.into(),
-                        to_file,
-                    ))
+                    Ok(self.update_file(file_index, on_file_system_code.into(), to_file))
                 } else {
                     Ok(InvalidationResult::InvalidatedFiles)
                 }
@@ -363,6 +358,7 @@ impl<F: VfsFile> Vfs<F> {
     }
 
     pub fn invalidate_path(&mut self, case_sensitive: bool, path: &str) -> InvalidationResult {
+        let _span = tracing::debug_span!("invalidate_path").entered();
         if self.in_memory_files.contains_key(path) {
             // In memory files override all file system events
             return InvalidationResult::InvalidatedFiles;
@@ -406,22 +402,21 @@ impl<F: VfsFile> Vfs<F> {
 
         let len = all_invalidations.len();
         if invalidates_db {
-            tracing::debug!("invalidate_path caused an invalidated db");
+            tracing::debug!("caused an invalidated db");
             return InvalidationResult::InvalidatedDb;
         }
         for inv in all_invalidations.into_iter() {
             if self.invalidate_and_unload_file(inv) == InvalidationResult::InvalidatedDb {
-                tracing::debug!("invalidate_path caused an invalidated db");
+                tracing::debug!("caused an invalidated db");
                 return InvalidationResult::InvalidatedDb;
             }
         }
-        tracing::debug!("invalidate_path caused {len} direct invalidations");
+        tracing::debug!("caused {len} direct invalidations");
         InvalidationResult::InvalidatedFiles
     }
 
     fn update_file(
         &mut self,
-        case_sensitive: bool,
         file_index: FileIndex,
         new_code: Box<str>,
         to_file: impl FnOnce(&FileState<F>, FileIndex, Box<str>) -> F,
