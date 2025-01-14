@@ -271,10 +271,19 @@ impl<F: VfsFile> Vfs<F> {
         (file_index, result)
     }
 
-    fn unload_file(&mut self, case_sensitive: bool, file_index: FileIndex) -> InvalidationResult {
+    fn invalidate_and_unload_in_memory_file(
+        &mut self,
+        case_sensitive: bool,
+        file_index: FileIndex,
+    ) -> InvalidationResult {
         let file_state = &mut self.files[file_index.0 as usize];
         self.workspaces
             .unload_file(&*self.handler, case_sensitive, &file_state.path);
+        self.invalidate_and_unload_file(file_index)
+    }
+
+    fn invalidate_and_unload_file(&mut self, file_index: FileIndex) -> InvalidationResult {
+        let file_state = &mut self.files[file_index.0 as usize];
         file_state.unload();
         let invalidations = file_state.file_entry.invalidations.take();
         self.invalidate_files(file_index, invalidations)
@@ -293,12 +302,17 @@ impl<F: VfsFile> Vfs<F> {
                 // This is the very typical case of closing a buffer after saving it and therefore
                 // unloading the file from memory and using the file from the file system.
                 if Some(on_file_system_code.as_str()) != file_state.code() {
-                    Ok(self.update_file(file_index, on_file_system_code.into(), to_file))
+                    Ok(self.update_file(
+                        case_sensitive,
+                        file_index,
+                        on_file_system_code.into(),
+                        to_file,
+                    ))
                 } else {
                     Ok(InvalidationResult::InvalidatedFiles)
                 }
             } else {
-                Ok(self.unload_file(case_sensitive, file_index))
+                Ok(self.invalidate_and_unload_in_memory_file(case_sensitive, file_index))
             }
         } else {
             Err("The path is not known to be an in memory file")
@@ -309,7 +323,7 @@ impl<F: VfsFile> Vfs<F> {
         let in_memory_files = std::mem::take(&mut self.in_memory_files);
         let mut result = InvalidationResult::InvalidatedFiles;
         for (_path, file_index) in in_memory_files.into_iter() {
-            result |= self.unload_file(case_sensitive, file_index);
+            result |= self.invalidate_and_unload_in_memory_file(case_sensitive, file_index);
         }
         result
     }
@@ -396,7 +410,7 @@ impl<F: VfsFile> Vfs<F> {
             return InvalidationResult::InvalidatedDb;
         }
         for inv in all_invalidations.into_iter() {
-            if self.unload_file(case_sensitive, inv) == InvalidationResult::InvalidatedDb {
+            if self.invalidate_and_unload_file(inv) == InvalidationResult::InvalidatedDb {
                 tracing::debug!("invalidate_path caused an invalidated db");
                 return InvalidationResult::InvalidatedDb;
             }
@@ -407,16 +421,16 @@ impl<F: VfsFile> Vfs<F> {
 
     fn update_file(
         &mut self,
+        case_sensitive: bool,
         file_index: FileIndex,
         new_code: Box<str>,
         to_file: impl FnOnce(&FileState<F>, FileIndex, Box<str>) -> F,
     ) -> InvalidationResult {
+        let result = self.invalidate_and_unload_file(file_index);
         let file_state = self.file_state_mut(file_index);
-        file_state.unload();
-        let invalidations = file_state.file_entry.invalidations.take();
         let new_file = to_file(file_state, file_index, new_code);
         file_state.update(new_file);
-        self.invalidate_files(file_index, invalidations)
+        result
     }
 
     fn with_added_file(
