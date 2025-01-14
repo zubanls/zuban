@@ -215,17 +215,14 @@ impl<F: VfsFile> Vfs<F> {
             self.in_memory_files.insert(path.clone(), file_index);
             Some(file_index)
         });
-        let mut file_invalidations = Default::default();
+        let mut result = InvalidationResult::InvalidatedFiles;
         if let Some(file_index) = in_mem_file {
             if self.file_state(file_index).code() == Some(&code) {
                 // It already exists with the same code, we can therefore skip generating a new
                 // file.
-                return (file_index, InvalidationResult::InvalidatedFiles);
+                return (file_index, result);
             }
-
-            let file_state = &mut self.files[file_index.0 as usize];
-            file_invalidations = file_state.file_entry.invalidations.take();
-            file_state.unload();
+            result |= self.invalidate_and_unload_file(file_index);
         }
 
         let file_index = if let Some(file_index) = in_mem_file {
@@ -234,7 +231,7 @@ impl<F: VfsFile> Vfs<F> {
                 ensured.file_entry,
                 path,
                 file,
-                file_invalidations.invalidates_db(),
+                result == InvalidationResult::InvalidatedDb,
             ));
             self.files.set(file_index.0 as usize, new_file_state);
             if std::cfg!(debug_assertions) {
@@ -266,8 +263,7 @@ impl<F: VfsFile> Vfs<F> {
                 }
             }
         }
-        let mut result = self.invalidate_files(file_index, ensured.invalidations);
-        result |= self.invalidate_files(file_index, file_invalidations);
+        result |= self.invalidate_files(file_index, ensured.invalidations);
         (file_index, result)
     }
 
