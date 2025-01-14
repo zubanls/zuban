@@ -1,7 +1,7 @@
 use std::{collections::HashMap, ops::BitOrAssign, pin::Pin, rc::Rc};
 
 use tracing::Level;
-use utils::InsertOnlyVec;
+use utils::{FastHashSet, InsertOnlyVec};
 
 use crate::{
     tree::{InvalidationDetail, Invalidations},
@@ -271,11 +271,7 @@ impl<F: VfsFile> Vfs<F> {
         (file_index, result)
     }
 
-    fn unload_in_memory_file_internal(
-        &mut self,
-        case_sensitive: bool,
-        file_index: FileIndex,
-    ) -> InvalidationResult {
+    fn unload_file(&mut self, case_sensitive: bool, file_index: FileIndex) -> InvalidationResult {
         let file_state = &mut self.files[file_index.0 as usize];
         self.workspaces
             .unload_file(&*self.handler, case_sensitive, &file_state.path);
@@ -302,7 +298,7 @@ impl<F: VfsFile> Vfs<F> {
                     Ok(InvalidationResult::InvalidatedFiles)
                 }
             } else {
-                Ok(self.unload_in_memory_file_internal(case_sensitive, file_index))
+                Ok(self.unload_file(case_sensitive, file_index))
             }
         } else {
             Err("The path is not known to be an in memory file")
@@ -313,7 +309,7 @@ impl<F: VfsFile> Vfs<F> {
         let in_memory_files = std::mem::take(&mut self.in_memory_files);
         let mut result = InvalidationResult::InvalidatedFiles;
         for (_path, file_index) in in_memory_files.into_iter() {
-            result |= self.unload_in_memory_file_internal(case_sensitive, file_index);
+            result |= self.unload_file(case_sensitive, file_index);
         }
         result
     }
@@ -352,13 +348,60 @@ impl<F: VfsFile> Vfs<F> {
         Ok(invalidation_result)
     }
 
-    pub fn invalidate_path(&mut self, path: &str) -> InvalidationResult {
-        //search_file(&self, case_sensitive: bool, path: &str) -> Option<Rc<FileEntry>> {
-        if let Some(new_code) = self.handler.read_and_watch_file(path) {
-            // TODO
-        } else {
-            //update_file
+    pub fn invalidate_path(&mut self, case_sensitive: bool, path: &str) -> InvalidationResult {
+        if self.in_memory_files.contains_key(path) {
+            // In memory files override all file system events
+            return InvalidationResult::InvalidatedFiles;
         }
+        let mut invalidates_db = false;
+        let mut all_invalidations = FastHashSet::default();
+
+        if let Some((workspace, parent, replace_name)) = self
+            .workspaces
+            .search_potential_parent_for_invalidation(&*self.handler, case_sensitive, path)
+        {
+            let mut check_invalidations_for_dir_entry = |e: &_| match e {
+                DirectoryEntry::File(f) => {
+                    if let Some(file_index) = f.get_file_index() {
+                        all_invalidations.insert(file_index);
+                    }
+                }
+                DirectoryEntry::MissingEntry(missing) => match missing.invalidations.iter() {
+                    InvalidationDetail::InvalidatesDb => invalidates_db = true,
+                    InvalidationDetail::Some(invs) => all_invalidations.extend(invs.into_iter()),
+                },
+                DirectoryEntry::Directory(_) => (),
+            };
+            let new_entry = self.handler.walk_and_watch_dirs(path, parent.clone());
+            let d = parent.maybe_dir();
+            let in_dir = d.as_deref().unwrap_or(&workspace.directory);
+            if let DirectoryEntry::MissingEntry(_) = new_entry {
+                tracing::debug!("Decided to remove {replace_name} from VFS");
+                if let Some(r) = in_dir.remove_name(replace_name) {
+                    check_invalidations_for_dir_entry(&r)
+                }
+            } else if let Some(mut to_replace) = in_dir.search_mut(replace_name) {
+                tracing::debug!("Decided to replace {replace_name} in VFS");
+                to_replace.walk_entries(&mut |e| check_invalidations_for_dir_entry(e));
+                *to_replace = new_entry;
+            } else {
+                tracing::debug!("Decided to add {replace_name} to VFS");
+                in_dir.entries.borrow_mut().push(new_entry);
+            }
+        }
+
+        let len = all_invalidations.len();
+        if invalidates_db {
+            tracing::debug!("invalidate_path caused an invalidated db");
+            return InvalidationResult::InvalidatedDb;
+        }
+        for inv in all_invalidations.into_iter() {
+            if self.unload_file(case_sensitive, inv) == InvalidationResult::InvalidatedDb {
+                tracing::debug!("invalidate_path caused an invalidated db");
+                return InvalidationResult::InvalidatedDb;
+            }
+        }
+        tracing::debug!("invalidate_path caused {len} direct invalidations");
         InvalidationResult::InvalidatedFiles
     }
 

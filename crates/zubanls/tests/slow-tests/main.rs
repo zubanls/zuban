@@ -241,7 +241,7 @@ fn in_memory_file_changes() {
     });
 
     expect_request("after opening", vec![revealed_type_str.clone()], vec![]);
-    server.write_file("pkg/foo.py", "x = 1()\n");
+    server.write_file(FOO_PATH, "x = 1()\n");
     expect_request("after FS write", vec![revealed_type_str], vec![]);
 
     let change_foo_to = |text, version| {
@@ -279,11 +279,10 @@ fn in_memory_file_changes() {
         vec!["\"int\" not callable".to_string()],
     );
     // Delete the file and check that it returns the correct error when requesting diagnostics
-    server.remove_file("pkg/foo.py");
+    server.remove_file(FOO_PATH);
     // Make sure the removal event appears before the LSP event.
-    std::thread::sleep(std::time::Duration::from_millis(1));
+    std::thread::sleep(std::time::Duration::from_millis(10));
 
-    /*
     let response =
         server.request_with_response::<DocumentDiagnosticRequest>(DocumentDiagnosticParams {
             text_document: server.doc_id(FOO_PATH),
@@ -296,5 +295,4 @@ fn in_memory_file_changes() {
     assert!(response.result.is_none());
     assert_eq!(error.message, "File does not exist");
     assert_eq!(error.code, lsp_server::ErrorCode::InvalidParams as i32);
-    */
 }

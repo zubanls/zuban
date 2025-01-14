@@ -136,6 +136,15 @@ impl DirectoryEntry {
             DirectoryEntry::MissingEntry { .. } => (),
         }
     }
+
+    pub(crate) fn walk_entries(&self, callable: &mut impl FnMut(&Self)) {
+        callable(self);
+        if let DirectoryEntry::Directory(dir) = self {
+            for entry in dir.entries.borrow().iter() {
+                entry.walk_entries(callable);
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -172,8 +181,10 @@ impl Directory {
         VecRefWrapper(self.entries.borrow())
     }
 
-    pub(crate) fn remove_name(&self, name: &str) {
-        self.entries.borrow_mut().retain(|f| f.name() != name)
+    pub(crate) fn remove_name(&self, name: &str) -> Option<DirectoryEntry> {
+        let mut entries = self.entries.borrow_mut();
+        let pos = entries.iter().position(|f| f.name() == name)?;
+        Some(entries.swap_remove(pos))
     }
 
     pub fn search(&self, name: &str) -> Option<Ref<DirectoryEntry>> {

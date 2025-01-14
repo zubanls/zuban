@@ -53,6 +53,50 @@ impl Workspaces {
         })
     }
 
+    pub(crate) fn search_potential_parent_for_invalidation<'path>(
+        &self,
+        vfs: &dyn VfsHandler,
+        case_sensitive: bool,
+        path: &'path str,
+    ) -> Option<(&Workspace, Parent, &'path str)> {
+        self.0.iter().find_map(|workspace| {
+            let mut rest = strip_path_prefix(vfs, case_sensitive, path, workspace.root_path())?;
+            let mut current_dir = None;
+            loop {
+                let (name, new_rest) = vfs.split_off_folder(rest);
+                if let Some(new_rest) = new_rest {
+                    // We generally return None in all cases where the nesting of the path is
+                    // deeper than the current VFS. This is fine for invalidation, since
+                    // directories themselves should be monitored. I'm not even sure all of these
+                    // paths are reachable.
+                    rest = new_rest;
+                    let found = current_dir
+                        .as_deref()
+                        .unwrap_or(&workspace.directory)
+                        .search(name)?;
+                    match &*found {
+                        DirectoryEntry::Directory(d) => {
+                            let x = d.clone();
+                            drop(found);
+                            current_dir = Some(x);
+                        }
+                        _ => return None,
+                    }
+                } else {
+                    // Return dir
+                    return Some((
+                        workspace,
+                        match current_dir {
+                            Some(dir) => Parent::Directory(Rc::downgrade(&dir)),
+                            None => Parent::Workspace(workspace.root_path.clone()),
+                        },
+                        name,
+                    ));
+                }
+            }
+        })
+    }
+
     pub(crate) fn ensure_file(
         &mut self,
         vfs: &dyn VfsHandler,

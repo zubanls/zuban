@@ -31,6 +31,8 @@ impl VfsHandler for LocalFS {
     }
 
     fn walk_and_watch_dirs(&self, path: &str, initial_parent: Parent) -> DirectoryEntry {
+        let is_relevant_name =
+            |name: &str| name.ends_with(".py") || name.ends_with(".pyi") || name == "py.typed";
         let path = path.trim_end_matches(self.separator());
 
         let mut is_first = true;
@@ -45,7 +47,7 @@ impl VfsHandler for LocalFS {
                         is_first = false;
                         return true;
                     }
-                    if name.ends_with(".py") || name.ends_with(".pyi") || name == "py.typed" {
+                    if is_relevant_name(name) {
                         return true;
                     }
                     if name == "__pycache__" {
@@ -97,9 +99,17 @@ impl VfsHandler for LocalFS {
                                     self.watch(p);
                                     stack.push((p.to_owned(), Directory::new(parent, name.into())));
                                 } else {
-                                    stack.last_mut().unwrap().1.entries.borrow_mut().push(
-                                        DirectoryEntry::File(FileEntry::new(parent, name.into())),
-                                    );
+                                    let dir_entry =
+                                        DirectoryEntry::File(FileEntry::new(parent, name.into()));
+                                    if let Some(last_dir) = stack.last_mut() {
+                                        last_dir.1.entries.borrow_mut().push(dir_entry)
+                                    } else {
+                                        if is_relevant_name(name) {
+                                            return dir_entry;
+                                        }
+                                        break; // This case will just return a missing entry, which
+                                               // is fine, because the file is not relevant
+                                    }
                                 }
                             }
                             Err(err) => {
@@ -110,7 +120,16 @@ impl VfsHandler for LocalFS {
                         tracing::info!("Walkdir ignored {p:?}, because it's not UTF-8")
                     }
                 }
-                Err(e) => tracing::error!("Walkdir error (base: {path}): {e}"),
+                Err(e) => {
+                    match e.io_error().map(|e| e.kind()) {
+                        // Not found is a very ususal and expected thing so we lower the severity
+                        // here.
+                        Some(std::io::ErrorKind::NotFound) => {
+                            tracing::debug!("Walkdir error (base: {path}): {e}")
+                        }
+                        _ => tracing::error!("Walkdir error (base: {path}): {e}"),
+                    };
+                }
             }
         }
         while let Some(current) = stack.pop() {
@@ -179,6 +198,13 @@ impl LocalFS {
 }
 
 fn log_notify_error<T>(res: notify::Result<T>) -> Option<T> {
-    res.map_err(|err| tracing::warn!("notify error: {}", err))
-        .ok()
+    res.map_err(|err| match &err.kind {
+        notify::ErrorKind::Io(io_err) if matches!(io_err.kind(), std::io::ErrorKind::NotFound) => {
+            // Adjust the severity here. It's normal that we couldn't watch something, because a
+            // lot of the time the file doesn't exist when trying to watch something.
+            tracing::debug!("notify error: {}", err)
+        }
+        _ => tracing::warn!("notify error: {}", err),
+    })
+    .ok()
 }

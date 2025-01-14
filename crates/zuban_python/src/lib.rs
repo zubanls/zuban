@@ -172,6 +172,7 @@ impl Project {
             .search_path(self.db.project.flags.case_sensitive, path)?;
 
         let file_index = self.db.load_file_from_workspace(&file_entry, false)?;
+        tracing::debug!("Looking at document #{file_index} for {path}",);
         Some(Document {
             project: self,
             file_index,

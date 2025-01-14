@@ -1107,7 +1107,9 @@ impl Database {
     }
 
     pub fn invalidate_path(&mut self, path: &str) {
-        let invalidation = self.vfs.invalidate_path(path);
+        let invalidation = self
+            .vfs
+            .invalidate_path(self.project.flags.case_sensitive, path);
         self.handle_invalidation(invalidation);
     }
 
