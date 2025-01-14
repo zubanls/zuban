@@ -185,7 +185,7 @@ impl LocalFS {
         Self { watcher: None }
     }
 
-    fn watch(&self, path: &Path) {
+    pub fn watch(&self, path: &Path) {
         if let Some((watcher, _)) = &self.watcher {
             tracing::debug!("Added watch for {path:?}");
             log_notify_error(

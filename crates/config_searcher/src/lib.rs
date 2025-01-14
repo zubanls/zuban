@@ -11,8 +11,11 @@ const CONFIG_PATHS: [&str; 6] = [
     "~/.mypy.ini",
 ];
 
-pub fn find_workspace_config(workspace_dir: &str) -> anyhow::Result<ProjectOptions> {
-    let maybe_found = find_mypy_config_file_in_dir(Some(Path::new(workspace_dir)));
+pub fn find_workspace_config(
+    workspace_dir: &str,
+    on_check_path: impl FnMut(&Path),
+) -> anyhow::Result<ProjectOptions> {
+    let maybe_found = find_mypy_config_file_in_dir(Some(Path::new(workspace_dir)), on_check_path);
     let mut project_options = initialize_config(maybe_found)?.0;
     project_options.settings.mypy_path = vec![];
     Ok(project_options)
@@ -28,7 +31,7 @@ pub fn find_cli_config(
         let s = std::fs::read_to_string(config_path);
         Some((config_path, s))
     } else {
-        find_mypy_config_file_in_dir(None)
+        find_mypy_config_file_in_dir(None, |_| ())
     };
     initialize_config(maybe_found)
 }
@@ -56,9 +59,11 @@ fn initialize_config(
 
 fn find_mypy_config_file_in_dir(
     dir: Option<&Path>,
+    mut on_check_path: impl FnMut(&Path),
 ) -> Option<(&'static str, std::io::Result<String>)> {
     CONFIG_PATHS.iter().find_map(|config_path| {
-        let check = |path: &Path| {
+        let mut check = |path: &Path| {
+            on_check_path(path);
             if let Ok(mut file) = std::fs::File::open(path) {
                 let mut content = String::new();
                 let result = file.read_to_string(&mut content);

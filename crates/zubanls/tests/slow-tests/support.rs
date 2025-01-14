@@ -143,12 +143,16 @@ impl Server {
         items.into_iter().map(|d| d.message).collect()
     }
 
-    pub(crate) fn write_file(&self, rel_path: &str, code: &str) {
-        self.tmp_dir.write_file(rel_path, code)
+    pub(crate) fn write_file_and_wait(&self, rel_path: &str, code: &str) {
+        self.tmp_dir.write_file(rel_path, code);
+        // Make sure the removal event appears before the LSP event.
+        std::thread::sleep(std::time::Duration::from_millis(1));
     }
 
-    pub(crate) fn remove_file(&self, rel_path: &str) {
-        self.tmp_dir.remove_file(rel_path)
+    pub(crate) fn remove_file_and_wait(&self, rel_path: &str) {
+        self.tmp_dir.remove_file(rel_path);
+        // Make sure the removal event appears before the LSP event.
+        std::thread::sleep(std::time::Duration::from_millis(1));
     }
 }
 

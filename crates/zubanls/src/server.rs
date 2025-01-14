@@ -1,7 +1,7 @@
 //! Scheduling, I/O, and API endpoints.
 
-use std::panic::PanicHookInfo;
 use std::path::PathBuf;
+use std::{collections::HashSet, panic::PanicHookInfo};
 
 use config::ProjectOptions;
 use crossbeam_channel::{never, select, Receiver, Sender};
@@ -182,9 +182,10 @@ struct NotificationDispatcher<'a> {
 }
 
 pub(crate) struct GlobalState {
-    pub sender: Sender<lsp_server::Message>,
-    pub roots: Vec<String>,
-    pub project: Option<Project>,
+    paths_that_invalidate_whole_project: HashSet<PathBuf>,
+    sender: Sender<lsp_server::Message>,
+    roots: Vec<String>,
+    project: Option<Project>,
     pub shutdown_requested: bool,
 }
 
@@ -195,6 +196,7 @@ impl GlobalState {
         roots: Vec<String>,
     ) -> Self {
         GlobalState {
+            paths_that_invalidate_whole_project: Default::default(),
             sender,
             roots,
             project: None,
@@ -246,28 +248,41 @@ impl GlobalState {
         if let Some(p) = project {
             return p;
         } else {
+            let vfs_handler = LocalFS::with_watcher();
             let first_root = self
                 .roots
                 .first()
                 .expect("There should always be at least one root at this point");
-            let mut config =
-                config_searcher::find_workspace_config(first_root).unwrap_or_else(|err| {
-                    use lsp_types::{
-                        notification::{Notification, ShowMessage},
-                        MessageType, ShowMessageParams,
-                    };
-                    let not = lsp_server::Notification::new(
-                        ShowMessage::METHOD.to_owned(),
-                        ShowMessageParams {
-                            typ: MessageType::WARNING,
-                            message: err.to_string(),
-                        },
-                    );
-                    self.sender
-                        .send(lsp_server::Message::Notification(not))
-                        .unwrap();
-                    ProjectOptions::default()
-                });
+            let mut config = config_searcher::find_workspace_config(first_root, |path| {
+                // Watch the file itself to make sure that we can invalidate when it changes.
+                vfs_handler.watch(path);
+                // Since these are config files there should always be a parent
+                let parent_dir = path.parent().unwrap();
+                // This function is executed even when a file is not found. Therefore we watch the
+                // directory as well, if the file suddenly gets inserted.
+                // Don't delete this line of code, it might not be necessary in most cases, because
+                // the base directory is typically already watched, but I'm not sure this will
+                // always be the case.
+                vfs_handler.watch(parent_dir);
+                self.paths_that_invalidate_whole_project.insert(path.into());
+            })
+            .unwrap_or_else(|err| {
+                use lsp_types::{
+                    notification::{Notification, ShowMessage},
+                    MessageType, ShowMessageParams,
+                };
+                let not = lsp_server::Notification::new(
+                    ShowMessage::METHOD.to_owned(),
+                    ShowMessageParams {
+                        typ: MessageType::WARNING,
+                        message: err.to_string(),
+                    },
+                );
+                self.sender
+                    .send(lsp_server::Message::Notification(not))
+                    .unwrap();
+                ProjectOptions::default()
+            });
 
             tracing::info!("Using workspace roots {:?}", &self.roots);
             // I'm not sure if this is correct. The problem is that the mypy_path currently does
@@ -280,7 +295,7 @@ impl GlobalState {
             // for the type checker to understand what the mypy_path originally was.
             config.settings.mypy_path = self.roots.clone();
 
-            *project = Some(Project::new(Box::new(LocalFS::with_watcher()), config));
+            *project = Some(Project::new(Box::new(vfs_handler), config));
             project.as_mut().unwrap()
         }
     }
@@ -333,6 +348,10 @@ impl GlobalState {
                         event.kind
                     {
                         for path in event.paths.into_iter() {
+                            if self.paths_that_invalidate_whole_project.contains(&path) {
+                                self.project = None;
+                                return;
+                            }
                             if let Some(path) = path.to_str() {
                                 project.invalidate_path(path)
                             }
