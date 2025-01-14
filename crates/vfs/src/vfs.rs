@@ -476,7 +476,7 @@ pub struct FileState<F> {
 }
 
 impl<F: VfsFile> FileState<F> {
-    pub fn new_parsed(
+    fn new_parsed(
         file_entry: Rc<FileEntry>,
         path: Box<str>,
         file: F,
