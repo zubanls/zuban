@@ -24,13 +24,14 @@ utils = { path = "./crates/utils" }
 
 # General third party dependencies
 anyhow = "*"
-clap = { version = "4.5.4", features = ["derive"] }
+clap = { version = "*", features = ["derive"] }
 crossbeam-channel = "*"
+dirs = "*"
 fnv = "*"
 lazy_static = "*"
 notify = "*"
 regex = "*"
-serde = "*"
+serde = { version = "*", features = ["derive"] }
 serde_json = "*"
 shellexpand = "*"
 toml_edit = "*"

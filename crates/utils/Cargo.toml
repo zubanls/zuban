@@ -8,3 +8,4 @@ authors.workspace = true
 
 [dependencies]
 fnv.workspace = true
+dirs.workspace = true

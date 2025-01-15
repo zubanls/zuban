@@ -1,9 +1,13 @@
-use std::{cell::UnsafeCell, fmt, pin::Pin};
+use std::{cell::UnsafeCell, fmt, path::PathBuf, pin::Pin};
 
 use fnv::{FnvHashMap, FnvHashSet};
 
 pub type FastHashMap<K, V> = FnvHashMap<K, V>;
 pub type FastHashSet<T> = FnvHashSet<T>;
+
+pub fn config_dir_path() -> Option<PathBuf> {
+    dirs::config_dir().map(|p| p.join("zuban"))
+}
 
 pub struct InsertOnlyVec<T: ?Sized> {
     vec: UnsafeCell<Vec<Pin<Box<T>>>>,
