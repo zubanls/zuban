@@ -1,7 +1,7 @@
 use std::num::ParseIntError;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use ed25519_dalek::{
     ed25519::signature::SignerMut as _, Signature, SigningKey, VerifyingKey, PUBLIC_KEY_LENGTH,
@@ -103,11 +103,12 @@ impl License {
     }
 
     fn verify(&self) -> anyhow::Result<bool> {
-        self.verify_with_keys(VALID_PUBLIC_KEYS.iter())
+        self.verify_with_keys(SystemTime::now(), VALID_PUBLIC_KEYS.iter())
     }
 
     fn verify_with_keys<'x>(
         &self,
+        current_time: SystemTime,
         public_keys: impl Iterator<Item = &'x [u8; 32]>,
     ) -> anyhow::Result<bool> {
         for public_key in public_keys {
@@ -117,6 +118,16 @@ impl License {
                 .verify_strict(&self.to_bytes_message(), &wanted_signature)
                 .is_ok()
             {
+                let current_timestamp = current_time
+                    .duration_since(UNIX_EPOCH)
+                    .expect("Negative timestamps should not be possible")
+                    .as_secs();
+                if self.valid_from > current_timestamp {
+                    anyhow::bail!("The license is not yet valid")
+                }
+                if self.valid_until < current_timestamp {
+                    anyhow::bail!("The license has expired")
+                }
                 return Ok(true);
             }
         }
@@ -159,9 +170,9 @@ pub fn create_license(
     company: String,
     days: u64,
 ) -> anyhow::Result<String> {
-    let valid_from = std::time::SystemTime::now();
+    let valid_from = SystemTime::now();
     const DAY: u64 = 60 * 60 * 24;
-    let valid_until = valid_from + std::time::Duration::from_secs(days * DAY);
+    let valid_until = valid_from + Duration::from_secs(days * DAY);
     let mut license = License::create(name, email, company, valid_from, valid_until);
     let var = "ZUBAN_SIGNING_KEY";
     let private_key = std::env::var(var).map_err(|err| anyhow::anyhow!("{err}: {var}"))?;
@@ -191,34 +202,41 @@ mod tests {
         89, 219, 163, 163, 203, 135, 122, 75, 153, 94, 245, 182,
     ];
 
-    fn license() -> License {
-        let now = std::time::SystemTime::now();
+    fn license_with_times(from: SystemTime, to: SystemTime) -> License {
         let mut license = License::create(
             "Dave".to_string(),
             "info@zubanls.com".to_string(),
             "Zuban Company".to_string(),
-            now - std::time::Duration::from_secs(3600),
-            now + std::time::Duration::from_secs(3600),
+            from,
+            to,
         );
         // Successfully validate
         license.sign(&PRIVATE_KEY).unwrap();
         license
     }
 
+    fn license() -> License {
+        let now = SystemTime::now();
+        license_with_times(
+            now - Duration::from_secs(3600),
+            now + Duration::from_secs(3600),
+        )
+    }
+
+    fn verify(license: License, now: SystemTime) -> anyhow::Result<bool> {
+        let signing_key = SigningKey::from_bytes(&PRIVATE_KEY);
+        license.verify_with_keys(now, std::iter::once(signing_key.verifying_key().as_bytes()))
+    }
+
     #[test]
     fn test_signing() {
-        let signing_key = SigningKey::from_bytes(&PRIVATE_KEY);
-        let license = license();
-        let result = license
-            .verify_with_keys(std::iter::once(signing_key.verifying_key().as_bytes()))
-            .unwrap();
+        let result = verify(license(), SystemTime::now()).unwrap();
         assert!(result);
     }
 
     #[test]
     fn test_changed_signature() {
         // Change the signature, which should cause problems
-        let signing_key = SigningKey::from_bytes(&PRIVATE_KEY);
         let mut license = license();
         let last = license.signature.pop().unwrap();
         if last == '4' {
@@ -226,21 +244,16 @@ mod tests {
         } else {
             license.signature.push('4');
         }
-        let result = license
-            .verify_with_keys(std::iter::once(signing_key.verifying_key().as_bytes()))
-            .unwrap();
+        let result = verify(license, SystemTime::now()).unwrap();
         assert!(!result);
     }
 
     #[test]
     fn test_changed_values() {
         fn check(change: impl FnOnce(&mut License)) -> bool {
-            let signing_key = SigningKey::from_bytes(&PRIVATE_KEY);
             let mut license = license();
             change(&mut license);
-            license
-                .verify_with_keys(std::iter::once(signing_key.verifying_key().as_bytes()))
-                .unwrap()
+            verify(license, SystemTime::now()).unwrap()
         }
         // Change nothing and it should be valid
         assert!(check(|_| ()));
@@ -251,5 +264,26 @@ mod tests {
         assert!(!check(|license| license.valid_from += 1));
         assert!(!check(|license| license.valid_until += 1));
         assert!(!check(|license| license.license_version += 1));
+    }
+
+    #[test]
+    fn test_check_valid_timestamps() {
+        fn check(from_diff: i64, to_diff: i64) -> Result<bool, String> {
+            let now = SystemTime::now();
+            let add_to = |diff: i64| match diff.try_into() {
+                Ok(add) => now + Duration::from_secs(add),
+                Err(_) => now - Duration::from_secs((-diff) as u64),
+            };
+            let license = license_with_times(add_to(from_diff), add_to(to_diff));
+            verify(license, now).map_err(|err| err.to_string())
+        }
+        // The numbers here are ints that are different from now
+        assert_eq!(check(-1, 1), Ok(true));
+        assert_eq!(check(-1, -1), Err("The license has expired".to_string()));
+        assert_eq!(check(-2, -1), Err("The license has expired".to_string()));
+        assert_eq!(check(-1, -2), Err("The license has expired".to_string()));
+        assert_eq!(check(1, 1), Err("The license is not yet valid".to_string()));
+        assert_eq!(check(1, 2), Err("The license is not yet valid".to_string()));
+        assert_eq!(check(2, 1), Err("The license is not yet valid".to_string()));
     }
 }
