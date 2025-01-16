@@ -12,8 +12,8 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Subcommands {
+    /// Verifies a license file in the default config place or a given path
     Verify {
-        /// Verify
         #[arg()]
         path: Option<PathBuf>,
     },
@@ -29,6 +29,9 @@ enum Subcommands {
         days: u64,
         #[arg(long)]
         write: bool,
+    },
+    HexToRustByteLiterals {
+        hex: String,
     },
 }
 
@@ -58,6 +61,13 @@ fn main() -> anyhow::Result<()> {
             } else {
                 println!("{}", jsonified);
             }
+        }
+        Subcommands::HexToRustByteLiterals { hex } => {
+            let bytes = licensing::hex_string_key_to_bytes(hex)?;
+            for &byte in bytes.iter() {
+                print!("{byte}, ");
+            }
+            print!("\n");
         }
     }
     Ok(())

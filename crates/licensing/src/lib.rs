@@ -1,3 +1,4 @@
+use std::num::ParseIntError;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -6,7 +7,48 @@ use ed25519_dalek::{
     ed25519::signature::SignerMut as _, Signature, SigningKey, VerifyingKey, PUBLIC_KEY_LENGTH,
 };
 
-const VALID_PUBLIC_KEYS: [[u8; PUBLIC_KEY_LENGTH]; 0] = [];
+const VALID_PUBLIC_KEYS: [[u8; PUBLIC_KEY_LENGTH]; 10] = [
+    [
+        30, 7, 45, 28, 83, 183, 159, 89, 157, 218, 71, 174, 103, 145, 40, 60, 82, 200, 3, 61, 221,
+        232, 202, 124, 111, 246, 187, 220, 237, 81, 229, 64,
+    ],
+    [
+        47, 139, 112, 67, 122, 179, 161, 44, 82, 5, 31, 234, 133, 240, 79, 7, 29, 70, 231, 32, 199,
+        78, 106, 177, 172, 140, 231, 239, 89, 160, 141, 62,
+    ],
+    [
+        194, 198, 123, 174, 25, 229, 130, 243, 60, 87, 48, 35, 154, 24, 89, 242, 156, 75, 233, 165,
+        255, 2, 202, 179, 51, 16, 200, 125, 205, 74, 152, 72,
+    ],
+    [
+        159, 224, 200, 34, 252, 243, 118, 107, 94, 158, 171, 52, 38, 78, 100, 73, 217, 148, 217,
+        239, 224, 176, 44, 190, 226, 65, 82, 218, 210, 88, 55, 205,
+    ],
+    [
+        201, 38, 63, 227, 237, 191, 37, 116, 64, 39, 207, 135, 249, 194, 172, 43, 130, 32, 101,
+        236, 143, 129, 102, 172, 114, 229, 135, 156, 186, 125, 92, 218,
+    ],
+    [
+        230, 121, 114, 190, 169, 137, 3, 185, 140, 117, 81, 28, 61, 11, 196, 33, 119, 173, 129,
+        231, 97, 5, 254, 68, 36, 245, 201, 177, 180, 41, 92, 86,
+    ],
+    [
+        34, 180, 104, 70, 123, 144, 245, 40, 122, 253, 213, 71, 211, 26, 108, 130, 242, 220, 191,
+        5, 73, 249, 59, 124, 218, 129, 39, 251, 196, 240, 34, 135,
+    ],
+    [
+        94, 2, 75, 32, 233, 141, 130, 109, 68, 147, 84, 157, 248, 61, 7, 130, 41, 120, 31, 216, 72,
+        219, 153, 47, 63, 221, 177, 112, 80, 215, 20, 132,
+    ],
+    [
+        167, 29, 6, 110, 161, 86, 43, 221, 185, 86, 53, 118, 239, 97, 97, 28, 104, 70, 4, 176, 35,
+        227, 94, 106, 203, 211, 134, 17, 13, 202, 199, 169,
+    ],
+    [
+        10, 207, 195, 137, 135, 47, 97, 195, 245, 2, 211, 138, 178, 99, 245, 75, 63, 96, 8, 98,
+        110, 67, 103, 55, 138, 191, 173, 79, 191, 254, 243, 186,
+    ],
+];
 const CURRENT_LICENSE_VERSION: usize = 1;
 
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -125,9 +167,23 @@ pub fn create_license(
     const DAY: u64 = 60 * 60 * 24;
     let valid_until = valid_from + std::time::Duration::from_secs(days * DAY);
     let mut license = License::create(name, email, company, valid_from, valid_until);
-    let private_key = std::env::var("ZUBAN_PRIVATE_KEY")?;
-    //TODO license.sign(private_key);
+    let private_key = std::env::var("ZUBAN_SIGNING_KEY")?;
+    license.sign(&hex_string_key_to_bytes(private_key)?)?;
     Ok(license.to_json())
+}
+
+/// Parses a hex formatted string like "cc:aa:ff:ee", but 32 bytes long.
+pub fn hex_string_key_to_bytes(s: String) -> anyhow::Result<[u8; PUBLIC_KEY_LENGTH]> {
+    s.split(':')
+        .map(|hex_part| u8::from_str_radix(hex_part, 16))
+        .collect::<Result<Vec<u8>, ParseIntError>>()?
+        .try_into()
+        .map_err(|v: Vec<_>| {
+            anyhow::anyhow!(
+                "Invalid length for key of {}, expected {PUBLIC_KEY_LENGTH}",
+                v.len()
+            )
+        })
 }
 
 #[cfg(test)]
