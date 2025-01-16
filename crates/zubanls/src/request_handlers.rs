@@ -17,10 +17,10 @@ impl GlobalState {
         let path = self.uri_to_path(&params.text_document.uri);
         let project = self.project();
         let Some(mut document) = project.document(path) else {
-            tracing::error!("File does not exist");
+            tracing::error!("File {path} does not exist");
             bail!(LspError {
                 code: lsp_server::ErrorCode::InvalidParams as i32,
-                message: "File does not exist".into()
+                message: format!("File {path} does not exist"),
             });
         };
         let diagnostics = document

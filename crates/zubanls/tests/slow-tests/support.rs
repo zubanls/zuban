@@ -51,6 +51,7 @@ impl<'a> Project<'a> {
         for entry in fixture_to_file_entry(&dedented_fixture) {
             tmp_dir.write_file(entry.path, entry.text)
         }
+        std::thread::sleep(std::time::Duration::from_millis(1));
         // TODO let tmp_dir_path = AbsPathBuf::assert(tmp_dir.path().to_path_buf());
         let tmp_dir_path = tmp_dir.path();
         let mut roots = self
@@ -151,6 +152,12 @@ impl Server {
 
     pub(crate) fn remove_file_and_wait(&self, rel_path: &str) {
         self.tmp_dir.remove_file(rel_path);
+        // Make sure the removal event appears before the LSP event.
+        std::thread::sleep(std::time::Duration::from_millis(1));
+    }
+
+    pub(crate) fn rename_file_and_wait(&self, from: &str, to: &str) {
+        self.tmp_dir.rename(from, to);
         // Make sure the removal event appears before the LSP event.
         std::thread::sleep(std::time::Duration::from_millis(1));
     }

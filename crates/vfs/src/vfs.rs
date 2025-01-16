@@ -167,23 +167,33 @@ impl<F: VfsFile> Vfs<F> {
         &mut self.files[index.0 as usize]
     }
 
-    pub fn load_file_from_workspace(
+    pub fn ensure_file_for_file_entry(
         &self,
         file_entry: Rc<FileEntry>,
         invalidates_db: bool,
         new_file: impl FnOnce(FileIndex, Box<str>) -> F,
     ) -> Option<FileIndex> {
-        // A loader should be available for all files in the workspace.
-        let path = file_entry.path(&*self.handler);
-        let code = self.handler.read_and_watch_file(&path)?;
-        let file_index = self.with_added_file(
-            file_entry.clone(),
-            path.into(),
-            invalidates_db,
-            |file_index| new_file(file_index, code.into()),
-        );
-        file_entry.set_file_index(file_index);
-        Some(file_index)
+        if let Some(file_index) = file_entry.get_file_index() {
+            let file_state = self.file_state(file_index);
+            if matches!(file_state.state, InternalFileExistence::Parsed(_)) {
+                return Some(file_index);
+            }
+            let code = self.handler.read_and_watch_file(&file_state.path)?;
+            //file_state.update(new_file(file_index, code.into()));
+            //Some(file_index)
+            return None; // TODO
+        } else {
+            let path = file_entry.path(&*self.handler);
+            let code = self.handler.read_and_watch_file(&path)?;
+            let file_index = self.with_added_file(
+                file_entry.clone(),
+                path.into(),
+                invalidates_db,
+                |file_index| new_file(file_index, code.into()),
+            );
+            file_entry.set_file_index(file_index);
+            Some(file_index)
+        }
     }
 
     pub fn in_memory_file(&mut self, path: &str) -> Option<FileIndex> {

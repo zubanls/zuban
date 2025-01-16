@@ -345,19 +345,21 @@ impl GlobalState {
         if let Some(project) = &mut self.project {
             match event {
                 Ok(event) => {
-                    tracing::debug!("Notify Event: {event:?}");
-                    if let EventKind::Create(_) | EventKind::Modify(_) | EventKind::Remove(_) =
-                        event.kind
-                    {
-                        for path in event.paths.into_iter() {
-                            if self.paths_that_invalidate_whole_project.contains(&path) {
-                                self.project = None;
-                                return;
-                            }
-                            if let Some(path) = path.to_str() {
-                                project.invalidate_path(path)
+                    match event.kind {
+                        EventKind::Create(_) | EventKind::Modify(_) | EventKind::Remove(_) => {
+                            tracing::info!("Notify Event: {event:?}");
+                            for path in event.paths.into_iter() {
+                                if self.paths_that_invalidate_whole_project.contains(&path) {
+                                    self.project = None;
+                                    return;
+                                }
+                                if let Some(path) = path.to_str() {
+                                    project.invalidate_path(path)
+                                }
                             }
                         }
+                        EventKind::Access(_) => (), // Ignore access, they are probably never relevant
+                        _ => tracing::debug!("Ignored Notify Event: {event:?}"),
                     }
                 }
                 Err(err) => {

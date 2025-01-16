@@ -195,7 +195,7 @@ fn diagnostics_for_saved_files() {
                 work_done_progress_params: WorkDoneProgressParams::default(),
             });
         let error = response.error.unwrap();
-        assert_eq!(error.message, "File does not exist");
+        assert!(error.message.contains("does not exist"));
         assert_eq!(error.code, lsp_server::ErrorCode::InvalidParams as i32);
     }
 }
@@ -291,7 +291,7 @@ fn in_memory_file_changes() {
         });
     let error = response.error.expect("Expected an error");
     assert!(response.result.is_none());
-    assert_eq!(error.message, "File does not exist");
+    assert!(error.message.contains("does not exist"));
     assert_eq!(error.code, lsp_server::ErrorCode::InvalidParams as i32);
 }
 
@@ -333,4 +333,51 @@ fn change_config_file() {
     server.write_file_and_wait("mypy.ini", "");
 
     expect_diagnostics("After overwriting .mypy.ini with mypy.ini", vec![]);
+}
+
+#[test]
+fn check_rename() {
+    let server = Project::with_fixture(
+        r#"
+        [file mypy.ini]
+
+        [file check.py]
+        import foo
+        import bar
+        import pkg.foo
+
+        [file foo.py]
+        def foo(x: int): ...
+        "#,
+    )
+    .into_server();
+
+    const NO_FOO: &str = "Cannot find implementation or library stub for module named \"foo\"";
+    const NO_BAR: &str = "Cannot find implementation or library stub for module named \"bar\"";
+    const NO_PKG: &str = "Cannot find implementation or library stub for module named \"pkg\"";
+
+    let d = || server.diagnostics_for_file("check.py");
+
+    assert_eq!(d(), vec![NO_BAR.to_string(), NO_PKG.to_string()]);
+
+    server.rename_file_and_wait("foo.py", "bar.py");
+
+    /*
+    assert_eq!(d(), vec![NO_FOO.to_string(), NO_PKG.to_string()]);
+
+    const MISSING: &str = "Function is missing a return type annotation";
+    expect_diagnostics("After modifying", vec![MISSING.to_string()]);
+
+    server.remove_file_and_wait("mypy.ini");
+
+    expect_diagnostics("After deleting", vec![]);
+
+    server.write_file_and_wait(".mypy.ini", "[mypy]\nstrict = True\n");
+
+    expect_diagnostics("After creating a new .mypy.ini", vec![MISSING.to_string()]);
+
+    server.write_file_and_wait("mypy.ini", "");
+
+    expect_diagnostics("After overwriting .mypy.ini with mypy.ini", vec![]);
+    */
 }

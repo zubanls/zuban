@@ -78,11 +78,20 @@ impl TestDir {
         let path = Path::new(&self.path).join(rel_path);
         fs::create_dir_all(path.parent().unwrap()).unwrap();
         fs::write(path.as_path(), text.as_bytes()).unwrap();
+        tracing::info!("Wrote {path:?}");
     }
 
     pub(crate) fn remove_file(&self, rel_path: &str) {
         let path = Path::new(&self.path).join(rel_path);
         fs::remove_file(path.as_path()).unwrap();
+        tracing::info!("Removed {path:?}");
+    }
+
+    pub(crate) fn rename(&self, rel_from: &str, rel_to: &str) {
+        let from = Path::new(&self.path).join(rel_from);
+        let to = Path::new(&self.path).join(rel_to);
+        fs::rename(&from, &to).unwrap();
+        tracing::info!("Renamed from {from:?} to {to:?}");
     }
 }
 

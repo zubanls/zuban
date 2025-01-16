@@ -1013,20 +1013,18 @@ impl Database {
         file_entry: &Rc<FileEntry>,
         invalidates_db: bool,
     ) -> Option<FileIndex> {
-        file_entry.get_file_index().or_else(|| {
-            self.vfs.load_file_from_workspace(
-                file_entry.clone(),
-                invalidates_db,
-                |file_index, code| {
-                    PythonFile::from_file_entry_and_code(
-                        &self.project,
-                        file_index,
-                        &file_entry,
-                        code.into(),
-                    )
-                },
-            )
-        })
+        self.vfs.ensure_file_for_file_entry(
+            file_entry.clone(),
+            invalidates_db,
+            |file_index, code| {
+                PythonFile::from_file_entry_and_code(
+                    &self.project,
+                    file_index,
+                    &file_entry,
+                    code.into(),
+                )
+            },
+        )
     }
 
     pub fn load_in_memory_file(&mut self, path: Box<str>, code: Box<str>) -> FileIndex {
