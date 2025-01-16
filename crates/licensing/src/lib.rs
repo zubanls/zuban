@@ -86,17 +86,11 @@ impl License {
     fn to_bytes_message(&self) -> Vec<u8> {
         [
             self.name.as_bytes(),
-            b"\n",
             self.email.as_bytes(),
-            b"\n",
             self.company.as_bytes(),
-            b"\n",
             self.valid_from.to_string().as_bytes(),
-            b"\n",
             self.valid_until.to_string().as_bytes(),
-            b"\n",
             self.license_version.to_string().as_bytes(),
-            b"\n",
         ]
         .concat()
     }
