@@ -65,10 +65,9 @@ struct License {
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Copy, Clone, PartialEq)]
-#[repr(u32)]
 pub enum LicenseLevel {
-    NoLicense = 0,
-    Standard = 1,
+    NoLicense,
+    Standard,
 }
 
 impl License {
@@ -101,7 +100,10 @@ impl License {
             self.valid_from.to_string().as_bytes(),
             self.valid_until.to_string().as_bytes(),
             self.license_version.to_string().as_bytes(),
-            (self.level as u32).to_string().as_bytes(),
+            serde_json::to_string(&self.level)
+                .unwrap()
+                .to_string()
+                .as_bytes(),
         ]
         .concat()
     }
