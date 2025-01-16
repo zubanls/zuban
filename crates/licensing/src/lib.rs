@@ -59,8 +59,16 @@ struct License {
     valid_from: u64,
     valid_until: u64,
     license_version: usize,
+    level: LicenseLevel,
 
     signature: String,
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Copy, Clone, PartialEq)]
+#[repr(u32)]
+pub enum LicenseLevel {
+    NoLicense = 0,
+    Standard = 1,
 }
 
 impl License {
@@ -70,6 +78,7 @@ impl License {
         company: String,
         valid_from: SystemTime,
         valid_until: SystemTime,
+        level: LicenseLevel,
     ) -> Self {
         let t_to_int = |t: SystemTime| t.duration_since(UNIX_EPOCH).unwrap().as_secs();
         Self {
@@ -80,6 +89,7 @@ impl License {
             valid_until: t_to_int(valid_until),
             signature: "".to_string(),
             license_version: CURRENT_LICENSE_VERSION,
+            level,
         }
     }
 
@@ -91,6 +101,7 @@ impl License {
             self.valid_from.to_string().as_bytes(),
             self.valid_until.to_string().as_bytes(),
             self.license_version.to_string().as_bytes(),
+            (self.level as u32).to_string().as_bytes(),
         ]
         .concat()
     }
@@ -153,15 +164,18 @@ pub fn path_for_license() -> PathBuf {
         .join("license.json")
 }
 
-pub fn verify_license_in_config_dir() -> anyhow::Result<bool> {
+pub fn verify_license_in_config_dir() -> anyhow::Result<LicenseLevel> {
     verify_license_in_path(&path_for_license())
 }
 
-pub fn verify_license_in_path(path: &Path) -> anyhow::Result<bool> {
+pub fn verify_license_in_path(path: &Path) -> anyhow::Result<LicenseLevel> {
     let license_s =
         std::fs::read_to_string(&path).map_err(|err| anyhow::anyhow!("In {:?}: {err}", &path))?;
     let license = License::from_json(&license_s)?;
-    license.verify()
+    if !license.verify()? {
+        anyhow::bail!("The license in {path:?} has an invalid signature");
+    }
+    Ok(license.level)
 }
 
 pub fn create_license(
@@ -173,7 +187,14 @@ pub fn create_license(
     let valid_from = SystemTime::now();
     const DAY: u64 = 60 * 60 * 24;
     let valid_until = valid_from + Duration::from_secs(days * DAY);
-    let mut license = License::create(name, email, company, valid_from, valid_until);
+    let mut license = License::create(
+        name,
+        email,
+        company,
+        valid_from,
+        valid_until,
+        LicenseLevel::Standard,
+    );
     let var = "ZUBAN_SIGNING_KEY";
     let private_key = std::env::var(var).map_err(|err| anyhow::anyhow!("{err}: {var}"))?;
     license.sign(&hex_string_key_to_bytes(private_key)?)?;
@@ -209,6 +230,7 @@ mod tests {
             "Zuban Company".to_string(),
             from,
             to,
+            LicenseLevel::Standard,
         );
         // Successfully validate
         license.sign(&PRIVATE_KEY).unwrap();
@@ -264,6 +286,7 @@ mod tests {
         assert!(!check(|license| license.valid_from += 1));
         assert!(!check(|license| license.valid_until += 1));
         assert!(!check(|license| license.license_version += 1));
+        assert!(!check(|license| license.level = LicenseLevel::NoLicense));
     }
 
     #[test]

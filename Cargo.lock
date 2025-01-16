@@ -1464,6 +1464,7 @@ dependencies = [
  "config",
  "config_searcher",
  "crossbeam-channel",
+ "licensing",
  "logging_config",
  "lsp-server",
  "lsp-types",

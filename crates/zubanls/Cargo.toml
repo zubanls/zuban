@@ -7,11 +7,12 @@ homepage.workspace = true
 authors.workspace = true
 
 [dependencies]
-zuban_python.workspace = true
+licensing.workspace = true
 logging_config.workspace = true
 config.workspace = true
 config_searcher.workspace = true
 vfs.workspace = true
+zuban_python.workspace = true
 
 anyhow.workspace = true
 clap.workspace = true

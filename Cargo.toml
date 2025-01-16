@@ -11,16 +11,17 @@ authors = ["Dave Halter <davidhalter88@gmail.com>"]
 
 [workspace.dependencies]
 # Internal crates
+config = { path = "./crates/config" }
+config_searcher = { path = "./crates/config_searcher" }
+licensing = { path = "./crates/licensing" }
+logging_config = { path = "./crates/logging_config" }
 parsa = { path = "./crates/parsa" }
 parsa_python = { path = "./crates/parsa_python" }
 parsa_python_cst = { path = "./crates/parsa_python_cst" }
-zuban_python = { path = "./crates/zuban_python" }
 test_utils = { path = "./crates/test_utils" }
-logging_config = { path = "./crates/logging_config" }
-config = { path = "./crates/config" }
-config_searcher = { path = "./crates/config_searcher" }
-vfs = { path = "./crates/vfs" }
 utils = { path = "./crates/utils" }
+vfs = { path = "./crates/vfs" }
+zuban_python = { path = "./crates/zuban_python" }
 
 # General third party dependencies
 anyhow = "*"

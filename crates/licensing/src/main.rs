@@ -38,16 +38,12 @@ enum Subcommands {
 fn main() -> anyhow::Result<()> {
     match Cli::parse().command {
         Subcommands::Verify { path } => {
-            let is_ok = match &path {
-                Some(path) => licensing::verify_license_in_path(path),
-                None => licensing::verify_license_in_config_dir(),
+            match &path {
+                Some(path) => licensing::verify_license_in_path(path)?,
+                None => licensing::verify_license_in_config_dir()?,
             };
             let path = path.unwrap_or(licensing::path_for_license());
-            if is_ok? {
-                println!("The license in {path:?} is valid");
-            } else {
-                anyhow::bail!("The license in {path:?} has an invalid signature");
-            }
+            println!("The license in {path:?} is valid");
         }
         Subcommands::Create {
             name,
