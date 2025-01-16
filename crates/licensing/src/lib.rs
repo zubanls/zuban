@@ -192,15 +192,12 @@ pub fn hex_string_key_to_bytes(s: String) -> anyhow::Result<[u8; PUBLIC_KEY_LENG
 #[cfg(test)]
 mod tests {
     use super::*;
+    const PRIVATE_KEY: [u8; 32] = [
+        251, 177, 48, 122, 118, 59, 229, 37, 61, 11, 93, 104, 131, 143, 69, 142, 3, 192, 34, 85,
+        89, 219, 163, 163, 203, 135, 122, 75, 153, 94, 245, 182,
+    ];
 
-    #[test]
-    fn test_signing() {
-        const PRIVATE_KEY: [u8; 32] = [
-            0x30, 0x2e, 0x02, 0x01, 0x00, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70, 0x04, 0x22,
-            0x04, 0x20, 0xe0, 0x4f, 0xed, 0xa8, 0xc9, 0x4a, 0xb0, 0xbc, 0x7f, 0x3e, 0x2e, 0xd9,
-            0x73, 0xa5, 0x88, 0xf8,
-        ];
-
+    fn license() -> License {
         let now = std::time::SystemTime::now();
         let mut license = License::create(
             "Dave".to_string(),
@@ -209,22 +206,56 @@ mod tests {
             now - std::time::Duration::from_secs(3600),
             now + std::time::Duration::from_secs(3600),
         );
+        // Successfully validate
         license.sign(&PRIVATE_KEY).unwrap();
+        license
+    }
+
+    #[test]
+    fn test_signing() {
         let signing_key = SigningKey::from_bytes(&PRIVATE_KEY);
+        let license = license();
         let result = license
             .verify_with_keys(std::iter::once(signing_key.verifying_key().as_bytes()))
             .unwrap();
+        assert!(result);
+    }
+
+    #[test]
+    fn test_changed_signature() {
+        // Change the signature, which should cause problems
+        let signing_key = SigningKey::from_bytes(&PRIVATE_KEY);
+        let mut license = license();
         let last = license.signature.pop().unwrap();
         if last == '4' {
             license.signature.push('3');
         } else {
             license.signature.push('4');
         }
-        assert_eq!(result, true);
-
         let result = license
             .verify_with_keys(std::iter::once(signing_key.verifying_key().as_bytes()))
             .unwrap();
-        assert_eq!(result, false);
+        assert!(!result);
+    }
+
+    #[test]
+    fn test_changed_values() {
+        fn check(change: impl FnOnce(&mut License)) -> bool {
+            let signing_key = SigningKey::from_bytes(&PRIVATE_KEY);
+            let mut license = license();
+            change(&mut license);
+            license
+                .verify_with_keys(std::iter::once(signing_key.verifying_key().as_bytes()))
+                .unwrap()
+        }
+        // Change nothing and it should be valid
+        assert!(check(|_| ()));
+        // Once changed it should fail, notice the `!`
+        assert!(!check(|license| license.name += "F"));
+        assert!(!check(|license| license.email = "".to_owned()));
+        assert!(!check(|license| license.company = "Plsdontsuck".to_owned()));
+        assert!(!check(|license| license.valid_from += 1));
+        assert!(!check(|license| license.valid_until += 1));
+        assert!(!check(|license| license.license_version += 1));
     }
 }
