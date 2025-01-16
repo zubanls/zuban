@@ -1435,6 +1435,7 @@ dependencies = [
  "clap",
  "config",
  "config_searcher",
+ "licensing",
  "zuban_python",
 ]
 

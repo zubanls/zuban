@@ -7,9 +7,10 @@ homepage.workspace = true
 authors.workspace = true
 
 [dependencies]
-zuban_python.workspace = true
 config_searcher.workspace = true
 config.workspace = true
+licensing.workspace = true
+zuban_python.workspace = true
 
 clap.workspace = true
 

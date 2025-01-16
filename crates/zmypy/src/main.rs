@@ -197,6 +197,10 @@ struct Cli {
 }
 
 fn main() -> ExitCode {
+    if let Err(err) = licensing::verify_license_in_config_dir() {
+        eprintln!("{err}");
+        return ExitCode::from(10);
+    }
     let cli = Cli::parse();
 
     let (mut options, mut diagnostic_config) = find_cli_config(cli.config_file.as_deref())

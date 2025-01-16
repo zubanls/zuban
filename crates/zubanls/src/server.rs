@@ -24,6 +24,8 @@ pub fn run_server_with_custom_connection(
 ) -> anyhow::Result<()> {
     tracing::info!("Server version {} will start", version());
 
+    licensing::verify_license_in_config_dir()?;
+
     let (initialize_id, initialize_params) = match connection.initialize_start() {
         Ok(it) => it,
         Err(e) => {
