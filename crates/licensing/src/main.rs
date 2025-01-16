@@ -42,6 +42,7 @@ fn main() -> anyhow::Result<()> {
                 Some(path) => licensing::verify_license_in_path(path),
                 None => licensing::verify_license_in_config_dir(),
             };
+            let path = path.unwrap_or(licensing::path_for_license());
             if is_ok? {
                 println!("The license in {path:?} is valid");
             } else {
@@ -57,7 +58,11 @@ fn main() -> anyhow::Result<()> {
         } => {
             let jsonified = licensing::create_license(name, email, company, days)?;
             if write {
-                std::fs::write(licensing::path_for_license(), jsonified)?;
+                let path = licensing::path_for_license();
+                if let Some(parent) = path.parent() {
+                    std::fs::create_dir_all(parent)?;
+                }
+                std::fs::write(path, jsonified)?;
             } else {
                 println!("{}", jsonified);
             }

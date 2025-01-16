@@ -56,8 +56,8 @@ struct License {
     name: String,
     email: String,
     company: String,
-    valid_from: SystemTime,
-    valid_until: SystemTime,
+    valid_from: u64,
+    valid_until: u64,
     license_version: usize,
 
     signature: String,
@@ -71,19 +71,19 @@ impl License {
         valid_from: SystemTime,
         valid_until: SystemTime,
     ) -> Self {
+        let t_to_int = |t: SystemTime| t.duration_since(UNIX_EPOCH).unwrap().as_secs();
         Self {
             name,
             email,
             company,
-            valid_from,
-            valid_until,
+            valid_from: t_to_int(valid_from),
+            valid_until: t_to_int(valid_until),
             signature: "".to_string(),
             license_version: CURRENT_LICENSE_VERSION,
         }
     }
 
     fn to_bytes_message(&self) -> Vec<u8> {
-        let t_to_str = |t: &SystemTime| t.duration_since(UNIX_EPOCH).unwrap().as_secs().to_string();
         [
             self.name.as_bytes(),
             b"\n",
@@ -91,9 +91,9 @@ impl License {
             b"\n",
             self.company.as_bytes(),
             b"\n",
-            t_to_str(&self.valid_from).as_bytes(),
+            self.valid_from.to_string().as_bytes(),
             b"\n",
-            t_to_str(&self.valid_until).as_bytes(),
+            self.valid_until.to_string().as_bytes(),
             b"\n",
             self.license_version.to_string().as_bytes(),
             b"\n",
@@ -143,7 +143,9 @@ impl License {
 }
 
 pub fn path_for_license() -> PathBuf {
-    utils::config_dir_path().expect("No valid config directory found")
+    utils::config_dir_path()
+        .expect("No valid config directory found")
+        .join("license.json")
 }
 
 pub fn verify_license_in_config_dir() -> anyhow::Result<bool> {
@@ -167,7 +169,8 @@ pub fn create_license(
     const DAY: u64 = 60 * 60 * 24;
     let valid_until = valid_from + std::time::Duration::from_secs(days * DAY);
     let mut license = License::create(name, email, company, valid_from, valid_until);
-    let private_key = std::env::var("ZUBAN_SIGNING_KEY")?;
+    let var = "ZUBAN_SIGNING_KEY";
+    let private_key = std::env::var(var).map_err(|err| anyhow::anyhow!("{err}: {var}"))?;
     license.sign(&hex_string_key_to_bytes(private_key)?)?;
     Ok(license.to_json())
 }

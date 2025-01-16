@@ -7,6 +7,16 @@ Licenses are probably easier circumvented by modifying the original binary to
 not check for licenses in the first place, since Zuban doesn't rely on web
 services.
 
+## Creating Licenses
+
+To create a license use a command like
+
+```
+ZUBAN_SIGNING_KEY=`cat` cargo run create --name Dave --email info@zubanls.com --company Squirrels
+```
+
+Make sure to **never** leak the private key. It should **never** be part of the **shell history** or somehow be provided **as an argument to a process** (which would leak it when looking at processes).
+
 ## Initializing Private/Public Keys
 
 To create a new key with OpenSSL use `./new_openssl_key.sh`. Once you have a
