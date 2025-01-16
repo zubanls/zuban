@@ -355,6 +355,8 @@ fn check_rename() {
     const NO_FOO: &str = "Cannot find implementation or library stub for module named \"foo\"";
     const NO_BAR: &str = "Cannot find implementation or library stub for module named \"bar\"";
     const NO_PKG: &str = "Cannot find implementation or library stub for module named \"pkg\"";
+    const NO_PKG_FOO: &str =
+        "Cannot find implementation or library stub for module named \"pkg.foo\"";
 
     let d = || server.diagnostics_for_file("check.py");
 
@@ -362,22 +364,31 @@ fn check_rename() {
 
     server.rename_file_and_wait("foo.py", "bar.py");
 
-    /*
     assert_eq!(d(), vec![NO_FOO.to_string(), NO_PKG.to_string()]);
 
-    const MISSING: &str = "Function is missing a return type annotation";
-    expect_diagnostics("After modifying", vec![MISSING.to_string()]);
+    server.create_dir_all_and_wait("pkg");
 
-    server.remove_file_and_wait("mypy.ini");
+    assert_eq!(d(), vec![NO_FOO.to_string(), NO_PKG_FOO.to_string()]);
 
-    expect_diagnostics("After deleting", vec![]);
+    server.rename_file_and_wait("bar.py", "pkg/foo.py");
 
-    server.write_file_and_wait(".mypy.ini", "[mypy]\nstrict = True\n");
+    assert_eq!(d(), vec![NO_FOO.to_string(), NO_BAR.to_string()]);
 
-    expect_diagnostics("After creating a new .mypy.ini", vec![MISSING.to_string()]);
+    server.write_file_and_wait("foo.py", "");
+    server.write_file_and_wait("bar.py", "");
 
-    server.write_file_and_wait("mypy.ini", "");
+    assert_eq!(d(), Vec::<String>::default());
 
-    expect_diagnostics("After overwriting .mypy.ini with mypy.ini", vec![]);
-    */
+    server.tmp_dir.remove_file("foo.py");
+    server.tmp_dir.remove_file("bar.py");
+    server.remove_file_and_wait("pkg/foo.py");
+
+    assert_eq!(
+        d(),
+        vec![
+            NO_FOO.to_string(),
+            NO_BAR.to_string(),
+            NO_PKG_FOO.to_string()
+        ]
+    );
 }

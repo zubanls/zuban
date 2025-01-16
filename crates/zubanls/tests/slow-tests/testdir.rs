@@ -87,6 +87,12 @@ impl TestDir {
         tracing::info!("Removed {path:?}");
     }
 
+    pub(crate) fn create_dir_all(&self, rel_path: &str) {
+        let path = Path::new(&self.path).join(rel_path);
+        fs::create_dir_all(&path).unwrap();
+        tracing::info!("Created dir {path:?}");
+    }
+
     pub(crate) fn rename(&self, rel_from: &str, rel_to: &str) {
         let from = Path::new(&self.path).join(rel_from);
         let to = Path::new(&self.path).join(rel_to);

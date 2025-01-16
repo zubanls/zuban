@@ -1,4 +1,4 @@
-use std::{collections::HashMap, ops::BitOrAssign, pin::Pin, rc::Rc};
+use std::{cell::OnceCell, collections::HashMap, ops::BitOrAssign, pin::Pin, rc::Rc};
 
 use tracing::Level;
 use utils::{FastHashSet, InsertOnlyVec};
@@ -175,13 +175,12 @@ impl<F: VfsFile> Vfs<F> {
     ) -> Option<FileIndex> {
         if let Some(file_index) = file_entry.get_file_index() {
             let file_state = self.file_state(file_index);
-            if matches!(file_state.state, InternalFileExistence::Parsed(_)) {
+            if file_state.file.get().is_some() {
                 return Some(file_index);
             }
             let code = self.handler.read_and_watch_file(&file_state.path)?;
-            //file_state.update(new_file(file_index, code.into()));
-            //Some(file_index)
-            return None; // TODO
+            file_state.update(new_file(file_index, code.into()));
+            Some(file_index)
         } else {
             let path = file_entry.path(&*self.handler);
             let code = self.handler.read_and_watch_file(&path)?;
@@ -482,7 +481,7 @@ impl BitOrAssign for InvalidationResult {
 pub struct FileState<F> {
     path: Box<str>,
     file_entry: Rc<FileEntry>,
-    state: InternalFileExistence<F>,
+    file: OnceCell<F>,
 }
 
 impl<F: VfsFile> FileState<F> {
@@ -498,27 +497,23 @@ impl<F: VfsFile> FileState<F> {
         Self {
             file_entry,
             path,
-            state: InternalFileExistence::Parsed(file),
+            file: OnceCell::from(file),
         }
     }
 
-    fn update(&mut self, file: F) {
-        debug_assert!(matches!(self.state, InternalFileExistence::Unloaded));
-        self.state = InternalFileExistence::Parsed(file)
+    fn update(&self, file: F) {
+        let maybe_err = self.file.set(file);
+        if std::cfg!(debug_assertions) {
+            debug_assert!(maybe_err.is_ok());
+        }
     }
 
     pub fn file(&self) -> Option<&F> {
-        match &self.state {
-            InternalFileExistence::Unloaded => None,
-            InternalFileExistence::Parsed(f) => Some(f),
-        }
+        self.file.get()
     }
 
     pub fn file_mut(&mut self) -> Option<&mut F> {
-        match &mut self.state {
-            InternalFileExistence::Parsed(f) => Some(f),
-            _ => None,
-        }
+        self.file.get_mut()
     }
 
     fn code(&self) -> Option<&str> {
@@ -530,11 +525,11 @@ impl<F: VfsFile> FileState<F> {
     }
 
     pub fn unload(&mut self) {
-        self.state = InternalFileExistence::Unloaded;
+        self.file.take();
     }
 
     fn invalidate_references_to(&mut self, file_index: FileIndex) {
-        if let InternalFileExistence::Parsed(f) = &mut self.state {
+        if let Some(f) = self.file_mut() {
             f.invalidate_references_to(file_index)
         }
     }
@@ -546,10 +541,4 @@ impl<F: Clone> FileState<F> {
         new.file_entry = new_file_entry;
         Box::pin(new)
     }
-}
-
-#[derive(Clone, Debug)]
-enum InternalFileExistence<F> {
-    Unloaded,
-    Parsed(F),
 }
