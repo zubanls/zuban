@@ -336,8 +336,18 @@ fn change_config_file() {
 }
 
 #[test]
-fn check_rename() {
-    let server = Project::with_fixture(
+fn check_rename_without_symlinks() {
+    check_rename(false);
+}
+
+#[test]
+#[cfg(not(windows))] // windows requires elevated permissions to create symlinks
+fn check_rename_with_symlinks() {
+    check_rename(true);
+}
+
+fn check_rename(contains_symlink: bool) {
+    let mut project = Project::with_fixture(
         r#"
         [file check.py]
         import foo
@@ -347,8 +357,11 @@ fn check_rename() {
         [file foo.py]
         def foo(x: int): ...
         "#,
-    )
-    .into_server();
+    );
+    if contains_symlink {
+        project = project.with_root_dir_contains_symlink()
+    }
+    let server = project.into_server();
 
     const NO_FOO: &str = "Cannot find implementation or library stub for module named \"foo\"";
     const NO_BAR: &str = "Cannot find implementation or library stub for module named \"bar\"";
