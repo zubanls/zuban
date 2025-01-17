@@ -42,11 +42,7 @@ impl<'a> Project<'a> {
     }
 
     pub(crate) fn into_server(self) -> Server {
-        let tmp_dir = if self.root_dir_contains_symlink {
-            TestDir::new_symlink()
-        } else {
-            TestDir::new()
-        };
+        let tmp_dir = TestDir::new(self.root_dir_contains_symlink);
         let dedented_fixture = dedent(&self.fixture);
         for entry in fixture_to_file_entry(&dedented_fixture) {
             tmp_dir.write_file(entry.path, entry.text)

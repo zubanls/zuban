@@ -10,15 +10,7 @@ pub(crate) struct TestDir {
 }
 
 impl TestDir {
-    pub(crate) fn new() -> TestDir {
-        TestDir::new_dir(false)
-    }
-
-    pub(crate) fn new_symlink() -> TestDir {
-        TestDir::new_dir(true)
-    }
-
-    fn new_dir(symlink: bool) -> TestDir {
+    pub(crate) fn new(symlink: bool) -> TestDir {
         let temp_dir = std::env::temp_dir();
         // On MacOS builders on GitHub actions, the temp dir is a symlink, and
         // that causes problems down the line. Specifically:
