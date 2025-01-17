@@ -339,8 +339,6 @@ fn change_config_file() {
 fn check_rename() {
     let server = Project::with_fixture(
         r#"
-        [file mypy.ini]
-
         [file check.py]
         import foo
         import bar
@@ -391,4 +389,39 @@ fn check_rename() {
             NO_PKG_FOO.to_string()
         ]
     );
+}
+
+#[test]
+fn multi_roots() {
+    let server = Project::with_fixture(
+        r#"
+        [file mypy.ini]
+
+        [file p1/check.py]
+        import foo
+        import bar
+        import undefined
+
+        [file p1/foo.py]
+
+        [file p2/bar.py]
+        "#,
+    )
+    .root("p1")
+    .root("p2")
+    .into_server();
+
+    let d = || server.diagnostics_for_file("p1/check.py");
+    const UNDEF: &str = "Cannot find implementation or library stub for module named \"undefined\"";
+    const NO_BAR: &str = "Cannot find implementation or library stub for module named \"bar\"";
+
+    assert_eq!(d(), vec![UNDEF.to_string()]);
+
+    server.tmp_dir.remove_file("p2/bar.py");
+    server.rename_file_and_wait("p1/foo.py", "p2/foo.py");
+
+    assert_eq!(d(), vec![NO_BAR.to_string(), UNDEF.to_string()]);
+    server.write_file_and_wait("p2/bar.py", "1()");
+
+    assert_eq!(d(), vec![UNDEF.to_string()]);
 }
