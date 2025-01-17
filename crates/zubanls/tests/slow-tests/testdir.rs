@@ -37,11 +37,7 @@ impl TestDir {
             #[cfg(any(target_os = "macos", target_os = "linux", target_os = "windows"))]
             if symlink {
                 let symlink_path = base.join(format!("{pid}_{cnt}_symlink"));
-                #[cfg(any(target_os = "macos", target_os = "linux"))]
-                std::os::unix::fs::symlink(path, &symlink_path).unwrap();
-
-                #[cfg(target_os = "windows")]
-                std::os::windows::fs::symlink_dir(path, &symlink_path).unwrap();
+                create_symlink_dir(path, &symlink_path).unwrap();
 
                 return TestDir {
                     path: symlink_path.to_str().unwrap().to_string(),
@@ -91,6 +87,20 @@ impl TestDir {
         fs::rename(&from, &to).unwrap();
         tracing::info!("Renamed from {from:?} to {to:?}");
     }
+
+    pub(crate) fn create_symlink_dir(&self, rel_original: &str, rel_link: &str) {
+        let original = Path::new(&self.path).join(rel_original);
+        let link = Path::new(&self.path).join(rel_link);
+        create_symlink_dir(original, link).unwrap();
+    }
+}
+
+fn create_symlink_dir<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) -> io::Result<()> {
+    #[cfg(any(target_os = "macos", target_os = "linux"))]
+    return std::os::unix::fs::symlink(original, link);
+
+    #[cfg(target_os = "windows")]
+    return std::os::windows::fs::symlink_dir(original, link);
 }
 
 impl Drop for TestDir {

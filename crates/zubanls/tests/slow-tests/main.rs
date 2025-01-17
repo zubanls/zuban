@@ -408,8 +408,6 @@ fn check_rename(contains_symlink: bool) {
 fn multi_roots() {
     let server = Project::with_fixture(
         r#"
-        [file mypy.ini]
-
         [file p1/check.py]
         import foo
         import bar
@@ -437,4 +435,45 @@ fn multi_roots() {
     server.write_file_and_wait("p2/bar.py", "1()");
 
     assert_eq!(d(), vec![UNDEF.to_string()]);
+}
+
+#[test]
+#[cfg(not(windows))] // windows requires elevated permissions to create symlinks
+fn symlink_dir_loop() {
+    let server = Project::with_fixture(
+        r#"
+        [file foo.py]
+        from nested import foo
+        from nested.nested import foo as bar
+
+        reveal_type(foo.x)
+
+        x = 3
+        "#,
+    )
+    .into_server();
+
+    let cannot_find =
+        |name| format!(r#"Cannot find implementation or library stub for module named "{name}""#);
+
+    let d = || server.diagnostics_for_file("foo.py");
+
+    assert_eq!(
+        d(),
+        vec![
+            cannot_find("nested"),
+            cannot_find("nested"),
+            "Revealed type is \"Any\"".to_string()
+        ]
+    );
+
+    server.create_symlink_dir_and_wait(".", "nested");
+
+    assert_eq!(
+        d(),
+        vec![
+            cannot_find("nested.nested"),
+            "Revealed type is \"builtins.int\"".to_string()
+        ]
+    );
 }

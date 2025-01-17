@@ -162,6 +162,12 @@ impl Server {
         // Make sure the removal event appears before the LSP event.
         std::thread::sleep(std::time::Duration::from_millis(1));
     }
+
+    pub(crate) fn create_symlink_dir_and_wait(&self, rel_original: &str, rel_link: &str) {
+        self.tmp_dir.create_symlink_dir(rel_original, rel_link);
+        // Make sure the removal event appears before the LSP event.
+        std::thread::sleep(std::time::Duration::from_millis(1));
+    }
 }
 
 struct FileEntry<'x> {
