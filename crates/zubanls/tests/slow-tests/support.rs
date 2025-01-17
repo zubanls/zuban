@@ -2,6 +2,7 @@ use std::{
     ops::Deref,
     path::{Path, PathBuf},
     str::FromStr,
+    sync::{atomic::Ordering, Mutex},
 };
 
 use lsp_types::{
@@ -12,8 +13,13 @@ use lsp_types::{
 use serde::Serialize;
 use serde_json::{to_string_pretty, Value};
 use test_utils::{calculate_steps, dedent};
+use zubanls::GLOBAL_NOTIFY_EVENT_COUNTER;
 
 use crate::{connection::Connection, testdir::TestDir};
+
+lazy_static::lazy_static! {
+    static ref FILE_SYSTEM_LOCK: Mutex<()> = Mutex::default();
+}
 
 pub(crate) struct Project<'a> {
     fixture: &'a str,
@@ -139,34 +145,39 @@ impl Server {
         items.into_iter().map(|d| d.message).collect()
     }
 
-    pub(crate) fn write_file_and_wait(&self, rel_path: &str, code: &str) {
-        self.tmp_dir.write_file(rel_path, code);
+    fn with_wait(&self, callback: impl FnOnce()) {
+        let _lock = FILE_SYSTEM_LOCK.lock();
+        let current = GLOBAL_NOTIFY_EVENT_COUNTER.load(Ordering::SeqCst);
+        callback();
         // Make sure the removal event appears before the LSP event.
-        std::thread::sleep(std::time::Duration::from_millis(1));
+        // Wait for a while (at least 0.1s)
+        for _ in 0..100000 {
+            std::thread::sleep(std::time::Duration::from_micros(1));
+            if current < GLOBAL_NOTIFY_EVENT_COUNTER.load(Ordering::SeqCst) {
+                return;
+            }
+        }
+        unreachable!("Reached a timeout");
+    }
+
+    pub(crate) fn write_file_and_wait(&self, rel_path: &str, code: &str) {
+        self.with_wait(|| self.tmp_dir.write_file(rel_path, code))
     }
 
     pub(crate) fn remove_file_and_wait(&self, rel_path: &str) {
-        self.tmp_dir.remove_file(rel_path);
-        // Make sure the removal event appears before the LSP event.
-        std::thread::sleep(std::time::Duration::from_millis(1));
+        self.with_wait(|| self.tmp_dir.remove_file(rel_path))
     }
 
     pub(crate) fn rename_file_and_wait(&self, from: &str, to: &str) {
-        self.tmp_dir.rename(from, to);
-        // Make sure the removal event appears before the LSP event.
-        std::thread::sleep(std::time::Duration::from_millis(1));
+        self.with_wait(|| self.tmp_dir.rename(from, to))
     }
 
     pub(crate) fn create_dir_all_and_wait(&self, rel_path: &str) {
-        self.tmp_dir.create_dir_all(rel_path);
-        // Make sure the removal event appears before the LSP event.
-        std::thread::sleep(std::time::Duration::from_millis(1));
+        self.with_wait(|| self.tmp_dir.create_dir_all(rel_path))
     }
 
     pub(crate) fn create_symlink_dir_and_wait(&self, rel_original: &str, rel_link: &str) {
-        self.tmp_dir.create_symlink_dir(rel_original, rel_link);
-        // Make sure the removal event appears before the LSP event.
-        std::thread::sleep(std::time::Duration::from_millis(1));
+        self.with_wait(|| self.tmp_dir.create_symlink_dir(rel_original, rel_link))
     }
 }
 

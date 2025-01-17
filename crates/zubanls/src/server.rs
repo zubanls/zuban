@@ -1,6 +1,7 @@
 //! Scheduling, I/O, and API endpoints.
 
 use std::path::PathBuf;
+use std::sync::atomic::AtomicI64;
 use std::{collections::HashSet, panic::PanicHookInfo};
 
 use config::ProjectOptions;
@@ -13,6 +14,8 @@ use vfs::{LocalFS, NotifyEvent};
 use zuban_python::Project;
 
 use crate::capabilities::{server_capabilities, ClientCapabilities};
+
+pub static GLOBAL_NOTIFY_EVENT_COUNTER: AtomicI64 = AtomicI64::new(0);
 
 fn version() -> &'static str {
     env!("CARGO_PKG_VERSION")
@@ -347,6 +350,10 @@ impl GlobalState {
                 Ok(event) => {
                     match event.kind {
                         EventKind::Create(_) | EventKind::Modify(_) | EventKind::Remove(_) => {
+                            // This is simply for tests
+                            GLOBAL_NOTIFY_EVENT_COUNTER
+                                .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+
                             tracing::info!("Notify Event: {event:?}");
                             for path in event.paths.into_iter() {
                                 if self.paths_that_invalidate_whole_project.contains(&path) {
