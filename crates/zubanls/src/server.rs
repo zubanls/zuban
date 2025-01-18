@@ -1,6 +1,7 @@
 //! Scheduling, I/O, and API endpoints.
 
 use std::path::PathBuf;
+use std::rc::Rc;
 use std::sync::atomic::AtomicI64;
 use std::{collections::HashSet, panic::PanicHookInfo};
 
@@ -62,7 +63,7 @@ pub fn run_server_with_custom_connection(
             workspaces
                 .into_iter()
                 .map(|workspace| patch_path_prefix(&workspace.uri))
-                .collect::<Vec<_>>()
+                .collect::<Rc<_>>()
         })
         .filter(|workspaces| !workspaces.is_empty());
     let workspace_roots = match workspace_roots {
@@ -77,7 +78,7 @@ pub fn run_server_with_custom_connection(
                     })?
                 }
             };
-            vec![root_path.clone()]
+            Rc::new([root_path.clone()])
         }
     };
 
@@ -102,11 +103,27 @@ pub fn run_server_with_custom_connection(
         return Err(e.into());
     }
 
-    // If the io_threads have an error, there's usually an error on the main
-    // loop too because the channels are closed. Ensure we report both errors.
-    let mut global_state =
-        GlobalState::new(connection.sender, client_capabilities, workspace_roots);
-    global_state.event_loop(connection.receiver)?;
+    loop {
+        // We try to unwind from panics and continue the server. It still feels kind of like a bad
+        // idea, because there might be global state somewhere...
+        let result = std::panic::catch_unwind(|| {
+            let mut global_state = GlobalState::new(
+                &connection.sender,
+                &client_capabilities,
+                workspace_roots.clone(),
+            );
+            global_state.event_loop(&connection.receiver)
+        });
+        match result {
+            Ok(inner_result) => {
+                inner_result?;
+                break;
+            }
+            Err(panic_err) => {
+                tracing::error!("Trying to recover from the panic: {panic_err:#?}");
+            }
+        }
+    }
     cleanup()?;
     tracing::info!("Server did successfully shut down");
     Ok(())
@@ -176,24 +193,24 @@ Ok(())
 
 */
 
-struct NotificationDispatcher<'a> {
+struct NotificationDispatcher<'a, 'sender> {
     not: Option<lsp_server::Notification>,
-    global_state: &'a mut GlobalState,
+    global_state: &'a mut GlobalState<'sender>,
 }
 
-pub(crate) struct GlobalState {
+pub(crate) struct GlobalState<'sender> {
     paths_that_invalidate_whole_project: HashSet<PathBuf>,
-    sender: Sender<lsp_server::Message>,
-    roots: Vec<String>,
+    sender: &'sender Sender<lsp_server::Message>,
+    roots: Rc<[String]>,
     project: Option<Project>,
     pub shutdown_requested: bool,
 }
 
-impl GlobalState {
+impl<'sender> GlobalState<'sender> {
     fn new(
-        sender: Sender<lsp_server::Message>,
-        _capabilities: ClientCapabilities,
-        roots: Vec<String>,
+        sender: &'sender Sender<lsp_server::Message>,
+        _capabilities: &ClientCapabilities,
+        roots: Rc<[String]>,
     ) -> Self {
         GlobalState {
             paths_that_invalidate_whole_project: Default::default(),
@@ -204,7 +221,7 @@ impl GlobalState {
         }
     }
 
-    fn event_loop(&mut self, receiver: Receiver<Message>) -> anyhow::Result<()> {
+    fn event_loop(&mut self, receiver: &Receiver<Message>) -> anyhow::Result<()> {
         loop {
             // Make sure the project is basically loaded
             self.project();
@@ -275,7 +292,7 @@ impl GlobalState {
             //
             // It's questionable that we want those two things. And maybe there will also be a need
             // for the type checker to understand what the mypy_path originally was.
-            config.settings.mypy_path = self.roots.clone();
+            config.settings.mypy_path = self.roots.to_vec();
 
             *project = Some(Project::new(Box::new(vfs_handler), config));
             project.as_mut().unwrap()
@@ -397,10 +414,10 @@ impl GlobalState {
     }
 }
 
-impl NotificationDispatcher<'_> {
+impl<'sender> NotificationDispatcher<'_, 'sender> {
     fn on_sync_mut<N>(
         &mut self,
-        f: fn(&mut GlobalState, N::Params) -> anyhow::Result<()>,
+        f: fn(&mut GlobalState<'sender>, N::Params) -> anyhow::Result<()>,
     ) -> &mut Self
     where
         N: lsp_types::notification::Notification,
@@ -448,15 +465,15 @@ impl NotificationDispatcher<'_> {
     }
 }
 
-struct RequestDispatcher<'a> {
+struct RequestDispatcher<'a, 'sender> {
     request: Option<lsp_server::Request>,
-    global_state: &'a mut GlobalState,
+    global_state: &'a mut GlobalState<'sender>,
 }
 
-impl RequestDispatcher<'_> {
+impl<'sender> RequestDispatcher<'_, 'sender> {
     fn on_sync_mut<R>(
         &mut self,
-        f: fn(&mut GlobalState, R::Params) -> anyhow::Result<R::Result>,
+        f: fn(&mut GlobalState<'sender>, R::Params) -> anyhow::Result<R::Result>,
     ) -> &mut Self
     where
         R: lsp_types::request::Request,

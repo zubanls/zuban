@@ -9,7 +9,7 @@ use zuban_python::Severity;
 
 use crate::server::{GlobalState, LspError};
 
-impl GlobalState {
+impl GlobalState<'_> {
     pub(crate) fn handle_document_diagnostics(
         &mut self,
         params: DocumentDiagnosticParams,

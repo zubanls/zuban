@@ -5,7 +5,7 @@ use lsp_types::{
 
 use crate::server::GlobalState;
 
-impl GlobalState {
+impl GlobalState<'_> {
     pub(crate) fn handle_did_open_text_document(
         &mut self,
         params: DidOpenTextDocumentParams,
