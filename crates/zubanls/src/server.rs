@@ -117,11 +117,6 @@ pub fn run_server() -> anyhow::Result<()> {
     run_server_with_custom_connection(connection, || Ok(io_threads.join()?))
 }
 
-enum Event {
-    Lsp(Message),
-    Notify(NotifyEvent),
-}
-
 /*
 let client_capabilities = init_params.capabilities;
 let position_encoding = Self::find_best_position_encoding(&client_capabilities);
@@ -214,32 +209,14 @@ impl GlobalState {
             // Make sure the project is basically loaded
             self.project();
 
-            let event = select! {
-                recv(receiver) -> msg => Event::Lsp(msg?),
+            select! {
+                recv(receiver) -> msg => {
+                    if self.on_lsp_message_and_return_on_shutdown(msg?) {
+                        return Ok(());
+                    }
+                },
                 recv(self.notify_receiver().unwrap_or(&never())) -> msg =>
-                    Event::Notify(msg?),
-            };
-            match event {
-                Event::Lsp(msg) => {
-                    use lsp_types::notification::Notification;
-                    match msg {
-                        Message::Request(r) => self.on_request(r),
-                        Message::Notification(n) => {
-                            if n.method == lsp_types::notification::Exit::METHOD {
-                                return Ok(());
-                            }
-                            self.on_notification(n)
-                        }
-                        Message::Response(r) => self.complete_request(r),
-                    }
-                }
-                Event::Notify(event) => {
-                    self.on_notify_event(event);
-                    // Check all events in the Notify queue
-                    while let Some(next) = self.notify_receiver().and_then(|n| n.try_recv().ok()) {
-                        self.on_notify_event(next);
-                    }
-                }
+                    self.on_notify_events(msg?)
             }
         }
     }
@@ -342,6 +319,29 @@ impl GlobalState {
         .on_sync_mut::<DocumentDiagnosticRequest>(GlobalState::handle_document_diagnostics)
         .on_sync_mut::<Shutdown>(GlobalState::handle_shutdown)
         .finish();
+    }
+
+    fn on_lsp_message_and_return_on_shutdown(&mut self, msg: Message) -> bool {
+        use lsp_types::notification::Notification;
+        match msg {
+            Message::Request(r) => self.on_request(r),
+            Message::Notification(n) => {
+                if n.method == lsp_types::notification::Exit::METHOD {
+                    return true;
+                }
+                self.on_notification(n)
+            }
+            Message::Response(r) => self.complete_request(r),
+        }
+        false
+    }
+
+    fn on_notify_events(&mut self, event: NotifyEvent) {
+        self.on_notify_event(event);
+        // Check all events in the Notify queue
+        while let Some(next) = self.notify_receiver().and_then(|n| n.try_recv().ok()) {
+            self.on_notify_event(next);
+        }
     }
 
     fn on_notify_event(&mut self, event: NotifyEvent) {
