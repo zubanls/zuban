@@ -146,6 +146,8 @@ impl Server {
     }
 
     fn with_wait(&self, callback: impl FnOnce()) {
+        // We need the lock to be able to use the global notify counter and be sure that no other
+        // thread modifies it.
         let _lock = FILE_SYSTEM_LOCK.lock();
         let current = GLOBAL_NOTIFY_EVENT_COUNTER.load(Ordering::SeqCst);
         callback();
