@@ -57,7 +57,7 @@ fn basic_server_setup() {
 
 #[test]
 fn request_after_shutdown_is_invalid() {
-    let con = Connection::initialized(&["/foo/bar"]);
+    let con = Connection::initialized(false, &["/foo/bar"]);
     con.request::<lsp_types::request::Shutdown>(());
 
     let expect_shutdown_already_requested = |response: Response| {
@@ -88,7 +88,7 @@ fn request_after_shutdown_is_invalid() {
 
 #[test]
 fn exit_without_shutdown() {
-    let con = Connection::initialized(&["/foo/bar"]);
+    let con = Connection::initialized(false, &["/foo/bar"]);
     con.notify::<lsp_types::notification::Exit>(());
 }
 
@@ -475,5 +475,36 @@ fn symlink_dir_loop() {
             cannot_find("nested.nested"),
             "Revealed type is \"builtins.int\"".to_string()
         ]
+    );
+}
+
+#[test]
+fn check_panic_recovery() {
+    let con = Connection::with_avoids_panics_and_messages_instead();
+    let response = con.initialize(&["/foo/bar"]);
+
+    con.send(lsp_server::Notification::new("test-panic".to_string(), ()));
+    let message = con.expect_notification_message();
+    assert_eq!(message.typ, lsp_types::MessageType::ERROR);
+    let message = message.message;
+
+    // Check the hook
+    assert!(
+        message.starts_with("ZubanLS paniced, please open an issue on GitHub with the details:"),
+        "{message}"
+    );
+    // Check the message
+    assert!(message.contains("Test Panic"));
+    // Check for traceback occurrence
+    assert!(message.contains("zubanls::server::GlobalState"));
+    assert!(message.contains("server.rs"));
+
+    // Catch the "redirected" panic, which is now a message
+    let message = con.expect_notification_message();
+    assert_eq!(message.typ, lsp_types::MessageType::ERROR);
+    assert!(
+        message.message.starts_with("ZubanLS test paniced"),
+        "{}",
+        message.message
     );
 }

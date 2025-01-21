@@ -1,13 +1,14 @@
 //! Scheduling, I/O, and API endpoints.
 
+use std::collections::HashSet;
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::atomic::AtomicI64;
-use std::{collections::HashSet, panic::PanicHookInfo};
 
 use config::ProjectOptions;
 use crossbeam_channel::{never, select, Receiver, Sender};
 use lsp_server::{Connection, ExtractError, Message, Request};
+use lsp_types::notification::Notification as _;
 use lsp_types::Uri;
 use notify::EventKind;
 use serde::{de::DeserializeOwned, Serialize};
@@ -15,6 +16,8 @@ use vfs::{LocalFS, NotifyEvent};
 use zuban_python::Project;
 
 use crate::capabilities::{server_capabilities, ClientCapabilities};
+use crate::notification_handlers::TestPanic;
+use crate::panic_hooks;
 
 pub static GLOBAL_NOTIFY_EVENT_COUNTER: AtomicI64 = AtomicI64::new(0);
 
@@ -103,27 +106,54 @@ pub fn run_server_with_custom_connection(
         return Err(e.into());
     }
 
-    loop {
-        // We try to unwind from panics and continue the server. It still feels kind of like a bad
-        // idea, because there might be global state somewhere...
-        let result = std::panic::catch_unwind(|| {
-            let mut global_state = GlobalState::new(
-                &connection.sender,
-                &client_capabilities,
-                workspace_roots.clone(),
-            );
-            global_state.event_loop(&connection.receiver)
-        });
-        match result {
-            Ok(inner_result) => {
-                inner_result?;
-                break;
-            }
-            Err(panic_err) => {
-                tracing::error!("Trying to recover from the panic: {panic_err:#?}");
-            }
+    let hook_sender = connection.sender.clone();
+    // On panic, notify the client.
+    let _hook = panic_hooks::enter(Box::new(move |panic_info| {
+        use std::io::Write;
+
+        let backtrace = std::backtrace::Backtrace::force_capture();
+        tracing::error!("Panic hook: {panic_info}\n{backtrace}");
+
+        // Currently std::panic::get_backtrace_style is unstable:
+        // https://github.com/rust-lang/rust/issues/93346
+        let use_backtrace = match std::env::var_os("RUST_BACKTRACE") {
+            Some(x) if &x == "0" => false,
+            None => false,
+            _ => true,
+        };
+
+        // We also need to print to stderr directly for when using `$logTrace` because
+        // the message won't be sent to the client.
+        // But don't use `eprintln` because `eprintln` itself may panic if the pipe is broken.
+        let mut stderr = std::io::stderr().lock();
+        if use_backtrace {
+            writeln!(stderr, "Panic hook: {panic_info}\n{backtrace}").ok();
+        } else {
+            writeln!(stderr, "Panic hook: {panic_info}").ok();
         }
-    }
+
+        // It's not guaranteed that we can notify the client, but we try to.
+        let _ = hook_sender.send(lsp_server::Message::Notification(
+            lsp_server::Notification {
+                method: lsp_types::notification::ShowMessage::METHOD.into(),
+                params: serde_json::to_value(lsp_types::ShowMessageParams {
+                    typ: lsp_types::MessageType::ERROR,
+                    message: format!(
+                        "ZubanLS paniced, please open an issue on GitHub with the details:\n\
+                         {panic_info}\n\n{backtrace}"
+                    ),
+                })
+                .unwrap(),
+            },
+        ));
+    }));
+
+    let mut global_state = GlobalState::new(
+        &connection.sender,
+        &client_capabilities,
+        workspace_roots.clone(),
+    );
+    global_state.event_loop(&connection.receiver)?;
     cleanup()?;
     tracing::info!("Server did successfully shut down");
     Ok(())
@@ -144,52 +174,6 @@ if let Some(trace) = init_params.trace {
     crate::trace::set_trace_value(trace);
 }
 
-...
-
-#[allow(deprecated)]
-type PanicHook = Box<dyn Fn(&PanicInfo<'_>) + 'static + Sync + Send>;
-struct RestorePanicHook {
-    hook: Option<PanicHook>,
-}
-
-impl Drop for RestorePanicHook {
-    fn drop(&mut self) {
-        if let Some(hook) = self.hook.take() {
-            std::panic::set_hook(hook);
-        }
-    }
-}
-
-// Unregister any previously registered panic hook
-// The hook will be restored when this function exits.
-let _ = RestorePanicHook {
-    hook: Some(std::panic::take_hook()),
-};
-
-// When we panic, try to notify the client.
-std::panic::set_hook(Box::new(move |panic_info| {
-    /*
-    use std::io::Write;
-
-    let backtrace = std::backtrace::Backtrace::force_capture();
-    tracing::error!("{panic_info}\n{backtrace}");
-
-    // We also need to print to stderr directly for when using `$logTrace` because
-    // the message won't be sent to the client.
-    // But don't use `eprintln` because `eprintln` itself may panic if the pipe is broken.
-    let mut stderr = std::io::stderr().lock();
-    writeln!(stderr, "{panic_info}\n{backtrace}").ok();
-
-    try_show_message(
-        "The ZubanLS server exited with a panic. Check the logs for more details."
-            .to_string(),
-        MessageType::ERROR,
-    )
-    .ok();
-    */
-    todo!()
-}));
-Ok(())
 
 */
 
@@ -314,6 +298,7 @@ impl<'sender> GlobalState<'sender> {
         .on_sync_mut::<DidCloseTextDocument>(GlobalState::handle_did_close_text_document)
         //.on_sync_mut::<DidChangeWorkspaceFolders>(GlobalState::handle_did_change_workspace_folders)
         //.on_sync_mut::<notifs::DidChangeWatchedFiles>(GlobalState::handle_did_change_watched_files)
+        .on_sync_mut::<TestPanic>(GlobalState::test_panic)
         .finish();
     }
 

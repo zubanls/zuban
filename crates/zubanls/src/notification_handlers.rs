@@ -62,4 +62,15 @@ impl GlobalState<'_> {
             .map_err(|err| anyhow::anyhow!("{err}"));
         result
     }
+
+    pub(crate) fn test_panic(&mut self, _: ()) -> anyhow::Result<()> {
+        panic!("Test Panic")
+    }
+}
+
+pub(crate) enum TestPanic {}
+
+impl lsp_types::notification::Notification for TestPanic {
+    type Params = ();
+    const METHOD: &'static str = "test-panic";
 }

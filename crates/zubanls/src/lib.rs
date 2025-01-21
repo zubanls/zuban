@@ -1,5 +1,6 @@
 mod capabilities;
 mod notification_handlers;
+mod panic_hooks;
 mod request_handlers;
 mod server;
 

@@ -5,7 +5,7 @@ members = ["crates/*"]
 
 [workspace.package]
 edition = "2021"
-rust-version = "1.81"
+rust-version = "1.83"
 homepage = "https://zubanls.com"
 authors = ["Dave Halter <davidhalter88@gmail.com>"]
 
