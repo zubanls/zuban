@@ -1,0 +1,15 @@
+[package]
+name = "zuban"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+homepage.workspace = true
+authors.workspace = true
+publish = false
+
+[dependencies]
+logging_config.workspace = true
+
+anyhow.workspace = true
+tracing.workspace = true
+zubanls.workspace = true

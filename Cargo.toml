@@ -22,6 +22,7 @@ test_utils = { path = "./crates/test_utils" }
 utils = { path = "./crates/utils" }
 vfs = { path = "./crates/vfs" }
 zuban_python = { path = "./crates/zuban_python" }
+zubanls = { path = "./crates/zubanls" }
 
 # General third party dependencies
 anyhow = "*"

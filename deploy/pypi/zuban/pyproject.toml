@@ -46,7 +46,7 @@ Documentation = "https://docs.zubanls.com"
 
 [tool.maturin]
 bindings = "bin"
-manifest-path = "../../../crates/zubanls/Cargo.toml"
+manifest-path = "../../../crates/zuban/Cargo.toml"
 module-name = "zuban"
 python-source = "."
 strip = true
