@@ -7,7 +7,7 @@ members = ["crates/*"]
 edition = "2021"
 rust-version = "1.83"
 homepage = "https://zubanls.com"
-authors = ["Dave Halter <davidhalter88@gmail.com>"]
+authors = ["Dave Halter <info@zubanls.com>"]
 
 [workspace.dependencies]
 # Internal crates

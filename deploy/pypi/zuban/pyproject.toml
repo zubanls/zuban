@@ -1,0 +1,60 @@
+[build-system]
+requires = ["maturin>=1.0,<2.0"]
+build-backend = "maturin"
+
+[project]
+name = "zuban"
+version = "0.0.3"
+description = "ZubanLS - The Zuban Language Server"
+authors = [{ name = "Dave Halter", email = "info@zubanls.com" }]
+readme = "README.rst"
+requires-python = ">=3.7"
+license = { file = "licenses.html" }
+keywords = [
+  "typechecking",
+  "mypy",
+  "static",
+  "analysis",
+  "autocompletion",
+]
+classifiers = [
+  "Development Status :: 1 - Planning",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "License :: Other/Proprietary License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3.7",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Rust",
+  "Topic :: Text Editors :: Integrated Development Environments (IDE)",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+  "Topic :: Software Development :: Quality Assurance",
+  "Topic :: Utilities",
+]
+
+[project.urls]
+Repository = "https://github.com/zubanls/zubanls-python"
+Documentation = "https://docs.zubanls.com"
+
+[tool.maturin]
+bindings = "bin"
+manifest-path = "../../../crates/zubanls/Cargo.toml"
+module-name = "zuban"
+python-source = "."
+strip = true
+locked = true
+exclude = [
+]
+include = [
+    "zuban/typeshed/LICENSE",
+    "zuban/typeshed/README.md",
+    "zuban/typeshed/**/*.pyi",
+]

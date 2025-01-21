@@ -1,3 +1,5 @@
-build/
-dist/
-zuban.egg-info/
+/build/
+/dist/
+/zuban.egg-info/
+/venv
+/licenses.html
