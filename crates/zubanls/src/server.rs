@@ -122,8 +122,7 @@ pub fn run_server_with_custom_connection(
             _ => true,
         };
 
-        // We also need to print to stderr directly for when using `$logTrace` because
-        // the message won't be sent to the client.
+        // We also generally want to print to stderr when a panic happens.
         // But don't use `eprintln` because `eprintln` itself may panic if the pipe is broken.
         let mut stderr = std::io::stderr().lock();
         if use_backtrace {
@@ -168,12 +167,6 @@ pub fn run_server() -> anyhow::Result<()> {
 let client_capabilities = init_params.capabilities;
 let position_encoding = Self::find_best_position_encoding(&client_capabilities);
 let server_capabilities = Self::server_capabilities(position_encoding);
-
-
-if let Some(trace) = init_params.trace {
-    crate::trace::set_trace_value(trace);
-}
-
 
 */
 

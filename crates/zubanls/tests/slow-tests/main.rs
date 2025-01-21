@@ -481,7 +481,7 @@ fn symlink_dir_loop() {
 #[test]
 fn check_panic_recovery() {
     let con = Connection::with_avoids_panics_and_messages_instead();
-    let response = con.initialize(&["/foo/bar"]);
+    con.initialize(&["/foo/bar"]);
 
     con.send(lsp_server::Notification::new("test-panic".to_string(), ()));
     let message = con.expect_notification_message();
