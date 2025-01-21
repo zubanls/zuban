@@ -1,2 +1,5 @@
 /target
+# insta creates these files
 *.snap.new
+# For cargo-about
+/licenses.html

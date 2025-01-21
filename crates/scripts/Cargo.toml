@@ -1,8 +1,9 @@
 [package]
 name = "scripts"
 version = "0.1.0"
-authors = ["Dave Halter <davidhalter88@gmail.com>"]
-edition = "2021"
+publish = false
+authors.workspace = true
+edition.workspace = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

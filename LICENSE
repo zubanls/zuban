@@ -1,6 +1,8 @@
 Proprietary Software; Copyright (c) 2020-2025 Dave Halter; All rights reserved.
 
-Licenses of the software that is used:
+You can find most licenses for libraries we have used in `licenses.html`.
+
+Other licenses of the software that is used:
 
 - Mypy, licensed as follows
     Mypy (and mypyc) are licensed under the terms of the MIT license, reproduced below.

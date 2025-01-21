@@ -1,0 +1,12 @@
+accepted = [
+    "Apache-2.0",
+    "MIT",
+    "ISC",
+    "BSD-3-Clause",
+    "CC0-1.0",
+    "MPL-2.0",
+    "Unicode-3.0",
+    "Python-2.0.1",
+]
+
+private = { ignore = true }
