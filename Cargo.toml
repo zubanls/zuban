@@ -21,6 +21,7 @@ parsa_python_cst = { path = "./crates/parsa_python_cst" }
 test_utils = { path = "./crates/test_utils" }
 utils = { path = "./crates/utils" }
 vfs = { path = "./crates/vfs" }
+zmypy = { path = "./crates/zmypy" }
 zuban_python = { path = "./crates/zuban_python" }
 zubanls = { path = "./crates/zubanls" }
 

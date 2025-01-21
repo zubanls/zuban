@@ -9,7 +9,7 @@ use clap::Parser;
 
 #[derive(Parser)]
 #[command(version, about)]
-struct Cli {
+pub struct Cli {
     // Running code:
     /// Regular expression to match file names, directory names or paths which mypy should ignore
     /// while recursively discovering files to check, e.g. --exclude '/setup\.py$'. May be
@@ -196,12 +196,11 @@ struct Cli {
     no_mypy_compatible: bool,
 }
 
-fn main() -> ExitCode {
+pub fn run(cli: Cli) -> ExitCode {
     if let Err(err) = licensing::verify_license_in_config_dir() {
         eprintln!("{err}");
         return ExitCode::from(10);
     }
-    let cli = Cli::parse();
 
     let (mut options, mut diagnostic_config) = find_cli_config(cli.config_file.as_deref())
         .unwrap_or_else(|err| panic!("Problem parsing Mypy config: {err}"));

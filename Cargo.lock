@@ -1444,8 +1444,10 @@ name = "zuban"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "clap",
  "logging_config",
  "tracing",
+ "zmypy",
  "zubanls",
 ]
 

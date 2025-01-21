@@ -9,7 +9,9 @@ publish = false
 
 [dependencies]
 logging_config.workspace = true
+zmypy.workspace = true
+zubanls.workspace = true
 
 anyhow.workspace = true
+clap.workspace = true
 tracing.workspace = true
-zubanls.workspace = true
