@@ -421,13 +421,6 @@ impl<'sender> NotificationDispatcher<'_, 'sender> {
 
         tracing::debug!(?params);
 
-        /*
-        let _pctx = stdx::panic_context::enter(format!(
-            "\nversion: {}\nnotification: {}",
-            version(),
-            N::METHOD
-        ));
-        */
         if let Err(e) = f(self.global_state, params) {
             tracing::error!(handler = %N::METHOD, error = %e, "notification handler failed");
         }
@@ -458,17 +451,14 @@ impl<'sender> RequestDispatcher<'_, 'sender> {
         R::Params: DeserializeOwned + std::panic::UnwindSafe + std::fmt::Debug,
         R::Result: Serialize,
     {
-        let (req, params, _panic_context) = match self.parse::<R>() {
+        let (req, params) = match self.parse::<R>() {
             Some(it) => it,
             None => return self,
         };
         let _guard =
             tracing::info_span!("request", method = ?req.method, "request_id" = ?req.id).entered();
         tracing::debug!(?params);
-        let result = {
-            //let _pctx = stdx::panic_context::enter(panic_context);
-            f(self.global_state, params)
-        };
+        let result = f(self.global_state, params);
         if let Ok(response) = result_to_response::<R>(req.id, result) {
             self.global_state.respond(response);
         }
@@ -476,7 +466,7 @@ impl<'sender> RequestDispatcher<'_, 'sender> {
         self
     }
 
-    fn parse<R>(&mut self) -> Option<(lsp_server::Request, R::Params, String)>
+    fn parse<R>(&mut self) -> Option<(lsp_server::Request, R::Params)>
     where
         R: lsp_types::request::Request,
         R::Params: DeserializeOwned + std::fmt::Debug,
@@ -484,14 +474,7 @@ impl<'sender> RequestDispatcher<'_, 'sender> {
         let req = self.request.take_if(|it| it.method == R::METHOD)?;
         let res = from_json(R::METHOD, &req.params);
         match res {
-            Ok(params) => {
-                let panic_context = format!(
-                    "\nversion: {}\nrequest: {} {params:#?}",
-                    version(),
-                    R::METHOD
-                );
-                Some((req, params, panic_context))
-            }
+            Ok(params) => Some((req, params)),
             Err(err) => {
                 let response = lsp_server::Response::new_err(
                     req.id,
