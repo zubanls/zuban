@@ -45,3 +45,11 @@ walkdir = "*"
 
 # Dev dependencies
 insta = "*"
+
+[workspace.metadata.release]
+pre-release-hook = [
+    "sed",
+    "-i",
+    "s/^version = .*$/version = \"{{version}}\"/",
+    "deploy/pypi/zuban/pyproject.toml",
+]
