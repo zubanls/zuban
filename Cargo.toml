@@ -51,5 +51,6 @@ pre-release-hook = [
     "sed",
     "-i",
     "s/^version = .*$/version = \"{{version}}\"/",
-    "deploy/pypi/zuban/pyproject.toml",
+    # It seems like this is being run for every Cargo.toml
+    "../../deploy/pypi/zuban/pyproject.toml",
 ]

@@ -17,6 +17,4 @@ MATURIN_COMMAND="$1"
 cargo install cargo-about || true
 cargo about generate -o licenses.html about.hbs --fail --manifest-path "$WORKSPACE_TOML" --offline
 
-sed "s/<ZubanVersionTag>/0.0.3/" < pyproject.toml.template > pyproject.toml
-
 maturin "$MATURIN_COMMAND" --ignore-rust-version
