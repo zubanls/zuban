@@ -7,4 +7,4 @@ cd "$(dirname "$0")"
 LEVEL="${1:-patch}"
 
 cargo install cargo-release
-cargo release --manifest-path crates/zuban/Cargo.toml --no-tag --no-push "$LEVEL"
+cargo release --workspace --no-tag --no-push --execute "$LEVEL"
