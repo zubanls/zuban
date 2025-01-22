@@ -5,7 +5,7 @@ use clap::Parser;
 
 /// A fast language server for Python, written in Rust
 #[derive(Parser)]
-#[command(about)]
+#[command(version, about)]
 pub struct Cli {
     // Here we will add options in the future
 }

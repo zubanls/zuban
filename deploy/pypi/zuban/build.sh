@@ -3,24 +3,20 @@ set -eu -o pipefail
 
 cd "$(dirname "$0")"
 
-if [[ -z "${2:-}" ]]; then
-  echo "Error: Needs at least two arguments, like 'build.sh 0.0.1 develop'!"
+BASE_DIR="../../.."
+WORKSPACE_TOML="$BASE_DIR/Cargo.toml"
+ZUBAN_TOML="$BASE_DIR/crates/zuban/Cargo.toml"
+
+if [[ -z "${1:-}" ]]; then
+  echo "Error: Needs at least one argument, like 'build.sh develop'!"
   exit 1
 fi
 
-version="$1"
-maturin_command="$2"
-
-# Only check if something looks like a version number. This is just an
-# assertion, correct version checking should be done somewhere else.
-if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+ ]]; then
-  echo "Error: '$version' does not seem to be a valid version!"
-  exit 1
-fi
+MATURIN_COMMAND="$1"
 
 cargo install cargo-about || true
-cargo about generate -o licenses.html about.hbs --fail --manifest-path ../../../Cargo.toml --offline
+cargo about generate -o licenses.html about.hbs --fail --manifest-path "$WORKSPACE_TOML" --offline
 
-sed "s/<ZubanVersionTag>/$version/" < pyproject.toml.template > pyproject.toml
+sed "s/<ZubanVersionTag>/0.0.3/" < pyproject.toml.template > pyproject.toml
 
-maturin "$maturin_command" --ignore-rust-version
+maturin "$MATURIN_COMMAND" --ignore-rust-version

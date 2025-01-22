@@ -2,7 +2,16 @@
 
 Copyright (c) 2020-2024 Dave Halter. All rights reserved.
 
+
+## Installation
+
+Use `pip install zuban` to install it.
+
+
 ## Development
+
+You might want to run `cargo install cargo-insta` and run `cargo insta` for
+reviewing some tests (especially with parsers).
 
 I usually use this to test:
 
@@ -20,6 +29,12 @@ with debug enabled:
 Debugging:
 
     gdb -ex r --args <executable> <arguments...>
+
+
+## Releasing
+
+Releasing is typically done by GitHub actions, which invokes `deploy/pypi/zuban/build.sh`.
+For a patch release, simply run `./release.sh`, for a minor release `./release.sh minor` (`minor` here comes from `cargo release`).
 
 
 ### Profiling
