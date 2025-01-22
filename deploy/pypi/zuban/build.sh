@@ -19,7 +19,7 @@ if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+ ]]; then
 fi
 
 cargo install cargo-about || true
-cargo about generate -o licenses.html about.hbs --fail --manifest-path ../../../Cargo.toml
+cargo about generate -o licenses.html about.hbs --fail --manifest-path ../../../Cargo.toml --offline
 
 sed "s/<ZubanVersionTag>/$version/" < pyproject.toml.template > pyproject.toml
 
