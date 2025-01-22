@@ -1,7 +1,17 @@
 use anyhow::anyhow;
 use std::thread;
 
+use clap::Parser;
+
+/// A fast language server for Python, written in Rust
+#[derive(Parser)]
+#[command(about)]
+pub struct Cli {
+    // Here we will add options in the future
+}
+
 fn main() -> anyhow::Result<()> {
+    let _cli = Cli::parse();
     logging_config::setup_logging(None)?;
 
     // Logging to stderr.
