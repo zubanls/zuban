@@ -4,7 +4,8 @@ build-backend = "maturin"
 
 [project]
 name = "zuban"
-version = "0.0.3"
+# The version is dynamically upgraded and never committed.
+version = "0.4.1"
 description = "ZubanLS - The Zuban Language Server"
 authors = [{ name = "Dave Halter", email = "info@zubanls.com" }]
 readme = "README.rst"
