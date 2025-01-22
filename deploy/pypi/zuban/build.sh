@@ -12,9 +12,8 @@ if [[ -z "${1:-}" ]]; then
   exit 1
 fi
 
-MATURIN_COMMAND="$1"
-
 cargo install cargo-about || true
 cargo about generate -o licenses.html about.hbs --fail --manifest-path "$WORKSPACE_TOML" --offline
 
-maturin "$MATURIN_COMMAND" --ignore-rust-version
+
+maturin publish --ignore-rust-version --no-sdist

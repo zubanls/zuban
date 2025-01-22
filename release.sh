@@ -7,4 +7,4 @@ cd "$(dirname "$0")"
 LEVEL="${1:-patch}"
 
 cargo install cargo-release
-cargo release --workspace --no-tag --no-push --execute "$LEVEL"
+cargo release --workspace --execute "$LEVEL"
