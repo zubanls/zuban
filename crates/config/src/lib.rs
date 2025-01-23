@@ -27,7 +27,7 @@ pub struct ProjectOptions {
     pub overrides: Vec<OverrideConfig>,
 }
 
-#[derive(Clone, Hash, PartialEq, Eq)]
+#[derive(Clone, Hash, PartialEq, Eq, Debug)]
 pub struct Settings {
     pub platform: Option<String>,
     pub python_version: PythonVersion,
@@ -36,6 +36,7 @@ pub struct Settings {
     pub prepended_site_packages: Vec<String>,
     pub mypy_compatible: bool,
     pub files_or_directories_to_check: Vec<String>,
+    pub typeshed_path: Option<String>,
 }
 
 impl Default for Settings {
@@ -44,6 +45,7 @@ impl Default for Settings {
             platform: None,
             python_version: PythonVersion::new(3, 12),
             python_executable: None,
+            typeshed_path: None,
             mypy_path: vec![],
             mypy_compatible: false,
             files_or_directories_to_check: vec![],
@@ -267,7 +269,7 @@ impl TypeCheckerFlags {
     }
 }
 
-#[derive(Copy, Clone, Hash, PartialEq, Eq, PartialOrd)]
+#[derive(Copy, Clone, Hash, PartialEq, Eq, PartialOrd, Debug)]
 pub struct PythonVersion {
     pub major: usize,
     pub minor: usize,

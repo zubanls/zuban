@@ -29,7 +29,7 @@ pub(crate) fn create_sys_path(settings: &Settings) -> Vec<Box<str>> {
         //"/usr/lib/python3/dist-packages".into(),
         //"/usr/local/lib/python3.8/dist-packages/pip-20.0.2-py3.8.egg".into(),
         //"/usr/lib/python3.8".into(),
-        //"/home/dave/.local/lib/python3.8/site-packages".into(),
+        //"/home/<user>/.local/lib/python3.8/site-packages".into(),
         //"/usr/local/lib/python3.8/dist-packages".into(),
     }
     sys_path
@@ -67,4 +67,33 @@ fn site_packages_path_from_venv(executable: &str, version: PythonVersion) -> Pat
         Err(err) => panic!("Expected {lib:?} to be a directory: {err}"),
     }
     expected_path
+}
+
+pub(crate) fn typeshed_path_from_executable() -> String {
+    let executable = std::env::current_exe().expect(
+        "Cannot access the path of the current executable, you need to provide \
+                 a typeshed path in that case.",
+    );
+    const NEEDS_PARENTS: &str = "The executable is expected to be relative to the typeshed path";
+    let lib_folder = executable
+        .parent()
+        .expect(NEEDS_PARENTS)
+        .parent()
+        .expect(NEEDS_PARENTS)
+        .join("lib");
+    // The lib folder typically contains a Python specific folder called "python3.8" or
+    // python3.13", corresponding to the Python version. Here we try to find the package.
+    const READABLE_LIB_FOLDER: &str = "The lib folder should be readable";
+    for folder in lib_folder.read_dir().expect(READABLE_LIB_FOLDER) {
+        let folder = folder.expect(READABLE_LIB_FOLDER);
+        let p = folder.path();
+        let typeshed_path = p.join("site-packages").join("zuban").join("typeshed");
+        if typeshed_path.exists() {
+            return typeshed_path
+                .into_os_string()
+                .into_string()
+                .expect("Expected the typeshed path to be UTF-8");
+        }
+    }
+    panic!("Did not find a typeshed folder in {lib_folder:?}")
 }

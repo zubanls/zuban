@@ -184,6 +184,14 @@ impl Project {
     }
 }
 
+impl std::fmt::Debug for Project {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Project")
+            .field("settings", &self.db.project.settings)
+            .finish()
+    }
+}
+
 pub struct Document<'a> {
     project: &'a mut Project,
     file_index: FileIndex,

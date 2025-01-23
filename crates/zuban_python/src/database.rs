@@ -878,11 +878,18 @@ impl Database {
 
         // Theoretically according to PEP 561 (Distributing and Packaging Type Information), this
         // should be last, but for now this should be good enough.
+
+        let typeshed_path = project
+            .settings
+            .typeshed_path
+            .clone()
+            .unwrap_or_else(sys_path::typeshed_path_from_executable);
+        let sep = vfs.handler.separator();
         for p in [
-            "/home/dave/source/rust/zuban/typeshed/stdlib",
-            "/home/dave/source/rust/zuban/typeshed/stubs/mypy-extensions",
+            format!("{typeshed_path}{sep}stdlib"),
+            format!("{typeshed_path}{sep}stubs{sep}mypy-extensions"),
         ] {
-            vfs.add_workspace(p.into(), WorkspaceKind::Typeshed)
+            vfs.add_workspace(p, WorkspaceKind::Typeshed)
         }
 
         for p in &project.sys_path {
