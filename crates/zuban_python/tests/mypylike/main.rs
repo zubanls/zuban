@@ -672,16 +672,10 @@ fn set_mypy_path(options: &mut ProjectOptions) {
     options.settings.mypy_path.push(BASE_PATH.into());
 }
 
-fn set_typeshed_path(settings: &mut Settings) {
-    let p = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
-    let typeshed_path = p.ancestors().skip(2).next().unwrap().join("typeshed");
-    settings.typeshed_path = Some(typeshed_path.into_os_string().into_string().unwrap());
-}
-
 impl ProjectsCache {
     fn new(reuse_db: bool) -> Self {
         let mut po = ProjectOptions::default();
-        set_typeshed_path(&mut po.settings);
+        po.settings.typeshed_path = Some(test_utils::typeshed_path());
         set_mypy_path(&mut po);
         Self {
             base_project: reuse_db.then(|| Project::without_watcher(po)),
@@ -690,7 +684,7 @@ impl ProjectsCache {
     }
 
     fn get_mut(&mut self, mut settings: Settings, flags: TypeCheckerFlags) -> &mut Project {
-        set_typeshed_path(&mut settings);
+        settings.typeshed_path = Some(test_utils::typeshed_path());
         let key = (settings, flags);
         if !self.map.contains_key(&key) {
             let mut options = ProjectOptions::new(key.0.clone(), key.1.clone());

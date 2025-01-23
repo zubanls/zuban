@@ -26,10 +26,13 @@ impl Connection {
 
         let server_thread = Some(std::thread::spawn(move || {
             let cloned_sender = connection1.sender.clone();
+            let typeshed_path = Some(test_utils::typeshed_path());
             if panic_should_message_not_abort {
                 let maybe_paniced = std::panic::catch_unwind(|| {
-                    zubanls::run_server_with_custom_connection(connection1, || Ok(()))
-                        .expect("Should not error");
+                    zubanls::run_server_with_custom_connection(connection1, typeshed_path, || {
+                        Ok(())
+                    })
+                    .expect("Should not error");
                 });
                 if let Err(err) = maybe_paniced {
                     // Send the panic explicitly
@@ -45,7 +48,7 @@ impl Connection {
                     ));
                 }
             } else {
-                zubanls::run_server_with_custom_connection(connection1, || Ok(()))
+                zubanls::run_server_with_custom_connection(connection1, typeshed_path, || Ok(()))
                     .expect("Should not error");
             }
         }));

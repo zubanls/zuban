@@ -27,6 +27,7 @@ fn version() -> &'static str {
 
 pub fn run_server_with_custom_connection(
     connection: Connection,
+    typeshed_path: Option<String>,
     cleanup: impl FnOnce() -> anyhow::Result<()>,
 ) -> anyhow::Result<()> {
     tracing::info!("Server version {} will start", version());
@@ -151,6 +152,7 @@ pub fn run_server_with_custom_connection(
         &connection.sender,
         &client_capabilities,
         workspace_roots.clone(),
+        typeshed_path,
     );
     global_state.event_loop(&connection.receiver)?;
     cleanup()?;
@@ -160,7 +162,7 @@ pub fn run_server_with_custom_connection(
 
 pub fn run_server() -> anyhow::Result<()> {
     let (connection, io_threads) = Connection::stdio();
-    run_server_with_custom_connection(connection, || Ok(io_threads.join()?))
+    run_server_with_custom_connection(connection, None, || Ok(io_threads.join()?))
 }
 
 /*
@@ -179,6 +181,7 @@ pub(crate) struct GlobalState<'sender> {
     paths_that_invalidate_whole_project: HashSet<PathBuf>,
     sender: &'sender Sender<lsp_server::Message>,
     roots: Rc<[String]>,
+    typeshed_path: Option<String>,
     project: Option<Project>,
     pub shutdown_requested: bool,
 }
@@ -188,11 +191,13 @@ impl<'sender> GlobalState<'sender> {
         sender: &'sender Sender<lsp_server::Message>,
         _capabilities: &ClientCapabilities,
         roots: Rc<[String]>,
+        typeshed_path: Option<String>,
     ) -> Self {
         GlobalState {
             paths_that_invalidate_whole_project: Default::default(),
             sender,
             roots,
+            typeshed_path,
             project: None,
             shutdown_requested: false,
         }
@@ -270,6 +275,7 @@ impl<'sender> GlobalState<'sender> {
             // It's questionable that we want those two things. And maybe there will also be a need
             // for the type checker to understand what the mypy_path originally was.
             config.settings.mypy_path = self.roots.to_vec();
+            config.settings.typeshed_path = self.typeshed_path.clone();
 
             *project = Some(Project::new(Box::new(vfs_handler), config));
             project.as_mut().unwrap()
