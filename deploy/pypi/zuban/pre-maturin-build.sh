@@ -7,4 +7,4 @@ BASE_DIR="../../.."
 WORKSPACE_TOML="$BASE_DIR/Cargo.toml"
 
 cargo install cargo-about
-cargo about generate -o licenses.html about.hbs --fail --manifest-path "$WORKSPACE_TOML" --offline
+cargo about generate -o licenses.html about.hbs --fail --manifest-path "$WORKSPACE_TOML"
