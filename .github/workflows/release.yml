@@ -50,8 +50,6 @@ jobs:
           working-directory: ${{ env.DEPLOY_DIR }}
           manylinux: auto
           args: --release --locked --out dist --ignore-rust-version
-      - name: "Post-Build"
-        run: ./pre-maturin-build.sh
       - name: "Test wheel"
         if: ${{ startsWith(matrix.target, 'x86_64') }}
         run: ./test-maturin-build.sh
