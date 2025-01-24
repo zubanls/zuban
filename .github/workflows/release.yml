@@ -14,6 +14,8 @@ defaults:
     shell: bash
     working-directory: ${{ env.DEPLOY_DIR }}
 
+permissions:
+    id-token: write
 
 on:
   tags:
@@ -50,10 +52,7 @@ jobs:
       - name: "Test wheel"
         if: ${{ startsWith(matrix.target, 'x86_64') }}
         run: ./test-maturin-build.sh
-      - name: "Publish wheel"
-        env:
-          MATURIN_PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}
-        uses: PyO3/maturin-action@v1
+      - name: Publish package distributions
+        uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          command: upload
-          args: "--skip-existing dist/*"
+            packages-dir: dist/
