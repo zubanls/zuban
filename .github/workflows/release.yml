@@ -55,7 +55,7 @@ jobs:
       - name: "Test wheel"
         if: ${{ startsWith(matrix.target, 'x86_64') }}
         run: ./test-maturin-build.sh
-      - name: Publish package distributions
+      - name: Publish Wheel to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-            packages-dir: dist/
+            packages-dir: "${{ env.DEPLOY_DIR }}/dist/"
