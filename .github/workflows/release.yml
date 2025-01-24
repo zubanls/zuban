@@ -12,14 +12,16 @@ env:
 defaults:
   run:
     shell: bash
-    working-directory: ${{ env.DEPLOY_DIR }}
+    working-directory: "deploy/pypi/zuban"
 
 permissions:
     id-token: write
+    contents: read
 
 on:
-  tags:
-    - 'v[0-9]*'
+  push:
+    tags:
+      - 'v[0-9]*'
   workflow_dispatch:
 
 jobs:
@@ -34,6 +36,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
+          persist-credentials: false
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
