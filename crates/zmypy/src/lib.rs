@@ -208,7 +208,7 @@ pub fn run(cli: Cli) -> ExitCode {
     apply_flags(&mut options, &mut diagnostic_config, cli);
 
     let mut project = Project::without_watcher(options);
-    let diagnostics = project.diagnostics(&diagnostic_config);
+    let diagnostics = project.diagnostics();
     for diagnostic in diagnostics.issues.iter() {
         println!("{}", diagnostic.as_string(&diagnostic_config))
     }

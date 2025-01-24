@@ -57,6 +57,7 @@ impl<S> SpanTree<S>
 where
     S: Subscriber + for<'span> tracing_subscriber::registry::LookupSpan<'span>,
 {
+    #[allow(clippy::new_ret_no_self)]
     pub(crate) fn new(spec: &str) -> impl Layer<S> {
         let (write_filter, allowed_names) = WriteFilter::from_spec(spec);
 

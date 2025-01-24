@@ -322,7 +322,7 @@ impl TestCase<'_, '_> {
             }));
 
             let diagnostics: Vec<_> = project
-                .diagnostics(&diagnostics_config)
+                .diagnostics()
                 .issues
                 .iter()
                 .filter_map(|d| {

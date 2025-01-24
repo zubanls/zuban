@@ -49,6 +49,10 @@ impl<T: ?Sized + Unpin> InsertOnlyVec<T> {
         unsafe { &*self.vec.get() }.len()
     }
 
+    pub fn is_empty(&self) -> bool {
+        unsafe { &*self.vec.get() }.is_empty()
+    }
+
     pub fn last(&self) -> Option<&T> {
         unsafe { &*self.vec.get() }.last().map(|x| x as &T)
     }

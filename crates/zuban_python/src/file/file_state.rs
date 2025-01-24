@@ -42,11 +42,7 @@ pub trait File: std::fmt::Debug {
     }
     fn code(&self) -> &str;
 
-    fn diagnostics<'db>(
-        &'db self,
-        db: &'db Database,
-        config: &DiagnosticConfig,
-    ) -> Box<[Diagnostic<'db>]>;
+    fn diagnostics<'db>(&'db self, db: &'db Database) -> Box<[Diagnostic<'db>]>;
     fn invalidate_full_db(&mut self, project: &PythonProject);
     fn has_super_file(&self) -> bool;
 }

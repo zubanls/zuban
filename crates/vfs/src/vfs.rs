@@ -383,7 +383,7 @@ impl<F: VfsFile> Vfs<F> {
                 }
                 DirectoryEntry::MissingEntry(missing) => match missing.invalidations.iter() {
                     InvalidationDetail::InvalidatesDb => invalidates_db = true,
-                    InvalidationDetail::Some(invs) => all_invalidations.extend(invs.into_iter()),
+                    InvalidationDetail::Some(invs) => all_invalidations.extend(&invs),
                 },
                 DirectoryEntry::Directory(_) => (),
             };

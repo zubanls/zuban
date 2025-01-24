@@ -24,7 +24,7 @@ mod utils;
 use parsa_python_cst::CodeIndex;
 use vfs::{Directory, DirectoryEntry, FileEntry, FileIndex, LocalFS, VfsHandler};
 
-use config::{DiagnosticConfig, ProjectOptions, PythonVersion, Settings, TypeCheckerFlags};
+use config::{ProjectOptions, PythonVersion, Settings, TypeCheckerFlags};
 use database::{Database, PythonProject};
 pub use diagnostics::Severity;
 use file::{File, Leaf, PythonFile};
@@ -79,7 +79,7 @@ impl Project {
         self.db.unload_all_in_memory_files()
     }
 
-    pub fn diagnostics(&mut self, config: &DiagnosticConfig) -> Diagnostics<'_> {
+    pub fn diagnostics(&mut self) -> Diagnostics<'_> {
         if self.db.project.settings.mypy_path.len() > 1 {
             debug!(
                 "Has complex mypy path: {:?}",
@@ -140,7 +140,7 @@ impl Project {
                     continue 'outer;
                 }
                 checked_files += 1;
-                let mut issues = python_file.diagnostics(&self.db, config).into_vec();
+                let mut issues = python_file.diagnostics(&self.db).into_vec();
                 if !issues.is_empty() {
                     files_with_errors += 1;
                     all_diagnostics.append(&mut issues)
@@ -198,9 +198,9 @@ pub struct Document<'a> {
 }
 
 impl Document<'_> {
-    pub fn diagnostics(&mut self, config: &DiagnosticConfig) -> Box<[diagnostics::Diagnostic]> {
+    pub fn diagnostics(&mut self) -> Box<[diagnostics::Diagnostic]> {
         let python_file = self.project.db.loaded_python_file(self.file_index);
-        python_file.diagnostics(&self.project.db, config)
+        python_file.diagnostics(&self.project.db)
     }
 }
 
@@ -310,8 +310,8 @@ impl<'a> Script<'a> {
 
     pub fn names(&self /*all_scopes=False, definitions=True, references=False*/) {}
 
-    pub fn diagnostics(&self, config: &DiagnosticConfig) -> Box<[diagnostics::Diagnostic<'_>]> {
-        self.file().diagnostics(&self.project.db, config)
+    pub fn diagnostics(&self) -> Box<[diagnostics::Diagnostic<'_>]> {
+        self.file().diagnostics(&self.project.db)
     }
 
     pub fn errors(&self) {}

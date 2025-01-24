@@ -24,7 +24,7 @@ impl GlobalState<'_> {
             });
         };
         let diagnostics = document
-            .diagnostics(&DiagnosticConfig::default())
+            .diagnostics()
             .iter()
             .map(|issue| Diagnostic {
                 range: {

@@ -144,11 +144,7 @@ impl File for PythonFile {
             .byte_to_line_column(self.tree.code(), byte)
     }
 
-    fn diagnostics<'db>(
-        &'db self,
-        db: &'db Database,
-        config: &DiagnosticConfig,
-    ) -> Box<[Diagnostic<'db>]> {
+    fn diagnostics<'db>(&'db self, db: &'db Database) -> Box<[Diagnostic<'db>]> {
         let i_s = InferenceState::new(db);
         if self.super_file.is_none() {
             // The main file is responsible for calculating diagnostics of type comments,
@@ -167,7 +163,7 @@ impl File for PythonFile {
         for (code_index, file_index) in self.sub_files.borrow().iter() {
             let file = db.loaded_python_file(*file_index);
             vec.extend(
-                file.diagnostics(db, config)
+                file.diagnostics(db)
                     .into_vec()
                     .into_iter()
                     .map(|d| d.wrap_subfile(self, *code_index)),
