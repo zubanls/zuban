@@ -1,6 +1,6 @@
 # Zuban
 
-Copyright (c) 2020-2024 Dave Halter. All rights reserved.
+Copyright (c) 2020-2025 Dave Halter. All rights reserved.
 
 
 ## Installation
