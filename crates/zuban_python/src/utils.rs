@@ -170,7 +170,7 @@ pub struct AlreadySeen<'a, T> {
     pub previous: Option<&'a AlreadySeen<'a, T>>,
 }
 
-impl<'a, T: PartialEq<T>> AlreadySeen<'a, T> {
+impl<T: PartialEq<T>> AlreadySeen<'_, T> {
     pub fn is_cycle(&self) -> bool {
         self.iter_ancestors()
             .any(|ancestor| *ancestor == self.current)
@@ -197,13 +197,13 @@ impl<'a, T> AlreadySeen<'a, T> {
     }
 }
 
-impl<'a, T: fmt::Debug> fmt::Debug for AlreadySeen<'a, T> {
+impl<T: fmt::Debug> fmt::Debug for AlreadySeen<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self.iter_ancestors()).finish()
     }
 }
 
-impl<'a, T: Clone> Clone for AlreadySeen<'a, T> {
+impl<T: Clone> Clone for AlreadySeen<'_, T> {
     fn clone(&self) -> Self {
         Self {
             current: self.current.clone(),
@@ -212,7 +212,7 @@ impl<'a, T: Clone> Clone for AlreadySeen<'a, T> {
     }
 }
 
-impl<'a, T: Copy> Copy for AlreadySeen<'a, T> {}
+impl<T: Copy> Copy for AlreadySeen<'_, T> {}
 
 pub struct AlreadySeenIterator<'a, T>(Option<&'a AlreadySeen<'a, T>>);
 

@@ -18,7 +18,7 @@ fn main() -> std::io::Result<()> {
     }
     */
 
-    return Ok(());
+    Ok(())
 
     /*
     let file = "/home/dave/source/stuff_jedi/quickfix_huge.py";

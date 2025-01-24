@@ -171,6 +171,6 @@ fn find_flags(string: &str) -> Option<&str> {
 
 pub fn typeshed_path() -> String {
     let p = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
-    let typeshed_path = p.ancestors().skip(2).next().unwrap().join("typeshed");
+    let typeshed_path = p.ancestors().nth(2).unwrap().join("typeshed");
     typeshed_path.into_os_string().into_string().unwrap()
 }

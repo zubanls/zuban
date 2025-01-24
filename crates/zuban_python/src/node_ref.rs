@@ -29,7 +29,7 @@ pub struct NodeRef<'file> {
     pub node_index: NodeIndex,
 }
 
-impl<'file> std::cmp::PartialEq for NodeRef<'file> {
+impl std::cmp::PartialEq for NodeRef<'_> {
     fn eq(&self, other: &Self) -> bool {
         std::ptr::eq(self.file, other.file) && self.node_index == other.node_index
     }

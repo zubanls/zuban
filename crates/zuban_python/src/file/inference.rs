@@ -93,7 +93,7 @@ macro_rules! check_point_cache_with {
     }
 }
 
-impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
+impl<'db, 'file> Inference<'db, 'file, '_> {
     pub(super) fn cache_import_name(&self, imp: ImportName) {
         if self.file.points.get(imp.index()).calculated() {
             return;

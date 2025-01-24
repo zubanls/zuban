@@ -621,7 +621,7 @@ pub enum DefiningStmt<'db> {
     DelStmt(DelStmt<'db>),
 }
 
-impl<'db> DefiningStmt<'db> {
+impl DefiningStmt<'_> {
     #[inline]
     pub fn index(&self) -> NodeIndex {
         match self {
@@ -716,7 +716,7 @@ pub enum StarLikeExpression<'db> {
     StarNamedExpression(StarNamedExpression<'db>),
 }
 
-impl<'db> StarLikeExpression<'db> {
+impl StarLikeExpression<'_> {
     pub fn index(&self) -> NodeIndex {
         match self {
             Self::Expression(expr) => expr.index(),
@@ -1341,7 +1341,7 @@ pub enum IfBlockType<'db> {
     Else(ElseBlock<'db>),
 }
 
-impl<'db> IfBlockType<'db> {
+impl IfBlockType<'_> {
     pub fn first_leaf_index(&self) -> NodeIndex {
         match self {
             Self::If(named_expr, _) => named_expr.index() - 1, // The if/elif
@@ -1423,7 +1423,7 @@ impl<'db> ExceptBlock<'db> {
         let mut iterator = self.node.iter_children().skip(1);
         let except_expr = iterator.next().unwrap();
         if except_expr.is_leaf() {
-            return (None, Block::new(iterator.next().unwrap()));
+            (None, Block::new(iterator.next().unwrap()))
         } else {
             iterator.next();
             let block_ = Block::new(iterator.next().unwrap());
@@ -1776,7 +1776,7 @@ impl<'db> Comprehension<'db> {
     }
 
     pub fn is_generator(&self) -> bool {
-        return self.node.previous_leaf().unwrap().as_code() == "(";
+        self.node.previous_leaf().unwrap().as_code() == "("
     }
 }
 
@@ -1801,7 +1801,7 @@ pub enum ForIfClause<'db> {
     Sync(SyncForIfClause<'db>),
 }
 
-impl<'db> ForIfClause<'db> {
+impl ForIfClause<'_> {
     pub fn index(&self) -> NodeIndex {
         match self {
             Self::Async(s) | Self::Sync(s) => s.index(),
@@ -2369,9 +2369,9 @@ impl<'db> Assignment<'db> {
 
     fn right_side(child: PyNode) -> AssignmentRightSide {
         if child.is_type(Nonterminal(star_expressions)) {
-            return AssignmentRightSide::StarExpressions(StarExpressions::new(child));
+            AssignmentRightSide::StarExpressions(StarExpressions::new(child))
         } else {
-            return AssignmentRightSide::YieldExpr(YieldExpr::new(child));
+            AssignmentRightSide::YieldExpr(YieldExpr::new(child))
         }
     }
 
@@ -3369,7 +3369,7 @@ pub enum Argument<'db> {
     StarStar(StarStarExpression<'db>),
 }
 
-impl<'db> Argument<'db> {
+impl Argument<'_> {
     pub fn index(&self) -> NodeIndex {
         match self {
             Self::Positional(n) => n.index(),
@@ -3681,7 +3681,7 @@ pub enum NameImportParent<'db> {
     DottedAsName(DottedAsName<'db>),
 }
 
-impl<'db> NameImportParent<'db> {
+impl NameImportParent<'_> {
     pub fn is_stub_reexport(&self) -> bool {
         match self {
             Self::ImportFromAsName(imp) => imp.is_stub_reexport(),
@@ -3806,7 +3806,7 @@ impl<'db> AtomContent<'db> {
     }
 }
 
-impl<'db> Bytes<'db> {
+impl Bytes<'_> {
     pub fn maybe_single_bytes_literal(&self) -> Option<BytesLiteral> {
         let mut iterator = self.node.iter_children();
         let first = iterator.next()?;

@@ -68,7 +68,7 @@ fn main() -> anyhow::Result<()> {
             for &byte in bytes.iter() {
                 print!("{byte}, ");
             }
-            print!("\n");
+            println!();
         }
     }
     Ok(())

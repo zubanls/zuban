@@ -263,7 +263,7 @@ impl<'db> PythonFile {
     ) -> Self {
         debug!("Initialize {} ({file_index})", file_entry.name);
         let is_stub = file_entry.name.ends_with(".pyi");
-        PythonFile::new(project, file_index, &file_entry, code, is_stub)
+        PythonFile::new(project, file_index, file_entry, code, is_stub)
     }
 
     pub fn new(

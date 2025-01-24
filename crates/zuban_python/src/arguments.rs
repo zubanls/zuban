@@ -233,7 +233,7 @@ pub struct KnownArgs<'a> {
     node_ref: NodeRef<'a>,
 }
 
-impl<'db, 'a> Args<'db> for KnownArgs<'a> {
+impl<'db> Args<'db> for KnownArgs<'_> {
     fn iter<'x>(&'x self, _: Mode<'x>) -> ArgIterator<'db, 'x> {
         ArgIterator::new(ArgIteratorBase::Inferred {
             inferred: self.inferred,
@@ -269,7 +269,7 @@ pub(crate) struct KnownArgsWithCustomAddIssue<'a> {
     add_issue: CustomAddIssue<'a>,
 }
 
-impl<'db, 'a> Args<'db> for KnownArgsWithCustomAddIssue<'a> {
+impl<'db> Args<'db> for KnownArgsWithCustomAddIssue<'_> {
     fn iter<'x>(&'x self, _: Mode<'x>) -> ArgIterator<'db, 'x> {
         ArgIterator::new(ArgIteratorBase::InferredWithCustomAddIssue {
             inferred: self.inferred,
@@ -293,7 +293,7 @@ pub struct CombinedArgs<'db, 'a> {
     args2: &'a dyn Args<'db>,
 }
 
-impl<'db, 'a> Args<'db> for CombinedArgs<'db, 'a> {
+impl<'db> Args<'db> for CombinedArgs<'db, '_> {
     fn iter<'x>(&'x self, mode: Mode<'x>) -> ArgIterator<'db, 'x> {
         let mut iterator = self.args1.iter(mode);
         debug_assert!(iterator.next.is_none()); // For now this is not supported
@@ -343,7 +343,7 @@ pub struct PositionalArg<'db, 'a> {
     pub named_expr: NamedExpression<'a>,
 }
 
-impl<'db> PositionalArg<'db, '_> {
+impl PositionalArg<'_, '_> {
     pub fn infer(&self, result_context: &mut ResultContext) -> Inferred {
         self.node_ref
             .file
@@ -360,7 +360,7 @@ pub struct KeywordArg<'db, 'a> {
     pub expression: Expression<'a>,
 }
 
-impl<'db> KeywordArg<'db, '_> {
+impl KeywordArg<'_, '_> {
     pub fn infer(&self, result_context: &mut ResultContext) -> Inferred {
         self.node_ref
             .file
@@ -466,7 +466,7 @@ pub struct Arg<'db, 'a> {
     pub index: usize,
 }
 
-impl<'db, 'a> Arg<'db, 'a> {
+impl<'db> Arg<'db, '_> {
     pub fn in_args_or_kwargs_and_arbitrary_len(&self) -> bool {
         match &self.kind {
             ArgKind::Inferred {
@@ -1257,7 +1257,7 @@ impl std::fmt::Debug for NoArgs<'_> {
     }
 }
 
-impl<'db, 'a> Args<'db> for NoArgs<'a> {
+impl<'db> Args<'db> for NoArgs<'_> {
     fn iter<'x>(&'x self, _: Mode<'x>) -> ArgIterator<'db, 'x> {
         ArgIterator::new(ArgIteratorBase::Finished)
     }

@@ -844,12 +844,10 @@ pub(crate) fn dataclasses_replace<'db>(
         }
     }
     // Execute the original function (in typeshed).
-    return i_s.db.python_state.dataclasses_replace(i_s).execute(
-        i_s,
-        args,
-        result_context,
-        on_type_error,
-    );
+    i_s.db
+        .python_state
+        .dataclasses_replace(i_s)
+        .execute(i_s, args, result_context, on_type_error)
 }
 
 fn run_on_dataclass(

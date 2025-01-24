@@ -1024,12 +1024,7 @@ impl Database {
             file_entry.clone(),
             invalidates_db,
             |file_index, code| {
-                PythonFile::from_file_entry_and_code(
-                    &self.project,
-                    file_index,
-                    &file_entry,
-                    code.into(),
-                )
+                PythonFile::from_file_entry_and_code(&self.project, file_index, file_entry, code)
             },
         )
     }
@@ -1080,12 +1075,13 @@ impl Database {
                 PythonFile::from_file_entry_and_code(
                     &self.project,
                     file_index,
-                    &file_state.file_entry(),
+                    file_state.file_entry(),
                     new_code,
                 )
             },
         )?;
-        Ok(self.handle_invalidation(invalidation))
+        self.handle_invalidation(invalidation);
+        Ok(())
     }
 
     pub fn unload_in_memory_file(&mut self, path: &str) -> Result<(), &'static str> {
@@ -1096,12 +1092,13 @@ impl Database {
                 PythonFile::from_file_entry_and_code(
                     &self.project,
                     file_index,
-                    &file_state.file_entry(),
+                    file_state.file_entry(),
                     new_code,
                 )
             },
         )?;
-        Ok(self.handle_invalidation(result))
+        self.handle_invalidation(result);
+        Ok(())
     }
 
     pub fn unload_all_in_memory_files(&mut self) {

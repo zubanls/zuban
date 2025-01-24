@@ -232,7 +232,7 @@ pub fn python_import_with_needs_exact_case(
                         if needs_py_typed {
                             return Some(ImportResult::PyTypedMissing);
                         }
-                        let file_index = db.load_file_from_workspace(&file, false);
+                        let file_index = db.load_file_from_workspace(file, false);
                         if is_py_file {
                             python_file_index = file_index.map(|f| (file.clone(), f));
                         } else {

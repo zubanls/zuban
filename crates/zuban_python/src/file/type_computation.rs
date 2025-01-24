@@ -3469,7 +3469,7 @@ impl UnknownCause {
     }
 }
 
-impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
+impl<'db: 'x, 'file, 'x> Inference<'db, 'file, '_> {
     pub fn ensure_cached_named_tuple_annotation(&self, annotation: Annotation) {
         self.ensure_cached_annotation_internal(annotation, TypeComputationOrigin::NamedTupleMember)
     }
@@ -4161,7 +4161,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                             "Star expressions are not allowed within a type comment".into(),
                         ),
                     );
-                    return TypeCommentDetails::new_any();
+                    TypeCommentDetails::new_any()
                 }
             }
         } else {
@@ -4181,7 +4181,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                     },
                 },
             );
-            return TypeCommentDetails::new_any();
+            TypeCommentDetails::new_any()
         }
     }
 
@@ -4623,7 +4623,7 @@ impl<'a, I: Clone + Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
                     TuplePart::Type(t) => Some((from, t)),
                     TuplePart::TupleUnpack(u) => {
                         self.current_unpack_reverse = Some(u);
-                        return self.next_type_argument_back(type_computation);
+                        self.next_type_argument_back(type_computation)
                     }
                 }
             }

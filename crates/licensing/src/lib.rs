@@ -172,7 +172,7 @@ pub fn verify_license_in_config_dir() -> anyhow::Result<LicenseLevel> {
 
 pub fn verify_license_in_path(path: &Path) -> anyhow::Result<LicenseLevel> {
     let license_s =
-        std::fs::read_to_string(&path).map_err(|err| anyhow::anyhow!("In {:?}: {err}", &path))?;
+        std::fs::read_to_string(path).map_err(|err| anyhow::anyhow!("In {:?}: {err}", &path))?;
     let license = License::from_json(&license_s)?;
     if !license.verify()? {
         anyhow::bail!("The license in {path:?} has an invalid signature");

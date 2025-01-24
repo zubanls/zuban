@@ -323,7 +323,7 @@ fn apply_flags(
 
     // TODO MYPYPATH=$MYPYPATH:mypy-stubs
     let cwd = std::env::current_dir().expect("Expected a valid working directory");
-    const CWD_ERROR: &'static str = "Expected valid unicode in working directory";
+    const CWD_ERROR: &str = "Expected valid unicode in working directory";
     project_options
         .settings
         .mypy_path

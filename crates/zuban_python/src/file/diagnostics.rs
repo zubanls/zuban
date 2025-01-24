@@ -128,7 +128,7 @@ lazy_static::lazy_static! {
     ]);
 }
 
-impl<'db> Inference<'db, '_, '_> {
+impl Inference<'_, '_, '_> {
     pub fn calculate_diagnostics(&self) -> Result<(), ()> {
         diagnostics_for_scope(NodeRef::new(self.file, 0), || {
             debug!(

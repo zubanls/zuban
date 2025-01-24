@@ -227,7 +227,7 @@ impl<'sender> GlobalState<'sender> {
     pub(crate) fn project(&mut self) -> &mut Project {
         let project = &mut self.project;
         if let Some(p) = project {
-            return p;
+            p
         } else {
             let vfs_handler = LocalFS::with_watcher();
             let first_root = self

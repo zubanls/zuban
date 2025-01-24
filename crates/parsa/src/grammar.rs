@@ -112,7 +112,7 @@ struct StackNode<'a> {
     enabled_token_recording: bool,
 }
 
-impl<'a> fmt::Debug for StackNode<'a> {
+impl fmt::Debug for StackNode<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("StackNode")
             .field("tree_node_index", &self.tree_node_index)
@@ -615,7 +615,7 @@ impl<'a> Stack<'a> {
     }
 }
 
-impl<'a> StackNode<'a> {
+impl StackNode<'_> {
     #[inline]
     fn can_omit_children(&self) -> bool {
         self.dfa_state.node_may_be_omitted && self.children_count == 1

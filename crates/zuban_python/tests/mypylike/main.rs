@@ -95,7 +95,7 @@ struct TestCase<'name, 'code> {
     code: &'code str,
 }
 
-impl<'name, 'code> TestCase<'name, 'code> {
+impl TestCase<'_, '_> {
     fn run(&self, projects: &mut ProjectsCache, mypy_compatible: bool) -> Result<bool, String> {
         let steps = calculate_steps(Some(self.file_name), self.code);
         let mut diagnostics_config = DiagnosticConfig::default();

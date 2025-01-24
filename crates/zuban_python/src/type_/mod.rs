@@ -767,7 +767,7 @@ impl Type {
         match self {
             Type::Class(c) => {
                 let cls = c.class(i_s.db);
-                return cls.find_relevant_constructor(i_s).maybe_callable(i_s, cls);
+                cls.find_relevant_constructor(i_s).maybe_callable(i_s, cls)
             }
             Type::Dataclass(d) => {
                 let cls = d.class(i_s.db);
@@ -785,7 +785,7 @@ impl Type {
                     }
                     return Some(CallableLike::Callable(Rc::new(init)));
                 }
-                return cls.find_relevant_constructor(i_s).maybe_callable(i_s, cls);
+                cls.find_relevant_constructor(i_s).maybe_callable(i_s, cls)
             }
             Type::TypedDict(td) => Some(CallableLike::Callable(Rc::new(
                 rc_typed_dict_as_callable(i_s.db, td.clone()),
