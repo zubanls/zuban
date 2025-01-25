@@ -15,6 +15,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          submodules: recursive
           persist-credentials: false
       - name: "Install Rust toolchain"
         run: rustup component add rustfmt
@@ -32,6 +33,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          submodules: recursive
           persist-credentials: false
       - uses: Swatinem/rust-cache@v2
       - name: "Run tests"
@@ -46,6 +48,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          submodules: recursive
           persist-credentials: false
       - uses: Swatinem/rust-cache@v2
       - name: "Run tests"
