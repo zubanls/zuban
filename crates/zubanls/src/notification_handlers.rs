@@ -63,6 +63,7 @@ impl GlobalState<'_> {
         result
     }
 
+    #[inline(never)]
     pub(crate) fn test_panic(&mut self, _: ()) -> anyhow::Result<()> {
         panic!("Test Panic")
     }
