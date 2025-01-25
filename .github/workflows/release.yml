@@ -46,6 +46,7 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           architecture: x64
+      - uses: Swatinem/rust-cache@v2
       - name: "Pre-Build"
         run: ./pre-maturin-build.sh
       - name: "Build Wheel"
