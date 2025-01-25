@@ -149,7 +149,7 @@ impl Server {
     fn with_wait(&self, callback: impl FnOnce()) {
         // We need the lock to be able to use the global notify counter and be sure that no other
         // thread modifies it.
-        let _lock = FILE_SYSTEM_LOCK.lock();
+        let lock = FILE_SYSTEM_LOCK.lock();
         let current = GLOBAL_NOTIFY_EVENT_COUNTER.load(Ordering::SeqCst);
         callback();
         // Make sure the removal event appears before the LSP event.
@@ -160,6 +160,9 @@ impl Server {
                 return;
             }
         }
+        drop(lock);
+        // Just try and make tests fail less.
+        std::thread::sleep(std::time::Duration::from_micros(1));
         unreachable!("Reached a timeout");
     }
 
