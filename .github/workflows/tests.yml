@@ -38,8 +38,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: "Run tests"
         run: |
-          rustup show
-          cargo test --locked
+          ./scripts/ci-test.sh
 
   cargo-test-linux-release:
     name: "cargo test (linux, release)"
