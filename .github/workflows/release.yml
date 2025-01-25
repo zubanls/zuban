@@ -25,7 +25,12 @@ on:
   workflow_dispatch:
 
 jobs:
+  tests:
+    uses: ./.github/workflows/tests.yml
+    secrets: inherit
+
   linux:
+    needs: [tests]
     runs-on: ubuntu-24.04
     strategy:
       matrix:

@@ -1,0 +1,52 @@
+on:
+  workflow_dispatch:
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  cargo-fmt:
+    name: "cargo fmt"
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: "Install Rust toolchain"
+        run: rustup component add rustfmt
+      - run: cargo fmt --all --check
+
+  cargo-test-debug:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os:
+          # Avoid Mac here for now, because the CI is costly (10x of linux)
+          - ubuntu-24.04
+          - windows-2022
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: Swatinem/rust-cache@v2
+      - name: "Run tests"
+        run: |
+          rustup show
+          cargo test --locked
+
+  cargo-test-linux-release:
+    name: "cargo test (linux, release)"
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: Swatinem/rust-cache@v2
+      - name: "Run tests"
+        run: |
+            rustup show
+            cargo test --release --locked

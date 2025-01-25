@@ -1,5 +1,4 @@
 use anyhow::bail;
-use config::DiagnosticConfig;
 use lsp_types::{
     Diagnostic, DiagnosticSeverity, DocumentDiagnosticParams, DocumentDiagnosticReport,
     DocumentDiagnosticReportResult, FullDocumentDiagnosticReport, Position,
