@@ -564,6 +564,9 @@ fn patch_path_prefix(path: &Uri) -> String {
     let path = path.as_str();
     use std::path::{Component, Prefix};
     if cfg!(windows) {
+        // This might not be relevant for Zuban, it's from rust-analyzer, but we keep this code, it
+        // seems reasonable.
+        //
         // VSCode might report paths with the file drive in lowercase, but this can mess
         // with env vars set by tools and build scripts executed by r-a such that it invalidates
         // cargo's compilations unnecessarily. https://github.com/rust-lang/rust-analyzer/issues/14683
@@ -598,12 +601,13 @@ fn patch_path_prefix(path: &Uri) -> String {
 #[test]
 #[cfg(windows)]
 fn patch_path_prefix_works() {
+    use std::str::FromStr as _;
     assert_eq!(
-        patch_path_prefix(r"c:\foo\bar".into()),
-        PathBuf::from(r"C:\foo\bar")
+        patch_path_prefix(&Uri::from_str(r"c:\foo\bar").unwrap()),
+        r"C:\foo\bar",
     );
     assert_eq!(
-        patch_path_prefix(r"\\?\c:\foo\bar".into()),
-        PathBuf::from(r"\\?\C:\foo\bar")
+        &patch_path_prefix(&Uri::from_str(r"\\?\c:\foo\bar").unwrap()),
+        r"\\?\C:\foo\bar",
     );
 }

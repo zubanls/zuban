@@ -497,7 +497,7 @@ fn check_panic_recovery() {
     assert!(message.contains("Test Panic"));
     // Check for traceback occurrence
     assert!(message.contains("zubanls::server::GlobalState"));
-    assert!(message.contains("server.rs"));
+    assert!(message.contains("server.rs"), "{message}");
 
     // Catch the "redirected" panic, which is now a message
     let message = con.expect_notification_message();
