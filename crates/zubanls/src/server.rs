@@ -32,8 +32,6 @@ pub fn run_server_with_custom_connection(
 ) -> anyhow::Result<()> {
     tracing::info!("Server version {} will start", version());
 
-    licensing::verify_license_in_config_dir()?;
-
     let (initialize_id, initialize_params) = match connection.initialize_start() {
         Ok(it) => it,
         Err(e) => {
@@ -161,6 +159,8 @@ pub fn run_server_with_custom_connection(
 }
 
 pub fn run_server() -> anyhow::Result<()> {
+    licensing::verify_license_in_config_dir()?;
+
     let (connection, io_threads) = Connection::stdio();
     run_server_with_custom_connection(connection, None, || Ok(io_threads.join()?))
 }
