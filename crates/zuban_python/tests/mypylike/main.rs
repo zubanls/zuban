@@ -2,7 +2,7 @@ use std::{
     collections::HashMap,
     env,
     fs::{read_dir, read_to_string},
-    path::PathBuf,
+    path::{Path, PathBuf},
     process::ExitCode,
     time::Instant,
 };
@@ -813,10 +813,9 @@ fn mypy_style_cases<'a, 'b>(file_name: &'a str, code: &'b str) -> Vec<TestCase<'
 }
 
 fn get_base() -> PathBuf {
-    // TODO windows, this slash probably makes problems...
-    let mut base = PathBuf::from(file!().replace("crates/zuban_python/", ""));
-    assert!(base.pop());
-    base
+    Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("tests")
+        .join("mypylike")
 }
 
 fn find_mypy_style_files() -> Vec<(bool, PathBuf)> {
