@@ -156,7 +156,16 @@ impl VfsHandler for LocalFS {
     }
 
     fn split_off_folder<'a>(&self, path: &'a str) -> (&'a str, Option<&'a str>) {
-        if let Some(pos) = path.find(self.separator()) {
+        let mut found = path.find(self.separator());
+        if cfg!(target_os = "windows") {
+            // Windows allows path with mixed separators
+            if let Some(found_slash) = path.find('/') {
+                if !found.is_some_and(|found| found > found_slash) {
+                    found = Some(found_slash)
+                }
+            }
+        }
+        if let Some(pos) = found {
             (&path[..pos], Some(&path[pos + 1..]))
         } else {
             (path, None)

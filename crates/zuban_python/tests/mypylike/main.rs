@@ -410,8 +410,8 @@ impl TestCase<'_, '_> {
             for path in step.files.keys() {
                 // We need to unload the whole directory, otherwise we might leave up namespace
                 // packages for other tests.
-                if path.contains('/') {
-                    let before_slash = path.split('/').next().unwrap();
+                if path.contains(std::path::MAIN_SEPARATOR) {
+                    let before_slash = path.split(std::path::MAIN_SEPARATOR).next().unwrap();
                     let _ = project.delete_directory_of_in_memory_files(
                         &(BASE_PATH.to_owned() + before_slash),
                     );

@@ -335,7 +335,7 @@ impl<F: VfsFile> Vfs<F> {
         to_file: impl Fn(&FileState<F>, FileIndex, Box<str>) -> F,
     ) -> Result<InvalidationResult, String> {
         // TODO this method feels weird
-        if let Some(p) = dir_path.strip_suffix('/') {
+        if let Some(p) = dir_path.strip_suffix(self.handler.separator()) {
             dir_path = p;
         }
 
