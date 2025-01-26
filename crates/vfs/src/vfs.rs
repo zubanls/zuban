@@ -335,8 +335,14 @@ impl<F: VfsFile> Vfs<F> {
         to_file: impl Fn(&FileState<F>, FileIndex, Box<str>) -> F,
     ) -> Result<InvalidationResult, String> {
         // TODO this method feels weird
+
         if let Some(p) = dir_path.strip_suffix(self.handler.separator()) {
             dir_path = p;
+        }
+        if cfg!(target_os = "windows") {
+            if let Some(p) = dir_path.strip_suffix('/') {
+                dir_path = p;
+            }
         }
 
         let in_mem_paths: Vec<_> = self
@@ -347,7 +353,14 @@ impl<F: VfsFile> Vfs<F> {
                 let matches = path.starts_with(dir_path)
                     && path
                         .get(l..l + 1)
-                        .is_some_and(|chr| chr.starts_with(self.handler.separator()));
+                        .is_some_and(|chr| {
+                            if cfg!(target_os = "windows") {
+                                if chr.starts_with('/') {
+                                    return true
+                                }
+                            }
+                            chr.starts_with(self.handler.separator())
+                        });
                 matches.then_some(path.clone())
             })
             .collect();
