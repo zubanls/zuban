@@ -56,12 +56,16 @@ const SKIP_MYPY_TEST_FILES: [&str; 28] = [
     "ref-info.test",
 ];
 
+#[cfg(not(target_os = "windows"))]
 const BASE_PATH: &str = "/mypylike/";
+#[cfg(target_os = "windows")]
+const BASE_PATH: &str = r"C:\\mypylike\";
+
 const MYPY_TEST_DATA_PACKAGES_FOLDER: &str = "tests/mypylike/mypy/test-data/packages/";
 
 lazy_static::lazy_static! {
-    static ref CASE: Regex = Regex::new(r"(?m)^\[case ([a-zA-Z_0-9-]+)\][ \t]*\n").unwrap();
-    static ref REPLACE_COMMENTS: Regex = Regex::new(r"(?m)^--.*$\n").unwrap();
+    static ref CASE: Regex = Regex::new(r"(?m)^\[case ([a-zA-Z_0-9-]+)\][ \t]*\r?\n").unwrap();
+    static ref REPLACE_COMMENTS: Regex = Regex::new(r"(?m)^--.*$\r?\n").unwrap();
     static ref REPLACE_TUPLE: Regex = Regex::new(r"\bTuple\b").unwrap();
     static ref REPLACE_MYPY: Regex = Regex::new(r"`-?\d+").unwrap();
     static ref REPLACE_MYPY_ELLIPSIS: Regex = Regex::new(r#""ellipsis""#).unwrap();
@@ -578,7 +582,7 @@ impl Iterator for ErrorCommentsOnCode<'_> {
                 let mut backslashes = 0;
                 if line.trim_start().starts_with("#") {
                     for i in (0..i).rev() {
-                        if !(self.0[i].ends_with('\\')) {
+                        if !(self.0[i].trim_end_matches('\r').ends_with('\\')) {
                             break;
                         }
                         backslashes += 1;
@@ -617,6 +621,10 @@ fn cleanup_mypy_issues(mut s: &str) -> Option<String> {
         // TODO we might not want to skip this note in the future.
         return None;
     }
+    if cfg!(target_os = "windows") {
+        s = s.trim_end_matches('\r')
+    }
+
     if s.ends_with(" \\") {
         s = &s[..s.len() - 2];
     }
@@ -889,6 +897,9 @@ fn skipped() -> Box<[Skipped]> {
         .split('\n')
         .filter(|line| !line.starts_with('#'))
         .map(|mut x| {
+            if cfg!(target_os = "windows") {
+                x = x.trim_end_matches('\r')
+            }
             let start_star = x.starts_with('*');
             let end_star = x.ends_with('*');
             if start_star {

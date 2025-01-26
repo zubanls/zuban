@@ -8,7 +8,7 @@ lazy_static::lazy_static! {
     // find . | grep check | xargs cat | grep '^\[' | grep -Ev '\[(out|case|file)'
     static ref CASE_PART: Regex = Regex::new(concat!(
         r"(?m)^\[(file|out\d*|builtins|typing|stale\d*|rechecked|targets\d?|delete|triggered|fixture)",
-        r"(?: ([^\]]*))?\][ \t]*\n"
+        r"(?: ([^\]]*))?\][ \t]*\r?\n"
     )).unwrap();
     static ref SPLIT_OUT: Regex = Regex::new(r"(\n|^)==").unwrap();
 }
@@ -163,7 +163,7 @@ fn find_flags(string: &str) -> Option<&str> {
             break;
         }
         if let Some(flags) = line.strip_prefix("# flags: ") {
-            return Some(flags);
+            return Some(flags.trim_end_matches('\r'));
         }
     }
     None
