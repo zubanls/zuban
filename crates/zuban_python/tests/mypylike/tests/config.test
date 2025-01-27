@@ -32,7 +32,7 @@ exclude = "lala"
 \[tool.mypy]
 exclude = [
     "lala",
-    "b/.*pkg",
+    "b(/|\\\\).*pkg",
 ]
 
 [case mypy_ini_exclude_multi_line_verbose_regex]
@@ -76,7 +76,7 @@ exclude = (
 1()  # E: "int" not callable
 [file pyproject.toml]
 \[tool.mypy]
-exclude = "lala/a.*pkg"
+exclude = "lala(/|\\\\)a.*pkg"
 \[[tool.mypy.overrides]]
 module = 'lala.a.*'
 exclude = "inherited_exclude"
