@@ -33,7 +33,7 @@ impl<'db> PythonString<'db> {
             } = unpack_string_or_bytes_content(code);
             let literal_start = literal.start() + inner_start_offset;
             if had_raw_modifier {
-                return Self::Ref(literal_start, inner);
+                return Self::remove_carriage_returns_from_raw_literal(literal_start, inner);
             }
 
             let mut iterator = inner.as_bytes().iter().enumerate().peekable();
@@ -124,6 +124,34 @@ impl<'db> PythonString<'db> {
             } else {
                 Self::Ref(literal_start, inner)
             }
+        }
+    }
+
+    fn remove_carriage_returns_from_raw_literal(
+        literal_start: CodeIndex,
+        literal_inner: &'db str,
+    ) -> Self {
+        if literal_inner.as_bytes().contains(&b'\r') {
+            let mut string = String::with_capacity(literal_inner.len());
+            let mut iterator = literal_inner.chars().peekable();
+            while let Some(ch) = iterator.next() {
+                if ch == '\r' {
+                    if !matches!(iterator.peek(), Some('\n')) {
+                        // \r is replaced by \n in Python. This does not happen in the parser, this
+                        // happens while opening the file. But we want fully round-trippable files
+                        // and keep the \r around. However it should not be part of the string,
+                        // because it also isn't within Python (tests on Windows might fail
+                        // otherwise, see e.g. test `string_literal_multiline`.
+                        // In the case of a \n, a \r\n compresses to \n.
+                        string.push('\n')
+                    }
+                } else {
+                    string.push(ch)
+                }
+            }
+            Self::String(literal_start, string)
+        } else {
+            Self::Ref(literal_start, literal_inner)
         }
     }
 
@@ -247,5 +275,12 @@ mod tests {
         let tree = crate::Tree::parse("'''a\\\r\nb\n'''".into());
         let literal = expect_string_literal(&tree);
         assert_eq!(literal.as_python_string().as_str().unwrap(), "ab\n");
+    }
+
+    #[test]
+    fn test_remove_carriage_return_in_raw_literal() {
+        let tree = crate::Tree::parse("r'''a\\\r\nb\r\nc\rd'''".into());
+        let literal = expect_string_literal(&tree);
+        assert_eq!(literal.as_python_string().as_str().unwrap(), "a\\\nb\nc\nd");
     }
 }
