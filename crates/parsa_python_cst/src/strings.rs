@@ -31,8 +31,9 @@ impl<'db> PythonString<'db> {
                 inner_start_offset,
                 had_raw_modifier,
             } = unpack_string_or_bytes_content(code);
+            let literal_start = literal.start() + inner_start_offset;
             if had_raw_modifier {
-                return Self::Ref(literal.start() + inner_start_offset, inner);
+                return Self::Ref(literal_start, inner);
             }
 
             let mut iterator = inner.as_bytes().iter().enumerate().peekable();
@@ -119,9 +120,9 @@ impl<'db> PythonString<'db> {
             }
             if let Some(mut string) = string {
                 string.push_str(&inner[previous_insert..inner.len()]);
-                Self::String(literal.start() + inner_start_offset, string)
+                Self::String(literal_start, string)
             } else {
-                Self::Ref(literal.start() + inner_start_offset, inner)
+                Self::Ref(literal_start, inner)
             }
         }
     }
