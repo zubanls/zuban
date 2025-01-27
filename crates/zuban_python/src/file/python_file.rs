@@ -428,7 +428,7 @@ impl<'db> PythonFile {
                         .vfs
                         .handler
                         .read_and_watch_file(&entry.path(&*db.vfs.handler))
-                        .is_some_and(|code| code.contains("partial\n")),
+                        .is_some_and(|code| code.contains("partial")),
                     _ => false,
                 })
             })
