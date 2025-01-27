@@ -190,8 +190,8 @@ pub struct Workspace {
 
 impl Workspace {
     fn new(vfs: &dyn VfsHandler, mut root_path: String, kind: WorkspaceKind) -> Self {
-        if root_path.ends_with(vfs.separator()) {
-            root_path.pop();
+        if let Some(new_root_path) = vfs.strip_separator_suffix(&root_path) {
+            root_path.truncate(new_root_path.len());
         }
         tracing::debug!("Add workspace {root_path}");
         let root_path = Rc::<Box<str>>::new(root_path.into());
