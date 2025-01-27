@@ -340,23 +340,13 @@ impl<F: VfsFile> Vfs<F> {
             dir_path = p;
         }
 
-        let in_mem_paths: Vec<_> = self
+        let in_mem_paths: Vec<String> = self
             .in_memory_files
             .iter()
             .filter_map(|(path, _)| {
-                let l = dir_path.len();
-                let matches = path.starts_with(dir_path)
-                    && path
-                        .get(l..l + 1)
-                        .is_some_and(|chr| {
-                            if cfg!(target_os = "windows") {
-                                if chr.starts_with('/') {
-                                    return true
-                                }
-                            }
-                            chr.starts_with(self.handler.separator())
-                        });
-                matches.then_some(path.clone())
+                let after_dir = path.strip_prefix(dir_path)?;
+                self.handler.strip_separator_prefix(after_dir)?;
+                Some(path.to_string())
             })
             .collect();
         let mut invalidation_result = InvalidationResult::InvalidatedFiles;
