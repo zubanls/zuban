@@ -336,13 +336,8 @@ impl<F: VfsFile> Vfs<F> {
     ) -> Result<InvalidationResult, String> {
         // TODO this method feels weird
 
-        if let Some(p) = dir_path.strip_suffix(self.handler.separator()) {
+        if let Some(p) = self.handler.strip_separator_suffix(dir_path) {
             dir_path = p;
-        }
-        if cfg!(target_os = "windows") {
-            if let Some(p) = dir_path.strip_suffix('/') {
-                dir_path = p;
-            }
         }
 
         let in_mem_paths: Vec<_> = self

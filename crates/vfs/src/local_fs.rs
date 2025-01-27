@@ -33,7 +33,7 @@ impl VfsHandler for LocalFS {
     fn walk_and_watch_dirs(&self, path: &str, initial_parent: Parent) -> DirectoryEntry {
         let is_relevant_name =
             |name: &str| name.ends_with(".py") || name.ends_with(".pyi") || name == "py.typed";
-        let path = path.trim_end_matches(self.separator());
+        let path = self.strip_separator_suffix(path).unwrap_or(path);
 
         let mut is_first = true;
         self.watch(Path::new(path));

@@ -35,6 +35,13 @@ pub trait VfsHandler {
         }
         result
     }
+    fn strip_separator_suffix<'a>(&self, path: &'a str) -> Option<&'a str> {
+        let mut result = path.strip_suffix(self.separator());
+        if cfg!(target_os = "windows") {
+            result = result.or_else(|| path.strip_suffix('/'));
+        }
+        result
+    }
 
     fn split_off_folder<'a>(&self, path: &'a str) -> (&'a str, Option<&'a str>);
     fn is_sub_file_of(&self, path: &str, maybe_parent: &str) -> bool {
