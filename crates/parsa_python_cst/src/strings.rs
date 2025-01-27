@@ -50,6 +50,13 @@ impl<'db> PythonString<'db> {
                     match ch {
                         b'\\' | b'\'' | b'"' => s.push(*ch as char),
                         b'\n' => (), // Escaping a newline ignores it
+                        b'\r' => {
+                            // Escaping a carriage return ignores it and maybe also the next
+                            // newline
+                            if let Some((_, b'\n')) = iterator.peek() {
+                                iterator.next();
+                            }
+                        }
                         b'u' => {
                             if let Some(c) = parse_hex(4, iterator.by_ref()) {
                                 s.push(c)
@@ -218,16 +225,26 @@ pub(crate) fn unpack_string_or_bytes_content(code: &str) -> UnpackedLiteral {
 
 #[cfg(test)]
 mod tests {
-    #[test]
-    fn test_removing_carriage_return() {
-        let tree = crate::Tree::parse("'''a\r\nb\rc\nd\n'''".into());
+    fn expect_string_literal(tree: &crate::Tree) -> crate::StringLiteral {
         let stmt = tree.root().iter_stmt_likes().next().unwrap();
-        let literal = stmt
-            .node
+        stmt.node
             .maybe_simple_expr()
             .unwrap()
             .maybe_single_string_literal()
-            .unwrap();
+            .unwrap()
+    }
+
+    #[test]
+    fn test_removing_carriage_return() {
+        let tree = crate::Tree::parse("'''a\r\nb\rc\nd\n'''".into());
+        let literal = expect_string_literal(&tree);
         assert_eq!(literal.as_python_string().as_str().unwrap(), "a\nb\nc\nd\n");
+    }
+
+    #[test]
+    fn test_removing_carriage_return_with_backslash() {
+        let tree = crate::Tree::parse("'''a\\\r\nb\n'''".into());
+        let literal = expect_string_literal(&tree);
+        assert_eq!(literal.as_python_string().as_str().unwrap(), "ab\n");
     }
 }
