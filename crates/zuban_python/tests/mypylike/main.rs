@@ -838,6 +838,7 @@ fn find_mypy_style_files() -> Vec<(bool, PathBuf)> {
     let mut our_own_tests: Vec<_> = read_dir(path)
         .unwrap()
         .map(|res| (false, res.unwrap().path()))
+        .filter(|(_, p)| p.extension().is_some_and(|ext| ext.to_str().unwrap() == "test"))
         .collect();
 
     our_own_tests.sort();
