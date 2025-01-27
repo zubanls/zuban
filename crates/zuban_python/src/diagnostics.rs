@@ -1858,7 +1858,12 @@ impl<'db> Diagnostic<'db> {
             .db
             .file_path(self.file.file_index)
             .trim_start_matches(&self.file.file_entry(self.db).parent.workspace_path() as &str);
-        let path = self.db.vfs.handler.strip_separator_prefix(path).unwrap_or(path);
+        let path = self
+            .db
+            .vfs
+            .handler
+            .strip_separator_prefix(path)
+            .unwrap_or(path);
         let line_column = self.start_position().line_and_column();
         let mut additional_notes = vec![];
         let error = self.message_with_notes(&mut additional_notes);

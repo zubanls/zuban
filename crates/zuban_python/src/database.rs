@@ -915,7 +915,11 @@ impl Database {
 
         let mut mypy_path_iter = project.settings.mypy_path.iter();
         assert!(
-            mypy_path_iter.next_back().map(|p| p.as_str()).unwrap().contains("mypylike"),
+            mypy_path_iter
+                .next_back()
+                .map(|p| p.as_str())
+                .unwrap()
+                .contains("mypylike"),
             "{:?}",
             project.settings.mypy_path
         );

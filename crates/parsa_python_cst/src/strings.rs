@@ -94,15 +94,19 @@ impl<'db> PythonString<'db> {
                     }
                     previous_insert = iterator.peek().map(|x| x.0).unwrap_or_else(|| inner.len());
                 } else if ch == b'\r' {
-                    if let Some(&(new_i, b'\n')) = iterator.peek() {
-                        if string.is_none() {
-                            string = Some(String::with_capacity(inner.len()));
-                        }
-                        let s = string.as_mut().unwrap();
-                        // Carriage return is removed before a Newline
-                        s.push_str(&inner[previous_insert..i]);
+                    if string.is_none() {
+                        string = Some(String::with_capacity(inner.len()));
+                    }
+                    let s = string.as_mut().unwrap();
+                    s.push_str(&inner[previous_insert..i]);
+                    previous_insert = i + 1;
+                    if let Some((_, b'\n')) = iterator.peek() {
+                        // Carriage return is removed before a Newline (in the next loop iteration)
+                        // Nothing needs to be done here.
+                    } else {
+                        // Even though this case is very unusual, Python replaces \r (without \n)
+                        // with a \n.
                         s.push('\n');
-                        previous_insert = new_i + 1;
                     }
                 }
             }
@@ -214,10 +218,9 @@ pub(crate) fn unpack_string_or_bytes_content(code: &str) -> UnpackedLiteral {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     #[test]
     fn test_removing_carriage_return() {
-        let tree = crate::Tree::parse("'''a\r\nb'''".into());
+        let tree = crate::Tree::parse("'''a\r\nb\rc\nd\n'''".into());
         let stmt = tree.root().iter_stmt_likes().next().unwrap();
         let literal = stmt
             .node
@@ -225,6 +228,6 @@ mod tests {
             .unwrap()
             .maybe_single_string_literal()
             .unwrap();
-        assert_eq!(literal.as_python_string().as_str().unwrap(), "a\nb");
+        assert_eq!(literal.as_python_string().as_str().unwrap(), "a\nb\nc\nd\n");
     }
 }
