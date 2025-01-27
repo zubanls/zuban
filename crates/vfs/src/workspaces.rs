@@ -271,5 +271,5 @@ fn strip_path_prefix<'x>(
         }
         path.get(to_strip.len()..)?
     };
-    path.strip_prefix(vfs.separator())
+    vfs.strip_separator_prefix(path)
 }
