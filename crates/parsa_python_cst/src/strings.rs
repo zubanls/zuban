@@ -38,8 +38,8 @@ impl<'db> PythonString<'db> {
             let mut iterator = inner.as_bytes().iter().enumerate().peekable();
             let mut string = None;
             let mut previous_insert = 0;
-            while let Some((i, ch)) = iterator.next() {
-                if ch == &b'\\' {
+            while let Some((i, &ch)) = iterator.next() {
+                if ch == b'\\' {
                     if string.is_none() {
                         string = Some(String::with_capacity(inner.len()));
                     }
@@ -93,6 +93,17 @@ impl<'db> PythonString<'db> {
                         }
                     }
                     previous_insert = iterator.peek().map(|x| x.0).unwrap_or_else(|| inner.len());
+                } else if ch == b'\r' {
+                    if let Some(&(new_i, b'\n')) = iterator.peek() {
+                        if string.is_none() {
+                            string = Some(String::with_capacity(inner.len()));
+                        }
+                        let s = string.as_mut().unwrap();
+                        // Carriage return is removed before a Newline
+                        s.push_str(&inner[previous_insert..i]);
+                        s.push('\n');
+                        previous_insert = new_i + 1;
+                    }
                 }
             }
             if let Some(mut string) = string {
@@ -198,5 +209,22 @@ pub(crate) fn unpack_string_or_bytes_content(code: &str) -> UnpackedLiteral {
         inner: &code[inner_start_offset..code.len() - quote_len],
         inner_start_offset: inner_start_offset as CodeIndex,
         had_raw_modifier,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn test_removing_carriage_return() {
+        let tree = crate::Tree::parse("'''a\r\nb'''".into());
+        let stmt = tree.root().iter_stmt_likes().next().unwrap();
+        let literal = stmt
+            .node
+            .maybe_simple_expr()
+            .unwrap()
+            .maybe_single_string_literal()
+            .unwrap();
+        assert_eq!(literal.as_python_string().as_str().unwrap(), "a\nb");
     }
 }
