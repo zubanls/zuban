@@ -259,17 +259,19 @@ fn ensure_dirs_and_file(
 fn strip_path_prefix<'x>(
     vfs: &dyn VfsHandler,
     case_sensitive: bool,
-    path: &'x str,
-    to_strip: &str,
+    mut path: &'x str,
+    mut to_strip: &str,
 ) -> Option<&'x str> {
-    let path = if case_sensitive {
-        path.strip_prefix(to_strip)?
-    } else {
-        let p = path.get(..to_strip.len())?;
-        if !match_case(case_sensitive, to_strip, p) {
+    loop {
+        let (folder1, rest) = vfs.split_off_folder(path);
+        let (folder2, rest_to_strip) = vfs.split_off_folder(to_strip);
+        if !match_case(case_sensitive, folder1, folder2) {
             return None;
         }
-        path.get(to_strip.len()..)?
-    };
-    vfs.strip_separator_prefix(path)
+        path = rest?;
+        let Some(rest_to_strip) = rest_to_strip else {
+            return Some(path)
+        };
+        to_strip = rest_to_strip
+    }
 }

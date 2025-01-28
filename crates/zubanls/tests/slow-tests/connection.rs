@@ -5,6 +5,14 @@ use lsp_server::Message;
 use lsp_types::{notification::Notification as _, InitializeResult, Uri, WorkspaceFolder};
 use serde::{de::DeserializeOwned, Serialize};
 
+pub(crate) fn path_to_uri(path: &str) -> Uri {
+    if cfg!(target_os = "windows") {
+        Uri::from_str(&path.replace('\\', "/"))
+    } else {
+        Uri::from_str(path)
+    }.unwrap()
+}
+
 pub(crate) struct Connection {
     client: lsp_server::Connection,
     server_thread: Option<std::thread::JoinHandle<()>>,
@@ -72,7 +80,7 @@ impl Connection {
                 roots
                     .iter()
                     .map(|root| WorkspaceFolder {
-                        uri: Uri::from_str(root).unwrap(),
+                        uri: path_to_uri(root),
                         name: Path::new(root)
                             .file_name()
                             .unwrap()
