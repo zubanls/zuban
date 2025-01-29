@@ -189,7 +189,7 @@ impl LocalFS {
             // panic noise.
 
             if let Err(err) = watcher_sender.send(event) {
-                tracing::warn!("Watch sender error: {err}")
+                tracing::warn!("Watch sender error: {err} (might be fine if terminating)")
             }
         }));
         Self {
