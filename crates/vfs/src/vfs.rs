@@ -186,7 +186,8 @@ impl<F: VfsFile> Vfs<F> {
             let code = self.handler.read_and_watch_file(&path)?;
             let file_index = self.with_added_file(
                 file_entry.clone(),
-                path.into(),
+                // The path was previously normalized, because it is created from a Directory
+                NormalizedPath::new_boxed(path.into()),
                 invalidates_db,
                 |file_index| new_file(file_index, code.into()),
             );
@@ -208,6 +209,7 @@ impl<F: VfsFile> Vfs<F> {
         code: Box<str>,
         new_file: impl FnOnce(FileIndex, &FileEntry, Box<str>) -> F,
     ) -> (FileIndex, InvalidationResult) {
+        let path = self.handler.normalize_boxed_path(path);
         tracing::info!("Loading in memory file: {path}");
         let ensured = self
             .workspaces
@@ -223,8 +225,7 @@ impl<F: VfsFile> Vfs<F> {
 
         let in_mem_file = in_mem_file.or_else(|| {
             let file_index = ensured.file_entry.get_file_index()?;
-            self.in_memory_files
-                .insert(self.handler.normalize_boxed_path(path.clone()), file_index);
+            self.in_memory_files.insert(path.clone(), file_index);
             Some(file_index)
         });
         let mut result = InvalidationResult::InvalidatedFiles;
@@ -262,8 +263,7 @@ impl<F: VfsFile> Vfs<F> {
                 false,
                 |file_index| new_file(file_index, &ensured.file_entry, code),
             );
-            self.in_memory_files
-                .insert(self.handler.normalize_boxed_path(path.clone()), file_index);
+            self.in_memory_files.insert(path.clone(), file_index);
             ensured.set_file_index(file_index);
             file_index
         };
@@ -447,7 +447,7 @@ impl<F: VfsFile> Vfs<F> {
     fn with_added_file(
         &self,
         file_entry: Rc<FileEntry>,
-        path: Box<str>,
+        path: Box<NormalizedPath>,
         invalidates_db: bool,
         new_file: impl FnOnce(FileIndex) -> F,
     ) -> FileIndex {
@@ -469,7 +469,12 @@ impl<F: VfsFile> Vfs<F> {
     ) -> FileIndex {
         let file_entry = self.file_state(super_file_index).file_entry.clone();
         let invalidates_db = file_entry.invalidations.invalidates_db();
-        self.with_added_file(file_entry, "".into(), invalidates_db, add)
+        self.with_added_file(
+            file_entry,
+            NormalizedPath::new("").into_owned(),
+            invalidates_db,
+            add,
+        )
     }
 }
 
@@ -490,7 +495,7 @@ impl BitOrAssign for InvalidationResult {
 
 #[derive(Debug, Clone)]
 pub struct FileState<F> {
-    path: Box<str>,
+    path: Box<NormalizedPath>,
     file_entry: Rc<FileEntry>,
     file: OnceCell<F>,
 }
@@ -498,7 +503,7 @@ pub struct FileState<F> {
 impl<F: VfsFile> FileState<F> {
     fn new_parsed(
         file_entry: Rc<FileEntry>,
-        path: Box<str>,
+        path: Box<NormalizedPath>,
         file: F,
         invalidates_db: bool,
     ) -> Self {

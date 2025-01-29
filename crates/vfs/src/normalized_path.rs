@@ -6,6 +6,7 @@ pub struct NormalizedPath(str);
 
 impl NormalizedPath {
     pub fn new(x: &str) -> Cow<Self> {
+        // SAFETY: `NormalizedPath` is repr(transparent) over `str`
         Cow::Borrowed(unsafe { std::mem::transmute(x) })
     }
 
@@ -26,7 +27,6 @@ impl From<&NormalizedPath> for Box<NormalizedPath> {
     #[inline]
     fn from(s: &NormalizedPath) -> Box<NormalizedPath> {
         let x: Box<str> = s.0.into();
-        // SAFETY: `NormalizedPath` is repr(transparent) over `str`
         unsafe { std::mem::transmute(x) }
     }
 }
@@ -41,6 +41,12 @@ impl std::ops::Deref for NormalizedPath {
 
 impl Clone for Box<NormalizedPath> {
     fn clone(&self) -> Self {
-        todo!()
+        NormalizedPath::new_boxed(self.as_ref().to_string().into())
+    }
+}
+
+impl std::fmt::Display for NormalizedPath {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
     }
 }
