@@ -7,7 +7,7 @@ mod utils;
 mod vfs;
 mod workspaces;
 
-use std::path::Path;
+use std::{borrow::Cow, path::Path};
 
 use crossbeam_channel::Receiver;
 
@@ -53,5 +53,12 @@ pub trait VfsHandler {
     fn split_off_folder<'a>(&self, path: &'a str) -> (&'a str, Option<&'a str>);
     fn is_sub_file_of(&self, path: &str, maybe_parent: &str) -> bool {
         Path::new(path).starts_with(Path::new(maybe_parent))
+    }
+
+    fn normalize_path<'s>(&self, path: &'s str) -> Cow<'s, NormalizedPath> {
+        NormalizedPath::new(path)
+    }
+    fn normalize_boxed_path<'s>(&self, path: Box<str>) -> Box<NormalizedPath> {
+        NormalizedPath::new_boxed(path)
     }
 }

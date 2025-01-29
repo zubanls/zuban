@@ -197,7 +197,7 @@ impl<F: VfsFile> Vfs<F> {
 
     pub fn in_memory_file(&mut self, path: &str) -> Option<FileIndex> {
         self.in_memory_files
-            .get(NormalizedPath::new(path).as_ref())
+            .get(self.handler.normalize_path(path).as_ref())
             .cloned()
     }
 
@@ -224,7 +224,7 @@ impl<F: VfsFile> Vfs<F> {
         let in_mem_file = in_mem_file.or_else(|| {
             let file_index = ensured.file_entry.get_file_index()?;
             self.in_memory_files
-                .insert(NormalizedPath::new_boxed(path.clone()), file_index);
+                .insert(self.handler.normalize_boxed_path(path.clone()), file_index);
             Some(file_index)
         });
         let mut result = InvalidationResult::InvalidatedFiles;
@@ -263,7 +263,7 @@ impl<F: VfsFile> Vfs<F> {
                 |file_index| new_file(file_index, &ensured.file_entry, code),
             );
             self.in_memory_files
-                .insert(NormalizedPath::new_boxed(path.clone()), file_index);
+                .insert(self.handler.normalize_boxed_path(path.clone()), file_index);
             ensured.set_file_index(file_index);
             file_index
         };
@@ -306,7 +306,7 @@ impl<F: VfsFile> Vfs<F> {
     ) -> Result<InvalidationResult, &'static str> {
         if let Some(file_index) = self
             .in_memory_files
-            .remove(NormalizedPath::new(path).as_ref())
+            .remove(self.handler.normalize_path(path).as_ref())
         {
             if let Some(on_file_system_code) = self.handler.read_and_watch_file(path) {
                 let file_state = &mut self.files[file_index.0 as usize];
@@ -371,7 +371,7 @@ impl<F: VfsFile> Vfs<F> {
         let _span = tracing::debug_span!("invalidate_path").entered();
         if self
             .in_memory_files
-            .contains_key(NormalizedPath::new(path).as_ref())
+            .contains_key(self.handler.normalize_path(path).as_ref())
         {
             // In memory files override all file system events
             return InvalidationResult::InvalidatedFiles;

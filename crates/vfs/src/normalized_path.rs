@@ -38,3 +38,9 @@ impl std::ops::Deref for NormalizedPath {
         &self.0
     }
 }
+
+impl Clone for Box<NormalizedPath> {
+    fn clone(&self) -> Self {
+        todo!()
+    }
+}
