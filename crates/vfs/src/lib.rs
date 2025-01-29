@@ -59,7 +59,7 @@ pub trait VfsHandler {
         if cfg!(target_os = "windows") {
             if path.contains("/") {
                 let p = path.replace('/', "\\").into();
-                return Cow::Owned(NormalizedPath::new_boxed(p))
+                return Cow::Owned(NormalizedPath::new_boxed(p));
             }
         }
         Cow::Borrowed(NormalizedPath::new(path))
