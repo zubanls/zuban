@@ -23,7 +23,12 @@ pub trait VfsHandler {
     /// exists.                                                                
     fn read_and_watch_file(&self, path: &str) -> Option<String>;
     fn notify_receiver(&self) -> Option<&Receiver<NotifyEvent>>;
-    fn walk_and_watch_dirs(&self, path: &str, initial_parent: Parent) -> DirectoryEntry;
+    fn walk_and_watch_dirs(
+        &self,
+        path: &str,
+        initial_parent: Parent,
+        is_root_node: bool,
+    ) -> DirectoryEntry;
 
     fn separator(&self) -> char {
         std::path::MAIN_SEPARATOR

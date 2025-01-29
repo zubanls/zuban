@@ -30,7 +30,12 @@ impl VfsHandler for LocalFS {
         result.ok()
     }
 
-    fn walk_and_watch_dirs(&self, path: &str, initial_parent: Parent) -> DirectoryEntry {
+    fn walk_and_watch_dirs(
+        &self,
+        path: &str,
+        initial_parent: Parent,
+        is_root_node: bool,
+    ) -> DirectoryEntry {
         let is_relevant_name =
             |name: &str| name.ends_with(".py") || name.ends_with(".pyi") || name == "py.typed";
         let path = self.strip_separator_suffix(path).unwrap_or(path);
@@ -87,7 +92,9 @@ impl VfsHandler for LocalFS {
                                 let parent = if let Some(last) = stack.last() {
                                     let parent_dir = &last.1;
                                     match &parent_dir.parent {
-                                        Parent::Workspace(root) if stack.len() == 1 => {
+                                        Parent::Workspace(root)
+                                            if stack.len() == 1 && is_root_node =>
+                                        {
                                             Parent::Workspace(root.clone())
                                         }
                                         _ => Parent::Directory(Rc::downgrade(parent_dir)),

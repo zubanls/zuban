@@ -196,14 +196,15 @@ impl Workspace {
         tracing::debug!("Add workspace {root_path}");
         let root_path = Rc::<Box<str>>::new(root_path.into());
 
-        let dir = match vfs.walk_and_watch_dirs(&root_path, Parent::Workspace(root_path.clone())) {
-            DirectoryEntry::Directory(dir) => Rc::unwrap_or_clone(dir),
-            e => Directory {
-                parent: Parent::Workspace(root_path.clone()),
-                name: e.name().into(),
-                entries: Default::default(),
-            },
-        };
+        let dir =
+            match vfs.walk_and_watch_dirs(&root_path, Parent::Workspace(root_path.clone()), true) {
+                DirectoryEntry::Directory(dir) => Rc::unwrap_or_clone(dir),
+                e => Directory {
+                    parent: Parent::Workspace(root_path.clone()),
+                    name: e.name().into(),
+                    entries: Default::default(),
+                },
+            };
         Self {
             directory: dir,
             root_path,
@@ -270,7 +271,7 @@ fn strip_path_prefix<'x>(
         }
         path = rest?;
         let Some(rest_to_strip) = rest_to_strip else {
-            return Some(path)
+            return Some(path);
         };
         to_strip = rest_to_strip
     }

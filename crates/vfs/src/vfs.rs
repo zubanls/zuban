@@ -373,6 +373,7 @@ impl<F: VfsFile> Vfs<F> {
             .workspaces
             .search_potential_parent_for_invalidation(&*self.handler, case_sensitive, path)
         {
+            // TODO handle path == workspace path
             let mut check_invalidations_for_dir_entry = |e: &_| match e {
                 DirectoryEntry::File(f) => {
                     if let Some(file_index) = f.get_file_index() {
@@ -385,7 +386,9 @@ impl<F: VfsFile> Vfs<F> {
                 },
                 DirectoryEntry::Directory(_) => (),
             };
-            let new_entry = self.handler.walk_and_watch_dirs(path, parent.clone());
+            let new_entry = self
+                .handler
+                .walk_and_watch_dirs(path, parent.clone(), false);
             let d = parent.maybe_dir();
             let in_dir = d.as_deref().unwrap_or(&workspace.directory);
             if let DirectoryEntry::MissingEntry(_) = new_entry {
