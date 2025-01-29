@@ -6,7 +6,7 @@ use utils::{FastHashSet, InsertOnlyVec};
 use crate::{
     tree::{InvalidationDetail, Invalidations},
     workspaces::Workspaces,
-    DirectoryEntry, FileEntry, FileIndex, Parent, VfsHandler, WorkspaceKind,
+    DirectoryEntry, FileEntry, FileIndex, NormalizedPath, Parent, VfsHandler, WorkspaceKind,
 };
 
 pub trait VfsFile: Unpin {
@@ -18,7 +18,7 @@ pub struct Vfs<F: VfsFile> {
     pub handler: Box<dyn VfsHandler>,
     pub workspaces: Workspaces,
     pub files: InsertOnlyVec<FileState<F>>,
-    in_memory_files: HashMap<Box<str>, FileIndex>,
+    in_memory_files: HashMap<Box<NormalizedPath>, FileIndex>,
 }
 
 impl<F: VfsFile> Vfs<F> {
@@ -196,7 +196,9 @@ impl<F: VfsFile> Vfs<F> {
     }
 
     pub fn in_memory_file(&mut self, path: &str) -> Option<FileIndex> {
-        self.in_memory_files.get(path).cloned()
+        self.in_memory_files
+            .get(NormalizedPath::new(path).as_ref())
+            .cloned()
     }
 
     pub fn load_in_memory_file(
@@ -221,7 +223,8 @@ impl<F: VfsFile> Vfs<F> {
 
         let in_mem_file = in_mem_file.or_else(|| {
             let file_index = ensured.file_entry.get_file_index()?;
-            self.in_memory_files.insert(path.clone(), file_index);
+            self.in_memory_files
+                .insert(NormalizedPath::new_boxed(path.clone()), file_index);
             Some(file_index)
         });
         let mut result = InvalidationResult::InvalidatedFiles;
@@ -259,7 +262,8 @@ impl<F: VfsFile> Vfs<F> {
                 false,
                 |file_index| new_file(file_index, &ensured.file_entry, code),
             );
-            self.in_memory_files.insert(path.clone(), file_index);
+            self.in_memory_files
+                .insert(NormalizedPath::new_boxed(path.clone()), file_index);
             ensured.set_file_index(file_index);
             file_index
         };
@@ -300,7 +304,10 @@ impl<F: VfsFile> Vfs<F> {
         path: &str,
         to_file: impl FnOnce(&FileState<F>, FileIndex, Box<str>) -> F,
     ) -> Result<InvalidationResult, &'static str> {
-        if let Some(file_index) = self.in_memory_files.remove(path) {
+        if let Some(file_index) = self
+            .in_memory_files
+            .remove(NormalizedPath::new(path).as_ref())
+        {
             if let Some(on_file_system_code) = self.handler.read_and_watch_file(path) {
                 let file_state = &mut self.files[file_index.0 as usize];
                 // In case the code matches the one already in the file, we don't have to do anything.
@@ -362,7 +369,10 @@ impl<F: VfsFile> Vfs<F> {
 
     pub fn invalidate_path(&mut self, case_sensitive: bool, path: &str) -> InvalidationResult {
         let _span = tracing::debug_span!("invalidate_path").entered();
-        if self.in_memory_files.contains_key(path) {
+        if self
+            .in_memory_files
+            .contains_key(NormalizedPath::new(path).as_ref())
+        {
             // In memory files override all file system events
             return InvalidationResult::InvalidatedFiles;
         }

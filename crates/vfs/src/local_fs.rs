@@ -207,9 +207,7 @@ impl LocalFS {
                 // On windows adding the watch n times will cause n events. We therefore have to
                 // remove the watch before adding it again. This is generally problematic, because
                 // it might be modified during that time and we might lose an event.
-                let _ = watcher
-                    .borrow_mut()
-                    .unwatch(path);
+                let _ = watcher.borrow_mut().unwatch(path);
             }
             log_notify_error(
                 watcher

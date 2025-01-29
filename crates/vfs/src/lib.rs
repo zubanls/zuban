@@ -1,6 +1,7 @@
 // Some parts are copied from rust-analyzer
 
 mod local_fs;
+mod normalized_path;
 mod tree;
 mod utils;
 mod vfs;
@@ -11,6 +12,7 @@ use std::path::Path;
 use crossbeam_channel::Receiver;
 
 pub use local_fs::LocalFS;
+pub use normalized_path::NormalizedPath;
 pub use tree::{Directory, DirectoryEntry, FileEntry, FileIndex, Parent};
 pub use vfs::{InvalidationResult, Vfs, VfsFile};
 pub use workspaces::{Workspace, WorkspaceKind};
