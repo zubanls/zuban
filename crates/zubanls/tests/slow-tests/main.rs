@@ -318,6 +318,9 @@ fn change_config_file() {
     expect_diagnostics("initially", vec![]);
 
     server.write_file_and_wait("mypy.ini", "[mypy]\nstrict = True");
+    // This test kept failing in CI (probably because of stolen time, so add an additional long
+    // sleep here.
+    std::thread::sleep(std::time::Duration::from_millis(10));
 
     const MISSING: &str = "Function is missing a return type annotation";
     expect_diagnostics("After modifying", vec![MISSING.to_string()]);
