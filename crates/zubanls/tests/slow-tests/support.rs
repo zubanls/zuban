@@ -165,7 +165,7 @@ impl Server {
         }
         drop(lock);
         // Just try and make tests fail less.
-        std::thread::sleep(std::time::Duration::from_micros(1));
+        std::thread::sleep(std::time::Duration::from_millis(1));
         unreachable!("Reached a timeout");
     }
 
