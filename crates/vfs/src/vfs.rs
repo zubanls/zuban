@@ -471,7 +471,7 @@ impl<F: VfsFile> Vfs<F> {
         let invalidates_db = file_entry.invalidations.invalidates_db();
         self.with_added_file(
             file_entry,
-            NormalizedPath::new("").into_owned(),
+            NormalizedPath::new_boxed(Box::from("")),
             invalidates_db,
             add,
         )

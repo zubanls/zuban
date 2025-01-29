@@ -56,9 +56,18 @@ pub trait VfsHandler {
     }
 
     fn normalize_path<'s>(&self, path: &'s str) -> Cow<'s, NormalizedPath> {
-        NormalizedPath::new(path)
+        if cfg!(target_os = "windows") {
+            if path.contains("/") {
+                let p = path.replace('/', "\\").into();
+                return Cow::Owned(NormalizedPath::new_boxed(p))
+            }
+        }
+        Cow::Borrowed(NormalizedPath::new(path))
     }
     fn normalize_boxed_path<'s>(&self, path: Box<str>) -> Box<NormalizedPath> {
-        NormalizedPath::new_boxed(path)
+        match self.normalize_path(&path) {
+            Cow::Borrowed(_) => NormalizedPath::new_boxed(path),
+            Cow::Owned(o) => o,
+        }
     }
 }

@@ -1,13 +1,11 @@
-use std::borrow::Cow;
-
 #[derive(Debug, PartialEq, Eq, Hash)]
 #[repr(transparent)]
 pub struct NormalizedPath(str);
 
 impl NormalizedPath {
-    pub fn new(x: &str) -> Cow<Self> {
+    pub fn new(x: &str) -> &Self {
         // SAFETY: `NormalizedPath` is repr(transparent) over `str`
-        Cow::Borrowed(unsafe { std::mem::transmute(x) })
+        unsafe { std::mem::transmute(x) }
     }
 
     pub fn new_boxed(x: Box<str>) -> Box<Self> {
