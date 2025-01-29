@@ -10,7 +10,8 @@ pub(crate) fn path_to_uri(path: &str) -> Uri {
         Uri::from_str(&path.replace('\\', "/"))
     } else {
         Uri::from_str(path)
-    }.unwrap()
+    }
+    .unwrap()
 }
 
 pub(crate) struct Connection {

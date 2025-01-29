@@ -15,7 +15,10 @@ use serde_json::{to_string_pretty, Value};
 use test_utils::{calculate_steps, dedent};
 use zubanls::GLOBAL_NOTIFY_EVENT_COUNTER;
 
-use crate::{connection::{Connection, path_to_uri}, testdir::TestDir};
+use crate::{
+    connection::{path_to_uri, Connection},
+    testdir::TestDir,
+};
 
 lazy_static::lazy_static! {
     static ref FILE_SYSTEM_LOCK: Mutex<()> = Mutex::default();
@@ -103,7 +106,7 @@ impl Server {
     pub(crate) fn doc_id(&self, rel_path: &str) -> TextDocumentIdentifier {
         let path = join(self.tmp_dir.path(), rel_path);
         TextDocumentIdentifier {
-            uri: path_to_uri(&path)
+            uri: path_to_uri(&path),
         }
     }
 
