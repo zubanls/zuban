@@ -333,8 +333,22 @@ impl TestCase<'_, '_> {
                     if is_semanal_test && !d.is_mypy_semanal_error() {
                         return None;
                     }
-                    (!is_parse_test || d.mypy_error_code() == "syntax")
-                        .then(|| d.as_string(&diagnostics_config))
+                    (!is_parse_test || d.mypy_error_code() == "syntax").then(|| {
+                        let mut s = d.as_string(&diagnostics_config);
+                        if cfg!(target_os = "windows") {
+                            // TODO this only checks the first line, but with notes there may
+                            // be multiple lines.
+                            let colon = s.find(":").unwrap();
+                            let to_change = &mut s[..colon];
+                            // Safety: OK because we only modify ASCII
+                            for b in unsafe { to_change.as_bytes_mut() } {
+                                if *b == b'\\' {
+                                    *b = b'/'
+                                }
+                            }
+                        }
+                        s
+                    })
                 })
                 .collect();
 
