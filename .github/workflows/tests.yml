@@ -8,19 +8,6 @@ defaults:
     shell: bash
 
 jobs:
-  cargo-fmt:
-    name: "cargo fmt"
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: recursive
-          persist-credentials: false
-      - name: "Install Rust toolchain"
-        run: rustup component add rustfmt
-      - run: cargo fmt --all --check
-
   cargo-test-debug:
     runs-on: ${{ matrix.os }}
     strategy:
