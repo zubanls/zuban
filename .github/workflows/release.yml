@@ -31,35 +31,67 @@ jobs:
 
   linux:
     needs: [tests]
-    runs-on: ubuntu-24.04
     strategy:
       matrix:
-        target:
-          - x86_64-unknown-linux-gnu
-          - i686-unknown-linux-gnu
+        t:
+          - os: ubuntu-24.04
+            target: x86_64-unknown-linux-gnu
+            test: true
+          - os: ubuntu-24.04
+            target: i686-unknown-linux-gnu
+            test: false
+
+          - os: ubuntu-24.04
+            target: aarch64-unknown-linux-gnu
+            test: false
+            # see https://github.com/astral-sh/ruff/issues/3791
+            # and https://github.com/gnzlbg/jemallocator/issues/170#issuecomment-1503228963
+            maturin_docker_options: -e JEMALLOC_SYS_WITH_LG_PAGE=16
+          - os: ubuntu-24.04
+            target: armv7-unknown-linux-gnueabihf
+            test: false
+
+          - os: macos-latest
+            target: x86_64
+            test: true
+          - os: macos-latest
+            target: aarch64
+            test: false
+
+          - os: windows-2022
+            target: x86_64-pc-windows-msvc
+            test: true
+          - os: windows-2022
+            target: i686-pc-windows-msvc
+            arch: x86
+            test: true
+    runs-on: ${{ matrix.t.os }}
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
           persist-credentials: false
-      - uses: actions/setup-python@v5
+      - if: ${{ matrix.t.test }}
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-          architecture: x64
+          architecture: ${{ matrix.t.arch || "x64" }}
       - uses: Swatinem/rust-cache@v2
       - name: "Pre-Build"
         run: ./pre-maturin-build.sh
       - name: "Build Wheel"
         uses: PyO3/maturin-action@v1
         with:
-          target: ${{ matrix.target }}
+          target: ${{ matrix.t.target }}
           working-directory: ${{ env.DEPLOY_DIR }}
+          docker-options: ${{ matrix.platform.maturin_docker_options }}
           manylinux: auto
           args: --release --locked --out dist --ignore-rust-version
       - name: "Test wheel"
-        if: ${{ startsWith(matrix.target, 'x86_64') }}
+        if: ${{ matrix.t.test }}
         run: ./test-maturin-build.sh
-      - name: Publish Wheel to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-            packages-dir: "${{ env.DEPLOY_DIR }}/dist/"
+      # TODO reenable
+      #- name: Publish Wheel to PyPI
+      #  uses: pypa/gh-action-pypi-publish@release/v1
+      #  with:
+      #      packages-dir: "${{ env.DEPLOY_DIR }}/dist/"

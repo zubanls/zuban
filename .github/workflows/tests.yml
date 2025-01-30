@@ -13,7 +13,7 @@ jobs:
     strategy:
       matrix:
         os:
-          # Avoid Mac here for now, because the CI is costly (10x of linux)
+          # Maybe avoid Mac here for now, because the CI is costly (10x of linux)
           - macos-latest
           - ubuntu-24.04
           - windows-2022
