@@ -60,8 +60,10 @@ impl Workspaces {
         path: &'path str,
     ) -> Option<(&Workspace, Parent, &'path str)> {
         self.0.iter().find_map(|workspace| {
+            #[allow(unused_mut)]
             let mut rest = strip_path_prefix(vfs, case_sensitive, path, workspace.root_path());
-            if cfg!(target_os = "macos") {
+            #[cfg(target_os = "macos")]
+            {
                 rest = rest.or_else(|| {
                     strip_path_prefix(vfs, case_sensitive, path, &workspace.canonicalized_path)
                 });
