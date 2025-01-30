@@ -8,6 +8,7 @@ concurrency:
 env:
   PYTHON_VERSION: "3.11"
   DEPLOY_DIR: "deploy/pypi/zuban"
+  DEFAULT_ARCH: "x64"
 
 defaults:
   run:
@@ -29,7 +30,7 @@ jobs:
     uses: ./.github/workflows/tests.yml
     secrets: inherit
 
-  linux:
+  release:
     needs: [tests]
     strategy:
       matrix:
@@ -53,10 +54,10 @@ jobs:
 
           - os: macos-latest
             target: x86_64
-            test: true
+            test: false
           - os: macos-latest
             target: aarch64
-            test: false
+            test: true
 
           - os: windows-2022
             target: x86_64-pc-windows-msvc
@@ -75,8 +76,10 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-          architecture: ${{ matrix.t.arch || "x64" }}
-      - uses: Swatinem/rust-cache@v2
+          architecture: ${{ matrix.t.arch || env.DEFAULT_ARCH }}
+      - uses: Swatinem/rust-cache@f0deed1e0edfc6a9be95417288c0e1099b1eeec3
+        with:
+            key: "swatinem-${{ matrix.t.target }}"
       - name: "Pre-Build"
         run: ./pre-maturin-build.sh
       - name: "Build Wheel"
@@ -90,8 +93,7 @@ jobs:
       - name: "Test wheel"
         if: ${{ matrix.t.test }}
         run: ./test-maturin-build.sh
-      # TODO reenable
-      #- name: Publish Wheel to PyPI
-      #  uses: pypa/gh-action-pypi-publish@release/v1
-      #  with:
-      #      packages-dir: "${{ env.DEPLOY_DIR }}/dist/"
+      - name: Publish Wheel to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+            packages-dir: "${{ env.DEPLOY_DIR }}/dist/"
