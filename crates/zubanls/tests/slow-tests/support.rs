@@ -156,16 +156,19 @@ impl Server {
         let current = GLOBAL_NOTIFY_EVENT_COUNTER.load(Ordering::SeqCst);
         callback();
         // Make sure the removal event appears before the LSP event.
-        // Wait for a while (at least 0.1s)
-        for _ in 0..100000 {
-            std::thread::sleep(std::time::Duration::from_micros(1));
+        // Wait for a while (at least 1s)
+        for _ in 0..10000 {
+            std::thread::sleep(std::time::Duration::from_micros(100));
             if current < GLOBAL_NOTIFY_EVENT_COUNTER.load(Ordering::SeqCst) {
+                drop(lock);
+                // Just try and make tests fail less.
+                std::thread::sleep(std::time::Duration::from_millis(
+                    // For whatever reason Mac with FSEvents needs more sleep
+                    if cfg!(target_os = "macos") { 10 } else { 1 },
+                ));
                 return;
             }
         }
-        drop(lock);
-        // Just try and make tests fail less.
-        std::thread::sleep(std::time::Duration::from_millis(1));
         unreachable!("Reached a timeout");
     }
 
