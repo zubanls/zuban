@@ -60,7 +60,13 @@ impl Workspaces {
         path: &'path str,
     ) -> Option<(&Workspace, Parent, &'path str)> {
         self.0.iter().find_map(|workspace| {
-            let mut rest = strip_path_prefix(vfs, case_sensitive, path, workspace.root_path())?;
+            let mut rest = strip_path_prefix(vfs, case_sensitive, path, workspace.root_path());
+            if cfg!(target_os = "macos") {
+                rest = rest.or_else(|| {
+                    strip_path_prefix(vfs, case_sensitive, path, &workspace.canonicalized_path)
+                });
+            }
+            let mut rest = rest?;
             let mut current_dir = None;
             loop {
                 let (name, new_rest) = vfs.split_off_folder(rest);
@@ -184,6 +190,10 @@ impl Workspaces {
 #[derive(Debug, Clone)]
 pub struct Workspace {
     root_path: Rc<Box<str>>,
+    // Mac sometimes needs a bit help with events that are reported for non-canonicalized paths
+    // Without this check_rename_with_symlinks fails
+    #[cfg(target_os = "macos")]
+    canonicalized_path: Box<str>,
     pub directory: Directory,
     pub kind: WorkspaceKind,
 }
@@ -205,11 +215,38 @@ impl Workspace {
                     entries: Default::default(),
                 },
             };
-        Self {
-            directory: dir,
-            root_path,
-            kind,
-        }
+        #[cfg(target_os = "macos")]
+        {
+            let canonicalized_path = match std::fs::canonicalize(&**root_path) {
+                Ok(p) => match p.into_os_string().into_string() {
+                    Ok(p) => p,
+                    Err(p) => {
+                        tracing::error!(
+                            "Canonicalized path for {root_path:?} is {p:?}, not valid unicode"
+                        );
+                        root_path.to_string()
+                    }
+                },
+                Err(err) => {
+                    tracing::error!("Issue while canonicalizing workspace path: {err}");
+                    root_path.to_string()
+                }
+            };
+            return Self {
+                directory: dir,
+                root_path,
+                canonicalized_path: canonicalized_path.into(),
+                kind,
+            };
+        };
+        #[cfg(not(target_os = "macos"))]
+        {
+            return Self {
+                directory: dir,
+                root_path,
+                kind,
+            };
+        };
     }
 
     pub fn root_path(&self) -> &str {

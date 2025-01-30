@@ -226,6 +226,10 @@ fn log_notify_error<T>(res: notify::Result<T>) -> Option<T> {
             // lot of the time the file doesn't exist when trying to watch something.
             tracing::debug!("notify error: {}", err)
         }
+        notify::ErrorKind::PathNotFound => {
+            // Same as above
+            tracing::debug!("notify error: {}", err)
+        }
         _ => tracing::warn!("notify error: {}", err),
     })
     .ok()
