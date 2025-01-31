@@ -30,7 +30,7 @@ jobs:
     uses: ./.github/workflows/tests.yml
     secrets: inherit
 
-  release:
+  build:
     needs: [tests]
     strategy:
       matrix:
@@ -79,6 +79,8 @@ jobs:
           architecture: ${{ matrix.t.arch || env.DEFAULT_ARCH }}
       - uses: Swatinem/rust-cache@f0deed1e0edfc6a9be95417288c0e1099b1eeec3
         with:
+            # The target is needed, because there were issues when reusing
+            # caches, probably related to cross compiling.
             key: "swatinem-${{ matrix.t.target }}"
       - name: "Pre-Build"
         run: ./pre-maturin-build.sh
@@ -93,7 +95,23 @@ jobs:
       - name: "Test wheel"
         if: ${{ matrix.t.test }}
         run: ./test-maturin-build.sh
+      - name: "Upload wheel as a GitHub Artifact"
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheels-${{ matrix.t.os }}-${{ matrix.t.target }}
+          path: "${{ env.DEPLOY_DIR }}/dist"
+
+  publish:
+    needs: [build]
+    runs-on: ubuntu-24.04
+    steps:
+      - name: "Download Wheels from GitHub Artifacts"
+        uses: actions/download-artifact@v4
+        with:
+          pattern: wheels-*
+          path: wheels
+          merge-multiple: true
       - name: Publish Wheel to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-            packages-dir: "${{ env.DEPLOY_DIR }}/dist/"
+            packages-dir: "wheels/"
