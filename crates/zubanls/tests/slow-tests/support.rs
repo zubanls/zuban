@@ -156,9 +156,9 @@ impl Server {
         let current = GLOBAL_NOTIFY_EVENT_COUNTER.load(Ordering::SeqCst);
         callback();
         // Make sure the removal event appears before the LSP event.
-        // Wait for a while (at least 1s)
-        for _ in 0..10000 {
-            std::thread::sleep(std::time::Duration::from_micros(100));
+        // Wait for a while (at least 5s)
+        for _ in 0..5000 {
+            std::thread::sleep(std::time::Duration::from_millis(1));
             if current < GLOBAL_NOTIFY_EVENT_COUNTER.load(Ordering::SeqCst) {
                 drop(lock);
                 // Just try and make tests fail less.
