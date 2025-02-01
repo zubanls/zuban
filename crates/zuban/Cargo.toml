@@ -15,3 +15,6 @@ zubanls.workspace = true
 anyhow.workspace = true
 clap.workspace = true
 tracing.workspace = true
+
+[features]
+zuban_debug = ["zmypy/zuban_debug", "zubanls/zuban_debug"]

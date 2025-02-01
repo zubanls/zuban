@@ -45,7 +45,7 @@ impl Default for Settings {
             platform: None,
             python_version: PythonVersion::new(3, 12),
             python_executable: None,
-            typeshed_path: None,
+            typeshed_path: std::env::var("ZUBAN_TYPESHED").ok(),
             mypy_path: vec![],
             mypy_compatible: false,
             files_or_directories_to_check: vec![],

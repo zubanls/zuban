@@ -1228,7 +1228,7 @@ impl Inference<'_, '_, '_> {
             )
         }
 
-        let function_i_s = &mut i_s.with_diagnostic_func_and_args(&function);
+        let function_i_s = &i_s.with_diagnostic_func_and_args(&function);
         let inference = self.file.inference(function_i_s);
         if function.is_typed() || flags.check_untyped_defs {
             // TODO for now we skip checking functions with TypeVar constraints
@@ -1236,7 +1236,7 @@ impl Inference<'_, '_, '_> {
                 matches!(tv, TypeVarLike::TypeVar(tv)
                               if matches!(&tv.kind, TypeVarKind::Constraints(_)))
             }) {
-                self.mark_current_frame_unreachable()
+                inference.mark_current_frame_unreachable()
             } else {
                 inference.calc_block_diagnostics(block, None, Some(&function))
             }
@@ -1308,7 +1308,7 @@ impl Inference<'_, '_, '_> {
                 .skip((function.class.is_some() && func_kind != FunctionKind::Staticmethod).into())
             {
                 if let Some(annotation) = param.annotation() {
-                    let _t = self.use_cached_param_annotation_type(annotation);
+                    let _t = inference.use_cached_param_annotation_type(annotation);
                     // TODO implement --disallow-any-unimported
                 }
             }
@@ -1340,17 +1340,17 @@ impl Inference<'_, '_, '_> {
                     }
                     "exit" => {
                         // Check the return type of __exit__
-                        self.check_magic_exit(function)
+                        inference.check_magic_exit(function)
                     }
                     "getattr" => {
-                        let func_type = function.as_type(self.i_s, FirstParamProperties::None);
+                        let func_type = function.as_type(function_i_s, FirstParamProperties::None);
                         if !self
                             .i_s
                             .db
                             .python_state
                             .valid_getattr_supertype
                             .clone()
-                            .is_simple_super_type_of(self.i_s, &func_type)
+                            .is_simple_super_type_of(function_i_s, &func_type)
                             .bool()
                         {
                             function.add_issue_for_declaration(
@@ -1364,8 +1364,8 @@ impl Inference<'_, '_, '_> {
                     }
                     _ => {
                         // Check reverse magic methods like __rmul__
-                        self.check_overlapping_op_methods(function, magic_name);
-                        self.check_inplace_methods(function, magic_name);
+                        inference.check_overlapping_op_methods(function, magic_name);
+                        inference.check_inplace_methods(function, magic_name);
                     }
                 }
             }

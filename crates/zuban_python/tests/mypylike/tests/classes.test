@@ -1277,3 +1277,10 @@ class C:
     def s() -> None: ...
 
 reveal_type(C().s(1))  # N: Revealed type is "int"
+
+[case overlapping_op_methods_checking_with_valid_self_type]
+from typing import Self
+
+class C:
+    def __or__(self, value: Self, /) -> Self: ...
+    def __ror__(self, value: Self, /) -> Self: ...

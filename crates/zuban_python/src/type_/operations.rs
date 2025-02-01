@@ -253,7 +253,7 @@ impl Type {
                 ),
             ),
             Type::Self_ => {
-                let current_class = i_s.current_class().unwrap();
+                let current_class = i_s.current_class().expect("Self missing");
                 let class_infos = current_class.use_cached_class_infos(i_s.db);
                 if let Some(t) = class_infos.undefined_generics_type.get() {
                     if matches!(t.as_ref(), Type::Enum(_)) {
