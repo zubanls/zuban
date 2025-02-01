@@ -18,7 +18,7 @@ use crate::{
     database::{ClassKind, Database, Locality, Point, PointKind, PointLink, Specific},
     debug,
     diagnostics::IssueKind,
-    file::MultiDefinitionIterator,
+    file::OtherDefinitionIterator,
     getitem::SliceType,
     inference_state::InferenceState,
     inferred::{Inferred, UnionValue},
@@ -385,7 +385,7 @@ impl FlowAnalysis {
                         debug_assert_eq!(func_node_ref.file_index(), link.file);
                         // We try to filter out narrowed names that are reassigned within the
                         // function later than where that function is defined.
-                        for name_index in MultiDefinitionIterator::new(
+                        for name_index in OtherDefinitionIterator::new(
                             &func_node_ref.file.points,
                             link.node_index,
                         ) {

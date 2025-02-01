@@ -559,7 +559,7 @@ impl<'db> PythonFile {
         };
         let p = self.points.get(dunder_all_index);
         if p.calculated() && p.maybe_specific() == Some(Specific::NameOfNameDef) {
-            for index in MultiDefinitionIterator::new(&self.points, dunder_all_index) {
+            for index in OtherDefinitionIterator::new(&self.points, dunder_all_index) {
                 let name = NodeRef::new(self, index as NodeIndex).as_name();
                 dunder_all = check_multi_def(dunder_all, name)?
             }
@@ -905,13 +905,14 @@ fn maybe_dunder_all_names(
     Some(result)
 }
 
-pub struct MultiDefinitionIterator<'a> {
+// An Iterator that goes through all nodes except the given one
+pub struct OtherDefinitionIterator<'a> {
     points: &'a Points,
     start: NodeIndex,
     current: NodeIndex,
 }
 
-impl<'a> MultiDefinitionIterator<'a> {
+impl<'a> OtherDefinitionIterator<'a> {
     pub fn new(points: &'a Points, start: NodeIndex) -> Self {
         debug_assert_eq!(
             points.get(start).maybe_specific(),
@@ -925,7 +926,7 @@ impl<'a> MultiDefinitionIterator<'a> {
     }
 }
 
-impl Iterator for MultiDefinitionIterator<'_> {
+impl Iterator for OtherDefinitionIterator<'_> {
     type Item = NodeIndex;
 
     fn next(&mut self) -> Option<Self::Item> {

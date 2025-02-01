@@ -22,7 +22,7 @@ use crate::{
     debug,
     diagnostics::IssueKind,
     file::{
-        use_cached_annotation_type, CalculatedBaseClass, MultiDefinitionIterator, PythonFile,
+        use_cached_annotation_type, CalculatedBaseClass, OtherDefinitionIterator, PythonFile,
         TypeComputation, TypeComputationOrigin, TypeVarCallbackReturn, TypeVarFinder,
     },
     format_data::FormatData,
@@ -2391,7 +2391,7 @@ impl<'db: 'a, 'a> Class<'a> {
                     if p.node_index() != name_index {
                         let mut has_overload = false;
                         let mut has_non_overload = false;
-                        for index in MultiDefinitionIterator::new(&file.points, name_index) {
+                        for index in OtherDefinitionIterator::new(&file.points, name_index) {
                             let n = NodeRef::new(self.node_ref.file, index);
                             if let Some(func) = n.maybe_name_of_function() {
                                 let mut found_overload = false;
