@@ -5,6 +5,7 @@ use std::{
     rc::Rc,
 };
 
+use config::TypeCheckerFlags;
 use parsa_python_cst::*;
 
 use super::{first_defined_name, flow_analysis::FLOW_ANALYSIS, inference::await_};
@@ -1229,19 +1230,36 @@ impl Inference<'_, '_, '_> {
         }
 
         let function_i_s = &i_s.with_diagnostic_func_and_args(&function);
-        let inference = self.file.inference(function_i_s);
+        self.file
+            .inference(function_i_s)
+            .function_diagnostics_with_class_i_s(function, func_kind, flags, name, params, block);
+        is_overload_member
+    }
+
+    // This is mostly a helper function to avoid using the wrong InferenceState accidentally.
+    #[inline]
+    fn function_diagnostics_with_class_i_s(
+        &self,
+        function: Function,
+        func_kind: FunctionKind,
+        flags: &TypeCheckerFlags,
+        name: NameDef,
+        params: FunctionDefParameters,
+        block: Block,
+    ) {
+        let i_s = self.i_s;
         if function.is_typed() || flags.check_untyped_defs {
             // TODO for now we skip checking functions with TypeVar constraints
             if function.type_vars(i_s.db).iter().any(|tv| {
                 matches!(tv, TypeVarLike::TypeVar(tv)
                               if matches!(&tv.kind, TypeVarKind::Constraints(_)))
             }) {
-                inference.mark_current_frame_unreachable()
+                self.mark_current_frame_unreachable()
             } else {
-                inference.calc_block_diagnostics(block, None, Some(&function))
+                self.calc_block_diagnostics(block, None, Some(&function))
             }
         } else {
-            inference.calc_untyped_block_diagnostics(block)
+            self.calc_untyped_block_diagnostics(block)
         }
         if flags.disallow_untyped_defs && !flags.disallow_incomplete_defs {
             match (
@@ -1308,7 +1326,7 @@ impl Inference<'_, '_, '_> {
                 .skip((function.class.is_some() && func_kind != FunctionKind::Staticmethod).into())
             {
                 if let Some(annotation) = param.annotation() {
-                    let _t = inference.use_cached_param_annotation_type(annotation);
+                    let _t = self.use_cached_param_annotation_type(annotation);
                     // TODO implement --disallow-any-unimported
                 }
             }
@@ -1340,17 +1358,17 @@ impl Inference<'_, '_, '_> {
                     }
                     "exit" => {
                         // Check the return type of __exit__
-                        inference.check_magic_exit(function)
+                        self.check_magic_exit(function)
                     }
                     "getattr" => {
-                        let func_type = function.as_type(function_i_s, FirstParamProperties::None);
+                        let func_type = function.as_type(i_s, FirstParamProperties::None);
                         if !self
                             .i_s
                             .db
                             .python_state
                             .valid_getattr_supertype
                             .clone()
-                            .is_simple_super_type_of(function_i_s, &func_type)
+                            .is_simple_super_type_of(i_s, &func_type)
                             .bool()
                         {
                             function.add_issue_for_declaration(
@@ -1364,13 +1382,12 @@ impl Inference<'_, '_, '_> {
                     }
                     _ => {
                         // Check reverse magic methods like __rmul__
-                        inference.check_overlapping_op_methods(function, magic_name);
-                        inference.check_inplace_methods(function, magic_name);
+                        self.check_overlapping_op_methods(function, magic_name);
+                        self.check_inplace_methods(function, magic_name);
                     }
                 }
             }
         }
-        is_overload_member
     }
 
     fn calc_overload_implementation_diagnostics(
