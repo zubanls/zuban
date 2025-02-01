@@ -1274,7 +1274,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         }
 
         let is_final = if in_stub {
-            functions.first().unwrap().is_final
+            functions.first().is_some_and(|f| f.is_final)
         } else {
             implementation
                 .as_ref()
