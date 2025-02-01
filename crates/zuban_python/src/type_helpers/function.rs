@@ -15,8 +15,8 @@ use crate::{
     debug,
     diagnostics::{Issue, IssueKind},
     file::{
-        first_defined_name, first_defined_name_of_multi_def, func_parent_scope,
-        use_cached_param_annotation_type, FuncParentScope, PythonFile, TypeComputation,
+        first_defined_name_of_multi_def, func_parent_scope, use_cached_param_annotation_type,
+        FuncParentScope, OtherDefinitionIterator, PythonFile, TypeComputation,
         TypeComputationOrigin, TypeVarCallbackReturn, FLOW_ANALYSIS, FUNC_TO_RETURN_OR_YIELD_DIFF,
         FUNC_TO_TYPE_VAR_DIFF,
     },
@@ -732,10 +732,23 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 }
             }
             _ => {
-                if self.node_ref.point().maybe_specific() == Some(Specific::OverloadUnreachable) {
-                    let first = first_defined_name(self.node_ref.file, node.name().index());
-                    let original_func =
-                        NodeRef::new(self.node_ref.file, first - NAME_TO_FUNCTION_DIFF);
+                let is_ov_unreachable =
+                    |p: Point| p.maybe_specific() == Some(Specific::OverloadUnreachable);
+                if is_ov_unreachable(self.node_ref.point()) {
+                    let current_index = node.name().index();
+                    let file = self.node_ref.file;
+                    let mut pre_unreachable = current_index - NAME_TO_FUNCTION_DIFF;
+                    // Find the method before the unreachable method
+                    // Previously we just used the first name, but that might just be a different
+                    // definition.
+                    for n in OtherDefinitionIterator::new(&file.points, current_index) {
+                        let n_def = n - NAME_TO_FUNCTION_DIFF;
+                        if !is_ov_unreachable(file.points.get(n_def)) {
+                            pre_unreachable = n_def;
+                        }
+                    }
+                    debug_assert_ne!(pre_unreachable, current_index - NAME_TO_FUNCTION_DIFF);
+                    let original_func = NodeRef::new(self.node_ref.file, pre_unreachable);
                     Function::new(original_func, self.class).kind(i_s)
                 } else {
                     FunctionKind::Function {

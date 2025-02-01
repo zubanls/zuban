@@ -1284,3 +1284,14 @@ from typing import Self
 class C:
     def __or__(self, value: Self, /) -> Self: ...
     def __ror__(self, value: Self, /) -> Self: ...
+
+[case overwrite_any_with_property_setter_should_be_fine]
+from typing import Any
+class X:
+    x = ...  # type: Any
+    @property  # E: Name "x" already defined on line 3
+    def x(self): ...
+    @x.setter
+    def x(self, value): ...
+
+reveal_type(X().x)  # N: Revealed type is "Any"
