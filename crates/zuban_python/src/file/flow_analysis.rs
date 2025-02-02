@@ -382,7 +382,10 @@ impl FlowAnalysis {
                             return None;
                         };
 
-                        debug_assert_eq!(func_node_ref.file_index(), link.file);
+                        if func_node_ref.file_index() != link.file {
+                            // TODO what about star imports? See also star_import_with_import_overwrite
+                            return None;
+                        }
                         // We try to filter out narrowed names that are reassigned within the
                         // function later than where that function is defined.
                         for name_index in OtherDefinitionIterator::new(

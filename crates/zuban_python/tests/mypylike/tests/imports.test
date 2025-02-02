@@ -357,3 +357,11 @@ reveal_type(a)
 foo/bar.py:2: note: Revealed type is "str"
 [out2]
 foo/bar.py:2: note: Revealed type is "types.ModuleType"
+
+[case star_import_with_import_overwrite]
+from typing import *
+
+def f() -> None:
+    from typing import Union
+
+    def g() -> Union[int, str]: ...
