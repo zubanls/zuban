@@ -83,9 +83,13 @@ pub(crate) fn typeshed_path_from_executable() -> String {
         .join("lib");
     // The lib folder typically contains a Python specific folder called "python3.8" or
     // python3.13", corresponding to the Python version. Here we try to find the package.
-    const READABLE_LIB_FOLDER: &str = "The lib folder should be readable";
-    for folder in lib_folder.read_dir().expect(READABLE_LIB_FOLDER) {
-        let folder = folder.expect(READABLE_LIB_FOLDER);
+    for folder in lib_folder
+        .read_dir()
+        .unwrap_or_else(|err| panic!("The lib folder {lib_folder:?} should be readable ({err})"))
+    {
+        let folder = folder.unwrap_or_else(|err| {
+            panic!("The lib folder {lib_folder:?} should be readable ({err})")
+        });
         let p = folder.path();
         let typeshed_path = p.join("site-packages").join("zuban").join("typeshed");
         if typeshed_path.exists() {

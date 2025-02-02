@@ -202,12 +202,11 @@ pub fn run(cli: Cli) -> ExitCode {
         return ExitCode::from(10);
     }
 
-    let (mut options, mut diagnostic_config) = find_cli_config(cli.config_file.as_deref())
-        .unwrap_or_else(|err| panic!("Problem parsing Mypy config: {err}"));
-    options.settings.mypy_compatible = true;
-    apply_flags(&mut options, &mut diagnostic_config, cli);
+    let cwd = std::env::current_dir().expect("Expected a valid working directory");
+    const CWD_ERROR: &str = "Expected valid unicode in working directory";
+    let cwd = cwd.into_os_string().into_string().expect(CWD_ERROR);
 
-    let mut project = Project::without_watcher(options);
+    let (mut project, diagnostic_config) = project_from_cli(cli, cwd, None);
     let diagnostics = project.diagnostics();
     for diagnostic in diagnostics.issues.iter() {
         println!("{}", diagnostic.as_string(&diagnostic_config))
@@ -237,10 +236,27 @@ pub fn run(cli: Cli) -> ExitCode {
     ExitCode::from(had_diagnostics as u8)
 }
 
+fn project_from_cli(
+    cli: Cli,
+    cwd: String,
+    typeshed_path: Option<String>,
+) -> (Project, DiagnosticConfig) {
+    let (mut options, mut diagnostic_config) = find_cli_config(cli.config_file.as_deref())
+        .unwrap_or_else(|err| panic!("Problem parsing Mypy config: {err}"));
+    options.settings.mypy_compatible = true;
+    if let Some(typeshed_path) = typeshed_path {
+        options.settings.typeshed_path = Some(typeshed_path);
+    }
+    apply_flags(&mut options, &mut diagnostic_config, cli, cwd);
+
+    (Project::without_watcher(options), diagnostic_config)
+}
+
 fn apply_flags(
     project_options: &mut ProjectOptions,
     diagnostic_config: &mut DiagnosticConfig,
     cli: Cli,
+    cwd: String,
 ) {
     macro_rules! apply {
         ($to:ident, $attr:ident, $inverse:ident) => {
@@ -322,10 +338,49 @@ fn apply_flags(
     }
 
     // TODO MYPYPATH=$MYPYPATH:mypy-stubs
-    let cwd = std::env::current_dir().expect("Expected a valid working directory");
-    const CWD_ERROR: &str = "Expected valid unicode in working directory";
-    project_options
-        .settings
-        .mypy_path
-        .push(cwd.into_os_string().into_string().expect(CWD_ERROR));
+    project_options.settings.mypy_path.push(cwd);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_diagnostics() {
+        let test_dir = test_utils::write_files_from_fixture(
+            r#"
+            [file pyproject.toml]
+            [tool.mypy]
+            strict = true
+
+            [file foo.py]
+            1()
+            def foo(x) -> int: return 1
+
+            [file README]
+            Test that readme's are not type checked
+            "#,
+            false,
+        );
+        let (mut project, diagnostic_config) = project_from_cli(
+            Cli::parse_from(Vec::<String>::default()),
+            test_dir.path().to_string(),
+            Some(test_utils::typeshed_path()),
+        );
+        let mut d = || {
+            let diagnostics = project.diagnostics();
+            diagnostics
+                .issues
+                .iter()
+                .map(|d| d.as_string(&diagnostic_config))
+                .collect::<Vec<_>>()
+        };
+
+        const NOT_CALLABLE: &str = "foo.py:1: error: \"int\" not callable";
+        assert_eq!(d(), vec![NOT_CALLABLE.to_string()]);
+
+        test_dir.remove_file("pyproject.toml");
+
+        assert_eq!(d(), vec![NOT_CALLABLE.to_string()]);
+    }
 }

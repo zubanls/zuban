@@ -108,6 +108,11 @@ impl Project {
             });
 
             let maybe_skipped = |flags: &TypeCheckerFlags, path: &str| {
+                // TODO the path __main__ should probably not be here.
+                if !path.ends_with(".py") && !path.ends_with(".pyi") && !path.ends_with("__main__")
+                {
+                    return true;
+                }
                 let check_files = &self.db.project.settings.files_or_directories_to_check;
                 !check_files.is_empty()
                     && !check_files

@@ -1437,6 +1437,7 @@ dependencies = [
  "config",
  "config_searcher",
  "licensing",
+ "test_utils",
  "zuban_python",
 ]
 
