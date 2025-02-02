@@ -178,3 +178,38 @@ pub fn typeshed_path() -> String {
     let typeshed_path = p.ancestors().nth(2).unwrap().join("typeshed");
     typeshed_path.into_os_string().into_string().unwrap()
 }
+
+pub fn write_files_from_fixture(fixture: &str, root_dir_contains_symlink: bool) -> TestDir {
+    let tmp_dir = TestDir::new(root_dir_contains_symlink);
+    let dedented_fixture = dedent(fixture);
+    for entry in fixture_to_file_entry(&dedented_fixture) {
+        tmp_dir.write_file(entry.path, entry.text)
+    }
+    tmp_dir
+}
+
+struct FileEntry<'x> {
+    path: &'x str,
+    text: &'x str,
+}
+
+fn fixture_to_file_entry(fixture: &str) -> impl Iterator<Item = FileEntry> {
+    let steps = calculate_steps(None, fixture);
+    assert!(
+        steps.flags.is_empty(),
+        "For now flags in fixtures are not supported"
+    );
+    assert_eq!(steps.steps.len(), 1, "For now we only support one step");
+    let mut first = steps.steps.into_iter().next().unwrap();
+    assert!(first.out.is_empty());
+    assert!(first.deletions.is_empty());
+    let main_content = first
+        .files
+        .remove("__main__")
+        .expect("Should always be there");
+    assert_eq!(main_content.trim(), "");
+    first
+        .files
+        .into_iter()
+        .map(|(path, text)| FileEntry { path, text })
+}

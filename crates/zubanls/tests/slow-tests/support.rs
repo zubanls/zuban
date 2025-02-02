@@ -12,7 +12,7 @@ use lsp_types::{
 };
 use serde::Serialize;
 use serde_json::{to_string_pretty, Value};
-use test_utils::{calculate_steps, dedent, TestDir};
+use test_utils::{write_files_from_fixture, TestDir};
 use zubanls::GLOBAL_NOTIFY_EVENT_COUNTER;
 
 use crate::connection::{path_to_uri, Connection};
@@ -48,12 +48,8 @@ impl<'a> Project<'a> {
     }
 
     pub(crate) fn into_server(self) -> Server {
-        let tmp_dir = TestDir::new(self.root_dir_contains_symlink);
-        let dedented_fixture = dedent(self.fixture);
-        for entry in fixture_to_file_entry(&dedented_fixture) {
-            tmp_dir.write_file(entry.path, entry.text)
-        }
         // TODO let tmp_dir_path = AbsPathBuf::assert(tmp_dir.path().to_path_buf());
+        let tmp_dir = write_files_from_fixture(self.fixture, self.root_dir_contains_symlink);
         let tmp_dir_path = tmp_dir.path();
         let mut roots = self
             .roots
@@ -188,32 +184,6 @@ impl Server {
     pub(crate) fn create_symlink_dir_and_wait(&self, rel_original: &str, rel_link: &str) {
         self.with_wait(|| self.tmp_dir.create_symlink_dir(rel_original, rel_link))
     }
-}
-
-struct FileEntry<'x> {
-    path: &'x str,
-    text: &'x str,
-}
-
-fn fixture_to_file_entry(fixture: &str) -> impl Iterator<Item = FileEntry> {
-    let steps = calculate_steps(None, fixture);
-    assert!(
-        steps.flags.is_empty(),
-        "For now flags in fixtures are not supported"
-    );
-    assert_eq!(steps.steps.len(), 1, "For now we only support one step");
-    let mut first = steps.steps.into_iter().next().unwrap();
-    assert!(first.out.is_empty());
-    assert!(first.deletions.is_empty());
-    let main_content = first
-        .files
-        .remove("__main__")
-        .expect("Should always be there");
-    assert_eq!(main_content.trim(), "");
-    first
-        .files
-        .into_iter()
-        .map(|(path, text)| FileEntry { path, text })
 }
 
 fn join(path: &str, other: &str) -> String {
