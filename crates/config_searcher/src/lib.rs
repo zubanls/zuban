@@ -15,13 +15,14 @@ pub fn find_workspace_config(
     workspace_dir: &str,
     on_check_path: impl FnMut(&Path),
 ) -> anyhow::Result<ProjectOptions> {
-    let maybe_found = find_mypy_config_file_in_dir(Some(Path::new(workspace_dir)), on_check_path);
+    let maybe_found = find_mypy_config_file_in_dir(Path::new(workspace_dir), on_check_path);
     let mut project_options = initialize_config(maybe_found)?.0;
     project_options.settings.mypy_path = vec![];
     Ok(project_options)
 }
 
 pub fn find_cli_config(
+    current_dir: &Path,
     config_file: Option<&Path>,
 ) -> anyhow::Result<(ProjectOptions, DiagnosticConfig)> {
     let maybe_found = if let Some(config_file) = config_file.as_ref() {
@@ -31,7 +32,7 @@ pub fn find_cli_config(
         let s = std::fs::read_to_string(config_path);
         Some((config_path, s))
     } else {
-        find_mypy_config_file_in_dir(None, |_| ())
+        find_mypy_config_file_in_dir(current_dir, |_| ())
     };
     initialize_config(maybe_found)
 }
@@ -58,7 +59,7 @@ fn initialize_config(
 }
 
 fn find_mypy_config_file_in_dir(
-    dir: Option<&Path>,
+    dir: &Path,
     mut on_check_path: impl FnMut(&Path),
 ) -> Option<(&'static str, std::io::Result<String>)> {
     CONFIG_PATHS.iter().find_map(|config_path| {
@@ -71,10 +72,6 @@ fn find_mypy_config_file_in_dir(
             }
             None
         };
-        if let Some(dir) = dir {
-            check(&dir.join(config_path))
-        } else {
-            check(Path::new(config_path))
-        }
+        check(&dir.join(config_path))
     })
 }

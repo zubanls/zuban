@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use config::{DiagnosticConfig, ExcludeRegex, ProjectOptions, PythonVersion};
@@ -241,8 +241,9 @@ fn project_from_cli(
     cwd: String,
     typeshed_path: Option<String>,
 ) -> (Project, DiagnosticConfig) {
-    let (mut options, mut diagnostic_config) = find_cli_config(cli.config_file.as_deref())
-        .unwrap_or_else(|err| panic!("Problem parsing Mypy config: {err}"));
+    let (mut options, mut diagnostic_config) =
+        find_cli_config(&Path::new(&cwd), cli.config_file.as_deref())
+            .unwrap_or_else(|err| panic!("Problem parsing Mypy config: {err}"));
     options.settings.mypy_compatible = true;
     if let Some(typeshed_path) = typeshed_path {
         options.settings.typeshed_path = Some(typeshed_path);
@@ -362,12 +363,12 @@ mod tests {
             "#,
             false,
         );
-        let (mut project, diagnostic_config) = project_from_cli(
-            Cli::parse_from(Vec::<String>::default()),
-            test_dir.path().to_string(),
-            Some(test_utils::typeshed_path()),
-        );
-        let mut d = || {
+        let d = || {
+            let (mut project, diagnostic_config) = project_from_cli(
+                Cli::parse_from(Vec::<String>::default()),
+                test_dir.path().to_string(),
+                Some(test_utils::typeshed_path()),
+            );
             let diagnostics = project.diagnostics();
             diagnostics
                 .issues
@@ -377,7 +378,14 @@ mod tests {
         };
 
         const NOT_CALLABLE: &str = "foo.py:1: error: \"int\" not callable";
-        assert_eq!(d(), vec![NOT_CALLABLE.to_string()]);
+        assert_eq!(
+            d(),
+            vec![
+                NOT_CALLABLE.to_string(),
+                "foo.py:2: error: Function is missing a type annotation for one or more arguments"
+                    .to_string()
+            ]
+        );
 
         test_dir.remove_file("pyproject.toml");
 
