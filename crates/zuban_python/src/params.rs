@@ -1168,10 +1168,16 @@ where
             ParamKind::Star => match param.specific(self.db) {
                 WrappedParamType::Star(WrappedStar::ParamSpecArgs(u)) => {
                     let next = self.params.next();
-                    debug_assert!(matches!(
+                    if !matches!(
                         next.unwrap().specific(self.db),
                         WrappedParamType::StarStar(WrappedStarStar::ParamSpecKwargs(_)),
-                    ));
+                    ) {
+                        // In case we have not a ParamSpecKwargs after Args, we have an invalid
+                        // definition, so we just skip everything and are done.
+                        self.arguments.by_ref().count(); // This consumes the iterator
+                        self.params.by_ref().count();
+                        return None;
+                    }
                     return Some(InferrableParam {
                         param,
                         argument: ParamArgument::ParamSpecArgs(

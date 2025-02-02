@@ -141,3 +141,11 @@ def test(f: Callable[P, int], *args: P.args, **kwargs: P.kwargs) -> None:
     test(f, *with_unpack)  # E: Argument 2 to "test" has incompatible type "*tuple[int, Unpack[Tuple[int, ...]]]"; expected "P.args"
     test(f, *with_unpack, **kwargs)  # E: Argument 2 to "test" has incompatible type "*tuple[int, Unpack[Tuple[int, ...]]]"; expected "P.args" \
                                      # E: Argument 3 to "test" has incompatible type "**P.kwargs"; expected "P.kwargs"
+
+[case param_spec_with_invalid_arg_between]
+from typing import ParamSpec
+P = ParamSpec("P")
+
+def foo(*args: P.args, x: int, **kwargs: P.kwargs): ...  # E: ParamSpec must have "*args" typed as "P.args" and "**kwargs" typed as "P.kwargs"
+
+foo(1, 2, 3, 4)
