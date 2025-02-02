@@ -10,3 +10,4 @@ authors.workspace = true
 [dependencies]
 lazy_static.workspace = true
 regex.workspace = true
+tracing.workspace = true

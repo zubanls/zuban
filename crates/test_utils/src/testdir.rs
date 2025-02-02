@@ -4,13 +4,13 @@ use std::{
     sync::atomic::{AtomicUsize, Ordering},
 };
 
-pub(crate) struct TestDir {
+pub struct TestDir {
     path: String,
     keep: bool,
 }
 
 impl TestDir {
-    pub(crate) fn new(symlink: bool) -> TestDir {
+    pub fn new(symlink: bool) -> TestDir {
         let temp_dir = std::env::temp_dir();
         // On MacOS builders on GitHub actions, the temp dir is a symlink, and
         // that causes problems down the line. Specifically:
@@ -58,37 +58,37 @@ impl TestDir {
         self.keep = true;
         self
     }
-    pub(crate) fn path(&self) -> &str {
+    pub fn path(&self) -> &str {
         &self.path
     }
 
-    pub(crate) fn write_file(&self, rel_path: &str, text: &str) {
+    pub fn write_file(&self, rel_path: &str, text: &str) {
         let path = Path::new(&self.path).join(rel_path);
         fs::create_dir_all(path.parent().unwrap()).unwrap();
         fs::write(path.as_path(), text.as_bytes()).unwrap();
         tracing::info!("Wrote {path:?}");
     }
 
-    pub(crate) fn remove_file(&self, rel_path: &str) {
+    pub fn remove_file(&self, rel_path: &str) {
         let path = Path::new(&self.path).join(rel_path);
         fs::remove_file(path.as_path()).unwrap();
         tracing::info!("Removed {path:?}");
     }
 
-    pub(crate) fn create_dir_all(&self, rel_path: &str) {
+    pub fn create_dir_all(&self, rel_path: &str) {
         let path = Path::new(&self.path).join(rel_path);
         fs::create_dir_all(&path).unwrap();
         tracing::info!("Created dir {path:?}");
     }
 
-    pub(crate) fn rename(&self, rel_from: &str, rel_to: &str) {
+    pub fn rename(&self, rel_from: &str, rel_to: &str) {
         let from = Path::new(&self.path).join(rel_from);
         let to = Path::new(&self.path).join(rel_to);
         fs::rename(&from, &to).unwrap();
         tracing::info!("Renamed from {from:?} to {to:?}");
     }
 
-    pub(crate) fn create_symlink_dir(&self, rel_original: &str, rel_link: &str) {
+    pub fn create_symlink_dir(&self, rel_original: &str, rel_link: &str) {
         let original = Path::new(&self.path).join(rel_original);
         let link = Path::new(&self.path).join(rel_link);
         create_symlink_dir(original, link).unwrap();

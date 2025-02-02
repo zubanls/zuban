@@ -1,6 +1,10 @@
+mod testdir;
+
 use std::collections::HashMap;
 
 use regex::Regex;
+
+pub use testdir::TestDir;
 
 lazy_static::lazy_static! {
     // This is how I found out about possible "commands in mypy, executed in

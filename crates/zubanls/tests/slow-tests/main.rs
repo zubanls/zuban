@@ -22,7 +22,6 @@ use lsp_types::{
 
 mod connection;
 mod support;
-mod testdir;
 
 use connection::Connection;
 use serde_json::json;

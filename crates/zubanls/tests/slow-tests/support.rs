@@ -12,13 +12,10 @@ use lsp_types::{
 };
 use serde::Serialize;
 use serde_json::{to_string_pretty, Value};
-use test_utils::{calculate_steps, dedent};
+use test_utils::{calculate_steps, dedent, TestDir};
 use zubanls::GLOBAL_NOTIFY_EVENT_COUNTER;
 
-use crate::{
-    connection::{path_to_uri, Connection},
-    testdir::TestDir,
-};
+use crate::connection::{path_to_uri, Connection};
 
 lazy_static::lazy_static! {
     static ref FILE_SYSTEM_LOCK: Mutex<()> = Mutex::default();
