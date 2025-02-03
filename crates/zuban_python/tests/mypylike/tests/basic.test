@@ -547,7 +547,7 @@ __file__.endswith("")
 reveal_type(__name__)  # N: Revealed type is "str"
 reveal_type(__file__)  # N: Revealed type is "str"
 reveal_type(__package__)  # N: Revealed type is "str"
-reveal_type(__spec__)  # N: Revealed type is "importlib.machinery.ModuleSpec | None"
+reveal_type(__spec__)  # N: Revealed type is "_frozen_importlib.ModuleSpec | None"
 
 # Attributes defined in ModuleType but not actually available in the current module.
 __dict__  # E: Name "__dict__" is not defined
@@ -570,7 +570,7 @@ def foo() -> None:
     reveal_type(__name__)  # N: Revealed type is "str"
     reveal_type(__file__)  # N: Revealed type is "str"
     reveal_type(__package__)  # N: Revealed type is "str"
-    reveal_type(__spec__)  # N: Revealed type is "importlib.machinery.ModuleSpec | None"
+    reveal_type(__spec__)  # N: Revealed type is "_frozen_importlib.ModuleSpec | None"
 
     __dict__  # E: Name "__dict__" is not defined
     __loader__  # E: Name "__loader__" is not defined
@@ -589,7 +589,7 @@ class Foo:
     reveal_type(__name__)  # N: Revealed type is "str"
     reveal_type(__file__)  # N: Revealed type is "str"
     reveal_type(__package__)  # N: Revealed type is "str"
-    reveal_type(__spec__)  # N: Revealed type is "importlib.machinery.ModuleSpec | None"
+    reveal_type(__spec__)  # N: Revealed type is "_frozen_importlib.ModuleSpec | None"
 
     __dict__  # E: Name "__dict__" is not defined
     __loader__  # E: Name "__loader__" is not defined

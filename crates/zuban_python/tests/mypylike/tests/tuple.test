@@ -408,17 +408,17 @@ def foo(t1: Tup, t2: tuple[int, float]) -> None:
 ()[1,1]  # E: No overload variant of "__getitem__" of "tuple" matches argument type "tuple[int, int]" \
          # N: Possible overload variants: \
          # N:     def __getitem__(self, SupportsIndex, /) -> Any \
-         # N:     def __getitem__(self, slice, /) -> tuple[Any, ...]
+         # N:     def __getitem__(self, slice[Any, Any, Any], /) -> tuple[Any, ...]
 (1, 1)[1,1]  # E: No overload variant of "__getitem__" of "tuple" matches argument type "tuple[int, int]" \
              # N: Possible overload variants: \
              # N:     def __getitem__(self, SupportsIndex, /) -> Any \
-             # N:     def __getitem__(self, slice, /) -> tuple[Any, ...]
+             # N:     def __getitem__(self, slice[Any, Any, Any], /) -> tuple[Any, ...]
 
 [case tuple_with_star_index]
 (1, "")[*()]  # E: No overload variant of "__getitem__" of "tuple" matches argument type "object" \
               # N: Possible overload variants: \
               # N:     def __getitem__(self, SupportsIndex, /) -> Any \
-              # N:     def __getitem__(self, slice, /) -> tuple[Any, ...]
+              # N:     def __getitem__(self, slice[Any, Any, Any], /) -> tuple[Any, ...]
 
 [case with_unpack_tuple_args_too_few_args]
 from typing import TypeVarTuple
