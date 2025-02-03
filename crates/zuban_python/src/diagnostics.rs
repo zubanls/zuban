@@ -91,7 +91,7 @@ pub(crate) enum IssueKind {
     NotIterableMissingIter { type_: Box<str> },
     NotIterableMissingIterInUnion { object: Box<str>, union: Box<str> },
     AsyncNotIterable { type_: Box<str> },
-    ListOrTupleExpectedAsVariadicArgs,
+    IterableExpectedAsVariadicArgs,
     InvalidCallableArgCount,
     UnsupportedOperand { operand: Box<str>, left: Box<str>, right: Box<str> },
     UnsupportedLeftOperand { operand: Box<str>, left: Box<str> },
@@ -542,6 +542,7 @@ impl IssueKind {
             | NonOverlappingContainsCheck { .. }
             | NonOverlappingIdentityCheck { .. } => "comparison-overlap",
             UnimportedRevealType => "unimported-reveal",
+            DisallowedAnyExplicit => "explicit-any",
 
             _ => "misc",
         })
@@ -728,7 +729,7 @@ impl<'db> Diagnostic<'db> {
             UnpackNotIterable { .. }
                 | NotIterableMissingIter { .. }
                 | NotIterableMissingIterInUnion { .. }
-                | ListOrTupleExpectedAsVariadicArgs
+                | IterableExpectedAsVariadicArgs
                 | AttributeError { .. }
                 | OverloadUnmatchable { .. }
                 | OverloadImplementationParamsNotBroadEnough { .. }
@@ -981,7 +982,7 @@ impl<'db> Diagnostic<'db> {
             AsyncNotIterable{type_} => format!(
                 r#""{type_}" has no attribute "__aiter__" (not async iterable)"#
             ),
-            ListOrTupleExpectedAsVariadicArgs => "List or tuple expected as variadic arguments".to_string(),
+            IterableExpectedAsVariadicArgs => "Expected iterable as variadic argument".to_string(),
             InvalidCallableArgCount => "Please use \"Callable[[<parameters>], <return type>]\" or \"Callable\"".to_string(),
             UnsupportedOperand{operand, left, right} => {
                 format!(

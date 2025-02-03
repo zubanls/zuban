@@ -781,7 +781,7 @@ impl<'x> IterInfos<'x> {
                     IssueKind::NotIterableMissingIter { type_ }
                 }
             }
-            IterCause::VariadicUnpack => IssueKind::ListOrTupleExpectedAsVariadicArgs,
+            IterCause::VariadicUnpack => IssueKind::IterableExpectedAsVariadicArgs,
         })
     }
 

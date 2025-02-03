@@ -179,7 +179,7 @@ N = NewType('N', A)
 
 def parse_ast(n: N) -> None:
     if isinstance(n, B):
-        reveal_type(n)  # N: Revealed type is "<subclass of "N" and "B">"
+        reveal_type(n)  # N: Revealed type is "<subclass of "__main__.N" and "__main__.B">"
 
 [case tuple_intersection_with_getitem]
 from typing import Tuple
@@ -190,7 +190,7 @@ class B: ...
 x: Tuple[int, str]
 
 if isinstance(x, A):
-    reveal_type(x)  # N: Revealed type is "<subclass of "tuple" and "A">"
+    reveal_type(x)  # N: Revealed type is "<subclass of "tuple[int, str]" and "__main__.A">"
     reveal_type(x[0])  # N: Revealed type is "int"
     reveal_type(x[1])  # N: Revealed type is "str"
     x.foo()
@@ -1054,7 +1054,7 @@ def test(x: List[Any]) -> None:
 
 def test2(x: List[Any] | B) -> None:
     if f(x) or isinstance(x, A):
-        reveal_type(x)  # N: Revealed type is "list[str] | <subclass of "B" and "A">"
+        reveal_type(x)  # N: Revealed type is "list[str] | <subclass of "__main__.B" and "__main__.A">"
     else:
         reveal_type(x)  # N: Revealed type is "__main__.B"
 
@@ -1130,7 +1130,7 @@ import a
 from b import b as x
 class A: ...
 if isinstance(x, A):
-    reveal_type(x)  # N: Revealed type is "<subclass of "B" and "A">"
+    reveal_type(x)  # N: Revealed type is "<subclass of "b.B" and "a.A">"
     a = int()
 else:
     x + 1  # E: Unsupported operand types for + ("B" and "int")
@@ -1564,8 +1564,8 @@ def f(x: type[A]):
     if issubclass(x, B):
         reveal_type(x.a)  # N: Revealed type is "int"
         reveal_type(x.b)  # N: Revealed type is "int"
-        x.c  # E: "<subclass of "A" and "B">" has no attribute "c"
-        x.d  # E: "<subclass of "A" and "B">" has no attribute "d"
+        x.c  # E: "<subclass of "__main__.A" and "__main__.B">" has no attribute "c"
+        x.d  # E: "<subclass of "__main__.A" and "__main__.B">" has no attribute "d"
 
 [case try_stmt_except_type]
 from typing import TypeVarTuple, Any

@@ -12,7 +12,7 @@ use crate::{
     type_helpers::{linearize_mro_and_return_linearizable, LookupDetails, TypeOrClass},
 };
 
-use super::{AnyCause, CallableParams, IterInfos, Type, UnionEntry};
+use super::{AnyCause, CallableParams, FormatStyle, IterInfos, Type, UnionEntry};
 
 type RunOnUnionEntry<'a> =
     &'a mut dyn FnMut(&Type, &dyn Fn(IssueKind), &mut dyn FnMut(&Type, LookupDetails));
@@ -118,7 +118,7 @@ impl Intersection {
         let mut had_issue = false;
         let fmt_intersection = |intersection: &Self| {
             intersection
-                .format_names(&FormatData::new_short(i_s.db), true)
+                .format_names(&FormatData::new_short(i_s.db))
                 .into()
         };
         for t in intersection.iter_entries() {
@@ -188,6 +188,9 @@ impl Intersection {
     }
 
     pub fn format(&self, format_data: &FormatData) -> Box<str> {
+        let mut format_data = *format_data;
+        // For whatever reason, the names are always formatted as qualified names
+        format_data.style = FormatStyle::MypyRevealType;
         if self.entries.len() == 2
             && matches!(&self.entries[0], Type::Callable(c) if matches!(c.params, CallableParams::Any(_)))
         {
@@ -198,22 +201,14 @@ impl Intersection {
             )
             .into()
         } else {
-            format!("<subclass of {}>", self.format_names(format_data, false)).into()
+            format!("<subclass of {}>", self.format_names(&format_data)).into()
         }
     }
 
-    pub(crate) fn format_names(&self, format_data: &FormatData, with_generics: bool) -> String {
+    fn format_names(&self, format_data: &FormatData) -> String {
         let iterator = self.entries.iter();
         let mut formatted_entries = iterator
-            .map(|t| {
-                let s = match t {
-                    Type::Class(c) if !with_generics => c.class(format_data.db).name().into(),
-                    Type::Tuple(_) if !with_generics => "tuple".into(),
-                    Type::NewType(n) if !with_generics => n.name(format_data.db).into(),
-                    _ => t.format(format_data),
-                };
-                format!("\"{s}\"")
-            })
+            .map(|t| format!("\"{}\"", t.format(format_data)))
             .collect::<Vec<_>>();
         match formatted_entries.as_slice() {
             [a, b] => {

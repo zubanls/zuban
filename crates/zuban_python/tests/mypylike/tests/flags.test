@@ -208,18 +208,18 @@ def f(x: tuple[int, str] | None, y: tuple[int, str] | int):
     [n for n in 1]  # E: "int" has no attribute "__iter__" (not iterable)  [attr-defined]
     [n for n in None]  # E: "None" has no attribute "__iter__" (not iterable)  [attr-defined]
 
-    foo(*1)  # E: List or tuple expected as variadic arguments  [misc]
-    foo(*x)  # E: List or tuple expected as variadic arguments  [misc]
-    foo(*y)  # E: List or tuple expected as variadic arguments  [misc]
+    foo(*1)  # E: Expected iterable as variadic argument  [misc]
+    foo(*x)  # E: Expected iterable as variadic argument  [misc]
+    foo(*y)  # E: Expected iterable as variadic argument  [misc]
 
-    [*1]  # E: List or tuple expected as variadic arguments  [misc]
-    [*x]  # E: List or tuple expected as variadic arguments  [misc]
-    [*y]  # E: List or tuple expected as variadic arguments  [misc]
+    [*1]  # E: Expected iterable as variadic argument  [misc]
+    [*x]  # E: Expected iterable as variadic argument  [misc]
+    [*y]  # E: Expected iterable as variadic argument  [misc]
 
     # TODO these errors shouldn't be duplicated
-    (*1, )  # E: List or tuple expected as variadic arguments  [misc]  # E: List or tuple expected as variadic arguments  [misc]
-    (*x, )  # E: List or tuple expected as variadic arguments  [misc]  # E: List or tuple expected as variadic arguments  [misc]
-    (*y, )  # E: List or tuple expected as variadic arguments  [misc]  # E: List or tuple expected as variadic arguments  [misc]
+    (*1, )  # E: Expected iterable as variadic argument  [misc]  # E: Expected iterable as variadic argument  [misc]
+    (*x, )  # E: Expected iterable as variadic argument  [misc]  # E: Expected iterable as variadic argument  [misc]
+    (*y, )  # E: Expected iterable as variadic argument  [misc]  # E: Expected iterable as variadic argument  [misc]
 
 [case untyped_override_check_untyped_defs_no_mypy_compatible]
 # flags: --check-untyped-defs --no-mypy-compatible

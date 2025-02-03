@@ -272,9 +272,9 @@ def f(x: Any) -> None:
 from typing import Any
 
 def f(x: Any) -> None:
-    x(*1)  # E: List or tuple expected as variadic arguments
+    x(*1)  # E: Expected iterable as variadic argument
     x(**1) # E: Argument after ** must be a mapping, not "int"
-    x(*1, **1)  # E: List or tuple expected as variadic arguments \
+    x(*1, **1)  # E: Expected iterable as variadic argument \
                 # E: Argument after ** must be a mapping, not "int"
     x(*undefined)  # E: Name "undefined" is not defined
     x(**undefined)  # E: Name "undefined" is not defined
