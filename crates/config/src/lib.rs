@@ -43,7 +43,7 @@ impl Default for Settings {
     fn default() -> Self {
         Self {
             platform: None,
-            python_version: PythonVersion::new(3, 12),
+            python_version: PythonVersion::new(3, 13),
             python_executable: None,
             typeshed_path: std::env::var("ZUBAN_TYPESHED").ok(),
             mypy_path: vec![],
