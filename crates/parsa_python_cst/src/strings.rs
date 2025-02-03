@@ -73,7 +73,11 @@ impl<'db> PythonString<'db> {
                                 s.push(c)
                             }
                         }
-                        b'N' => todo!("Need to implement \\N{{...}}"),
+                        b'N' => {
+                            // TODO implement this
+                            tracing::error!("Unicode literal \\N{{...}} found");
+                            s.push_str("\\N")
+                        }
                         b'a' => s.push('\x07'), // Bell
                         b'b' => s.push('\x08'), // Backspace
                         b't' => s.push('\x09'), // Tab

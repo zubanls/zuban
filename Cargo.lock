@@ -734,6 +734,7 @@ name = "parsa_python_cst"
 version = "0.0.6"
 dependencies = [
  "parsa_python",
+ "tracing",
 ]
 
 [[package]]

@@ -9,3 +9,4 @@ authors.workspace = true
 
 [dependencies]
 parsa_python.workspace = true
+tracing.workspace = true
