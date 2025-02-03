@@ -582,6 +582,12 @@ impl FlowAnalysis {
             .unwrap_or_else(|| search_for.with_declaration())
     }
 
+    fn remove_key(&self, i_s: &InferenceState, key: &FlowKey) {
+        self.tos_frame()
+            .entries
+            .retain(|entry| !entry.key.equals(i_s.db, key))
+    }
+
     fn remove_key_if_modifies_ancestors(&self, i_s: &InferenceState, key: &FlowKey) {
         self.tos_frame()
             .entries
@@ -1241,6 +1247,10 @@ impl Inference<'_, '_, '_> {
         if declaration_t.is_any() {
             // Still check for stuff like Final reassignments
             check_for_error();
+            // Remove the key
+            if new_t.is_any_or_any_in_union(self.i_s.db) {
+                FLOW_ANALYSIS.with(|fa| fa.remove_key(self.i_s, &key));
+            }
             return;
         }
         if new_t.is_any() && !declaration_t.is_any_or_any_in_union(self.i_s.db) {

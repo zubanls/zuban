@@ -1590,3 +1590,14 @@ def f(x: Any) -> None:
     reveal_type(x)  # N: Revealed type is "Any"
     for x in [1]:
         reveal_type(x)  # N: Revealed type is "Any"
+
+[case isinstance_any_narrowing_with_reassignment]
+# flags: --warn-unreachable
+from typing import Any
+def foo(x: Any, y: Any):
+    if isinstance(x, str):
+        x = y
+        if x is None:
+            reveal_type(x)  # N: Revealed type is "None"
+        reveal_type(x)  # N: Revealed type is "Any"
+    reveal_type(x)  # N: Revealed type is "Any"
