@@ -829,3 +829,6 @@ def foo(x, y: bytes):
 
 [file foo.pyi]
 def foo(x: str, y: int) -> None: ...
+
+[case __debug__usage]
+if __debug__: ...

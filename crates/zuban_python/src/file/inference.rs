@@ -3773,6 +3773,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 Point::new_specific(Specific::RevealTypeFunction, Locality::Todo)
             }
             "__builtins__" => Point::new_file_reference(builtins.file_index, Locality::Todo),
+            "__debug__" => return Inferred::from_type(i_s.db.python_state.bool_type()),
             _ => {
                 if let Some(link) = builtins.lookup_global(name_str).filter(|link| {
                     (is_valid_builtins_export(name_str))
