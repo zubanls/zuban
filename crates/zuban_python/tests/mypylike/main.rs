@@ -517,6 +517,11 @@ fn add_inline_errors(wanted: &mut Vec<String>, path: &str, code: &str) {
                 if i != 0 {
                     type_ = "note";
                 }
+                if comment == "\\" {
+                    // Stuff like:
+                    // # E: \
+                    continue;
+                }
                 if let Some(comment) = cleanup_mypy_issues(comment) {
                     if let Some(column) = column {
                         wanted.push(format!(
