@@ -170,7 +170,6 @@ testInvalidTypevarArgumentsGenericConstraint
 testDataclassesBadInit
 testDataclassFieldDoesNotFailOnKwargsUnpacking
 testDataclassFieldWithPositionalArguments
-testSlicingWithInvalidBase
 
 # regressions
 testIncrementalInvalidNamedTupleInUnannotatedFunction

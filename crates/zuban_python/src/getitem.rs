@@ -12,8 +12,9 @@ use crate::{
     inference_state::{InferenceState, Mode},
     inferred::Inferred,
     matching::ResultContext,
+    new_class,
     node_ref::NodeRef,
-    type_::{Tuple, Type},
+    type_::{AnyCause, Tuple, Type},
 };
 
 #[derive(Debug, Copy, Clone)]
@@ -170,15 +171,23 @@ impl<'file> Slice<'file> {
                 }) {
                     NodeRef::new(self.file, expr.index())
                         .add_issue(i_s, IssueKind::InvalidSliceIndex);
+                    Type::Any(AnyCause::FromError)
+                } else {
+                    t.into_owned()
                 }
+            } else {
+                Type::None
             }
         };
 
         let (first, second, third) = self.slice.unpack();
-        check(first);
-        check(second);
-        check(third);
-        Inferred::from_type(i_s.db.python_state.slice_type_with_any())
+
+        Inferred::from_type(new_class!(
+            i_s.db.python_state.slice_link(),
+            check(first),
+            check(second),
+            check(third),
+        ))
     }
 
     pub fn callback_on_tuple_indexes(

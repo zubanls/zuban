@@ -253,7 +253,7 @@ class Base:
     def __getitem__(self, indices: NestedSequence[Base | None]) -> Base: ...
 
 def foo(x: Base) -> None:
-    x[::1, ::2]  # E: Invalid index type "tuple[slice[Any, Any, Any], slice[Any, Any, Any]]" for "Base"; expected type "NestedSequence[Base | None]"
+    x[::1, ::2]  # E: Invalid index type "tuple[slice[None, None, int], slice[None, None, int]]" for "Base"; expected type "NestedSequence[Base | None]"
 
 [case protocol_self_types_on_both_sides]
 from typing import Protocol, TypeVar, Generic
