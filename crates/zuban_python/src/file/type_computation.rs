@@ -58,7 +58,7 @@ type TypeVarCallback<'db, 'x> = &'x mut dyn FnMut(
 ) -> TypeVarCallbackReturn;
 
 #[derive(Debug, Clone)]
-pub(super) enum SpecialType {
+enum SpecialType {
     Union,
     Optional,
     Any,
@@ -68,8 +68,7 @@ pub(super) enum SpecialType {
     GenericWithGenerics,
     TypingNamedTuple,
     TypingTypedDict,
-    Required,
-    NotRequired,
+    TypedDictFieldModifier(TypedDictFieldModifier),
     CollectionsNamedTuple,
     Callable,
     BuiltinsType,
@@ -90,6 +89,13 @@ pub(super) enum SpecialType {
     FlexibleAlias,
     MypyExtensionsParamType(Specific),
     CallableParam(CallableParam),
+}
+
+#[derive(Debug, Clone)]
+enum TypedDictFieldModifier {
+    Required,
+    NotRequired,
+    ReadOnly,
 }
 
 #[derive(Debug, Clone)]
@@ -233,7 +239,7 @@ pub enum TypeOrUnpack {
 }
 
 #[derive(Debug, Clone, Default)]
-struct TypedDictModifiers {
+struct TypedDictFieldModifiers {
     required: bool,
     not_required: bool,
     read_only: bool,
@@ -267,7 +273,7 @@ enum TypeContent<'db, 'a> {
     Concatenate(CallableParams),
     ClassVar(Type),
     EnumMember(EnumMember),
-    TypedDictMemberModifiers(TypedDictModifiers, Type),
+    TypedDictMemberModifiers(TypedDictFieldModifiers, Type),
     Final(Type),
     TypeGuardInfo(TypeGuardInfo),
     ParamSpecAttr {
@@ -288,7 +294,7 @@ enum ClassGetItemResult<'db> {
 }
 
 #[derive(Debug)]
-pub(super) enum TypeNameLookup<'db, 'a> {
+enum TypeNameLookup<'db, 'a> {
     Module(&'db PythonFile),
     Namespace(Rc<Namespace>),
     Class { node_ref: NodeRef<'db> },
@@ -1561,11 +1567,8 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             self.expect_type_var_like_args(s, "Generic");
                             TypeContent::SpecialType(SpecialType::GenericWithGenerics)
                         }
-                        SpecialType::Required => {
-                            self.compute_type_get_item_on_required_like(s, true)
-                        }
-                        SpecialType::NotRequired => {
-                            self.compute_type_get_item_on_required_like(s, false)
+                        SpecialType::TypedDictFieldModifier(m) => {
+                            self.compute_type_get_item_on_typed_dict_field_modifier(s, m)
                         }
                         SpecialType::Callable => self.compute_type_get_item_on_callable(s),
                         SpecialType::Literal => self.compute_get_item_on_literal(s),
@@ -3105,23 +3108,23 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         TypeContent::Type(self.compute_slice_type(second))
     }
 
-    fn compute_type_get_item_on_required_like(
+    fn compute_type_get_item_on_typed_dict_field_modifier(
         &mut self,
         slice_type: SliceType,
-        is_required: bool, // as opposed to NotRequired
+        modifier: TypedDictFieldModifier,
     ) -> TypeContent<'static, 'static> {
         let mut iterator = slice_type.iter();
         let first = iterator.next().unwrap();
         if let Some(next) = iterator.next() {
-            let name = if is_required {
-                "Required[]"
-            } else {
-                "NotRequired[]"
+            let name = match modifier {
+                TypedDictFieldModifier::Required => "Required[]",
+                TypedDictFieldModifier::NotRequired => "NotRequired[]",
+                TypedDictFieldModifier::ReadOnly => "ReadOnly[]",
             };
             self.add_issue(next.as_node_ref(), IssueKind::MustHaveOneArgument { name });
             TypeContent::Unknown(UnknownCause::ReportedIssue)
         } else {
-            let mut modifiers = TypedDictModifiers::default();
+            let mut modifiers = TypedDictFieldModifiers::default();
             let t = match self.compute_slice_type_content(first) {
                 TypeContent::TypedDictMemberModifiers(m, t) => {
                     modifiers = m;
@@ -3129,11 +3132,11 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 }
                 tc => self.as_type(tc, first.as_node_ref()),
             };
-            if is_required {
-                modifiers.required = true;
-            } else {
-                modifiers.not_required = true;
-            }
+            match modifier {
+                TypedDictFieldModifier::Required => modifiers.required = true,
+                TypedDictFieldModifier::NotRequired => modifiers.not_required = true,
+                TypedDictFieldModifier::ReadOnly => modifiers.read_only = true,
+            };
             TypeContent::TypedDictMemberModifiers(modifiers, t)
         }
     }
@@ -4077,7 +4080,7 @@ impl<'db: 'x, 'file, 'x> Inference<'db, 'file, '_> {
         Inferred::from_saved_node_ref(assignment_type_node_ref(self.file, assignment))
     }
 
-    pub(super) fn lookup_type_name(&self, name: Name<'x>) -> TypeNameLookup<'db, 'x> {
+    fn lookup_type_name(&self, name: Name<'x>) -> TypeNameLookup<'db, 'x> {
         let mut point = self.file.points.get(name.index());
         if !self.file.points.get(name.index()).calculated() {
             self.infer_name_reference(name);
@@ -4882,8 +4885,15 @@ fn check_special_type(point: Point) -> Option<SpecialType> {
             Specific::TypingNeverOrNoReturn => SpecialType::Never,
             Specific::TypingTuple => SpecialType::Tuple,
             Specific::TypingTypedDict => SpecialType::TypingTypedDict,
-            Specific::TypingRequired => SpecialType::Required,
-            Specific::TypingNotRequired => SpecialType::NotRequired,
+            Specific::TypingRequired => {
+                SpecialType::TypedDictFieldModifier(TypedDictFieldModifier::Required)
+            }
+            Specific::TypingNotRequired => {
+                SpecialType::TypedDictFieldModifier(TypedDictFieldModifier::NotRequired)
+            }
+            Specific::TypingReadOnly => {
+                SpecialType::TypedDictFieldModifier(TypedDictFieldModifier::ReadOnly)
+            }
             Specific::TypingClassVar => SpecialType::ClassVar,
             Specific::TypingNamedTuple => SpecialType::TypingNamedTuple,
             Specific::TypingTypeGuard => SpecialType::TypeGuard,
@@ -4935,7 +4945,7 @@ fn load_cached_type(node_ref: NodeRef) -> TypeNameLookup {
     }
 }
 
-pub(super) fn check_type_name<'db: 'file, 'file>(
+fn check_type_name<'db: 'file, 'file>(
     i_s: &InferenceState<'db, '_>,
     name_node_ref: NodeRef<'file>,
 ) -> TypeNameLookup<'file, 'file> {

@@ -1153,6 +1153,7 @@ fn typing_changes(
     set_typing_inference(typing, "NoReturn", Specific::TypingNeverOrNoReturn);
     set_typing_inference(typing, "Required", Specific::TypingRequired);
     set_typing_inference(typing, "NotRequired", Specific::TypingNotRequired);
+    set_typing_inference(typing, "ReadOnly", Specific::TypingReadOnly);
     set_typing_inference(typing, "TypeGuard", Specific::TypingTypeGuard);
     set_typing_inference(typing, "reveal_type", Specific::RevealTypeFunction);
     set_typing_inference(typing, "assert_type", Specific::AssertTypeFunction);

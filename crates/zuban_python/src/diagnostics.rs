@@ -337,6 +337,7 @@ pub(crate) enum IssueKind {
     TypedDictHasNoKey { typed_dict: Box<str>, key: Box<str> },
     TypedDictHasNoKeyForGet { typed_dict: Box<str>, key: Box<str> },
     TypedDictKeyCannotBeDeleted { typed_dict: Box<str>, key: Box<str> },
+    TypedDictReadOnlyKeyMutated { key: Box<str> },
     TypedDictInvalidMember,
     TypedDictInvalidMemberRightSide,
     TypedDictBasesMustBeTypedDicts,
@@ -530,6 +531,7 @@ impl IssueKind {
             | TypedDictSetdefaultWrongDefaultType { .. }
             | TypedDictHasNoKeyForGet { .. } => "typeddict-item",
             TypedDictExtraKey { .. } | TypedDictHasNoKey { .. } => "typeddict-unknown-key",
+            TypedDictReadOnlyKeyMutated { .. } => "typeddict-readonly-mutated",
 
             UnreachableStatement
             | RightOperandIsNeverOperated { .. }
@@ -1722,6 +1724,9 @@ impl<'db> Diagnostic<'db> {
 
             TypedDictKeyCannotBeDeleted { typed_dict, key } => format!(
                 r#"Key "{key}" of TypedDict "{typed_dict}" cannot be deleted"#
+            ),
+            TypedDictReadOnlyKeyMutated { key } => format!(
+                r#"ReadOnly TypedDict key "{key}" TypedDict is mutated"#
             ),
             TypedDictInvalidMember =>
                 "Invalid statement in TypedDict definition; expected \"field_name: field_type\"".to_string(),

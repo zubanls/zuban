@@ -957,6 +957,12 @@ fn typed_dict_setitem_internal<'db>(
     if let Some(literal) = inf_key.maybe_string_literal(i_s) {
         let key = literal.as_str(i_s.db);
         if let Some(member) = td.find_member(i_s.db, key) {
+            if member.read_only {
+                args.add_issue(
+                    i_s,
+                    IssueKind::TypedDictReadOnlyKeyMutated { key: key.into() },
+                );
+            }
             member.type_.error_if_not_matches(
                 i_s,
                 &value,

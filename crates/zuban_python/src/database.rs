@@ -478,6 +478,7 @@ pub enum Specific {
     TypingTypedDict,
     TypingRequired,
     TypingNotRequired,
+    TypingReadOnly,
     TypingTypeGuard,
     TypingTypeIs,
     RevealTypeFunction,
