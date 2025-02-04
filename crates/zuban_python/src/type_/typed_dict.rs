@@ -305,11 +305,15 @@ impl TypedDict {
             Ok(format_data) => {
                 let params = join_with_commas(self.members(format_data.db).iter().map(|p| {
                     format!(
-                        "'{}'{}: {}",
+                        "'{}'{}{}: {}",
                         p.name.as_str(format_data.db),
                         match p.required {
                             true => "",
                             false => "?",
+                        },
+                        match p.read_only {
+                            true => "=",
+                            false => "",
                         },
                         p.type_.format(&format_data)
                     )
