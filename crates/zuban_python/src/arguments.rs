@@ -939,7 +939,7 @@ impl<'db: 'a, 'a> Iterator for ArgIteratorBase<'db, 'a> {
                 Some(BaseArgReturn::Arg(ArgKind::Inferred {
                     inferred: slice_type.infer(&i_s),
                     position: 1,
-                    node_ref: slice_type.as_node_ref(),
+                    node_ref: slice_type.as_argument_node_ref(),
                     in_args_or_kwargs_and_arbitrary_len: false,
                     is_keyword: None,
                 }))

@@ -14,8 +14,6 @@ self_instance_variable1
 
 # mypy upgrade
 testEnumValueWithPlaceholderNodeType
-testColumnTypedDict
-
 testOverrideReplaceMethod
 testOverrideCallableAttributeWithMethodMutableOverride
 testOverrideCallableAttributeWithSettableProperty
