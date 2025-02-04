@@ -1633,14 +1633,19 @@ impl Tuple {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum PropertySetter {
+    SameType,
+    OtherType(Type),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum FunctionKind {
     Function {
         had_first_self_or_class_annotation: bool,
     },
     Property {
         had_first_self_or_class_annotation: bool,
-        //setter_type: Option<Type>,
-        writable: bool,
+        setter_type: Option<Rc<PropertySetter>>,
     },
     Classmethod {
         had_first_self_or_class_annotation: bool,

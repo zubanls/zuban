@@ -1186,7 +1186,7 @@ impl<'db: 'slf, 'slf> Inferred {
             })
         };
         match t {
-            Type::Callable(c) => match c.kind {
+            Type::Callable(c) => match &c.kind {
                 FunctionKind::Function { .. }
                     if !matches!(apply_descriptors_kind, ApplyDescriptorsKind::NoBoundMethod) =>
                 {
@@ -1218,7 +1218,7 @@ impl<'db: 'slf, 'slf> Inferred {
                     }
                 }
                 FunctionKind::Function { .. } => (),
-                FunctionKind::Property { writable, .. } => {
+                FunctionKind::Property { setter_type, .. } => {
                     return Some(Some(
                         if let Some(t) =
                             calculate_property_return(i_s, &instance, &attribute_class, c)
@@ -1226,7 +1226,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             (
                                 Inferred::from_type(t),
                                 AttributeKind::Property {
-                                    writable,
+                                    writable: setter_type.is_some(),
                                     is_abstract: c.is_abstract,
                                     is_final: c.is_final,
                                 },

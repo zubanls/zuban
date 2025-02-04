@@ -37,9 +37,9 @@ use crate::{
     type_::{
         replace_param_spec, AnyCause, CallableContent, CallableLike, CallableParam, CallableParams,
         ClassGenerics, DbString, FunctionKind, FunctionOverload, GenericClass, GenericItem,
-        LookupResult, NeverCause, ParamType, ReplaceSelf, StarParamType, StarStarParamType,
-        StringSlice, TupleArgs, Type, TypeGuardInfo, TypeVarKind, TypeVarLike, TypeVarLikes,
-        TypeVarManager, WrongPositionalCount,
+        LookupResult, NeverCause, ParamType, PropertySetter, ReplaceSelf, StarParamType,
+        StarStarParamType, StringSlice, TupleArgs, Type, TypeGuardInfo, TypeVarKind, TypeVarLike,
+        TypeVarLikes, TypeVarManager, WrongPositionalCount,
     },
     type_helpers::Class,
 };
@@ -1012,7 +1012,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         callable: &mut CallableContent,
         had_first_annotation: bool,
     ) {
-        let is_property_modifier = |decorator: Decorator| {
+        let is_property_modifier = |decorator: Decorator, next_func: Self| {
             let ExpressionContent::ExpressionPart(ExpressionPart::Primary(primary)) =
                 decorator.named_expression().expression().unpack()
             else {
@@ -1028,7 +1028,17 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 return PropertyModifier::JustADecorator;
             };
             match second.as_code() {
-                "setter" => PropertyModifier::Setter,
+                "setter" => {
+                    let Some(first_non_self_param) = next_func.iter_params().skip(1).next() else {
+                        // This means the setter is buggy, just ignore other places should probably
+                        // report this.
+                        return PropertyModifier::JustADecorator;
+                    };
+                    let setter = first_non_self_param.annotation_or_any(i_s.db);
+                    PropertyModifier::Setter(Rc::new(PropertySetter::OtherType(
+                        setter.into_owned(),
+                    )))
+                }
                 "deleter" => PropertyModifier::Deleter,
                 _ => PropertyModifier::JustADecorator,
             }
@@ -1068,7 +1078,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
 
             let mut iterator = decorated.decorators().iter();
             let decorator = iterator.next().unwrap();
-            match is_property_modifier(decorator) {
+            match is_property_modifier(decorator, next_func) {
                 PropertyModifier::JustADecorator => {
                     NodeRef::new(file, decorator.index()).add_issue(
                         i_s,
@@ -1077,10 +1087,10 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                         },
                     );
                 }
-                PropertyModifier::Setter => {
+                PropertyModifier::Setter(setter_type) => {
                     callable.kind = FunctionKind::Property {
                         had_first_self_or_class_annotation: had_first_annotation,
-                        writable: true,
+                        setter_type: Some(setter_type),
                     };
                     continue;
                 }
@@ -1901,6 +1911,11 @@ pub struct FunctionParam<'x> {
 }
 
 impl<'db: 'x, 'x> FunctionParam<'x> {
+    fn annotation_or_any(&self, db: &'db Database) -> Cow<'x, Type> {
+        self.annotation(db)
+            .unwrap_or_else(|| Cow::Borrowed(&Type::Any(AnyCause::Unannotated)))
+    }
+
     pub fn annotation(&self, db: &'db Database) -> Option<Cow<'x, Type>> {
         self.param
             .annotation()
@@ -2079,7 +2094,7 @@ fn infer_decorator_details(
                 return InferredDecorator::FunctionKind {
                     kind: FunctionKind::Property {
                         had_first_self_or_class_annotation: had_first_annotation,
-                        writable: false,
+                        setter_type: None,
                     },
                     is_abstract: is_abstract_property,
                 };
@@ -2088,7 +2103,7 @@ fn infer_decorator_details(
                 return InferredDecorator::FunctionKind {
                     kind: FunctionKind::Property {
                         had_first_self_or_class_annotation: had_first_annotation,
-                        writable: true,
+                        setter_type: Some(Rc::new(PropertySetter::SameType)),
                     },
                     is_abstract: false,
                 };
@@ -2121,7 +2136,7 @@ struct FunctionDetails {
 
 enum PropertyModifier {
     JustADecorator,
-    Setter,
+    Setter(Rc<PropertySetter>),
     Deleter,
 }
 

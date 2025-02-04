@@ -111,7 +111,6 @@ testTypeIsInOverloadsSameReturn
 testTypeIsLikeIsDataclass
 testTypeVarTypeAssignment
 testTypeVarValuesNarrowing
-testPropertySetterTypeFineGrained
 testMissingBracket
 testPEP696TypeAlias
 testPEP696GenericFunction

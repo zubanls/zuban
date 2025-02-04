@@ -18,8 +18,8 @@ use crate::{
     matching::{ErrorStrs, IteratorContent, LookupKind, OnTypeError, ResultContext},
     node_ref::NodeRef,
     type_::{
-        AnyCause, CallableLike, CallableParams, FunctionKind, IterInfos, LookupResult, Type,
-        TypeVarKind,
+        AnyCause, CallableLike, CallableParams, FunctionKind, IterInfos, LookupResult,
+        PropertySetter, Type, TypeVarKind,
     },
 };
 
@@ -180,13 +180,17 @@ impl<'a> Instance<'a> {
                 }
             }
             Type::Callable(c) if matches!(c.kind, FunctionKind::Property { .. }) => {
-                return match c.kind {
+                return match &c.kind {
                     FunctionKind::Property {
-                        writable: false, ..
+                        setter_type: None, ..
                     } => property_is_read_only(lookup_details.class.name(i_s.db).into()),
-                    FunctionKind::Property { writable: true, .. } => {
-                        check_compatible(&c.return_type, value)
-                    }
+                    FunctionKind::Property {
+                        setter_type: Some(wanted),
+                        ..
+                    } => match wanted.as_ref() {
+                        PropertySetter::SameType => check_compatible(&c.return_type, value),
+                        PropertySetter::OtherType(t) => check_compatible(&t, value),
+                    },
                     _ => unreachable!(),
                 }
             }
