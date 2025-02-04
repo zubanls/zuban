@@ -639,7 +639,7 @@ impl OverloadDefinition {
         self.functions.iter_functions()
     }
 
-    pub fn kind(&self) -> FunctionKind {
+    pub fn kind(&self) -> &FunctionKind {
         self.functions.kind()
     }
 }

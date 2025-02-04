@@ -708,8 +708,8 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             .is_some_and(|p| p.annotation().is_some());
 
         match self.node_ref.complex() {
-            Some(ComplexPoint::TypeInstance(Type::Callable(c))) => c.kind,
-            Some(ComplexPoint::FunctionOverload(o)) => o.kind(),
+            Some(ComplexPoint::TypeInstance(Type::Callable(c))) => c.kind.clone(),
+            Some(ComplexPoint::FunctionOverload(o)) => o.kind().clone(),
             Some(_) => {
                 // We have a type, probably an instance and we need to recheck if it was mapped by
                 // a classmethod or not.
@@ -963,7 +963,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         let overwrite_callable = |inferred: &mut _, mut callable: CallableContent| {
             callable.name = Some(DbString::StringSlice(self.name_string_slice()));
             callable.class_name = self.class.map(|c| c.name_string_slice());
-            callable.kind = kind;
+            callable.kind = kind.clone();
             callable.is_abstract = is_abstract;
             callable.is_final = is_final;
             self.avoid_invalid_typeguard_signatures(i_s, &mut callable);
@@ -1196,11 +1196,11 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             };
             is_override |= next_details.is_override;
 
-            if !details.kind.is_same_base_kind(next_details.kind) {
+            if !details.kind.is_same_base_kind(&next_details.kind) {
                 if matches!(details.kind, FunctionKind::Function { .. }) {
-                    inconsistent_function_kind = Some(next_details.kind)
+                    inconsistent_function_kind = Some(next_details.kind.clone())
                 } else {
-                    inconsistent_function_kind = Some(details.kind)
+                    inconsistent_function_kind = Some(details.kind.clone())
                 }
             }
             // To make sure overloads aren't executed another time and to separate these

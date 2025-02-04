@@ -93,7 +93,7 @@ impl Type {
                         name: c.name.clone(),
                         class_name: c.class_name,
                         defined_at: c.defined_at,
-                        kind: c.kind,
+                        kind: c.kind.clone(),
                         type_vars: new,
                         guard: c
                             .guard
@@ -348,7 +348,7 @@ impl CallableContent {
             name: self.name.clone(),
             class_name: self.class_name,
             defined_at: self.defined_at,
-            kind: self.kind,
+            kind: self.kind.clone(),
             type_vars: self.type_vars.clone(),
             guard: new_guard.unwrap_or_else(|| self.guard.clone()),
             is_abstract: self.is_abstract,
@@ -773,7 +773,7 @@ impl ReplaceTypeVarLikes<'_, '_> {
             name: c.name.clone(),
             class_name: c.class_name,
             defined_at: c.defined_at,
-            kind: c.kind,
+            kind: c.kind.clone(),
             type_vars: type_vars
                 .map(TypeVarLikes::from_vec)
                 .unwrap_or_else(|| self.db.python_state.empty_type_var_likes.clone()),

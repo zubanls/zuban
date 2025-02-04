@@ -1858,7 +1858,7 @@ fn try_pretty_format(
 ) {
     let prefix = "         ";
     if let Some(inf) = class_lookup_result.into_maybe_inferred() {
-        let add_kind_info = |notes: &mut Vec<Box<str>>, kind| match kind {
+        let add_kind_info = |notes: &mut Vec<Box<str>>, kind: &_| match kind {
             FunctionKind::Classmethod { .. } => notes.push(format!("{prefix}@classmethod").into()),
             FunctionKind::Staticmethod { .. } => {
                 notes.push(format!("{prefix}@staticmethod").into())
@@ -1867,7 +1867,7 @@ fn try_pretty_format(
         };
         match inf.as_cow_type(i_s).as_ref() {
             Type::Callable(c) if !matches!(c.kind, FunctionKind::Property { .. }) => {
-                add_kind_info(notes, c.kind);
+                add_kind_info(notes, &c.kind);
                 notes.push(
                     format!(
                         "{prefix}{}",
@@ -1880,7 +1880,7 @@ fn try_pretty_format(
             Type::FunctionOverload(overloads) => {
                 for c in overloads.iter_functions() {
                     notes.push(format!("{prefix}@overload").into());
-                    add_kind_info(notes, c.kind);
+                    add_kind_info(notes, &c.kind);
                     notes.push(
                         format!(
                             "{prefix}{}",

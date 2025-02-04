@@ -171,7 +171,7 @@ fn common_sub_type_for_callables(
                 name: None,
                 class_name: None,
                 defined_at: c1.defined_at,
-                kind: c1.kind,
+                kind: c1.kind.clone(),
                 type_vars: i_s.db.python_state.empty_type_var_likes.clone(),
                 guard: common_sub_type_for_guard(i_s, &c1.guard, &c2.guard),
                 is_abstract: c1.is_abstract && c2.is_abstract,

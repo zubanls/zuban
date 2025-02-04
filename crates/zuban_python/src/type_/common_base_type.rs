@@ -312,7 +312,7 @@ fn common_base_for_callables(
     c1: &CallableContent,
     c2: &CallableContent,
 ) -> Type {
-    if !c1.kind.is_same_base_kind(c2.kind) {
+    if !c1.kind.is_same_base_kind(&c2.kind) {
         return i_s.db.python_state.function_type();
     }
     if let Some(params) = c1.params.common_base_type(i_s, &c2.params) {
@@ -320,7 +320,7 @@ fn common_base_for_callables(
             name: None,
             class_name: None,
             defined_at: c1.defined_at,
-            kind: c1.kind,
+            kind: c1.kind.clone(),
             // TODO why do we just use the first type vars here???
             type_vars: c1.type_vars.clone(),
             guard: common_base_guard(i_s, &c1.guard, &c2.guard),

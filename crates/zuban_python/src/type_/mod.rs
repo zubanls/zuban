@@ -366,8 +366,8 @@ impl FunctionOverload {
         Rc::new(Self(functions))
     }
 
-    pub fn kind(&self) -> FunctionKind {
-        self.0[0].kind
+    pub fn kind(&self) -> &FunctionKind {
+        &self.0[0].kind
     }
 
     pub fn is_abstract(&self) -> bool {
@@ -1632,13 +1632,14 @@ impl Tuple {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum FunctionKind {
     Function {
         had_first_self_or_class_annotation: bool,
     },
     Property {
         had_first_self_or_class_annotation: bool,
+        //setter_type: Option<Type>,
         writable: bool,
     },
     Classmethod {
@@ -1648,7 +1649,7 @@ pub enum FunctionKind {
 }
 
 impl FunctionKind {
-    pub fn is_same_base_kind(self, other: Self) -> bool {
+    pub fn is_same_base_kind(&self, other: &Self) -> bool {
         matches!(
             (self, other),
             (Self::Function { .. }, Self::Function { .. })
@@ -1658,7 +1659,7 @@ impl FunctionKind {
         )
     }
 
-    pub fn had_first_self_or_class_annotation(self) -> bool {
+    pub fn had_first_self_or_class_annotation(&self) -> bool {
         match self {
             Self::Function {
                 had_first_self_or_class_annotation,
@@ -1669,7 +1670,7 @@ impl FunctionKind {
             }
             | Self::Classmethod {
                 had_first_self_or_class_annotation,
-            } => had_first_self_or_class_annotation,
+            } => *had_first_self_or_class_annotation,
             Self::Staticmethod => true,
         }
     }
