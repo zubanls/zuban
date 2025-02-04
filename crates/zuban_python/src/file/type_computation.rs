@@ -2060,7 +2060,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         }
         for (i, type_var_like) in tvs.iter().enumerate() {
             let TypeVarLike::TypeVar(type_var) = type_var_like else {
-                return None;
+                unreachable!("Should have been checked before")
             };
             if let Some(slice_content) = iterator.next() {
                 let t = self.compute_slice_type_content(slice_content);

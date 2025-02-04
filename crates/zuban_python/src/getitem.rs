@@ -178,7 +178,7 @@ impl<'file> Slice<'file> {
         check(first);
         check(second);
         check(third);
-        Inferred::from_type(i_s.db.python_state.slice_type())
+        Inferred::from_type(i_s.db.python_state.slice_type_with_any())
     }
 
     pub fn callback_on_tuple_indexes(

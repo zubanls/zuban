@@ -858,6 +858,15 @@ impl PythonState {
         unsafe { &*self.mypy_extensions }
     }
 
+    pub fn slice_type_with_any(&self) -> Type {
+        new_class!(
+            self.slice_link(),
+            Type::Any(AnyCause::Internal),
+            Type::Any(AnyCause::Internal),
+            Type::Any(AnyCause::Internal),
+        )
+    }
+
     #[inline]
     pub fn tuple_class_with_generics_to_be_defined(&self) -> Class {
         Class::from_position(self.tuple_node_ref(), Generics::NotDefinedYet, None)
@@ -885,7 +894,6 @@ impl PythonState {
     attribute_node_ref!(builtins, pub bytes_node_ref, builtins_bytes_index);
     attribute_node_ref!(builtins, pub bytearray_node_ref, builtins_bytearray_index);
     attribute_node_ref!(builtins, pub memoryview_node_ref, builtins_memoryview_index);
-    attribute_node_ref!(builtins, slice_node_ref, builtins_slice_index);
     attribute_node_ref!(builtins, pub classmethod_node_ref, builtins_classmethod_index);
     attribute_node_ref!(builtins, pub staticmethod_node_ref, builtins_staticmethod_index);
     attribute_node_ref!(builtins, pub property_node_ref, builtins_property_index);
@@ -952,6 +960,7 @@ impl PythonState {
     attribute_link!(builtins, pub staticmethod_link, builtins_staticmethod_index);
     attribute_link!(builtins, pub classmethod_link, builtins_staticmethod_index);
     attribute_link!(builtins, pub property_link, builtins_staticmethod_index);
+    attribute_link!(builtins, slice_link, builtins_slice_index);
     attribute_link!(abc, pub abc_meta_link, abc_abc_meta_index);
     attribute_link!(abc, pub abstractmethod_link, abc_abstractmethod_index);
     attribute_link!(abc, pub abstractproperty_link, abc_abstractproperty_index);
@@ -996,7 +1005,6 @@ impl PythonState {
     node_ref_to_class!(pub typed_dict_class, typed_dict_node_ref);
 
     node_ref_to_type_class_without_generic!(pub object_type, object_node_ref);
-    node_ref_to_type_class_without_generic!(pub slice_type, slice_node_ref);
     node_ref_to_type_class_without_generic!(pub str_type, str_node_ref);
     node_ref_to_type_class_without_generic!(pub bytes_type, bytes_node_ref);
     node_ref_to_type_class_without_generic!(pub bytearray_type, bytearray_node_ref);
