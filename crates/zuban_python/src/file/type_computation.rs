@@ -98,6 +98,16 @@ enum TypedDictFieldModifier {
     ReadOnly,
 }
 
+impl TypedDictFieldModifier {
+    fn name(&self) -> &'static str {
+        match self {
+            Self::Required => "Required[]",
+            Self::NotRequired => "NotRequired[]",
+            Self::ReadOnly => "ReadOnly[]",
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub(super) enum InvalidVariableType<'a> {
     List,
@@ -1232,6 +1242,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 SpecialType::TypeIs => {
                     self.add_issue(node_ref, IssueKind::MustHaveOneArgument { name: "TypeIs" })
                 }
+                SpecialType::TypedDictFieldModifier(m) => {
+                    self.add_issue(node_ref, IssueKind::MustHaveOneArgument { name: m.name() })
+                }
                 _ => {
                     self.add_issue(node_ref, IssueKind::InvalidType(Box::from("Invalid type")));
                 }
@@ -1324,25 +1337,21 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 );
             }
             TypeContent::TypedDictMemberModifiers(m, _) => {
-                if m.required {
-                    self.add_issue(
-                        node_ref,
-                        IssueKind::InvalidType(
-                            "Required[] can be only used in a TypedDict definition".into(),
-                        ),
-                    );
+                let s = if m.required {
+                    "Required"
                 } else if m.not_required {
-                    self.add_issue(
-                        node_ref,
-                        IssueKind::InvalidType(
-                            "NotRequired[] can be only used in a TypedDict definition".into(),
-                        ),
-                    );
+                    "NotRequired"
                 } else if m.read_only {
-                    todo!()
+                    "ReadOnly"
                 } else {
                     unreachable!("The default case should never happen")
-                }
+                };
+                self.add_issue(
+                    node_ref,
+                    IssueKind::InvalidType(
+                        format!("{s}[] can be only used in a TypedDict definition").into(),
+                    ),
+                );
             }
             TypeContent::ParamSpecAttr { usage, name } => {
                 match name {
@@ -3116,11 +3125,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         let mut iterator = slice_type.iter();
         let first = iterator.next().unwrap();
         if let Some(next) = iterator.next() {
-            let name = match modifier {
-                TypedDictFieldModifier::Required => "Required[]",
-                TypedDictFieldModifier::NotRequired => "NotRequired[]",
-                TypedDictFieldModifier::ReadOnly => "ReadOnly[]",
-            };
+            let name = modifier.name();
             self.add_issue(next.as_node_ref(), IssueKind::MustHaveOneArgument { name });
             TypeContent::Unknown(UnknownCause::ReportedIssue)
         } else {
@@ -3132,10 +3137,39 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 }
                 tc => self.as_type(tc, first.as_node_ref()),
             };
+            let invalid_nested_modifier = |modifier: &'static str| {
+                self.add_issue(
+                    first.as_node_ref(),
+                    IssueKind::TypedDictFieldModifierCannotBeNested {
+                        modifier: modifier.into(),
+                    },
+                );
+            };
             match modifier {
-                TypedDictFieldModifier::Required => modifiers.required = true,
-                TypedDictFieldModifier::NotRequired => modifiers.not_required = true,
-                TypedDictFieldModifier::ReadOnly => modifiers.read_only = true,
+                TypedDictFieldModifier::Required => {
+                    if modifiers.required {
+                        invalid_nested_modifier("Required")
+                    } else if modifiers.not_required {
+                        invalid_nested_modifier("NotRequired")
+                    } else {
+                        modifiers.required = true;
+                    }
+                }
+                TypedDictFieldModifier::NotRequired => {
+                    if modifiers.required {
+                        invalid_nested_modifier("Required")
+                    } else if modifiers.not_required {
+                        invalid_nested_modifier("NotRequired")
+                    } else {
+                        modifiers.not_required = true;
+                    }
+                }
+                TypedDictFieldModifier::ReadOnly => {
+                    if modifiers.read_only {
+                        invalid_nested_modifier("ReadOnly")
+                    }
+                    modifiers.read_only = true;
+                }
             };
             TypeContent::TypedDictMemberModifiers(modifiers, t)
         }

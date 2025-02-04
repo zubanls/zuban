@@ -328,6 +328,7 @@ pub(crate) enum IssueKind {
     TypedDictFirstArgMustBeString,
     TypedDictSecondArgMustBeDict,
     TypedDictInvalidFieldName,
+    TypedDictFieldModifierCannotBeNested { modifier: &'static str },
     TypedDictSelfNotAllowed,
     TypedDictNameMismatch { string_name: Box<str>, variable_name: Box<str> },
     TypedDictWrongArgumentsInConstructor,
@@ -1704,6 +1705,10 @@ impl<'db> Diagnostic<'db> {
             TypedDictSecondArgMustBeDict =>
                 "TypedDict() expects a dictionary literal as the second argument".to_string(),
             TypedDictInvalidFieldName => "Invalid TypedDict() field name".to_string(),
+
+            TypedDictFieldModifierCannotBeNested { modifier } => format!(
+                r#""{modifier}[]" type cannot be nested"#
+            ),
             TypedDictSelfNotAllowed => "Self type cannot be used in TypedDict item type".to_string(),
             TypedDictNameMismatch { string_name, variable_name } => format!(
                 r#"First argument "{string_name}" to TypedDict() does not match variable name "{variable_name}""#
