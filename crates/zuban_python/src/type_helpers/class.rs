@@ -3358,6 +3358,7 @@ fn find_stmt_typed_dict_types(
                                     type_: Type::Any(AnyCause::Todo),
                                     required: true,
                                     name: StringSlice::from_name(file.file_index, name_def.name()),
+                                    read_only: false,
                                 },
                             )
                             .ok();

@@ -232,6 +232,13 @@ pub enum TypeOrUnpack {
     Unknown(UnknownCause),
 }
 
+#[derive(Debug, Clone, Default)]
+struct TypedDictModifiers {
+    required: bool,
+    not_required: bool,
+    read_only: bool,
+}
+
 #[derive(Debug, Clone)]
 enum TypeContent<'db, 'a> {
     Module(&'db PythonFile),
@@ -260,9 +267,8 @@ enum TypeContent<'db, 'a> {
     Concatenate(CallableParams),
     ClassVar(Type),
     EnumMember(EnumMember),
-    Required(Type),
+    TypedDictMemberModifiers(TypedDictModifiers, Type),
     Final(Type),
-    NotRequired(Type),
     TypeGuardInfo(TypeGuardInfo),
     ParamSpecAttr {
         usage: ParamSpecUsage,
@@ -578,18 +584,26 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         total: bool,
     ) -> TypedDictMember {
         let calculated = self.compute_type(expr);
-        let (type_, required) = match calculated {
-            TypeContent::Required(t) => (t, true),
-            TypeContent::NotRequired(t) => (t, false),
-            _ => (
-                self.as_type(calculated, NodeRef::new(self.inference.file, expr.index())),
-                total,
-            ),
+        let mut required = total;
+        let mut read_only = false;
+        let type_ = match calculated {
+            TypeContent::TypedDictMemberModifiers(m, t) => {
+                if m.required {
+                    required = true;
+                }
+                if m.not_required {
+                    required = false;
+                }
+                read_only |= m.read_only;
+                t
+            }
+            _ => self.as_type(calculated, NodeRef::new(self.inference.file, expr.index())),
         };
         TypedDictMember {
             name,
             type_,
             required,
+            read_only,
         }
     }
 
@@ -1303,21 +1317,26 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     self.origin,
                 );
             }
-            TypeContent::Required(_) => {
-                self.add_issue(
-                    node_ref,
-                    IssueKind::InvalidType(
-                        "Required[] can be only used in a TypedDict definition".into(),
-                    ),
-                );
-            }
-            TypeContent::NotRequired(_) => {
-                self.add_issue(
-                    node_ref,
-                    IssueKind::InvalidType(
-                        "NotRequired[] can be only used in a TypedDict definition".into(),
-                    ),
-                );
+            TypeContent::TypedDictMemberModifiers(m, _) => {
+                if m.required {
+                    self.add_issue(
+                        node_ref,
+                        IssueKind::InvalidType(
+                            "Required[] can be only used in a TypedDict definition".into(),
+                        ),
+                    );
+                } else if m.not_required {
+                    self.add_issue(
+                        node_ref,
+                        IssueKind::InvalidType(
+                            "NotRequired[] can be only used in a TypedDict definition".into(),
+                        ),
+                    );
+                } else if m.read_only {
+                    todo!()
+                } else {
+                    unreachable!("The default case should never happen")
+                }
             }
             TypeContent::ParamSpecAttr { usage, name } => {
                 match name {
@@ -3102,12 +3121,20 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             self.add_issue(next.as_node_ref(), IssueKind::MustHaveOneArgument { name });
             TypeContent::Unknown(UnknownCause::ReportedIssue)
         } else {
-            let t = self.compute_slice_type(first);
+            let mut modifiers = TypedDictModifiers::default();
+            let t = match self.compute_slice_type_content(first) {
+                TypeContent::TypedDictMemberModifiers(m, t) => {
+                    modifiers = m;
+                    t
+                }
+                tc => self.as_type(tc, first.as_node_ref()),
+            };
             if is_required {
-                TypeContent::Required(t)
+                modifiers.required = true;
             } else {
-                TypeContent::NotRequired(t)
+                modifiers.not_required = true;
             }
+            TypeContent::TypedDictMemberModifiers(modifiers, t)
         }
     }
 

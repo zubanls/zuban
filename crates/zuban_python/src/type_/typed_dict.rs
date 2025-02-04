@@ -31,6 +31,7 @@ pub struct TypedDictMember {
     pub name: StringSlice,
     pub type_: Type,
     pub required: bool,
+    pub read_only: bool,
 }
 
 impl TypedDictMember {
@@ -39,6 +40,7 @@ impl TypedDictMember {
             name: self.name,
             type_: callable(&self.type_),
             required: self.required,
+            read_only: self.read_only,
         }
     }
 
