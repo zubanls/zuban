@@ -5,7 +5,7 @@ use parsa_python_cst::{
 
 use crate::{
     arguments::{ArgIterator, Args},
-    database::PointsBackup,
+    database::{Database, PointsBackup},
     debug,
     diagnostics::IssueKind,
     file::{infer_index, PythonFile},
@@ -42,6 +42,11 @@ impl<'db, 'file> SliceType<'file> {
             cst_node,
             node_index,
         }
+    }
+
+    pub fn to_db_lifetime(self, _: &'db Database) -> SliceType<'db> {
+        // This should be safe, because all files are added to the database.
+        unsafe { std::mem::transmute(self) }
     }
 
     pub fn as_node_ref(&self) -> NodeRef<'file> {

@@ -3035,6 +3035,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
     }
 
     fn compute_get_item_on_annotated(&mut self, slice_type: SliceType) -> TypeContent<'db, 'db> {
+        let slice_type = slice_type.to_db_lifetime(self.inference.i_s.db);
         let mut iterator = slice_type.iter();
         let first = iterator.next().unwrap();
         if iterator.next().is_none() {
@@ -3046,7 +3047,8 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             );
             TypeContent::Unknown(UnknownCause::ReportedIssue)
         } else {
-            TypeContent::Type(self.compute_slice_type(first))
+            // Annotated[..., ...] can simply be ignored and the first part can be used.
+            self.compute_slice_type_content(first)
         }
     }
 
