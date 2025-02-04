@@ -401,7 +401,13 @@ impl TypedDict {
                 if !m1.read_only && m2.read_only {
                     return Match::new_false();
                 }
-                matches &= m1.type_.is_same_type(i_s, matcher, &m2.type_);
+                if m1.read_only {
+                    matches &= m1.type_.is_super_type_of(i_s, matcher, &m2.type_);
+                } else {
+                    // When matching mutable fields, the type must be the exact same, because
+                    // modifications propagate from one to the other TypedDict.
+                    matches &= m1.type_.is_same_type(i_s, matcher, &m2.type_);
+                }
             } else if !read_only || m1.required {
                 return Match::new_false();
             }

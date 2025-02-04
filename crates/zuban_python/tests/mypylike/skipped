@@ -121,7 +121,6 @@ testAliasNonGeneric
 testAliasExplicitNoArgsTuple
 testAliasExplicitNoArgsCallable
 testTypedDictAnnotatedWithSpecialForms
-testTypedDictReadOnlyCovariant
 testTypedDictFinalAndClassVar
 testTypeGuardInOverloads
 testTypeIsInOverloadsSameReturn

@@ -159,6 +159,7 @@ impl Type {
                 _ => Match::new_false(),
             },
             Type::TypedDict(d1) => match value_type {
+                // TODO test invariant matching
                 Type::TypedDict(d2) => d1.matches(i_s, matcher, d2, false).similar_if_false(),
                 _ => Match::new_false(),
             },
