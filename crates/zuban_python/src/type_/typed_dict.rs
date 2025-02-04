@@ -823,7 +823,7 @@ fn typed_dict_get_or_pop_internal<'db>(
     let maybe_had_literals = inferred_name.run_on_str_literals(i_s, |key| {
         Some(Inferred::from_type({
             if let Some(member) = td.find_member(i_s.db, key) {
-                if is_pop && member.required {
+                if is_pop && (member.required || member.read_only) {
                     args.add_issue(
                         i_s,
                         IssueKind::TypedDictKeyCannotBeDeleted {

@@ -120,8 +120,6 @@ testTupleSliceStepZeroNoCrash
 testAliasNonGeneric
 testAliasExplicitNoArgsTuple
 testAliasExplicitNoArgsCallable
-testTypedDictInlineReadOnly
-testTypedDictReadOnlyDel
 testTypedDictReadOnlyMutateMethods
 testTypedDictFromTypingExtensionsReadOnlyMutateMethods
 testTypedDictFromMypyExtensionsReadOnlyMutateMethods
@@ -1370,6 +1368,7 @@ testTypedDictInlineYesMidStyleAlias
 testTypedDictInlineNotRequired
 testTypedDictInlineNestedSchema
 testTypedDictInlineMergeAnother
+testTypedDictInlineReadOnly
 
 # Mypy plugins
 testChangedPluginsInvalidateCache
