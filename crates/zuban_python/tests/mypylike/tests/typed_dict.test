@@ -115,3 +115,20 @@ class Other(TypedDict):
 
 TD(Other(z=1))  # E: Expected keyword arguments, {...}, or dict(...) in TypedDict constructor
 TD(TD(x=1, y=""))
+
+[case typed_dict_fields_with_final_and_class_var]
+# Copied testTypedDictFinalAndClassVar with changed messages
+from typing import TypedDict, Final, ClassVar
+
+class My(TypedDict):
+    a: Final      # E: Final can be only used as an outermost qualifier in a variable annotation
+    b: Final[int] # E: Final can be only used as an outermost qualifier in a variable annotation
+    c: ClassVar       # E: Invalid Type: ClassVar nested inside other type
+    d: ClassVar[int]  # E: Invalid Type: ClassVar nested inside other type
+
+Func = TypedDict('Func', {
+    'a': Final,         # E: Final can be only used as an outermost qualifier in a variable annotation
+    'b': Final[int],    # E: Final can be only used as an outermost qualifier in a variable annotation
+    'c': ClassVar,      # E: Invalid Type: ClassVar nested inside other type
+    'd': ClassVar[int], # E: ClassVar can only be used for assignments in class body
+})

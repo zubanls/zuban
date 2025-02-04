@@ -120,7 +120,6 @@ testTupleSliceStepZeroNoCrash
 testAliasNonGeneric
 testAliasExplicitNoArgsTuple
 testAliasExplicitNoArgsCallable
-testTypedDictFinalAndClassVar
 testTypeGuardInOverloads
 testTypeIsInOverloadsSameReturn
 testTypeIsInOverloads
@@ -1188,6 +1187,9 @@ check-possibly-undefined:testUntypedDefCheckUntypedDefs
 check-possibly-undefined:testClassBody
 check-possibly-undefined:testUntypedDef
 check-possibly-undefined:testNoReturn
+
+# Different but fine diagnostics
+testTypedDictFinalAndClassVar
 
 # `for ... in` type comment
 testRefreshForWithTypeComment1
