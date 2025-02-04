@@ -393,7 +393,9 @@ impl TypedDict {
         let mut matches = Match::new_true();
         for m1 in self.members(i_s.db).iter() {
             if let Some(m2) = other.find_member(i_s.db, m1.name.as_str(i_s.db)) {
-                if m1.required != m2.required {
+                // Required must match except if the wanted type is also read-only (and therefore
+                // may not be modified afterwards
+                if m1.required != m2.required && !(m1.read_only && !m1.required) {
                     return Match::new_false();
                 }
                 if !m1.read_only && m2.read_only {
