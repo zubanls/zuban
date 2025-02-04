@@ -745,7 +745,7 @@ fn typed_dict_setdefault_internal<'db>(
     let default = match &second_arg {
         Some(second) => match &second.kind {
             ArgKind::Positional(second) => second.infer(&mut ResultContext::Unknown),
-            ArgKind::Keyword(second) if second.key == "detaulf" => {
+            ArgKind::Keyword(second) if second.key == "detault" => {
                 second.infer(&mut ResultContext::Unknown)
             }
             _ => return None,
@@ -753,7 +753,9 @@ fn typed_dict_setdefault_internal<'db>(
         None => Inferred::new_none(),
     };
 
-    let inferred_name = first_arg.maybe_positional_arg(i_s, &mut ResultContext::Unknown)?;
+    let inferred_name = first_arg
+        .clone()
+        .maybe_positional_arg(i_s, &mut ResultContext::Unknown)?;
     let maybe_had_literals = inferred_name.run_on_str_literals(i_s, |key| {
         Some(Inferred::from_type({
             if let Some(member) = td.find_member(i_s.db, key) {
@@ -762,7 +764,7 @@ fn typed_dict_setdefault_internal<'db>(
                     .is_simple_super_type_of(i_s, &default.as_cow_type(i_s))
                     .bool()
                 {
-                    args.add_issue(
+                    second_arg.as_ref().unwrap().add_issue(
                         i_s,
                         IssueKind::TypedDictSetdefaultWrongDefaultType {
                             got: default.format_short(i_s),
@@ -772,7 +774,14 @@ fn typed_dict_setdefault_internal<'db>(
                 }
                 member.type_.clone()
             } else {
-                i_s.db.python_state.object_type()
+                first_arg.add_issue(
+                    i_s,
+                    IssueKind::TypedDictHasNoKey {
+                        typed_dict: td.format(&FormatData::new_short(i_s.db)).into(),
+                        key: key.into(),
+                    },
+                );
+                Type::Any(AnyCause::FromError)
             }
         }))
     });
@@ -780,7 +789,8 @@ fn typed_dict_setdefault_internal<'db>(
     if let Some(maybe_had_literals) = maybe_had_literals {
         Some(maybe_had_literals.simplified_union(i_s, default))
     } else {
-        Some(Inferred::from_type(i_s.db.python_state.object_type()))
+        first_arg.add_issue(i_s, IssueKind::TypedDictKeysMustBeStringLiteral);
+        Some(Inferred::new_any_from_error())
     }
 }
 
@@ -834,12 +844,14 @@ fn typed_dict_get_or_pop_internal<'db>(
         None => Some(Inferred::new_none()),
     };
 
-    let inferred_name = first_arg.maybe_positional_arg(i_s, &mut ResultContext::Unknown)?;
+    let inferred_name = first_arg
+        .clone()
+        .maybe_positional_arg(i_s, &mut ResultContext::Unknown)?;
     let maybe_had_literals = inferred_name.run_on_str_literals(i_s, |key| {
         Some(Inferred::from_type({
             if let Some(member) = td.find_member(i_s.db, key) {
                 if is_pop && (member.required || member.read_only) {
-                    args.add_issue(
+                    first_arg.add_issue(
                         i_s,
                         IssueKind::TypedDictKeyCannotBeDeleted {
                             typed_dict: td.format(&FormatData::new_short(i_s.db)).into(),
@@ -849,7 +861,7 @@ fn typed_dict_get_or_pop_internal<'db>(
                 }
                 member.type_.clone()
             } else if is_pop {
-                args.add_issue(
+                first_arg.add_issue(
                     i_s,
                     IssueKind::TypedDictHasNoKey {
                         typed_dict: td.format(&FormatData::new_short(i_s.db)).into(),
@@ -874,7 +886,7 @@ fn typed_dict_get_or_pop_internal<'db>(
         }
     } else {
         if is_pop {
-            args.add_issue(i_s, IssueKind::TypedDictKeysMustBeStringLiteral);
+            first_arg.add_issue(i_s, IssueKind::TypedDictKeysMustBeStringLiteral);
         }
         infer_default(&mut ResultContext::Unknown)?;
         Some(Inferred::from_type(i_s.db.python_state.object_type()))
