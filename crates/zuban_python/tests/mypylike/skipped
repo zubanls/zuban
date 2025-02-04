@@ -166,11 +166,6 @@ testParseExtendedSlicing4
 testMissingPytypedFlag
 testInvalidTypevarArgumentsGenericConstraint
 
-# typeshed upgrade (might be fixed by upgrading mypy)
-testDataclassesBadInit
-testDataclassFieldDoesNotFailOnKwargsUnpacking
-testDataclassFieldWithPositionalArguments
-
 # regressions
 testIncrementalInvalidNamedTupleInUnannotatedFunction
 testOptionalTypeNarrowedByGenericCall3
