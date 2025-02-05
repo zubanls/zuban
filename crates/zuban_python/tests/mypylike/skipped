@@ -23,10 +23,7 @@ testOverridePropertyDifferentSetterVarSub
 testOverridePropertyInvalidSetter
 testOverridePropertyGeneric
 testDunderReplaceCovariantOverride
-testEnumNotFinalWithMethodsAndUninitializedValuesStub
 testErrorOnAnnotatedMember
-testEnumValueWithPlaceholderNodeType
-testStrEnumClassCorrectIterable
 testErrorCodeMissingModule
 testErrorCode__exit__Return
 testOverloadedFunctionSignature
@@ -122,6 +119,7 @@ testEnumTruthynessStrEnum
 testRegression12258
 testDerivedEnumIterable
 testEnumIterMetaInference
+testStrEnumClassCorrectIterable
 # Callable matching positional names ignored, but kwargs is there; mypy wrong?
 testProtocolIncompatibilityWithUnionType
 # dict questionable decisions
@@ -927,6 +925,8 @@ testUnsafeOverlappingNotWithAny
 testEnumTypeCompatibleWithLiteralUnion
 # Enum Dict value inferred is int instead of Literal[1]
 testFunctionalEnumListOfPairs
+# "Detected enum "lib.D" in a type stub with zero members. There is a chance this is due to a recent change in the semantics of enum membership
+testEnumNotFinalWithMethodsAndUninitializedValuesStub
 
 # Recursive aliases that fail to resolve because imports are calculating
 check-incremental:testRecursiveAliasImported
