@@ -28,6 +28,8 @@ on:
 jobs:
   tests:
     uses: ./.github/workflows/tests.yml
+    with:
+      all_tests: true
     secrets: inherit
 
   build:

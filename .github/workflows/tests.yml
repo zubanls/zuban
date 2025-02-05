@@ -2,6 +2,10 @@ name: Tests
 
 on:
   workflow_call:
+    inputs:
+      all_tests:
+        required: true
+        type: boolean
 
 defaults:
   run:
@@ -9,14 +13,16 @@ defaults:
 
 jobs:
   cargo-test-debug:
-    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os:
-          # Maybe avoid Mac here for now, because the CI is costly (10x of linux)
           - macos-latest
           - ubuntu-24.04
           - windows-2022
+        exclude:
+          # Avoid Mac here for now, because the CI is costly (10x of linux)
+          - os: ${{ !inputs.all_tests && 'macos-latest' }}
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
@@ -29,6 +35,7 @@ jobs:
           ./scripts/ci-test.sh
 
   cargo-test-linux-release:
+    if: ${{ inputs.all_tests }}
     name: "cargo test (linux, release)"
     runs-on: ubuntu-24.04
     timeout-minutes: 20

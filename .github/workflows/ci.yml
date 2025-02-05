@@ -5,6 +5,10 @@ on:
     branches: [master]
   pull_request:
   workflow_dispatch:
+    all_tests:
+      required: false
+      default: false
+      type: boolean
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref_name }}-${{ github.event.pull_request.number || github.sha }}
@@ -26,4 +30,6 @@ jobs:
 
   tests:
     uses: ./.github/workflows/tests.yml
+    with:
+      all_tests: ${{ inputs.all_tests || false }}
     secrets: inherit
