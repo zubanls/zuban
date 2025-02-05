@@ -26,6 +26,7 @@ impl Type {
         value_type: &Self,
         variance: Variance,
     ) -> Match {
+        debug_assert_ne!(variance, Variance::Contravariant);
         match self {
             Type::Class(c) => Self::matches_class_against_type(
                 i_s,
