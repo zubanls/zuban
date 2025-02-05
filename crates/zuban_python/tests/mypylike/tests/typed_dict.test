@@ -132,3 +132,33 @@ Func = TypedDict('Func', {
     'c': ClassVar,      # E: Invalid Type: ClassVar nested inside other type
     'd': ClassVar[int], # E: ClassVar can only be used for assignments in class body
 })
+
+[case invariant_typed_dict_matching]
+from typing import TypedDict
+class A(TypedDict):
+    x: str
+class B(TypedDict):
+    x: str
+    y: int
+class C(TypedDict):
+    x: str
+    y: int
+    z: bytes
+
+def check_covariant(a: A, b: B, c: C):
+    if bool():
+        a = a
+        a = b
+        a = c
+    b = a  # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+    b = b
+    b = c
+
+def check_invariant(a: set[A], b: set[B], c: set[C]):
+    if bool():
+        a = a
+        a = b  # E: Incompatible types in assignment (expression has type "set[B]", variable has type "set[A]")
+        a = c  # E: Incompatible types in assignment (expression has type "set[C]", variable has type "set[A]")
+    b = a  # E: Incompatible types in assignment (expression has type "set[A]", variable has type "set[B]")
+    b = b
+    b = c  # E: Incompatible types in assignment (expression has type "set[C]", variable has type "set[B]")

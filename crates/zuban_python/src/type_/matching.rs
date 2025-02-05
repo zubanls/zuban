@@ -159,8 +159,13 @@ impl Type {
                 _ => Match::new_false(),
             },
             Type::TypedDict(d1) => match value_type {
-                // TODO test invariant matching
-                Type::TypedDict(d2) => d1.matches(i_s, matcher, d2, false).similar_if_false(),
+                Type::TypedDict(d2) => {
+                    let mut m = d1.matches(i_s, matcher, d2, false);
+                    if variance == Variance::Invariant {
+                        m &= d2.matches(i_s, matcher, d1, false);
+                    }
+                    m.similar_if_false()
+                }
                 _ => Match::new_false(),
             },
             Type::NamedTuple(nt1) => match value_type {
