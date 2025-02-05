@@ -398,9 +398,6 @@ testRecursiveTypedDictWithList
 # enum member gathering
 testFinalWithMethodAssignment
 # Other Enum issues
-testDerivedEnumIterable
-testEnumIterMetaInference
-testStrEnumClassCorrectIterable
 testNarrowingWithIntEnum
 testNarrowingWithIntEnum2
 testNarrowingWithStrEnum
@@ -463,6 +460,9 @@ testInferenceViaTypeTypeMetaclass
 metaclass_descriptor
 # Metaclass iter/getitem/addition
 testIterableProtocolOnMetaclass
+testDerivedEnumIterable
+testEnumIterMetaInference
+testStrEnumClassCorrectIterable
 # Metaclass instance vs. class members
 testMetaclassConflictingInstanceVars
 testInferenceOfDunderDictOnClassObjects

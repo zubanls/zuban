@@ -935,12 +935,12 @@ fn split_off_singleton(
 fn narrow_is_or_eq(
     i_s: &InferenceState,
     key: FlowKey,
-    left_t: &Type,
-    right_t: &Type,
+    checking_t: &Type,
+    other_t: &Type,
     is_eq: bool,
 ) -> Option<(Frame, Frame)> {
     let split = |key: FlowKey| {
-        let (rest, none) = split_off_singleton(i_s, left_t, right_t, is_eq)?;
+        let (rest, none) = split_off_singleton(i_s, checking_t, other_t, is_eq)?;
         let result = (
             Frame::from_type(key.clone(), none),
             Frame::from_type(key, rest),
@@ -948,11 +948,11 @@ fn narrow_is_or_eq(
         Some(result)
     };
 
-    match right_t {
+    match other_t {
         Type::EnumMember(member) if member.implicit => {
             let mut new_member = member.clone();
             new_member.implicit = false;
-            narrow_is_or_eq(i_s, key, left_t, &Type::EnumMember(new_member), is_eq)
+            narrow_is_or_eq(i_s, key, checking_t, &Type::EnumMember(new_member), is_eq)
         }
         Type::None if !is_eq => split(key),
         Type::EnumMember(member) if !is_eq || !member.implicit => split(key),
@@ -961,7 +961,7 @@ fn narrow_is_or_eq(
             narrow_is_or_eq(
                 i_s,
                 key,
-                left_t,
+                checking_t,
                 &Type::EnumMember(EnumMember::new(enum_.clone(), 0, false)),
                 is_eq,
             )
@@ -969,7 +969,7 @@ fn narrow_is_or_eq(
         // Mypy does only want to narrow if there are explicit literals on one side. See also
         // comments around testNarrowingEqualityFlipFlop.
         Type::Literal(literal1)
-            if is_eq && (!literal1.implicit || has_explicit_literal(i_s.db, left_t))
+            if is_eq && (!literal1.implicit || has_explicit_literal(i_s.db, checking_t))
                 || !is_eq && matches!(literal1.kind, LiteralKind::Bool(_)) =>
         {
             let mut true_type = Type::Never(NeverCause::Other);
@@ -979,7 +979,7 @@ fn narrow_is_or_eq(
                 new_literal.implicit = false;
                 Type::Literal(new_literal)
             };
-            for sub_t in left_t.iter_with_unpacked_unions(i_s.db) {
+            for sub_t in checking_t.iter_with_unpacked_unions(i_s.db) {
                 match sub_t {
                     Type::Literal(literal2) if literal1.value(i_s.db) == literal2.value(i_s.db) => {
                         true_type.union_in_place(true_literal())
@@ -995,8 +995,8 @@ fn narrow_is_or_eq(
                         if has_custom_eq(i_s, sub_t) {
                             return None;
                         }
-                        if sub_t.is_simple_super_type_of(i_s, right_t).bool() {
-                            true_type.union_in_place(right_t.clone())
+                        if sub_t.is_simple_super_type_of(i_s, other_t).bool() {
+                            true_type.union_in_place(other_t.clone())
                         }
                         false_type.union_in_place(sub_t.clone())
                     }
@@ -1014,7 +1014,7 @@ fn narrow_is_or_eq(
         )),
         */
         Type::Class(c) if c.link == i_s.db.python_state.ellipsis_link() => split(key),
-        _ => match left_t {
+        _ => match checking_t {
             left_t @ Type::Union(_) => {
                 // Remove None from left, if the right types match everything except None.
                 if left_t
@@ -1022,8 +1022,8 @@ fn narrow_is_or_eq(
                     .any(|t| matches!(t, Type::None))
                 {
                     let (new_left, _) = split_off_singleton(i_s, left_t, &Type::None, is_eq)?;
-                    if new_left.is_simple_sub_type_of(i_s, right_t).bool()
-                        || new_left.is_simple_super_type_of(i_s, right_t).bool()
+                    if new_left.is_simple_sub_type_of(i_s, other_t).bool()
+                        || new_left.is_simple_super_type_of(i_s, other_t).bool()
                     {
                         return Some((Frame::from_type(key, new_left), Frame::default()));
                     }
