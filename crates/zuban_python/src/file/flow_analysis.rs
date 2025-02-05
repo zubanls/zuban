@@ -880,15 +880,15 @@ fn has_custom_eq(i_s: &InferenceState, t: &Type) -> bool {
 fn split_off_singleton(
     i_s: &InferenceState,
     t: &Type,
-    split_off: &Type,
+    singleton: &Type,
     abort_on_custom_eq: bool,
 ) -> Option<(Type, Type)> {
-    let matches_singleton = |t: &_| match split_off {
+    let matches_singleton = |t: &_| match singleton {
         Type::EnumMember(member1) => match t {
             Type::EnumMember(member2) => member1.is_same_member(member2),
             _ => false,
         },
-        _ => split_off == t,
+        _ => singleton == t,
     };
     let mut other_return = Type::Never(NeverCause::Other);
     let mut left = Type::Never(NeverCause::Other);
@@ -897,14 +897,14 @@ fn split_off_singleton(
         match sub_t {
             Type::Any(_) => {
                 // Any can be None or something else.
-                other_return = split_off.clone();
+                other_return = singleton.clone();
                 add(sub_t.clone());
             }
             Type::Enum(enum_) => {
                 if abort_on_custom_eq && has_custom_eq(i_s, sub_t) {
                     return None;
                 }
-                if let Type::EnumMember(split) = split_off {
+                if let Type::EnumMember(split) = singleton {
                     if enum_.defined_at == split.enum_.defined_at {
                         for (i, _) in enum_.members.iter().enumerate() {
                             let new_member =
@@ -920,7 +920,7 @@ fn split_off_singleton(
                 }
                 add(sub_t.clone())
             }
-            _ if matches_singleton(sub_t) => other_return = split_off.clone(),
+            _ if matches_singleton(sub_t) => other_return = singleton.clone(),
             _ => {
                 if abort_on_custom_eq && has_custom_eq(i_s, sub_t) {
                     return None;
@@ -939,7 +939,7 @@ fn narrow_is_or_eq(
     other_t: &Type,
     is_eq: bool,
 ) -> Option<(Frame, Frame)> {
-    let split = |key: FlowKey| {
+    let split_singleton = |key: FlowKey| {
         let (rest, none) = split_off_singleton(i_s, checking_t, other_t, is_eq)?;
         let result = (
             Frame::from_type(key.clone(), none),
@@ -954,8 +954,8 @@ fn narrow_is_or_eq(
             new_member.implicit = false;
             narrow_is_or_eq(i_s, key, checking_t, &Type::EnumMember(new_member), is_eq)
         }
-        Type::None if !is_eq => split(key),
-        Type::EnumMember(member) if !is_eq || !member.implicit => split(key),
+        Type::None if !is_eq => split_singleton(key),
+        Type::EnumMember(member) if !is_eq || !member.implicit => split_singleton(key),
         Type::Enum(enum_) if enum_.members.len() == 1 => {
             // Enums with a single item can be compared to that item.
             narrow_is_or_eq(
@@ -1013,7 +1013,7 @@ fn narrow_is_or_eq(
             Frame::from_type(key, left_t.clone()),
         )),
         */
-        Type::Class(c) if c.link == i_s.db.python_state.ellipsis_link() => split(key),
+        Type::Class(c) if c.link == i_s.db.python_state.ellipsis_link() => split_singleton(key),
         _ => match checking_t {
             left_t @ Type::Union(_) => {
                 // Remove None from left, if the right types match everything except None.
