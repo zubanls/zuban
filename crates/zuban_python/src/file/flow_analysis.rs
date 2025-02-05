@@ -901,7 +901,7 @@ fn split_off_singleton(
                 add(sub_t.clone());
             }
             Type::Enum(enum_) => {
-                if abort_on_custom_eq && has_custom_eq(i_s, t) {
+                if abort_on_custom_eq && has_custom_eq(i_s, sub_t) {
                     return None;
                 }
                 if let Type::EnumMember(split) = split_off {
@@ -922,7 +922,7 @@ fn split_off_singleton(
             }
             _ if matches_singleton(sub_t) => other_return = split_off.clone(),
             _ => {
-                if abort_on_custom_eq && has_custom_eq(i_s, t) {
+                if abort_on_custom_eq && has_custom_eq(i_s, sub_t) {
                     return None;
                 }
                 add(sub_t.clone())
