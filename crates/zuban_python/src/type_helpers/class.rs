@@ -39,11 +39,11 @@ use crate::{
     python_state::{NAME_TO_CLASS_DIFF, NAME_TO_FUNCTION_DIFF},
     type_::{
         check_dataclass_options, dataclass_init_func, execute_functional_enum,
-        infer_typed_dict_total_argument, infer_value_on_member, AnyCause, CallableContent,
-        CallableLike, CallableParam, CallableParams, ClassGenerics, Dataclass, DataclassOptions,
-        DataclassTransformObj, DbString, Enum, EnumMemberDefinition, FormatStyle, FunctionKind,
-        FunctionOverload, GenericClass, GenericsList, LookupResult, NamedTuple, NeverCause,
-        ParamSpecArg, ParamSpecUsage, ParamType, StringSlice, Tuple, TupleArgs, Type, TypeVarLike,
+        infer_typed_dict_total_argument, AnyCause, CallableContent, CallableLike, CallableParam,
+        CallableParams, ClassGenerics, Dataclass, DataclassOptions, DataclassTransformObj,
+        DbString, Enum, EnumMemberDefinition, FormatStyle, FunctionKind, FunctionOverload,
+        GenericClass, GenericsList, LookupResult, NamedTuple, NeverCause, ParamSpecArg,
+        ParamSpecUsage, ParamType, StringSlice, Tuple, TupleArgs, Type, TypeVarLike,
         TypeVarLikeUsage, TypeVarLikes, TypedDict, TypedDictMember, TypedDictMemberGatherer,
         Variance,
     },
@@ -632,7 +632,7 @@ impl<'db: 'a, 'a> Class<'a> {
             // calculation will do it for us, which we probably do not want.
             for member in enum_.members.iter() {
                 if member.value.is_some() {
-                    infer_value_on_member(i_s, &enum_, member.value);
+                    member.infer_value(i_s, &enum_);
                 }
             }
         }

@@ -44,15 +44,23 @@ impl EnumMember {
     }
 
     pub fn name<'x>(&'x self, db: &'x Database) -> &'x str {
-        self.enum_.members[self.member_index].name(db)
+        self.member_definition().name(db)
     }
 
     pub fn value(&self) -> Option<PointLink> {
-        self.enum_.members[self.member_index].value
+        self.member_definition().value
+    }
+
+    pub fn infer_value(&self, i_s: &InferenceState) -> Inferred {
+        self.member_definition().infer_value(i_s, &self.enum_)
     }
 
     pub fn is_same_member(&self, other: &Self) -> bool {
         Rc::ptr_eq(&self.enum_, &other.enum_) && self.member_index == other.member_index
+    }
+
+    fn member_definition(&self) -> &EnumMemberDefinition {
+        &self.enum_.members[self.member_index]
     }
 
     pub fn format(&self, format_data: &FormatData) -> String {
@@ -88,6 +96,59 @@ impl EnumMemberDefinition {
 
     pub fn name<'x>(&'x self, db: &'x Database) -> &'x str {
         self.name.as_str(db)
+    }
+    pub fn infer_value(&self, i_s: &InferenceState, enum_: &Enum) -> Inferred {
+        match self.value {
+            // I'm not 100% sure why this is, but Mypy returns Any on all enums that have a __new__
+            // defined.
+            Some(link) if !enum_.has_customized_new(i_s) => {
+                let node_ref = NodeRef::from_link(i_s.db, link);
+                let enum_class = enum_.class(i_s.db);
+                let class_i_s = &i_s.with_class_context(&enum_class);
+                let inferred = if let Some(name) = node_ref.maybe_name() {
+                    node_ref
+                        .file
+                        .inference(&class_i_s.with_enum_calculation_mode())
+                        .infer_name_of_definition(name)
+                } else {
+                    let expr = node_ref.as_expression();
+                    node_ref.file.inference(class_i_s).infer_expression(expr)
+                };
+                match inferred.as_cow_type(class_i_s).as_ref() {
+                    Type::Class(c) if c.link == i_s.db.python_state.enum_auto_link() => {
+                        Inferred::from_type(
+                            enum_class
+                                .simple_lookup(
+                                    i_s,
+                                    |issue| node_ref.add_issue(i_s, issue),
+                                    "_generate_next_value_",
+                                )
+                                .into_maybe_inferred()
+                                .and_then(|inf| {
+                                    // Check We have a proper callable that is not part of the enum module
+                                    // and overwrites the default of int.
+                                    if inf.maybe_saved_link().is_some_and(|link| {
+                                        link.file == i_s.db.python_state.enum_file().file_index
+                                    }) {
+                                        return None;
+                                    }
+                                    inf.as_cow_type(i_s).maybe_callable(i_s)
+                                })
+                                .map(|callable| match callable {
+                                    CallableLike::Callable(c) => c.return_type.clone(),
+                                    CallableLike::Overload(_) => {
+                                        debug!("TODO overloads are currently not supported for _generate_next_value_");
+                                        Type::Any(AnyCause::Internal)
+                                    }
+                                })
+                                .unwrap_or(i_s.db.python_state.int_type()),
+                        )
+                    }
+                    _ => inferred,
+                }
+            }
+            _ => Inferred::new_any(AnyCause::Todo),
+        }
     }
 }
 
@@ -202,7 +263,7 @@ pub(crate) fn lookup_on_enum_instance<'a>(
             Type::Enum(enum_.clone()),
             LookupResult::UnknownName(Inferred::gather_simplified_union(i_s, |add| {
                 for member in enum_.members.iter() {
-                    add(infer_value_on_member(i_s, enum_, member.value))
+                    add(member.infer_value(i_s, enum_))
                 }
             })),
             AttributeKind::Attribute,
@@ -230,64 +291,6 @@ fn lookup_on_enum_instance_fallback<'a>(
         name,
         InstanceLookupOptions::new(add_issue).with_as_self_instance(&|| Type::Enum(enum_.clone())),
     )
-}
-
-pub fn infer_value_on_member(
-    i_s: &InferenceState,
-    enum_: &Enum,
-    definition: Option<PointLink>,
-) -> Inferred {
-    match definition {
-        // I'm not 100% sure why this is, but Mypy returns Any on all enums that have a __new__
-        // defined.
-        Some(link) if !enum_.has_customized_new(i_s) => {
-            let node_ref = NodeRef::from_link(i_s.db, link);
-            let enum_class = enum_.class(i_s.db);
-            let class_i_s = &i_s.with_class_context(&enum_class);
-            let inferred = if let Some(name) = node_ref.maybe_name() {
-                node_ref
-                    .file
-                    .inference(&class_i_s.with_enum_calculation_mode())
-                    .infer_name_of_definition(name)
-            } else {
-                let expr = node_ref.as_expression();
-                node_ref.file.inference(class_i_s).infer_expression(expr)
-            };
-            match inferred.as_cow_type(class_i_s).as_ref() {
-                Type::Class(c) if c.link == i_s.db.python_state.enum_auto_link() => {
-                    Inferred::from_type(
-                        enum_class
-                            .simple_lookup(
-                                i_s,
-                                |issue| node_ref.add_issue(i_s, issue),
-                                "_generate_next_value_",
-                            )
-                            .into_maybe_inferred()
-                            .and_then(|inf| {
-                                // Check We have a proper callable that is not part of the enum module
-                                // and overwrites the default of int.
-                                if inf.maybe_saved_link().is_some_and(|link| {
-                                    link.file == i_s.db.python_state.enum_file().file_index
-                                }) {
-                                    return None;
-                                }
-                                inf.as_cow_type(i_s).maybe_callable(i_s)
-                            })
-                            .map(|callable| match callable {
-                                CallableLike::Callable(c) => c.return_type.clone(),
-                                CallableLike::Overload(_) => {
-                                    debug!("TODO overloads are currently not supported for _generate_next_value_");
-                                    Type::Any(AnyCause::Internal)
-                                }
-                            })
-                            .unwrap_or(i_s.db.python_state.int_type()),
-                    )
-                }
-                _ => inferred,
-            }
-        }
-        _ => Inferred::new_any(AnyCause::Todo),
-    }
 }
 
 pub(crate) fn lookup_on_enum_member_instance<'a>(
@@ -331,7 +334,7 @@ pub(crate) fn lookup_on_enum_member_instance<'a>(
                 }
                 return LookupDetails::new(
                     Type::Enum(member.enum_.clone()),
-                    LookupResult::UnknownName(infer_value_on_member(i_s, &member.enum_, value)),
+                    LookupResult::UnknownName(member.infer_value(i_s)),
                     AttributeKind::DefMethod { is_final: false },
                 );
             }

@@ -41,9 +41,8 @@ pub(crate) use self::{
         DataclassOptions, DataclassTransformObj,
     },
     enum_::{
-        execute_functional_enum, infer_value_on_member, lookup_on_enum_class,
-        lookup_on_enum_instance, lookup_on_enum_member_instance, Enum, EnumMember,
-        EnumMemberDefinition,
+        execute_functional_enum, lookup_on_enum_class, lookup_on_enum_instance,
+        lookup_on_enum_member_instance, Enum, EnumMember, EnumMemberDefinition,
     },
     intersection::Intersection,
     lookup_result::LookupResult,
