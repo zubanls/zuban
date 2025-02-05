@@ -164,6 +164,8 @@ impl TestCase<'_, '_> {
 
         if steps.flags.contains(&"--strict") {
             config.enable_all_strict_flags();
+        } else if steps.flags.contains(&"--strict-bytes") {
+            config.enable_strict_bytes()
         }
         let set_bool_flag = |change: &mut _, flag| {
             if steps.flags.contains(&flag) {

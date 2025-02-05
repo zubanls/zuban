@@ -267,6 +267,11 @@ impl TypeCheckerFlags {
         self.strict_equality = true;
         self.extra_checks = true;
     }
+
+    pub fn enable_strict_bytes(&mut self) {
+        self.disable_bytearray_promotion = true;
+        self.disable_memoryview_promotion = true;
+    }
 }
 
 #[derive(Copy, Clone, Hash, PartialEq, Eq, PartialOrd, Debug)]

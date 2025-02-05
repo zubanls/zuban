@@ -152,6 +152,9 @@ pub struct Cli {
     strict_equality: bool,
     #[arg(long)]
     no_strict_equality: bool,
+    /// Disable treating bytearray and memoryview as subtypes of bytes
+    #[arg(long)]
+    strict_bytes: bool,
     /// Enable additional checks that are technically correct but may be impractical in real code.
     /// For example, this prohibits partial overlap in TypedDict updates, and makes arguments
     /// prepended via Concatenate positional-only (inverse: --no-extra-checks)
@@ -272,6 +275,9 @@ fn apply_flags(
     let flags = &mut project_options.flags;
     if cli.strict {
         flags.enable_all_strict_flags();
+    }
+    if cli.strict_bytes {
+        flags.enable_strict_bytes();
     }
     apply!(flags, strict_optional, no_strict_optional);
     apply!(flags, strict_equality, no_strict_equality);
