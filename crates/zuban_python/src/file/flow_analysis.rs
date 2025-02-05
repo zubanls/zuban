@@ -1125,6 +1125,7 @@ fn split_truthy_and_falsey_t(i_s: &InferenceState, t: &Type) -> Option<(Type, Ty
                         None
                     }
                 }),
+            Type::EnumMember(_) => Some((t.clone(), Type::Never(NeverCause::Other))),
             _ => None,
         }
     };
