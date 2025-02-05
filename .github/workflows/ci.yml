@@ -6,9 +6,14 @@ on:
   pull_request:
   workflow_dispatch:
     all_tests:
-      required: false
-      default: false
-      type: boolean
+      required: true
+      description: "Run more expensive tests"
+      default: "full"
+      type: choice
+      options:
+        - "full"
+        - "partial"
+
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref_name }}-${{ github.event.pull_request.number || github.sha }}
@@ -31,5 +36,5 @@ jobs:
   tests:
     uses: ./.github/workflows/tests.yml
     with:
-      all_tests: ${{ inputs.all_tests || false }}
+      all_tests: ${{ inputs.all_tests == 'full' || false }}
     secrets: inherit
