@@ -3905,7 +3905,10 @@ impl<'db: 'x, 'file, 'x> Inference<'db, 'file, '_> {
                 _ => {
                     let node_ref = NodeRef::new(file, name.index());
                     debug_assert!(node_ref.point().calculated());
-                    return check_type_name(self.i_s, node_ref);
+                    let n = check_type_name(self.i_s, node_ref);
+                    if !matches!(n, TypeNameLookup::SpecialType(_)) {
+                        return n;
+                    }
                 }
             }
         }
