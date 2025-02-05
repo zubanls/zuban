@@ -51,7 +51,6 @@ testForStatementIndexNarrowing
 testInlinePythonVersion
 testIsinstanceAndNegativeNarrowTypeVariableWithUnionBound
 testTypeEqualsCheckUsingIsNonOverlapping
-testLiteralInsideAType
 testNamedTupleFinalAndClassVar
 testGenericNamedTupleRecursiveBound
 testNarrowingFalseyToLiteral
@@ -81,8 +80,6 @@ testSetterPropertyProtocolSubtypingVarSuper
 testSetterPropertyProtocolSubtypingVarSub
 testRedefineLocalWithinExceptStarTryClauses
 testTypeAliasNormalization
-testRecursiveAliasesProhibitBadAliases
-testRecursiveAliasesWithAnyUnimported
 testGenericDescriptorWithSelfTypeAnnotationsAndOverloads
 testSelfInMultipleInheritance
 testRaiseNotImplementedFails
@@ -98,7 +95,6 @@ testTypeIsInOverloadsSameReturn
 testTypeIsLikeIsDataclass
 testTypeVarTypeAssignment
 testTypeVarValuesNarrowing
-testMissingBracket
 testPEP696TypeAlias
 testPEP696GenericFunction
 testPEP696ParamSpec
@@ -1290,6 +1286,8 @@ testSmartQuotes
 testParseError
 testParseErrorMultipleTimes
 testBlockingErrorWithPreviousError
+# '(' was never closed
+testMissingBracket
 
 # Needs lib-stub/blocker.pyi
 testImportBringsAnotherFileWithBlockingError1
@@ -1416,6 +1414,7 @@ testDisallowImplicitAnyVarDeclaration
 testDisallowUnimportedAnyTypedDictSimple
 testDisallowUnimportedAnyTypedDictGeneric
 testNoCrashOnUnImportedAnyNotRequired
+testRecursiveAliasesWithAnyUnimported
 testTypedDictRequiredUnimportedAny
 
 # --no-namespace-packages

@@ -159,7 +159,7 @@ pub(crate) enum IssueKind {
     NewTypesExpectSinglePositionalArgument,
     BasesOfProtocolMustBeProtocol,
     MustHaveOneArgument { name: &'static str },
-    TypeCannotContainAnotherType,
+    CannotContainType { name: &'static str },
     InvalidRecursiveTypeAliasUnionOfItself { target: &'static str },
     InvalidRecursiveTypeAliasTypeVarNesting,
     RecursiveTypesNotAllowedInFunctionScope { alias_name: Box<str> },
@@ -1284,8 +1284,7 @@ impl<'db> Diagnostic<'db> {
             MustHaveOneArgument { name } => format!(
                 "{name} must have exactly one type argument"
             ),
-            TypeCannotContainAnotherType =>
-                "Type[...] can't contain another Type[...]".to_string(),
+            CannotContainType { name } => format!(r#"Type[...] can't contain "{name}[...]""#),
             InvalidRecursiveTypeAliasUnionOfItself { target } => format!(
                 "Invalid recursive alias: a {target} item of itself"
             ),

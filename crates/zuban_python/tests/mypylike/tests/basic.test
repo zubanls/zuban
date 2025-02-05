@@ -233,10 +233,10 @@ Foo.b = 3  # E: "Type[Foo]" has no attribute "b"
 
 [case type_type_annotation]
 # No such test exists in Mypy (only for recursive aliases)
-foo: type[type[int]]  # E: Type[...] can't contain another Type[...]
+foo: type[type[int]]  # E: Type[...] can't contain "Type[...]"
 
 [case type_type_alias_circular]
-A = type["B"]  # E: Type[...] can't contain another Type[...]
+A = type["B"]  # E: Type[...] can't contain "Type[...]"
 B = list[type[A]]
 
 [case assign_bool_to_false_true_literal]

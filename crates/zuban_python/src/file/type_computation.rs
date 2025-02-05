@@ -2740,22 +2740,26 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         if iterator.count() > 0 {
             return TypeContent::InvalidVariable(InvalidVariableType::Other);
         }
-        let mut t = match self.compute_slice_type_content(content) {
+        let t = match self.compute_slice_type_content(content) {
             TypeContent::SpecialType(SpecialType::BuiltinsType | SpecialType::TypingType) => {
                 self.inference.i_s.db.python_state.bare_type_type()
             }
             t => self.as_type(t, content.as_node_ref()),
         };
-        if t.iter_with_unpacked_unions_without_unpacking_recursive_types()
-            .any(|t| matches!(t, Type::Type(_)))
-        {
-            t = Type::Any(AnyCause::FromError);
+        let ret = |t| TypeContent::Type(Type::Type(Rc::new(t)));
+        for inner in t.iter_with_unpacked_unions_without_unpacking_recursive_types() {
+            let name = match inner {
+                Type::Type(_) => "Type",
+                Type::Literal(_) => "Literal",
+                _ => continue,
+            };
             self.add_issue(
                 slice_type.as_node_ref(),
-                IssueKind::TypeCannotContainAnotherType,
-            )
+                IssueKind::CannotContainType { name },
+            );
+            return ret(Type::Any(AnyCause::FromError));
         }
-        TypeContent::Type(Type::Type(Rc::new(t)))
+        ret(t)
     }
 
     fn compute_type_get_item_on_alias(
@@ -4560,7 +4564,7 @@ fn check_for_and_replace_type_type_in_finished_alias(
             _ => false,
         })
     {
-        alias_origin.add_issue(i_s, IssueKind::TypeCannotContainAnotherType);
+        alias_origin.add_issue(i_s, IssueKind::CannotContainType { name: "Type" });
         let alias = TypeAlias::new(alias.type_vars.clone(), alias.location, alias.name);
         alias.set_valid(Type::Any(AnyCause::FromError), false);
         save_alias(alias_origin, alias)
