@@ -43,13 +43,14 @@ impl<'a> Instance<'a> {
         }
     }
 
-    pub(crate) fn check_set_descriptor(
+    #[must_use]
+    pub(crate) fn check_set_descriptor_and_return_should_narrow(
         &self,
         i_s: &InferenceState,
         from: NodeRef,
         name: Name,
         value: &Inferred,
-    ) -> Result<(), ()> {
+    ) -> bool {
         let add_issue = |issue| from.add_issue(i_s, issue);
 
         let name_str = name.as_str();
@@ -58,7 +59,7 @@ impl<'a> Instance<'a> {
                 class_name,
                 property_name: name_str.into(),
             });
-            Err(())
+            false
         };
         if let Some(nt) = self.class.maybe_named_tuple_base(i_s.db) {
             if nt.search_param(i_s.db, name_str).is_some() {
@@ -72,11 +73,7 @@ impl<'a> Instance<'a> {
                 had_errors = true;
                 Some(IssueKind::IncompatibleAssignment { got, expected })
             });
-            if had_errors {
-                Err(())
-            } else {
-                Ok(())
-            }
+            !had_errors
         };
 
         let lookup_details = self
@@ -133,13 +130,13 @@ impl<'a> Instance<'a> {
                 }
             }
             add_attribute_error(i_s, from, &t, &t, name_str);
-            return Err(());
+            return false;
         };
         if inf.maybe_saved_specific(i_s.db) == Some(Specific::AnnotationOrTypeCommentClassVar) {
             add_issue(IssueKind::CannotAssignToClassVarViaInstance {
                 name: name_str.into(),
             });
-            return Err(());
+            return false;
         }
         if lookup_details.is_final(i_s.db) {
             from.add_issue(
@@ -163,7 +160,7 @@ impl<'a> Instance<'a> {
                     let inst = self.as_inferred(i_s);
                     calculate_descriptor(i_s, from, __set__, inst, value);
                     // Return an error regardless so it does not get narrowed.
-                    return Err(());
+                    return false;
                 } else if let Some(inf) = Instance::new(descriptor, None).bind_dunder_get(
                     i_s,
                     add_issue,

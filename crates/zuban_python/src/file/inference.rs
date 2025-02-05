@@ -1775,7 +1775,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         let base = base.as_cow_type(i_s);
         let node_ref = NodeRef::new(self.file, primary_target.index());
         let name_str = name_def.as_code();
-        let mut had_error = false;
+        let mut save_narrowed = true;
         for t in base.iter_with_unpacked_unions(i_s.db) {
             let property_is_read_only = |class_name| {
                 from.add_issue(
@@ -1788,11 +1788,15 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             };
             match t {
                 Type::Class(c) => {
-                    had_error |= c
+                    save_narrowed &= c
                         .class(i_s.db)
                         .instance()
-                        .check_set_descriptor(i_s, node_ref, name_def.name(), value)
-                        .is_err();
+                        .check_set_descriptor_and_return_should_narrow(
+                            i_s,
+                            node_ref,
+                            name_def.name(),
+                            value,
+                        );
                     continue;
                 }
                 Type::Dataclass(d) => {
@@ -1812,18 +1816,21 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                             _ => false,
                         };
                         if !is_unknown {
-                            had_error = true;
+                            save_narrowed = false;
                             property_is_read_only(d.class(i_s.db).name().into())
                         }
                     }
-                    had_error |= inst
-                        .check_set_descriptor(i_s, node_ref, name_def.name(), value)
-                        .is_err();
+                    save_narrowed &= inst.check_set_descriptor_and_return_should_narrow(
+                        i_s,
+                        node_ref,
+                        name_def.name(),
+                        value,
+                    );
                     continue;
                 }
                 Type::NamedTuple(nt) => {
                     if nt.search_param(i_s.db, name_def.as_code()).is_some() {
-                        had_error = true;
+                        save_narrowed = false;
                         property_is_read_only(nt.name(i_s.db).into());
                         continue;
                     }
@@ -1835,7 +1842,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                             .iter()
                             .any(|member| member.name(i_s.db) == name_str) =>
                     {
-                        had_error = true;
+                        save_narrowed = false;
                         from.add_issue(
                             i_s,
                             IssueKind::CannotAssignToFinal {
@@ -1848,7 +1855,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     _ => (),
                 },
                 Type::Super { .. } => {
-                    had_error = true;
+                    save_narrowed = false;
                     from.add_issue(i_s, IssueKind::InvalidAssignmentTarget);
                     continue;
                 }
@@ -1899,20 +1906,20 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 );
                 declaration_t =
                     Cow::Owned(declaration_t.into_owned().avoid_implicit_literal(i_s.db));
-                had_error = true;
+                save_narrowed = false;
             }
             declaration_t.error_if_not_matches(
                 i_s,
                 value,
                 |issue| from.add_issue(i_s, issue),
                 |error_types| {
-                    had_error = true;
+                    save_narrowed = false;
                     let ErrorStrs { expected, got } = error_types.as_boxed_strs(i_s.db);
                     Some(IssueKind::IncompatibleAssignment { got, expected })
                 },
             );
         }
-        if matches!(assign_kind, AssignKind::Normal) && !had_error {
+        if matches!(assign_kind, AssignKind::Normal) && save_narrowed {
             self.save_narrowed_primary_target(primary_target, &value.as_cow_type(self.i_s));
         }
     }
