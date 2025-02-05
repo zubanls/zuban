@@ -1089,6 +1089,12 @@ fn split_truthy_and_falsey_t(i_s: &InferenceState, t: &Type) -> Option<(Type, Ty
             })
         };
 
+        let check_enum = |enum_| {
+            let l = lookup_on_enum_instance(i_s, &|_| (), enum_, "__bool__");
+            // By default bool(<Some Enum Member>) is True, but __bool__ can change that.
+            narrow_by_return_literal(l)
+                .unwrap_or_else(|| Some((t.clone(), Type::Never(NeverCause::Other))))
+        };
         match t {
             Type::None => Some((Type::Never(NeverCause::Other), Type::None)),
             Type::Literal(literal) => check_literal(literal),
@@ -1134,13 +1140,8 @@ fn split_truthy_and_falsey_t(i_s: &InferenceState, t: &Type) -> Option<(Type, Ty
                         None
                     }
                 }),
-            Type::EnumMember(member) => {
-                let l = lookup_on_enum_instance(i_s, &|_| (), &member.enum_, "__bool__");
-                // By default bool(<Some Enum Member>) is True, but __bool__ can change that.
-                narrow_by_return_literal(l)
-                    .unwrap_or_else(|| Some((t.clone(), Type::Never(NeverCause::Other))))
-            }
-
+            Type::EnumMember(member) => check_enum(&member.enum_),
+            Type::Enum(enum_) => check_enum(enum_),
             _ => None,
         }
     };

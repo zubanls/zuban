@@ -23,8 +23,6 @@ testOverridePropertyDifferentSetterVarSub
 testOverridePropertyInvalidSetter
 testOverridePropertyGeneric
 testDunderReplaceCovariantOverride
-testEnumTruthynessStrEnum
-testEnumReachabilityWithNone
 testEnumNotFinalWithMethodsAndUninitializedValues
 testEnumNotFinalWithMethodsAndUninitializedValuesStub
 testErrorOnAnnotatedMember
@@ -122,6 +120,7 @@ reassigning_with_self_types
 testUnionSimplificationSpecialCases2
 # EnumMeta does not inherit from ABCMeta anymore: https://github.com/python/typeshed/pull/10577
 testStrEnumCreation
+testEnumTruthynessStrEnum
 testRegression12258
 testDerivedEnumIterable
 testEnumIterMetaInference
