@@ -1523,12 +1523,10 @@ impl<'db: 'slf, 'slf> Inferred {
                     ))))
                 }
                 FunctionKind::Property { .. } => {
-                    return if apply_descriptor {
-                        Some(Some(Inferred::from_type(
+                    if apply_descriptor {
+                        return Some(Some(Inferred::from_type(
                             i_s.db.python_state.property_type(),
-                        )))
-                    } else {
-                        None
+                        )));
                     }
                 }
                 FunctionKind::Classmethod { .. } => {

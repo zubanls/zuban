@@ -3,11 +3,11 @@ use std::rc::Rc;
 use super::{
     callable::add_param_spec_to_params, simplified_union_from_iterators_with_format_index,
     type_var_likes::CallableId, CallableContent, CallableParam, CallableParams, ClassGenerics,
-    Dataclass, FunctionOverload, GenericClass, GenericItem, GenericsList, Intersection, NamedTuple,
-    ParamSpecArg, ParamSpecTypeVars, ParamSpecUsage, ParamType, RecursiveType, StarParamType,
-    StarStarParamType, Tuple, TupleArgs, Type, TypeArgs, TypeGuardInfo, TypeVarLike,
-    TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypeVarTupleUsage, TypedDict,
-    TypedDictGenerics, UnionEntry, UnionType,
+    Dataclass, FunctionKind, FunctionOverload, GenericClass, GenericItem, GenericsList,
+    Intersection, NamedTuple, ParamSpecArg, ParamSpecTypeVars, ParamSpecUsage, ParamType,
+    PropertySetter, RecursiveType, StarParamType, StarStarParamType, Tuple, TupleArgs, Type,
+    TypeArgs, TypeGuardInfo, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager,
+    TypeVarTupleUsage, TypedDict, TypedDictGenerics, UnionEntry, UnionType,
 };
 use crate::{
     database::{Database, PointLink},
@@ -404,6 +404,26 @@ impl TypeGuardInfo {
     }
 }
 
+impl FunctionKind {
+    fn replace_internal(&self, replacer: &mut impl Replacer) -> Option<Self> {
+        match self {
+            FunctionKind::Property {
+                setter_type: Some(setter_type),
+                had_first_self_or_class_annotation,
+            } => match setter_type.as_ref() {
+                PropertySetter::SameType => None,
+                PropertySetter::OtherType(type_) => Some(FunctionKind::Property {
+                    setter_type: Some(Rc::new(PropertySetter::OtherType(
+                        type_.replace_internal(replacer)?,
+                    ))),
+                    had_first_self_or_class_annotation: *had_first_self_or_class_annotation,
+                }),
+            },
+            _ => None,
+        }
+    }
+}
+
 impl CallableParams {
     fn replace_internal(
         &self,
@@ -753,7 +773,12 @@ impl ReplaceTypeVarLikes<'_, '_> {
             None => Some(None),
             Some(g) => g.replace_internal(self).map(Some),
         };
-        if new_param_data.is_none() && new_return_type.is_none() && new_guard.is_none() {
+        let new_kind = c.kind.replace_internal(self);
+        if new_param_data.is_none()
+            && new_return_type.is_none()
+            && new_guard.is_none()
+            && new_kind.is_none()
+        {
             return None;
         }
         let (params, remap_data) = new_param_data.unwrap_or_else(|| (c.params.clone(), None));
@@ -773,7 +798,7 @@ impl ReplaceTypeVarLikes<'_, '_> {
             name: c.name.clone(),
             class_name: c.class_name,
             defined_at: c.defined_at,
-            kind: c.kind.clone(),
+            kind: new_kind.unwrap_or_else(|| c.kind.clone()),
             type_vars: type_vars
                 .map(TypeVarLikes::from_vec)
                 .unwrap_or_else(|| self.db.python_state.empty_type_var_likes.clone()),
