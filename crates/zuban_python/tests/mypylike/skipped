@@ -45,9 +45,6 @@ testNamedTupleFinalAndClassVar
 testGenericNamedTupleRecursiveBound
 testNarrowingFalseyToLiteral
 testNarrowingOptionalEqualsNone
-testNarrowingWithIntEnum
-testNarrowingWithIntEnum2
-testNarrowingWithStrEnum
 testConsistentNarrowingEqAndIn
 testConsistentNarrowingInWithCustomEq
 testNarrowingTypeVarNone
@@ -113,13 +110,6 @@ class_lookup_of_methods_with_generics
 reassigning_with_self_types
 # Any base class now matches everything for union simplification
 testUnionSimplificationSpecialCases2
-# EnumMeta does not inherit from ABCMeta anymore: https://github.com/python/typeshed/pull/10577
-testStrEnumCreation
-testEnumTruthynessStrEnum
-testRegression12258
-testDerivedEnumIterable
-testEnumIterMetaInference
-testStrEnumClassCorrectIterable
 # Callable matching positional names ignored, but kwargs is there; mypy wrong?
 testProtocolIncompatibilityWithUnionType
 # dict questionable decisions
@@ -407,6 +397,14 @@ testRecursiveTypedDictWithList
 
 # enum member gathering
 testFinalWithMethodAssignment
+# Other Enum issues
+testEnumTruthynessStrEnum
+testDerivedEnumIterable
+testEnumIterMetaInference
+testStrEnumClassCorrectIterable
+testNarrowingWithIntEnum
+testNarrowingWithIntEnum2
+testNarrowingWithStrEnum
 
 # dataclass classmethod
 testDataclassesClassmethods

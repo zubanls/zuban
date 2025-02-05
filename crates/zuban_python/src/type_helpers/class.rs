@@ -1001,12 +1001,20 @@ impl<'db: 'a, 'a> Class<'a> {
                                         }
                                         incomplete_mro |= cached_class_infos.incomplete_mro;
                                         has_slots |= cached_class_infos.has_slots;
-                                        Self::update_metaclass(
-                                            i_s,
-                                            NodeRef::new(self.node_ref.file, n.index()),
-                                            &mut metaclass,
-                                            cached_class_infos.metaclass,
-                                        );
+                                        // For now simply ignore all metaclasses in builtins, see
+                                        // also:
+                                        // https://github.com/python/typeshed/issues/13466
+                                        // https://github.com/python/mypy/issues/15870#issuecomment-1681373243
+                                        if class.node_ref.file_index()
+                                            != i_s.db.python_state.builtins().file_index
+                                        {
+                                            Self::update_metaclass(
+                                                i_s,
+                                                NodeRef::new(self.node_ref.file, n.index()),
+                                                &mut metaclass,
+                                                cached_class_infos.metaclass,
+                                            );
+                                        }
                                         match &cached_class_infos.class_kind {
                                             ClassKind::NamedTuple => {
                                                 if matches!(
