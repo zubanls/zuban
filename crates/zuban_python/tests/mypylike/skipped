@@ -398,7 +398,6 @@ testRecursiveTypedDictWithList
 # enum member gathering
 testFinalWithMethodAssignment
 # Other Enum issues
-testEnumTruthynessStrEnum
 testDerivedEnumIterable
 testEnumIterMetaInference
 testStrEnumClassCorrectIterable

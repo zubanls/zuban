@@ -1090,9 +1090,13 @@ fn split_truthy_and_falsey_t(i_s: &InferenceState, t: &Type) -> Option<(Type, Ty
         };
 
         let check_enum = |enum_| {
-            let l = lookup_on_enum_instance(i_s, &|_| (), enum_, "__bool__");
-            // By default bool(<Some Enum Member>) is True, but __bool__ can change that.
-            narrow_by_return_literal(l)
+            // By default bool(<Some Enum Member>) is True, but __bool__/__len__ can change that.
+            let check_dunder = |name| {
+                let l = lookup_on_enum_instance(i_s, &|_| (), enum_, name);
+                narrow_by_return_literal(l)
+            };
+            check_dunder("__bool__")
+                .or_else(|| check_dunder("__len__"))
                 .unwrap_or_else(|| Some((t.clone(), Type::Never(NeverCause::Other))))
         };
         match t {
