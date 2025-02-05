@@ -1106,7 +1106,14 @@ fn split_truthy_and_falsey_t(i_s: &InferenceState, t: &Type) -> Option<(Type, Ty
                         })
                     };
 
-                    if let Some(maybe_specific_bool) = narrow_by_return_literal("__bool__") {
+                    if c.link == i_s.db.python_state.int_link() {
+                        Some((t.clone(), Type::Literal(Literal::new(LiteralKind::Int(0)))))
+                    } else if c.link == i_s.db.python_state.str_link() {
+                        Some((
+                            t.clone(),
+                            Type::Literal(Literal::new(LiteralKind::String(DbString::Static("")))),
+                        ))
+                    } else if let Some(maybe_specific_bool) = narrow_by_return_literal("__bool__") {
                         maybe_specific_bool
                     } else if let Some(nt) = class.maybe_named_tuple_base(i_s.db) {
                         check_literal(&Literal::new(LiteralKind::Int(nt.params().len() as i64)))

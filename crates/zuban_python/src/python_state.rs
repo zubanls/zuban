@@ -946,6 +946,8 @@ impl PythonState {
     attribute_node_ref!(_collections_abc, pub _collections_abc_dict_keys_node_ref, _collections_abc_dict_keys_index);
 
     attribute_link!(builtins, pub object_link, builtins_object_index);
+    attribute_link!(builtins, pub int_link, builtins_int_index);
+    attribute_link!(builtins, pub str_link, builtins_str_index);
     attribute_link!(builtins, pub bool_link, builtins_bool_index);
     attribute_link!(builtins, pub notimplementederror, builtins_notimplementederror);
     attribute_link!(builtins, pub staticmethod_link, builtins_staticmethod_index);
