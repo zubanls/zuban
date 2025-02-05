@@ -393,6 +393,7 @@ pub(crate) enum IssueKind {
     EnumMultipleMixinNew { extra: Box<str> },
     EnumMixinNotAllowedAfterEnum { after: Box<str> },
     EnumMembersAttributeOverwritten,
+    EnumMemberAnnotationDisallowed,
 
     DataclassMultipleKwOnly,
     DataclassNoDefaultAfterDefault,
@@ -1063,6 +1064,10 @@ impl<'db> Diagnostic<'db> {
             ),
             EnumMembersAttributeOverwritten =>
                 r#"Assigned "__members__" will be overridden by "Enum" internally"#.to_string(),
+            EnumMemberAnnotationDisallowed => {
+                additional_notes.push("See https://typing.readthedocs.io/en/latest/spec/enums.html#defining-members".into());
+                r#"Enum members must be left unannotated"#.to_string()
+            }
 
             DataclassMultipleKwOnly =>
                 "There may not be more than one field with the KW_ONLY type".to_string(),

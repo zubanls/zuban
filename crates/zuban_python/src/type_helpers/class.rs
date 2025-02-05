@@ -2350,6 +2350,12 @@ impl<'db: 'a, 'a> Class<'a> {
                     )
                 }
                 let name = name_node_ref.as_name();
+                if let Some(assignment) = name.maybe_assignment_definition_name() {
+                    if let AssignmentContent::WithAnnotation(_, _, Some(_)) = assignment.unpack() {
+                        NodeRef::new(self.node_ref.file, point.node_index())
+                            .add_issue(i_s, IssueKind::EnumMemberAnnotationDisallowed);
+                    }
+                }
                 if name.is_assignment_annotation_without_definition()
                     && !self.node_ref.file.is_stub()
                 {
