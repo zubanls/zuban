@@ -879,7 +879,7 @@ fn has_custom_eq(i_s: &InferenceState, t: &Type) -> bool {
 
 fn split_off_singleton(
     i_s: &InferenceState,
-    t: &Type,
+    of_type: &Type,
     singleton: &Type,
     abort_on_custom_eq: bool,
 ) -> Option<(Type, Type)> {
@@ -890,14 +890,14 @@ fn split_off_singleton(
         },
         _ => singleton == t,
     };
-    let mut other_return = Type::Never(NeverCause::Other);
-    let mut left = Type::Never(NeverCause::Other);
-    let mut add = |t| left.union_in_place(t);
-    for sub_t in t.iter_with_unpacked_unions(i_s.db) {
+    let mut truthy = Type::Never(NeverCause::Other);
+    let mut falsey = Type::Never(NeverCause::Other);
+    let mut add = |t| falsey.union_in_place(t);
+    for sub_t in of_type.iter_with_unpacked_unions(i_s.db) {
         match sub_t {
             Type::Any(_) => {
                 // Any can be None or something else.
-                other_return = singleton.clone();
+                truthy = singleton.clone();
                 add(sub_t.clone());
             }
             Type::Enum(enum_) => {
@@ -910,7 +910,7 @@ fn split_off_singleton(
                             let new_member =
                                 Type::EnumMember(EnumMember::new(enum_.clone(), i, false));
                             if i == split.member_index {
-                                other_return.union_in_place(new_member)
+                                truthy.union_in_place(new_member)
                             } else {
                                 add(new_member)
                             }
@@ -920,16 +920,20 @@ fn split_off_singleton(
                 }
                 add(sub_t.clone())
             }
-            _ if matches_singleton(sub_t) => other_return = singleton.clone(),
+            _ if matches_singleton(sub_t) => truthy = singleton.clone(),
             _ => {
                 if abort_on_custom_eq && has_custom_eq(i_s, sub_t) {
                     return None;
                 }
-                add(sub_t.clone())
+                if singleton == sub_t {
+                    truthy = singleton.clone()
+                } else {
+                    add(sub_t.clone())
+                }
             }
         }
     }
-    Some((left, other_return))
+    Some((truthy, falsey))
 }
 
 fn narrow_is_or_eq(
@@ -940,10 +944,10 @@ fn narrow_is_or_eq(
     is_eq: bool,
 ) -> Option<(Frame, Frame)> {
     let split_singleton = |key: FlowKey| {
-        let (rest, none) = split_off_singleton(i_s, checking_t, other_t, is_eq)?;
+        let (truthy, falsey) = split_off_singleton(i_s, checking_t, other_t, is_eq)?;
         let result = (
-            Frame::from_type(key.clone(), none),
-            Frame::from_type(key, rest),
+            Frame::from_type(key.clone(), truthy),
+            Frame::from_type(key, falsey),
         );
         Some(result)
     };
@@ -1015,17 +1019,17 @@ fn narrow_is_or_eq(
         */
         Type::Class(c) if c.link == i_s.db.python_state.ellipsis_link() => split_singleton(key),
         _ => match checking_t {
-            left_t @ Type::Union(_) => {
-                // Remove None from left, if the right types match everything except None.
-                if left_t
+            Type::Union(_) => {
+                // Remove None from the checking side, if the other side matches everything except None.
+                if checking_t
                     .iter_with_unpacked_unions(i_s.db)
                     .any(|t| matches!(t, Type::None))
                 {
-                    let (new_left, _) = split_off_singleton(i_s, left_t, &Type::None, is_eq)?;
-                    if new_left.is_simple_sub_type_of(i_s, other_t).bool()
-                        || new_left.is_simple_super_type_of(i_s, other_t).bool()
+                    let (_, falsey) = split_off_singleton(i_s, checking_t, &Type::None, is_eq)?;
+                    if falsey.is_simple_sub_type_of(i_s, other_t).bool()
+                        || falsey.is_simple_super_type_of(i_s, other_t).bool()
                     {
-                        return Some((Frame::from_type(key, new_left), Frame::default()));
+                        return Some((Frame::from_type(key, falsey), Frame::default()));
                     }
                 }
                 None
