@@ -32,6 +32,7 @@ use crate::{
     },
     type_helpers::{
         Callable, Class, ClassLookupOptions, Function, InstanceLookupOptions, LookupDetails,
+        TypeOrClass,
     },
     utils::join_with_commas,
 };
@@ -42,7 +43,7 @@ use super::{
     name_binder::{is_expr_part_reachable_for_name_binder, Truthiness},
     on_argument_type_error,
     utils::func_of_self_symbol,
-    PythonFile,
+    File, PythonFile,
 };
 
 type Entries = Vec<Entry>;
@@ -893,6 +894,7 @@ fn split_off_singleton(
     let mut truthy = Type::Never(NeverCause::Other);
     let mut falsey = Type::Never(NeverCause::Other);
     let mut add = |t| falsey.union_in_place(t);
+
     for sub_t in of_type.iter_with_unpacked_unions(i_s.db) {
         match sub_t {
             Type::Any(_) => {
@@ -922,9 +924,28 @@ fn split_off_singleton(
             }
             _ if matches_singleton(sub_t) => truthy = singleton.clone(),
             _ => {
-                if abort_on_custom_eq && has_custom_eq(i_s, sub_t) {
-                    return None;
+                if abort_on_custom_eq {
+                    if has_custom_eq(i_s, sub_t) {
+                        return None;
+                    }
+                    // Also abort on a subclass of IntEnum/StrEnum, because they can match any
+                    // str/int.
+                    if let Type::EnumMember(m) = singleton {
+                        let class = m.enum_.class(i_s.db);
+                        for (_, in_mro) in class.mro(i_s.db) {
+                            let TypeOrClass::Class(in_mro) = in_mro else {
+                                continue;
+                            };
+                            if in_mro.node_ref.file_index()
+                                == i_s.db.python_state.enum_file().file_index()
+                                && ["IntEnum", "StrEnum"].contains(&in_mro.name())
+                            {
+                                return None;
+                            }
+                        }
+                    }
                 }
+
                 if singleton == sub_t {
                     truthy = singleton.clone()
                 } else {
