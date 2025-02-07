@@ -456,7 +456,6 @@ testInferenceViaTypeTypeMetaclass
 metaclass_descriptor
 # Metaclass iter/getitem/addition
 testIterableProtocolOnMetaclass
-testDerivedEnumIterable
 testEnumIterMetaInference
 testStrEnumClassCorrectIterable
 # Metaclass instance vs. class members
@@ -482,7 +481,6 @@ testTypeVarDefaultsTypeAliasRecursive1
 testTypeVarDefaultsTypeAliasRecursive2
 # dataclass circles with bound
 testDataclassGenericWithBound
-testDataclassFactory
 
 # lambda with generics
 testInferenceAgainstGenericLambdas

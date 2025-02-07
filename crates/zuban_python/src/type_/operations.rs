@@ -885,7 +885,7 @@ pub(crate) fn attribute_access_of_type(
             .instance()
             .lookup_with_details(i_s, add_issue, name, kind)
             .or_else(|| LookupDetails::any(*cause)),
-        Type::Enum(e) => lookup_on_enum_class(i_s, add_issue, &in_type, e, name),
+        Type::Enum(e) => lookup_on_enum_class(i_s, add_issue, &in_type, e, name, kind),
         Type::Dataclass(d) => lookup_on_dataclass_type(&in_type, d, i_s, add_issue, name, kind),
         Type::TypedDict(_) => i_s.db.python_state.typed_dict_class().lookup(
             i_s,

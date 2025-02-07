@@ -1476,7 +1476,15 @@ impl<'db: 'a, 'a> Class<'a> {
                     None,
                     self.node_ref.file_index(),
                     name,
-                    LookupKind::Normal,
+                    // Magic methods are probably never relevant on the object, since Python
+                    // ignores all self attributes. This is especially the case if Enums classes
+                    // are passed. However it feels a bit weird here and might need to be changed
+                    // in the future.
+                    if name.starts_with("__") && name.ends_with("__") {
+                        LookupKind::OnlyType
+                    } else {
+                        LookupKind::Normal
+                    },
                     &mut ResultContext::Unknown,
                     &|issue| {
                         let issue_str = self.node_ref.issue_to_str(i_s, issue);

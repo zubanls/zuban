@@ -549,7 +549,7 @@ pub enum UnpackedArgument {
     WithUnpack(WithUnpack),
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LookupKind {
     Normal,
     // In CPython there is PyTypeObject (for documentation see CPython's `Doc/c-api/typeobj.rst`).

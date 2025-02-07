@@ -258,6 +258,7 @@ pub(crate) fn lookup_on_enum_class<'a>(
     in_type: &Rc<Type>,
     enum_: &Rc<Enum>,
     name: &str,
+    kind: LookupKind,
 ) -> LookupDetails<'a> {
     match name {
         "_ignore_" | "_order_" | "__order__" => LookupDetails::none(),
@@ -271,6 +272,7 @@ pub(crate) fn lookup_on_enum_class<'a>(
                 i_s,
                 name,
                 ClassLookupOptions::new(&add_issue)
+                    .with_kind(kind)
                     .with_as_type_type(&|| Type::Type(in_type.clone())),
             )
         }),

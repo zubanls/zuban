@@ -970,7 +970,7 @@ pub(crate) fn lookup_on_dataclass_type<'a>(
     name: &str,
     kind: LookupKind,
 ) -> LookupDetails<'a> {
-    if name == "__dataclass_fields__" && kind == LookupKind::Normal {
+    if name == "__dataclass_fields__" {
         let t = if dataclass.options.transform_field_specifiers.is_some() {
             // For dataclass_transform the values are always Any
             new_class!(
