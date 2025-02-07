@@ -638,12 +638,18 @@ impl Type {
                 },
                 Type::Class(c2) => {
                     match c2.class(i_s.db).use_cached_class_infos(i_s.db).metaclass {
-                        MetaclassState::Some(link) => class1.as_type(i_s.db).matches(
-                            i_s,
-                            matcher,
-                            &Type::new_class(link, ClassGenerics::None),
-                            variance,
-                        ),
+                        MetaclassState::Some(link) => {
+                            // Protocols are handled separately
+                            if class1.is_protocol(i_s.db) {
+                                return Match::new_false();
+                            }
+                            class1.as_type(i_s.db).matches(
+                                i_s,
+                                matcher,
+                                &Type::new_class(link, ClassGenerics::None),
+                                variance,
+                            )
+                        }
                         MetaclassState::Unknown => {
                             (class1.is_metaclass(i_s.db) || class1.incomplete_mro(i_s.db)).into()
                         }

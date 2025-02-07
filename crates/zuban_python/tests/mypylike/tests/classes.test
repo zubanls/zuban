@@ -91,7 +91,7 @@ class A(metaclass=Meta): ...
 # >>> A.a
 # (<class '__main__.A'>, <class '__main__.Meta'>)
 # However in mypy it's tuple[None, Type[x2.A@1369]]
-reveal_type(A.a)  # N: Revealed type is "tuple[Type[__main__.A], Type[__main__.Meta]]"
+reveal_type(A.a)  # N: Revealed type is "tuple[Type[__main__.A], Type[Type[__main__.A]]]"
 reveal_type(Meta(A()).a)  # N: Revealed type is "tuple[__main__.Meta, Type[__main__.Meta]]"
 
 [case metaclass_iter_on_type_bound]

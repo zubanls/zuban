@@ -450,14 +450,8 @@ testTypeAliasInProtocolBody
 testClassLevelTypeAliasesInUnusualContexts
 testMalformedTypeAliasRuntimeReassignments
 
-# Protocol Self binding for metaclasses
-testInferenceViaTypeTypeMetaclass
-# Metaclass descriptor
-metaclass_descriptor
 # Metaclass iter/getitem/addition
-testIterableProtocolOnMetaclass
-testEnumIterMetaInference
-testStrEnumClassCorrectIterable
+testProtocolsInvalidateByRemovingMetaclass
 # Metaclass instance vs. class members
 testInferenceOfDunderDictOnClassObjects
 
