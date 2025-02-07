@@ -1703,6 +1703,13 @@ impl<'db: 'slf, 'slf> Inferred {
         self.as_cow_type(i_s).is_union_like(i_s.db)
     }
 
+    pub fn is_any(&self, db: &Database) -> bool {
+        if let Some(complex) = self.maybe_complex_point(db) {
+            return matches!(complex, ComplexPoint::TypeInstance(Type::Any(_)));
+        }
+        self.maybe_saved_specific(db).is_some_and(|s| s.is_any())
+    }
+
     #[inline]
     pub(crate) fn run_after_lookup_on_each_union_member(
         &self,

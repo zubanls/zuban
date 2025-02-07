@@ -4,7 +4,7 @@ use parsa_python_cst::NodeIndex;
 use vfs::FileIndex;
 
 use crate::{
-    database::{Locality, Point, PointLink},
+    database::{Database, Locality, Point, PointLink},
     file::PythonFile,
     inference_state::InferenceState,
     inferred::Inferred,
@@ -27,6 +27,10 @@ impl LookupResult {
 
     pub fn is_some(&self) -> bool {
         !matches!(self, Self::None)
+    }
+
+    pub fn is_any(&self, db: &Database) -> bool {
+        self.maybe_inferred().is_some_and(|inf| inf.is_any(db))
     }
 
     pub fn into_maybe_inferred(self) -> Option<Inferred> {

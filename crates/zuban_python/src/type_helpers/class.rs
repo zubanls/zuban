@@ -1866,6 +1866,37 @@ impl<'db: 'a, 'a> Class<'a> {
         options: ClassLookupOptions,
     ) -> LookupDetails<'a> {
         let class_infos = self.use_cached_class_infos(i_s.db);
+
+        let lookup_on_metaclass = |ignore_no_metaclass: bool| {
+            let metaclass_result = match class_infos.metaclass {
+                MetaclassState::Unknown => LookupDetails::any(AnyCause::Todo),
+                MetaclassState::None if ignore_no_metaclass => return LookupDetails::none(),
+                _ => {
+                    let instance = Instance::new(class_infos.metaclass(i_s.db), None);
+                    instance.lookup(
+                        i_s,
+                        name,
+                        InstanceLookupOptions::new(options.add_issue).with_as_self_instance(
+                            options
+                                .as_type_type
+                                .unwrap_or(&|| self.as_type_type(i_s.db)),
+                        ),
+                    )
+                }
+            };
+            if matches!(&metaclass_result.lookup, LookupResult::None) && self.incomplete_mro(i_s.db)
+            {
+                LookupDetails::any(AnyCause::Todo)
+            } else {
+                LookupDetails {
+                    class: TypeOrClass::Class(*self),
+                    lookup: metaclass_result.lookup,
+                    attr_kind: metaclass_result.attr_kind,
+                    mro_index: None,
+                }
+            }
+        };
+
         let result = if options.kind == LookupKind::Normal {
             if class_infos.class_kind == ClassKind::Enum
                 && options.use_descriptors
@@ -1936,11 +1967,27 @@ impl<'db: 'a, 'a> Class<'a> {
                             },
                         }
                     });
-                    result.map(|lookup| LookupDetails {
-                        class,
-                        lookup,
-                        attr_kind,
-                        mro_index: Some(mro_index),
+                    result.map(|lookup| {
+                        if matches!(
+                            attr_kind,
+                            AttributeKind::Attribute | AttributeKind::AnnotatedAttribute
+                        ) && options.use_descriptors
+                        {
+                            // It seems like normal class lookups are different for ClassVars and
+                            // other attributes in Mypy, see testMetaclassConflictingInstanceVars
+                            let metaclass_result = lookup_on_metaclass(true);
+                            if metaclass_result.lookup.is_some()
+                                && !metaclass_result.lookup.is_any(i_s.db)
+                            {
+                                return metaclass_result;
+                            }
+                        }
+                        LookupDetails {
+                            class,
+                            lookup,
+                            attr_kind,
+                            mro_index: Some(mro_index),
+                        }
                     })
                 },
             )
@@ -1955,35 +2002,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 lookup: LookupResult::None,
                 ..
             })
-            | None => {
-                let metaclass_result = match class_infos.metaclass {
-                    MetaclassState::Unknown => LookupDetails::any(AnyCause::Todo),
-                    _ => {
-                        let instance = Instance::new(class_infos.metaclass(i_s.db), None);
-                        instance.lookup(
-                            i_s,
-                            name,
-                            InstanceLookupOptions::new(options.add_issue).with_as_self_instance(
-                                options
-                                    .as_type_type
-                                    .unwrap_or(&|| self.as_type_type(i_s.db)),
-                            ),
-                        )
-                    }
-                };
-                if matches!(&metaclass_result.lookup, LookupResult::None)
-                    && self.incomplete_mro(i_s.db)
-                {
-                    LookupDetails::any(AnyCause::Todo)
-                } else {
-                    LookupDetails {
-                        class: TypeOrClass::Class(*self),
-                        lookup: metaclass_result.lookup,
-                        attr_kind: metaclass_result.attr_kind,
-                        mro_index: None,
-                    }
-                }
-            }
+            | None => lookup_on_metaclass(false),
             Some(result) => result,
         }
     }

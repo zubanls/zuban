@@ -459,7 +459,6 @@ testIterableProtocolOnMetaclass
 testEnumIterMetaInference
 testStrEnumClassCorrectIterable
 # Metaclass instance vs. class members
-testMetaclassConflictingInstanceVars
 testInferenceOfDunderDictOnClassObjects
 
 # Star import override of local scope
