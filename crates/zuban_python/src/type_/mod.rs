@@ -42,7 +42,7 @@ pub(crate) use self::{
     },
     enum_::{
         execute_functional_enum, lookup_on_enum_class, lookup_on_enum_instance,
-        lookup_on_enum_member_instance, Enum, EnumMember, EnumMemberDefinition,
+        lookup_on_enum_member_instance, Enum, EnumKind, EnumMember, EnumMemberDefinition,
     },
     intersection::Intersection,
     lookup_result::LookupResult,

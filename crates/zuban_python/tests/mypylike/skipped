@@ -397,9 +397,6 @@ testRecursiveTypedDictWithList
 
 # enum member gathering
 testFinalWithMethodAssignment
-# Other Enum issues
-testNarrowingWithIntEnum
-testNarrowingWithIntEnum2
 
 # dataclass classmethod
 testDataclassesClassmethods

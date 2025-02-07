@@ -26,13 +26,12 @@ use crate::{
     node_ref::NodeRef,
     type_::{
         lookup_on_enum_instance, simplified_union_from_iterators, AnyCause, CallableContent,
-        CallableLike, CallableParams, ClassGenerics, DbString, EnumMember, Intersection, Literal,
-        LiteralKind, LookupResult, NamedTuple, NeverCause, StringSlice, Tuple, TupleArgs,
+        CallableLike, CallableParams, ClassGenerics, DbString, EnumKind, EnumMember, Intersection,
+        Literal, LiteralKind, LookupResult, NamedTuple, NeverCause, StringSlice, Tuple, TupleArgs,
         TupleUnpack, Type, TypeVarKind, UnionType, WithUnpack,
     },
     type_helpers::{
         Callable, Class, ClassLookupOptions, Function, InstanceLookupOptions, LookupDetails,
-        TypeOrClass,
     },
     utils::join_with_commas,
 };
@@ -43,7 +42,7 @@ use super::{
     name_binder::{is_expr_part_reachable_for_name_binder, Truthiness},
     on_argument_type_error,
     utils::func_of_self_symbol,
-    File, PythonFile,
+    PythonFile,
 };
 
 type Entries = Vec<Entry>;
@@ -881,78 +880,66 @@ fn has_custom_eq(i_s: &InferenceState, t: &Type) -> bool {
 fn split_off_enum_member(
     i_s: &InferenceState,
     of_type: &Type,
-    singleton: &Type,
+    enum_member: &EnumMember,
     abort_on_custom_eq: bool,
 ) -> Option<(Type, Type)> {
-    let matches_singleton = |t: &_| match singleton {
-        Type::EnumMember(member1) => match t {
-            Type::EnumMember(member2) => member1.is_same_member(member2),
-            _ => false,
-        },
-        _ => singleton == t,
-    };
     let mut truthy = Type::Never(NeverCause::Other);
     let mut falsey = Type::Never(NeverCause::Other);
     let mut add = |t| falsey.union_in_place(t);
+    let mut set_truthy = || truthy = Type::EnumMember(enum_member.clone());
 
     for sub_t in of_type.iter_with_unpacked_unions(i_s.db) {
         match sub_t {
+            Type::Any(_) if abort_on_custom_eq => {
+                return None; // Can always contain a custom eq.
+            }
             Type::Any(_) => {
-                // Any can be None or something else.
-                truthy = singleton.clone();
+                // Add it to both sides
+                set_truthy();
                 add(sub_t.clone());
             }
-            Type::Enum(enum_) => {
-                if abort_on_custom_eq && has_custom_eq(i_s, sub_t) {
+            Type::EnumMember(m) if enum_member.is_same_member(m) => {
+                set_truthy();
+                continue;
+            }
+            Type::Enum(e2) => {
+                if enum_member.enum_.defined_at == e2.defined_at {
+                    for (i, _) in e2.members.iter().enumerate() {
+                        let new_member = Type::EnumMember(EnumMember::new(e2.clone(), i, false));
+                        if i == enum_member.member_index {
+                            set_truthy();
+                        } else {
+                            add(new_member)
+                        }
+                    }
+                    continue;
+                }
+            }
+            Type::None => (),
+            _ => {
+                if abort_on_custom_eq
+                    && matches!(
+                        enum_member.enum_.kind(i_s),
+                        EnumKind::IntEnum | EnumKind::StrEnum
+                    )
+                {
                     return None;
                 }
-                if let Type::EnumMember(split) = singleton {
-                    if enum_.defined_at == split.enum_.defined_at {
-                        for (i, _) in enum_.members.iter().enumerate() {
-                            let new_member =
-                                Type::EnumMember(EnumMember::new(enum_.clone(), i, false));
-                            if i == split.member_index {
-                                truthy.union_in_place(new_member)
-                            } else {
-                                add(new_member)
-                            }
-                        }
-                        continue;
-                    }
-                }
-                add(sub_t.clone())
             }
-            _ if matches_singleton(sub_t) => truthy = singleton.clone(),
-            _ => {
-                if abort_on_custom_eq {
-                    if has_custom_eq(i_s, sub_t) {
-                        return None;
-                    }
-                    // Also abort on a subclass of IntEnum/StrEnum, because they can match any
-                    // str/int.
-                    if let Type::EnumMember(m) = singleton {
-                        let class = m.enum_.class(i_s.db);
-                        for (_, in_mro) in class.mro(i_s.db) {
-                            let TypeOrClass::Class(in_mro) = in_mro else {
-                                continue;
-                            };
-                            if in_mro.node_ref.file_index()
-                                == i_s.db.python_state.enum_file().file_index()
-                                && ["IntEnum", "StrEnum"].contains(&in_mro.name())
-                            {
-                                return None;
-                            }
-                        }
-                    }
-                }
-
-                if singleton == sub_t {
-                    truthy = singleton.clone()
-                } else {
-                    add(sub_t.clone())
+        };
+        if abort_on_custom_eq {
+            if has_custom_eq(i_s, sub_t) {
+                return None;
+            }
+            // Also abort on a subclass of IntEnum/StrEnum, because they can match any
+            // str/int. (see also is_ambiguous_mix_of_enums)
+            if let Type::Enum(e) = sub_t {
+                if matches!(e.kind(i_s), EnumKind::IntEnum | EnumKind::StrEnum) {
+                    return None;
                 }
             }
         }
+        add(sub_t.clone())
     }
     Some((truthy, falsey))
 }
@@ -976,10 +963,8 @@ fn split_off_singleton(
             }
             _ if singleton == sub_t => truthy = singleton.clone(),
             _ => {
-                if abort_on_custom_eq {
-                    if has_custom_eq(i_s, sub_t) {
-                        return None;
-                    }
+                if abort_on_custom_eq && has_custom_eq(i_s, sub_t) {
+                    return None;
                 }
 
                 if singleton == sub_t {
@@ -1017,7 +1002,7 @@ fn narrow_is_or_eq(
         }
         Type::None if !is_eq => split_singleton(key),
         Type::EnumMember(member) if !is_eq || !member.implicit => {
-            let (truthy, falsey) = split_off_enum_member(i_s, checking_t, other_t, is_eq)?;
+            let (truthy, falsey) = split_off_enum_member(i_s, checking_t, member, is_eq)?;
             let result = (
                 Frame::from_type(key.clone(), truthy),
                 Frame::from_type(key, falsey),

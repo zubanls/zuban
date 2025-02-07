@@ -17,6 +17,7 @@ use crate::{
     database::{Database, ParentScope, PointLink},
     debug,
     diagnostics::IssueKind,
+    file::File as _,
     format_data::FormatData,
     inference_state::InferenceState,
     inferred::{AttributeKind, Inferred},
@@ -213,6 +214,24 @@ impl Enum {
             ),
         }
     }
+
+    pub(crate) fn kind(&self, i_s: &InferenceState) -> EnumKind {
+        let class = self.class(i_s.db);
+        for (_, in_mro) in class.mro(i_s.db) {
+            let TypeOrClass::Class(in_mro) = in_mro else {
+                continue;
+            };
+            if in_mro.node_ref.file_index() == i_s.db.python_state.enum_file().file_index() {
+                let name = in_mro.name();
+                if name == "IntEnum" {
+                    return EnumKind::IntEnum;
+                } else if name == "StrEnum" {
+                    return EnumKind::StrEnum;
+                }
+            }
+        }
+        return EnumKind::Normal;
+    }
 }
 
 impl PartialEq for Enum {
@@ -225,6 +244,12 @@ impl Hash for Enum {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.defined_at.hash(state);
     }
+}
+
+pub(crate) enum EnumKind {
+    Normal,
+    IntEnum,
+    StrEnum,
 }
 
 pub(crate) fn lookup_on_enum_class<'a>(
