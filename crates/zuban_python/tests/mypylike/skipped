@@ -450,8 +450,6 @@ testTypeAliasInProtocolBody
 testClassLevelTypeAliasesInUnusualContexts
 testMalformedTypeAliasRuntimeReassignments
 
-# Metaclass iter/getitem/addition
-testProtocolsInvalidateByRemovingMetaclass
 # Metaclass instance vs. class members
 testInferenceOfDunderDictOnClassObjects
 

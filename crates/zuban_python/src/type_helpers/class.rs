@@ -1891,7 +1891,14 @@ impl<'db: 'a, 'a> Class<'a> {
                 LookupDetails {
                     class: TypeOrClass::Class(*self),
                     lookup: metaclass_result.lookup,
-                    attr_kind: metaclass_result.attr_kind,
+                    // The AttributeKind changes, because it's the metaclass and it kind of becomes
+                    // a ClassVar
+                    attr_kind: match metaclass_result.attr_kind {
+                        AttributeKind::Attribute | AttributeKind::AnnotatedAttribute => {
+                            AttributeKind::ClassVar
+                        }
+                        k => k,
+                    },
                     mro_index: None,
                 }
             }
