@@ -878,7 +878,7 @@ fn has_custom_eq(i_s: &InferenceState, t: &Type) -> bool {
     has_custom_special_method(i_s, t, "__eq__") || has_custom_special_method(i_s, t, "__ne__")
 }
 
-fn split_off_singleton(
+fn split_off_enum_member(
     i_s: &InferenceState,
     of_type: &Type,
     singleton: &Type,
@@ -957,6 +957,42 @@ fn split_off_singleton(
     Some((truthy, falsey))
 }
 
+fn split_off_singleton(
+    i_s: &InferenceState,
+    of_type: &Type,
+    singleton: &Type,
+    abort_on_custom_eq: bool,
+) -> Option<(Type, Type)> {
+    let mut truthy = Type::Never(NeverCause::Other);
+    let mut falsey = Type::Never(NeverCause::Other);
+    let mut add = |t| falsey.union_in_place(t);
+
+    for sub_t in of_type.iter_with_unpacked_unions(i_s.db) {
+        match sub_t {
+            Type::Any(_) => {
+                // Any can be None or something else.
+                truthy = singleton.clone();
+                add(sub_t.clone());
+            }
+            _ if singleton == sub_t => truthy = singleton.clone(),
+            _ => {
+                if abort_on_custom_eq {
+                    if has_custom_eq(i_s, sub_t) {
+                        return None;
+                    }
+                }
+
+                if singleton == sub_t {
+                    truthy = singleton.clone()
+                } else {
+                    add(sub_t.clone())
+                }
+            }
+        }
+    }
+    Some((truthy, falsey))
+}
+
 fn narrow_is_or_eq(
     i_s: &InferenceState,
     key: FlowKey,
@@ -980,7 +1016,14 @@ fn narrow_is_or_eq(
             narrow_is_or_eq(i_s, key, checking_t, &Type::EnumMember(new_member), is_eq)
         }
         Type::None if !is_eq => split_singleton(key),
-        Type::EnumMember(member) if !is_eq || !member.implicit => split_singleton(key),
+        Type::EnumMember(member) if !is_eq || !member.implicit => {
+            let (truthy, falsey) = split_off_enum_member(i_s, checking_t, other_t, is_eq)?;
+            let result = (
+                Frame::from_type(key.clone(), truthy),
+                Frame::from_type(key, falsey),
+            );
+            Some(result)
+        }
         Type::Enum(enum_) if enum_.members.len() == 1 => {
             // Enums with a single item can be compared to that item.
             narrow_is_or_eq(
