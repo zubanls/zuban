@@ -324,15 +324,9 @@ fn maybe_type_var(
             match arg.kind {
                 ArgKind::Positional(pos) => {
                     let inference = pos.node_ref.file.inference(i_s);
-                    if let Some(t) = inference.compute_type_var_constraint(
-                        pos.node_ref.as_named_expression().expression(),
-                    ) {
-                        constraints.push(t);
-                    } else {
-                        //
-                        debug!("TODO invalid type var constraint, this needs a lint?");
-                        return None;
-                    }
+                    let t = inference
+                        .compute_type_var_value(pos.node_ref.as_named_expression().expression())?;
+                    constraints.push(t);
                 }
                 ArgKind::Keyword(KeywordArg {
                     key,
@@ -377,16 +371,12 @@ fn maybe_type_var(
                             node_ref.add_issue(i_s, IssueKind::TypeVarValuesAndUpperBound);
                             return None;
                         }
-                        if let Some(t) = node_ref
-                            .file
-                            .inference(i_s)
-                            .compute_type_var_constraint(expression)
-                        {
-                            bound = Some(t)
-                        } else {
-                            debug!("TODO invalid type var bound, this needs a lint?");
-                            return None;
-                        }
+                        bound = Some(
+                            node_ref
+                                .file
+                                .inference(i_s)
+                                .compute_type_var_bound(expression)?,
+                        );
                     }
                     "default" => {
                         if let Some(t) = node_ref
