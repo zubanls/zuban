@@ -13,16 +13,13 @@ testLiteralAndGenericsRespectsUpperBound
 self_instance_variable1
 
 # mypy upgrade
-testOverrideCallableAttributeWithMethodMutableOverride
 testOverrideCallableAttributeWithSettableProperty
 testOverrideCallableAttributeWithSettablePropertyMutableOverride
-testOverrideCallableUnionAttributeWithMethodMutableOverride
 testOverridePropertyDifferentSetterBoth
 testOverridePropertyDifferentSetterVarSuper
 testOverridePropertyDifferentSetterVarSub
 testOverridePropertyInvalidSetter
 testOverridePropertyGeneric
-testDunderReplaceCovariantOverride
 testErrorCodeMissingModule
 testOverloadedFunctionSignature
 testFinalUsedWithClassVarAfterPy313
@@ -45,14 +42,7 @@ testConsistentNarrowingInWithCustomEq
 testNarrowingTypeVarNone
 testRefinePartialTypeWithinLoop
 testAvoidFalseUnreachableInLoop
-testParamSpecLocations
-testUnboundParamSpec
-testArgsKwargsWithoutParamSpecVar
-testRunParamSpecInsufficientArgs
-testRunParamSpecConcatenateInsufficientArgs
-testRunParamSpecConcatenateInsufficientArgsInDecorator
 testOtherVarArgs
-testParamSpecScoping
 testOverloadedMethodWithExplicitSelfTypes
 testSetterPropertyProtocolSubtypingBoth
 testSetterPropertyProtocolSubtypingVarSuper
@@ -142,6 +132,14 @@ testRecursiveAliasWithRecursiveInstanceInference
 testUnionInference
 # type var with unions and fallback in case solving is not possible
 testTypeVarTupleInvariant
+# Invalid ParamSpec definitions
+testParamSpecLocations
+testUnboundParamSpec
+testArgsKwargsWithoutParamSpecVar
+testRunParamSpecInsufficientArgs
+testRunParamSpecConcatenateInsufficientArgs
+testRunParamSpecConcatenateInsufficientArgsInDecorator
+testParamSpecScoping
 
 # union math vs. type var
 testOverloadDetectsPossibleMatchesWithGenerics
@@ -1085,8 +1083,11 @@ testTruthyFunctions
 testTruthyIterable
 # flags: --disable-error-code truthy-bool
 testDisableEnableErrorCodesIncremental
-# flags: --enable-error-code=mutable-override: "Covariant override of a mutable attribute (base class "C" defined the type as "float", expressi on has type "int")"
+# flags: --enable-error-code=mutable-override: "Covariant override of a mutable attribute (base class "C" defined the type as "float", expression has type "int")"
 testCovariantMutableOverride
+testOverrideCallableAttributeWithMethodMutableOverride
+testOverrideCallableUnionAttributeWithMethodMutableOverride
+testDunderReplaceCovariantOverride
 # flags: --allow-untyped-globals
 testPermissiveAttributeOverride1
 testPermissiveAttributeOverride2
