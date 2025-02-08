@@ -13,6 +13,7 @@ testLiteralAndGenericsRespectsUpperBound
 self_instance_variable1
 
 # mypy upgrade
+# Override changes
 testOverrideCallableAttributeWithSettableProperty
 testOverrideCallableAttributeWithSettablePropertyMutableOverride
 testOverridePropertyDifferentSetterBoth
@@ -20,43 +21,23 @@ testOverridePropertyDifferentSetterVarSuper
 testOverridePropertyDifferentSetterVarSub
 testOverridePropertyInvalidSetter
 testOverridePropertyGeneric
-testErrorCodeMissingModule
-testFinalUsedWithClassVarAfterPy313
-testDisallowUntypedDefsAndGeneric
-testSubtypingFunctionsTrivialSuffixRequired
-testSubtypingFunctionsTrivialSuffixOptional
-testConditionalFunctionDefinitionUsingDecorator3
-testParameterizedGenericOverrideWithProperty
 testParameterizedGenericPropertyOverrideWithProperty
-testMultipleInheritanceCompatibleTypeVar
-testIsInstanceAdHocIntersectionIncrementalNestedClass
-testForStatementIndexNarrowing
-testIsinstanceAndNegativeNarrowTypeVariableWithUnionBound
-testTypeEqualsCheckUsingIsNonOverlapping
-testNamedTupleFinalAndClassVar
-testGenericNamedTupleRecursiveBound
-testNarrowingOptionalEqualsNone
-testConsistentNarrowingEqAndIn
-testConsistentNarrowingInWithCustomEq
-testNarrowingTypeVarNone
-testRefinePartialTypeWithinLoop
-testAvoidFalseUnreachableInLoop
-testOtherVarArgs
-testOverloadedMethodWithExplicitSelfTypes
+testParameterizedGenericOverrideWithProperty
 testSetterPropertyProtocolSubtypingBoth
 testSetterPropertyProtocolSubtypingVarSuper
 testSetterPropertyProtocolSubtypingVarSub
+# descriptor self type annotations
 testGenericDescriptorWithSelfTypeAnnotationsAndOverloads
+# intersection
+testIsInstanceAdHocIntersectionIncrementalNestedClass
+# Multi Inheritance issues
+testMultipleInheritanceCompatibleTypeVar
 testSelfInMultipleInheritance
-testRaiseNotImplementedFails
-testYieldFromInvalidType
-testTupleSliceStepZeroNoCrash
-testAliasExplicitNoArgsCallable
-testTypeVarTypeAssignment
-testTypeVarValuesNarrowing
-testParseExtendedSlicing4
-testMissingPytypedFlag
-testInvalidTypevarArgumentsGenericConstraint
+# ClassVar/Final changes
+testFinalUsedWithClassVarAfterPy313
+testNamedTupleFinalAndClassVar
+# Incompatible message signatures
+testTypeEqualsCheckUsingIsNonOverlapping
 # TypeIs/TypeGuard overloads
 testTypeGuardInOverloads
 testTypeIsInOverloads
@@ -68,6 +49,32 @@ testPEP696GenericFunction
 testPEP696ParamSpec
 testPEP696TypeVarTuple
 testTypeAliasNormalization
+# Yield From iter check
+testYieldFromInvalidType
+# TypeVar None narrowing
+testNarrowingTypeVarNone
+testTypeVarTypeAssignment
+# Other Narrowing
+testNarrowingOptionalEqualsNone
+testIsinstanceAndNegativeNarrowTypeVariableWithUnionBound
+testConsistentNarrowingEqAndIn
+testConsistentNarrowingInWithCustomEq
+# For Stmt Index Narrowing
+testForStatementIndexNarrowing
+# Slicing with star new syntax?
+testParseExtendedSlicing4
+# ParamSpec invalid args
+testOtherVarArgs
+# Invalid insert_type
+testAliasExplicitNoArgsCallable
+# NotImplemented is not ana Exception
+testRaiseNotImplementedFails
+# Import Error code changes
+testErrorCodeMissingModule
+# TypeVar constraint type cannot be parametrized by type variables
+testInvalidTypevarArgumentsGenericConstraint
+# --follow-untyped-imports
+testMissingPytypedFlag
 
 # regressions
 testIncrementalInvalidNamedTupleInUnannotatedFunction
@@ -112,6 +119,7 @@ testSelfTypeNew_explicit
 testNewAnalyzerDuplicateTypeVar
 testNewAnalyzerDuplicateTypeVarImportCycle
 testNewAnalyzerDuplicateTypeVarImportCycleWithAliases
+testGenericNamedTupleRecursiveBound
 # NewType generics resolving
 new_type_with_class_generics
 new_type_with_class_generics2
@@ -272,6 +280,8 @@ testModifyLoopFor4
 testModifyLoopLong
 testComplicatedBlocks
 testIsInstanceSubClassMemberHard
+testRefinePartialTypeWithinLoop
+testAvoidFalseUnreachableInLoop
 # Narrowing len()
 testNarrowingLenTypeVarTupleGreaterThan
 testNarrowingLenBareExpressionTypeVarTuple
@@ -542,6 +552,7 @@ testIsInstanceAdHocIntersectionGenericsWithValuesDirectReturn
 testCallableTypeVarUnion
 testGenericFunctionAliasExpand
 testGenericFunctionMemberExpand
+testTypeVarValuesNarrowing
 
 # ini config multiline
 mypy_ini_exclude_multi_line_verbose_regex
@@ -679,6 +690,8 @@ testLargeUnionsNoneShown
 # Formatting for callable mismatches
 testDistinctFormatting
 testDistinctFormattingUnion
+testSubtypingFunctionsTrivialSuffixRequired
+testSubtypingFunctionsTrivialSuffixOptional
 
 # "Call to abstract method "meth" of "Proto" with trivial body via super() is unsafe"
 testEmptyBodyUnsafeAbstractSuper
