@@ -1572,7 +1572,7 @@ impl<'db> Diagnostic<'db> {
                 r#"The return type of "{function_name}" must be None"#
             ),
             IncorrectExitReturn => {
-                additional_notes.push(r#"Use "typing_extensions.Literal[False]" as the return type or change it to "None""#.to_string());
+                additional_notes.push(r#"Use "typing.Literal[False]" as the return type or change it to "None""#.to_string());
                 additional_notes.push(r#"If return type of "__exit__" implies that it may return True, the context manager may swallow exceptions"#.to_string());
                 r#""bool" is invalid as return type for "__exit__" that always returns False"#.to_owned()
             }
