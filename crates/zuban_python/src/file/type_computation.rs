@@ -23,13 +23,14 @@ use crate::{
     type_::{
         add_named_tuple_param, add_param_spec_to_params, new_collections_named_tuple,
         new_typing_named_tuple, AnyCause, CallableContent, CallableParam, CallableParams,
-        CallableWithParent, ClassGenerics, Dataclass, DbString, Enum, EnumMember, FunctionKind,
-        GenericClass, GenericItem, GenericsList, Literal, LiteralKind, MaybeUnpackGatherer,
-        NamedTuple, Namespace, NeverCause, NewType, ParamSpecArg, ParamSpecUsage, ParamType,
-        RecursiveType, StarParamType, StarStarParamType, StringSlice, Tuple, TupleArgs,
-        TupleUnpack, Type, TypeArgs, TypeGuardInfo, TypeVar, TypeVarKind, TypeVarLike,
-        TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypeVarTupleUsage, TypeVarUsage, TypedDict,
-        TypedDictGenerics, TypedDictMember, UnionEntry, UnionType, WithUnpack,
+        CallableWithParent, ClassGenerics, Dataclass, DbBytes, DbString, Enum, EnumMember,
+        FunctionKind, GenericClass, GenericItem, GenericsList, Literal, LiteralKind,
+        MaybeUnpackGatherer, NamedTuple, Namespace, NeverCause, NewType, ParamSpecArg,
+        ParamSpecUsage, ParamType, RecursiveType, StarParamType, StarStarParamType, StringSlice,
+        Tuple, TupleArgs, TupleUnpack, Type, TypeArgs, TypeGuardInfo, TypeVar, TypeVarKind,
+        TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypeVarTupleUsage,
+        TypeVarUsage, TypedDict, TypedDictGenerics, TypedDictMember, UnionEntry, UnionType,
+        WithUnpack,
     },
     type_helpers::{
         cache_class_name, is_reexport_issue, start_namedtuple_params, Class, Function, Module,
@@ -2905,7 +2906,10 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         )),
                         AtomContent::Bytes(b) => Some(LiteralKind::Bytes(
                             if let Some(b) = b.maybe_single_bytes_literal() {
-                                PointLink::new(self.inference.file.file_index, b.index())
+                                DbBytes::Link(PointLink::new(
+                                    self.inference.file.file_index,
+                                    b.index(),
+                                ))
                             } else {
                                 self.add_issue(
                                     NodeRef::new(self.inference.file, b.index()),

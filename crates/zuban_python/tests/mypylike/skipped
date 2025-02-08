@@ -30,8 +30,6 @@ testDisallowUntypedDefsAndGeneric
 testSubtypingFunctionsTrivialSuffixRequired
 testSubtypingFunctionsTrivialSuffixOptional
 testConditionalFunctionDefinitionUsingDecorator3
-testDistinctFormatting
-testDistinctFormattingUnion
 testParameterizedGenericOverrideWithProperty
 testParameterizedGenericPropertyOverrideWithProperty
 testMultipleInheritanceCompatibleTypeVar
@@ -41,7 +39,6 @@ testIsinstanceAndNegativeNarrowTypeVariableWithUnionBound
 testTypeEqualsCheckUsingIsNonOverlapping
 testNamedTupleFinalAndClassVar
 testGenericNamedTupleRecursiveBound
-testNarrowingFalseyToLiteral
 testNarrowingOptionalEqualsNone
 testConsistentNarrowingEqAndIn
 testConsistentNarrowingInWithCustomEq
@@ -65,7 +62,6 @@ testSetterPropertyProtocolSubtypingVarSub
 testGenericDescriptorWithSelfTypeAnnotationsAndOverloads
 testSelfInMultipleInheritance
 testRaiseNotImplementedFails
-testWithStmtBoolExitReturnWithResultFalse
 testYieldFromInvalidType
 testTupleSliceStepZeroNoCrash
 testAliasExplicitNoArgsCallable
@@ -685,6 +681,9 @@ testAssigningWithLongTupleInitializer
 testLargeUnionsShort
 testLargeUnionsLongIfNeeded
 testLargeUnionsNoneShown
+# Formatting for callable mismatches
+testDistinctFormatting
+testDistinctFormattingUnion
 
 # "Call to abstract method "meth" of "Proto" with trivial body via super() is unsafe"
 testEmptyBodyUnsafeAbstractSuper

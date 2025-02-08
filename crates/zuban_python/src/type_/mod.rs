@@ -1782,8 +1782,14 @@ impl Hash for Literal {
 pub enum LiteralKind {
     String(DbString),
     Int(i64), // TODO this does not work for Python ints > usize
-    Bytes(PointLink),
+    Bytes(DbBytes),
     Bool(bool),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum DbBytes {
+    Link(PointLink),
+    Static(&'static [u8]),
 }
 
 #[derive(PartialEq, Eq, Debug)]
@@ -1807,10 +1813,13 @@ impl Literal {
             LiteralKind::Int(i) => LiteralValue::Int(*i),
             LiteralKind::String(s) => LiteralValue::String(s.as_str(db)),
             LiteralKind::Bool(b) => LiteralValue::Bool(*b),
-            LiteralKind::Bytes(link) => {
-                let node_ref = NodeRef::from_link(db, *link);
-                LiteralValue::Bytes(node_ref.as_bytes_literal().content_as_bytes())
-            }
+            LiteralKind::Bytes(b) => match b {
+                DbBytes::Link(link) => {
+                    let node_ref = NodeRef::from_link(db, *link);
+                    LiteralValue::Bytes(node_ref.as_bytes_literal().content_as_bytes())
+                }
+                DbBytes::Static(b) => LiteralValue::Bytes(Cow::Borrowed(b)),
+            },
         }
     }
 

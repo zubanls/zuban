@@ -26,9 +26,9 @@ use crate::{
     node_ref::NodeRef,
     type_::{
         lookup_on_enum_instance, simplified_union_from_iterators, AnyCause, CallableContent,
-        CallableLike, CallableParams, ClassGenerics, DbString, EnumKind, EnumMember, Intersection,
-        Literal, LiteralKind, LookupResult, NamedTuple, NeverCause, StringSlice, Tuple, TupleArgs,
-        TupleUnpack, Type, TypeVarKind, UnionType, WithUnpack,
+        CallableLike, CallableParams, ClassGenerics, DbBytes, DbString, EnumKind, EnumMember,
+        Intersection, Literal, LiteralKind, LookupResult, NamedTuple, NeverCause, StringSlice,
+        Tuple, TupleArgs, TupleUnpack, Type, TypeVarKind, UnionType, WithUnpack,
     },
     type_helpers::{
         Callable, Class, ClassLookupOptions, Function, InstanceLookupOptions, LookupDetails,
@@ -1180,6 +1180,11 @@ fn split_truthy_and_falsey_t(i_s: &InferenceState, t: &Type) -> Option<(Type, Ty
                         Some((
                             t.clone(),
                             Type::Literal(Literal::new(LiteralKind::String(DbString::Static("")))),
+                        ))
+                    } else if c.link == i_s.db.python_state.bytes_link() {
+                        Some((
+                            t.clone(),
+                            Type::Literal(Literal::new(LiteralKind::Bytes(DbBytes::Static(b"")))),
                         ))
                     } else if let Some(maybe_specific_bool) =
                         narrow_class_by_return_literal("__bool__")
