@@ -1000,7 +1000,17 @@ fn narrow_is_or_eq(
             new_member.implicit = false;
             narrow_is_or_eq(i_s, key, checking_t, &Type::EnumMember(new_member), is_eq)
         }
-        Type::None if !is_eq => split_singleton(key),
+        Type::None if !is_eq => {
+            // Mypy makes it possible to narrow None against a bare TypeVar.
+            if matches!(checking_t, Type::TypeVar(_)) {
+                Some((
+                    Frame::from_type(key.clone(), Type::None),
+                    Frame::from_type(key, checking_t.clone()),
+                ))
+            } else {
+                split_singleton(key)
+            }
+        }
         Type::EnumMember(member) if !is_eq || !member.implicit => {
             let (truthy, falsey) = split_off_enum_member(i_s, checking_t, member, is_eq)?;
             let result = (

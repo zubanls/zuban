@@ -49,10 +49,8 @@ testPEP696GenericFunction
 testPEP696ParamSpec
 testPEP696TypeVarTuple
 testTypeAliasNormalization
-# TypeVar None narrowing
-testNarrowingTypeVarNone
-testTypeVarTypeAssignment
 # Other Narrowing
+testTypeVarTypeAssignment
 testNarrowingOptionalEqualsNone
 testIsinstanceAndNegativeNarrowTypeVariableWithUnionBound
 testConsistentNarrowingEqAndIn
