@@ -152,6 +152,7 @@ pub(crate) enum IssueKind {
     UseParamSpecKwargs { name: Box<str> },
     ParamSpecParamsNeedBothStarAndStarStar { name: Box<str> },
     ParamSpecArgumentsNeedsBothStarAndStarStar { name: Box<str> },
+    ParamSpecKwParamNotAllowed,
     NewTypeCannotHaveTypeDeclaration,
     NewTypeInvalidType,
     NewTypeMustBeSubclassable { got: Box<str> },
@@ -1276,6 +1277,7 @@ impl<'db> Diagnostic<'db> {
             ParamSpecArgumentsNeedsBothStarAndStarStar { name } => format!(
                 r#"ParamSpec arguments must be of types "*{name}.args, **{name}.kwargs""#
             ),
+            ParamSpecKwParamNotAllowed => "Arguments not allowed after ParamSpec.args".to_string(),
             NewTypeCannotHaveTypeDeclaration =>
                 "Cannot declare the type of a NewType declaration".to_string(),
             NewTypeInvalidType => "Argument 2 to NewType(...) must be a valid type".to_string(),

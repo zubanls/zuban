@@ -752,6 +752,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     return Type::ParamSpecKwargs(usage);
                 }
                 _ => {
+                    // Now that we know we have a **P.kwargs, is there a P.args before it?
                     let new_t =
                         Type::Tuple(Tuple::new_arbitrary_length(Type::Any(AnyCause::FromError)));
                     let star_annotation = previous_param_annotation
@@ -781,7 +782,19 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     Type::Any(AnyCause::FromError),
                 )
             }
-            TypeContent::ParamSpecAttr { usage, name } => param_spec_error(&usage, name),
+            TypeContent::ParamSpecAttr { usage, name } => {
+                if let Some(previous_param) = previous_param {
+                    if previous_param.kind() == ParamKind::KeywordOnly {
+                        // Things like *args: P.args, x: int, **kwargs: P.kwargs
+                        self.add_issue(
+                            NodeRef::new(self.inference.file, previous_param.name_def().index()),
+                            IssueKind::ParamSpecKwParamNotAllowed,
+                        );
+                        return new_dct(Type::Any(AnyCause::FromError));
+                    }
+                }
+                param_spec_error(&usage, name)
+            }
             _ => new_dct(self.as_type(tc, from)),
         }
     }

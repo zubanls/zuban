@@ -530,6 +530,8 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             let t = use_cached_param_annotation_type(i_s.db, self.node_ref.file, annotation);
             if let Type::ParamSpecArgs(usage) = t.as_ref() {
                 let iterator = func_node.params().iter();
+                // The type computation only checked if **kwargs was ok. If there is no param, no
+                // issue was added, so add it here.
                 if !iterator
                     .skip_while(|p| p.kind() != ParamKind::Star)
                     .nth(1)
