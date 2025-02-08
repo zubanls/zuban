@@ -199,6 +199,7 @@ pub(crate) enum IssueKind {
     TypeVarVarianceMustBeBool { argument: &'static str },
     TypeVarTypeExpected,
     TypeVarBoundMustBeType,
+    TypeVarConstraintCannotHaveTypeVariables,
     TypeVarInvalidDefault,
     TypeVarTupleInvalidDefault,
     ParamSpecInvalidDefault,
@@ -1389,6 +1390,8 @@ impl<'db> Diagnostic<'db> {
             ),
             TypeVarTypeExpected => "Type expected".to_string(),
             TypeVarBoundMustBeType => r#"TypeVar "bound" must be a type"#.to_string(),
+            TypeVarConstraintCannotHaveTypeVariables =>
+                "TypeVar constraint type cannot be parametrized by type variables".to_string(),
             TypeVarInvalidDefault => "TypeVar \"default\" must be a type".to_string(),
             TypeVarTupleInvalidDefault =>
                 "The default argument to TypeVarTuple must be an Unpacked tuple".to_string(),

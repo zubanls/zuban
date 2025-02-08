@@ -42,10 +42,10 @@ const ASSIGNMENT_TYPE_CACHE_OFFSET: u32 = 1;
 pub const ANNOTATION_TO_EXPR_DIFFERENCE: u32 = 2;
 
 #[derive(Debug)]
-pub enum TypeVarCallbackReturn {
+pub(crate) enum TypeVarCallbackReturn {
     TypeVarLike(TypeVarLikeUsage),
     UnboundTypeVar,
-    BoundByOuterClass,
+    AddIssue(IssueKind),
     NotFound { allow_late_bound_callables: bool },
 }
 
@@ -141,8 +141,6 @@ pub enum TypeComputationOrigin {
     TypeApplication,
     TypeAlias,
     CastTarget,
-    TypeVarValue,
-    TypeVarBound,
     NamedTupleMember,
     BaseClass,
     Other,
@@ -1214,10 +1212,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         }
                         TypeComputationOrigin::TypeApplication
                         | TypeComputationOrigin::TypeAlias => IssueKind::SelfTypeInTypeAliasTarget,
-                        TypeComputationOrigin::TypeVarValue
-                        | TypeComputationOrigin::TypeVarBound
-                        | TypeComputationOrigin::Other
-                        | TypeComputationOrigin::BaseClass => IssueKind::SelfTypeOutsideOfClass,
+                        TypeComputationOrigin::Other | TypeComputationOrigin::BaseClass => {
+                            IssueKind::SelfTypeOutsideOfClass
+                        }
                         _ => {
                             if let Some(class) = self.inference.i_s.current_class() {
                                 if class.is_metaclass(db) {
@@ -3296,14 +3293,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         );
                         TypeContent::Unknown(UnknownCause::ReportedIssue)
                     }
-                    TypeVarCallbackReturn::BoundByOuterClass => {
+                    TypeVarCallbackReturn::AddIssue(kind) => {
                         let node_ref = NodeRef::new(self.inference.file, name.index());
-                        node_ref.add_issue(
-                            self.inference.i_s,
-                            IssueKind::TypeVarLikeBoundByOuterClass {
-                                type_var_like: type_var_like.clone(),
-                            },
-                        );
+                        node_ref.add_issue(self.inference.i_s, kind);
                         TypeContent::Unknown(UnknownCause::ReportedIssue)
                     }
                     TypeVarCallbackReturn::NotFound {
@@ -4408,7 +4400,6 @@ impl<'db: 'x, 'file, 'x> Inference<'db, 'file, '_> {
     fn within_type_var_like_definition<T>(
         &self,
         node_ref: NodeRef,
-        origin: TypeComputationOrigin,
         callback: impl FnOnce(TypeComputation) -> T,
     ) -> T {
         let in_definition = node_ref.as_link();
@@ -4420,56 +4411,64 @@ impl<'db: 'x, 'file, 'x> Inference<'db, 'file, '_> {
                    // || TypeVarCallbackReturn::TypeVarLike(type_var_like.as_type_var_like_usage(?, in_definition))
             )
         };
-        let comp = TypeComputation::new(self, in_definition, &mut on_type_var, origin);
+        let comp = TypeComputation::new(
+            self,
+            in_definition,
+            &mut on_type_var,
+            TypeComputationOrigin::Other,
+        );
         callback(comp)
     }
 
     pub fn compute_type_var_bound(&self, expr: Expression) -> Option<Type> {
         let node_ref = NodeRef::new(self.file, expr.index());
-        self.within_type_var_like_definition(
-            node_ref,
-            TypeComputationOrigin::TypeVarBound,
-            |mut comp| {
-                match comp.compute_type(expr) {
-                    TypeContent::InvalidVariable(_) => {
-                        // TODO this is a bit weird and should probably generate other errors
-                        node_ref.add_issue(comp.inference.i_s, IssueKind::TypeVarBoundMustBeType);
-                        None
-                    }
-                    t => Some(comp.as_type(t, node_ref)),
+        self.within_type_var_like_definition(node_ref, |mut comp| {
+            match comp.compute_type(expr) {
+                TypeContent::InvalidVariable(_) => {
+                    // TODO this is a bit weird and should probably generate other errors
+                    node_ref.add_issue(comp.inference.i_s, IssueKind::TypeVarBoundMustBeType);
+                    None
                 }
-            },
-        )
+                t => Some(comp.as_type(t, node_ref)),
+            }
+        })
     }
     pub fn compute_type_var_value(&self, expr: Expression) -> Option<Type> {
         let node_ref = NodeRef::new(self.file, expr.index());
-        self.within_type_var_like_definition(
-            node_ref,
-            TypeComputationOrigin::TypeVarValue,
-            |mut comp| {
-                match comp.compute_type(expr) {
-                    TypeContent::InvalidVariable(invalid @ InvalidVariableType::Literal(_)) => {
-                        invalid.add_issue(
-                            comp.inference.i_s.db,
-                            |t| node_ref.add_issue(comp.inference.i_s, t),
-                            comp.origin,
-                        );
-                        None
-                    }
-                    TypeContent::InvalidVariable(_) => {
-                        // TODO this is a bit weird and should probably generate other errors
-                        node_ref.add_issue(comp.inference.i_s, IssueKind::TypeVarTypeExpected);
-                        None
-                    }
-                    t => Some(comp.as_type(t, node_ref)),
-                }
-            },
-        )
+        let mut on_type_var = |i_s: &InferenceState, _: &_, type_var_like, _| {
+            if i_s.find_parent_type_var(&type_var_like).is_some() {
+                TypeVarCallbackReturn::AddIssue(IssueKind::TypeVarConstraintCannotHaveTypeVariables)
+            } else {
+                TypeVarCallbackReturn::UnboundTypeVar
+            }
+        };
+        let mut comp = TypeComputation::new(
+            self,
+            node_ref.as_link(),
+            &mut on_type_var,
+            TypeComputationOrigin::Other,
+        );
+        match comp.compute_type(expr) {
+            TypeContent::InvalidVariable(invalid @ InvalidVariableType::Literal(_)) => {
+                invalid.add_issue(
+                    comp.inference.i_s.db,
+                    |t| node_ref.add_issue(comp.inference.i_s, t),
+                    comp.origin,
+                );
+                None
+            }
+            TypeContent::InvalidVariable(_) => {
+                // TODO this is a bit weird and should probably generate other errors
+                node_ref.add_issue(comp.inference.i_s, IssueKind::TypeVarTypeExpected);
+                None
+            }
+            t => Some(comp.as_type(t, node_ref)),
+        }
     }
 
     pub fn compute_type_var_default(&self, expr: Expression) -> Option<Type> {
         let node_ref = NodeRef::new(self.file, expr.index());
-        self.within_type_var_like_definition(node_ref, TypeComputationOrigin::Other, |mut comp| {
+        self.within_type_var_like_definition(node_ref, |mut comp| {
             let tc = comp.compute_type(expr);
             Some(comp.as_type(tc, node_ref))
         })
@@ -4477,20 +4476,18 @@ impl<'db: 'x, 'file, 'x> Inference<'db, 'file, '_> {
 
     pub fn compute_param_spec_default(&self, expr: Expression) -> Option<CallableParams> {
         let node_ref = NodeRef::new(self.file, expr.index());
-        self.within_type_var_like_definition(node_ref, TypeComputationOrigin::Other, |mut comp| {
+        self.within_type_var_like_definition(node_ref, |mut comp| {
             comp.calculate_callable_params_for_expr(expr, false, false)
         })
     }
 
     pub fn compute_type_var_tuple_default(&self, expr: Expression) -> Option<TypeArgs> {
         let node_ref = NodeRef::new(self.file, expr.index());
-        self.within_type_var_like_definition(node_ref, TypeComputationOrigin::Other, |mut comp| {
-            match comp.compute_type(expr) {
-                TypeContent::Unpacked(unpacked) => Some(TypeArgs::new(
-                    comp.use_tuple_unpack(unpacked, node_ref).into_tuple_args(),
-                )),
-                _ => None,
-            }
+        self.within_type_var_like_definition(node_ref, |mut comp| match comp.compute_type(expr) {
+            TypeContent::Unpacked(unpacked) => Some(TypeArgs::new(
+                comp.use_tuple_unpack(unpacked, node_ref).into_tuple_args(),
+            )),
+            _ => None,
         })
     }
 

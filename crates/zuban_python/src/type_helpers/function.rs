@@ -299,7 +299,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         }
     }
 
-    pub fn find_type_var_like_including_ancestors(
+    pub(crate) fn find_type_var_like_including_ancestors(
         &self,
         db: &Database,
         type_var: &TypeVarLike,

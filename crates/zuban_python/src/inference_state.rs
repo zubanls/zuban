@@ -175,7 +175,10 @@ impl<'db, 'a> InferenceState<'db, 'a> {
         matches!(self.context, Context::None)
     }
 
-    pub fn find_parent_type_var(&self, searched: &TypeVarLike) -> Option<TypeVarCallbackReturn> {
+    pub(crate) fn find_parent_type_var(
+        &self,
+        searched: &TypeVarLike,
+    ) -> Option<TypeVarCallbackReturn> {
         if let Some(func) = self.current_function() {
             if let Some(usage) =
                 func.find_type_var_like_including_ancestors(self.db, searched, false)

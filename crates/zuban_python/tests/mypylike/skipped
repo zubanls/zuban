@@ -71,8 +71,6 @@ testAliasExplicitNoArgsCallable
 testRaiseNotImplementedFails
 # Import Error code changes
 testErrorCodeMissingModule
-# TypeVar constraint type cannot be parametrized by type variables
-testInvalidTypevarArgumentsGenericConstraint
 # --follow-untyped-imports
 testMissingPytypedFlag
 

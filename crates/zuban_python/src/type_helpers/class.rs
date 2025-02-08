@@ -348,7 +348,7 @@ impl<'db: 'a, 'a> Class<'a> {
         self.type_vars(i_s)
     }
 
-    pub fn maybe_type_var_like_in_parent(
+    pub(crate) fn maybe_type_var_like_in_parent(
         &self,
         db: &Database,
         type_var: &TypeVarLike,
@@ -367,22 +367,26 @@ impl<'db: 'a, 'a> Class<'a> {
         }
     }
 
-    pub fn find_type_var_like_including_ancestors(
+    pub(crate) fn find_type_var_like_including_ancestors(
         &self,
         db: &Database,
-        type_var: &TypeVarLike,
+        type_var_like: &TypeVarLike,
         class_seen: bool,
     ) -> Option<TypeVarCallbackReturn> {
         if let Some(tvl) = self
             .use_cached_type_vars(db)
-            .find(type_var.clone(), self.node_ref.as_link())
+            .find(type_var_like.clone(), self.node_ref.as_link())
         {
             if class_seen {
-                return Some(TypeVarCallbackReturn::BoundByOuterClass);
+                return Some(TypeVarCallbackReturn::AddIssue(
+                    IssueKind::TypeVarLikeBoundByOuterClass {
+                        type_var_like: type_var_like.clone(),
+                    },
+                ));
             }
             return Some(TypeVarCallbackReturn::TypeVarLike(tvl));
         }
-        self.maybe_type_var_like_in_parent(db, type_var)
+        self.maybe_type_var_like_in_parent(db, type_var_like)
     }
 
     pub fn is_calculating_class_infos(&self) -> bool {
