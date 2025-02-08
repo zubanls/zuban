@@ -1011,6 +1011,10 @@ fn narrow_is_or_eq(
                 split_singleton(key)
             }
         }
+        Type::None => {
+            let (_, falsey) = split_off_singleton(i_s, checking_t, &Type::None, is_eq)?;
+            Some((Frame::default(), Frame::from_type(key, falsey)))
+        }
         Type::EnumMember(member) if !is_eq || !member.implicit => {
             let (truthy, falsey) = split_off_enum_member(i_s, checking_t, member, is_eq)?;
             let result = (
