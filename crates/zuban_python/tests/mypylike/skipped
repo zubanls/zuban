@@ -49,8 +49,6 @@ testPEP696GenericFunction
 testPEP696ParamSpec
 testPEP696TypeVarTuple
 testTypeAliasNormalization
-# Yield From iter check
-testYieldFromInvalidType
 # TypeVar None narrowing
 testNarrowingTypeVarNone
 testTypeVarTypeAssignment
@@ -61,8 +59,6 @@ testConsistentNarrowingEqAndIn
 testConsistentNarrowingInWithCustomEq
 # For Stmt Index Narrowing
 testForStatementIndexNarrowing
-# Slicing with star new syntax?
-testParseExtendedSlicing4
 # ParamSpec invalid args
 testOtherVarArgs
 # Invalid insert_type
