@@ -506,6 +506,7 @@ impl IssueKind {
             OverloadImplementationNeeded { .. } => "no-overload-impl",
             OverloadMismatch { .. } => "call-overload",
             OverloadIncompatibleReturnTypes { .. } => "overload-overlap",
+            OverloadUnmatchable { .. } => "overload-cannot-match",
             SignatureIncompatibleWithSupertype { .. }
             | ArgumentIncompatibleWithSupertype { .. }
             | OverloadOrderMustMatchSupertype { .. }
@@ -560,7 +561,7 @@ impl IssueKind {
             TypedDictExtraKey { .. } | TypedDictHasNoKey { .. } => "typeddict-item",
             CannotAssignToAMethod => "assignment",
             ModuleNotFound { .. } => "import",
-            DecoratorOnTopOfPropertyNotSupported => "misc",
+            OverloadUnmatchable { .. } | DecoratorOnTopOfPropertyNotSupported => "misc",
             _ => return None,
         })
     }
