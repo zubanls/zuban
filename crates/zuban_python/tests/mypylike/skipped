@@ -49,11 +49,6 @@ testPEP696GenericFunction
 testPEP696ParamSpec
 testPEP696TypeVarTuple
 testTypeAliasNormalization
-# Other Narrowing
-testTypeVarTypeAssignment
-testIsinstanceAndNegativeNarrowTypeVariableWithUnionBound
-testConsistentNarrowingEqAndIn
-testConsistentNarrowingInWithCustomEq
 # For Stmt Index Narrowing
 testForStatementIndexNarrowing
 # ParamSpec invalid args
@@ -301,6 +296,8 @@ testIsinstanceNarrowAny
 # isinstance with alias and union literals `isinstance(x, A | B)`
 testTypeAliasWithNewUnionIsInstance
 testStartUsingPEP604Union
+# if <typevar> is None: Narrowing
+testIsinstanceAndNegativeNarrowTypeVariableWithUnionBound
 # nonlocal
 testNarrowedVariableInNestedFunctionMore1
 
