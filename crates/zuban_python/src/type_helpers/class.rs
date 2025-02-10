@@ -1478,7 +1478,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 other.run_after_lookup_on_each_union_member(
                     i_s,
                     None,
-                    self.node_ref.file_index(),
+                    self.node_ref.file,
                     name,
                     // Magic methods are probably never relevant on the object, since Python
                     // ignores all self attributes. This is especially the case if Enums classes

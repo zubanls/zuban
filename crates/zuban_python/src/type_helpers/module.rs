@@ -46,7 +46,7 @@ impl<'a> Module<'a> {
         match &entry.parent {
             Parent::Directory(dir) => python_import_with_needs_exact_case(
                 db,
-                self.file.file_index,
+                self.file,
                 std::iter::once((dir.upgrade().unwrap(), false)),
                 name,
                 true,
@@ -238,7 +238,7 @@ impl<'a> Module<'a> {
 
 pub fn lookup_in_namespace(
     db: &Database,
-    from_file: FileIndex,
+    from_file: &PythonFile,
     namespace: &Namespace,
     name: &str,
 ) -> LookupResult {

@@ -439,12 +439,7 @@ impl<'db> PythonFile {
         let stub_cache = self.stub_cache.as_ref()?;
         let file_index = *stub_cache.non_stub.get_or_init(|| {
             let (name, parent_dir) = name_and_parent_dir(self.file_entry(db), false);
-            match ImportResult::import_non_stub_for_stub_package(
-                db,
-                self.file_index,
-                parent_dir,
-                name,
-            )? {
+            match ImportResult::import_non_stub_for_stub_package(db, self, parent_dir, name)? {
                 ImportResult::File(file_index) => {
                     assert_ne!(file_index, self.file_index);
                     Some(file_index)

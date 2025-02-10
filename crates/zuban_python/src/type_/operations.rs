@@ -1,7 +1,5 @@
 use std::rc::Rc;
 
-use vfs::FileIndex;
-
 use super::{
     dataclass_initialize, initialize_typed_dict, lookup_dataclass_symbol, lookup_on_dataclass,
     lookup_on_dataclass_type, lookup_on_enum_class, lookup_on_enum_instance,
@@ -34,7 +32,7 @@ impl Type {
     pub(crate) fn lookup(
         &self,
         i_s: &InferenceState,
-        from_file: FileIndex,
+        from_file: &PythonFile,
         name: &str,
         lookup_kind: LookupKind,
         result_context: &mut ResultContext,
@@ -56,7 +54,7 @@ impl Type {
     pub(crate) fn lookup_with_first_attr_kind(
         &self,
         i_s: &InferenceState,
-        from_file: FileIndex,
+        from_file: &PythonFile,
         name: &str,
         lookup_kind: LookupKind,
         result_context: &mut ResultContext,
@@ -117,7 +115,7 @@ impl Type {
         &self,
         i_s: &InferenceState,
         from_inferred: Option<&Inferred>,
-        from_file: FileIndex,
+        from_file: &PythonFile,
         name: &str,
         kind: LookupKind,
         result_context: &mut ResultContext,
@@ -410,7 +408,7 @@ impl Type {
                 fn on_intersection(
                     i: &Intersection,
                     i_s: &InferenceState,
-                    from_file: FileIndex,
+                    from_file: &PythonFile,
                     add_issue: &dyn Fn(IssueKind),
                     name: &str,
                     kind: LookupKind,
@@ -716,7 +714,7 @@ impl Type {
             _ => IteratorContent::Inferred(
                 self.lookup(
                     i_s,
-                    infos.file().file_index,
+                    infos.file(),
                     "__iter__",
                     LookupKind::OnlyType,
                     &mut ResultContext::Unknown,

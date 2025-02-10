@@ -29,7 +29,7 @@ impl ImportResult {
     pub fn import(
         &self,
         db: &Database,
-        original_file_index: FileIndex,
+        original_file: &PythonFile,
         name: &str,
     ) -> Option<ImportResult> {
         match self {
@@ -37,33 +37,30 @@ impl ImportResult {
                 let module = Module::from_file_index(db, *file_index);
                 module.sub_module(db, name)
             }
-            Self::Namespace(ns) => python_import(
-                db,
-                original_file_index,
-                ns.directories.iter().cloned(),
-                name,
-            ),
+            Self::Namespace(ns) => {
+                python_import(db, original_file, ns.directories.iter().cloned(), name)
+            }
             Self::PyTypedMissing => unreachable!(),
         }
     }
 
     pub(crate) fn import_non_stub_for_stub_package(
         db: &Database,
-        original_file_index: FileIndex,
+        original_file: &PythonFile,
         parent_dir: Option<Rc<Directory>>,
         name: &str,
     ) -> Option<Self> {
         if let Some(parent_dir) = parent_dir {
             Self::import_non_stub_for_stub_package(
                 db,
-                original_file_index,
+                original_file,
                 parent_dir.parent.maybe_dir().ok(),
                 &parent_dir.name,
             )?
-            .import(db, original_file_index, name)
+            .import(db, original_file, name)
         } else {
             let name = name.strip_suffix(STUBS_SUFFIX)?;
-            global_import_without_stubs_first(db, original_file_index, name)
+            global_import_without_stubs_first(db, original_file, name)
         }
     }
 
@@ -96,7 +93,7 @@ impl ImportResult {
 
 pub fn global_import<'a>(
     db: &'a Database,
-    from_file: FileIndex,
+    from_file: &PythonFile,
     name: &'a str,
 ) -> Option<ImportResult> {
     // First try <package>-stubs
@@ -118,7 +115,7 @@ pub fn global_import<'a>(
 
 pub fn global_import_without_stubs_first<'a>(
     db: &'a Database,
-    from_file: FileIndex,
+    from_file: &PythonFile,
     name: &'a str,
 ) -> Option<ImportResult> {
     python_import(
@@ -131,7 +128,7 @@ pub fn global_import_without_stubs_first<'a>(
 
 pub fn namespace_import(
     db: &Database,
-    from_file: FileIndex,
+    from_file: &PythonFile,
     namespace: &Namespace,
     name: &str,
 ) -> Option<ImportResult> {
@@ -185,7 +182,7 @@ pub fn namespace_import(
 
 fn python_import(
     db: &Database,
-    from_file: FileIndex,
+    from_file: &PythonFile,
     dirs: impl Iterator<Item = impl Borrow<Directory>>,
     name: &str,
 ) -> Option<ImportResult> {
@@ -194,7 +191,7 @@ fn python_import(
 
 pub fn python_import_with_needs_exact_case(
     db: &Database,
-    from_file: FileIndex,
+    from_file: &PythonFile,
     // Directory / Needs py.typed pairing
     dirs: impl Iterator<Item = (impl Borrow<Directory>, bool)>,
     name: &str,
@@ -210,7 +207,7 @@ pub fn python_import_with_needs_exact_case(
             match entry {
                 DirectoryEntry::Directory(dir2) => {
                     if match_c(db, dir2.name.as_ref(), name, needs_exact_case) {
-                        let result = load_init_file(db, dir2, from_file);
+                        let result = load_init_file(db, dir2, from_file.file_index);
                         if let Some(file_index) = result {
                             if needs_py_typed && dir2.search("py.typed").is_none() {
                                 return Some(ImportResult::PyTypedMissing);
@@ -245,14 +242,14 @@ pub fn python_import_with_needs_exact_case(
         }
         if let Some((file_entry, file_index)) = stub_file_index.take().or(python_file_index.take())
         {
-            file_entry.add_invalidation(from_file);
+            file_entry.add_invalidation(from_file.file_index);
             return Some(ImportResult::File(file_index));
         }
-        dir.add_missing_entry((name.to_string() + ".py").into(), from_file);
-        dir.add_missing_entry((name.to_string() + ".pyi").into(), from_file);
+        dir.add_missing_entry((name.to_string() + ".py").into(), from_file.file_index);
+        dir.add_missing_entry((name.to_string() + ".pyi").into(), from_file.file_index);
         // The folder should not exist for folder/__init__.py or a namespace.
         if !had_namespace_dir {
-            dir.add_missing_entry(name.into(), from_file);
+            dir.add_missing_entry(name.into(), from_file.file_index);
         }
     }
     if !namespace_directories.is_empty() {

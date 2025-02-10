@@ -1651,7 +1651,7 @@ impl Inference<'_, '_, '_> {
         forward_type.run_after_lookup_on_each_union_member(
             i_s,
             None,
-            from.file_index(),
+            from.file,
             normal_magic,
             LookupKind::OnlyType,
             &mut ResultContext::Unknown,

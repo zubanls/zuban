@@ -1729,7 +1729,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 }
             }
             TypeContent::Namespace(n) => {
-                match namespace_import(db, self.inference.file.file_index, &n, name.as_str()) {
+                match namespace_import(db, self.inference.file, &n, name.as_str()) {
                     Some(ImportResult::File(file_index)) => {
                         let file = db.loaded_python_file(file_index);
                         TypeContent::Module(file)

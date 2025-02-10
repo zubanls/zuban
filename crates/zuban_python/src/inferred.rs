@@ -1723,7 +1723,7 @@ impl<'db: 'slf, 'slf> Inferred {
         self.as_cow_type(i_s).run_after_lookup_on_each_union_member(
             i_s,
             Some(self),
-            in_file.file_index,
+            in_file,
             name,
             kind,
             &mut ResultContext::Unknown,
@@ -1753,7 +1753,7 @@ impl<'db: 'slf, 'slf> Inferred {
         let base_type = self.as_cow_type(i_s);
         base_type.lookup(
             i_s,
-            from.file_index(),
+            from.file,
             name,
             kind,
             result_context,

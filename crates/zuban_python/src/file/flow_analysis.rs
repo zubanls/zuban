@@ -3475,7 +3475,7 @@ impl Inference<'_, '_, '_> {
     fn check_attr(&self, t: &Type, attr: &str) -> LookupResult {
         t.lookup(
             self.i_s,
-            self.file.file_index,
+            self.file,
             attr,
             LookupKind::Normal,
             &mut ResultContext::Unknown,

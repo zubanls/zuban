@@ -283,14 +283,14 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 )
             }
             ImportResult::Namespace(namespace) => {
-                lookup_in_namespace(self.i_s.db, self.file.file_index, namespace, name)
+                lookup_in_namespace(self.i_s.db, self.file, namespace, name)
             }
             ImportResult::PyTypedMissing => LookupResult::any(AnyCause::FromError),
         }
     }
 
     fn global_import(&self, name: Name, name_def: Option<NameDef>) -> Option<ImportResult> {
-        let result = global_import(self.i_s.db, self.file.file_index, name.as_str());
+        let result = global_import(self.i_s.db, self.file, name.as_str());
         if let Some(result) = &result {
             debug!(
                 "Global import '{}': {:?}",
@@ -343,7 +343,6 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 _ => unreachable!(),
             };
         }
-        let file_index = self.file.file_index;
         let infer_name = |self_: &Self, import_result, name: Name| {
             let i_s = self_.i_s;
             let mut in_stub_and_has_getattr = false;
@@ -370,7 +369,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     r
                 }
                 ImportResult::Namespace(namespace) => {
-                    namespace_import(i_s.db, file_index, namespace, name.as_str())
+                    namespace_import(i_s.db, self.file, namespace, name.as_str())
                 }
                 ImportResult::PyTypedMissing => Some(ImportResult::PyTypedMissing),
             };
@@ -472,7 +471,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                         } else {
                             t.lookup(
                                 self.i_s,
-                                self.file.file_index,
+                                self.file,
                                 name_def.as_code(),
                                 LookupKind::Normal,
                                 &mut ResultContext::Unknown,
@@ -1884,7 +1883,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             lookup = lookup.or_else(|| {
                 let result = t.lookup_with_first_attr_kind(
                     i_s,
-                    node_ref.file_index(),
+                    node_ref.file,
                     name_str,
                     LookupKind::Normal,
                     &mut ResultContext::Unknown,
@@ -2792,7 +2791,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                         let match_ = r_type
                             .lookup(
                                 i_s,
-                                from.file_index(),
+                                from.file,
                                 "__iter__",
                                 LookupKind::OnlyType,
                                 &mut ResultContext::Unknown,
@@ -2995,7 +2994,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                                 r_type
                                     .lookup(
                                         i_s,
-                                        from.file_index(),
+                                        from.file,
                                         op_infos.reverse_magic_method,
                                         LookupKind::OnlyType,
                                         &mut ResultContext::Unknown,
