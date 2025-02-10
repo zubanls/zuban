@@ -2650,18 +2650,21 @@ impl Inference<'_, '_, '_> {
             isinstance_type = Type::Type(Rc::new(isinstance_type))
         }
 
-        split_and_intersect(
+        let (truthy, falsey) = split_and_intersect(
             self.i_s,
             &input.inf.as_cow_type(self.i_s),
-            key,
-            input.parent_unions,
             &isinstance_type,
             |issue| {
                 if self.flags().warn_unreachable {
                     self.add_issue(args.index(), issue)
                 }
             },
-        )
+        );
+        Some(FramesWithParentUnions {
+            truthy: Frame::from_type(key.clone(), truthy),
+            falsey: Frame::from_type(key, falsey),
+            parent_unions: input.parent_unions,
+        })
     }
 
     pub fn check_isinstance_or_issubclass_type(
@@ -3033,26 +3036,32 @@ impl Inference<'_, '_, '_> {
             return None;
         }
         let resolved_guard_t = resolved_guard_t.as_cow_type(self.i_s);
-        if guard.from_type_is {
-            split_and_intersect(
+        let (truthy, falsey) = if guard.from_type_is {
+            let (truthy, falsey) = split_and_intersect(
                 self.i_s,
                 &infos.inf.as_cow_type(self.i_s),
-                key,
-                infos.parent_unions,
                 &resolved_guard_t,
                 |issue| {
                     if self.flags().warn_unreachable {
                         self.add_issue(args.index(), issue)
                     }
                 },
+            );
+            (
+                Frame::from_type(key.clone(), truthy),
+                Frame::from_type(key, falsey),
             )
         } else {
-            Some(FramesWithParentUnions {
-                truthy: Frame::from_type(key, resolved_guard_t.into_owned()),
-                falsey: Frame::default(),
-                parent_unions: infos.parent_unions,
-            })
-        }
+            (
+                Frame::from_type(key, resolved_guard_t.into_owned()),
+                Frame::default(),
+            )
+        };
+        Some(FramesWithParentUnions {
+            truthy,
+            falsey,
+            parent_unions: infos.parent_unions,
+        })
     }
 
     fn guard_of_in_operator(
@@ -3927,11 +3936,9 @@ fn narrow_len_for_tuples(
 fn split_and_intersect(
     i_s: &InferenceState,
     original_t: &Type,
-    key: FlowKey,
-    parent_unions: ParentUnions,
     isinstance_type: &Type,
     mut add_issue: impl Fn(IssueKind),
-) -> Option<FramesWithParentUnions> {
+) -> (Type, Type) {
     // Please listen to "Red Hot Chili Peppers - Otherside" here.
     let mut true_type = Type::Never(NeverCause::Other);
     let mut other_side = Type::Never(NeverCause::Other);
@@ -4019,11 +4026,7 @@ fn split_and_intersect(
         true_type.format_short(i_s.db),
         other_side.format_short(i_s.db)
     );
-    Some(FramesWithParentUnions {
-        truthy: Frame::from_type(key.clone(), true_type),
-        falsey: Frame::from_type(key, other_side),
-        parent_unions,
-    })
+    (true_type, other_side)
 }
 
 #[derive(PartialEq)]

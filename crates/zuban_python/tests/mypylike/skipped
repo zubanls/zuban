@@ -46,8 +46,6 @@ testPEP696TypeVarTuple
 testTypeAliasNormalization
 # ParamSpec invalid args
 testOtherVarArgs
-# Invalid insert_type
-testAliasExplicitNoArgsCallable
 
 # regressions
 testIncrementalInvalidNamedTupleInUnannotatedFunction
@@ -931,6 +929,8 @@ testIgnoreInsideClassDoesntAffectWhole
 # import of typeshed stubs
 testErrorFromGoogleCloud
 
+# Invalid assert_type
+testAliasExplicitNoArgsCallable
 # typing.assert_type in untyped functions
 testAssertTypeUncheckedFunction
 testAssertTypeUncheckedFunctionWithUntypedCheck
