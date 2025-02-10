@@ -2972,13 +2972,21 @@ impl Inference<'_, '_, '_> {
                 self.check_type_guard_callable(args_details, args, c, false)
             }
             CallableLike::Overload(o) => {
+                let mut found: Option<FramesWithParentUnions> = None;
                 for c in o.iter_functions() {
-                    if let y @ Some(_) = self.check_type_guard_callable(args_details, args, c, true)
-                    {
-                        return y;
+                    if let Some(y) = self.check_type_guard_callable(args_details, args, c, true) {
+                        found = Some(if let Some(found) = found {
+                            FLOW_ANALYSIS.with(|fa| FramesWithParentUnions {
+                                truthy: fa.merge_or(self.i_s, found.truthy, y.truthy, true),
+                                falsey: merge_and(self.i_s, found.falsey, y.falsey),
+                                parent_unions: Default::default(),
+                            })
+                        } else {
+                            y
+                        });
                     }
                 }
-                None
+                found
             }
         }
     }
