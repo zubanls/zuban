@@ -49,16 +49,12 @@ testPEP696GenericFunction
 testPEP696ParamSpec
 testPEP696TypeVarTuple
 testTypeAliasNormalization
-# For Stmt Index Narrowing
-testForStatementIndexNarrowing
 # ParamSpec invalid args
 testOtherVarArgs
 # Invalid insert_type
 testAliasExplicitNoArgsCallable
 # NotImplemented is not ana Exception
 testRaiseNotImplementedFails
-# Import Error code changes
-testErrorCodeMissingModule
 # --follow-untyped-imports
 testMissingPytypedFlag
 
@@ -275,6 +271,8 @@ testNarrowingLenUnionWithUnreachable
 testNarrowingLenAnyListElseNotAffected
 testNarrowingLenMixWithAnyPrecise
 testNarrowingLenMixWithAnyImprecise
+# For Stmt Index Narrowing
+testForStatementIndexNarrowing
 # issubclass narrowing leads to Never entries instead of unreachable?
 testIssubclassWithMetaclassesStrictOptional
 # questionable implicit literal?
