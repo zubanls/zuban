@@ -53,8 +53,6 @@ testTypeAliasNormalization
 testOtherVarArgs
 # Invalid insert_type
 testAliasExplicitNoArgsCallable
-# NotImplemented is not an Exception
-testRaiseNotImplementedFails
 
 # regressions
 testIncrementalInvalidNamedTupleInUnannotatedFunction

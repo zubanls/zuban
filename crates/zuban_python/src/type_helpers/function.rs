@@ -151,10 +151,12 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                         .as_cow_type(i_s)
                         .as_ref()
                     {
-                        Type::Class(cls) => cls.link == i_s.db.python_state.notimplementederror(),
+                        Type::Class(cls) => {
+                            cls.link == i_s.db.python_state.notimplementederror_link()
+                        }
                         Type::Type(t) => match t.as_ref() {
                             Type::Class(cls) => {
-                                cls.link == i_s.db.python_state.notimplementederror()
+                                cls.link == i_s.db.python_state.notimplementederror_link()
                             }
                             _ => false,
                         },

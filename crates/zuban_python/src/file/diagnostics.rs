@@ -287,14 +287,31 @@ impl Inference<'_, '_, '_> {
     }
 
     fn check_valid_raise_type(&self, expr: Expression, allow_none: bool) {
+        let inf = self.infer_expression(expr);
+        let t = inf.as_cow_type(self.i_s);
+        // First check if it's a `raise NotImplemented` (which is invalid)
+        if t.maybe_class(self.i_s.db)
+            .is_some_and(|c| c.node_ref == self.i_s.db.python_state.notimplemented_type_node_ref())
+        {
+            NodeRef::new(self.file, expr.index()).add_issue(
+                self.i_s,
+                IssueKind::BaseExceptionExpectedForRaise {
+                    did_you_mean: Some("NotImplementedError".into()),
+                },
+            );
+            return;
+        }
+
         if !valid_raise_type(
             self.i_s,
             NodeRef::new(self.file, expr.index()),
-            &self.infer_expression(expr).as_cow_type(self.i_s),
+            &t,
             allow_none,
         ) {
-            NodeRef::new(self.file, expr.index())
-                .add_issue(self.i_s, IssueKind::BaseExceptionExpectedForRaise);
+            NodeRef::new(self.file, expr.index()).add_issue(
+                self.i_s,
+                IssueKind::BaseExceptionExpectedForRaise { did_you_mean: None },
+            );
         }
     }
 

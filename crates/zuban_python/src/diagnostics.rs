@@ -289,7 +289,7 @@ pub(crate) enum IssueKind {
     TotalOrderingMissingMethod,
 
     BaseExceptionExpected,
-    BaseExceptionExpectedForRaise,
+    BaseExceptionExpectedForRaise { did_you_mean: Option<Box<str>> },
     ExceptStarIsNotAllowedToBeAnExceptionGroup,
 
     IntersectionCannotExistDueToIncompatibleMethodSignatures { intersection: Box<str> },
@@ -747,7 +747,7 @@ impl<'db> Diagnostic<'db> {
                 | CannotInheritFromFinalClass { .. }
                 | InvalidAssertType { .. }
                 | BaseExceptionExpected
-                | BaseExceptionExpectedForRaise
+                | BaseExceptionExpectedForRaise { .. }
                 | TypeOfSelfIsNotASupertypeOfItsClass { .. }
                 | SelfArgumentMissing
         )
@@ -1623,8 +1623,12 @@ impl<'db> Diagnostic<'db> {
             BaseExceptionExpected =>
                 "Exception type must be derived from BaseException (or be a \
                  tuple of exception classes)".to_string(),
-            BaseExceptionExpectedForRaise =>
-                "Exception must be derived from BaseException".to_string(),
+            BaseExceptionExpectedForRaise { did_you_mean } => match did_you_mean {
+                Some(did_you_mean) => format!(
+                    r#"Exception must be derived from BaseException; did you mean "{did_you_mean}"?"#
+                ),
+                None => "Exception must be derived from BaseException".to_string(),
+            },
             ExceptStarIsNotAllowedToBeAnExceptionGroup =>
                 "Exception type in except* cannot derive from BaseExceptionGroup".to_string(),
 

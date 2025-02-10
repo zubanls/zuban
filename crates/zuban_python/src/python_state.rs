@@ -144,6 +144,7 @@ pub struct PythonState {
     builtins_hasattr_index: NodeIndex,
     builtins_len_index: NodeIndex,
     builtins_notimplementederror: NodeIndex,
+    builtins_notimplemented_type: NodeIndex,
     pub builtins_int_mro: Box<[BaseClass]>,
     pub builtins_bool_mro: Box<[BaseClass]>,
     pub builtins_str_mro: Box<[BaseClass]>,
@@ -263,6 +264,7 @@ impl PythonState {
             builtins_staticmethod_index: 0,
             builtins_property_index: 0,
             builtins_notimplementederror: 0,
+            builtins_notimplemented_type: 0,
             builtins_isinstance_index: 0,
             builtins_issubclass_index: 0,
             builtins_super_index: 0,
@@ -615,6 +617,11 @@ impl PythonState {
             "NotImplementedError"
         );
         cache_index!(
+            builtins_notimplemented_type,
+            builtins,
+            "_NotImplementedType"
+        );
+        cache_index!(
             typeshed_supports_keys_and_get_item_index,
             typeshed,
             "SupportsKeysAndGetItem"
@@ -895,6 +902,7 @@ impl PythonState {
     attribute_node_ref!(builtins, pub hasattr_node_ref, builtins_hasattr_index);
     attribute_node_ref!(builtins, pub len_node_ref, builtins_len_index);
     attribute_node_ref!(builtins, pub function_node_ref, builtins_function_index);
+    attribute_node_ref!(builtins, pub notimplemented_type_node_ref, builtins_notimplemented_type);
     attribute_node_ref!(
         builtins,
         pub base_exception_node_ref,
@@ -950,7 +958,7 @@ impl PythonState {
     attribute_link!(builtins, pub str_link, builtins_str_index);
     attribute_link!(builtins, pub bytes_link, builtins_bytes_index);
     attribute_link!(builtins, pub bool_link, builtins_bool_index);
-    attribute_link!(builtins, pub notimplementederror, builtins_notimplementederror);
+    attribute_link!(builtins, pub notimplementederror_link, builtins_notimplementederror);
     attribute_link!(builtins, pub staticmethod_link, builtins_staticmethod_index);
     attribute_link!(builtins, pub classmethod_link, builtins_staticmethod_index);
     attribute_link!(builtins, pub property_link, builtins_staticmethod_index);
