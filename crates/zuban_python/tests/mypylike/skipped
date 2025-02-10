@@ -28,15 +28,10 @@ testSetterPropertyProtocolSubtypingVarSuper
 testSetterPropertyProtocolSubtypingVarSub
 # descriptor self type annotations
 testGenericDescriptorWithSelfTypeAnnotationsAndOverloads
-# intersection
-testIsInstanceAdHocIntersectionIncrementalNestedClass
 # Multi Inheritance issues
 testMultipleInheritanceCompatibleTypeVar
 testSelfInMultipleInheritance
-# ClassVar/Final changes
-testFinalUsedWithClassVarAfterPy313
-testNamedTupleFinalAndClassVar
-# Incompatible message signatures
+# Incompatible method signatures
 testTypeEqualsCheckUsingIsNonOverlapping
 # TypeIs/TypeGuard overloads
 testTypeGuardInOverloads
@@ -309,6 +304,9 @@ testRedefineFunctionDefinedAsVariableInitializedToNone
 testRedefineNestedFunctionDefinedAsVariableInitializedToNone
 # explicit any context should lead to Dict[Any, Any]? might be ok?
 testGenericDictWithOverload
+# ClassVar/Final changes
+testFinalUsedWithClassVarAfterPy313
+testNamedTupleFinalAndClassVar
 
 # self.x = self where self: T
 testTypingSelfAttrOldVsNewStyle
