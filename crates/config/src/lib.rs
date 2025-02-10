@@ -178,6 +178,7 @@ pub struct TypeCheckerFlags {
     pub implicit_optional: bool,
     pub check_untyped_defs: bool,
     pub ignore_missing_imports: bool,
+    pub follow_untyped_imports: bool,
 
     pub disallow_untyped_defs: bool,
     pub disallow_untyped_calls: bool,
@@ -218,6 +219,7 @@ impl Default for TypeCheckerFlags {
             implicit_optional: false,
             check_untyped_defs: false,
             ignore_missing_imports: false,
+            follow_untyped_imports: false,
             disallow_untyped_defs: false,
             disallow_untyped_calls: false,
             disallow_untyped_decorators: false,
@@ -536,6 +538,7 @@ fn set_bool_init_flags(
         "implicit_optional" => flags.implicit_optional = value.as_bool(invert)?,
         "check_untyped_defs" => flags.check_untyped_defs = value.as_bool(invert)?,
         "ignore_missing_imports" => flags.ignore_missing_imports = value.as_bool(invert)?,
+        "follow_untyped_imports" => flags.follow_untyped_imports = value.as_bool(invert)?,
 
         "disallow_untyped_defs" => flags.disallow_untyped_defs = value.as_bool(invert)?,
         "disallow_untyped_calls" => flags.disallow_untyped_calls = value.as_bool(invert)?,

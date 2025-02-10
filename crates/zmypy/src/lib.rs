@@ -34,6 +34,9 @@ pub struct Cli {
     /// Silently ignore imports of missing modules
     #[arg(long)]
     ignore_missing_imports: bool,
+    /// Typecheck modules without stubs or py.typed marker
+    #[arg(long)]
+    follow_untyped_imports: bool,
 
     // Platform configuration
     /// Type check code assuming it will be running on Python x.y
@@ -285,6 +288,9 @@ fn apply_flags(
     apply!(flags, check_untyped_defs, no_check_untyped_defs);
     if cli.ignore_missing_imports {
         flags.ignore_missing_imports = true;
+    }
+    if cli.follow_untyped_imports {
+        flags.follow_untyped_imports = true;
     }
     apply!(flags, disallow_untyped_defs, allow_untyped_defs);
     apply!(flags, disallow_untyped_calls, allow_untyped_calls);

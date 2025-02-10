@@ -228,6 +228,10 @@ impl TestCase<'_, '_> {
             &mut config.ignore_missing_imports,
             "--ignore-missing-imports",
         );
+        set_bool_flag(
+            &mut config.follow_untyped_imports,
+            "--follow-untyped-imports",
+        );
         set_reverse_bool_flag(&mut config.warn_no_return, "--no-warn-no-return");
         set_reverse_bool_flag(&mut config.strict_optional, "--no-strict-optional");
         set_reverse_bool_flag(&mut config.disallow_any_generics, "--allow-any-generics");

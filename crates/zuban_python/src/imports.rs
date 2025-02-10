@@ -209,7 +209,10 @@ pub fn python_import_with_needs_exact_case(
                     if match_c(db, dir2.name.as_ref(), name, needs_exact_case) {
                         let result = load_init_file(db, dir2, from_file.file_index);
                         if let Some(file_index) = result {
-                            if needs_py_typed && dir2.search("py.typed").is_none() {
+                            if needs_py_typed
+                                && !from_file.flags(db).follow_untyped_imports
+                                && dir2.search("py.typed").is_none()
+                            {
                                 return Some(ImportResult::PyTypedMissing);
                             }
                             return Some(ImportResult::File(file_index));
@@ -226,7 +229,7 @@ pub fn python_import_with_needs_exact_case(
                     if is_py_file
                         || match_c(db, &file.name, &format!("{name}.pyi"), needs_exact_case)
                     {
-                        if needs_py_typed {
+                        if needs_py_typed && !from_file.flags(db).follow_untyped_imports {
                             return Some(ImportResult::PyTypedMissing);
                         }
                         let file_index = db.load_file_from_workspace(file, false);

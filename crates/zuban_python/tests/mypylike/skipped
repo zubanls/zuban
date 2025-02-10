@@ -53,10 +53,8 @@ testTypeAliasNormalization
 testOtherVarArgs
 # Invalid insert_type
 testAliasExplicitNoArgsCallable
-# NotImplemented is not ana Exception
+# NotImplemented is not an Exception
 testRaiseNotImplementedFails
-# --follow-untyped-imports
-testMissingPytypedFlag
 
 # regressions
 testIncrementalInvalidNamedTupleInUnannotatedFunction
