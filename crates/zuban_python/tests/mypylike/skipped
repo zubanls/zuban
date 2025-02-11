@@ -31,8 +31,6 @@ testGenericDescriptorWithSelfTypeAnnotationsAndOverloads
 # Multi Inheritance issues
 testMultipleInheritanceCompatibleTypeVar
 testSelfInMultipleInheritance
-# Incompatible method signatures
-testTypeEqualsCheckUsingIsNonOverlapping
 # PEP 696 TypeAlias `type x = int`
 testPEP696TypeAlias
 testPEP696GenericFunction
