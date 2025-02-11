@@ -1033,15 +1033,18 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             };
             match second.as_code() {
                 "setter" => {
-                    let Some(first_non_self_param) = next_func.iter_params().skip(1).next() else {
-                        // This means the setter is buggy, just ignore other places should probably
-                        // report this.
-                        return PropertyModifier::JustADecorator;
+                    let setter = if let Some(first_non_self_param) =
+                        next_func.iter_params().skip(1).next()
+                    {
+                        first_non_self_param.annotation_or_any(i_s.db).into_owned()
+                    } else {
+                        next_func.add_issue_for_declaration(
+                            i_s,
+                            IssueKind::InvalidPropertySetterSignature,
+                        );
+                        Type::Any(AnyCause::FromError)
                     };
-                    let setter = first_non_self_param.annotation_or_any(i_s.db);
-                    PropertyModifier::Setter(Rc::new(PropertySetter::OtherType(
-                        setter.into_owned(),
-                    )))
+                    PropertyModifier::Setter(Rc::new(PropertySetter::OtherType(setter)))
                 }
                 "deleter" => PropertyModifier::Deleter,
                 _ => PropertyModifier::JustADecorator,

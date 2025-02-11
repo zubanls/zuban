@@ -19,19 +19,12 @@ testOverrideCallableAttributeWithSettablePropertyMutableOverride
 testOverridePropertyDifferentSetterBoth
 testOverridePropertyDifferentSetterVarSuper
 testOverridePropertyDifferentSetterVarSub
-testOverridePropertyInvalidSetter
 testOverridePropertyGeneric
 testParameterizedGenericPropertyOverrideWithProperty
 testParameterizedGenericOverrideWithProperty
 testSetterPropertyProtocolSubtypingBoth
 testSetterPropertyProtocolSubtypingVarSuper
 testSetterPropertyProtocolSubtypingVarSub
-# PEP 696 TypeAlias `type x = int`
-testPEP696TypeAlias
-testPEP696GenericFunction
-testPEP696ParamSpec
-testPEP696TypeVarTuple
-testTypeAliasNormalization
 
 # regressions
 testIncrementalInvalidNamedTupleInUnannotatedFunction
@@ -603,6 +596,12 @@ test695TypeVar
 test695TypeAliasType
 testPEP695*
 testCurrentClassWorksAsBound
+# PEP 696 TypeAlias `type x = int`
+testPEP696TypeAlias
+testPEP696GenericFunction
+testPEP696ParamSpec
+testPEP696TypeVarTuple
+testTypeAliasNormalization
 
 # enum.member / enum.nonmember
 testEnumNonMemberSupport

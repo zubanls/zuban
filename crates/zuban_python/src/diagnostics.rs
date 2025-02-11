@@ -374,6 +374,7 @@ pub(crate) enum IssueKind {
     ReadOnlyPropertyCannotOverwriteWritableAttribute,
     OnlyInstanceMethodsCanBeDecoratedWithProperty,
     OnlySupportedTopDecoratorSetter { name: Box<str> },
+    InvalidPropertySetterSignature,
     UnexpectedDefinitionForProperty { name: Box<str> },
     PropertyIsReadOnly { class_name: Box<str>, property_name: Box<str> },
 
@@ -1836,6 +1837,7 @@ impl<'db> Diagnostic<'db> {
                 "Only instance methods can be decorated with @property".to_string(),
             OnlySupportedTopDecoratorSetter{name} =>
                 format!("Only supported top decorator is @{name}.setter"),
+            InvalidPropertySetterSignature => "Invalid property setter signature".to_string(),
             UnexpectedDefinitionForProperty{name} =>
                 format!("Unexpected definition for property \"{name}\""),
             PropertyIsReadOnly{class_name, property_name} => format!(
