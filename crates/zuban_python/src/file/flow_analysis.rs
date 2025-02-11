@@ -1,4 +1,5 @@
 use std::{
+    borrow::Cow,
     cell::{Cell, RefCell, RefMut},
     rc::Rc,
 };
@@ -32,8 +33,9 @@ use crate::{
     },
     type_helpers::{
         Callable, Class, ClassLookupOptions, Function, InstanceLookupOptions, LookupDetails,
+        OverloadResult, OverloadedFunction,
     },
-    utils::join_with_commas,
+    utils::{debug_indent, join_with_commas},
 };
 
 use super::{
@@ -2484,7 +2486,13 @@ impl Inference<'_, '_, '_> {
                                 }
                             }
                             if let Some(c) = first.maybe_type_guard_callable(self.i_s) {
-                                if let Some(frames) = self.guard_type_guard(arg_details, args, c) {
+                                let simple_args = &SimpleArgs::new(
+                                    *self.i_s,
+                                    self.file,
+                                    primary.index(),
+                                    arg_details,
+                                );
+                                if let Some(frames) = self.guard_type_guard(simple_args, args, c) {
                                     return Ok((Inferred::new_bool(self.i_s.db), frames));
                                 }
                             }
@@ -2963,40 +2971,101 @@ impl Inference<'_, '_, '_> {
 
     fn guard_type_guard(
         &self,
-        args_details: ArgumentsDetails,
+        simple_args: &SimpleArgs,
         args: Arguments,
         might_have_guard: CallableLike,
     ) -> Option<FramesWithParentUnions> {
         match &might_have_guard {
-            CallableLike::Callable(c) => {
-                self.check_type_guard_callable(args_details, args, c, false)
-            }
+            CallableLike::Callable(c) => self.check_type_guard_callable(simple_args, args, c, None),
             CallableLike::Overload(o) => {
-                let mut found: Option<FramesWithParentUnions> = None;
-                for c in o.iter_functions() {
-                    if let Some(y) = self.check_type_guard_callable(args_details, args, c, true) {
-                        found = Some(if let Some(found) = found {
-                            FLOW_ANALYSIS.with(|fa| FramesWithParentUnions {
-                                truthy: fa.merge_or(self.i_s, found.truthy, y.truthy, true),
-                                falsey: merge_and(self.i_s, found.falsey, y.falsey),
-                                parent_unions: Default::default(),
-                            })
-                        } else {
-                            y
-                        });
-                    }
+                // Only check if there is a guard in there.
+                if !o.iter_functions().any(|c| c.guard.is_some()) {
+                    return None;
                 }
-                found
+                let overload = OverloadedFunction::new(o, None);
+                debug!(
+                    "Check overloaded TypeGuard/TypeIs {}",
+                    overload.name(self.i_s.db)
+                );
+                let had_non_guard_match = Cell::new(false);
+                let union_guard_result = Cell::<Option<FramesWithParentUnions>>::new(None);
+
+                let matching = debug_indent(|| {
+                    overload.find_matching_function(
+                        self.i_s,
+                        simple_args,
+                        false,
+                        None,
+                        false,
+                        &mut ResultContext::Unknown,
+                        OnTypeError::new(&on_argument_type_error),
+                        &|c, calculated_type_args| {
+                            let Some(guard) = &c.content.guard else {
+                                had_non_guard_match.set(true);
+                                return Type::Never(NeverCause::Other);
+                            };
+                            let resolved_t = calculated_type_args
+                                .into_return_type(self.i_s, &guard.type_, None, &|| None)
+                                .as_type(self.i_s);
+                            if let Some(y) = self.check_type_guard_callable(
+                                simple_args,
+                                args,
+                                c.content,
+                                Some(resolved_t),
+                            ) {
+                                union_guard_result.set(Some(
+                                    if let Some(found) = union_guard_result.take() {
+                                        FLOW_ANALYSIS.with(|fa| FramesWithParentUnions {
+                                            truthy: fa.merge_or(
+                                                self.i_s,
+                                                found.truthy,
+                                                y.truthy,
+                                                false,
+                                            ),
+                                            falsey: fa.merge_or(
+                                                self.i_s,
+                                                found.falsey,
+                                                y.falsey,
+                                                false,
+                                            ),
+                                            //falsey: merge_and(self.i_s, found.falsey, y.falsey),
+                                            parent_unions: Default::default(),
+                                        })
+                                    } else {
+                                        y
+                                    },
+                                ));
+                            } else {
+                                had_non_guard_match.set(true);
+                            }
+                            Type::Never(NeverCause::Other)
+                        },
+                    )
+                });
+                match matching {
+                    OverloadResult::Single(c) => {
+                        self.check_type_guard_callable(simple_args, args, c.content, None)
+                    }
+                    OverloadResult::Union(_) => {
+                        if had_non_guard_match.get() {
+                            return Some(Default::default());
+                        }
+                        union_guard_result.into_inner()
+                    }
+                    // Return the default, because the overload was already typechecked and
+                    // doesn't need to be typechecked anymore
+                    OverloadResult::NotFound => Some(Default::default()),
+                }
             }
         }
     }
 
     fn check_type_guard_callable(
         &self,
-        args_details: ArgumentsDetails,
+        simple_args: &SimpleArgs,
         args: Arguments,
         callable: &CallableContent,
-        from_overload: bool,
+        guard_t: Option<Type>,
     ) -> Option<FramesWithParentUnions> {
         let guard = callable.guard.as_ref()?;
         let find_arg = || {
@@ -3023,27 +3092,22 @@ impl Inference<'_, '_, '_> {
         let infos = find_arg()?;
         let key = infos.key?;
 
-        let had_error = Cell::new(false);
-        let resolved_guard_t = Callable::new(callable, self.i_s.current_class())
-            .execute_for_custom_return_type(
-                self.i_s,
-                &SimpleArgs::new(*self.i_s, self.file, args.index(), args_details),
-                false,
-                &guard.type_,
-                OnTypeError::new(&|i_s, error_text, arg, types| {
-                    if from_overload {
-                        had_error.set(true)
-                    } else {
-                        on_argument_type_error(i_s, error_text, arg, types)
-                    }
-                }),
-                &mut ResultContext::Unknown,
-                None,
-            );
-        if had_error.get() {
-            return None;
-        }
-        let resolved_guard_t = resolved_guard_t.as_cow_type(self.i_s);
+        let resolved_inf: Inferred;
+        let resolved_guard_t = if let Some(g) = guard_t {
+            Cow::Owned(g)
+        } else {
+            resolved_inf = Callable::new(callable, self.i_s.current_class())
+                .execute_for_custom_return_type(
+                    self.i_s,
+                    simple_args,
+                    false,
+                    &guard.type_,
+                    OnTypeError::new(&on_argument_type_error),
+                    &mut ResultContext::Unknown,
+                    None,
+                );
+            resolved_inf.as_cow_type(self.i_s)
+        };
         let (truthy, falsey) = if guard.from_type_is {
             let (truthy, falsey) = split_and_intersect(
                 self.i_s,
