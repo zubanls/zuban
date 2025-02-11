@@ -449,10 +449,7 @@ impl<'db, 'a> ArgKind<'db, 'a> {
 pub enum InferredArg<'a> {
     Inferred(Inferred),
     StarredWithUnpack(WithUnpack),
-    ParamSpec {
-        usage: &'a ParamSpecUsage,
-        kwargs_node_ref: Option<NodeRef<'a>>,
-    },
+    ParamSpec { usage: &'a ParamSpecUsage },
 }
 
 impl InferredArg<'_> {
@@ -517,16 +514,7 @@ impl<'db> Arg<'db, '_> {
             } => file
                 .inference(i_s)
                 .infer_generator_comprehension(*comprehension, result_context),
-            ArgKind::ParamSpec {
-                usage,
-                kwargs_node_ref,
-                ..
-            } => {
-                return InferredArg::ParamSpec {
-                    usage,
-                    kwargs_node_ref: kwargs_node_ref.clone(),
-                }
-            }
+            ArgKind::ParamSpec { usage, .. } => return InferredArg::ParamSpec { usage },
             ArgKind::StarredWithUnpack { with_unpack, .. } => {
                 return InferredArg::StarredWithUnpack(with_unpack.clone())
             }

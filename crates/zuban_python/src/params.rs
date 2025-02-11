@@ -988,7 +988,9 @@ impl<'db, 'a, I, P, AI: Iterator<Item = Arg<'db, 'a>>> InferrableParamIterator<'
 
     fn maybe_exact_multi_arg(&mut self, is_keyword_arg: bool) -> Option<Arg<'db, 'a>> {
         self.next_arg().and_then(|arg| {
-            if arg.is_keyword_argument() == is_keyword_arg {
+            if arg.is_keyword_argument() == is_keyword_arg
+                || is_keyword_arg && matches!(&arg.kind, ArgKind::ParamSpec { .. })
+            {
                 self.arbitrary_length_handled = true;
                 self.current_arg = None;
                 Some(arg)
@@ -1011,6 +1013,29 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(param) = self.current_starred_param {
             if let Some(argument) = self.maybe_exact_multi_arg(false) {
+                if let ArgKind::ParamSpec {
+                    kwargs_node_ref: Some(k),
+                    ..
+                } = &argument.kind
+                {
+                    // Use this again for kwargs
+                    let mut kwarg = argument.clone();
+                    let ArgKind::ParamSpec {
+                        node_ref,
+                        kwargs_node_ref,
+                        position,
+                        ..
+                    } = &mut kwarg.kind
+                    else {
+                        unreachable!() // Clone of the check before
+                    };
+                    *position += 1;
+                    *node_ref = *k;
+                    *kwargs_node_ref = None;
+                    kwarg.index += 1;
+                    self.current_arg = Some(kwarg);
+                    self.current_starred_param = None;
+                }
                 return Some(InferrableParam {
                     param,
                     argument: ParamArgument::Argument(argument),

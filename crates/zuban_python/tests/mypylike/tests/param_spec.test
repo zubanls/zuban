@@ -164,6 +164,17 @@ def run(func: Callable[P, None], *args: P.args, **kwargs: P.kwargs):
 
     def with_args_any(*args: int, **kwargs: Any) -> None: ...
     def with_any_kwargs(*args: Any, **kwargs: int) -> None: ...
+    def with_args_kwargs(*args: str, **kwargs: int) -> None: ...
 
-    with_args_any(*args, **kwargs)  # E: Argument 1 to "with_args_any" has incompatible type "*P.args"; expected "int"
-    with_any_kwargs(*args, **kwargs)  # E: Argument 2 to "with_args_any" has incompatible type "**P.kwargs"; expected "int"
+    with_args_any(
+        *args,  # E: Argument 1 to "with_args_any" has incompatible type "*P.args"; expected "int"
+        **kwargs
+    )
+    with_any_kwargs(
+        *args,
+        **kwargs  # E: Argument 2 to "with_any_kwargs" has incompatible type "**P.kwargs"; expected "int"
+    )
+    with_args_kwargs(
+        *args,  # E: Argument 1 to "with_args_kwargs" has incompatible type "*P.args"; expected "str"
+        **kwargs  # E: Argument 2 to "with_args_kwargs" has incompatible type "**P.kwargs"; expected "int"
+    )

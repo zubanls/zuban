@@ -11,7 +11,7 @@ use super::{
     ReplaceSelfInMatcher,
 };
 use crate::{
-    arguments::{Arg, ArgKind, InferredArg},
+    arguments::{Arg, InferredArg},
     database::{Database, PointLink},
     debug,
     diagnostics::IssueKind,
@@ -621,44 +621,19 @@ pub(crate) fn match_arguments_against_params<
                     matches &= m;
                     return;
                 }
-                InferredArg::ParamSpec {
-                    usage,
-                    kwargs_node_ref,
-                } => {
+                InferredArg::ParamSpec { usage } => {
                     let n = usage.param_spec.name(i_s.db);
                     if !expected.is_any() {
                         arg.add_argument_issue(
                             i_s,
-                            &format!("\"*{n}.args\""),
+                            &match p.param.kind(i_s.db) {
+                                ParamKind::StarStar => format!("\"**{n}.kwargs\""),
+                                _ => format!("\"*{n}.args\""),
+                            },
                             &expected.format_short(i_s.db),
                             &diagnostic_string,
                         );
                         matches &= Match::new_false();
-                    }
-                    let expected_kwarg = expected; // TODO fix this
-
-                    // If the kwargs_node_ref is not defined, an error was added previously
-                    if let Some(kwargs_node_ref) = kwargs_node_ref {
-                        // This code feels a bit weird, but the ParamSpec args here are a combined
-                        // args/kwargs.
-                        if !expected_kwarg.is_any() {
-                            let mut kwarg = arg.clone();
-                            let ArgKind::ParamSpec {
-                                position, node_ref, ..
-                            } = &mut kwarg.kind
-                            else {
-                                unreachable!()
-                            };
-                            *node_ref = kwargs_node_ref;
-                            *position += 1;
-                            kwarg.add_argument_issue(
-                                i_s,
-                                &format!("\"**{n}.kwargs\""),
-                                &expected_kwarg.format_short(i_s.db),
-                                &diagnostic_string,
-                            );
-                            matches &= Match::new_false();
-                        }
                     }
                     return;
                 }
