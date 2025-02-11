@@ -3022,12 +3022,20 @@ impl Inference<'_, '_, '_> {
                                                 y.truthy,
                                                 false,
                                             ),
-                                            falsey: fa.merge_or(
-                                                self.i_s,
-                                                found.falsey,
-                                                y.falsey,
-                                                false,
-                                            ),
+                                            falsey: {
+                                                // TODO this merging is a bit weird, because it
+                                                // should not merge TypeGuard/TypeIn combinations,
+                                                // but use a common_sub_type when it's two TypeIn
+                                                // narrowing the same values. This should probably
+                                                // hold for 99.999% of cases.
+                                                if found.falsey.entries.is_empty()
+                                                    || y.falsey.entries.is_empty()
+                                                {
+                                                    Frame::default()
+                                                } else {
+                                                    merge_and(self.i_s, found.falsey, y.falsey)
+                                                }
+                                            },
                                             //falsey: merge_and(self.i_s, found.falsey, y.falsey),
                                             parent_unions: Default::default(),
                                         })
