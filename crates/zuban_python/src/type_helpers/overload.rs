@@ -103,10 +103,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                 } if !had_error => {
                     if multi_any_match.is_some() {
                         // This means that there was an explicit any in a param.
-                        debug!(
-                            "Decided overload as not found, because of Any, \
-                                which match multiple overload versions"
-                        );
+                        debug!("Decided overload as not found, because of Any and non-any match");
                         return OverloadResult::NotFound;
                     } else if !arbitrary_length_handled {
                         debug!("Overload #{i} matches, but arbitrary length not handled");
@@ -132,12 +129,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                         // without an error message, there is no clear choice, i.e. it's ambiguous,
                         // but there should also not be an error.
                         if are_any_arguments_ambiguous_in_overload(old_indices, &argument_indices) {
-                            debug!(
-                                "Decided overload with any for {} (called on #{}): {:?}",
-                                self.name(i_s.db),
-                                args.starting_line(),
-                                callable.content.format(&FormatData::new_short(i_s.db)),
-                            );
+                            debug!("Decided overload as not found, because of 2+ Any matches");
                             args.reset_points_from_backup(&points_backup);
                             return OverloadResult::NotFound;
                         }
