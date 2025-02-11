@@ -1464,12 +1464,12 @@ impl<'db: 'a, 'a> Class<'a> {
                         .with_as_self_instance(&|| other.clone())
                         .with_disallowed_lazy_bound_method(),
                 );
-                let inf1 = protocol_lookup_details.lookup.into_inferred();
+                let protocol_inf = protocol_lookup_details.lookup.into_inferred();
 
                 // It's a bit weird that we have to filter out TypeVarLikes here, but at the moment
                 // there is no way to have that information when we gather Protocol members.
                 if matches!(
-                    inf1.maybe_complex_point(i_s.db),
+                    protocol_inf.maybe_complex_point(i_s.db),
                     Some(ComplexPoint::TypeVarLike(_))
                 ) {
                     continue;
@@ -1500,10 +1500,10 @@ impl<'db: 'a, 'a> Class<'a> {
                             had_lookup_error = true;
                         } else if had_error.borrow().is_none() {
                             had_at_least_one_member_with_same_name = true;
-                            let t1 = inf1.as_cow_type(i_s);
+                            let protocol_t = protocol_inf.as_cow_type(i_s);
                             let lookup = lookup_details.lookup.into_inferred();
                             let t2 = lookup.as_cow_type(i_s);
-                            let m = t1.matches(i_s, matcher, &t2, protocol_member.variance);
+                            let m = protocol_t.matches(i_s, matcher, &t2, protocol_member.variance);
 
                             let is_final_mismatch = lookup_details.attr_kind == AttributeKind::Final && protocol_lookup_details.attr_kind != AttributeKind::Final;
 
@@ -1525,7 +1525,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                             i_s,
                                             &mut notes,
                                             name,
-                                            &t1,
+                                            &protocol_t,
                                             &t2,
                                             &c.lookup(i_s, name, ClassLookupOptions::new(&|_| ()).with_as_type_type(&|| if other.is_subclassable(i_s.db) {
                                                 Type::Type(Rc::new(other.clone()))
@@ -1558,9 +1558,9 @@ impl<'db: 'a, 'a> Class<'a> {
                                                 i_s,
                                                 &mut notes,
                                                 name,
-                                                &t1,
+                                                &protocol_t,
                                                 &t2,
-                                                &t1,
+                                                &protocol_t,
                                                 full_other.as_ref().unwrap_or(&t2),
                                             )
                                         }
