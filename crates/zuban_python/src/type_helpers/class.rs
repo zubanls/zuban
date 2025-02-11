@@ -1938,10 +1938,10 @@ impl<'db: 'a, 'a> Class<'a> {
                                 options.use_descriptors,
                                 options.as_type_type,
                             );
-                            if let Some((_, k)) = &result {
-                                attr_kind = *k;
-                            }
-                            result.map(|inf| inf.0)
+                            result.map(|inf| {
+                                attr_kind = inf.1;
+                                inf.0
+                            })
                         };
                         match &class {
                             TypeOrClass::Class(in_class) => {

@@ -2071,13 +2071,13 @@ pub(super) fn check_override(
     }
     use AttributeKind::*;
     match (
-        original_lookup_details.attr_kind,
-        override_lookup_details.attr_kind,
+        &original_lookup_details.attr_kind,
+        &override_lookup_details.attr_kind,
     ) {
         (
             original,
             AttributeKind::Property {
-                writable: false, ..
+                setter_type: None, ..
             },
         ) if original.is_writable() => {
             if matches!(original, AttributeKind::Property { .. }) {

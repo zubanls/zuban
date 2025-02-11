@@ -30,7 +30,7 @@ use crate::{
         CallableContent, CallableLike, CallableParams, ClassGenerics, DataclassTransformObj,
         DbBytes, DbString, FunctionKind, FunctionOverload, GenericClass, GenericItem, GenericsList,
         IterCause, IterInfos, Literal as DbLiteral, LiteralKind, LiteralValue, LookupResult,
-        NeverCause, Type, TypeVarKind, TypeVarLike, TypeVarLikes,
+        NeverCause, PropertySetter, Type, TypeVarKind, TypeVarLike, TypeVarLikes,
     },
     type_helpers::{
         execute_assert_type, execute_cast, execute_isinstance, execute_issubclass,
@@ -1226,7 +1226,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             (
                                 Inferred::from_type(t),
                                 AttributeKind::Property {
-                                    writable: setter_type.is_some(),
+                                    setter_type: setter_type.clone(),
                                     is_abstract: c.is_abstract,
                                     is_final: c.is_final,
                                 },
@@ -2809,14 +2809,14 @@ pub fn add_attribute_error(
     );
 }
 
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum AttributeKind {
     AnnotatedAttribute,
     Attribute,
     ClassVar,
     Final,
     Property {
-        writable: bool,
+        setter_type: Option<Rc<PropertySetter>>,
         is_final: bool,
         is_abstract: bool,
     },
@@ -2836,7 +2836,7 @@ impl AttributeKind {
         matches!(
             self,
             Self::Property {
-                writable: false,
+                setter_type: None,
                 ..
             }
         )
@@ -2874,7 +2874,10 @@ impl AttributeKind {
             Self::Attribute
                 | Self::AnnotatedAttribute
                 | Self::ClassVar
-                | Self::Property { writable: true, .. }
+                | Self::Property {
+                    setter_type: Some(_),
+                    ..
+                }
         )
     }
 
@@ -2890,7 +2893,7 @@ impl AttributeKind {
                 }
                 | Self::Property {
                     is_abstract: true,
-                    writable: true,
+                    setter_type: Some(_),
                     ..
                 }
         )

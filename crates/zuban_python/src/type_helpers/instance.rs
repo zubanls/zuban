@@ -336,7 +336,7 @@ impl<'a> Instance<'a> {
                         if let Some(named_tuple) = self.class.maybe_named_tuple_base(i_s.db) {
                             if let Some(param) = named_tuple.search_param(i_s.db, name) {
                                 attr_kind = AttributeKind::Property {
-                                    writable: false,
+                                    setter_type: None,
                                     is_final: false,
                                     is_abstract: true,
                                 };
@@ -457,22 +457,26 @@ impl<'a> Instance<'a> {
                             &options.add_issue,
                         ),
                     ));
+                    let is_writable = {
+                        let details = self.lookup_with_details(
+                            i_s,
+                            options.add_issue,
+                            "__setattr__",
+                            LookupKind::OnlyType,
+                        );
+                        details.lookup.is_some() && !details.class.is_object(i_s.db)
+                    };
                     return LookupDetails {
                         class: TypeOrClass::Class(self.class),
                         lookup,
-                        attr_kind: AttributeKind::Property {
-                            writable: {
-                                let details = self.lookup_with_details(
-                                    i_s,
-                                    options.add_issue,
-                                    "__setattr__",
-                                    LookupKind::OnlyType,
-                                );
-                                details.lookup.is_some() && !details.class.is_object(i_s.db)
+                        attr_kind: match is_writable {
+                            false => AttributeKind::Property {
+                                setter_type: None,
+                                // This is abstract, because this is not an actual property.
+                                is_abstract: true,
+                                is_final: false,
                             },
-                            // This is abstract, because this is not an actual property.
-                            is_abstract: true,
-                            is_final: false,
+                            true => AttributeKind::Attribute,
                         },
                         mro_index: None,
                     };
