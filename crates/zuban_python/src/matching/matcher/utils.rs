@@ -621,7 +621,9 @@ pub(crate) fn match_arguments_against_params<
                     matches &= m;
                     return;
                 }
-                InferredArg::ParamSpec(param_spec) => {
+                InferredArg::ParamSpec {
+                    usage: param_spec, ..
+                } => {
                     let e = &expected.format_short(i_s.db);
                     let n = param_spec.param_spec.name(i_s.db);
                     arg.add_argument_issue(i_s, &format!("\"*{n}.args\""), e, &diagnostic_string);

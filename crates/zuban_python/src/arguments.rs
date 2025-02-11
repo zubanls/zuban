@@ -398,6 +398,7 @@ pub enum ArgKind<'db, 'a> {
     ParamSpec {
         usage: ParamSpecUsage,
         node_ref: NodeRef<'a>,
+        kwargs_node_ref: Option<NodeRef<'a>>,
         position: usize,
     },
     Comprehension {
@@ -448,7 +449,7 @@ impl<'db, 'a> ArgKind<'db, 'a> {
 pub enum InferredArg<'a> {
     Inferred(Inferred),
     StarredWithUnpack(WithUnpack),
-    ParamSpec(&'a ParamSpecUsage),
+    ParamSpec { usage: &'a ParamSpecUsage },
 }
 
 impl InferredArg<'_> {
@@ -513,7 +514,7 @@ impl<'db> Arg<'db, '_> {
             } => file
                 .inference(i_s)
                 .infer_generator_comprehension(*comprehension, result_context),
-            ArgKind::ParamSpec { usage, .. } => return InferredArg::ParamSpec(usage),
+            ArgKind::ParamSpec { usage, .. } => return InferredArg::ParamSpec { usage },
             ArgKind::StarredWithUnpack { with_unpack, .. } => {
                 return InferredArg::StarredWithUnpack(with_unpack.clone())
             }
@@ -820,14 +821,18 @@ impl<'db: 'a, 'a> Iterator for ArgIteratorBase<'db, 'a> {
                             let node_ref = NodeRef::new(file, starred_expr.index());
                             return match inf.as_cow_type(i_s).as_ref() {
                                 Type::ParamSpecArgs(u1) => {
-                                    let next_is_kwargs = iterator.next().is_some_and(|p| {
+                                    let kwargs_node_ref = iterator.next().and_then(|p| {
                                         let CSTArgument::StarStar(next) = p.1 else {
-                                            return false
+                                            return None;
                                         };
                                         let inf = inference.infer_expression(next.expression());
-                                        matches!(inf.as_cow_type(i_s).as_ref(), Type::ParamSpecKwargs(u2) if u1 == u2)
+                                        let t = inf.as_cow_type(i_s);
+                                        let Type::ParamSpecKwargs(u2) = t.as_ref() else {
+                                            return None;
+                                        };
+                                        (u1 == u2).then(|| NodeRef::new(file, p.1.index()))
                                     });
-                                    if !next_is_kwargs {
+                                    if kwargs_node_ref.is_none() {
                                         node_ref.add_issue(
                                             i_s,
                                             IssueKind::ParamSpecArgumentsNeedsBothStarAndStarStar {
@@ -838,6 +843,7 @@ impl<'db: 'a, 'a> Iterator for ArgIteratorBase<'db, 'a> {
                                     Some(BaseArgReturn::Arg(ArgKind::ParamSpec {
                                         usage: u1.clone(),
                                         node_ref: NodeRef::new(file, starred_expr.index()),
+                                        kwargs_node_ref,
                                         position: i + 1,
                                     }))
                                 }

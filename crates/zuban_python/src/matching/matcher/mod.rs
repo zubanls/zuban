@@ -753,7 +753,7 @@ impl<'a> Matcher<'a> {
                             // It seems like simply skipping these is fine and it's not necessary
                             // to add an issue here, because I was not able to create a case where
                             // these are needed.
-                            InferredArg::ParamSpec(_) => continue,
+                            InferredArg::ParamSpec { usage: _ } => continue,
                             InferredArg::StarredWithUnpack(_) => continue,
                         };
                         let got_t = inferred.as_cow_type(i_s);
@@ -1794,7 +1794,7 @@ fn infer_params_from_args<'db>(
                     StarParamType::UnpackedTuple(Tuple::new(TupleArgs::WithUnpack(u))),
                 )))
             }
-            InferredArg::ParamSpec(u) => add_param_spec_to_params(&mut params, u.clone()),
+            InferredArg::ParamSpec { usage: u } => add_param_spec_to_params(&mut params, u.clone()),
         };
     }
     CallableParams::new_simple(params.into())
