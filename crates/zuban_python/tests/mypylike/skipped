@@ -6,6 +6,7 @@ avoid_type_computation_recursion
 testOverloadPossibleOverlapWithArgsAndKwargs
 flow_analysis_avoid_final_loop_issue_in_simple_case
 flow_analysis_base_class_calculation_should_not_lead_to_recursion
+param_spec_against_any
 
 star_import_overwrite_regression2
 
@@ -26,17 +27,12 @@ testParameterizedGenericOverrideWithProperty
 testSetterPropertyProtocolSubtypingBoth
 testSetterPropertyProtocolSubtypingVarSuper
 testSetterPropertyProtocolSubtypingVarSub
-# Multi Inheritance issues
-testMultipleInheritanceCompatibleTypeVar
-testSelfInMultipleInheritance
 # PEP 696 TypeAlias `type x = int`
 testPEP696TypeAlias
 testPEP696GenericFunction
 testPEP696ParamSpec
 testPEP696TypeVarTuple
 testTypeAliasNormalization
-# ParamSpec invalid args
-testOtherVarArgs
 
 # regressions
 testIncrementalInvalidNamedTupleInUnannotatedFunction
@@ -52,6 +48,7 @@ testListLiteralWithNameOnlyArgsDoesNotEraseNames
 testUnpackInExpression2-only_when_nocache
 # Self in multi inheritance matching needs intersection to satisfy if its fine
 testTypingSelfOverrideVarMulti
+testSelfInMultipleInheritance
 # Self remapped, but it shouldn't
 testTypingSelfInternalSafe
 testTypingSelfClashInBodies
@@ -218,6 +215,7 @@ testOverrideClassVarManyBases
 testMultipleInheritance_NestedVariableOverriddenWithIncompatibleType1
 testGenericMultipleOverrideReplace
 testUseSupertypeAsInferenceContextConflict
+testMultipleInheritanceCompatibleTypeVar
 # Redefinitions of star imports and builtins
 testNewAnalyzerIdentityAssignment1
 testNewAnalyzerIdentityAssignment2
@@ -596,6 +594,7 @@ testFunctoolsPartialNestedPartial
 testFunctoolsPartialNestedGeneric
 testFunctoolsPartialClassObjectMatchingPartial
 testFineGrainedFunctoolsPartial
+testOtherVarArgs
 
 # 3.12 type var syntax
 test695TypeAlias

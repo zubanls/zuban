@@ -149,3 +149,21 @@ P = ParamSpec("P")
 def foo(*args: P.args, x: int, **kwargs: P.kwargs): ...  # E: Arguments not allowed after ParamSpec.args
 
 foo(1, 2, 3, 4)
+
+[case param_spec_against_any]
+from typing_extensions import ParamSpec
+from typing import Callable, Any
+
+P = ParamSpec("P")
+
+def with_any(*args: Any, **kwargs: Any) -> None: ...
+
+def run(func: Callable[P, None], *args: P.args, **kwargs: P.kwargs):
+    func(*args, **kwargs)
+    with_any(*args, **kwargs)
+
+    def with_args_any(*args: int, **kwargs: Any) -> None: ...
+    def with_any_kwargs(*args: Any, **kwargs: int) -> None: ...
+
+    with_args_any(*args, **kwargs)  # E: Argument 1 to "with_args_any" has incompatible type "*P.args"; expected "int"
+    with_any_kwargs(*args, **kwargs)  # E: Argument 2 to "with_args_any" has incompatible type "**P.kwargs"; expected "int"

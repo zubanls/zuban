@@ -622,23 +622,44 @@ pub(crate) fn match_arguments_against_params<
                     return;
                 }
                 InferredArg::ParamSpec {
-                    usage: param_spec, ..
+                    usage,
+                    kwargs_node_ref,
                 } => {
-                    let e = &expected.format_short(i_s.db);
-                    let n = param_spec.param_spec.name(i_s.db);
-                    arg.add_argument_issue(i_s, &format!("\"*{n}.args\""), e, &diagnostic_string);
-                    let mut kwarg = arg.clone();
-                    let ArgKind::ParamSpec { position, .. } = &mut kwarg.kind else {
-                        unreachable!()
-                    };
-                    *position += 1;
-                    kwarg.add_argument_issue(
-                        i_s,
-                        &format!("\"**{n}.kwargs\""),
-                        e,
-                        &diagnostic_string,
-                    );
-                    matches &= Match::new_false();
+                    let n = usage.param_spec.name(i_s.db);
+                    if !expected.is_any() {
+                        arg.add_argument_issue(
+                            i_s,
+                            &format!("\"*{n}.args\""),
+                            &expected.format_short(i_s.db),
+                            &diagnostic_string,
+                        );
+                        matches &= Match::new_false();
+                    }
+                    let expected_kwarg = expected; // TODO fix this
+
+                    // If the kwargs_node_ref is not defined, an error was added previously
+                    if let Some(kwargs_node_ref) = kwargs_node_ref {
+                        // This code feels a bit weird, but the ParamSpec args here are a combined
+                        // args/kwargs.
+                        if !expected_kwarg.is_any() {
+                            let mut kwarg = arg.clone();
+                            let ArgKind::ParamSpec {
+                                position, node_ref, ..
+                            } = &mut kwarg.kind
+                            else {
+                                unreachable!()
+                            };
+                            *node_ref = kwargs_node_ref;
+                            *position += 1;
+                            kwarg.add_argument_issue(
+                                i_s,
+                                &format!("\"**{n}.kwargs\""),
+                                &expected_kwarg.format_short(i_s.db),
+                                &diagnostic_string,
+                            );
+                            matches &= Match::new_false();
+                        }
+                    }
                     return;
                 }
             };
