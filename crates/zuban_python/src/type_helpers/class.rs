@@ -1503,7 +1503,13 @@ impl<'db: 'a, 'a> Class<'a> {
                             let protocol_t = protocol_inf.as_cow_type(i_s);
                             let lookup = lookup_details.lookup.into_inferred();
                             let t2 = lookup.as_cow_type(i_s);
-                            let m = protocol_t.matches(i_s, matcher, &t2, protocol_member.variance);
+                            let other_setter_type = lookup_details.attr_kind.property_setter_type();
+                            let mut variance = protocol_member.variance;
+                            if other_setter_type.is_some() {
+                                // Check protocols with setters separately below
+                                variance = Variance::Covariant
+                            }
+                            let m = protocol_t.matches(i_s, matcher, &t2, variance);
 
                             let is_final_mismatch = lookup_details.attr_kind == AttributeKind::Final && protocol_lookup_details.attr_kind != AttributeKind::Final;
 
@@ -1571,7 +1577,6 @@ impl<'db: 'a, 'a> Class<'a> {
                                 }
                             }
 
-                            let other_setter_type = lookup_details.attr_kind.property_setter_type();
                             let proto_setter_type = protocol_lookup_details.attr_kind.property_setter_type();
                             if other_setter_type.is_some() || proto_setter_type.is_some() {
                                 let o_t = other_setter_type.unwrap_or(&t2);
