@@ -83,10 +83,12 @@ pub(crate) fn typeshed_path_from_executable() -> String {
         .join("lib");
     // The lib folder typically contains a Python specific folder called "python3.8" or
     // python3.13", corresponding to the Python version. Here we try to find the package.
-    for folder in lib_folder
-        .read_dir()
-        .unwrap_or_else(|err| panic!("The lib folder {lib_folder:?} should be readable ({err})"))
-    {
+    for folder in lib_folder.read_dir().unwrap_or_else(|err| {
+        panic!(
+            "The Python environment lib folder {lib_folder:?} should be readable ({err}).
+                You might want to set ZUBAN_TYPESHED."
+        )
+    }) {
         let folder = folder.unwrap_or_else(|err| {
             panic!("The lib folder {lib_folder:?} should be readable ({err})")
         });
