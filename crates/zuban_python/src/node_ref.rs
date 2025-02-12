@@ -315,26 +315,26 @@ impl<'file> NodeRef<'file> {
         i_s: &InferenceState,
         kind: IssueKind,
     ) {
-        debug_assert!(self.maybe_name().is_some());
-
-        // Find @foo.setter for a property foo
-        // This is a heuristic, but is probably working well enough. Worst case a
-        // diagnostic is not in the same place as in Mypy (but is still valid)
-        for n in OtherDefinitionIterator::new(&self.file.points, self.node_index) {
-            // Get the next name:
-            //
-            //     @property
-            //     def foo(self) -> int: ...     # We are on foo
-            //     @foo.setter                   # We want to land on this decorator
-            //     def foo(self, new: int): ...  # The next name is foo
-            let func_node_ref = Self::new(self.file, n - NAME_TO_FUNCTION_DIFF);
-            if let Some(func) = func_node_ref.maybe_function() {
-                if let Some(decorated) = func.maybe_decorated() {
-                    for decorator in decorated.decorators().iter() {
-                        let decorator_expr = decorator.named_expression();
-                        if decorator_expr.as_code().ends_with(".setter") {
-                            Self::new(self.file, decorator_expr.index()).add_issue(i_s, kind);
-                            return;
+        if self.maybe_name().is_some() {
+            // Find @foo.setter for a property foo
+            // This is a heuristic, but is probably working well enough. Worst case a
+            // diagnostic is not in the same place as in Mypy (but is still valid)
+            for n in OtherDefinitionIterator::new(&self.file.points, self.node_index) {
+                // Get the next name:
+                //
+                //     @property
+                //     def foo(self) -> int: ...     # We are on foo
+                //     @foo.setter                   # We want to land on this decorator
+                //     def foo(self, new: int): ...  # The next name is foo
+                let func_node_ref = Self::new(self.file, n - NAME_TO_FUNCTION_DIFF);
+                if let Some(func) = func_node_ref.maybe_function() {
+                    if let Some(decorated) = func.maybe_decorated() {
+                        for decorator in decorated.decorators().iter() {
+                            let decorator_expr = decorator.named_expression();
+                            if decorator_expr.as_code().ends_with(".setter") {
+                                Self::new(self.file, decorator_expr.index()).add_issue(i_s, kind);
+                                return;
+                            }
                         }
                     }
                 }
