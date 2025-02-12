@@ -1223,10 +1223,25 @@ impl<'db: 'slf, 'slf> Inferred {
                         if let Some(t) =
                             calculate_property_return(i_s, &instance, &attribute_class, c)
                         {
+                            let setter_type = setter_type.as_ref().map(|s| match s.as_ref() {
+                                PropertySetter::OtherType(t)
+                                    if attribute_class
+                                        .needs_generic_remapping_for_attributes(i_s, t) =>
+                                {
+                                    let t = replace_class_type_vars(
+                                        i_s.db,
+                                        t,
+                                        &attribute_class,
+                                        &|| Some(instance.clone()),
+                                    );
+                                    Rc::new(PropertySetter::OtherType(t.into_owned()))
+                                }
+                                _ => s.clone(),
+                            });
                             (
                                 Inferred::from_type(t),
                                 AttributeKind::Property {
-                                    setter_type: setter_type.clone(),
+                                    setter_type,
                                     is_abstract: c.is_abstract,
                                     is_final: c.is_final,
                                 },

@@ -329,7 +329,6 @@ impl<'file> NodeRef<'file> {
             //     def foo(self, new: int): ...  # The next name is foo
             let func_node_ref = Self::new(self.file, n - NAME_TO_FUNCTION_DIFF);
             if let Some(func) = func_node_ref.maybe_function() {
-                dbg!(func);
                 if let Some(decorated) = func.maybe_decorated() {
                     for decorator in decorated.decorators().iter() {
                         let decorator_expr = decorator.named_expression();

@@ -1295,3 +1295,33 @@ class X:
     def x(self, value): ...
 
 reveal_type(X().x)  # N: Revealed type is "Any"
+
+[case override_property_setter_with_generics]
+# Like testOverridePropertyGeneric, but passes in one case
+from typing import TypeVar, Generic
+
+T = TypeVar("T")
+
+class B(Generic[T]):
+    @property
+    def foo(self) -> int: ...
+    @foo.setter
+    def foo(self, x: T) -> None: ...
+
+    @property
+    def bar(self) -> int: ...
+    @bar.setter
+    def bar(self, x: T) -> None: ...
+
+class C(B[str]):
+    @property
+    def foo(self) -> int: ...
+    @foo.setter  # E: Incompatible override of a setter type \
+                 # N:  (base class "B" defined the type as "str", \
+                 # N:  override has type "int")
+    def foo(self, x: int) -> None: ...
+
+    @property
+    def bar(self) -> int: ...
+    @bar.setter
+    def bar(self, x: str) -> None: ...
