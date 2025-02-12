@@ -12,14 +12,6 @@ star_import_overwrite_regression2
 testLiteralAndGenericsRespectsUpperBound
 self_instance_variable1
 
-# mypy upgrade
-# Override changes
-testOverrideCallableAttributeWithSettableProperty
-testOverrideCallableAttributeWithSettablePropertyMutableOverride
-testOverridePropertyGeneric
-testParameterizedGenericPropertyOverrideWithProperty
-testParameterizedGenericOverrideWithProperty
-
 # regressions
 testIncrementalInvalidNamedTupleInUnannotatedFunction
 testOptionalTypeNarrowedByGenericCall3
@@ -195,6 +187,11 @@ testWithStmtScopeAndLambda
 testSelfTypeOverrideCompatibility
 # "Property "x" defined in "Base" is read-only" because of NamedTuple inheritance
 testNewNamedTupleMethodInheritance
+# Callable attribute override with a property
+testOverrideCallableAttributeWithSettableProperty
+testOverrideCallableAttributeWithSettablePropertyMutableOverride
+# Property setter with self types
+testOverridePropertyGeneric
 # Inheritance ClassVar in parent of parent, overwritten in parent and therefore should still be a ClassVar but isn't
 testOverrideClassVarManyBases
 # Multi inheritance should check both sides

@@ -2055,12 +2055,15 @@ pub(super) fn check_override(
         Matcher::new_self_replacer(&self_replacer).with_ignore_positional_param_names();
     let mut match_ = original_t.is_super_type_of(i_s, &mut matcher, override_t);
 
+    // Check property.setter if it's not the same type.
     let base_setter_t = original_lookup_details.attr_kind.property_setter_type();
     let override_setter_t = override_lookup_details.attr_kind.property_setter_type();
     if base_setter_t.is_some() || override_setter_t.is_some() {
         let b_t = base_setter_t.unwrap_or(&original_t);
         let o_t = override_setter_t.unwrap_or(&override_t);
-        check_property_setter_override(i_s, from, &mut matcher, &original_class, b_t, o_t)
+        if match_.bool() || o_t != override_t {
+            check_property_setter_override(i_s, from, &mut matcher, &original_class, b_t, o_t)
+        }
     }
 
     let mut op_method_wider_note = false;
