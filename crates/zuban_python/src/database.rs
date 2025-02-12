@@ -1130,14 +1130,20 @@ impl Database {
     }
 
     fn preload_typeshed_stub(&self, dir: &Directory, file_name: &'static str) -> &PythonFile {
-        let entry = dir.search(file_name).unwrap().clone();
+        let path = || dir.path(&*self.vfs.handler, true);
+        let entry = dir
+            .search(file_name)
+            .unwrap_or_else(|| panic!("Did not find file {file_name:?} in {}", path()))
+            .clone();
         let DirectoryEntry::File(file_entry) = &entry else {
             panic!(
                 "It seems like you are using directories in typeshed for {}: {file_name}",
-                dir.path(&*self.vfs.handler, true)
+                path()
             )
         };
-        let file_index = self.load_file_from_workspace(file_entry, true).unwrap();
+        let file_index = self
+            .load_file_from_workspace(file_entry, true)
+            .unwrap_or_else(|| panic!("Unable to read {file_name:?} in {}", path()));
         debug!("Preloaded typeshed stub {file_name} as #{}", file_index.0);
         self.loaded_python_file(file_index)
     }
@@ -1149,18 +1155,23 @@ impl Database {
     }
 
     fn generate_python_state(&mut self) {
-        // TODO this is wrong, because it's just a random dir...
         let mut dirs = self.vfs.workspaces.directories_not_type_checked();
-        let stdlib_dir = dirs.next().unwrap();
-        let mypy_extensions_dir = dirs.next().unwrap();
-        let collections_dir = match &*stdlib_dir.search("collections").unwrap() {
+        // TODO this is wrong, because it's just a random dir...
+        let stdlib_dir = dirs.next().expect("Expected there to be a typeshed dir");
+        let mypy_extensions_dir = dirs
+            .next()
+            .expect("Expected there to be a mypy_extensions dir");
+        let find_dir = |name| match &*stdlib_dir.search(name).unwrap_or_else(|| {
+            panic!(
+                "Expected a {name} directory in {}",
+                stdlib_dir.path(&*self.vfs.handler, true)
+            )
+        }) {
             DirectoryEntry::Directory(c) => c.clone(),
             _ => unreachable!(),
         };
-        let typeshed_dir = match &*stdlib_dir.search("_typeshed").unwrap() {
-            DirectoryEntry::Directory(c) => c.clone(),
-            _ => unreachable!(),
-        };
+        let collections_dir = find_dir("collections");
+        let typeshed_dir = find_dir("_typeshed");
         drop(dirs);
 
         let builtins = self.preload_typeshed_stub(stdlib_dir, "builtins.pyi") as *const _;
