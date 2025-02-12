@@ -14,7 +14,7 @@ use crate::{
         TypeAlias,
     },
     diagnostics::{Diagnostic, Issue, IssueKind},
-    file::{File, PythonFile},
+    file::{File, OtherDefinitionIterator, PythonFile},
     inference_state::InferenceState,
     inferred::Inferred,
     matching::Generics,
@@ -308,6 +308,40 @@ impl<'file> NodeRef<'file> {
     pub(crate) fn issue_to_str(&self, i_s: &InferenceState, kind: IssueKind) -> String {
         let issue = Issue::from_node_index(&self.file.tree, self.node_index, kind);
         Diagnostic::new(i_s.db, self.file, &issue).message_with_notes(&mut vec![])
+    }
+
+    pub(crate) fn add_issue_and_prefer_on_setter_decorator(
+        &self,
+        i_s: &InferenceState,
+        kind: IssueKind,
+    ) {
+        debug_assert!(self.maybe_name().is_some());
+
+        // Find @foo.setter for a property foo
+        // This is a heuristic, but is probably working well enough. Worst case a
+        // diagnostic is not in the same place as in Mypy (but is still valid)
+        for n in OtherDefinitionIterator::new(&self.file.points, self.node_index) {
+            // Get the next name:
+            //
+            //     @property
+            //     def foo(self) -> int: ...     # We are on foo
+            //     @foo.setter                   # We want to land on this decorator
+            //     def foo(self, new: int): ...  # The next name is foo
+            let func_node_ref = Self::new(self.file, n - NAME_TO_FUNCTION_DIFF);
+            if let Some(func) = func_node_ref.maybe_function() {
+                dbg!(func);
+                if let Some(decorated) = func.maybe_decorated() {
+                    for decorator in decorated.decorators().iter() {
+                        let decorator_expr = decorator.named_expression();
+                        if decorator_expr.as_code().ends_with(".setter") {
+                            Self::new(self.file, decorator_expr.index()).add_issue(i_s, kind);
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+        self.add_issue(i_s, kind)
     }
 
     pub(crate) fn add_issue_onto_start_including_decorator(

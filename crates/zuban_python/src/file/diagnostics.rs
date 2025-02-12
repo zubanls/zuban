@@ -2366,7 +2366,10 @@ fn check_property_setter_override(
         if base_t.is_super_type_of(i_s, matcher, &override_t).bool() {
             notes.push(" Setter types should behave contravariantly".into());
         }
-        from.add_issue(i_s, IssueKind::IncompatiblePropertySetterOverride { notes })
+        from.add_issue_and_prefer_on_setter_decorator(
+            i_s,
+            IssueKind::IncompatiblePropertySetterOverride { notes },
+        )
     }
 }
 
