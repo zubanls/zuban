@@ -559,14 +559,30 @@ fn set_bool_init_flags(
         "warn_no_return" => flags.warn_no_return = value.as_bool(invert)?,
         "local_partial_types" => flags.local_partial_types = value.as_bool(invert)?,
         "implicit_reexport" => flags.no_implicit_reexport = !value.as_bool(invert)?,
+        "disable_bytearray_promotion" => {
+            flags.disable_bytearray_promotion = value.as_bool(invert)?
+        }
+        "disable_memoryview_promotion" => {
+            flags.disable_memoryview_promotion = value.as_bool(invert)?
+        }
         "warn_unused_ignores"
+        | "packages"
         | "strict_concatenate"
         | "namespace_packages"
         | "explicit_package_bases"
+        | "warn_incomplete_stub"
+        | "error_summary"
+        | "show_none_errors"
+        | "install_types"
+        | "non_interactive"
+        | "scripts_are_modules"
         | "site_packages"
         | "silence_site_packages" => {
-            tracing::warn!("TODO ignored config value {name}");
+            tracing::warn!("Ignored config value {name}, please contact support if you need them");
         }
+        "sqlite_cache" | "incremental" => (), // This doesn't matter
+        // Probably doesn't matter
+        "force_uppercase_builtins" | "force_union_syntax" | "verbosity" | "color_output" => (),
 
         "extra_checks" => flags.extra_checks = value.as_bool(invert)?,
         // These are currently ignored
