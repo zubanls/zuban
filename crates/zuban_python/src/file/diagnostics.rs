@@ -2137,7 +2137,7 @@ pub(super) fn check_override(
         let mut emitted = false;
         // Mypy helps the user a bit by formatting different error messages for similar
         // signatures. Try to make this as similar as possible to Mypy.
-        match override_func_infos(override_t, &original_t) {
+        match override_func_infos(override_t, &original_t, &override_lookup_details.attr_kind) {
             Some(OverrideFuncInfos::CallablesSameParamLen(got_c, expected_c)) => {
                 let supertype = original_class_name(db, &original_class);
 
@@ -2333,7 +2333,17 @@ pub(super) fn check_override(
             };
             if let Some(func) = maybe_func() {
                 func.add_issue_for_declaration(i_s, issue)
-            } else if matches!(override_t, Type::FunctionOverload(_)) {
+
+            // This condition is so weird, but we try to be close to Mypy
+            } else if matches!(override_t, Type::FunctionOverload(_))
+                || matches!(
+                    override_lookup_details.attr_kind,
+                    AttributeKind::Property {
+                        setter_type: Some(_),
+                        ..
+                    }
+                )
+            {
                 from.add_issue_onto_start_including_decorator(i_s, issue)
             } else {
                 from.add_issue(i_s, issue)
@@ -2398,10 +2408,11 @@ enum OverrideFuncInfos<'t1, 't2> {
 }
 
 fn override_func_infos<'t1, 't2>(
-    t1: &'t1 Type,
-    t2: &'t2 Type,
+    override_t: &'t1 Type,
+    base_t: &'t2 Type,
+    override_kind: &AttributeKind,
 ) -> Option<OverrideFuncInfos<'t1, 't2>> {
-    match (t1, t2) {
+    match (override_t, base_t) {
         (Type::Callable(c1), Type::Callable(c2)) => Some(match (&c1.params, &c2.params) {
             (CallableParams::Simple(p1), CallableParams::Simple(p2)) if p1.len() == p2.len() => {
                 OverrideFuncInfos::CallablesSameParamLen(c1, c2)
@@ -2411,8 +2422,13 @@ fn override_func_infos<'t1, 't2>(
         (Type::FunctionOverload(o1), Type::FunctionOverload(o2)) => {
             Some(OverrideFuncInfos::BothOverloads(o1, o2))
         }
-        _ => (t1.is_func_or_overload() || t2.is_func_or_overload())
-            .then_some(OverrideFuncInfos::Mixed),
+        _ => {
+            if matches!(override_kind, AttributeKind::Property { .. }) {
+                return Some(OverrideFuncInfos::Mixed);
+            }
+            (override_t.is_func_or_overload() || base_t.is_func_or_overload())
+                .then_some(OverrideFuncInfos::Mixed)
+        }
     }
 }
 

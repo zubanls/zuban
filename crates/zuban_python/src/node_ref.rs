@@ -348,7 +348,6 @@ impl<'file> NodeRef<'file> {
         i_s: &InferenceState,
         kind: IssueKind,
     ) {
-        debug_assert!(self.maybe_name().is_some());
         let func_node_ref = self.add_to_node_index(-(NAME_TO_FUNCTION_DIFF as i64));
         if func_node_ref.maybe_function().is_some() {
             Function::new(func_node_ref, None).add_issue_onto_start_including_decorator(i_s, kind)
