@@ -1507,6 +1507,12 @@ impl<'db: 'a, 'a> Class<'a> {
 
                             let is_final_mismatch = lookup_details.attr_kind == AttributeKind::Final && protocol_lookup_details.attr_kind != AttributeKind::Final;
 
+                            let mut maybe_add_conflict_note = |notes: &mut Vec<_>| {
+                                if !had_conflict_note {
+                                    had_conflict_note = true;
+                                    notes.push(protocol_conflict_note(i_s.db, other));
+                                }
+                            };
                             if (!m.bool()
                                     || (is_call && !matches!(other, Type::Class(_)))
                                     || had_binding_error.get()
@@ -1514,10 +1520,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                 // is_final_mismatch errors will be added later
                                 && !is_final_mismatch
                             {
-                                if !had_conflict_note {
-                                    had_conflict_note = true;
-                                    notes.push(protocol_conflict_note(i_s.db, other));
-                                }
+                                maybe_add_conflict_note(&mut notes);
                                 mismatch = true;
                                 if mismatches < SHOW_MAX_MISMATCHES {
                                     match other.maybe_class(i_s.db) {
@@ -1567,6 +1570,31 @@ impl<'db: 'a, 'a> Class<'a> {
                                     }
                                 }
                             }
+
+                            let other_setter_type = lookup_details.attr_kind.property_setter_type();
+                            let proto_setter_type = protocol_lookup_details.attr_kind.property_setter_type();
+                            if other_setter_type.is_some() || proto_setter_type.is_some() {
+                                let o_t = other_setter_type.unwrap_or(&t2);
+                                let p_t = proto_setter_type.unwrap_or(&protocol_t);
+                                if !p_t.is_sub_type_of(i_s, matcher, &o_t).bool() {
+                                    mismatch = true;
+                                    if mismatches < SHOW_MAX_MISMATCHES {
+                                        maybe_add_conflict_note(&mut notes);
+                                        notes.push(
+                                            format!(
+                                                r#"    {name}: expected setter type "{}", got "{}""#,
+                                                p_t.format_short(i_s.db),
+                                                o_t.format_short(i_s.db),
+                                            )
+                                            .into(),
+                                        );
+                                        if p_t.is_super_type_of(i_s, matcher, &o_t).bool() {
+                                            notes.push("    Setter types should behave contravariantly".into());
+                                        }
+                                    }
+                                }
+                            }
+
                             if lookup_details.attr_kind.is_read_only_property()
                                 && !protocol_lookup_details.attr_kind.is_read_only_property()
                             {
@@ -1582,6 +1610,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                     );
                                 }
                             }
+
                             if matches!(protocol_lookup_details.attr_kind, AttributeKind::ClassVar) {
                                 if !matches!(lookup_details.attr_kind, AttributeKind::ClassVar)
                                 {

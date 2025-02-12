@@ -2898,4 +2898,15 @@ impl AttributeKind {
                 }
         )
     }
+
+    pub(crate) fn property_setter_type(&self) -> Option<&Type> {
+        if let Self::Property { setter_type, .. } = self {
+            match setter_type.as_ref()?.as_ref() {
+                PropertySetter::OtherType(t) => Some(t),
+                PropertySetter::SameType => None,
+            }
+        } else {
+            None
+        }
+    }
 }
