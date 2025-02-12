@@ -266,6 +266,7 @@ pub(crate) enum IssueKind {
     ReturnTypeIncompatibleWithSupertype { message: String, async_note: Option<Box<str>> },
     ArgumentIncompatibleWithSupertype { message: Box<str>, eq_class: Option<Box<str>>, add_liskov_note: bool },
     MultipleInheritanceIncompatibility { name: Box<str>, class1: Box<str>, class2: Box<str> },
+    IncompatiblePropertySetterOverride { notes: Vec<String> },
     MissingBaseForOverride { name: Box<str> },
     InvalidSignature { signature: Box<str> },
     OperatorSignaturesAreUnsafelyOverlapping { reverse_name: Box<str>, reverse_class: Box<str>, forward_class: Box<str> },
@@ -513,6 +514,7 @@ impl IssueKind {
             SignatureIncompatibleWithSupertype { .. }
             | ArgumentIncompatibleWithSupertype { .. }
             | OverloadOrderMustMatchSupertype { .. }
+            | IncompatiblePropertySetterOverride { .. }
             | ReturnTypeIncompatibleWithSupertype { .. } => "override",
             IncorrectExitReturn => "exit-return",
             FunctionIsDynamic
@@ -1556,6 +1558,10 @@ impl<'db> Diagnostic<'db> {
                 "Definition of \"{name}\" in base class \"{class1}\" is incompatible \
                  with definition in base class \"{class2}\""
             ),
+            IncompatiblePropertySetterOverride {notes} => {
+                additional_notes.extend_from_slice(notes);
+                "Incompatible override of a setter type".to_string()
+            }
             MissingBaseForOverride { name } => format!(
                 r#"Method "{name}" is marked as an override, but no base method was found with this name"#
             ),

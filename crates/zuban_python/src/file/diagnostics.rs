@@ -2047,15 +2047,21 @@ pub(super) fn check_override(
         _ => None,
     };
 
-    let mut match_ = original_t.is_super_type_of(
-        i_s,
-        &mut Matcher::new_self_replacer(&|| match &original_class {
-            TypeOrClass::Type(t) => t.as_ref().clone(),
-            TypeOrClass::Class(c) => c.as_type(i_s.db),
-        })
-        .with_ignore_positional_param_names(),
-        override_t,
-    );
+    let self_replacer = || match &original_class {
+        TypeOrClass::Type(t) => t.as_ref().clone(),
+        TypeOrClass::Class(c) => c.as_type(i_s.db),
+    };
+    let mut matcher =
+        Matcher::new_self_replacer(&self_replacer).with_ignore_positional_param_names();
+    let mut match_ = original_t.is_super_type_of(i_s, &mut matcher, override_t);
+
+    let base_setter_t = original_lookup_details.attr_kind.property_setter_type();
+    let override_setter_t = override_lookup_details.attr_kind.property_setter_type();
+    if base_setter_t.is_some() || override_setter_t.is_some() {
+        let b_t = base_setter_t.unwrap_or(&original_t);
+        let o_t = override_setter_t.unwrap_or(&override_t);
+        check_property_setter_override(i_s, from, &mut matcher, &original_class, b_t, o_t)
+    }
 
     let mut op_method_wider_note = false;
     if let Type::FunctionOverload(override_overload) = override_t {
@@ -2335,6 +2341,33 @@ pub(super) fn check_override(
         }
     }
     matched
+}
+
+fn check_property_setter_override(
+    i_s: &InferenceState,
+    from: NodeRef,
+    matcher: &mut Matcher,
+    base_class: &TypeOrClass,
+    base_t: &Type,
+    override_t: &Type,
+) {
+    if !base_t.is_sub_type_of(i_s, matcher, &override_t).bool() {
+        let mut notes = vec![
+            format!(
+                r#" (base class "{}" defined the type as "{}","#,
+                base_class.name(i_s.db),
+                base_t.format_short(i_s.db)
+            ),
+            format!(
+                r#" override has type "{}")"#,
+                override_t.format_short(i_s.db),
+            ),
+        ];
+        if base_t.is_super_type_of(i_s, matcher, &override_t).bool() {
+            notes.push(" Setter types should behave contravariantly".into());
+        }
+        from.add_issue(i_s, IssueKind::IncompatiblePropertySetterOverride { notes })
+    }
 }
 
 fn is_async_iterator_without_async(
