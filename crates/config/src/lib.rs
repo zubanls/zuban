@@ -717,7 +717,7 @@ mod tests {
 
     fn project_options_err(code: &str, from_ini: bool) -> anyhow::Error {
         let local_fs = LocalFS::without_watcher();
-        let current_dir = AbsPath::new_unchecked(&local_fs, "/foo".to_string());
+        let current_dir = local_fs.unchecked_abs_path("/foo".to_string());
         let opts = if from_ini {
             ProjectOptions::from_mypy_ini(
                 &local_fs,

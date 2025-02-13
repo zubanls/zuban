@@ -1,36 +1,17 @@
 use std::{fmt::Display, path::Path};
 
-use crate::VfsHandler;
-
 #[derive(Clone, Hash, PartialEq, Eq, Debug)]
 pub struct AbsPath {
     path: Box<str>,
 }
 
 impl AbsPath {
-    pub fn new_unchecked(vfs: &dyn VfsHandler, mut path: String) -> Self {
-        if let Some(new_root_path) = vfs.strip_separator_suffix(&path.as_str()) {
-            path.truncate(new_root_path.len());
-        }
-        Self::new(path)
-    }
-
-    fn new(path: String) -> Self {
+    pub(crate) fn new(path: String) -> Self {
         Self { path: path.into() }
     }
 
     pub fn contains_sub_file(&self, path: &str) -> bool {
         Path::new(path).starts_with(Path::new(&*self.path))
-    }
-
-    pub fn join(&self, name: &str) -> Self {
-        Self::new(
-            Path::new(&*self.path)
-                .join(name)
-                .into_os_string()
-                .into_string()
-                .unwrap(),
-        )
     }
 
     pub fn as_str(&self) -> &str {

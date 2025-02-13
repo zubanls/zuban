@@ -17,7 +17,7 @@ pub fn find_workspace_config(
     workspace_dir: &AbsPath,
     on_check_path: impl FnMut(&AbsPath),
 ) -> anyhow::Result<ProjectOptions> {
-    let maybe_found = find_mypy_config_file_in_dir(workspace_dir, on_check_path);
+    let maybe_found = find_mypy_config_file_in_dir(vfs, workspace_dir, on_check_path);
     let mut project_options = initialize_config(vfs, workspace_dir, maybe_found)?.0;
     project_options.settings.mypy_path = vec![];
     Ok(project_options)
@@ -35,7 +35,7 @@ pub fn find_cli_config(
         let s = std::fs::read_to_string(config_path);
         Some((config_path, s))
     } else {
-        find_mypy_config_file_in_dir(current_dir, |_| ())
+        find_mypy_config_file_in_dir(vfs, current_dir, |_| ())
     };
     initialize_config(vfs, current_dir, maybe_found)
 }
@@ -64,12 +64,13 @@ fn initialize_config(
 }
 
 fn find_mypy_config_file_in_dir(
+    vfs: &dyn VfsHandler,
     dir: &AbsPath,
     mut on_check_path: impl FnMut(&AbsPath),
 ) -> Option<(&'static str, std::io::Result<String>)> {
     CONFIG_PATHS.iter().find_map(|config_path| {
-        let mut check = |path: &AbsPath| {
-            on_check_path(path);
+        let mut check = |path: AbsPath| {
+            on_check_path(&path);
             if let Ok(mut file) = std::fs::File::open(path) {
                 let mut content = String::new();
                 let result = file.read_to_string(&mut content);
@@ -77,6 +78,6 @@ fn find_mypy_config_file_in_dir(
             }
             None
         };
-        check(&dir.join(config_path))
+        check(vfs.join(dir, config_path))
     })
 }

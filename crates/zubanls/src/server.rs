@@ -12,7 +12,7 @@ use lsp_types::notification::Notification as _;
 use lsp_types::Uri;
 use notify::EventKind;
 use serde::{de::DeserializeOwned, Serialize};
-use vfs::{AbsPath, LocalFS, NotifyEvent};
+use vfs::{LocalFS, NotifyEvent, VfsHandler as _};
 use zuban_python::Project;
 
 use crate::capabilities::{server_capabilities, ClientCapabilities};
@@ -234,7 +234,7 @@ impl<'sender> GlobalState<'sender> {
                 .roots
                 .first()
                 .expect("There should always be at least one root at this point");
-            let first_root = AbsPath::new_unchecked(&vfs_handler, first_root.clone());
+            let first_root = vfs_handler.unchecked_abs_path(first_root.clone());
             let mut config =
                 config_searcher::find_workspace_config(&vfs_handler, &first_root, |path| {
                     // Watch the file itself to make sure that we can invalidate when it changes.
@@ -280,7 +280,7 @@ impl<'sender> GlobalState<'sender> {
             config.settings.mypy_path = self
                 .roots
                 .iter()
-                .map(|p| AbsPath::new_unchecked(&vfs_handler, p.clone()))
+                .map(|p| vfs_handler.unchecked_abs_path(p.clone()))
                 .collect();
             config.settings.typeshed_path = self.typeshed_path.clone();
 

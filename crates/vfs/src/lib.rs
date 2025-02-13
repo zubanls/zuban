@@ -8,7 +8,7 @@ mod utils;
 mod vfs;
 mod workspaces;
 
-use std::borrow::Cow;
+use std::{borrow::Cow, path::Path};
 
 use crossbeam_channel::Receiver;
 
@@ -69,5 +69,30 @@ pub trait VfsHandler {
             Cow::Owned(o) => o,
         }
     }
-    fn absolute_path(&self, current_dir: &AbsPath, path: String) -> AbsPath;
+
+    fn absolute_path(&self, current_dir: &AbsPath, path: String) -> AbsPath {
+        let p = Path::new(&path);
+        if p.is_absolute() {
+            self.unchecked_abs_path(path)
+        } else {
+            self.join(current_dir, &path)
+        }
+    }
+
+    fn unchecked_abs_path(&self, mut path: String) -> AbsPath {
+        if let Some(new_root_path) = self.strip_separator_suffix(&path.as_str()) {
+            path.truncate(new_root_path.len());
+        }
+        AbsPath::new(path)
+    }
+
+    fn join(&self, path: &AbsPath, name: &str) -> AbsPath {
+        self.unchecked_abs_path(
+            Path::new(path.as_str())
+                .join(name)
+                .into_os_string()
+                .into_string()
+                .unwrap(),
+        )
+    }
 }

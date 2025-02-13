@@ -242,7 +242,7 @@ impl Workspace {
             return Self {
                 directory: dir,
                 root_path,
-                canonicalized_path: AbsPath::new_unchecked(canonicalized_path),
+                canonicalized_path: vfs.unchecked_abs_path(canonicalized_path),
                 kind,
             };
         };

@@ -19,12 +19,13 @@ pub(crate) fn create_sys_path(handler: &dyn VfsHandler, settings: &Settings) -> 
         // that is a symlink to the actual exectuable. We however want the relative paths to
         // the symlink. Therefore cannonicalize only after getting the first dir
         let p = site_packages_path_from_venv(exe, settings.python_version);
-        sys_path.push(AbsPath::new_unchecked(
-            handler,
-            p.into_os_string()
-                .into_string()
-                .expect("Should never happen, because we only put together valid unicode paths"),
-        ));
+        sys_path.push(
+            handler.unchecked_abs_path(
+                p.into_os_string().into_string().expect(
+                    "Should never happen, because we only put together valid unicode paths",
+                ),
+            ),
+        );
     } else {
         // TODO use a real sys path
         //"../typeshed/stubs".into(),

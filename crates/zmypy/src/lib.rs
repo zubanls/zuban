@@ -249,7 +249,7 @@ fn project_from_cli(
     typeshed_path: Option<String>,
 ) -> (Project, DiagnosticConfig) {
     let local_fs = LocalFS::without_watcher();
-    let current_dir = AbsPath::new_unchecked(&local_fs, current_dir);
+    let current_dir = local_fs.unchecked_abs_path(current_dir);
     let (mut options, mut diagnostic_config) =
         find_cli_config(&local_fs, &current_dir, cli.config_file.as_deref())
             .unwrap_or_else(|err| panic!("Problem parsing Mypy config: {err}"));
@@ -422,7 +422,7 @@ mod tests {
     fn test_files_relative_paths() {
         let mut project_options = ProjectOptions::default();
         let local_fs = LocalFS::without_watcher();
-        let current_dir = AbsPath::new_unchecked(&local_fs, "/a/b".into());
+        let current_dir = local_fs.unchecked_abs_path("/a/b".into());
         let mut cli = Cli::parse_from(Vec::<String>::default());
         cli.files = vec![
             "/a/b/baz.py".to_string(),

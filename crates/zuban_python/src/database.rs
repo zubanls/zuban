@@ -900,10 +900,7 @@ impl Database {
             format!("{typeshed_path}{sep}stdlib"),
             format!("{typeshed_path}{sep}stubs{sep}mypy-extensions"),
         ] {
-            vfs.add_workspace(
-                AbsPath::new_unchecked(&*vfs.handler, p),
-                WorkspaceKind::Typeshed,
-            )
+            vfs.add_workspace(vfs.handler.unchecked_abs_path(p), WorkspaceKind::Typeshed)
         }
 
         for p in &project.sys_path {

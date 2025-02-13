@@ -12,7 +12,7 @@ use clap::Parser;
 use config::{DiagnosticConfig, ProjectOptions, PythonVersion, Settings, TypeCheckerFlags};
 use regex::{Captures, Regex, Replacer};
 use test_utils::{calculate_steps, Step};
-use vfs::{AbsPath, LocalFS};
+use vfs::{AbsPath, LocalFS, VfsHandler as _};
 use zuban_python::Project;
 
 const SKIP_MYPY_TEST_FILES: [&str; 28] = [
@@ -63,7 +63,7 @@ const BASE_PATH_STR: &str = "/mypylike/";
 const BASE_PATH_STR: &str = r"C:\\mypylike\";
 
 thread_local! {
-    static BASE_PATH: AbsPath = AbsPath::new_unchecked(&LocalFS::without_watcher(), BASE_PATH_STR.to_string());
+    static BASE_PATH: AbsPath = LocalFS::without_watcher().unchecked_abs_path(BASE_PATH_STR.to_string());
 }
 
 const MYPY_TEST_DATA_PACKAGES_FOLDER: &str = "tests/mypylike/mypy/test-data/packages/";
@@ -161,18 +161,13 @@ impl TestCase<'_, '_> {
         if matches!(self.file_name, "pep561" | "imports") {
             let first_line = self.code.split('\n').next().unwrap();
             if let Some(suffix) = first_line.strip_prefix("# pkgs:") {
-                let current_dir = AbsPath::new_unchecked(
-                    &local_fs,
-                    std::env::current_dir()
-                        .unwrap()
-                        .into_os_string()
-                        .into_string()
-                        .unwrap(),
+                let current_dir = local_fs.current_dir();
+                let folder = local_fs.join(&current_dir, MYPY_TEST_DATA_PACKAGES_FOLDER);
+                settings.prepended_site_packages.extend(
+                    suffix
+                        .split([';', ','])
+                        .map(|s| local_fs.join(&folder, s.trim())),
                 );
-                let folder = current_dir.join(MYPY_TEST_DATA_PACKAGES_FOLDER);
-                settings
-                    .prepended_site_packages
-                    .extend(suffix.split([';', ',']).map(|s| folder.join(s.trim())));
             };
         }
 
@@ -336,14 +331,16 @@ impl TestCase<'_, '_> {
                     steps.steps.len()
                 );
             }
-            let mut wanted = initialize_and_return_wanted_output(project, step);
+            let mut wanted = initialize_and_return_wanted_output(&local_fs, project, step);
 
             for path in &step.deletions {
                 project
-                    .unload_in_memory_file(base_path_join(path).as_str())
+                    .unload_in_memory_file(base_path_join(&local_fs, path).as_str())
                     .unwrap_or_else(|_| {
                         project
-                            .delete_directory_of_in_memory_files(base_path_join(path).as_str())
+                            .delete_directory_of_in_memory_files(
+                                base_path_join(&local_fs, path).as_str(),
+                            )
                             .unwrap()
                     });
             }
@@ -458,10 +455,11 @@ impl TestCase<'_, '_> {
                 // Somehow all tests use `/` paths, and I haven't seen backslashes (for Windows)
                 if path.contains('/') {
                     let before_slash = path.split('/').next().unwrap();
-                    let _ = project
-                        .delete_directory_of_in_memory_files(base_path_join(before_slash).as_str());
+                    let _ = project.delete_directory_of_in_memory_files(
+                        base_path_join(&local_fs, before_slash).as_str(),
+                    );
                 } else {
-                    let _ = project.unload_in_memory_file(base_path_join(path).as_str());
+                    let _ = project.unload_in_memory_file(base_path_join(&local_fs, path).as_str());
                 }
             }
         }
@@ -506,7 +504,11 @@ fn temporarily_skip(s: String) -> Option<String> {
     Some(s)
 }
 
-fn initialize_and_return_wanted_output(project: &mut Project, step: &Step) -> Vec<String> {
+fn initialize_and_return_wanted_output(
+    local_fs: &LocalFS,
+    project: &mut Project,
+    step: &Step,
+) -> Vec<String> {
     let mut wanted = step
         .out
         .trim()
@@ -526,7 +528,7 @@ fn initialize_and_return_wanted_output(project: &mut Project, step: &Step) -> Ve
         }
         add_inline_errors(&mut wanted, path, code);
         // testAbstractClassSubclasses
-        let p = base_path_join(path);
+        let p = base_path_join(local_fs, path);
         project.load_in_memory_file(p.as_str().into(), code.into());
     }
     for line in &mut wanted {
@@ -726,8 +728,8 @@ fn set_mypy_path(options: &mut ProjectOptions) {
     })
 }
 
-fn base_path_join(other: &str) -> AbsPath {
-    BASE_PATH.with(|base_path| base_path.join(other))
+fn base_path_join(local_fs: &LocalFS, other: &str) -> AbsPath {
+    BASE_PATH.with(|base_path| local_fs.join(base_path, other))
 }
 
 impl ProjectsCache {

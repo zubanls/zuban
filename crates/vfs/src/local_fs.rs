@@ -179,15 +179,6 @@ impl VfsHandler for LocalFS {
             (path, None)
         }
     }
-
-    fn absolute_path(&self, current_dir: &AbsPath, path: String) -> AbsPath {
-        let p = Path::new(&path);
-        if p.is_absolute() {
-            AbsPath::new_unchecked(self, path)
-        } else {
-            current_dir.join(&path)
-        }
-    }
 }
 
 impl LocalFS {
@@ -226,6 +217,16 @@ impl LocalFS {
             );
             tracing::debug!("Added watch for {path:?}");
         }
+    }
+
+    pub fn current_dir(&self) -> AbsPath {
+        self.unchecked_abs_path(
+            std::env::current_dir()
+                .unwrap()
+                .into_os_string()
+                .into_string()
+                .unwrap(),
+        )
     }
 }
 
