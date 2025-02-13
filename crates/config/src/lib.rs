@@ -651,14 +651,14 @@ fn apply_from_base_config(
                 value
                     .as_str_list(key, &[','])?
                     .into_iter()
-                    .map(|s| AbsPath::from_current_dir_and_path(vfs, current_dir, s)),
+                    .map(|s| vfs.absolute_path(current_dir, s)),
             );
         }
         "mypy_path" => settings.mypy_path.extend(
             value
                 .as_str_list(key, &[',', ':'])?
                 .into_iter()
-                .map(|s| AbsPath::from_current_dir_and_path(vfs, current_dir, s)),
+                .map(|s| vfs.absolute_path(current_dir, s)),
         ),
         _ => return apply_from_config_part(flags, key, value),
     };
@@ -715,17 +715,25 @@ mod tests {
 
     use super::*;
 
-    fn project_options_err(code: &str) -> anyhow::Error {
+    fn project_options_err(code: &str, from_ini: bool) -> anyhow::Error {
         let local_fs = LocalFS::without_watcher();
         let current_dir = AbsPath::new_unchecked(&local_fs, "/foo".to_string());
-        let Err(err) = ProjectOptions::from_pyproject_toml(
-            &local_fs,
-            &current_dir,
-            code,
-            &mut DiagnosticConfig::default(),
-        ) else {
-            unreachable!()
+        let opts = if from_ini {
+            ProjectOptions::from_mypy_ini(
+                &local_fs,
+                &current_dir,
+                code,
+                &mut DiagnosticConfig::default(),
+            )
+        } else {
+            ProjectOptions::from_pyproject_toml(
+                &local_fs,
+                &current_dir,
+                code,
+                &mut DiagnosticConfig::default(),
+            )
         };
+        let Err(err) = opts else { unreachable!() };
         err
     }
 
@@ -735,7 +743,7 @@ mod tests {
             [tool.mypy]\n\
             disallow_any_generics = \"what\"
         ";
-        let err = project_options_err(code);
+        let err = project_options_err(code, false);
         assert_eq!(err.to_string(), "Expected bool, got \"what\"");
     }
 
@@ -745,14 +753,14 @@ mod tests {
             [mypy]\n\
             disallow_any_generics = what
         ";
-        let err = project_options_err(code);
+        let err = project_options_err(code, true);
         assert_eq!(err.to_string(), "Expected bool, got \"what\"");
     }
 
     #[test]
     fn test_invalid_toml_none() {
         let code = "[tool.mypy.foo]\nx=1";
-        let err = project_options_err(code);
+        let err = project_options_err(code, false);
         assert_eq!(
             err.to_string(),
             "Expected tool.mypy to be simple table in pyproject.toml"

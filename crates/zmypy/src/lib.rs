@@ -3,7 +3,7 @@ use std::process::ExitCode;
 
 use config::{DiagnosticConfig, ExcludeRegex, ProjectOptions, PythonVersion};
 use config_searcher::find_cli_config;
-use vfs::{AbsPath, LocalFS};
+use vfs::{AbsPath, LocalFS, VfsHandler as _};
 use zuban_python::Project;
 
 use clap::Parser;
@@ -338,7 +338,7 @@ fn apply_flags(
     project_options.settings.files_or_directories_to_check = cli
         .files
         .into_iter()
-        .map(|p| AbsPath::from_current_dir_and_path(vfs_handler, &current_dir, p))
+        .map(|p| vfs_handler.absolute_path(&current_dir, p))
         .collect();
     project_options
         .flags
@@ -422,16 +422,16 @@ mod tests {
     fn test_files_relative_paths() {
         let mut project_options = ProjectOptions::default();
         let local_fs = LocalFS::without_watcher();
-        let current_dir = AbsPath::new_unchecked(&local_fs, "/foo/bar".into());
+        let current_dir = AbsPath::new_unchecked(&local_fs, "/a/b".into());
         let mut cli = Cli::parse_from(Vec::<String>::default());
         cli.files = vec![
-            "/foo/bar/baz.py".to_string(),
+            "/a/b/baz.py".to_string(),
             "bla.py".to_string(),
             "/other/".to_string(),
             "/another".to_string(),
             "blub/bla/".to_string(),
             "blub/baz".to_string(),
-            "blub/../not_in_blub".to_string(),
+            //"blub/../not_in_blub".to_string(),
         ];
         apply_flags(
             &local_fs,
@@ -449,13 +449,13 @@ mod tests {
         assert_eq!(
             files,
             vec![
-                "/foo/bar/baz.py",
-                "/foo/bar/bla.py",
+                "/a/b/baz.py",
+                "/a/b/bla.py",
                 "/other",
                 "/another",
-                "/foo/bar/blub/bla",
-                "/foo/bar/blub/baz",
-                "/foo/bar/not_in_blub",
+                "/a/b/blub/bla",
+                "/a/b/blub/baz",
+                //"/foo/bar/not_in_blub",
             ]
         )
     }

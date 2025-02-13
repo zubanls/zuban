@@ -69,4 +69,5 @@ pub trait VfsHandler {
             Cow::Owned(o) => o,
         }
     }
+    fn absolute_path(&self, current_dir: &AbsPath, path: String) -> AbsPath;
 }

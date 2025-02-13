@@ -722,12 +722,6 @@ struct ProjectsCache {
 
 fn set_mypy_path(options: &mut ProjectOptions) {
     BASE_PATH.with(|base_path| {
-        /*
-        for path in options.settings.mypy_path.iter_mut() {
-            // Mypy has a kind of weird way how they deal with tmp/
-            *path = base_path.to_owned() + path;
-        }
-        */
         options.settings.mypy_path.push(base_path.clone());
     })
 }

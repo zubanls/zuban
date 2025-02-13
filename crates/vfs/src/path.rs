@@ -19,16 +19,8 @@ impl AbsPath {
         Self { path: path.into() }
     }
 
-    pub fn from_current_dir_and_path(
-        vfs: &dyn VfsHandler,
-        _current_dir: &Self,
-        path: String,
-    ) -> Self {
-        Self::new_unchecked(vfs, path)
-    }
-
-    pub fn is_sub_file(&self, path: &str) -> bool {
-        Path::new(&*self.path).starts_with(Path::new(path))
+    pub fn contains_sub_file(&self, path: &str) -> bool {
+        Path::new(path).starts_with(Path::new(&*self.path))
     }
 
     pub fn join(&self, name: &str) -> Self {

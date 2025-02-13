@@ -9,7 +9,8 @@ use notify::{recommended_watcher, RecommendedWatcher, RecursiveMode, Watcher};
 use walkdir::WalkDir;
 
 use crate::{
-    tree::MissingEntry, Directory, DirectoryEntry, FileEntry, NotifyEvent, Parent, VfsHandler,
+    tree::MissingEntry, AbsPath, Directory, DirectoryEntry, FileEntry, NotifyEvent, Parent,
+    VfsHandler,
 };
 
 const STUBS_SUFFIX: &str = "-stubs";
@@ -176,6 +177,15 @@ impl VfsHandler for LocalFS {
             (&path[..pos], Some(&path[pos + 1..]))
         } else {
             (path, None)
+        }
+    }
+
+    fn absolute_path(&self, current_dir: &AbsPath, path: String) -> AbsPath {
+        let p = Path::new(&path);
+        if p.is_absolute() {
+            AbsPath::new_unchecked(self, path)
+        } else {
+            current_dir.join(&path)
         }
     }
 }

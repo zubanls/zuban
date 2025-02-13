@@ -88,7 +88,7 @@ exclude = "inherited_exclude"
 1[]  # E: invalid syntax
 [file mypy.ini]
 \[mypy]
-exclude = m
+exclude = 'm.py$'
 
 [case mypy_setup_ini_with_multiline_string]
 # See also https://github.com/zonyitoo/rust-ini/issues/138

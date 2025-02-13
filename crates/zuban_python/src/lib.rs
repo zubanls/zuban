@@ -102,7 +102,7 @@ impl Project {
             directory.walk(&mut |in_dir, file| {
                 if file.get_file_index().is_none() && !ignore_py_if_overwritten_by_pyi(in_dir, file)
                 {
-                    let path = file.relative_path(&*self.db.vfs.handler);
+                    let path = file.path(&*self.db.vfs.handler);
                     to_be_loaded.push((file.clone(), path));
                 }
             });
@@ -114,7 +114,7 @@ impl Project {
                     return true;
                 }
                 let check_files = &self.db.project.settings.files_or_directories_to_check;
-                !check_files.is_empty() && !check_files.iter().any(|p| p.is_sub_file(path))
+                !check_files.is_empty() && !check_files.iter().any(|p| p.contains_sub_file(path))
                     || flags.excludes.iter().any(|e| e.regex.is_match(path))
             };
             for (file, path) in to_be_loaded {
@@ -135,10 +135,8 @@ impl Project {
             });
             'outer: for file_index in file_indexes {
                 let python_file = self.db.loaded_python_file(file_index);
-                let relative = python_file
-                    .file_entry(&self.db)
-                    .relative_path(&*self.db.vfs.handler);
-                if maybe_skipped(python_file.flags(&self.db), &relative) {
+                let p = python_file.file_entry(&self.db).path(&*self.db.vfs.handler);
+                if maybe_skipped(python_file.flags(&self.db), &p) {
                     continue 'outer;
                 }
                 checked_files += 1;
