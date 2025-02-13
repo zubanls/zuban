@@ -699,10 +699,8 @@ struct ProjectsCache {
 
 fn set_mypy_path(options: &mut ProjectOptions) {
     for path in options.settings.mypy_path.iter_mut() {
-        if !path.starts_with(MYPY_TEST_DATA_PACKAGES_FOLDER) {
-            // Mypy has a kind of weird way how they deal with tmp/
-            *path = BASE_PATH.to_owned() + path;
-        }
+        // Mypy has a kind of weird way how they deal with tmp/
+        *path = BASE_PATH.to_owned() + path;
     }
     options.settings.mypy_path.push(BASE_PATH.into());
 }
