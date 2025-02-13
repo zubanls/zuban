@@ -9,6 +9,23 @@ flow_analysis_base_class_calculation_should_not_lead_to_recursion
 
 star_import_overwrite_regression2
 
+testCaseInsensitivityDir (check-modules-case)
+testCaseInsensitivityDirPyProjectTOML (check-modules-case)
+testPreferPackageOverFileCase (check-modules-case)
+testPreferPackageOverFileCasePyProjectTOML (check-modules-case)
+testNamespacePackagePickFirstOnMypyPathCase (check-modules-case)
+testNamespacePackagePickFirstOnMypyPathCasePyProjectTOML (check-modules-case)
+testClassicPackageInsideNamespacePackageCase (check-modules-case)
+testClassicPackageInsideNamespacePackageCasePyProjectTOML (check-modules-case)
+testNamespacePackageWithMypyPath (check-modules)
+testNamespacePackageWithMypyPathPyProjectTOML (check-modules)
+testClassicPackageIgnoresEarlierNamespacePackage (check-modules)
+testNamespacePackagePickFirstOnMypyPath (check-modules)
+testNamespacePackageInsideClassicPackage (check-modules)
+testClassicPackageInsideNamespacePackage (check-modules)
+files_path_in_mypy_config (flags)
+files_path_in_mypy_config (flags)
+
 testLiteralAndGenericsRespectsUpperBound
 self_instance_variable1
 

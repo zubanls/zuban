@@ -4,6 +4,7 @@ use anyhow::bail;
 use ini::{Ini, ParseOption};
 use regex::Regex;
 use toml_edit::{DocumentMut, Item, Table, Value};
+use vfs::{AbsPath, VfsHandler};
 
 type ConfigResult = anyhow::Result<bool>;
 
@@ -32,10 +33,11 @@ pub struct Settings {
     pub platform: Option<String>,
     pub python_version: PythonVersion,
     pub python_executable: Option<String>,
-    pub mypy_path: Vec<String>,
-    pub prepended_site_packages: Vec<String>,
+    pub mypy_path: Vec<AbsPath>,
+    pub prepended_site_packages: Vec<AbsPath>,
     pub mypy_compatible: bool,
-    pub files_or_directories_to_check: Vec<String>,
+    // These are absolute paths.
+    pub files_or_directories_to_check: Vec<AbsPath>,
     pub typeshed_path: Option<String>,
 }
 
@@ -70,6 +72,8 @@ impl ProjectOptions {
     }
 
     pub fn from_mypy_ini(
+        vfs: &dyn VfsHandler,
+        current_dir: &AbsPath,
         code: &str,
         diagnostic_config: &mut DiagnosticConfig,
     ) -> anyhow::Result<Self> {
@@ -86,6 +90,8 @@ impl ProjectOptions {
             if name == "mypy" {
                 for (key, value) in section.iter() {
                     apply_from_base_config(
+                        vfs,
+                        current_dir,
                         &mut settings,
                         &mut flags,
                         diagnostic_config,
@@ -111,6 +117,8 @@ impl ProjectOptions {
     }
 
     pub fn from_pyproject_toml(
+        vfs: &dyn VfsHandler,
+        current_dir: &AbsPath,
         code: &str,
         diagnostic_config: &mut DiagnosticConfig,
     ) -> anyhow::Result<Self> {
@@ -127,6 +135,8 @@ impl ProjectOptions {
                 match item {
                     Item::Value(value) => {
                         apply_from_base_config(
+                            vfs,
+                            current_dir,
                             &mut settings,
                             &mut flags,
                             diagnostic_config,
@@ -605,6 +615,8 @@ fn split_and_trim<'a>(s: &'a str, pattern: &'a [char]) -> impl Iterator<Item = &
 }
 
 fn apply_from_base_config(
+    vfs: &dyn VfsHandler,
+    current_dir: &AbsPath,
     settings: &mut Settings,
     flags: &mut TypeCheckerFlags,
     diagnostic_config: &mut DiagnosticConfig,
@@ -635,15 +647,19 @@ fn apply_from_base_config(
             tracing::warn!("TODO ignored config value {key}");
         }
         "files" => {
-            settings
-                .files_or_directories_to_check
-                .extend(value.as_str_list(key, &[','])?);
+            settings.files_or_directories_to_check.extend(
+                value
+                    .as_str_list(key, &[','])?
+                    .into_iter()
+                    .map(|s| AbsPath::from_current_dir_and_path(vfs, current_dir, s)),
+            );
         }
-        "mypy_path" => {
-            settings
-                .mypy_path
-                .extend(value.as_str_list(key, &[',', ':'])?);
-        }
+        "mypy_path" => settings.mypy_path.extend(
+            value
+                .as_str_list(key, &[',', ':'])?
+                .into_iter()
+                .map(|s| AbsPath::from_current_dir_and_path(vfs, current_dir, s)),
+        ),
         _ => return apply_from_config_part(flags, key, value),
     };
     Ok(false)
@@ -695,41 +711,48 @@ fn add_excludes(excludes: &mut Vec<ExcludeRegex>, value: IniOrTomlValue) -> Conf
 
 #[cfg(test)]
 mod tests {
+    use vfs::LocalFS;
+
+    use super::*;
+
+    fn project_options_err(code: &str) -> anyhow::Error {
+        let local_fs = LocalFS::without_watcher();
+        let current_dir = AbsPath::new_unchecked(&local_fs, "/foo".to_string());
+        let Err(err) = ProjectOptions::from_pyproject_toml(
+            &local_fs,
+            &current_dir,
+            code,
+            &mut DiagnosticConfig::default(),
+        ) else {
+            unreachable!()
+        };
+        err
+    }
+
     #[test]
     fn test_invalid_toml_bool() {
-        use super::*;
         let code = "\
             [tool.mypy]\n\
             disallow_any_generics = \"what\"
         ";
-        let Err(err) = ProjectOptions::from_pyproject_toml(code, &mut DiagnosticConfig::default())
-        else {
-            unreachable!()
-        };
+        let err = project_options_err(code);
         assert_eq!(err.to_string(), "Expected bool, got \"what\"");
     }
 
     #[test]
     fn test_invalid_ini_bool() {
-        use super::*;
         let code = "\
             [mypy]\n\
             disallow_any_generics = what
         ";
-        let Err(err) = ProjectOptions::from_mypy_ini(code, &mut DiagnosticConfig::default()) else {
-            unreachable!()
-        };
+        let err = project_options_err(code);
         assert_eq!(err.to_string(), "Expected bool, got \"what\"");
     }
 
     #[test]
     fn test_invalid_toml_none() {
-        use super::*;
         let code = "[tool.mypy.foo]\nx=1";
-        let Err(err) = ProjectOptions::from_pyproject_toml(code, &mut DiagnosticConfig::default())
-        else {
-            unreachable!()
-        };
+        let err = project_options_err(code);
         assert_eq!(
             err.to_string(),
             "Expected tool.mypy to be simple table in pyproject.toml"

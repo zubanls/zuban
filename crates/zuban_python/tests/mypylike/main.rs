@@ -12,6 +12,7 @@ use clap::Parser;
 use config::{DiagnosticConfig, ProjectOptions, PythonVersion, Settings, TypeCheckerFlags};
 use regex::{Captures, Regex, Replacer};
 use test_utils::{calculate_steps, Step};
+use vfs::{AbsPath, LocalFS};
 use zuban_python::Project;
 
 const SKIP_MYPY_TEST_FILES: [&str; 28] = [
@@ -57,9 +58,13 @@ const SKIP_MYPY_TEST_FILES: [&str; 28] = [
 ];
 
 #[cfg(not(target_os = "windows"))]
-const BASE_PATH: &str = "/mypylike/";
+const BASE_PATH_STR: &str = "/mypylike/";
 #[cfg(target_os = "windows")]
-const BASE_PATH: &str = r"C:\\mypylike\";
+const BASE_PATH_STR: &str = r"C:\\mypylike\";
+
+thread_local! {
+    static BASE_PATH: AbsPath = AbsPath::new_unchecked(&LocalFS::without_watcher(), BASE_PATH_STR.to_string());
+}
 
 const MYPY_TEST_DATA_PACKAGES_FOLDER: &str = "tests/mypylike/mypy/test-data/packages/";
 
@@ -115,13 +120,18 @@ impl TestCase<'_, '_> {
                 .then(|| flag_iterator.next().unwrap().to_string())
         };
 
+        let local_fs = LocalFS::without_watcher();
         let mut config = TypeCheckerFlags::default();
         let mut settings = Settings::default();
         let mut project_options = None;
+
         if let Some(mypy_ini_config) = steps.steps[0].files.get("mypy.ini") {
             println!("Loading mypy.ini for {} ({})", self.name, self.file_name);
             let ini = cleanup_mypy_issues(mypy_ini_config).unwrap();
-            let mut new = ProjectOptions::from_mypy_ini(&ini, &mut diagnostics_config).unwrap();
+            let mut new = BASE_PATH.with(|base_path| {
+                ProjectOptions::from_mypy_ini(&local_fs, base_path, &ini, &mut diagnostics_config)
+                    .unwrap()
+            });
             set_mypy_path(&mut new);
             config = std::mem::replace(&mut new.flags, config);
             settings = std::mem::replace(&mut new.settings, settings);
@@ -133,8 +143,15 @@ impl TestCase<'_, '_> {
                 self.name, self.file_name
             );
             let ini = cleanup_mypy_issues(pyproject_toml).unwrap();
-            let mut new =
-                ProjectOptions::from_pyproject_toml(&ini, &mut diagnostics_config).unwrap();
+            let mut new = BASE_PATH.with(|base_path| {
+                ProjectOptions::from_pyproject_toml(
+                    &local_fs,
+                    base_path,
+                    &ini,
+                    &mut diagnostics_config,
+                )
+                .unwrap()
+            });
             set_mypy_path(&mut new);
             config = std::mem::replace(&mut new.flags, config);
             settings = std::mem::replace(&mut new.settings, settings);
@@ -144,11 +161,18 @@ impl TestCase<'_, '_> {
         if matches!(self.file_name, "pep561" | "imports") {
             let first_line = self.code.split('\n').next().unwrap();
             if let Some(suffix) = first_line.strip_prefix("# pkgs:") {
-                settings.prepended_site_packages.extend(
-                    suffix
-                        .split([';', ','])
-                        .map(|s| MYPY_TEST_DATA_PACKAGES_FOLDER.to_string() + s.trim()),
+                let current_dir = AbsPath::new_unchecked(
+                    &local_fs,
+                    std::env::current_dir()
+                        .unwrap()
+                        .into_os_string()
+                        .into_string()
+                        .unwrap(),
                 );
+                let folder = current_dir.join(MYPY_TEST_DATA_PACKAGES_FOLDER);
+                settings
+                    .prepended_site_packages
+                    .extend(suffix.split([';', ',']).map(|s| folder.join(s.trim())));
             };
         }
 
@@ -316,10 +340,10 @@ impl TestCase<'_, '_> {
 
             for path in &step.deletions {
                 project
-                    .unload_in_memory_file(&(BASE_PATH.to_owned() + path))
+                    .unload_in_memory_file(base_path_join(path).as_str())
                     .unwrap_or_else(|_| {
                         project
-                            .delete_directory_of_in_memory_files(&(BASE_PATH.to_owned() + path))
+                            .delete_directory_of_in_memory_files(base_path_join(path).as_str())
                             .unwrap()
                     });
             }
@@ -434,11 +458,10 @@ impl TestCase<'_, '_> {
                 // Somehow all tests use `/` paths, and I haven't seen backslashes (for Windows)
                 if path.contains('/') {
                     let before_slash = path.split('/').next().unwrap();
-                    let _ = project.delete_directory_of_in_memory_files(
-                        &(BASE_PATH.to_owned() + before_slash),
-                    );
+                    let _ = project
+                        .delete_directory_of_in_memory_files(base_path_join(before_slash).as_str());
                 } else {
-                    let _ = project.unload_in_memory_file(&(BASE_PATH.to_owned() + path));
+                    let _ = project.unload_in_memory_file(base_path_join(path).as_str());
                 }
             }
         }
@@ -503,8 +526,8 @@ fn initialize_and_return_wanted_output(project: &mut Project, step: &Step) -> Ve
         }
         add_inline_errors(&mut wanted, path, code);
         // testAbstractClassSubclasses
-        let p = BASE_PATH.to_owned() + path;
-        project.load_in_memory_file(p.into(), code.into());
+        let p = base_path_join(path);
+        project.load_in_memory_file(p.as_str().into(), code.into());
     }
     for line in &mut wanted {
         replace_unions(line);
@@ -698,11 +721,19 @@ struct ProjectsCache {
 }
 
 fn set_mypy_path(options: &mut ProjectOptions) {
-    for path in options.settings.mypy_path.iter_mut() {
-        // Mypy has a kind of weird way how they deal with tmp/
-        *path = BASE_PATH.to_owned() + path;
-    }
-    options.settings.mypy_path.push(BASE_PATH.into());
+    BASE_PATH.with(|base_path| {
+        /*
+        for path in options.settings.mypy_path.iter_mut() {
+            // Mypy has a kind of weird way how they deal with tmp/
+            *path = base_path.to_owned() + path;
+        }
+        */
+        options.settings.mypy_path.push(base_path.clone());
+    })
+}
+
+fn base_path_join(other: &str) -> AbsPath {
+    BASE_PATH.with(|base_path| base_path.join(other))
 }
 
 impl ProjectsCache {

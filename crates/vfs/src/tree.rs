@@ -3,7 +3,7 @@ use std::{
     rc::{Rc, Weak},
 };
 
-use crate::{utils::VecRefWrapper, VfsHandler};
+use crate::{utils::VecRefWrapper, AbsPath, VfsHandler};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct FileIndex(pub u32);
@@ -19,11 +19,11 @@ pub enum Parent {
     Directory(Weak<Directory>),
     // This is not an Rc<str>, because that would make the enum 8 bytes bigger. It's used a lot, so
     // this is probably better.
-    Workspace(Rc<Box<str>>),
+    Workspace(Rc<AbsPath>),
 }
 
 impl Parent {
-    pub fn maybe_dir(&self) -> Result<Rc<Directory>, &Rc<Box<str>>> {
+    pub fn maybe_dir(&self) -> Result<Rc<Directory>, &Rc<AbsPath>> {
         match self {
             Self::Directory(dir) => Ok(dir.upgrade().unwrap()),
             Self::Workspace(w) => Err(w),
@@ -45,7 +45,7 @@ impl Parent {
             Self::Directory(dir) => dir.upgrade().unwrap().path(vfs, add_root),
             Self::Workspace(workspace) => {
                 if add_root {
-                    workspace.to_string()
+                    workspace.as_str().to_string()
                 } else {
                     String::new()
                 }
@@ -53,7 +53,7 @@ impl Parent {
         }
     }
 
-    pub fn workspace_path(&self) -> Rc<Box<str>> {
+    pub fn workspace_path(&self) -> Rc<AbsPath> {
         match self {
             Self::Directory(dir) => dir.upgrade().unwrap().parent.workspace_path(),
             Self::Workspace(workspace) => workspace.clone(),

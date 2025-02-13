@@ -9,8 +9,8 @@ use std::{
 use config::{OverrideConfig, Settings};
 use parsa_python_cst::NodeIndex;
 use vfs::{
-    Directory, DirectoryEntry, FileEntry, FileIndex, InvalidationResult, LocalFS, Vfs, VfsHandler,
-    WorkspaceKind,
+    AbsPath, Directory, DirectoryEntry, FileEntry, FileIndex, InvalidationResult, LocalFS, Vfs,
+    VfsHandler, WorkspaceKind,
 };
 
 use crate::{
@@ -875,7 +875,7 @@ pub struct Database {
 impl Database {
     pub fn new(vfs_handler: Box<dyn VfsHandler>, options: ProjectOptions) -> Self {
         let project = PythonProject {
-            sys_path: sys_path::create_sys_path(&options.settings),
+            sys_path: sys_path::create_sys_path(&*vfs_handler, &options.settings),
             settings: options.settings,
             flags: options.flags,
             overrides: options.overrides,
@@ -900,7 +900,10 @@ impl Database {
             format!("{typeshed_path}{sep}stdlib"),
             format!("{typeshed_path}{sep}stubs{sep}mypy-extensions"),
         ] {
-            vfs.add_workspace(p, WorkspaceKind::Typeshed)
+            vfs.add_workspace(
+                AbsPath::new_unchecked(&*vfs.handler, p),
+                WorkspaceKind::Typeshed,
+            )
         }
 
         for p in &project.sys_path {
@@ -918,7 +921,7 @@ impl Database {
 
     pub fn try_to_reuse_project_resources_for_tests(&mut self, options: ProjectOptions) -> Self {
         let project = PythonProject {
-            sys_path: sys_path::create_sys_path(&options.settings),
+            sys_path: sys_path::create_sys_path(&*self.vfs.handler, &options.settings),
             settings: options.settings,
             flags: options.flags,
             overrides: options.overrides,
@@ -946,7 +949,7 @@ impl Database {
         for p in &new_db.project.sys_path {
             new_db
                 .vfs
-                .add_workspace(p.clone().into(), WorkspaceKind::SitePackages)
+                .add_workspace(p.clone(), WorkspaceKind::SitePackages)
         }
 
         let mut set_pointer = |pointer_ref: &mut *const PythonFile, name, is_package| {
@@ -1211,7 +1214,7 @@ impl Database {
 }
 
 pub struct PythonProject {
-    pub sys_path: Vec<Box<str>>,
+    pub sys_path: Vec<AbsPath>,
     pub settings: Settings,
     pub flags: TypeCheckerFlags,
     pub(crate) overrides: Vec<OverrideConfig>,

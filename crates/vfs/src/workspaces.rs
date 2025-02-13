@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use utils::match_case;
 
-use crate::{tree::AddedFile, Directory, DirectoryEntry, FileEntry, Parent, VfsHandler};
+use crate::{tree::AddedFile, AbsPath, Directory, DirectoryEntry, FileEntry, Parent, VfsHandler};
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub enum WorkspaceKind {
@@ -15,11 +15,16 @@ pub enum WorkspaceKind {
 pub struct Workspaces(Vec<Workspace>);
 
 impl Workspaces {
-    pub(crate) fn add(&mut self, vfs: &dyn VfsHandler, root: String, kind: WorkspaceKind) {
+    pub(crate) fn add(&mut self, vfs: &dyn VfsHandler, root: AbsPath, kind: WorkspaceKind) {
         self.0.push(Workspace::new(vfs, root, kind))
     }
 
-    pub(crate) fn add_at_start(&mut self, vfs: &dyn VfsHandler, root: String, kind: WorkspaceKind) {
+    pub(crate) fn add_at_start(
+        &mut self,
+        vfs: &dyn VfsHandler,
+        root: AbsPath,
+        kind: WorkspaceKind,
+    ) {
         self.0.insert(0, Workspace::new(vfs, root, kind))
     }
 
@@ -191,32 +196,32 @@ impl Workspaces {
 
 #[derive(Debug, Clone)]
 pub struct Workspace {
-    root_path: Rc<Box<str>>,
+    root_path: Rc<AbsPath>,
     // Mac sometimes needs a bit help with events that are reported for non-canonicalized paths
     // Without this check_rename_with_symlinks fails
     #[cfg(target_os = "macos")]
-    canonicalized_path: Box<str>,
+    canonicalized_path: AbsPath,
     pub directory: Directory,
     pub kind: WorkspaceKind,
 }
 
 impl Workspace {
-    fn new(vfs: &dyn VfsHandler, mut root_path: String, kind: WorkspaceKind) -> Self {
-        if let Some(new_root_path) = vfs.strip_separator_suffix(&root_path) {
-            root_path.truncate(new_root_path.len());
-        }
+    fn new(vfs: &dyn VfsHandler, root_path: AbsPath, kind: WorkspaceKind) -> Self {
         tracing::debug!("Add workspace {root_path}");
-        let root_path = Rc::<Box<str>>::new(root_path.into());
+        let root_path = Rc::<AbsPath>::new(root_path);
 
-        let dir =
-            match vfs.walk_and_watch_dirs(&root_path, Parent::Workspace(root_path.clone()), true) {
-                DirectoryEntry::Directory(dir) => Rc::unwrap_or_clone(dir),
-                e => Directory {
-                    parent: Parent::Workspace(root_path.clone()),
-                    name: e.name().into(),
-                    entries: Default::default(),
-                },
-            };
+        let dir = match vfs.walk_and_watch_dirs(
+            &root_path.as_str(),
+            Parent::Workspace(root_path.clone()),
+            true,
+        ) {
+            DirectoryEntry::Directory(dir) => Rc::unwrap_or_clone(dir),
+            e => Directory {
+                parent: Parent::Workspace(root_path.clone()),
+                name: e.name().into(),
+                entries: Default::default(),
+            },
+        };
         #[cfg(target_os = "macos")]
         {
             let canonicalized_path = match std::fs::canonicalize(&**root_path) {
@@ -237,7 +242,7 @@ impl Workspace {
             return Self {
                 directory: dir,
                 root_path,
-                canonicalized_path: canonicalized_path.into(),
+                canonicalized_path: AbsPath::new_unchecked(canonicalized_path),
                 kind,
             };
         };
@@ -251,7 +256,7 @@ impl Workspace {
         };
     }
 
-    pub fn root_path(&self) -> &str {
+    pub fn root_path(&self) -> &AbsPath {
         &self.root_path
     }
 }
@@ -300,8 +305,9 @@ fn strip_path_prefix<'x>(
     vfs: &dyn VfsHandler,
     case_sensitive: bool,
     mut path: &'x str,
-    mut to_strip: &str,
+    to_strip: &AbsPath,
 ) -> Option<&'x str> {
+    let mut to_strip = to_strip.as_str();
     loop {
         let (folder1, rest) = vfs.split_off_folder(path);
         let (folder2, rest_to_strip) = vfs.split_off_folder(to_strip);

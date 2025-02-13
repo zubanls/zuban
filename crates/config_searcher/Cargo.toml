@@ -8,6 +8,8 @@ homepage.workspace = true
 authors.workspace = true
 
 [dependencies]
+vfs.workspace = true
 config.workspace = true
+
 tracing.workspace = true
 anyhow.workspace = true

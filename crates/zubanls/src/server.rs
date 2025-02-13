@@ -1,7 +1,7 @@
 //! Scheduling, I/O, and API endpoints.
 
 use std::collections::HashSet;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::sync::atomic::AtomicI64;
 
@@ -12,7 +12,7 @@ use lsp_types::notification::Notification as _;
 use lsp_types::Uri;
 use notify::EventKind;
 use serde::{de::DeserializeOwned, Serialize};
-use vfs::{LocalFS, NotifyEvent};
+use vfs::{AbsPath, LocalFS, NotifyEvent};
 use zuban_python::Project;
 
 use crate::capabilities::{server_capabilities, ClientCapabilities};
@@ -234,36 +234,39 @@ impl<'sender> GlobalState<'sender> {
                 .roots
                 .first()
                 .expect("There should always be at least one root at this point");
-            let mut config = config_searcher::find_workspace_config(first_root, |path| {
-                // Watch the file itself to make sure that we can invalidate when it changes.
-                vfs_handler.watch(path);
-                // Since these are config files there should always be a parent
-                let parent_dir = path.parent().unwrap();
-                // This function is executed even when a file is not found. Therefore we watch the
-                // directory as well, if the file suddenly gets inserted.
-                // Don't delete this line of code, it might not be necessary in most cases, because
-                // the base directory is typically already watched, but I'm not sure this will
-                // always be the case.
-                vfs_handler.watch(parent_dir);
-                self.paths_that_invalidate_whole_project.insert(path.into());
-            })
-            .unwrap_or_else(|err| {
-                use lsp_types::{
-                    notification::{Notification, ShowMessage},
-                    MessageType, ShowMessageParams,
-                };
-                let not = lsp_server::Notification::new(
-                    ShowMessage::METHOD.to_owned(),
-                    ShowMessageParams {
-                        typ: MessageType::WARNING,
-                        message: err.to_string(),
-                    },
-                );
-                self.sender
-                    .send(lsp_server::Message::Notification(not))
-                    .unwrap();
-                ProjectOptions::default()
-            });
+            let first_root = AbsPath::new_unchecked(&vfs_handler, first_root.clone());
+            let mut config =
+                config_searcher::find_workspace_config(&vfs_handler, &first_root, |path| {
+                    // Watch the file itself to make sure that we can invalidate when it changes.
+                    let path = Path::new(path.as_str());
+                    vfs_handler.watch(path);
+                    // Since these are config files there should always be a parent
+                    let parent_dir = path.parent().unwrap();
+                    // This function is executed even when a file is not found. Therefore we watch the
+                    // directory as well, if the file suddenly gets inserted.
+                    // Don't delete this line of code, it might not be necessary in most cases, because
+                    // the base directory is typically already watched, but I'm not sure this will
+                    // always be the case.
+                    vfs_handler.watch(parent_dir);
+                    self.paths_that_invalidate_whole_project.insert(path.into());
+                })
+                .unwrap_or_else(|err| {
+                    use lsp_types::{
+                        notification::{Notification, ShowMessage},
+                        MessageType, ShowMessageParams,
+                    };
+                    let not = lsp_server::Notification::new(
+                        ShowMessage::METHOD.to_owned(),
+                        ShowMessageParams {
+                            typ: MessageType::WARNING,
+                            message: err.to_string(),
+                        },
+                    );
+                    self.sender
+                        .send(lsp_server::Message::Notification(not))
+                        .unwrap();
+                    ProjectOptions::default()
+                });
 
             tracing::info!("Using workspace roots {:?}", &self.roots);
             // I'm not sure if this is correct. The problem is that the mypy_path currently does
@@ -274,7 +277,11 @@ impl<'sender> GlobalState<'sender> {
             //
             // It's questionable that we want those two things. And maybe there will also be a need
             // for the type checker to understand what the mypy_path originally was.
-            config.settings.mypy_path = self.roots.to_vec();
+            config.settings.mypy_path = self
+                .roots
+                .iter()
+                .map(|p| AbsPath::new_unchecked(&vfs_handler, p.clone()))
+                .collect();
             config.settings.typeshed_path = self.typeshed_path.clone();
 
             *project = Some(Project::new(Box::new(vfs_handler), config));

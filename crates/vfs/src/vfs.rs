@@ -6,7 +6,8 @@ use utils::{FastHashSet, InsertOnlyVec};
 use crate::{
     tree::{InvalidationDetail, Invalidations},
     workspaces::Workspaces,
-    DirectoryEntry, FileEntry, FileIndex, NormalizedPath, Parent, VfsHandler, WorkspaceKind,
+    AbsPath, DirectoryEntry, FileEntry, FileIndex, NormalizedPath, Parent, VfsHandler,
+    WorkspaceKind,
 };
 
 pub trait VfsFile: Unpin {
@@ -34,7 +35,7 @@ impl<F: VfsFile> Vfs<F> {
     pub fn with_reused_test_resources<'x>(
         &mut self,
         handler: Box<dyn VfsHandler>,
-        type_checked_dirs: impl DoubleEndedIterator<Item = &'x String>,
+        type_checked_dirs: impl DoubleEndedIterator<Item = &'x AbsPath>,
     ) -> Self
     where
         F: Clone,
@@ -56,7 +57,7 @@ impl<F: VfsFile> Vfs<F> {
                     Parent::Workspace(w_name) => {
                         &workspaces
                             .iter()
-                            .find(|workspace| *workspace.root_path() == **w_name)
+                            .find(|workspace| *workspace.root_path() == *w_name)
                             .unwrap()
                             .directory
                     }
@@ -101,7 +102,7 @@ impl<F: VfsFile> Vfs<F> {
         }
     }
 
-    pub fn add_workspace(&mut self, root_path: String, kind: WorkspaceKind) {
+    pub fn add_workspace(&mut self, root_path: AbsPath, kind: WorkspaceKind) {
         self.workspaces.add(&*self.handler, root_path, kind)
     }
 

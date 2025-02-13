@@ -114,10 +114,7 @@ impl Project {
                     return true;
                 }
                 let check_files = &self.db.project.settings.files_or_directories_to_check;
-                !check_files.is_empty()
-                    && !check_files
-                        .iter()
-                        .any(|p| self.db.vfs.handler.is_sub_file_of(path, p))
+                !check_files.is_empty() && !check_files.iter().any(|p| p.is_sub_file(path))
                     || flags.excludes.iter().any(|e| e.regex.is_match(path))
             };
             for (file, path) in to_be_loaded {

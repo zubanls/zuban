@@ -164,7 +164,7 @@ pub fn namespace_import(
                 }
                 Err(workspace_root) => {
                     for workspace in db.vfs.workspaces.iter() {
-                        if *workspace.root_path() == ***workspace_root {
+                        if *workspace.root_path() == **workspace_root {
                             if workspace.kind == WorkspaceKind::SitePackages {
                                 return Some(ImportResult::PyTypedMissing);
                             } else {

@@ -154,6 +154,7 @@ dependencies = [
  "rust-ini",
  "toml_edit",
  "tracing",
+ "vfs",
 ]
 
 [[package]]
@@ -163,6 +164,7 @@ dependencies = [
  "anyhow",
  "config",
  "tracing",
+ "vfs",
 ]
 
 [[package]]
@@ -1439,6 +1441,7 @@ dependencies = [
  "config_searcher",
  "licensing",
  "test_utils",
+ "vfs",
  "zuban_python",
 ]
 

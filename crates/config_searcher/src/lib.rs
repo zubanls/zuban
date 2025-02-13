@@ -1,6 +1,7 @@
 use std::{io::Read, path::Path};
 
 use config::{DiagnosticConfig, ProjectOptions};
+use vfs::{AbsPath, VfsHandler};
 
 const CONFIG_PATHS: [&str; 6] = [
     "mypy.ini",
@@ -12,17 +13,19 @@ const CONFIG_PATHS: [&str; 6] = [
 ];
 
 pub fn find_workspace_config(
-    workspace_dir: &str,
-    on_check_path: impl FnMut(&Path),
+    vfs: &dyn VfsHandler,
+    workspace_dir: &AbsPath,
+    on_check_path: impl FnMut(&AbsPath),
 ) -> anyhow::Result<ProjectOptions> {
-    let maybe_found = find_mypy_config_file_in_dir(Path::new(workspace_dir), on_check_path);
-    let mut project_options = initialize_config(maybe_found)?.0;
+    let maybe_found = find_mypy_config_file_in_dir(workspace_dir, on_check_path);
+    let mut project_options = initialize_config(vfs, workspace_dir, maybe_found)?.0;
     project_options.settings.mypy_path = vec![];
     Ok(project_options)
 }
 
 pub fn find_cli_config(
-    current_dir: &Path,
+    vfs: &dyn VfsHandler,
+    current_dir: &AbsPath,
     config_file: Option<&Path>,
 ) -> anyhow::Result<(ProjectOptions, DiagnosticConfig)> {
     let maybe_found = if let Some(config_file) = config_file.as_ref() {
@@ -34,10 +37,12 @@ pub fn find_cli_config(
     } else {
         find_mypy_config_file_in_dir(current_dir, |_| ())
     };
-    initialize_config(maybe_found)
+    initialize_config(vfs, current_dir, maybe_found)
 }
 
 fn initialize_config(
+    vfs: &dyn VfsHandler,
+    current_dir: &AbsPath,
     found_file_with_content: Option<(&str, std::io::Result<String>)>,
 ) -> anyhow::Result<(ProjectOptions, DiagnosticConfig)> {
     let _p = tracing::info_span!("config_finder").entered();
@@ -47,9 +52,9 @@ fn initialize_config(
         let content =
             content.map_err(|err| anyhow::anyhow!("Issue while reading {path}: {err}"))?;
         if path.ends_with(".toml") {
-            ProjectOptions::from_pyproject_toml(&content, &mut diagnostic_config)?
+            ProjectOptions::from_pyproject_toml(vfs, current_dir, &content, &mut diagnostic_config)?
         } else {
-            ProjectOptions::from_mypy_ini(&content, &mut diagnostic_config)?
+            ProjectOptions::from_mypy_ini(vfs, current_dir, &content, &mut diagnostic_config)?
         }
     } else {
         tracing::info!("No config found");
@@ -59,11 +64,11 @@ fn initialize_config(
 }
 
 fn find_mypy_config_file_in_dir(
-    dir: &Path,
-    mut on_check_path: impl FnMut(&Path),
+    dir: &AbsPath,
+    mut on_check_path: impl FnMut(&AbsPath),
 ) -> Option<(&'static str, std::io::Result<String>)> {
     CONFIG_PATHS.iter().find_map(|config_path| {
-        let mut check = |path: &Path| {
+        let mut check = |path: &AbsPath| {
             on_check_path(path);
             if let Ok(mut file) = std::fs::File::open(path) {
                 let mut content = String::new();

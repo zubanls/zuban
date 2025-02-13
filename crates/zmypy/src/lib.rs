@@ -1,8 +1,9 @@
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process::ExitCode;
 
 use config::{DiagnosticConfig, ExcludeRegex, ProjectOptions, PythonVersion};
 use config_searcher::find_cli_config;
+use vfs::{AbsPath, LocalFS};
 use zuban_python::Project;
 
 use clap::Parser;
@@ -208,11 +209,11 @@ pub fn run(cli: Cli) -> ExitCode {
         return ExitCode::from(10);
     }
 
-    let cwd = std::env::current_dir().expect("Expected a valid working directory");
+    let current_dir = std::env::current_dir().expect("Expected a valid working directory");
     const CWD_ERROR: &str = "Expected valid unicode in working directory";
-    let cwd = cwd.into_os_string().into_string().expect(CWD_ERROR);
+    let current_dir = current_dir.into_os_string().into_string().expect(CWD_ERROR);
 
-    let (mut project, diagnostic_config) = project_from_cli(cli, cwd, None);
+    let (mut project, diagnostic_config) = project_from_cli(cli, current_dir, None);
     let diagnostics = project.diagnostics();
     for diagnostic in diagnostics.issues.iter() {
         println!("{}", diagnostic.as_string(&diagnostic_config))
@@ -244,26 +245,35 @@ pub fn run(cli: Cli) -> ExitCode {
 
 fn project_from_cli(
     cli: Cli,
-    cwd: String,
+    current_dir: String,
     typeshed_path: Option<String>,
 ) -> (Project, DiagnosticConfig) {
+    let local_fs = LocalFS::without_watcher();
+    let current_dir = AbsPath::new_unchecked(&local_fs, current_dir);
     let (mut options, mut diagnostic_config) =
-        find_cli_config(&Path::new(&cwd), cli.config_file.as_deref())
+        find_cli_config(&local_fs, &current_dir, cli.config_file.as_deref())
             .unwrap_or_else(|err| panic!("Problem parsing Mypy config: {err}"));
     options.settings.mypy_compatible = true;
     if let Some(typeshed_path) = typeshed_path {
         options.settings.typeshed_path = Some(typeshed_path);
     }
-    apply_flags(&mut options, &mut diagnostic_config, cli, cwd);
+    apply_flags(
+        &local_fs,
+        &mut options,
+        &mut diagnostic_config,
+        cli,
+        current_dir,
+    );
 
-    (Project::without_watcher(options), diagnostic_config)
+    (Project::new(Box::new(local_fs), options), diagnostic_config)
 }
 
 fn apply_flags(
+    vfs_handler: &LocalFS,
     project_options: &mut ProjectOptions,
     diagnostic_config: &mut DiagnosticConfig,
     cli: Cli,
-    cwd: String,
+    current_dir: AbsPath,
 ) {
     macro_rules! apply {
         ($to:ident, $attr:ident, $inverse:ident) => {
@@ -325,7 +335,11 @@ fn apply_flags(
         project_options.settings.python_version = python_version;
     }
     project_options.settings.python_executable = cli.python_executable;
-    project_options.settings.files_or_directories_to_check = cli.files;
+    project_options.settings.files_or_directories_to_check = cli
+        .files
+        .into_iter()
+        .map(|p| AbsPath::from_current_dir_and_path(vfs_handler, &current_dir, p))
+        .collect();
     project_options
         .flags
         .enabled_error_codes
@@ -351,7 +365,7 @@ fn apply_flags(
     }
 
     // TODO MYPYPATH=$MYPYPATH:mypy-stubs
-    project_options.settings.mypy_path.push(cwd);
+    project_options.settings.mypy_path.push(current_dir);
 }
 
 #[cfg(test)]
@@ -402,5 +416,47 @@ mod tests {
         test_dir.remove_file("pyproject.toml");
 
         assert_eq!(d(), vec![NOT_CALLABLE.to_string()]);
+    }
+
+    #[test]
+    fn test_files_relative_paths() {
+        let mut project_options = ProjectOptions::default();
+        let local_fs = LocalFS::without_watcher();
+        let current_dir = AbsPath::new_unchecked(&local_fs, "/foo/bar".into());
+        let mut cli = Cli::parse_from(Vec::<String>::default());
+        cli.files = vec![
+            "/foo/bar/baz.py".to_string(),
+            "bla.py".to_string(),
+            "/other/".to_string(),
+            "/another".to_string(),
+            "blub/bla/".to_string(),
+            "blub/baz".to_string(),
+            "blub/../not_in_blub".to_string(),
+        ];
+        apply_flags(
+            &local_fs,
+            &mut project_options,
+            &mut DiagnosticConfig::default(),
+            cli,
+            current_dir,
+        );
+        let files: Vec<&str> = project_options
+            .settings
+            .files_or_directories_to_check
+            .iter()
+            .map(|p| p.as_str())
+            .collect();
+        assert_eq!(
+            files,
+            vec![
+                "/foo/bar/baz.py",
+                "/foo/bar/bla.py",
+                "/other",
+                "/another",
+                "/foo/bar/blub/bla",
+                "/foo/bar/blub/baz",
+                "/foo/bar/not_in_blub",
+            ]
+        )
     }
 }

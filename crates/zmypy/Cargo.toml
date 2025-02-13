@@ -11,6 +11,7 @@ authors.workspace = true
 config_searcher.workspace = true
 config.workspace = true
 licensing.workspace = true
+vfs.workspace = true
 zuban_python.workspace = true
 
 clap.workspace = true
