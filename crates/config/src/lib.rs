@@ -591,12 +591,7 @@ fn set_bool_init_flags(
         "cache_fine_grained" => (),
         "ignore_errors" => return value.as_bool(invert),
         "python_version" => bail!("python_version not supported in inline configuration"),
-        _ => {
-            tracing::error!(
-                "Unrecognized option {original_name} = {} in Mypy config",
-                value.as_repr()
-            );
-        }
+        _ => bail!("Unrecognized option: {original_name} = {}", value.as_repr()),
     }
     Ok(false)
 }
