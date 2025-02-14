@@ -338,9 +338,7 @@ impl TestCase<'_, '_> {
                     .unload_in_memory_file(base_path_join(&local_fs, path).as_str())
                     .unwrap_or_else(|_| {
                         project
-                            .delete_directory_of_in_memory_files(
-                                base_path_join(&local_fs, path).as_str(),
-                            )
+                            .delete_directory_of_in_memory_files(base_path_join(&local_fs, path))
                             .unwrap()
                     });
             }
@@ -455,9 +453,10 @@ impl TestCase<'_, '_> {
                 // Somehow all tests use `/` paths, and I haven't seen backslashes (for Windows)
                 if path.contains('/') {
                     let before_slash = path.split('/').next().unwrap();
-                    let _ = project.delete_directory_of_in_memory_files(
-                        base_path_join(&local_fs, before_slash).as_str(),
-                    );
+                    let _ = project.delete_directory_of_in_memory_files(base_path_join(
+                        &local_fs,
+                        before_slash,
+                    ));
                 } else {
                     let _ = project.unload_in_memory_file(base_path_join(&local_fs, path).as_str());
                 }

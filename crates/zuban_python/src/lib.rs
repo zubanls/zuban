@@ -22,7 +22,7 @@ mod type_helpers;
 mod utils;
 
 use parsa_python_cst::CodeIndex;
-use vfs::{Directory, DirectoryEntry, FileEntry, FileIndex, LocalFS, VfsHandler};
+use vfs::{AbsPath, Directory, DirectoryEntry, FileEntry, FileIndex, LocalFS, VfsHandler};
 
 use config::{ProjectOptions, PythonVersion, Settings, TypeCheckerFlags};
 use database::{Database, PythonProject};
@@ -66,7 +66,7 @@ impl Project {
         Some(self.db.loaded_python_file(file_index).code())
     }
 
-    pub fn delete_directory_of_in_memory_files(&mut self, path: &str) -> Result<(), String> {
+    pub fn delete_directory_of_in_memory_files(&mut self, path: AbsPath) -> Result<(), String> {
         self.db.delete_directory_of_in_memory_files(path)
     }
 

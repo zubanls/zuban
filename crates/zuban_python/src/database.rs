@@ -1081,7 +1081,7 @@ impl Database {
         self.generate_python_state();
     }
 
-    pub fn delete_directory_of_in_memory_files(&mut self, dir_path: &str) -> Result<(), String> {
+    pub fn delete_directory_of_in_memory_files(&mut self, dir_path: AbsPath) -> Result<(), String> {
         let invalidation = self.vfs.delete_in_memory_files_directory(
             self.project.flags.case_sensitive,
             dir_path,

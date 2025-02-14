@@ -339,20 +339,16 @@ impl<F: VfsFile> Vfs<F> {
     pub fn delete_in_memory_files_directory(
         &mut self,
         case_sensitive: bool,
-        mut dir_path: &str,
+        dir_path: AbsPath,
         to_file: impl Fn(&FileState<F>, FileIndex, Box<str>) -> F,
     ) -> Result<InvalidationResult, String> {
         // TODO this method feels weird
-
-        if let Some(p) = self.handler.strip_separator_suffix(dir_path) {
-            dir_path = p;
-        }
 
         let in_mem_paths: Vec<String> = self
             .in_memory_files
             .iter()
             .filter_map(|(path, _)| {
-                let after_dir = path.strip_prefix(dir_path)?;
+                let after_dir = path.strip_prefix(dir_path.as_str())?;
                 self.handler.strip_separator_prefix(after_dir)?;
                 Some(path.to_string())
             })
@@ -364,7 +360,7 @@ impl<F: VfsFile> Vfs<F> {
                 .unwrap();
         }
         self.workspaces
-            .delete_directory(&*self.handler, case_sensitive, dir_path)?;
+            .delete_directory(&*self.handler, case_sensitive, dir_path.as_str())?;
         Ok(invalidation_result)
     }
 
