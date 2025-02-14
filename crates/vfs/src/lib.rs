@@ -54,16 +54,16 @@ pub trait VfsHandler {
 
     fn split_off_folder<'a>(&self, path: &'a str) -> (&'a str, Option<&'a str>);
 
-    fn normalize_path<'s>(&self, path: &'s str) -> Cow<'s, NormalizedPath> {
+    fn normalize_path<'s>(&self, path: &'s AbsPath) -> Cow<'s, NormalizedPath> {
         if cfg!(target_os = "windows") {
             if path.contains("/") {
-                let p = path.replace('/', "\\").into();
+                let p = AbsPath::new_boxed(path.replace('/', "\\").into_boxed_str());
                 return Cow::Owned(NormalizedPath::new_boxed(p));
             }
         }
         Cow::Borrowed(NormalizedPath::new(path))
     }
-    fn normalize_boxed_path<'s>(&self, path: Box<str>) -> Box<NormalizedPath> {
+    fn normalize_boxed_path<'s>(&self, path: Box<AbsPath>) -> Box<NormalizedPath> {
         match self.normalize_path(&path) {
             Cow::Borrowed(_) => NormalizedPath::new_boxed(path),
             Cow::Owned(o) => o,

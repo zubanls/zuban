@@ -11,10 +11,10 @@ impl GlobalState<'_> {
         params: DidOpenTextDocumentParams,
     ) -> anyhow::Result<()> {
         let _p = tracing::info_span!("handle_did_open_text_document").entered();
-        let path = self.uri_to_path(&params.text_document.uri);
+        let project = self.project();
+        let path = Self::uri_to_path(project, params.text_document.uri);
         tracing::info!("Opening {path}");
-        self.project()
-            .load_in_memory_file(path.into(), params.text_document.text.into());
+        project.load_in_memory_file(path.into(), params.text_document.text.into());
         Ok(())
     }
 
@@ -23,7 +23,8 @@ impl GlobalState<'_> {
         params: DidChangeTextDocumentParams,
     ) -> anyhow::Result<()> {
         let _p = tracing::info_span!("handle_did_change_text_document").entered();
-        let path = self.uri_to_path(&params.text_document.uri);
+        let project = self.project();
+        let path = Self::uri_to_path(project, params.text_document.uri);
         tracing::info!("Changing {path}");
 
         let len = params.content_changes.len();
@@ -44,8 +45,7 @@ impl GlobalState<'_> {
                    don't support TextDocumentSyncKind::INCREMENTAL yet"
             )
         }
-        self.project()
-            .load_in_memory_file(path.into(), change.text.into());
+        project.load_in_memory_file(path.into(), change.text.into());
         Ok(())
     }
 
@@ -54,11 +54,11 @@ impl GlobalState<'_> {
         params: DidCloseTextDocumentParams,
     ) -> anyhow::Result<()> {
         let _p = tracing::info_span!("handle_did_change_text_document").entered();
-        let path = self.uri_to_path(&params.text_document.uri);
+        let project = self.project();
+        let path = Self::uri_to_path(project, params.text_document.uri);
         tracing::info!("Closing {path}");
-        let result = self
-            .project()
-            .unload_in_memory_file(path)
+        let result = project
+            .unload_in_memory_file(&path)
             .map_err(|err| anyhow::anyhow!("{err}"));
         result
     }

@@ -49,7 +49,7 @@ impl Project {
         Self { db }
     }
 
-    pub fn invalidate_path(&mut self, path: &str) {
+    pub fn invalidate_path(&mut self, path: &AbsPath) {
         self.db.invalidate_path(path)
     }
 
@@ -57,11 +57,11 @@ impl Project {
 
     pub fn complete_search(&self, _string: &str, _all_scopes: bool) {}
 
-    pub fn load_in_memory_file(&mut self, path: Box<str>, code: Box<str>) {
+    pub fn load_in_memory_file(&mut self, path: Box<AbsPath>, code: Box<str>) {
         self.db.load_in_memory_file(path, code);
     }
 
-    pub fn code_of_in_memory_file(&mut self, path: &str) -> Option<&str> {
+    pub fn code_of_in_memory_file(&mut self, path: &AbsPath) -> Option<&str> {
         let file_index = self.db.vfs.in_memory_file(path)?;
         Some(self.db.loaded_python_file(file_index).code())
     }
@@ -70,7 +70,7 @@ impl Project {
         self.db.delete_directory_of_in_memory_files(path)
     }
 
-    pub fn unload_in_memory_file(&mut self, path: &str) -> Result<(), &'static str> {
+    pub fn unload_in_memory_file(&mut self, path: &AbsPath) -> Result<(), &'static str> {
         self.db.unload_in_memory_file(path)
     }
 
@@ -167,7 +167,7 @@ impl Project {
         Project { db }
     }
 
-    pub fn document(&mut self, path: &str) -> Option<Document> {
+    pub fn document(&mut self, path: &AbsPath) -> Option<Document> {
         let file_entry = self
             .db
             .vfs
@@ -218,7 +218,11 @@ pub struct Script<'a> {
 }
 
 impl<'a> Script<'a> {
-    pub fn new(project: &'a mut Project, path: Option<Box<str>>, code: Option<Box<str>>) -> Self {
+    pub fn new(
+        project: &'a mut Project,
+        path: Option<Box<AbsPath>>,
+        code: Option<Box<str>>,
+    ) -> Self {
         let db = &mut project.db;
         let file_index = match path {
             Some(path) => {

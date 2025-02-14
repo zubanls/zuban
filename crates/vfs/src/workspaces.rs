@@ -50,7 +50,7 @@ impl Workspaces {
         &self,
         vfs: &dyn VfsHandler,
         case_sensitive: bool,
-        path: &str,
+        path: &AbsPath,
     ) -> Option<Rc<FileEntry>> {
         self.0.iter().find_map(|workspace| {
             let p = strip_path_prefix(vfs, case_sensitive, path, workspace.root_path())?;

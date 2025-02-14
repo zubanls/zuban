@@ -106,7 +106,7 @@ impl<F: VfsFile> Vfs<F> {
         self.workspaces.add(&*self.handler, root_path, kind)
     }
 
-    pub fn search_path(&self, case_sensitive: bool, path: &str) -> Option<Rc<FileEntry>> {
+    pub fn search_path(&self, case_sensitive: bool, path: &AbsPath) -> Option<Rc<FileEntry>> {
         self.workspaces
             .search_path(&*self.handler, case_sensitive, path)
     }
@@ -197,7 +197,7 @@ impl<F: VfsFile> Vfs<F> {
         }
     }
 
-    pub fn in_memory_file(&mut self, path: &str) -> Option<FileIndex> {
+    pub fn in_memory_file(&mut self, path: &AbsPath) -> Option<FileIndex> {
         self.in_memory_files
             .get(self.handler.normalize_path(path).as_ref())
             .cloned()
@@ -206,7 +206,7 @@ impl<F: VfsFile> Vfs<F> {
     pub fn load_in_memory_file(
         &mut self,
         case_sensitive: bool,
-        path: Box<str>,
+        path: Box<AbsPath>,
         code: Box<str>,
         new_file: impl FnOnce(FileIndex, &FileEntry, Box<str>) -> F,
     ) -> (FileIndex, InvalidationResult) {
@@ -302,7 +302,7 @@ impl<F: VfsFile> Vfs<F> {
     pub fn unload_in_memory_file(
         &mut self,
         case_sensitive: bool,
-        path: &str,
+        path: &AbsPath,
         to_file: impl FnOnce(&FileState<F>, FileIndex, Box<str>) -> F,
     ) -> Result<InvalidationResult, &'static str> {
         if let Some(file_index) = self
@@ -344,13 +344,13 @@ impl<F: VfsFile> Vfs<F> {
     ) -> Result<InvalidationResult, String> {
         // TODO this method feels weird
 
-        let in_mem_paths: Vec<String> = self
+        let in_mem_paths: Vec<Box<NormalizedPath>> = self
             .in_memory_files
             .iter()
             .filter_map(|(path, _)| {
                 let after_dir = path.strip_prefix(&**dir_path)?;
                 self.handler.strip_separator_prefix(after_dir)?;
-                Some(path.to_string())
+                Some(path.clone())
             })
             .collect();
         let mut invalidation_result = InvalidationResult::InvalidatedFiles;
@@ -364,7 +364,7 @@ impl<F: VfsFile> Vfs<F> {
         Ok(invalidation_result)
     }
 
-    pub fn invalidate_path(&mut self, case_sensitive: bool, path: &str) -> InvalidationResult {
+    pub fn invalidate_path(&mut self, case_sensitive: bool, path: &AbsPath) -> InvalidationResult {
         let _span = tracing::debug_span!("invalidate_path").entered();
         if self
             .in_memory_files
@@ -468,7 +468,7 @@ impl<F: VfsFile> Vfs<F> {
         let invalidates_db = file_entry.invalidations.invalidates_db();
         self.with_added_file(
             file_entry,
-            NormalizedPath::new_boxed(Box::from("")),
+            NormalizedPath::new_boxed(AbsPath::new_boxed("".into())),
             invalidates_db,
             add,
         )

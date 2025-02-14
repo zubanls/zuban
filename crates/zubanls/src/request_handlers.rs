@@ -13,9 +13,9 @@ impl GlobalState<'_> {
         &mut self,
         params: DocumentDiagnosticParams,
     ) -> anyhow::Result<lsp_types::DocumentDiagnosticReportResult> {
-        let path = self.uri_to_path(&params.text_document.uri);
         let project = self.project();
-        let Some(mut document) = project.document(path) else {
+        let path = Self::uri_to_path(project, params.text_document.uri);
+        let Some(mut document) = project.document(&path) else {
             tracing::error!("File {path} does not exist");
             bail!(LspError {
                 code: lsp_server::ErrorCode::InvalidParams as i32,

@@ -2,15 +2,15 @@ use crate::AbsPath;
 
 #[derive(Debug, PartialEq, Eq, Hash)]
 #[repr(transparent)]
-pub struct NormalizedPath(str);
+pub struct NormalizedPath(AbsPath);
 
 impl NormalizedPath {
-    pub(crate) fn new(x: &str) -> &Self {
+    pub(crate) fn new(x: &AbsPath) -> &Self {
         // SAFETY: `NormalizedPath` is repr(transparent) over `str`
         unsafe { std::mem::transmute(x) }
     }
 
-    pub(crate) fn new_boxed(x: Box<str>) -> Box<Self> {
+    pub(crate) fn new_boxed(x: Box<AbsPath>) -> Box<Self> {
         unsafe { std::mem::transmute(x) }
     }
 
@@ -30,13 +30,13 @@ impl ToOwned for NormalizedPath {
 impl From<&NormalizedPath> for Box<NormalizedPath> {
     #[inline]
     fn from(s: &NormalizedPath) -> Box<NormalizedPath> {
-        let x: Box<str> = s.0.into();
+        let x: Box<AbsPath> = s.0.into();
         unsafe { std::mem::transmute(x) }
     }
 }
 
 impl std::ops::Deref for NormalizedPath {
-    type Target = str;
+    type Target = AbsPath;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -45,7 +45,7 @@ impl std::ops::Deref for NormalizedPath {
 
 impl Clone for Box<NormalizedPath> {
     fn clone(&self) -> Self {
-        NormalizedPath::new_boxed(self.as_ref().to_string().into())
+        NormalizedPath::new_boxed(self.0.cloned_box())
     }
 }
 

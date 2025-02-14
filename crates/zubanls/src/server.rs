@@ -12,7 +12,7 @@ use lsp_types::notification::Notification as _;
 use lsp_types::Uri;
 use notify::EventKind;
 use serde::{de::DeserializeOwned, Serialize};
-use vfs::{LocalFS, NotifyEvent, VfsHandler as _};
+use vfs::{AbsPath, LocalFS, NotifyEvent, VfsHandler as _};
 use zuban_python::Project;
 
 use crate::capabilities::{server_capabilities, ClientCapabilities};
@@ -368,8 +368,10 @@ impl<'sender> GlobalState<'sender> {
                                     self.project = None;
                                     return;
                                 }
-                                if let Some(path) = path.to_str() {
-                                    project.invalidate_path(path)
+                                if let Some(p) = path.to_str() {
+                                    debug_assert!(path.is_absolute());
+                                    let p = project.vfs_handler().unchecked_abs_path(p.to_string());
+                                    project.invalidate_path(&p)
                                 }
                             }
                         }
@@ -400,8 +402,10 @@ impl<'sender> GlobalState<'sender> {
         tracing::error!("unhandled request: {:?}", response);
     }
 
-    pub(crate) fn uri_to_path<'uri>(&self, uri: &'uri lsp_types::Uri) -> &'uri str {
-        uri.as_str()
+    pub(crate) fn uri_to_path(project: &Project, uri: lsp_types::Uri) -> Box<AbsPath> {
+        project
+            .vfs_handler()
+            .unchecked_abs_path(uri.as_str().into())
     }
 }
 

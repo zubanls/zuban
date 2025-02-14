@@ -528,7 +528,7 @@ fn initialize_and_return_wanted_output(
         add_inline_errors(&mut wanted, path, code);
         // testAbstractClassSubclasses
         let p = base_path_join(local_fs, path);
-        project.load_in_memory_file(p.to_string().into(), code.into());
+        project.load_in_memory_file(p, code.into());
     }
     for line in &mut wanted {
         replace_unions(line);

@@ -28,7 +28,11 @@ impl TestFile<'_> {
     pub fn test(&self, project: &mut zuban_python::Project) -> (usize, usize) {
         let _script = Script::new(
             project,
-            Some(self.path.to_str().unwrap().into()),
+            Some(
+                project
+                    .vfs_handler()
+                    .unchecked_abs_path(self.path.to_str().unwrap().to_string()),
+            ),
             Some(self.code.clone()),
         );
         let cases = self.find_test_cases();
