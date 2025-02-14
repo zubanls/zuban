@@ -337,7 +337,7 @@ impl Namespace {
         join_with_commas(
             self.directories
                 .iter()
-                .map(|d| d.path(&*db.vfs.handler, true)),
+                .map(|d| d.absolute_path(&*db.vfs.handler).into_string()),
         )
     }
 }

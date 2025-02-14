@@ -183,12 +183,12 @@ impl<F: VfsFile> Vfs<F> {
             file_state.update(new_file(file_index, code.into()));
             Some(file_index)
         } else {
-            let path = file_entry.path(&*self.handler);
+            let path = file_entry.absolute_path(&*self.handler);
             let code = self.handler.read_and_watch_file(&path)?;
             let file_index = self.with_added_file(
                 file_entry.clone(),
                 // The path was previously normalized, because it is created from a Directory
-                NormalizedPath::new_boxed(path.into()),
+                NormalizedPath::new_boxed_abs(path),
                 invalidates_db,
                 |file_index| new_file(file_index, code.into()),
             );

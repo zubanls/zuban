@@ -24,6 +24,12 @@ impl AbsPath {
     pub fn cloned_box(&self) -> Box<Self> {
         Self::new_boxed(self.0.into())
     }
+
+    pub fn into_string(self: Box<AbsPath>) -> String {
+        // SAFETY: `AbsPath` is repr(transparent) over `str`
+        let value: Box<str> = unsafe { std::mem::transmute(self) };
+        value.into_string()
+    }
 }
 
 impl ToOwned for AbsPath {

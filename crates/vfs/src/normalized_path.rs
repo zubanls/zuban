@@ -1,3 +1,5 @@
+use crate::AbsPath;
+
 #[derive(Debug, PartialEq, Eq, Hash)]
 #[repr(transparent)]
 pub struct NormalizedPath(str);
@@ -9,6 +11,10 @@ impl NormalizedPath {
     }
 
     pub(crate) fn new_boxed(x: Box<str>) -> Box<Self> {
+        unsafe { std::mem::transmute(x) }
+    }
+
+    pub(crate) fn new_boxed_abs(x: Box<AbsPath>) -> Box<Self> {
         unsafe { std::mem::transmute(x) }
     }
 }

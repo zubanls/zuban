@@ -427,7 +427,7 @@ impl<'db> PythonFile {
                     DirectoryEntry::File(entry) => db
                         .vfs
                         .handler
-                        .read_and_watch_file(&entry.path(&*db.vfs.handler))
+                        .read_and_watch_file(&entry.absolute_path(&*db.vfs.handler))
                         .is_some_and(|code| code.contains("partial")),
                     _ => false,
                 })

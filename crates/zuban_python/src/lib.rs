@@ -102,7 +102,7 @@ impl Project {
             directory.walk(&mut |in_dir, file| {
                 if file.get_file_index().is_none() && !ignore_py_if_overwritten_by_pyi(in_dir, file)
                 {
-                    let path = file.path(&*self.db.vfs.handler);
+                    let path = file.absolute_path(&*self.db.vfs.handler);
                     to_be_loaded.push((file.clone(), path));
                 }
             });
@@ -135,7 +135,9 @@ impl Project {
             });
             'outer: for file_index in file_indexes {
                 let python_file = self.db.loaded_python_file(file_index);
-                let p = python_file.file_entry(&self.db).path(&*self.db.vfs.handler);
+                let p = python_file
+                    .file_entry(&self.db)
+                    .absolute_path(&*self.db.vfs.handler);
                 if maybe_skipped(python_file.flags(&self.db), &p) {
                     continue 'outer;
                 }

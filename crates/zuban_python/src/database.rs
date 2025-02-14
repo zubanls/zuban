@@ -1129,7 +1129,7 @@ impl Database {
     }
 
     fn preload_typeshed_stub(&self, dir: &Directory, file_name: &'static str) -> &PythonFile {
-        let path = || dir.path(&*self.vfs.handler, true);
+        let path = || dir.absolute_path(&*self.vfs.handler);
         let entry = dir
             .search(file_name)
             .unwrap_or_else(|| panic!("Did not find file {file_name:?} in {}", path()))
@@ -1163,7 +1163,7 @@ impl Database {
         let find_dir = |name| match &*stdlib_dir.search(name).unwrap_or_else(|| {
             panic!(
                 "Expected a {name} directory in {}",
-                stdlib_dir.path(&*self.vfs.handler, true)
+                stdlib_dir.absolute_path(&*self.vfs.handler)
             )
         }) {
             DirectoryEntry::Directory(c) => c.clone(),

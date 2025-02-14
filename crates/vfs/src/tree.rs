@@ -40,16 +40,17 @@ impl Parent {
         }
     }
 
-    fn path(&self, vfs: &dyn VfsHandler, add_root: bool) -> String {
+    fn absolute_path(&self, vfs: &dyn VfsHandler) -> Box<AbsPath> {
         match self {
-            Self::Directory(dir) => dir.upgrade().unwrap().path(vfs, add_root),
-            Self::Workspace(workspace) => {
-                if add_root {
-                    workspace.to_string()
-                } else {
-                    String::new()
-                }
-            }
+            Self::Directory(dir) => dir.upgrade().unwrap().absolute_path(vfs),
+            Self::Workspace(workspace) => workspace.cloned_box(),
+        }
+    }
+
+    fn relative_path(&self, vfs: &dyn VfsHandler) -> String {
+        match self {
+            Self::Directory(dir) => dir.upgrade().unwrap().relative_path(vfs),
+            Self::Workspace(_) => String::new(),
         }
     }
 
@@ -79,14 +80,12 @@ impl FileEntry {
         })
     }
 
-    pub fn path(&self, vfs: &dyn VfsHandler) -> String {
-        let mut path = self.parent.path(vfs, true);
-        path.push(vfs.separator());
-        path + &self.name
+    pub fn absolute_path(&self, vfs: &dyn VfsHandler) -> Box<AbsPath> {
+        vfs.join(&self.parent.absolute_path(vfs), &self.name)
     }
 
     pub fn relative_path(&self, vfs: &dyn VfsHandler) -> String {
-        let mut path = self.parent.path(vfs, false);
+        let mut path = self.parent.relative_path(vfs);
         if path.is_empty() {
             return self.name.clone().into();
         }
@@ -313,8 +312,12 @@ impl Directory {
         }
     }
 
-    pub fn path(&self, vfs: &dyn VfsHandler, add_root: bool) -> String {
-        let mut path = self.parent.path(vfs, add_root);
+    pub fn absolute_path(&self, vfs: &dyn VfsHandler) -> Box<AbsPath> {
+        vfs.join(&self.parent.absolute_path(vfs), &self.name)
+    }
+
+    pub fn relative_path(&self, vfs: &dyn VfsHandler) -> String {
+        let mut path = self.parent.relative_path(vfs);
         if path.is_empty() {
             return self.name.clone().into();
         }
