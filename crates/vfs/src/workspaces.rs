@@ -15,14 +15,14 @@ pub enum WorkspaceKind {
 pub struct Workspaces(Vec<Workspace>);
 
 impl Workspaces {
-    pub(crate) fn add(&mut self, vfs: &dyn VfsHandler, root: AbsPath, kind: WorkspaceKind) {
+    pub(crate) fn add(&mut self, vfs: &dyn VfsHandler, root: Box<AbsPath>, kind: WorkspaceKind) {
         self.0.push(Workspace::new(vfs, root, kind))
     }
 
     pub(crate) fn add_at_start(
         &mut self,
         vfs: &dyn VfsHandler,
-        root: AbsPath,
+        root: Box<AbsPath>,
         kind: WorkspaceKind,
     ) {
         self.0.insert(0, Workspace::new(vfs, root, kind))
@@ -206,22 +206,19 @@ pub struct Workspace {
 }
 
 impl Workspace {
-    fn new(vfs: &dyn VfsHandler, root_path: AbsPath, kind: WorkspaceKind) -> Self {
+    fn new(vfs: &dyn VfsHandler, root_path: Box<AbsPath>, kind: WorkspaceKind) -> Self {
         tracing::debug!("Add workspace {root_path}");
-        let root_path = Rc::<AbsPath>::new(root_path);
+        let root_path = Rc::<AbsPath>::from(root_path);
 
-        let dir = match vfs.walk_and_watch_dirs(
-            &root_path.as_str(),
-            Parent::Workspace(root_path.clone()),
-            true,
-        ) {
-            DirectoryEntry::Directory(dir) => Rc::unwrap_or_clone(dir),
-            e => Directory {
-                parent: Parent::Workspace(root_path.clone()),
-                name: e.name().into(),
-                entries: Default::default(),
-            },
-        };
+        let dir =
+            match vfs.walk_and_watch_dirs(&root_path, Parent::Workspace(root_path.clone()), true) {
+                DirectoryEntry::Directory(dir) => Rc::unwrap_or_clone(dir),
+                e => Directory {
+                    parent: Parent::Workspace(root_path.clone()),
+                    name: e.name().into(),
+                    entries: Default::default(),
+                },
+            };
         #[cfg(target_os = "macos")]
         {
             let canonicalized_path = match std::fs::canonicalize(&**root_path) {
@@ -307,7 +304,7 @@ fn strip_path_prefix<'x>(
     mut path: &'x str,
     to_strip: &AbsPath,
 ) -> Option<&'x str> {
-    let mut to_strip = to_strip.as_str();
+    let mut to_strip: &str = to_strip;
     loop {
         let (folder1, rest) = vfs.split_off_folder(path);
         let (folder2, rest_to_strip) = vfs.split_off_folder(to_strip);

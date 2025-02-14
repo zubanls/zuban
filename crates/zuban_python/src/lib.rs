@@ -66,7 +66,7 @@ impl Project {
         Some(self.db.loaded_python_file(file_index).code())
     }
 
-    pub fn delete_directory_of_in_memory_files(&mut self, path: AbsPath) -> Result<(), String> {
+    pub fn delete_directory_of_in_memory_files(&mut self, path: &AbsPath) -> Result<(), String> {
         self.db.delete_directory_of_in_memory_files(path)
     }
 

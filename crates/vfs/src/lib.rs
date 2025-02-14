@@ -70,7 +70,7 @@ pub trait VfsHandler {
         }
     }
 
-    fn absolute_path(&self, current_dir: &AbsPath, path: String) -> AbsPath {
+    fn absolute_path(&self, current_dir: &AbsPath, path: String) -> Box<AbsPath> {
         let p = Path::new(&path);
         if p.is_absolute() {
             self.unchecked_abs_path(path)
@@ -79,16 +79,16 @@ pub trait VfsHandler {
         }
     }
 
-    fn unchecked_abs_path(&self, mut path: String) -> AbsPath {
+    fn unchecked_abs_path(&self, mut path: String) -> Box<AbsPath> {
         if let Some(new_root_path) = self.strip_separator_suffix(&path.as_str()) {
             path.truncate(new_root_path.len());
         }
-        AbsPath::new(path)
+        AbsPath::new_boxed(path.into())
     }
 
-    fn join(&self, path: &AbsPath, name: &str) -> AbsPath {
+    fn join(&self, path: &AbsPath, name: &str) -> Box<AbsPath> {
         self.unchecked_abs_path(
-            Path::new(path.as_str())
+            Path::new(&**path)
                 .join(name)
                 .into_os_string()
                 .into_string()

@@ -91,7 +91,7 @@ impl<F: VfsFile> Vfs<F> {
         }
 
         for p in type_checked_dirs.rev() {
-            workspaces.add_at_start(&*self.handler, p.clone(), WorkspaceKind::TypeChecking)
+            workspaces.add_at_start(&*self.handler, p.cloned_box(), WorkspaceKind::TypeChecking)
         }
 
         Self {
@@ -102,7 +102,7 @@ impl<F: VfsFile> Vfs<F> {
         }
     }
 
-    pub fn add_workspace(&mut self, root_path: AbsPath, kind: WorkspaceKind) {
+    pub fn add_workspace(&mut self, root_path: Box<AbsPath>, kind: WorkspaceKind) {
         self.workspaces.add(&*self.handler, root_path, kind)
     }
 
@@ -339,7 +339,7 @@ impl<F: VfsFile> Vfs<F> {
     pub fn delete_in_memory_files_directory(
         &mut self,
         case_sensitive: bool,
-        dir_path: AbsPath,
+        dir_path: &AbsPath,
         to_file: impl Fn(&FileState<F>, FileIndex, Box<str>) -> F,
     ) -> Result<InvalidationResult, String> {
         // TODO this method feels weird
@@ -348,7 +348,7 @@ impl<F: VfsFile> Vfs<F> {
             .in_memory_files
             .iter()
             .filter_map(|(path, _)| {
-                let after_dir = path.strip_prefix(dir_path.as_str())?;
+                let after_dir = path.strip_prefix(&**dir_path)?;
                 self.handler.strip_separator_prefix(after_dir)?;
                 Some(path.to_string())
             })
@@ -360,7 +360,7 @@ impl<F: VfsFile> Vfs<F> {
                 .unwrap();
         }
         self.workspaces
-            .delete_directory(&*self.handler, case_sensitive, dir_path.as_str())?;
+            .delete_directory(&*self.handler, case_sensitive, &dir_path)?;
         Ok(invalidation_result)
     }
 

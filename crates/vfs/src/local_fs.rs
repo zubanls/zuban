@@ -219,7 +219,7 @@ impl LocalFS {
         }
     }
 
-    pub fn current_dir(&self) -> AbsPath {
+    pub fn current_dir(&self) -> Box<AbsPath> {
         self.unchecked_abs_path(
             std::env::current_dir()
                 .unwrap()

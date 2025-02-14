@@ -924,13 +924,9 @@ impl Database {
             overrides: options.overrides,
         };
 
-        let mut mypy_path_iter = project.settings.mypy_path.iter();
+        let mut mypy_path_iter = project.settings.mypy_path.iter().map(|p| &**p);
         assert!(
-            mypy_path_iter
-                .next_back()
-                .map(|p| p.as_str())
-                .unwrap()
-                .contains("mypylike"),
+            mypy_path_iter.next_back().unwrap().contains("mypylike"),
             "{:?}",
             project.settings.mypy_path
         );
@@ -1081,7 +1077,10 @@ impl Database {
         self.generate_python_state();
     }
 
-    pub fn delete_directory_of_in_memory_files(&mut self, dir_path: AbsPath) -> Result<(), String> {
+    pub fn delete_directory_of_in_memory_files(
+        &mut self,
+        dir_path: &AbsPath,
+    ) -> Result<(), String> {
         let invalidation = self.vfs.delete_in_memory_files_directory(
             self.project.flags.case_sensitive,
             dir_path,
@@ -1211,7 +1210,7 @@ impl Database {
 }
 
 pub struct PythonProject {
-    pub sys_path: Vec<AbsPath>,
+    pub sys_path: Vec<Box<AbsPath>>,
     pub settings: Settings,
     pub flags: TypeCheckerFlags,
     pub(crate) overrides: Vec<OverrideConfig>,

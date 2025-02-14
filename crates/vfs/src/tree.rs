@@ -45,7 +45,7 @@ impl Parent {
             Self::Directory(dir) => dir.upgrade().unwrap().path(vfs, add_root),
             Self::Workspace(workspace) => {
                 if add_root {
-                    workspace.as_str().to_string()
+                    workspace.to_string()
                 } else {
                     String::new()
                 }

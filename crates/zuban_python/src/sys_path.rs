@@ -4,7 +4,7 @@ use vfs::{AbsPath, VfsHandler};
 
 use crate::{PythonVersion, Settings};
 
-pub(crate) fn create_sys_path(handler: &dyn VfsHandler, settings: &Settings) -> Vec<AbsPath> {
+pub(crate) fn create_sys_path(handler: &dyn VfsHandler, settings: &Settings) -> Vec<Box<AbsPath>> {
     let mut sys_path = vec![];
 
     sys_path.extend(

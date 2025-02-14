@@ -69,7 +69,7 @@ fn find_mypy_config_file_in_dir(
     mut on_check_path: impl FnMut(&AbsPath),
 ) -> Option<(&'static str, std::io::Result<String>)> {
     CONFIG_PATHS.iter().find_map(|config_path| {
-        let mut check = |path: AbsPath| {
+        let mut check = |path: &AbsPath| {
             on_check_path(&path);
             if let Ok(mut file) = std::fs::File::open(path) {
                 let mut content = String::new();
@@ -78,6 +78,6 @@ fn find_mypy_config_file_in_dir(
             }
             None
         };
-        check(vfs.join(dir, config_path))
+        check(&vfs.join(dir, config_path))
     })
 }

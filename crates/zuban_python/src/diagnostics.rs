@@ -1889,13 +1889,10 @@ impl<'db> Diagnostic<'db> {
             | IssueKind::InvariantNote { .. } => "note",
             _ => "error",
         };
-        let path = self.db.file_path(self.file.file_index).trim_start_matches(
-            self.file
-                .file_entry(self.db)
-                .parent
-                .workspace_path()
-                .as_str(),
-        );
+        let path = self
+            .db
+            .file_path(self.file.file_index)
+            .trim_start_matches(&**self.file.file_entry(self.db).parent.workspace_path());
         let path = self
             .db
             .vfs

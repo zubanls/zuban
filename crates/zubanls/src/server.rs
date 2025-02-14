@@ -238,7 +238,7 @@ impl<'sender> GlobalState<'sender> {
             let mut config =
                 config_searcher::find_workspace_config(&vfs_handler, &first_root, |path| {
                     // Watch the file itself to make sure that we can invalidate when it changes.
-                    let path = Path::new(path.as_str());
+                    let path = Path::new(&**path);
                     vfs_handler.watch(path);
                     // Since these are config files there should always be a parent
                     let parent_dir = path.parent().unwrap();

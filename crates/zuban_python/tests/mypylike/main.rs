@@ -63,7 +63,7 @@ const BASE_PATH_STR: &str = "/mypylike/";
 const BASE_PATH_STR: &str = r"C:\\mypylike\";
 
 thread_local! {
-    static BASE_PATH: AbsPath = LocalFS::without_watcher().unchecked_abs_path(BASE_PATH_STR.to_string());
+    static BASE_PATH: Box<AbsPath> = LocalFS::without_watcher().unchecked_abs_path(BASE_PATH_STR.to_string());
 }
 
 const MYPY_TEST_DATA_PACKAGES_FOLDER: &str = "tests/mypylike/mypy/test-data/packages/";
@@ -335,10 +335,10 @@ impl TestCase<'_, '_> {
 
             for path in &step.deletions {
                 project
-                    .unload_in_memory_file(base_path_join(&local_fs, path).as_str())
+                    .unload_in_memory_file(&base_path_join(&local_fs, path))
                     .unwrap_or_else(|_| {
                         project
-                            .delete_directory_of_in_memory_files(base_path_join(&local_fs, path))
+                            .delete_directory_of_in_memory_files(&base_path_join(&local_fs, path))
                             .unwrap()
                     });
             }
@@ -453,12 +453,12 @@ impl TestCase<'_, '_> {
                 // Somehow all tests use `/` paths, and I haven't seen backslashes (for Windows)
                 if path.contains('/') {
                     let before_slash = path.split('/').next().unwrap();
-                    let _ = project.delete_directory_of_in_memory_files(base_path_join(
+                    let _ = project.delete_directory_of_in_memory_files(&base_path_join(
                         &local_fs,
                         before_slash,
                     ));
                 } else {
-                    let _ = project.unload_in_memory_file(base_path_join(&local_fs, path).as_str());
+                    let _ = project.unload_in_memory_file(&base_path_join(&local_fs, path));
                 }
             }
         }
@@ -528,7 +528,7 @@ fn initialize_and_return_wanted_output(
         add_inline_errors(&mut wanted, path, code);
         // testAbstractClassSubclasses
         let p = base_path_join(local_fs, path);
-        project.load_in_memory_file(p.as_str().into(), code.into());
+        project.load_in_memory_file(p.to_string().into(), code.into());
     }
     for line in &mut wanted {
         replace_unions(line);
@@ -727,7 +727,7 @@ fn set_mypy_path(options: &mut ProjectOptions) {
     })
 }
 
-fn base_path_join(local_fs: &LocalFS, other: &str) -> AbsPath {
+fn base_path_join(local_fs: &LocalFS, other: &str) -> Box<AbsPath> {
     BASE_PATH.with(|base_path| local_fs.join(base_path, other))
 }
 

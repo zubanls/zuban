@@ -33,11 +33,11 @@ pub struct Settings {
     pub platform: Option<String>,
     pub python_version: PythonVersion,
     pub python_executable: Option<String>,
-    pub mypy_path: Vec<AbsPath>,
-    pub prepended_site_packages: Vec<AbsPath>,
+    pub mypy_path: Vec<Box<AbsPath>>,
+    pub prepended_site_packages: Vec<Box<AbsPath>>,
     pub mypy_compatible: bool,
     // These are absolute paths.
-    pub files_or_directories_to_check: Vec<AbsPath>,
+    pub files_or_directories_to_check: Vec<Box<AbsPath>>,
     pub typeshed_path: Option<String>,
 }
 

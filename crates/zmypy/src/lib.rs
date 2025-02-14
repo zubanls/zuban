@@ -273,7 +273,7 @@ fn apply_flags(
     project_options: &mut ProjectOptions,
     diagnostic_config: &mut DiagnosticConfig,
     cli: Cli,
-    current_dir: AbsPath,
+    current_dir: Box<AbsPath>,
 ) {
     macro_rules! apply {
         ($to:ident, $attr:ident, $inverse:ident) => {
@@ -444,7 +444,7 @@ mod tests {
             .settings
             .files_or_directories_to_check
             .iter()
-            .map(|p| p.as_str())
+            .map(|p| &***p)
             .collect();
         assert_eq!(
             files,
