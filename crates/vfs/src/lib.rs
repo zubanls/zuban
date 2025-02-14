@@ -61,7 +61,7 @@ pub trait VfsHandler {
         }
         Cow::Borrowed(NormalizedPath::new(path))
     }
-    fn normalize_boxed_path<'s>(&self, path: Box<AbsPath>) -> Box<NormalizedPath> {
+    fn normalize_boxed_path(&self, path: Box<AbsPath>) -> Box<NormalizedPath> {
         match self.normalize_path(&path) {
             Cow::Borrowed(_) => NormalizedPath::new_boxed(path),
             Cow::Owned(o) => o,

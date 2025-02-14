@@ -65,6 +65,9 @@ impl<T: ?Sized + Unpin> InsertOnlyVec<T> {
         self.vec.get_mut().clear()
     }
 
+    /// # Safety
+    ///
+    /// This function should only be called if you NEVER push elements while iterating its items.
     pub unsafe fn iter(&self) -> impl Iterator<Item = &T> {
         // Because the size of the vec can grow and shrink at any point, this is an unsafe
         // operation.
