@@ -370,7 +370,25 @@ fn apply_flags(
 
 #[cfg(test)]
 mod tests {
+    use std::path::Path;
+
     use super::*;
+
+    fn diagnostics(cli: Cli, directory: &str) -> Vec<String> {
+        let (mut project, diagnostic_config) = project_from_cli(
+            cli,
+            directory.to_string(),
+            Some(test_utils::typeshed_path()),
+        );
+        let diagnostics = project.diagnostics();
+        let mut diagnostics = diagnostics
+            .issues
+            .iter()
+            .map(|d| d.as_string(&diagnostic_config))
+            .collect::<Vec<_>>();
+        diagnostics.sort();
+        diagnostics
+    }
 
     #[test]
     fn test_diagnostics() {
@@ -389,19 +407,7 @@ mod tests {
             "#,
             false,
         );
-        let d = || {
-            let (mut project, diagnostic_config) = project_from_cli(
-                Cli::parse_from(Vec::<String>::default()),
-                test_dir.path().to_string(),
-                Some(test_utils::typeshed_path()),
-            );
-            let diagnostics = project.diagnostics();
-            diagnostics
-                .issues
-                .iter()
-                .map(|d| d.as_string(&diagnostic_config))
-                .collect::<Vec<_>>()
-        };
+        let d = || diagnostics(Cli::parse_from(vec![""]), test_dir.path());
 
         const NOT_CALLABLE: &str = "foo.py:1: error: \"int\" not callable";
         assert_eq!(
@@ -419,11 +425,43 @@ mod tests {
     }
 
     #[test]
+    fn test_path_argument() {
+        let test_dir = test_utils::write_files_from_fixture(
+            r#"
+
+            [file foo.py]
+            1()
+
+            [file bar.py]
+            1()
+
+            "#,
+            false,
+        );
+        let d = |cli_args: &[&str]| diagnostics(Cli::parse_from(cli_args), test_dir.path());
+
+        const NOT_CALLABLE_FOO: &str = "foo.py:1: error: \"int\" not callable";
+        const NOT_CALLABLE_BAR: &str = "bar.py:1: error: \"int\" not callable";
+        // Relative paths
+        assert_eq!(
+            d(&["", "foo.py", "bar.py"]),
+            vec![NOT_CALLABLE_BAR.to_string(), NOT_CALLABLE_FOO.to_string()]
+        );
+        assert_eq!(d(&["", "foo.py"]), vec![NOT_CALLABLE_FOO.to_string(),]);
+        // Absolute path
+        let foo_path = Path::new(test_dir.path()).join("foo.py");
+        assert_eq!(
+            d(&["", foo_path.to_str().unwrap()]),
+            vec![NOT_CALLABLE_FOO.to_string(),]
+        );
+    }
+
+    #[test]
     fn test_files_relative_paths() {
         let mut project_options = ProjectOptions::default();
         let local_fs = LocalFS::without_watcher();
         let current_dir = local_fs.unchecked_abs_path("/a/b".into());
-        let mut cli = Cli::parse_from(Vec::<String>::default());
+        let mut cli = Cli::parse_from([""]);
         cli.files = vec![
             "/a/b/baz.py".to_string(),
             "bla.py".to_string(),
