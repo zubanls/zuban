@@ -21,6 +21,8 @@ mod type_;
 mod type_helpers;
 mod utils;
 
+use std::rc::Rc;
+
 use parsa_python_cst::CodeIndex;
 use vfs::{AbsPath, Directory, DirectoryEntry, FileEntry, FileIndex, LocalFS, VfsHandler};
 
@@ -39,13 +41,13 @@ pub struct Project {
 }
 
 impl Project {
-    pub fn new(vfs: Box<dyn VfsHandler>, options: ProjectOptions) -> Self {
+    pub fn new(vfs: Rc<dyn VfsHandler>, options: ProjectOptions) -> Self {
         let db = Database::new(vfs, options);
         Self { db }
     }
 
     pub fn without_watcher(options: ProjectOptions) -> Self {
-        let db = Database::new(Box::new(LocalFS::without_watcher()), options);
+        let db = Database::new(Rc::new(LocalFS::without_watcher()), options);
         Self { db }
     }
 

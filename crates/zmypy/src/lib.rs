@@ -1,5 +1,5 @@
-use std::path::PathBuf;
 use std::process::ExitCode;
+use std::{path::PathBuf, rc::Rc};
 
 use config::{DiagnosticConfig, ExcludeRegex, ProjectOptions, PythonVersion};
 use config_searcher::find_cli_config;
@@ -265,7 +265,7 @@ fn project_from_cli(
         current_dir,
     );
 
-    (Project::new(Box::new(local_fs), options), diagnostic_config)
+    (Project::new(Rc::new(local_fs), options), diagnostic_config)
 }
 
 fn apply_flags(

@@ -16,14 +16,14 @@ pub trait VfsFile: Unpin {
 }
 
 pub struct Vfs<F: VfsFile> {
-    pub handler: Box<dyn VfsHandler>,
+    pub handler: Rc<dyn VfsHandler>,
     pub workspaces: Workspaces,
     pub files: InsertOnlyVec<FileState<F>>,
     in_memory_files: HashMap<Box<NormalizedPath>, FileIndex>,
 }
 
 impl<F: VfsFile> Vfs<F> {
-    pub fn new(handler: Box<dyn VfsHandler>) -> Self {
+    pub fn new(handler: Rc<dyn VfsHandler>) -> Self {
         Self {
             handler,
             workspaces: Default::default(),
@@ -34,7 +34,7 @@ impl<F: VfsFile> Vfs<F> {
 
     pub fn with_reused_test_resources<'x>(
         &mut self,
-        handler: Box<dyn VfsHandler>,
+        handler: Rc<dyn VfsHandler>,
         type_checked_dirs: impl DoubleEndedIterator<Item = &'x AbsPath>,
     ) -> Self
     where
