@@ -3,12 +3,12 @@
 pub struct NormalizedPath(str);
 
 impl NormalizedPath {
-    pub fn new(x: &str) -> &Self {
+    pub(crate) fn new(x: &str) -> &Self {
         // SAFETY: `NormalizedPath` is repr(transparent) over `str`
         unsafe { std::mem::transmute(x) }
     }
 
-    pub fn new_boxed(x: Box<str>) -> Box<Self> {
+    pub(crate) fn new_boxed(x: Box<str>) -> Box<Self> {
         unsafe { std::mem::transmute(x) }
     }
 }
