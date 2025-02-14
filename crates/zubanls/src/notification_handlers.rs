@@ -14,7 +14,7 @@ impl GlobalState<'_> {
         let project = self.project();
         let path = Self::uri_to_path(project, params.text_document.uri);
         tracing::info!("Opening {path}");
-        project.load_in_memory_file(path.into(), params.text_document.text.into());
+        project.load_in_memory_file(path, params.text_document.text.into());
         Ok(())
     }
 
@@ -45,7 +45,7 @@ impl GlobalState<'_> {
                    don't support TextDocumentSyncKind::INCREMENTAL yet"
             )
         }
-        project.load_in_memory_file(path.into(), change.text.into());
+        project.load_in_memory_file(path, change.text.into());
         Ok(())
     }
 
@@ -57,10 +57,10 @@ impl GlobalState<'_> {
         let project = self.project();
         let path = Self::uri_to_path(project, params.text_document.uri);
         tracing::info!("Closing {path}");
-        let result = project
+
+        project
             .unload_in_memory_file(&path)
-            .map_err(|err| anyhow::anyhow!("{err}"));
-        result
+            .map_err(|err| anyhow::anyhow!("{err}"))
     }
 
     #[inline(never)]

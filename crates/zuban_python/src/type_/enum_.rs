@@ -230,7 +230,7 @@ impl Enum {
                 }
             }
         }
-        return EnumKind::Normal;
+        EnumKind::Normal
     }
 }
 

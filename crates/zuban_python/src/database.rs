@@ -904,7 +904,7 @@ impl Database {
         }
 
         for p in &project.sys_path {
-            vfs.add_workspace(p.clone().into(), WorkspaceKind::SitePackages)
+            vfs.add_workspace(p.clone(), WorkspaceKind::SitePackages)
         }
 
         let mut this = Self {

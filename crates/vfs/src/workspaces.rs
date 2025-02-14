@@ -245,12 +245,12 @@ impl Workspace {
         };
         #[cfg(not(target_os = "macos"))]
         {
-            return Self {
+            Self {
                 directory: dir,
                 root_path,
                 kind,
-            };
-        };
+            }
+        }
     }
 
     pub fn root_path(&self) -> &AbsPath {

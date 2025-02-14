@@ -1581,7 +1581,7 @@ impl<'db: 'a, 'a> Class<'a> {
                             if other_setter_type.is_some() || proto_setter_type.is_some() {
                                 let o_t = other_setter_type.unwrap_or(&t2);
                                 let p_t = proto_setter_type.unwrap_or(&protocol_t);
-                                if !p_t.is_sub_type_of(i_s, matcher, &o_t).bool() {
+                                if !p_t.is_sub_type_of(i_s, matcher, o_t).bool() {
                                     mismatch = true;
                                     if mismatches < SHOW_MAX_MISMATCHES {
                                         maybe_add_conflict_note(&mut notes);
@@ -1593,7 +1593,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                             )
                                             .into(),
                                         );
-                                        if p_t.is_super_type_of(i_s, matcher, &o_t).bool() {
+                                        if p_t.is_super_type_of(i_s, matcher, o_t).bool() {
                                             notes.push("    Setter types should behave contravariantly".into());
                                         }
                                     }

@@ -58,7 +58,7 @@ impl std::ops::Deref for AbsPath {
 
 impl AsRef<Path> for AbsPath {
     fn as_ref(&self) -> &Path {
-        &Path::new(&self.0)
+        Path::new(&self.0)
     }
 }
 

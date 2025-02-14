@@ -2060,7 +2060,7 @@ pub(super) fn check_override(
     let override_setter_t = override_lookup_details.attr_kind.property_setter_type();
     if base_setter_t.is_some() || override_setter_t.is_some() {
         let b_t = base_setter_t.unwrap_or(&original_t);
-        let o_t = override_setter_t.unwrap_or(&override_t);
+        let o_t = override_setter_t.unwrap_or(override_t);
         if match_.bool() || o_t != override_t {
             check_property_setter_override(i_s, from, &mut matcher, &original_class, b_t, o_t)
         }
@@ -2364,7 +2364,7 @@ fn check_property_setter_override(
     base_t: &Type,
     override_t: &Type,
 ) {
-    if !base_t.is_sub_type_of(i_s, matcher, &override_t).bool() {
+    if !base_t.is_sub_type_of(i_s, matcher, override_t).bool() {
         let mut notes = vec![
             format!(
                 r#" (base class "{}" defined the type as "{}","#,
@@ -2376,7 +2376,7 @@ fn check_property_setter_override(
                 override_t.format_short(i_s.db),
             ),
         ];
-        if base_t.is_super_type_of(i_s, matcher, &override_t).bool() {
+        if base_t.is_super_type_of(i_s, matcher, override_t).bool() {
             notes.push(" Setter types should behave contravariantly".into());
         }
         from.add_issue_and_prefer_on_setter_decorator(

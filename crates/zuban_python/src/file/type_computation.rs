@@ -3163,9 +3163,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             let invalid_nested_modifier = |modifier: &'static str| {
                 self.add_issue(
                     first.as_node_ref(),
-                    IssueKind::TypedDictFieldModifierCannotBeNested {
-                        modifier: modifier.into(),
-                    },
+                    IssueKind::TypedDictFieldModifierCannotBeNested { modifier },
                 );
             };
             match modifier {

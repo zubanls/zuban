@@ -1033,8 +1033,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             };
             match second.as_code() {
                 "setter" => {
-                    let setter = if let Some(first_non_self_param) =
-                        next_func.iter_params().skip(1).next()
+                    let setter = if let Some(first_non_self_param) = next_func.iter_params().nth(1)
                     {
                         first_non_self_param.annotation_or_any(i_s.db).into_owned()
                     } else {

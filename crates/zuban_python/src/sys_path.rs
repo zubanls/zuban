@@ -7,12 +7,7 @@ use crate::{PythonVersion, Settings};
 pub(crate) fn create_sys_path(handler: &dyn VfsHandler, settings: &Settings) -> Vec<Box<AbsPath>> {
     let mut sys_path = vec![];
 
-    sys_path.extend(
-        settings
-            .prepended_site_packages
-            .iter()
-            .map(|s| s.clone().into()),
-    );
+    sys_path.extend(settings.prepended_site_packages.iter().cloned());
 
     if let Some(exe) = &settings.python_executable {
         // We cannot use cannonicalize here, because the path of the exe is often a venv path

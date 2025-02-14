@@ -168,7 +168,7 @@ impl VfsHandler for LocalFS {
         if cfg!(target_os = "windows") {
             // Windows allows path with mixed separators
             if let Some(found_slash) = path.find('/') {
-                if !found.is_some_and(|found| found > found_slash) {
+                if found.is_none_or(|found| found <= found_slash) {
                     found = Some(found_slash)
                 }
             }

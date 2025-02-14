@@ -360,7 +360,7 @@ impl<F: VfsFile> Vfs<F> {
                 .unwrap();
         }
         self.workspaces
-            .delete_directory(&*self.handler, case_sensitive, &dir_path)?;
+            .delete_directory(&*self.handler, case_sensitive, dir_path)?;
         Ok(invalidation_result)
     }
 

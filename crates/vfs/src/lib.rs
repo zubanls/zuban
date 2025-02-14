@@ -55,11 +55,9 @@ pub trait VfsHandler {
     fn split_off_folder<'a>(&self, path: &'a str) -> (&'a str, Option<&'a str>);
 
     fn normalize_path<'s>(&self, path: &'s AbsPath) -> Cow<'s, NormalizedPath> {
-        if cfg!(target_os = "windows") {
-            if path.contains("/") {
-                let p = AbsPath::new_boxed(path.replace('/', "\\").into_boxed_str());
-                return Cow::Owned(NormalizedPath::new_boxed(p));
-            }
+        if cfg!(target_os = "windows") && path.contains("/") {
+            let p = AbsPath::new_boxed(path.replace('/', "\\").into_boxed_str());
+            return Cow::Owned(NormalizedPath::new_boxed(p));
         }
         Cow::Borrowed(NormalizedPath::new(path))
     }
@@ -80,7 +78,7 @@ pub trait VfsHandler {
     }
 
     fn unchecked_abs_path(&self, mut path: String) -> Box<AbsPath> {
-        if let Some(new_root_path) = self.strip_separator_suffix(&path.as_str()) {
+        if let Some(new_root_path) = self.strip_separator_suffix(path.as_str()) {
             path.truncate(new_root_path.len());
         }
         AbsPath::new_boxed(path.into())
