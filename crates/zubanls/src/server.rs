@@ -284,7 +284,7 @@ impl<'sender> GlobalState<'sender> {
                 .collect();
             config.settings.typeshed_path = self.typeshed_path.clone();
 
-            *project = Some(Project::new(Rc::new(vfs_handler), config));
+            *project = Some(Project::new(Box::new(vfs_handler), config));
             project.as_mut().unwrap()
         }
     }

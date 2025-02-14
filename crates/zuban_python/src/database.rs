@@ -873,7 +873,7 @@ pub struct Database {
 }
 
 impl Database {
-    pub fn new(vfs_handler: Rc<dyn VfsHandler>, options: ProjectOptions) -> Self {
+    pub fn new(vfs_handler: Box<dyn VfsHandler>, options: ProjectOptions) -> Self {
         let project = PythonProject {
             sys_path: sys_path::create_sys_path(&*vfs_handler, &options.settings),
             settings: options.settings,
@@ -936,7 +936,7 @@ impl Database {
         );
         let vfs = self
             .vfs
-            .with_reused_test_resources(Rc::new(LocalFS::without_watcher()), mypy_path_iter);
+            .with_reused_test_resources(Box::new(LocalFS::without_watcher()), mypy_path_iter);
         let mut new_db = Self {
             vfs,
             python_state: self.python_state.clone(),
