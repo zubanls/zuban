@@ -251,7 +251,20 @@ impl Type {
                 ),
             ),
             Type::Self_ => {
-                let current_class = i_s.current_class().expect("Self missing");
+                let Some(current_class) = i_s.current_class() else {
+                    tracing::error!(
+                        "Self lookup without current_class, you should probably report this"
+                    );
+                    callable(
+                        self,
+                        LookupDetails::new(
+                            self.clone(),
+                            LookupResult::None,
+                            AttributeKind::Attribute,
+                        ),
+                    );
+                    return;
+                };
                 let class_infos = current_class.use_cached_class_infos(i_s.db);
                 if let Some(t) = class_infos.undefined_generics_type.get() {
                     if matches!(t.as_ref(), Type::Enum(_)) {
