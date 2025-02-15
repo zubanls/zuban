@@ -621,7 +621,7 @@ impl Inference<'_, '_, '_> {
                     self.assign_any_to_untyped_target(target)
                 }
             }
-            Target::Starred(_) => self.assign_any_to_untyped_target(target),
+            Target::Starred(s) => self.assign_any_to_untyped_target(s.as_target()),
             Target::IndexExpression(_) => (),
         }
     }

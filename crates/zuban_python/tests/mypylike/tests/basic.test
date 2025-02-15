@@ -177,6 +177,10 @@ async def f2() -> Any:
 async def g2() -> Any:
     x = yield from []  # E: "yield from" in async function
 
+[case untyped_star_assignment_should_not_error]
+def foo(z):
+    *x, y = z
+
 [case __slots___implicit_tuple]
 class Foo:
     __slots__ = 'a', 'b'
