@@ -1066,9 +1066,12 @@ pub(crate) fn execute_type_of_type<'db>(
             let init_t = i.iter_entries().next().unwrap();
             execute_type_of_type(i_s, args, result_context, on_type_error, init_t)
         }
-        _ => unreachable!(
-            "Did we not handle a type execution for \"{}\"?",
-            type_.format_short(i_s.db)
-        ),
+        _ => {
+            tracing::error!(
+                "We did not handle a type execution for \"{}\", that should be handled",
+                type_.format_short(i_s.db),
+            );
+            Inferred::new_any_from_error()
+        }
     }
 }
