@@ -1062,6 +1062,10 @@ pub(crate) fn execute_type_of_type<'db>(
                 ))
             }
         }),
+        Type::Intersection(i) => {
+            let init_t = i.iter_entries().next().unwrap();
+            execute_type_of_type(i_s, args, result_context, on_type_error, init_t)
+        }
         _ => unreachable!(
             "Did we not handle a type execution for \"{}\"?",
             type_.format_short(i_s.db)

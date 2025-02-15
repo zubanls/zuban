@@ -1325,3 +1325,23 @@ class C(B[str]):
     def bar(self) -> int: ...
     @bar.setter
     def bar(self, x: str) -> None: ...
+
+[case intersection_execution_should_not_fail]
+class Foo:
+    def __init__(self, x: bytes): ...
+class Bar:
+    def __call__(self, f: int) -> str: ...
+
+def f(x: Foo, y: Bar):
+    if isinstance(x, Bar):
+        # TODO this is wrong
+        a: str = x()  # E: "Foo" not callable
+    if isinstance(y, Foo):
+        b: str = y()  # E: Missing positional argument "f" in call to "__call__" of "Bar"
+
+def g(x: type[Foo], y: type[Bar]):
+    # TODO these are questionable and wrong
+    if issubclass(x, Bar):
+        reveal_type(x(b''))  # N: Revealed type is "__main__.Foo"
+    if issubclass(y, Foo):
+        reveal_type(y())  # N: Revealed type is "__main__.Bar"
