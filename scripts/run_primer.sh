@@ -5,7 +5,11 @@ cd "$(dirname "$0")"
 
 PRIMER_PROJECTS_DIR="$HOME/tmp/mypy_primer/projects"
 
-DIRS=$(ls "$PRIMER_PROJECTS_DIR" | rg -v '_venv$' | sort)
+if [[ -n "${1-}" ]]; then
+    DIRS=$1
+else
+    DIRS=$(ls "$PRIMER_PROJECTS_DIR" | rg -v '_venv$' | sort)
+fi
 
 EXECUTABLE="$(pwd)/../target/debug/zmypy"
 TYPESHED_DIR="$(realpath ../typeshed)"
@@ -15,5 +19,15 @@ while read DIR; do
     VENV="$PRIMER_PROJECTS_DIR/_${DIR}_venv"
     PTH="$PRIMER_PROJECTS_DIR/$DIR"
     cd "$PTH"
+    set +e
     ZUBAN_TYPESHED="$TYPESHED_DIR" "$EXECUTABLE" -- --python-executable "$VENV/bin/python" "$PTH"
+    EXIT_CODE="$?"
+    set -e
+    # Default "valid" codes, but we want to find panics and other aborts
+    if [[ $EXIT_CODE -eq 1 || $EXIT_CODE -eq 0 ]]; then
+        echo "Ignored error"
+    else
+        echo "Error: Command exited with status $EXIT_CODE"
+        exit $EXIT_CODE
+    fi
 done <<< "$DIRS"
