@@ -398,7 +398,11 @@ macro_rules! compute_type_application {
                 );
                 Inferred::new_any_from_error()
             }
-            _ => unreachable!("If this happens, {t:?} was not handled."),
+            _ => {
+                // Currently this is only the case with Annotated. Not sure if this is correct in
+                // the future, but for now returning typing._SpecialForm seems fine.
+                Inferred::from_type($self.i_s.db.python_state.typing_special_form_type())
+            }
         }
     }}
 }

@@ -342,3 +342,16 @@ reveal_type((int | str).__args__)  # N: Revealed type is "tuple[Any, ...]"
 
 X.undefined  # E: "_SpecialForm" has no attribute "undefined"  [attr-defined]
 Y.undefined  # E: "UnionType" has no attribute "undefined"  [attr-defined]
+
+[case annotated_in_alias]
+from typing import Annotated, Optional, TypeVar
+T = TypeVar("T")
+
+X = Annotated[int, "foo"]
+
+def check(x: X): ...
+
+def foo(z: T) -> T: ...
+
+reveal_type(foo(Annotated[int, "blabla"]))  # N: Revealed type is "typing._SpecialForm"
+reveal_type(foo(Annotated[Optional[int], "blabla"]))  # N: Revealed type is "typing._SpecialForm"
