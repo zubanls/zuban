@@ -116,9 +116,9 @@ impl CalculatingTypeArg {
         !matches!(self.type_, Bound::Uncalculated { .. })
     }
 
-    pub fn merge_full(&mut self, db: &Database, other: Self) -> Match {
+    pub fn merge_full(&mut self, i_s: &InferenceState, other: Self) -> Match {
         self.defined_by_result_context |= other.defined_by_result_context;
-        self.merge(&InferenceState::new(db), other.type_)
+        self.merge(i_s, other.type_)
     }
 
     pub fn merge(&mut self, i_s: &InferenceState, other: Bound) -> Match {

@@ -1149,7 +1149,10 @@ impl<'a> Matcher<'a> {
         }
     }
 
-    fn finish_matcher(mut self, db: &Database) -> (Self, Result<Option<TypeVarLikes>, Match>) {
+    fn finish_matcher(
+        mut self,
+        i_s: &InferenceState,
+    ) -> (Self, Result<Option<TypeVarLikes>, Match>) {
         if self.type_var_matchers.len() < 2 {
             // Finishing is only needed if multiple type var matchers need to negotiate type
             // vars.
@@ -1169,7 +1172,7 @@ impl<'a> Matcher<'a> {
         // Some cases need to propagate type vars across ParamSpec and TypeVarTuple. In that case
         // we need to match constraints against each other, see for example
         // testInferenceAgainstGenericParamSpecSecondary.
-        self.find_secondary_transitive_constraints(db, &cycles);
+        self.find_secondary_transitive_constraints(i_s.db, &cycles);
         // If constraints were added, that we rescan for cycles, because the information is out of
         // date.
         if before < self.constraint_count() {
@@ -1177,7 +1180,7 @@ impl<'a> Matcher<'a> {
         }
         // Some cycles have no bounds at all. In that case we need to "invent" type variables that
         // will take the place of the cycles.
-        if let Err(m) = self.add_free_type_var_likes_to_cycles(db, &mut cycles) {
+        if let Err(m) = self.add_free_type_var_likes_to_cycles(i_s.db, &mut cycles) {
             return (self, Err(m));
         }
 
@@ -1187,7 +1190,7 @@ impl<'a> Matcher<'a> {
                 let bound = match cycle.free_type_var_index {
                     Some(index) => format!(
                         "with free type var {:?}",
-                        cycles.free_type_var_likes[index].name(db)
+                        cycles.free_type_var_likes[index].name(i_s.db)
                     ),
                     None => "has bounds".into(),
                 };
@@ -1200,7 +1203,7 @@ impl<'a> Matcher<'a> {
                             tv.type_var_index,
                             self.type_var_matchers[tv.matcher_index].type_var_likes
                                 [tv.type_var_index]
-                                .name(db)
+                                .name(i_s.db)
                         )
                     })),
                     bound
@@ -1208,7 +1211,7 @@ impl<'a> Matcher<'a> {
             }
         }
         for cycle in &cycles.cycles {
-            if let Err(e) = self.resolve_cycle(db, &cycles, cycle) {
+            if let Err(e) = self.resolve_cycle(i_s, &cycles, cycle) {
                 for type_var_matcher in &mut self.type_var_matchers {
                     for (i, c) in type_var_matcher
                         .calculating_type_args
@@ -1231,7 +1234,7 @@ impl<'a> Matcher<'a> {
 
     fn resolve_cycle(
         &mut self,
-        db: &Database,
+        i_s: &InferenceState,
         cycles: &TypeVarCycles,
         cycle: &TypeVarCycle,
     ) -> Result<(), Match> {
@@ -1288,7 +1291,7 @@ impl<'a> Matcher<'a> {
             let unresolved_transitive_constraints =
                 std::mem::take(&mut used.unresolved_transitive_constraints);
 
-            let m = current.merge_full(db, std::mem::take(used));
+            let m = current.merge_full(i_s, std::mem::take(used));
             if !m.bool() {
                 return Err(m);
             }
@@ -1298,7 +1301,7 @@ impl<'a> Matcher<'a> {
                 // sorting.
                 let mut is_in_cycle = false;
                 let mut had_error = None;
-                let replaced_unresolved = unresolved.replace_type_var_likes(db, &mut |usage| {
+                let replaced_unresolved = unresolved.replace_type_var_likes(i_s.db, &mut |usage| {
                     if had_error.is_some() {
                         return None;
                     }
@@ -1313,7 +1316,7 @@ impl<'a> Matcher<'a> {
                         let c = self.calculating_arg(tv);
                         let depending_on = cycles.find_cycle(tv).unwrap();
                         if !c.unresolved_transitive_constraints.is_empty() {
-                            let m = self.resolve_cycle(db, cycles, depending_on);
+                            let m = self.resolve_cycle(i_s, cycles, depending_on);
                             if let Err(err) = m {
                                 had_error = Some(err);
                                 return None;
@@ -1370,7 +1373,7 @@ impl<'a> Matcher<'a> {
                             return Some(
                                 tv_matcher.calculating_type_args[first_entry.type_var_index]
                                     .clone()
-                                    .into_generic_item(db, tvl),
+                                    .into_generic_item(i_s.db, tvl),
                             );
                         }
                     }
@@ -1381,10 +1384,7 @@ impl<'a> Matcher<'a> {
                 }
                 if !is_in_cycle {
                     // This means we hit a cycle and are now just trying to merge.
-                    let m = current.merge(
-                        &InferenceState::new(db),
-                        replaced_unresolved.unwrap_or(unresolved),
-                    );
+                    let m = current.merge(i_s, replaced_unresolved.unwrap_or(unresolved));
                     if !m.bool() {
                         return Err(m);
                     }
@@ -1597,15 +1597,15 @@ impl<'a> Matcher<'a> {
 
     pub fn into_type_arguments(
         self,
-        db: &Database,
+        i_s: &InferenceState,
         in_definition: PointLink,
     ) -> CalculatedTypeArgs {
-        let (slf, result) = self.finish_matcher(db);
+        let (slf, result) = self.finish_matcher(i_s);
         let type_arguments = slf
             .type_var_matchers
             .into_iter()
             .next()
-            .map(|m| m.into_generics_list(db));
+            .map(|m| m.into_generics_list(i_s.db));
         let mut type_var_likes = None;
         let mut matches = SignatureMatch::new_true();
         match result {

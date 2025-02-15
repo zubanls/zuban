@@ -505,7 +505,7 @@ fn calculate_type_vars<'db: 'a, 'a>(
             CallableParams::Any(_) | CallableParams::Never(_) => SignatureMatch::new_true(),
         },
     };
-    let mut result = matcher.into_type_arguments(i_s.db, match_in_definition);
+    let mut result = matcher.into_type_arguments(i_s, match_in_definition);
     if matches!(result.matches, SignatureMatch::False { .. }) {
         if on_type_error.is_some() {
             add_issue(IssueKind::ArgumentTypeIssue(

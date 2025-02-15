@@ -1119,7 +1119,7 @@ pub(crate) fn initialize_typed_dict<'db>(
     };
     let td = if matcher.has_type_var_matcher() {
         let generics = matcher
-            .into_type_arguments(i_s.db, typed_dict.defined_at)
+            .into_type_arguments(i_s, typed_dict.defined_at)
             .type_arguments_into_generics(i_s.db);
         typed_dict.apply_generics(i_s.db, generics.unwrap())
     } else {
