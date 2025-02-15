@@ -1,7 +1,7 @@
 use std::{ptr::null, rc::Rc};
 
 use config::PythonVersion;
-use parsa_python_cst::{FunctionDef, NodeIndex, NAME_DEF_TO_NAME_DIFFERENCE};
+use parsa_python_cst::{FunctionDef, Name, NodeIndex, NAME_DEF_TO_NAME_DIFFERENCE};
 use vfs::FileIndex;
 
 use crate::{
@@ -1166,6 +1166,7 @@ fn typing_changes(
     set_typing_inference(typing, "NotRequired", Specific::TypingNotRequired);
     set_typing_inference(typing, "ReadOnly", Specific::TypingReadOnly);
     set_typing_inference(typing, "TypeGuard", Specific::TypingTypeGuard);
+    set_typing_inference(typing, "TypeIs", Specific::TypingTypeIs);
     set_typing_inference(typing, "reveal_type", Specific::RevealTypeFunction);
     set_typing_inference(typing, "assert_type", Specific::AssertTypeFunction);
     set_typing_inference(
@@ -1245,6 +1246,12 @@ fn typing_changes(
 
 fn set_typing_inference(file: &PythonFile, name: &str, specific: Specific) {
     if let Some(node_index) = file.symbol_table.lookup_symbol(name) {
+        let name_def = Name::by_index(&file.tree, node_index).name_def().unwrap();
+        if name_def.maybe_import().is_some() {
+            // No need to set it, because it's an import and will point probably from
+            // typing_extensions to typing.
+            return;
+        }
         file.points
             .set(node_index, Point::new_specific(specific, Locality::File));
     }

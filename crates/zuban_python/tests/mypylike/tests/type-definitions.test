@@ -355,3 +355,6 @@ def foo(z: T) -> T: ...
 
 reveal_type(foo(Annotated[int, "blabla"]))  # N: Revealed type is "typing._SpecialForm"
 reveal_type(foo(Annotated[Optional[int], "blabla"]))  # N: Revealed type is "typing._SpecialForm"
+
+[case typing_extensions_get_origin_import_should_not_crash]
+from typing_extensions import get_origin

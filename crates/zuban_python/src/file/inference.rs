@@ -295,7 +295,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             debug!(
                 "Global import '{}': {:?}",
                 name.as_code(),
-                result.debug_path(self.i_s.db),
+                result.debug_info(self.i_s.db),
             );
         }
         let inf = match &result {
@@ -376,7 +376,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             if let Some(imported) = &result {
                 debug!(
                     "Imported {:?} for {:?}",
-                    imported.debug_path(i_s.db),
+                    imported.debug_info(i_s.db),
                     dotted.as_code(),
                 );
             } else if in_stub_and_has_getattr {

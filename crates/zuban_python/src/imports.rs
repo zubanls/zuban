@@ -1,7 +1,4 @@
-use std::{
-    borrow::{Borrow, Cow},
-    rc::Rc,
-};
+use std::{borrow::Borrow, rc::Rc};
 
 use utils::match_case;
 use vfs::{Directory, DirectoryEntry, FileIndex, WorkspaceKind};
@@ -82,11 +79,13 @@ impl ImportResult {
         }
     }
 
-    pub fn debug_path<'x>(&'x self, db: &'x Database) -> Cow<'x, str> {
+    pub fn debug_info<'x>(&'x self, db: &'x Database) -> String {
         match self {
-            Self::File(f) => Cow::Borrowed(db.loaded_python_file(*f).file_path(db)),
-            Self::Namespace(namespace) => Cow::Owned(namespace.debug_path(db)),
-            Self::PyTypedMissing => Cow::Borrowed("<py.typed missing>"),
+            Self::File(f) => format!("{} ({f})", db.loaded_python_file(*f).file_path(db)),
+            Self::Namespace(namespace) => {
+                format!("namespace {}", namespace.debug_path(db))
+            }
+            Self::PyTypedMissing => "<py.typed missing>".into(),
         }
     }
 }
