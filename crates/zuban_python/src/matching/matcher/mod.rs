@@ -518,7 +518,7 @@ impl<'a> Matcher<'a> {
             }
             let tv_matcher = &mut self.type_var_matchers[matcher_index];
             return tv_matcher.calculating_type_args[tvt.index.as_usize()]
-                .merge(i_s.db, Bound::new_type_args(args2, variance));
+                .merge(i_s, Bound::new_type_args(args2, variance));
         }
 
         if !self.match_reverse {
@@ -667,7 +667,7 @@ impl<'a> Matcher<'a> {
         // It feels weird that we invert the variance here. However we have inverted the
         // variance to match params and we just invert it back.
         tv_matcher.calculating_type_args[type_var_index]
-            .merge(i_s.db, Bound::new_param_spec(new_params, variance.invert()))
+            .merge(i_s, Bound::new_param_spec(new_params, variance.invert()))
     }
 
     pub(crate) fn match_param_spec_arguments<'db>(
@@ -1381,7 +1381,10 @@ impl<'a> Matcher<'a> {
                 }
                 if !is_in_cycle {
                     // This means we hit a cycle and are now just trying to merge.
-                    let m = current.merge(db, replaced_unresolved.unwrap_or(unresolved));
+                    let m = current.merge(
+                        &InferenceState::new(db),
+                        replaced_unresolved.unwrap_or(unresolved),
+                    );
                     if !m.bool() {
                         return Err(m);
                     }

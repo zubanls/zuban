@@ -118,14 +118,13 @@ impl CalculatingTypeArg {
 
     pub fn merge_full(&mut self, db: &Database, other: Self) -> Match {
         self.defined_by_result_context |= other.defined_by_result_context;
-        self.merge(db, other.type_)
+        self.merge(&InferenceState::new(db), other.type_)
     }
 
-    pub fn merge(&mut self, db: &Database, other: Bound) -> Match {
+    pub fn merge(&mut self, i_s: &InferenceState, other: Bound) -> Match {
         if self.type_ == other {
             return Match::new_true();
         }
-        let i_s = InferenceState::new(db);
         let mut m = Match::new_true();
         if let Bound::Uncalculated { fallback } = &self.type_ {
             if !matches!(&other, Bound::Uncalculated { .. }) || fallback.is_none() {
@@ -141,12 +140,12 @@ impl CalculatingTypeArg {
             Bound::Lower(t) => (t, Variance::Covariant),
             Bound::Invariant(t) => (t, Variance::Invariant),
             Bound::UpperAndLower(upper, t) => {
-                m = self.merge_or_mismatch(&i_s, upper, Variance::Contravariant);
+                m = self.merge_or_mismatch(i_s, upper, Variance::Contravariant);
                 (t, Variance::Covariant)
             }
             Bound::Uncalculated { .. } => return Match::new_true(),
         };
-        let m = m & self.merge_or_mismatch(&i_s, t, variance);
+        let m = m & self.merge_or_mismatch(i_s, t, variance);
         if !m.bool() && !self.defined_by_result_context {
             self.uninferrable = true;
         }
@@ -389,7 +388,7 @@ impl TypeVarMatcher {
                 match check_constraints(i_s, constraints, value_type, variance) {
                     Ok(bound) => {
                         let mut m = if current.calculated() {
-                            current.merge(i_s.db, bound)
+                            current.merge(i_s, bound)
                         } else {
                             current.type_ = bound;
                             if value_type.is_any() {
@@ -413,7 +412,7 @@ impl TypeVarMatcher {
             }
         }
         current.merge(
-            i_s.db,
+            i_s,
             Bound::new(BoundKind::TypeVar(value_type.clone()), variance),
         )
     }

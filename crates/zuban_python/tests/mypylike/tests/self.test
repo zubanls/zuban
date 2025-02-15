@@ -461,3 +461,24 @@ class B(A):
 
     def g(self) -> None:
         self.with_stack()
+
+[case self_passing_to_type_var_tuple_with_protocol]
+from os import PathLike
+from typing import TypeVarTuple, Unpack, Callable
+
+PosArgsT = TypeVarTuple("PosArgsT")
+
+def run(func: Callable[[Unpack[PosArgsT]], object], *args: Unpack[PosArgsT]) -> tuple[Unpack[PosArgsT]]: ...
+
+def link(src: PathLike[str], dst: PathLike[str]) -> None: ...
+
+
+class P:
+    def __fspath__(self) -> str: ...
+
+    def run_on(self, target: str) -> None:
+        x = run(link, target, self)  # E: Argument 2 to "run" has incompatible type "tuple[str, Self]"; expected "tuple[PathLike[str], PathLike[str]]" \
+        reveal_type(x)  # N: Revealed type is "tuple[Any, ...]"
+
+        y = run(link, self, target)  # E: Argument 2 to "run" has incompatible type "tuple[Self, str]"; expected "tuple[PathLike[str], PathLike[str]]" \
+        reveal_type(y)  # N: Revealed type is "tuple[Any, ...]"
