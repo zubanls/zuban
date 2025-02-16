@@ -199,6 +199,10 @@ pub fn python_import_with_needs_exact_case(
     let mut python_file_index = None;
     let mut stub_file_index = None;
     let mut namespace_directories = vec![];
+
+    let name_py = format!("{name}.py");
+    let name_pyi = format!("{name}.pyi");
+
     for (dir, needs_py_typed) in dirs {
         let mut had_namespace_dir = false;
         let dir = dir.borrow();
@@ -222,11 +226,8 @@ pub fn python_import_with_needs_exact_case(
                 }
                 DirectoryEntry::File(file) => {
                     // TODO these format!() always allocate a lot and don't seem to be necessary
-                    let is_py_file =
-                        match_c(db, &file.name, &format!("{name}.py"), needs_exact_case);
-                    if is_py_file
-                        || match_c(db, &file.name, &format!("{name}.pyi"), needs_exact_case)
-                    {
+                    let is_py_file = match_c(db, &file.name, &name_py, needs_exact_case);
+                    if is_py_file || match_c(db, &file.name, &name_pyi, needs_exact_case) {
                         if needs_py_typed && !from_file.flags(db).follow_untyped_imports {
                             return Some(ImportResult::PyTypedMissing);
                         }
@@ -246,8 +247,8 @@ pub fn python_import_with_needs_exact_case(
             file_entry.add_invalidation(from_file.file_index);
             return Some(ImportResult::File(file_index));
         }
-        dir.add_missing_entry((name.to_string() + ".py").into(), from_file.file_index);
-        dir.add_missing_entry((name.to_string() + ".pyi").into(), from_file.file_index);
+        dir.add_missing_entry(&name_py, from_file.file_index);
+        dir.add_missing_entry(&name_pyi, from_file.file_index);
         // The folder should not exist for folder/__init__.py or a namespace.
         if !had_namespace_dir {
             dir.add_missing_entry(name.into(), from_file.file_index);
@@ -281,8 +282,8 @@ fn load_init_file(db: &Database, content: &Directory, from_file: FileIndex) -> O
             }
         }
     }
-    content.add_missing_entry(Box::from(INIT_PY), from_file);
-    content.add_missing_entry(Box::from(INIT_PYI), from_file);
+    content.add_missing_entry(INIT_PY, from_file);
+    content.add_missing_entry(INIT_PYI, from_file);
     None
 }
 

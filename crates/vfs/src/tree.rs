@@ -263,9 +263,9 @@ impl Directory {
         }
     }
 
-    pub fn add_missing_entry(&self, name: Box<str>, invalidates: FileIndex) {
+    pub fn add_missing_entry(&self, name: &str, invalidates: FileIndex) {
         let mut vec = self.entries.borrow_mut();
-        if let Some(item) = vec.iter_mut().find(|x| x.name() == name.as_ref()) {
+        if let Some(item) = vec.iter_mut().find(|x| x.name() == name) {
             if let DirectoryEntry::MissingEntry(missing) = &item {
                 missing.invalidations.add(invalidates)
             } else {
@@ -276,7 +276,7 @@ impl Directory {
             invalidations.add(invalidates);
             vec.push(DirectoryEntry::MissingEntry(MissingEntry {
                 invalidations,
-                name,
+                name: name.to_string().into_boxed_str(),
             }))
         }
     }
