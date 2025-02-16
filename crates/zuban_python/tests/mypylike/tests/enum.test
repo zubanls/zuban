@@ -186,3 +186,11 @@ F = Enum("F", [*lst])  # E: Enum() with tuple or list expects strings or (name, 
 G = Enum("G", f"x {1}")  # E: Second argument of Enum() must be string, tuple, list or dict literal for mypy to determine Enum members
 
 def f(x: A, y: B, z: C) -> None: ...
+
+[case enum_with_or_should_not_panic]
+from enum import Enum
+
+class Foo(Enum):
+    e = 1
+
+Bar = Foo | int

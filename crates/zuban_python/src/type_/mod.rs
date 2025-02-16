@@ -669,31 +669,10 @@ impl Type {
             Type::Dataclass(dc) => dc.class(i_s.db),
             Type::Enum(enum_) => enum_.class(i_s.db),
             Type::EnumMember(member) => member.enum_.class(i_s.db),
-            Type::Type(t) => {
-                pub fn inner_generic_class_of_type<'db: 'x, 'x>(
-                    t: &'x Type,
-                    i_s: &InferenceState<'db, 'x>,
-                ) -> Option<Class<'x>> {
-                    let class = match t {
-                        Type::Class(c) => c
-                            .class(i_s.db)
-                            .use_cached_class_infos(i_s.db)
-                            .metaclass(i_s.db),
-                        Type::Dataclass(dc) => dc.class(i_s.db),
-                        Type::TypeVar(tv) => match &tv.type_var.kind {
-                            TypeVarKind::Bound(bound) => {
-                                // TODO should this case be handled?
-                                bound.maybe_class(i_s.db).unwrap()
-                            }
-                            _ => unreachable!(),
-                        },
-                        Type::Self_ => i_s.current_class().unwrap(),
-                        _ => return None,
-                    };
-                    Some(class.use_cached_class_infos(i_s.db).metaclass(i_s.db))
-                }
-                return inner_generic_class_of_type(t, i_s);
-            }
+            Type::Type(t) => t
+                .inner_generic_class(i_s)?
+                .use_cached_class_infos(i_s.db)
+                .metaclass(i_s.db),
             Type::TypeVar(tv) => match &tv.type_var.kind {
                 TypeVarKind::Bound(t) => return t.inner_generic_class(i_s),
                 _ => return None,
