@@ -218,7 +218,6 @@ pub fn python_import_with_needs_exact_case(
                         }
                         had_namespace_dir = true;
                         namespace_directories.push(dir2.clone());
-                        continue;
                     }
                 }
                 DirectoryEntry::File(file) => {
