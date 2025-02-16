@@ -1063,6 +1063,8 @@ pub(crate) fn execute_type_of_type<'db>(
             }
         }),
         Type::Intersection(i) => {
+            // TODO this is not correct, see also intersection_execution_should_not_fail, but it's
+            // at least something.
             let init_t = i.iter_entries().next().unwrap();
             execute_type_of_type(i_s, args, result_context, on_type_error, init_t)
         }
