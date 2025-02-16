@@ -319,3 +319,11 @@ f.y = 4
 
 reveal_type(f.y)  # N: Revealed type is "int | __main__.MyDescriptor"
 reveal_type(Foo.y)  # N: Revealed type is "int | __main__.MyDescriptor"
+
+[case dataclass_with_or_should_not_panic]
+from dataclasses import dataclass
+
+@dataclass()
+class Foo(): ...
+
+Bar = Foo | int

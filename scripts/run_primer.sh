@@ -11,9 +11,11 @@ else
     DIRS=$(ls "$PRIMER_PROJECTS_DIR" | rg -v '_venv$' | sort)
 fi
 
+shift
+
 EXECUTABLE="$(pwd)/../target/debug/zmypy"
 TYPESHED_DIR="$(realpath ../typeshed)"
-cargo build --bin zmypy
+cargo build --bin zmypy $@
 
 while read DIR; do
     VENV="$PRIMER_PROJECTS_DIR/_${DIR}_venv"

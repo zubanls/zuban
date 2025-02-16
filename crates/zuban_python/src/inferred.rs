@@ -223,7 +223,7 @@ impl<'db: 'slf, 'slf> Inferred {
         mro_index: MroIndex,
     ) -> Class<'slf> {
         let Some(instance_class) = instance.inner_generic_class(i_s) else {
-            unreachable!()
+            unreachable!("{instance:?}")
         };
         let Some((_, class_t)) = instance_class.mro(i_s.db).nth(mro_index.0 as usize) else {
             // Happens with super().__init__ when self: SomeProtocol.
