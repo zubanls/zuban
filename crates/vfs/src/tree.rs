@@ -266,10 +266,15 @@ impl Directory {
     pub fn add_missing_entry(&self, name: &str, invalidates: FileIndex) {
         let mut vec = self.entries.borrow_mut();
         if let Some(item) = vec.iter_mut().find(|x| x.name() == name) {
-            if let DirectoryEntry::MissingEntry(missing) = &item {
-                missing.invalidations.add(invalidates)
-            } else {
-                unreachable!("{:?}", &item)
+            match &item {
+                DirectoryEntry::MissingEntry(missing) => missing.invalidations.add(invalidates),
+                // Files might be named `pytest` and therefore not be a valid Python files, but
+                // still exist in the tree.
+                DirectoryEntry::File(file) => file.invalidations.add(invalidates),
+                DirectoryEntry::Directory(_) => {
+                    // TODO this probably happens with a directory called `foo.py`.
+                    tracing::error!("Did not add invalidation for directory {}", name);
+                }
             }
         } else {
             let invalidations = Invalidations::default();
