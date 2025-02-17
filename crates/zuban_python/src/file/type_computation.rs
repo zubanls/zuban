@@ -135,7 +135,10 @@ pub(super) enum InvalidVariableType<'a> {
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum TypeComputationOrigin {
-    AssignmentTypeCommentOrAnnotation { is_initialized: bool },
+    AssignmentTypeCommentOrAnnotation {
+        is_initialized: bool,
+        type_comment: bool,
+    },
     ParamTypeCommentOrAnnotation,
     TypedDictMember,
     TypeApplication,
@@ -901,27 +904,53 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 ) =>
                 {
                     debug_assert!(!is_implicit_optional);
-                    annotation_node_ref.set_point(Point::new_specific(
-                        match special {
-                            SpecialType::TypeAlias => Specific::AnnotationTypeAlias,
-                            SpecialType::Final => {
-                                if self.inference.in_loop() {
-                                    self.add_issue(
-                                        type_storage_node_ref,
-                                        IssueKind::FinalInLoopDisallowed,
-                                    );
-                                }
-                                self.add_issue_if_final_attribute_in_wrong_place(
+                    let specific = match special {
+                        SpecialType::TypeAlias => {
+                            let TypeComputationOrigin::AssignmentTypeCommentOrAnnotation {
+                                is_initialized,
+                                type_comment,
+                            } = self.origin
+                            else {
+                                unreachable!()
+                            };
+                            if !is_initialized {
+                                // e.g. x: TypeAlias
+                                self.add_issue(
                                     type_storage_node_ref,
+                                    IssueKind::TypeAliasRightSideNeeded,
                                 );
-                                Specific::AnnotationOrTypeCommentFinal
+                                None
+                            } else if type_comment {
+                                // Simply ignore stuff like `x = int | str # type: TypeAlias` for now
+                                self.add_issue(
+                                    type_storage_node_ref,
+                                    IssueKind::TypeAliasInTypeCommentNotSupported,
+                                );
+                                None
+                            } else {
+                                Some(Specific::AnnotationTypeAlias)
                             }
-                            SpecialType::ClassVar => Specific::AnnotationOrTypeCommentClassVar,
-                            _ => unreachable!(),
-                        },
-                        Locality::Todo,
-                    ));
-                    return;
+                        }
+                        SpecialType::Final => {
+                            if self.inference.in_loop() {
+                                self.add_issue(
+                                    type_storage_node_ref,
+                                    IssueKind::FinalInLoopDisallowed,
+                                );
+                            }
+                            self.add_issue_if_final_attribute_in_wrong_place(type_storage_node_ref);
+                            Some(Specific::AnnotationOrTypeCommentFinal)
+                        }
+                        SpecialType::ClassVar => Some(Specific::AnnotationOrTypeCommentClassVar),
+                        _ => unreachable!(),
+                    };
+                    if let Some(specific) = specific {
+                        annotation_node_ref
+                            .set_point(Point::new_specific(specific, Locality::Todo));
+                        return;
+                    } else {
+                        Type::Any(AnyCause::FromError)
+                    }
                 }
                 TypeContent::ClassVar(t) => {
                     is_class_var = true;
@@ -959,6 +988,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 TypeContent::Final(t) => {
                     if let TypeComputationOrigin::AssignmentTypeCommentOrAnnotation {
                         is_initialized,
+                        ..
                     } = self.origin
                     {
                         if self.inference.in_loop() {
@@ -3581,7 +3611,10 @@ impl<'db: 'x, 'file, 'x> Inference<'db, 'file, '_> {
     pub fn ensure_cached_annotation(&self, annotation: Annotation, is_initialized: bool) {
         self.ensure_cached_annotation_internal(
             annotation,
-            TypeComputationOrigin::AssignmentTypeCommentOrAnnotation { is_initialized },
+            TypeComputationOrigin::AssignmentTypeCommentOrAnnotation {
+                is_initialized,
+                type_comment: false,
+            },
         )
     }
 
@@ -4195,6 +4228,7 @@ impl<'db: 'x, 'file, 'x> Inference<'db, 'file, '_> {
                             &mut x,
                             TypeComputationOrigin::AssignmentTypeCommentOrAnnotation {
                                 is_initialized: true,
+                                type_comment: true,
                             },
                         );
                         comp.cache_annotation_or_type_comment(index, expr, false, None);
@@ -4304,6 +4338,7 @@ impl<'db: 'x, 'file, 'x> Inference<'db, 'file, '_> {
                         &mut x,
                         TypeComputationOrigin::AssignmentTypeCommentOrAnnotation {
                             is_initialized: true,
+                            type_comment: true,
                         },
                     );
                     let t = comp.compute_type(expr);

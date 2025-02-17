@@ -167,6 +167,8 @@ pub(crate) enum IssueKind {
     RuntimeCheckableCanOnlyBeUsedWithProtocolClasses,
     ProtocolNotRuntimeCheckable,
     IssubcclassWithProtocolNonMethodMembers { protocol: Box<str>, non_method_members: Box<str> },
+    TypeAliasRightSideNeeded,
+    TypeAliasInTypeCommentNotSupported,
 
     FinalTooManyArguments,
     FinalNameMustBeInitializedWithValue,
@@ -1317,6 +1319,8 @@ impl<'db> Diagnostic<'db> {
                 ));
                 "Only protocols that don't have non-method members can be used with issubclass()".to_string()
             }
+            TypeAliasRightSideNeeded => "Right side needed for TypeAlias".to_string(),
+            TypeAliasInTypeCommentNotSupported => "TypeAlias comment currently not supported".to_string(),
 
             FinalTooManyArguments => "Final[...] takes at most one type argument".to_string(),
             FinalNameMustBeInitializedWithValue => "Final name must be initialized with a value".to_string(),

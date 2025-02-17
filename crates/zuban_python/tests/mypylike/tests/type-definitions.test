@@ -358,3 +358,13 @@ reveal_type(foo(Annotated[Optional[int], "blabla"]))  # N: Revealed type is "typ
 
 [case typing_extensions_get_origin_import_should_not_crash]
 from typing_extensions import get_origin
+
+[case type_alias_weird_initializations]
+from typing import TypeAlias
+X = int | str # type: TypeAlias  # E: TypeAlias comment currently not supported
+Y: TypeAlias = int | str
+Z: TypeAlias  # E: Right side needed for TypeAlias
+def f(x: X, y: Y, z: Z):
+    reveal_type(x)  # N: Revealed type is "Any"
+    reveal_type(y)  # N: Revealed type is "int | str"
+    reveal_type(z)  # N: Revealed type is "Any"
