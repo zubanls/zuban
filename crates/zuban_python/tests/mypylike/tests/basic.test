@@ -836,3 +836,12 @@ def foo(x: str, y: int) -> None: ...
 
 [case __debug__usage]
 if __debug__: ...
+
+[case dec_number_multiple_zeros]
+from typing import Final
+x: Final = 00
+y: Final = 000000
+z: Final = 0_0
+reveal_type(x)  # N: Revealed type is "Literal[0]?"
+reveal_type(y)  # N: Revealed type is "Literal[0]?"
+reveal_type(z)  # N: Revealed type is "Literal[0]?"

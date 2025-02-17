@@ -595,7 +595,8 @@ impl<'db> Int<'db> {
                 Some(b'x' | b'X') => 16,
                 Some(b'o' | b'O') => 8,
                 Some(b'b' | b'B') => 2,
-                _ => unreachable!(),
+                Some(b'0') => return Some(0),
+                _ => unreachable!("{stripped}"),
             };
             usize::from_str_radix(&stripped[1..], base).ok()
         } else {
