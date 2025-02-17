@@ -765,7 +765,7 @@ impl PythonState {
             .promote_to
             .set(Some(s.complex_node_ref().as_link()));
         if !db.project.flags.disable_memoryview_promotion {
-            s.memoryview()
+            s.memoryview_class_with_generics_to_be_defined()
                 .class_storage
                 .promote_to
                 .set(Some(s.bytes_node_ref().as_link()));
@@ -868,6 +868,15 @@ impl PythonState {
     #[inline]
     pub fn tuple_class_with_generics_to_be_defined(&self) -> Class {
         Class::from_position(self.tuple_node_ref(), Generics::NotDefinedYet, None)
+    }
+
+    pub fn memoryview_class_with_generics_to_be_defined(&self) -> Class {
+        Class::from_position(self.memoryview_node_ref(), Generics::NotDefinedYet, None)
+    }
+
+    pub fn memoryview_type_with_any_generics(&self, db: &Database) -> Type {
+        self.memoryview_class_with_generics_to_be_defined()
+            .as_type(db)
     }
 
     pub fn bare_tuple_type_with_any(&self) -> Type {
@@ -1000,7 +1009,6 @@ impl PythonState {
     node_ref_to_class!(str, str_node_ref);
     node_ref_to_class!(bytes, bytes_node_ref);
     node_ref_to_class!(float, float_node_ref);
-    node_ref_to_class!(pub memoryview, memoryview_node_ref);
     node_ref_to_class!(pub bytearray, bytearray_node_ref);
     node_ref_to_class!(pub function_class, function_node_ref);
     node_ref_to_class!(pub bare_type_class, bare_type_node_ref);
@@ -1011,7 +1019,6 @@ impl PythonState {
     node_ref_to_type_class_without_generic!(pub bytes_type, bytes_node_ref);
     node_ref_to_type_class_without_generic!(pub bytearray_type, bytearray_node_ref);
     node_ref_to_type_class_without_generic!(pub super_type, super_node_ref);
-    node_ref_to_type_class_without_generic!(pub memoryview_type, memoryview_node_ref);
     node_ref_to_type_class_without_generic!(pub int_type, int_node_ref);
     node_ref_to_type_class_without_generic!(pub bool_type, bool_node_ref);
     node_ref_to_type_class_without_generic!(pub float_type, float_node_ref);

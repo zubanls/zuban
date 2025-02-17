@@ -1004,7 +1004,7 @@ impl Database {
         if new_db.project.flags.disable_memoryview_promotion {
             new_db
                 .python_state
-                .memoryview()
+                .memoryview_class_with_generics_to_be_defined()
                 .class_storage
                 .promote_to
                 .set(None);

@@ -2236,6 +2236,7 @@ impl<'db: 'a, 'a> Class<'a> {
                     ))
                 }
                 Generics::List(generics, None) => ClassGenerics::List((*generics).clone()),
+                //Generics::None => unreachable!(),
                 generics => ClassGenerics::List(GenericsList::new_generics(
                     generics.iter(db).map(|g| g.into_generic_item()).collect(),
                 )),

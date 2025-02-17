@@ -253,6 +253,7 @@ pub struct GenericsList(Rc<[GenericItem]>);
 
 impl GenericsList {
     pub fn new_generics(parts: Rc<[GenericItem]>) -> Self {
+        //debug_assert!(!parts.is_empty());
         Self(parts)
     }
 

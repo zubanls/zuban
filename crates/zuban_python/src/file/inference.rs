@@ -2663,7 +2663,11 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                             )
                             || t.simple_overlaps(
                                 self.i_s,
-                                &self.i_s.db.python_state.memoryview_type(),
+                                &self
+                                    .i_s
+                                    .db
+                                    .python_state
+                                    .memoryview_type_with_any_generics(self.i_s.db),
                             )
                     };
                     let element_t = left_inf.as_cow_type(self.i_s);

@@ -149,6 +149,16 @@ def foo(x: dict[int, str], y: Mapping[int, str]) -> None:
     if x == y: ...
     if y == x: ...
 
+[case strict_equality_no_crash_with_recursive_types]
+# flags: --strict-equality
+from typing import MutableMapping, Union
+
+U = MutableMapping[str, "U"] | None
+
+def generate_arg(value: U):
+    if isinstance(value, MutableMapping) and value.get("class") in ("File",):  # E: Non-overlapping container check (element type: "MutableMapping[str, U] | None", container item type: "str")
+        pass
+
 [case files_in_mypy_ini]
 [file a.py]
 1()  # E: "int" not callable
