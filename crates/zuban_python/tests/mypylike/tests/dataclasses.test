@@ -374,3 +374,26 @@ d = D(1, "")
 d.x
 d.y
 d.z  # E: "D" has no attribute "z"
+
+[case dataclass_enum_combination]
+from dataclasses import dataclass
+from enum import Enum
+
+@dataclass
+class C(Enum):
+    x = 1
+    y: str
+
+C()  # E: Missing positional argument "y" in call to "C"
+
+[case dataclass_typeddict_combination]
+from typing import TypedDict
+from dataclasses import dataclass
+
+@dataclass
+class C(TypedDict):
+    x = 1  # E: Invalid statement in TypedDict definition; expected "field_name: field_type"
+    y: str
+
+
+C()  # E: Missing keys ("x", "y") for TypedDict "C"

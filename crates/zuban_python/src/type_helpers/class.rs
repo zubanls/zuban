@@ -577,10 +577,8 @@ impl<'db: 'a, 'a> Class<'a> {
         }
         if let Some(enum_) = &was_enum {
             let enum_type = Rc::new(Type::Enum(enum_.clone()));
-            class_infos
-                .undefined_generics_type
-                .set(enum_type.clone())
-                .unwrap();
+            // In case enum is combined with dataclass, just let the dataclass win
+            let _ = class_infos.undefined_generics_type.set(enum_type.clone());
         }
         let mut was_typed_dict = None;
         if let Some(total) = typed_dict_total {
@@ -590,10 +588,10 @@ impl<'db: 'a, 'a> Class<'a> {
                 self.type_vars(i_s).clone(),
                 is_final,
             );
-            class_infos
+            // In case TypedDict is combined with dataclass, just let the dataclass win
+            let _ = class_infos
                 .undefined_generics_type
-                .set(Rc::new(Type::TypedDict(td.clone())))
-                .unwrap();
+                .set(Rc::new(Type::TypedDict(td.clone())));
             NodeRef::new(self.node_ref.file, self.node().name_def().index()).insert_complex(
                 ComplexPoint::TypedDictDefinition(TypedDictDefinition::new(td.clone(), total)),
                 Locality::ImplicitExtern,
