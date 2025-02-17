@@ -253,7 +253,7 @@ pub struct GenericsList(Rc<[GenericItem]>);
 
 impl GenericsList {
     pub fn new_generics(parts: Rc<[GenericItem]>) -> Self {
-        //debug_assert!(!parts.is_empty());
+        debug_assert!(!parts.is_empty());
         Self(parts)
     }
 
@@ -313,6 +313,10 @@ impl GenericsList {
             GenericItem::TypeArgs(ts) => ts.args.has_any_internal(i_s, already_checked),
             GenericItem::ParamSpecArg(a) => a.params.has_any_internal(i_s, already_checked),
         })
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
     }
 }
 

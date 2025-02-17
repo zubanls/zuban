@@ -152,9 +152,13 @@ fn common_base_class_basic(
     if c1.node_ref != c2.node_ref {
         return None;
     }
+    let type_vars = c1.type_vars(i_s);
+    if type_vars.is_empty() {
+        // If there are no generics, return early
+        return Some(c1.as_type(i_s.db));
+    }
     let mut generics = vec![];
-    for ((type_var_like, generic1), generic2) in c1
-        .type_vars(i_s)
+    for ((type_var_like, generic1), generic2) in type_vars
         .iter()
         .zip(c1.generics().iter(i_s.db))
         .zip(c2.generics().iter(i_s.db))

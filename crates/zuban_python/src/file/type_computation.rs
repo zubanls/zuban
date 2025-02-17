@@ -1656,7 +1656,8 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         let generics = self.compute_generics_for_alias(s, alias);
                         TypeContent::Type(Type::RecursiveType(Rc::new(RecursiveType::new(
                             link,
-                            Some(generics),
+                            (!generics.is_empty())
+                                .then(|| GenericsList::generics_from_vec(generics)),
                         ))))
                     }
                     TypeContent::RecursiveClass(node_ref) => {
@@ -1841,7 +1842,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         &mut self,
         slice_type: SliceType,
         alias: &TypeAlias,
-    ) -> GenericsList {
+    ) -> Vec<GenericItem> {
         let mut generics = vec![];
         self.calculate_type_arguments(
             slice_type,
@@ -1861,7 +1862,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 );
             },
         );
-        GenericsList::generics_from_vec(generics)
+        generics
     }
 
     #[inline]
@@ -2823,7 +2824,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         TypeContent::Type(
             alias
                 .replace_type_var_likes(self.inference.i_s.db, false, &mut |usage| {
-                    generics[usage.index()].clone()
+                    generics[usage.index().as_usize()].clone()
                 })
                 .into_owned(),
         )

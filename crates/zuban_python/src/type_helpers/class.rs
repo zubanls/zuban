@@ -2236,7 +2236,7 @@ impl<'db: 'a, 'a> Class<'a> {
                     ))
                 }
                 Generics::List(generics, None) => ClassGenerics::List((*generics).clone()),
-                //Generics::None => unreachable!(),
+                Generics::None => unreachable!(),
                 generics => ClassGenerics::List(GenericsList::new_generics(
                     generics.iter(db).map(|g| g.into_generic_item()).collect(),
                 )),
@@ -3553,12 +3553,18 @@ fn init_as_callable(
     i_s: &InferenceState,
     cls: Class,
     inf: Inferred,
-    mut init_class: TypeOrClass,
+    init_class: TypeOrClass,
 ) -> Option<CallableLike> {
+    let mut init_class = init_class;
+    let type_var_likes;
     let cls = if matches!(cls.generics(), Generics::NotDefinedYet) {
-        // Because of this, generics are not remapped more than the type_var_remap
         if let TypeOrClass::Class(init_class) = &mut init_class {
-            init_class.generics = Generics::None;
+            // Make sure generics are not Any
+            type_var_likes = init_class.type_vars(i_s);
+            init_class.generics = Generics::Self_ {
+                class_definition: init_class.node_ref.as_link(),
+                type_var_likes,
+            };
         }
         Class::with_self_generics(i_s.db, cls.node_ref)
     } else {
