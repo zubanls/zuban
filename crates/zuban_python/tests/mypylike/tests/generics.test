@@ -1340,3 +1340,14 @@ class OrderedSet(Generic[T]):
         same |= other
 
     def __ior__(self, other: Iterable[T]) -> OrderedSet[T]: ...
+
+[case own_generics_inversion_should_not_panic]
+from typing import TypeVar, Generic, Any
+KT = TypeVar("KT")
+VT = TypeVar("VT")
+
+class Dct(Generic[KT, VT]):
+    def inverse(self) -> Dct[VT, KT]: ...
+    def pop(self, key: KT) -> VT: ...
+    def popitem(self, x: Any) -> KT:
+        return self.inverse().pop(x)
