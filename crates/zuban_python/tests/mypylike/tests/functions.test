@@ -278,3 +278,12 @@ def f(x: Any) -> None:
                 # E: Argument after ** must be a mapping, not "int"
     x(*undefined)  # E: Name "undefined" is not defined
     x(**undefined)  # E: Name "undefined" is not defined
+
+[case callable_return_same_type_should_not_recurse]
+from typing import Callable
+import sys
+R = Callable[[], 'R']
+
+def f(): ...
+def g(y: R): ...
+g(f)

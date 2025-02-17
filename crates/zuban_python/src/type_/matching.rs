@@ -730,6 +730,12 @@ impl Type {
             Type::Type(t2) if matches!(c1.params, CallableParams::Any(_)) => {
                 c1.return_type.matches(i_s, matcher, t2, variance)
             }
+            Type::Any(_) => {
+                // Return false, because this case is handled in check_protocol_and_other_side.
+                // We have to handle this to avoid expanding types below in maybe_callable and
+                // recursing, if the return value is a recursive type definition.
+                Match::new_false()
+            }
             _ => match value_type.maybe_callable(i_s) {
                 Some(CallableLike::Callable(c2)) => {
                     let mut m = matcher.matches_callable(i_s, c1, &c2);

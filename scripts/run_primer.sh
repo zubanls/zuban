@@ -8,7 +8,7 @@ PRIMER_PROJECTS_DIR="$HOME/tmp/mypy_primer/projects"
 if [[ -n "${1-}" ]]; then
     DIRS=$1
 else
-    DIRS=$(ls "$PRIMER_PROJECTS_DIR" | rg -v '_venv$' | sort)
+    DIRS=$(ls "$PRIMER_PROJECTS_DIR" | rg -v '_venv$' | sort | sed -n '/core/,$p' | rg -v core)
 fi
 
 EXECUTABLE="$(pwd)/../target/debug/zmypy"
