@@ -44,8 +44,8 @@ use crate::{
         DbString, Enum, EnumMemberDefinition, FormatStyle, FunctionKind, FunctionOverload,
         GenericClass, GenericsList, LookupResult, NamedTuple, NeverCause, ParamSpecArg,
         ParamSpecUsage, ParamType, StringSlice, Tuple, TupleArgs, Type, TypeVarLike,
-        TypeVarLikeUsage, TypeVarLikes, TypedDict, TypedDictMember, TypedDictMemberGatherer,
-        Variance,
+        TypeVarLikeUsage, TypeVarLikes, TypedDict, TypedDictGenerics, TypedDictMember,
+        TypedDictMemberGatherer, Variance,
     },
     type_helpers::{FirstParamProperties, Function},
     utils::{debug_indent, join_with_commas},
@@ -2260,7 +2260,9 @@ impl<'db: 'a, 'a> Class<'a> {
             }
             None | Some(Type::Class(_)) => Type::Class(self.as_generic_class(db)),
             Some(Type::TypedDict(td)) => Type::TypedDict(match &self.generics {
-                Generics::List(list, None) => td.apply_generics(db, (*list).clone()),
+                Generics::List(list, None) => {
+                    td.apply_generics(db, TypedDictGenerics::Generics((*list).clone()))
+                }
                 Generics::None => td.clone(),
                 _ => unreachable!("{:?}", self.generics),
             }),

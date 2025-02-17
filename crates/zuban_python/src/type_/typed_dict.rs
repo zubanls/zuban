@@ -130,17 +130,18 @@ impl TypedDict {
         self.members.set(members).unwrap()
     }
 
-    pub fn apply_generics(&self, db: &Database, generics: GenericsList) -> Rc<Self> {
-        let members = if let Some(members) = self.members.get() {
-            OnceCell::from(Self::remap_members_with_generics(db, members, &generics))
-        } else {
-            OnceCell::new()
-        };
+    pub fn apply_generics(&self, db: &Database, generics: TypedDictGenerics) -> Rc<Self> {
+        let mut members = OnceCell::new();
+        if let TypedDictGenerics::Generics(generics) = &generics {
+            if let Some(ms) = self.members.get() {
+                members = OnceCell::from(Self::remap_members_with_generics(db, ms, generics))
+            }
+        }
         Rc::new(TypedDict {
             name: self.name,
             members,
             defined_at: self.defined_at,
-            generics: TypedDictGenerics::Generics(generics),
+            generics,
             is_final: self.is_final,
         })
     }
@@ -1121,7 +1122,7 @@ pub(crate) fn initialize_typed_dict<'db>(
         let generics = matcher
             .into_type_arguments(i_s, typed_dict.defined_at)
             .type_arguments_into_generics(i_s.db);
-        typed_dict.apply_generics(i_s.db, generics.unwrap())
+        typed_dict.apply_generics(i_s.db, TypedDictGenerics::Generics(generics.unwrap()))
     } else {
         typed_dict.clone()
     };
