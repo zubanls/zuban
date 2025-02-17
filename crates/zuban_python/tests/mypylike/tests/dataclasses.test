@@ -327,3 +327,50 @@ from dataclasses import dataclass
 class Foo(): ...
 
 Bar = Foo | int
+
+[case dataclass_transform_metaclass_with_dataclass_inheritance1]
+# flags: --python-version 3.11
+
+from typing import dataclass_transform, overload, Any
+from dataclasses import dataclass
+
+@dataclass_transform()
+class Metaclass(type): ...
+
+class C(metaclass=Metaclass):
+    x: int
+
+@dataclass
+class D(C):
+    y: str
+
+D()  # E: Missing positional arguments "x", "y" in call to "D"
+d = D(1, "")
+d.x
+d.y
+d.z  # E: "D" has no attribute "z"
+
+[case dataclass_transform_metaclass_with_dataclass_inheritance2]
+from typing import dataclass_transform, overload, Any
+from dataclasses import dataclass
+
+@dataclass_transform()
+class Metaclass(type): ...
+
+# This is a special case and it should probably just not crash
+@dataclass
+class C(Metaclass):
+    x: int
+
+C(1)
+C()  # E: Missing positional argument "x" in call to "C"
+
+@dataclass
+class D(C):
+    y: str
+
+D()  # E: Missing positional arguments "x", "y" in call to "D"
+d = D(1, "")
+d.x
+d.y
+d.z  # E: "D" has no attribute "z"

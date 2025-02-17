@@ -513,10 +513,10 @@ impl<'db: 'a, 'a> Class<'a> {
 
         let (mut class_infos, typed_dict_total) = self.calculate_class_infos(i_s, type_vars);
         if let Some(dataclass) = &was_dataclass {
-            class_infos
+            // It is possible that there was a dataclass_transform in the metaclass
+            let _ = class_infos
                 .undefined_generics_type
-                .set(Rc::new(Type::Dataclass(dataclass.clone())))
-                .unwrap();
+                .set(Rc::new(Type::Dataclass(dataclass.clone())));
         }
         if dataclass_transform.is_some() {
             class_infos.dataclass_transform = dataclass_transform;
