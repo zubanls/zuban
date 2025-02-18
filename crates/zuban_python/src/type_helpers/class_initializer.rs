@@ -532,7 +532,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
 
         // Now that the class has been saved, we can use it like an actual class. We have to do
         // some member initialization things with TypedDicts, Enums, etc.
-        let class = Class::with_undefined_generics(self.node_ref.into());
+        let class = Class::with_undefined_generics(self.node_ref);
         if let Some(td) = was_typed_dict {
             initialize_typed_dict_members(i_s, &class, td);
         };
@@ -1208,7 +1208,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
     ) -> CallableContent {
         let mut vec = start_namedtuple_params(i_s.db);
         let file = self.node_ref.file;
-        let cls = Class::with_undefined_generics(self.node_ref.into());
+        let cls = Class::with_undefined_generics(self.node_ref);
         let i_s = &i_s.with_class_context(&cls);
         find_stmt_named_tuple_types(i_s, file, &mut vec, self.node().block().iter_stmt_likes());
         for (name, index) in self.class_storage.class_symbol_table.iter() {

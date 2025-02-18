@@ -34,7 +34,7 @@ use crate::{
     type_::{
         execute_functional_enum, AnyCause, CallableContent, CallableLike, ClassGenerics, Dataclass,
         FormatStyle, FunctionOverload, GenericClass, GenericsList, LookupResult, NamedTuple,
-        NeverCause, ParamSpecArg, ParamSpecUsage, StringSlice, Tuple, TupleArgs, Type, TypeVarLike,
+        NeverCause, ParamSpecArg, ParamSpecUsage, Tuple, TupleArgs, Type, TypeVarLike,
         TypeVarLikeUsage, TypeVarLikes, TypedDict, TypedDictGenerics, Variance,
     },
     utils::{debug_indent, join_with_commas},
@@ -114,13 +114,13 @@ impl<'db: 'a, 'a> Class<'a> {
 
     #[inline]
     pub fn with_undefined_generics(node_ref: ClassNodeRef<'a>) -> Self {
-        Self::from_position(node_ref.into(), Generics::NotDefinedYet, None)
+        Self::from_position(node_ref, Generics::NotDefinedYet, None)
     }
 
     pub fn with_self_generics(db: &'a Database, node_ref: ClassNodeRef<'a>) -> Self {
         let type_var_likes = Self::with_undefined_generics(node_ref).use_cached_type_vars(db);
         Self::from_position(
-            node_ref.into(),
+            node_ref,
             match type_var_likes.len() {
                 0 => Generics::None,
                 _ => Generics::Self_ {
@@ -136,21 +136,8 @@ impl<'db: 'a, 'a> Class<'a> {
         Instance::new(self, None)
     }
 
-    pub fn node(&self) -> ClassDef<'a> {
-        ClassDef::by_index(&self.node_ref.file.tree, self.node_ref.node_index)
-    }
-
-    pub fn name(&self) -> &'a str {
-        self.node().name().as_str()
-    }
-
     pub fn qualified_name(&self, db: &Database) -> String {
         ClassInitializer::new(self.node_ref.0, self.class_storage).qualified_name(db)
-    }
-
-    pub fn name_string_slice(&self) -> StringSlice {
-        let name = self.node().name();
-        StringSlice::new(self.node_ref.file_index(), name.start(), name.end())
     }
 
     pub(crate) fn find_type_var_like_including_ancestors(
@@ -1018,7 +1005,7 @@ impl<'db: 'a, 'a> Class<'a> {
         if let Some(type_var_remap) = self.type_var_remap {
             if matches!(self.generics, Generics::Self_ { .. } | Generics::None) {
                 return Class::new(
-                    self.node_ref.into(),
+                    self.node_ref,
                     self.class_storage,
                     Generics::List(type_var_remap, None),
                     None,

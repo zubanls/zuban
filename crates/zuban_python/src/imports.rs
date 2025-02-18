@@ -251,7 +251,7 @@ pub fn python_import_with_needs_exact_case(
         dir.add_missing_entry(&name_pyi, from_file.file_index);
         // The folder should not exist for folder/__init__.py or a namespace.
         if !had_namespace_dir {
-            dir.add_missing_entry(name.into(), from_file.file_index);
+            dir.add_missing_entry(name, from_file.file_index);
         }
     }
     if !namespace_directories.is_empty() {

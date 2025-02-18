@@ -82,7 +82,7 @@ impl<'a> ResultContext<'a, '_> {
                     if matches!(t, Type::Any(_)) {
                         return None;
                     }
-                    let c = Class::from_non_generic_node_ref(class.into());
+                    let c = Class::from_non_generic_node_ref(class);
                     let mut matcher = Matcher::new_class_matcher(i_s, c);
                     let self_class = Class::with_self_generics(i_s.db, class);
                     self_class

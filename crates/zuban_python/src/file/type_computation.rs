@@ -1444,7 +1444,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     );
                 }
                 TypeContent::SimpleGeneric { node_ref, .. } => {
-                    Inferred::from_saved_node_ref((*node_ref).into()).save_redirect(
+                    Inferred::from_saved_node_ref(*node_ref).save_redirect(
                         self.inference.i_s,
                         self.inference.file,
                         expr.index(),

@@ -425,9 +425,8 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     if matches!(class.generics, Generics::NotDefinedYet) {
                         c = callable.as_ref().clone();
                         if let Some(init_cls) = init_cls {
-                            c.return_type =
-                                Class::with_self_generics(i_s.db, init_cls.node_ref.into())
-                                    .as_type(i_s.db);
+                            c.return_type = Class::with_self_generics(i_s.db, init_cls.node_ref)
+                                .as_type(i_s.db);
                         }
                         c.type_vars = class.type_vars(i_s).clone();
                     } else {
