@@ -71,15 +71,10 @@ impl<'a> Generics<'a> {
     }
 
     pub fn nth_usage<'db: 'a>(&self, db: &'db Database, usage: &TypeVarLikeUsage) -> Generic<'a> {
-        self.nth(db, &usage.as_type_var_like(), usage.index().as_usize())
+        self.nth(db, usage.index().as_usize())
     }
 
-    pub fn nth<'db: 'a>(
-        &self,
-        db: &'db Database,
-        type_var_like: &TypeVarLike,
-        n: usize,
-    ) -> Generic<'a> {
+    pub fn nth<'db: 'a>(&self, db: &'db Database, n: usize) -> Generic<'a> {
         match self {
             Self::ExpressionWithClassType(file, expr) => {
                 debug_assert_eq!(n, 0);
@@ -104,11 +99,15 @@ impl<'a> Generics<'a> {
                     unreachable!("Generic list given, but item {:?} was requested", n);
                 }
             }
-            Self::NotDefinedYet { .. } => Generic::owned(type_var_like.as_any_generic_item()),
+            Self::NotDefinedYet { class_ref } => {
+                let type_var_like = &class_ref.use_cached_type_vars(db)[n];
+                Generic::owned(type_var_like.as_any_generic_item())
+            }
             Self::Self_ {
-                class_definition, ..
+                class_definition,
+                type_var_likes,
             } => Generic::owned(
-                type_var_like
+                type_var_likes[n]
                     .as_type_var_like_usage(n.into(), *class_definition)
                     .into_generic_item(),
             ),

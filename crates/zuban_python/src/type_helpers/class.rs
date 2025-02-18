@@ -971,9 +971,8 @@ impl<'db: 'a, 'a> Class<'a> {
     }
 
     pub fn nth_type_argument(&self, db: &Database, nth: usize) -> Type {
-        let type_vars = self.use_cached_type_vars(db);
         self.generics()
-            .nth(db, &type_vars[nth], nth)
+            .nth(db, nth)
             .expect_type_argument()
             .into_owned()
     }
