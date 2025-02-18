@@ -112,7 +112,9 @@ impl NamedTuple {
                     false => join_with_commas(params.iter().map(|p| {
                         let t = p.type_.expect_positional_type_as_ref();
                         match generics {
-                            Generics::NotDefinedYet | Generics::None => t.format(&format_data),
+                            Generics::NotDefinedYet { .. } | Generics::None => {
+                                t.format(&format_data)
+                            }
                             _ => {
                                 let replaced = t.replace_type_var_likes_and_self(
                                     format_data.db,

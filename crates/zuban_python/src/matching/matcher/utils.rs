@@ -94,7 +94,7 @@ fn calculate_dunder_init_type_vars_and_return<'db: 'a, 'a>(
     debug!("Calculate __init__ type vars for class {}", class.name());
     let type_vars = class.type_vars(i_s);
     let class_matcher_needed =
-        matches!(class.generics, Generics::NotDefinedYet) && !type_vars.is_empty();
+        matches!(class.generics, Generics::NotDefinedYet { .. }) && !type_vars.is_empty();
     // Function type vars need to be calculated, so annotations are used.
     let func_type_vars = func_or_callable.type_vars(i_s);
 
@@ -135,13 +135,13 @@ fn calculate_dunder_init_type_vars_and_return<'db: 'a, 'a>(
             ClassGenerics::List(generics_list) => Some(generics_list),
             class_generics @ (ClassGenerics::ExpressionWithClassType(_)
             | ClassGenerics::SlicesWithClassTypes(_)) => Some(GenericsList::new_generics(
-                Generics::from_class_generics(i_s.db, &class_generics)
+                Generics::from_class_generics(i_s.db, class.node_ref, &class_generics)
                     .iter(i_s.db)
                     .map(|g| g.into_generic_item())
                     .collect(),
             )),
             ClassGenerics::None => None,
-            ClassGenerics::NotDefinedYet => unreachable!(),
+            ClassGenerics::NotDefinedYet { .. } => unreachable!(),
         };
     }
     type_arguments
@@ -451,7 +451,10 @@ fn calculate_type_vars<'db: 'a, 'a>(
                 // check if the classes match and then push the generics there.
                 let type_var_likes = return_class.type_vars(i_s);
                 if !type_var_likes.is_empty() {
-                    debug_assert!(matches!(return_class.generics, Generics::NotDefinedYet));
+                    debug_assert!(matches!(
+                        return_class.generics,
+                        Generics::NotDefinedYet { .. }
+                    ));
                     if Class::with_self_generics(i_s.db, return_class.node_ref)
                         .as_type(i_s.db)
                         .is_sub_type_of(i_s, &mut matcher, expected)

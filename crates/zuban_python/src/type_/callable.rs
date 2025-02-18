@@ -907,7 +907,7 @@ pub fn merge_class_type_vars(
 
     let mut type_vars = callable.type_vars.as_vec();
     let mut self_type_var_usage = None;
-    let needs_additional_remap = matches!(attribute_class.generics, Generics::NotDefinedYet)
+    let needs_additional_remap = matches!(attribute_class.generics, Generics::NotDefinedYet { .. })
         && !class.use_cached_type_vars(db).is_empty();
     if needs_self_type_variable {
         let bound = func_class_type.as_type(db);

@@ -8,6 +8,7 @@ use crate::{
     type_::{
         ClassGenerics, GenericItem, GenericsList, TypeVarLike, TypeVarLikeUsage, TypeVarLikes,
     },
+    type_helpers::ClassNodeRef,
 };
 
 macro_rules! replace_class_vars {
@@ -39,7 +40,9 @@ pub enum Generics<'a> {
         type_var_likes: &'a TypeVarLikes,
     },
     None,
-    NotDefinedYet,
+    NotDefinedYet {
+        class_ref: ClassNodeRef<'a>,
+    },
 }
 
 impl<'a> Generics<'a> {
@@ -47,7 +50,11 @@ impl<'a> Generics<'a> {
         Self::List(list, None)
     }
 
-    pub fn from_class_generics(db: &'a Database, g: &'a ClassGenerics) -> Self {
+    pub fn from_class_generics(
+        db: &'a Database,
+        class_ref: ClassNodeRef<'a>,
+        g: &'a ClassGenerics,
+    ) -> Self {
         match g {
             ClassGenerics::List(l) => Self::List(l, None),
             ClassGenerics::None => Generics::None,
@@ -59,7 +66,7 @@ impl<'a> Generics<'a> {
                 let node_ref = NodeRef::from_link(db, *link);
                 Self::SlicesWithClassTypes(node_ref.file, node_ref.as_slices())
             }
-            ClassGenerics::NotDefinedYet => Generics::NotDefinedYet,
+            ClassGenerics::NotDefinedYet => Generics::NotDefinedYet { class_ref },
         }
     }
 
@@ -97,7 +104,7 @@ impl<'a> Generics<'a> {
                     unreachable!("Generic list given, but item {:?} was requested", n);
                 }
             }
-            Self::NotDefinedYet => Generic::owned(type_var_like.as_any_generic_item()),
+            Self::NotDefinedYet { .. } => Generic::owned(type_var_like.as_any_generic_item()),
             Self::Self_ {
                 class_definition, ..
             } => Generic::owned(
@@ -125,7 +132,7 @@ impl<'a> Generics<'a> {
                 iterator: type_var_likes.iter().enumerate(),
                 definition: *class_definition,
             },
-            Self::None | Self::NotDefinedYet => GenericsIteratorItem::None,
+            Self::NotDefinedYet { .. } | Self::None => GenericsIteratorItem::None,
         };
         GenericsIterator::new(db, item)
     }

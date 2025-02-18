@@ -1303,7 +1303,9 @@ impl Inference<'_, '_, '_> {
         if function.is_dunder_new() {
             let mut class = function.class.unwrap();
             // Here we do not want self generics, we actually want Any generics.
-            class.generics = Generics::NotDefinedYet;
+            class.generics = Generics::NotDefinedYet {
+                class_ref: class.node_ref,
+            };
             if let Some(callable) = infer_class_method(
                 i_s,
                 class,

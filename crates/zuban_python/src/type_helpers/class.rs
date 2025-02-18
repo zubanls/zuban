@@ -86,8 +86,9 @@ impl<'db: 'a, 'a> Class<'a> {
         link: PointLink,
         list: &'a ClassGenerics,
     ) -> Self {
-        let generics = Generics::from_class_generics(db, list);
-        Self::from_position(ClassNodeRef::from_link(db, link), generics, None)
+        let class_ref = ClassNodeRef::from_link(db, link);
+        let generics = Generics::from_class_generics(db, class_ref, list);
+        Self::from_position(class_ref, generics, None)
     }
 
     pub fn from_non_generic_link(db: &'db Database, link: PointLink) -> Self {
@@ -108,8 +109,8 @@ impl<'db: 'a, 'a> Class<'a> {
     }
 
     #[inline]
-    pub fn with_undefined_generics(node_ref: ClassNodeRef<'a>) -> Self {
-        Self::from_position(node_ref, Generics::NotDefinedYet, None)
+    pub fn with_undefined_generics(class_ref: ClassNodeRef<'a>) -> Self {
+        Self::from_position(class_ref, Generics::NotDefinedYet { class_ref }, None)
     }
 
     pub fn with_self_generics(db: &'a Database, node_ref: ClassNodeRef<'a>) -> Self {
@@ -959,7 +960,8 @@ impl<'db: 'a, 'a> Class<'a> {
     }
 
     pub fn set_correct_generics_if_necessary_for_init_in_superclass(&mut self) {
-        if self.type_var_remap.is_some() && matches!(self.generics, Generics::NotDefinedYet) {
+        if self.type_var_remap.is_some() && matches!(self.generics, Generics::NotDefinedYet { .. })
+        {
             self.generics = Generics::None;
         }
     }
@@ -1056,7 +1058,7 @@ impl<'db: 'a, 'a> Class<'a> {
         };
         let type_var_likes = self.type_vars(&InferenceState::new(format_data.db));
         // Format classes that have not been initialized like Foo() or Foo[int] like "Foo".
-        if !type_var_likes.is_empty() && !matches!(self.generics, Generics::NotDefinedYet) {
+        if !type_var_likes.is_empty() && !matches!(self.generics, Generics::NotDefinedYet { .. }) {
             // Returns something like [str] or [List[int], Set[Any]]
             let strings: Vec<_> = self
                 .generics()
@@ -1112,7 +1114,7 @@ impl<'db: 'a, 'a> Class<'a> {
         let type_var_likes = self.type_vars(&InferenceState::new(db));
         match type_var_likes.is_empty() {
             false => match self.generics() {
-                Generics::NotDefinedYet => ClassGenerics::List(GenericsList::new_generics(
+                Generics::NotDefinedYet { .. } => ClassGenerics::List(GenericsList::new_generics(
                     type_var_likes
                         .iter()
                         .map(|t| t.as_any_generic_item())
@@ -1167,7 +1169,7 @@ impl<'db: 'a, 'a> Class<'a> {
 
     pub fn as_type_type(&self, db: &Database) -> Type {
         let class_infos = self.use_cached_class_infos(db);
-        Type::Type(if matches!(self.generics, Generics::NotDefinedYet) {
+        Type::Type(if matches!(self.generics, Generics::NotDefinedYet { .. }) {
             class_infos
                 .undefined_generics_type
                 .get_or_init(|| {
@@ -1184,7 +1186,9 @@ impl<'db: 'a, 'a> Class<'a> {
 
     pub fn as_type_with_type_vars_for_not_yet_defined_generics(&self, db: &Database) -> Type {
         match self.generics {
-            Generics::NotDefinedYet => Class::with_self_generics(db, self.node_ref).as_type(db),
+            Generics::NotDefinedYet { .. } => {
+                Class::with_self_generics(db, self.node_ref).as_type(db)
+            }
             _ => self.as_type(db),
         }
     }
@@ -1290,7 +1294,7 @@ impl<'db: 'a, 'a> Class<'a> {
         let class_infos = self.use_cached_class_infos(i_s.db);
         if !class_infos.abstract_attributes.is_empty()
             && !class_infos.incomplete_mro
-            && matches!(self.generics, Generics::NotDefinedYet)
+            && matches!(self.generics, Generics::NotDefinedYet { .. })
         {
             args.add_issue(
                 i_s,
@@ -1338,7 +1342,7 @@ impl<'db: 'a, 'a> Class<'a> {
                     .bool()
             {
                 return ClassExecutionResult::Inferred(Inferred::from_type(result));
-            } else if matches!(self.generics, Generics::NotDefinedYet)
+            } else if matches!(self.generics, Generics::NotDefinedYet { .. })
                 && !self.type_vars(i_s).is_empty()
             {
                 // This is a bit special, because in some cases like reversed() __new__ returns a
@@ -1789,7 +1793,7 @@ fn apply_generics_to_base_class<'a>(
         }
         // TODO is this needed?
         //Type::RecursiveType(r) if matches!(r.origin(db), RecursiveTypeOrigin::Class(_)) => TypeOrClass::Class(Class::from_position(NodeRef::from_link(db, r.link), generics, r.generics.as_ref())),
-        _ if matches!(generics, Generics::None | Generics::NotDefinedYet) => {
+        _ if matches!(generics, Generics::None | Generics::NotDefinedYet { .. }) => {
             TypeOrClass::Type(Cow::Borrowed(t))
         }
         _ => {
@@ -1899,7 +1903,7 @@ fn init_as_callable(
 ) -> Option<CallableLike> {
     let mut init_class = init_class;
     let type_var_likes;
-    let cls = if matches!(cls.generics(), Generics::NotDefinedYet) {
+    let cls = if matches!(cls.generics(), Generics::NotDefinedYet { .. }) {
         if let TypeOrClass::Class(init_class) = &mut init_class {
             // Make sure generics are not Any
             type_var_likes = init_class.type_vars(i_s);

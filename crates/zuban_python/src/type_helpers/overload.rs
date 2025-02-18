@@ -422,7 +422,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             .map(|callable| {
                 if let Some(class) = self.class {
                     let mut c;
-                    if matches!(class.generics, Generics::NotDefinedYet) {
+                    if matches!(class.generics, Generics::NotDefinedYet { .. }) {
                         c = callable.as_ref().clone();
                         if let Some(init_cls) = init_cls {
                             c.return_type = Class::with_self_generics(i_s.db, init_cls.node_ref)

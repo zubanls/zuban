@@ -1139,9 +1139,13 @@ impl Type {
         match self {
             Self::Class(c) => {
                 check(self)
-                    || Generics::from_class_generics(db, &c.generics)
-                        .iter(db)
-                        .any(|generic| generic.find_in_type(db, check))
+                    || Generics::from_class_generics(
+                        db,
+                        ClassNodeRef::from_link(db, c.link),
+                        &c.generics,
+                    )
+                    .iter(db)
+                    .any(|generic| generic.find_in_type(db, check))
             }
             Self::Union(u) => u.iter().any(|t| t.find_in_type(db, check)),
             Self::FunctionOverload(intersection) => intersection
@@ -1503,24 +1507,26 @@ impl Type {
         }
         */
         // necessary.
-        let merge_generics = |g1: &ClassGenerics, g2: &ClassGenerics| {
-            if matches!(g1, ClassGenerics::None) {
-                return ClassGenerics::None;
-            }
-            ClassGenerics::List(GenericsList::new_generics(
-                // Performance issue: clone could probably be removed. Rc -> Vec check
-                // https://github.com/rust-lang/rust/issues/93610#issuecomment-1528108612
-                Generics::from_class_generics(db, g1)
-                    .iter(db)
-                    .zip(Generics::from_class_generics(db, g2).iter(db))
-                    .map(|(gi1, gi2)| gi1.merge_matching_parts(db, gi2))
-                    .collect(),
-            ))
-        };
         match self {
             Type::Class(c1) => match other {
                 Type::Class(c2) if c1.link == c2.link => {
-                    Type::new_class(c1.link, merge_generics(&c1.generics, &c2.generics))
+                    let new_generics = match &c1.generics {
+                        ClassGenerics::None => ClassGenerics::None,
+                        _ => {
+                            let class_ref = ClassNodeRef::from_link(db, c1.link);
+                            ClassGenerics::List(GenericsList::new_generics(
+                                Generics::from_class_generics(db, class_ref, &c1.generics)
+                                    .iter(db)
+                                    .zip(
+                                        Generics::from_class_generics(db, class_ref, &c2.generics)
+                                            .iter(db),
+                                    )
+                                    .map(|(gi1, gi2)| gi1.merge_matching_parts(db, gi2))
+                                    .collect(),
+                            ))
+                        }
+                    };
+                    Type::new_class(c1.link, new_generics)
                 }
                 _ => Type::Any(AnyCause::FromError),
             },

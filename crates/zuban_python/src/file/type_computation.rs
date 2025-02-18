@@ -2057,7 +2057,10 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         slice_type: SliceType,
         primary: Option<Primary>,
     ) -> ClassGetItemResult<'db> {
-        if !matches!(class.generics(), Generics::None | Generics::NotDefinedYet) {
+        if !matches!(
+            class.generics(),
+            Generics::None | Generics::NotDefinedYet { .. }
+        ) {
             return ClassGetItemResult::Invalid;
         }
         let type_var_likes = class.type_vars(self.inference.i_s);

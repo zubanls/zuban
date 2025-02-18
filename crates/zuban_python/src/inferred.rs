@@ -1126,15 +1126,6 @@ impl<'db: 'slf, 'slf> Inferred {
                                     return inf;
                                 }
                             }
-                            ComplexPoint::Class(cls_storage) => {
-                                let _class = Class::new(
-                                    ClassNodeRef::from_node_ref(node_ref),
-                                    cls_storage,
-                                    Generics::NotDefinedYet,
-                                    None,
-                                );
-                                debug!("TODO class descriptors");
-                            }
                             _ => (),
                         }
                     }
@@ -1301,9 +1292,10 @@ impl<'db: 'slf, 'slf> Inferred {
         }
 
         if let Type::Class(c) = t {
+            let class_ref = ClassNodeRef::from_link(i_s.db, c.link);
             let potential_descriptor = use_instance_with_ref(
-                ClassNodeRef::from_link(i_s.db, c.link),
-                Generics::from_class_generics(i_s.db, &c.generics),
+                class_ref,
+                Generics::from_class_generics(i_s.db, class_ref, &c.generics),
                 None,
             );
             if let Some(inf) = potential_descriptor.bind_dunder_get(i_s, add_issue, instance) {
@@ -1584,9 +1576,10 @@ impl<'db: 'slf, 'slf> Inferred {
 
         if let Type::Class(c) = t {
             if apply_descriptor {
+                let class_ref = ClassNodeRef::from_link(i_s.db, c.link);
                 let inst = use_instance_with_ref(
-                    ClassNodeRef::from_link(i_s.db, c.link),
-                    Generics::from_class_generics(i_s.db, &c.generics),
+                    class_ref,
+                    Generics::from_class_generics(i_s.db, class_ref, &c.generics),
                     None,
                 );
                 if let Some(inf) = inst
@@ -1971,10 +1964,11 @@ impl<'db: 'slf, 'slf> Inferred {
                             }
                             ComplexPoint::Class(cls) => {
                                 node_ref.ensure_cached_class_infos(i_s);
+                                let class_ref = ClassNodeRef::from_node_ref(node_ref);
                                 let c = Class::new(
-                                    ClassNodeRef::from_node_ref(node_ref),
+                                    class_ref,
                                     cls,
-                                    Generics::NotDefinedYet,
+                                    Generics::NotDefinedYet { class_ref },
                                     None,
                                 );
                                 // We might be dealing with dataclasses or enums. In that case use
@@ -2394,8 +2388,8 @@ pub fn infer_class_method<'db: 'class, 'class>(
     as_type_type: Option<&dyn Fn() -> Type>,
 ) -> Option<CallableContent> {
     let mut func_class = func_class;
-    let class_generics_not_defined_yet =
-        matches!(class.generics, Generics::NotDefinedYet) && !class.type_vars(i_s).is_empty();
+    let class_generics_not_defined_yet = matches!(class.generics, Generics::NotDefinedYet { .. })
+        && !class.type_vars(i_s).is_empty();
     if class_generics_not_defined_yet {
         // Check why this is necessary by following class_generics_not_defined_yet.
         let self_generics = Generics::Self_ {
@@ -2567,11 +2561,12 @@ fn type_of_complex<'db: 'x, 'x>(
     match complex {
         ComplexPoint::Class(cls_storage) => {
             definition.unwrap().ensure_cached_class_infos(i_s);
+            let class_ref = ClassNodeRef::from_node_ref(definition.unwrap());
             let cls = Class::new(
                 // This can only ever happen for saved definitions, therefore we can unwrap.
-                ClassNodeRef::from_node_ref(definition.unwrap()),
+                class_ref,
                 cls_storage,
-                Generics::NotDefinedYet,
+                Generics::NotDefinedYet { class_ref },
                 None,
             );
             Cow::Owned(cls.as_type_type(i_s.db))

@@ -893,11 +893,13 @@ impl PythonState {
 
     #[inline]
     pub fn tuple_class_with_generics_to_be_defined(&self) -> Class {
-        Class::from_position(self.tuple_node_ref(), Generics::NotDefinedYet, None)
+        let class_ref = self.tuple_node_ref();
+        Class::from_position(class_ref, Generics::NotDefinedYet { class_ref }, None)
     }
 
     pub fn memoryview_class_with_generics_to_be_defined(&self) -> Class {
-        Class::from_position(self.memoryview_node_ref(), Generics::NotDefinedYet, None)
+        let class_ref = self.memoryview_node_ref();
+        Class::from_position(class_ref, Generics::NotDefinedYet { class_ref }, None)
     }
 
     pub fn memoryview_type_with_any_generics(&self, db: &Database) -> Type {
