@@ -187,6 +187,21 @@ impl<'db: 'file, 'file> ClassNodeRef<'file> {
                 _ => None,
             })
     }
+
+    pub fn class_storage(&self) -> &'file ClassStorage {
+        let complex = self.complex().unwrap_or_else(|| {
+            panic!(
+                "Node {:?} ({}:{}) is not a complex class",
+                self.file.tree.debug_info(self.node_index),
+                self.file_index(),
+                self.node_index
+            )
+        });
+        match complex {
+            ComplexPoint::Class(c) => c,
+            _ => unreachable!("Probably an issue with indexing: {complex:?}"),
+        }
+    }
 }
 
 impl<'a> std::ops::Deref for ClassNodeRef<'a> {
@@ -232,7 +247,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
     }
 
     pub fn from_node_ref(node_ref: ClassNodeRef<'a>) -> Self {
-        Self::new(node_ref, node_ref.expect_class_storage())
+        Self::new(node_ref, node_ref.class_storage())
     }
 
     pub fn from_link(db: &'a Database, link: PointLink) -> Self {

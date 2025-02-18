@@ -1324,7 +1324,11 @@ impl Type {
         }
     }
 
-    pub fn find_class_in_mro<'x>(&'x self, db: &'x Database, target: NodeRef) -> Option<Class<'x>> {
+    pub fn find_class_in_mro<'x>(
+        &'x self,
+        db: &'x Database,
+        target: ClassNodeRef,
+    ) -> Option<Class<'x>> {
         self.mro(db)
             .find_map(|(_, type_or_class)| match type_or_class {
                 TypeOrClass::Class(cls) if cls.node_ref == target => Some(cls),

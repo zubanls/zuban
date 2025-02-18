@@ -10,8 +10,7 @@ use vfs::FileIndex;
 
 use crate::{
     database::{
-        ClassStorage, ComplexPoint, Database, Locality, Point, PointKind, PointLink, Specific,
-        TypeAlias,
+        ComplexPoint, Database, Locality, Point, PointKind, PointLink, Specific, TypeAlias,
     },
     diagnostics::{Diagnostic, Issue, IssueKind},
     file::{File, OtherDefinitionIterator, PythonFile},
@@ -243,21 +242,6 @@ impl<'file> NodeRef<'file> {
 
     pub fn expect_atom(&self) -> Atom<'file> {
         Atom::by_index(&self.file.tree, self.node_index)
-    }
-
-    pub fn expect_class_storage(&self) -> &'file ClassStorage {
-        let complex = self.complex().unwrap_or_else(|| {
-            panic!(
-                "Node {:?} ({}:{}) is not a complex class",
-                self.file.tree.debug_info(self.node_index),
-                self.file_index(),
-                self.node_index
-            )
-        });
-        match complex {
-            ComplexPoint::Class(c) => c,
-            _ => unreachable!("Probably an issue with indexing: {complex:?}"),
-        }
     }
 
     pub fn ensure_cached_class_infos(&self, i_s: &InferenceState) {

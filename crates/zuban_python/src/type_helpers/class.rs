@@ -104,12 +104,7 @@ impl<'db: 'a, 'a> Class<'a> {
         generics: Generics<'a>,
         type_var_remap: Option<&'a GenericsList>,
     ) -> Self {
-        Self::new(
-            node_ref,
-            node_ref.expect_class_storage(),
-            generics,
-            type_var_remap,
-        )
+        Self::new(node_ref, node_ref.class_storage(), generics, type_var_remap)
     }
 
     #[inline]
@@ -1037,7 +1032,7 @@ impl<'db: 'a, 'a> Class<'a> {
             .filter(|&b| b.is_direct_base)
             .map(move |b| apply_generics_to_base_class(db, &b.type_, generics))
     }
-    pub fn class_in_mro(&self, db: &'db Database, node_ref: NodeRef) -> Option<Class> {
+    pub fn class_in_mro(&self, db: &'db Database, node_ref: ClassNodeRef) -> Option<Class> {
         for (_, type_or_cls) in self.mro(db) {
             if let TypeOrClass::Class(c) = type_or_cls {
                 if c.node_ref == node_ref {

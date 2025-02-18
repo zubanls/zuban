@@ -721,7 +721,7 @@ impl PythonState {
         db.python_state.typing_mapping_get_index = db
             .python_state
             .mapping_node_ref()
-            .expect_class_storage()
+            .class_storage()
             .class_symbol_table
             .lookup_symbol("get")
             .unwrap()
@@ -960,7 +960,7 @@ impl PythonState {
     attribute_node_ref!(typing, supports_index_node_ref, typing_supports_index_index);
     class_node_ref!(typing, typed_dict_node_ref, typing_typed_dict_index);
     attribute_node_ref!(typing, pub container_node_ref, typing_container_index);
-    attribute_node_ref!(typing, pub mapping_node_ref, typing_mapping_index);
+    class_node_ref!(typing, pub mapping_node_ref, typing_mapping_index);
     class_node_ref!(typing, pub keys_view_node_ref, typing_keys_view_index);
     attribute_node_ref!(typing, mapping_get_node_ref, typing_mapping_get_index);
     attribute_node_ref!(typing, pub typing_overload, typing_overload_index);
