@@ -36,8 +36,8 @@ use crate::{
         execute_assert_type, execute_cast, execute_isinstance, execute_issubclass,
         execute_new_type, execute_param_spec_class, execute_reveal_type, execute_super,
         execute_type_var_class, execute_type_var_tuple_class, BoundMethod, BoundMethodFunction,
-        Class, FirstParamProperties, Function, Instance, LookupDetails, OverloadedFunction,
-        TypeOrClass,
+        Class, ClassNodeRef, FirstParamProperties, Function, Instance, LookupDetails,
+        OverloadedFunction, TypeOrClass,
     },
 };
 
@@ -1128,7 +1128,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             }
                             ComplexPoint::Class(cls_storage) => {
                                 let _class = Class::new(
-                                    node_ref,
+                                    ClassNodeRef::from_node_ref(node_ref),
                                     cls_storage,
                                     Generics::NotDefinedYet,
                                     None,
@@ -1302,7 +1302,7 @@ impl<'db: 'slf, 'slf> Inferred {
 
         if let Type::Class(c) = t {
             let potential_descriptor = use_instance_with_ref(
-                NodeRef::from_link(i_s.db, c.link),
+                ClassNodeRef::from_link(i_s.db, c.link),
                 Generics::from_class_generics(i_s.db, &c.generics),
                 None,
             );
@@ -1585,7 +1585,7 @@ impl<'db: 'slf, 'slf> Inferred {
         if let Type::Class(c) = t {
             if apply_descriptor {
                 let inst = use_instance_with_ref(
-                    NodeRef::from_link(i_s.db, c.link),
+                    ClassNodeRef::from_link(i_s.db, c.link),
                     Generics::from_class_generics(i_s.db, &c.generics),
                     None,
                 );
@@ -1971,7 +1971,12 @@ impl<'db: 'slf, 'slf> Inferred {
                             }
                             ComplexPoint::Class(cls) => {
                                 node_ref.ensure_cached_class_infos(i_s);
-                                let c = Class::new(node_ref, cls, Generics::NotDefinedYet, None);
+                                let c = Class::new(
+                                    ClassNodeRef::from_node_ref(node_ref),
+                                    cls,
+                                    Generics::NotDefinedYet,
+                                    None,
+                                );
                                 // We might be dealing with dataclasses or enums. In that case use
                                 // the normal mechanism that creates a type first and then
                                 // executes.
@@ -2321,7 +2326,7 @@ fn load_bound_method<'db: 'a, 'a, 'b>(
 }
 
 fn use_instance_with_ref<'a>(
-    class_reference: NodeRef<'a>,
+    class_reference: ClassNodeRef<'a>,
     generics: Generics<'a>,
     instance_reference: Option<&'a Inferred>,
 ) -> Instance<'a> {
@@ -2564,7 +2569,7 @@ fn type_of_complex<'db: 'x, 'x>(
             definition.unwrap().ensure_cached_class_infos(i_s);
             let cls = Class::new(
                 // This can only ever happen for saved definitions, therefore we can unwrap.
-                definition.unwrap(),
+                ClassNodeRef::from_node_ref(definition.unwrap()),
                 cls_storage,
                 Generics::NotDefinedYet,
                 None,

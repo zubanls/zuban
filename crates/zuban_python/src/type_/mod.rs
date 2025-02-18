@@ -84,7 +84,7 @@ use crate::{
         OnTypeError, ResultContext,
     },
     node_ref::NodeRef,
-    type_helpers::{Class, Instance, MroIterator, TypeOrClass},
+    type_helpers::{Class, ClassNodeRef, Instance, MroIterator, TypeOrClass},
     utils::{bytes_repr, join_with_commas, rc_slice_into_vec, str_repr},
 };
 
@@ -1812,7 +1812,7 @@ impl Literal {
         }
     }
 
-    pub fn fallback_node_ref<'db>(&self, db: &'db Database) -> NodeRef<'db> {
+    pub fn fallback_node_ref<'db>(&self, db: &'db Database) -> ClassNodeRef<'db> {
         match &self.kind {
             LiteralKind::Int(_) => db.python_state.int_node_ref(),
             LiteralKind::String(_) => db.python_state.str_node_ref(),

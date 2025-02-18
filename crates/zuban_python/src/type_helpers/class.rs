@@ -68,13 +68,13 @@ pub struct Class<'a> {
 
 impl<'db: 'a, 'a> Class<'a> {
     pub fn new(
-        node_ref: NodeRef<'a>,
+        node_ref: ClassNodeRef<'a>,
         class_storage: &'a ClassStorage,
         generics: Generics<'a>,
         type_var_remap: Option<&'a GenericsList>,
     ) -> Self {
         Self {
-            node_ref: ClassNodeRef::new(node_ref.file, node_ref.node_index),
+            node_ref,
             class_storage,
             generics,
             type_var_remap,
@@ -87,20 +87,20 @@ impl<'db: 'a, 'a> Class<'a> {
         list: &'a ClassGenerics,
     ) -> Self {
         let generics = Generics::from_class_generics(db, list);
-        Self::from_position(NodeRef::from_link(db, link), generics, None)
+        Self::from_position(ClassNodeRef::from_link(db, link), generics, None)
     }
 
     pub fn from_non_generic_link(db: &'db Database, link: PointLink) -> Self {
-        Self::from_non_generic_node_ref(NodeRef::from_link(db, link))
+        Self::from_non_generic_node_ref(ClassNodeRef::from_link(db, link))
     }
 
-    pub fn from_non_generic_node_ref(node_ref: NodeRef<'db>) -> Self {
+    pub fn from_non_generic_node_ref(node_ref: ClassNodeRef<'db>) -> Self {
         Self::from_position(node_ref, Generics::None, None)
     }
 
     #[inline]
     pub fn from_position(
-        node_ref: NodeRef<'a>,
+        node_ref: ClassNodeRef<'a>,
         generics: Generics<'a>,
         type_var_remap: Option<&'a GenericsList>,
     ) -> Self {
@@ -1789,11 +1789,11 @@ fn apply_generics_to_base_class<'a>(
                         // therefore simply use the class in the mro.
                         c.class(db)
                     } else {
-                        Class::from_position(NodeRef::from_link(db, c.link), generics, Some(g))
+                        Class::from_position(ClassNodeRef::from_link(db, c.link), generics, Some(g))
                     }
                 }
                 ClassGenerics::None => {
-                    Class::from_position(NodeRef::from_link(db, c.link), generics, None)
+                    Class::from_position(ClassNodeRef::from_link(db, c.link), generics, None)
                 }
                 _ => unreachable!(
                     "{}",

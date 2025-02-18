@@ -32,8 +32,8 @@ use crate::{
     python_state::NAME_TO_FUNCTION_DIFF,
     type_::CallableLike,
     type_helpers::{
-        Callable, Class, ClassLookupOptions, Instance, InstanceLookupOptions, LookupDetails,
-        OverloadResult, OverloadedFunction, TypeOrClass,
+        Callable, Class, ClassLookupOptions, ClassNodeRef, Instance, InstanceLookupOptions,
+        LookupDetails, OverloadResult, OverloadedFunction, TypeOrClass,
     },
 };
 
@@ -173,7 +173,11 @@ impl Dataclass {
             ClassGenerics::None => None,
             _ => unreachable!(),
         };
-        Class::from_position(NodeRef::from_link(db, self.class.link), generics, remap)
+        Class::from_position(
+            ClassNodeRef::from_link(db, self.class.link),
+            generics,
+            remap,
+        )
     }
 
     pub fn has_defined_generics(&self) -> bool {

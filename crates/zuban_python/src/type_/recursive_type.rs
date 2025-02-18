@@ -8,7 +8,7 @@ use crate::{
     database::{Database, PointLink, TypeAlias},
     matching::Generics,
     node_ref::NodeRef,
-    type_helpers::Class,
+    type_helpers::{Class, ClassNodeRef},
 };
 
 #[derive(Clone, Eq)]
@@ -39,7 +39,7 @@ impl RecursiveType {
         match from.maybe_alias() {
             Some(alias) => RecursiveTypeOrigin::TypeAlias(alias),
             None => RecursiveTypeOrigin::Class(Class::from_position(
-                from,
+                ClassNodeRef::from_node_ref(from),
                 match &self.generics {
                     Some(list) => Generics::List(list, None),
                     None => Generics::None,

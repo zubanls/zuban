@@ -87,6 +87,11 @@ impl<'db: 'file, 'file> ClassNodeRef<'file> {
     }
 
     #[inline]
+    pub fn from_node_ref(node_ref: NodeRef<'file>) -> Self {
+        Self(node_ref)
+    }
+
+    #[inline]
     pub fn to_db_lifetime(self, db: &Database) -> ClassNodeRef {
         ClassNodeRef(self.0.to_db_lifetime(db))
     }

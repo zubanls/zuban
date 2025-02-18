@@ -12,10 +12,9 @@ use crate::{
         avoid_protocol_mismatch, format_got_expected, ErrorStrs, ErrorTypes, GotType, Match,
         Matcher, MismatchReason,
     },
-    node_ref::NodeRef,
     params::matches_params,
     type_::{CallableLike, CallableParams, TupleArgs, TupleUnpack, Variance},
-    type_helpers::{Class, TypeOrClass},
+    type_helpers::{Class, ClassNodeRef, TypeOrClass},
 };
 
 impl Type {
@@ -294,7 +293,7 @@ impl Type {
                         return Match::new_true();
                     }
                     if !matcher.ignore_promotions() {
-                        return self.check_promotion(i_s, matcher, class2.node_ref.into());
+                        return self.check_promotion(i_s, matcher, class2.node_ref);
                     }
                 } else if let Type::Literal(literal) = value_type {
                     if !matcher.ignore_promotions() {
@@ -316,13 +315,13 @@ impl Type {
         &self,
         i_s: &InferenceState,
         matcher: &mut Matcher,
-        class2_node_ref: NodeRef,
+        class2_node_ref: ClassNodeRef,
     ) -> Match {
         let ComplexPoint::Class(storage) = class2_node_ref.complex().unwrap() else {
             unreachable!()
         };
         if let Some(promote_to) = storage.promote_to.get() {
-            let cls_node_ref = NodeRef::from_link(i_s.db, promote_to);
+            let cls_node_ref = ClassNodeRef::from_link(i_s.db, promote_to);
             self.is_same_type(
                 i_s,
                 matcher,
