@@ -17,10 +17,9 @@ use crate::{
     file::{File, OtherDefinitionIterator, PythonFile},
     inference_state::InferenceState,
     inferred::Inferred,
-    matching::Generics,
     python_state::{NAME_DEF_TO_CLASS_DIFF, NAME_TO_FUNCTION_DIFF},
     type_::Type,
-    type_helpers::{Class, Function, Module, CLASS_TO_CLASS_INFO_DIFFERENCE},
+    type_helpers::{ClassInitializer, Function, Module, CLASS_TO_CLASS_INFO_DIFFERENCE},
 };
 
 #[derive(Clone, Copy)]
@@ -271,7 +270,7 @@ impl<'file> NodeRef<'file> {
                 unreachable!()
             };
 
-            let class = Class::new(class_ref, cls_storage, Generics::NotDefinedYet, None);
+            let class = ClassInitializer::new(class_ref, cls_storage);
             // Make sure the type vars and MRO are properly pre-calculated
             class.ensure_calculated_class_infos(i_s);
             let name_def = self.add_to_node_index(NAME_DEF_TO_CLASS_DIFF as i64);

@@ -294,7 +294,7 @@ impl Type {
                         return Match::new_true();
                     }
                     if !matcher.ignore_promotions() {
-                        return self.check_promotion(i_s, matcher, class2.node_ref);
+                        return self.check_promotion(i_s, matcher, class2.node_ref.into());
                     }
                 } else if let Type::Literal(literal) = value_type {
                     if !matcher.ignore_promotions() {

@@ -984,7 +984,7 @@ impl Inference<'_, '_, '_> {
                                     .is_super_type_of(
                                         i_s,
                                         &mut matcher,
-                                        &Class::with_undefined_generics(class.node_ref)
+                                        &Class::with_undefined_generics(class.node_ref.into())
                                             .as_type(i_s.db),
                                     )
                                     .bool()
@@ -1109,7 +1109,7 @@ impl Inference<'_, '_, '_> {
                 if let Some(first_param) = first_param {
                     if let Some(annotation) = first_param.annotation() {
                         let undefined_generics_class =
-                            Class::with_undefined_generics(class.node_ref);
+                            Class::with_undefined_generics(class.node_ref.into());
                         let mut class_t = undefined_generics_class.as_type(i_s.db);
                         let mut original = self.use_cached_param_annotation_type(annotation);
                         match original.as_ref() {

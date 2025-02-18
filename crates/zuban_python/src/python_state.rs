@@ -15,7 +15,9 @@ use crate::{
         dataclasses_replace, AnyCause, CallableContent, CallableParam, CallableParams,
         ClassGenerics, CustomBehavior, NeverCause, ParamType, Tuple, Type, TypeVarLikes,
     },
-    type_helpers::{cache_class_name, Class, FirstParamProperties, Function, Instance},
+    type_helpers::{
+        cache_class_name, Class, ClassInitializer, FirstParamProperties, Function, Instance,
+    },
     InferenceState,
 };
 
@@ -447,7 +449,7 @@ impl PythonState {
                     )
                 }
                 update(db, Some(class_index));
-                let class = Class::with_undefined_generics(NodeRef::new(module(db), class_index));
+                let class = ClassInitializer::from_node_ref(NodeRef::new(module(db), class_index));
                 let name_def_ref =
                     NodeRef::new(class.node_ref.file, class.node().name_def().index());
                 cache_class_name(

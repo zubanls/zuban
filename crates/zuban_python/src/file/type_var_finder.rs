@@ -9,7 +9,7 @@ use crate::{
     inference_state::InferenceState,
     node_ref::NodeRef,
     type_::{TypeVarIndex, TypeVarLike, TypeVarLikes, TypeVarManager},
-    type_helpers::Class,
+    type_helpers::{Class, ClassInitializer, ClassNodeRef},
 };
 
 #[derive(Debug, Clone)]
@@ -25,7 +25,7 @@ enum BaseLookup<'file> {
 pub struct TypeVarFinder<'db, 'file, 'i_s, 'c, 'd> {
     i_s: &'i_s InferenceState<'db, 'i_s>,
     file: &'file PythonFile,
-    class: Option<&'c Class<'c>>,
+    class: Option<&'c ClassNodeRef<'c>>,
     type_var_manager: TypeVarManager<PointLink>,
     generic_or_protocol_slice: Option<SliceType<'d>>,
     current_generic_or_protocol_index: Option<TypeVarIndex>,
@@ -35,11 +35,11 @@ pub struct TypeVarFinder<'db, 'file, 'i_s, 'c, 'd> {
 impl<'db, 'file: 'd, 'i_s, 'c, 'd> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd> {
     pub fn find_class_type_vars(
         i_s: &'i_s InferenceState<'db, 'i_s>,
-        class: &'c Class<'file>,
+        class: &'c ClassNodeRef<'file>,
     ) -> TypeVarLikes {
         let mut finder = Self {
             i_s,
-            file: class.node_ref.file,
+            file: class.file,
             class: Some(class),
             type_var_manager: TypeVarManager::default(),
             generic_or_protocol_slice: None,
@@ -202,7 +202,10 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd> {
                 Ok(type_var_like) => {
                     if self
                         .class
-                        .and_then(|c| c.maybe_type_var_like_in_parent(self.i_s.db, &type_var_like))
+                        .and_then(|c| {
+                            ClassInitializer::new((*c).into(), c.expect_class_storage())
+                                .maybe_type_var_like_in_parent(self.i_s.db, &type_var_like)
+                        })
                         .is_none()
                     {
                         if matches!(type_var_like, TypeVarLike::TypeVarTuple(_))

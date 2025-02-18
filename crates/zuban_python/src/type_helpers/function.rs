@@ -399,7 +399,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         let maybe_computed = self.ensure_cached_type_vars(i_s);
         if let Some(decorated) = maybe_decorated {
             if let Some(class) = self.class {
-                let class = Class::with_self_generics(i_s.db, class.node_ref);
+                let class = Class::with_self_generics(i_s.db, class.node_ref.into());
                 Self::new(self.node_ref, Some(class)).decorated_to_be_saved(
                     &i_s.with_class_context(&class),
                     decorated,

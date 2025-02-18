@@ -410,7 +410,7 @@ fn calculate_type_vars<'db: 'a, 'a>(
                 if let Some(func_class) = func_or_callable.class() {
                     // When an __init__ has a self annotation, it's a bit special, because it influences
                     // the generics.
-                    let m = Class::with_self_generics(i_s.db, return_class.node_ref)
+                    let m = Class::with_self_generics(i_s.db, return_class.node_ref.into())
                         .as_type(i_s.db)
                         .is_sub_type_of(i_s, matcher, &t);
                     for entry in &mut matcher
@@ -452,7 +452,7 @@ fn calculate_type_vars<'db: 'a, 'a>(
                 let type_var_likes = return_class.type_vars(i_s);
                 if !type_var_likes.is_empty() {
                     debug_assert!(matches!(return_class.generics, Generics::NotDefinedYet));
-                    if Class::with_self_generics(i_s.db, return_class.node_ref)
+                    if Class::with_self_generics(i_s.db, return_class.node_ref.into())
                         .as_type(i_s.db)
                         .is_sub_type_of(i_s, &mut matcher, expected)
                         .bool()

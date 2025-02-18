@@ -8,7 +8,7 @@ PRIMER_PROJECTS_DIR="$HOME/tmp/mypy_primer/projects"
 if [[ -n "${1-}" ]]; then
     DIRS=$1
 else
-    DIRS=$(ls "$PRIMER_PROJECTS_DIR" | rg -v '_venv$' | sort | sed -n '/core/,$p' | rg -v core)
+    DIRS=$(ls "$PRIMER_PROJECTS_DIR" | rg -v '_venv$' | sort | sed -n '/cwltool/,$p' | rg -v 'core|black')
 fi
 
 EXECUTABLE="$(pwd)/../target/debug/zmypy"
@@ -20,7 +20,7 @@ while read DIR; do
     PTH="$PRIMER_PROJECTS_DIR/$DIR"
     cd "$PTH"
     set +e
-    ZUBAN_TYPESHED="$TYPESHED_DIR" RUST_BACKTRACE=1 "$EXECUTABLE" -- --python-executable "$VENV/bin/python" "$PTH"
+    ZUBAN_TYPESHED="$TYPESHED_DIR" RUST_BACKTRACE=1 /usr/bin/time "$EXECUTABLE" -- --python-executable "$VENV/bin/python" "$PTH"
     EXIT_CODE="$?"
     set -e
     # Default "valid" codes, but we want to find panics and other aborts

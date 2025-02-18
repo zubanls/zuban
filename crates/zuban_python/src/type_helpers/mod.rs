@@ -1,6 +1,7 @@
 mod bound_method;
 mod callable;
 mod class;
+mod class_initializer;
 mod function;
 mod instance;
 mod module;
@@ -10,8 +11,10 @@ mod typing;
 pub use bound_method::{BoundMethod, BoundMethodFunction};
 pub use callable::Callable;
 pub use class::{
-    cache_class_name, linearize_mro_and_return_linearizable, start_namedtuple_params, Class,
-    ClassExecutionResult, ClassLookupOptions, MroIterator, TypeOrClass,
+    cache_class_name, Class, ClassExecutionResult, ClassLookupOptions, MroIterator, TypeOrClass,
+};
+pub use class_initializer::{
+    linearize_mro_and_return_linearizable, start_namedtuple_params, ClassInitializer, ClassNodeRef,
     CLASS_TO_CLASS_INFO_DIFFERENCE,
 };
 pub use function::{is_private, FirstParamKind, FirstParamProperties, Function, GeneratorType};

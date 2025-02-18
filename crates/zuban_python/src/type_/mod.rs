@@ -756,8 +756,9 @@ impl Type {
                         init.return_type = self.clone();
                     } else {
                         let mut type_var_dataclass = (**d).clone();
-                        type_var_dataclass.class = Class::with_self_generics(i_s.db, cls.node_ref)
-                            .as_generic_class(i_s.db);
+                        type_var_dataclass.class =
+                            Class::with_self_generics(i_s.db, cls.node_ref.into())
+                                .as_generic_class(i_s.db);
                         init.return_type = Type::Dataclass(Rc::new(type_var_dataclass));
                     }
                     return Some(CallableLike::Callable(Rc::new(init)));
