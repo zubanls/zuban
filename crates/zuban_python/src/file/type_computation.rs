@@ -2138,7 +2138,8 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         tvs: &TypeVarLikes,
         primary: Option<Primary>,
     ) -> Option<(NodeRef<'db>, ClassGenerics)> {
-        if primary.is_none() || self.origin != TypeComputationOrigin::ParamTypeCommentOrAnnotation {
+        let primary = primary?;
+        if self.origin != TypeComputationOrigin::ParamTypeCommentOrAnnotation {
             return None;
         }
         for (i, type_var_like) in tvs.iter().enumerate() {
@@ -2177,7 +2178,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         }
         if iterator.next().is_none() {
             // We have no unfinished iterator and can therefore safely return.
-            let node_ref = NodeRef::new(self.inference.file, primary.unwrap().index())
+            let node_ref = NodeRef::new(self.inference.file, primary.index())
                 .to_db_lifetime(self.inference.i_s.db);
             node_ref.set_point(Point::new_specific(Specific::SimpleGeneric, Locality::Todo));
             Some((
