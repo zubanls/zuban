@@ -965,13 +965,13 @@ impl Type {
                     nt.format_with_name(
                         format_data,
                         nt.name(format_data.db),
-                        Generics::NotDefinedYet,
+                        Generics::None, // Format without generics
                     )
                 }
                 _ => nt.format_with_name(
                     format_data,
                     &nt.qualified_name(format_data.db),
-                    Generics::NotDefinedYet,
+                    Generics::None, // Format without generics
                 ),
             },
             Self::Enum(e) => e.format(format_data).into(),
