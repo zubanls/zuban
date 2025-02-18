@@ -19,7 +19,9 @@ use crate::{
     inferred::Inferred,
     python_state::{NAME_DEF_TO_CLASS_DIFF, NAME_TO_FUNCTION_DIFF},
     type_::Type,
-    type_helpers::{ClassInitializer, Function, Module, CLASS_TO_CLASS_INFO_DIFFERENCE},
+    type_helpers::{
+        ClassInitializer, ClassNodeRef, Function, Module, CLASS_TO_CLASS_INFO_DIFFERENCE,
+    },
 };
 
 #[derive(Clone, Copy)]
@@ -265,7 +267,7 @@ impl<'file> NodeRef<'file> {
             .get(self.node_index + CLASS_TO_CLASS_INFO_DIFFERENCE as u32)
             .calculated()
         {
-            let class_ref = NodeRef::new(self.file, self.node_index);
+            let class_ref = ClassNodeRef::new(self.file, self.node_index);
             let ComplexPoint::Class(cls_storage) = class_ref.complex().unwrap() else {
                 unreachable!()
             };

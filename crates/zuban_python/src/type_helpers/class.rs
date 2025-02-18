@@ -137,7 +137,7 @@ impl<'db: 'a, 'a> Class<'a> {
     }
 
     pub fn qualified_name(&self, db: &Database) -> String {
-        ClassInitializer::new(self.node_ref.0, self.class_storage).qualified_name(db)
+        ClassInitializer::new(self.node_ref, self.class_storage).qualified_name(db)
     }
 
     pub(crate) fn find_type_var_like_including_ancestors(
@@ -146,7 +146,7 @@ impl<'db: 'a, 'a> Class<'a> {
         type_var_like: &TypeVarLike,
         class_seen: bool,
     ) -> Option<TypeVarCallbackReturn> {
-        ClassInitializer::new(self.node_ref.0, self.class_storage)
+        ClassInitializer::new(self.node_ref, self.class_storage)
             .find_type_var_like_including_ancestors(db, type_var_like, class_seen)
     }
 

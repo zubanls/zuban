@@ -472,7 +472,8 @@ impl PythonState {
                     )
                 }
                 update(db, Some(class_index));
-                let class = ClassInitializer::from_node_ref(NodeRef::new(module(db), class_index));
+                let class =
+                    ClassInitializer::from_node_ref(ClassNodeRef::new(module(db), class_index));
                 let name_def_ref =
                     NodeRef::new(class.node_ref.file, class.node().name_def().index());
                 cache_class_name(

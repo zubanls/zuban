@@ -73,7 +73,7 @@ const NAMEDTUPLE_PROHIBITED_NAMES: [&str; 12] = [
 ];
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct ClassNodeRef<'file>(pub NodeRef<'file>);
+pub struct ClassNodeRef<'file>(NodeRef<'file>);
 
 impl<'db: 'file, 'file> ClassNodeRef<'file> {
     #[inline]
@@ -224,19 +224,19 @@ pub struct ClassInitializer<'a> {
 }
 
 impl<'db: 'a, 'a> ClassInitializer<'a> {
-    pub fn new(node_ref: NodeRef<'a>, class_storage: &'a ClassStorage) -> Self {
+    pub fn new(node_ref: ClassNodeRef<'a>, class_storage: &'a ClassStorage) -> Self {
         Self {
-            node_ref: ClassNodeRef(node_ref),
+            node_ref,
             class_storage,
         }
     }
 
-    pub fn from_node_ref(node_ref: NodeRef<'a>) -> Self {
+    pub fn from_node_ref(node_ref: ClassNodeRef<'a>) -> Self {
         Self::new(node_ref, node_ref.expect_class_storage())
     }
 
     pub fn from_link(db: &'a Database, link: PointLink) -> Self {
-        Self::from_node_ref(NodeRef::from_link(db, link))
+        Self::from_node_ref(ClassNodeRef::from_link(db, link))
     }
 
     pub fn qualified_name(&self, db: &Database) -> String {
@@ -254,7 +254,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
             ParentScope::Module => None,
             ParentScope::Class(node_index) => {
                 let parent_class =
-                    Self::from_node_ref(NodeRef::new(self.node_ref.file, node_index));
+                    Self::from_node_ref(ClassNodeRef::new(self.node_ref.file, node_index));
                 parent_class.find_type_var_like_including_ancestors(db, type_var, true)
             }
             ParentScope::Function(node_index) => {
