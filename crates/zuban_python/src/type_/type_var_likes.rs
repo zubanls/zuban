@@ -9,7 +9,7 @@ use super::{
     TupleArgs, TupleUnpack, Type, TypeArgs, WithUnpack,
 };
 use crate::{
-    database::{Database, PointLink},
+    database::{ComplexPoint, Database, PointLink},
     format_data::{FormatData, ParamsStyle},
     node_ref::NodeRef,
     utils::join_with_commas,
@@ -410,6 +410,15 @@ impl TypeVarLikes {
                 TypeVarLike::ParamSpec(s) => s.format(format_data),
             }))
         )
+    }
+
+    pub fn load_saved_type_vars<'a>(db: &'a Database, node_ref: NodeRef<'a>) -> &'a TypeVarLikes {
+        debug_assert!(node_ref.point().calculated());
+        match node_ref.complex() {
+            Some(ComplexPoint::TypeVarLikes(type_vars)) => type_vars,
+            None => &db.python_state.empty_type_var_likes,
+            _ => unreachable!(),
+        }
     }
 }
 

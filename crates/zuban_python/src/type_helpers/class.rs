@@ -309,32 +309,14 @@ impl<'db: 'a, 'a> Class<'a> {
     }
 
     pub fn use_cached_type_vars(&self, db: &'db Database) -> &'a TypeVarLikes {
-        let node_ref = self.type_vars_node_ref();
-        let point = node_ref.point();
-        debug_assert!(point.calculated());
-        Self::get_calculated_type_vars(db, node_ref, point)
-    }
-
-    fn get_calculated_type_vars(
-        db: &'db Database,
-        node_ref: NodeRef<'a>,
-        point: Point,
-    ) -> &'a TypeVarLikes {
-        if point.kind() == PointKind::Specific {
-            &db.python_state.empty_type_var_likes
-        } else {
-            match node_ref.complex().unwrap() {
-                ComplexPoint::TypeVarLikes(type_vars) => type_vars,
-                _ => unreachable!(),
-            }
-        }
+        TypeVarLikes::load_saved_type_vars(db, self.type_vars_node_ref())
     }
 
     pub fn type_vars(&self, i_s: &InferenceState<'db, '_>) -> &'a TypeVarLikes {
         let node_ref = self.type_vars_node_ref();
         let point = node_ref.point();
         if point.calculated() {
-            return Self::get_calculated_type_vars(i_s.db, node_ref, point);
+            return TypeVarLikes::load_saved_type_vars(i_s.db, node_ref);
         }
 
         let type_vars = TypeVarFinder::find_class_type_vars(i_s, self);

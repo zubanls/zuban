@@ -256,13 +256,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
     pub fn type_vars(&self, db: &'db Database) -> &'a TypeVarLikes {
         let type_var_reference = self.type_var_reference();
         if type_var_reference.point().calculated() {
-            if let Some(complex) = type_var_reference.complex() {
-                match complex {
-                    ComplexPoint::TypeVarLikes(vars) => return vars,
-                    _ => unreachable!(),
-                }
-            }
-            &db.python_state.empty_type_var_likes
+            TypeVarLikes::load_saved_type_vars(db, type_var_reference)
         } else {
             unreachable!()
         }
