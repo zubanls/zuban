@@ -132,7 +132,11 @@ impl<'a> Generics<'a> {
                 iterator: type_var_likes.iter().enumerate(),
                 definition: *class_definition,
             },
-            Self::NotDefinedYet { .. } | Self::None => GenericsIteratorItem::None,
+            Self::NotDefinedYet { class_ref } => {
+                let type_vars = class_ref.use_cached_type_vars(db);
+                GenericsIteratorItem::AnyTypeVars(type_vars.iter())
+            }
+            Self::None => GenericsIteratorItem::None,
         };
         GenericsIterator::new(db, item)
     }
@@ -162,6 +166,7 @@ enum GenericsIteratorItem<'a> {
         iterator: std::iter::Enumerate<std::slice::Iter<'a, TypeVarLike>>,
         definition: PointLink,
     },
+    AnyTypeVars(std::slice::Iter<'a, TypeVarLike>),
     None,
 }
 
@@ -202,6 +207,9 @@ impl<'a> Iterator for GenericsIterator<'a> {
                         .into_generic_item(),
                 )
             }),
+            GenericsIteratorItem::AnyTypeVars(type_var_likes) => {
+                Some(Generic::owned(type_var_likes.next()?.as_any_generic_item()))
+            }
             GenericsIteratorItem::None => None,
         }
     }
