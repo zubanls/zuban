@@ -24,7 +24,7 @@ use crate::{
         GenericsList, NewType, ParamSpecUsage, RecursiveType, StringSlice, Type, TypeVarLike,
         TypeVarLikeUsage, TypeVarLikes, TypeVarTupleUsage, TypeVarUsage, TypedDict, Variance,
     },
-    type_helpers::{Class, Function},
+    type_helpers::{Class, ClassNodeRef, Function},
     utils::SymbolTable,
     ProjectOptions, TypeCheckerFlags,
 };
@@ -1237,7 +1237,8 @@ impl ParentScope {
         match self {
             ParentScope::Module => format!("{}.{name}", file.qualified_name(db)),
             ParentScope::Class(node_index) => {
-                let parent_class = Class::with_undefined_generics(NodeRef::new(file, node_index));
+                let parent_class =
+                    Class::with_undefined_generics(ClassNodeRef::new(file, node_index));
                 format!("{}.{}", parent_class.qualified_name(db), name)
             }
             ParentScope::Function(_) => {

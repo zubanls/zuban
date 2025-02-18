@@ -2,8 +2,8 @@ use std::{borrow::Cow, cell::OnceCell, rc::Rc};
 
 use parsa_python_cst::{
     Argument, Arguments as CSTArguments, ArgumentsDetails, AssignmentContent, AsyncStmtContent,
-    ClassDef, Decoratee, ExpressionContent, ExpressionPart, PrimaryContent, StmtLikeContent,
-    StmtLikeIterator, Target, TypeLike,
+    ClassDef, Decoratee, ExpressionContent, ExpressionPart, NodeIndex, PrimaryContent,
+    StmtLikeContent, StmtLikeIterator, Target, TypeLike,
 };
 
 use crate::{
@@ -72,19 +72,30 @@ const NAMEDTUPLE_PROHIBITED_NAMES: [&str; 12] = [
     "__annotations__",
 ];
 
-#[derive(Clone, Copy, PartialEq)]
-pub struct ClassNodeRef<'a>(pub NodeRef<'a>);
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ClassNodeRef<'file>(pub NodeRef<'file>);
 
-impl<'db: 'a, 'a> ClassNodeRef<'a> {
-    pub fn new(node_ref: NodeRef<'a>) -> Self {
-        Self(node_ref)
+impl<'db: 'file, 'file> ClassNodeRef<'file> {
+    #[inline]
+    pub fn new(file: &'file PythonFile, node_index: NodeIndex) -> Self {
+        Self(NodeRef::new(file, node_index))
     }
 
-    pub fn node(&self) -> ClassDef<'a> {
+    #[inline]
+    pub fn from_link(db: &'file Database, link: PointLink) -> Self {
+        Self(NodeRef::from_link(db, link))
+    }
+
+    #[inline]
+    pub fn to_db_lifetime(self, db: &Database) -> ClassNodeRef {
+        ClassNodeRef(self.0.to_db_lifetime(db))
+    }
+
+    pub fn node(&self) -> ClassDef<'file> {
         ClassDef::by_index(&self.0.file.tree, self.0.node_index)
     }
 
-    pub fn name(&self) -> &'a str {
+    pub fn name(&self) -> &'file str {
         self.node().name().as_str()
     }
 
@@ -126,11 +137,11 @@ impl<'db: 'a, 'a> ClassNodeRef<'a> {
     }
 
     #[inline]
-    fn type_vars_node_ref(&self) -> NodeRef<'a> {
+    fn type_vars_node_ref(&self) -> NodeRef<'file> {
         self.0.add_to_node_index(CLASS_TO_TYPE_VARS_DIFFERENCE)
     }
 
-    pub fn type_vars(&self, i_s: &InferenceState<'db, '_>) -> &'a TypeVarLikes {
+    pub fn type_vars(&self, i_s: &InferenceState<'db, '_>) -> &'file TypeVarLikes {
         let node_ref = self.type_vars_node_ref();
         let point = node_ref.point();
         if point.calculated() {
@@ -146,7 +157,7 @@ impl<'db: 'a, 'a> ClassNodeRef<'a> {
         self.type_vars(i_s)
     }
 
-    pub fn use_cached_type_vars(&self, db: &'a Database) -> &'a TypeVarLikes {
+    pub fn use_cached_type_vars(&self, db: &'file Database) -> &'file TypeVarLikes {
         TypeVarLikes::load_saved_type_vars(db, self.type_vars_node_ref())
     }
 
@@ -210,7 +221,7 @@ pub struct ClassInitializer<'a> {
 impl<'db: 'a, 'a> ClassInitializer<'a> {
     pub fn new(node_ref: NodeRef<'a>, class_storage: &'a ClassStorage) -> Self {
         Self {
-            node_ref: ClassNodeRef::new(node_ref),
+            node_ref: ClassNodeRef(node_ref),
             class_storage,
         }
     }
@@ -1380,13 +1391,6 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
             }
         }
         result.into()
-    }
-
-    fn bases(&self, db: &'a Database) -> impl Iterator<Item = &'a BaseClass> {
-        self.use_cached_class_infos(db)
-            .mro
-            .iter()
-            .filter(|&b| b.is_direct_base)
     }
 }
 

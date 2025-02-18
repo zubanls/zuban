@@ -44,6 +44,8 @@ use crate::{
     type_helpers::Class,
 };
 
+use super::ClassNodeRef;
+
 #[derive(Clone, Copy)]
 pub struct Function<'a, 'class> {
     pub node_ref: NodeRef<'a>,
@@ -274,7 +276,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         ) {
             FuncParentScope::Module => FuncParent::Module,
             FuncParentScope::ClassDef(c) => {
-                let n = NodeRef::new(self.node_ref.file, c.index()).to_db_lifetime(db);
+                let n = ClassNodeRef::new(self.node_ref.file, c.index()).to_db_lifetime(db);
                 FuncParent::Class(Class::with_self_generics(db, n))
             }
             FuncParentScope::FunctionDef(f) => {

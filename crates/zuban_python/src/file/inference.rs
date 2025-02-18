@@ -41,7 +41,7 @@ use crate::{
     },
     type_helpers::{
         cache_class_name, is_private, is_private_import, is_reexport_issue, lookup_in_namespace,
-        Class, ClassLookupOptions, FirstParamKind, Function, GeneratorType, Instance,
+        Class, ClassLookupOptions, ClassNodeRef, FirstParamKind, Function, GeneratorType, Instance,
         InstanceLookupOptions, LookupDetails, Module, TypeOrClass,
     },
     utils::debug_indent,
@@ -4416,7 +4416,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
     fn infer_comprehension_expr_with_context(
         &self,
         result_context: &mut ResultContext,
-        class: NodeRef,
+        class: ClassNodeRef,
         mut on_mismatch: impl FnMut(&ErrorTypes) -> IssueKind,
         comp: Comprehension,
     ) -> Type {

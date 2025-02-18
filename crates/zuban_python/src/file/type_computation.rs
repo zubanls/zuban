@@ -33,7 +33,8 @@ use crate::{
         WithUnpack,
     },
     type_helpers::{
-        cache_class_name, is_reexport_issue, start_namedtuple_params, Class, Function, Module,
+        cache_class_name, is_reexport_issue, start_namedtuple_params, Class, ClassNodeRef,
+        Function, Module,
     },
     utils::{rc_slice_into_vec, AlreadySeen},
 };
@@ -264,7 +265,7 @@ enum TypeContent<'db, 'a> {
     Module(&'db PythonFile),
     Namespace(Rc<Namespace>),
     Class {
-        node_ref: NodeRef<'db>,
+        node_ref: ClassNodeRef<'db>,
         has_type_vars: bool,
     },
     SimpleGeneric {
@@ -279,7 +280,7 @@ enum TypeContent<'db, 'a> {
     Type(Type),
     SpecialType(SpecialType),
     RecursiveAlias(PointLink),
-    RecursiveClass(NodeRef<'db>),
+    RecursiveClass(ClassNodeRef<'db>),
     InvalidVariable(InvalidVariableType<'a>),
     TypeVarTuple(TypeVarTupleUsage),
     ParamSpec(ParamSpecUsage),
@@ -311,7 +312,7 @@ enum ClassGetItemResult<'db> {
 enum TypeNameLookup<'db, 'a> {
     Module(&'db PythonFile),
     Namespace(Rc<Namespace>),
-    Class { node_ref: NodeRef<'db> },
+    Class { node_ref: ClassNodeRef<'db> },
     TypeVarLike(TypeVarLike),
     TypeAlias(&'db TypeAlias),
     NewType(Rc<NewType>),
@@ -322,7 +323,7 @@ enum TypeNameLookup<'db, 'a> {
     Enum(Rc<Enum>),
     Dataclass(Rc<Dataclass>),
     RecursiveAlias(PointLink),
-    RecursiveClass(NodeRef<'db>),
+    RecursiveClass(ClassNodeRef<'db>),
     Unknown(UnknownCause),
     AliasNoneType,
 }
@@ -1435,9 +1436,15 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         NodeRef::new(self.inference.file, expr.index()),
                     ));
                 }
-                TypeContent::Class { node_ref, .. }
-                | TypeContent::SimpleGeneric { node_ref, .. } => {
-                    Inferred::from_saved_node_ref(*node_ref).save_redirect(
+                TypeContent::Class { node_ref, .. } => {
+                    Inferred::from_saved_node_ref((*node_ref).into()).save_redirect(
+                        self.inference.i_s,
+                        self.inference.file,
+                        expr.index(),
+                    );
+                }
+                TypeContent::SimpleGeneric { node_ref, .. } => {
+                    Inferred::from_saved_node_ref((*node_ref).into()).save_redirect(
                         self.inference.i_s,
                         self.inference.file,
                         expr.index(),
@@ -1797,7 +1804,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     Some(m) => TypeContent::EnumMember(m),
                     _ => {
                         let content = TypeContent::Class {
-                            node_ref: NodeRef::from_link(db, e.class),
+                            node_ref: ClassNodeRef::from_link(db, e.class),
                             has_type_vars: false, // Enums have no type vars ever.
                         };
                         self.compute_type_attribute(primary, content, name)
@@ -1929,7 +1936,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
     ) -> TypeContent<'db, 'db> {
         let db = self.inference.i_s.db;
         let c = match self.compute_type_get_item_on_class_inner(
-            Class::with_undefined_generics(NodeRef::from_link(db, dataclass.class.link)),
+            Class::with_undefined_generics(ClassNodeRef::from_link(db, dataclass.class.link)),
             slice_type,
             primary,
         ) {
@@ -5116,7 +5123,7 @@ fn check_type_name<'db: 'file, 'file>(
             }
             // At this point the class is not necessarily calculated and we therefore do this here.
             let name_def = NodeRef::new(name_node_ref.file, new_name.name_def().unwrap().index());
-            let from = NodeRef::new(name_node_ref.file, c.index());
+            let from = ClassNodeRef::new(name_node_ref.file, c.index());
             let class = Class::with_undefined_generics(from);
             if class.is_calculating_class_infos() {
                 return TypeNameLookup::RecursiveClass(from);
@@ -5134,7 +5141,7 @@ fn check_type_name<'db: 'file, 'file>(
                     Type::Dataclass(d) => return TypeNameLookup::Dataclass(d.clone()),
                     Type::TypedDict(td) => {
                         if td.calculating() {
-                            return TypeNameLookup::RecursiveClass(NodeRef::from_link(
+                            return TypeNameLookup::RecursiveClass(ClassNodeRef::from_link(
                                 i_s.db,
                                 td.defined_at,
                             ));
@@ -5146,7 +5153,7 @@ fn check_type_name<'db: 'file, 'file>(
                 }
             }
             TypeNameLookup::Class {
-                node_ref: NodeRef::new(name_node_ref.file, c.index()),
+                node_ref: ClassNodeRef::new(name_node_ref.file, c.index()),
             }
         }
         TypeLike::Assignment(assignment) => {

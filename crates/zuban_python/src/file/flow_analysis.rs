@@ -32,8 +32,8 @@ use crate::{
         Tuple, TupleArgs, TupleUnpack, Type, TypeVarKind, UnionType, WithUnpack,
     },
     type_helpers::{
-        Callable, Class, ClassLookupOptions, Function, InstanceLookupOptions, LookupDetails,
-        OverloadResult, OverloadedFunction,
+        Callable, Class, ClassLookupOptions, ClassNodeRef, Function, InstanceLookupOptions,
+        LookupDetails, OverloadResult, OverloadedFunction,
     },
     utils::{debug_indent, join_with_commas},
 };
@@ -717,7 +717,7 @@ impl FlowAnalysis {
                 NodeRef::from_link(db, delayed.func),
                 delayed
                     .class
-                    .map(|c| Class::with_self_generics(db, NodeRef::from_link(db, c))),
+                    .map(|c| Class::with_self_generics(db, ClassNodeRef::from_link(db, c))),
             );
             if delayed.in_type_checking_only_block {
                 self.with_in_type_checking_only_block(|| callback(func))

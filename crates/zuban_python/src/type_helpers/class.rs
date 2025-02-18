@@ -74,7 +74,7 @@ impl<'db: 'a, 'a> Class<'a> {
         type_var_remap: Option<&'a GenericsList>,
     ) -> Self {
         Self {
-            node_ref: ClassNodeRef::new(node_ref),
+            node_ref: ClassNodeRef::new(node_ref.file, node_ref.node_index),
             class_storage,
             generics,
             type_var_remap,
@@ -113,14 +113,14 @@ impl<'db: 'a, 'a> Class<'a> {
     }
 
     #[inline]
-    pub fn with_undefined_generics(node_ref: NodeRef<'a>) -> Self {
-        Self::from_position(node_ref, Generics::NotDefinedYet, None)
+    pub fn with_undefined_generics(node_ref: ClassNodeRef<'a>) -> Self {
+        Self::from_position(node_ref.into(), Generics::NotDefinedYet, None)
     }
 
-    pub fn with_self_generics(db: &'a Database, node_ref: NodeRef<'a>) -> Self {
+    pub fn with_self_generics(db: &'a Database, node_ref: ClassNodeRef<'a>) -> Self {
         let type_var_likes = Self::with_undefined_generics(node_ref).use_cached_type_vars(db);
         Self::from_position(
-            node_ref,
+            node_ref.into(),
             match type_var_likes.len() {
                 0 => Generics::None,
                 _ => Generics::Self_ {
@@ -1202,7 +1202,7 @@ impl<'db: 'a, 'a> Class<'a> {
 
     pub fn as_type_with_type_vars_for_not_yet_defined_generics(&self, db: &Database) -> Type {
         match self.generics {
-            Generics::NotDefinedYet => Class::with_self_generics(db, self.node_ref.0).as_type(db),
+            Generics::NotDefinedYet => Class::with_self_generics(db, self.node_ref).as_type(db),
             _ => self.as_type(db),
         }
     }
@@ -1363,7 +1363,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 // super class of the current class. We use that super class to infer the generics
                 // that are relevant in the current class.
                 let mut matcher = Matcher::new_class_matcher(i_s, *self);
-                Self::with_self_generics(i_s.db, self.node_ref.0)
+                Self::with_self_generics(i_s.db, self.node_ref)
                     .as_type(i_s.db)
                     .is_sub_type_of(i_s, &mut matcher, &result);
                 return ClassExecutionResult::ClassGenerics(
@@ -1926,7 +1926,7 @@ fn init_as_callable(
                 type_var_likes,
             };
         }
-        Class::with_self_generics(i_s.db, cls.node_ref.0)
+        Class::with_self_generics(i_s.db, cls.node_ref)
     } else {
         cls
     };

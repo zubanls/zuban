@@ -16,7 +16,8 @@ use crate::{
         ClassGenerics, CustomBehavior, NeverCause, ParamType, Tuple, Type, TypeVarLikes,
     },
     type_helpers::{
-        cache_class_name, Class, ClassInitializer, FirstParamProperties, Function, Instance,
+        cache_class_name, Class, ClassInitializer, ClassNodeRef, FirstParamProperties, Function,
+        Instance,
     },
     InferenceState,
 };
@@ -34,6 +35,16 @@ macro_rules! attribute_node_ref {
         $vis fn $name(&self) -> NodeRef {
             debug_assert!(self.$attr != 0);
             NodeRef::new(self.$module_name(), self.$attr)
+        }
+    };
+}
+
+macro_rules! class_node_ref {
+    ($module_name:ident, $vis:vis $name:ident, $attr:ident) => {
+        #[inline]
+        $vis fn $name(&self) -> ClassNodeRef {
+            debug_assert!(self.$attr != 0);
+            ClassNodeRef::new(self.$module_name(), self.$attr)
         }
     };
 }
@@ -890,11 +901,11 @@ impl PythonState {
 
     attribute_node_ref!(builtins, pub object_node_ref, builtins_object_index);
     attribute_node_ref!(builtins, pub bare_type_node_ref, builtins_type_index);
-    attribute_node_ref!(builtins, pub list_node_ref, builtins_list_index);
+    class_node_ref!(builtins, pub list_node_ref, builtins_list_index);
     attribute_node_ref!(builtins, pub tuple_node_ref, builtins_tuple_index);
-    attribute_node_ref!(builtins, pub dict_node_ref, builtins_dict_index);
-    attribute_node_ref!(builtins, pub set_node_ref, builtins_set_index);
-    attribute_node_ref!(builtins, pub frozenset_node_ref, builtins_frozenset_index);
+    class_node_ref!(builtins, pub dict_node_ref, builtins_dict_index);
+    class_node_ref!(builtins, pub set_node_ref, builtins_set_index);
+    class_node_ref!(builtins, pub frozenset_node_ref, builtins_frozenset_index);
     attribute_node_ref!(builtins, pub bool_node_ref, builtins_bool_index);
     attribute_node_ref!(builtins, pub int_node_ref, builtins_int_index);
     attribute_node_ref!(builtins, float_node_ref, builtins_float_index);
@@ -937,12 +948,12 @@ impl PythonState {
     attribute_node_ref!(typing, typed_dict_node_ref, typing_typed_dict_index);
     attribute_node_ref!(typing, pub container_node_ref, typing_container_index);
     attribute_node_ref!(typing, pub mapping_node_ref, typing_mapping_index);
-    attribute_node_ref!(typing, pub keys_view_node_ref, typing_keys_view_index);
+    class_node_ref!(typing, pub keys_view_node_ref, typing_keys_view_index);
     attribute_node_ref!(typing, mapping_get_node_ref, typing_mapping_get_index);
     attribute_node_ref!(typing, pub typing_overload, typing_overload_index);
     optional_attribute_node_ref!(typing, pub typing_override, typing_override_index);
     attribute_node_ref!(typing, pub typing_final, typing_final_index);
-    attribute_node_ref!(typing, pub generator_node_ref, typing_generator_index);
+    class_node_ref!(typing, pub generator_node_ref, typing_generator_index);
     attribute_node_ref!(typing, pub iterable_node_ref, typing_iterable_index);
     attribute_node_ref!(
         typing,
@@ -951,7 +962,7 @@ impl PythonState {
     );
     optional_attribute_node_ref!(types, none_type_node_ref, types_none_type_index);
     attribute_node_ref!(types, module_node_ref, types_module_type_index);
-    attribute_node_ref!(
+    class_node_ref!(
         typeshed,
         pub supports_keys_and_get_item_node_ref,
         typeshed_supports_keys_and_get_item_index
@@ -962,7 +973,7 @@ impl PythonState {
         collections_named_tuple_node_ref,
         collections_namedtuple_index
     );
-    attribute_node_ref!(_collections_abc, pub _collections_abc_dict_keys_node_ref, _collections_abc_dict_keys_index);
+    class_node_ref!(_collections_abc, pub _collections_abc_dict_keys_node_ref, _collections_abc_dict_keys_index);
 
     attribute_link!(builtins, pub object_link, builtins_object_index);
     attribute_link!(builtins, pub int_link, builtins_int_index);

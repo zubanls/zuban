@@ -40,11 +40,11 @@ impl<'file> NodeRef<'file> {
         Self { file, node_index }
     }
 
-    pub fn from_link(db: &'file Database, point: PointLink) -> Self {
-        let file = db.loaded_python_file(point.file);
+    pub fn from_link(db: &'file Database, link: PointLink) -> Self {
+        let file = db.loaded_python_file(link.file);
         Self {
             file,
-            node_index: point.node_index,
+            node_index: link.node_index,
         }
     }
 

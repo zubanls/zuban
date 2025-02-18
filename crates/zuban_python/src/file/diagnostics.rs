@@ -32,7 +32,7 @@ use crate::{
         LookupResult, NeverCause, ParamType, Type, TypeVarKind, TypeVarLike, Variance,
     },
     type_helpers::{
-        cache_class_name, is_private, Class, ClassLookupOptions, FirstParamKind,
+        cache_class_name, is_private, Class, ClassLookupOptions, ClassNodeRef, FirstParamKind,
         FirstParamProperties, Function, Instance, InstanceLookupOptions, LookupDetails,
         TypeOrClass,
     },
@@ -656,7 +656,7 @@ impl Inference<'_, '_, '_> {
     fn calc_class_diagnostics_internal(&self, class: ClassDef) {
         let (arguments, block) = class.unpack();
         cache_class_name(NodeRef::new(self.file, class.name_def().index()), class);
-        let class_node_ref = NodeRef::new(self.file, class.index());
+        let class_node_ref = ClassNodeRef::new(self.file, class.index());
         class_node_ref.ensure_cached_class_infos(self.i_s);
         let db = self.i_s.db;
         let c = Class::with_self_generics(db, class_node_ref);

@@ -3,9 +3,8 @@ use core::fmt;
 use super::Matcher;
 use crate::{
     database::PointLink,
-    node_ref::NodeRef,
     type_::{AnyCause, TupleArgs, Type},
-    type_helpers::Class,
+    type_helpers::{Class, ClassNodeRef},
     InferenceState,
 };
 
@@ -72,7 +71,7 @@ impl<'a> ResultContext<'a, '_> {
     pub fn on_unique_type_in_unpacked_union<T>(
         &mut self,
         i_s: &InferenceState,
-        class: NodeRef,
+        class: ClassNodeRef,
         on_unique_found: impl FnOnce(&mut Matcher, Matcher) -> T,
     ) -> Option<T> {
         self.with_type_if_exists(|t, matcher| {
@@ -83,7 +82,7 @@ impl<'a> ResultContext<'a, '_> {
                     if matches!(t, Type::Any(_)) {
                         return None;
                     }
-                    let c = Class::from_non_generic_node_ref(class);
+                    let c = Class::from_non_generic_node_ref(class.into());
                     let mut matcher = Matcher::new_class_matcher(i_s, c);
                     let self_class = Class::with_self_generics(i_s.db, class);
                     self_class

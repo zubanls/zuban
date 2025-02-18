@@ -23,6 +23,7 @@ use crate::{
         IterCause, Literal, LiteralKind, LiteralValue, NeverCause, Type, TypedDict,
         TypedDictGenerics,
     },
+    type_helpers::ClassNodeRef,
     Inferred,
 };
 
@@ -73,7 +74,7 @@ impl<'db> Inference<'db, '_, '_> {
         &self,
         elements: StarLikeExpressionIterator,
         result_context: &mut ResultContext,
-        wanted_node_ref: NodeRef,
+        wanted_node_ref: ClassNodeRef,
     ) -> Option<Inferred> {
         let i_s = self.i_s;
         result_context.on_unique_type_in_unpacked_union(
@@ -448,7 +449,7 @@ fn check_elements_with_context<'db>(
     generic_t: &Type,
     file: &PythonFile,
     elements: StarLikeExpressionIterator,
-    wanted_node_ref: NodeRef,
+    wanted_node_ref: ClassNodeRef,
 ) -> Option<Type> {
     // Since it's a list or a set, now check all the entries if they match the given
     // result generic;
