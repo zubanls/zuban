@@ -1905,9 +1905,9 @@ fn init_as_callable(
     let cls = if matches!(cls.generics(), Generics::NotDefinedYet { .. }) {
         if let TypeOrClass::Class(init_class) = &mut init_class {
             // Make sure generics are not Any
-            type_var_likes = init_class.type_vars(i_s);
+            type_var_likes = cls.type_vars(i_s);
             init_class.generics = Generics::Self_ {
-                class_definition: init_class.node_ref.as_link(),
+                class_definition: cls.node_ref.as_link(),
                 type_var_likes,
             };
         }
