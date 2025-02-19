@@ -120,8 +120,7 @@ impl<'db: 'a, 'a> Class<'a> {
             match type_var_likes.len() {
                 0 => Generics::None,
                 _ => Generics::Self_ {
-                    class_definition: node_ref.as_link(),
-                    type_var_likes,
+                    class_ref: node_ref,
                 },
             },
             None,
@@ -1901,14 +1900,11 @@ fn init_as_callable(
     init_class: TypeOrClass,
 ) -> Option<CallableLike> {
     let mut init_class = init_class;
-    let type_var_likes;
     let cls = if matches!(cls.generics(), Generics::NotDefinedYet { .. }) {
         if let TypeOrClass::Class(init_class) = &mut init_class {
             // Make sure generics are not Any
-            type_var_likes = cls.type_vars(i_s);
             init_class.generics = Generics::Self_ {
-                class_definition: cls.node_ref.as_link(),
-                type_var_likes,
+                class_ref: cls.node_ref,
             };
         }
         Class::with_self_generics(i_s.db, cls.node_ref)

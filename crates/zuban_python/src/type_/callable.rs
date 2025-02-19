@@ -934,13 +934,11 @@ pub fn merge_class_type_vars(
         ));
         type_vars.push(TypeVarLike::TypeVar(self_type_var));
     } else if needs_additional_remap {
-        let attribute_class_type_vars = attribute_class.use_cached_type_vars(db);
         // We actually want to retain generics.
         attribute_class.generics = Generics::Self_ {
-            class_definition: attribute_class.node_ref.as_link(),
-            type_var_likes: attribute_class_type_vars,
+            class_ref: attribute_class.node_ref,
         };
-        for type_var in attribute_class_type_vars.iter() {
+        for type_var in attribute_class.use_cached_type_vars(db).iter() {
             type_vars.push(type_var.clone());
         }
     }

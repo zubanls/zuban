@@ -2393,8 +2393,7 @@ pub fn infer_class_method<'db: 'class, 'class>(
     if class_generics_not_defined_yet {
         // Check why this is necessary by following class_generics_not_defined_yet.
         let self_generics = Generics::Self_ {
-            type_var_likes: class.type_vars(i_s),
-            class_definition: class.node_ref.as_link(),
+            class_ref: class.node_ref,
         };
         class.generics = self_generics;
         func_class.generics = self_generics;

@@ -5,9 +5,7 @@ use crate::{
     database::{Database, PointLink},
     file::{use_cached_simple_generic_type, PythonFile},
     node_ref::NodeRef,
-    type_::{
-        ClassGenerics, GenericItem, GenericsList, TypeVarLike, TypeVarLikeUsage, TypeVarLikes,
-    },
+    type_::{ClassGenerics, GenericItem, GenericsList, TypeVarLike, TypeVarLikeUsage},
     type_helpers::ClassNodeRef,
 };
 
@@ -35,14 +33,9 @@ pub enum Generics<'a> {
     // cases this is T -> T and S -> S, but it could also be T -> S and S
     // -> List[T] or something completely arbitrary. Therefore we have two generics.
     List(&'a GenericsList, Option<&'a Generics<'a>>),
-    Self_ {
-        class_definition: PointLink,
-        type_var_likes: &'a TypeVarLikes,
-    },
+    Self_ { class_ref: ClassNodeRef<'a> },
     None,
-    NotDefinedYet {
-        class_ref: ClassNodeRef<'a>,
-    },
+    NotDefinedYet { class_ref: ClassNodeRef<'a> },
 }
 
 impl<'a> Generics<'a> {
@@ -103,12 +96,9 @@ impl<'a> Generics<'a> {
                 let type_var_like = &class_ref.use_cached_type_vars(db)[n];
                 Generic::owned(type_var_like.as_any_generic_item())
             }
-            Self::Self_ {
-                class_definition,
-                type_var_likes,
-            } => Generic::owned(
-                type_var_likes[n]
-                    .as_type_var_like_usage(n.into(), *class_definition)
+            Self::Self_ { class_ref } => Generic::owned(
+                class_ref.use_cached_type_vars(db)[n]
+                    .as_type_var_like_usage(n.into(), class_ref.as_link())
                     .into_generic_item(),
             ),
             Self::None => unreachable!("No generics given, but {:?} was requested", n),
@@ -124,12 +114,9 @@ impl<'a> Generics<'a> {
                 GenericsIteratorItem::SimpleGenericSliceIterator(file, slices.iter())
             }
             Self::List(l, t) => GenericsIteratorItem::GenericsList(l.iter(), *t),
-            Self::Self_ {
-                class_definition,
-                type_var_likes,
-            } => GenericsIteratorItem::TypeVarLikeIterator {
-                iterator: type_var_likes.iter().enumerate(),
-                definition: *class_definition,
+            Self::Self_ { class_ref } => GenericsIteratorItem::TypeVarLikeIterator {
+                iterator: class_ref.use_cached_type_vars(db).iter().enumerate(),
+                definition: class_ref.as_link(),
             },
             Self::NotDefinedYet { class_ref } => {
                 let type_vars = class_ref.use_cached_type_vars(db);
