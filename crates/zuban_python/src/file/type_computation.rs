@@ -473,7 +473,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         let as_f = |start, code: Cow<str>| {
             self.inference
                 .file
-                .new_annotation_file(self.inference.i_s.db, start, code)
+                .ensure_annotation_file(self.inference.i_s.db, start, code)
         };
         let f = if whitespace_in_beginning > 0 {
             start += whitespace_in_beginning as CodeIndex;
@@ -4220,7 +4220,7 @@ impl<'db: 'x, 'file, 'x> Inference<'db, 'file, '_> {
     ) -> TypeCommentDetails<'db> {
         let f: &'db PythonFile =
             self.file
-                .new_annotation_file(self.i_s.db, start, s.trim_end_matches('\\').into());
+                .ensure_annotation_file(self.i_s.db, start, s.trim_end_matches('\\').into());
         let inference = f.inference(self.i_s);
         if let Some(star_exprs) = f.tree.maybe_star_expressions() {
             match star_exprs.unpack() {

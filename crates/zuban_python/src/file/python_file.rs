@@ -371,12 +371,15 @@ impl<'db> PythonFile {
             })
     }
 
-    pub(super) fn new_annotation_file(
+    pub(super) fn ensure_annotation_file(
         &self,
         db: &'db Database,
         start: CodeIndex,
         code: Cow<str>,
     ) -> &'db Self {
+        if let Some(&sub_file_index) = self.sub_files.borrow_mut().get(&start) {
+            return db.loaded_python_file(sub_file_index);
+        }
         // TODO should probably not need a newline
         let code = code.into_owned() + "\n";
         let tree = Tree::parse(code.into_boxed_str());
