@@ -1351,3 +1351,23 @@ class Dct(Generic[KT, VT]):
     def pop(self, key: KT) -> VT: ...
     def popitem(self, x: Any) -> KT:
         return self.inverse().pop(x)
+
+[case class_type_var_with_forward_reference]
+from typing import TypeVar
+T = TypeVar('T')
+
+class X(list['T']): ...
+
+def f(x: X[int]):
+    reveal_type(x)  # N: Revealed type is "__main__.X[int]"
+
+[case param_spec_alias_usage_with_forward_reference]
+from typing import Callable, TypeVar, Union, ParamSpec, TypeGuard, Awaitable
+
+P = ParamSpec('P')
+T = TypeVar('T')
+MaybeAwaitable = Union[T, list[T]]
+MaybeAwaitableFunc = Callable[P, 'MaybeAwaitable[T]']
+
+def g(f: MaybeAwaitableFunc[[int, str], int]):
+    pass

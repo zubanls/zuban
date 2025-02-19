@@ -20,6 +20,7 @@ enum BaseLookup<'file> {
     Class(PointLink),
     Protocol,
     Callable,
+    Literal,
     Generic,
     Other,
 }
@@ -166,6 +167,7 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd> {
                         self.current_generic_or_protocol_index = None;
                     }
                     BaseLookup::Callable => self.find_in_callable(s),
+                    BaseLookup::Literal => (), // Literals can never contain type vars
                     _ => {
                         for slice_like in s.iter() {
                             self.find_in_slice_like(slice_like)
@@ -181,7 +183,7 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd> {
         match atom.unpack() {
             AtomContent::Name(n) => {
                 self.file.inference(self.i_s).infer_name_reference(n);
-                self.find_in_name(n)
+                return self.find_in_name(n);
             }
             AtomContent::Strings(s_o_b) => match s_o_b.as_python_string() {
                 PythonString::Ref(start, s) => {
@@ -190,10 +192,11 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd> {
                 PythonString::String(start, s) => {
                     self.compute_forward_reference(start, Cow::Owned(s))
                 }
-                PythonString::FString => BaseLookup::Other,
+                PythonString::FString => (),
             },
-            _ => BaseLookup::Other,
+            _ => (),
         }
+        BaseLookup::Other
     }
 
     fn find_in_name(&mut self, name: Name) -> BaseLookup<'db> {
@@ -271,13 +274,30 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd> {
         }
     }
 
-    fn compute_forward_reference(
-        &mut self,
-        _start: CodeIndex,
-        _string: Cow<str>,
-    ) -> BaseLookup<'db> {
-        // TODO implement
-        BaseLookup::Other
+    fn compute_forward_reference(&mut self, start: CodeIndex, string: Cow<str>) {
+        let file = self.file.ensure_annotation_file(self.i_s.db, start, string);
+        let type_var_manager =
+            std::mem::replace(&mut self.type_var_manager, TypeVarManager::default());
+        let mut inner_finder = TypeVarFinder {
+            i_s: self.i_s,
+            file,
+            class: self.class,
+            type_var_manager,
+            generic_or_protocol_slice: None,
+            current_generic_or_protocol_index: self.current_generic_or_protocol_index,
+            had_generic_or_protocol_issue: self.had_generic_or_protocol_issue,
+        };
+
+        let Some(star_exprs) = file.tree.maybe_star_expressions() else {
+            return;
+        };
+        let StarExpressionContent::Expression(expr) = star_exprs.unpack() else {
+            return;
+        };
+        inner_finder.find_in_expr(expr);
+        // Swap the type_var_manager back
+        self.type_var_manager = inner_finder.type_var_manager;
+        self.had_generic_or_protocol_issue |= inner_finder.had_generic_or_protocol_issue;
     }
 
     fn check_generic_or_protocol_length(&self, slice_type: SliceType) {
@@ -301,6 +321,7 @@ fn follow_name<'db>(
                 Specific::TypingGeneric => return Err(BaseLookup::Generic),
                 Specific::TypingProtocol => return Err(BaseLookup::Protocol),
                 Specific::TypingCallable => return Err(BaseLookup::Callable),
+                Specific::TypingLiteral => return Err(BaseLookup::Literal),
                 Specific::NameOfNameDef => (),
                 _ => return Err(BaseLookup::Other),
             }
