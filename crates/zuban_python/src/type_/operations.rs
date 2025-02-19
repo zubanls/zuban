@@ -957,7 +957,13 @@ pub(crate) fn attribute_access_of_type(
             );
             return;
         }
-        t => unreachable!("Type getattr {name} on {t:?}"),
+        _ => {
+            tracing::error!(
+                "We did not handle the attribute {name} on \"{}\", that should be handled",
+                in_type.format_short(i_s.db),
+            );
+            LookupDetails::any(AnyCause::FromError)
+        }
     };
     callable(&Type::Type(in_type.clone()), details)
 }
