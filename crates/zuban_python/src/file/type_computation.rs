@@ -465,22 +465,13 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
 
     fn compute_forward_reference(
         &mut self,
-        mut start: CodeIndex,
-        string: Cow<str>,
+        start: CodeIndex,
+        code: Cow<str>,
     ) -> TypeContent<'db, 'db> {
-        let maybe_new = string.trim_start();
-        let whitespace_in_beginning = string.len() - maybe_new.len();
-        let as_f = |start, code: Cow<str>| {
+        let f =
             self.inference
                 .file
-                .ensure_annotation_file(self.inference.i_s.db, start, code)
-        };
-        let f = if whitespace_in_beginning > 0 {
-            start += whitespace_in_beginning as CodeIndex;
-            as_f(start, Cow::Borrowed(maybe_new.into()))
-        } else {
-            as_f(start, string)
-        };
+                .ensure_forward_reference_file(self.inference.i_s.db, start, code);
         if let Some(star_exprs) = f.tree.maybe_star_expressions() {
             let compute_type =
                 |comp: &mut TypeComputation<'db, '_, '_, '_>| match star_exprs.unpack() {

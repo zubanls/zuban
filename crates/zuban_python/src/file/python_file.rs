@@ -402,6 +402,21 @@ impl<'db> PythonFile {
         self.sub_files.borrow_mut().insert(start, f.file_index);
         f
     }
+    pub(super) fn ensure_forward_reference_file(
+        &self,
+        db: &'db Database,
+        mut start: CodeIndex,
+        code: Cow<str>,
+    ) -> &'db Self {
+        let maybe_new = code.trim_start();
+        let whitespace_in_beginning = code.len() - maybe_new.len();
+        if whitespace_in_beginning > 0 {
+            start += whitespace_in_beginning as CodeIndex;
+            self.ensure_annotation_file(db, start, Cow::Borrowed(maybe_new))
+        } else {
+            self.ensure_annotation_file(db, start, code)
+        }
+    }
 
     pub fn is_stub_or_in_protocol(&self, i_s: &InferenceState) -> bool {
         if let Some(current_class) = i_s.current_class() {
