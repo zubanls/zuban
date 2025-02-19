@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use parsa_python_cst::*;
 
 use super::type_computation::cache_name_on_class;
@@ -182,11 +184,12 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd> {
                 self.find_in_name(n)
             }
             AtomContent::Strings(s_o_b) => match s_o_b.as_python_string() {
-                PythonString::Ref(_start, _s) => {
-                    BaseLookup::Other
-                    //self.compute_forward_reference(start, s.to_owned())
+                PythonString::Ref(start, s) => {
+                    self.compute_forward_reference(start, Cow::Borrowed(s))
                 }
-                PythonString::String(_start, _s) => BaseLookup::Other, // TODO this is wrong
+                PythonString::String(start, s) => {
+                    self.compute_forward_reference(start, Cow::Owned(s))
+                }
                 PythonString::FString => BaseLookup::Other,
             },
             _ => BaseLookup::Other,
@@ -266,6 +269,15 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd> {
                 self.find_in_expr(s.named_expr.expression())
             }
         }
+    }
+
+    fn compute_forward_reference(
+        &mut self,
+        _start: CodeIndex,
+        _string: Cow<str>,
+    ) -> BaseLookup<'db> {
+        // TODO implement
+        BaseLookup::Other
     }
 
     fn check_generic_or_protocol_length(&self, slice_type: SliceType) {

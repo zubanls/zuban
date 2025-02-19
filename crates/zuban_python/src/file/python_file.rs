@@ -1,4 +1,5 @@
 use std::{
+    borrow::Cow,
     cell::{OnceCell, RefCell},
     collections::HashMap,
     fmt,
@@ -374,10 +375,11 @@ impl<'db> PythonFile {
         &self,
         db: &'db Database,
         start: CodeIndex,
-        code: Box<str>, // TODO this should not be a string, but probably cow
+        code: Cow<str>,
     ) -> &'db Self {
         // TODO should probably not need a newline
-        let tree = Tree::parse(Box::from(code.into_string() + "\n"));
+        let code = code.into_owned() + "\n";
+        let tree = Tree::parse(code.into_boxed_str());
         let points = Points::new(tree.length());
         let f = db.load_sub_file(self, |file_index| {
             let mut file = PythonFile::new_internal(
