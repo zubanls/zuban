@@ -945,6 +945,18 @@ pub(crate) fn attribute_access_of_type(
             on_intersection(i, i_s, add_issue, name, kind, result_context, callable);
             return;
         }
+        Type::RecursiveType(r) => {
+            attribute_access_of_type(
+                i_s,
+                add_issue,
+                name,
+                kind,
+                result_context,
+                callable,
+                Rc::new(r.calculated_type(i_s.db).clone()),
+            );
+            return;
+        }
         t => unreachable!("Type getattr {name} on {t:?}"),
     };
     callable(&Type::Type(in_type.clone()), details)
