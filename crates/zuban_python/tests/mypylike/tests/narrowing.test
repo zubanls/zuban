@@ -1601,3 +1601,20 @@ def foo(x: Any, y: Any):
             reveal_type(x)  # N: Revealed type is "None"
         reveal_type(x)  # N: Revealed type is "Any"
     reveal_type(x)  # N: Revealed type is "Any"
+
+[case callable_intersection_with_class_twice]
+class A:
+    a: int
+class B:
+    b: int
+def foo(x: A):
+    if callable(x):
+        x.a
+        x.b  # E: "<callable subtype of A>" has no attribute "b"
+        if isinstance(x, B):
+            x.a
+            x.b
+            x.undefined  # E: "<subclass of "def (*Any, **Any) -> Any", "__main__.A", and "__main__.B">" has no attribute "undefined"
+            # callable introduces Any unfortunately :(
+            x(1)
+            x(undefined=3)

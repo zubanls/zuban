@@ -136,7 +136,24 @@ impl Intersection {
             return Err(());
         }
 
-        let linearizable = linearize_mro_and_return_linearizable(i_s, &intersection.entries).1;
+        let linearizable = if intersection
+            .entries
+            .iter()
+            .any(|t| matches!(t, Type::Callable(_)))
+        {
+            // Callables are possible in an intersection, but they are never part of an actual mro.
+            // Therefore simply ignore them here.
+            let check_entries: Vec<_> = intersection
+                .entries
+                .iter()
+                .filter(|t| !matches!(t, Type::Callable(_)))
+                .cloned()
+                .collect();
+            linearize_mro_and_return_linearizable(i_s, &check_entries).1
+        } else {
+            linearize_mro_and_return_linearizable(i_s, &intersection.entries).1
+        };
+
         if !linearizable {
             add_issue(IssueKind::IntersectionCannotExistDueToInconsistentMro {
                 intersection: fmt_intersection(&intersection),
