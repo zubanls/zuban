@@ -3940,30 +3940,33 @@ impl<'db: 'x, 'file, 'x> Inference<'db, 'file, '_> {
             return load_cached_type(cached_type_node_ref);
         }
 
-        if let Some(name) = assignment.maybe_simple_type_reassignment() {
-            // For very simple cases like `Foo = int`. Not sure yet if this going to stay.
+        if !is_explicit {
+            // Only non-explicit TypeAliases are allowed here.
+            if let Some(name) = assignment.maybe_simple_type_reassignment() {
+                // For very simple cases like `Foo = int`. Not sure yet if this going to stay.
 
-            match self
-                .infer_name_reference(name)
-                .maybe_saved_specific(self.i_s.db)
-            {
-                Some(Specific::TypingAny) => {
-                    // This is a bit of a weird special case that was necessary to pass the test
-                    // testDisallowAnyExplicitAlias
-                    if self.flags().disallow_any_explicit {
-                        NodeRef::new(file, name.index())
-                            .add_issue(self.i_s, IssueKind::DisallowedAnyExplicit)
+                match self
+                    .infer_name_reference(name)
+                    .maybe_saved_specific(self.i_s.db)
+                {
+                    Some(Specific::TypingAny) => {
+                        // This is a bit of a weird special case that was necessary to pass the test
+                        // testDisallowAnyExplicitAlias
+                        if self.flags().disallow_any_explicit {
+                            NodeRef::new(file, name.index())
+                                .add_issue(self.i_s, IssueKind::DisallowedAnyExplicit)
+                        }
                     }
-                }
-                Some(Specific::Cycle) => {
-                    return TypeNameLookup::Unknown(UnknownCause::ReportedIssue)
-                }
-                _ => {
-                    let node_ref = NodeRef::new(file, name.index());
-                    debug_assert!(node_ref.point().calculated());
-                    let n = check_type_name(self.i_s, node_ref);
-                    if !matches!(n, TypeNameLookup::SpecialType(_)) {
-                        return n;
+                    Some(Specific::Cycle) => {
+                        return TypeNameLookup::Unknown(UnknownCause::ReportedIssue)
+                    }
+                    _ => {
+                        let node_ref = NodeRef::new(file, name.index());
+                        debug_assert!(node_ref.point().calculated());
+                        let n = check_type_name(self.i_s, node_ref);
+                        if !matches!(n, TypeNameLookup::SpecialType(_)) {
+                            return n;
+                        }
                     }
                 }
             }
