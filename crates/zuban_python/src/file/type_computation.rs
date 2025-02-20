@@ -4178,7 +4178,13 @@ impl<'db: 'x, 'file, 'x> Inference<'db, 'file, '_> {
     }
 
     pub(crate) fn compute_explicit_type_assignment(&self, assignment: Assignment) -> Inferred {
-        self.compute_type_assignment(assignment, true);
+        let name_lookup = self.compute_type_assignment(assignment, true);
+        if matches!(
+            name_lookup,
+            TypeNameLookup::Unknown(_) | TypeNameLookup::InvalidVariable(_)
+        ) {
+            return Inferred::new_any(AnyCause::FromError);
+        }
         Inferred::from_saved_node_ref(assignment_type_node_ref(self.file, assignment))
     }
 

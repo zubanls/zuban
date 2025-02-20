@@ -368,3 +368,13 @@ def f(x: X, y: Y, z: Z):
     reveal_type(x)  # N: Revealed type is "Any"
     reveal_type(y)  # N: Revealed type is "int | str"
     reveal_type(z)  # N: Revealed type is "Any"
+
+[case no_crash_on_badly_defined_type_alias]
+from typing import TypeAlias
+
+M: TypeAlias = None  # type: can't parse me!  # E: invalid syntax
+N: TypeAlias = None  # type: int
+
+def foo(x: M, y: N):
+    reveal_type(x)  # N: Revealed type is "Any"
+    reveal_type(y)  # N: Revealed type is "None"
