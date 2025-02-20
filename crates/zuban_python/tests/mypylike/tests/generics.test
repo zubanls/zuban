@@ -1371,3 +1371,25 @@ MaybeAwaitableFunc = Callable[P, 'MaybeAwaitable[T]']
 
 def g(f: MaybeAwaitableFunc[[int, str], int]):
     pass
+
+[case origin_of_same_callable_should_not_lead_to_type_var_confusion_in_overloads]
+from typing import Any, Concatenate, Literal, TypeVar, overload, ParamSpec, Callable
+
+P = ParamSpec("P")
+A = TypeVar("A")
+B = TypeVar("B")
+C = TypeVar("C")
+D = TypeVar("D")
+
+def curry(c: Callable[Concatenate[A, P], B]) -> Callable[[A], Callable[P, B]]: ...
+
+@curry
+@overload
+def mapmap(m: Callable[[], C], p: list[tuple[()]]) -> list[C]: ...
+
+@curry
+@overload
+def mapmap(m: Callable[[C], D], p: list[tuple[C]]) -> list[D]: ...
+
+@curry
+def mapmap(*args, **kwargs) -> list[Any]: ...

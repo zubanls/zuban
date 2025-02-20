@@ -1921,9 +1921,26 @@ fn is_overload_unmatchable(
     c1: &CallableContent,
     c2: &CallableContent,
 ) -> bool {
-    let mut matcher = Matcher::new_reverse_callable_matcher(c1, None).without_precise_matching();
-    let result = matches_params(i_s, &mut matcher, &c2.params, &c1.params);
-    matches!(result, Match::True { with_any: false })
+    create_matcher_with_independent_type_vars(i_s.db, c1, c2, |matcher, c1, c2| {
+        let matcher = &mut matcher.without_precise_matching();
+        let result = matches_params(i_s, matcher, &c2.params, &c1.params);
+        matches!(result, Match::True { with_any: false })
+    })
+}
+
+fn create_matcher_with_independent_type_vars<T>(
+    db: &Database,
+    c1: &CallableContent,
+    c2: &CallableContent,
+    callback: impl FnOnce(Matcher, &CallableContent, &CallableContent) -> T,
+) -> T {
+    let matcher = Matcher::new_reverse_callable_matcher(c1, None);
+    if c1.defined_at == c2.defined_at {
+        let c2 = c2.change_temporary_matcher_index(db, 1);
+        callback(matcher, c1, &c2)
+    } else {
+        callback(matcher, c1, c2)
+    }
 }
 
 fn add_error_if_final(
