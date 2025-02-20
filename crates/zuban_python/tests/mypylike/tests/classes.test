@@ -1350,3 +1350,17 @@ def g(x: type[Foo], y: type[Bar]):
 from collections import defaultdict
 m = set([dict, defaultdict])
 reveal_type(m)  # N: Revealed type is "set[Type[dict[Any, Any]]]"
+
+[case class_name_resolving_if_member_has_same_name]
+import m
+
+class A:
+    a: int
+    m: m.C
+
+def foo(b: A):
+    reveal_type(b.m)  # N: Revealed type is "m.C"
+    reveal_type(b.a)  # N: Revealed type is "int"
+
+[file m.py]
+class C: ...

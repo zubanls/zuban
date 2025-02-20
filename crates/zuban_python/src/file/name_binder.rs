@@ -882,15 +882,12 @@ impl<'db> NameBinder<'db> {
                                 // We check for annotation_names here, which we recheck later. But
                                 // in that case only certain types are possible (e.g. not
                                 // functions)
-                                if !matches!(self.kind, NameBinderKind::Class)
-                                    || !try_to_process_reference_for_symbol_table(
-                                        &self.symbol_table,
-                                        self.db_infos.file_index,
-                                        self.db_infos.points,
-                                        name,
-                                        false,
-                                        self.in_global_scope(),
-                                    )
+                                // This is a bit weird, but comes from the fact that it's possible
+                                // to index types that are defined after the current name, but
+                                // prior names are preferred over e.g. the current name.
+                                if !(matches!(self.kind, NameBinderKind::Class)
+                                    && self
+                                        .try_to_process_class_annotation_reference_in_parents(name))
                                 {
                                     self.annotation_names.push(name);
                                 }
@@ -1301,6 +1298,23 @@ impl<'db> NameBinder<'db> {
     #[inline]
     fn in_global_scope(&self) -> bool {
         self.parent.is_none()
+    }
+
+    #[inline]
+    fn try_to_process_class_annotation_reference_in_parents(&mut self, name: Name<'db>) -> bool {
+        if try_to_process_reference_for_symbol_table(
+            &self.symbol_table,
+            self.db_infos.file_index,
+            self.db_infos.points,
+            name,
+            false,
+            self.in_global_scope(),
+        ) {
+            return true;
+        }
+        self.parent.is_some_and(|parent| {
+            unsafe { &mut *parent }.try_to_process_class_annotation_reference_in_parents(name)
+        })
     }
 
     #[inline]

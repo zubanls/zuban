@@ -4165,6 +4165,11 @@ impl<'db: 'x, 'file, 'x> Inference<'db, 'file, '_> {
                 | AssignmentContent::AugAssign(target, _, _) => is_calculating(target),
             };
             if calculating {
+                // TODO add an actual issue here?
+                debug!(
+                    "WARNING: Assignment {:?} is calculating (cycle?), we therefore abort type calculation",
+                    assignment.as_code()
+                );
                 return TypeNameLookup::Unknown(UnknownCause::ReportedIssue);
             }
             if let Some(annotation) = assignment.maybe_annotation() {
@@ -4190,7 +4195,7 @@ impl<'db: 'x, 'file, 'x> Inference<'db, 'file, '_> {
 
     fn lookup_type_name(&self, name: Name<'x>) -> TypeNameLookup<'db, 'x> {
         let mut point = self.file.points.get(name.index());
-        if !self.file.points.get(name.index()).calculated() {
+        if !point.calculated() {
             self.infer_name_reference(name);
             point = self.file.points.get(name.index());
         }

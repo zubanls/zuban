@@ -162,3 +162,21 @@ def check_invariant(a: set[A], b: set[B], c: set[C]):
     b = a  # E: Incompatible types in assignment (expression has type "set[A]", variable has type "set[B]")
     b = b
     b = c  # E: Incompatible types in assignment (expression has type "set[C]", variable has type "set[B]")
+
+[case typed_dict_name_resolving_if_member_has_same_name]
+from typing import TypedDict
+import m
+
+class A(TypedDict):
+    a: int
+
+class B(A):
+    m: m.C
+
+def foo(b: B):
+    b.m  # E: "B" has no attribute "m"
+    reveal_type(b['a'])  # N: Revealed type is "int"
+    reveal_type(b['m'])  # N: Revealed type is "m.C"
+
+[file m.py]
+class C: ...
