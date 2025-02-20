@@ -670,7 +670,15 @@ impl Inference<'_, '_, '_> {
         let i_s = self.i_s.with_diagnostic_class_context(&c);
         let inference = self.file.inference(&i_s);
         let result = inference.calculate_class_block_diagnostics(c, block);
-        debug_assert!(result.is_ok());
+        if !result.is_ok() {
+            tracing::error!(
+                "Calculating the class block failed for: {} line #{} in {}",
+                class.name().as_code(),
+                class_node_ref.line(),
+                self.file_path()
+            );
+            return;
+        }
 
         check_multiple_inheritance(
             self.i_s,
