@@ -749,6 +749,23 @@ impl CallableContent {
         }
     }
 
+    pub fn change_temporary_matcher_index(
+        &self,
+        db: &Database,
+        temporary_matcher_index: u32,
+    ) -> Self {
+        self.replace_type_var_likes_and_self(
+            db,
+            &mut |mut usage| {
+                (usage.in_definition() == self.defined_at).then(|| {
+                    usage.update_temporary_matcher_index(temporary_matcher_index);
+                    usage.into_generic_item()
+                })
+            },
+            &|| None,
+        )
+    }
+
     fn has_self_type_after_first_param(&self, db: &Database) -> bool {
         self.return_type.has_self_type(db)
             || match &self.params {

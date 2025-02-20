@@ -167,16 +167,7 @@ impl<'a> Matcher<'a> {
                 .iter()
                 .any(|tvm| tvm.match_in_definition == c2.defined_at)
             {
-                c2 = Cow::Owned(c2_ref.replace_type_var_likes_and_self(
-                    i_s.db,
-                    &mut |mut usage| {
-                        (usage.in_definition() == c2_ref.defined_at).then(|| {
-                            usage.update_temporary_matcher_index(type_var_matchers_len);
-                            usage.into_generic_item()
-                        })
-                    },
-                    &|| None,
-                ));
+                c2 = Cow::Owned(c2.change_temporary_matcher_index(i_s.db, type_var_matchers_len));
             }
             self.type_var_matchers
                 .push(TypeVarMatcher::new(c2.defined_at, c2.type_vars.clone()))
