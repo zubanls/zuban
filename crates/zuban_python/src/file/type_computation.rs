@@ -4149,30 +4149,25 @@ impl<'db: 'x, 'file, 'x> Inference<'db, 'file, '_> {
             debug!("Finished type alias calculation: {}", name_def.as_code());
             result
         } else {
-            let is_calculating = |target| match target {
-                Target::Name(n) => {
-                    self.file
-                        .points
-                        .get(n.index())
-                        .maybe_calculated_and_specific()
-                        == Some(Specific::Cycle)
+            if let AssignmentContent::WithAnnotation(target, annotation, _) = assignment.unpack() {
+                let calculating = match target {
+                    Target::Name(n) => {
+                        self.file
+                            .points
+                            .get(n.index())
+                            .maybe_calculated_and_specific()
+                            == Some(Specific::Cycle)
+                    }
+                    _ => false,
+                };
+                if calculating {
+                    // TODO add an actual issue here?
+                    debug!(
+                        "WARNING: Assignment {:?} is calculating (cycle?), we therefore abort type calculation",
+                        assignment.as_code()
+                    );
+                    return TypeNameLookup::Unknown(UnknownCause::ReportedIssue);
                 }
-                _ => false,
-            };
-            let calculating = match assignment.unpack() {
-                AssignmentContent::Normal(mut targets, _) => targets.any(is_calculating),
-                AssignmentContent::WithAnnotation(target, _, _)
-                | AssignmentContent::AugAssign(target, _, _) => is_calculating(target),
-            };
-            if calculating {
-                // TODO add an actual issue here?
-                debug!(
-                    "WARNING: Assignment {:?} is calculating (cycle?), we therefore abort type calculation",
-                    assignment.as_code()
-                );
-                return TypeNameLookup::Unknown(UnknownCause::ReportedIssue);
-            }
-            if let Some(annotation) = assignment.maybe_annotation() {
                 self.cache_assignment(assignment);
                 if let Type::Any(cause) = self.use_cached_annotation_type(annotation).as_ref() {
                     return TypeNameLookup::Unknown(UnknownCause::AnyCause(*cause));
