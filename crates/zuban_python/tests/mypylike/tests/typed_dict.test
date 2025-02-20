@@ -180,3 +180,22 @@ def foo(b: B):
 
 [file m.py]
 class C: ...
+
+[case typed_dict_name_resolving_if_member_has_same_name_but_is_defined_later]
+from typing import TypedDict
+
+class A(TypedDict):
+    a: int
+
+class B(A):
+    m: m.C
+
+def foo(b: B):
+    b.m  # E: "B" has no attribute "m"
+    reveal_type(b['a'])  # N: Revealed type is "int"
+    reveal_type(b['m'])  # N: Revealed type is "m.C"
+
+import m
+
+[file m.py]
+class C: ...

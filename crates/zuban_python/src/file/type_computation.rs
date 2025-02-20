@@ -2,7 +2,11 @@ use std::{borrow::Cow, cell::Cell, rc::Rc};
 
 use parsa_python_cst::{SliceType as CSTSliceType, *};
 
-use super::{inference::StarImportResult, utils::func_of_self_symbol, TypeVarFinder};
+use super::{
+    inference::{AssignKind, StarImportResult},
+    utils::func_of_self_symbol,
+    TypeVarFinder,
+};
 use crate::{
     arguments::SimpleArgs,
     database::{
@@ -4161,10 +4165,13 @@ impl<'db: 'x, 'file, 'x> Inference<'db, 'file, '_> {
                     _ => false,
                 };
                 if calculating {
-                    // TODO add an actual issue here?
-                    debug!(
-                        "WARNING: Assignment {:?} is calculating (cycle?), we therefore abort type calculation",
-                        assignment.as_code()
+                    NodeRef::new(&self.file, assignment.index())
+                        .add_issue(self.i_s, IssueKind::InvalidTypeCycle);
+                    self.assign_targets(
+                        target,
+                        Inferred::new_cycle(),
+                        NodeRef::new(self.file, assignment.index()),
+                        AssignKind::Normal,
                     );
                     return TypeNameLookup::Unknown(UnknownCause::ReportedIssue);
                 }

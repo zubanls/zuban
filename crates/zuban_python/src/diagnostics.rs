@@ -137,6 +137,7 @@ pub(crate) enum IssueKind {
     DuplicateBaseClass { name: Box<str> },
     InconsistentMro { name: Box<str> },
     CyclicDefinition { name: Box<str> },
+    InvalidTypeCycle,
     EnsureSingleGenericOrProtocol,
 
     InvalidType(Box<str>),
@@ -1257,6 +1258,7 @@ impl<'db> Diagnostic<'db> {
             ),
             CyclicDefinition{name} =>
                 format!("Cannot resolve name {name:?} (possible cyclic definition)"),
+            InvalidTypeCycle => "Invalid type cycle".to_string(),
             EnsureSingleGenericOrProtocol =>
                 "Only single Generic[...] or Protocol[...] can be in bases".to_string(),
 
