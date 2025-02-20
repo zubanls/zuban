@@ -22,7 +22,8 @@ use crate::{
     inference_state::InferenceState,
     inferred::{infer_class_method, AttributeKind, Inferred},
     matching::{
-        ErrorStrs, Generic, Generics, LookupKind, Match, Matcher, OnTypeError, ResultContext,
+        ErrorStrs, Generic, Generics, LookupKind, Match, Matcher, OnTypeError,
+        ReplaceSelfInMatcher, ResultContext,
     },
     node_ref::NodeRef,
     params::{has_overlapping_params, matches_params, Param, WrappedParamType, WrappedStar},
@@ -1417,44 +1418,51 @@ impl Inference<'_, '_, '_> {
         signature_index: usize,
         class: Option<Class>,
     ) {
-        //let self_binding = OnceCell::new();
-        let replace_self = || class.unwrap().as_type(self.i_s.db);
-        let matcher = &mut Matcher::new_reverse_callable_matcher(
+        create_matcher_with_independent_type_vars(
+            self.i_s.db,
+            Some(&|| class.unwrap().as_type(self.i_s.db)),
             implementation_callable,
-            Some(&replace_self),
-        );
-        let implementation_result = &implementation_callable.return_type;
-        let item_result = &overload_item.return_type;
-        // This is bivariant matching. This is how Mypy allows subtyping.
-        if !item_result
-            .is_sub_type_of(self.i_s, matcher, implementation_result)
-            .bool()
-            && !item_result
-                .is_super_type_of(self.i_s, matcher, implementation_result)
-                .bool()
-        {
-            implementation
-                .function(self.i_s.db, None)
-                .add_issue_onto_start_including_decorator(
-                    self.i_s,
-                    IssueKind::OverloadImplementationReturnTypeIncomplete { signature_index },
-                );
-        }
+            overload_item,
+            |mut matcher, implementation_callable, overload_item| {
+                //let self_binding = OnceCell::new();
+                let implementation_result = &implementation_callable.return_type;
+                let item_result = &overload_item.return_type;
+                // This is bivariant matching. This is how Mypy allows subtyping.
+                if !item_result
+                    .is_sub_type_of(self.i_s, &mut matcher, implementation_result)
+                    .bool()
+                    && !item_result
+                        .is_super_type_of(self.i_s, &mut matcher, implementation_result)
+                        .bool()
+                {
+                    implementation
+                        .function(self.i_s.db, None)
+                        .add_issue_onto_start_including_decorator(
+                            self.i_s,
+                            IssueKind::OverloadImplementationReturnTypeIncomplete {
+                                signature_index,
+                            },
+                        );
+                }
 
-        let match_ = matches_params(
-            self.i_s,
-            matcher,
-            &overload_item.params,
-            &implementation_callable.params,
-        );
-        if !match_.bool() {
-            implementation
-                .function(self.i_s.db, None)
-                .add_issue_onto_start_including_decorator(
+                let match_ = matches_params(
                     self.i_s,
-                    IssueKind::OverloadImplementationParamsNotBroadEnough { signature_index },
+                    &mut matcher,
+                    &overload_item.params,
+                    &implementation_callable.params,
                 );
-        }
+                if !match_.bool() {
+                    implementation
+                        .function(self.i_s.db, None)
+                        .add_issue_onto_start_including_decorator(
+                            self.i_s,
+                            IssueKind::OverloadImplementationParamsNotBroadEnough {
+                                signature_index,
+                            },
+                        );
+                }
+            },
+        )
     }
 
     fn calc_return_stmt_diagnostics(&self, func: Option<&Function>, return_stmt: ReturnStmt) {
@@ -1921,7 +1929,7 @@ fn is_overload_unmatchable(
     c1: &CallableContent,
     c2: &CallableContent,
 ) -> bool {
-    create_matcher_with_independent_type_vars(i_s.db, c1, c2, |matcher, c1, c2| {
+    create_matcher_with_independent_type_vars(i_s.db, None, c1, c2, |matcher, c1, c2| {
         let matcher = &mut matcher.without_precise_matching();
         let result = matches_params(i_s, matcher, &c2.params, &c1.params);
         matches!(result, Match::True { with_any: false })
@@ -1930,11 +1938,12 @@ fn is_overload_unmatchable(
 
 fn create_matcher_with_independent_type_vars<T>(
     db: &Database,
+    replace_self: Option<ReplaceSelfInMatcher>,
     c1: &CallableContent,
     c2: &CallableContent,
     callback: impl FnOnce(Matcher, &CallableContent, &CallableContent) -> T,
 ) -> T {
-    let matcher = Matcher::new_reverse_callable_matcher(c1, None);
+    let matcher = Matcher::new_reverse_callable_matcher(c1, replace_self);
     if c1.defined_at == c2.defined_at {
         let c2 = c2.change_temporary_matcher_index(db, 1);
         callback(matcher, c1, &c2)
