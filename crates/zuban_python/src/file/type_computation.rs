@@ -2430,30 +2430,20 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             }
             _ => ParamType::PositionalOnly(self.as_type(t, from)),
         };
-        CallableParam {
-            type_: param_type,
-            has_default: false,
-            name: None,
-        }
+        CallableParam::new_anonymous(param_type)
     }
 
     fn add_param(&mut self, params: &mut Vec<CallableParam>, t: TypeContent, index: NodeIndex) {
         let p = match t {
             TypeContent::Unpacked(TypeOrUnpack::Type(Type::Tuple(tup))) => match &tup.args {
-                TupleArgs::WithUnpack(_) => CallableParam {
-                    type_: ParamType::Star(StarParamType::UnpackedTuple(tup)),
-                    has_default: false,
-                    name: None,
-                },
+                TupleArgs::WithUnpack(_) => {
+                    CallableParam::new_anonymous(ParamType::Star(StarParamType::UnpackedTuple(tup)))
+                }
                 TupleArgs::ArbitraryLen(_) => {
                     let TupleArgs::ArbitraryLen(t) = Rc::unwrap_or_clone(tup).args else {
                         unreachable!();
                     };
-                    CallableParam {
-                        type_: ParamType::Star(StarParamType::ArbitraryLen(*t)),
-                        has_default: false,
-                        name: None,
-                    }
+                    CallableParam::new_anonymous(ParamType::Star(StarParamType::ArbitraryLen(*t)))
                 }
                 TupleArgs::FixedLen(ts) => {
                     // TODO these should also be checked.
@@ -2510,6 +2500,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             type_: ParamType::Star(StarParamType::UnpackedTuple(tup)),
                             name: previous.name,
                             has_default: previous.has_default,
+                            might_have_type_vars: true,
                         });
                         return;
                     }
@@ -3470,6 +3461,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 specific,
                 Specific::MypyExtensionsDefaultArg | Specific::MypyExtensionsDefaultNamedArg
             ),
+            might_have_type_vars: true,
         }))
     }
 

@@ -2866,6 +2866,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 StringSlice::from_name(self.file.file_index, param.name_def().name()).into(),
             ),
             has_default: param.default().is_some(),
+            might_have_type_vars: true,
         };
         result_context
             .with_type_if_exists_and_replace_type_var_likes(self.i_s, |type_| {
@@ -4868,6 +4869,7 @@ fn move_lambda_context_keyword_to_positional_or_keyword(
                             type_: ParamType::PositionalOrKeyword(t.clone()),
                             name: p.name.clone(),
                             has_default: p.has_default,
+                            might_have_type_vars: true,
                         };
                     }
                 }

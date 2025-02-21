@@ -906,6 +906,10 @@ impl<'x> Param<'x> for &'x CallableParam {
     fn has_self_type(&self, db: &Database) -> bool {
         self.type_.maybe_type().is_some_and(|t| t.has_self_type(db))
     }
+
+    fn might_have_type_vars(&self) -> bool {
+        self.might_have_type_vars
+    }
 }
 
 pub enum UnpackTypedDictState {

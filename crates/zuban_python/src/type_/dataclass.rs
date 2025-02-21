@@ -463,6 +463,7 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> Init
                             },
                             name: Some(infos.name),
                             has_default,
+                            might_have_type_vars: true,
                         },
                     );
                 }

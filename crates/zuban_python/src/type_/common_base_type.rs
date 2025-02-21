@@ -427,6 +427,7 @@ fn common_params_by_iterable<'x>(
                 type_,
                 name: (p1_name == p2_name).then(|| p1.name.clone()).flatten(),
                 has_default: p1.has_default & p2.has_default,
+                might_have_type_vars: p1.might_have_type_vars || p2.might_have_type_vars,
             };
 
             let t1 = match p1.type_.details() {

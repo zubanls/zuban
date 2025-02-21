@@ -1568,6 +1568,7 @@ fn find_stmt_named_tuple_types(
                             type_: ParamType::PositionalOrKeyword(t),
                             has_default: default.is_some(),
                             name: Some(StringSlice::from_name(file.file_index, name.name()).into()),
+                            might_have_type_vars: true,
                         })
                     }
                 }

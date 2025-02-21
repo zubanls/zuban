@@ -217,6 +217,7 @@ impl Type {
                             type_: ParamType::PositionalOrKeyword(t.replace_internal(replacer)?),
                             has_default: param.has_default,
                             name: param.name.clone(),
+                            might_have_type_vars: true,
                         })
                     })?;
                 let mut constructor = nt.__new__.as_ref().clone();
@@ -539,6 +540,7 @@ impl CallableParams {
                         type_: new_param_type,
                         has_default: param.has_default,
                         name: param.name.clone(),
+                        might_have_type_vars: true,
                     });
                     Some(())
                 };

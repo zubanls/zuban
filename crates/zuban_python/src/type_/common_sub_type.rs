@@ -219,6 +219,7 @@ fn common_sub_type_params(
                 },
                 name: p1.name.clone(),
                 has_default: p1.has_default,
+                might_have_type_vars: p1.might_have_type_vars || p2.might_have_type_vars,
             });
         }
         Some(CallableParams::new_simple(new_params.into()))

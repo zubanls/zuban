@@ -130,6 +130,8 @@ pub struct CallableParam {
     pub type_: ParamType,
     pub name: Option<DbString>,
     pub has_default: bool,
+    // This is a simple optimization to avoid trying to replace types when not necessary
+    pub might_have_type_vars: bool,
 }
 
 impl CallableParam {
@@ -138,6 +140,7 @@ impl CallableParam {
             type_,
             name: Some(name),
             has_default: false,
+            might_have_type_vars: true,
         }
     }
 
@@ -146,6 +149,7 @@ impl CallableParam {
             type_,
             name: None,
             has_default: false,
+            might_have_type_vars: true,
         }
     }
 

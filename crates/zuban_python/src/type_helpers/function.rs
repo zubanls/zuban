@@ -1608,6 +1608,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     let n = p.param.name_def();
                     StringSlice::new(file_index, n.start(), n.end()).into()
                 }),
+                might_have_type_vars: p.might_have_type_vars(),
             });
         }
         return_result(CallableParams::new_simple(Rc::from(new_params)))

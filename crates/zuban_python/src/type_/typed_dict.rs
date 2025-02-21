@@ -49,6 +49,7 @@ impl TypedDictMember {
             type_: ParamType::KeywordOnly(self.type_.clone()),
             name: Some(DbString::StringSlice(self.name)),
             has_default: !self.required,
+            might_have_type_vars: true,
         }
     }
 }
