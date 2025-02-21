@@ -588,8 +588,8 @@ pub(crate) fn match_arguments_against_params<
             delayed_params.push((i, p));
             continue;
         }
-        let mut match_arg = |arg: &Arg<'db, '_>, expected: Cow<Type>| {
-            let value = if matcher.might_have_defined_type_vars() {
+        let mut match_arg = |arg: &Arg<'db, '_>, might_have_type_vars, expected: Cow<Type>| {
+            let value = if might_have_type_vars && matcher.might_have_defined_type_vars() {
                 arg.infer(&mut ResultContext::WithMatcher {
                     type_: &expected,
                     matcher,
@@ -730,7 +730,11 @@ pub(crate) fn match_arguments_against_params<
                     },
                     WrappedParamType::StarStar(WrappedStarStar::UnpackTypedDict(td)) => {
                         for member in td.members(i_s.db).iter() {
-                            match_arg(argument, Cow::Borrowed(&member.type_))
+                            match_arg(
+                                argument,
+                                p.param.might_have_type_vars(),
+                                Cow::Borrowed(&member.type_),
+                            )
                         }
                         continue;
                     }
@@ -740,7 +744,7 @@ pub(crate) fn match_arguments_against_params<
                         unreachable!()
                     }
                 };
-                match_arg(argument, expected)
+                match_arg(argument, p.param.might_have_type_vars(), expected)
             }
             ParamArgument::ParamSpecArgs(..) => {
                 let ParamArgument::ParamSpecArgs(param_spec, args) = p.argument else {
@@ -890,7 +894,7 @@ pub(crate) fn match_arguments_against_params<
                             .collect(),
                     );
                 }
-                match_arg(argument, Cow::Borrowed(type_))
+                match_arg(argument, true, Cow::Borrowed(type_))
             }
             ParamArgument::None => (),
         }

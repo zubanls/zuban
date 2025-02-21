@@ -24,6 +24,9 @@ pub trait Param<'x>: Copy + std::fmt::Debug {
     fn kind(&self, db: &Database) -> ParamKind;
     fn into_callable_param(self) -> CallableParam;
     fn has_self_type(&self, db: &Database) -> bool;
+    fn might_have_type_vars(&self) -> bool {
+        true
+    }
 }
 
 pub fn matches_params_with_variance(

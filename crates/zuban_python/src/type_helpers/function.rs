@@ -2021,6 +2021,13 @@ impl<'x> Param<'x> for FunctionParam<'x> {
     fn has_self_type(&self, db: &Database) -> bool {
         self.annotation(db).is_some_and(|t| t.has_self_type(db))
     }
+
+    fn might_have_type_vars(&self) -> bool {
+        self.param.annotation().is_some_and(|param_annot| {
+            let p = self.file.points.get(param_annot.index());
+            p.maybe_specific() != Some(Specific::AnnotationOrTypeCommentWithoutTypeVars)
+        })
+    }
 }
 
 pub fn is_private(name: &str) -> bool {
