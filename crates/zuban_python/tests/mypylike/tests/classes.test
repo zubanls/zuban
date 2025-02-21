@@ -1417,3 +1417,13 @@ class C: ...
 
 [file n.py]
 C = bytes
+
+[case explicit_any_for_class_arg_with_super_should_not_crash]
+from typing import Any
+class B:
+    def foo(self) -> int: ...
+class C(B):
+    def __new__(cls: Any):
+        super().__new__()
+    def foo(self: Any) -> int:
+        return super().foo()

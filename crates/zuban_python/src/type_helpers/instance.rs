@@ -767,6 +767,9 @@ fn execute_super_internal<'db>(
                         FirstParamKind::InStaticmethod => unreachable!(),
                     }
                 };
+                if t.is_any() {
+                    return Ok(Inferred::new_any_from_error());
+                }
                 success(&cls, t, 1)
             } else {
                 Err(IssueKind::SuperUsedOutsideClass)
