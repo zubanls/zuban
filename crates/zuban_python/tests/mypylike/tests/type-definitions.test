@@ -25,8 +25,8 @@ x: Any[int]  # E: Invalid type comment or annotation
 
 [case avoid_type_cycle]
 class Foo:
-    foo: foo  # E: Invalid type cycle
-    bar: list[bar]  # E: Invalid type cycle
+    foo: foo  # E: Name "foo" is not defined
+    bar: list[bar]  # E: Name "bar" is not defined
     baz += baz  # E: Name "baz" is not defined   # E: Name "baz" is not defined
     bla: baz  # E: Invalid type comment or annotation
 

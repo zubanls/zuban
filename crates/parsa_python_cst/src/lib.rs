@@ -4070,6 +4070,13 @@ impl<'db> Target<'db> {
             Self::new_single_target(node.nth_child(1))
         }
     }
+
+    pub fn maybe_name_def(&self) -> Option<NameDef<'db>> {
+        match self {
+            Self::Name(name) => Some(*name),
+            _ => None,
+        }
+    }
 }
 
 impl<'db> NameOrKeywordLookup<'db> {

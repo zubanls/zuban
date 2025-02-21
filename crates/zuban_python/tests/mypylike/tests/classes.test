@@ -1368,12 +1368,12 @@ class C: ...
 [case class_name_resolving_if_member_has_same_name_but_is_defined_later]
 class A:
     a: int
-    m: m.C  # E: Invalid type cycle
+    m: m.C
 
 import m
 
 def foo(b: A):
-    reveal_type(b.m)  # N: Revealed type is "Any"
+    reveal_type(b.m)  # N: Revealed type is "m.C"
     reveal_type(b.a)  # N: Revealed type is "int"
 
 [file m.py]

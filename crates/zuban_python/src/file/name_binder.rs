@@ -80,7 +80,7 @@ pub(crate) struct NameBinder<'db> {
     unresolved_nodes: Vec<Unresolved<'db>>,
     names_to_be_resolved_in_parent: Vec<Name<'db>>,
     unresolved_class_self_vars: Vec<UnresolvedClass<'db>>,
-    annotation_names: Vec<Name<'db>>,
+    annotation_names: Vec<AnnotationName<'db>>,
     following_nodes_need_flow_analysis: bool,
     latest_return_or_yield: NodeIndex,
     parent: Option<*mut NameBinder<'db>>,
@@ -150,7 +150,7 @@ impl<'db> NameBinder<'db> {
                 &binder.symbol_table,
                 binder.db_infos.file_index,
                 binder.db_infos.points,
-                *annotation_name,
+                annotation_name.name,
                 false,
                 true,
             );
@@ -184,32 +184,40 @@ impl<'db> NameBinder<'db> {
                 .map(Unresolved::Name),
         );
         self.unresolved_nodes.extend(unresolved_nodes);
-        for annotation_name in annotation_names {
+        for mut annotation_name in annotation_names {
             // Functions should never be considered in annotations. It is really weird that Mypy
             // applies this logic so partially.
-            let might_be_a_type = !matches!(kind, NameBinderKind::Class) || {
-                symbol_table
-                    .lookup_symbol(annotation_name.as_code())
-                    .is_some_and(|definition| {
-                        let name_def = Name::by_index(self.db_infos.tree, definition)
+            let handled = symbol_table
+                .lookup_symbol(annotation_name.name.as_code())
+                .is_some_and(|name_index| {
+                    if annotation_name.definition_name_index == Some(name_index) {
+                        // We don't want there to be a foo: foo where we have a cycle.
+                        return false;
+                    }
+                    if matches!(kind, NameBinderKind::Class) {
+                        let name_def = Name::by_index(self.db_infos.tree, name_index)
                             .name_def()
                             .unwrap();
-                        !matches!(
+                        if matches!(
                             name_def.expect_defining_stmt(),
                             DefiningStmt::FunctionDef(_)
-                        )
-                    })
-            };
-            if !(might_be_a_type
-                && try_to_process_reference_for_symbol_table(
-                    &symbol_table,
-                    self.db_infos.file_index,
-                    self.db_infos.points,
-                    annotation_name,
-                    false,
-                    self.in_global_scope(),
-                ))
-            {
+                        ) {
+                            return false;
+                        }
+                    }
+                    let point = Point::new_redirect(
+                        self.db_infos.file_index,
+                        name_index,
+                        Locality::NameBinder,
+                    )
+                    .with_in_global_scope(self.in_global_scope());
+                    self.db_infos
+                        .points
+                        .set(annotation_name.name.index(), point);
+                    true
+                });
+            if !handled {
+                annotation_name.definition_name_index = None;
                 self.annotation_names.push(annotation_name);
             }
         }
@@ -266,7 +274,7 @@ impl<'db> NameBinder<'db> {
                                 cause,
                                 IndexingCause::FunctionName
                                     | IndexingCause::ClassName
-                                    | IndexingCause::Annotation
+                                    | IndexingCause::Annotation { .. }
                                     | IndexingCause::ConstantAssignment
                             )
                         },
@@ -372,7 +380,10 @@ impl<'db> NameBinder<'db> {
                             }
                         }
                         AssignmentContent::WithAnnotation(target, annotation, _) => {
-                            self.index_annotation_expr(&annotation.expression());
+                            self.index_annotation_expr(
+                                &annotation.expression(),
+                                target.maybe_name_def().map(|n| n.name_index()),
+                            );
                             self.index_target(target, ordered, cause)
                         }
                         AssignmentContent::AugAssign(target, _, _) => {
@@ -857,8 +868,18 @@ impl<'db> NameBinder<'db> {
         self.index_non_block_node_full(node, ordered, IndexingCause::Other)
     }
 
-    fn index_annotation_expr(&mut self, node: &Expression<'db>) {
-        self.index_non_block_node_full(node, true, IndexingCause::Annotation)
+    fn index_annotation_expr(
+        &mut self,
+        node: &Expression<'db>,
+        definition_name_index: Option<NodeIndex>,
+    ) {
+        self.index_non_block_node_full(
+            node,
+            true,
+            IndexingCause::Annotation {
+                definition_name_index,
+            },
+        )
     }
 
     #[inline]
@@ -878,7 +899,10 @@ impl<'db> NameBinder<'db> {
                 InterestingNode::Name(name) => {
                     match name.parent() {
                         NameParent::Atom => {
-                            if cause == IndexingCause::Annotation {
+                            if let IndexingCause::Annotation {
+                                definition_name_index,
+                            } = cause
+                            {
                                 // We check for annotation_names here, which we recheck later. But
                                 // in that case only certain types are possible (e.g. not
                                 // functions)
@@ -889,7 +913,10 @@ impl<'db> NameBinder<'db> {
                                     && self
                                         .try_to_process_class_annotation_reference_in_parents(name))
                                 {
-                                    self.annotation_names.push(name);
+                                    self.annotation_names.push(AnnotationName {
+                                        name,
+                                        definition_name_index,
+                                    });
                                 }
                             } else {
                                 self.maybe_add_reference(name, ordered);
@@ -1203,10 +1230,14 @@ impl<'db> NameBinder<'db> {
             // end of a module.
             if let Some(param_annotation) = param.annotation() {
                 match param_annotation.maybe_starred() {
-                    Ok(starred) => {
-                        self.index_non_block_node_full(&starred, true, IndexingCause::Annotation)
-                    }
-                    Err(expr) => self.index_annotation_expr(&expr),
+                    Ok(starred) => self.index_non_block_node_full(
+                        &starred,
+                        true,
+                        IndexingCause::Annotation {
+                            definition_name_index: None,
+                        },
+                    ),
+                    Err(expr) => self.index_annotation_expr(&expr, None),
                 };
             }
             if let Some(expression) = param.default() {
@@ -1215,7 +1246,7 @@ impl<'db> NameBinder<'db> {
         }
         if let Some(return_annotation) = return_annotation {
             // This is the -> annotation
-            self.index_annotation_expr(&return_annotation.expression());
+            self.index_annotation_expr(&return_annotation.expression(), None);
         }
 
         let parent_node_index = match self.kind {
@@ -1376,6 +1407,12 @@ impl<'db> NameBinder<'db> {
             .iter()
             .any(|star_import| star_import.scope == self.scope_node)
     }
+}
+
+struct AnnotationName<'db> {
+    name: Name<'db>,
+    // The name foo in `foo: bar`
+    definition_name_index: Option<NodeIndex>,
 }
 
 fn gather_slots(file_index: FileIndex, assignment: Assignment) -> Option<Box<[StringSlice]>> {
@@ -1853,7 +1890,9 @@ struct UnorderedReference<'db> {
 
 #[derive(Copy, Clone, PartialEq)]
 enum IndexingCause {
-    Annotation,
+    Annotation {
+        definition_name_index: Option<NodeIndex>,
+    },
     FunctionName,
     ClassName,
     AugAssignment,
