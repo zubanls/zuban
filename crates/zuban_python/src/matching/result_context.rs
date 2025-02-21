@@ -11,7 +11,7 @@ use crate::{
 pub enum ResultContext<'a, 'b> {
     Known {
         type_: &'a Type,
-        from_annotation: bool,
+        from_assignment_annotation: bool,
     },
     KnownLambdaReturn(&'a Type),
     WithMatcher {
@@ -30,7 +30,7 @@ impl<'a> ResultContext<'a, '_> {
     pub fn new_known(type_: &'a Type) -> Self {
         Self::Known {
             type_,
-            from_annotation: false,
+            from_assignment_annotation: false,
         }
     }
 
@@ -169,7 +169,7 @@ impl<'a> ResultContext<'a, '_> {
         matches!(
             self,
             ResultContext::Known {
-                from_annotation: true,
+                from_assignment_annotation: true,
                 ..
             }
         )
@@ -181,10 +181,10 @@ impl fmt::Debug for ResultContext<'_, '_> {
         match self {
             Self::Known {
                 type_: t,
-                from_annotation,
+                from_assignment_annotation,
             } => write!(
                 f,
-                "Known {{ type_: {t:?}, from_annotation: {from_annotation}}}"
+                "Known {{ type_: {t:?}, from_assignment_annotation: {from_assignment_annotation}}}"
             ),
             Self::KnownLambdaReturn(t) => write!(f, "KnownLambdaReturn({t:?})"),
             Self::WithMatcher { type_, .. } => write!(f, "WithMatcher(_, {type_:?})"),

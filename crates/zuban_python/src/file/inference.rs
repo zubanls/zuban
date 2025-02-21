@@ -557,7 +557,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             right_side,
             &mut ResultContext::Known {
                 type_: expected,
-                from_annotation: true,
+                from_assignment_annotation: true,
             },
         );
         self.check_right_side_against_expected(expected, right, right_side)
@@ -626,7 +626,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                                 right_side,
                                 &mut ResultContext::Known {
                                     type_: &t,
-                                    from_annotation: true,
+                                    from_assignment_annotation: true,
                                 },
                             );
                             // It is very weird, but somehow type comments in Mypy are allowed to
