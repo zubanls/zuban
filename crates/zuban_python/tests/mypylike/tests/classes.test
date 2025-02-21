@@ -1378,3 +1378,42 @@ def foo(b: A):
 
 [file m.py]
 class C: ...
+
+[case class_name_in_func_resolving_if_member_has_same_name]
+import m
+
+def f() -> None:
+    import n as m
+    class A:
+        a: int
+        m: m.C
+
+    def foo(b: A):
+        reveal_type(b.m)  # N: Revealed type is "bytes"
+        reveal_type(b.a)  # N: Revealed type is "int"
+
+[file m.py]
+class C: ...
+
+[file n.py]
+C = bytes
+
+[case class_name_in_nested_class_resolving_if_member_has_same_name]
+import m
+
+class Nested:
+    import n as m
+    class A:
+        a: int
+        m: m.C
+
+
+def foo(b: Nested.A):
+    reveal_type(b.m)  # N: Revealed type is "bytes"
+    reveal_type(b.a)  # N: Revealed type is "int"
+
+[file m.py]
+class C: ...
+
+[file n.py]
+C = bytes
