@@ -477,7 +477,10 @@ impl<'db> Name<'db> {
                     | Nonterminal(param_with_default)
                     | Nonterminal(param_maybe_default)
             ));
-            TypeLike::ParamName(node.iter_children().nth(1).map(Annotation::new))
+            TypeLike::ParamName(node.iter_children().nth(1).and_then(|n| {
+                n.is_type(Nonterminal(annotation))
+                    .then(|| Annotation::new(n))
+            }))
         }
     }
 

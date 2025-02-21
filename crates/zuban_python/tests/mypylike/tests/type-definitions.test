@@ -378,3 +378,12 @@ N: TypeAlias = None  # type: int
 def foo(x: M, y: N):
     reveal_type(x)  # N: Revealed type is "Any"
     reveal_type(y)  # N: Revealed type is "None"
+
+[case invalid_param_types_should_not_crash]
+def foo(a: str, b: int = 1, c = 1):
+    x: a  # E: Variable "__main__.a" is not valid as a type \
+          # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+    y: b  # E: Variable "__main__.b" is not valid as a type \
+          # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+    z: c  # E: Variable "__main__.c" is not valid as a type \
+          # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
