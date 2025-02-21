@@ -133,6 +133,14 @@ pub struct CallableParam {
 }
 
 impl CallableParam {
+    pub fn new(name: DbString, type_: ParamType) -> Self {
+        CallableParam {
+            type_,
+            name: Some(name),
+            has_default: false,
+        }
+    }
+
     pub fn new_anonymous(type_: ParamType) -> Self {
         CallableParam {
             type_,

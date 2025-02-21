@@ -226,14 +226,13 @@ impl NamedTuple {
                         i_s.db.python_state.type_of_self.clone(),
                     )));
                 }
-                params.push(CallableParam {
-                    type_: ParamType::PositionalOrKeyword(new_class!(
+                params.push(CallableParam::new(
+                    DbString::Static("iterable"),
+                    ParamType::PositionalOrKeyword(new_class!(
                         i_s.db.python_state.iterable_link(),
                         Type::Any(AnyCause::Explicit),
                     )),
-                    name: Some(DbString::Static("iterable")),
-                    has_default: false,
-                });
+                ));
                 Rc::new(CallableContent {
                     name: Some(DbString::Static("_make")),
                     class_name: Some(self.name),
@@ -693,9 +692,8 @@ pub fn add_named_tuple_param(
             field_name: name_str.into(),
         });
     }
-    params.push(CallableParam {
-        type_: ParamType::PositionalOrKeyword(t),
-        name: Some(field_name),
-        has_default: false,
-    });
+    params.push(CallableParam::new(
+        field_name,
+        ParamType::PositionalOrKeyword(t),
+    ));
 }

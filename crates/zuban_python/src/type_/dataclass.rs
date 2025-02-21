@@ -438,12 +438,11 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> Init
                     .kw_only
                     .unwrap_or_else(|| dataclass.options.kw_only || had_kw_only_marker);
                 if infos.is_init_var {
-                    post_init_params.push(CallableParam {
+                    post_init_params.push(CallableParam::new(
                         // This is what Mypy uses, apparently for practical reasons.
-                        type_: ParamType::PositionalOrKeyword(infos.t.clone()),
-                        name: Some(infos.name.clone()),
-                        has_default: false,
-                    })
+                        infos.name.clone(),
+                        ParamType::PositionalOrKeyword(infos.t.clone()),
+                    ))
                 }
                 if infos.field_options.init {
                     let mut t = infos.t;
@@ -518,16 +517,12 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> Init
         }
     }
     if cls.incomplete_mro(i_s.db) {
-        params.push(CallableParam {
-            type_: ParamType::Star(StarParamType::ArbitraryLen(Type::Any(AnyCause::Todo))),
-            name: None,
-            has_default: false,
-        });
-        params.push(CallableParam {
-            type_: ParamType::StarStar(StarStarParamType::ValueType(Type::Any(AnyCause::Todo))),
-            name: None,
-            has_default: false,
-        });
+        params.push(CallableParam::new_anonymous(ParamType::Star(
+            StarParamType::ArbitraryLen(Type::Any(AnyCause::Todo)),
+        )));
+        params.push(CallableParam::new_anonymous(ParamType::StarStar(
+            StarStarParamType::ValueType(Type::Any(AnyCause::Todo)),
+        )));
     }
     Inits {
         __init__: CallableContent::new_simple(
@@ -816,11 +811,9 @@ pub(crate) fn dataclasses_replace<'db>(
                     }
                     params.insert(
                         0,
-                        CallableParam {
-                            type_: ParamType::PositionalOnly(Type::Any(AnyCause::Todo)),
-                            name: None,
-                            has_default: false,
-                        },
+                        CallableParam::new_anonymous(ParamType::PositionalOnly(Type::Any(
+                            AnyCause::Todo,
+                        ))),
                     );
                     replace_func.params = CallableParams::new_simple(params.into());
                     Callable::new(&replace_func, Some(dataclass.class(i_s.db))).execute_internal(
@@ -1122,11 +1115,9 @@ fn order_func(self_: Rc<Dataclass>, i_s: &InferenceState) -> LookupResult {
             None,
             self_.class.link,
             i_s.db.python_state.empty_type_var_likes.clone(),
-            CallableParams::new_simple(Rc::new([CallableParam {
-                type_: ParamType::PositionalOnly(Type::Dataclass(self_)),
-                name: None,
-                has_default: false,
-            }])),
+            CallableParams::new_simple(Rc::new([CallableParam::new_anonymous(
+                ParamType::PositionalOnly(Type::Dataclass(self_)),
+            )])),
             i_s.db.python_state.bool_type(),
         ),
     ))))
@@ -1147,16 +1138,14 @@ fn type_order_func(self_: Rc<Dataclass>, i_s: &InferenceState) -> LookupResult {
             self_.class.link,
             TypeVarLikes::new(Rc::new([TypeVarLike::TypeVar(type_var)])),
             CallableParams::new_simple(Rc::new([
-                CallableParam {
-                    type_: ParamType::PositionalOnly(Type::TypeVar(tv_usage.clone())),
-                    name: Some(DbString::Static("self")),
-                    has_default: false,
-                },
-                CallableParam {
-                    type_: ParamType::PositionalOnly(Type::TypeVar(tv_usage)),
-                    name: Some(DbString::Static("other")),
-                    has_default: false,
-                },
+                CallableParam::new(
+                    DbString::Static("self"),
+                    ParamType::PositionalOnly(Type::TypeVar(tv_usage.clone())),
+                ),
+                CallableParam::new(
+                    DbString::Static("other"),
+                    ParamType::PositionalOnly(Type::TypeVar(tv_usage)),
+                ),
             ])),
             i_s.db.python_state.bool_type(),
         ),

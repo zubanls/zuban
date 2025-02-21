@@ -1533,11 +1533,9 @@ fn find_stmt_typed_dict_types(
 }
 
 pub fn start_namedtuple_params(db: &Database) -> Vec<CallableParam> {
-    vec![CallableParam {
-        type_: ParamType::PositionalOnly(db.python_state.type_of_self.clone()),
-        has_default: false,
-        name: None,
-    }]
+    vec![CallableParam::new_anonymous(ParamType::PositionalOnly(
+        db.python_state.type_of_self.clone(),
+    ))]
 }
 
 fn find_stmt_named_tuple_types(
