@@ -363,7 +363,7 @@ impl<'db> NameBinder<'db> {
                                 IndexingCause::ConstantAssignment
                             }
                         }
-                        _ => IndexingCause::Annotation,
+                        _ => IndexingCause::Other,
                     };
                     match unpacked {
                         AssignmentContent::Normal(targets, _) => {
