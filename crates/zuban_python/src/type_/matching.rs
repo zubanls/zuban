@@ -13,7 +13,7 @@ use crate::{
         Matcher, MismatchReason,
     },
     params::matches_params,
-    type_::{CallableLike, CallableParams, LiteralValue, TupleArgs, TupleUnpack, Variance},
+    type_::{CallableLike, CallableParams, TupleArgs, TupleUnpack, Variance},
     type_helpers::{Class, ClassNodeRef, TypeOrClass},
 };
 

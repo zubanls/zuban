@@ -137,30 +137,43 @@ impl<'a> ResultContext<'a, '_> {
         i_s: &InferenceState,
         mut callable: impl FnMut(TupleContextIterator) -> T,
     ) -> T {
-        self.with_type_if_exists_and_replace_type_var_likes(i_s, |type_| {
-            for t in type_.iter_with_unpacked_unions(i_s.db) {
-                match t {
-                    Type::Tuple(tup) => {
-                        return Some(match &tup.args {
-                            TupleArgs::FixedLen(ts) => {
-                                callable(TupleContextIterator::FixedLen(ts.iter()))
-                            }
-                            TupleArgs::ArbitraryLen(t) => {
-                                callable(TupleContextIterator::ArbitraryLen(t))
-                            }
-                            TupleArgs::WithUnpack(_) => callable(TupleContextIterator::Unknown),
-                        })
+        self.with_type_if_exists_and_replace_type_var_likes(i_s, |t| {
+            t.on_unique_type_in_unpacked_union(
+                i_s.db,
+                &mut Matcher::default(),
+                &|t| {
+                    if matches!(t, Type::Tuple(_)) {
+                        return Some(t.clone());
                     }
-                    // Case x: Iterable[int] = (1, 1)
-                    Type::Class(c) if c.link == i_s.db.python_state.iterable_link() => {
-                        let t = c.class(i_s.db).nth_type_argument(i_s.db, 0);
-                        return Some(callable(TupleContextIterator::ArbitraryLen(&t)));
+                    t.is_simple_super_type_of(i_s, &i_s.db.python_state.bare_tuple_type_with_any())
+                        .bool()
+                        .then_some(t.clone())
+                },
+                |_matcher, wanted_tuple| {
+                    match wanted_tuple {
+                        Type::Tuple(tup) => {
+                            return Some(match &tup.args {
+                                TupleArgs::FixedLen(ts) => {
+                                    callable(TupleContextIterator::FixedLen(ts.iter()))
+                                }
+                                TupleArgs::ArbitraryLen(t) => {
+                                    callable(TupleContextIterator::ArbitraryLen(t))
+                                }
+                                TupleArgs::WithUnpack(_) => callable(TupleContextIterator::Unknown),
+                            })
+                        }
+                        // Case x: Iterable[int] = (1, 1)
+                        Type::Class(c) if c.link == i_s.db.python_state.iterable_link() => {
+                            let t = c.class(i_s.db).nth_type_argument(i_s.db, 0);
+                            return Some(callable(TupleContextIterator::ArbitraryLen(&t)));
+                        }
+                        _ => (),
                     }
-                    _ => (),
-                }
-            }
-            None
+                    None
+                },
+            )
         })
+        .flatten()
         .flatten()
         .unwrap_or_else(|| callable(TupleContextIterator::Unknown))
     }
