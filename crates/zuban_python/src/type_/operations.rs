@@ -106,6 +106,9 @@ impl Type {
                 Some(i_s.db.python_state.typing_named_tuple_class(i_s.db)),
                 nt.type_lookup(i_s, name, None).lookup,
             ),
+            // This should only happen in case some other weird conditions appear where errors
+            // were generated. Simply return that there is no such definition to avoid crashing.
+            Type::TypedDict(_) => (None, LookupResult::None),
             _ => unreachable!("{name:?} {self:?}"),
         }
     }
