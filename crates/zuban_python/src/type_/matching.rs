@@ -632,7 +632,10 @@ impl Type {
                         &Type::Type(Rc::new(bound.clone())),
                         variance,
                     ),
-                    TypeVarKind::Constraints(_) => unimplemented!(),
+                    TypeVarKind::Constraints(_) => {
+                        debug!("TODO TypeVar constraint matching");
+                        Match::new_true()
+                    }
                     TypeVarKind::Unrestricted => Match::new_false(),
                 },
                 Type::Class(c2) => {

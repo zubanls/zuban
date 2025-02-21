@@ -387,3 +387,16 @@ def foo(a: str, b: int = 1, c = 1):
           # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
     z: c  # E: Variable "__main__.c" is not valid as a type \
           # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+
+[case constraint_matching_should_be_ignored_or_work_but_never_crash]
+# Constraint was not implemented at the time of writing this test, here we ensure that it does at least not crash
+from typing import TypeVar, Generic
+T = TypeVar('T', str, bytes)
+def f(x: T):
+    foo(type(pattern))
+
+def foo(o: object): ...
+
+class C(Generic[T]):
+    def __init__(self, pattern: T):
+        foo(type(pattern))
