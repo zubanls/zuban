@@ -365,3 +365,14 @@ def f() -> None:
     from typing import Union
 
     def g() -> Union[int, str]: ...
+
+[case star_import_with_same_overwrite_should_not_crash]
+from m import x, y
+
+[file m.py]
+from n import *
+from n import x, y
+
+[file n.py]
+x = undefined()  # E: Name "undefined" is not defined
+y = 1

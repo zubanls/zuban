@@ -587,9 +587,13 @@ impl FlowAnalysis {
     }
 
     fn remove_key(&self, i_s: &InferenceState, key: &FlowKey) {
-        self.tos_frame()
-            .entries
-            .retain(|entry| !entry.key.equals(i_s.db, key))
+        match self.frames.borrow_mut().last_mut() {
+            Some(tos_frame) => tos_frame
+                .entries
+                .retain(|entry| !entry.key.equals(i_s.db, key)),
+            // We don't have to remove anything if nothing is narrowed.
+            None => (),
+        }
     }
 
     fn remove_key_if_modifies_ancestors(&self, i_s: &InferenceState, key: &FlowKey) {
