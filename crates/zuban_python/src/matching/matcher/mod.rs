@@ -742,7 +742,12 @@ impl<'a> Matcher<'a> {
                 _ => {
                     for arg in args.iter() {
                         let inferred = match arg.infer(&mut ResultContext::Unknown) {
-                            InferredArg::Inferred(inferred) => inferred,
+                            InferredArg::Inferred(inferred) => {
+                                if inferred.is_any(i_s.db) {
+                                    continue;
+                                }
+                                inferred
+                            }
                             // It seems like simply skipping these is fine and it's not necessary
                             // to add an issue here, because I was not able to create a case where
                             // these are needed.

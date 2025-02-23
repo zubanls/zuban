@@ -1564,6 +1564,14 @@ impl<'db: 'a, 'a> Class<'a> {
         }
         false
     }
+
+    pub fn is_dict_with_str_any(&self, db: &Database) -> bool {
+        if self.node_ref != db.python_state.dict_node_ref() {
+            return false;
+        }
+        self.nth_type_argument(db, 0) == db.python_state.str_type()
+            && self.nth_type_argument(db, 1).is_any()
+    }
 }
 
 impl fmt::Debug for Class<'_> {

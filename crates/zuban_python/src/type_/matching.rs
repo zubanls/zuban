@@ -90,6 +90,7 @@ impl Type {
                     variance,
                 )
                 .similar_if_false(),
+                Type::ParamSpecArgs(_) => t1.args.is_any().into(),
                 _ => Match::new_false(),
             },
             Type::Union(union_type1) => {
@@ -703,6 +704,7 @@ impl Type {
             Type::Union(u2) if class1.node_ref == i_s.db.python_state.bool_node_ref() => {
                 (u2.bool_literal_count() == 2 && u2.entries.len() == 2).into()
             }
+            Type::ParamSpecKwargs(_) if class1.is_dict_with_str_any(i_s.db) => Match::new_true(),
             _ => Match::new_false(),
         }
     }
