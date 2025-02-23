@@ -1394,3 +1394,17 @@ def mapmap(m: Callable[[C], D], p: list[tuple[C]]) -> list[D]: ...
 # The implementation is weird and just tries to reproduce a bug
 @curry  # E: Overloaded function implementation does not accept all possible arguments of signature 2
 def mapmap(m: Callable[[], D], p: list[A]) -> list[D]: ...
+
+[case generics_resolving_for_method_access_on_subclass]
+from typing import Generic, TypeVar, Callable, Generator
+
+G = TypeVar("G")
+SendT_contra = TypeVar("SendT_contra", contravariant=True, default=None)
+ReturnT_co = TypeVar("ReturnT_co", covariant=True, default=None)
+
+class Super(Generic[G]):
+    def foo(self) -> G: ...
+
+class Sub(Super[Generator[G, SendT_contra, ReturnT_co]]): ...
+
+reveal_type(Sub.foo)  # N: Revealed type is "def [G, SendT_contra = None, ReturnT_co = None] (self: __main__.Super[typing.Generator[Any, None, None]]) -> typing.Generator[G, SendT_contra = None, ReturnT_co = None]"

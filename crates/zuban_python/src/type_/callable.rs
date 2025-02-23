@@ -965,9 +965,9 @@ pub fn merge_class_type_vars(
     } else if needs_additional_remap {
         // We actually want to retain generics.
         attribute_class.generics = Generics::Self_ {
-            class_ref: attribute_class.node_ref,
+            class_ref: class.node_ref,
         };
-        for type_var in attribute_class.use_cached_type_vars(db).iter() {
+        for type_var in class.use_cached_type_vars(db).iter() {
             type_vars.push(type_var.clone());
         }
     }
