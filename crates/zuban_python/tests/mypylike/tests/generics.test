@@ -1408,3 +1408,24 @@ class Super(Generic[G]):
 class Sub(Super[Generator[G, SendT_contra, ReturnT_co]]): ...
 
 reveal_type(Sub.foo)  # N: Revealed type is "def [G, SendT_contra = None, ReturnT_co = None] (self: __main__.Super[typing.Generator[Any, None, None]]) -> typing.Generator[G, SendT_contra = None, ReturnT_co = None]"
+
+[case param_spec_with_any_passing]
+from typing import TypeVar, Generic, ParamSpec, Callable, Tuple, Dict, Any
+
+_T = TypeVar("_T")
+_P = ParamSpec("_P")
+
+class CallLater(Generic[_T]):
+    def __init__(self, func: Callable[_P, _T], *args: _P.args, **kwargs: _P.kwargs):
+        self._func: Callable[_P, _T] = func
+        self._args: Tuple[Any, ...] = args
+        self._kwargs: Dict[str, Any] = kwargs
+
+    def __call__(self) -> _T:
+        return self._func(*self._args, **self._kwargs)
+
+def foo(x: int) -> None: ...
+
+x: CallLater[None] = CallLater(foo, 1)
+y = CallLater(foo, "")  # E: Argument 2 to "CallLater" has incompatible type "str"; expected "int"
+reveal_type(y())  # N: Revealed type is "None"

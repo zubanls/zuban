@@ -98,17 +98,16 @@ fn calculate_dunder_init_type_vars_and_return<'db: 'a, 'a>(
     // Function type vars need to be calculated, so annotations are used.
     let func_type_vars = func_or_callable.type_vars(i_s);
 
-    let mut match_in_definition = func_or_callable.defined_at();
+    let match_in_definition = class.node_ref.as_link();
     let mut tv_matchers = vec![];
+    if class_matcher_needed {
+        tv_matchers.push(TypeVarMatcher::new(match_in_definition, type_vars.clone()));
+    }
     if !func_type_vars.is_empty() {
         tv_matchers.push(TypeVarMatcher::new(
-            match_in_definition,
+            func_or_callable.defined_at(),
             func_type_vars.clone(),
         ));
-    }
-    if class_matcher_needed {
-        match_in_definition = class.node_ref.as_link();
-        tv_matchers.push(TypeVarMatcher::new(match_in_definition, type_vars.clone()));
     }
     let as_self_type = || class.as_type(i_s.db);
     let matcher = Matcher::new(
