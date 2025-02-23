@@ -26,7 +26,7 @@ use crate::{
         ReplaceSelfInMatcher, ResultContext,
     },
     node_ref::NodeRef,
-    params::{has_overlapping_params, matches_params, Param, WrappedParamType, WrappedStar},
+    params::{matches_params, Param, WrappedParamType, WrappedStar},
     type_::{
         format_callable_params, AnyCause, CallableContent, CallableParams, ClassGenerics, DbString,
         FunctionKind, FunctionOverload, GenericItem, GenericsList, IterCause, Literal, LiteralKind,
@@ -1029,27 +1029,27 @@ impl Inference<'_, '_, '_> {
                                 unmatchable_signature_index: i + k + 2,
                             },
                         );
-                    } else if !c1
-                        .return_type
-                        .is_simple_sub_type_of(i_s, &c2.return_type)
-                        .bool()
-                        && has_overlapping_params(
-                            i_s,
-                            &mut Matcher::default(),
-                            &c1.params,
-                            &c2.params,
-                        )
-                    {
-                        // TODO skipping incompatible return types overload check
                         /*
-                        NodeRef::from_link(i_s.db, c1.defined_at).add_issue(
-                            i_s,
-                            IssueKind::OverloadIncompatibleReturnTypes {
-                                first_signature_index: i + 1,
-                                second_signature_index: i + k + 2,
-                            },
-                        );
-                        */
+                        } else if !c1
+                            .return_type
+                            .is_simple_sub_type_of(i_s, &c2.return_type)
+                            .bool()
+                            && has_overlapping_params(
+                                i_s,
+                                &mut Matcher::default(),
+                                &c1.params,
+                                &c2.params,
+                            )
+                        {
+                            // TODO skipping incompatible return types overload check
+                            NodeRef::from_link(i_s.db, c1.defined_at).add_issue(
+                                i_s,
+                                IssueKind::OverloadIncompatibleReturnTypes {
+                                    first_signature_index: i + 1,
+                                    second_signature_index: i + k + 2,
+                                },
+                            );
+                            */
                     }
                 }
             }
