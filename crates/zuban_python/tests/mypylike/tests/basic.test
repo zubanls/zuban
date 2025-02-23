@@ -622,14 +622,57 @@ reveal_type(issubclass)  # N: Revealed type is "def (Type[Any], Type[Any] | type
 reveal_type(super)  # N: Revealed type is "super"
 
 [case special_typing_access]
+# Some types are handled in a special way, check however that normal
+# reveal_type does not crash.
 import typing
 reveal_type(typing.TypeVar)  # N: Revealed type is "Type[typing.TypeVar]"
 reveal_type(typing.TypeVarTuple)  # N: Revealed type is "Type[typing.TypeVarTuple]"
 reveal_type(typing.ParamSpec)  # N: Revealed type is "Type[typing.ParamSpec]"
--- TODO reveal_type(typing.cast)  # N: Revealed type is ""
+reveal_type(typing.cast)  # N: Revealed type is "object"
 reveal_type(typing.ClassVar)  # N: Revealed type is "typing._SpecialForm"
 reveal_type(typing.reveal_type)  # N: Revealed type is "def [_T] (_T) -> _T"
 reveal_type(typing.NewType)  # N: Revealed type is "Type[typing.NewType]"
+reveal_type(typing.TypeGuard)  # N: Revealed type is "typing._SpecialForm"
+reveal_type(typing.TypeIs)  # N: Revealed type is "typing._SpecialForm"
+reveal_type(typing.Concatenate)  # N: Revealed type is "typing._SpecialForm"
+reveal_type(typing.assert_type)  # N: Revealed type is "object"
+reveal_type(typing.Required)  # N: Revealed type is "typing._SpecialForm"
+reveal_type(typing.NotRequired)  # N: Revealed type is "typing._SpecialForm"
+reveal_type(typing.ReadOnly)  # N: Revealed type is "typing._SpecialForm"
+reveal_type(typing.LiteralString)  # N: Revealed type is "typing._SpecialForm"
+reveal_type(typing.Unpack)  # N: Revealed type is "typing._SpecialForm"
+reveal_type(typing.Never)  # N: Revealed type is "typing._SpecialForm"
+reveal_type(typing.Self)  # N: Revealed type is "typing._SpecialForm"
+reveal_type(typing.Union)  # N: Revealed type is "typing._SpecialForm"
+reveal_type(typing.Generic)  # N: Revealed type is "typing._SpecialForm"
+reveal_type(typing.Protocol)  # N: Revealed type is "typing._SpecialForm"
+reveal_type(typing.Callable)  # N: Revealed type is "typing._SpecialForm"
+reveal_type(typing.NoReturn)  # N: Revealed type is "typing._SpecialForm"
+reveal_type(typing.ClassVar)  # N: Revealed type is "typing._SpecialForm"
+reveal_type(typing.Tuple)  # N: Revealed type is "Type[tuple[Any, ...]]"
+reveal_type(typing.TypeAlias)  # N: Revealed type is "typing._SpecialForm"
+reveal_type(typing.Final)  # N: Revealed type is "typing._SpecialForm"
+reveal_type(typing.Literal)  # N: Revealed type is "typing._SpecialForm"
+reveal_type(typing.Annotated)  # N: Revealed type is "typing._SpecialForm"
+reveal_type(typing.dataclass_transform)  # N: Revealed type is "function"
+reveal_type(typing.TypedDict)  # N: Revealed type is "typing._SpecialForm"
+reveal_type(typing.NamedTuple)  # N: Revealed type is "typing._SpecialForm"
+reveal_type(typing.final)  # N: Revealed type is "def [_T] (f: _T) -> _T"
+
+[case other_special_types_access]
+import collections
+import dataclasses
+import mypy_extensions
+
+reveal_type(collections.namedtuple)  # N: Revealed type is "def (typename: str, field_names: str | typing.Iterable[str], *, rename: bool =, module: str | None =, defaults: typing.Iterable[Any] | None =) -> Type[tuple[Any, ...]]"
+reveal_type(dataclasses.dataclass)  # N: Revealed type is "Overload(def (None) -> def [_T] (Type[_T]) -> Type[_T], def [_T] (Type[_T]) -> Type[_T], def (*, init: bool =, repr: bool =, eq: bool =, order: bool =, unsafe_hash: bool =, frozen: bool =, match_args: bool =, kw_only: bool =, slots: bool =, weakref_slot: bool =) -> def [_T] (Type[_T]) -> Type[_T])"
+reveal_type(mypy_extensions.FlexibleAlias)  # N: Revealed type is "Any"
+reveal_type(mypy_extensions.Arg)  # N: Revealed type is "Overload(def [_T] (type: _T, name: str | None =) -> _T, def (*, name: str | None =) -> Any)"
+reveal_type(mypy_extensions.DefaultArg)  # N: Revealed type is "Overload(def [_T] (type: _T, name: str | None =) -> _T, def (*, name: str | None =) -> Any)"
+reveal_type(mypy_extensions.NamedArg)  # N: Revealed type is "Overload(def [_T] (type: _T, name: str | None =) -> _T, def (*, name: str | None =) -> Any)"
+reveal_type(mypy_extensions.DefaultNamedArg)  # N: Revealed type is "Overload(def [_T] (type: _T, name: str | None =) -> _T, def (*, name: str | None =) -> Any)"
+reveal_type(mypy_extensions.VarArg)  # N: Revealed type is "Overload(def [_T] (type: _T) -> _T, def () -> Any)"
+reveal_type(mypy_extensions.KwArg)  # N: Revealed type is "Overload(def [_T] (type: _T) -> _T, def () -> Any)"
 
 [case type_var_likes_access]
 import typing

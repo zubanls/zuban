@@ -2745,9 +2745,13 @@ pub fn specific_to_type<'db>(
         | Specific::TypingTypeGuard
         | Specific::TypingTypeIs
         | Specific::TypingConcatenateClass
+        | Specific::TypingReadOnly
+        | Specific::TypingTypeAlias
         | Specific::TypingCallable => Cow::Owned(i_s.db.python_state.typing_special_form_type()),
-        // TODO (low prio) this should return the cast overload within typeshed
-        Specific::TypingCast => Cow::Owned(i_s.db.python_state.object_type()),
+        // TODO (low prio) this should return the cast overload/assert_type within typeshed
+        Specific::TypingCast | Specific::AssertTypeFunction => {
+            Cow::Owned(i_s.db.python_state.object_type())
+        }
         Specific::RevealTypeFunction => Cow::Owned(i_s.db.python_state.reveal_type(i_s.db)),
         Specific::None => Cow::Borrowed(&Type::None),
         Specific::TypingNewType => {
