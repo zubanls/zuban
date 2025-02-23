@@ -2751,6 +2751,8 @@ impl<'db> PrimaryTarget<'db> {
             PrimaryContent::GetItem(SliceType::Slice(Slice::new(second)))
         } else if second.is_type(Nonterminal(slices)) {
             PrimaryContent::GetItem(SliceType::Slices(Slices::new(second)))
+        } else if second.is_type(Nonterminal(starred_expression)) {
+            PrimaryContent::GetItem(SliceType::StarredExpression(StarredExpression::new(second)))
         } else {
             debug_assert_eq!(second.as_code(), ")");
             PrimaryContent::Execution(ArgumentsDetails::None)

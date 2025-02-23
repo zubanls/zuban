@@ -877,3 +877,14 @@ def f(foo: list["int"]):
 [file m.py.2]
 def f(foo: list["str"]):
     reveal_type(foo)  # N: Revealed type is "list[str]"
+
+[case special_subscription_assignments]
+from typing import TypeVarTuple, Generic
+
+class C:
+    def __setitem__(self, index, value: int): ...
+x  = C()
+
+x[:1:] = 1
+x[::] = 1
+x[*(1, 2)] = 1
