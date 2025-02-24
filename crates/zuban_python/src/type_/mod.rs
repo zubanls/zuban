@@ -495,6 +495,11 @@ impl Type {
         Self::Class(GenericClass { link, generics })
     }
 
+    #[inline]
+    pub const fn error() -> Self {
+        Self::Any(AnyCause::FromError)
+    }
+
     pub fn from_union_entries(entries: Vec<UnionEntry>) -> Self {
         match entries.len() {
             0 => Type::Never(NeverCause::Other),
@@ -1529,27 +1534,27 @@ impl Type {
                     };
                     Type::new_class(c1.link, new_generics)
                 }
-                _ => Type::Any(AnyCause::FromError),
+                _ => Type::error(),
             },
             Type::Union(u1) => match other {
                 Type::Union(u2) if u1.iter().all(|x| u2.iter().any(|y| x == y)) => {
                     Type::Union(u1.clone())
                 }
-                _ => Type::Any(AnyCause::FromError),
+                _ => Type::error(),
             },
             Type::Tuple(c1) => match other {
                 Type::Tuple(c2) => {
                     Type::Tuple(Tuple::new(c1.args.merge_matching_parts(db, &c2.args)))
                 }
-                _ => Type::Any(AnyCause::FromError),
+                _ => Type::error(),
             },
             Type::Callable(_) => match other {
                 Type::Callable(_) => {
                     Type::Callable(db.python_state.any_callable_from_error.clone())
                 }
-                _ => Type::Any(AnyCause::FromError),
+                _ => Type::error(),
             },
-            _ => Type::Any(AnyCause::FromError),
+            _ => Type::error(),
         }
     }
 

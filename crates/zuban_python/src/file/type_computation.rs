@@ -743,7 +743,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 IssueKind::UseParamSpecKwargs { name: n }
             };
             self.add_issue(from, issue);
-            new_dct(Type::Any(AnyCause::FromError))
+            new_dct(Type::error())
         };
 
         let previous_param_annotation = previous_param.and_then(|param| param.annotation());
@@ -759,8 +759,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 }
                 _ => {
                     // Now that we know we have a **P.kwargs, is there a P.args before it?
-                    let new_t =
-                        Type::Tuple(Tuple::new_arbitrary_length(Type::Any(AnyCause::FromError)));
+                    let new_t = Type::Tuple(Tuple::new_arbitrary_length(Type::error()));
                     let star_annotation = previous_param_annotation
                         .unwrap()
                         .maybe_starred()
@@ -785,7 +784,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 new_class!(
                     self.inference.i_s.db.python_state.dict_node_ref().as_link(),
                     self.inference.i_s.db.python_state.str_type(),
-                    Type::Any(AnyCause::FromError),
+                    Type::error(),
                 )
             }
             TypeContent::ParamSpecAttr { usage, name } => {
@@ -796,7 +795,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             NodeRef::new(self.inference.file, previous_param.name_def().index()),
                             IssueKind::ParamSpecKwParamNotAllowed,
                         );
-                        return new_dct(Type::Any(AnyCause::FromError));
+                        return new_dct(Type::error());
                     }
                 }
                 param_spec_error(&usage, name)
@@ -893,7 +892,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         type_storage_node_ref,
                         IssueKind::ClassVarOnlyInAssignmentsInClass,
                     );
-                    Type::Any(AnyCause::FromError)
+                    Type::error()
                 }
                 TypeContent::SpecialType(
                     special @ (SpecialType::TypeAlias | SpecialType::Final | SpecialType::ClassVar),
@@ -948,7 +947,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             .set_point(Point::new_specific(specific, Locality::Todo));
                         return;
                     } else {
-                        Type::Any(AnyCause::FromError)
+                        Type::error()
                     }
                 }
                 TypeContent::ClassVar(t) => {
@@ -961,7 +960,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             type_storage_node_ref,
                             IssueKind::ClassVarOnlyInAssignmentsInClass,
                         );
-                        Type::Any(AnyCause::FromError)
+                        Type::error()
                     } else if self.has_type_vars_or_self {
                         let i_s = self.inference.i_s;
                         let class = i_s.current_class().unwrap();
@@ -970,7 +969,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                                 type_storage_node_ref,
                                 IssueKind::ClassVarCannotContainTypeVariables,
                             );
-                            Type::Any(AnyCause::FromError)
+                            Type::error()
                         } else if !class.type_vars(i_s).is_empty() && t.has_self_type(i_s.db) {
                             self.add_issue(
                                 type_storage_node_ref,
@@ -1012,7 +1011,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                                 type_storage_node_ref,
                                 IssueKind::FinalInClassBodyCannotDependOnTypeVariables,
                             );
-                            Type::Any(AnyCause::FromError)
+                            Type::error()
                         } else {
                             t
                         }
@@ -1075,7 +1074,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
 
     fn as_type(&mut self, type_: TypeContent, node_ref: NodeRef) -> Type {
         self.as_type_or_error(type_, node_ref)
-            .unwrap_or(Type::Any(AnyCause::FromError))
+            .unwrap_or(Type::error())
     }
 
     fn as_type_or_error(&mut self, type_: TypeContent, node_ref: NodeRef) -> Option<Type> {
@@ -1492,7 +1491,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         actual: t.format_short(self.inference.i_s.db),
                     },
                 );
-                TypeCompTupleUnpack::ArbitraryLen(Box::new(Type::Any(AnyCause::FromError)))
+                TypeCompTupleUnpack::ArbitraryLen(Box::new(Type::error()))
             }
         }
     }
@@ -1560,7 +1559,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     TypeContent::Type(
                         match new_typing_named_tuple(self.inference.i_s, &args, true) {
                             Some(rc) => Type::NamedTuple(rc),
-                            None => Type::Any(AnyCause::FromError),
+                            None => Type::error(),
                         },
                     )
                 }
@@ -1570,7 +1569,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     TypeContent::Type(
                         match new_collections_named_tuple(self.inference.i_s, &args) {
                             Some(rc) => Type::NamedTuple(rc),
-                            None => Type::Any(AnyCause::FromError),
+                            None => Type::error(),
                         },
                     )
                 }
@@ -1641,7 +1640,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                                     "Self type cannot have type arguments",
                                 )),
                             );
-                            TypeContent::Type(Type::Any(AnyCause::FromError))
+                            TypeContent::Type(Type::error())
                         }
                         SpecialType::Final => self.compute_type_get_item_on_final(s),
                         SpecialType::Unpack => self.compute_type_get_item_on_unpack(s),
@@ -2809,7 +2808,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 slice_type.as_node_ref(),
                 IssueKind::CannotContainType { name },
             );
-            return ret(Type::Any(AnyCause::FromError));
+            return ret(Type::error());
         }
         ret(t)
     }
@@ -4076,7 +4075,7 @@ impl<'db: 'x, 'file, 'x> Inference<'db, 'file, '_> {
                             had_error = true;
                         }
                         if had_error {
-                            alias.set_valid(Type::Any(AnyCause::FromError), false);
+                            alias.set_valid(Type::error(), false);
                         } else {
                             alias.set_valid(type_, is_recursive_alias);
                         }
@@ -4339,7 +4338,7 @@ impl<'db: 'x, 'file, 'x> Inference<'db, 'file, '_> {
                                 "Star expressions are not allowed within a type comment".into(),
                             ),
                         );
-                        return Type::Any(AnyCause::FromError);
+                        return Type::error();
                     }
                     StarLikeExpression::Expression(expr) => expr,
                     StarLikeExpression::StarExpression(_) => unreachable!(),
@@ -4557,7 +4556,7 @@ impl<'db: 'x, 'file, 'x> Inference<'db, 'file, '_> {
         match comp.compute_type(expr) {
             TypeContent::InvalidVariable(_) => {
                 node_ref.add_issue(self.i_s, IssueKind::NewTypeInvalidType);
-                Type::Any(AnyCause::FromError)
+                Type::error()
             }
             t => {
                 let t = comp.as_type(t, node_ref);
@@ -4659,7 +4658,7 @@ fn check_for_and_replace_type_type_in_finished_alias(
     {
         alias_origin.add_issue(i_s, IssueKind::CannotContainType { name: "Type" });
         let alias = TypeAlias::new(alias.type_vars.clone(), alias.location, alias.name);
-        alias.set_valid(Type::Any(AnyCause::FromError), false);
+        alias.set_valid(Type::error(), false);
         save_alias(alias_origin, alias)
     }
 }
@@ -4722,7 +4721,7 @@ impl<'a, I: Clone + Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
         if let Some((from, unpack)) = self.current_unpack.as_mut() {
             let cannot_split_type_var_tuple = || {
                 type_computation.add_issue(*from, IssueKind::TypeVarTupleCannotBeSplit);
-                Some((*from, Type::Any(AnyCause::FromError)))
+                Some((*from, Type::error()))
             };
             match unpack {
                 TypeCompTupleUnpack::TypeVarTuple(_) => return cannot_split_type_var_tuple(),
@@ -4765,7 +4764,7 @@ impl<'a, I: Clone + Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
                         IssueKind::UnpackOnlyValidInVariadicPosition,
                     );
                     self.current_unpack = None;
-                    return Some((s.as_node_ref(), Type::Any(AnyCause::FromError)));
+                    return Some((s.as_node_ref(), Type::error()));
                 }
                 self.current_unpack = Some((s.as_node_ref(), u));
                 self.next_type_argument(type_computation, has_type_var_tuple)
@@ -4799,7 +4798,7 @@ impl<'a, I: Clone + Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
     ) -> Option<(NodeRef<'a>, Result<Type, SliceOrSimple>)> {
         let cannot_split_type_var_tuple = |from: NodeRef| {
             type_computation.add_issue(from, IssueKind::TypeVarTupleCannotBeSplit);
-            Type::Any(AnyCause::FromError)
+            Type::error()
         };
 
         let remove_next_back_from_with_unpack =

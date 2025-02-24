@@ -14,7 +14,7 @@ use crate::{
     matching::ResultContext,
     new_class,
     node_ref::NodeRef,
-    type_::{AnyCause, Tuple, Type},
+    type_::{Tuple, Type},
 };
 
 #[derive(Debug, Copy, Clone)]
@@ -176,7 +176,7 @@ impl<'file> Slice<'file> {
                 }) {
                     NodeRef::new(self.file, expr.index())
                         .add_issue(i_s, IssueKind::InvalidSliceIndex);
-                    Type::Any(AnyCause::FromError)
+                    Type::error()
                 } else {
                     t.into_owned()
                 }

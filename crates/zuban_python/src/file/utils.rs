@@ -399,10 +399,10 @@ impl<'db> Inference<'db, '_, '_> {
                     } else {
                         self.add_unpacked_dict_member_issue(i, starred, mapping, &key_t, &value_t);
                         if key_t.is_never() {
-                            key_t = Type::Any(AnyCause::FromError)
+                            key_t = Type::error()
                         }
                         if value_t.is_never() {
-                            value_t = Type::Any(AnyCause::FromError)
+                            value_t = Type::error()
                         }
                     }
                 }

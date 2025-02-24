@@ -1037,7 +1037,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                             i_s,
                             IssueKind::InvalidPropertySetterSignature,
                         );
-                        Type::Any(AnyCause::FromError)
+                        Type::error()
                     };
                     PropertyModifier::Setter(Rc::new(PropertySetter::OtherType(setter)))
                 }

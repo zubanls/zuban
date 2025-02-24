@@ -146,7 +146,7 @@ impl<'db: 'slf, 'slf> Inferred {
     }
 
     pub fn new_any_from_error() -> Self {
-        Self::from_type(Type::Any(AnyCause::FromError))
+        Self::from_type(Type::error())
     }
 
     pub fn new_any(cause: AnyCause) -> Self {
@@ -2690,8 +2690,8 @@ pub fn specific_to_type<'db>(
             definition.add_need_type_annotation_issue(i_s, specific);
             Cow::Owned(new_class!(
                 i_s.db.python_state.defaultdict_link(),
-                Type::Any(AnyCause::FromError),
-                Type::Any(AnyCause::FromError),
+                Type::error(),
+                Type::error(),
             ))
         }
         Specific::PartialDefaultDict => {
@@ -2699,7 +2699,7 @@ pub fn specific_to_type<'db>(
             let value_node_ref = definition.add_to_node_index(NAME_DEF_TO_DEFAULTDICT_DIFF);
             Cow::Owned(new_class!(
                 i_s.db.python_state.defaultdict_link(),
-                Type::Any(AnyCause::FromError),
+                Type::error(),
                 value_node_ref.expect_complex_type().clone(),
             ))
         }

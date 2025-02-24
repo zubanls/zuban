@@ -27,7 +27,7 @@ use crate::{
 
 thread_local! {
     static ARBITRARY_TUPLE: Rc<Tuple> = Tuple::new_arbitrary_length(Type::Any(AnyCause::Todo));
-    static ARBITRARY_TUPLE_FROM_ERROR: Rc<Tuple> = Tuple::new_arbitrary_length(Type::Any(AnyCause::FromError));
+    static ARBITRARY_TUPLE_FROM_ERROR: Rc<Tuple> = Tuple::new_arbitrary_length(Type::error());
 }
 
 #[derive(Debug, Clone, Eq)]

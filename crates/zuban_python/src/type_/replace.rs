@@ -53,7 +53,7 @@ impl Type {
             #[inline]
             fn replace_type(&mut self, t: &Type) -> Option<Type> {
                 match t {
-                    Type::Never(NeverCause::Inference) => Some(Type::Any(AnyCause::FromError)),
+                    Type::Never(NeverCause::Inference) => Some(Type::error()),
                     _ => None,
                 }
             }

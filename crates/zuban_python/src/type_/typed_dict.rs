@@ -7,9 +7,9 @@ use std::{
 use parsa_python_cst::{AtomContent, DictElement};
 
 use super::{
-    utils::method_with_fallback, AnyCause, CallableContent, CallableParam, CallableParams,
-    CustomBehavior, DbString, FormatStyle, GenericsList, LookupResult, NeverCause, ParamType,
-    RecursiveType, StringSlice, Type, TypeVarLikeUsage, TypeVarLikes,
+    utils::method_with_fallback, CallableContent, CallableParam, CallableParams, CustomBehavior,
+    DbString, FormatStyle, GenericsList, LookupResult, NeverCause, ParamType, RecursiveType,
+    StringSlice, Type, TypeVarLikeUsage, TypeVarLikes,
 };
 use crate::{
     arguments::{ArgKind, Args, InferredArg},
@@ -783,7 +783,7 @@ fn typed_dict_setdefault_internal<'db>(
                         key: key.into(),
                     },
                 );
-                Type::Any(AnyCause::FromError)
+                Type::error()
             }
         }))
     });
@@ -870,7 +870,7 @@ fn typed_dict_get_or_pop_internal<'db>(
                         key: key.into(),
                     },
                 );
-                Type::Any(AnyCause::FromError)
+                Type::error()
             } else {
                 i_s.db.python_state.object_type()
             }
