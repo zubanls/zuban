@@ -11,8 +11,8 @@ use crate::{
     matching::{CouldBeALiteral, Matcher, ResultContext},
     node_ref::NodeRef,
     type_::{
-        AnyCause, ClassGenerics, NewType, ParamSpec, Type, TypeVar, TypeVarKind, TypeVarLike,
-        TypeVarName, TypeVarTuple, TypedDictGenerics, Variance,
+        AnyCause, ClassGenerics, NewType, ParamSpec, Type, TypeInTypeVar, TypeVar, TypeVarKind,
+        TypeVarLike, TypeVarName, TypeVarTuple, TypedDictGenerics, Variance,
     },
     utils::join_with_commas,
 };
@@ -414,7 +414,7 @@ fn maybe_type_var(
         }
         let kind = if let Some(bound) = bound {
             debug_assert!(constraints.is_empty());
-            TypeVarKind::Bound(bound)
+            TypeVarKind::Bound(TypeInTypeVar::new_known(bound))
         } else if !constraints.is_empty() {
             TypeVarKind::Constraints(constraints.into())
         } else {

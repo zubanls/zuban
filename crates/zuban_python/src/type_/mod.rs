@@ -56,9 +56,10 @@ pub(crate) use self::{
     replace::{replace_param_spec, ReplaceSelf},
     tuple::{execute_tuple_class, MaybeUnpackGatherer, Tuple, TupleArgs, TupleUnpack, WithUnpack},
     type_var_likes::{
-        CallableWithParent, ParamSpec, ParamSpecArg, ParamSpecTypeVars, ParamSpecUsage, TypeVar,
-        TypeVarIndex, TypeVarKind, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager,
-        TypeVarName, TypeVarTuple, TypeVarTupleUsage, TypeVarUsage, Variance,
+        CallableWithParent, ParamSpec, ParamSpecArg, ParamSpecTypeVars, ParamSpecUsage,
+        TypeInTypeVar, TypeVar, TypeVarIndex, TypeVarKind, TypeVarLike, TypeVarLikeUsage,
+        TypeVarLikes, TypeVarManager, TypeVarName, TypeVarTuple, TypeVarTupleUsage, TypeVarUsage,
+        Variance,
     },
     typed_dict::{
         check_typed_dict_call, infer_typed_dict_item, infer_typed_dict_total_argument,

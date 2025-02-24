@@ -146,7 +146,7 @@ impl Type {
             }
             t @ Type::TypeVar(usage) => match &usage.type_var.kind {
                 TypeVarKind::Bound(bound) => {
-                    if let Type::Class(c) = bound {
+                    if let Type::Class(c) = &**bound {
                         let inst = Instance::new(c.class(i_s.db), None);
                         let l = inst.lookup(
                             i_s,
@@ -515,7 +515,7 @@ impl Type {
                 }
             }),
             Type::TypeVar(tv) => match &tv.type_var.kind {
-                TypeVarKind::Bound(bound) => match bound {
+                TypeVarKind::Bound(bound) => match &**bound {
                     Type::Class(c) => Instance::new(c.class(i_s.db), from_inferred).get_item(
                         i_s,
                         slice_type,
@@ -852,7 +852,7 @@ pub(crate) fn attribute_access_of_type(
             return;
         }
         Type::TypeVar(t) => match &t.type_var.kind {
-            TypeVarKind::Bound(bound) => match bound {
+            TypeVarKind::Bound(bound) => match &**bound {
                 Type::Class(c) => c.class(i_s.db).lookup(
                     i_s,
                     name,
@@ -860,7 +860,7 @@ pub(crate) fn attribute_access_of_type(
                         .with_kind(kind)
                         .with_as_type_type(&|| Type::Type(in_type.clone())),
                 ),
-                _ => {
+                t => {
                     return attribute_access_of_type(
                         i_s,
                         add_issue,
@@ -868,7 +868,7 @@ pub(crate) fn attribute_access_of_type(
                         kind,
                         result_context,
                         callable,
-                        Rc::new(bound.clone()),
+                        Rc::new(t.clone()),
                     )
                 }
             },

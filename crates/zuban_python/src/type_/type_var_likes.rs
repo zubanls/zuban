@@ -4,6 +4,8 @@ use std::{
     rc::Rc,
 };
 
+use parsa_python_cst::NodeIndex;
+
 use super::{
     AnyCause, CallableContent, CallableParams, FormatStyle, GenericItem, GenericsList, NeverCause,
     TupleArgs, TupleUnpack, Type, TypeArgs, WithUnpack,
@@ -544,9 +546,29 @@ pub enum TypeVarName {
 }
 
 #[derive(Debug, Clone)]
+pub struct TypeInTypeVar {
+    _node: Option<NodeIndex>,
+    pub t: Type,
+}
+
+impl TypeInTypeVar {
+    pub fn new_known(t: Type) -> Self {
+        Self { _node: None, t }
+    }
+}
+
+impl std::ops::Deref for TypeInTypeVar {
+    type Target = Type;
+
+    fn deref(&self) -> &Self::Target {
+        &self.t
+    }
+}
+
+#[derive(Debug, Clone)]
 pub enum TypeVarKind {
     Unrestricted,
-    Bound(Type),
+    Bound(TypeInTypeVar),
     Constraints(Box<[Type]>),
 }
 

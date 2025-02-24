@@ -630,7 +630,7 @@ impl Type {
                         i_s,
                         matcher,
                         class1,
-                        &Type::Type(Rc::new(bound.clone())),
+                        &Type::Type(Rc::new((**bound).clone())),
                         variance,
                     ),
                     TypeVarKind::Constraints(_) => {

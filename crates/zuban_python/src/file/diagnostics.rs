@@ -1124,13 +1124,13 @@ impl Inference<'_, '_, '_> {
                         match original.as_ref() {
                             Type::TypeVar(tv) => {
                                 if let TypeVarKind::Bound(b) = &tv.type_var.kind {
-                                    original = Cow::Owned(b.clone());
+                                    original = Cow::Owned((**b).clone());
                                 }
                             }
                             Type::Type(t) => {
                                 if let Type::TypeVar(tv) = t.as_ref() {
                                     if let TypeVarKind::Bound(b) = &tv.type_var.kind {
-                                        original = Cow::Owned(Type::Type(Rc::new(b.clone())));
+                                        original = Cow::Owned(Type::Type(Rc::new((**b).clone())));
                                     }
                                 }
                             }
