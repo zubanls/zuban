@@ -146,7 +146,7 @@ impl<'db: 'slf, 'slf> Inferred {
     }
 
     pub fn new_any_from_error() -> Self {
-        Self::from_type(Type::error())
+        Self::from_type(Type::ERROR)
     }
 
     pub fn new_any(cause: AnyCause) -> Self {
@@ -2620,9 +2620,7 @@ pub fn specific_to_type<'db>(
     specific: Specific,
 ) -> Cow<'db, Type> {
     match specific {
-        Specific::AnyDueToError | Specific::InvalidTypeDefinition => {
-            Cow::Borrowed(&Type::Any(AnyCause::FromError))
-        }
+        Specific::AnyDueToError | Specific::InvalidTypeDefinition => Cow::Borrowed(&Type::ERROR),
         Specific::ModuleNotFound => Cow::Borrowed(&Type::Any(AnyCause::ModuleNotFound)),
         Specific::Cycle => Cow::Borrowed(&Type::Any(AnyCause::Todo)),
         Specific::IntLiteral => Cow::Owned(Type::Literal(DbLiteral {
@@ -2690,8 +2688,8 @@ pub fn specific_to_type<'db>(
             definition.add_need_type_annotation_issue(i_s, specific);
             Cow::Owned(new_class!(
                 i_s.db.python_state.defaultdict_link(),
-                Type::error(),
-                Type::error(),
+                Type::ERROR,
+                Type::ERROR,
             ))
         }
         Specific::PartialDefaultDict => {
@@ -2699,7 +2697,7 @@ pub fn specific_to_type<'db>(
             let value_node_ref = definition.add_to_node_index(NAME_DEF_TO_DEFAULTDICT_DIFF);
             Cow::Owned(new_class!(
                 i_s.db.python_state.defaultdict_link(),
-                Type::error(),
+                Type::ERROR,
                 value_node_ref.expect_complex_type().clone(),
             ))
         }

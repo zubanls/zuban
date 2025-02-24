@@ -884,7 +884,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     .as_type(self.i_s)
             } else {
                 annotation_ref.add_issue(self.i_s, IssueKind::FinalWithoutInitializerAndType);
-                Type::error()
+                Type::ERROR
             };
             if annotation_ref.point().specific() == Specific::AnnotationOrTypeCommentClassVar {
                 t = t.avoid_implicit_literal(self.i_s.db);
@@ -910,9 +910,9 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             // In case we do not know the generator return, just return an Any version of it. The
             // function type will be checked in a different place.
             .unwrap_or(GeneratorType {
-                yield_type: Type::error(),
-                send_type: Some(Type::error()),
-                return_type: Some(Type::error()),
+                yield_type: Type::ERROR,
+                send_type: Some(Type::ERROR),
+                return_type: Some(Type::ERROR),
             });
 
         match yield_expr.unpack() {
@@ -2144,7 +2144,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 // This is always invalid, just set it to Any. Issues were added before.
                 self.assign_targets(
                     starred.as_target(),
-                    Inferred::new_list_of(self.i_s.db, Type::error()),
+                    Inferred::new_list_of(self.i_s.db, Type::ERROR),
                     value_node_ref,
                     assign_kind,
                 );
@@ -4574,7 +4574,7 @@ pub fn instantiate_except(i_s: &InferenceState, t: &Type) -> Type {
         // No need to check these here, this is done when calculating diagnostics
         Type::Type(t) => match t.as_ref() {
             inner @ Type::Class(..) => inner.clone(),
-            _ => Type::error(),
+            _ => Type::ERROR,
         },
         Type::Any(cause) => Type::Any(*cause),
         Type::Tuple(content) => Inferred::gather_simplified_union(i_s, |add| match &content.args {
@@ -4610,7 +4610,7 @@ pub fn instantiate_except(i_s: &InferenceState, t: &Type) -> Type {
                 })
                 .collect(),
         )),
-        _ => Type::error(),
+        _ => Type::ERROR,
     }
 }
 
@@ -4657,14 +4657,14 @@ fn gather_except_star(i_s: &InferenceState, t: &Type) -> Type {
                 let cls = c.class(i_s.db);
                 if cls.is_base_exception_group(i_s) {
                     // Diagnostics are calculated when calculating diagnostics, not here.
-                    Type::error()
+                    Type::ERROR
                 } else if cls.is_base_exception(i_s) {
                     inner.clone()
                 } else {
-                    Type::error()
+                    Type::ERROR
                 }
             }
-            _ => Type::error(),
+            _ => Type::ERROR,
         },
         Type::Any(cause) => Type::Any(*cause),
         Type::Tuple(content) => Inferred::gather_simplified_union(i_s, |add| match &content.args {
@@ -4688,7 +4688,7 @@ fn gather_except_star(i_s: &InferenceState, t: &Type) -> Type {
                 })
                 .collect(),
         )),
-        _ => Type::error(),
+        _ => Type::ERROR,
     }
 }
 
@@ -4699,7 +4699,7 @@ fn get_generator_return_type(db: &Database, had_issue: &impl Fn(), t: &Type) -> 
                 c.class(db).nth_type_argument(db, 2)
             } else {
                 had_issue();
-                Type::error()
+                Type::ERROR
             }
         }
         Type::Any(cause) => Type::Any(*cause),
@@ -4715,7 +4715,7 @@ fn get_generator_return_type(db: &Database, had_issue: &impl Fn(), t: &Type) -> 
         )),
         _ => {
             had_issue();
-            Type::error()
+            Type::ERROR
         }
     }
 }

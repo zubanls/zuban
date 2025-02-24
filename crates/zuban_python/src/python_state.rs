@@ -359,7 +359,7 @@ impl PythonState {
                 Tuple::new_arbitrary_length_with_any(),
             ))),
             list_of_any: Type::None, // Will be set later
-            any_or_none: Type::error().union(Type::None),
+            any_or_none: Type::ERROR.union(Type::None),
             dict_of_any: Type::None,   // Will be set later
             set_of_any: Type::None,    // Will be set later
             list_of_never: Type::None, // Will be set later
@@ -736,9 +736,9 @@ impl PythonState {
         let s = &mut db.python_state;
         let object_type = s.object_type();
         s.type_of_object = Type::Type(Rc::new(object_type));
-        s.list_of_any = new_class!(s.list_node_ref().as_link(), Type::error());
-        s.dict_of_any = new_class!(s.dict_node_ref().as_link(), Type::error(), Type::error());
-        s.set_of_any = new_class!(s.set_node_ref().as_link(), Type::error());
+        s.list_of_any = new_class!(s.list_node_ref().as_link(), Type::ERROR);
+        s.dict_of_any = new_class!(s.dict_node_ref().as_link(), Type::ERROR, Type::ERROR);
+        s.set_of_any = new_class!(s.set_node_ref().as_link(), Type::ERROR);
         s.list_of_never = new_class!(
             s.list_node_ref().as_link(),
             Type::Never(NeverCause::Inference)

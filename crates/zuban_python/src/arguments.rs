@@ -895,7 +895,7 @@ impl<'db: 'a, 'a> Iterator for ArgIteratorBase<'db, 'a> {
                                         .into(),
                                     ),
                                 );
-                                Type::error()
+                                Type::ERROR
                             };
                             return Some(BaseArgReturn::ArgsKwargs(ArgsKwargsIterator::Kwargs {
                                 inferred_value: Inferred::from_type(value),

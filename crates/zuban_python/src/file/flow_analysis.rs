@@ -1827,7 +1827,7 @@ impl Inference<'_, '_, '_> {
                 self.i_s,
                 Entry {
                     key: self.key_from_name_def(name_def),
-                    type_: Some(Type::error()),
+                    type_: Some(Type::ERROR),
                     modifies_ancestors: true,
                     deleted: true,
                     widens: false,
@@ -2771,7 +2771,7 @@ impl Inference<'_, '_, '_> {
                     with,
                 },
             );
-            Some(Type::error())
+            Some(Type::ERROR)
         };
         match part {
             ExpressionPart::BitwiseOr(disjunction) => {
@@ -2834,7 +2834,7 @@ impl Inference<'_, '_, '_> {
                             part.index(),
                             IssueKind::CannotUseIsinstanceWithParametrizedGenerics,
                         );
-                        return Some(Type::error());
+                        return Some(Type::ERROR);
                     }
                 }
                 Some((**t).clone())

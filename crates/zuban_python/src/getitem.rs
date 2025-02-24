@@ -176,7 +176,7 @@ impl<'file> Slice<'file> {
                 }) {
                     NodeRef::new(self.file, expr.index())
                         .add_issue(i_s, IssueKind::InvalidSliceIndex);
-                    Type::error()
+                    Type::ERROR
                 } else {
                     t.into_owned()
                 }

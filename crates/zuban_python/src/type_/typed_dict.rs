@@ -783,7 +783,7 @@ fn typed_dict_setdefault_internal<'db>(
                         key: key.into(),
                     },
                 );
-                Type::error()
+                Type::ERROR
             }
         }))
     });
@@ -870,7 +870,7 @@ fn typed_dict_get_or_pop_internal<'db>(
                         key: key.into(),
                     },
                 );
-                Type::error()
+                Type::ERROR
             } else {
                 i_s.db.python_state.object_type()
             }
