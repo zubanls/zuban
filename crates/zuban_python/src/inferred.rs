@@ -667,6 +667,11 @@ impl<'db: 'slf, 'slf> Inferred {
                 _ => {
                     file.complex_points
                         .insert(&file.points, index, complex, Locality::Todo);
+                    if let ComplexPoint::TypeVarLike(tvl) =
+                        file.complex_points.previously_inserted()
+                    {
+                        tvl.ensure_calculated_types(i_s)
+                    }
                     return Self::new_saved(file, index);
                 }
             },

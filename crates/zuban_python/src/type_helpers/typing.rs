@@ -371,12 +371,7 @@ fn maybe_type_var(
                             node_ref.add_issue(i_s, IssueKind::TypeVarValuesAndUpperBound);
                             return None;
                         }
-                        bound = Some(
-                            node_ref
-                                .file
-                                .inference(i_s)
-                                .compute_type_var_bound(expression)?,
-                        );
+                        bound = Some(expression.index());
                     }
                     "default" => {
                         if let Some(t) = node_ref
@@ -414,7 +409,7 @@ fn maybe_type_var(
         }
         let kind = if let Some(bound) = bound {
             debug_assert!(constraints.is_empty());
-            TypeVarKind::Bound(TypeInTypeVar::new_known(bound))
+            TypeVarKind::Bound(TypeInTypeVar::new_lazy(bound))
         } else if !constraints.is_empty() {
             TypeVarKind::Constraints(constraints.into())
         } else {

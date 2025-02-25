@@ -1,4 +1,5 @@
 use std::{
+    cell::OnceCell,
     hash::{Hash, Hasher},
     ops::AddAssign,
     rc::Rc,
@@ -12,7 +13,9 @@ use super::{
 };
 use crate::{
     database::{ComplexPoint, Database, PointLink},
+    diagnostics::IssueKind,
     format_data::{FormatData, ParamsStyle},
+    inference_state::InferenceState,
     node_ref::NodeRef,
     utils::join_with_commas,
 };
@@ -516,6 +519,13 @@ impl TypeVarLike {
             },
         }
     }
+
+    pub fn ensure_calculated_types(&self, i_s: &InferenceState) {
+        match self {
+            Self::TypeVar(tv) => tv.ensure_calculated_types(i_s),
+            _ => (),
+        }
+    }
 }
 
 impl std::cmp::PartialEq for TypeVarLike {
@@ -547,13 +557,23 @@ pub enum TypeVarName {
 
 #[derive(Debug, Clone)]
 pub struct TypeInTypeVar {
-    _node: Option<NodeIndex>,
-    pub t: Type,
+    node: Option<NodeIndex>,
+    pub t: OnceCell<Type>,
 }
 
 impl TypeInTypeVar {
+    pub fn new_lazy(node: NodeIndex) -> Self {
+        Self {
+            node: Some(node),
+            t: OnceCell::new(),
+        }
+    }
+
     pub fn new_known(t: Type) -> Self {
-        Self { _node: None, t }
+        Self {
+            node: None,
+            t: OnceCell::from(t),
+        }
     }
 }
 
@@ -561,7 +581,10 @@ impl std::ops::Deref for TypeInTypeVar {
     type Target = Type;
 
     fn deref(&self) -> &Self::Target {
-        &self.t
+        &self.t.get().unwrap_or_else(|| {
+            tracing::error!("Somehow a TypeVarType did not finish calculating");
+            &Type::Any(AnyCause::FromError)
+        })
     }
 }
 
@@ -595,6 +618,32 @@ impl TypeVar {
                 NodeRef::from_link(db, link).maybe_str().unwrap().content()
             }
             TypeVarName::Self_ => "Self",
+        }
+    }
+
+    pub fn ensure_calculated_types(&self, i_s: &InferenceState) {
+        match &self.kind {
+            TypeVarKind::Bound(bound) => {
+                if let Some(node) = bound.node {
+                    let TypeVarName::PointLink(link) = self.name_string else {
+                        unreachable!()
+                    };
+                    let node_ref = NodeRef::from_link(i_s.db, PointLink::new(link.file, node));
+                    let t = node_ref
+                        .file
+                        .inference(i_s)
+                        .compute_type_var_bound(node_ref.as_expression())
+                        .unwrap_or(Type::ERROR);
+
+                    if let Some(default) = &self.default {
+                        if !default.is_simple_sub_type_of(i_s, &t).bool() {
+                            node_ref.add_issue(i_s, IssueKind::TypeVarDefaultMustBeASubtypeOfBound);
+                        }
+                    }
+                    bound.t.set(t).unwrap();
+                }
+            }
+            _ => (),
         }
     }
 
