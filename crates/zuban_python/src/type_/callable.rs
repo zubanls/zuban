@@ -645,7 +645,7 @@ impl CallableContent {
         } else {
             let replaced = type_.replace_type_var_likes(db, &mut |usage| {
                 if usage.in_definition() == self.defined_at {
-                    Some(usage.as_any_generic_item())
+                    Some(usage.as_any_generic_item(db))
                 } else {
                     None
                 }

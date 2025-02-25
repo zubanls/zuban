@@ -170,7 +170,7 @@ impl<'db: 'a, 'a> Class<'a> {
             }
             let type_var_likes = self.type_vars(i_s);
             return ClassExecutionResult::ClassGenerics(match type_var_likes.is_empty() {
-                false => ClassGenerics::List(type_var_likes.as_any_generic_list()),
+                false => ClassGenerics::List(type_var_likes.as_any_generic_list(i_s.db)),
                 true => ClassGenerics::None,
             });
         };
@@ -1115,7 +1115,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 Generics::NotDefinedYet { .. } => ClassGenerics::List(GenericsList::new_generics(
                     type_var_likes
                         .iter()
-                        .map(|t| t.as_any_generic_item())
+                        .map(|t| t.as_any_generic_item(db))
                         .collect(),
                 )),
                 Generics::ExpressionWithClassType(file, expr) => {

@@ -16,6 +16,7 @@ use crate::{
     diagnostics::IssueKind,
     format_data::{FormatData, ParamsStyle},
     inference_state::InferenceState,
+    matching::Matcher,
     node_ref::NodeRef,
     utils::join_with_commas,
 };
@@ -397,8 +398,8 @@ impl TypeVarLikes {
             })
     }
 
-    pub fn as_any_generic_list(&self) -> GenericsList {
-        GenericsList::new_generics(self.iter().map(|tv| tv.as_any_generic_item()).collect())
+    pub fn as_any_generic_list(&self, db: &Database) -> GenericsList {
+        GenericsList::new_generics(self.iter().map(|tv| tv.as_any_generic_item(db)).collect())
     }
 
     pub fn iter(&self) -> std::slice::Iter<TypeVarLike> {
@@ -479,9 +480,9 @@ impl TypeVarLike {
         }
     }
 
-    pub fn as_any_generic_item(&self) -> GenericItem {
+    pub fn as_any_generic_item(&self, db: &Database) -> GenericItem {
         match self {
-            TypeVarLike::TypeVar(tv) => match &tv.default {
+            TypeVarLike::TypeVar(tv) => match tv.default(db) {
                 Some(default) => GenericItem::TypeArg(default.clone()),
                 None => GenericItem::TypeArg(Type::Any(AnyCause::Todo)),
             },
@@ -500,9 +501,9 @@ impl TypeVarLike {
         }
     }
 
-    pub fn as_never_generic_item(&self, cause: NeverCause) -> GenericItem {
+    pub fn as_never_generic_item(&self, db: &Database, cause: NeverCause) -> GenericItem {
         match self {
-            TypeVarLike::TypeVar(tv) => match &tv.default {
+            TypeVarLike::TypeVar(tv) => match tv.default(db) {
                 Some(default) => GenericItem::TypeArg(default.clone()),
                 None => GenericItem::TypeArg(Type::Never(cause)),
             },
@@ -524,6 +525,7 @@ impl TypeVarLike {
         match self {
             Self::TypeVar(tv) => {
                 tv.kind(db);
+                tv.default(db);
             }
             _ => (),
         }
@@ -623,7 +625,7 @@ pub enum TypeVarKind<'a, I: Iterator<Item = &'a Type> + Clone> {
 pub struct TypeVar {
     pub name_string: TypeVarName,
     kind: TypeVarKindInfos,
-    pub default: Option<Type>,
+    default: Option<TypeInTypeVar>,
     pub variance: Variance,
 }
 
@@ -639,13 +641,13 @@ impl TypeVar {
     pub fn new(
         name_link: PointLink,
         kind: TypeVarKindInfos,
-        default: Option<Type>,
+        default: Option<NodeIndex>,
         variance: Variance,
     ) -> Self {
         Self {
             name_string: TypeVarName::PointLink(name_link),
             kind,
-            default,
+            default: default.map(TypeInTypeVar::new_lazy),
             variance,
         }
     }
@@ -673,22 +675,55 @@ impl TypeVar {
             TypeVarKindInfos::Unrestricted => TypeVarKind::Unrestricted,
             TypeVarKindInfos::Bound(bound) => {
                 TypeVarKind::Bound(bound.get_type(db, &self.name_string, |i_s, node_ref| {
-                    let t = node_ref
+                    node_ref
                         .file
                         .inference(i_s)
-                        .compute_type_var_bound(node_ref.as_expression());
-                    if let Some(default) = &self.default {
-                        if !default.is_simple_sub_type_of(i_s, &t).bool() {
-                            node_ref.add_issue(i_s, IssueKind::TypeVarDefaultMustBeASubtypeOfBound);
-                        }
-                    }
-                    t
+                        .compute_type_var_bound(node_ref.as_expression())
                 }))
             }
             TypeVarKindInfos::Constraints(constraints) => {
                 TypeVarKind::Constraints(constraints.iter())
             }
         }
+    }
+
+    pub fn default(&self, db: &Database) -> Option<&Type> {
+        let default = self.default.as_ref()?;
+        Some(default.get_type(db, &self.name_string, |i_s, node_ref| {
+            let default = if let Some(t) = node_ref
+                .file
+                .inference(i_s)
+                .compute_type_var_default(node_ref.as_expression())
+            {
+                t
+            } else {
+                node_ref.add_issue(i_s, IssueKind::TypeVarInvalidDefault);
+                Type::ERROR
+            };
+            match self.kind(db) {
+                TypeVarKind::Unrestricted => (),
+                TypeVarKind::Bound(bound) => {
+                    if !default.is_simple_sub_type_of(i_s, bound).bool() {
+                        node_ref.add_issue(i_s, IssueKind::TypeVarDefaultMustBeASubtypeOfBound);
+                    }
+                }
+                TypeVarKind::Constraints(mut constraints) => {
+                    if !constraints.any(|constraint| {
+                        default
+                            .is_sub_type_of(
+                                i_s,
+                                &mut Matcher::with_ignored_promotions(),
+                                constraint,
+                            )
+                            .bool()
+                    }) {
+                        node_ref
+                            .add_issue(i_s, IssueKind::TypeVarDefaultMustBeASubtypeOfConstraints);
+                    }
+                }
+            };
+            default
+        }))
     }
 
     pub fn is_unrestricted(&self) -> bool {
@@ -734,7 +769,7 @@ impl TypeVar {
                 );
             }
         }
-        if let Some(default) = &self.default {
+        if let Some(default) = self.default(format_data.db) {
             s += " = ";
             s += &default.format(format_data);
         }
@@ -745,6 +780,7 @@ impl TypeVar {
 #[derive(Debug, Clone, Eq)]
 pub struct TypeVarTuple {
     pub name_string: PointLink,
+    // TODO calculated these lazily
     pub default: Option<TypeArgs>,
 }
 
@@ -780,6 +816,7 @@ impl PartialEq for TypeVarTuple {
 #[derive(Debug, Clone, Eq)]
 pub struct ParamSpec {
     pub name_string: PointLink,
+    // TODO calculated these lazily
     pub default: Option<CallableParams>,
 }
 
@@ -1008,8 +1045,8 @@ impl TypeVarLikeUsage {
         }
     }
 
-    pub fn as_any_generic_item(&self) -> GenericItem {
-        self.as_type_var_like().as_any_generic_item()
+    pub fn as_any_generic_item(&self, db: &Database) -> GenericItem {
+        self.as_type_var_like().as_any_generic_item(db)
     }
 
     pub fn into_generic_item(self) -> GenericItem {
@@ -1091,7 +1128,7 @@ impl TypeVarLikeUsage {
         match self {
             Self::TypeVar(usage) => {
                 let mut s = usage.type_var.name(db).to_owned();
-                if let Some(default) = &usage.type_var.default {
+                if let Some(default) = usage.type_var.default(db) {
                     s += " = ";
                     s += &default.format_short(db);
                 }

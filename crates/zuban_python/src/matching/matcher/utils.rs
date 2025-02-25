@@ -182,7 +182,7 @@ impl CalculatedTypeArgs {
                         type_var_likes
                             .iter()
                             .any(|tvl| tvl == &found)
-                            .then(|| found.as_never_generic_item(NeverCause::Inference))
+                            .then(|| found.as_never_generic_item(db, NeverCause::Inference))
                     })
                 })
             }
@@ -299,7 +299,7 @@ impl CalculatedTypeArgs {
                         (usage.in_definition() == self.in_definition).then(|| {
                             usage
                                 .as_type_var_like()
-                                .as_never_generic_item(NeverCause::Inference)
+                                .as_never_generic_item(i_s.db, NeverCause::Inference)
                         })
                     })
                     .unwrap_or(type_);

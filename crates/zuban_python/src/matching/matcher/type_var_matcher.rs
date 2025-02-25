@@ -293,13 +293,13 @@ impl CalculatingTypeArg {
 
     pub fn into_generic_item(self, db: &Database, type_var_like: &TypeVarLike) -> GenericItem {
         if self.uninferrable {
-            return type_var_like.as_any_generic_item();
+            return type_var_like.as_any_generic_item(db);
         }
         self.type_.into_generic_item(db, |fallback| {
             if let Some(fallback) = fallback {
                 GenericItem::TypeArg(fallback)
             } else {
-                type_var_like.as_never_generic_item(NeverCause::Inference)
+                type_var_like.as_never_generic_item(db, NeverCause::Inference)
             }
         })
     }

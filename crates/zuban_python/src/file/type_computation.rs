@@ -1124,7 +1124,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         let defined_at = nt.__new__.defined_at;
                         Type::NamedTuple(nt).replace_type_var_likes(db, &mut |usage| {
                             (usage.in_definition() == defined_at)
-                                .then(|| usage.as_any_generic_item())
+                                .then(|| usage.as_any_generic_item(db))
                         })
                     }
                 };
@@ -1142,7 +1142,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             );
                         }
                         Type::TypedDict(td).replace_type_var_likes(db, &mut |usage| {
-                            Some(usage.as_any_generic_item())
+                            Some(usage.as_any_generic_item(db))
                         })
                     }
                     TypedDictGenerics::Generics(_) => unreachable!(),
@@ -2231,7 +2231,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         given += 1;
                         self.check_constraints(type_var, node_ref, |_| t.clone(), get_of);
                         GenericItem::TypeArg(t)
-                    } else if let Some(default) = &type_var.default {
+                    } else if let Some(default) = type_var.default(self.inference.i_s.db) {
                         GenericItem::TypeArg(default.clone())
                     } else {
                         break;
@@ -2245,7 +2245,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                                     given += 1;
                                     self.check_constraints(type_var, from, |_| t.clone(), get_of);
                                     GenericItem::TypeArg(t)
-                                } else if let Some(default) = &type_var.default {
+                                } else if let Some(default) =
+                                    type_var.default(self.inference.i_s.db)
+                                {
                                     GenericItem::TypeArg(default.clone())
                                 } else {
                                     break 'outer;
@@ -2343,7 +2345,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             );
             generics.clear();
             for missing_type_var in type_var_likes.iter() {
-                generics.push(missing_type_var.as_any_generic_item())
+                generics.push(missing_type_var.as_any_generic_item(self.inference.i_s.db))
             }
         }
     }

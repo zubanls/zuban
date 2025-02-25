@@ -8,7 +8,7 @@ use crate::{
     format_data::FormatData,
     inference_state::InferenceState,
     inferred::Inferred,
-    matching::{CouldBeALiteral, Matcher, ResultContext},
+    matching::{CouldBeALiteral, ResultContext},
     node_ref::NodeRef,
     type_::{
         AnyCause, ClassGenerics, NewType, ParamSpec, Type, TypeInTypeVar, TypeVar,
@@ -373,18 +373,7 @@ fn maybe_type_var(
                         }
                         bound = Some(expression.index());
                     }
-                    "default" => {
-                        if let Some(t) = node_ref
-                            .file
-                            .inference(i_s)
-                            .compute_type_var_default(expression)
-                        {
-                            default = Some(t)
-                        } else {
-                            node_ref.add_issue(i_s, IssueKind::TypeVarInvalidDefault);
-                            return None;
-                        }
-                    }
+                    "default" => default = Some(expression.index()),
                     _ => {
                         node_ref.add_issue(
                             i_s,
@@ -415,26 +404,6 @@ fn maybe_type_var(
         } else {
             TypeVarKindInfos::Unrestricted
         };
-        if let Some(default) = &default {
-            match &kind {
-                TypeVarKindInfos::Bound(_) => {}
-                TypeVarKindInfos::Constraints(constraints) => {
-                    if !constraints.iter().any(|constraint| {
-                        default
-                            .is_sub_type_of(
-                                i_s,
-                                &mut Matcher::with_ignored_promotions(),
-                                constraint,
-                            )
-                            .bool()
-                    }) {
-                        args.add_issue(i_s, IssueKind::TypeVarDefaultMustBeASubtypeOfConstraints);
-                        return None;
-                    }
-                }
-                TypeVarKindInfos::Unrestricted => (),
-            }
-        }
         Some(TypeVarLike::TypeVar(Rc::new(TypeVar::new(
             PointLink {
                 file: name_node.file_index(),
