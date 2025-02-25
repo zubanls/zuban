@@ -586,7 +586,7 @@ impl TypeInTypeVar {
         &self,
         db: &Database,
         name_string: &TypeVarName,
-        on_newly_calculated: impl FnOnce(&InferenceState, NodeRef, &Type),
+        calculate_type: impl FnOnce(&InferenceState, NodeRef) -> Type,
     ) -> &Type {
         if self.calculating.get() {
             // TODO we should add an error here.
@@ -599,14 +599,7 @@ impl TypeInTypeVar {
                 unreachable!()
             };
             let node_ref = NodeRef::from_link(db, PointLink::new(link.file, node));
-            let i_s = &InferenceState::new(db);
-            let t = node_ref
-                .file
-                .inference(i_s)
-                .compute_type_var_bound(node_ref.as_expression())
-                .unwrap_or(Type::ERROR);
-
-            on_newly_calculated(i_s, node_ref, &t);
+            let t = calculate_type(&InferenceState::new(db), node_ref);
             self.calculating.set(false);
             t
         })
@@ -679,12 +672,18 @@ impl TypeVar {
         match &self.kind {
             TypeVarKindInfos::Unrestricted => TypeVarKind::Unrestricted,
             TypeVarKindInfos::Bound(bound) => {
-                TypeVarKind::Bound(bound.get_type(db, &self.name_string, |i_s, node_ref, t| {
+                TypeVarKind::Bound(bound.get_type(db, &self.name_string, |i_s, node_ref| {
+                    let t = node_ref
+                        .file
+                        .inference(i_s)
+                        .compute_type_var_bound(node_ref.as_expression())
+                        .unwrap_or(Type::ERROR);
                     if let Some(default) = &self.default {
                         if !default.is_simple_sub_type_of(i_s, &t).bool() {
                             node_ref.add_issue(i_s, IssueKind::TypeVarDefaultMustBeASubtypeOfBound);
                         }
                     }
+                    t
                 }))
             }
             TypeVarKindInfos::Constraints(constraints) => {
