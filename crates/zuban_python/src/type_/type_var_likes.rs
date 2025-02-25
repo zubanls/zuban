@@ -375,6 +375,13 @@ impl TypeVarLikes {
         self.iter().any(|tv| !tv.has_default())
     }
 
+    pub fn has_constraints(&self, db: &Database) -> bool {
+        self.iter().any(|tv| {
+            matches!(tv, TypeVarLike::TypeVar(tv)
+                          if matches!(&tv.kind(db), TypeVarKind::Constraints(_)))
+        })
+    }
+
     pub fn find(
         &self,
         type_var_like: TypeVarLike,

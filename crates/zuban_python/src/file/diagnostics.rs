@@ -1286,10 +1286,7 @@ impl Inference<'_, '_, '_> {
         let i_s = self.i_s;
         if function.is_typed() || flags.check_untyped_defs {
             // TODO for now we skip checking functions with TypeVar constraints
-            if function.type_vars(i_s.db).iter().any(|tv| {
-                matches!(tv, TypeVarLike::TypeVar(tv)
-                              if matches!(&tv.kind(i_s.db), TypeVarKind::Constraints(_)))
-            }) {
+            if function.type_vars(i_s.db).has_constraints(i_s.db) {
                 self.mark_current_frame_unreachable()
             } else {
                 self.calc_block_diagnostics(block, None, Some(&function))
