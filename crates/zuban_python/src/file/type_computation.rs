@@ -1878,7 +1878,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         get_of: impl FnOnce() -> Box<str>,
     ) {
         let i_s = self.inference.i_s;
-        match &type_var.kind(i_s.db) {
+        match type_var.kind(i_s.db) {
             TypeVarKind::Unrestricted => (),
             TypeVarKind::Bound(bound) => {
                 let actual = as_type(self);
@@ -1893,13 +1893,14 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     );
                 }
             }
-            TypeVarKind::Constraints(constraints) => {
+            TypeVarKind::Constraints(mut constraints) => {
                 let t2 = as_type(self);
                 if let Type::TypeVar(usage) = &t2 {
-                    if let TypeVarKind::Constraints(constraints2) = usage.type_var.kind(i_s.db) {
-                        if constraints2.iter().all(|t2| {
+                    if let TypeVarKind::Constraints(mut constraints2) = usage.type_var.kind(i_s.db)
+                    {
+                        if constraints2.all(|t2| {
                             constraints
-                                .iter()
+                                .clone()
                                 .any(|t| t.is_simple_super_type_of(i_s, t2).bool())
                         }) {
                             // The provided type_var2 is a subset of the type_var constraints.
@@ -1907,10 +1908,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         }
                     }
                 }
-                if !constraints
-                    .iter()
-                    .any(|t| t.is_simple_super_type_of(i_s, &t2).bool())
-                {
+                if !constraints.any(|t| t.is_simple_super_type_of(i_s, &t2).bool()) {
                     node_ref.add_issue(
                         i_s,
                         IssueKind::InvalidTypeVarValue {

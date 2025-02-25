@@ -620,10 +620,10 @@ pub enum TypeVarKindInfos {
     Constraints(Box<[Type]>),
 }
 
-pub enum TypeVarKind<'a> {
+pub enum TypeVarKind<'a, I: Iterator<Item = &'a Type> + Clone> {
     Unrestricted,
     Bound(&'a Type),
-    Constraints(&'a [Type]),
+    Constraints(I),
 }
 
 #[derive(Debug, Clone)]
@@ -675,7 +675,7 @@ impl TypeVar {
         }
     }
 
-    pub fn kind(&self, db: &Database) -> TypeVarKind {
+    pub fn kind(&self, db: &Database) -> TypeVarKind<impl Iterator<Item = &Type> + Clone> {
         match &self.kind {
             TypeVarKindInfos::Unrestricted => TypeVarKind::Unrestricted,
             TypeVarKindInfos::Bound(bound) => {
@@ -687,7 +687,9 @@ impl TypeVar {
                     }
                 }))
             }
-            TypeVarKindInfos::Constraints(constraints) => TypeVarKind::Constraints(constraints),
+            TypeVarKindInfos::Constraints(constraints) => {
+                TypeVarKind::Constraints(constraints.iter())
+            }
         }
     }
 
@@ -730,7 +732,7 @@ impl TypeVar {
                 }
                 s += &format!(
                     "({})",
-                    join_with_commas(constraints.iter().map(|t| t.format(format_data).into()))
+                    join_with_commas(constraints.map(|t| t.format(format_data).into()))
                 );
             }
         }

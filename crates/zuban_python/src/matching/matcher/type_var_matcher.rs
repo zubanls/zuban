@@ -448,17 +448,17 @@ impl TypeVarMatcher {
     }
 }
 
-fn check_constraints(
+fn check_constraints<'x>(
     i_s: &InferenceState,
-    constraints: &[Type],
+    constraints: impl Iterator<Item = &'x Type> + Clone,
     value_type: &Type,
     variance: Variance,
 ) -> Result<Bound, ()> {
     if let Type::TypeVar(t2) = value_type {
-        if let TypeVarKind::Constraints(constraints2) = t2.type_var.kind(i_s.db) {
-            if constraints2.iter().all(|r2| {
+        if let TypeVarKind::Constraints(mut constraints2) = t2.type_var.kind(i_s.db) {
+            if constraints2.all(|r2| {
                 constraints
-                    .iter()
+                    .clone()
                     .any(|r1| r1.is_simple_super_type_of(i_s, r2).bool())
             }) {
                 return Ok(Bound::Invariant(BoundKind::TypeVar(value_type.clone())));
@@ -468,7 +468,7 @@ fn check_constraints(
         }
     }
     let mut matched_constraint = None;
-    for constraint in constraints.iter() {
+    for constraint in constraints {
         let m = constraint.simple_matches(i_s, value_type, variance);
         if m.bool() {
             if matched_constraint.is_some() {

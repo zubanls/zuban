@@ -426,9 +426,8 @@ impl Type {
                                 return m;
                             }
                         }
-                        TypeVarKind::Constraints(constraints) => {
+                        TypeVarKind::Constraints(mut constraints) => {
                             let m = constraints
-                                .iter()
                                 .all(|r| self.simple_matches(i_s, r, variance).bool());
                             if m {
                                 return Match::new_true();

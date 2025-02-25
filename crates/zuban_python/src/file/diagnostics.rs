@@ -1127,21 +1127,25 @@ impl Inference<'_, '_, '_> {
                             Class::with_undefined_generics(class.node_ref);
                         let mut class_t = undefined_generics_class.as_type(i_s.db);
                         let mut original = self.use_cached_param_annotation_type(annotation);
+                        let mut new = None;
                         match original.as_ref() {
                             Type::TypeVar(tv) => {
-                                if let TypeVarKind::Bound(b) = &tv.type_var.kind(self.i_s.db) {
-                                    original = Cow::Owned((**b).clone());
+                                if let TypeVarKind::Bound(b) = tv.type_var.kind(self.i_s.db) {
+                                    new = Some(b.clone());
                                 }
                             }
                             Type::Type(t) => {
                                 if let Type::TypeVar(tv) = t.as_ref() {
-                                    if let TypeVarKind::Bound(b) = &tv.type_var.kind(self.i_s.db) {
-                                        original = Cow::Owned(Type::Type(Rc::new((**b).clone())));
+                                    if let TypeVarKind::Bound(b) = tv.type_var.kind(self.i_s.db) {
+                                        new = Some(Type::Type(Rc::new(b.clone())));
                                     }
                                 }
                             }
                             _ => (),
                         };
+                        if let Some(new) = new {
+                            original = Cow::Owned(new)
+                        }
                         let erased = original
                             .replace_type_var_likes_and_self(
                                 i_s.db,
