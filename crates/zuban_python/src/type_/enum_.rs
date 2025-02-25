@@ -469,7 +469,7 @@ pub(crate) fn execute_functional_enum<'db>(
             name,
             class.node_ref.as_link(),
             name_infos.0.as_link(),
-            i_s.parent_scope(),
+            i_s.as_parent_scope(),
             members,
             class.has_customized_enum_new(i_s).into(),
         ),

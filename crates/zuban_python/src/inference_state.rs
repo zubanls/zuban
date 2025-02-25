@@ -196,7 +196,7 @@ impl<'db, 'a> InferenceState<'db, 'a> {
         None
     }
 
-    pub fn parent_scope(&self) -> ParentScope {
+    pub fn as_parent_scope(&self) -> ParentScope {
         if let Some(func) = self.current_function() {
             ParentScope::Function(func.node_ref.node_index)
         } else if let Some(class) = self.current_class() {
