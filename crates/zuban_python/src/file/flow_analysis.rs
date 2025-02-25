@@ -861,7 +861,7 @@ fn merge_and(i_s: &InferenceState, mut x: Frame, y: Frame) -> Frame {
 fn has_explicit_literal(db: &Database, t: &Type) -> bool {
     t.iter_with_unpacked_unions(db).any(|t| match t {
         Type::Literal(literal) => !literal.implicit,
-        Type::TypeVar(tv) => match &tv.type_var.kind {
+        Type::TypeVar(tv) => match tv.type_var.kind(db) {
             TypeVarKind::Bound(bound) => has_explicit_literal(db, bound),
             _ => false,
         },

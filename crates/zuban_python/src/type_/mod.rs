@@ -57,9 +57,9 @@ pub(crate) use self::{
     tuple::{execute_tuple_class, MaybeUnpackGatherer, Tuple, TupleArgs, TupleUnpack, WithUnpack},
     type_var_likes::{
         CallableWithParent, ParamSpec, ParamSpecArg, ParamSpecTypeVars, ParamSpecUsage,
-        TypeInTypeVar, TypeVar, TypeVarIndex, TypeVarKind, TypeVarLike, TypeVarLikeUsage,
-        TypeVarLikes, TypeVarManager, TypeVarName, TypeVarTuple, TypeVarTupleUsage, TypeVarUsage,
-        Variance,
+        TypeInTypeVar, TypeVar, TypeVarIndex, TypeVarKind, TypeVarKindInfos, TypeVarLike,
+        TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypeVarName, TypeVarTuple,
+        TypeVarTupleUsage, TypeVarUsage, Variance,
     },
     typed_dict::{
         check_typed_dict_call, infer_typed_dict_item, infer_typed_dict_total_argument,
@@ -681,7 +681,7 @@ impl Type {
                 .inner_generic_class(i_s)?
                 .use_cached_class_infos(i_s.db)
                 .metaclass(i_s.db),
-            Type::TypeVar(tv) => match &tv.type_var.kind {
+            Type::TypeVar(tv) => match tv.type_var.kind(i_s.db) {
                 TypeVarKind::Bound(t) => return t.inner_generic_class(i_s),
                 _ => return None,
             },
@@ -734,7 +734,7 @@ impl Type {
                     .and_then(|i| i.as_cow_type(i_s).maybe_callable(i_s))
             }
             Type::FunctionOverload(overload) => Some(CallableLike::Overload(overload.clone())),
-            Type::TypeVar(t) => match &t.type_var.kind {
+            Type::TypeVar(t) => match t.type_var.kind(i_s.db) {
                 TypeVarKind::Bound(bound) => bound.maybe_callable(i_s),
                 _ => None,
             },

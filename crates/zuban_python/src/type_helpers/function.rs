@@ -563,7 +563,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 if unbound_type_vars.contains(&TypeVarLike::TypeVar(t.type_var.clone())) {
                     let node_ref = self.expect_return_annotation_node_ref();
                     node_ref.add_issue(i_s, IssueKind::TypeVarInReturnButNotArgument);
-                    if let TypeVarKind::Bound(bound) = &t.type_var.kind {
+                    if let TypeVarKind::Bound(bound) = t.type_var.kind(i_s.db) {
                         node_ref.add_issue(
                             i_s,
                             IssueKind::Note(

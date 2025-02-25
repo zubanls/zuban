@@ -520,9 +520,11 @@ impl TypeVarLike {
         }
     }
 
-    pub fn ensure_calculated_types(&self, i_s: &InferenceState) {
+    pub fn ensure_calculated_types(&self, db: &Database) {
         match self {
-            Self::TypeVar(tv) => tv.ensure_calculated_types(i_s),
+            Self::TypeVar(tv) => {
+                tv.kind(db);
+            }
             _ => (),
         }
     }
@@ -577,28 +579,23 @@ impl TypeInTypeVar {
     }
 }
 
-impl std::ops::Deref for TypeInTypeVar {
-    type Target = Type;
-
-    fn deref(&self) -> &Self::Target {
-        &self.t.get().unwrap_or_else(|| {
-            tracing::error!("Somehow a TypeVarType did not finish calculating");
-            &Type::Any(AnyCause::FromError)
-        })
-    }
-}
-
 #[derive(Debug, Clone)]
-pub enum TypeVarKind {
+pub enum TypeVarKindInfos {
     Unrestricted,
     Bound(TypeInTypeVar),
     Constraints(Box<[Type]>),
 }
 
+pub enum TypeVarKind<'a> {
+    Unrestricted,
+    Bound(&'a Type),
+    Constraints(&'a [Type]),
+}
+
 #[derive(Debug, Clone)]
 pub struct TypeVar {
     pub name_string: TypeVarName,
-    pub kind: TypeVarKind,
+    kind: TypeVarKindInfos,
     pub default: Option<Type>,
     pub variance: Variance,
 }
@@ -612,6 +609,29 @@ impl PartialEq for TypeVar {
 impl Eq for TypeVar {}
 
 impl TypeVar {
+    pub fn new(
+        name_link: PointLink,
+        kind: TypeVarKindInfos,
+        default: Option<Type>,
+        variance: Variance,
+    ) -> Self {
+        Self {
+            name_string: TypeVarName::PointLink(name_link),
+            kind,
+            default,
+            variance,
+        }
+    }
+
+    pub fn new_self(kind: TypeVarKindInfos) -> Self {
+        Self {
+            name_string: TypeVarName::Self_,
+            kind,
+            default: None,
+            variance: Variance::Invariant,
+        }
+    }
+
     pub fn name<'db>(&self, db: &'db Database) -> &'db str {
         match self.name_string {
             TypeVarName::PointLink(link) => {
@@ -621,30 +641,35 @@ impl TypeVar {
         }
     }
 
-    pub fn ensure_calculated_types(&self, i_s: &InferenceState) {
+    pub fn kind(&self, db: &Database) -> TypeVarKind {
         match &self.kind {
-            TypeVarKind::Bound(bound) => {
-                if let Some(node) = bound.node {
-                    let TypeVarName::PointLink(link) = self.name_string else {
-                        unreachable!()
-                    };
-                    let node_ref = NodeRef::from_link(i_s.db, PointLink::new(link.file, node));
-                    let t = node_ref
-                        .file
-                        .inference(i_s)
-                        .compute_type_var_bound(node_ref.as_expression())
-                        .unwrap_or(Type::ERROR);
+            TypeVarKindInfos::Unrestricted => TypeVarKind::Unrestricted,
+            TypeVarKindInfos::Bound(bound) => TypeVarKind::Bound(bound.t.get_or_init(|| {
+                let node = bound.node.unwrap();
+                let TypeVarName::PointLink(link) = self.name_string else {
+                    unreachable!()
+                };
+                let node_ref = NodeRef::from_link(db, PointLink::new(link.file, node));
+                let i_s = &InferenceState::new(db);
+                let t = node_ref
+                    .file
+                    .inference(i_s)
+                    .compute_type_var_bound(node_ref.as_expression())
+                    .unwrap_or(Type::ERROR);
 
-                    if let Some(default) = &self.default {
-                        if !default.is_simple_sub_type_of(i_s, &t).bool() {
-                            node_ref.add_issue(i_s, IssueKind::TypeVarDefaultMustBeASubtypeOfBound);
-                        }
+                if let Some(default) = &self.default {
+                    if !default.is_simple_sub_type_of(i_s, &t).bool() {
+                        node_ref.add_issue(i_s, IssueKind::TypeVarDefaultMustBeASubtypeOfBound);
                     }
-                    bound.t.set(t).unwrap();
                 }
-            }
-            _ => (),
+                t
+            })),
+            TypeVarKindInfos::Constraints(constraints) => TypeVarKind::Constraints(constraints),
         }
+    }
+
+    pub fn is_unrestricted(&self) -> bool {
+        matches!(self.kind, TypeVarKindInfos::Unrestricted)
     }
 
     pub fn qualified_name(&self, db: &Database) -> Box<str> {
@@ -664,7 +689,7 @@ impl TypeVar {
 
     pub fn format(&self, format_data: &FormatData) -> String {
         let mut s = self.name(format_data.db).to_owned();
-        match &self.kind {
+        match self.kind(format_data.db) {
             TypeVarKind::Unrestricted => (),
             TypeVarKind::Bound(bound) => {
                 if format_data.style == FormatStyle::MypyRevealType {

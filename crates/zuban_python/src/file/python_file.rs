@@ -62,10 +62,6 @@ impl ComplexValues {
         );
     }
 
-    pub fn previously_inserted(&self) -> &ComplexPoint {
-        self.0.last().unwrap()
-    }
-
     pub unsafe fn iter(&self) -> impl Iterator<Item = &ComplexPoint> {
         self.0.iter()
     }

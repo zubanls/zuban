@@ -936,7 +936,7 @@ fn get_relevant_type_for_super(db: &Database, t: &Type) -> Type {
     let Type::TypeVar(usage) = t else {
         return t.clone();
     };
-    if let TypeVarKind::Bound(bound) = &usage.type_var.kind {
+    if let TypeVarKind::Bound(bound) = usage.type_var.kind(db) {
         return get_relevant_type_for_super(db, bound);
     }
     t.clone()

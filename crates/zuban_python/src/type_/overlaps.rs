@@ -46,7 +46,7 @@ impl Type {
                 }
             }
             Type::TypeVar(tv) => {
-                if let TypeVarKind::Bound(b) = &tv.type_var.kind {
+                if let TypeVarKind::Bound(b) = tv.type_var.kind(i_s.db) {
                     return self.overlaps(i_s, matcher, b);
                 }
             }
@@ -79,7 +79,7 @@ impl Type {
                 }
             }
             Type::TypeVar(tv) => {
-                if let TypeVarKind::Bound(b) = &tv.type_var.kind {
+                if let TypeVarKind::Bound(b) = tv.type_var.kind(i_s.db) {
                     return b.overlaps(i_s, matcher, other);
                 }
             }

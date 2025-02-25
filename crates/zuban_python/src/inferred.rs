@@ -667,11 +667,6 @@ impl<'db: 'slf, 'slf> Inferred {
                 _ => {
                     file.complex_points
                         .insert(&file.points, index, complex, Locality::Todo);
-                    if let ComplexPoint::TypeVarLike(tvl) =
-                        file.complex_points.previously_inserted()
-                    {
-                        tvl.ensure_calculated_types(i_s)
-                    }
                     return Self::new_saved(file, index);
                 }
             },
@@ -2803,7 +2798,7 @@ pub fn add_attribute_error(
     };
     let name = Box::from(name);
     if let Type::TypeVar(usage) = full_type {
-        if let TypeVarKind::Bound(bound) = &usage.type_var.kind {
+        if let TypeVarKind::Bound(bound) = usage.type_var.kind(i_s.db) {
             if bound.is_union_like(i_s.db) {
                 let bound = bound.format_short(i_s.db);
                 let type_var_name = usage.type_var.name(i_s.db);

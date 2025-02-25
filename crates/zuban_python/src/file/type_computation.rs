@@ -1877,11 +1877,11 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         as_type: impl Fn(&mut Self) -> Type,
         get_of: impl FnOnce() -> Box<str>,
     ) {
-        match &type_var.kind {
+        let i_s = self.inference.i_s;
+        match &type_var.kind(i_s.db) {
             TypeVarKind::Unrestricted => (),
             TypeVarKind::Bound(bound) => {
                 let actual = as_type(self);
-                let i_s = self.inference.i_s;
                 if !bound.is_simple_super_type_of(i_s, &actual).bool() {
                     node_ref.add_issue(
                         i_s,
@@ -1895,9 +1895,8 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             }
             TypeVarKind::Constraints(constraints) => {
                 let t2 = as_type(self);
-                let i_s = self.inference.i_s;
                 if let Type::TypeVar(usage) = &t2 {
-                    if let TypeVarKind::Constraints(constraints2) = &usage.type_var.kind {
+                    if let TypeVarKind::Constraints(constraints2) = usage.type_var.kind(i_s.db) {
                         if constraints2.iter().all(|t2| {
                             constraints
                                 .iter()

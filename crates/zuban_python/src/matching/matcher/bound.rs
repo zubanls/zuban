@@ -62,7 +62,7 @@ impl Bound {
         self.format_with_fallback(format_data, style, |_| {
             match usage.as_type_var_like() {
                 TypeVarLike::TypeVar(type_var) => {
-                    if let TypeVarKind::Bound(bound) = &type_var.kind {
+                    if let TypeVarKind::Bound(bound) = type_var.kind(format_data.db) {
                         return MatcherFormatResult::Str(bound.format(format_data));
                     }
                 }

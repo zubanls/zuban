@@ -372,7 +372,7 @@ impl TypeVarMatcher {
                 similar: false,
             }
         };
-        match &type_var_usage.type_var.kind {
+        match type_var_usage.type_var.kind(i_s.db) {
             TypeVarKind::Unrestricted => (),
             TypeVarKind::Bound(bound) => {
                 if !bound.is_simple_super_type_of(i_s, value_type).bool() {
@@ -455,7 +455,7 @@ fn check_constraints(
     variance: Variance,
 ) -> Result<Bound, ()> {
     if let Type::TypeVar(t2) = value_type {
-        if let TypeVarKind::Constraints(constraints2) = &t2.type_var.kind {
+        if let TypeVarKind::Constraints(constraints2) = t2.type_var.kind(i_s.db) {
             if constraints2.iter().all(|r2| {
                 constraints
                     .iter()

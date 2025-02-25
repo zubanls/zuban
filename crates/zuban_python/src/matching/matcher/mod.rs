@@ -1427,12 +1427,12 @@ impl<'a> Matcher<'a> {
         for tv_index in &lst {
             let type_var_like = as_type_var_like(*tv_index);
             if let TypeVarLike::TypeVar(new) = type_var_like {
-                if !matches!(new.kind, TypeVarKind::Unrestricted) {
+                if !new.is_unrestricted() {
                     if let Some(current) = preferred_bound {
                         let TypeVarLike::TypeVar(current_tv) = current else {
                             unreachable!()
                         };
-                        match (&current_tv.kind, &new.kind) {
+                        match (&current_tv.kind(db), &new.kind(db)) {
                             (TypeVarKind::Bound(t1), TypeVarKind::Bound(t2)) => {
                                 let i_s = &InferenceState::new(db);
                                 if t1.is_simple_sub_type_of(i_s, t2).bool() {

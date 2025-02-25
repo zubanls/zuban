@@ -49,10 +49,8 @@ testTypeVarTupleIsNotValidAliasTarget
 testGenericTypeAliasesWrongAliases
 # Type var used in bound, defined in class body, bound to that class
 testGenericClassAlternativeConstructorPreciseOverloaded
+testGenericClassAlternativeConstructorPrecise
 # Type var bound cycle
-testSuperClassGetItem
-testSelfTypeNew
-testSelfTypeNew_explicit
 testNewAnalyzerDuplicateTypeVar
 testNewAnalyzerDuplicateTypeVarImportCycle
 testNewAnalyzerDuplicateTypeVarImportCycleWithAliases

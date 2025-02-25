@@ -11,8 +11,8 @@ use crate::{
     matching::{CouldBeALiteral, Matcher, ResultContext},
     node_ref::NodeRef,
     type_::{
-        AnyCause, ClassGenerics, NewType, ParamSpec, Type, TypeInTypeVar, TypeVar, TypeVarKind,
-        TypeVarLike, TypeVarName, TypeVarTuple, TypedDictGenerics, Variance,
+        AnyCause, ClassGenerics, NewType, ParamSpec, Type, TypeInTypeVar, TypeVar,
+        TypeVarKindInfos, TypeVarLike, TypeVarTuple, TypedDictGenerics, Variance,
     },
     utils::join_with_commas,
 };
@@ -409,21 +409,16 @@ fn maybe_type_var(
         }
         let kind = if let Some(bound) = bound {
             debug_assert!(constraints.is_empty());
-            TypeVarKind::Bound(TypeInTypeVar::new_lazy(bound))
+            TypeVarKindInfos::Bound(TypeInTypeVar::new_lazy(bound))
         } else if !constraints.is_empty() {
-            TypeVarKind::Constraints(constraints.into())
+            TypeVarKindInfos::Constraints(constraints.into())
         } else {
-            TypeVarKind::Unrestricted
+            TypeVarKindInfos::Unrestricted
         };
         if let Some(default) = &default {
             match &kind {
-                TypeVarKind::Bound(bound) => {
-                    if !default.is_simple_sub_type_of(i_s, bound).bool() {
-                        args.add_issue(i_s, IssueKind::TypeVarDefaultMustBeASubtypeOfBound);
-                        return None;
-                    }
-                }
-                TypeVarKind::Constraints(constraints) => {
+                TypeVarKindInfos::Bound(_) => {}
+                TypeVarKindInfos::Constraints(constraints) => {
                     if !constraints.iter().any(|constraint| {
                         default
                             .is_sub_type_of(
@@ -437,17 +432,17 @@ fn maybe_type_var(
                         return None;
                     }
                 }
-                TypeVarKind::Unrestricted => (),
+                TypeVarKindInfos::Unrestricted => (),
             }
         }
-        Some(TypeVarLike::TypeVar(Rc::new(TypeVar {
-            name_string: TypeVarName::PointLink(PointLink {
+        Some(TypeVarLike::TypeVar(Rc::new(TypeVar::new(
+            PointLink {
                 file: name_node.file_index(),
                 node_index: py_string.index(),
-            }),
+            },
             kind,
             default,
-            variance: match (covariant, contravariant) {
+            match (covariant, contravariant) {
                 (false, false) => Variance::Invariant,
                 (true, false) => Variance::Covariant,
                 (false, true) => Variance::Contravariant,
@@ -456,7 +451,7 @@ fn maybe_type_var(
                     return None;
                 }
             },
-        })))
+        ))))
     } else {
         args.add_issue(
             i_s,

@@ -144,9 +144,9 @@ impl Type {
                 let l = instance.lookup_with_details(i_s, add_issue, name, kind);
                 callable(self, l)
             }
-            t @ Type::TypeVar(usage) => match &usage.type_var.kind {
+            t @ Type::TypeVar(usage) => match usage.type_var.kind(i_s.db) {
                 TypeVarKind::Bound(bound) => {
-                    if let Type::Class(c) = &**bound {
+                    if let Type::Class(c) = bound {
                         let inst = Instance::new(c.class(i_s.db), None);
                         let l = inst.lookup(
                             i_s,
@@ -183,12 +183,11 @@ impl Type {
                         }
                     }
                     */
-                    let s = &i_s.db.python_state;
                     // TODO it's kind of stupid that we recreate an instance object here all the time, we
                     // should just use a precreated object() from somewhere.
                     callable(
                         self,
-                        Instance::new(s.object_class(), None)
+                        Instance::new(i_s.db.python_state.object_class(), None)
                             .lookup_with_details(i_s, add_issue, name, kind),
                     )
                 }
@@ -514,8 +513,8 @@ impl Type {
                     callable(t.get_item_internal(i_s, None, slice_type, result_context, add_issue))
                 }
             }),
-            Type::TypeVar(tv) => match &tv.type_var.kind {
-                TypeVarKind::Bound(bound) => match &**bound {
+            Type::TypeVar(tv) => match tv.type_var.kind(i_s.db) {
+                TypeVarKind::Bound(bound) => match bound {
                     Type::Class(c) => Instance::new(c.class(i_s.db), from_inferred).get_item(
                         i_s,
                         slice_type,
@@ -672,7 +671,7 @@ impl Type {
                 result_context,
                 on_type_error,
             ),
-            Type::TypeVar(tv) => match &tv.type_var.kind {
+            Type::TypeVar(tv) => match tv.type_var.kind(i_s.db) {
                 TypeVarKind::Bound(bound) => {
                     bound.execute(i_s, None, args, result_context, on_type_error)
                 }
@@ -716,7 +715,7 @@ impl Type {
                 }
                 IteratorContent::Union(items)
             }
-            Type::TypeVar(tv) => match &tv.type_var.kind {
+            Type::TypeVar(tv) => match tv.type_var.kind(i_s.db) {
                 TypeVarKind::Bound(bound) => bound.iter(i_s, infos),
                 _ => {
                     infos.add_not_iterable_issue(i_s.db, self);
@@ -851,8 +850,8 @@ pub(crate) fn attribute_access_of_type(
             }
             return;
         }
-        Type::TypeVar(t) => match &t.type_var.kind {
-            TypeVarKind::Bound(bound) => match &**bound {
+        Type::TypeVar(t) => match t.type_var.kind(i_s.db) {
+            TypeVarKind::Bound(bound) => match bound {
                 Type::Class(c) => c.class(i_s.db).lookup(
                     i_s,
                     name,
@@ -1013,7 +1012,7 @@ pub(crate) fn execute_type_of_type<'db>(
         Type::Class(c) => c
             .class(i_s.db)
             .execute(i_s, args, result_context, on_type_error, true),
-        Type::TypeVar(t) => match &t.type_var.kind {
+        Type::TypeVar(t) => match t.type_var.kind(i_s.db) {
             TypeVarKind::Bound(bound) => {
                 execute_type_of_type(i_s, args, result_context, on_type_error, bound);
                 Inferred::from_type(type_.clone())

@@ -418,7 +418,7 @@ impl Type {
                     return match_;
                 }
                 if variance == Variance::Covariant {
-                    match &t2.type_var.kind {
+                    match t2.type_var.kind(i_s.db) {
                         TypeVarKind::Unrestricted => (),
                         TypeVarKind::Bound(bound) => {
                             let m = self.matches(i_s, matcher, bound, variance);
@@ -625,12 +625,12 @@ impl Type {
                 Self::matches_class(i_s, matcher, class1, &c2.class(i_s.db), variance)
             }
             Type::Type(t2) => match t2.as_ref() {
-                Type::TypeVar(tv) => match &tv.type_var.kind {
+                Type::TypeVar(tv) => match tv.type_var.kind(i_s.db) {
                     TypeVarKind::Bound(bound) => Self::matches_class_against_type(
                         i_s,
                         matcher,
                         class1,
-                        &Type::Type(Rc::new((**bound).clone())),
+                        &Type::Type(Rc::new(bound.clone())),
                         variance,
                     ),
                     TypeVarKind::Constraints(_) => {
@@ -688,7 +688,7 @@ impl Type {
             }
             Type::TypeVar(tv)
                 if class1.node_ref == i_s.db.python_state.object_node_ref()
-                    && matches!(tv.type_var.kind, TypeVarKind::Unrestricted) =>
+                    && tv.type_var.is_unrestricted() =>
             {
                 // This is a bit special. We need to match object here, because object :> T and it
                 // will not create the proper generics otherwise.

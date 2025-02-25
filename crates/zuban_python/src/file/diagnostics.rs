@@ -157,9 +157,15 @@ impl Inference<'_, '_, '_> {
             // TODO this unsafe feels very wrong, because a bit lower we might modify the complex
             // points.
             for complex_point in unsafe { self.file.complex_points.iter() } {
-                if let ComplexPoint::NewTypeDefinition(n) = complex_point {
-                    // Make sure types are calculated and the errors are generated.
-                    n.type_(self.i_s);
+                // Make sure types are calculated and the errors are generated.
+                match complex_point {
+                    ComplexPoint::NewTypeDefinition(n) => {
+                        n.type_(self.i_s);
+                    }
+                    ComplexPoint::TypeVarLike(tvl) => {
+                        tvl.ensure_calculated_types(self.i_s.db);
+                    }
+                    _ => (),
                 }
             }
 
@@ -1123,13 +1129,13 @@ impl Inference<'_, '_, '_> {
                         let mut original = self.use_cached_param_annotation_type(annotation);
                         match original.as_ref() {
                             Type::TypeVar(tv) => {
-                                if let TypeVarKind::Bound(b) = &tv.type_var.kind {
+                                if let TypeVarKind::Bound(b) = &tv.type_var.kind(self.i_s.db) {
                                     original = Cow::Owned((**b).clone());
                                 }
                             }
                             Type::Type(t) => {
                                 if let Type::TypeVar(tv) = t.as_ref() {
-                                    if let TypeVarKind::Bound(b) = &tv.type_var.kind {
+                                    if let TypeVarKind::Bound(b) = &tv.type_var.kind(self.i_s.db) {
                                         original = Cow::Owned(Type::Type(Rc::new((**b).clone())));
                                     }
                                 }
@@ -1278,7 +1284,7 @@ impl Inference<'_, '_, '_> {
             // TODO for now we skip checking functions with TypeVar constraints
             if function.type_vars(i_s.db).iter().any(|tv| {
                 matches!(tv, TypeVarLike::TypeVar(tv)
-                              if matches!(&tv.kind, TypeVarKind::Constraints(_)))
+                              if matches!(&tv.kind(i_s.db), TypeVarKind::Constraints(_)))
             }) {
                 self.mark_current_frame_unreachable()
             } else {

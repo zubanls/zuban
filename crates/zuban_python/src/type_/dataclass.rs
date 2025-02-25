@@ -13,8 +13,8 @@ use parsa_python_cst::{
 use super::{
     AnyCause, CallableContent, CallableParam, CallableParams, ClassGenerics, DbString,
     GenericClass, Literal, LiteralKind, LookupResult, NeverCause, ParamType, StarParamType,
-    StarStarParamType, StringSlice, Tuple, Type, TypeVar, TypeVarKind, TypeVarLike, TypeVarLikes,
-    TypeVarName, TypeVarUsage, Variance,
+    StarStarParamType, StringSlice, Tuple, Type, TypeVar, TypeVarKind, TypeVarKindInfos,
+    TypeVarLike, TypeVarLikes, TypeVarUsage,
 };
 use crate::{
     arguments::{Arg, ArgKind, Args, SimpleArgs},
@@ -873,7 +873,7 @@ fn run_on_dataclass(
         }
         Type::Union(u) => u.iter().all(|t| run_on_dataclass(i_s, from, t, callback)),
         Type::Any(_) => true,
-        Type::TypeVar(tv) => match &tv.type_var.kind {
+        Type::TypeVar(tv) => match tv.type_var.kind(i_s.db) {
             TypeVarKind::Bound(bound) => {
                 let result = run_on_dataclass(i_s, None, bound, callback);
                 if !result {
@@ -1125,12 +1125,7 @@ fn order_func(self_: Rc<Dataclass>, i_s: &InferenceState) -> LookupResult {
 }
 
 fn type_order_func(self_: Rc<Dataclass>, i_s: &InferenceState) -> LookupResult {
-    let type_var = Rc::new(TypeVar {
-        name_string: TypeVarName::Self_,
-        kind: TypeVarKind::Unrestricted,
-        default: None,
-        variance: Variance::Invariant,
-    });
+    let type_var = Rc::new(TypeVar::new_self(TypeVarKindInfos::Unrestricted));
     let tv_usage = TypeVarUsage::new(type_var.clone(), self_.class.link, 0.into());
     LookupResult::UnknownName(Inferred::from_type(Type::Callable(Rc::new(
         CallableContent::new_simple(
