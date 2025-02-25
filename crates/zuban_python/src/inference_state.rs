@@ -1,10 +1,13 @@
 use std::cell::Cell;
 
+use vfs::FileIndex;
+
 use crate::{
-    database::{Database, ParentScope},
+    database::{Database, ParentScope, PointLink},
     file::TypeVarCallbackReturn,
+    node_ref::NodeRef,
     type_::{CallableContent, TypeVarLike},
-    type_helpers::{Class, Function},
+    type_helpers::{Class, ClassNodeRef, Function},
     TypeCheckerFlags,
 };
 
@@ -53,6 +56,38 @@ impl<'db, 'a> InferenceState<'db, 'a> {
             context: Context::None,
             mode: Mode::Normal,
         }
+    }
+
+    pub fn run_with_parent_scope<T>(
+        db: &'db Database,
+        file_index: FileIndex,
+        parent_scope: ParentScope,
+        callback: impl FnOnce(InferenceState) -> T,
+    ) -> T {
+        let class;
+        let func;
+        let context = match parent_scope {
+            ParentScope::Module => Context::None,
+            ParentScope::Function(func_index) => {
+                func = Function::new_with_unknown_parent(
+                    db,
+                    NodeRef::from_link(db, PointLink::new(file_index, func_index)),
+                );
+                Context::DiagnosticExecution(&func)
+            }
+            ParentScope::Class(class_index) => {
+                class = Class::with_undefined_generics(ClassNodeRef::from_link(
+                    db,
+                    PointLink::new(file_index, class_index),
+                ));
+                Context::DiagnosticClass(&class)
+            }
+        };
+        callback(InferenceState {
+            db,
+            context,
+            mode: Mode::Normal,
+        })
     }
 
     pub(crate) fn with_func_and_args(&self, func: &'a Function<'a, 'a>) -> Self {

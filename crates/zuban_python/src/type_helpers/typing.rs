@@ -407,6 +407,7 @@ fn maybe_type_var(
                 file: name_node.file_index(),
                 node_index: py_string.index(),
             },
+            i_s.as_parent_scope(),
             kind,
             default,
             match (covariant, contravariant) {

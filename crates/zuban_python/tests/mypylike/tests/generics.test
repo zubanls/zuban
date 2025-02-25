@@ -1429,3 +1429,27 @@ def foo(x: int) -> None: ...
 x: CallLater[None] = CallLater(foo, 1)
 y = CallLater(foo, "")  # E: Argument 2 to "CallLater" has incompatible type "str"; expected "int"
 reveal_type(y())  # N: Revealed type is "None"
+
+[case class_method_generics_with_type_var_in_class_scope]
+# Copied from testGenericClassAlternativeConstructorPreciseOverloaded with valid cases
+from typing import Generic, TypeVar, Type, Tuple, overload, Union
+
+T = TypeVar('T')
+
+class Base(Generic[T]):
+    Q = TypeVar('Q', bound=Base[T])
+
+    @overload
+    @classmethod
+    def make_some(cls: Type[Q], item: T) -> Q: ...
+
+    @overload
+    @classmethod
+    def make_some(cls: Type[Q], item: T, n: int) -> Tuple[Q, ...]: ...
+
+    @classmethod
+    def make_some(cls: Type[Q], item: T, n: int = 0) -> Union[Q, Tuple[Q, ...]]: ...
+
+class Sub(Base[str]): ...
+Sub.make_some(1)  # E: Invalid self argument "Type[Sub]" to attribute function "make_some" with type "overloaded function"
+Sub.make_some("")
