@@ -577,6 +577,31 @@ impl TypeInTypeVar {
             t: OnceCell::from(t),
         }
     }
+
+    #[inline]
+    fn get_type(
+        &self,
+        db: &Database,
+        name_string: &TypeVarName,
+        on_newly_calculated: impl FnOnce(&InferenceState, NodeRef, &Type),
+    ) -> &Type {
+        self.t.get_or_init(|| {
+            let node = self.node.unwrap();
+            let TypeVarName::PointLink(link) = name_string else {
+                unreachable!()
+            };
+            let node_ref = NodeRef::from_link(db, PointLink::new(link.file, node));
+            let i_s = &InferenceState::new(db);
+            let t = node_ref
+                .file
+                .inference(i_s)
+                .compute_type_var_bound(node_ref.as_expression())
+                .unwrap_or(Type::ERROR);
+
+            on_newly_calculated(i_s, node_ref, &t);
+            t
+        })
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -644,26 +669,15 @@ impl TypeVar {
     pub fn kind(&self, db: &Database) -> TypeVarKind {
         match &self.kind {
             TypeVarKindInfos::Unrestricted => TypeVarKind::Unrestricted,
-            TypeVarKindInfos::Bound(bound) => TypeVarKind::Bound(bound.t.get_or_init(|| {
-                let node = bound.node.unwrap();
-                let TypeVarName::PointLink(link) = self.name_string else {
-                    unreachable!()
-                };
-                let node_ref = NodeRef::from_link(db, PointLink::new(link.file, node));
-                let i_s = &InferenceState::new(db);
-                let t = node_ref
-                    .file
-                    .inference(i_s)
-                    .compute_type_var_bound(node_ref.as_expression())
-                    .unwrap_or(Type::ERROR);
-
-                if let Some(default) = &self.default {
-                    if !default.is_simple_sub_type_of(i_s, &t).bool() {
-                        node_ref.add_issue(i_s, IssueKind::TypeVarDefaultMustBeASubtypeOfBound);
+            TypeVarKindInfos::Bound(bound) => {
+                TypeVarKind::Bound(bound.get_type(db, &self.name_string, |i_s, node_ref, t| {
+                    if let Some(default) = &self.default {
+                        if !default.is_simple_sub_type_of(i_s, &t).bool() {
+                            node_ref.add_issue(i_s, IssueKind::TypeVarDefaultMustBeASubtypeOfBound);
+                        }
                     }
-                }
-                t
-            })),
+                }))
+            }
             TypeVarKindInfos::Constraints(constraints) => TypeVarKind::Constraints(constraints),
         }
     }
