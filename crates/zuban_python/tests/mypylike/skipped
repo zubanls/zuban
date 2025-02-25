@@ -50,7 +50,6 @@ testGenericTypeAliasesWrongAliases
 # Type var used in bound, defined in class body, bound to that class / func
 class_method_generics_with_type_var_in_class_scope
 # Type var bound cycle
-testGenericNamedTupleRecursiveBound
 testNewAnalyzerDuplicateTypeVarImportCycle
 testNewAnalyzerDuplicateTypeVarImportCycleWithAliases
 # NewType generics resolving

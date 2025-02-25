@@ -1458,6 +1458,6 @@ GroupT = TypeVar("GroupT")
 CT = TypeVar("CT", bound="C")
 
 class Channel(Generic[CT]): ...
-class UserChannel(Channel[UserMessage]): ...  # E: Type argument "UserMessage" of "Channel" must be a subtype of "C"
+class UserChannel(Channel[UserMessage]): ...  # E: Type argument "UserMessage[Any]" of "Channel" must be a subtype of "C"
 
 class C(ChatGroup): ...
