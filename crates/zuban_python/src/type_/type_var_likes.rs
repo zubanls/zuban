@@ -1,5 +1,5 @@
 use std::{
-    cell::OnceCell,
+    cell::{Cell, OnceCell},
     hash::{Hash, Hasher},
     ops::AddAssign,
     rc::Rc,
@@ -560,6 +560,7 @@ pub enum TypeVarName {
 #[derive(Debug, Clone)]
 pub struct TypeInTypeVar {
     node: Option<NodeIndex>,
+    calculating: Cell<bool>,
     pub t: OnceCell<Type>,
 }
 
@@ -567,6 +568,7 @@ impl TypeInTypeVar {
     pub fn new_lazy(node: NodeIndex) -> Self {
         Self {
             node: Some(node),
+            calculating: Cell::new(false),
             t: OnceCell::new(),
         }
     }
@@ -574,6 +576,7 @@ impl TypeInTypeVar {
     pub fn new_known(t: Type) -> Self {
         Self {
             node: None,
+            calculating: Cell::new(false),
             t: OnceCell::from(t),
         }
     }
@@ -585,7 +588,12 @@ impl TypeInTypeVar {
         name_string: &TypeVarName,
         on_newly_calculated: impl FnOnce(&InferenceState, NodeRef, &Type),
     ) -> &Type {
+        if self.calculating.get() {
+            // TODO we should add an error here.
+            return &Type::ERROR;
+        }
         self.t.get_or_init(|| {
+            self.calculating.set(true);
             let node = self.node.unwrap();
             let TypeVarName::PointLink(link) = name_string else {
                 unreachable!()
@@ -599,6 +607,7 @@ impl TypeInTypeVar {
                 .unwrap_or(Type::ERROR);
 
             on_newly_calculated(i_s, node_ref, &t);
+            self.calculating.set(false);
             t
         })
     }

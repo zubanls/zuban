@@ -1427,3 +1427,37 @@ class C(B):
         super().__new__()
     def foo(self: Any) -> int:
         return super().foo()
+
+[case bound_cycles1]
+from typing import TypeVar
+
+CT = TypeVar("CT", bound="C[str]")  # E: Type argument "str" of "C" must be a subtype of "D[int]"
+DT = TypeVar("DT", bound="D[int]")
+
+class C(list[DT]): ...
+class D(list[CT]): ...
+
+[case bound_cycles2]
+from m import C
+C()
+
+[file m.py]
+from typing import TypeVar, Generic
+
+MemberT = TypeVar("MemberT", bound="Member")
+class Member(list["UserMessage"]): ...
+class ChatGroup(Generic[MemberT]): ...
+
+T = TypeVar("T")
+ChannelT = TypeVar("ChannelT")
+
+class Message(Generic[ChannelT, T]): ...
+class UserMessage(Message[T, "UserChannel"]): ...
+
+GroupT = TypeVar("GroupT")
+CT = TypeVar("CT", bound="C")
+
+class Channel(Generic[CT]): ...
+class UserChannel(Channel[UserMessage]): ...  # E: Type argument "UserMessage" of "Channel" must be a subtype of "C"
+
+class C(ChatGroup): ...
