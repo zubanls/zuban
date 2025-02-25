@@ -587,6 +587,7 @@ fn set_bool_init_flags(
         | "non_interactive"
         | "scripts_are_modules"
         | "site_packages"
+        | "untyped_calls_exclude"
         | "silence_site_packages" => {
             tracing::warn!("Ignored config value {name}, please contact support if you need them");
         }
