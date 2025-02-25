@@ -676,8 +676,7 @@ impl TypeVar {
                     let t = node_ref
                         .file
                         .inference(i_s)
-                        .compute_type_var_bound(node_ref.as_expression())
-                        .unwrap_or(Type::ERROR);
+                        .compute_type_var_bound(node_ref.as_expression());
                     if let Some(default) = &self.default {
                         if !default.is_simple_sub_type_of(i_s, &t).bool() {
                             node_ref.add_issue(i_s, IssueKind::TypeVarDefaultMustBeASubtypeOfBound);

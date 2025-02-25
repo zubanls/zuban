@@ -4470,16 +4470,16 @@ impl<'db: 'x, 'file, 'x> Inference<'db, 'file, '_> {
         callback(comp)
     }
 
-    pub fn compute_type_var_bound(&self, expr: Expression) -> Option<Type> {
+    pub fn compute_type_var_bound(&self, expr: Expression) -> Type {
         let node_ref = NodeRef::new(self.file, expr.index());
         self.within_type_var_like_definition(node_ref, |mut comp| {
             match comp.compute_type(expr) {
                 TypeContent::InvalidVariable(_) => {
                     // TODO this is a bit weird and should probably generate other errors
                     node_ref.add_issue(comp.inference.i_s, IssueKind::TypeVarBoundMustBeType);
-                    None
+                    Type::ERROR
                 }
-                t => Some(comp.as_type(t, node_ref)),
+                t => comp.as_type(t, node_ref),
             }
         })
     }
