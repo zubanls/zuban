@@ -83,3 +83,14 @@ Rec2 = list[type['Rec2[T]'] | T]
 def f(x: Rec1, y: Rec2[int]):
     x[0].append  # E: Item "int" of "Type[list[Type[Rec1] | int]] | int" has no attribute "append"
     y[1].append  # E: Item "int" of "Type[Rec2[int]] | int" has no attribute "append"
+
+[case recursive_alias_without_generics]
+from typing import TypeVar, TypeAlias
+T = TypeVar('T')
+
+A: TypeAlias = "T | list[A]"
+
+def f(x: A[int]):
+    reveal_type(x)  # N: Revealed type is "int | list[Any | list[...]]"
+    if isinstance(x, list):
+        reveal_type(x[0])  # N: Revealed type is "Any | list[...]"

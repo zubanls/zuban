@@ -1344,7 +1344,15 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             // TODO here we would need to check if the generics are actually valid.
             TypeContent::RecursiveAlias(link) => {
                 self.is_recursive_alias = true;
-                return Some(Type::RecursiveType(Rc::new(RecursiveType::new(link, None))));
+                let type_var_likes = &NodeRef::from_link(db, link)
+                    .maybe_alias()
+                    .unwrap()
+                    .type_vars;
+                return Some(Type::RecursiveType(Rc::new(RecursiveType::new(
+                    link,
+                    (!type_var_likes.is_empty())
+                        .then(|| type_var_likes.as_any_generic_list(self.inference.i_s.db)),
+                ))));
             }
             TypeContent::RecursiveClass(class_ref) => {
                 self.is_recursive_alias = true;
