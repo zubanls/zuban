@@ -323,10 +323,8 @@ fn maybe_type_var(
         for arg in iterator {
             match arg.kind {
                 ArgKind::Positional(pos) => {
-                    let inference = pos.node_ref.file.inference(i_s);
-                    let t = inference
-                        .compute_type_var_value(pos.node_ref.as_named_expression().expression())?;
-                    constraints.push(t);
+                    let expr_index = pos.node_ref.as_named_expression().expression().index();
+                    constraints.push(TypeInTypeVar::new_lazy(expr_index));
                 }
                 ArgKind::Keyword(KeywordArg {
                     key,

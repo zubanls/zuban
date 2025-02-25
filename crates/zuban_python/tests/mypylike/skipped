@@ -47,9 +47,10 @@ testClassScopeImportWithError
 # Type variable "__main__.Ts" is invalid as target for type alias
 testTypeVarTupleIsNotValidAliasTarget
 testGenericTypeAliasesWrongAliases
-# Type var used in bound, defined in class body, bound to that class
+# Type var used in bound, defined in class body, bound to that class / func
 testGenericClassAlternativeConstructorPreciseOverloaded
 testGenericClassAlternativeConstructorPrecise
+testInvalidTypevarArgumentsGenericConstraint
 # Type var bound cycle
 testGenericNamedTupleRecursiveBound
 testNewAnalyzerDuplicateTypeVarImportCycle

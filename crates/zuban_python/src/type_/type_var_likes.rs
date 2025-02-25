@@ -524,7 +524,10 @@ impl TypeVarLike {
     pub fn ensure_calculated_types(&self, db: &Database) {
         match self {
             Self::TypeVar(tv) => {
-                tv.kind(db);
+                if let TypeVarKind::Constraints(constraints) = tv.kind(db) {
+                    // Consume the iterator for constraints to ensure it is calculated
+                    constraints.for_each(|_| ())
+                }
                 tv.default(db);
             }
             _ => (),
@@ -612,7 +615,7 @@ impl TypeInTypeVar {
 pub enum TypeVarKindInfos {
     Unrestricted,
     Bound(TypeInTypeVar),
-    Constraints(Box<[Type]>),
+    Constraints(Box<[TypeInTypeVar]>),
 }
 
 pub enum TypeVarKind<'a, I: Iterator<Item = &'a Type> + Clone> {
@@ -670,7 +673,10 @@ impl TypeVar {
         }
     }
 
-    pub fn kind(&self, db: &Database) -> TypeVarKind<impl Iterator<Item = &Type> + Clone> {
+    pub fn kind<'a>(
+        &'a self,
+        db: &'a Database,
+    ) -> TypeVarKind<'a, impl Iterator<Item = &'a Type> + Clone + 'a> {
         match &self.kind {
             TypeVarKindInfos::Unrestricted => TypeVarKind::Unrestricted,
             TypeVarKindInfos::Bound(bound) => {
@@ -682,7 +688,15 @@ impl TypeVar {
                 }))
             }
             TypeVarKindInfos::Constraints(constraints) => {
-                TypeVarKind::Constraints(constraints.iter())
+                TypeVarKind::Constraints(constraints.iter().map(|c| {
+                    c.get_type(db, &self.name_string, |i_s, node_ref| {
+                        node_ref
+                            .file
+                            .inference(i_s)
+                            .compute_type_var_value(node_ref.as_expression())
+                            .unwrap_or(Type::ERROR)
+                    })
+                }))
             }
         }
     }
