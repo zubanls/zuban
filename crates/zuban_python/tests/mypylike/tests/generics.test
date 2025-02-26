@@ -1499,3 +1499,17 @@ def g(
     reveal_type(x)  # N: Revealed type is "dict[Any, str]"
     reveal_type(y)  # N: Revealed type is "dict[int, str]"
     reveal_type(z)  # N: Revealed type is "dict[int, float]"
+
+[case different_file_class_should_not_crash]
+from m import P
+class C:
+    def __init__(self) -> None:
+        P()
+
+[file m.py]
+from typing import TypeVar, Generic
+
+T = TypeVar("T", bound=str | None)
+
+class A(Generic[T]): ...
+class P(A[T]): ...

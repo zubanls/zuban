@@ -327,13 +327,22 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
         false
     }
 
-    pub fn ensure_calculated_class_infos(&self, i_s: &InferenceState<'db, '_>) {
-        let node_ref = self.node_ref.class_info_node_ref();
-        let point = node_ref.point();
-        if point.calculated() {
+    pub fn ensure_calculated_class_infos(&self, db: &Database) {
+        if self.node_ref.class_info_node_ref().point().calculated() {
             return;
         }
+        InferenceState::run_with_parent_scope(
+            db,
+            self.node_ref.file_index(),
+            self.class_storage.parent_scope,
+            |i_s| {
+                self.insert_class_infos(&i_s);
+            },
+        )
+    }
 
+    fn insert_class_infos(&self, i_s: &InferenceState) {
+        let node_ref = self.node_ref.class_info_node_ref();
         debug_assert!(NodeRef::new(node_ref.file, self.node().name_def().index())
             .point()
             .calculated());

@@ -485,7 +485,7 @@ impl PythonState {
                     class.node_ref.node_index,
                     Locality::Todo,
                 ));
-                class.ensure_calculated_class_infos(&InferenceState::new(db));
+                class.ensure_calculated_class_infos(db);
             } else {
                 let func_index = name_index - NAME_TO_FUNCTION_DIFF;
                 if NodeRef::new(module(db), func_index)

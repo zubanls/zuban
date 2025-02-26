@@ -258,7 +258,7 @@ impl<'file> NodeRef<'file> {
 
             let class = ClassInitializer::new(class_ref, cls_storage);
             // Make sure the type vars and MRO are properly pre-calculated
-            class.ensure_calculated_class_infos(i_s);
+            class.ensure_calculated_class_infos(i_s.db);
             let name_def = self.add_to_node_index(NAME_DEF_TO_CLASS_DIFF as i64);
             self.file
                 .inference(i_s)
