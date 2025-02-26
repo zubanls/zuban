@@ -243,6 +243,7 @@ pub(crate) enum IssueKind {
     VariadicUnpackMustBeTupleLike { actual: Box<str> },
     MoreThanOneUnpackTypeIsNotAllowed,
     TypeVarTupleCannotBeSplit,
+    TypeVarDefaultWrongOrder { type_var1: Box<str>, type_var2: Box<str> },
 
     CannotUseIsinstanceWith { func: &'static str, with: &'static str },
     CannotUseIsinstanceWithParametrizedGenerics,
@@ -1491,6 +1492,9 @@ impl<'db> Diagnostic<'db> {
             MoreThanOneUnpackTypeIsNotAllowed =>
                 "More than one Unpack in a type is not allowed".to_string(),
             TypeVarTupleCannotBeSplit => "TypeVarTuple cannot be split".to_string(),
+            TypeVarDefaultWrongOrder { type_var1, type_var2 } => format!(
+                r#""{type_var1}" cannot appear after "{type_var2}" in type parameter list because it has no default type"#
+            ),
 
             CannotUseIsinstanceWith { func, with } => format!("Cannot use {func}() with {with} type"),
             CannotUseIsinstanceWithParametrizedGenerics =>

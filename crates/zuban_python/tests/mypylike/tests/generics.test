@@ -1453,3 +1453,49 @@ class Base(Generic[T]):
 class Sub(Base[str]): ...
 Sub.make_some(1)  # E: Invalid self argument "Type[Sub]" to attribute function "make_some" with type "overloaded function"
 Sub.make_some("")
+
+[case invalid_type_var_default_usage_no_crash]
+# Copied from testTypeVarDefaultsInvalid3, but only used the crashing parts
+from typing import Dict, Generic, TypeVar
+
+T1 = TypeVar("T1")
+T2 = TypeVar("T2", default=str)
+
+class ClassOk(Generic[T1, T2]): ...
+class ClassError(Generic[T2, T1]): ...  # E: "T1" cannot appear after "T2" in type parameter list because it has no default type
+AliasOk = Dict[T1, T2]
+AliasErr = Dict[T2, T1]  # E: "T1" cannot appear after "T2" in type parameter list because it has no default type
+
+def f(
+    a: ClassError,
+    b: ClassError[int],
+    c: ClassError[int, float],
+
+    x: AliasErr,
+    y: AliasErr[int],
+    z: AliasErr[int, float],
+) -> None:
+    reveal_type(a)  # N: Revealed type is "__main__.ClassError[str, Any]"
+    reveal_type(b)  # N: Revealed type is "__main__.ClassError[int]"
+    reveal_type(c)  # N: Revealed type is "__main__.ClassError[int, float]"
+
+    reveal_type(x)  # N: Revealed type is "dict[str, Any]"
+    reveal_type(y)  # N: Revealed type is "dict[int, Any]"
+    reveal_type(z)  # N: Revealed type is "dict[int, float]"
+
+def g(
+    a: ClassOk,
+    b: ClassOk[int],
+    c: ClassOk[int, float],
+
+    x: AliasOk,
+    y: AliasOk[int],
+    z: AliasOk[int, float],
+) -> None:
+    reveal_type(a)  # N: Revealed type is "__main__.ClassOk[Any, str]"
+    reveal_type(b)  # N: Revealed type is "__main__.ClassOk[int, str]"
+    reveal_type(c)  # N: Revealed type is "__main__.ClassOk[int, float]"
+
+    reveal_type(x)  # N: Revealed type is "dict[Any, str]"
+    reveal_type(y)  # N: Revealed type is "dict[int, str]"
+    reveal_type(z)  # N: Revealed type is "dict[int, float]"

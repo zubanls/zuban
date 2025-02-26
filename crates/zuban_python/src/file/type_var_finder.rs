@@ -225,6 +225,19 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd> {
                             }
                             return BaseLookup::Other;
                         }
+                        if !type_var_like.has_default() {
+                            if let Some(previous) = self.type_var_manager.last() {
+                                if previous.has_default() {
+                                    NodeRef::new(self.file, name.index()).add_issue(
+                                        self.i_s,
+                                        IssueKind::TypeVarDefaultWrongOrder {
+                                            type_var1: type_var_like.name(self.i_s.db).into(),
+                                            type_var2: previous.name(self.i_s.db).into(),
+                                        },
+                                    );
+                                }
+                            }
+                        }
                         let old_index = self.type_var_manager.add(type_var_like, None);
                         if let Some(force_index) = self.current_generic_or_protocol_index {
                             if old_index < force_index {

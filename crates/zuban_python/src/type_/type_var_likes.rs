@@ -154,6 +154,10 @@ impl<T: CallableId> TypeVarManager<T> {
         self.type_vars.iter().map(|u| &u.type_var_like)
     }
 
+    pub fn last(&self) -> Option<&TypeVarLike> {
+        self.type_vars.last().map(|u| &u.type_var_like)
+    }
+
     pub fn type_vars_for_callable(&self, callable: &Rc<CallableContent>) -> TypeVarLikes {
         TypeVarLikes::new(
             self.type_vars
