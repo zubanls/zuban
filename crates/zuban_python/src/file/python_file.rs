@@ -573,7 +573,7 @@ impl<'db> PythonFile {
             Some(dunder_all)
         };
         let p = self.points.get(dunder_all_index);
-        if p.calculated() && p.maybe_specific() == Some(Specific::NameOfNameDef) {
+        if p.calculated() && p.maybe_specific() == Some(Specific::FirstNameOfNameDef) {
             for index in OtherDefinitionIterator::new(&self.points, dunder_all_index) {
                 let name = NodeRef::new(self, index as NodeIndex).as_name();
                 dunder_all = check_multi_def(dunder_all, name)?
@@ -929,10 +929,7 @@ pub struct OtherDefinitionIterator<'a> {
 
 impl<'a> OtherDefinitionIterator<'a> {
     pub fn new(points: &'a Points, start: NodeIndex) -> Self {
-        debug_assert_eq!(
-            points.get(start).maybe_specific(),
-            Some(Specific::NameOfNameDef)
-        );
+        debug_assert!(points.get(start).is_name_of_name_def_like());
         Self {
             points,
             start,
@@ -946,7 +943,7 @@ impl Iterator for OtherDefinitionIterator<'_> {
 
     fn next(&mut self) -> Option<Self::Item> {
         let p = self.points.get(self.current);
-        debug_assert_eq!(p.maybe_specific(), Some(Specific::NameOfNameDef));
+        debug_assert!(p.is_name_of_name_def_like(), "{p:?}");
         let next = p.node_index();
         if next == self.start {
             None

@@ -335,7 +335,7 @@ fn follow_name<'db>(
                 Specific::TypingProtocol => return Err(BaseLookup::Protocol),
                 Specific::TypingCallable => return Err(BaseLookup::Callable),
                 Specific::TypingLiteral => return Err(BaseLookup::Literal),
-                Specific::NameOfNameDef => (),
+                Specific::NameOfNameDef | Specific::FirstNameOfNameDef => (),
                 _ => return Err(BaseLookup::Other),
             }
         }

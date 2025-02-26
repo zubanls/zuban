@@ -810,10 +810,9 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             Target::Name(name_def) => name_def.name_index(),
             Target::NameExpression(_, name_def) => {
                 let name_index = name_def.name_index();
-                let specific = NodeRef::new(self.file, name_index)
-                    .point()
-                    .maybe_calculated_and_specific()?;
-                debug_assert_eq!(specific, Specific::NameOfNameDef);
+                let p = NodeRef::new(self.file, name_index).point();
+                let specific = p.maybe_calculated_and_specific()?;
+                debug_assert!(p.is_name_of_name_def_like(), "{specific:?}");
                 name_index
             }
             _ => return None,
@@ -4079,7 +4078,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                         })
                     }
                 }
-                Specific::NameOfNameDef => {
+                Specific::NameOfNameDef | Specific::FirstNameOfNameDef => {
                     // MultiDefinition means we are on a Name that has a NameDef as a
                     // parent.
                     let node_index = node_index - NAME_DEF_TO_NAME_DIFFERENCE;
@@ -4195,7 +4194,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
 
     pub fn infer_name_of_definition(&self, name: Name) -> Inferred {
         let point = self.file.points.get(name.index());
-        if point.calculated() && point.maybe_specific() != Some(Specific::NameOfNameDef) {
+        if point.calculated() && !point.is_name_of_name_def_like() {
             if let Some(inf) = self.check_point_cache(name.index()) {
                 return inf;
             }
@@ -4727,20 +4726,16 @@ pub fn first_defined_name(file: &PythonFile, name_index: NodeIndex) -> NodeIndex
         // Or definitions of names that look like self (e.g. in testInferAttributeInitializedToEmptyNonSelf)
         return name_index;
     }
-    let mut first = name_index;
     // Here we circle through multi definitions to find the first one.
     // Note that multi definition links loop, i.e. A -> B -> C -> A.
     loop {
         debug_assert!(point.calculated());
         debug_assert_eq!(point.specific(), Specific::NameOfNameDef);
         let next = point.node_index();
-        if next < first {
-            first = next;
-        }
-        if next == name_index {
-            return first;
-        }
         point = file.points.get(next);
+        if point.specific() == Specific::FirstNameOfNameDef {
+            return next;
+        }
     }
 }
 

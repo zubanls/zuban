@@ -931,3 +931,8 @@ x  = C()
 x[:1:] = 1
 x[::] = 1
 x[*(1, 2)] = 1
+
+[case walrus_definition_reused]
+def foo(x: int) -> None:
+    w = w if (w := x) else None # E: Incompatible types in assignment (expression has type "int | None", variable has type "int")
+    reveal_type(w)  # N: Revealed type is "int"

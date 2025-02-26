@@ -1165,7 +1165,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                 .is_none()
             {
                 let point = name_node_ref.point();
-                debug_assert_eq!(point.specific(), Specific::NameOfNameDef);
+                debug_assert!(point.is_name_of_name_def_like(), "{point:?}");
                 if point.node_index() != name_index {
                     NodeRef::new(self.node_ref.file, point.node_index()).add_issue(
                         i_s,
@@ -1273,7 +1273,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                 TypeLike::ImportFromAsName(_) | TypeLike::DottedAsName(_) => continue,
                 TypeLike::Function(_) => {
                     let p = name_node_ref.point();
-                    debug_assert_eq!(p.maybe_specific(), Some(Specific::NameOfNameDef));
+                    debug_assert!(p.is_name_of_name_def_like(), "{p:?}");
                     if p.node_index() != name_index {
                         let mut has_overload = false;
                         let mut has_non_overload = false;

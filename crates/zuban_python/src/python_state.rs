@@ -612,8 +612,8 @@ impl PythonState {
         cache_index!(enum_enum_index, enum_file, "Enum");
         cache_index!(enum_auto_index, enum_file, "auto");
 
-        cache_index!(builtins_list_index, builtins, "list");
         cache_index!(builtins_dict_index, builtins, "dict");
+        cache_index!(builtins_list_index, builtins, "list");
         cache_index!(builtins_set_index, builtins, "set");
         cache_index!(builtins_frozenset_index, builtins, "frozenset");
         cache_index!(builtins_bool_index, builtins, "bool");
@@ -1315,7 +1315,7 @@ fn setup_type_alias(typing: &PythonFile, name: &str, target_file: &PythonFile, t
     let node_index = typing.symbol_table.lookup_symbol(name).unwrap();
     debug_assert_eq!(
         typing.points.get(node_index).specific(),
-        Specific::NameOfNameDef
+        Specific::FirstNameOfNameDef
     );
     debug_assert_eq!(typing.points.get(node_index).node_index(), node_index);
     let target_node_index = target_file.symbol_table.lookup_symbol(target_name).unwrap();

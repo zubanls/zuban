@@ -266,19 +266,23 @@ impl<'db> NameBinder<'db> {
         } else {
             self.symbol_table.add_or_replace_symbol(name_def.name());
             let name_index = name_def.name_index();
-            let p = Point::new_name_of_name_def(name_index, in_global_scope, Locality::NameBinder)
-                .with_needs_flow_analysis(
-                    self.following_nodes_need_flow_analysis
-                        && !{
-                            matches!(
-                                cause,
-                                IndexingCause::FunctionName
-                                    | IndexingCause::ClassName
-                                    | IndexingCause::Annotation { .. }
-                                    | IndexingCause::ConstantAssignment
-                            )
-                        },
-                );
+            let p = Point::new_first_name_of_name_def(
+                name_index,
+                in_global_scope,
+                Locality::NameBinder,
+            )
+            .with_needs_flow_analysis(
+                self.following_nodes_need_flow_analysis
+                    && !{
+                        matches!(
+                            cause,
+                            IndexingCause::FunctionName
+                                | IndexingCause::ClassName
+                                | IndexingCause::Annotation { .. }
+                                | IndexingCause::ConstantAssignment
+                        )
+                    },
+            );
             self.db_infos.points.set(name_index, p);
         }
         self.db_infos.points.set(name_def.index(), point);
@@ -292,16 +296,11 @@ impl<'db> NameBinder<'db> {
         cause: IndexingCause,
     ) {
         let mut latest_name_index = first_index;
+        let new_index = name_def.name().index();
         loop {
             let point = self.db_infos.points.get(latest_name_index);
-            if point.calculated()
-                && point.specific() == Specific::NameOfNameDef
-                && point.node_index() > first_index
-            {
-                debug_assert_ne!(latest_name_index, point.node_index());
-                latest_name_index = point.node_index()
-            } else {
-                let new_index = name_def.name().index();
+            let next_index = point.node_index();
+            if next_index == first_index {
                 if (cause != IndexingCause::FunctionName
                     || !Name::by_index(self.db_infos.tree, first_index).is_name_of_func())
                     && cause != IndexingCause::AugAssignment
@@ -310,7 +309,8 @@ impl<'db> NameBinder<'db> {
                 }
                 self.db_infos.points.set(
                     latest_name_index,
-                    Point::new_name_of_name_def(new_index, in_global_scope, Locality::NameBinder)
+                    point
+                        .with_changed_node_index(new_index)
                         .with_needs_flow_analysis(self.following_nodes_need_flow_analysis),
                 );
                 // Here we create a loop, so it's easy to find the relevant definitions from
@@ -320,6 +320,9 @@ impl<'db> NameBinder<'db> {
                     Point::new_name_of_name_def(first_index, in_global_scope, Locality::NameBinder),
                 );
                 break;
+            } else {
+                debug_assert_ne!(latest_name_index, next_index);
+                latest_name_index = next_index;
             }
         }
     }
@@ -792,7 +795,7 @@ impl<'db> NameBinder<'db> {
                     let name_index = name.index();
                     self.db_infos.points.set(
                         name_index,
-                        Point::new_name_of_name_def(name_index, false, Locality::NameBinder),
+                        Point::new_first_name_of_name_def(name_index, false, Locality::NameBinder),
                     );
                 }
             }
@@ -1202,7 +1205,7 @@ impl<'db> NameBinder<'db> {
 
     fn has_specific_on_name_def(&self, name_index: NodeIndex, search: Specific) -> bool {
         let p = self.db_infos.points.get(name_index);
-        debug_assert_eq!(p.specific(), Specific::NameOfNameDef);
+        debug_assert!(p.is_name_of_name_def_like(), "{p:?}");
         self.db_infos
             .points
             .get(name_index - NAME_DEF_TO_NAME_DIFFERENCE)

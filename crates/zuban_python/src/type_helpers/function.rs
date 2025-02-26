@@ -1053,7 +1053,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             if !point.calculated() {
                 break;
             }
-            debug_assert_eq!(point.specific(), Specific::NameOfNameDef);
+            debug_assert!(point.is_name_of_name_def_like(), "{point:?}");
             current_name_index = point.node_index();
             if current_name_index <= first_index {
                 break;
@@ -1161,7 +1161,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             if !point.calculated() {
                 break;
             }
-            debug_assert_eq!(point.specific(), Specific::NameOfNameDef);
+            debug_assert!(point.is_name_of_name_def_like(), "{point:?}");
             current_name_index = point.node_index();
             if current_name_index <= first_index {
                 break;

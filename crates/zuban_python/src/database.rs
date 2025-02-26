@@ -85,6 +85,22 @@ impl Point {
         Self { flags, node_index }
     }
 
+    pub fn new_first_name_of_name_def(
+        node_index: NodeIndex,
+        in_global_scope: bool,
+        locality: Locality,
+    ) -> Self {
+        Self {
+            node_index,
+            flags: Self::calculate_flags(
+                PointKind::Specific,
+                Specific::FirstNameOfNameDef as u32,
+                locality,
+            ),
+        }
+        .with_in_global_scope(in_global_scope)
+    }
+
     pub fn new_name_of_name_def(
         node_index: NodeIndex,
         in_global_scope: bool,
@@ -159,6 +175,15 @@ impl Point {
         self
     }
 
+    pub fn with_changed_node_index(mut self, node_index: NodeIndex) -> Self {
+        if cfg!(debug_assertions) {
+            // Make sure node_index is accessible
+            self.node_index();
+        }
+        self.node_index = node_index;
+        self
+    }
+
     #[inline]
     pub fn with_in_global_scope(mut self, in_global_scope: bool) -> Self {
         self.flags |= (in_global_scope as u32) << IN_GLOBAL_SCOPE_INDEX;
@@ -220,10 +245,22 @@ impl Point {
             self.kind() == PointKind::Redirect
                 || matches!(
                     self.maybe_specific(),
-                    Some(Specific::NameOfNameDef | Specific::Parent | Specific::Analyzed)
+                    Some(
+                        Specific::NameOfNameDef
+                            | Specific::FirstNameOfNameDef
+                            | Specific::Parent
+                            | Specific::Analyzed
+                    )
                 )
         );
         self.node_index
+    }
+
+    pub fn is_name_of_name_def_like(self) -> bool {
+        matches!(
+            self.maybe_specific(),
+            Some(Specific::NameOfNameDef | Specific::FirstNameOfNameDef)
+        )
     }
 
     #[inline]
@@ -404,8 +441,9 @@ pub enum Specific {
     Analyzed, // Signals that a node has been analyzed
     Calculating,
     Cycle,
-    NameOfNameDef, // Cycles for the same name definition in e.g. different branches
-    Parent,        // Has a link to the parent scope
+    FirstNameOfNameDef, // Cycles for the same name definition in e.g. different branches
+    NameOfNameDef,      // Cycles for the same name definition in e.g. different branches
+    Parent,             // Has a link to the parent scope
     OverloadUnreachable,
     AnyDueToError,
     InvalidTypeDefinition,
