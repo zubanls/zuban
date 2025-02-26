@@ -5130,6 +5130,7 @@ fn check_type_name<'db: 'file, 'file>(
             if point.calculated() {
                 if let Some(specific) = point.maybe_specific() {
                     if specific != Specific::NameOfNameDef {
+                        // For example C[TypeVar]
                         debug!(
                             "Found an unexpected specific {specific:?} for {}",
                             new_name.as_code()
