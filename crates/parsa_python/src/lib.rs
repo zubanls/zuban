@@ -190,7 +190,7 @@ create_grammar!(
     case_block: "case" patterns guard? ":" block
     guard: "if" named_expression
 
-    patterns: open_sequence_pattern | pattern
+    patterns: pattern !"," | open_sequence_pattern
     pattern: or_pattern ("as" pattern_capture_target)?
     or_pattern: "|".closed_pattern+
     closed_pattern:
@@ -206,29 +206,25 @@ create_grammar!(
 
     pattern_capture_target: !"_" name_def
     wildcard_pattern: "_"
-    value_pattern: dotted_name
 
     group_pattern: "(" pattern ")"
     sequence_pattern:
-        | "[" maybe_sequence_pattern? "]"
+        | "[" open_sequence_pattern? "]"
         | "(" open_sequence_pattern? ")"
-    open_sequence_pattern: maybe_star_pattern "," maybe_sequence_pattern?
-    maybe_sequence_pattern: ",".maybe_star_pattern+ ","?
+    open_sequence_pattern: ",".maybe_star_pattern+ ","?
     maybe_star_pattern: star_pattern | pattern
     star_pattern: "*" (pattern_capture_target | wildcard_pattern)
 
     mapping_pattern:
         | "{" double_star_pattern? "}"
         | "{" ",".key_value_pattern+ ["," double_star_pattern?] "}"
-    key_value_pattern: (literal_pattern | value_pattern) ":" pattern
+    key_value_pattern: (literal_pattern | dotted_name) ":" pattern
     double_star_pattern: "**" pattern_capture_target ","?
 
-    class_pattern:
-        | dotted_name "(" ")"
-        | dotted_name "(" param_patterns ","? ")"
+    class_pattern: dotted_name "(" param_patterns? ")"
     param_patterns:
-        | ",".(pattern !"=")+ [",".(keyword_pattern)+]
-        | ",".(keyword_pattern)+
+        | ",".(pattern !"=")+ [",".(keyword_pattern)+] ","?
+        | ",".(keyword_pattern)+ ","?
     keyword_pattern: Name "=" pattern
 
     // Type statement

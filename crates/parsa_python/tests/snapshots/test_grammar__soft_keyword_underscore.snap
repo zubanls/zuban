@@ -1,6 +1,8 @@
 ---
-source: parsa_python/tests/test_grammar.rs
+source: crates/parsa_python/tests/test_grammar.rs
+assertion_line: 43
 expression: tree_to_string(tree)
+snapshot_kind: text
 ---
 file: 0-63
  stmt: 1-53
@@ -22,7 +24,7 @@ file: 0-63
        closed_pattern: 19-24
         sequence_pattern: 19-24
          Keyword: 19-20 "["
-         maybe_sequence_pattern: 20-23
+         open_sequence_pattern: 20-23
           maybe_star_pattern: 20-23
            pattern: 20-23
             or_pattern: 20-23
@@ -84,4 +86,3 @@ file: 0-63
         Number: 61-62 "3"
    Newline: 62-63 "\n"
  Endmarker: 63-63 ""
-

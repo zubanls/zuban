@@ -1,10 +1,12 @@
 ---
-source: parsa_python/tests/test_grammar.rs
+source: crates/parsa_python/tests/test_grammar.rs
+assertion_line: 43
 expression: tree_to_string(tree)
+snapshot_kind: text
 ---
 file: 0-36
- Error(stmt): 1-24
-  Error(match_stmt): 1-24
+ Error(stmt): 1-29
+  Error(match_stmt): 1-29
    Keyword: 1-6 "match"
    subject_expr: 7-10
     named_expression: 7-10
@@ -14,24 +16,20 @@ file: 0-36
    Keyword: 10-11 ":"
    Newline: 11-12 "\n"
    Indent: 16-16 ""
-   Error(case_block): 16-24
+   Error(case_block): 16-29
     Keyword: 16-20 "case"
-    patterns: 21-24
-     pattern: 21-24
-      or_pattern: 21-24
-       closed_pattern: 21-24
-        pattern_capture_target: 21-24
-         name_def: 21-24
-          Name: 21-24 "bar"
- Error(stmt): 25-27
-  Error(Keyword): 25-27 "as"
- Error(stmt): 28-29
-  Error(simple_stmts): 28-29
-   simple_stmt: 28-29
-    star_expressions: 28-29
-     expression: 28-29
-      atom: 28-29
-       Name: 28-29 "_"
+    Error(patterns): 21-29
+     Error(open_sequence_pattern): 21-29
+      Error(maybe_star_pattern): 21-29
+       Error(pattern): 21-29
+        or_pattern: 21-24
+         closed_pattern: 21-24
+          pattern_capture_target: 21-24
+           name_def: 21-24
+            Name: 21-24 "bar"
+        Keyword: 25-27 "as"
+        Error(pattern_capture_target): 28-29
+         Keyword: 28-29 "_"
  Error(stmt): 29-30
   Error(Keyword): 29-30 ":"
  stmt: 31-36
@@ -43,4 +41,3 @@ file: 0-36
  Error(stmt): 36-36
   Error(Dedent): 36-36 ""
  Endmarker: 36-36 ""
-

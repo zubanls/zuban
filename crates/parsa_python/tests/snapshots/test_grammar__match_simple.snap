@@ -22,7 +22,7 @@ file: 0-57
        closed_pattern: 21-26
         sequence_pattern: 21-26
          Keyword: 21-22 "["
-         maybe_sequence_pattern: 22-25
+         open_sequence_pattern: 22-25
           maybe_star_pattern: 22-25
            pattern: 22-25
             or_pattern: 22-25
