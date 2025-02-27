@@ -15,14 +15,12 @@ use test_utils::{calculate_steps, Step};
 use vfs::{AbsPath, LocalFS, VfsHandler as _};
 use zuban_python::Project;
 
-const SKIP_MYPY_TEST_FILES: [&str; 28] = [
-    // Narrowing tests
+const SKIP_MYPY_TEST_FILES: [&str; 27] = [
+    // --allow-redefinition tests
     "check-redefine.test",
     // Python special features
     "check-formatting.test",
     "check-plugin-attrs.test",
-    // Python syntax
-    "check-python310.test",
     // Mypy flag checking
     "cmdline.test",
     "cmdline.pyproject.test",
