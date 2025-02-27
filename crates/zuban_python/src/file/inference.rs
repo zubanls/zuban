@@ -1211,7 +1211,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             save(name_def.index(), value);
         }
     }
-    fn assign_to_name_def_simple(
+    pub(super) fn assign_to_name_def_simple(
         &self,
         name_def: NameDef,
         from: NodeRef,

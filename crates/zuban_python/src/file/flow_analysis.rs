@@ -6,13 +6,13 @@ use std::{
 
 use parsa_python_cst::{
     Argument, Arguments, ArgumentsDetails, AssertStmt, Atom, AtomContent, Block, BreakStmt,
-    CaseBlock, CompIfIterator, ComparisonContent, Comparisons, Conjunction, ContinueStmt,
-    DelTarget, DelTargets, Disjunction, ElseBlock, ExceptExpression, Expression, ExpressionContent,
-    ExpressionPart, ForIfClauseIterator, ForStmt, IfBlockIterator, IfBlockType, IfStmt, MatchStmt,
-    Name, NameDef, NamedExpression, NamedExpressionContent, NodeIndex, Operand, Primary,
-    PrimaryContent, PrimaryOrAtom, PrimaryTarget, PrimaryTargetOrAtom, SliceType as CSTSliceType,
-    SubjectExprContent, Target, Ternary, TryBlockType, TryStmt, WhileStmt,
-    NAME_DEF_TO_NAME_DIFFERENCE,
+    CaseBlock, CasePattern, CompIfIterator, ComparisonContent, Comparisons, Conjunction,
+    ContinueStmt, DelTarget, DelTargets, Disjunction, ElseBlock, ExceptExpression, Expression,
+    ExpressionContent, ExpressionPart, ForIfClauseIterator, ForStmt, IfBlockIterator, IfBlockType,
+    IfStmt, MatchStmt, Name, NameDef, NamedExpression, NamedExpressionContent, NodeIndex, Operand,
+    PatternKind, Primary, PrimaryContent, PrimaryOrAtom, PrimaryTarget, PrimaryTargetOrAtom,
+    SliceType as CSTSliceType, SubjectExprContent, Target, Ternary, TryBlockType, TryStmt,
+    WhileStmt, NAME_DEF_TO_NAME_DIFFERENCE,
 };
 
 use crate::{
@@ -41,7 +41,7 @@ use crate::{
 
 use super::{
     first_defined_name,
-    inference::{instantiate_except, instantiate_except_star, Inference},
+    inference::{instantiate_except, instantiate_except_star, AssignKind, Inference},
     name_binder::{is_expr_part_reachable_for_name_binder, Truthiness},
     on_argument_type_error,
     utils::func_of_self_symbol,
@@ -2087,11 +2087,12 @@ impl Inference<'_, '_, '_> {
     ) {
         let (subject_expr, case_blocks) = match_stmt.unpack();
         let subject = self.infer_subject_expr(subject_expr);
-        self.process_match_cases(case_blocks, class, func);
+        self.process_match_cases(&subject, case_blocks, class, func);
     }
 
     fn process_match_cases<'x>(
         &self,
+        subject: &Inferred,
         mut case_blocks: impl Iterator<Item = CaseBlock<'x>>,
         class: Option<Class>,
         func: Option<&Function>,
@@ -2100,17 +2101,18 @@ impl Inference<'_, '_, '_> {
             return;
         };
         let (case_pattern, guard, block) = case_block.unpack();
+        let (mut true_frame, mut false_frame) =
+            self.find_guards_in_case_pattern(&subject, case_pattern);
         if let Some(guard) = guard {
             self.infer_named_expression(guard.named_expr());
         }
         // TODO use patterns
-        let (true_frame, false_frame) = (Frame::default(), Frame::default());
         FLOW_ANALYSIS.with(|fa| {
             let true_frame = fa.with_frame(true_frame, || {
                 self.calc_block_diagnostics(block, class, func)
             });
             let false_frame = fa.with_frame(false_frame, || {
-                self.process_match_cases(case_blocks, class, func)
+                self.process_match_cases(&subject, case_blocks, class, func)
             });
             fa.merge_conditional(self.i_s, true_frame, false_frame);
         });
@@ -2294,6 +2296,35 @@ impl Inference<'_, '_, '_> {
                 }
             }
         }
+    }
+
+    fn find_guards_in_case_pattern(
+        &self,
+        inf: &Inferred,
+        case_pattern: CasePattern,
+    ) -> (Frame, Frame) {
+        match case_pattern {
+            CasePattern::Pattern(pattern) => {
+                let (pattern_kind, as_name) = pattern.unpack();
+                match pattern_kind {
+                    PatternKind::NameDef(name_def) => (),
+                    PatternKind::WildcardPattern(wildcard_pattern) => (),
+                    PatternKind::DottedName(dotted_name) => (),
+                    PatternKind::ClassPattern(class_pattern) => (),
+                    PatternKind::LiteralPattern(literal_pattern) => (),
+                    PatternKind::GroupPattern(group_pattern) => (),
+                    PatternKind::OrPattern(or_pattern) => (),
+                    PatternKind::SequencePattern(sequence_pattern) => (),
+                    PatternKind::MappingPattern(mapping_pattern) => (),
+                };
+                if let Some(as_name) = as_name {
+                    let from = NodeRef::new(self.file, pattern.index());
+                    self.assign_to_name_def_simple(as_name, from, inf, AssignKind::Normal);
+                }
+            }
+            CasePattern::OpenSequencePattern(_) => (),
+        }
+        (Frame::default(), Frame::default())
     }
 
     fn find_guards_in_named_expr(&self, named_expr: NamedExpression) -> (Inferred, Frame, Frame) {

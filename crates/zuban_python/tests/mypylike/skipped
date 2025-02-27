@@ -432,9 +432,7 @@ testCapturePattern
 testCapturePatternOutliving
 testNestedCapturePatterns
 testMappingPatternRest
-testAsPattern
 testCapturePatternInGuard
-testAsPatternInGuard
 testMatchUndefinedValuePattern
 testMatchUndefinedClassPattern
 

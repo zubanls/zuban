@@ -1,6 +1,6 @@
 use crate::{
     Block, CaseBlock, ClassPattern, DottedName, GroupPattern, Guard, LiteralPattern,
-    MappingPattern, MatchStmt, NameDef, NamedExpression, OpenSequencePattern, Pattern,
+    MappingPattern, MatchStmt, NameDef, NamedExpression, OpenSequencePattern, OrPattern, Pattern,
     SequencePattern, StarLikeExpressionIterator, SubjectExpr, WildcardPattern,
 };
 use parsa_python::{NonterminalType::*, PyNodeType::Nonterminal};
@@ -70,13 +70,14 @@ pub enum PatternKind<'db> {
     ClassPattern(ClassPattern<'db>),
     LiteralPattern(LiteralPattern<'db>),
     GroupPattern(GroupPattern<'db>),
+    OrPattern(OrPattern<'db>),
     SequencePattern(SequencePattern<'db>),
     MappingPattern(MappingPattern<'db>),
 }
 
 impl<'db> Pattern<'db> {
     pub fn unpack(&self) -> (PatternKind<'db>, Option<NameDef<'db>>) {
-        let mut iterator = self.node.iter_children().skip(1);
+        let mut iterator = self.node.iter_children();
         let first = iterator.next().unwrap();
         let pat = if first.is_type(Nonterminal(name_def)) {
             PatternKind::NameDef(NameDef::new(first))
@@ -92,8 +93,10 @@ impl<'db> Pattern<'db> {
             PatternKind::GroupPattern(GroupPattern::new(first))
         } else if first.is_type(Nonterminal(sequence_pattern)) {
             PatternKind::SequencePattern(SequencePattern::new(first))
+        } else if first.is_type(Nonterminal(or_pattern)) {
+            PatternKind::OrPattern(OrPattern::new(first))
         } else {
-            debug_assert_eq!(first.type_(), Nonterminal(mapping_pattern));
+            debug_assert_eq!(first.type_(), Nonterminal(mapping_pattern), "{first:?}");
             PatternKind::MappingPattern(MappingPattern::new(first))
         };
         (pat, iterator.skip(1).next().map(NameDef::new))
