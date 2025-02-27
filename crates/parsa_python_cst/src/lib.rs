@@ -410,7 +410,6 @@ create_nonterminal_structs!(
     Pattern: pattern
     OpenSequencePattern: open_sequence_pattern
     OrPattern: or_pattern
-    ClosedPattern: closed_pattern
     LiteralPattern: literal_pattern
     ComplexNumber: complex_number
     SignedNumber: signed_number

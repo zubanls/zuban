@@ -18,21 +18,15 @@ file: 0-63
    Indent: 14-14 ""
    case_block: 14-31
     Keyword: 14-18 "case"
-    patterns: 19-24
-     pattern: 19-24
-      or_pattern: 19-24
-       closed_pattern: 19-24
-        sequence_pattern: 19-24
-         Keyword: 19-20 "["
-         open_sequence_pattern: 20-23
-          maybe_star_pattern: 20-23
-           pattern: 20-23
-            or_pattern: 20-23
-             closed_pattern: 20-23
-              literal_pattern: 20-23
-               strings: 20-23
-                String: 20-23 "'a'"
-         Keyword: 23-24 "]"
+    pattern: 19-24
+     sequence_pattern: 19-24
+      Keyword: 19-20 "["
+      open_sequence_pattern: 20-23
+       pattern: 20-23
+        literal_pattern: 20-23
+         strings: 20-23
+          String: 20-23 "'a'"
+      Keyword: 23-24 "]"
     Keyword: 24-25 ":"
     block: 26-31
      simple_stmts: 26-31
@@ -52,12 +46,9 @@ file: 0-63
       Newline: 30-31 "\n"
    case_block: 35-53
     Keyword: 35-39 "case"
-    patterns: 40-41
-     pattern: 40-41
-      or_pattern: 40-41
-       closed_pattern: 40-41
-        wildcard_pattern: 40-41
-         Keyword: 40-41 "_"
+    pattern: 40-41
+     wildcard_pattern: 40-41
+      Keyword: 40-41 "_"
     Keyword: 41-42 ":"
     block: 42-53
      Newline: 42-43 "\n"

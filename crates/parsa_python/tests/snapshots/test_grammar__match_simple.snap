@@ -1,6 +1,8 @@
 ---
-source: parsa_python/tests/test_grammar.rs
+source: crates/parsa_python/tests/test_grammar.rs
+assertion_line: 43
 expression: tree_to_string(tree)
+snapshot_kind: text
 ---
 file: 0-57
  stmt: 1-57
@@ -16,21 +18,15 @@ file: 0-57
    Indent: 16-16 ""
    case_block: 16-32
     Keyword: 16-20 "case"
-    patterns: 21-26
-     pattern: 21-26
-      or_pattern: 21-26
-       closed_pattern: 21-26
-        sequence_pattern: 21-26
-         Keyword: 21-22 "["
-         open_sequence_pattern: 22-25
-          maybe_star_pattern: 22-25
-           pattern: 22-25
-            or_pattern: 22-25
-             closed_pattern: 22-25
-              literal_pattern: 22-25
-               strings: 22-25
-                String: 22-25 "'a'"
-         Keyword: 25-26 "]"
+    pattern: 21-26
+     sequence_pattern: 21-26
+      Keyword: 21-22 "["
+      open_sequence_pattern: 22-25
+       pattern: 22-25
+        literal_pattern: 22-25
+         strings: 22-25
+          String: 22-25 "'a'"
+      Keyword: 25-26 "]"
     Keyword: 26-27 ":"
     block: 28-32
      simple_stmts: 28-32
@@ -42,12 +38,9 @@ file: 0-57
       Newline: 31-32 "\n"
    case_block: 36-57
     Keyword: 36-40 "case"
-    patterns: 41-42
-     pattern: 41-42
-      or_pattern: 41-42
-       closed_pattern: 41-42
-        wildcard_pattern: 41-42
-         Keyword: 41-42 "_"
+    pattern: 41-42
+     wildcard_pattern: 41-42
+      Keyword: 41-42 "_"
     Keyword: 42-43 ":"
     block: 43-57
      Newline: 43-44 "\n"
@@ -61,4 +54,3 @@ file: 0-57
      Dedent: 57-57 ""
    Dedent: 57-57 ""
  Endmarker: 57-57 ""
-

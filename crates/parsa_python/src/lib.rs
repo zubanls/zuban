@@ -191,11 +191,11 @@ create_grammar!(
     guard: "if" named_expression
 
     pattern: or_pattern ("as" pattern_capture_target)?
-    or_pattern: "|".closed_pattern+
-    closed_pattern:
-        | literal_pattern | class_pattern | wildcard_pattern
+    or_pattern:? "|".(
+        literal_pattern | class_pattern | wildcard_pattern
         | group_pattern | sequence_pattern | mapping_pattern
         | pattern_capture_target !"." | dotted_name
+    )+
 
     literal_pattern:
         | complex_number | signed_number | strings | bytes
