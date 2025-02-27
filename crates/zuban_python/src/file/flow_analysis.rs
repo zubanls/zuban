@@ -2312,7 +2312,10 @@ impl Inference<'_, '_, '_> {
                         self.assign_to_name_def_simple(name_def, from, inf, AssignKind::Normal);
                     }
                     PatternKind::WildcardPattern(_) => (),
-                    PatternKind::DottedName(dotted_name) => (),
+                    PatternKind::DottedName(dotted_name) => {
+                        self.infer_dotted_name(dotted_name);
+                        // TODO use this
+                    }
                     PatternKind::ClassPattern(class_pattern) => (),
                     PatternKind::LiteralPattern(literal_pattern) => (),
                     PatternKind::GroupPattern(group_pattern) => (),

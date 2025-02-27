@@ -4558,6 +4558,19 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         i.save_redirect(self.i_s, self.file, decorator.index())
     }
 
+    pub(super) fn infer_dotted_name(&self, dotted: DottedName) -> Inferred {
+        match dotted.unpack() {
+            DottedNameContent::Name(name) => self.infer_name_reference(name),
+            DottedNameContent::DottedName(dotted_name, name) => {
+                let result = self.infer_dotted_name(dotted_name);
+                let node_ref = NodeRef::new(self.file, dotted.index());
+                result
+                    .lookup(self.i_s, node_ref, name.as_code(), LookupKind::Normal)
+                    .into_inferred()
+            }
+        }
+    }
+
     pub fn is_no_type_check(&self, decorated: Decorated) -> bool {
         let no_type_check_link = self.i_s.db.python_state.no_type_check_link();
         let mut is_no_type_check = false;
