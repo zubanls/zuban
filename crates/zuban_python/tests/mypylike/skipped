@@ -426,7 +426,6 @@ testUninferableLambdaWithTypeError
 testRejectCovariantArgumentInLambda
 
 # match statement
-testSequencePattern
 
 # ""return" not allowed in except* block" / continue break
 testReturnInExceptStarBlock1

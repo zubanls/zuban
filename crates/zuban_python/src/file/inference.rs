@@ -4316,8 +4316,15 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 // `del_stmt_inference_of_self_name`.
                 self.assign_any_to_del_stmts(del_stmt.targets());
             }
-            DefiningStmt::MatchStmt(match_stmt) => {
-                todo!()
+            DefiningStmt::MatchStmt(_) => {
+                // This should basically only ever happen on weird error cases where errors are
+                // added in other places. We assign Any to make sure
+                self.assign_to_name_def_simple(
+                    name_def.as_name_def(),
+                    name_def,
+                    &Inferred::new_any_from_error(),
+                    AssignKind::Normal,
+                )
             }
         }
     }
