@@ -1,6 +1,7 @@
 use crate::{
-    Block, CaseBlock, Guard, MatchStmt, NamedExpression, OpenSequencePattern, Pattern,
-    StarLikeExpressionIterator, SubjectExpr,
+    Block, CaseBlock, ClassPattern, DottedName, GroupPattern, Guard, LiteralPattern,
+    MappingPattern, MatchStmt, NameDef, NamedExpression, OpenSequencePattern, Pattern,
+    SequencePattern, StarLikeExpressionIterator, SubjectExpr, WildcardPattern,
 };
 use parsa_python::{NonterminalType::*, PyNodeType::Nonterminal};
 
@@ -62,9 +63,40 @@ pub enum CasePattern<'db> {
     OpenSequencePattern(OpenSequencePattern<'db>),
 }
 
+pub enum PatternKind<'db> {
+    NameDef(NameDef<'db>),
+    WildcardPattern(WildcardPattern<'db>),
+    DottedName(DottedName<'db>),
+    ClassPattern(ClassPattern<'db>),
+    LiteralPattern(LiteralPattern<'db>),
+    GroupPattern(GroupPattern<'db>),
+    SequencePattern(SequencePattern<'db>),
+    MappingPattern(MappingPattern<'db>),
+}
+
 impl<'db> Pattern<'db> {
-    pub fn unpack(&self) -> () {
-        todo!()
+    pub fn unpack(&self) -> (PatternKind<'db>, Option<NameDef<'db>>) {
+        let mut iterator = self.node.iter_children().skip(1);
+        let first = iterator.next().unwrap();
+        let pat = if first.is_type(Nonterminal(name_def)) {
+            PatternKind::NameDef(NameDef::new(first))
+        } else if first.is_type(Nonterminal(wildcard_pattern)) {
+            PatternKind::WildcardPattern(WildcardPattern::new(first))
+        } else if first.is_type(Nonterminal(dotted_name)) {
+            PatternKind::DottedName(DottedName::new(first))
+        } else if first.is_type(Nonterminal(class_pattern)) {
+            PatternKind::ClassPattern(ClassPattern::new(first))
+        } else if first.is_type(Nonterminal(literal_pattern)) {
+            PatternKind::LiteralPattern(LiteralPattern::new(first))
+        } else if first.is_type(Nonterminal(group_pattern)) {
+            PatternKind::GroupPattern(GroupPattern::new(first))
+        } else if first.is_type(Nonterminal(sequence_pattern)) {
+            PatternKind::SequencePattern(SequencePattern::new(first))
+        } else {
+            debug_assert_eq!(first.type_(), Nonterminal(mapping_pattern));
+            PatternKind::MappingPattern(MappingPattern::new(first))
+        };
+        (pat, iterator.skip(1).next().map(NameDef::new))
     }
 }
 
