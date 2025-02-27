@@ -2086,12 +2086,7 @@ impl Inference<'_, '_, '_> {
         func: Option<&Function>,
     ) {
         let (subject_expr, case_blocks) = match_stmt.unpack();
-        let subject = match subject_expr.unpack() {
-            SubjectExprContent::NamedExpression(named_expression) => {
-                self.infer_named_expression(named_expression);
-            }
-            SubjectExprContent::Tuple(star_like_expression_iterator) => todo!(),
-        };
+        let subject = self.infer_subject_expr(subject_expr);
         self.process_match_cases(case_blocks, class, func);
     }
 

@@ -426,7 +426,6 @@ testUninferableLambdaWithTypeError
 testRejectCovariantArgumentInLambda
 
 # match statement
-testTupleMatch
 testMatchWithGuard
 testSequencePattern
 testCapturePattern

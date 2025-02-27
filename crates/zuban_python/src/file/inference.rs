@@ -3632,8 +3632,8 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     }
                 }
             };
-            for (e, expected) in iterator.clone().zip(tuple_context_iterator) {
-                match e {
+            for (entry, expected) in iterator.clone().zip(tuple_context_iterator) {
+                match entry {
                     StarLikeExpression::NamedExpression(e) => {
                         let t = self
                             .infer_named_expression_with_context(
@@ -3667,6 +3667,18 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             }
         });
         gatherer.into_tuple(self, iterator)
+    }
+
+    check_point_cache_with!(pub infer_subject_expr, Self::_infer_subject_expr, SubjectExpr);
+    fn _infer_subject_expr(&self, subject_expr: SubjectExpr) -> Inferred {
+        match subject_expr.unpack() {
+            SubjectExprContent::NamedExpression(named_expression) => {
+                self.infer_named_expression(named_expression)
+            }
+            SubjectExprContent::Tuple(star_like_expression_iterator) => self
+                .infer_tuple_iterator(star_like_expression_iterator, &mut ResultContext::Unknown),
+        }
+        .save_redirect(self.i_s, self.file, subject_expr.index())
     }
 
     fn infer_primary_target(

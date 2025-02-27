@@ -1,5 +1,5 @@
 use crate::{
-    Block, CaseBlock, Expression, Guard, MatchStmt, NamedExpression, OpenSequencePattern, Pattern,
+    Block, CaseBlock, Guard, MatchStmt, NamedExpression, OpenSequencePattern, Pattern,
     StarLikeExpressionIterator, SubjectExpr,
 };
 use parsa_python::{NonterminalType::*, PyNodeType::Nonterminal};
