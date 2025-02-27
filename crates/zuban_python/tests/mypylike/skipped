@@ -426,13 +426,9 @@ testUninferableLambdaWithTypeError
 testRejectCovariantArgumentInLambda
 
 # match statement
-testMatchWithGuard
 testSequencePattern
-testCapturePattern
-testCapturePatternOutliving
 testNestedCapturePatterns
 testMappingPatternRest
-testCapturePatternInGuard
 testMatchUndefinedValuePattern
 testMatchUndefinedClassPattern
 

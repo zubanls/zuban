@@ -2307,8 +2307,11 @@ impl Inference<'_, '_, '_> {
             CasePattern::Pattern(pattern) => {
                 let (pattern_kind, as_name) = pattern.unpack();
                 match pattern_kind {
-                    PatternKind::NameDef(name_def) => (),
-                    PatternKind::WildcardPattern(wildcard_pattern) => (),
+                    PatternKind::NameDef(name_def) => {
+                        let from = NodeRef::new(self.file, pattern.index());
+                        self.assign_to_name_def_simple(name_def, from, inf, AssignKind::Normal);
+                    }
+                    PatternKind::WildcardPattern(_) => (),
                     PatternKind::DottedName(dotted_name) => (),
                     PatternKind::ClassPattern(class_pattern) => (),
                     PatternKind::LiteralPattern(literal_pattern) => (),
