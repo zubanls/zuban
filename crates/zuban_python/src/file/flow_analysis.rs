@@ -6,12 +6,13 @@ use std::{
 
 use parsa_python_cst::{
     Argument, Arguments, ArgumentsDetails, AssertStmt, Atom, AtomContent, Block, BreakStmt,
-    CompIfIterator, ComparisonContent, Comparisons, Conjunction, ContinueStmt, DelTarget,
-    DelTargets, Disjunction, ElseBlock, ExceptExpression, Expression, ExpressionContent,
-    ExpressionPart, ForIfClauseIterator, ForStmt, IfBlockIterator, IfBlockType, IfStmt, Name,
-    NameDef, NamedExpression, NamedExpressionContent, NodeIndex, Operand, Primary, PrimaryContent,
-    PrimaryOrAtom, PrimaryTarget, PrimaryTargetOrAtom, SliceType as CSTSliceType, Target, Ternary,
-    TryBlockType, TryStmt, WhileStmt, NAME_DEF_TO_NAME_DIFFERENCE,
+    CaseBlock, CompIfIterator, ComparisonContent, Comparisons, Conjunction, ContinueStmt,
+    DelTarget, DelTargets, Disjunction, ElseBlock, ExceptExpression, Expression, ExpressionContent,
+    ExpressionPart, ForIfClauseIterator, ForStmt, IfBlockIterator, IfBlockType, IfStmt, MatchStmt,
+    Name, NameDef, NamedExpression, NamedExpressionContent, NodeIndex, Operand, Primary,
+    PrimaryContent, PrimaryOrAtom, PrimaryTarget, PrimaryTargetOrAtom, SliceType as CSTSliceType,
+    SubjectExprContent, Target, Ternary, TryBlockType, TryStmt, WhileStmt,
+    NAME_DEF_TO_NAME_DIFFERENCE,
 };
 
 use crate::{
@@ -2076,6 +2077,48 @@ impl Inference<'_, '_, '_> {
             })
             .1
         })
+    }
+
+    pub fn flow_analysis_for_match_stmt(
+        &self,
+        match_stmt: MatchStmt,
+        class: Option<Class>,
+        func: Option<&Function>,
+    ) {
+        let (subject_expr, case_blocks) = match_stmt.unpack();
+        let subject = match subject_expr.unpack() {
+            SubjectExprContent::NamedExpression(named_expression) => {
+                self.infer_named_expression(named_expression);
+            }
+            SubjectExprContent::Tuple(star_like_expression_iterator) => todo!(),
+        };
+        self.process_match_cases(case_blocks, class, func);
+    }
+
+    fn process_match_cases<'x>(
+        &self,
+        mut case_blocks: impl Iterator<Item = CaseBlock<'x>>,
+        class: Option<Class>,
+        func: Option<&Function>,
+    ) {
+        let Some(case_block) = case_blocks.next() else {
+            return;
+        };
+        let (case_pattern, guard, block) = case_block.unpack();
+        if let Some(guard) = guard {
+            self.infer_named_expression(guard.named_expr());
+        }
+        // TODO use patterns
+        let (true_frame, false_frame) = (Frame::default(), Frame::default());
+        FLOW_ANALYSIS.with(|fa| {
+            let true_frame = fa.with_frame(true_frame, || {
+                self.calc_block_diagnostics(block, class, func)
+            });
+            let false_frame = fa.with_frame(false_frame, || {
+                self.process_match_cases(case_blocks, class, func)
+            });
+            fa.merge_conditional(self.i_s, true_frame, false_frame);
+        });
     }
 
     fn check_conjunction(

@@ -185,12 +185,11 @@ create_grammar!(
 
     match_stmt: "match" subject_expr ":" Newline Indent case_block+ Dedent
     subject_expr:
-        | star_named_expression "," star_named_expressions?
-        | named_expression
-    case_block: "case" patterns guard? ":" block
+        | named_expression !","
+        | star_named_expressions
+    case_block: "case" (pattern !"," | open_sequence_pattern) guard? ":" block
     guard: "if" named_expression
 
-    patterns: pattern !"," | open_sequence_pattern
     pattern: or_pattern ("as" pattern_capture_target)?
     or_pattern: "|".closed_pattern+
     closed_pattern:
@@ -204,15 +203,14 @@ create_grammar!(
     complex_number: signed_number ("+"|"-") Number
     signed_number: "-"? Number
 
-    pattern_capture_target: !"_" name_def
+    pattern_capture_target:? !"_" name_def
     wildcard_pattern: "_"
 
     group_pattern: "(" pattern ")"
     sequence_pattern:
         | "[" open_sequence_pattern? "]"
         | "(" open_sequence_pattern? ")"
-    open_sequence_pattern: ",".maybe_star_pattern+ ","?
-    maybe_star_pattern: star_pattern | pattern
+    open_sequence_pattern: ",".(star_pattern | pattern)+ ","?
     star_pattern: "*" (pattern_capture_target | wildcard_pattern)
 
     mapping_pattern:
@@ -222,8 +220,8 @@ create_grammar!(
     double_star_pattern: "**" pattern_capture_target ","?
 
     class_pattern: dotted_name "(" param_patterns? ")"
-    param_patterns:
-        | ",".(pattern !"=")+ [",".(keyword_pattern)+] ","?
+    param_patterns:?
+          ",".(pattern !"=")+ [",".(keyword_pattern)+] ","?
         | ",".(keyword_pattern)+ ","?
     keyword_pattern: Name "=" pattern
 

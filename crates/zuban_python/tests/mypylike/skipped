@@ -426,12 +426,18 @@ testUninferableLambdaWithTypeError
 testRejectCovariantArgumentInLambda
 
 # match statement
+testTupleMatch
+testMatchWithGuard
+testSequencePattern
+testCapturePattern
 testCapturePatternOutliving
-testMatchUndefinedSubject
+testNestedCapturePatterns
+testMappingPatternRest
+testAsPattern
+testCapturePatternInGuard
+testAsPatternInGuard
 testMatchUndefinedValuePattern
 testMatchUndefinedClassPattern
-testNoneBindingWildcardPattern
-testNoneBindingStarredWildcardPattern
 
 # ""return" not allowed in except* block" / continue break
 testReturnInExceptStarBlock1

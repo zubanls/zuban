@@ -1,4 +1,5 @@
 mod bytes;
+mod match_stmt;
 mod strings;
 
 use std::{
@@ -9,6 +10,7 @@ use std::{
 };
 
 pub use bytes::parse_python_bytes_literal;
+pub use match_stmt::{CasePattern, SubjectExprContent};
 pub use parsa_python::{keywords_contain, CodeIndex, NodeIndex};
 use parsa_python::{
     parse,
@@ -401,6 +403,26 @@ create_nonterminal_structs!(
     StarTargets: star_targets
     WithItems: with_items
     WithItem: with_item
+
+    SubjectExpr: subject_expr
+    CaseBlock: case_block
+    Guard: guard
+    Pattern: pattern
+    OpenSequencePattern: open_sequence_pattern
+    OrPattern: or_pattern
+    ClosedPattern: closed_pattern
+    LiteralPattern: literal_pattern
+    ComplexNumber: complex_number
+    SignedNumber: signed_number
+    WildcardPattern: wildcard_pattern
+    GroupPattern: group_pattern
+    SequencePattern: sequence_pattern
+    StarPattern: star_pattern
+    MappingPattern: mapping_pattern
+    KeyValuePattern: key_value_pattern
+    DoubleStarPattern: double_star_pattern
+    ClassPattern: class_pattern
+    KeywordPattern: keyword_pattern
 );
 
 create_struct!(Name: Terminal(TerminalType::Name));
@@ -623,6 +645,7 @@ pub enum DefiningStmt<'db> {
     ForStmt(ForStmt<'db>),
     WithItem(WithItem<'db>),
     DelStmt(DelStmt<'db>),
+    MatchStmt(MatchStmt<'db>),
 }
 
 impl DefiningStmt<'_> {
@@ -641,7 +664,8 @@ impl DefiningStmt<'_> {
             DefiningStmt::TryStmt(n) => n.index(),
             DefiningStmt::ForStmt(n) => n.index(),
             DefiningStmt::WithItem(w) => w.index(),
-            DefiningStmt::DelStmt(w) => w.index(),
+            DefiningStmt::DelStmt(d) => d.index(),
+            DefiningStmt::MatchStmt(m) => m.index(),
         }
     }
 }
@@ -3594,6 +3618,7 @@ impl<'db> NameDef<'db> {
                 Nonterminal(try_stmt),
                 Nonterminal(with_item),
                 Nonterminal(del_stmt),
+                Nonterminal(match_stmt),
             ])
             .expect("There should always be a stmt");
         if stmt_node.is_type(Nonterminal(function_def)) {
@@ -3622,6 +3647,8 @@ impl<'db> NameDef<'db> {
             DefiningStmt::WithItem(WithItem::new(stmt_node))
         } else if stmt_node.is_type(Nonterminal(del_stmt)) {
             DefiningStmt::DelStmt(DelStmt::new(stmt_node))
+        } else if stmt_node.is_type(Nonterminal(match_stmt)) {
+            DefiningStmt::MatchStmt(MatchStmt::new(stmt_node))
         } else {
             unreachable!(
                 "Reached a previously unknown defining statement {:?}",

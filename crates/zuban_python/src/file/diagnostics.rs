@@ -433,8 +433,8 @@ impl Inference<'_, '_, '_> {
                 StmtLikeContent::WithStmt(with_stmt) => {
                     self.calc_with_stmt(with_stmt, class, func, false)
                 }
-                StmtLikeContent::MatchStmt(_match_stmt) => {
-                    debug!("TODO match_stmt diagnostics");
+                StmtLikeContent::MatchStmt(match_stmt) => {
+                    self.flow_analysis_for_match_stmt(match_stmt, class, func)
                 }
                 StmtLikeContent::AsyncStmt(async_stmt) => match async_stmt.unpack() {
                     AsyncStmtContent::FunctionDef(f) => {

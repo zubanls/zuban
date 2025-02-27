@@ -4304,6 +4304,9 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 // `del_stmt_inference_of_self_name`.
                 self.assign_any_to_del_stmts(del_stmt.targets());
             }
+            DefiningStmt::MatchStmt(match_stmt) => {
+                todo!()
+            }
         }
     }
 

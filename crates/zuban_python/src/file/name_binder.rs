@@ -863,8 +863,22 @@ impl<'db> NameBinder<'db> {
         result.into()
     }
 
-    fn index_match_stmt(&mut self, _match_stmt: MatchStmt<'db>, _ordered: bool) {
-        debug!("TODO match_stmt name binding");
+    fn index_match_stmt(&mut self, match_stmt: MatchStmt<'db>, ordered: bool) {
+        let (subject_expr, case_blocks) = match_stmt.unpack();
+        self.index_non_block_node(&subject_expr, ordered);
+        for case_block in case_blocks {
+            let (case_pattern, guard, block) = case_block.unpack();
+            match case_pattern {
+                CasePattern::Pattern(pattern) => self.index_non_block_node(&pattern, false),
+                CasePattern::OpenSequencePattern(patterns) => {
+                    self.index_non_block_node(&patterns, false)
+                }
+            };
+            if let Some(guard) = guard {
+                self.index_non_block_node(&guard, false);
+            }
+            self.index_block(block, false)
+        }
     }
 
     fn index_non_block_node<T: InterestingNodeSearcher<'db>>(&mut self, node: &T, ordered: bool) {
