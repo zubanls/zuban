@@ -427,8 +427,6 @@ testRejectCovariantArgumentInLambda
 
 # match statement
 testSequencePattern
-testNestedCapturePatterns
-testMappingPatternRest
 
 # ""return" not allowed in except* block" / continue break
 testReturnInExceptStarBlock1

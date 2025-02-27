@@ -1,9 +1,10 @@
 use crate::{
-    Block, CaseBlock, ClassPattern, DottedName, GroupPattern, Guard, KeywordPattern,
-    LiteralPattern, MappingPattern, MatchStmt, NameDef, NamedExpression, OpenSequencePattern,
-    OrPattern, Pattern, SequencePattern, StarLikeExpressionIterator, SubjectExpr, WildcardPattern,
+    Block, CaseBlock, ClassPattern, DottedName, DoubleStarPattern, GroupPattern, Guard,
+    KeyValuePattern, KeywordPattern, LiteralPattern, MappingPattern, MatchStmt, Name, NameDef,
+    NamedExpression, OpenSequencePattern, OrPattern, Pattern, SequencePattern,
+    StarLikeExpressionIterator, StarPattern, SubjectExpr, WildcardPattern,
 };
-use parsa_python::{NonterminalType::*, PyNodeType::Nonterminal, SiblingIterator};
+use parsa_python::{NonterminalType::*, PyNode, PyNodeType::Nonterminal, SiblingIterator};
 
 impl<'db> MatchStmt<'db> {
     pub fn unpack(&self) -> (SubjectExpr<'db>, impl Iterator<Item = CaseBlock<'db>>) {
@@ -79,27 +80,33 @@ impl<'db> Pattern<'db> {
     pub fn unpack(&self) -> (PatternKind<'db>, Option<NameDef<'db>>) {
         let mut iterator = self.node.iter_children();
         let first = iterator.next().unwrap();
-        let pat = if first.is_type(Nonterminal(name_def)) {
-            PatternKind::NameDef(NameDef::new(first))
-        } else if first.is_type(Nonterminal(wildcard_pattern)) {
-            PatternKind::WildcardPattern(WildcardPattern::new(first))
-        } else if first.is_type(Nonterminal(dotted_name)) {
-            PatternKind::DottedName(DottedName::new(first))
-        } else if first.is_type(Nonterminal(class_pattern)) {
-            PatternKind::ClassPattern(ClassPattern::new(first))
-        } else if first.is_type(Nonterminal(literal_pattern)) {
-            PatternKind::LiteralPattern(LiteralPattern::new(first))
-        } else if first.is_type(Nonterminal(group_pattern)) {
-            PatternKind::GroupPattern(GroupPattern::new(first))
-        } else if first.is_type(Nonterminal(sequence_pattern)) {
-            PatternKind::SequencePattern(SequencePattern::new(first))
-        } else if first.is_type(Nonterminal(or_pattern)) {
-            PatternKind::OrPattern(OrPattern::new(first))
-        } else {
-            debug_assert_eq!(first.type_(), Nonterminal(mapping_pattern), "{first:?}");
-            PatternKind::MappingPattern(MappingPattern::new(first))
-        };
-        (pat, iterator.skip(1).next().map(NameDef::new))
+        (
+            pattern_node_to_kind(first),
+            iterator.skip(1).next().map(NameDef::new),
+        )
+    }
+}
+
+fn pattern_node_to_kind(node: PyNode) -> PatternKind {
+    if node.is_type(Nonterminal(name_def)) {
+        PatternKind::NameDef(NameDef::new(node))
+    } else if node.is_type(Nonterminal(wildcard_pattern)) {
+        PatternKind::WildcardPattern(WildcardPattern::new(node))
+    } else if node.is_type(Nonterminal(dotted_name)) {
+        PatternKind::DottedName(DottedName::new(node))
+    } else if node.is_type(Nonterminal(class_pattern)) {
+        PatternKind::ClassPattern(ClassPattern::new(node))
+    } else if node.is_type(Nonterminal(literal_pattern)) {
+        PatternKind::LiteralPattern(LiteralPattern::new(node))
+    } else if node.is_type(Nonterminal(group_pattern)) {
+        PatternKind::GroupPattern(GroupPattern::new(node))
+    } else if node.is_type(Nonterminal(sequence_pattern)) {
+        PatternKind::SequencePattern(SequencePattern::new(node))
+    } else if node.is_type(Nonterminal(or_pattern)) {
+        PatternKind::OrPattern(OrPattern::new(node))
+    } else {
+        debug_assert_eq!(node.type_(), Nonterminal(mapping_pattern), "{node:?}");
+        PatternKind::MappingPattern(MappingPattern::new(node))
     }
 }
 
@@ -129,6 +136,124 @@ impl<'db> ClassPattern<'db> {
 pub enum ParamPattern<'db> {
     Positional(Pattern<'db>),
     Keyword(KeywordPattern<'db>),
+}
+
+impl<'db> KeywordPattern<'db> {
+    pub fn unpack(&self) -> (Name<'db>, Pattern<'db>) {
+        let mut iterator = self.node.iter_children();
+        let name = Name::new(iterator.next().unwrap());
+        iterator.next();
+        let pat = Pattern::new(iterator.next().unwrap());
+        (name, pat)
+    }
+}
+
+impl<'db> SequencePattern<'db> {
+    pub fn iter(&self) -> impl Iterator<Item = SequencePatternItem<'db>> {
+        let node = self.node.nth_child(1);
+        node.is_type(Nonterminal(open_sequence_pattern))
+            .then(|| OpenSequencePattern::new(node).iter())
+            .into_iter()
+            .flatten()
+    }
+}
+
+impl<'db> OpenSequencePattern<'db> {
+    pub fn iter(&self) -> impl Iterator<Item = SequencePatternItem<'db>> {
+        self.node.iter_children().step_by(2).map(|n| {
+            if n.is_type(Nonterminal(pattern)) {
+                SequencePatternItem::Entry(Pattern::new(n))
+            } else {
+                SequencePatternItem::Rest(StarPattern::new(n))
+            }
+        })
+    }
+}
+
+pub enum SequencePatternItem<'db> {
+    Entry(Pattern<'db>),
+    Rest(StarPattern<'db>),
+}
+
+pub enum StarPatternContent<'db> {
+    NameDef(NameDef<'db>),
+    WildcardPattern(WildcardPattern<'db>),
+}
+
+impl<'db> StarPattern<'db> {
+    pub fn unpack(&self) -> StarPatternContent<'db> {
+        let n = self.node.nth_child(1);
+        if n.is_type(Nonterminal(wildcard_pattern)) {
+            StarPatternContent::WildcardPattern(WildcardPattern::new(n))
+        } else {
+            StarPatternContent::NameDef(NameDef::new(n))
+        }
+    }
+}
+
+impl<'db> MappingPattern<'db> {
+    pub fn iter(&self) -> impl Iterator<Item = MappingPatternItem<'db>> {
+        self.node
+            .iter_children()
+            .skip(1)
+            .step_by(2)
+            .filter_map(|n| {
+                if n.is_type(Nonterminal(key_value_pattern)) {
+                    Some(MappingPatternItem::Entry(KeyValuePattern::new(n)))
+                } else if n.is_type(Nonterminal(double_star_pattern)) {
+                    Some(MappingPatternItem::Rest(DoubleStarPattern::new(n)))
+                } else {
+                    debug_assert!(n.is_leaf(), "{n:?}");
+                    None
+                }
+            })
+    }
+}
+
+pub enum MappingPatternItem<'db> {
+    Entry(KeyValuePattern<'db>),
+    Rest(DoubleStarPattern<'db>),
+}
+
+impl<'db> KeyValuePattern<'db> {
+    pub fn unpack(&self) -> (KeyEntryInPattern<'db>, Pattern<'db>) {
+        let mut iterator = self.node.iter_children();
+        let first = iterator.next().unwrap();
+        let key = if first.is_type(Nonterminal(literal_pattern)) {
+            KeyEntryInPattern::LiteralPattern(LiteralPattern::new(first))
+        } else {
+            KeyEntryInPattern::DottedName(DottedName::new(first))
+        };
+        iterator.next();
+        let value = Pattern::new(iterator.next().unwrap());
+        (key, value)
+    }
+}
+
+pub enum KeyEntryInPattern<'db> {
+    LiteralPattern(LiteralPattern<'db>),
+    DottedName(DottedName<'db>),
+}
+
+impl<'db> DoubleStarPattern<'db> {
+    pub fn name_def(&self) -> NameDef<'db> {
+        NameDef::new(self.node.nth_child(1))
+    }
+}
+
+impl<'db> GroupPattern<'db> {
+    pub fn inner(&self) -> Pattern<'db> {
+        Pattern::new(self.node.nth_child(1))
+    }
+}
+
+impl<'db> OrPattern<'db> {
+    pub fn iter(&self) -> impl Iterator<Item = PatternKind<'db>> {
+        self.node
+            .iter_children()
+            .step_by(2)
+            .map(pattern_node_to_kind)
+    }
 }
 
 impl<'db> Guard<'db> {

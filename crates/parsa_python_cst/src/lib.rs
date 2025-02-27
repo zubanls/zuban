@@ -10,7 +10,10 @@ use std::{
 };
 
 pub use bytes::parse_python_bytes_literal;
-pub use match_stmt::{CasePattern, ParamPattern, PatternKind, SubjectExprContent};
+pub use match_stmt::{
+    CasePattern, KeyEntryInPattern, MappingPatternItem, ParamPattern, PatternKind,
+    SequencePatternItem, StarPatternContent, SubjectExprContent,
+};
 pub use parsa_python::{keywords_contain, CodeIndex, NodeIndex};
 use parsa_python::{
     parse,

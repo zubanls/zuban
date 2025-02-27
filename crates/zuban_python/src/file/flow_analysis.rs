@@ -9,9 +9,10 @@ use parsa_python_cst::{
     CaseBlock, CasePattern, CompIfIterator, ComparisonContent, Comparisons, Conjunction,
     ContinueStmt, DelTarget, DelTargets, Disjunction, ElseBlock, ExceptExpression, Expression,
     ExpressionContent, ExpressionPart, ForIfClauseIterator, ForStmt, IfBlockIterator, IfBlockType,
-    IfStmt, MatchStmt, Name, NameDef, NamedExpression, NamedExpressionContent, NodeIndex, Operand,
-    ParamPattern, PatternKind, Primary, PrimaryContent, PrimaryOrAtom, PrimaryTarget,
-    PrimaryTargetOrAtom, SliceType as CSTSliceType, Target, Ternary, TryBlockType, TryStmt,
+    IfStmt, KeyEntryInPattern, MappingPatternItem, MatchStmt, Name, NameDef, NamedExpression,
+    NamedExpressionContent, NodeIndex, Operand, ParamPattern, Pattern, PatternKind, Primary,
+    PrimaryContent, PrimaryOrAtom, PrimaryTarget, PrimaryTargetOrAtom, SequencePatternItem,
+    SliceType as CSTSliceType, StarPatternContent, Target, Ternary, TryBlockType, TryStmt,
     WhileStmt, NAME_DEF_TO_NAME_DIFFERENCE,
 };
 
@@ -2304,44 +2305,131 @@ impl Inference<'_, '_, '_> {
         case_pattern: CasePattern,
     ) -> (Frame, Frame) {
         match case_pattern {
-            CasePattern::Pattern(pattern) => {
-                let (pattern_kind, as_name) = pattern.unpack();
-                match pattern_kind {
-                    PatternKind::NameDef(name_def) => {
-                        let from = NodeRef::new(self.file, pattern.index());
-                        self.assign_to_name_def_simple(name_def, from, inf, AssignKind::Normal);
-                    }
-                    PatternKind::WildcardPattern(_) => (),
-                    PatternKind::DottedName(dotted_name) => {
-                        self.infer_dotted_name(dotted_name);
-                        // TODO use this
-                    }
-                    PatternKind::ClassPattern(class_pattern) => {
-                        let (dotted, params) = class_pattern.unpack();
-                        self.infer_dotted_name(dotted);
-                        for param in params {
-                            match param {
-                                ParamPattern::Positional(pat) => {
-                                    // TODO
-                                }
-                                ParamPattern::Keyword(keyword_pattern) => {
-                                    // TODO
-                                }
-                            }
+            CasePattern::Pattern(pattern) => self.find_guards_in_pattern(inf, pattern),
+            CasePattern::OpenSequencePattern(seq) => {
+                self.find_guards_in_sequence_pattern(seq.iter())
+            }
+        }
+    }
+
+    fn find_guards_in_pattern(&self, inf: &Inferred, pattern: Pattern) -> (Frame, Frame) {
+        let (pattern_kind, as_name) = pattern.unpack();
+        let result = self.find_guards_in_pattern_kind(inf, pattern_kind);
+        if let Some(as_name) = as_name {
+            let from = NodeRef::new(self.file, pattern.index());
+            self.assign_to_name_def_simple(as_name, from, inf, AssignKind::Normal);
+        }
+        result
+    }
+
+    fn find_guards_in_pattern_kind(&self, inf: &Inferred, kind: PatternKind) -> (Frame, Frame) {
+        let assign_any = |name_def| {
+            // This is just temporary until the TODOs are resolved below
+            self.assign_to_name_def_simple(
+                name_def,
+                NodeRef::new(self.file, name_def.index()),
+                &Inferred::new_any_from_error(),
+                AssignKind::Normal,
+            )
+        };
+        let assign_any_to_pattern = |pat| {
+            // This is just temporary until the TODOs are resolved below
+            self.find_guards_in_pattern(&Inferred::new_any_from_error(), pat);
+        };
+        match kind {
+            PatternKind::NameDef(name_def) => {
+                let from = NodeRef::new(self.file, name_def.index());
+                self.assign_to_name_def_simple(name_def, from, inf, AssignKind::Normal);
+            }
+            PatternKind::WildcardPattern(_) => (),
+            PatternKind::DottedName(dotted_name) => {
+                self.infer_dotted_name(dotted_name);
+                // TODO use this
+            }
+            PatternKind::ClassPattern(class_pattern) => {
+                let (dotted, params) = class_pattern.unpack();
+                self.infer_dotted_name(dotted);
+                for param in params {
+                    match param {
+                        ParamPattern::Positional(pat) => {
+                            // TODO
+                            assign_any_to_pattern(pat);
+                        }
+                        ParamPattern::Keyword(keyword_pattern) => {
+                            // TODO
+                            let (_, pat) = keyword_pattern.unpack();
+                            assign_any_to_pattern(pat);
                         }
                     }
-                    PatternKind::LiteralPattern(literal_pattern) => (),
-                    PatternKind::GroupPattern(group_pattern) => (),
-                    PatternKind::OrPattern(or_pattern) => (),
-                    PatternKind::SequencePattern(sequence_pattern) => (),
-                    PatternKind::MappingPattern(mapping_pattern) => (),
-                };
-                if let Some(as_name) = as_name {
-                    let from = NodeRef::new(self.file, pattern.index());
-                    self.assign_to_name_def_simple(as_name, from, inf, AssignKind::Normal);
                 }
             }
-            CasePattern::OpenSequencePattern(_) => (),
+            PatternKind::LiteralPattern(literal_pattern) => {
+                // TODO
+            }
+            PatternKind::GroupPattern(group_pattern) => {
+                return self.find_guards_in_pattern(inf, group_pattern.inner())
+            }
+            PatternKind::OrPattern(or_pattern) => {
+                for pat in or_pattern.iter() {
+                    // TODO
+                    self.find_guards_in_pattern_kind(&Inferred::new_any_from_error(), pat);
+                }
+            }
+            PatternKind::SequencePattern(sequence_pattern) => {
+                return self.find_guards_in_sequence_pattern(sequence_pattern.iter())
+            }
+            PatternKind::MappingPattern(mapping_pattern) => {
+                for item in mapping_pattern.iter() {
+                    match item {
+                        MappingPatternItem::Entry(e) => {
+                            let (key, value) = e.unpack();
+                            // TODO
+                            match key {
+                                KeyEntryInPattern::LiteralPattern(_lit) => (),
+                                KeyEntryInPattern::DottedName(_dotted) => (),
+                            };
+                            assign_any_to_pattern(value);
+                        }
+                        MappingPatternItem::Rest(rest) => {
+                            // TODO
+                            assign_any(rest.name_def())
+                        }
+                    }
+                }
+            }
+        }
+        (Frame::default(), Frame::default())
+    }
+
+    fn find_guards_in_sequence_pattern<'x>(
+        &self,
+        iter: impl Iterator<Item = SequencePatternItem<'x>>,
+    ) -> (Frame, Frame) {
+        let assign_any = |name_def| {
+            // This is just temporary until the TODOs are resolved below
+            self.assign_to_name_def_simple(
+                name_def,
+                NodeRef::new(self.file, name_def.index()),
+                &Inferred::new_any_from_error(),
+                AssignKind::Normal,
+            )
+        };
+        for item in iter {
+            match item {
+                SequencePatternItem::Entry(pattern) => {
+                    // TODO
+                    self.find_guards_in_pattern(&Inferred::new_any_from_error(), pattern);
+                }
+                SequencePatternItem::Rest(star_pattern) => {
+                    match star_pattern.unpack() {
+                        StarPatternContent::NameDef(name_def) => {
+                            // TODO
+                            assign_any(name_def)
+                        }
+                        StarPatternContent::WildcardPattern(_) => (),
+                    }
+                }
+            }
         }
         (Frame::default(), Frame::default())
     }
