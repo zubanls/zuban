@@ -178,6 +178,7 @@ pub enum InterestingNode<'db> {
     Ternary(Ternary<'db>),
     Comprehension(Comprehension<'db>),
     DictComprehension(DictComprehension<'db>),
+    DottedName(DottedName<'db>),
     Walrus(Walrus<'db>),
 }
 pub struct InterestingNodes<'db>(SearchIterator<'db>);
@@ -203,6 +204,8 @@ impl<'db> Iterator for InterestingNodes<'db> {
                 InterestingNode::Comprehension(Comprehension::new(n))
             } else if n.is_type(Nonterminal(dict_comprehension)) {
                 InterestingNode::DictComprehension(DictComprehension::new(n))
+            } else if n.is_type(Nonterminal(dotted_name)) {
+                InterestingNode::DottedName(DottedName::new(n))
             } else {
                 debug_assert_eq!(n.type_(), Nonterminal(walrus));
                 InterestingNode::Walrus(Walrus::new(n))
@@ -278,6 +281,7 @@ macro_rules! create_struct {
                     Nonterminal(ternary),
                     Nonterminal(comprehension),
                     Nonterminal(dict_comprehension),
+                    Nonterminal(dotted_name),
                     Nonterminal(walrus),
                 ];
                 InterestingNodes(self.node.search(SEARCH_NAMES, true))
@@ -2648,6 +2652,11 @@ impl<'db> ImportFromAsName<'db> {
 }
 
 impl<'db> DottedName<'db> {
+    pub fn first_name(&self) -> Name<'db> {
+        let n = self.node.next_leaf().unwrap();
+        Name::new(n)
+    }
+
     pub fn unpack(&self) -> DottedNameContent<'db> {
         let mut children = self.node.iter_children();
         let first = children.next().unwrap();

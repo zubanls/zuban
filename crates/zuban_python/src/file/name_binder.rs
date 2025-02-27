@@ -1102,6 +1102,9 @@ impl<'db> NameBinder<'db> {
                     self.index_non_block_node_full(&if_, ordered, cause);
                     self.index_non_block_node_full(&else_, ordered, cause);
                 }
+                InterestingNode::DottedName(dotted_name) => {
+                    self.maybe_add_reference(dotted_name.first_name(), ordered);
+                }
                 InterestingNode::Walrus(walrus) => {
                     let (name_def, expr) = walrus.unpack();
                     self.index_non_block_node_full(&expr, ordered, cause);

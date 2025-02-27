@@ -340,7 +340,7 @@ macro_rules! __create_node {
                             return Some($Node {
                                 internal_tree: &self.internal_tree,
                                 internal_node: node,
-                                index: index as $crate::NodeIndex,
+                                index: self.index + 1 + (index as $crate::NodeIndex),
                             });
                         }
                     }

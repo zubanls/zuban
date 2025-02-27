@@ -11,8 +11,8 @@ use parsa_python_cst::{
     ExpressionContent, ExpressionPart, ForIfClauseIterator, ForStmt, IfBlockIterator, IfBlockType,
     IfStmt, MatchStmt, Name, NameDef, NamedExpression, NamedExpressionContent, NodeIndex, Operand,
     PatternKind, Primary, PrimaryContent, PrimaryOrAtom, PrimaryTarget, PrimaryTargetOrAtom,
-    SliceType as CSTSliceType, SubjectExprContent, Target, Ternary, TryBlockType, TryStmt,
-    WhileStmt, NAME_DEF_TO_NAME_DIFFERENCE,
+    SliceType as CSTSliceType, Target, Ternary, TryBlockType, TryStmt, WhileStmt,
+    NAME_DEF_TO_NAME_DIFFERENCE,
 };
 
 use crate::{
