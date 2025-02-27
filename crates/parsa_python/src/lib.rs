@@ -220,7 +220,7 @@ create_grammar!(
     double_star_pattern: "**" pattern_capture_target ","?
 
     class_pattern: dotted_name "(" param_patterns? ")"
-    param_patterns:?
+    param_patterns:
           ",".(pattern !"=")+ [",".(keyword_pattern)+] ","?
         | ",".(keyword_pattern)+ ","?
     keyword_pattern: Name "=" pattern

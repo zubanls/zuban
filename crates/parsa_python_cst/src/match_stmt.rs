@@ -1,9 +1,9 @@
 use crate::{
-    Block, CaseBlock, ClassPattern, DottedName, GroupPattern, Guard, LiteralPattern,
-    MappingPattern, MatchStmt, NameDef, NamedExpression, OpenSequencePattern, OrPattern, Pattern,
-    SequencePattern, StarLikeExpressionIterator, SubjectExpr, WildcardPattern,
+    Block, CaseBlock, ClassPattern, DottedName, GroupPattern, Guard, KeywordPattern,
+    LiteralPattern, MappingPattern, MatchStmt, NameDef, NamedExpression, OpenSequencePattern,
+    OrPattern, Pattern, SequencePattern, StarLikeExpressionIterator, SubjectExpr, WildcardPattern,
 };
-use parsa_python::{NonterminalType::*, PyNodeType::Nonterminal};
+use parsa_python::{NonterminalType::*, PyNodeType::Nonterminal, SiblingIterator};
 
 impl<'db> MatchStmt<'db> {
     pub fn unpack(&self) -> (SubjectExpr<'db>, impl Iterator<Item = CaseBlock<'db>>) {
@@ -101,6 +101,34 @@ impl<'db> Pattern<'db> {
         };
         (pat, iterator.skip(1).next().map(NameDef::new))
     }
+}
+
+impl<'db> ClassPattern<'db> {
+    pub fn unpack(&self) -> (DottedName<'db>, impl Iterator<Item = ParamPattern<'db>>) {
+        let mut iterator = self.node.iter_children();
+        let dotted = DottedName::new(iterator.next().unwrap());
+        iterator.next();
+        let param_pattern_node = iterator.next().unwrap();
+        let param_siblings = if param_pattern_node.is_type(Nonterminal(param_patterns)) {
+            param_pattern_node.iter_children()
+        } else {
+            debug_assert!(param_pattern_node.is_leaf());
+            SiblingIterator::new_empty(&self.node)
+        };
+        let param_iterator = param_siblings.step_by(2).map(|n| {
+            if n.is_type(Nonterminal(pattern)) {
+                ParamPattern::Positional(Pattern::new(n))
+            } else {
+                ParamPattern::Keyword(KeywordPattern::new(n))
+            }
+        });
+        (dotted, param_iterator)
+    }
+}
+
+pub enum ParamPattern<'db> {
+    Positional(Pattern<'db>),
+    Keyword(KeywordPattern<'db>),
 }
 
 impl<'db> Guard<'db> {

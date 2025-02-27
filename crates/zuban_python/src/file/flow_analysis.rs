@@ -10,9 +10,9 @@ use parsa_python_cst::{
     ContinueStmt, DelTarget, DelTargets, Disjunction, ElseBlock, ExceptExpression, Expression,
     ExpressionContent, ExpressionPart, ForIfClauseIterator, ForStmt, IfBlockIterator, IfBlockType,
     IfStmt, MatchStmt, Name, NameDef, NamedExpression, NamedExpressionContent, NodeIndex, Operand,
-    PatternKind, Primary, PrimaryContent, PrimaryOrAtom, PrimaryTarget, PrimaryTargetOrAtom,
-    SliceType as CSTSliceType, Target, Ternary, TryBlockType, TryStmt, WhileStmt,
-    NAME_DEF_TO_NAME_DIFFERENCE,
+    ParamPattern, PatternKind, Primary, PrimaryContent, PrimaryOrAtom, PrimaryTarget,
+    PrimaryTargetOrAtom, SliceType as CSTSliceType, Target, Ternary, TryBlockType, TryStmt,
+    WhileStmt, NAME_DEF_TO_NAME_DIFFERENCE,
 };
 
 use crate::{
@@ -2316,7 +2316,20 @@ impl Inference<'_, '_, '_> {
                         self.infer_dotted_name(dotted_name);
                         // TODO use this
                     }
-                    PatternKind::ClassPattern(class_pattern) => (),
+                    PatternKind::ClassPattern(class_pattern) => {
+                        let (dotted, params) = class_pattern.unpack();
+                        self.infer_dotted_name(dotted);
+                        for param in params {
+                            match param {
+                                ParamPattern::Positional(pat) => {
+                                    // TODO
+                                }
+                                ParamPattern::Keyword(keyword_pattern) => {
+                                    // TODO
+                                }
+                            }
+                        }
+                    }
                     PatternKind::LiteralPattern(literal_pattern) => (),
                     PatternKind::GroupPattern(group_pattern) => (),
                     PatternKind::OrPattern(or_pattern) => (),
