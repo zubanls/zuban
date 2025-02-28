@@ -200,7 +200,7 @@ pub struct Workspace {
     // Mac sometimes needs a bit help with events that are reported for non-canonicalized paths
     // Without this check_rename_with_symlinks fails
     #[cfg(target_os = "macos")]
-    canonicalized_path: AbsPath,
+    canonicalized_path: Box<AbsPath>,
     pub directory: Directory,
     pub kind: WorkspaceKind,
 }
