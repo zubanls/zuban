@@ -1618,3 +1618,36 @@ def foo(x: A):
             # callable introduces Any unfortunately :(
             x(1)
             x(undefined=3)
+
+[case isinstance_on_generic_inherited_with_access]
+from typing import Generic, TypeVar, Any
+
+T = TypeVar('T')
+
+class Base(Generic[T]):
+    def __init__(self, c: T):
+        self.base_attr = c
+
+class Super(Base[list[T]]):
+    def __init__(self, c: T) -> None:
+        super().__init__([c])
+        self.attr = int()
+
+class Sub(Super[int]): ...
+
+def f(x: Any):
+    if issubclass(x, Sub):
+        reveal_type(x)  # N: Revealed type is "def (c: int) -> __main__.Sub"
+
+    if isinstance(x, Sub):
+        reveal_type(x) # N: Revealed type is "__main__.Sub"
+        x.attr
+        reveal_type(x.base_attr)  # N: Revealed type is "list[int]"
+
+    if issubclass(x, Super):
+        reveal_type(x)  # N: Revealed type is "def [T] (c: T) -> __main__.Super[T]"
+
+    if isinstance(x, Super):
+        reveal_type(x) # N: Revealed type is "__main__.Super"
+        x.attr
+        reveal_type(x.base_attr)  # N: Revealed type is "list[Any]"

@@ -1516,7 +1516,10 @@ impl Inference<'_, '_, '_> {
         fa: &FlowAnalysis,
         function: Function,
     ) -> Result<(), ()> {
-        if let Some(class) = function.class {
+        let mut function = function; // lifetime issues?!
+        if let Some(class) = function.class.as_mut() {
+            // The class should have self generics within the functions
+            *class = Class::with_self_generics(self.i_s.db, class.node_ref);
             let class_block = class.node().block();
             if !class
                 .node_ref
@@ -1532,13 +1535,11 @@ impl Inference<'_, '_, '_> {
                         .inference(&self.i_s.without_context())
                         .calculate_diagnostics()?;
                 }
-                // The class should have self generics within the functions
-                let class = Class::with_self_generics(self.i_s.db, class.node_ref);
                 fa.with_new_empty_and_delay_functions_further(self.i_s, || {
                     let new_i_s = self.i_s.with_class_context(&class);
                     let inference = self.file.inference(&new_i_s);
                     fa.with_frame_and_result(Frame::default(), || {
-                        inference.calculate_class_block_diagnostics(class, class_block)
+                        inference.calculate_class_block_diagnostics(*class, class_block)
                     })
                     .1
                 })?
