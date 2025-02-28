@@ -484,17 +484,34 @@ mod tests {
             .iter()
             .map(|p| &***p)
             .collect();
-        assert_eq!(
-            files,
-            vec![
-                "/a/b/baz.py",
-                "/a/b/bla.py",
-                "/other",
-                "/another",
-                "/a/b/blub/bla",
-                "/a/b/blub/baz",
-                //"/foo/bar/not_in_blub",
-            ]
-        )
+        if cfg!(target_os = "windows") {
+            // TODO it might be questionable that this replaces some slashes, but not others on
+            // Windows
+            assert_eq!(
+                files,
+                vec![
+                    "/a/b/baz.py",
+                    "/a/b\\bla.py",
+                    "/other",
+                    "/another",
+                    "/a/b\\blub/bla",
+                    "/a/b\\blub/baz",
+                    //"/foo/bar/not_in_blub",
+                ]
+            )
+        } else {
+            assert_eq!(
+                files,
+                vec![
+                    "/a/b/baz.py",
+                    "/a/b/bla.py",
+                    "/other",
+                    "/another",
+                    "/a/b/blub/bla",
+                    "/a/b/blub/baz",
+                    //"/foo/bar/not_in_blub",
+                ]
+            )
+        }
     }
 }

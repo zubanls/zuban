@@ -545,7 +545,7 @@ fn add_inline_errors(wanted: &mut Vec<String>, path: &str, code: &str) {
                 if i != 0 {
                     type_ = "note";
                 }
-                if comment == "\\" {
+                if comment == "\\" || comment == "\\\r" {
                     // Stuff like:
                     // # E: \
                     continue;
