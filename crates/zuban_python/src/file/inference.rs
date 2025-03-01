@@ -27,8 +27,8 @@ use crate::{
         NAME_DEF_TO_DEFAULTDICT_DIFF,
     },
     matching::{
-        format_got_expected, CouldBeALiteral, ErrorStrs, ErrorTypes, IteratorContent, LookupKind,
-        Matcher, OnTypeError, ResultContext, TupleLenInfos,
+        format_got_expected, CouldBeALiteral, ErrorStrs, ErrorTypes, Generics, IteratorContent,
+        LookupKind, Matcher, OnTypeError, ResultContext, TupleLenInfos,
     },
     new_class,
     node_ref::NodeRef,
@@ -4226,6 +4226,14 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
     }
 
     fn cache_defining_stmt(&self, defining_stmt: DefiningStmt, name_def: NodeRef) {
+        if std::cfg!(debug_assertions) {
+            if let Some(class) = self.i_s.current_class() {
+                debug_assert!(matches!(
+                    class.generics(),
+                    Generics::Self_ { .. } | Generics::None
+                ))
+            }
+        }
         debug!(
             "Infer name of stmt (#{}, {}:{})",
             name_def.line(),

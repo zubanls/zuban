@@ -709,6 +709,8 @@ impl<'db: 'a, 'a> Class<'a> {
             None => {
                 for star_import in self.node_ref.file.star_imports.iter() {
                     if star_import.scope == self.node_ref.node_index {
+                        let self_class = Class::with_self_generics(i_s.db, self.node_ref);
+                        let i_s = &i_s.with_class_context(&self_class);
                         if let Some(result) = self
                             .node_ref
                             .file
@@ -722,28 +724,10 @@ impl<'db: 'a, 'a> Class<'a> {
                 LookupResult::None
             }
             Some(node_index) => {
-                let new_i_s = i_s.with_class_context(self);
-                let inference = self.node_ref.file.inference(&new_i_s);
-                let inf = if self
-                    .node_ref
-                    .file
-                    .points
-                    .get(node_index)
-                    .needs_flow_analysis()
-                {
-                    inference.infer_name_of_definition_by_index(node_index)
-                } else {
-                    // If we don't need flow analysis, we need to make sure that the context is not
-                    // wrong.
-                    /*
-                    inference.with_correct_context(true, |_| {
-                        // TODO it is currently intentional that we do no use the changed
-                        // inference, but this should probably be changed at some point
-                        inference.infer_name_of_definition_by_index(node_index)
-                    })
-                    */
-                    inference.infer_name_of_definition_by_index(node_index)
-                };
+                let self_class = Class::with_self_generics(i_s.db, self.node_ref);
+                let i_s = &i_s.with_class_context(&self_class);
+                let inference = self.node_ref.file.inference(i_s);
+                let inf = inference.infer_name_of_definition_by_index(node_index);
                 LookupResult::GotoName {
                     name: PointLink::new(self.node_ref.file.file_index, node_index),
                     inf,

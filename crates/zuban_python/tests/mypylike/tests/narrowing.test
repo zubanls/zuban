@@ -1619,7 +1619,7 @@ def foo(x: A):
             x(1)
             x(undefined=3)
 
-[case isinstance_on_generic_inherited_with_access]
+[case isinstance_on_generic_inherited_with_access1]
 from typing import Generic, TypeVar, Any
 
 T = TypeVar('T')
@@ -1651,3 +1651,24 @@ def f(x: Any):
         reveal_type(x) # N: Revealed type is "__main__.Super"
         x.attr
         reveal_type(x.base_attr)  # N: Revealed type is "list[Any]"
+
+[case isinstance_on_generic_inherited_with_access2]
+from m import Super
+
+def f(m) -> None:
+    if isinstance(m, Sub):
+        m.x
+
+class Sub(Super[int]): ...
+
+[file m.py]
+from typing import Generic, TypeVar
+
+T = TypeVar("T")
+
+class Base(Generic[T]):
+    def __init__(self, x: T):
+        self.x = x
+
+class Super(Base[T]):
+    x: T
