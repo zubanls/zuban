@@ -528,7 +528,7 @@ impl Inference<'_, '_, '_> {
         }
     }
 
-    fn calc_untyped_block_diagnostics(&self, block: Block) {
+    fn calc_untyped_block_diagnostics(&self, block: Block, from_type_var_value: bool) {
         for interesting in block.search_relevant_untyped_nodes() {
             match interesting {
                 RelevantUntypedNode::Primary(p) => {
@@ -545,19 +545,28 @@ impl Inference<'_, '_, '_> {
                             continue;
                         };
                         let n = NodeRef::new(self.file, p.index());
-                        n.add_issue(self.i_s, IssueKind::Note("Revealed type is \"Any\"".into()));
-                        n.add_issue(
-                            self.i_s,
-                            IssueKind::Note(
-                                "'reveal_type' always outputs 'Any' in unchecked functions".into(),
-                            ),
-                        );
+                        if !from_type_var_value {
+                            n.add_issue(
+                                self.i_s,
+                                IssueKind::Note("Revealed type is \"Any\"".into()),
+                            );
+                            n.add_issue(
+                                self.i_s,
+                                IssueKind::Note(
+                                    "'reveal_type' always outputs 'Any' in unchecked functions"
+                                        .into(),
+                                ),
+                            );
+                        }
                     }
                 }
                 RelevantUntypedNode::Assignment(a) => {
                     let from = NodeRef::new(self.file, a.index());
-                    let add_annotation_in_untyped_issue =
-                        || from.add_issue(self.i_s, IssueKind::AnnotationInUntypedFunction);
+                    let add_annotation_in_untyped_issue = || {
+                        if !from_type_var_value {
+                            from.add_issue(self.i_s, IssueKind::AnnotationInUntypedFunction);
+                        }
+                    };
                     match a.unpack() {
                         AssignmentContent::Normal(targets, _) => {
                             if let Some(type_comment) = self.check_for_type_comment(a) {
@@ -1291,12 +1300,14 @@ impl Inference<'_, '_, '_> {
                     .class
                     .is_some_and(|c| c.type_vars(i_s).has_constraints(i_s.db))
             {
+                // For now simply assign any everywhere
+                self.calc_untyped_block_diagnostics(block, true);
                 self.mark_current_frame_unreachable()
             } else {
                 self.calc_block_diagnostics(block, None, Some(&function))
             }
         } else {
-            self.calc_untyped_block_diagnostics(block)
+            self.calc_untyped_block_diagnostics(block, false)
         }
         if flags.disallow_untyped_defs && !flags.disallow_incomplete_defs {
             match (

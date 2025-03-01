@@ -1513,3 +1513,16 @@ T = TypeVar("T", bound=str | None)
 
 class A(Generic[T]): ...
 class P(A[T]): ...
+
+[case no_crash_on_self_access_for_class_with_type_var_values]
+import typing
+T = typing.TypeVar("T", str, bytes)
+
+class C(typing.Generic[T]):
+    def __init__(self, t: T) -> None:
+        self.t = t
+        # TODO this should emit a note
+        reveal_type(t)
+
+def f(c: C):
+    c.t
