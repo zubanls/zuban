@@ -290,7 +290,7 @@ impl<'a> Matcher<'a> {
                     Match::new_false()
                 } else {
                     if let Some(replace_self) = self.replace_self {
-                        return replace_self().matches(i_s, self, value_type, variance);
+                        return replace_self().simple_matches(i_s, value_type, variance);
                     }
                     if !matches!(self.func_or_callable, Some(FunctionOrCallable::Function(_))) {
                         // In case we are working within a function, Self is bound already.

@@ -482,3 +482,17 @@ class P:
 
         y = run(link, self, target)  # E: Argument 2 to "run" has incompatible type "tuple[Self, str]"; expected "tuple[PathLike[str], PathLike[str]]" \
         reveal_type(y)  # N: Revealed type is "tuple[Any, ...]"
+
+[case self_matching_no_stack_overflow]
+from typing import Self, TypeVar, Generic
+
+T = TypeVar("T")
+
+class Base:
+    def __init__(self, g: Container[Self]): ...
+
+class Container(Generic[T]): ...
+
+class C(Base):
+    def __init__(self, g: Container[int]):
+        super().__init__(g) # E: Argument 1 to "__init__" of "Base" has incompatible type "Container[int]"; expected "Container[Self]"
