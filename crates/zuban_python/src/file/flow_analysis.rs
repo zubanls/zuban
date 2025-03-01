@@ -1481,6 +1481,8 @@ impl Inference<'_, '_, '_> {
         if !p.calculated() {
             let func_def = func_of_self_symbol(self.file, self_symbol);
             let result = FLOW_ANALYSIS.with(|fa| {
+                // The class should have self generics within the functions
+                let c = Class::with_self_generics(self.i_s.db, c.node_ref);
                 self.ensure_func_diagnostics_for_self_attribute(
                     fa,
                     Function::new(NodeRef::new(self.file, func_def.index()), Some(c)),
@@ -1518,8 +1520,6 @@ impl Inference<'_, '_, '_> {
     ) -> Result<(), ()> {
         let mut function = function; // lifetime issues?!
         if let Some(class) = function.class.as_mut() {
-            // The class should have self generics within the functions
-            *class = Class::with_self_generics(self.i_s.db, class.node_ref);
             let class_block = class.node().block();
             if !class
                 .node_ref
