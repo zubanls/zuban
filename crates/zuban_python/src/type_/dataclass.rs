@@ -1203,8 +1203,12 @@ impl DataclassTransformObj {
                     ),
                 }
             } else {
-                todo!()
-                //arg.add_issue(i_s, IssueKind::UnexpectedArgumentTo { name: "dataclass_transform" })
+                arg.add_issue(
+                    i_s,
+                    IssueKind::UnexpectedArgumentTo {
+                        name: "dataclass_transform",
+                    },
+                )
             }
         }
         options

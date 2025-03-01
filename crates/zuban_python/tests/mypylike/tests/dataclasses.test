@@ -375,6 +375,22 @@ d.x
 d.y
 d.z  # E: "D" has no attribute "z"
 
+[case dataclass_transform_invalid_arg]
+from typing import dataclass_transform, overload, Any
+from dataclasses import dataclass
+
+@dataclass_transform(1)  # E: Unexpected argument to "dataclass_transform()"
+class M1(type): ...
+
+@dataclass_transform(*(1,))  # E: Unexpected argument to "dataclass_transform()"
+class M2(): ...
+
+@dataclass_transform(**dict(eq_default=True))  # E: Unexpected argument to "dataclass_transform()"
+class M3(): ...
+
+@dataclass_transform(**{'eq_default': True })  # E: Unexpected argument to "dataclass_transform()"
+class M4(): ...
+
 [case dataclass_enum_combination]
 from dataclasses import dataclass
 from enum import Enum
