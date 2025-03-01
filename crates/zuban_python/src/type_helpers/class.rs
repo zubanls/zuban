@@ -715,7 +715,7 @@ impl<'db: 'a, 'a> Class<'a> {
                             .node_ref
                             .file
                             .inference(i_s)
-                            .lookup_name_in_star_import(star_import, name, true)
+                            .lookup_name_in_star_import(star_import, name, true, None)
                         {
                             return result.into_lookup_result(i_s);
                         }

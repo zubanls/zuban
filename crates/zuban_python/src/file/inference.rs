@@ -44,7 +44,7 @@ use crate::{
         Class, ClassLookupOptions, ClassNodeRef, FirstParamKind, Function, GeneratorType, Instance,
         InstanceLookupOptions, LookupDetails, Module, TypeOrClass,
     },
-    utils::debug_indent,
+    utils::{debug_indent, AlreadySeen},
     TypeCheckerFlags,
 };
 
@@ -1680,6 +1680,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 name_def.as_code(),
                 true,
                 Some(name_def.index()),
+                None,
             ) {
                 let original = star_imp.as_inferred(self.i_s);
                 match star_imp {
@@ -3885,7 +3886,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         name: &str,
         check_local: bool,
     ) -> Option<StarImportResult> {
-        self.lookup_from_star_import_with_node_index(name, check_local, None)
+        self.lookup_from_star_import_with_node_index(name, check_local, None, None)
     }
 
     pub fn lookup_from_star_import_with_node_index(
@@ -3893,6 +3894,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         name: &str,
         check_local: bool,
         node_index: Option<NodeIndex>,
+        star_imports_seen: Option<AlreadySeen<PointLink>>,
     ) -> Option<StarImportResult> {
         for star_import in self.file.star_imports.iter() {
             // TODO these feel a bit weird and do not include parent functions (when in a
@@ -3918,9 +3920,12 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             if in_same_scope && node_index.is_some_and(|n| n < star_import.star_node) {
                 continue;
             }
-            if let Some(result) =
-                self.lookup_name_in_star_import(star_import, name, is_class_star_import)
-            {
+            if let Some(result) = self.lookup_name_in_star_import(
+                star_import,
+                name,
+                is_class_star_import,
+                star_imports_seen,
+            ) {
                 return Some(result);
             }
         }
@@ -3943,7 +3948,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             }
             super_file
                 .inference(self.i_s)
-                .lookup_from_star_import(name, false)
+                .lookup_from_star_import_with_node_index(name, false, None, star_imports_seen)
         } else {
             None
         }
@@ -3954,7 +3959,18 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         star_import: &StarImport,
         name: &str,
         is_class_star_import: bool,
+        star_imports_seen: Option<AlreadySeen<PointLink>>,
     ) -> Option<StarImportResult> {
+        let link = PointLink::new(self.file.file_index, star_import.star_node);
+        let new_seen = if let Some(seen) = star_imports_seen.as_ref() {
+            seen.append(link)
+        } else {
+            AlreadySeen::new(link)
+        };
+        if new_seen.is_cycle() {
+            // TODO we might want to add an issue in the future (not high-prio however)
+            return None;
+        }
         let other_file = star_import.to_file(self)?;
         if let Some(dunder) = other_file.maybe_dunder_all(self.i_s.db) {
             // Name not in __all__
@@ -3981,7 +3997,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         }
         if let Some(l) = other_file
             .inference(self.i_s)
-            .lookup_from_star_import(name, false)
+            .lookup_from_star_import_with_node_index(name, false, None, Some(new_seen))
         {
             Some(l)
         } else {

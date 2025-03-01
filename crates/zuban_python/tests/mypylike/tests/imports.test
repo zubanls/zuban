@@ -376,3 +376,39 @@ from n import x, y
 [file n.py]
 x = undefined()  # E: Name "undefined" is not defined
 y = 1
+
+[case star_import_circular1]
+from m import x
+reveal_type(x)  # N: Revealed type is "Any"
+
+[file m.py]
+from m import *
+foo  # E: Name "foo" is not defined
+x = str()
+
+[case star_import_circular2]
+from m import x
+reveal_type(x)  # N: Revealed type is "Any"
+
+[file m.py]
+from n import *
+foo  # E: Name "foo" is not defined
+x = str()
+
+[file n.py]
+from m import *
+
+[case star_import_circular3]
+from m import x
+reveal_type(x)  # N: Revealed type is "Any"
+
+[file m.py]
+from n import *
+foo  # E: Name "foo" is not defined
+x = str()
+
+[file n.py]
+from l import *
+
+[file l.py]
+from m import *
