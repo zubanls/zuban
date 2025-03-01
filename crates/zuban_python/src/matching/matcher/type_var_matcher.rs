@@ -356,7 +356,17 @@ impl TypeVarMatcher {
         variance: Variance,
     ) -> Match {
         debug_assert_eq!(type_var_usage.in_definition, self.match_in_definition);
-        let current = &mut self.calculating_type_args[type_var_usage.index.as_usize()];
+        let Some(current) = self
+            .calculating_type_args
+            .get_mut(type_var_usage.index.as_usize())
+        else {
+            unreachable!(
+                "Tried to access type arg {}, but there are only {}, for: {:?}",
+                type_var_usage.index.as_usize(),
+                self.calculating_type_args.len(),
+                self.match_in_definition,
+            )
+        };
         // Before setting the type var, we need to check if the constraints match.
         let constraint_mismatch = |current: &mut CalculatingTypeArg| {
             if !current.calculated() {

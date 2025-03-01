@@ -1526,3 +1526,21 @@ class C(typing.Generic[T]):
 
 def f(c: C):
     c.t
+
+[case strict_equality_class_generics_access]
+# flags: --strict-equality
+from typing import Any, Generic, TypeVar, overload
+
+T = TypeVar("T")
+U = TypeVar("U")
+
+class C(Generic[U]):
+    def __init_subclass__(cls) -> None:
+        if C in cls.__bases__ and (cls.new == C.new):
+            ...
+
+    @overload
+    def new(self, x: int) -> C[T]: ...
+    @overload
+    def new(self, x: str) -> C[Any]: ...
+    def new(self, x) -> C[t]: ...
