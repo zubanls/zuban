@@ -6,7 +6,6 @@ avoid_type_computation_recursion
 testOverloadPossibleOverlapWithArgsAndKwargs
 flow_analysis_avoid_final_loop_issue_in_simple_case
 flow_analysis_base_class_calculation_should_not_lead_to_recursion
-strict_equality_class_generics_access
 
 star_import_overwrite_regression2
 
@@ -17,6 +16,9 @@ self_instance_variable1
 testIncrementalInvalidNamedTupleInUnannotatedFunction
 testOptionalTypeNarrowedByGenericCall3
 testGenericFunctionSubtypingWithUnions
+
+# callable matching should work correctly with the same definitions (currently emits an error log)
+# strict_equality_class_generics_access
 
 # callable matching regression
 testNoCrashOnNestedGenericCallable

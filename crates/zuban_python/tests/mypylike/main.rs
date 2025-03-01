@@ -762,6 +762,8 @@ impl ProjectsCache {
 }
 
 fn main() -> ExitCode {
+    logging_config::setup_logging(None);
+
     // Avoid the --, because that's the only way how we can accept flags like --foo like
     // cargo test mypy -- -- --foo. Otherwise libtest? complains, if we just use -- once.
     let cli_args = CliArgs::parse_from(env::args().filter(|arg| arg != "--"));

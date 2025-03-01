@@ -1465,6 +1465,7 @@ dependencies = [
  "clap",
  "config",
  "lazy_static",
+ "logging_config",
  "parsa_python_cst",
  "regex",
  "test_utils",

@@ -22,6 +22,7 @@ walkdir.workspace = true
 [dev-dependencies]
 clap.workspace = true
 test_utils.workspace = true
+logging_config.workspace = true
 
 [features]
 zuban_debug = []

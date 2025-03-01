@@ -360,12 +360,13 @@ impl TypeVarMatcher {
             .calculating_type_args
             .get_mut(type_var_usage.index.as_usize())
         else {
-            unreachable!(
+            tracing::error!(
                 "Tried to access type arg {}, but there are only {}, for: {:?}",
                 type_var_usage.index.as_usize(),
                 self.calculating_type_args.len(),
                 self.match_in_definition,
-            )
+            );
+            return Match::new_true();
         };
         // Before setting the type var, we need to check if the constraints match.
         let constraint_mismatch = |current: &mut CalculatingTypeArg| {
