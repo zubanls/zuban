@@ -1760,19 +1760,19 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             {
                                 // If a module contains a __getattr__, the type can be part of that
                                 // (which is typically just an Any that propagates).
-                                match check_module_getattr_type(self.inference.i_s, inf) {
-                                    TypeNameLookup::Unknown(cause) => TypeContent::Unknown(cause),
-                                    _ => unreachable!(),
+                                if let TypeNameLookup::Unknown(cause) =
+                                    check_module_getattr_type(self.inference.i_s, inf)
+                                {
+                                    return TypeContent::Unknown(cause);
                                 }
-                            } else {
-                                debug!("TypeComputation: Attribute on class not found");
-                                self.add_issue_for_index(primary.index(), IssueKind::TypeNotFound);
-                                self.inference.file.points.set(
-                                    name.index(),
-                                    Point::new_specific(Specific::AnyDueToError, Locality::Todo),
-                                );
-                                TypeContent::Unknown(UnknownCause::ReportedIssue)
                             }
+                            debug!("TypeComputation: Attribute on class not found");
+                            self.add_issue_for_index(primary.index(), IssueKind::TypeNotFound);
+                            self.inference.file.points.set(
+                                name.index(),
+                                Point::new_specific(Specific::AnyDueToError, Locality::Todo),
+                            );
+                            TypeContent::Unknown(UnknownCause::ReportedIssue)
                         }
                     }
                 }

@@ -400,3 +400,11 @@ def foo(o: object): ...
 class C(Generic[T]):
     def __init__(self, pattern: T):
         foo(type(pattern))
+
+[case getattr_on_module_with_specific_type]
+import m
+
+x: m.A  # E: Name "m.A" is not defined
+
+[file m.py]
+def __getattr__(name: str) -> int: ...
