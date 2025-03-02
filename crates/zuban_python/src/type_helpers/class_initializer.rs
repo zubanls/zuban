@@ -123,7 +123,8 @@ impl<'db: 'file, 'file> ClassNodeRef<'file> {
     }
 
     pub fn use_cached_class_infos(&self, db: &'db Database) -> &'db ClassInfos {
-        self.maybe_cached_class_infos(db).unwrap()
+        self.maybe_cached_class_infos(db)
+            .unwrap_or_else(|| panic!("Tried to use uncalculated class infos for {}", self.name()))
     }
 
     pub fn maybe_cached_class_infos(&self, db: &'db Database) -> Option<&'db ClassInfos> {
@@ -738,7 +739,15 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                                 generics: ClassGenerics::None,
                             })) => {
                                 let c = ClassInitializer::from_link(db, link);
-                                if c.incomplete_mro(db)
+                                if c.is_calculating_class_infos() {
+                                    NodeRef::new(self.node_ref.file, name.index()).add_issue(
+                                        i_s,
+                                        IssueKind::CyclicDefinition {
+                                            name: c.name().into(),
+                                        },
+                                    );
+                                    metaclass = MetaclassState::Unknown;
+                                } else if c.incomplete_mro(db)
                                     || c.class_link_in_mro(
                                         i_s,
                                         db.python_state.bare_type_node_ref().as_link(),

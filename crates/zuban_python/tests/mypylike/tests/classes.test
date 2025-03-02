@@ -1461,3 +1461,53 @@ class Channel(Generic[CT]): ...
 class UserChannel(Channel[UserMessage]): ...  # E: Type argument "UserMessage[Any]" of "Channel" must be a subtype of "C"
 
 class C(ChatGroup): ...
+
+[case avoid_uncalculated_class_crash_in_recursive_definitions_with_flow_analysis]
+# flags: --mypy-compatible
+from m import Base
+class M(Base): ...
+
+[file m.py]
+from typing import dataclass_transform
+from mf import Field
+
+@dataclass_transform(field_specifiers=(Field,))
+class ModelMetaclass(type): ...
+
+class Base(metaclass=ModelMetaclass): ...  # E: Cannot resolve name "ModelMetaclass" (possible cyclic definition)
+
+[file mf.py]
+from typing import Optional, Any
+from mt import Alias
+
+def Field(default_factory: Alias) -> Any: ...
+
+class ModelField:
+    def __init__(self) -> None:
+        self.sub_fields: int = 1
+        from m import Base
+        Base()
+
+[file mt.py]
+if bool(): ...  # Enable flow analysis
+Alias = int | str
+
+from mf import ModelField
+
+def update_field_forward_refs(field: ModelField):
+    field.sub_fields
+
+[case metaclass_loop]
+import m
+reveal_type(m.C.c)  # N: Revealed type is "int"
+reveal_type(m.C.d)  # N: Revealed type is "str"
+
+[file m.py]
+import n
+class C(type, metaclass=n.D):
+    c: int
+
+[file n.py]
+import m
+class D(type, metaclass=m.C):  # E: Cannot resolve name "C" (possible cyclic definition)
+    d: str
