@@ -26,7 +26,7 @@ impl VfsHandler for LocalFS {
         self.watch(Path::new(path));
         let result = std::fs::read_to_string(path);
         if let Err(error) = &result {
-            tracing::error!("Tried to read {path} but failed: {error}");
+            tracing::warn!("Tried to read {path} but failed: {error}");
         }
         result.ok()
     }
