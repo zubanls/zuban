@@ -12,7 +12,7 @@ use crate::{
     type_helpers::{linearize_mro_and_return_linearizable, LookupDetails, TypeOrClass},
 };
 
-use super::{AnyCause, CallableParams, FormatStyle, IterInfos, Type, UnionEntry};
+use super::{AnyCause, CallableParams, FormatStyle, IterInfos, Type, UnionEntry, UnionType};
 
 type RunOnUnionEntry<'a> =
     &'a mut dyn FnMut(&Type, &dyn Fn(IssueKind), &mut dyn FnMut(&Type, LookupDetails));
@@ -45,39 +45,38 @@ impl Intersection {
         t2: &Type,
         add_issue: &mut dyn FnMut(IssueKind),
     ) -> Result<Type, ()> {
+        let mut handle_union = |union: &UnionType, other: &Type| {
+            let mut found_issues = vec![];
+            let mut new_entries = vec![];
+            for entry in union.entries.iter() {
+                if let Ok(type_) = Intersection::new_instance_intersection(
+                    i_s,
+                    other,
+                    &entry.type_,
+                    &mut |issue| found_issues.push(issue),
+                ) {
+                    new_entries.push(UnionEntry {
+                        type_,
+                        format_index: entry.format_index,
+                    });
+                }
+            }
+            if new_entries.is_empty() {
+                for issue in found_issues {
+                    add_issue(issue)
+                }
+                Err(())
+            } else {
+                Ok(Type::from_union_entries(new_entries))
+            }
+        };
         match (t1, t2) {
             (Type::Type(t1), Type::Type(t2)) => {
                 return Self::new_instance_intersection(i_s, t1.as_ref(), t2.as_ref(), add_issue)
                     .map(|out| Type::Type(Rc::new(out)))
             }
-            (Type::Union(_), _) => {
-                unreachable!("For now this branch should not be reachable")
-            }
-            (_, Type::Union(u)) => {
-                let mut found_issues = vec![];
-                let mut new_entries = vec![];
-                for entry in u.entries.iter() {
-                    if let Ok(type_) = Intersection::new_instance_intersection(
-                        i_s,
-                        t1,
-                        &entry.type_,
-                        &mut |issue| found_issues.push(issue),
-                    ) {
-                        new_entries.push(UnionEntry {
-                            type_,
-                            format_index: entry.format_index,
-                        });
-                    }
-                }
-                return if new_entries.is_empty() {
-                    for issue in found_issues {
-                        add_issue(issue)
-                    }
-                    Err(())
-                } else {
-                    Ok(Type::from_union_entries(new_entries))
-                };
-            }
+            (Type::Union(u), _) => return handle_union(u, t2),
+            (_, Type::Union(u)) => return handle_union(u, t1),
             (Type::Self_, _) => {
                 return Intersection::new_instance_intersection(
                     i_s,

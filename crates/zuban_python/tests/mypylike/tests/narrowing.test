@@ -1672,3 +1672,11 @@ class Base(Generic[T]):
 
 class Super(Base[T]):
     x: T
+
+[case issubclass_with_union_type]
+class A: ...
+class B: ...
+class C: ...
+def f(x: type[A | B]):
+    if issubclass(x, C):
+        reveal_type(x)  # N: Revealed type is "Type[<subclass of "__main__.C" and "__main__.A"> | <subclass of "__main__.C" and "__main__.B">]"
