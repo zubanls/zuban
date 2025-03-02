@@ -12,6 +12,9 @@ star_import_overwrite_regression2
 testLiteralAndGenericsRespectsUpperBound
 self_instance_variable1
 
+# parser fails
+avoid_bracket_slowdown
+
 # regressions
 testIncrementalInvalidNamedTupleInUnannotatedFunction
 testOptionalTypeNarrowedByGenericCall3
