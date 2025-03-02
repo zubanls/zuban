@@ -2103,8 +2103,7 @@ impl Inference<'_, '_, '_> {
             return;
         };
         let (case_pattern, guard, block) = case_block.unpack();
-        let (mut true_frame, mut false_frame) =
-            self.find_guards_in_case_pattern(&subject, case_pattern);
+        let (true_frame, false_frame) = self.find_guards_in_case_pattern(&subject, case_pattern);
         if let Some(guard) = guard {
             self.infer_named_expression(guard.named_expr());
         }
@@ -2364,7 +2363,7 @@ impl Inference<'_, '_, '_> {
                     }
                 }
             }
-            PatternKind::LiteralPattern(literal_pattern) => {
+            PatternKind::LiteralPattern(_literal_pattern) => {
                 // TODO
             }
             PatternKind::GroupPattern(group_pattern) => {
