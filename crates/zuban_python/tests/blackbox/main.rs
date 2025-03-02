@@ -62,7 +62,7 @@ fn calculate_filters(args: &[String]) -> Vec<Filter> {
 }
 
 fn main() {
-    logging_config::setup_logging(None);
+    logging_config::setup_logging(None).unwrap();
     let cli_args: Vec<String> = env::args().collect();
     let filters = calculate_filters(&cli_args);
     if cli_args.iter().any(|s| s.as_str() == "mypy") {

@@ -373,6 +373,7 @@ pub(crate) enum IssueKind {
     OverloadInconsistentKind { kind: FunctionKind },
     OverloadedPropertyNotSupported,
     OverloadWithAbstractAndNonAbstract,
+    OverloadTooManyUnions,
 
     DecoratorOnTopOfPropertyNotSupported,
     ReadOnlyPropertyCannotOverwriteReadWriteProperty,
@@ -1842,6 +1843,8 @@ impl<'db> Diagnostic<'db> {
                 "An overload can not be a property".to_string(),
             OverloadWithAbstractAndNonAbstract =>
                 "Overloaded method has both abstract and non-abstract variants".to_string(),
+            OverloadTooManyUnions =>
+                "Not all union combinations were tried because there are too many unions".to_string(),
 
             DecoratorOnTopOfPropertyNotSupported =>
                 "Decorators on top of @property are not supported".to_string(),

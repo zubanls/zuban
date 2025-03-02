@@ -572,3 +572,54 @@ foo(a for a in [1])  # E: No overload variant of "foo" matches argument type "Ge
                      # N: Possible overload variants: \
                      # N:     def foo(x: int) -> int \
                      # N:     def foo(x: str) -> str
+
+[case union_math_avoid_blowups]
+from typing import Literal, overload
+Literals1 = Literal["a", "b", "c", "d", "e", "f"]
+Literals2 = Literal[0, 1, 2, 3, 4, 5]
+TS = int | str | bytes | None | list | set
+
+@overload
+def func(
+    a: Literals1 | None,
+    b: Literals1,
+    *,
+    c: Literal[1],
+    d: Literals2,
+    e: TS,
+    f: TS,
+    g: TS,
+    h: Literal[1],
+) -> None: ...
+@overload
+def func(
+    a: Literals1 | None,
+    b: Literals1,
+    *,
+    c: int,
+    d: Literals2,
+    e: TS,
+    f: TS,
+    g: TS,
+    h: Literal[1],
+) -> None: ...
+def func(*args, **kwargs) -> None: ...
+
+def g(
+    a: Literals1 | None,
+    b: Literals1,
+    c: Literals2,
+    d: Literals2,
+    e: TS,
+    f: TS,
+    g: TS,
+    h: TS,
+):
+    return func(a=a, b=b, c=c, d=d, e=e, f=f, g=g, h=h)
+
+[out]
+__main__:42: error: Not all union combinations were tried because there are too many unions
+__main__:42: error: No overload variant of "func" matches argument types "a=Literal['a', 'b', 'c', 'd', 'e', 'f'] | None", "b=Literal['a', 'b', 'c', 'd', 'e', 'f']", "c=Literal[0, 1, 2, 3, 4, 5]", "d=Literal[0, 1, 2, 3, 4, 5]", "e=int | str | bytes | None | list[Any] | set[Any]", "f=int | str | bytes | None | list[Any] | set[Any]", "g=int | str | bytes | None | list[Any] | set[Any]", "h=int | str | bytes | None | list[Any] | set[Any]"
+__main__:42: note: Possible overload variants:
+__main__:42: note:     def func(a: Literal['a', 'b', 'c', 'd', 'e', 'f'] | None, b: Literal['a', 'b', 'c', 'd', 'e', 'f'], *, c: Literal[1], d: Literal[0, 1, 2, 3, 4, 5], e: int | str | bytes | None | list[Any] | set[Any], f: int | str | bytes | None | list[Any] | set[Any], g: int | str | bytes | None | list[Any] | set[Any], h: Literal[1]) -> None
+__main__:42: note:     def func(a: Literal['a', 'b', 'c', 'd', 'e', 'f'] | None, b: Literal['a', 'b', 'c', 'd', 'e', 'f'], *, c: int, d: Literal[0, 1, 2, 3, 4, 5], e: int | str | bytes | None | list[Any] | set[Any], f: int | str | bytes | None | list[Any] | set[Any], g: int | str | bytes | None | list[Any] | set[Any], h: Literal[1]) -> None

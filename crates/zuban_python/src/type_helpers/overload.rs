@@ -40,6 +40,7 @@ pub enum UnionMathResult {
         result: Type,
     },
     NoMatch,
+    TooManyUnions,
 }
 
 impl<'db: 'a, 'a> OverloadedFunction<'a> {
@@ -183,6 +184,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                 search_init,
                 class,
                 as_union_math_type,
+                0,
             ) {
                 UnionMathResult::Match { result, .. } => {
                     debug!(
@@ -200,6 +202,9 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     ))
                 }
                 UnionMathResult::NoMatch => (),
+                UnionMathResult::TooManyUnions => {
+                    args.add_issue(i_s, IssueKind::OverloadTooManyUnions);
+                }
             }
         }
         if result_context.has_explicit_type() {
@@ -273,7 +278,14 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         search_init: bool,
         class: Option<&Class>,
         as_union_math_type: &impl Fn(&Callable, CalculatedTypeArgs) -> Type,
+        recursion_depth: usize,
     ) -> UnionMathResult {
+        // Uses the same name as the Mypy one, look it up for an explanation
+        const MAX_UNIONS: usize = 5;
+        if recursion_depth >= MAX_UNIONS {
+            return UnionMathResult::TooManyUnions;
+        }
+
         if let Some(next_arg) = args.next() {
             let InferredArg::Inferred(inf) = next_arg.infer(result_context) else {
                 non_union_args.push(next_arg);
@@ -287,6 +299,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     search_init,
                     class,
                     as_union_math_type,
+                    recursion_depth,
                 );
             };
             if let Some(u) = inf.as_cow_type(i_s).maybe_union_like(i_s.db) {
@@ -320,6 +333,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                         search_init,
                         class,
                         as_union_math_type,
+                        recursion_depth + 1,
                     );
                     if let UnionMathResult::Match {
                         first_similar_index,
@@ -338,6 +352,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                         UnionMathResult::Match { result, .. } if !mismatch => {
                             unioned = unioned.simplified_union(i_s, &result);
                         }
+                        UnionMathResult::TooManyUnions => return UnionMathResult::TooManyUnions,
                         _ => mismatch = true,
                     };
                     non_union_args.truncate(non_union_args_len);
@@ -366,6 +381,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     search_init,
                     class,
                     as_union_math_type,
+                    recursion_depth,
                 )
             }
         } else {
