@@ -1,0 +1,10 @@
+[case name_used_before_definitions_in_match]
+something # E: Name "something" is used before definition
+
+x: int | str = ""
+
+match x:
+    case int():
+        pass
+    case something:
+        pass

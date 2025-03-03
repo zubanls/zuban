@@ -643,13 +643,19 @@ impl<'db: 'slf, 'slf> Inferred {
             InferredState::Saved(definition) => {
                 // Overwriting strings needs to be possible, because of string annotations
                 if p.calculated()
-                    && !matches!(p.maybe_specific(), Some(Specific::String | Specific::Cycle))
+                    && !matches!(
+                        p.maybe_specific(),
+                        // TODO AnyDueToError can maybe be removed again if match is implemented
+                        Some(Specific::String | Specific::Cycle | Specific::AnyDueToError)
+                    )
                 {
                     if ignore_if_already_saved {
                         return self;
                     }
                     let node_ref = NodeRef::new(file, index);
-                    panic!("Why overwrite? New: {self:?} Previous: {node_ref:?}");
+                    if std::cfg!(debug_assertions) {
+                        panic!("Why overwrite? New: {self:?} Previous: {node_ref:?}");
+                    }
                 }
                 file.points.set(
                     index,
