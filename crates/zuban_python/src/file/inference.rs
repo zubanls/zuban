@@ -2325,6 +2325,11 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             return inferred;
         }
 
+        if first_defined_name_of_multi_def(self.file, name_def.name_index()).is_none() {
+            self.file
+                .points
+                .set(name_def.index(), Point::new_calculating());
+        }
         let inf = if let Some(inf) = self.infer_name_target(name_def, false) {
             self.infer_expression_with_context(
                 expr,

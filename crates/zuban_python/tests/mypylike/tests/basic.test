@@ -937,6 +937,17 @@ def foo(x: int) -> None:
     w = w if (w := x) else None # E: Incompatible types in assignment (expression has type "int | None", variable has type "int")
     reveal_type(w)  # N: Revealed type is "int"
 
+[case walrus_definition_used_in_assignment]
+if (avar := avar()):  # E: Name "avar" is used before definition
+    reveal_type(avar)  # N: Revealed type is "Any"
+
+bvar: int
+if (bvar := bvar):
+    reveal_type(bvar)  # N: Revealed type is "int"
+
+x: int = (cvar := cvar())  # E: Name "cvar" is used before definition
+reveal_type(cvar)  # N: Revealed type is "Any"
+
 [case avoid_bracket_slowdown]
 (
     ((((( ((((( ((((( (((((
