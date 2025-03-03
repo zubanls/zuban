@@ -78,16 +78,17 @@ pub struct ClassNodeRef<'file>(NodeRef<'file>);
 impl<'db: 'file, 'file> ClassNodeRef<'file> {
     #[inline]
     pub fn new(file: &'file PythonFile, node_index: NodeIndex) -> Self {
-        Self(NodeRef::new(file, node_index))
+        Self::from_node_ref(NodeRef::new(file, node_index))
     }
 
     #[inline]
     pub fn from_link(db: &'file Database, link: PointLink) -> Self {
-        Self(NodeRef::from_link(db, link))
+        Self::from_node_ref(NodeRef::from_link(db, link))
     }
 
     #[inline]
     pub fn from_node_ref(node_ref: NodeRef<'file>) -> Self {
+        debug_assert!(node_ref.maybe_class().is_some(), "{node_ref:?}");
         Self(node_ref)
     }
 

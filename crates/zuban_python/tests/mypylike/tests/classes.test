@@ -1511,3 +1511,9 @@ class C(type, metaclass=n.D):
 import m
 class D(type, metaclass=m.C):  # E: Cannot resolve name "C" (possible cyclic definition)
     d: str
+
+[case class_decorator_depends_on_class]
+def dec(x) -> C: ...
+
+@dec
+class C: ...

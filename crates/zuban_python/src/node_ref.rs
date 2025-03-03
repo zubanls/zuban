@@ -253,7 +253,7 @@ impl<'file> NodeRef<'file> {
         {
             let class_ref = ClassNodeRef::new(self.file, self.node_index);
             let ComplexPoint::Class(cls_storage) = class_ref.complex().unwrap() else {
-                unreachable!()
+                unreachable!("{self:?}")
             };
 
             let class = ClassInitializer::new(class_ref, cls_storage);

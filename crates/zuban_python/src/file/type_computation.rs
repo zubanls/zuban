@@ -875,10 +875,15 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     if !is_implicit_optional =>
                 {
                     debug_assert!(type_storage_node_ref.point().calculated());
-                    annotation_node_ref.set_point(Point::new_specific(
-                        Specific::AnnotationOrTypeCommentSimpleClassInstance,
-                        Locality::Todo,
-                    ));
+                    // It might already have been calculated (because of recursions), in that case
+                    // just don't set it. We only ever want to use this case when everything is
+                    // clean (no recursions, type vars, etc.)
+                    if !annotation_node_ref.point().calculated() {
+                        annotation_node_ref.set_point(Point::new_specific(
+                            Specific::AnnotationOrTypeCommentSimpleClassInstance,
+                            Locality::Todo,
+                        ));
+                    }
                     return;
                 }
                 TypeContent::SpecialType(SpecialType::ClassVar)
