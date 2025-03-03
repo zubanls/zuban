@@ -37,8 +37,8 @@ use crate::{
         WithUnpack,
     },
     type_helpers::{
-        cache_class_name, is_reexport_issue, start_namedtuple_params, Class, ClassNodeRef,
-        Function, Module,
+        cache_class_name, is_reexport_issue, start_namedtuple_params, Class, ClassInitializer,
+        ClassNodeRef, Function, Module,
     },
     utils::{rc_slice_into_vec, AlreadySeen},
 };
@@ -1356,8 +1356,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             }
             TypeContent::RecursiveClass(class_ref) => {
                 self.is_recursive_alias = true;
-                let type_var_likes =
-                    Class::with_undefined_generics(class_ref).type_vars(self.inference.i_s);
+                let type_var_likes = class_ref.type_vars(self.inference.i_s);
                 return Some(Type::RecursiveType(Rc::new(RecursiveType::new(
                     class_ref.as_link(),
                     (!type_var_likes.is_empty())
@@ -1674,19 +1673,18 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                                 .then(|| GenericsList::generics_from_vec(generics)),
                         ))))
                     }
-                    TypeContent::RecursiveClass(node_ref) => {
-                        let class = Class::with_undefined_generics(node_ref);
-                        let type_var_likes = class.type_vars(self.inference.i_s);
+                    TypeContent::RecursiveClass(class_node_ref) => {
+                        let type_var_likes = class_node_ref.type_vars(self.inference.i_s);
                         let mut generics = vec![];
                         self.compute_get_item_generics_on_class(
                             s,
                             s.iter(),
-                            class.name(),
+                            class_node_ref.name(),
                             type_var_likes,
                             &mut generics,
                         );
                         TypeContent::Type(Type::RecursiveType(Rc::new(RecursiveType::new(
-                            node_ref.as_link(),
+                            class_node_ref.as_link(),
                             (!type_var_likes.is_empty())
                                 .then(|| GenericsList::generics_from_vec(generics)),
                         ))))
@@ -1794,15 +1792,11 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 }
             }
             TypeContent::Class { node_ref, .. } => {
-                let cls = Class::with_undefined_generics(node_ref);
+                let cls = ClassInitializer::from_node_ref(node_ref);
                 self.check_attribute_on_class(cls, primary, name)
             }
-            TypeContent::SimpleGeneric {
-                class_link,
-                generics,
-                ..
-            } => {
-                let cls = Class::from_generic_class_components(db, class_link, &generics);
+            TypeContent::SimpleGeneric { class_link, .. } => {
+                let cls = ClassInitializer::from_link(db, class_link);
                 self.check_attribute_on_class(cls, primary, name)
             }
             TypeContent::Type(t) => match t {
@@ -1837,7 +1831,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
 
     fn check_attribute_on_class(
         &mut self,
-        cls: Class,
+        cls: ClassInitializer,
         primary: Primary,
         name: Name<'x>,
     ) -> TypeContent<'db, 'x> {
@@ -3312,9 +3306,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             TypeNameLookup::Namespace(namespace) => TypeContent::Namespace(namespace),
             TypeNameLookup::Class { node_ref } => TypeContent::Class {
                 node_ref,
-                has_type_vars: !Class::with_undefined_generics(node_ref)
-                    .type_vars(self.inference.i_s)
-                    .is_empty(),
+                has_type_vars: !node_ref.type_vars(self.inference.i_s).is_empty(),
             },
             TypeNameLookup::TypeVarLike(type_var_like) => {
                 self.has_type_vars_or_self = true;
@@ -5145,13 +5137,13 @@ fn check_type_name<'db: 'file, 'file>(
                 }
             }
             // At this point the class is not necessarily calculated and we therefore do this here.
-            let name_def = NodeRef::new(name_node_ref.file, new_name.name_def().unwrap().index());
             let from = ClassNodeRef::new(name_node_ref.file, c.index());
-            let class = Class::with_undefined_generics(from);
+            let class = ClassInitializer::from_node_ref(from);
             if class.is_calculating_class_infos() {
                 return TypeNameLookup::RecursiveClass(from);
             }
 
+            let name_def = NodeRef::new(name_node_ref.file, new_name.name_def().unwrap().index());
             cache_class_name(name_def, c);
             class.node_ref.ensure_cached_class_infos(i_s);
             if let Some(t) = class
@@ -5290,7 +5282,11 @@ fn check_type_name<'db: 'file, 'file>(
     }
 }
 
-pub(super) fn cache_name_on_class(cls: Class, file: &PythonFile, name: Name) -> PointKind {
+pub(super) fn cache_name_on_class(
+    cls: ClassInitializer,
+    file: &PythonFile,
+    name: Name,
+) -> PointKind {
     // This is needed to lookup names on a class and set the redirect there. It does not modify the
     // class at all.
     let name_node_ref = NodeRef::new(file, name.index());

@@ -418,3 +418,15 @@ class A:
         c: __name__,  # E: Invalid type comment or annotation
         c: __file__,  # E: Invalid type comment or annotation
     ) : ...
+
+[case nested_class_annotation]
+from m import D
+
+class C:
+    def f(self, x: D.F):
+        pass
+
+[file m.py]
+class D:
+    class E: ...
+    class F(E): ...

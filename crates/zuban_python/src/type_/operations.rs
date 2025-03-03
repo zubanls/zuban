@@ -173,14 +173,6 @@ impl Type {
                     debug!("TODO type var values");
                     /*
                     for type_ in constraints.iter() {
-                        return match type_ {
-                            Type::Class(link) => Instance::new(
-                                Class::with_undefined_generics(NodeRef::from_link(i_s.db, *link)),
-                                &Inferred::from_type(Type::Class(*link, None)),
-                            )
-                            .lookup(i_s, name),
-                            _ =>
-                        }
                     }
                     */
                     // TODO it's kind of stupid that we recreate an instance object here all the time, we

@@ -76,10 +76,10 @@ impl<'db, 'a> InferenceState<'db, 'a> {
                 Context::DiagnosticExecution(&func)
             }
             ParentScope::Class(class_index) => {
-                class = Class::with_undefined_generics(ClassNodeRef::from_link(
+                class = Class::with_self_generics(
                     db,
-                    PointLink::new(file_index, class_index),
-                ));
+                    ClassNodeRef::from_link(db, PointLink::new(file_index, class_index)),
+                );
                 Context::DiagnosticClass(&class)
             }
         };

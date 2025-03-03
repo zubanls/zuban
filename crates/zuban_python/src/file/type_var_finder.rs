@@ -11,7 +11,7 @@ use crate::{
     inference_state::InferenceState,
     node_ref::NodeRef,
     type_::{TypeVarIndex, TypeVarLike, TypeVarLikes, TypeVarManager},
-    type_helpers::{Class, ClassInitializer, ClassNodeRef},
+    type_helpers::{ClassInitializer, ClassNodeRef},
 };
 
 #[derive(Debug, Clone)]
@@ -137,7 +137,7 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd> {
                         }
                     }
                     BaseLookup::Class(link) => {
-                        let cls = Class::from_non_generic_link(self.i_s.db, link);
+                        let cls = ClassInitializer::from_link(self.i_s.db, link);
                         let point_kind = cache_name_on_class(cls, self.file, name);
                         if point_kind == PointKind::Redirect {
                             self.find_in_name(name)
