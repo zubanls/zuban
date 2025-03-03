@@ -1544,3 +1544,16 @@ class C(Generic[U]):
     @overload
     def new(self, x: str) -> C[Any]: ...
     def new(self, x) -> C[Any]: ...
+
+[case generic_usage_of_class_in_class_should_not_cause_stack_overflow]
+from typing import Generic, TypeVar, Callable
+
+_InT = TypeVar('_InT')
+_OutT = TypeVar('_OutT')
+_NewOutT = TypeVar('_NewOutT')
+
+class Pipeline(Generic[_InT, _OutT]):
+    def predicate(self: Pipeline[_InT, _NewOutT], func: Callable[[_NewOutT], bool]) -> Pipeline[_InT, _NewOutT]: ...
+
+    def str_starts_with(self: Pipeline[_InT, str], prefix: str) -> Pipeline[_InT, str]:
+        return self.predicate(lambda v: v.startswith(prefix))

@@ -980,16 +980,25 @@ impl<'a> Matcher<'a> {
                     .generics()
                     .nth_usage(db, &usage)
                     .into_generic_item();
+                // We want to make sure that we don't remap the func_class again (otherwise we
+                // cause infinite recursions)
+                let without_func_class = Self {
+                    type_var_matchers: self.type_var_matchers.clone(),
+                    ..Self::default()
+                };
                 return Some(match g {
                     GenericItem::TypeArg(t) => GenericItem::TypeArg(
-                        self.replace_type_var_likes_for_nested_context(db, &t)
+                        without_func_class
+                            .replace_type_var_likes_for_nested_context(db, &t)
                             .into_owned(),
                     ),
                     GenericItem::TypeArgs(ts) => GenericItem::TypeArgs(TypeArgs::new(
-                        self.replace_type_var_likes_for_nested_context_in_tuple_args(db, ts.args),
+                        without_func_class
+                            .replace_type_var_likes_for_nested_context_in_tuple_args(db, ts.args),
                     )),
                     GenericItem::ParamSpecArg(p) => GenericItem::ParamSpecArg(
-                        self.replace_type_var_likes_for_nested_context_in_param_spec(db, p),
+                        without_func_class
+                            .replace_type_var_likes_for_nested_context_in_param_spec(db, p),
                     ),
                 });
             }
