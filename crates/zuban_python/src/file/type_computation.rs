@@ -4221,7 +4221,7 @@ impl<'db: 'x, 'file, 'x> Inference<'db, 'file, '_> {
                 let file = self.i_s.db.loaded_python_file(point.file_index());
                 TypeNameLookup::Module(file)
             }
-            PointKind::Complex => unreachable!("Apparently complex names do not seem to happen"),
+            PointKind::Complex => TypeNameLookup::InvalidVariable(InvalidVariableType::Other),
         }
     }
 

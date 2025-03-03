@@ -3788,99 +3788,107 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             };
         }
         let builtins = i_s.db.python_state.builtins();
-        let point = match name_str {
-            "reveal_type" => {
-                if self
-                    .flags()
-                    .enabled_error_codes
-                    .iter()
-                    .any(|code| code == "unimported-reveal")
-                {
-                    self.add_issue(save_to_index, IssueKind::UnimportedRevealType);
+        let point =
+            match name_str {
+                "reveal_type" => {
+                    if self
+                        .flags()
+                        .enabled_error_codes
+                        .iter()
+                        .any(|code| code == "unimported-reveal")
+                    {
+                        self.add_issue(save_to_index, IssueKind::UnimportedRevealType);
+                    }
+                    Point::new_specific(Specific::RevealTypeFunction, Locality::Todo)
                 }
-                Point::new_specific(Specific::RevealTypeFunction, Locality::Todo)
-            }
-            "__builtins__" => Point::new_file_reference(builtins.file_index, Locality::Todo),
-            "__debug__" => return Inferred::from_type(i_s.db.python_state.bool_type()),
-            _ => {
-                if let Some(link) = builtins.lookup_global(name_str).filter(|link| {
-                    (is_valid_builtins_export(name_str))
-                        && !is_private_import(i_s.db, (*link).into())
-                }) {
-                    debug_assert!(
-                        link.file != self.file.file_index || link.node_index != save_to_index
-                    );
-                    link.into_point_redirect()
-                } else {
-                    // The builtin module should really not have any issues.
-                    debug_assert!(
-                        self.file.file_index != builtins.file_index,
-                        "{name_str}; {save_to_index}"
-                    );
-                    if i_s.in_class_scope().is_some()
-                        && matches!(name_str, "__name__" | "__module__" | "__qualname__")
-                    {
-                        return Inferred::from_type(i_s.db.python_state.str_type());
-                    }
-                    // It feels somewhat arbitrary what is exposed from the ModuleType and what's
-                    // not, so just filter here.
-                    if matches!(
-                        name_str,
-                        "__name__"
-                            | "__file__"
-                            | "__package__"
-                            | "__spec__"
-                            | "__doc__"
-                            | "__annotations__"
-                    ) {
-                        if let Some(inf) = i_s
-                            .db
-                            .python_state
-                            .module_instance()
-                            .type_lookup(
-                                i_s,
-                                |issue| self.add_issue(save_to_index, issue),
-                                name_str,
-                            )
-                            .into_maybe_inferred()
-                        {
-                            if matches!(name_str, "__package__" | "__file__") {
-                                return inf.remove_none(i_s);
-                            }
-                            return inf;
-                        }
-                    }
-                    // TODO check star imports
-                    self.add_issue(
+                "__builtins__" => Point::new_file_reference(builtins.file_index, Locality::Todo),
+                "__debug__" => {
+                    return Inferred::from_type(i_s.db.python_state.bool_type()).save_redirect(
+                        i_s,
+                        self.file,
                         save_to_index,
-                        IssueKind::NameError {
-                            name: Box::from(name_str),
-                        },
-                    );
-                    if !name_str.starts_with('_')
-                        && i_s
-                            .db
-                            .python_state
-                            .typing()
-                            .lookup_global(name_str)
-                            .is_some()
-                    {
-                        // TODO what about underscore or other vars?
+                    )
+                }
+                _ => {
+                    if let Some(link) = builtins.lookup_global(name_str).filter(|link| {
+                        (is_valid_builtins_export(name_str))
+                            && !is_private_import(i_s.db, (*link).into())
+                    }) {
+                        debug_assert!(
+                            link.file != self.file.file_index || link.node_index != save_to_index
+                        );
+                        link.into_point_redirect()
+                    } else {
+                        // The builtin module should really not have any issues.
+                        debug_assert!(
+                            self.file.file_index != builtins.file_index,
+                            "{name_str}; {save_to_index}"
+                        );
+                        if i_s.in_class_scope().is_some()
+                            && matches!(name_str, "__name__" | "__module__" | "__qualname__")
+                        {
+                            return Inferred::from_type(i_s.db.python_state.str_type())
+                                .save_redirect(i_s, self.file, save_to_index);
+                        }
+                        // It feels somewhat arbitrary what is exposed from the ModuleType and what's
+                        // not, so just filter here.
+                        if matches!(
+                            name_str,
+                            "__name__"
+                                | "__file__"
+                                | "__package__"
+                                | "__spec__"
+                                | "__doc__"
+                                | "__annotations__"
+                        ) {
+                            if let Some(mut inf) = i_s
+                                .db
+                                .python_state
+                                .module_instance()
+                                .type_lookup(
+                                    i_s,
+                                    |issue| self.add_issue(save_to_index, issue),
+                                    name_str,
+                                )
+                                .into_maybe_inferred()
+                            {
+                                if matches!(name_str, "__package__" | "__file__") {
+                                    inf = inf.remove_none(i_s);
+                                }
+                                return inf.save_redirect(i_s, self.file, save_to_index);
+                            }
+                        }
+                        // TODO check star imports
                         self.add_issue(
                             save_to_index,
-                            IssueKind::Note(
-                                format!(
-                                    "Did you forget to import it from \"typing\"? \
-                             (Suggestion: \"from typing import {name_str}\")",
-                                )
-                                .into(),
-                            ),
+                            IssueKind::NameError {
+                                name: Box::from(name_str),
+                            },
                         );
+                        if !name_str.starts_with('_')
+                            && i_s
+                                .db
+                                .python_state
+                                .typing()
+                                .lookup_global(name_str)
+                                .is_some()
+                        {
+                            // TODO what about underscore or other vars?
+                            self.add_issue(
+                                save_to_index,
+                                IssueKind::Note(
+                                    format!(
+                                        "Did you forget to import it from \"typing\"? \
+                             (Suggestion: \"from typing import {name_str}\")",
+                                    )
+                                    .into(),
+                                ),
+                            );
+                        }
+                        Point::new_specific(Specific::AnyDueToError, Locality::Todo)
                     }
-                    Point::new_specific(Specific::AnyDueToError, Locality::Todo)
                 }
-            }
-        };
+            };
         self.file.points.set(save_to_index, point);
         debug_assert!(self.file.points.get(save_to_index).calculated());
         self.check_point_cache(save_to_index).unwrap()

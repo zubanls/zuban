@@ -408,3 +408,13 @@ x: m.A  # E: Name "m.A" is not defined
 
 [file m.py]
 def __getattr__(name: str) -> int: ...
+
+[case invalid_dunder_annotation_attrs]
+class A:
+    def f(
+        self,
+        a: __module__,  # E: Invalid type comment or annotation
+        b: __debug__,  # E: Invalid type comment or annotation
+        c: __name__,  # E: Invalid type comment or annotation
+        c: __file__,  # E: Invalid type comment or annotation
+    ) : ...
