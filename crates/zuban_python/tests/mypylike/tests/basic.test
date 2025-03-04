@@ -962,3 +962,9 @@ reveal_type(cvar)  # N: Revealed type is "Any"
     ))))) ))))) ))))) )))))
     ))))) ))))) ))))) )))))
 )
+
+[case unicode_escaped_literal_should_not_crash]
+def f(char: str) -> None:
+    if char <= "\u009d": ...
+    if char <= "\u009f": ...
+    if char <= "\u019f": ...

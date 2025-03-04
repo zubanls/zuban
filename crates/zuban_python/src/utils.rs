@@ -133,7 +133,10 @@ pub fn bytes_repr(bytes: Cow<[u8]>) -> String {
 pub fn str_repr(content: &str) -> String {
     let mut repr = String::new();
     for c in content.chars() {
-        if c.is_ascii_control() {
+        // Since the control characters cause an issue when printing to a terminal, we have to
+        // escape this. Some of them also don't have a symbol that would show. Both C0 and C1 ansi
+        // escape codes must be escaped.
+        if c.is_control() {
             match c {
                 '\n' => repr += "\\n",
                 '\r' => repr += "\\r",
