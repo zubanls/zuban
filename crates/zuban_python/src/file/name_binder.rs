@@ -582,6 +582,9 @@ impl<'db> NameBinder<'db> {
 
     fn close(&mut self) {
         if self.kind != NameBinderKind::Class {
+            // We want to make sure that names e.g. defined in a walrus in a comprehension before
+            // other names are indexed first, therefore revert.
+            self.unresolved_nodes.reverse();
             while let Some(n) = self.unresolved_nodes.pop() {
                 match n {
                     Unresolved::Name(name) => {
@@ -613,6 +616,7 @@ impl<'db> NameBinder<'db> {
                     }
                 };
             }
+            debug_assert_eq!(self.unresolved_nodes.len(), 0);
         }
         self.index_unordered_references();
         debug_assert_eq!(self.unordered_references.len(), 0);

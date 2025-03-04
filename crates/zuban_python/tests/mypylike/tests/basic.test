@@ -948,6 +948,11 @@ if (bvar := bvar):
 x: int = (cvar := cvar())  # E: Name "cvar" is used before definition
 reveal_type(cvar)  # N: Revealed type is "Any"
 
+[case walrus_redefinition]
+lst = [1]
+list(x for s in lst if (x := s))
+list(x for s in lst if (x := s))
+
 [case avoid_bracket_slowdown]
 (
     ((((( ((((( ((((( (((((
