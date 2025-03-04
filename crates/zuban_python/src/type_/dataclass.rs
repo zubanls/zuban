@@ -187,6 +187,10 @@ impl Dataclass {
     pub fn expect_calculated_post_init(&self) -> &CallableContent {
         &self.inits.get().unwrap().__post_init__
     }
+
+    pub fn is_dataclass_transform(&self) -> bool {
+        self.options.transform_field_specifiers.is_some()
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -266,7 +270,7 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> Init
                 }
                 let cls = super_dataclass.class(db);
                 let init = dataclass_init_func(super_dataclass, db);
-                let post_init = &super_dataclass.inits.get().unwrap().__post_init__;
+                let post_init = &super_dataclass.expect_calculated_post_init();
                 for param in init.expect_simple_params().iter() {
                     let mut new_param = param.clone();
                     let t = match &mut new_param.type_ {
@@ -451,7 +455,7 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> Init
                     // https://github.com/microsoft/pyright/issues/3245
                     // Both Mypy and Pyright handle dataclass_transform always, which is
                     // questionable, since it doesn't appear in the PEP, but we just imitate that.
-                    if has_default || dataclass.options.transform_field_specifiers.is_some() {
+                    if has_default || dataclass.is_dataclass_transform() {
                         set_descriptor_update_for_init(i_s, &mut t)
                     }
                     add_param(
@@ -969,7 +973,7 @@ pub(crate) fn lookup_on_dataclass_type<'a>(
     kind: LookupKind,
 ) -> LookupDetails<'a> {
     if name == "__dataclass_fields__" {
-        let t = if dataclass.options.transform_field_specifiers.is_some() {
+        let t = if dataclass.is_dataclass_transform() {
             // For dataclass_transform the values are always Any
             new_class!(
                 i_s.db.python_state.dict_node_ref().as_link(),

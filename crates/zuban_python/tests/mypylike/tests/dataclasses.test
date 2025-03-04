@@ -391,6 +391,26 @@ class M3(): ...
 @dataclass_transform(**{'eq_default': True })  # E: Unexpected argument to "dataclass_transform()"
 class M4(): ...
 
+[case dataclass_transform_post_init_access]
+from typing import dataclass_transform
+from dataclasses import dataclass
+
+@dataclass_transform()
+class Meta(type): ...
+
+class C(metaclass=Meta):
+    key: str
+
+class D(C):
+    def __post_init__(self) -> None:
+        super().__post_init__  # E: "__post_init__" undefined in superclass
+
+@dataclass()
+class E(C):
+    def __post_init__(self) -> None:
+        # TODO this is not correct, because it's wrapped as a dataclass again
+        super().__post_init__  # E: "__post_init__" undefined in superclass
+
 [case dataclass_enum_combination]
 from dataclasses import dataclass
 from enum import Enum

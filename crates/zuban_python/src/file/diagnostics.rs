@@ -772,6 +772,12 @@ impl Inference<'_, '_, '_> {
 
         if name == "__post_init__" {
             if let Some(dataclass) = c.maybe_dataclass(i_s.db) {
+                if dataclass.is_dataclass_transform() {
+                    // For now don't skip dataclass transform. It is a very special case and I
+                    // don't know how that would look like. If we want to do it well, we would need
+                    // to test it well.
+                    return;
+                }
                 let override_details = Instance::new(c, None).lookup_on_self(
                     self.i_s,
                     &|issue| from.add_issue(i_s, issue),
