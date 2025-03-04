@@ -344,6 +344,14 @@ impl FlowAnalysis {
         &self,
         callable: impl FnOnce() -> T,
     ) -> FlowAnalysisResult<T> {
+        if self.frames.try_borrow_mut().is_err() {
+            // TODO This is completely wrong, but is related to the test
+            // narrowing_with_key_in_different_file and executing narrows
+            return FlowAnalysisResult {
+                result: callable(),
+                unfinished_partials: Default::default(),
+            };
+        }
         let old_frames = self.frames.take();
         let try_frames = self.try_frames.take();
         let loop_details = self.loop_details.take();

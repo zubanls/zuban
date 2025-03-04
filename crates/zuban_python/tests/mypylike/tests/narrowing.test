@@ -1680,3 +1680,14 @@ class C: ...
 def f(x: type[A | B]):
     if issubclass(x, C):
         reveal_type(x)  # N: Revealed type is "Type[<subclass of "__main__.C" and "__main__.A"> | <subclass of "__main__.C" and "__main__.B">]"
+
+[case narrowing_with_key_in_different_file]
+import m
+
+def f(x: dict[str, tuple[int] | tuple[str, int]]) -> None:
+    assert len(x["a"]) == 2
+    reveal_type(x["a"])  # N: Revealed type is "builtins.tuple[builtins.str, builtins.int]"
+    x[m.S1]
+
+[file m.py]
+S1 = "hello"
