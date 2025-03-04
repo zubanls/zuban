@@ -209,6 +209,24 @@ macro_rules! __create_node {
                 self.internal_node.length
             }
 
+            pub fn maybe_error_node(&self) -> Option<$NonterminalType> {
+                if self.is_error_recovery_node() && !self.is_leaf() {
+                    if let $NodeType::ErrorNonterminal(nt) = self.type_() {
+                        return Some(nt)
+                    }
+                }
+                None
+            }
+
+            pub fn maybe_error_leaf(&self) -> Option<$TerminalType> {
+                if self.is_error_recovery_node() && self.is_leaf() {
+                    if let $NodeType::ErrorTerminal(terminal) = self.type_() {
+                        return Some(terminal)
+                    }
+                }
+                None
+            }
+
             pub fn is_leaf(&self) -> bool {
                 self.internal_node.type_.is_leaf()
             }

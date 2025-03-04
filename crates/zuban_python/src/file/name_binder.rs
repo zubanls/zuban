@@ -552,9 +552,16 @@ impl<'db> NameBinder<'db> {
             };
             last_was_an_error = false;
         }
-        for stmt_like in stmts {
-            if let StmtLikeContent::YieldExpr(y) = stmt_like.node {
-                self.index_return_or_yield(y.index());
+        for stmt_like in stmts.by_ref() {
+            match stmt_like.node {
+                StmtLikeContent::YieldExpr(y) => self.index_return_or_yield(y.index()),
+                StmtLikeContent::Error(error) if error.is_dedent() => {
+                    // If we encounter an invalid dedent in the statement list, we don't want to
+                    // abort after a return or break. We have broken code that needs to be fixed
+                    // first. Otherwise names will not be accessible from other modules.
+                    return self.index_stmts(stmts, ordered);
+                }
+                _ => (),
             }
         }
     }

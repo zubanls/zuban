@@ -18,8 +18,8 @@ pub use parsa_python::{keywords_contain, CodeIndex, NodeIndex};
 use parsa_python::{
     parse,
     NonterminalType::*,
-    PyNode, PyNodeType,
-    PyNodeType::{ErrorNonterminal, ErrorTerminal, Nonterminal, Terminal},
+    PyNode,
+    PyNodeType::{self, ErrorNonterminal, ErrorTerminal, Nonterminal, Terminal},
     PyTree, SearchIterator, SiblingIterator, TerminalType,
 };
 pub use strings::PythonString;
@@ -4230,5 +4230,12 @@ impl<'db> Error<'db> {
 
     pub fn as_code(&self) -> &'db str {
         self.node.as_code()
+    }
+
+    pub fn is_dedent(&self) -> bool {
+        // If we just have a single Error Dedent in an Error statement, it's a dedent that was not
+        // properly used.
+        self.node.maybe_error_node() == Some(stmt)
+            && self.node.nth_child(0).maybe_error_leaf() == Some(TerminalType::Dedent)
     }
 }

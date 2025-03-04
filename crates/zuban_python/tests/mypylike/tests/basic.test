@@ -953,6 +953,20 @@ lst = [1]
 list(x for s in lst if (x := s))
 list(x for s in lst if (x := s))
 
+[case after_invalid_syntax_function_should_still_be_importable]
+import m, n
+reveal_type(m.x)  # N: Revealed type is "int"
+reveal_type(n.x)  # N: Revealed type is "int"
+
+[file m.py]
+e =   # E: invalid syntax
+x = 1
+
+[file n.py]
+def err()(value: str) -> str  # E: invalid syntax
+    return value  # E: "return" outside function  # E: invalid syntax
+x = 1
+
 [case avoid_bracket_slowdown]
 (
     ((((( ((((( ((((( (((((
