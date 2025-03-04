@@ -11,7 +11,7 @@ else
     DIRS=$(ls "$PRIMER_PROJECTS_DIR" | rg -v '_venv$' | sort)
 fi
 
-EXECUTABLE="$(pwd)/../target/debug/zmypy"
+EXECUTABLE="$(pwd)/../target/release/zmypy"
 TYPESHED_DIR="$(realpath ../typeshed)"
 cargo build --bin zmypy ${@:2}
 

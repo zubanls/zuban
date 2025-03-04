@@ -4290,9 +4290,6 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             DefiningStmt::Walrus(walrus) => {
                 self.infer_walrus(walrus, None);
             }
-            DefiningStmt::Lambda(_)
-            | DefiningStmt::Comprehension(_)
-            | DefiningStmt::DictComprehension(_) => unreachable!(),
             DefiningStmt::ForStmt(for_stmt) => {
                 name_def.set_point(Point::new_calculating());
                 let (star_targets, star_exprs, _, _) = for_stmt.unpack();
@@ -4352,6 +4349,21 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 // Errors are raised in the proper places anyway, see test
                 // `del_stmt_inference_of_self_name`.
                 self.assign_any_to_del_stmts(del_stmt.targets());
+            }
+            DefiningStmt::Lambda(_)
+            | DefiningStmt::Comprehension(_)
+            | DefiningStmt::DictComprehension(_) => {
+                tracing::error!(
+                    "Not implemented: and therefore assigning Any to {:?} in {}",
+                    name_def,
+                    self.file_path()
+                );
+                self.assign_to_name_def_simple(
+                    name_def.as_name_def(),
+                    name_def,
+                    &Inferred::new_any_from_error(),
+                    AssignKind::Normal,
+                )
             }
             DefiningStmt::MatchStmt(_) => {
                 // This should basically only ever happen on weird error cases where errors are
