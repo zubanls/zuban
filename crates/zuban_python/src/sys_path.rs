@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use vfs::{AbsPath, VfsHandler};
+use vfs::{AbsPath, LocalFS, VfsHandler};
 
 use crate::{PythonVersion, Settings};
 
@@ -68,7 +68,7 @@ fn site_packages_path_from_venv(executable: &str, version: PythonVersion) -> Pat
     expected_path
 }
 
-pub(crate) fn typeshed_path_from_executable() -> String {
+pub(crate) fn typeshed_path_from_executable() -> Box<AbsPath> {
     let executable = std::env::current_exe().expect(
         "Cannot access the path of the current executable, you need to provide \
                  a typeshed path in that case.",
@@ -94,10 +94,12 @@ pub(crate) fn typeshed_path_from_executable() -> String {
         let p = folder.path();
         let typeshed_path = p.join("site-packages").join("zuban").join("typeshed");
         if typeshed_path.exists() {
-            return typeshed_path
-                .into_os_string()
-                .into_string()
-                .expect("Expected the typeshed path to be UTF-8");
+            return LocalFS::without_watcher().abs_path_from_current_dir(
+                typeshed_path
+                    .into_os_string()
+                    .into_string()
+                    .expect("Expected the typeshed path to be UTF-8"),
+            );
         }
     }
     panic!("Did not find a typeshed folder in {lib_folder:?}")

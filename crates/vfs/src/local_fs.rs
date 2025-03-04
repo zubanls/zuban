@@ -228,6 +228,10 @@ impl LocalFS {
                 .unwrap(),
         )
     }
+
+    pub fn abs_path_from_current_dir(&self, p: String) -> Box<AbsPath> {
+        self.absolute_path(&self.current_dir(), p)
+    }
 }
 
 fn log_notify_error<T>(res: notify::Result<T>) -> Option<T> {

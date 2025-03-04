@@ -4,7 +4,7 @@ use anyhow::bail;
 use ini::{Ini, ParseOption};
 use regex::Regex;
 use toml_edit::{DocumentMut, Item, Table, Value};
-use vfs::{AbsPath, VfsHandler};
+use vfs::{AbsPath, LocalFS, VfsHandler};
 
 type ConfigResult = anyhow::Result<bool>;
 
@@ -38,7 +38,7 @@ pub struct Settings {
     pub mypy_compatible: bool,
     // These are absolute paths.
     pub files_or_directories_to_check: Vec<Box<AbsPath>>,
-    pub typeshed_path: Option<String>,
+    pub typeshed_path: Option<Box<AbsPath>>,
 }
 
 impl Default for Settings {
@@ -47,7 +47,9 @@ impl Default for Settings {
             platform: None,
             python_version: PythonVersion::new(3, 13),
             python_executable: None,
-            typeshed_path: std::env::var("ZUBAN_TYPESHED").ok(),
+            typeshed_path: std::env::var("ZUBAN_TYPESHED")
+                .ok()
+                .map(|p| LocalFS::without_watcher().abs_path_from_current_dir(p)),
             mypy_path: vec![],
             mypy_compatible: false,
             files_or_directories_to_check: vec![],

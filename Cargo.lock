@@ -1018,6 +1018,7 @@ dependencies = [
  "lazy_static",
  "regex",
  "tracing",
+ "vfs",
 ]
 
 [[package]]

@@ -246,7 +246,7 @@ pub fn run(cli: Cli) -> ExitCode {
 fn project_from_cli(
     cli: Cli,
     current_dir: String,
-    typeshed_path: Option<String>,
+    typeshed_path: Option<Box<AbsPath>>,
 ) -> (Project, DiagnosticConfig) {
     let local_fs = LocalFS::without_watcher();
     let current_dir = local_fs.unchecked_abs_path(current_dir);
