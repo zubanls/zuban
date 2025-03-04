@@ -334,7 +334,9 @@ fn apply_flags(
     if let Some(python_version) = cli.python_version {
         project_options.settings.python_version = python_version;
     }
-    project_options.settings.python_executable = cli.python_executable;
+    project_options.settings.python_executable = cli
+        .python_executable
+        .map(|p| vfs_handler.absolute_path(&current_dir, p));
     project_options.settings.files_or_directories_to_check = cli
         .files
         .into_iter()
@@ -454,6 +456,34 @@ mod tests {
             d(&["", foo_path.to_str().unwrap()]),
             vec![NOT_CALLABLE_FOO.to_string(),]
         );
+    }
+
+    #[test]
+    fn test_environment() {
+        let test_dir = test_utils::write_files_from_fixture(
+            r#"
+            [file venv/bin/python]
+
+            [file venv/lib/python3.12/site-packages/foo.py]
+
+            [file venv/lib/python3.12/site-packages/bar.py]
+            1()
+
+            [file test.py]
+            import foo
+            "#,
+            false,
+        );
+        let d = |cli_args: &[&str]| diagnostics(Cli::parse_from(cli_args), test_dir.path());
+
+        // No venv information should fail to import
+        assert_eq!(
+            d(&[""]),
+            ["test.py:1: error: Cannot find implementation or library stub for module named \"foo\""]
+            );
+        // venv information via --python-executable should work
+        let empty: [&str; 0] = [];
+        assert_eq!(d(&["", "--python-executable", "venv/bin/python"]), empty);
     }
 
     #[test]

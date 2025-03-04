@@ -32,7 +32,7 @@ pub struct ProjectOptions {
 pub struct Settings {
     pub platform: Option<String>,
     pub python_version: PythonVersion,
-    pub python_executable: Option<String>,
+    pub python_executable: Option<Box<AbsPath>>,
     pub mypy_path: Vec<Box<AbsPath>>,
     pub prepended_site_packages: Vec<Box<AbsPath>>,
     pub mypy_compatible: bool,

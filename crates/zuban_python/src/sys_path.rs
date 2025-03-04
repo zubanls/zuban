@@ -35,11 +35,12 @@ pub(crate) fn create_sys_path(handler: &dyn VfsHandler, settings: &Settings) -> 
 
 fn site_packages_path_from_venv(executable: &str, version: PythonVersion) -> PathBuf {
     const ERR: &str = "Expected a custom executable to be at least two directories deep";
-    let lib = Path::new(executable)
-        .parent()
-        .expect(ERR)
+    let executable_dir = Path::new(executable).parent().expect(ERR);
+    let lib = executable_dir
         .canonicalize()
-        .expect("Expected chdir to be possible with a custom python executable")
+        .unwrap_or_else(|err| {
+            panic!("Expected directory access to be possible for {executable_dir:?}: {err}")
+        })
         .parent()
         .expect(ERR)
         .join("lib");
