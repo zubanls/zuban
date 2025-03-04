@@ -20,7 +20,7 @@ while read DIR; do
     PTH="$PRIMER_PROJECTS_DIR/$DIR"
     cd "$PTH"
     set +e
-    ZUBAN_TYPESHED="$TYPESHED_DIR" RUST_BACKTRACE=1 /usr/bin/time "$EXECUTABLE" -- --python-executable "$VENV/bin/python" "$PTH"
+    ZUBAN_TYPESHED="$TYPESHED_DIR" RUST_BACKTRACE=1 /usr/bin/time "$EXECUTABLE" --python-executable "$VENV/bin/python" "$PTH"
     EXIT_CODE="$?"
     set -e
     # Default "valid" codes, but we want to find panics and other aborts

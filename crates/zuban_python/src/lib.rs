@@ -86,6 +86,10 @@ impl Project {
                 &self.db.project.settings.mypy_path
             );
         }
+        debug!(
+            "Checking the following files: {:?}",
+            &self.db.project.settings.files_or_directories_to_check
+        );
         let mut all_diagnostics: Vec<diagnostics::Diagnostic> = vec![];
         let mut checked_files = 0;
         let mut files_with_errors = 0;
