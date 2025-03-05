@@ -21,6 +21,7 @@ use crate::{
         OnTypeError, ResultContext,
     },
     node_ref::NodeRef,
+    recoverable_error,
     type_::{Intersection, NamedTuple},
     type_helpers::{
         lookup_in_namespace, Callable, Class, ClassLookupOptions, Instance, InstanceLookupOptions,
@@ -246,7 +247,7 @@ impl Type {
             ),
             Type::Self_ => {
                 let Some(current_class) = i_s.current_class() else {
-                    tracing::error!(
+                    recoverable_error!(
                         "Self lookup without current_class, you should probably report this"
                     );
                     callable(
@@ -952,7 +953,7 @@ pub(crate) fn attribute_access_of_type(
             return;
         }
         _ => {
-            tracing::error!(
+            recoverable_error!(
                 "We did not handle the attribute {name} on \"{}\", that should be handled",
                 in_type.format_short(i_s.db),
             );
@@ -1081,7 +1082,7 @@ pub(crate) fn execute_type_of_type<'db>(
             execute_type_of_type(i_s, args, result_context, on_type_error, init_t)
         }
         _ => {
-            tracing::error!(
+            recoverable_error!(
                 "We did not handle a type execution for \"{}\", that should be handled",
                 type_.format_short(i_s.db),
             );

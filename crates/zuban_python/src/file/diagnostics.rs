@@ -27,6 +27,7 @@ use crate::{
     },
     node_ref::NodeRef,
     params::{matches_params, Param, WrappedParamType, WrappedStar},
+    recoverable_error,
     type_::{
         format_callable_params, AnyCause, CallableContent, CallableParams, ClassGenerics, DbString,
         FunctionKind, FunctionOverload, GenericItem, GenericsList, IterCause, Literal, LiteralKind,
@@ -686,7 +687,7 @@ impl Inference<'_, '_, '_> {
         let inference = self.file.inference(&i_s);
         let result = inference.calculate_class_block_diagnostics(c, block);
         if !result.is_ok() {
-            tracing::error!(
+            recoverable_error!(
                 "Calculating the class block failed for: {} line #{} in {}",
                 class.name().as_code(),
                 class_node_ref.line(),

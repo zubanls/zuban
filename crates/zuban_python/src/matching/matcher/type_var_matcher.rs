@@ -13,6 +13,7 @@ use crate::{
     inference_state::InferenceState,
     matching::MatcherFormatResult,
     params::Param,
+    recoverable_error,
     type_::{
         AnyCause, CallableParams, GenericItem, GenericsList, NeverCause, ParamType, Type,
         TypeVarKind, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarUsage, Variance,
@@ -360,7 +361,7 @@ impl TypeVarMatcher {
             .calculating_type_args
             .get_mut(type_var_usage.index.as_usize())
         else {
-            tracing::error!(
+            recoverable_error!(
                 "Tried to access type arg {}, but there are only {}, for: {:?}",
                 type_var_usage.index.as_usize(),
                 self.calculating_type_args.len(),

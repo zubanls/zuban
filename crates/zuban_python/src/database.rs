@@ -18,7 +18,7 @@ use crate::{
     file::{File, PythonFile},
     node_ref::NodeRef,
     python_state::PythonState,
-    sys_path,
+    recoverable_error, sys_path,
     type_::{
         CallableContent, DataclassTransformObj, FunctionKind, FunctionOverload, GenericItem,
         GenericsList, NewType, ParamSpecUsage, RecursiveType, StringSlice, Type, TypeVarLike,
@@ -780,7 +780,7 @@ impl TypeAlias {
 
     pub fn type_if_valid(&self) -> &Type {
         let Some(state) = self.state.get() else {
-            tracing::error!("Should probably not happen and means there is probably a bug");
+            recoverable_error!("Should probably not happen and means there is probably a bug");
             return &Type::ERROR;
         };
         match state {

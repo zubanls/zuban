@@ -38,6 +38,18 @@ macro_rules! debug {
 }
 
 #[macro_export]
+macro_rules! recoverable_error {
+    ($($arg:tt)*) => {
+        if std::env::var("ZUBAN_CRASH_ON_ERROR").is_ok_and(|s| s == "1") {
+            panic!($($arg)*)
+        } else {
+            tracing::error!($($arg)*);
+            tracing::error!("To crash on this error, use set the environment variable ZUBAN_CRASH_ON_ERROR=1");
+        }
+    }
+}
+
+#[macro_export]
 macro_rules! new_class {
     ($link:expr, $($arg:expr),+$(,)?) => {
         $crate::type_::Type::new_class(

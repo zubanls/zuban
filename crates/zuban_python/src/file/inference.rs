@@ -33,6 +33,7 @@ use crate::{
     new_class,
     node_ref::NodeRef,
     params::matches_simple_params,
+    recoverable_error,
     type_::{
         AnyCause, CallableContent, CallableParam, CallableParams, IterCause, IterInfos, Literal,
         LiteralKind, LookupResult, NeverCause, ParamType, StarParamType, StarStarParamType,
@@ -4353,7 +4354,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             DefiningStmt::Lambda(_)
             | DefiningStmt::Comprehension(_)
             | DefiningStmt::DictComprehension(_) => {
-                tracing::error!(
+                recoverable_error!(
                     "Not implemented: and therefore assigning Any to {:?} in {}",
                     name_def,
                     self.file_path()
