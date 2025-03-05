@@ -33,9 +33,12 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         for dotted_as_name in imp.iter_dotted_as_names() {
             match dotted_as_name.unpack() {
                 DottedAsNameContent::Simple(name_def, rest) => {
-                    let result = self.global_import(name_def.name(), |inf| {
-                        assign_to_name_def(name_def, inf);
-                    });
+                    let result = self.global_import(name_def.name());
+                    let inf = match &result {
+                        Some(import_result) => import_result.as_inferred(),
+                        None => Inferred::new_module_not_found(),
+                    };
+                    assign_to_name_def(name_def, inf);
                     if let Some(rest) = rest {
                         if result.is_some() {
                             self.infer_import_dotted_name(rest, result);
@@ -189,7 +192,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 if let Some(base) = base {
                     infer_name(self, base, name)
                 } else {
-                    self.global_import(name, |_| ())
+                    self.global_import(name)
                 }
             }
             DottedNameContent::DottedName(dotted_name, name) => {
@@ -298,7 +301,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         }
     }
 
-    fn global_import(&self, name: Name, on_inferred: impl Fn(Inferred)) -> Option<ImportResult> {
+    fn global_import(&self, name: Name) -> Option<ImportResult> {
         let result = global_import(self.i_s.db, self.file, name.as_str());
         if let Some(result) = &result {
             debug!(
@@ -307,21 +310,14 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 result.debug_info(self.i_s.db),
             );
         }
-        let inf = match &result {
-            Some(import_result) => import_result.as_inferred(),
-            None => {
-                if !self.flags().ignore_missing_imports {
-                    self.add_issue(
-                        name.index(),
-                        IssueKind::ModuleNotFound {
-                            module_name: Box::from(name.as_str()),
-                        },
-                    );
-                }
-                Inferred::new_module_not_found()
-            }
-        };
-        on_inferred(inf);
+        if result.is_none() && !self.flags().ignore_missing_imports {
+            self.add_issue(
+                name.index(),
+                IssueKind::ModuleNotFound {
+                    module_name: Box::from(name.as_str()),
+                },
+            );
+        }
         result
     }
 
