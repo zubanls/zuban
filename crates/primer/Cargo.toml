@@ -1,0 +1,16 @@
+[package]
+name = "primer"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+homepage.workspace = true
+authors.workspace = true
+
+[dependencies]
+zmypy.workspace = true
+test_utils.workspace = true
+
+clap.workspace = true
+
+[features]
+zuban_debug = ["zmypy/zuban_debug"]

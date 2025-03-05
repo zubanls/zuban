@@ -213,7 +213,15 @@ pub fn run(cli: Cli) -> ExitCode {
     const CWD_ERROR: &str = "Expected valid unicode in working directory";
     let current_dir = current_dir.into_os_string().into_string().expect(CWD_ERROR);
 
-    let (mut project, diagnostic_config) = project_from_cli(cli, current_dir, None);
+    run_with_cli(cli, current_dir, None)
+}
+
+pub fn run_with_cli(
+    cli: Cli,
+    current_dir: String,
+    typeshed_path: Option<Box<AbsPath>>,
+) -> ExitCode {
+    let (mut project, diagnostic_config) = project_from_cli(cli, current_dir, typeshed_path);
     let diagnostics = project.diagnostics();
     for diagnostic in diagnostics.issues.iter() {
         println!("{}", diagnostic.as_string(&diagnostic_config))
