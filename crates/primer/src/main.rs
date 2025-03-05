@@ -2,6 +2,7 @@ use std::env;
 use std::fs;
 use std::path::Path;
 use std::process::ExitCode;
+use std::time::Instant;
 
 use clap::Parser;
 
@@ -28,7 +29,12 @@ fn main() -> ExitCode {
         projects.sort();
     }
 
+    let start = Instant::now();
+
     for dir in projects {
+        println!("Start checking {dir}");
+        let project_start = Instant::now();
+
         let venv = Path::new(&primer_projects_dir).join(format!("_{}_venv", dir));
         let executable = venv
             .join("bin/python")
@@ -36,7 +42,7 @@ fn main() -> ExitCode {
             .into_string()
             .unwrap();
         let pth = Path::new(&primer_projects_dir)
-            .join(dir)
+            .join(&dir)
             .into_os_string()
             .into_string()
             .unwrap();
@@ -47,6 +53,13 @@ fn main() -> ExitCode {
         if code == ExitCode::FAILURE {
             println!("Mypy generated diagnostics, which leads to an error code that was ignored");
         }
+
+        println!(
+            "Time taken for project {dir}: {:?}",
+            project_start.elapsed()
+        );
     }
+    println!("Full time taken: {:?}", start.elapsed());
+
     ExitCode::SUCCESS
 }

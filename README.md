@@ -30,6 +30,12 @@ Debugging:
 
     gdb -ex r --args <executable> <arguments...>
 
+# Running primer
+
+Mypy uses mypy-primer to test for changes. We can simply check if we panic on
+some of these projects with:
+
+    cargo run --bin primer --release
 
 ## Releasing
 
