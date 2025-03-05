@@ -779,7 +779,11 @@ impl TypeAlias {
     }
 
     pub fn type_if_valid(&self) -> &Type {
-        match self.state.get().unwrap() {
+        let Some(state) = self.state.get() else {
+            tracing::error!("Should probably not happen and means there is probably a bug");
+            return &Type::ERROR;
+        };
+        match state {
             TypeAliasState::Invalid => unreachable!(),
             TypeAliasState::Valid(a) => a.type_.as_ref(),
         }

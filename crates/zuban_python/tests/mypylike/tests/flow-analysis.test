@@ -289,3 +289,29 @@ def f() -> None:
         y
 
     if y := a: ...
+
+[case alias_complicated_definition_because_of_flow_analysis]
+from m import ScalarResult
+def Trade() -> ScalarResult: ...
+
+[file m.py]
+from typing import Iterator, Union
+from n import Row
+if bool(): ... # Enable flow analysis
+
+KeyType = str
+RowData = Union[str, Row]
+R = undefined(RowData)  # E: Name "undefined" is not defined
+
+class Result:
+    def f(self) -> Iterator[RowData]: ...
+class IteratorResult(Result):
+    def f(self) -> Iterator[RowData]: ...
+class ScalarResult(list[R]): ...  # E: Variable "m.R" is not valid as a type \
+                                  # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases \
+                                  # E: Variable "m.R" is not valid as a type \
+                                  # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+
+[file n.py]
+from m import KeyType
+class Row(list["KeyType"]): ...
