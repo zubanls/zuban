@@ -15,6 +15,7 @@ use super::{
     file_state::{File, Leaf},
     inference::Inference,
     name_binder::{DbInfos, NameBinder},
+    name_resolution::NameResolution,
 };
 use crate::{
     database::{
@@ -220,22 +221,19 @@ pub struct StarImport {
 
 impl StarImport {
     #[inline]
-    pub(super) fn to_file<'db>(
-        &self,
-        inference: &Inference<'db, '_, '_>,
-    ) -> Option<&'db PythonFile> {
-        let point = inference.file.points.get(self.star_node);
+    pub(super) fn to_file<'db>(&self, nr: &NameResolution<'db, '_, '_>) -> Option<&'db PythonFile> {
+        let point = nr.file.points.get(self.star_node);
         if point.calculated() {
             return if point.maybe_specific() == Some(Specific::ModuleNotFound) {
                 None
             } else {
-                Some(inference.i_s.db.loaded_python_file(point.file_index()))
+                Some(nr.i_s.db.loaded_python_file(point.file_index()))
             };
         }
-        let import_from = NodeRef::new(inference.file, self.import_from_node).expect_import_from();
-        inference.cache_import_from(import_from);
-        debug_assert!(inference.file.points.get(self.star_node).calculated());
-        self.to_file(inference)
+        let import_from = NodeRef::new(nr.file, self.import_from_node).expect_import_from();
+        nr.cache_import_from(import_from);
+        debug_assert!(nr.file.points.get(self.star_node).calculated());
+        self.to_file(nr)
     }
 
     pub fn in_module_scope(&self) -> bool {
@@ -358,7 +356,14 @@ impl<'db> PythonFile {
         &'file self,
         i_s: &'i_s InferenceState<'db, 'i_s>,
     ) -> Inference<'db, 'file, 'i_s> {
-        Inference { file: self, i_s }
+        Inference(self.name_resolution(i_s))
+    }
+
+    pub fn name_resolution<'file, 'i_s>(
+        &'file self,
+        i_s: &'i_s InferenceState<'db, 'i_s>,
+    ) -> NameResolution<'db, 'file, 'i_s> {
+        NameResolution { file: self, i_s }
     }
 
     pub fn lookup_global(&self, name: &str) -> Option<LocalityLink> {
