@@ -430,3 +430,14 @@ class C:
 class D:
     class E: ...
     class F(E): ...
+
+[case avoid_alias_recursion_crash_with_annotated]
+from typing import Annotated
+AliasedType = Annotated[int, "aliased"]
+
+def aliased() -> AliasedType: ...
+
+[case avoid_alias_recursion_crash_with_unknown]
+AliasedType = Unknown[int, "aliased"]
+
+def aliased() -> AliasedType: ...
