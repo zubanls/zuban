@@ -17,11 +17,7 @@ use crate::{
     utils::AlreadySeen,
 };
 
-use super::{
-    inference::{AssignKind, StarImportResult},
-    python_file::StarImport,
-    File as _, PythonFile,
-};
+use super::{inference::StarImportResult, python_file::StarImport, File as _, PythonFile};
 
 pub struct NameResolution<'db: 'file, 'file, 'i_s> {
     pub(super) file: &'file PythonFile,
@@ -29,15 +25,17 @@ pub struct NameResolution<'db: 'file, 'file, 'i_s> {
 }
 
 impl<'db, 'file> NameResolution<'db, 'file, '_> {
-    pub(super) fn cache_import_name(&self, imp: ImportName) {
-        if self.file.points.get(imp.index()).calculated() {
-            return;
-        }
-
+    pub(super) fn assign_import_name(
+        &self,
+        imp: ImportName,
+        assign_to_name_def: impl Fn(NameDef, Inferred),
+    ) {
         for dotted_as_name in imp.iter_dotted_as_names() {
             match dotted_as_name.unpack() {
                 DottedAsNameContent::Simple(name_def, rest) => {
-                    let result = self.global_import(name_def.name(), Some(name_def));
+                    let result = self.global_import(name_def.name(), |inf| {
+                        assign_to_name_def(name_def, inf);
+                    });
                     if let Some(rest) = rest {
                         if result.is_some() {
                             self.infer_import_dotted_name(rest, result);
@@ -51,27 +49,17 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                         Some(import_result) => import_result.as_inferred(),
                         None => Inferred::new_module_not_found(),
                     };
-                    self.assign_to_name_def_simple(
-                        as_name_def,
-                        NodeRef::new(self.file, as_name_def.index()),
-                        &inf,
-                        AssignKind::Import,
-                    );
+                    assign_to_name_def(as_name_def, inf);
                 }
             }
         }
-
-        self.file.points.set(
-            imp.index(),
-            Point::new_specific(Specific::Analyzed, Locality::Todo),
-        );
     }
 
-    pub(super) fn cache_import_from(&self, imp: ImportFrom) {
-        if self.file.points.get(imp.index()).calculated() {
-            return;
-        }
-
+    pub(super) fn assign_import_from_names(
+        &self,
+        imp: ImportFrom,
+        assign_to_name_def: impl Fn(NameDef, Inferred, Option<PointLink>),
+    ) {
         let from_first_part = self.import_from_first_part(imp);
 
         match imp.unpack_targets() {
@@ -94,14 +82,10 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             }
             ImportFromTargets::Iterator(as_names) => {
                 for as_name in as_names {
-                    self.cache_import_from_part(&from_first_part, as_name)
+                    self.cache_import_from_part(&from_first_part, as_name, &assign_to_name_def)
                 }
             }
         }
-        self.file.points.set(
-            imp.index(),
-            Point::new_specific(Specific::Analyzed, Locality::Todo),
-        );
     }
 
     pub fn import_from_first_part(&self, import_from: ImportFrom) -> Option<ImportResult> {
@@ -120,10 +104,14 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         }
     }
 
-    pub(super) fn cache_import_from_only_particular_name_def(&self, as_name: ImportFromAsName) {
+    pub(super) fn cache_import_from_only_particular_name_def(
+        &self,
+        as_name: ImportFromAsName,
+        assign_to_name_def: impl FnOnce(NameDef, Inferred, Option<PointLink>),
+    ) {
         let import_from = as_name.import_from();
         let from_first_part = self.import_from_first_part(import_from);
-        self.cache_import_from_part(&from_first_part, as_name)
+        self.cache_import_from_part(&from_first_part, as_name, assign_to_name_def)
     }
 
     pub fn infer_import_dotted_name(
@@ -201,7 +189,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 if let Some(base) = base {
                     infer_name(self, base, name)
                 } else {
-                    self.global_import(name, None)
+                    self.global_import(name, |_| ())
                 }
             }
             DottedNameContent::DottedName(dotted_name, name) => {
@@ -227,10 +215,11 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         result
     }
 
-    pub(super) fn cache_import_from_part(
+    fn cache_import_from_part(
         &self,
         from_first_part: &Option<ImportResult>,
         as_name: ImportFromAsName,
+        assign_to_name_def: impl FnOnce(NameDef, Inferred, Option<PointLink>),
     ) {
         let (import_name, name_def) = as_name.unpack();
 
@@ -283,23 +272,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             // Means one of the imports before failed.
             None => Inferred::new_module_not_found(),
         };
-
-        self.assign_to_name_def(
-            name_def,
-            NodeRef::new(self.file, name_def.index()),
-            &inf,
-            AssignKind::Import,
-            |_, inf| match redirect_to_link {
-                Some(link) => {
-                    self.file
-                        .points
-                        .set(n_index, link.into_redirect_point(Locality::Todo));
-                }
-                None => {
-                    inf.clone().save_redirect(self.i_s, self.file, n_index);
-                }
-            },
-        );
+        assign_to_name_def(name_def, inf, redirect_to_link)
     }
 
     fn lookup_import_from_target(
@@ -325,7 +298,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         }
     }
 
-    fn global_import(&self, name: Name, name_def: Option<NameDef>) -> Option<ImportResult> {
+    fn global_import(&self, name: Name, on_inferred: impl Fn(Inferred)) -> Option<ImportResult> {
         let result = global_import(self.i_s.db, self.file, name.as_str());
         if let Some(result) = &result {
             debug!(
@@ -348,14 +321,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 Inferred::new_module_not_found()
             }
         };
-        if let Some(name_def) = name_def {
-            self.assign_to_name_def_simple(
-                name_def,
-                NodeRef::new(self.file, name_def.index()),
-                &inf,
-                AssignKind::Import,
-            );
-        }
+        on_inferred(inf);
         result
     }
 

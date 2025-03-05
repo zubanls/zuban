@@ -98,6 +98,61 @@ macro_rules! check_point_cache_with {
 }
 
 impl<'db, 'file> Inference<'db, 'file, '_> {
+    pub(super) fn cache_import_name(&self, imp: ImportName) {
+        if self.file.points.get(imp.index()).calculated() {
+            return;
+        }
+        self.assign_import_name(imp, |as_name_def, inf| {
+            self.assign_to_name_def_simple(
+                as_name_def,
+                NodeRef::new(self.file, as_name_def.index()),
+                &inf,
+                AssignKind::Import,
+            )
+        });
+        self.file.points.set(
+            imp.index(),
+            Point::new_specific(Specific::Analyzed, Locality::Todo),
+        );
+    }
+    pub(super) fn cache_import_from(&self, imp: ImportFrom) {
+        if self.file.points.get(imp.index()).calculated() {
+            return;
+        }
+        self.assign_import_from_names(imp, |name_def, inf, redirect_to_link| {
+            self.assign_to_import_from_name(name_def, inf, redirect_to_link)
+        });
+        self.file.points.set(
+            imp.index(),
+            Point::new_specific(Specific::Analyzed, Locality::Todo),
+        );
+    }
+
+    fn assign_to_import_from_name(
+        &self,
+        name_def: NameDef,
+        inf: Inferred,
+        redirect_to_link: Option<PointLink>,
+    ) {
+        self.assign_to_name_def(
+            name_def,
+            NodeRef::new(self.file, name_def.index()),
+            &inf,
+            AssignKind::Import,
+            |_, inf| match redirect_to_link {
+                Some(link) => {
+                    self.file
+                        .points
+                        .set(name_def.index(), link.into_redirect_point(Locality::Todo));
+                }
+                None => {
+                    inf.clone()
+                        .save_redirect(self.i_s, self.file, name_def.index());
+                }
+            },
+        )
+    }
+
     fn inferred_context_for_simple_assignment(
         &self,
         targets: AssignmentTargetIterator,
@@ -3831,7 +3886,12 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 self.cache_import_name(import_name);
             }
             DefiningStmt::ImportFromAsName(as_name) => {
-                self.cache_import_from_only_particular_name_def(as_name)
+                self.cache_import_from_only_particular_name_def(
+                    as_name,
+                    |name_def, inf, redirect_to_link| {
+                        self.assign_to_import_from_name(name_def, inf, redirect_to_link)
+                    },
+                );
             }
             DefiningStmt::Walrus(walrus) => {
                 self.infer_walrus(walrus, None);

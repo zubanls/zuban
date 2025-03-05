@@ -231,7 +231,7 @@ impl StarImport {
             };
         }
         let import_from = NodeRef::new(nr.file, self.import_from_node).expect_import_from();
-        nr.cache_import_from(import_from);
+        nr.assign_import_from_names(import_from, |_, _, _| unreachable!("Has no name_def"));
         debug_assert!(nr.file.points.get(self.star_node).calculated());
         self.to_file(nr)
     }
