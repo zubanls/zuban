@@ -2,14 +2,16 @@ use std::borrow::Cow;
 
 use parsa_python_cst::*;
 
-use super::{name_resolution::PointResolution, type_computation::cache_name_on_class};
+use super::{
+    name_resolution::{NameResolution, PointResolution},
+    type_computation::cache_name_on_class,
+};
 use crate::{
     database::{ComplexPoint, PointKind, PointLink, Specific},
     diagnostics::IssueKind,
     file::PythonFile,
     getitem::{SliceOrSimple, SliceType},
     inference_state::InferenceState,
-    inferred,
     node_ref::NodeRef,
     type_::{TypeVarIndex, TypeVarLike, TypeVarLikes, TypeVarManager},
     type_helpers::{ClassInitializer, ClassNodeRef},
@@ -27,13 +29,20 @@ enum BaseLookup<'file> {
 }
 
 pub struct TypeVarFinder<'db, 'file, 'i_s, 'c, 'd> {
-    i_s: &'i_s InferenceState<'db, 'i_s>,
-    file: &'file PythonFile,
+    name_resolution: NameResolution<'db, 'file, 'i_s>,
     class: Option<&'c ClassNodeRef<'c>>,
     type_var_manager: TypeVarManager<PointLink>,
     generic_or_protocol_slice: Option<SliceType<'d>>,
     current_generic_or_protocol_index: Option<TypeVarIndex>,
     had_generic_or_protocol_issue: bool,
+}
+
+impl<'db: 'file, 'file, 'i_s> std::ops::Deref for TypeVarFinder<'db, 'file, 'i_s, '_, '_> {
+    type Target = NameResolution<'db, 'file, 'i_s>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.name_resolution
+    }
 }
 
 impl<'db, 'file: 'd, 'i_s, 'c, 'd> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd> {
@@ -42,8 +51,7 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd> {
         class: &'c ClassNodeRef<'file>,
     ) -> TypeVarLikes {
         let mut finder = Self {
-            i_s,
-            file: class.file,
+            name_resolution: class.file.name_resolution(i_s),
             class: Some(class),
             type_var_manager: TypeVarManager::default(),
             generic_or_protocol_slice: None,
@@ -76,8 +84,7 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd> {
         expr: Expression<'d>,
     ) -> TypeVarLikes {
         let mut finder = Self {
-            i_s,
-            file,
+            name_resolution: file.name_resolution(i_s),
             class: None,
             type_var_manager: TypeVarManager::default(),
             generic_or_protocol_slice: None,
@@ -183,11 +190,11 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd> {
     fn find_in_atom(&mut self, atom: Atom) -> BaseLookup<'db> {
         match atom.unpack() {
             AtomContent::Name(n) => {
-                let resolved = self
-                    .file
-                    .name_resolution(self.i_s)
-                    .resolve_name_without_narrowing(n);
-                let add_issue = |kind| NodeRef::new(self.file, n.index()).add_issue(self.i_s, kind);
+                let resolved = self.resolve_name_without_narrowing(n);
+                let add_issue = |kind| {
+                    NodeRef::new(self.name_resolution.file, n.index())
+                        .add_issue(self.name_resolution.i_s, kind)
+                };
                 match resolved {
                     PointResolution::NameDef {
                         node_ref,
@@ -220,7 +227,6 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd> {
                         {
                             return self.handle_type_var_like(tvl, add_issue);
                         };
-                        //return self.find_in_name(n);
                     }
                     _ => (),
                 };
@@ -247,7 +253,8 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd> {
             let followed = follow_name(self.i_s, node_ref);
             match followed {
                 Ok(type_var_like) => self.handle_type_var_like(&type_var_like, |kind| {
-                    NodeRef::new(self.file, name.index()).add_issue(self.i_s, kind)
+                    NodeRef::new(self.name_resolution.file, name.index())
+                        .add_issue(self.name_resolution.i_s, kind)
                 }),
                 Err(lookup) => lookup,
             }
@@ -334,8 +341,7 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd> {
         let type_var_manager =
             std::mem::replace(&mut self.type_var_manager, TypeVarManager::default());
         let mut inner_finder = TypeVarFinder {
-            i_s: self.i_s,
-            file,
+            name_resolution: file.name_resolution(self.i_s),
             class: self.class,
             type_var_manager,
             generic_or_protocol_slice: None,
