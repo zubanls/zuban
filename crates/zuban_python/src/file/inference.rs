@@ -17,7 +17,7 @@ use crate::{
     database::{ComplexPoint, Database, Locality, Point, PointKind, PointLink, Specific},
     debug,
     diagnostics::{Issue, IssueKind},
-    file::type_computation::TypeCommentState,
+    file::{name_resolution::PointResolution, type_computation::TypeCommentState},
     format_data::FormatData,
     getitem::SliceType,
     inference_state::InferenceState,
@@ -40,9 +40,8 @@ use crate::{
         WithUnpack,
     },
     type_helpers::{
-        cache_class_name, is_private, is_private_import, Class, ClassLookupOptions, ClassNodeRef,
-        FirstParamKind, Function, GeneratorType, Instance, InstanceLookupOptions, LookupDetails,
-        TypeOrClass,
+        cache_class_name, is_private, Class, ClassLookupOptions, ClassNodeRef, FirstParamKind,
+        Function, GeneratorType, Instance, InstanceLookupOptions, LookupDetails, TypeOrClass,
     },
     utils::debug_indent,
 };
@@ -3496,253 +3495,60 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         self.infer_name_by_str(name.as_code(), name.index())
     }
 
-    fn infer_name_by_str(&self, name_str: &str, save_to_index: NodeIndex) -> Inferred {
-        // If it's not inferred already through the name binder, it's either a star import, a
-        // builtin or really missing.
-        let i_s = self.i_s;
-        if let Some(star_imp) = self.lookup_from_star_import(name_str, true) {
-            return match star_imp {
-                StarImportResult::Link(link) => {
-                    self.file.points.set(
-                        save_to_index,
-                        Point::new_redirect(link.file, link.node_index, Locality::Todo),
-                    );
-                    self.check_point_cache(save_to_index).unwrap()
-                }
-                StarImportResult::AnyDueToError => {
-                    star_imp
-                        .as_inferred(i_s)
-                        .save_redirect(i_s, self.file, save_to_index)
-                }
-            };
-        }
-        let builtins = i_s.db.python_state.builtins();
-        let point =
-            match name_str {
-                "reveal_type" => {
-                    if self
-                        .flags()
-                        .enabled_error_codes
-                        .iter()
-                        .any(|code| code == "unimported-reveal")
-                    {
-                        self.add_issue(save_to_index, IssueKind::UnimportedRevealType);
-                    }
-                    Point::new_specific(Specific::RevealTypeFunction, Locality::Todo)
-                }
-                "__builtins__" => Point::new_file_reference(builtins.file_index, Locality::Todo),
-                "__debug__" => {
-                    return Inferred::from_type(i_s.db.python_state.bool_type()).save_redirect(
-                        i_s,
-                        self.file,
-                        save_to_index,
-                    )
-                }
-                _ => {
-                    if let Some(link) = builtins.lookup_global(name_str).filter(|link| {
-                        (is_valid_builtins_export(name_str))
-                            && !is_private_import(i_s.db, (*link).into())
-                    }) {
-                        debug_assert!(
-                            link.file != self.file.file_index || link.node_index != save_to_index
-                        );
-                        link.into_point_redirect()
-                    } else {
-                        // The builtin module should really not have any issues.
-                        debug_assert!(
-                            self.file.file_index != builtins.file_index,
-                            "{name_str}; {save_to_index}"
-                        );
-                        if i_s.in_class_scope().is_some()
-                            && matches!(name_str, "__name__" | "__module__" | "__qualname__")
-                        {
-                            return Inferred::from_type(i_s.db.python_state.str_type())
-                                .save_redirect(i_s, self.file, save_to_index);
-                        }
-                        // It feels somewhat arbitrary what is exposed from the ModuleType and what's
-                        // not, so just filter here.
-                        if matches!(
-                            name_str,
-                            "__name__"
-                                | "__file__"
-                                | "__package__"
-                                | "__spec__"
-                                | "__doc__"
-                                | "__annotations__"
-                        ) {
-                            if let Some(mut inf) = i_s
-                                .db
-                                .python_state
-                                .module_instance()
-                                .type_lookup(
-                                    i_s,
-                                    |issue| self.add_issue(save_to_index, issue),
-                                    name_str,
-                                )
-                                .into_maybe_inferred()
-                            {
-                                if matches!(name_str, "__package__" | "__file__") {
-                                    inf = inf.remove_none(i_s);
-                                }
-                                return inf.save_redirect(i_s, self.file, save_to_index);
-                            }
-                        }
-                        // TODO check star imports
-                        self.add_issue(
-                            save_to_index,
-                            IssueKind::NameError {
-                                name: Box::from(name_str),
-                            },
-                        );
-                        if !name_str.starts_with('_')
-                            && i_s
-                                .db
-                                .python_state
-                                .typing()
-                                .lookup_global(name_str)
-                                .is_some()
-                        {
-                            // TODO what about underscore or other vars?
-                            self.add_issue(
-                                save_to_index,
-                                IssueKind::Note(
-                                    format!(
-                                        "Did you forget to import it from \"typing\"? \
-                             (Suggestion: \"from typing import {name_str}\")",
-                                    )
-                                    .into(),
-                                ),
-                            );
-                        }
-                        Point::new_specific(Specific::AnyDueToError, Locality::Todo)
-                    }
-                }
-            };
-        self.file.points.set(save_to_index, point);
-        debug_assert!(self.file.points.get(save_to_index).calculated());
-        self.check_point_cache(save_to_index).unwrap()
+    pub(super) fn infer_name_by_str(&self, name_str: &str, save_to_index: NodeIndex) -> Inferred {
+        let resolved = self.resolve_name_by_str(name_str, save_to_index, |i_s, node_ref, next| {
+            node_ref
+                .file
+                .inference(i_s)
+                .maybe_lookup_narrowed_name(node_ref.node_index, next)
+        });
+        self.infer_point_resolution(resolved)
     }
 
-    pub fn check_point_cache(&self, node_index: NodeIndex) -> Option<Inferred> {
-        let point = self.file.points.get(node_index);
-        self.check_point_cache_internal(node_index, point, false)
-    }
-
-    pub fn check_point_cache_internal(
-        &self,
-        node_index: NodeIndex,
-        point: Point,
-        global_redirect: bool,
-    ) -> Option<Inferred> {
-        point
-            .calculated()
-            .then(|| self.infer_point(node_index, point, global_redirect))
-            .or_else(|| {
-                if point.calculating() {
-                    let node_ref = NodeRef::new(self.file, node_index);
-                    debug!(
-                        "Found a cycle at #{}, {}:{node_index}: {:?}",
-                        node_ref.line(),
-                        self.file.file_index,
-                        node_ref.as_code()
-                    );
-                    node_ref.set_point(Point::new_specific(Specific::Cycle, Locality::Todo));
-                    Some(Inferred::new_cycle())
-                } else {
-                    None
-                }
-            })
-    }
-
-    #[inline]
-    fn infer_point(&self, node_index: NodeIndex, point: Point, global_redirect: bool) -> Inferred {
-        match point.kind() {
-            PointKind::Redirect => {
-                let file_index = point.file_index();
-                let next_node_index = point.node_index();
-                if point.needs_flow_analysis() {
-                    debug_assert!(Name::maybe_by_index(&self.file.tree, node_index).is_some());
-                    if let Some(result) = self.maybe_lookup_narrowed_name(
-                        node_index,
-                        PointLink::new(file_index, next_node_index),
-                    ) {
-                        return result;
-                    }
-                }
-                debug_assert!(
-                    file_index != self.file.file_index || next_node_index != node_index,
-                    "{file_index}:{node_index}"
-                );
-                let infer = |inference: &Inference| {
-                    let new_p = inference.file.points.get(next_node_index);
-                    inference
-                        .check_point_cache_internal(
-                            next_node_index,
-                            new_p,
-                            global_redirect || !point.in_global_scope() && new_p.in_global_scope(),
-                        )
-                        .unwrap_or_else(|| {
-                            unreachable!(
-                                "This should never happen {}",
-                                NodeRef::new(inference.file, next_node_index)
-                                    .debug_info(self.i_s.db)
-                            )
-                        })
-                };
-                if file_index == self.file.file_index {
-                    infer(self)
-                } else {
-                    infer(
-                        &mut self
-                            .i_s
-                            .db
-                            .loaded_python_file(file_index)
-                            .inference(self.i_s),
-                    )
-                }
+    fn infer_point_resolution(&self, pr: PointResolution) -> Inferred {
+        match pr {
+            PointResolution::NameDef {
+                node_ref,
+                global_redirect,
+            } => node_ref
+                .file
+                .inference(self.i_s)
+                .with_correct_context(global_redirect, |inference| {
+                    inference._infer_name_def(node_ref.as_name_def())
+                }),
+            PointResolution::Inferred(inferred) => inferred,
+            PointResolution::Param(node_ref) => {
+                debug_assert_eq!(node_ref.file_index(), self.file.file_index());
+                self.infer_param(node_ref.node_index)
             }
-            PointKind::Specific => match point.specific() {
-                specific @ (Specific::Param | Specific::MaybeSelfParam) => {
-                    self.infer_param(node_index, specific)
+            PointResolution::GlobalOrNonlocalName(node_ref) => {
+                debug_assert_eq!(node_ref.file_index(), self.file.file_index());
+                let index = node_ref.node_index - GLOBAL_NONLOCAL_TO_NAME_DIFFERENCE
+                    + NAME_DEF_TO_NAME_DIFFERENCE;
+                if node_ref.file.points.get(index).calculated() {
+                    self.check_point_cache(index).unwrap()
+                } else {
+                    debug_assert_eq!(node_ref.point().specific(), Specific::GlobalVariable);
+                    self.with_correct_context(true, |inference| {
+                        inference.infer_name_by_str(node_ref.as_code(), index)
+                    })
                 }
-                specific @ (Specific::GlobalVariable | Specific::NonlocalVariable) => {
-                    let index = node_index - GLOBAL_NONLOCAL_TO_NAME_DIFFERENCE
-                        + NAME_DEF_TO_NAME_DIFFERENCE;
-                    if self.file.points.get(index).calculated() {
-                        self.check_point_cache(index).unwrap()
-                    } else {
-                        debug_assert_eq!(specific, Specific::GlobalVariable);
-                        self.with_correct_context(true, |inference| {
-                            inference.infer_name_by_str(
-                                NodeRef::new(self.file, node_index).as_code(),
-                                index,
-                            )
-                        })
-                    }
-                }
-                Specific::NameOfNameDef | Specific::FirstNameOfNameDef => {
-                    // MultiDefinition means we are on a Name that has a NameDef as a
-                    // parent.
-                    let node_index = node_index - NAME_DEF_TO_NAME_DIFFERENCE;
-                    let p = self.file.points.get(node_index);
-                    self.check_point_cache_internal(node_index, p, global_redirect)
-                        .unwrap_or_else(|| {
-                            let name_def = NameDef::by_index(&self.file.tree, node_index);
-                            self.with_correct_context(global_redirect, |inference| {
-                                inference._infer_name_def(name_def)
-                            })
-                        })
-                }
-                _ => Inferred::new_saved(self.file, node_index),
-            },
-            PointKind::Complex | PointKind::FileReference => {
-                Inferred::new_saved(self.file, node_index)
             }
         }
     }
 
+    pub fn check_point_cache(&self, i: NodeIndex) -> Option<Inferred> {
+        let resolved = self.resolve_point(i, |i_s, node_ref, next| {
+            node_ref
+                .file
+                .inference(i_s)
+                .maybe_lookup_narrowed_name(node_ref.node_index, next)
+        })?;
+        Some(self.infer_point_resolution(resolved))
+    }
+
     #[inline]
-    pub fn with_correct_context<T>(
+    pub(super) fn with_correct_context<T>(
         &self,
         global_redirect: bool,
         callable: impl Fn(&Inference) -> T,
@@ -3758,7 +3564,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         }
     }
 
-    fn infer_param(&self, node_index: NodeIndex, specific: Specific) -> Inferred {
+    fn infer_param(&self, node_index: NodeIndex) -> Inferred {
         let name_def = NameDef::by_index(&self.file.tree, node_index);
         // Performance: This could be improved by not needing to lookup all the
         // parents all the time.
@@ -3790,6 +3596,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 };
                 self.i_s.current_class();
 
+                let specific = self.file.points.get(node_index).specific();
                 if let Some(annotation) = name_def.maybe_param_annotation() {
                     self.use_cached_param_annotation(annotation)
                 } else if self.i_s.current_function().is_some() {
@@ -4589,8 +4396,4 @@ fn lookup_lambda_param(
         }
     }
     unreachable!()
-}
-
-fn is_valid_builtins_export(name: &str) -> bool {
-    !name.starts_with('_') || name.starts_with("__") && name.ends_with("__")
 }

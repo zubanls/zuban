@@ -1,7 +1,7 @@
 use config::TypeCheckerFlags;
 use parsa_python_cst::{
     DottedAsNameContent, DottedName, DottedNameContent, ImportFrom, ImportFromAsName,
-    ImportFromTargets, ImportName, Name, NameDef, NodeIndex,
+    ImportFromTargets, ImportName, Name, NameDef, NodeIndex, NAME_DEF_TO_NAME_DIFFERENCE,
 };
 
 use crate::{
@@ -13,7 +13,7 @@ use crate::{
     inferred::Inferred,
     node_ref::NodeRef,
     type_::{AnyCause, LookupResult, Type},
-    type_helpers::{is_reexport_issue, lookup_in_namespace, Module},
+    type_helpers::{is_private_import, is_reexport_issue, lookup_in_namespace, Module},
     utils::AlreadySeen,
 };
 
@@ -22,6 +22,16 @@ use super::{inference::StarImportResult, python_file::StarImport, File as _, Pyt
 pub struct NameResolution<'db: 'file, 'file, 'i_s> {
     pub(super) file: &'file PythonFile,
     pub(super) i_s: &'i_s InferenceState<'db, 'i_s>,
+}
+
+pub enum PointResolution<'file> {
+    NameDef {
+        node_ref: NodeRef<'file>,
+        global_redirect: bool,
+    },
+    Inferred(Inferred),
+    Param(NodeRef<'file>),
+    GlobalOrNonlocalName(NodeRef<'file>),
 }
 
 impl<'db, 'file> NameResolution<'db, 'file, '_> {
@@ -321,6 +331,263 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         result
     }
 
+    pub(super) fn resolve_name_by_str(
+        &self,
+        name_str: &str,
+        save_to_index: NodeIndex,
+        narrow_name: impl Fn(&InferenceState, NodeRef, PointLink) -> Option<Inferred>,
+    ) -> PointResolution<'file> {
+        // If it's not inferred already through the name binder, it's either a star import, a
+        // builtin or really missing.
+        let i_s = self.i_s;
+        if let Some(star_imp) = self.lookup_from_star_import(name_str, true) {
+            return match star_imp {
+                StarImportResult::Link(link) => {
+                    self.file.points.set(
+                        save_to_index,
+                        Point::new_redirect(link.file, link.node_index, Locality::Todo),
+                    );
+                    self.resolve_point(save_to_index, narrow_name).unwrap()
+                }
+                StarImportResult::AnyDueToError => PointResolution::Inferred(
+                    star_imp
+                        .as_inferred(i_s)
+                        .save_redirect(i_s, self.file, save_to_index),
+                ),
+            };
+        }
+        let builtins = i_s.db.python_state.builtins();
+        let point = match name_str {
+            "reveal_type" => {
+                if self
+                    .flags()
+                    .enabled_error_codes
+                    .iter()
+                    .any(|code| code == "unimported-reveal")
+                {
+                    self.add_issue(save_to_index, IssueKind::UnimportedRevealType);
+                }
+                Point::new_specific(Specific::RevealTypeFunction, Locality::Todo)
+            }
+            "__builtins__" => Point::new_file_reference(builtins.file_index, Locality::Todo),
+            "__debug__" => {
+                return PointResolution::Inferred(
+                    Inferred::from_type(i_s.db.python_state.bool_type()).save_redirect(
+                        i_s,
+                        self.file,
+                        save_to_index,
+                    ),
+                )
+            }
+            _ => {
+                if let Some(link) = builtins.lookup_global(name_str).filter(|link| {
+                    (is_valid_builtins_export(name_str))
+                        && !is_private_import(i_s.db, (*link).into())
+                }) {
+                    debug_assert!(
+                        link.file != self.file.file_index || link.node_index != save_to_index
+                    );
+                    link.into_point_redirect()
+                } else {
+                    // The builtin module should really not have any issues.
+                    debug_assert!(
+                        self.file.file_index != builtins.file_index,
+                        "{name_str}; {save_to_index}"
+                    );
+                    if i_s.in_class_scope().is_some()
+                        && matches!(name_str, "__name__" | "__module__" | "__qualname__")
+                    {
+                        return PointResolution::Inferred(
+                            Inferred::from_type(i_s.db.python_state.str_type()).save_redirect(
+                                i_s,
+                                self.file,
+                                save_to_index,
+                            ),
+                        );
+                    }
+                    // It feels somewhat arbitrary what is exposed from the ModuleType and what's
+                    // not, so just filter here.
+                    if matches!(
+                        name_str,
+                        "__name__"
+                            | "__file__"
+                            | "__package__"
+                            | "__spec__"
+                            | "__doc__"
+                            | "__annotations__"
+                    ) {
+                        if let Some(mut inf) = i_s
+                            .db
+                            .python_state
+                            .module_instance()
+                            .type_lookup(
+                                i_s,
+                                |issue| self.add_issue(save_to_index, issue),
+                                name_str,
+                            )
+                            .into_maybe_inferred()
+                        {
+                            if matches!(name_str, "__package__" | "__file__") {
+                                inf = inf.remove_none(i_s);
+                            }
+                            return PointResolution::Inferred(inf.save_redirect(
+                                i_s,
+                                self.file,
+                                save_to_index,
+                            ));
+                        }
+                    }
+                    // TODO check star imports
+                    self.add_issue(
+                        save_to_index,
+                        IssueKind::NameError {
+                            name: Box::from(name_str),
+                        },
+                    );
+                    if !name_str.starts_with('_')
+                        && i_s
+                            .db
+                            .python_state
+                            .typing()
+                            .lookup_global(name_str)
+                            .is_some()
+                    {
+                        // TODO what about underscore or other vars?
+                        self.add_issue(
+                            save_to_index,
+                            IssueKind::Note(
+                                format!(
+                                    "Did you forget to import it from \"typing\"? \
+                             (Suggestion: \"from typing import {name_str}\")",
+                                )
+                                .into(),
+                            ),
+                        );
+                    }
+                    Point::new_specific(Specific::AnyDueToError, Locality::Todo)
+                }
+            }
+        };
+        self.file.points.set(save_to_index, point);
+        debug_assert!(self.file.points.get(save_to_index).calculated());
+        self.resolve_point(save_to_index, narrow_name).unwrap()
+    }
+
+    pub fn resolve_point(
+        &self,
+        node_index: NodeIndex,
+        narrow_name: impl Fn(&InferenceState, NodeRef, PointLink) -> Option<Inferred>,
+    ) -> Option<PointResolution<'file>> {
+        let point = self.file.points.get(node_index);
+        self.resolve_point_internal(node_index, point, false, narrow_name)
+    }
+
+    fn resolve_point_internal(
+        &self,
+        node_index: NodeIndex,
+        point: Point,
+        global_redirect: bool,
+        narrow_name: impl Fn(&InferenceState, NodeRef, PointLink) -> Option<Inferred>,
+    ) -> Option<PointResolution<'file>> {
+        point
+            .calculated()
+            .then(|| self.find_point_resolution(node_index, point, global_redirect, narrow_name))
+            .or_else(|| {
+                if point.calculating() {
+                    let node_ref = NodeRef::new(self.file, node_index);
+                    debug!(
+                        "Found a cycle at #{}, {}:{node_index}: {:?}",
+                        node_ref.line(),
+                        self.file.file_index,
+                        node_ref.as_code()
+                    );
+                    node_ref.set_point(Point::new_specific(Specific::Cycle, Locality::Todo));
+                    Some(PointResolution::Inferred(Inferred::new_cycle()))
+                } else {
+                    None
+                }
+            })
+    }
+
+    #[inline]
+    fn find_point_resolution(
+        &self,
+        node_index: NodeIndex,
+        point: Point,
+        global_redirect: bool,
+        narrow_name: impl Fn(&InferenceState, NodeRef, PointLink) -> Option<Inferred>,
+    ) -> PointResolution<'file> {
+        match point.kind() {
+            PointKind::Redirect => {
+                let file_index = point.file_index();
+                let next_node_index = point.node_index();
+                if point.needs_flow_analysis() {
+                    debug_assert!(Name::maybe_by_index(&self.file.tree, node_index).is_some());
+                    if let Some(inf) = narrow_name(
+                        self.i_s,
+                        NodeRef::new(self.file, node_index),
+                        PointLink::new(file_index, next_node_index),
+                    ) {
+                        return PointResolution::Inferred(inf);
+                    }
+                }
+                debug_assert!(
+                    file_index != self.file.file_index || next_node_index != node_index,
+                    "{file_index}:{node_index}"
+                );
+                let infer = |r: &NameResolution<'db, 'file, '_>| {
+                    let new_p = r.file.points.get(next_node_index);
+                    r.resolve_point_internal(
+                        next_node_index,
+                        new_p,
+                        global_redirect || !point.in_global_scope() && new_p.in_global_scope(),
+                        narrow_name,
+                    )
+                    .unwrap_or_else(|| {
+                        unreachable!(
+                            "This should never happen {}",
+                            NodeRef::new(r.file, next_node_index).debug_info(self.i_s.db)
+                        )
+                    })
+                };
+                if file_index == self.file.file_index {
+                    infer(self)
+                } else {
+                    infer(
+                        &mut self
+                            .i_s
+                            .db
+                            .loaded_python_file(file_index)
+                            .name_resolution(self.i_s),
+                    )
+                }
+            }
+            PointKind::Specific => match point.specific() {
+                Specific::Param | Specific::MaybeSelfParam => {
+                    PointResolution::Param(NodeRef::new(self.file, node_index))
+                }
+                Specific::GlobalVariable | Specific::NonlocalVariable => {
+                    PointResolution::GlobalOrNonlocalName(NodeRef::new(self.file, node_index))
+                }
+                Specific::NameOfNameDef | Specific::FirstNameOfNameDef => {
+                    // MultiDefinition means we are on a Name that has a NameDef as a
+                    // parent.
+                    let node_index = node_index - NAME_DEF_TO_NAME_DIFFERENCE;
+                    let p = self.file.points.get(node_index);
+                    self.resolve_point_internal(node_index, p, global_redirect, narrow_name)
+                        .unwrap_or_else(|| PointResolution::NameDef {
+                            node_ref: NodeRef::new(self.file, node_index),
+                            global_redirect,
+                        })
+                }
+                _ => PointResolution::Inferred(Inferred::new_saved(self.file, node_index)),
+            },
+            PointKind::Complex | PointKind::FileReference => {
+                PointResolution::Inferred(Inferred::new_saved(self.file, node_index))
+            }
+        }
+    }
+
     pub fn lookup_from_star_import(
         &self,
         name: &str,
@@ -461,4 +728,8 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
     pub fn file_path(&self) -> &str {
         self.file.file_path(self.i_s.db)
     }
+}
+
+fn is_valid_builtins_export(name: &str) -> bool {
+    !name.starts_with('_') || name.starts_with("__") && name.ends_with("__")
 }
