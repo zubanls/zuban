@@ -331,6 +331,13 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         result
     }
 
+    pub(super) fn resolve_name_without_narrowing(&self, name: Name) -> PointResolution<'file> {
+        self.resolve_point(name.index(), |_, _, _| None)
+            .unwrap_or_else(|| {
+                self.resolve_name_by_str(name.as_code(), name.index(), |_, _, _| None)
+            })
+    }
+
     pub(super) fn resolve_name_by_str(
         &self,
         name_str: &str,

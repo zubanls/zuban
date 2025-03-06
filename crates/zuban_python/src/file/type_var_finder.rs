@@ -2,13 +2,14 @@ use std::borrow::Cow;
 
 use parsa_python_cst::*;
 
-use super::type_computation::cache_name_on_class;
+use super::{name_resolution::PointResolution, type_computation::cache_name_on_class};
 use crate::{
     database::{ComplexPoint, PointKind, PointLink, Specific},
     diagnostics::IssueKind,
     file::PythonFile,
     getitem::{SliceOrSimple, SliceType},
     inference_state::InferenceState,
+    inferred,
     node_ref::NodeRef,
     type_::{TypeVarIndex, TypeVarLike, TypeVarLikes, TypeVarManager},
     type_helpers::{ClassInitializer, ClassNodeRef},
@@ -182,8 +183,47 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd> {
     fn find_in_atom(&mut self, atom: Atom) -> BaseLookup<'db> {
         match atom.unpack() {
             AtomContent::Name(n) => {
-                self.file.inference(self.i_s).infer_name_reference(n);
-                return self.find_in_name(n);
+                let resolved = self
+                    .file
+                    .name_resolution(self.i_s)
+                    .resolve_name_without_narrowing(n);
+                let add_issue = |kind| NodeRef::new(self.file, n.index()).add_issue(self.i_s, kind);
+                match resolved {
+                    PointResolution::NameDef {
+                        node_ref,
+                        global_redirect,
+                    } => {
+                        let followed = follow_name(
+                            self.i_s,
+                            node_ref
+                                .to_db_lifetime(self.i_s.db)
+                                .add_to_node_index(NAME_DEF_TO_NAME_DIFFERENCE as i64),
+                        );
+                        return match followed {
+                            Ok(type_var_like) => {
+                                self.handle_type_var_like(&type_var_like, add_issue)
+                            }
+                            Err(lookup) => lookup,
+                        };
+                    }
+                    PointResolution::Inferred(inferred) => {
+                        if let Some(specific) = inferred.maybe_saved_specific(self.i_s.db) {
+                            return match specific {
+                                Specific::TypingGeneric => BaseLookup::Generic,
+                                Specific::TypingProtocol => BaseLookup::Protocol,
+                                Specific::TypingCallable => BaseLookup::Callable,
+                                Specific::TypingLiteral => BaseLookup::Literal,
+                                _ => BaseLookup::Other,
+                            };
+                        } else if let Some(ComplexPoint::TypeVarLike(tvl)) =
+                            inferred.maybe_complex_point(self.i_s.db)
+                        {
+                            return self.handle_type_var_like(tvl, add_issue);
+                        };
+                        //return self.find_in_name(n);
+                    }
+                    _ => (),
+                };
             }
             AtomContent::Strings(s_o_b) => match s_o_b.as_python_string() {
                 PythonString::Ref(start, s) => {
@@ -204,54 +244,56 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd> {
         let point = self.file.points.get(name.index());
         if point.calculated() && point.kind() == PointKind::Redirect {
             let node_ref = point.as_redirected_node_ref(self.i_s.db);
-            return match follow_name(self.i_s, node_ref) {
-                Ok(type_var_like) => {
-                    if self
-                        .class
-                        .and_then(|c| {
-                            ClassInitializer::new(*c, c.class_storage())
-                                .maybe_type_var_like_in_parent(self.i_s.db, &type_var_like)
-                        })
-                        .is_none()
-                    {
-                        if matches!(type_var_like, TypeVarLike::TypeVarTuple(_))
-                            && self.type_var_manager.has_type_var_tuples()
-                        {
-                            if self.class.is_some() {
-                                NodeRef::new(self.file, name.index()).add_issue(
-                                    self.i_s,
-                                    IssueKind::MultipleTypeVarTuplesInClassDef,
-                                );
-                            }
-                            return BaseLookup::Other;
-                        }
-                        if !type_var_like.has_default() {
-                            if let Some(previous) = self.type_var_manager.last() {
-                                if previous.has_default() {
-                                    NodeRef::new(self.file, name.index()).add_issue(
-                                        self.i_s,
-                                        IssueKind::TypeVarDefaultWrongOrder {
-                                            type_var1: type_var_like.name(self.i_s.db).into(),
-                                            type_var2: previous.name(self.i_s.db).into(),
-                                        },
-                                    );
-                                }
-                            }
-                        }
-                        let old_index = self.type_var_manager.add(type_var_like, None);
-                        if let Some(force_index) = self.current_generic_or_protocol_index {
-                            if old_index < force_index {
-                                NodeRef::new(self.file, name.index())
-                                    .add_issue(self.i_s, IssueKind::DuplicateTypeVar)
-                            } else if old_index != force_index {
-                                self.type_var_manager.move_index(old_index, force_index);
-                            }
-                        }
-                    }
-                    BaseLookup::Other
-                }
+            let followed = follow_name(self.i_s, node_ref);
+            match followed {
+                Ok(type_var_like) => self.handle_type_var_like(&type_var_like, |kind| {
+                    NodeRef::new(self.file, name.index()).add_issue(self.i_s, kind)
+                }),
                 Err(lookup) => lookup,
-            };
+            }
+        } else {
+            BaseLookup::Other
+        }
+    }
+
+    fn handle_type_var_like(
+        &mut self,
+        tvl: &TypeVarLike,
+        add_issue: impl Fn(IssueKind),
+    ) -> BaseLookup<'db> {
+        if self
+            .class
+            .and_then(|c| {
+                ClassInitializer::from_node_ref(*c).maybe_type_var_like_in_parent(self.i_s.db, &tvl)
+            })
+            .is_none()
+        {
+            if matches!(tvl, TypeVarLike::TypeVarTuple(_))
+                && self.type_var_manager.has_type_var_tuples()
+            {
+                if self.class.is_some() {
+                    add_issue(IssueKind::MultipleTypeVarTuplesInClassDef);
+                }
+                return BaseLookup::Other;
+            }
+            if !tvl.has_default() {
+                if let Some(previous) = self.type_var_manager.last() {
+                    if previous.has_default() {
+                        add_issue(IssueKind::TypeVarDefaultWrongOrder {
+                            type_var1: tvl.name(self.i_s.db).into(),
+                            type_var2: previous.name(self.i_s.db).into(),
+                        });
+                    }
+                }
+            }
+            let old_index = self.type_var_manager.add(tvl.clone(), None);
+            if let Some(force_index) = self.current_generic_or_protocol_index {
+                if old_index < force_index {
+                    add_issue(IssueKind::DuplicateTypeVar)
+                } else if old_index != force_index {
+                    self.type_var_manager.move_index(old_index, force_index);
+                }
+            }
         }
         BaseLookup::Other
     }
