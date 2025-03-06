@@ -28,8 +28,8 @@ enum BaseLookup<'file> {
     Other,
 }
 
-pub struct TypeVarFinder<'db, 'file, 'i_s, 'c, 'd> {
-    name_resolution: NameResolution<'db, 'file, 'i_s>,
+#[derive(Default)]
+struct Infos<'c, 'd> {
     class: Option<&'c ClassNodeRef<'c>>,
     type_var_manager: TypeVarManager<PointLink>,
     generic_or_protocol_slice: Option<SliceType<'d>>,
@@ -37,7 +37,12 @@ pub struct TypeVarFinder<'db, 'file, 'i_s, 'c, 'd> {
     had_generic_or_protocol_issue: bool,
 }
 
-impl<'db: 'file, 'file, 'i_s> std::ops::Deref for TypeVarFinder<'db, 'file, 'i_s, '_, '_> {
+pub struct TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, 'e> {
+    name_resolution: NameResolution<'db, 'file, 'i_s>,
+    infos: &'e mut Infos<'c, 'd>,
+}
+
+impl<'db: 'file, 'file, 'i_s> std::ops::Deref for TypeVarFinder<'db, 'file, 'i_s, '_, '_, '_> {
     type Target = NameResolution<'db, 'file, 'i_s>;
 
     fn deref(&self) -> &Self::Target {
@@ -45,18 +50,18 @@ impl<'db: 'file, 'file, 'i_s> std::ops::Deref for TypeVarFinder<'db, 'file, 'i_s
     }
 }
 
-impl<'db, 'file: 'd, 'i_s, 'c, 'd> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd> {
+impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, 'e> {
     pub fn find_class_type_vars(
         i_s: &'i_s InferenceState<'db, 'i_s>,
         class: &'c ClassNodeRef<'file>,
     ) -> TypeVarLikes {
-        let mut finder = Self {
-            name_resolution: class.file.name_resolution(i_s),
+        let mut infos = Infos {
             class: Some(class),
-            type_var_manager: TypeVarManager::default(),
-            generic_or_protocol_slice: None,
-            current_generic_or_protocol_index: None,
-            had_generic_or_protocol_issue: false,
+            ..Default::default()
+        };
+        let mut finder = TypeVarFinder {
+            name_resolution: class.file.name_resolution(i_s),
+            infos: &mut infos,
         };
 
         if let Some(arguments) = class.node().arguments() {
@@ -70,12 +75,12 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd> {
                 }
             }
         }
-        if let Some(slice_type) = finder.generic_or_protocol_slice {
-            if !finder.had_generic_or_protocol_issue {
+        if let Some(slice_type) = finder.infos.generic_or_protocol_slice {
+            if !finder.infos.had_generic_or_protocol_issue {
                 finder.check_generic_or_protocol_length(slice_type)
             }
         }
-        finder.type_var_manager.into_type_vars()
+        infos.type_var_manager.into_type_vars()
     }
 
     pub fn find_alias_type_vars(
@@ -83,16 +88,13 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd> {
         file: &'file PythonFile,
         expr: Expression<'d>,
     ) -> TypeVarLikes {
-        let mut finder = Self {
+        let mut infos = Infos::default();
+        let mut finder = TypeVarFinder {
             name_resolution: file.name_resolution(i_s),
-            class: None,
-            type_var_manager: TypeVarManager::default(),
-            generic_or_protocol_slice: None,
-            current_generic_or_protocol_index: None,
-            had_generic_or_protocol_issue: false,
+            infos: &mut infos,
         };
         finder.find_in_expr(expr);
-        finder.type_var_manager.into_type_vars()
+        infos.type_var_manager.into_type_vars()
     }
 
     fn find_in_slice_like(&mut self, slice_like: SliceOrSimple<'d>) {
@@ -161,18 +163,18 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd> {
                 let s = SliceType::new(self.file, primary.index(), slice_type);
                 match base {
                     BaseLookup::Protocol | BaseLookup::Generic => {
-                        if self.generic_or_protocol_slice.is_some() {
-                            self.had_generic_or_protocol_issue = true;
+                        if self.infos.generic_or_protocol_slice.is_some() {
+                            self.infos.had_generic_or_protocol_issue = true;
                             NodeRef::new(self.file, primary.index())
                                 .add_issue(self.i_s, IssueKind::EnsureSingleGenericOrProtocol);
                         }
-                        self.generic_or_protocol_slice =
+                        self.infos.generic_or_protocol_slice =
                             Some(SliceType::new(self.file, primary.index(), slice_type));
                         for (i, slice_like) in s.iter().enumerate() {
-                            self.current_generic_or_protocol_index = Some(i.into());
+                            self.infos.current_generic_or_protocol_index = Some(i.into());
                             self.find_in_slice_like(slice_like)
                         }
-                        self.current_generic_or_protocol_index = None;
+                        self.infos.current_generic_or_protocol_index = None;
                     }
                     BaseLookup::Callable => self.find_in_callable(s),
                     BaseLookup::Literal => (), // Literals can never contain type vars
@@ -269,6 +271,7 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd> {
         add_issue: impl Fn(IssueKind),
     ) -> BaseLookup<'db> {
         if self
+            .infos
             .class
             .and_then(|c| {
                 ClassInitializer::from_node_ref(*c).maybe_type_var_like_in_parent(self.i_s.db, &tvl)
@@ -276,15 +279,15 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd> {
             .is_none()
         {
             if matches!(tvl, TypeVarLike::TypeVarTuple(_))
-                && self.type_var_manager.has_type_var_tuples()
+                && self.infos.type_var_manager.has_type_var_tuples()
             {
-                if self.class.is_some() {
+                if self.infos.class.is_some() {
                     add_issue(IssueKind::MultipleTypeVarTuplesInClassDef);
                 }
                 return BaseLookup::Other;
             }
             if !tvl.has_default() {
-                if let Some(previous) = self.type_var_manager.last() {
+                if let Some(previous) = self.infos.type_var_manager.last() {
                     if previous.has_default() {
                         add_issue(IssueKind::TypeVarDefaultWrongOrder {
                             type_var1: tvl.name(self.i_s.db).into(),
@@ -293,12 +296,14 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd> {
                     }
                 }
             }
-            let old_index = self.type_var_manager.add(tvl.clone(), None);
-            if let Some(force_index) = self.current_generic_or_protocol_index {
+            let old_index = self.infos.type_var_manager.add(tvl.clone(), None);
+            if let Some(force_index) = self.infos.current_generic_or_protocol_index {
                 if old_index < force_index {
                     add_issue(IssueKind::DuplicateTypeVar)
                 } else if old_index != force_index {
-                    self.type_var_manager.move_index(old_index, force_index);
+                    self.infos
+                        .type_var_manager
+                        .move_index(old_index, force_index);
                 }
             }
         }
@@ -338,15 +343,9 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd> {
 
     fn compute_forward_reference(&mut self, start: CodeIndex, string: Cow<str>) {
         let file = self.file.ensure_annotation_file(self.i_s.db, start, string);
-        let type_var_manager =
-            std::mem::replace(&mut self.type_var_manager, TypeVarManager::default());
         let mut inner_finder = TypeVarFinder {
             name_resolution: file.name_resolution(self.i_s),
-            class: self.class,
-            type_var_manager,
-            generic_or_protocol_slice: None,
-            current_generic_or_protocol_index: self.current_generic_or_protocol_index,
-            had_generic_or_protocol_issue: self.had_generic_or_protocol_issue,
+            infos: self.infos,
         };
 
         let Some(star_exprs) = file.tree.maybe_star_expressions() else {
@@ -356,14 +355,11 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd> {
             return;
         };
         inner_finder.find_in_expr(expr);
-        // Swap the type_var_manager back
-        self.type_var_manager = inner_finder.type_var_manager;
-        self.had_generic_or_protocol_issue |= inner_finder.had_generic_or_protocol_issue;
     }
 
     fn check_generic_or_protocol_length(&self, slice_type: SliceType) {
         // Reorder slices
-        if slice_type.iter().count() < self.type_var_manager.len() {
+        if slice_type.iter().count() < self.infos.type_var_manager.len() {
             slice_type
                 .as_node_ref()
                 .add_issue(self.i_s, IssueKind::IncompleteGenericOrProtocolTypeVars)
