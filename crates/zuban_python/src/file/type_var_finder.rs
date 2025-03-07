@@ -12,7 +12,7 @@ use crate::{
     file::PythonFile,
     getitem::{SliceOrSimple, SliceType},
     inference_state::InferenceState,
-    node_ref::NodeRef,
+    node_ref::{self, NodeRef},
     type_::{TypeVarIndex, TypeVarLike, TypeVarLikes, TypeVarManager},
     type_helpers::{ClassInitializer, ClassNodeRef},
 };
@@ -211,36 +211,75 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
                 node_ref,
                 global_redirect,
             } => {
-                let followed = follow_name(
-                    self.i_s,
-                    node_ref
-                        .to_db_lifetime(self.i_s.db)
-                        .add_to_node_index(NAME_DEF_TO_NAME_DIFFERENCE as i64),
-                );
-                match followed {
-                    Ok(type_var_like) => self.handle_type_var_like(&type_var_like, add_issue),
-                    Err(lookup) => lookup,
+                let name_def = node_ref.as_name_def();
+                match name_def.expect_type() {
+                    TypeLike::ClassDef(c) => {
+                        return BaseLookup::Class(PointLink::new(node_ref.file_index(), c.index()))
+                    }
+                    TypeLike::Assignment(_) => {
+                        let inference = node_ref.file.inference(self.i_s);
+                        let inf = inference.infer_name_of_definition(name_def.name());
+                        if let Some(node_ref) = inf.maybe_saved_node_ref(self.i_s.db) {
+                            if let Some(ComplexPoint::TypeVarLike(tvl)) = node_ref.complex() {
+                                return self.handle_type_var_like(&tvl, add_issue);
+                            }
+                        }
+                    }
+                    TypeLike::ImportFromAsName(_) => {
+                        // TODO this can probably still recurses with module __getattr__
+                        let p = node_ref
+                            .add_to_node_index(-(NAME_DEF_TO_NAME_DIFFERENCE as i64))
+                            .point();
+                        if p.calculated() && p.kind() == PointKind::Redirect {
+                            let new = p.as_redirected_node_ref(self.i_s.db);
+                            if new.maybe_name().is_some() {
+                                return match follow_name(self.i_s, new) {
+                                    Ok(tvl) => self.handle_type_var_like(&tvl, add_issue),
+                                    Err(b) => b,
+                                };
+                            }
+                        }
+                    }
+                    TypeLike::DottedAsName(_) => {
+                        let p = node_ref
+                            .add_to_node_index(-(NAME_DEF_TO_NAME_DIFFERENCE as i64))
+                            .point();
+                        if p.calculated() {
+                            if p.kind() == PointKind::Redirect {
+                                let new = p.as_redirected_node_ref(self.i_s.db);
+                                if new.maybe_name().is_some() {
+                                    return match follow_name(self.i_s, new) {
+                                        Ok(tvl) => self.handle_type_var_like(&tvl, add_issue),
+                                        Err(b) => b,
+                                    };
+                                }
+                            } else if p.kind() == PointKind::FileReference {
+                                let file = self.i_s.db.loaded_python_file(p.file_index());
+                                return BaseLookup::Module(file);
+                            }
+                        }
+                    }
+                    _ => (),
                 }
             }
             PointResolution::Inferred(inferred) => {
                 if let Some(specific) = inferred.maybe_saved_specific(self.i_s.db) {
-                    match specific {
+                    return match specific {
                         Specific::TypingGeneric => BaseLookup::Generic,
                         Specific::TypingProtocol => BaseLookup::Protocol,
                         Specific::TypingCallable => BaseLookup::Callable,
                         Specific::TypingLiteral => BaseLookup::Literal,
                         _ => BaseLookup::Other,
-                    }
+                    };
                 } else if let Some(ComplexPoint::TypeVarLike(tvl)) =
                     inferred.maybe_complex_point(self.i_s.db)
                 {
-                    self.handle_type_var_like(tvl, add_issue)
-                } else {
-                    BaseLookup::Other
+                    return self.handle_type_var_like(tvl, add_issue);
                 }
             }
-            _ => BaseLookup::Other,
-        }
+            _ => (),
+        };
+        BaseLookup::Other
     }
 
     fn handle_type_var_like(
