@@ -481,6 +481,18 @@ impl<'db: 'slf, 'slf> Inferred {
         }
     }
 
+    pub fn maybe_file(&self, db: &'db Database) -> Option<FileIndex> {
+        if let InferredState::UnsavedFileReference(file) = self.state {
+            Some(file)
+        } else if let Some(ComplexPoint::TypeInstance(Type::Module(m))) =
+            self.maybe_complex_point(db)
+        {
+            Some(*m)
+        } else {
+            None
+        }
+    }
+
     pub fn maybe_literal(
         &'slf self,
         db: &'db Database,

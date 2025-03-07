@@ -38,7 +38,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
     pub(super) fn assign_dotted_as_name(
         &self,
         dotted_as_name: DottedAsName,
-        assign_to_name_def: impl Fn(NameDef, Inferred),
+        assign_to_name_def: impl FnOnce(NameDef, Inferred),
     ) {
         match dotted_as_name.unpack() {
             DottedAsNameContent::Simple(name_def, rest) => {
@@ -144,6 +144,31 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             Some(inf) => PointResolution::Inferred(inf),
             None => self
                 .resolve_point(as_name.name_def().index(), |_, _, _| None)
+                .expect("Resolving import"),
+        }
+    }
+
+    pub(super) fn resolve_import_name_name_def_without_narrowing(
+        &self,
+        dotted_as_name: DottedAsName,
+    ) -> PointResolution<'file> {
+        // See comment in resolve_import_from_name_def_without_narrowing
+        let mut found_inf = None;
+        self.assign_dotted_as_name(dotted_as_name, |name_def, inf| {
+            if cfg!(debug_assertions) {
+                let p = self.file.points.get(name_def.index());
+                debug_assert!(!p.calculated(), "{p:?}");
+                debug_assert!(!p.calculating(), "{p:?}");
+            }
+            self.file
+                .points
+                .set(name_def.index(), Point::new_uncalculated());
+            found_inf = Some(inf);
+        });
+        match found_inf {
+            Some(inf) => PointResolution::Inferred(inf),
+            None => self
+                .resolve_point(dotted_as_name.name_def().index(), |_, _, _| None)
                 .expect("Resolving import"),
         }
     }

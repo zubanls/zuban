@@ -2691,6 +2691,16 @@ impl<'db> DottedAsName<'db> {
         }
     }
 
+    pub fn name_def(&self) -> NameDef<'db> {
+        NameDef::new(
+            self.node
+                .iter_children()
+                .filter(|n| n.is_type(Nonterminal(name_def)))
+                .next()
+                .unwrap(),
+        )
+    }
+
     pub fn import(&self) -> ImportName<'db> {
         let n = self
             .node
