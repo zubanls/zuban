@@ -133,31 +133,25 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
     fn find_in_primary(&mut self, primary: Primary<'d>) -> BaseLookup<'db> {
         let base = self.find_in_primary_or_atom(primary.first());
         match primary.second() {
-            PrimaryContent::Attribute(name) => {
-                match base {
-                    BaseLookup::Module(f) => {
-                        // TODO this is a bit weird. shouldn't this just do a goto?
-                        if let Some(link) = f.lookup_global(name.as_str()) {
-                            self.file
-                                .points
-                                .set(name.index(), link.into_point_redirect());
-                            self.find_in_name(name)
-                        } else {
-                            BaseLookup::Other
-                        }
-                    }
-                    BaseLookup::Class(link) => {
-                        let cls = ClassInitializer::from_link(self.i_s.db, link);
-                        let point_kind = cache_name_on_class(cls, self.file, name);
-                        if point_kind == PointKind::Redirect {
-                            self.find_in_name(name)
-                        } else {
-                            BaseLookup::Other
-                        }
-                    }
-                    _ => BaseLookup::Other,
+            PrimaryContent::Attribute(name) => match base {
+                BaseLookup::Module(f) => {
+                    let mut finder = TypeVarFinder {
+                        name_resolution: f.name_resolution(self.i_s),
+                        infos: self.infos,
+                    };
+                    finder.find_in_name(name)
                 }
-            }
+                BaseLookup::Class(link) => {
+                    let cls = ClassInitializer::from_link(self.i_s.db, link);
+                    let point_kind = cache_name_on_class(cls, self.file, name);
+                    if point_kind == PointKind::Redirect {
+                        self.find_in_class_name(name)
+                    } else {
+                        BaseLookup::Other
+                    }
+                }
+                _ => BaseLookup::Other,
+            },
             PrimaryContent::Execution(_) => BaseLookup::Other,
             PrimaryContent::GetItem(slice_type) => {
                 let s = SliceType::new(self.file, primary.index(), slice_type);
@@ -191,48 +185,7 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
 
     fn find_in_atom(&mut self, atom: Atom) -> BaseLookup<'db> {
         match atom.unpack() {
-            AtomContent::Name(n) => {
-                let resolved = self.resolve_name_without_narrowing(n);
-                let add_issue = |kind| {
-                    NodeRef::new(self.name_resolution.file, n.index())
-                        .add_issue(self.name_resolution.i_s, kind)
-                };
-                match resolved {
-                    PointResolution::NameDef {
-                        node_ref,
-                        global_redirect,
-                    } => {
-                        let followed = follow_name(
-                            self.i_s,
-                            node_ref
-                                .to_db_lifetime(self.i_s.db)
-                                .add_to_node_index(NAME_DEF_TO_NAME_DIFFERENCE as i64),
-                        );
-                        return match followed {
-                            Ok(type_var_like) => {
-                                self.handle_type_var_like(&type_var_like, add_issue)
-                            }
-                            Err(lookup) => lookup,
-                        };
-                    }
-                    PointResolution::Inferred(inferred) => {
-                        if let Some(specific) = inferred.maybe_saved_specific(self.i_s.db) {
-                            return match specific {
-                                Specific::TypingGeneric => BaseLookup::Generic,
-                                Specific::TypingProtocol => BaseLookup::Protocol,
-                                Specific::TypingCallable => BaseLookup::Callable,
-                                Specific::TypingLiteral => BaseLookup::Literal,
-                                _ => BaseLookup::Other,
-                            };
-                        } else if let Some(ComplexPoint::TypeVarLike(tvl)) =
-                            inferred.maybe_complex_point(self.i_s.db)
-                        {
-                            return self.handle_type_var_like(tvl, add_issue);
-                        };
-                    }
-                    _ => (),
-                };
-            }
+            AtomContent::Name(n) => return self.find_in_name(n),
             AtomContent::Strings(s_o_b) => match s_o_b.as_python_string() {
                 PythonString::Ref(start, s) => {
                     self.compute_forward_reference(start, Cow::Borrowed(s))
@@ -248,6 +201,49 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
     }
 
     fn find_in_name(&mut self, name: Name) -> BaseLookup<'db> {
+        let resolved = self.resolve_name_without_narrowing(name);
+        let add_issue = |kind| {
+            NodeRef::new(self.name_resolution.file, name.index())
+                .add_issue(self.name_resolution.i_s, kind)
+        };
+        match resolved {
+            PointResolution::NameDef {
+                node_ref,
+                global_redirect,
+            } => {
+                let followed = follow_name(
+                    self.i_s,
+                    node_ref
+                        .to_db_lifetime(self.i_s.db)
+                        .add_to_node_index(NAME_DEF_TO_NAME_DIFFERENCE as i64),
+                );
+                match followed {
+                    Ok(type_var_like) => self.handle_type_var_like(&type_var_like, add_issue),
+                    Err(lookup) => lookup,
+                }
+            }
+            PointResolution::Inferred(inferred) => {
+                if let Some(specific) = inferred.maybe_saved_specific(self.i_s.db) {
+                    match specific {
+                        Specific::TypingGeneric => BaseLookup::Generic,
+                        Specific::TypingProtocol => BaseLookup::Protocol,
+                        Specific::TypingCallable => BaseLookup::Callable,
+                        Specific::TypingLiteral => BaseLookup::Literal,
+                        _ => BaseLookup::Other,
+                    }
+                } else if let Some(ComplexPoint::TypeVarLike(tvl)) =
+                    inferred.maybe_complex_point(self.i_s.db)
+                {
+                    self.handle_type_var_like(tvl, add_issue)
+                } else {
+                    BaseLookup::Other
+                }
+            }
+            _ => BaseLookup::Other,
+        }
+    }
+
+    fn find_in_class_name(&mut self, name: Name) -> BaseLookup<'db> {
         // TODO this whole check is way too hacky.
         let point = self.file.points.get(name.index());
         if point.calculated() && point.kind() == PointKind::Redirect {
