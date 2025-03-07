@@ -51,12 +51,12 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                     assign_to_name_def(name_def, inf);
                     if let Some(rest) = rest {
                         if result.is_some() {
-                            self.infer_import_dotted_name(rest, result);
+                            self.cache_import_dotted_name(rest, result);
                         }
                     }
                 }
                 DottedAsNameContent::WithAs(dotted_name, as_name_def) => {
-                    let result = self.infer_import_dotted_name(dotted_name, None);
+                    let result = self.cache_import_dotted_name(dotted_name, None);
                     debug_assert!(!self.file.points.get(as_name_def.index()).calculated());
                     let inf = match result {
                         Some(import_result) => import_result.as_inferred(),
@@ -112,7 +112,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             })
             .flatten();
         match dotted_name {
-            Some(dotted_name) => self.infer_import_dotted_name(dotted_name, maybe_level_file),
+            Some(dotted_name) => self.cache_import_dotted_name(dotted_name, maybe_level_file),
             None => maybe_level_file,
         }
     }
@@ -127,7 +127,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         self.cache_import_from_part(&from_first_part, as_name, assign_to_name_def)
     }
 
-    pub fn infer_import_dotted_name(
+    pub fn cache_import_dotted_name(
         &self,
         dotted: DottedName,
         base: Option<ImportResult>,
@@ -206,7 +206,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 }
             }
             DottedNameContent::DottedName(dotted_name, name) => {
-                let result = self.infer_import_dotted_name(dotted_name, base)?;
+                let result = self.cache_import_dotted_name(dotted_name, base)?;
                 infer_name(self, result, name)
             }
         };

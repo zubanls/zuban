@@ -137,7 +137,7 @@ impl<'a> Module<'a> {
                                     is_submodule(
                                         self.file
                                             .inference(i_s)
-                                            .infer_import_dotted_name(super_, None),
+                                            .cache_import_dotted_name(super_, None),
                                     )
                                 } else {
                                     false

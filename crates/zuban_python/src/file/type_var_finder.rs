@@ -12,7 +12,7 @@ use crate::{
     file::PythonFile,
     getitem::{SliceOrSimple, SliceType},
     inference_state::InferenceState,
-    node_ref::{self, NodeRef},
+    node_ref::NodeRef,
     type_::{TypeVarIndex, TypeVarLike, TypeVarLikes, TypeVarManager},
     type_helpers::{ClassInitializer, ClassNodeRef},
 };
