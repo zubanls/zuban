@@ -542,7 +542,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                     file_index != self.file.file_index || next_node_index != node_index,
                     "{file_index}:{node_index}"
                 );
-                let infer = |r: &NameResolution<'db, 'file, '_>| {
+                let resolve = |r: &NameResolution<'db, 'file, '_>| {
                     let new_p = r.file.points.get(next_node_index);
                     r.resolve_point_internal(
                         next_node_index,
@@ -558,9 +558,9 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                     })
                 };
                 if file_index == self.file.file_index {
-                    infer(self)
+                    resolve(self)
                 } else {
-                    infer(
+                    resolve(
                         &mut self
                             .i_s
                             .db
