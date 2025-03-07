@@ -3693,7 +3693,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 self.cache_import_name(import_name);
             }
             DefiningStmt::ImportFromAsName(as_name) => {
-                self.cache_import_from_only_particular_name_def(
+                self.assign_import_from_only_particular_name_def(
                     as_name,
                     |name_def, inf, redirect_to_link| {
                         self.assign_to_import_from_name(name_def, inf, redirect_to_link)

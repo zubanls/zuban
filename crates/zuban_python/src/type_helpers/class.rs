@@ -714,7 +714,7 @@ impl<'db: 'a, 'a> Class<'a> {
                         if let Some(result) = self
                             .node_ref
                             .file
-                            .inference(i_s)
+                            .name_resolution(i_s)
                             .lookup_name_in_star_import(star_import, name, true, None)
                         {
                             return result.into_lookup_result(i_s);

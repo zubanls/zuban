@@ -126,7 +126,9 @@ impl<'a> Module<'a> {
                             // from . import x simply imports the module that exists in the same
                             // directory anyway and should not be considered a reexport.
                             is_submodule(
-                                self.file.inference(i_s).import_from_first_part(import_from),
+                                self.file
+                                    .name_resolution(i_s)
+                                    .import_from_first_part(import_from),
                             )
                         }
                         NameImportParent::DottedAsName(dotted) => {
@@ -136,7 +138,7 @@ impl<'a> Module<'a> {
                                 if let DottedNameContent::DottedName(super_, _) = dotted.unpack() {
                                     is_submodule(
                                         self.file
-                                            .inference(i_s)
+                                            .name_resolution(i_s)
                                             .cache_import_dotted_name(super_, None),
                                     )
                                 } else {
@@ -181,7 +183,7 @@ impl<'a> Module<'a> {
             result
         } else if let Some(star_imp) = self
             .file
-            .inference(i_s)
+            .name_resolution(i_s)
             .lookup_from_star_import(name, false)
         {
             star_imp.into_lookup_result(i_s)

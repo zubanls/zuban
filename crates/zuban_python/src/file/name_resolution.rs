@@ -117,7 +117,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         }
     }
 
-    pub(super) fn cache_import_from_only_particular_name_def(
+    pub(super) fn assign_import_from_only_particular_name_def(
         &self,
         as_name: ImportFromAsName,
         assign_to_name_def: impl FnOnce(NameDef, Inferred, Option<PointLink>),

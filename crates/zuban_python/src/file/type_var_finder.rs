@@ -225,7 +225,7 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
                             }
                         }
                     }
-                    TypeLike::ImportFromAsName(_) => {
+                    TypeLike::ImportFromAsName(from_as_name) => {
                         // TODO this can probably still recurses with module __getattr__
                         let p = node_ref
                             .add_to_node_index(-(NAME_DEF_TO_NAME_DIFFERENCE as i64))
