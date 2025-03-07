@@ -18,7 +18,7 @@ use crate::{
     type_helpers::{ClassInitializer, ClassNodeRef},
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 enum BaseLookup {
     Module(FileIndex),
     Class(PointLink),
@@ -26,6 +26,7 @@ enum BaseLookup {
     Callable,
     Literal,
     Generic,
+    TypeVarLikeClass,
     Other,
 }
 
@@ -228,12 +229,19 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
                     TypeLike::ClassDef(c) => {
                         return BaseLookup::Class(PointLink::new(node_ref.file_index(), c.index()))
                     }
-                    TypeLike::Assignment(_) => {
-                        let inference = node_ref.file.inference(self.i_s);
-                        let inf = inference.infer_name_of_definition(name_def.name());
-                        if let Some(node_ref) = inf.maybe_saved_node_ref(self.i_s.db) {
-                            if let Some(ComplexPoint::TypeVarLike(tvl)) = node_ref.complex() {
-                                return self.handle_type_var_like(&tvl, add_issue);
+                    TypeLike::Assignment(assignment) => {
+                        if let Some((_, None, expr)) =
+                            assignment.maybe_simple_type_expression_assignment()
+                        {
+                            if self.is_type_var_like_execution(expr) {
+                                let inference = node_ref.file.inference(self.i_s);
+                                let inf = inference.infer_name_of_definition(name_def.name());
+                                if let Some(node_ref) = inf.maybe_saved_node_ref(self.i_s.db) {
+                                    if let Some(ComplexPoint::TypeVarLike(tvl)) = node_ref.complex()
+                                    {
+                                        return self.handle_type_var_like(&tvl, add_issue);
+                                    }
+                                }
                             }
                         }
                     }
@@ -364,6 +372,21 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
             return;
         };
         inner_finder.find_in_expr(expr);
+    }
+
+    fn is_type_var_like_execution(&mut self, expr: Expression) -> bool {
+        let ExpressionContent::ExpressionPart(ExpressionPart::Primary(primary)) = expr.unpack()
+        else {
+            return false;
+        };
+        let PrimaryContent::Execution(_) = primary.second() else {
+            return false;
+        };
+        // TODO work on this
+        true
+        /*
+        self.find_in_primary_or_atom(primary.first()) == BaseLookup::TypeVarLikeClass
+        */
     }
 
     fn check_generic_or_protocol_length(&self, slice_type: SliceType) {

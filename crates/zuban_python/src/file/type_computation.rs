@@ -3807,14 +3807,17 @@ impl<'db: 'x, 'file, 'x> Inference<'db, 'file, '_> {
 
     pub(super) fn use_cached_annotation(&self, annotation: Annotation) -> Inferred {
         let point = self.file.points.get(annotation.index());
-        debug_assert!(matches!(
-            point.specific(),
-            Specific::AnnotationOrTypeCommentWithTypeVars
-                | Specific::AnnotationOrTypeCommentWithoutTypeVars
-                | Specific::AnnotationOrTypeCommentSimpleClassInstance
-                | Specific::AnnotationOrTypeCommentClassVar
-                | Specific::AnnotationOrTypeCommentFinal
-        ));
+        debug_assert!(
+            matches!(
+                point.specific(),
+                Specific::AnnotationOrTypeCommentWithTypeVars
+                    | Specific::AnnotationOrTypeCommentWithoutTypeVars
+                    | Specific::AnnotationOrTypeCommentSimpleClassInstance
+                    | Specific::AnnotationOrTypeCommentClassVar
+                    | Specific::AnnotationOrTypeCommentFinal
+            ),
+            "{point:?}"
+        );
         self.check_point_cache(annotation.index()).unwrap()
     }
 
