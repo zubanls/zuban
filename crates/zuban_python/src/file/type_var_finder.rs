@@ -27,6 +27,7 @@ enum BaseLookup {
     Literal,
     Generic,
     TypeVarLikeClass,
+    TypeVarLike(TypeVarLike),
     Other,
 }
 
@@ -156,6 +157,7 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
                         BaseLookup::Other
                     }
                 }
+                BaseLookup::TypeVarLike(_) => todo!(),
                 _ => BaseLookup::Other,
             },
             PrimaryContent::Execution(_) => BaseLookup::Other,
@@ -207,86 +209,19 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
     }
 
     fn find_in_name(&mut self, name: Name) -> BaseLookup {
-        let resolved = self.resolve_name_without_narrowing(name);
-        self.point_resolution_to_base_lookup(resolved, |kind| {
-            NodeRef::new(self.name_resolution.file, name.index())
-                .add_issue(self.name_resolution.i_s, kind)
-        })
+        match self.lookup_name(name) {
+            BaseLookup::TypeVarLike(tvl) => {
+                self.handle_type_var_like(tvl, |kind| {
+                    NodeRef::new(self.name_resolution.file, name.index())
+                        .add_issue(self.name_resolution.i_s, kind)
+                });
+                BaseLookup::Other
+            }
+            l => l,
+        }
     }
 
-    fn point_resolution_to_base_lookup(
-        &mut self,
-        resolved: PointResolution,
-        add_issue: impl Fn(IssueKind),
-    ) -> BaseLookup {
-        match resolved {
-            PointResolution::NameDef {
-                node_ref,
-                global_redirect,
-            } => {
-                let name_def = node_ref.as_name_def();
-                match name_def.expect_type() {
-                    TypeLike::ClassDef(c) => {
-                        return BaseLookup::Class(PointLink::new(node_ref.file_index(), c.index()))
-                    }
-                    TypeLike::Assignment(assignment) => {
-                        if let Some((_, None, expr)) =
-                            assignment.maybe_simple_type_expression_assignment()
-                        {
-                            if self.is_type_var_like_execution(expr) {
-                                let inference = node_ref.file.inference(self.i_s);
-                                let inf = inference.infer_name_of_definition(name_def.name());
-                                if let Some(node_ref) = inf.maybe_saved_node_ref(self.i_s.db) {
-                                    if let Some(ComplexPoint::TypeVarLike(tvl)) = node_ref.complex()
-                                    {
-                                        return self.handle_type_var_like(&tvl, add_issue);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    TypeLike::ImportFromAsName(from_as_name) => {
-                        return self.point_resolution_to_base_lookup(
-                            self.resolve_import_from_name_def_without_narrowing(from_as_name),
-                            add_issue,
-                        )
-                    }
-                    TypeLike::DottedAsName(dotted_as_name) => {
-                        return self.point_resolution_to_base_lookup(
-                            self.resolve_import_name_name_def_without_narrowing(dotted_as_name),
-                            add_issue,
-                        )
-                    }
-                    _ => (),
-                }
-            }
-            PointResolution::Inferred(inferred) => {
-                if let Some(specific) = inferred.maybe_saved_specific(self.i_s.db) {
-                    return match specific {
-                        Specific::TypingGeneric => BaseLookup::Generic,
-                        Specific::TypingProtocol => BaseLookup::Protocol,
-                        Specific::TypingCallable => BaseLookup::Callable,
-                        Specific::TypingLiteral => BaseLookup::Literal,
-                        _ => BaseLookup::Other,
-                    };
-                } else if let Some(ComplexPoint::TypeVarLike(tvl)) =
-                    inferred.maybe_complex_point(self.i_s.db)
-                {
-                    return self.handle_type_var_like(tvl, add_issue);
-                } else if let Some(file) = inferred.maybe_file(self.i_s.db) {
-                    return BaseLookup::Module(file);
-                }
-            }
-            _ => (),
-        };
-        BaseLookup::Other
-    }
-
-    fn handle_type_var_like(
-        &mut self,
-        tvl: &TypeVarLike,
-        add_issue: impl Fn(IssueKind),
-    ) -> BaseLookup {
+    fn handle_type_var_like(&mut self, tvl: TypeVarLike, add_issue: impl Fn(IssueKind)) {
         if self
             .infos
             .class
@@ -301,7 +236,7 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
                 if self.infos.class.is_some() {
                     add_issue(IssueKind::MultipleTypeVarTuplesInClassDef);
                 }
-                return BaseLookup::Other;
+                return;
             }
             if !tvl.has_default() {
                 if let Some(previous) = self.infos.type_var_manager.last() {
@@ -324,7 +259,6 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
                 }
             }
         }
-        BaseLookup::Other
     }
 
     fn find_in_primary_or_atom(&mut self, p: PrimaryOrAtom<'d>) -> BaseLookup {
@@ -374,7 +308,85 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
         inner_finder.find_in_expr(expr);
     }
 
-    fn is_type_var_like_execution(&mut self, expr: Expression) -> bool {
+    fn check_generic_or_protocol_length(&self, slice_type: SliceType) {
+        // Reorder slices
+        if slice_type.iter().count() < self.infos.type_var_manager.len() {
+            slice_type
+                .as_node_ref()
+                .add_issue(self.i_s, IssueKind::IncompleteGenericOrProtocolTypeVars)
+        }
+    }
+}
+
+impl<'db, 'file> NameResolution<'db, 'file, '_> {
+    fn lookup_name(&self, name: Name) -> BaseLookup {
+        let resolved = self.resolve_name_without_narrowing(name);
+        self.point_resolution_to_base_lookup(resolved)
+    }
+
+    fn point_resolution_to_base_lookup(&self, resolved: PointResolution) -> BaseLookup {
+        match resolved {
+            PointResolution::NameDef {
+                node_ref,
+                global_redirect,
+            } => {
+                let name_def = node_ref.as_name_def();
+                match name_def.expect_type() {
+                    TypeLike::ClassDef(c) => {
+                        return BaseLookup::Class(PointLink::new(node_ref.file_index(), c.index()))
+                    }
+                    TypeLike::Assignment(assignment) => {
+                        if let Some((_, None, expr)) =
+                            assignment.maybe_simple_type_expression_assignment()
+                        {
+                            if self.is_type_var_like_execution(expr) {
+                                let inference = node_ref.file.inference(self.i_s);
+                                let inf = inference.infer_name_of_definition(name_def.name());
+                                if let Some(node_ref) = inf.maybe_saved_node_ref(self.i_s.db) {
+                                    if let Some(ComplexPoint::TypeVarLike(tvl)) = node_ref.complex()
+                                    {
+                                        return BaseLookup::TypeVarLike(tvl.clone());
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    TypeLike::ImportFromAsName(from_as_name) => {
+                        return self.point_resolution_to_base_lookup(
+                            self.resolve_import_from_name_def_without_narrowing(from_as_name),
+                        )
+                    }
+                    TypeLike::DottedAsName(dotted_as_name) => {
+                        return self.point_resolution_to_base_lookup(
+                            self.resolve_import_name_name_def_without_narrowing(dotted_as_name),
+                        )
+                    }
+                    _ => (),
+                }
+            }
+            PointResolution::Inferred(inferred) => {
+                if let Some(specific) = inferred.maybe_saved_specific(self.i_s.db) {
+                    return match specific {
+                        Specific::TypingGeneric => BaseLookup::Generic,
+                        Specific::TypingProtocol => BaseLookup::Protocol,
+                        Specific::TypingCallable => BaseLookup::Callable,
+                        Specific::TypingLiteral => BaseLookup::Literal,
+                        _ => BaseLookup::Other,
+                    };
+                } else if let Some(ComplexPoint::TypeVarLike(tvl)) =
+                    inferred.maybe_complex_point(self.i_s.db)
+                {
+                    return BaseLookup::TypeVarLike(tvl.clone());
+                } else if let Some(file) = inferred.maybe_file(self.i_s.db) {
+                    return BaseLookup::Module(file);
+                }
+            }
+            _ => (),
+        };
+        BaseLookup::Other
+    }
+
+    fn is_type_var_like_execution(&self, expr: Expression) -> bool {
         let ExpressionContent::ExpressionPart(ExpressionPart::Primary(primary)) = expr.unpack()
         else {
             return false;
@@ -387,14 +399,5 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
         /*
         self.find_in_primary_or_atom(primary.first()) == BaseLookup::TypeVarLikeClass
         */
-    }
-
-    fn check_generic_or_protocol_length(&self, slice_type: SliceType) {
-        // Reorder slices
-        if slice_type.iter().count() < self.infos.type_var_manager.len() {
-            slice_type
-                .as_node_ref()
-                .add_issue(self.i_s, IssueKind::IncompleteGenericOrProtocolTypeVars)
-        }
     }
 }
