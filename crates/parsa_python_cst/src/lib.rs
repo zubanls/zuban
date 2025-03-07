@@ -468,48 +468,10 @@ impl<'db> Name<'db> {
     }
 
     pub fn expect_type(&self) -> TypeLike<'db> {
-        let node = self
-            .node
-            .parent_until(&[
-                Nonterminal(class_def),
-                Nonterminal(assignment),
-                Nonterminal(function_def),
-                Nonterminal(import_from_as_name),
-                Nonterminal(dotted_as_name),
-                Nonterminal(stmt),
-                Nonterminal(walrus),
-                Nonterminal(param_no_default),
-                Nonterminal(param_with_default),
-                Nonterminal(param_maybe_default),
-            ])
-            .expect("There should always be a stmt");
-        if node.is_type(Nonterminal(class_def)) {
-            TypeLike::ClassDef(ClassDef::new(node))
-        } else if node.is_type(Nonterminal(assignment)) {
-            if self.name_def().is_none() {
-                return TypeLike::Other;
-            }
-            TypeLike::Assignment(Assignment::new(node))
-        } else if node.is_type(Nonterminal(function_def)) {
-            TypeLike::Function(FunctionDef::new(node))
-        } else if node.is_type(Nonterminal(stmt)) | node.is_type(Nonterminal(walrus)) {
-            TypeLike::Other
-        } else if node.is_type(Nonterminal(import_from_as_name)) {
-            TypeLike::ImportFromAsName(ImportFromAsName::new(node))
-        } else if node.is_type(Nonterminal(dotted_as_name)) {
-            TypeLike::DottedAsName(DottedAsName::new(node))
-        } else {
-            debug_assert!(matches!(
-                node.type_(),
-                Nonterminal(param_no_default)
-                    | Nonterminal(param_with_default)
-                    | Nonterminal(param_maybe_default)
-            ));
-            TypeLike::ParamName(node.iter_children().nth(1).and_then(|n| {
-                n.is_type(Nonterminal(annotation))
-                    .then(|| Annotation::new(n))
-            }))
-        }
+        let Some(n) = self.name_def() else {
+            return TypeLike::Other;
+        };
+        n.expect_type()
     }
 
     pub fn parent(&self) -> NameParent<'db> {
@@ -3665,6 +3627,48 @@ impl<'db> NameDef<'db> {
                 "Reached a previously unknown defining statement {:?}",
                 self.node
             )
+        }
+    }
+
+    pub fn expect_type(&self) -> TypeLike<'db> {
+        let node = self
+            .node
+            .parent_until(&[
+                Nonterminal(class_def),
+                Nonterminal(assignment),
+                Nonterminal(function_def),
+                Nonterminal(import_from_as_name),
+                Nonterminal(dotted_as_name),
+                Nonterminal(stmt),
+                Nonterminal(walrus),
+                Nonterminal(param_no_default),
+                Nonterminal(param_with_default),
+                Nonterminal(param_maybe_default),
+            ])
+            .expect("There should always be a stmt");
+        if node.is_type(Nonterminal(class_def)) {
+            TypeLike::ClassDef(ClassDef::new(node))
+        } else if node.is_type(Nonterminal(assignment)) {
+            TypeLike::Assignment(Assignment::new(node))
+        } else if node.is_type(Nonterminal(function_def)) {
+            TypeLike::Function(FunctionDef::new(node))
+        } else if node.is_type(Nonterminal(stmt)) | node.is_type(Nonterminal(walrus)) {
+            TypeLike::Other
+        } else if node.is_type(Nonterminal(import_from_as_name)) {
+            TypeLike::ImportFromAsName(ImportFromAsName::new(node))
+        } else if node.is_type(Nonterminal(dotted_as_name)) {
+            TypeLike::DottedAsName(DottedAsName::new(node))
+        } else {
+            debug_assert!(matches!(
+                node.type_(),
+                Nonterminal(param_no_default)
+                    | Nonterminal(param_with_default)
+                    | Nonterminal(param_maybe_default)
+            ));
+            TypeLike::ParamName(node.iter_children().nth(1).and_then(|n| {
+                n.is_type(Nonterminal(annotation))
+                    .then(|| Annotation::new(n))
+            }))
         }
     }
 
