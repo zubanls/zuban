@@ -145,7 +145,7 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
                     let cls = ClassInitializer::from_link(self.i_s.db, link);
                     let point_kind = cache_name_on_class(cls, self.file, name);
                     if point_kind == PointKind::Redirect {
-                        self.find_in_class_name(name)
+                        self.find_in_name(name)
                     } else {
                         BaseLookup::Other
                     }
@@ -240,24 +240,6 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
                 }
             }
             _ => BaseLookup::Other,
-        }
-    }
-
-    fn find_in_class_name(&mut self, name: Name) -> BaseLookup<'db> {
-        // TODO this whole check is way too hacky.
-        let point = self.file.points.get(name.index());
-        if point.calculated() && point.kind() == PointKind::Redirect {
-            let node_ref = point.as_redirected_node_ref(self.i_s.db);
-            let followed = follow_name(self.i_s, node_ref);
-            match followed {
-                Ok(type_var_like) => self.handle_type_var_like(&type_var_like, |kind| {
-                    NodeRef::new(self.name_resolution.file, name.index())
-                        .add_issue(self.name_resolution.i_s, kind)
-                }),
-                Err(lookup) => lookup,
-            }
-        } else {
-            BaseLookup::Other
         }
     }
 
