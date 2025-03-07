@@ -202,10 +202,17 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
 
     fn find_in_name(&mut self, name: Name) -> BaseLookup<'db> {
         let resolved = self.resolve_name_without_narrowing(name);
-        let add_issue = |kind| {
+        self.point_resolution_to_base_lookup(resolved, |kind| {
             NodeRef::new(self.name_resolution.file, name.index())
                 .add_issue(self.name_resolution.i_s, kind)
-        };
+        })
+    }
+
+    fn point_resolution_to_base_lookup(
+        &mut self,
+        resolved: PointResolution,
+        add_issue: impl Fn(IssueKind),
+    ) -> BaseLookup<'db> {
         match resolved {
             PointResolution::NameDef {
                 node_ref,
@@ -226,21 +233,12 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
                         }
                     }
                     TypeLike::ImportFromAsName(from_as_name) => {
-                        // TODO this can probably still recurses with module __getattr__
-                        let p = node_ref
-                            .add_to_node_index(-(NAME_DEF_TO_NAME_DIFFERENCE as i64))
-                            .point();
-                        if p.calculated() && p.kind() == PointKind::Redirect {
-                            let new = p.as_redirected_node_ref(self.i_s.db);
-                            if new.maybe_name().is_some() {
-                                return match follow_name(self.i_s, new) {
-                                    Ok(tvl) => self.handle_type_var_like(&tvl, add_issue),
-                                    Err(b) => b,
-                                };
-                            }
-                        }
+                        return self.point_resolution_to_base_lookup(
+                            self.resolve_import_from_name_def_without_narrowing(from_as_name),
+                            add_issue,
+                        )
                     }
-                    TypeLike::DottedAsName(_) => {
+                    TypeLike::DottedAsName(dotted_as_name) => {
                         let p = node_ref
                             .add_to_node_index(-(NAME_DEF_TO_NAME_DIFFERENCE as i64))
                             .point();

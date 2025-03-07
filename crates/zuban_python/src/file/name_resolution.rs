@@ -127,6 +127,26 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         self.cache_import_from_part(&from_first_part, as_name, assign_to_name_def)
     }
 
+    pub(super) fn resolve_import_from_name_def_without_narrowing(
+        &self,
+        as_name: ImportFromAsName,
+    ) -> PointResolution<'file> {
+        let mut found_inf = None;
+        self.assign_import_from_only_particular_name_def(as_name, |name_def, inf, _| {
+            debug_assert!(self.file.points.get(name_def.index()).calculating());
+            self.file
+                .points
+                .set(name_def.index(), Point::new_uncalculated());
+            found_inf = Some(inf);
+        });
+        match found_inf {
+            Some(inf) => PointResolution::Inferred(inf),
+            None => self
+                .resolve_point(as_name.name_def().index(), |_, _, _| None)
+                .expect("Resolving import"),
+        }
+    }
+
     pub fn cache_import_dotted_name(
         &self,
         dotted: DottedName,
