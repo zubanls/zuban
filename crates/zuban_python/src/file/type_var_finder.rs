@@ -22,10 +22,9 @@ use crate::{
 enum BaseLookup {
     Module(FileIndex),
     Class(PointLink),
-    Protocol,
+    GenericOrProtocol,
     Callable,
     Literal,
-    Generic,
     TypeVarLikeClass,
     TypeVarLike(TypeVarLike),
     Other,
@@ -164,7 +163,7 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
             PrimaryContent::GetItem(slice_type) => {
                 let s = SliceType::new(self.file, primary.index(), slice_type);
                 match base {
-                    BaseLookup::Protocol | BaseLookup::Generic => {
+                    BaseLookup::GenericOrProtocol => {
                         if self.infos.generic_or_protocol_slice.is_some() {
                             self.infos.had_generic_or_protocol_issue = true;
                             NodeRef::new(self.file, primary.index())
@@ -379,8 +378,9 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                         Specific::TypingTypeVarClass
                         | Specific::TypingTypeVarTupleClass
                         | Specific::TypingParamSpecClass => BaseLookup::TypeVarLikeClass,
-                        Specific::TypingGeneric => BaseLookup::Generic,
-                        Specific::TypingProtocol => BaseLookup::Protocol,
+                        Specific::TypingGeneric | Specific::TypingProtocol => {
+                            BaseLookup::GenericOrProtocol
+                        }
                         Specific::TypingCallable => BaseLookup::Callable,
                         Specific::TypingLiteral => BaseLookup::Literal,
                         _ => BaseLookup::Other,
