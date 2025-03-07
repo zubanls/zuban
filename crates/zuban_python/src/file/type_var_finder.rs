@@ -330,6 +330,13 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 node_ref,
                 global_redirect,
             } => {
+                if node_ref.file_index() != self.file.file_index {
+                    return node_ref
+                        .file
+                        .name_resolution(self.i_s)
+                        .point_resolution_to_base_lookup(resolved);
+                }
+
                 let name_def = node_ref.as_name_def();
                 match name_def.expect_type() {
                     TypeLike::ClassDef(c) => {
@@ -340,6 +347,8 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                             assignment.maybe_simple_type_expression_assignment()
                         {
                             if self.is_type_var_like_execution(expr) {
+                                // Now that we know that we have a Typevar-like execution, we can
+                                // simply infer the statement and won't cause problems with cycles.
                                 let inference = node_ref.file.inference(self.i_s);
                                 let inf = inference.infer_name_of_definition(name_def.name());
                                 if let Some(node_ref) = inf.maybe_saved_node_ref(self.i_s.db) {
@@ -367,6 +376,9 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             PointResolution::Inferred(inferred) => {
                 if let Some(specific) = inferred.maybe_saved_specific(self.i_s.db) {
                     return match specific {
+                        Specific::TypingTypeVarClass
+                        | Specific::TypingTypeVarTupleClass
+                        | Specific::TypingParamSpecClass => BaseLookup::TypeVarLikeClass,
                         Specific::TypingGeneric => BaseLookup::Generic,
                         Specific::TypingProtocol => BaseLookup::Protocol,
                         Specific::TypingCallable => BaseLookup::Callable,
@@ -386,6 +398,29 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         BaseLookup::Other
     }
 
+    fn lookup_primary_or_atom(&self, p: PrimaryOrAtom) -> BaseLookup {
+        match p {
+            PrimaryOrAtom::Primary(primary) => match primary.second() {
+                PrimaryContent::Attribute(name) => {
+                    match self.lookup_primary_or_atom(primary.first()) {
+                        BaseLookup::Module(f) => self
+                            .i_s
+                            .db
+                            .loaded_python_file(f)
+                            .name_resolution(self.i_s)
+                            .lookup_name(name),
+                        _ => BaseLookup::Other,
+                    }
+                }
+                _ => BaseLookup::Other,
+            },
+            PrimaryOrAtom::Atom(atom) => match atom.unpack() {
+                AtomContent::Name(n) => self.lookup_name(n),
+                _ => BaseLookup::Other,
+            },
+        }
+    }
+
     fn is_type_var_like_execution(&self, expr: Expression) -> bool {
         let ExpressionContent::ExpressionPart(ExpressionPart::Primary(primary)) = expr.unpack()
         else {
@@ -394,10 +429,6 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         let PrimaryContent::Execution(_) = primary.second() else {
             return false;
         };
-        // TODO work on this
-        true
-        /*
-        self.find_in_primary_or_atom(primary.first()) == BaseLookup::TypeVarLikeClass
-        */
+        self.lookup_primary_or_atom(primary.first()) == BaseLookup::TypeVarLikeClass
     }
 }

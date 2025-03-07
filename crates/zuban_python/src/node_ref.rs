@@ -186,6 +186,7 @@ impl<'file> NodeRef<'file> {
         self.as_name().name_def().unwrap().maybe_import()
     }
 
+    #[inline]
     pub fn file_index(&self) -> FileIndex {
         self.file.file_index
     }

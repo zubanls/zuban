@@ -15,7 +15,6 @@ testRecursiveAliasesProhibitBadAliases
 alias_complicated_definition_because_of_flow_analysis
 testIsInstanceToo*
 testIsSubclassToo*
-testNewAnalyzerImportStarSpecialCase
 testInvalidateProtocolViaSuperClass
 testProtocolInvalidateConcreteViaSuper*
 testProtocolsInvalidateBy*
