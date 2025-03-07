@@ -101,14 +101,16 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         if self.file.points.get(imp.index()).calculated() {
             return;
         }
-        self.assign_import_name(imp, |as_name_def, inf| {
-            self.assign_to_name_def_simple(
-                as_name_def,
-                NodeRef::new(self.file, as_name_def.index()),
-                &inf,
-                AssignKind::Import,
-            )
-        });
+        for dotted_as_name in imp.iter_dotted_as_names() {
+            self.assign_dotted_as_name(dotted_as_name, |as_name_def, inf| {
+                self.assign_to_name_def_simple(
+                    as_name_def,
+                    NodeRef::new(self.file, as_name_def.index()),
+                    &inf,
+                    AssignKind::Import,
+                )
+            });
+        }
         self.file.points.set(
             imp.index(),
             Point::new_specific(Specific::Analyzed, Locality::Todo),

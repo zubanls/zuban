@@ -1,7 +1,7 @@
 use config::TypeCheckerFlags;
 use parsa_python_cst::{
-    DottedAsNameContent, DottedName, DottedNameContent, ImportFrom, ImportFromAsName,
-    ImportFromTargets, ImportName, Name, NameDef, NodeIndex, NAME_DEF_TO_NAME_DIFFERENCE,
+    DottedAsName, DottedAsNameContent, DottedName, DottedNameContent, ImportFrom, ImportFromAsName,
+    ImportFromTargets, Name, NameDef, NodeIndex, NAME_DEF_TO_NAME_DIFFERENCE,
 };
 
 use crate::{
@@ -35,35 +35,33 @@ pub enum PointResolution<'file> {
 }
 
 impl<'db, 'file> NameResolution<'db, 'file, '_> {
-    pub(super) fn assign_import_name(
+    pub(super) fn assign_dotted_as_name(
         &self,
-        imp: ImportName,
+        dotted_as_name: DottedAsName,
         assign_to_name_def: impl Fn(NameDef, Inferred),
     ) {
-        for dotted_as_name in imp.iter_dotted_as_names() {
-            match dotted_as_name.unpack() {
-                DottedAsNameContent::Simple(name_def, rest) => {
-                    let result = self.global_import(name_def.name());
-                    let inf = match &result {
-                        Some(import_result) => import_result.as_inferred(),
-                        None => Inferred::new_module_not_found(),
-                    };
-                    assign_to_name_def(name_def, inf);
-                    if let Some(rest) = rest {
-                        if result.is_some() {
-                            self.cache_import_dotted_name(rest, result);
-                        }
+        match dotted_as_name.unpack() {
+            DottedAsNameContent::Simple(name_def, rest) => {
+                let result = self.global_import(name_def.name());
+                let inf = match &result {
+                    Some(import_result) => import_result.as_inferred(),
+                    None => Inferred::new_module_not_found(),
+                };
+                assign_to_name_def(name_def, inf);
+                if let Some(rest) = rest {
+                    if result.is_some() {
+                        self.cache_import_dotted_name(rest, result);
                     }
                 }
-                DottedAsNameContent::WithAs(dotted_name, as_name_def) => {
-                    let result = self.cache_import_dotted_name(dotted_name, None);
-                    debug_assert!(!self.file.points.get(as_name_def.index()).calculated());
-                    let inf = match result {
-                        Some(import_result) => import_result.as_inferred(),
-                        None => Inferred::new_module_not_found(),
-                    };
-                    assign_to_name_def(as_name_def, inf);
-                }
+            }
+            DottedAsNameContent::WithAs(dotted_name, as_name_def) => {
+                let result = self.cache_import_dotted_name(dotted_name, None);
+                debug_assert!(!self.file.points.get(as_name_def.index()).calculated());
+                let inf = match result {
+                    Some(import_result) => import_result.as_inferred(),
+                    None => Inferred::new_module_not_found(),
+                };
+                assign_to_name_def(as_name_def, inf);
             }
         }
     }
@@ -131,6 +129,9 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         &self,
         as_name: ImportFromAsName,
     ) -> PointResolution<'file> {
+        // For type resolution, we don't want to infer names in the normal way, because it leads to
+        // weird narrowing recursions. We have to make sure we do not assign the names, because
+        // they might be different later.
         let mut found_inf = None;
         self.assign_import_from_only_particular_name_def(as_name, |name_def, inf, _| {
             debug_assert!(self.file.points.get(name_def.index()).calculating());
