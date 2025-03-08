@@ -726,8 +726,8 @@ impl<'db: 'a, 'a> Class<'a> {
             Some(node_index) => {
                 let self_class = Class::with_self_generics(i_s.db, self.node_ref);
                 let i_s = &i_s.with_class_context(&self_class);
-                let inference = self.node_ref.file.inference(i_s);
-                let inf = inference.infer_name_of_definition_by_index(node_index);
+                let inf = NodeRef::new(self.node_ref.file, node_index)
+                    .infer_name_of_definition_by_index(i_s);
                 LookupResult::GotoName {
                     name: PointLink::new(self.node_ref.file.file_index, node_index),
                     inf,

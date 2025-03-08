@@ -643,16 +643,15 @@ impl<'db> PythonFile {
 
     pub fn has_unsupported_class_scoped_import(&self, db: &Database) -> bool {
         let i_s = &InferenceState::new(db);
-        let inference = self.inference(i_s);
         self.symbol_table.iter().any(|(_, index)| {
-            inference
-                .infer_name_of_definition_by_index(*index)
+            NodeRef::new(self, *index)
+                .infer_name_of_definition_by_index(i_s)
                 .as_cow_type(i_s)
                 .is_func_or_overload()
         }) || self.star_imports.iter().any(|star_import| {
             star_import.in_module_scope()
                 && star_import
-                    .to_file(&inference)
+                    .to_file(&self.name_resolution(i_s))
                     .is_some_and(|file| file.has_unsupported_class_scoped_import(db))
         })
     }

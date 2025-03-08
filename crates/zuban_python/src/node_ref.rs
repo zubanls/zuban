@@ -412,6 +412,12 @@ impl<'file> NodeRef<'file> {
                 .maybe_class()
                 .is_some_and(|c| c.name().as_code() == symbol_name)
     }
+
+    pub fn infer_name_of_definition_by_index(&self, i_s: &InferenceState) -> Inferred {
+        self.file
+            .inference(i_s)
+            .infer_name_of_definition_by_index(self.node_index)
+    }
 }
 
 impl fmt::Debug for NodeRef<'_> {

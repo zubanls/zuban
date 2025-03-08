@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use parsa_python_cst::{DottedAsNameContent, DottedNameContent, NameImportParent, NodeIndex};
+use parsa_python_cst::{DottedAsNameContent, DottedNameContent, NameImportParent};
 use vfs::{FileEntry, FileIndex, Parent};
 
 use crate::{
@@ -104,10 +104,7 @@ impl<'a> Module<'a> {
             }
             let r = FLOW_ANALYSIS.with(|fa| {
                 fa.with_new_empty_without_unfinished_partial_checking(|| {
-                    name_ref
-                        .file
-                        .inference(i_s)
-                        .infer_name_of_definition_by_index(name_ref.node_index)
+                    name_ref.infer_name_of_definition_by_index(i_s)
                 })
             });
             if !r.unfinished_partials.is_empty() {
@@ -219,10 +216,7 @@ impl<'a> Module<'a> {
         add_issue: &'a dyn Fn(IssueKind),
     ) -> Option<Inferred> {
         self.file.lookup_global("__getattr__").map(|name_ref| {
-            let inf = name_ref
-                .file
-                .inference(i_s)
-                .infer_name_of_definition_by_index(name_ref.node_index);
+            let inf = name_ref.infer_name_of_definition_by_index(i_s);
             inf.execute(
                 i_s,
                 &KnownArgsWithCustomAddIssue::new(

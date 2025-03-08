@@ -4314,11 +4314,9 @@ pub enum StarImportResult {
 impl StarImportResult {
     pub fn as_inferred(&self, i_s: &InferenceState) -> Inferred {
         match self {
-            Self::Link(link) => i_s
-                .db
-                .loaded_python_file(link.file)
-                .inference(i_s)
-                .infer_name_of_definition_by_index(link.node_index),
+            Self::Link(link) => {
+                NodeRef::from_link(i_s.db, *link).infer_name_of_definition_by_index(i_s)
+            }
             Self::AnyDueToError => Inferred::new_any_from_error(),
         }
     }
