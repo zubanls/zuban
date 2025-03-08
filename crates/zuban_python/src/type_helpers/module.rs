@@ -1,11 +1,11 @@
 use std::rc::Rc;
 
-use parsa_python_cst::{DottedAsNameContent, DottedNameContent, NameImportParent};
+use parsa_python_cst::{DottedAsNameContent, DottedNameContent, NameImportParent, NodeIndex};
 use vfs::{FileEntry, FileIndex, Parent};
 
 use crate::{
     arguments::KnownArgsWithCustomAddIssue,
-    database::{Database, PointLink},
+    database::Database,
     debug,
     diagnostics::IssueKind,
     file::{process_unfinished_partials, PythonFile, FLOW_ANALYSIS},
@@ -79,7 +79,7 @@ impl<'a> Module<'a> {
         name: &str,
     ) -> LookupResult {
         let i_s = &InferenceState::new(db);
-        if let Some(link) = self.file.lookup_global(name) {
+        if let Some(name_ref) = self.file.lookup_global(name) {
             let ensure_flow_analysis = || {
                 if self.file.inference(i_s).calculate_diagnostics().is_err() {
                     add_issue(IssueKind::CannotDetermineType { for_: name.into() });
@@ -87,17 +87,16 @@ impl<'a> Module<'a> {
                 }
                 None
             };
-            let p = NodeRef::new(self.file, link.node_index).point();
+            let p = name_ref.point();
             if p.calculated() && p.needs_flow_analysis() {
                 if let Some(result) = ensure_flow_analysis() {
                     return result;
                 }
             }
-            let link = link.into();
-            if let Some(r) = self.maybe_submodule_reexport(i_s, link, name) {
+            if let Some(r) = self.maybe_submodule_reexport(i_s, name_ref, name) {
                 return r;
             }
-            if is_reexport_issue(db, self.file, link) {
+            if is_reexport_issue(db, name_ref) {
                 add_issue(IssueKind::ImportStubNoExplicitReexport {
                     module_name: self.file.qualified_name(db).into(),
                     attribute: name.into(),
@@ -105,9 +104,10 @@ impl<'a> Module<'a> {
             }
             let r = FLOW_ANALYSIS.with(|fa| {
                 fa.with_new_empty_without_unfinished_partial_checking(|| {
-                    self.file
+                    name_ref
+                        .file
                         .inference(i_s)
-                        .infer_name_of_definition_by_index(link.node_index)
+                        .infer_name_of_definition_by_index(name_ref.node_index)
                 })
             });
             if !r.unfinished_partials.is_empty() {
@@ -119,7 +119,7 @@ impl<'a> Module<'a> {
                 // because it points to the correct place.
             }
             LookupResult::GotoName {
-                name: link,
+                name: name_ref.as_link(),
                 inf: r.result,
             }
         } else if let Some(result) = self.sub_module_lookup(db, name) {
@@ -161,11 +161,10 @@ impl<'a> Module<'a> {
     fn maybe_submodule_reexport(
         &self,
         i_s: &InferenceState,
-        link: PointLink,
+        name_ref: NodeRef,
         name: &str,
     ) -> Option<LookupResult> {
-        let Some(import) = NodeRef::from_link(i_s.db, link).maybe_import_of_name_in_symbol_table()
-        else {
+        let Some(import) = name_ref.maybe_import_of_name_in_symbol_table() else {
             return None;
         };
         let is_submodule = |import_result| {
@@ -219,12 +218,11 @@ impl<'a> Module<'a> {
         i_s: &InferenceState,
         add_issue: &'a dyn Fn(IssueKind),
     ) -> Option<Inferred> {
-        self.file.lookup_global("__getattr__").map(|link| {
-            let inf = i_s
-                .db
-                .loaded_python_file(link.file)
+        self.file.lookup_global("__getattr__").map(|name_ref| {
+            let inf = name_ref
+                .file
                 .inference(i_s)
-                .infer_name_of_definition_by_index(link.node_index);
+                .infer_name_of_definition_by_index(name_ref.node_index);
             inf.execute(
                 i_s,
                 &KnownArgsWithCustomAddIssue::new(
@@ -255,22 +253,23 @@ pub fn lookup_in_namespace(
     }
 }
 
-pub fn is_reexport_issue(db: &Database, file: &PythonFile, link: PointLink) -> bool {
-    if !file.is_stub() && !file.flags(db).no_implicit_reexport {
+pub fn is_reexport_issue(db: &Database, name_ref: NodeRef) -> bool {
+    if !name_ref.file.is_stub() && !name_ref.file.flags(db).no_implicit_reexport {
         return false;
     }
-    if let Some(dunder_all) = file.maybe_dunder_all(db) {
-        let name = NodeRef::from_link(db, link).as_name().as_code();
+    if let Some(dunder_all) = name_ref.file.maybe_dunder_all(db) {
+        debug_assert!(name_ref.maybe_name().is_some());
+        let name = name_ref.as_code();
         if dunder_all.iter().any(|d| d.as_str(db) == name) || name == "__all__" {
             // Name was exported in __all__
             return false;
         }
     }
-    is_private_import(db, link)
+    is_private_import(name_ref)
 }
 
-pub fn is_private_import(db: &Database, link: PointLink) -> bool {
-    NodeRef::from_link(db, link)
+pub fn is_private_import(name_ref: NodeRef) -> bool {
+    name_ref
         .maybe_import_of_name_in_symbol_table()
         .is_some_and(|i| !i.is_stub_reexport())
 }

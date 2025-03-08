@@ -1720,7 +1720,12 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             TypeContent::Module(f) => {
                 if let Some(link) = f
                     .lookup_global(name.as_str())
-                    .filter(|link| !is_reexport_issue(db, f, (*link).into()))
+                    .filter(|name_ref| !is_reexport_issue(db, *name_ref))
+                    .map(|name_ref| LocalityLink {
+                        file: name_ref.file_index(),
+                        node_index: name_ref.node_index,
+                        locality: Locality::Todo,
+                    })
                     .or_else(|| {
                         match f
                             .inference(self.inference.i_s)

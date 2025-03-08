@@ -19,8 +19,7 @@ use super::{
 };
 use crate::{
     database::{
-        ComplexPoint, Database, Locality, LocalityLink, Point, PointLink, Points, PythonProject,
-        Specific,
+        ComplexPoint, Database, Locality, Point, PointLink, Points, PythonProject, Specific,
     },
     debug,
     diagnostics::{Diagnostic, Diagnostics, Issue, IssueKind},
@@ -366,14 +365,10 @@ impl<'db> PythonFile {
         NameResolution { file: self, i_s }
     }
 
-    pub fn lookup_global(&self, name: &str) -> Option<LocalityLink> {
+    pub fn lookup_global(&self, name: &str) -> Option<NodeRef> {
         self.symbol_table
             .lookup_symbol(name)
-            .map(|node_index| LocalityLink {
-                file: self.file_index,
-                node_index,
-                locality: Locality::Todo,
-            })
+            .map(|node_index| NodeRef::new(self, node_index))
     }
 
     pub(super) fn ensure_annotation_file(

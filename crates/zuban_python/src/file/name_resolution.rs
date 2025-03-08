@@ -8,6 +8,7 @@ use crate::{
     database::{ComplexPoint, Locality, Point, PointKind, PointLink, Specific},
     debug,
     diagnostics::IssueKind,
+    file::File,
     imports::{find_ancestor, global_import, namespace_import, ImportResult},
     inference_state::InferenceState,
     inferred::Inferred,
@@ -17,7 +18,7 @@ use crate::{
     utils::AlreadySeen,
 };
 
-use super::{inference::StarImportResult, python_file::StarImport, File as _, PythonFile};
+use super::{inference::StarImportResult, python_file::StarImport, PythonFile};
 
 pub struct NameResolution<'db: 'file, 'file, 'i_s> {
     pub(super) file: &'file PythonFile,
@@ -427,14 +428,14 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 )
             }
             _ => {
-                if let Some(link) = builtins.lookup_global(name_str).filter(|link| {
-                    (is_valid_builtins_export(name_str))
-                        && !is_private_import(i_s.db, (*link).into())
+                if let Some(name_ref) = builtins.lookup_global(name_str).filter(|name_ref| {
+                    (is_valid_builtins_export(name_str)) && !is_private_import(*name_ref)
                 }) {
                     debug_assert!(
-                        link.file != self.file.file_index || link.node_index != save_to_index
+                        name_ref.file_index() != self.file.file_index
+                            || name_ref.node_index != save_to_index
                     );
-                    link.into_point_redirect()
+                    Point::new_redirect(name_ref.file_index(), name_ref.node_index, Locality::Todo)
                 } else {
                     // The builtin module should really not have any issues.
                     debug_assert!(
@@ -720,8 +721,8 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             }
 
             let super_file = self.i_s.db.loaded_python_file(*super_file);
-            if let Some(link) = super_file.lookup_global(name) {
-                return Some(StarImportResult::Link(link.into()));
+            if let Some(name_ref) = super_file.lookup_global(name) {
+                return Some(StarImportResult::Link(name_ref.as_link()));
             }
             super_file
                 .name_resolution(self.i_s)
@@ -758,9 +759,9 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             return None;
         }
 
-        if let Some(link) = other_file.lookup_global(name) {
-            if !is_reexport_issue(self.i_s.db, other_file, link.into()) {
-                let mut result = StarImportResult::Link(link.into());
+        if let Some(name_ref) = other_file.lookup_global(name) {
+            if !is_reexport_issue(self.i_s.db, name_ref) {
+                let mut result = StarImportResult::Link(name_ref.as_link());
                 if is_class_star_import
                     && result
                         .as_inferred(self.i_s)
