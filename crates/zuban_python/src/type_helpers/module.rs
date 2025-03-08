@@ -109,52 +109,10 @@ impl<'a> Module<'a> {
                 }
             }
             let link = link.into();
+            if let Some(r) = self.maybe_submodule_reexport(i_s, link, name) {
+                return r;
+            }
             if is_reexport_issue(i_s.db, self.file, link) {
-                if let Some(import) =
-                    NodeRef::from_link(i_s.db, link).maybe_import_of_name_in_symbol_table()
-                {
-                    let is_submodule = |import_result| {
-                        if let Some(ImportResult::File(f)) = import_result {
-                            f == self.file.file_index
-                        } else {
-                            false
-                        }
-                    };
-                    let is_submodule_import = match import {
-                        NameImportParent::ImportFromAsName(imp) => {
-                            let import_from = imp.import_from();
-                            // from . import x simply imports the module that exists in the same
-                            // directory anyway and should not be considered a reexport.
-                            is_submodule(
-                                self.file
-                                    .name_resolution(i_s)
-                                    .import_from_first_part(import_from),
-                            )
-                        }
-                        NameImportParent::DottedAsName(dotted) => {
-                            if let DottedAsNameContent::WithAs(dotted, _) = dotted.unpack() {
-                                // Only import `foo.bar as bar` can be a submodule.
-                                // `import foo.bar` just exports the name foo.
-                                if let DottedNameContent::DottedName(super_, _) = dotted.unpack() {
-                                    is_submodule(
-                                        self.file
-                                            .name_resolution(i_s)
-                                            .cache_import_dotted_name(super_, None),
-                                    )
-                                } else {
-                                    false
-                                }
-                            } else {
-                                false
-                            }
-                        }
-                    };
-                    if is_submodule_import {
-                        return self
-                            .sub_module_lookup(i_s.db, name)
-                            .unwrap_or(LookupResult::None);
-                    }
-                }
                 add_issue(IssueKind::ImportStubNoExplicitReexport {
                     module_name: self.file.qualified_name(i_s.db).into(),
                     attribute: name.into(),
@@ -213,6 +171,62 @@ impl<'a> Module<'a> {
                 result = result.and_then(|inf| Some(inf.remove_none(i_s))).unwrap()
             }
             result
+        }
+    }
+
+    fn maybe_submodule_reexport(
+        &self,
+        i_s: &InferenceState,
+        link: PointLink,
+        name: &str,
+    ) -> Option<LookupResult> {
+        let Some(import) = NodeRef::from_link(i_s.db, link).maybe_import_of_name_in_symbol_table()
+        else {
+            return None;
+        };
+        let is_submodule = |import_result| {
+            if let Some(ImportResult::File(f)) = import_result {
+                f == self.file.file_index
+            } else {
+                false
+            }
+        };
+        let is_submodule_import = match import {
+            NameImportParent::ImportFromAsName(imp) => {
+                let import_from = imp.import_from();
+                // from . import x simply imports the module that exists in the same
+                // directory anyway and should not be considered a reexport.
+                is_submodule(
+                    self.file
+                        .name_resolution(i_s)
+                        .import_from_first_part(import_from),
+                )
+            }
+            NameImportParent::DottedAsName(dotted) => {
+                if let DottedAsNameContent::WithAs(dotted, _) = dotted.unpack() {
+                    // Only import `foo.bar as bar` can be a submodule.
+                    // `import foo.bar` just exports the name foo.
+                    if let DottedNameContent::DottedName(super_, _) = dotted.unpack() {
+                        is_submodule(
+                            self.file
+                                .name_resolution(i_s)
+                                .cache_import_dotted_name(super_, None),
+                        )
+                    } else {
+                        false
+                    }
+                } else {
+                    false
+                }
+            }
+        };
+        if is_submodule_import {
+            Some(
+                self.sub_module_lookup(i_s.db, name)
+                    .unwrap_or(LookupResult::None),
+            )
+        } else {
+            None
         }
     }
 
