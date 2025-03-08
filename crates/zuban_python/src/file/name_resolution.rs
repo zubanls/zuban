@@ -400,21 +400,8 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         // If it's not inferred already through the name binder, it's either a star import, a
         // builtin or really missing.
         let i_s = self.i_s;
-        if let Some(star_imp) = self.lookup_from_star_import(name_str, true) {
-            return match star_imp {
-                StarImportResult::Link(link) => {
-                    self.file.points.set(
-                        save_to_index,
-                        Point::new_redirect(link.file, link.node_index, Locality::Todo),
-                    );
-                    self.resolve_point(save_to_index, narrow_name).unwrap()
-                }
-                StarImportResult::AnyDueToError => PointResolution::Inferred(
-                    star_imp
-                        .as_inferred(i_s)
-                        .save_redirect(i_s, self.file, save_to_index),
-                ),
-            };
+        if let Some(r) = self.resolve_star_import_name(name_str, save_to_index, &narrow_name) {
+            return r;
         }
         let builtins = i_s.db.python_state.builtins();
         let point = match name_str {
@@ -645,6 +632,30 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 PointResolution::Inferred(Inferred::new_saved(self.file, node_index))
             }
         }
+    }
+
+    #[inline]
+    fn resolve_star_import_name(
+        &self,
+        name: &str,
+        save_to_index: NodeIndex,
+        narrow_name: impl Fn(&InferenceState, NodeRef, PointLink) -> Option<Inferred>,
+    ) -> Option<PointResolution<'file>> {
+        let star_imp = self.lookup_from_star_import(name, true)?;
+        Some(match star_imp {
+            StarImportResult::Link(link) => {
+                self.file.points.set(
+                    save_to_index,
+                    Point::new_redirect(link.file, link.node_index, Locality::Todo),
+                );
+                self.resolve_point(save_to_index, narrow_name).unwrap()
+            }
+            StarImportResult::AnyDueToError => PointResolution::Inferred(
+                star_imp
+                    .as_inferred(self.i_s)
+                    .save_redirect(self.i_s, self.file, save_to_index),
+            ),
+        })
     }
 
     pub fn lookup_from_star_import(
