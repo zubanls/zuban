@@ -89,12 +89,14 @@ impl<'a> Module<'a> {
         // Coming from an import we need to make sure that we do not create loops for imports
         original_import_file: Option<FileIndex>,
     ) -> LookupResult {
+        if original_import_file == Some(self.file.file_index) {
+            return self
+                .sub_module_lookup(db, name)
+                .unwrap_or(LookupResult::None);
+        }
+
         let i_s = &InferenceState::new(db);
-        if let Some(link) = self
-            .file
-            .lookup_global(name)
-            .filter(|link| original_import_file != Some(link.file))
-        {
+        if let Some(link) = self.file.lookup_global(name) {
             let ensure_flow_analysis = || {
                 if self.file.inference(i_s).calculate_diagnostics().is_err() {
                     add_issue(IssueKind::CannotDetermineType { for_: name.into() });
@@ -112,9 +114,9 @@ impl<'a> Module<'a> {
             if let Some(r) = self.maybe_submodule_reexport(i_s, link, name) {
                 return r;
             }
-            if is_reexport_issue(i_s.db, self.file, link) {
+            if is_reexport_issue(db, self.file, link) {
                 add_issue(IssueKind::ImportStubNoExplicitReexport {
-                    module_name: self.file.qualified_name(i_s.db).into(),
+                    module_name: self.file.qualified_name(db).into(),
                     attribute: name.into(),
                 })
             }
@@ -137,7 +139,7 @@ impl<'a> Module<'a> {
                 name: link,
                 inf: r.result,
             }
-        } else if let Some(result) = self.sub_module_lookup(i_s.db, name) {
+        } else if let Some(result) = self.sub_module_lookup(db, name) {
             result
         } else if let Some(star_imp) = self
             .file
@@ -153,11 +155,10 @@ impl<'a> Module<'a> {
             // https://github.com/python/typeshed/blob/516f6655051b061652f086445ea54e8e82232349/stdlib/types.pyi#L352
             LookupResult::None
         } else {
-            if name == "__path__" && !self.file_entry_and_is_package(i_s.db).1 {
+            if name == "__path__" && !self.file_entry_and_is_package(db).1 {
                 return LookupResult::None;
             }
-            let mut result = i_s
-                .db
+            let mut result = db
                 .python_state
                 .module_instance()
                 .type_lookup(i_s, add_issue, name);
