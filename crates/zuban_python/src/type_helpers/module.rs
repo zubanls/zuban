@@ -164,19 +164,23 @@ impl<'a> Module<'a> {
         let Some(import) = name_ref.maybe_import_of_name_in_symbol_table() else {
             return None;
         };
-        let is_submodule = |import_result| {
+        let submodule_reexport = |import_result| {
             if let Some(ImportResult::File(f)) = import_result {
-                f == self.file.file_index
-            } else {
-                false
+                if f == self.file.file_index {
+                    return Some(
+                        self.sub_module_lookup(i_s.db, name)
+                            .unwrap_or(LookupResult::None),
+                    );
+                }
             }
+            None
         };
-        let is_submodule_import = match import {
+        match import {
             NameImportParent::ImportFromAsName(imp) => {
                 let import_from = imp.import_from();
                 // from . import x simply imports the module that exists in the same
                 // directory anyway and should not be considered a reexport.
-                is_submodule(
+                submodule_reexport(
                     self.file
                         .name_resolution(i_s)
                         .import_from_first_part(import_from),
@@ -187,26 +191,18 @@ impl<'a> Module<'a> {
                     // Only import `foo.bar as bar` can be a submodule.
                     // `import foo.bar` just exports the name foo.
                     if let DottedNameContent::DottedName(super_, _) = dotted.unpack() {
-                        is_submodule(
+                        submodule_reexport(
                             self.file
                                 .name_resolution(i_s)
                                 .cache_import_dotted_name(super_, None),
                         )
                     } else {
-                        false
+                        None
                     }
                 } else {
-                    false
+                    None
                 }
             }
-        };
-        if is_submodule_import {
-            Some(
-                self.sub_module_lookup(i_s.db, name)
-                    .unwrap_or(LookupResult::None),
-            )
-        } else {
-            None
         }
     }
 
