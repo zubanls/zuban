@@ -490,7 +490,6 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                             ));
                         }
                     }
-                    // TODO check star imports
                     self.add_issue(
                         save_to_index,
                         IssueKind::NameError {

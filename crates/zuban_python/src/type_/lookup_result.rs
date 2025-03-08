@@ -34,7 +34,6 @@ impl LookupResult {
     }
 
     pub fn into_maybe_inferred(self) -> Option<Inferred> {
-        // TODO is it ok that map does not include FileReference(_)? (probably not)
         match self {
             Self::GotoName { inf, .. } | Self::UnknownName(inf) => Some(inf),
             Self::FileReference(f) => Some(Inferred::new_file_reference(f)),
