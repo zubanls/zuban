@@ -137,15 +137,16 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
         match primary.second() {
             PrimaryContent::Attribute(name) => match base {
                 BaseLookup::Module(f) => {
-                    let mut finder = TypeVarFinder {
-                        name_resolution: self
-                            .i_s
-                            .db
-                            .loaded_python_file(f)
-                            .name_resolution(self.i_s),
-                        infos: self.infos,
+                    let Some(resolved) = self
+                        .i_s
+                        .db
+                        .loaded_python_file(f)
+                        .name_resolution(&InferenceState::new(self.i_s.db))
+                        .resolve_module_access(name.as_str(), |k| self.add_issue(name.index(), k))
+                    else {
+                        return BaseLookup::Other;
                     };
-                    finder.find_in_name(name)
+                    self.point_resolution_to_base_lookup(resolved)
                 }
                 BaseLookup::Class(link) => {
                     let cls = ClassInitializer::from_link(self.i_s.db, link);

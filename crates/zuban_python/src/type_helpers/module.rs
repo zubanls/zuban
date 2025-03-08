@@ -155,7 +155,7 @@ impl<'a> Module<'a> {
         }
     }
 
-    fn maybe_submodule_reexport(
+    pub fn maybe_submodule_reexport(
         &self,
         i_s: &InferenceState,
         name_ref: NodeRef,

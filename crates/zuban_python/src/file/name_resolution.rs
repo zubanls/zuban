@@ -386,10 +386,16 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
     }
 
     pub(super) fn resolve_name_without_narrowing(&self, name: Name) -> PointResolution<'file> {
-        self.resolve_point(name.index(), |_, _, _| None)
-            .unwrap_or_else(|| {
-                self.resolve_name_by_str(name.as_code(), name.index(), |_, _, _| None)
-            })
+        self.resolve_name(name, |_, _, _| None)
+    }
+
+    pub(super) fn resolve_name(
+        &self,
+        name: Name,
+        narrow_name: impl Fn(&InferenceState, NodeRef, PointLink) -> Option<Inferred>,
+    ) -> PointResolution<'file> {
+        self.resolve_point(name.index(), &narrow_name)
+            .unwrap_or_else(|| self.resolve_name_by_str(name.as_code(), name.index(), narrow_name))
     }
 
     pub(super) fn resolve_name_by_str(
@@ -401,7 +407,8 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         // If it's not inferred already through the name binder, it's either a star import, a
         // builtin or really missing.
         let i_s = self.i_s;
-        if let Some(r) = self.resolve_star_import_name(name_str, save_to_index, &narrow_name) {
+        if let Some(r) = self.resolve_star_import_name(name_str, Some(save_to_index), &narrow_name)
+        {
             return r;
         }
         let builtins = i_s.db.python_state.builtins();
@@ -635,27 +642,67 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         }
     }
 
+    pub(super) fn resolve_module_access(
+        &self,
+        name: &str,
+        add_issue: impl Fn(IssueKind),
+    ) -> Option<PointResolution<'file>> {
+        let db = self.i_s.db;
+        Some(if let Some(name_ref) = self.file.lookup_global(name) {
+            if let Some(r) =
+                Module::new(self.file).maybe_submodule_reexport(self.i_s, name_ref, name)
+            {
+                return Some(PointResolution::Inferred(r.into_inferred()));
+            }
+            if is_reexport_issue(db, name_ref) {
+                add_issue(IssueKind::ImportStubNoExplicitReexport {
+                    module_name: self.file.qualified_name(db).into(),
+                    attribute: name.into(),
+                })
+            }
+            self.resolve_name_without_narrowing(name_ref.as_name())
+        } else if let Some(r) = Module::new(self.file).sub_module_lookup(db, name) {
+            PointResolution::Inferred(r.into_inferred())
+        } else if let Some(r) = self
+            .file
+            .name_resolution(self.i_s)
+            .resolve_star_import_name(name, None, &|_, _, _| None)
+        {
+            r
+        } else {
+            return None;
+        })
+    }
+
     #[inline]
     fn resolve_star_import_name(
         &self,
         name: &str,
-        save_to_index: NodeIndex,
-        narrow_name: impl Fn(&InferenceState, NodeRef, PointLink) -> Option<Inferred>,
+        save_to_index: Option<NodeIndex>,
+        narrow_name: &dyn Fn(&InferenceState, NodeRef, PointLink) -> Option<Inferred>,
     ) -> Option<PointResolution<'file>> {
         let star_imp = self.lookup_from_star_import(name, true)?;
         Some(match star_imp {
-            StarImportResult::Link(link) => {
-                self.file.points.set(
-                    save_to_index,
-                    Point::new_redirect(link.file, link.node_index, Locality::Todo),
-                );
-                self.resolve_point(save_to_index, narrow_name).unwrap()
-            }
-            StarImportResult::AnyDueToError => PointResolution::Inferred(
-                star_imp
-                    .as_inferred(self.i_s)
-                    .save_redirect(self.i_s, self.file, save_to_index),
-            ),
+            StarImportResult::Link(link) => match save_to_index {
+                Some(save_to_index) => {
+                    self.file.points.set(
+                        save_to_index,
+                        Point::new_redirect(link.file, link.node_index, Locality::Todo),
+                    );
+                    self.resolve_point(save_to_index, narrow_name).unwrap()
+                }
+                None => {
+                    self.resolve_name(NodeRef::from_link(self.i_s.db, link).as_name(), narrow_name)
+                }
+            },
+            StarImportResult::AnyDueToError => PointResolution::Inferred(match save_to_index {
+                Some(save_to_index) => {
+                    star_imp
+                        .as_inferred(self.i_s)
+                        .save_redirect(self.i_s, self.file, save_to_index)
+                }
+                None => star_imp.as_inferred(self.i_s),
+            }),
         })
     }
 
