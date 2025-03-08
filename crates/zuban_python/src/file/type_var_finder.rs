@@ -146,7 +146,15 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
                     else {
                         return BaseLookup::Other;
                     };
-                    self.point_resolution_to_base_lookup(resolved)
+                    let result = self.point_resolution_to_base_lookup(resolved);
+                    if let BaseLookup::TypeVarLike(tvl) = result {
+                        self.handle_type_var_like(tvl, |kind| {
+                            NodeRef::new(self.name_resolution.file, primary.index())
+                                .add_issue(self.name_resolution.i_s, kind)
+                        });
+                        return BaseLookup::Other;
+                    }
+                    result
                 }
                 BaseLookup::Class(link) => {
                     let cls = ClassInitializer::from_link(self.i_s.db, link);
