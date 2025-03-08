@@ -438,6 +438,7 @@ AliasedType = Annotated[int, "aliased"]
 def aliased() -> AliasedType: ...
 
 [case avoid_alias_recursion_crash_with_unknown]
-AliasedType = Unknown[int, "aliased"]
+AliasedType = Unknown[int, "aliased"]  # E: Name "Unknown" is not defined
 
-def aliased() -> AliasedType: ...
+def aliased() -> AliasedType: ...  # E: Variable "__main__.AliasedType" is not valid as a type \
+                                   # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
