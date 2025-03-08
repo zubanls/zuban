@@ -343,12 +343,19 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         match from_first_part {
             ImportResult::File(file_index) => {
                 let import_file = self.i_s.db.loaded_python_file(*file_index);
-                Module::new(import_file).lookup_with_is_import(
-                    self.i_s.db,
-                    |issue| self.add_issue(import_name.index(), issue),
-                    import_name.as_str(),
-                    Some(self.file.file_index),
-                )
+                let module = Module::new(import_file);
+                // Coming from an import we need to make sure that we do not create loops for imports
+                if self.file.file_index == import_file.file_index {
+                    module
+                        .sub_module_lookup(self.i_s.db, name)
+                        .unwrap_or(LookupResult::None)
+                } else {
+                    module.lookup(
+                        self.i_s.db,
+                        |issue| self.add_issue(import_name.index(), issue),
+                        import_name.as_str(),
+                    )
+                }
             }
             ImportResult::Namespace(namespace) => {
                 lookup_in_namespace(self.i_s.db, self.file, namespace, name)

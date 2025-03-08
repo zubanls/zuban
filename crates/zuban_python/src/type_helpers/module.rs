@@ -62,7 +62,7 @@ impl<'a> Module<'a> {
         }
     }
 
-    fn sub_module_lookup(&self, db: &'a Database, name: &str) -> Option<LookupResult> {
+    pub fn sub_module_lookup(&self, db: &'a Database, name: &str) -> Option<LookupResult> {
         Some(match self.sub_module(db, name)? {
             ImportResult::File(file_index) => LookupResult::FileReference(file_index),
             ImportResult::Namespace(ns) => {
@@ -78,23 +78,6 @@ impl<'a> Module<'a> {
         add_issue: impl Fn(IssueKind),
         name: &str,
     ) -> LookupResult {
-        self.lookup_with_is_import(db, add_issue, name, None)
-    }
-
-    pub(crate) fn lookup_with_is_import(
-        &self,
-        db: &Database,
-        add_issue: impl Fn(IssueKind),
-        name: &str,
-        // Coming from an import we need to make sure that we do not create loops for imports
-        original_import_file: Option<FileIndex>,
-    ) -> LookupResult {
-        if original_import_file == Some(self.file.file_index) {
-            return self
-                .sub_module_lookup(db, name)
-                .unwrap_or(LookupResult::None);
-        }
-
         let i_s = &InferenceState::new(db);
         if let Some(link) = self.file.lookup_global(name) {
             let ensure_flow_analysis = || {
