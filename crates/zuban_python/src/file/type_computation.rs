@@ -2150,7 +2150,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
     fn maybe_generic_class_without_type_var(
         &mut self,
         class: Class,
-        slice_type: SliceType<'x>,
+        slice_type: SliceType,
         generics: &mut Vec<GenericItem>,
         iterator: &mut SliceTypeIterator,
         tvs: &TypeVarLikes,
@@ -2954,7 +2954,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
 
     fn compute_get_item_on_literal_item(
         &mut self,
-        slice: SliceOrSimple<'x>,
+        slice: SliceOrSimple,
         index: usize,
     ) -> TypeContent<'db, 'db> {
         if let SliceOrSimple::Simple(s) = slice {
@@ -3944,7 +3944,7 @@ impl<'db: 'x, 'file, 'x> Inference<'db, 'file, '_> {
 
     fn compute_type_assignment(
         &self,
-        assignment: Assignment<'x>,
+        assignment: Assignment,
         is_explicit: bool,
     ) -> TypeNameLookup<'file, 'file> {
         // Use the node star_targets or single_target, because they are not used otherwise.
