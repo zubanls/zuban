@@ -5145,17 +5145,16 @@ fn check_type_name<'db: 'file, 'file>(
                     }
                 }
             }
-            // At this point the class is not necessarily calculated and we therefore do this here.
-            let from = ClassNodeRef::new(name_node_ref.file, c.index());
-            let class = ClassInitializer::from_node_ref(from);
-            if class.is_calculating_class_infos() {
-                return TypeNameLookup::RecursiveClass(from);
-            }
-
             let name_def = NodeRef::new(name_node_ref.file, new_name.name_def().unwrap().index());
             cache_class_name(name_def, c);
-            class.node_ref.ensure_cached_class_infos(i_s);
-            if let Some(t) = class
+            // At this point the class is not necessarily calculated and we therefore do this here.
+            let class_node_ref = ClassNodeRef::new(name_node_ref.file, c.index());
+            if class_node_ref.is_calculating_class_infos() {
+                return TypeNameLookup::RecursiveClass(class_node_ref);
+            }
+
+            class_node_ref.ensure_cached_class_infos(i_s);
+            if let Some(t) = class_node_ref
                 .use_cached_class_infos(i_s.db)
                 .undefined_generics_type
                 .get()
