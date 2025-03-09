@@ -5015,56 +5015,50 @@ pub(super) fn assignment_type_node_ref<'x>(
 }
 
 #[inline]
-fn check_special_type(point: Point) -> Option<SpecialType> {
-    if point.kind() == PointKind::Specific {
-        Some(match point.specific() {
-            Specific::TypingUnion => SpecialType::Union,
-            Specific::TypingOptional => SpecialType::Optional,
-            Specific::TypingAny => SpecialType::Any,
-            Specific::TypingGeneric => SpecialType::Generic,
-            Specific::TypingProtocol => SpecialType::Protocol,
-            Specific::BuiltinsType => SpecialType::BuiltinsType,
-            Specific::TypingType => SpecialType::TypingType,
-            Specific::TypingCallable => SpecialType::Callable,
-            Specific::TypingLiteralString => SpecialType::LiteralString,
-            Specific::TypingUnpack => SpecialType::Unpack,
-            Specific::TypingConcatenateClass => SpecialType::Concatenate,
-            Specific::TypingTypeAlias => SpecialType::TypeAlias,
-            Specific::TypingLiteral => SpecialType::Literal,
-            Specific::TypingFinal => SpecialType::Final,
-            Specific::TypingSelf => SpecialType::Self_,
-            Specific::TypingAnnotated => SpecialType::Annotated,
-            Specific::TypingNeverOrNoReturn => SpecialType::Never,
-            Specific::TypingTuple => SpecialType::Tuple,
-            Specific::TypingTypedDict => SpecialType::TypingTypedDict,
-            Specific::TypingRequired => {
-                SpecialType::TypedDictFieldModifier(TypedDictFieldModifier::Required)
-            }
-            Specific::TypingNotRequired => {
-                SpecialType::TypedDictFieldModifier(TypedDictFieldModifier::NotRequired)
-            }
-            Specific::TypingReadOnly => {
-                SpecialType::TypedDictFieldModifier(TypedDictFieldModifier::ReadOnly)
-            }
-            Specific::TypingClassVar => SpecialType::ClassVar,
-            Specific::TypingNamedTuple => SpecialType::TypingNamedTuple,
-            Specific::TypingTypeGuard => SpecialType::TypeGuard,
-            Specific::TypingTypeIs => SpecialType::TypeIs,
-            Specific::CollectionsNamedTuple => SpecialType::CollectionsNamedTuple,
-            Specific::MypyExtensionsArg
-            | Specific::MypyExtensionsDefaultArg
-            | Specific::MypyExtensionsNamedArg
-            | Specific::MypyExtensionsDefaultNamedArg
-            | Specific::MypyExtensionsVarArg
-            | Specific::MypyExtensionsKwArg => {
-                SpecialType::MypyExtensionsParamType(point.specific())
-            }
-            Specific::MypyExtensionsFlexibleAlias => SpecialType::FlexibleAlias,
-            _ => return None,
-        })
-    } else {
-        None
-    }
+fn check_special_type(specific: Specific) -> Option<SpecialType> {
+    Some(match specific {
+        Specific::TypingUnion => SpecialType::Union,
+        Specific::TypingOptional => SpecialType::Optional,
+        Specific::TypingAny => SpecialType::Any,
+        Specific::TypingGeneric => SpecialType::Generic,
+        Specific::TypingProtocol => SpecialType::Protocol,
+        Specific::BuiltinsType => SpecialType::BuiltinsType,
+        Specific::TypingType => SpecialType::TypingType,
+        Specific::TypingCallable => SpecialType::Callable,
+        Specific::TypingLiteralString => SpecialType::LiteralString,
+        Specific::TypingUnpack => SpecialType::Unpack,
+        Specific::TypingConcatenateClass => SpecialType::Concatenate,
+        Specific::TypingTypeAlias => SpecialType::TypeAlias,
+        Specific::TypingLiteral => SpecialType::Literal,
+        Specific::TypingFinal => SpecialType::Final,
+        Specific::TypingSelf => SpecialType::Self_,
+        Specific::TypingAnnotated => SpecialType::Annotated,
+        Specific::TypingNeverOrNoReturn => SpecialType::Never,
+        Specific::TypingTuple => SpecialType::Tuple,
+        Specific::TypingTypedDict => SpecialType::TypingTypedDict,
+        Specific::TypingRequired => {
+            SpecialType::TypedDictFieldModifier(TypedDictFieldModifier::Required)
+        }
+        Specific::TypingNotRequired => {
+            SpecialType::TypedDictFieldModifier(TypedDictFieldModifier::NotRequired)
+        }
+        Specific::TypingReadOnly => {
+            SpecialType::TypedDictFieldModifier(TypedDictFieldModifier::ReadOnly)
+        }
+        Specific::TypingClassVar => SpecialType::ClassVar,
+        Specific::TypingNamedTuple => SpecialType::TypingNamedTuple,
+        Specific::TypingTypeGuard => SpecialType::TypeGuard,
+        Specific::TypingTypeIs => SpecialType::TypeIs,
+        Specific::CollectionsNamedTuple => SpecialType::CollectionsNamedTuple,
+        Specific::MypyExtensionsArg
+        | Specific::MypyExtensionsDefaultArg
+        | Specific::MypyExtensionsNamedArg
+        | Specific::MypyExtensionsDefaultNamedArg
+        | Specific::MypyExtensionsVarArg
+        | Specific::MypyExtensionsKwArg => SpecialType::MypyExtensionsParamType(specific),
+        Specific::MypyExtensionsFlexibleAlias => SpecialType::FlexibleAlias,
+        _ => return None,
+    })
 }
 
 fn load_cached_type(node_ref: NodeRef) -> TypeNameLookup {
@@ -5123,8 +5117,10 @@ fn check_type_name<'db: 'file, 'file>(
             return TypeNameLookup::Module(file);
         }
 
-        if let Some(special) = check_special_type(point) {
-            return TypeNameLookup::SpecialType(special);
+        if let Some(specific) = point.maybe_specific() {
+            if let Some(special) = check_special_type(specific) {
+                return TypeNameLookup::SpecialType(special);
+            }
         }
     }
 
@@ -5206,8 +5202,8 @@ fn check_type_name<'db: 'file, 'file>(
             let name_def_ref =
                 name_node_ref.add_to_node_index(-(NAME_DEF_TO_NAME_DIFFERENCE as i64));
             let name_def_point = name_def_ref.point();
-            if name_def_point.calculated() {
-                if let Some(special) = check_special_type(name_def_point) {
+            if let Some(specific) = name_def_point.maybe_calculated_and_specific() {
+                if let Some(special) = check_special_type(specific) {
                     return TypeNameLookup::SpecialType(special);
                 }
             }
