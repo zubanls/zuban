@@ -144,7 +144,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         match found_inf {
             Some(inf) => PointResolution::Inferred(inf),
             None => self
-                .resolve_point(as_name.name_def().index(), |_, _, _| None)
+                .resolve_point_without_narrowing(as_name.name_def().index())
                 .expect("Resolving import"),
         }
     }
@@ -169,7 +169,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         match found_inf {
             Some(inf) => PointResolution::Inferred(inf),
             None => self
-                .resolve_point(dotted_as_name.name_def().index(), |_, _, _| None)
+                .resolve_point_without_narrowing(dotted_as_name.name_def().index())
                 .expect("Resolving import"),
         }
     }
@@ -525,6 +525,13 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         self.file.points.set(save_to_index, point);
         debug_assert!(self.file.points.get(save_to_index).calculated());
         self.resolve_point(save_to_index, narrow_name).unwrap()
+    }
+
+    pub fn resolve_point_without_narrowing(
+        &self,
+        node_index: NodeIndex,
+    ) -> Option<PointResolution<'file>> {
+        self.resolve_point(node_index, |_, _, _| None)
     }
 
     pub fn resolve_point(

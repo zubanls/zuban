@@ -94,6 +94,7 @@ enum SpecialType {
     TypeGuard,
     TypeIs,
     FlexibleAlias,
+    SpecialAssignmentInitializer,
     MypyExtensionsParamType(Specific),
     CallableParam(CallableParam),
 }
@@ -3687,6 +3688,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                         ensure_cached_class(ClassNodeRef::new(node_ref.file, c.index()))
                     }
                     TypeLike::Assignment(assignment) => {
+                        /*
                         let def_point = node_ref.point();
                         let inference = node_ref.file.inference(i_s);
                         if !def_point.calculated() {
@@ -3699,7 +3701,11 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                                 inference.cache_assignment(assignment);
                             }
                         }
-                        inference.compute_type_assignment(assignment, false)
+                        */
+                        node_ref
+                            .file
+                            .inference(i_s)
+                            .compute_type_assignment(assignment, false)
                     }
                     TypeLike::ImportFromAsName(from_as_name) => self
                         .point_resolution_to_type_name_lookup(
@@ -3788,6 +3794,98 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             _ => (),
         };
         TypeNameLookup::InvalidVariable(InvalidVariableType::Other)
+    }
+
+    fn is_special_assignment_execution(&self, name_def: NameDef, expr: Expression) -> bool {
+        if let Some(pr) = self.resolve_point_without_narrowing(name_def.index()) {
+            return if let PointResolution::Inferred(inf) = pr {
+                inf.maybe_saved_specific(self.i_s.db)
+                    .is_some_and(|s| s.is_special_assignment_initializer())
+            } else {
+                false
+            };
+        }
+        // For TypeVar, TypedDict, NewType and similar definitions
+        let ExpressionContent::ExpressionPart(ExpressionPart::Primary(primary)) = expr.unpack()
+        else {
+            return false;
+        };
+        let PrimaryContent::Execution(_) = primary.second() else {
+            return false;
+        };
+        self.lookup_primary_or_atom_type(primary.first())
+            .is_some_and(|tnl| match tnl {
+                TypeNameLookup::SpecialType(s) => {
+                    matches!(s, SpecialType::SpecialAssignmentInitializer)
+                }
+                _ => false,
+            })
+    }
+
+    fn lookup_primary_or_atom_type(&self, p: PrimaryOrAtom) -> Option<TypeNameLookup<'db, 'db>> {
+        match p {
+            PrimaryOrAtom::Primary(primary) => match primary.second() {
+                PrimaryContent::Attribute(name) => {
+                    match self.lookup_primary_or_atom_type(primary.first())? {
+                        TypeNameLookup::Module(f) => {
+                            Some(f.name_resolution(self.i_s).lookup_type_name(name))
+                        }
+                        _ => None,
+                    }
+                }
+                _ => None,
+            },
+            PrimaryOrAtom::Atom(atom) => match atom.unpack() {
+                AtomContent::Name(n) => Some(self.lookup_type_name(n)),
+                _ => None,
+            },
+        }
+    }
+
+    fn check_special_assignments(
+        &self,
+        assignment: Assignment,
+        name_def: NameDef,
+        expr: Expression,
+    ) -> Option<TypeNameLookup<'file, 'file>> {
+        if !self.is_special_assignment_execution(name_def, expr) {
+            return None;
+        }
+        // We use inference from here on, because we know this is not really infering crazy stuff,
+        // it's just running the normal initalizers for our special cases.
+        // Inference is not a good idea to run otherwise, because it uses a lot of narrowing.
+        let inference = self.file.inference(self.i_s);
+        inference.cache_assignment(assignment);
+        let inf = inference.check_point_cache(name_def.index())?;
+        let saved_node_ref = inf.maybe_saved_node_ref(self.i_s.db)?;
+        if matches!(
+            saved_node_ref.point().maybe_specific(),
+            Some(Specific::InvalidTypeDefinition)
+        ) {
+            return Some(TypeNameLookup::Unknown(UnknownCause::ReportedIssue));
+        }
+        Some(match saved_node_ref.complex()? {
+            ComplexPoint::TypeVarLike(tv) => TypeNameLookup::TypeVarLike(tv.clone()),
+            ComplexPoint::NamedTupleDefinition(t) => {
+                let Type::NamedTuple(nt) = t.as_ref() else {
+                    unreachable!()
+                };
+                TypeNameLookup::NamedTupleDefinition(nt.clone())
+            }
+            ComplexPoint::NewTypeDefinition(n) => TypeNameLookup::NewType(n.clone()),
+            ComplexPoint::TypedDictDefinition(tdd) => {
+                let Type::TypedDict(td) = tdd.type_.as_ref() else {
+                    unreachable!();
+                };
+                TypeNameLookup::TypedDictDefinition(td.clone())
+            }
+            ComplexPoint::TypeInstance(Type::Type(t)) => match t.as_ref() {
+                Type::Enum(e) => TypeNameLookup::Enum(e.clone()),
+                Type::None => TypeNameLookup::AliasNoneType,
+                _ => return None,
+            },
+            _ => return None,
+        })
     }
 }
 
@@ -4203,46 +4301,14 @@ impl<'db: 'x, 'file, 'x> Inference<'db, 'file, '_> {
 
             let check_for_alias =
                 || self.check_for_alias(cached_type_node_ref, name_def, expr, is_explicit);
+
             if is_explicit {
                 return check_for_alias();
             }
 
-            let inferred = self.check_point_cache(name_def.index()).unwrap();
-            let result = if let Some(node_ref) = inferred.maybe_saved_node_ref(self.i_s.db) {
-                match node_ref.complex() {
-                    Some(ComplexPoint::TypeVarLike(tv)) => TypeNameLookup::TypeVarLike(tv.clone()),
-                    Some(ComplexPoint::NamedTupleDefinition(t)) => {
-                        let Type::NamedTuple(nt) = t.as_ref() else {
-                            unreachable!()
-                        };
-                        TypeNameLookup::NamedTupleDefinition(nt.clone())
-                    }
-                    Some(ComplexPoint::NewTypeDefinition(n)) => TypeNameLookup::NewType(n.clone()),
-                    Some(ComplexPoint::TypedDictDefinition(tdd)) => {
-                        let Type::TypedDict(td) = tdd.type_.as_ref() else {
-                            unreachable!();
-                        };
-                        return TypeNameLookup::TypedDictDefinition(td.clone());
-                    }
-                    Some(ComplexPoint::TypeInstance(Type::Type(t))) => match t.as_ref() {
-                        Type::Enum(e) => TypeNameLookup::Enum(e.clone()),
-                        Type::None => TypeNameLookup::AliasNoneType,
-                        _ => check_for_alias(),
-                    },
-                    _ => {
-                        if matches!(
-                            node_ref.point().maybe_specific(),
-                            Some(Specific::InvalidTypeDefinition)
-                        ) {
-                            TypeNameLookup::Unknown(UnknownCause::ReportedIssue)
-                        } else {
-                            check_for_alias()
-                        }
-                    }
-                }
-            } else {
-                check_for_alias()
-            };
+            let result = self
+                .check_special_assignments(assignment, name_def, expr)
+                .unwrap_or_else(|| check_for_alias());
             debug!("Finished type alias calculation: {}", name_def.as_code());
             result
         } else {
@@ -5224,7 +5290,12 @@ fn check_special_type(specific: Specific) -> Option<SpecialType> {
         | Specific::MypyExtensionsVarArg
         | Specific::MypyExtensionsKwArg => SpecialType::MypyExtensionsParamType(specific),
         Specific::MypyExtensionsFlexibleAlias => SpecialType::FlexibleAlias,
-        _ => return None,
+        _ => {
+            if specific.is_special_assignment_initializer() {
+                return Some(SpecialType::SpecialAssignmentInitializer);
+            }
+            return None;
+        }
     })
 }
 
