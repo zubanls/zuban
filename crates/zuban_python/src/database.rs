@@ -276,6 +276,10 @@ impl Point {
         NodeRef::new(file, self.node_index())
     }
 
+    pub fn maybe_file_reference(self) -> Option<FileIndex> {
+        (self.kind() == PointKind::FileReference).then(|| self.file_index())
+    }
+
     pub fn maybe_specific(self) -> Option<Specific> {
         if self.kind() == PointKind::Specific {
             Some(self.specific())

@@ -394,11 +394,18 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                         Specific::TypingLiteral => BaseLookup::Literal,
                         _ => BaseLookup::Other,
                     };
-                } else if let Some(ComplexPoint::TypeVarLike(tvl)) =
-                    inferred.maybe_complex_point(self.i_s.db)
-                {
-                    return BaseLookup::TypeVarLike(tvl.clone());
-                } else if let Some(file) = inferred.maybe_file(self.i_s.db) {
+                } else if let Some(complex) = inferred.maybe_complex_point(self.i_s.db) {
+                    match complex {
+                        ComplexPoint::TypeVarLike(tvl) => {
+                            return BaseLookup::TypeVarLike(tvl.clone())
+                        }
+                        ComplexPoint::Class(_) => {
+                            return BaseLookup::Class(inferred.maybe_saved_link().unwrap())
+                        }
+                        _ => (),
+                    }
+                }
+                if let Some(file) = inferred.maybe_file(self.i_s.db) {
                     return BaseLookup::Module(file);
                 }
             }
