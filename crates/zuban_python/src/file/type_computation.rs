@@ -3949,7 +3949,7 @@ impl<'db: 'x, 'file, 'x> Inference<'db, 'file, '_> {
     ) -> TypeNameLookup<'file, 'file> {
         // Use the node star_targets or single_target, because they are not used otherwise.
         let file = self.file;
-        let cached_type_node_ref = assignment_type_node_ref(self.file, assignment);
+        let cached_type_node_ref = assignment_type_node_ref(file, assignment);
         let point = cached_type_node_ref.point();
         if point.calculated() {
             return load_cached_type(cached_type_node_ref);
@@ -4014,113 +4014,8 @@ impl<'db: 'x, 'file, 'x> Inference<'db, 'file, '_> {
                 ));
             }
 
-            let check_for_alias = || {
-                cached_type_node_ref.set_point(Point::new_calculating());
-                let type_var_likes = TypeVarFinder::find_alias_type_vars(self.i_s, self.file, expr);
-
-                let in_definition = cached_type_node_ref.as_link();
-                let alias = TypeAlias::new(
-                    type_var_likes,
-                    in_definition,
-                    Some(PointLink::new(file.file_index, name_def.name().index())),
-                );
-                save_alias(cached_type_node_ref, alias);
-
-                let mut type_var_manager = TypeVarManager::<PointLink>::default();
-                let mut type_var_callback =
-                    |_: &InferenceState, _: &_, type_var_like: TypeVarLike, _| {
-                        // Here we avoid all late bound type var calculation for callable, which is how
-                        // mypy works. The default behavior without a type_var_callback would be to
-                        // just calculate all late bound type vars, but that would mean that something
-                        // like `Foo = Callable[[T], T]` could not be used like `Foo[int]`, which is
-                        // generally how type aliases work.
-                        let index = type_var_manager.add(type_var_like.clone(), None);
-                        TypeVarCallbackReturn::TypeVarLike(
-                            type_var_like.as_type_var_like_usage(index, in_definition),
-                        )
-                    };
-                let p = file.points.get(expr.index());
-                let mut comp = TypeComputation::new(
-                    self,
-                    in_definition,
-                    &mut type_var_callback,
-                    TypeComputationOrigin::TypeAlias,
-                );
-                comp.errors_already_calculated = p.calculated();
-                let t = comp.compute_type(expr);
-                let ComplexPoint::TypeAlias(alias) = cached_type_node_ref.complex().unwrap() else {
-                    unreachable!()
-                };
-                let node_ref = NodeRef::new(file, expr.index());
-                match t {
-                    TypeContent::InvalidVariable(_)
-                    | TypeContent::Unknown(UnknownCause::UnknownName(_))
-                        if !is_explicit =>
-                    {
-                        alias.set_invalid();
-                    }
-                    _ => {
-                        let type_ = comp.as_type(t, node_ref);
-                        let is_recursive_alias = comp.is_recursive_alias;
-                        debug_assert!(!comp.type_var_manager.has_type_vars());
-                        let mut had_error = false;
-                        if is_recursive_alias && self.i_s.current_function().is_some() {
-                            node_ref.add_issue(
-                                self.i_s,
-                                IssueKind::RecursiveTypesNotAllowedInFunctionScope {
-                                    alias_name: name_def.as_code().into(),
-                                },
-                            );
-                            had_error = true;
-                        }
-                        if is_invalid_recursive_alias(
-                            self.i_s.db,
-                            &SeenRecursiveAliases::new(in_definition),
-                            &type_,
-                        ) {
-                            node_ref.add_issue(
-                                self.i_s,
-                                IssueKind::InvalidRecursiveTypeAliasUnionOfItself {
-                                    target: "union",
-                                },
-                            );
-                            had_error = true;
-                        }
-                        // This is called detect_diverging_alias in Mypy as well.
-                        if detect_diverging_alias(self.i_s.db, &alias.type_vars, &type_) {
-                            node_ref.add_issue(
-                                self.i_s,
-                                IssueKind::InvalidRecursiveTypeAliasTypeVarNesting,
-                            );
-                            had_error = true;
-                        }
-                        if had_error {
-                            alias.set_valid(Type::ERROR, false);
-                        } else {
-                            alias.set_valid(type_, is_recursive_alias);
-                        }
-                        if is_recursive_alias {
-                            // Since the type aliases are not finished at the time of the type
-                            // calculation, we need to recheck for Type[Type[...]]. It is however
-                            // very important that this happens after setting the alias, otherwise
-                            // something like X = Type[X] is not recognized.
-                            check_for_and_replace_type_type_in_finished_alias(
-                                self.i_s,
-                                cached_type_node_ref,
-                                alias,
-                            );
-                        }
-                    }
-                };
-                debug!(
-                    "Alias {:?} on #{} is valid? {}",
-                    assignment.as_code(),
-                    node_ref.line(),
-                    alias.is_valid()
-                );
-                load_cached_type(cached_type_node_ref)
-            };
-
+            let check_for_alias =
+                || self.check_for_alias(cached_type_node_ref, name_def, expr, is_explicit);
             if is_explicit {
                 return check_for_alias();
             }
@@ -4167,21 +4062,18 @@ impl<'db: 'x, 'file, 'x> Inference<'db, 'file, '_> {
             if let AssignmentContent::WithAnnotation(target, annotation, _) = assignment.unpack() {
                 let calculating = match target {
                     Target::Name(n) => {
-                        self.file
-                            .points
-                            .get(n.index())
-                            .maybe_calculated_and_specific()
+                        file.points.get(n.index()).maybe_calculated_and_specific()
                             == Some(Specific::Cycle)
                     }
                     _ => false,
                 };
                 if calculating {
-                    NodeRef::new(&self.file, assignment.index())
+                    NodeRef::new(file, assignment.index())
                         .add_issue(self.i_s, IssueKind::InvalidTypeCycle);
                     self.assign_targets(
                         target,
                         Inferred::new_cycle(),
-                        NodeRef::new(self.file, assignment.index()),
+                        NodeRef::new(file, assignment.index()),
                         AssignKind::Normal,
                     );
                     return TypeNameLookup::Unknown(UnknownCause::ReportedIssue);
@@ -4193,6 +4085,118 @@ impl<'db: 'x, 'file, 'x> Inference<'db, 'file, '_> {
             }
             TypeNameLookup::InvalidVariable(InvalidVariableType::Other)
         }
+    }
+
+    fn check_for_alias(
+        &self,
+        cached_type_node_ref: NodeRef<'file>,
+        name_def: NameDef,
+        expr: Expression,
+        is_explicit: bool,
+    ) -> TypeNameLookup<'file, 'file> {
+        cached_type_node_ref.set_point(Point::new_calculating());
+        let type_var_likes = TypeVarFinder::find_alias_type_vars(self.i_s, self.file, expr);
+
+        let in_definition = cached_type_node_ref.as_link();
+        let alias = TypeAlias::new(
+            type_var_likes,
+            in_definition,
+            Some(PointLink::new(
+                self.file.file_index,
+                name_def.name().index(),
+            )),
+        );
+        save_alias(cached_type_node_ref, alias);
+
+        let mut type_var_manager = TypeVarManager::<PointLink>::default();
+        let mut type_var_callback = |_: &InferenceState, _: &_, type_var_like: TypeVarLike, _| {
+            // Here we avoid all late bound type var calculation for callable, which is how
+            // mypy works. The default behavior without a type_var_callback would be to
+            // just calculate all late bound type vars, but that would mean that something
+            // like `Foo = Callable[[T], T]` could not be used like `Foo[int]`, which is
+            // generally how type aliases work.
+            let index = type_var_manager.add(type_var_like.clone(), None);
+            TypeVarCallbackReturn::TypeVarLike(
+                type_var_like.as_type_var_like_usage(index, in_definition),
+            )
+        };
+        let p = self.file.points.get(expr.index());
+        let mut comp = TypeComputation::new(
+            self,
+            in_definition,
+            &mut type_var_callback,
+            TypeComputationOrigin::TypeAlias,
+        );
+        comp.errors_already_calculated = p.calculated();
+        let t = comp.compute_type(expr);
+        let ComplexPoint::TypeAlias(alias) = cached_type_node_ref.complex().unwrap() else {
+            unreachable!()
+        };
+        let node_ref = NodeRef::new(self.file, expr.index());
+        match t {
+            TypeContent::InvalidVariable(_)
+            | TypeContent::Unknown(UnknownCause::UnknownName(_))
+                if !is_explicit =>
+            {
+                alias.set_invalid();
+            }
+            _ => {
+                let type_ = comp.as_type(t, node_ref);
+                let is_recursive_alias = comp.is_recursive_alias;
+                debug_assert!(!comp.type_var_manager.has_type_vars());
+                let mut had_error = false;
+                if is_recursive_alias && self.i_s.current_function().is_some() {
+                    node_ref.add_issue(
+                        self.i_s,
+                        IssueKind::RecursiveTypesNotAllowedInFunctionScope {
+                            alias_name: name_def.as_code().into(),
+                        },
+                    );
+                    had_error = true;
+                }
+                if is_invalid_recursive_alias(
+                    self.i_s.db,
+                    &SeenRecursiveAliases::new(in_definition),
+                    &type_,
+                ) {
+                    node_ref.add_issue(
+                        self.i_s,
+                        IssueKind::InvalidRecursiveTypeAliasUnionOfItself { target: "union" },
+                    );
+                    had_error = true;
+                }
+                // This is called detect_diverging_alias in Mypy as well.
+                if detect_diverging_alias(self.i_s.db, &alias.type_vars, &type_) {
+                    node_ref
+                        .add_issue(self.i_s, IssueKind::InvalidRecursiveTypeAliasTypeVarNesting);
+                    had_error = true;
+                }
+                if had_error {
+                    alias.set_valid(Type::ERROR, false);
+                } else {
+                    alias.set_valid(type_, is_recursive_alias);
+                }
+                if is_recursive_alias {
+                    // Since the type aliases are not finished at the time of the type
+                    // calculation, we need to recheck for Type[Type[...]]. It is however
+                    // very important that this happens after setting the alias, otherwise
+                    // something like X = Type[X] is not recognized.
+                    check_for_and_replace_type_type_in_finished_alias(
+                        self.i_s,
+                        cached_type_node_ref,
+                        alias,
+                    );
+                }
+            }
+        };
+        debug!(
+            "Alias {}={} on #{} is valid? {}",
+            name_def.as_code(),
+            expr.as_code(),
+            node_ref.line(),
+            alias.is_valid()
+        );
+        load_cached_type(cached_type_node_ref)
     }
 
     pub(crate) fn compute_explicit_type_assignment(&self, assignment: Assignment) -> Inferred {
