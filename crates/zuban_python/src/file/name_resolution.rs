@@ -13,8 +13,8 @@ use crate::{
     inference_state::InferenceState,
     inferred::Inferred,
     node_ref::NodeRef,
-    type_::{AnyCause, LookupResult, Type},
-    type_helpers::{is_private_import, is_reexport_issue, lookup_in_namespace, Module},
+    type_::{LookupResult, Type},
+    type_helpers::{is_private_import, is_reexport_issue, Module},
     utils::AlreadySeen,
 };
 
@@ -367,9 +367,11 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                     (PointResolution::Inferred(inf), None)
                 } else {
                     if self.stop_on_assignments {
-                        return self.resolve_module_access(name, |kind| {
-                            self.add_issue(import_name.index(), kind)
-                        });
+                        return self
+                            .with_new_file(import_file)
+                            .resolve_module_access(name, |kind| {
+                                self.add_issue(import_name.index(), kind)
+                            });
                     } else {
                         // TODO Shouldn't we use the normal resolving?
                         let module = Module::new(import_file);
@@ -752,7 +754,9 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                     self.resolve_point(save_to_index, narrow_name).unwrap()
                 }
                 None => {
-                    self.resolve_name(NodeRef::from_link(self.i_s.db, link).as_name(), narrow_name)
+                    let node_ref = NodeRef::from_link(self.i_s.db, link);
+                    self.with_new_file(node_ref.file)
+                        .resolve_name(node_ref.as_name(), narrow_name)
                 }
             },
             StarImportResult::AnyDueToError => PointResolution::Inferred(match save_to_index {
