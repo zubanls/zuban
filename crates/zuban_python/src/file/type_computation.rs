@@ -3645,24 +3645,6 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 let name_def = node_ref.as_name_def();
                 return match name_def.expect_type() {
                     TypeLike::ClassDef(c) => {
-                        let point = node_ref.point();
-                        if point.calculated() {
-                            if let Some(specific) = point.maybe_specific() {
-                                if !matches!(
-                                    specific,
-                                    Specific::FirstNameOfNameDef | Specific::NameOfNameDef
-                                ) {
-                                    // For example C[TypeVar]
-                                    debug!(
-                                        "Found an unexpected specific {specific:?} for {}",
-                                        name_def.as_code()
-                                    );
-                                    return TypeNameLookup::InvalidVariable(
-                                        InvalidVariableType::Variable(node_ref),
-                                    );
-                                }
-                            }
-                        }
                         cache_class_name(node_ref, c);
                         ensure_cached_class(ClassNodeRef::new(node_ref.file, c.index()))
                     }
@@ -3778,6 +3760,11 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                         if let Some(r) = Self::check_special_type_definition(i_node_ref) {
                             return r;
                         }
+                    }
+                    if i_node_ref.point().maybe_specific() == Some(Specific::AnyDueToError) {
+                        return TypeNameLookup::Unknown(UnknownCause::AnyCause(
+                            AnyCause::FromError,
+                        ));
                     }
                 }
                 if let Some(file) = inferred.maybe_file(i_s.db) {

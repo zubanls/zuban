@@ -646,9 +646,9 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                     let p = self.file.points.get(node_index);
 
                     let node_ref = NodeRef::new(self.file, node_index);
-                    let defining = node_ref.as_name_def().expect_defining_stmt();
                     if self.stop_on_assignments {
-                        if let DefiningStmt::Assignment(_) = defining {
+                        let defining = node_ref.as_name_def().expect_defining_stmt();
+                        if matches!(defining, DefiningStmt::Assignment(_)) {
                             return PointResolution::NameDef {
                                 node_ref,
                                 global_redirect,
