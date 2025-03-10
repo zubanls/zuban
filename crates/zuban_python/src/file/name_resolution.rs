@@ -85,7 +85,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
     pub(super) fn assign_import_from_names(
         &self,
         imp: ImportFrom,
-        assign_to_name_def: impl Fn(NameDef, Inferred, Option<PointLink>),
+        assign_to_name_def: impl Fn(NameDef, PointResolution<'file>, Option<PointLink>),
     ) {
         let from_first_part = self.import_from_first_part(imp);
 
@@ -134,7 +134,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
     pub(super) fn assign_import_from_only_particular_name_def(
         &self,
         as_name: ImportFromAsName,
-        assign_to_name_def: impl FnOnce(NameDef, Inferred, Option<PointLink>),
+        assign_to_name_def: impl FnOnce(NameDef, PointResolution<'file>, Option<PointLink>),
     ) {
         let import_from = as_name.import_from();
         let from_first_part = self.import_from_first_part(import_from);
@@ -157,7 +157,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
             found_inf = Some(inf);
         });
         match found_inf {
-            Some(inf) => PointResolution::Inferred(inf),
+            Some(pr) => pr,
             None => self
                 .resolve_point_without_narrowing(as_name.name_def().index())
                 .expect("Resolving import"),
@@ -294,7 +294,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
         &self,
         from_first_part: &Option<ImportResult>,
         as_name: ImportFromAsName,
-        assign_to_name_def: impl FnOnce(NameDef, Inferred, Option<PointLink>),
+        assign_to_name_def: impl FnOnce(NameDef, PointResolution<'file>, Option<PointLink>),
     ) {
         let (import_name, name_def) = as_name.unpack();
 
@@ -305,10 +305,9 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
         // Set calculating here, so that the logic that follows the names can set a
         // cycle if it needs to.
         self.file.points.set(n_index, Point::new_calculating());
-        let mut redirect_to_link = None;
         let inf = match from_first_part {
             Some(imp) => {
-                let maybe_add_issue = || {
+                let add_issue_if_not_ignored = || {
                     if !self.flags().ignore_missing_imports {
                         self.add_issue(
                             import_name.index(),
@@ -319,8 +318,9 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                         );
                     }
                 };
+
                 match self.lookup_import_from_target(imp, import_name) {
-                    LookupResult::GotoName { name: link, inf } => {
+                    Some((pr, redirect_to)) => {
                         if self
                             .file
                             .points
@@ -328,18 +328,14 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                             .maybe_calculated_and_specific()
                             == Some(Specific::Cycle)
                         {
-                            maybe_add_issue();
+                            add_issue_if_not_ignored();
                             return;
                         }
-                        redirect_to_link = Some(link);
-                        inf
+                        assign_to_name_def(name_def, pr, redirect_to);
+                        return;
                     }
-                    LookupResult::FileReference(file_index) => {
-                        Inferred::new_file_reference(file_index)
-                    }
-                    LookupResult::UnknownName(inf) => inf,
-                    LookupResult::None => {
-                        maybe_add_issue();
+                    None => {
+                        add_issue_if_not_ignored();
                         Inferred::new_module_not_found()
                     }
                 }
@@ -347,37 +343,72 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
             // Means one of the imports before failed.
             None => Inferred::new_module_not_found(),
         };
-        assign_to_name_def(name_def, inf, redirect_to_link)
+        assign_to_name_def(name_def, PointResolution::Inferred(inf), None)
     }
 
     fn lookup_import_from_target(
         &self,
         from_first_part: &ImportResult,
         import_name: Name,
-    ) -> LookupResult {
+    ) -> Option<(PointResolution<'file>, Option<PointLink>)> {
         let name = import_name.as_str();
-        match from_first_part {
+        let convert_imp_result = |imp_result| match imp_result {
+            ImportResult::File(file_index) => Inferred::new_file_reference(file_index),
+            ImportResult::Namespace(ns) => Inferred::from_type(Type::Namespace(ns)),
+            ImportResult::PyTypedMissing => Inferred::new_any_from_error(),
+        };
+        Some(match from_first_part {
             ImportResult::File(file_index) => {
                 let import_file = self.i_s.db.loaded_python_file(*file_index);
-                let module = Module::new(import_file);
                 // Coming from an import we need to make sure that we do not create loops for imports
                 if self.file.file_index == import_file.file_index {
-                    module
-                        .sub_module_lookup(self.i_s.db, name)
-                        .unwrap_or(LookupResult::None)
+                    let module = Module::new(import_file);
+                    let inf = convert_imp_result(module.sub_module(self.i_s.db, name)?);
+                    (PointResolution::Inferred(inf), None)
                 } else {
-                    module.lookup(
-                        self.i_s.db,
-                        |issue| self.add_issue(import_name.index(), issue),
-                        import_name.as_str(),
-                    )
+                    if self.stop_on_assignments {
+                        return self.resolve_module_access(name, |kind| {
+                            self.add_issue(import_name.index(), kind)
+                        });
+                    } else {
+                        // TODO Shouldn't we use the normal resolving?
+                        let module = Module::new(import_file);
+                        let mut redirect_to_link = None;
+                        let inf = match module.lookup(
+                            self.i_s.db,
+                            |issue| self.add_issue(import_name.index(), issue),
+                            import_name.as_str(),
+                        ) {
+                            LookupResult::GotoName { name: link, inf } => {
+                                redirect_to_link = Some(link);
+                                inf
+                            }
+                            LookupResult::FileReference(file_index) => {
+                                Inferred::new_file_reference(file_index)
+                            }
+                            LookupResult::UnknownName(inf) => inf,
+                            LookupResult::None => {
+                                return None;
+                            }
+                        };
+                        return Some((PointResolution::Inferred(inf), redirect_to_link));
+                    }
                 }
             }
-            ImportResult::Namespace(namespace) => {
-                lookup_in_namespace(self.i_s.db, self.file, namespace, name)
-            }
-            ImportResult::PyTypedMissing => LookupResult::any(AnyCause::FromError),
-        }
+            ImportResult::Namespace(namespace) => (
+                PointResolution::Inferred(convert_imp_result(namespace_import(
+                    self.i_s.db,
+                    self.file,
+                    namespace,
+                    name,
+                )?)),
+                None,
+            ),
+            ImportResult::PyTypedMissing => (
+                PointResolution::Inferred(Inferred::new_any_from_error()),
+                None,
+            ),
+        })
     }
 
     fn global_import(&self, name: Name) -> Option<ImportResult> {
@@ -673,13 +704,16 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
         &self,
         name: &str,
         add_issue: impl Fn(IssueKind),
-    ) -> Option<PointResolution<'file>> {
+    ) -> Option<(PointResolution<'file>, Option<PointLink>)> {
         let db = self.i_s.db;
         Some(if let Some(name_ref) = self.file.lookup_global(name) {
             if let Some(r) =
                 Module::new(self.file).maybe_submodule_reexport(self.i_s, name_ref, name)
             {
-                return Some(PointResolution::Inferred(r.into_inferred()));
+                return Some((
+                    PointResolution::Inferred(r.into_inferred()),
+                    Some(name_ref.as_link()),
+                ));
             }
             if is_reexport_issue(db, name_ref) {
                 add_issue(IssueKind::ImportStubNoExplicitReexport {
@@ -687,11 +721,14 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                     attribute: name.into(),
                 })
             }
-            self.resolve_name_without_narrowing(name_ref.as_name())
+            (
+                self.resolve_name_without_narrowing(name_ref.as_name()),
+                Some(name_ref.as_link()),
+            )
         } else if let Some(r) = Module::new(self.file).sub_module_lookup(db, name) {
-            PointResolution::Inferred(r.into_inferred())
+            (PointResolution::Inferred(r.into_inferred()), None)
         } else if let Some(r) = self.resolve_star_import_name(name, None, &|_, _, _| None) {
-            r
+            (r, None)
         } else {
             return None;
         })

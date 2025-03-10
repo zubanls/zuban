@@ -115,23 +115,23 @@ impl<'db: 'slf, 'slf> Inferred {
         }
     }
 
-    pub fn new_cycle() -> Self {
+    pub const fn new_cycle() -> Self {
         Self::new_unsaved_specific(Specific::Cycle)
     }
 
-    pub fn new_none() -> Self {
+    pub const fn new_none() -> Self {
         Self::new_unsaved_specific(Specific::None)
     }
 
-    pub fn new_invalid_type_definition() -> Self {
+    pub const fn new_invalid_type_definition() -> Self {
         Self::new_unsaved_specific(Specific::InvalidTypeDefinition)
     }
 
-    pub fn new_module_not_found() -> Self {
+    pub const fn new_module_not_found() -> Self {
         Self::new_unsaved_specific(Specific::ModuleNotFound)
     }
 
-    fn new_unsaved_specific(specific: Specific) -> Self {
+    const fn new_unsaved_specific(specific: Specific) -> Self {
         Self {
             state: InferredState::UnsavedSpecific(specific),
         }

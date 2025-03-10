@@ -137,7 +137,7 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
         match primary.second() {
             PrimaryContent::Attribute(name) => match base {
                 BaseLookup::Module(f) => {
-                    let Some(resolved) = self
+                    let Some((resolved, _)) = self
                         .i_s
                         .db
                         .loaded_python_file(f)

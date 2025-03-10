@@ -116,11 +116,13 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             Point::new_specific(Specific::Analyzed, Locality::Todo),
         );
     }
+
     pub(super) fn cache_import_from(&self, imp: ImportFrom) {
         if self.file.points.get(imp.index()).calculated() {
             return;
         }
-        self.assign_import_from_names(imp, |name_def, inf, redirect_to_link| {
+        self.assign_import_from_names(imp, |name_def, pr, redirect_to_link| {
+            let inf = self.infer_point_resolution(pr);
             self.assign_to_import_from_name(name_def, inf, redirect_to_link)
         });
         self.file.points.set(
@@ -3697,7 +3699,8 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             DefiningStmt::ImportFromAsName(as_name) => {
                 self.assign_import_from_only_particular_name_def(
                     as_name,
-                    |name_def, inf, redirect_to_link| {
+                    |name_def, pr, redirect_to_link| {
+                        let inf = self.infer_point_resolution(pr);
                         self.assign_to_import_from_name(name_def, inf, redirect_to_link)
                     },
                 );
