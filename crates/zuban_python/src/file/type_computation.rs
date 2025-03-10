@@ -3608,6 +3608,14 @@ impl UnknownCause {
 
 impl<'db, 'file> NameResolution<'db, 'file, '_> {
     fn lookup_type_name(&self, name: Name) -> TypeNameLookup<'db, 'db> {
+        if !self.stop_on_assignments {
+            return NameResolution {
+                file: self.file,
+                i_s: self.i_s,
+                stop_on_assignments: true,
+            }
+            .lookup_type_name(name);
+        }
         let resolved = self.resolve_name_without_narrowing(name);
         self.point_resolution_to_type_name_lookup(resolved)
     }
@@ -3656,9 +3664,8 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 global_redirect,
             } => {
                 if node_ref.file_index() != self.file.file_index {
-                    return node_ref
-                        .file
-                        .name_resolution(i_s)
+                    return self
+                        .with_new_file(node_ref.file)
                         .point_resolution_to_type_name_lookup(resolved);
                 }
                 let node_ref = node_ref.to_db_lifetime(i_s.db);
@@ -3702,6 +3709,17 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                             }
                         }
                         */
+                        if node_ref.point().calculated() {
+                            if let Some(PointResolution::Inferred(inf)) =
+                                self.resolve_point_without_narrowing(node_ref.node_index)
+                            {
+                                if let Some(n) = inf.maybe_saved_node_ref(self.i_s.db) {
+                                    if let Some(tnl) = Self::check_special_type_definition(n) {
+                                        return tnl;
+                                    }
+                                }
+                            }
+                        }
                         node_ref
                             .file
                             .inference(i_s)
@@ -3828,7 +3846,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 PrimaryContent::Attribute(name) => {
                     match self.lookup_primary_or_atom_type(primary.first())? {
                         TypeNameLookup::Module(f) => {
-                            Some(f.name_resolution(self.i_s).lookup_type_name(name))
+                            Some(self.with_new_file(f).lookup_type_name(name))
                         }
                         _ => None,
                     }
@@ -3864,7 +3882,11 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         ) {
             return Some(TypeNameLookup::Unknown(UnknownCause::ReportedIssue));
         }
-        Some(match saved_node_ref.complex()? {
+        Self::check_special_type_definition(saved_node_ref)
+    }
+
+    fn check_special_type_definition(node_ref: NodeRef) -> Option<TypeNameLookup> {
+        Some(match node_ref.complex()? {
             ComplexPoint::TypeVarLike(tv) => TypeNameLookup::TypeVarLike(tv.clone()),
             ComplexPoint::NamedTupleDefinition(t) => {
                 let Type::NamedTuple(nt) = t.as_ref() else {

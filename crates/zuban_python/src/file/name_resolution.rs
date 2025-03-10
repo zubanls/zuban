@@ -1,7 +1,7 @@
 use config::TypeCheckerFlags;
 use parsa_python_cst::{
-    DottedAsName, DottedAsNameContent, DottedName, DottedNameContent, ImportFrom, ImportFromAsName,
-    ImportFromTargets, Name, NameDef, NodeIndex, NAME_DEF_TO_NAME_DIFFERENCE,
+    DefiningStmt, DottedAsName, DottedAsNameContent, DottedName, DottedNameContent, ImportFrom,
+    ImportFromAsName, ImportFromTargets, Name, NameDef, NodeIndex, NAME_DEF_TO_NAME_DIFFERENCE,
 };
 
 use crate::{
@@ -23,6 +23,9 @@ use super::{inference::StarImportResult, python_file::StarImport, PythonFile};
 pub struct NameResolution<'db: 'file, 'file, 'i_s> {
     pub(super) file: &'file PythonFile,
     pub(super) i_s: &'i_s InferenceState<'db, 'i_s>,
+    // Type computation uses alias calculation, which works in a different way than normal
+    // inference. Therefore we want to stop and return the assignment.
+    pub(super) stop_on_assignments: bool,
 }
 
 pub enum PointResolution<'file> {
@@ -35,7 +38,18 @@ pub enum PointResolution<'file> {
     GlobalOrNonlocalName(NodeRef<'file>),
 }
 
-impl<'db, 'file> NameResolution<'db, 'file, '_> {
+impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
+    pub(super) fn with_new_file<'new_file>(
+        &self,
+        file: &'new_file PythonFile,
+    ) -> NameResolution<'db, 'new_file, 'i_s> {
+        NameResolution {
+            file,
+            i_s: self.i_s,
+            stop_on_assignments: self.stop_on_assignments,
+        }
+    }
+
     pub(super) fn assign_dotted_as_name(
         &self,
         dotted_as_name: DottedAsName,
@@ -614,13 +628,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 if file_index == self.file.file_index {
                     resolve(self)
                 } else {
-                    resolve(
-                        &mut self
-                            .i_s
-                            .db
-                            .loaded_python_file(file_index)
-                            .name_resolution(self.i_s),
-                    )
+                    resolve(&mut self.with_new_file(self.i_s.db.loaded_python_file(file_index)))
                 }
             }
             PointKind::Specific => match point.specific() {
@@ -635,9 +643,20 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                     // parent.
                     let node_index = node_index - NAME_DEF_TO_NAME_DIFFERENCE;
                     let p = self.file.points.get(node_index);
+
+                    let node_ref = NodeRef::new(self.file, node_index);
+                    let defining = node_ref.as_name_def().expect_defining_stmt();
+                    if self.stop_on_assignments {
+                        if let DefiningStmt::Assignment(_) = defining {
+                            return PointResolution::NameDef {
+                                node_ref,
+                                global_redirect,
+                            };
+                        }
+                    }
                     self.resolve_point_internal(node_index, p, global_redirect, narrow_name)
                         .unwrap_or_else(|| PointResolution::NameDef {
-                            node_ref: NodeRef::new(self.file, node_index),
+                            node_ref,
                             global_redirect,
                         })
                 }
@@ -670,11 +689,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             self.resolve_name_without_narrowing(name_ref.as_name())
         } else if let Some(r) = Module::new(self.file).sub_module_lookup(db, name) {
             PointResolution::Inferred(r.into_inferred())
-        } else if let Some(r) = self
-            .file
-            .name_resolution(self.i_s)
-            .resolve_star_import_name(name, None, &|_, _, _| None)
-        {
+        } else if let Some(r) = self.resolve_star_import_name(name, None, &|_, _, _| None) {
             r
         } else {
             return None;
@@ -778,8 +793,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             if let Some(name_ref) = super_file.lookup_global(name) {
                 return Some(StarImportResult::Link(name_ref.as_link()));
             }
-            super_file
-                .name_resolution(self.i_s)
+            self.with_new_file(super_file)
                 .lookup_from_star_import_with_node_index(name, false, None, star_imports_seen)
         } else {
             None
@@ -827,8 +841,8 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 return Some(result);
             }
         }
-        if let Some(l) = other_file
-            .name_resolution(self.i_s)
+        if let Some(l) = self
+            .with_new_file(other_file)
             .lookup_from_star_import_with_node_index(name, false, None, Some(new_seen))
         {
             Some(l)

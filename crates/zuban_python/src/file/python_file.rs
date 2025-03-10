@@ -362,7 +362,22 @@ impl<'db> PythonFile {
         &'file self,
         i_s: &'i_s InferenceState<'db, 'i_s>,
     ) -> NameResolution<'db, 'file, 'i_s> {
-        NameResolution { file: self, i_s }
+        NameResolution {
+            file: self,
+            i_s,
+            stop_on_assignments: false,
+        }
+    }
+
+    pub fn name_resolution_and_stop_on_assignments<'file, 'i_s>(
+        &'file self,
+        i_s: &'i_s InferenceState<'db, 'i_s>,
+    ) -> NameResolution<'db, 'file, 'i_s> {
+        NameResolution {
+            file: self,
+            i_s,
+            stop_on_assignments: true,
+        }
     }
 
     pub fn lookup_global(&self, name: &str) -> Option<NodeRef> {
