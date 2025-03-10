@@ -33,6 +33,7 @@ use crate::{
     type_helpers::{
         class::join_abstract_attributes, Class, FirstParamProperties, Function, TypeOrClass,
     },
+    utils::debug_indent,
 };
 
 // Basically save the type vars on the class keyword.
@@ -338,7 +339,8 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
             self.node_ref.file_index(),
             self.class_storage.parent_scope,
             |i_s| {
-                self.insert_class_infos(&i_s);
+                debug!("Calculate class infos for {}", self.name());
+                debug_indent(|| self.insert_class_infos(&i_s))
             },
         )
     }
@@ -348,7 +350,6 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
         debug_assert!(NodeRef::new(node_ref.file, self.node().name_def().index())
             .point()
             .calculated());
-        debug!("Calculate class infos for {}", self.name());
 
         node_ref.set_point(Point::new_calculating());
 
