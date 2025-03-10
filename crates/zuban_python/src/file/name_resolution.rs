@@ -28,6 +28,7 @@ pub struct NameResolution<'db: 'file, 'file, 'i_s> {
     pub(super) stop_on_assignments: bool,
 }
 
+#[derive(Debug)]
 pub enum PointResolution<'file> {
     NameDef {
         node_ref: NodeRef<'file>,

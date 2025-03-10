@@ -3279,7 +3279,13 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
     }
 
     fn compute_type_name(&mut self, name: Name<'x>) -> TypeContent<'db, 'x> {
-        self.resolve_type_name_lookup(self.inference.lookup_type_name(name), name.index())
+        let lookup = NameResolution {
+            file: self.inference.file,
+            i_s: self.inference.i_s,
+            stop_on_assignments: true,
+        }
+        .lookup_type_name(name);
+        self.resolve_type_name_lookup(lookup, name.index())
     }
 
     fn resolve_type_name_lookup(
@@ -3582,14 +3588,6 @@ impl UnknownCause {
 
 impl<'db, 'file> NameResolution<'db, 'file, '_> {
     fn lookup_type_name(&self, name: Name) -> TypeNameLookup<'db, 'db> {
-        if !self.stop_on_assignments {
-            return NameResolution {
-                file: self.file,
-                i_s: self.i_s,
-                stop_on_assignments: true,
-            }
-            .lookup_type_name(name);
-        }
         let resolved = self.resolve_name_without_narrowing(name);
         self.point_resolution_to_type_name_lookup(resolved)
     }
@@ -3778,9 +3776,9 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                             _ => (),
                         }
                     }
-                    if let Some(file) = inferred.maybe_file(i_s.db) {
-                        return TypeNameLookup::Module(i_s.db.loaded_python_file(file));
-                    }
+                }
+                if let Some(file) = inferred.maybe_file(i_s.db) {
+                    return TypeNameLookup::Module(i_s.db.loaded_python_file(file));
                 }
             }
             _ => (),
