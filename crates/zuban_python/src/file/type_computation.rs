@@ -3,7 +3,7 @@ use std::{borrow::Cow, cell::Cell, rc::Rc};
 use parsa_python_cst::{SliceType as CSTSliceType, *};
 
 use super::{
-    inference::{AssignKind, StarImportResult},
+    inference::AssignKind,
     name_resolution::{NameResolution, PointResolution},
     utils::func_of_self_symbol,
     TypeVarFinder,
@@ -11,8 +11,7 @@ use super::{
 use crate::{
     arguments::SimpleArgs,
     database::{
-        ComplexPoint, Database, Locality, LocalityLink, Point, PointKind, PointLink, Specific,
-        TypeAlias,
+        ComplexPoint, Database, Locality, Point, PointKind, PointLink, Specific, TypeAlias,
     },
     debug,
     diagnostics::{Issue, IssueKind},
@@ -38,8 +37,8 @@ use crate::{
         WithUnpack,
     },
     type_helpers::{
-        cache_class_name, is_reexport_issue, start_namedtuple_params, Class, ClassInitializer,
-        ClassNodeRef, Function, Module,
+        cache_class_name, start_namedtuple_params, Class, ClassInitializer, ClassNodeRef, Function,
+        Module,
     },
     utils::{rc_slice_into_vec, AlreadySeen},
 };
@@ -1720,71 +1719,38 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         let db = self.inference.i_s.db;
         match base {
             TypeContent::Module(f) => {
-                if let Some(link) = f
-                    .lookup_global(name.as_str())
-                    .filter(|name_ref| !is_reexport_issue(db, *name_ref))
-                    .map(|name_ref| LocalityLink {
-                        file: name_ref.file_index(),
-                        node_index: name_ref.node_index,
-                        locality: Locality::Todo,
-                    })
-                    .or_else(|| {
-                        match f
-                            .inference(self.inference.i_s)
-                            .lookup_from_star_import(name.as_str(), false)?
-                        {
-                            StarImportResult::Link(link) => Some(LocalityLink {
-                                file: link.file,
-                                node_index: link.node_index,
-                                locality: Locality::Complex,
-                            }),
-                            StarImportResult::AnyDueToError => None,
-                        }
+                if let Some(resolved) = f
+                    .name_resolution(&InferenceState::new(db))
+                    .resolve_module_access(name.as_str(), |k| {
+                        self.add_issue_for_index(name.index(), k)
                     })
                 {
-                    self.inference
-                        .file
-                        .points
-                        .set(name.index(), link.into_point_redirect());
-                    self.compute_type_name(name)
+                    let result = self
+                        .inference
+                        .point_resolution_to_type_name_lookup(resolved);
+                    self.resolve_type_name_lookup(result, name.index())
                 } else {
-                    let module = Module::new(f);
-                    match module.sub_module(db, name.as_str()) {
-                        Some(ImportResult::File(file_index)) => {
-                            self.inference.file.points.set(
-                                name.index(),
-                                Point::new_file_reference(file_index, Locality::Todo),
-                            );
-                            TypeContent::Module(db.loaded_python_file(file_index))
-                        }
-                        Some(ImportResult::Namespace(ns)) => TypeContent::Namespace(ns),
-                        Some(ImportResult::PyTypedMissing) => {
-                            unreachable!("Submodules can never miss py.typed")
-                        }
-                        None => {
-                            let node_ref = NodeRef::new(self.inference.file, primary.index());
-                            if let Some(inf) = module
-                                .maybe_execute_getattr(self.inference.i_s, &|issue| {
-                                    node_ref.add_issue(self.inference.i_s, issue)
-                                })
-                            {
-                                // If a module contains a __getattr__, the type can be part of that
-                                // (which is typically just an Any that propagates).
-                                if let TypeNameLookup::Unknown(cause) =
-                                    check_module_getattr_type(self.inference.i_s, inf)
-                                {
-                                    return TypeContent::Unknown(cause);
-                                }
-                            }
-                            debug!("TypeComputation: Attribute on class not found");
-                            self.add_issue_for_index(primary.index(), IssueKind::TypeNotFound);
-                            self.inference.file.points.set(
-                                name.index(),
-                                Point::new_specific(Specific::AnyDueToError, Locality::Todo),
-                            );
-                            TypeContent::Unknown(UnknownCause::ReportedIssue)
+                    let node_ref = NodeRef::new(self.inference.file, primary.index());
+                    if let Some(inf) = Module::new(f)
+                        .maybe_execute_getattr(self.inference.i_s, &|issue| {
+                            node_ref.add_issue(self.inference.i_s, issue)
+                        })
+                    {
+                        // If a module contains a __getattr__, the type can be part of that
+                        // (which is typically just an Any that propagates).
+                        if let TypeNameLookup::Unknown(cause) =
+                            check_module_getattr_type(self.inference.i_s, inf)
+                        {
+                            return TypeContent::Unknown(cause);
                         }
                     }
+                    debug!("TypeComputation: Attribute on module not found");
+                    self.add_issue_for_index(primary.index(), IssueKind::TypeNotFound);
+                    self.inference.file.points.set(
+                        name.index(),
+                        Point::new_specific(Specific::AnyDueToError, Locality::Todo),
+                    );
+                    TypeContent::Unknown(UnknownCause::ReportedIssue)
                 }
             }
             TypeContent::Namespace(n) => {
@@ -3313,7 +3279,15 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
     }
 
     fn compute_type_name(&mut self, name: Name<'x>) -> TypeContent<'db, 'x> {
-        match self.inference.lookup_type_name(name) {
+        self.resolve_type_name_lookup(self.inference.lookup_type_name(name), name.index())
+    }
+
+    fn resolve_type_name_lookup(
+        &mut self,
+        lookup: TypeNameLookup<'db, 'db>,
+        origin_index: NodeIndex,
+    ) -> TypeContent<'db, 'x> {
+        match lookup {
             TypeNameLookup::Module(f) => TypeContent::Module(f),
             TypeNameLookup::Namespace(namespace) => TypeContent::Namespace(namespace),
             TypeNameLookup::Class { node_ref } => TypeContent::Class {
@@ -3338,7 +3312,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         TypeContent::ParamSpec(usage)
                     }
                     TypeVarCallbackReturn::UnboundTypeVar => {
-                        let node_ref = NodeRef::new(self.inference.file, name.index());
+                        let node_ref = NodeRef::new(self.inference.file, origin_index);
                         node_ref.add_issue(
                             self.inference.i_s,
                             IssueKind::UnboundTypeVarLike {
@@ -3348,7 +3322,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         TypeContent::Unknown(UnknownCause::ReportedIssue)
                     }
                     TypeVarCallbackReturn::AddIssue(kind) => {
-                        let node_ref = NodeRef::new(self.inference.file, name.index());
+                        let node_ref = NodeRef::new(self.inference.file, origin_index);
                         node_ref.add_issue(self.inference.i_s, kind);
                         TypeContent::Unknown(UnknownCause::ReportedIssue)
                     }
@@ -3386,7 +3360,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     && self.inference.flags().disallow_any_explicit
                 {
                     self.add_issue(
-                        NodeRef::new(self.inference.file, name.index()),
+                        NodeRef::new(self.inference.file, origin_index),
                         IssueKind::DisallowedAnyExplicit,
                     )
                 }
