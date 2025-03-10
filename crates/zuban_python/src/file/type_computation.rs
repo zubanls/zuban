@@ -3774,6 +3774,9 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                                 };
                             }
                             _ => (),
+                        };
+                        if let Some(r) = Self::check_special_type_definition(i_node_ref) {
+                            return r;
                         }
                     }
                 }
