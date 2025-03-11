@@ -274,13 +274,8 @@ impl<'file> NodeRef<'file> {
         }
     }
 
-    pub fn debug_info(&self, db: &Database) -> String {
-        format!(
-            "{}: {}, {:?}",
-            self.file.file_path(db),
-            self.file.tree.debug_info(self.node_index),
-            self.point(),
-        )
+    pub fn debug_info(&self) -> String {
+        format!("{}:#{}", self.file_index(), self.line(),)
     }
 
     pub fn compute_new_type_constraint(&self, i_s: &InferenceState) -> Type {

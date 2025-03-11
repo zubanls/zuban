@@ -1702,22 +1702,77 @@ impl<'db: 'slf, 'slf> Inferred {
         self
     }
 
-    pub fn debug_info(&self, i_s: &InferenceState) -> String {
-        let details = match &self.state {
-            InferredState::Saved(definition) => {
-                let definition = NodeRef::from_link(i_s.db, *definition);
+    pub fn debug_info(&self, db: &Database) -> String {
+        let format_complex = |from: Option<NodeRef>, complex: &_| match complex {
+            ComplexPoint::TypeInstance(t) => t.format_short(db).into(),
+            ComplexPoint::Class(_) => {
                 format!(
-                    "{} (complex?: {:?})",
-                    definition.debug_info(i_s.db),
-                    definition.complex(),
+                    "ClassDefinition({}, {})",
+                    from.unwrap().maybe_class().unwrap().name().as_code(),
+                    from.unwrap().debug_info()
                 )
             }
-            _ => "".to_owned(),
+            ComplexPoint::ClassInfos(_) => {
+                format!("ClassInfos({})", from.unwrap().debug_info())
+            }
+            ComplexPoint::TypeVarLikes(_) => {
+                format!("TypeVarLikes({})", from.unwrap().debug_info())
+            }
+            ComplexPoint::FunctionOverload(_) => {
+                format!("OverloadedFunction({})", from.unwrap().debug_info())
+            }
+            ComplexPoint::NewTypeDefinition(_) => {
+                format!("NewTypeDef({})", from.unwrap().debug_info())
+            }
+            ComplexPoint::NamedTupleDefinition(t) => {
+                format!("NamedTupleDef({})", t.format_short(db))
+            }
+            ComplexPoint::TypedDictDefinition(td) => {
+                format!("NamedTupleDef({})", td.type_.format_short(db))
+            }
+            ComplexPoint::IndirectFinal(t) => {
+                format!("IndirectFinal({})", t.format_short(db))
+            }
+            ComplexPoint::TypeVarLike(tvl) => {
+                format!("TypeVarLike({})", tvl.name(db))
+            }
+            ComplexPoint::TypeAlias(alias) => {
+                format!(
+                    "TypeAlias({}, {})",
+                    alias.name(db).unwrap_or("without-name"),
+                    from.unwrap().debug_info()
+                )
+            }
         };
-        format!(
-            "description = {}\ndebug = {self:?}\ndetails = {details}",
-            "",
-        )
+        match &self.state {
+            InferredState::Saved(definition) => {
+                let from = NodeRef::from_link(db, *definition);
+                let p = from.point();
+                match p.kind() {
+                    PointKind::Specific => format!("Specific({:?})", p.specific()),
+                    PointKind::Complex => {
+                        let complex = from.file.complex_points.get(p.complex_index());
+                        format_complex(Some(from), complex)
+                    }
+                    PointKind::FileReference => format!("UnsavedFile({})", p.file_index()),
+                    PointKind::Redirect => unreachable!(),
+                }
+            }
+            InferredState::UnsavedFileReference(file_index) => format!("UnsavedFile({file_index})"),
+            InferredState::UnsavedComplex(c) => format!("Unsaved{}", format_complex(None, c)),
+            InferredState::UnsavedSpecific(specific) => format!("UnsavedSpecific({specific:?})"),
+            InferredState::BoundMethod {
+                instance,
+                func_link,
+                ..
+            } => {
+                format!(
+                    "BoundMethod({}.{})",
+                    instance.format_short(db),
+                    Function::new(NodeRef::from_link(db, *func_link), None).name()
+                )
+            }
+        }
     }
 
     fn expect_class_generics(definition: NodeRef, point: Point) -> ClassGenerics {

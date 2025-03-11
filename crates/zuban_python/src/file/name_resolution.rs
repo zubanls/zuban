@@ -5,7 +5,7 @@ use parsa_python_cst::{
 };
 
 use crate::{
-    database::{ComplexPoint, Locality, Point, PointKind, PointLink, Specific},
+    database::{ComplexPoint, Database, Locality, Point, PointKind, PointLink, Specific},
     debug,
     diagnostics::IssueKind,
     file::File,
@@ -37,6 +37,29 @@ pub enum PointResolution<'file> {
     Inferred(Inferred),
     Param(NodeRef<'file>),
     GlobalOrNonlocalName(NodeRef<'file>),
+}
+
+impl PointResolution<'_> {
+    pub(super) fn debug_info(&self, db: &Database) -> String {
+        match self {
+            Self::NameDef {
+                node_ref,
+                global_redirect,
+            } => format!(
+                "NameDef: {}, {}",
+                node_ref.debug_info(),
+                match global_redirect {
+                    true => "redirect",
+                    false => "no-redirect",
+                }
+            ),
+            Self::Inferred(inferred) => format!("Inferred: {}", inferred.debug_info(db)),
+            Self::Param(node_ref) => format!("Param: {}", node_ref.debug_info()),
+            Self::GlobalOrNonlocalName(node_ref) => {
+                format!("GlobalOrNonlocal: {}", node_ref.debug_info())
+            }
+        }
+    }
 }
 
 impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
@@ -655,7 +678,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                     .unwrap_or_else(|| {
                         unreachable!(
                             "This should never happen {}",
-                            NodeRef::new(r.file, next_node_index).debug_info(self.i_s.db)
+                            NodeRef::new(r.file, next_node_index).debug_info()
                         )
                     })
                 };

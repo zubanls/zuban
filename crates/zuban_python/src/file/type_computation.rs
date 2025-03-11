@@ -40,7 +40,7 @@ use crate::{
         cache_class_name, start_namedtuple_params, Class, ClassInitializer, ClassNodeRef, Function,
         Module,
     },
-    utils::{rc_slice_into_vec, AlreadySeen},
+    utils::{debug_indent, rc_slice_into_vec, AlreadySeen},
 };
 
 const ASSIGNMENT_TYPE_CACHE_OFFSET: u32 = 1;
@@ -3588,6 +3588,11 @@ impl UnknownCause {
 impl<'db, 'file> NameResolution<'db, 'file, '_> {
     fn lookup_type_name(&self, name: Name) -> TypeNameLookup<'db, 'db> {
         let resolved = self.resolve_name_without_narrowing(name);
+        debug!(
+            "Resolved type for {} to {}",
+            name.as_code(),
+            resolved.debug_info(self.i_s.db)
+        );
         self.point_resolution_to_type_name_lookup(resolved)
     }
 
@@ -3633,7 +3638,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 self.with_new_file(node_ref.file)
                     .resolve_point_without_narrowing(node_index)
                     .unwrap_or_else(|| PointResolution::NameDef {
-                        node_ref: NodeRef::new(node_ref.file, node_index),
+                        node_ref: NodeRef::new(node_ref.file, node_index).name_def_ref_of_name(),
                         global_redirect: false,
                     })
             }
@@ -4262,14 +4267,22 @@ impl<'db: 'x, 'file, 'x> Inference<'db, 'file, '_> {
             // Only non-explicit TypeAliases are allowed here.
             if let Some(name_or_prim) = assignment.maybe_simple_type_reassignment() {
                 // For very simple cases like `Foo = int`. Not sure yet if this going to stay.
-                match name_or_prim {
-                    NameOrPrimaryWithNames::Name(name) => return self.lookup_type_name(name),
+                debug!(
+                    "Found alias that could maybe just be redirected: {}",
+                    assignment.as_code()
+                );
+                let lookup = debug_indent(|| match name_or_prim {
+                    NameOrPrimaryWithNames::Name(name) => Some(self.lookup_type_name(name)),
                     NameOrPrimaryWithNames::PrimaryWithNames(primary) => {
-                        if let Some(p) = self.lookup_primary_names(primary) {
-                            return p;
-                        }
+                        self.lookup_primary_names(primary)
                     }
-                };
+                });
+                if let Some(lookup) = lookup {
+                    debug!("Alias can be redirected: {lookup:?}");
+                    return lookup;
+                } else {
+                    debug!("Alias can not be redirected");
+                }
             }
         }
         if let Some((name_def, annotation, expr)) =
