@@ -93,7 +93,6 @@ enum SpecialType {
     TypeGuard,
     TypeIs,
     FlexibleAlias,
-    SpecialAssignmentInitializer,
     MypyExtensionsParamType(Specific),
     CallableParam(CallableParam),
 }
@@ -3773,50 +3772,13 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         TypeNameLookup::InvalidVariable(InvalidVariableType::Other)
     }
 
-    fn is_special_assignment_execution(&self, name_def: NameDef, expr: Expression) -> bool {
-        if let Some(pr) = self.resolve_point_without_narrowing(name_def.index()) {
-            return if let PointResolution::Inferred(inf) = pr {
-                inf.maybe_saved_specific(self.i_s.db)
-                    .is_some_and(|s| s.is_special_assignment_initializer())
-            } else {
-                false
-            };
-        }
+    fn maybe_special_assignment_execution(&self, expr: Expression) -> bool {
         // For TypeVar, TypedDict, NewType and similar definitions
         let ExpressionContent::ExpressionPart(ExpressionPart::Primary(primary)) = expr.unpack()
         else {
             return false;
         };
-        let PrimaryContent::Execution(_) = primary.second() else {
-            return false;
-        };
-        self.lookup_primary_or_atom_type(primary.first())
-            .is_some_and(|tnl| match tnl {
-                TypeNameLookup::SpecialType(s) => {
-                    matches!(s, SpecialType::SpecialAssignmentInitializer)
-                }
-                _ => false,
-            })
-    }
-
-    fn lookup_primary_or_atom_type(&self, p: PrimaryOrAtom) -> Option<TypeNameLookup<'db, 'db>> {
-        match p {
-            PrimaryOrAtom::Primary(primary) => match primary.second() {
-                PrimaryContent::Attribute(name) => {
-                    match self.lookup_primary_or_atom_type(primary.first())? {
-                        TypeNameLookup::Module(f) => {
-                            Some(self.with_new_file(f).lookup_type_name(name))
-                        }
-                        _ => None,
-                    }
-                }
-                _ => None,
-            },
-            PrimaryOrAtom::Atom(atom) => match atom.unpack() {
-                AtomContent::Name(n) => Some(self.lookup_type_name(n)),
-                _ => None,
-            },
-        }
+        matches!(primary.second(), PrimaryContent::Execution(_))
     }
 
     fn check_special_assignments(
@@ -3825,7 +3787,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         name_def: NameDef,
         expr: Expression,
     ) -> Option<TypeNameLookup<'file, 'file>> {
-        if !self.is_special_assignment_execution(name_def, expr) {
+        if !self.maybe_special_assignment_execution(expr) {
             return None;
         }
         // We use inference from here on, because we know this is not really infering crazy stuff,
@@ -5272,9 +5234,6 @@ fn check_special_type(specific: Specific) -> Option<SpecialType> {
         | Specific::MypyExtensionsKwArg => SpecialType::MypyExtensionsParamType(specific),
         Specific::MypyExtensionsFlexibleAlias => SpecialType::FlexibleAlias,
         _ => {
-            if specific.is_special_assignment_initializer() {
-                return Some(SpecialType::SpecialAssignmentInitializer);
-            }
             return None;
         }
     })

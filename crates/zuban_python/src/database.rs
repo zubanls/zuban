@@ -581,20 +581,6 @@ impl Specific {
                 | Specific::PartialDefaultDictWithSet
         )
     }
-
-    pub fn is_special_assignment_initializer(self) -> bool {
-        matches!(
-            self,
-            Specific::TypingTypeVarClass
-                | Specific::TypingTypeVarTupleClass
-                | Specific::TypingParamSpecClass
-                | Specific::TypingNewType
-                | Specific::TypingTypedDict
-                | Specific::TypingNamedTuple
-                | Specific::CollectionsNamedTuple
-                | Specific::BuiltinsType
-        )
-    }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
