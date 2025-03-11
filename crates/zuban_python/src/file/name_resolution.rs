@@ -718,6 +718,10 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                 ));
             }
             if is_reexport_issue(db, name_ref) {
+                if self.stop_on_assignments {
+                    // Apparently types are resolved like this.
+                    return None;
+                }
                 add_issue(IssueKind::ImportStubNoExplicitReexport {
                     module_name: self.file.qualified_name(db).into(),
                     attribute: name.into(),
