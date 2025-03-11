@@ -3762,9 +3762,6 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                                 let c_node_ref = ClassNodeRef::from_node_ref(i_node_ref);
                                 return ensure_cached_class(c_node_ref);
                             }
-                            ComplexPoint::TypeInstance(Type::Namespace(ns)) => {
-                                return TypeNameLookup::Namespace(ns.clone())
-                            }
                             _ => (),
                         };
                         if let Some(r) = Self::check_special_type_definition(i_node_ref) {
@@ -3782,6 +3779,11 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 }
                 if let Some(file) = inferred.maybe_file(i_s.db) {
                     return TypeNameLookup::Module(i_s.db.loaded_python_file(file));
+                }
+                if let Some(ComplexPoint::TypeInstance(Type::Namespace(ns))) =
+                    inferred.maybe_complex_point(i_s.db)
+                {
+                    return TypeNameLookup::Namespace(ns.clone());
                 }
                 if inferred.maybe_specific(i_s.db) == Some(Specific::ModuleNotFound) {
                     return TypeNameLookup::Unknown(UnknownCause::UnknownName(
