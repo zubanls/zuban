@@ -3751,12 +3751,12 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                             node_ref
                                 .file
                                 .inference(&InferenceState::new(self.i_s.db))
-                                .compute_type_assignment(assignment, false)
+                                .compute_type_assignment(assignment)
                         } else {
                             node_ref
                                 .file
                                 .inference(i_s)
-                                .compute_type_assignment(assignment, false)
+                                .compute_type_assignment(assignment)
                         }
                     }
                     TypeLike::ImportFromAsName(from_as_name) => self
@@ -4251,7 +4251,12 @@ impl<'db: 'x, 'file, 'x> Inference<'db, 'file, '_> {
         }
     }
 
-    fn compute_type_assignment(
+    fn compute_type_assignment(&self, assignment: Assignment) -> TypeNameLookup<'file, 'file> {
+        let is_explicit = assignment.maybe_annotation().is_some();
+        self.compute_type_assignment_internal(assignment, is_explicit)
+    }
+
+    fn compute_type_assignment_internal(
         &self,
         assignment: Assignment,
         is_explicit: bool,
@@ -4468,7 +4473,7 @@ impl<'db: 'x, 'file, 'x> Inference<'db, 'file, '_> {
     }
 
     pub(crate) fn compute_explicit_type_assignment(&self, assignment: Assignment) -> Inferred {
-        let name_lookup = self.compute_type_assignment(assignment, true);
+        let name_lookup = self.compute_type_assignment_internal(assignment, true);
         if matches!(
             name_lookup,
             TypeNameLookup::Unknown(_) | TypeNameLookup::InvalidVariable(_)
