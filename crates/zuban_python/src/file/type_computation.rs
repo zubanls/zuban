@@ -3818,6 +3818,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                                 let c_node_ref = ClassNodeRef::from_node_ref(i_node_ref);
                                 return ensure_cached_class(c_node_ref);
                             }
+                            ComplexPoint::TypeAlias(a) => return TypeNameLookup::TypeAlias(a),
                             _ => (),
                         };
                         if let Some(r) = Self::check_special_type_definition(i_node_ref) {
