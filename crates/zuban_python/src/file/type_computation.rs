@@ -3591,6 +3591,57 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         self.point_resolution_to_type_name_lookup(resolved)
     }
 
+    fn lookup_primary_names(&self, p: Primary) -> Option<TypeNameLookup<'db, 'db>> {
+        let base = match p.first() {
+            PrimaryOrAtom::Atom(atom) => {
+                let AtomContent::Name(name) = atom.unpack() else {
+                    unreachable!()
+                };
+                self.lookup_type_name(name)
+            }
+            PrimaryOrAtom::Primary(primary) => self.lookup_primary_names(primary)?,
+        };
+        let PrimaryContent::Attribute(name) = p.second() else {
+            unreachable!("Expect this to be called only with attributes")
+        };
+        let pr = match base {
+            TypeNameLookup::Module(file) => {
+                let had_issue = Cell::new(false);
+                let (pr, _) = self
+                    .with_new_file(file)
+                    .resolve_module_access(name.as_code(), |_| had_issue.set(true))?;
+                if had_issue.get() {
+                    return None;
+                }
+                pr
+            }
+            TypeNameLookup::Namespace(ns) => {
+                return match namespace_import(self.i_s.db, self.file, &ns, name.as_str())? {
+                    ImportResult::File(file_index) => Some(TypeNameLookup::Module(
+                        self.i_s.db.loaded_python_file(file_index),
+                    )),
+                    ImportResult::Namespace(new) => Some(TypeNameLookup::Namespace(new)),
+                    _ => None,
+                }
+            }
+            TypeNameLookup::Class { node_ref } => {
+                node_ref.ensure_cached_class_infos(self.i_s);
+                let node_index = ClassInitializer::from_node_ref(node_ref)
+                    .class_storage
+                    .class_symbol_table
+                    .lookup_symbol(name.as_str())?;
+                self.with_new_file(node_ref.file)
+                    .resolve_point_without_narrowing(node_index)
+                    .unwrap_or_else(|| PointResolution::NameDef {
+                        node_ref: NodeRef::new(node_ref.file, node_index),
+                        global_redirect: false,
+                    })
+            }
+            _ => return None,
+        };
+        Some(self.point_resolution_to_type_name_lookup(pr))
+    }
+
     fn point_resolution_to_type_name_lookup(
         &self,
         resolved: PointResolution,
@@ -4209,33 +4260,16 @@ impl<'db: 'x, 'file, 'x> Inference<'db, 'file, '_> {
 
         if !is_explicit {
             // Only non-explicit TypeAliases are allowed here.
-            if let Some(name) = assignment.maybe_simple_type_reassignment() {
+            if let Some(name_or_prim) = assignment.maybe_simple_type_reassignment() {
                 // For very simple cases like `Foo = int`. Not sure yet if this going to stay.
-
-                match self
-                    .infer_name_reference(name)
-                    .maybe_saved_specific(self.i_s.db)
-                {
-                    Some(Specific::TypingAny) => {
-                        // This is a bit of a weird special case that was necessary to pass the test
-                        // testDisallowAnyExplicitAlias
-                        if self.flags().disallow_any_explicit {
-                            NodeRef::new(file, name.index())
-                                .add_issue(self.i_s, IssueKind::DisallowedAnyExplicit)
+                match name_or_prim {
+                    NameOrPrimaryWithNames::Name(name) => return self.lookup_type_name(name),
+                    NameOrPrimaryWithNames::PrimaryWithNames(primary) => {
+                        if let Some(p) = self.lookup_primary_names(primary) {
+                            return p;
                         }
                     }
-                    Some(Specific::Cycle) => {
-                        return TypeNameLookup::Unknown(UnknownCause::ReportedIssue)
-                    }
-                    _ => {
-                        let node_ref = NodeRef::new(file, name.index());
-                        debug_assert!(node_ref.point().calculated());
-                        let n = check_type_name(self.i_s, node_ref);
-                        if !matches!(n, TypeNameLookup::SpecialType(_)) {
-                            return n;
-                        }
-                    }
-                }
+                };
             }
         }
         if let Some((name_def, annotation, expr)) =
@@ -5290,205 +5324,6 @@ fn load_cached_type(node_ref: NodeRef) -> TypeNameLookup {
         }
         ComplexPoint::TypeVarLike(t) => TypeNameLookup::TypeVarLike(t.clone()),
         _ => unreachable!("Expected an Alias or TypeVarLike, but received something weird"),
-    }
-}
-
-fn check_type_name<'db: 'file, 'file>(
-    i_s: &InferenceState<'db, '_>,
-    name_node_ref: NodeRef<'file>,
-) -> TypeNameLookup<'file, 'file> {
-    let point = name_node_ref.point();
-    // First check redirects. These are probably one of the following cases:
-    //
-    // 1. imports
-    // 2. Typeshed Aliases (special cases, see python_state.rs)
-    // 3. Maybe simple assignments like `Foo = str`, though I'm not sure.
-    //
-    // It's important to check that it's a name. Otherwise it redirects to some random place.
-    if point.calculated() {
-        if point.in_global_scope() && !i_s.in_module_context() {
-            return check_type_name(&InferenceState::new(i_s.db), name_node_ref);
-        }
-        if point.kind() == PointKind::Redirect {
-            let new = point.as_redirected_node_ref(i_s.db);
-            if new.maybe_name().is_some() {
-                return check_type_name(i_s, new);
-            }
-        } else if point.kind() == PointKind::FileReference {
-            let file = i_s.db.loaded_python_file(point.file_index());
-            return TypeNameLookup::Module(file);
-        }
-
-        if let Some(specific) = point.maybe_specific() {
-            if let Some(special) = check_special_type(specific) {
-                return TypeNameLookup::SpecialType(special);
-            }
-        }
-    }
-
-    let new_name = name_node_ref.as_name();
-    match new_name.expect_type() {
-        TypeLike::ClassDef(c) => {
-            let point = name_node_ref.point();
-            if point.calculated() {
-                if let Some(specific) = point.maybe_specific() {
-                    if !matches!(
-                        specific,
-                        Specific::FirstNameOfNameDef | Specific::NameOfNameDef
-                    ) {
-                        // For example C[TypeVar]
-                        debug!(
-                            "Found an unexpected specific {specific:?} for {}",
-                            new_name.as_code()
-                        );
-                        return TypeNameLookup::InvalidVariable(InvalidVariableType::Variable(
-                            name_node_ref,
-                        ));
-                    }
-                }
-            }
-            let name_def = NodeRef::new(name_node_ref.file, new_name.name_def().unwrap().index());
-            cache_class_name(name_def, c);
-            // At this point the class is not necessarily calculated and we therefore do this here.
-            let class_node_ref = ClassNodeRef::new(name_node_ref.file, c.index());
-            if class_node_ref.is_calculating_class_infos() {
-                return TypeNameLookup::RecursiveClass(class_node_ref);
-            }
-
-            class_node_ref.ensure_cached_class_infos(i_s);
-            if let Some(t) = class_node_ref
-                .use_cached_class_infos(i_s.db)
-                .undefined_generics_type
-                .get()
-            {
-                match t.as_ref() {
-                    Type::Enum(e) => return TypeNameLookup::Enum(e.clone()),
-                    Type::Dataclass(d) => return TypeNameLookup::Dataclass(d.clone()),
-                    Type::TypedDict(td) => {
-                        if td.calculating() {
-                            return TypeNameLookup::RecursiveClass(ClassNodeRef::from_link(
-                                i_s.db,
-                                td.defined_at,
-                            ));
-                        } else {
-                            return TypeNameLookup::TypedDictDefinition(td.clone());
-                        }
-                    }
-                    _ => (),
-                }
-            }
-            TypeNameLookup::Class {
-                node_ref: ClassNodeRef::new(name_node_ref.file, c.index()),
-            }
-        }
-        TypeLike::Assignment(assignment) => {
-            let def_point = name_node_ref
-                .file
-                .points
-                .get(new_name.name_def().unwrap().index());
-            let inference = name_node_ref.file.inference(i_s);
-            if !def_point.calculated() {
-                if def_point.calculating() {
-                    name_node_ref.file.points.set(
-                        new_name.name_def().unwrap().index(),
-                        Point::new_specific(Specific::Cycle, Locality::Todo),
-                    );
-                } else {
-                    inference.cache_assignment(assignment);
-                }
-            }
-            inference.compute_type_assignment(assignment, false)
-        }
-        TypeLike::Function(f) => TypeNameLookup::InvalidVariable({
-            let name_def_ref =
-                name_node_ref.add_to_node_index(-(NAME_DEF_TO_NAME_DIFFERENCE as i64));
-            let name_def_point = name_def_ref.point();
-            if let Some(specific) = name_def_point.maybe_calculated_and_specific() {
-                if let Some(special) = check_special_type(specific) {
-                    return TypeNameLookup::SpecialType(special);
-                }
-            }
-            let func = Function::new(
-                NodeRef::new(name_node_ref.file, f.index()),
-                i_s.current_class(),
-            );
-            InvalidVariableType::Function {
-                name: name_node_ref.as_code(),
-                qualified_name: func.qualified_name(i_s.db),
-            }
-        }),
-        TypeLike::ImportFromAsName(_) | TypeLike::DottedAsName(_) => {
-            let name_def_ref =
-                name_node_ref.add_to_node_index(-(NAME_DEF_TO_NAME_DIFFERENCE as i64));
-            let p = name_def_ref.point();
-            if p.calculated() {
-                if p.kind() == PointKind::Redirect {
-                    let new = p.as_redirected_node_ref(i_s.db);
-                    if new.maybe_name_def().is_some() {
-                        return check_type_name(
-                            i_s,
-                            new.add_to_node_index(NAME_DEF_TO_NAME_DIFFERENCE as i64),
-                        );
-                    }
-                    if new.maybe_name().is_some() {
-                        return check_type_name(i_s, new);
-                    }
-                } else if p.kind() == PointKind::FileReference {
-                    let file = i_s.db.loaded_python_file(p.file_index());
-                    return TypeNameLookup::Module(file);
-                }
-
-                // When an import appears, this means that there's no redirect and the import leads
-                // nowhere.
-                if let Some(complex_index) = p.maybe_complex_index() {
-                    if let ComplexPoint::TypeInstance(Type::Namespace(namespace)) =
-                        name_def_ref.file.complex_points.get(complex_index)
-                    {
-                        return TypeNameLookup::Namespace(namespace.clone());
-                    }
-                }
-                if p.maybe_specific() == Some(Specific::ModuleNotFound) {
-                    TypeNameLookup::Unknown(UnknownCause::UnknownName(AnyCause::ModuleNotFound))
-                } else {
-                    // This typically happens with a module __getattr__ and the type can be
-                    // anything.
-                    check_module_getattr_type(i_s, name_def_ref.expect_inferred(i_s))
-                }
-            } else {
-                name_node_ref
-                    .file
-                    .inference(i_s)
-                    .infer_name_of_definition(new_name);
-                check_type_name(i_s, name_node_ref)
-            }
-        }
-        TypeLike::ParamName(annotation) => TypeNameLookup::InvalidVariable({
-            let as_base_class_any = annotation
-                .map(
-                    |a| match use_cached_annotation_type(i_s.db, name_node_ref.file, a).as_ref() {
-                        Type::Any(_) => true,
-                        Type::Type(t) => match t.as_ref() {
-                            Type::Any(_) => true,
-                            Type::Class(GenericClass {
-                                link,
-                                generics: ClassGenerics::None,
-                            }) => *link == i_s.db.python_state.object_node_ref().as_link(),
-                            _ => false,
-                        },
-                        _ => false,
-                    },
-                )
-                .unwrap_or(true);
-            if as_base_class_any {
-                InvalidVariableType::ParamNameAsBaseClassAny(name_node_ref)
-            } else {
-                InvalidVariableType::Variable(name_node_ref)
-            }
-        }),
-        TypeLike::Other => {
-            // Happens currently with walrus assignments
-            TypeNameLookup::InvalidVariable(InvalidVariableType::Variable(name_node_ref))
-        }
     }
 }
 

@@ -868,16 +868,18 @@ impl<'db> Expression<'db> {
         NameIterator(self.node.search(&[Terminal(TerminalType::Name)], false))
     }
 
-    fn maybe_name_or_last_primary_name(&self) -> Option<Name<'db>> {
+    fn maybe_name_or_last_primary_name(&self) -> Option<NameOrPrimaryWithNames<'db>> {
         match self.unpack() {
             ExpressionContent::ExpressionPart(ExpressionPart::Atom(a)) => {
                 if let AtomContent::Name(n) = a.unpack() {
-                    Some(n)
+                    Some(NameOrPrimaryWithNames::Name(n))
                 } else {
                     None
                 }
             }
-            ExpressionContent::ExpressionPart(ExpressionPart::Primary(p)) => p.is_only_attributes(),
+            ExpressionContent::ExpressionPart(ExpressionPart::Primary(p)) => p
+                .is_only_attributes()
+                .then_some(NameOrPrimaryWithNames::PrimaryWithNames(p)),
             _ => None,
         }
     }
@@ -972,6 +974,11 @@ pub enum ExpressionPart<'db> {
     Inversion(Inversion<'db>),
     Conjunction(Conjunction<'db>),
     Disjunction(Disjunction<'db>),
+}
+
+pub enum NameOrPrimaryWithNames<'db> {
+    Name(Name<'db>),
+    PrimaryWithNames(Primary<'db>),
 }
 
 macro_rules! for_each_expr_part {
@@ -2415,7 +2422,7 @@ impl<'db> Assignment<'db> {
         }
     }
 
-    pub fn maybe_simple_type_reassignment(&self) -> Option<Name<'db>> {
+    pub fn maybe_simple_type_reassignment(&self) -> Option<NameOrPrimaryWithNames<'db>> {
         self.maybe_simple_type_expression_assignment()
             .and_then(|(_, annot, expr)| match annot {
                 None => expr.maybe_name_or_last_primary_name(),
@@ -2826,17 +2833,12 @@ impl<'db> Primary<'db> {
         }
     }
 
-    fn is_only_attributes(&self) -> Option<Name<'db>> {
-        match self.first() {
-            PrimaryOrAtom::Atom(_) => (),
-            PrimaryOrAtom::Primary(p) => {
-                p.is_only_attributes()?;
+    fn is_only_attributes(&self) -> bool {
+        matches!(self.second(), PrimaryContent::Attribute(_))
+            && match self.first() {
+                PrimaryOrAtom::Atom(a) => matches!(a.unpack(), AtomContent::Name(_)),
+                PrimaryOrAtom::Primary(p) => p.is_only_attributes(),
             }
-        }
-        match self.second() {
-            PrimaryContent::Attribute(name) => Some(name),
-            _ => None,
-        }
     }
 
     pub fn expect_closing_bracket_index(&self) -> NodeIndex {
