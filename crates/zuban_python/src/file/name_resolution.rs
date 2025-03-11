@@ -723,6 +723,21 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                     attribute: name.into(),
                 })
             }
+            if self.stop_on_assignments
+                && name_ref.point().maybe_specific() == Some(Specific::FirstNameOfNameDef)
+            {
+                let name_def_ref = name_ref.name_def_ref_of_name();
+                let defining = name_def_ref.as_name_def().expect_defining_stmt();
+                if matches!(defining, DefiningStmt::Assignment(_)) {
+                    return Some((
+                        PointResolution::NameDef {
+                            node_ref: name_def_ref,
+                            global_redirect: true,
+                        },
+                        Some(name_ref.as_link()),
+                    ));
+                }
+            }
             (
                 self.resolve_name_without_narrowing(name_ref.as_name()),
                 Some(name_ref.as_link()),

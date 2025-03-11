@@ -14,7 +14,6 @@ testVariableTypeWithQualifiedName
 testListMethods
 testCheckDisallowAnyGenericsNamedTuple
 testSelfRefNTIncremental1
-testSelfRefNTIncremental2
 testSelfRefNTIncremental5
 testBasicRecursiveNamedTuple
 testBasicRecursiveNamedTupleSpecial

@@ -1719,7 +1719,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         match base {
             TypeContent::Module(f) => {
                 if let Some((resolved, _)) = f
-                    .name_resolution(&InferenceState::new(db))
+                    .name_resolution_and_stop_on_assignments(&InferenceState::new(db))
                     .resolve_module_access(name.as_str(), |k| {
                         self.add_issue_for_index(name.index(), k)
                     })

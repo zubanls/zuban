@@ -4,7 +4,7 @@ use parsa_python_cst::{
     Annotation, Assignment, Atom, BytesLiteral, ClassDef, CodeIndex, Expression, Factor,
     FunctionDef, ImportFrom, Int, Name, NameDef, NameImportParent, NamedExpression, NodeIndex,
     Primary, PrimaryTarget, Slices, StarExpression, StarStarExpression, StarredExpression,
-    StringLiteral,
+    StringLiteral, NAME_DEF_TO_NAME_DIFFERENCE,
 };
 use vfs::FileIndex;
 
@@ -62,6 +62,13 @@ impl<'file> NodeRef<'file> {
     #[inline]
     pub fn add_to_node_index(&self, add: i64) -> Self {
         Self::new(self.file, ((self.node_index as i64) + add) as NodeIndex)
+    }
+
+    #[inline]
+    pub fn name_def_ref_of_name(&self) -> Self {
+        let n = Self::new(self.file, self.node_index - NAME_DEF_TO_NAME_DIFFERENCE);
+        debug_assert!(n.maybe_name_def().is_some());
+        n
     }
 
     pub fn point(&self) -> Point {
