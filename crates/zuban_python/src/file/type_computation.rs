@@ -3629,6 +3629,15 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 node_ref: class_node_ref,
             }
         };
+        let func_is_invalid_type = |node_ref: NodeRef<'db>| {
+            TypeNameLookup::InvalidVariable({
+                let func = Function::new_with_unknown_parent(i_s.db, node_ref);
+                InvalidVariableType::Function {
+                    name: func.name(),
+                    qualified_name: func.qualified_name(i_s.db),
+                }
+            })
+        };
         match resolved {
             PointResolution::NameDef {
                 node_ref,
@@ -3693,24 +3702,9 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                         .point_resolution_to_type_name_lookup(
                             self.resolve_import_name_name_def_without_narrowing(dotted_as_name),
                         ),
-                    TypeLike::Function(f) => TypeNameLookup::InvalidVariable({
-                        let name_def_ref =
-                            node_ref.add_to_node_index(-(NAME_DEF_TO_NAME_DIFFERENCE as i64));
-                        let name_def_point = name_def_ref.point();
-                        if let Some(specific) = name_def_point.maybe_calculated_and_specific() {
-                            if let Some(special) = check_special_type(specific) {
-                                return TypeNameLookup::SpecialType(special);
-                            }
-                        }
-                        let func = Function::new_with_unknown_parent(
-                            i_s.db,
-                            NodeRef::new(node_ref.file, f.index()),
-                        );
-                        InvalidVariableType::Function {
-                            name: node_ref.as_code(),
-                            qualified_name: func.qualified_name(i_s.db),
-                        }
-                    }),
+                    TypeLike::Function(f) => {
+                        func_is_invalid_type(NodeRef::new(node_ref.file, f.index()))
+                    }
                     TypeLike::ParamName(annotation) => TypeNameLookup::InvalidVariable({
                         let as_base_class_any = annotation
                             .map(|a| {
@@ -3773,6 +3767,8 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                         return TypeNameLookup::Unknown(UnknownCause::AnyCause(
                             AnyCause::FromError,
                         ));
+                    } else if i_node_ref.maybe_function().is_some() {
+                        return func_is_invalid_type(i_node_ref);
                     }
                 }
                 if let Some(file) = inferred.maybe_file(i_s.db) {

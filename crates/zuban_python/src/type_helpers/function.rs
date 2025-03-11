@@ -1867,7 +1867,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         }
     }
 
-    pub fn name(&self) -> &str {
+    pub fn name(&self) -> &'a str {
         let func = FunctionDef::by_index(&self.node_ref.file.tree, self.node_ref.node_index);
         func.name().as_str()
     }
