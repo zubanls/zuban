@@ -336,7 +336,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         match resolved {
             PointResolution::NameDef {
                 node_ref,
-                global_redirect,
+                global_redirect: _,
             } => {
                 if node_ref.file_index() != self.file.file_index {
                     return node_ref

@@ -3673,10 +3673,17 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                                 }
                             }
                         }
-                        node_ref
-                            .file
-                            .inference(i_s)
-                            .compute_type_assignment(assignment, false)
+                        if global_redirect {
+                            node_ref
+                                .file
+                                .inference(&InferenceState::new(self.i_s.db))
+                                .compute_type_assignment(assignment, false)
+                        } else {
+                            node_ref
+                                .file
+                                .inference(i_s)
+                                .compute_type_assignment(assignment, false)
+                        }
                     }
                     TypeLike::ImportFromAsName(from_as_name) => self
                         .point_resolution_to_type_name_lookup(
@@ -3695,9 +3702,9 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                                 return TypeNameLookup::SpecialType(special);
                             }
                         }
-                        let func = Function::new(
+                        let func = Function::new_with_unknown_parent(
+                            i_s.db,
                             NodeRef::new(node_ref.file, f.index()),
-                            i_s.current_class(),
                         );
                         InvalidVariableType::Function {
                             name: node_ref.as_code(),
