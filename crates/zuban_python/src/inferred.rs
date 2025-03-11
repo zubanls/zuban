@@ -263,6 +263,14 @@ impl<'db: 'slf, 'slf> Inferred {
         })
     }
 
+    pub fn maybe_specific(&self, db: &Database) -> Option<Specific> {
+        if let InferredState::UnsavedSpecific(specific) = &self.state {
+            return Some(*specific);
+        }
+        self.maybe_saved_node_ref(db)
+            .and_then(|node_ref| node_ref.point().maybe_specific())
+    }
+
     pub fn maybe_saved_specific(&self, db: &Database) -> Option<Specific> {
         self.maybe_saved_node_ref(db)
             .and_then(|node_ref| node_ref.point().maybe_specific())

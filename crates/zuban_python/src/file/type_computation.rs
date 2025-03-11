@@ -3759,11 +3759,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                         }
                     }
                     let p = i_node_ref.point();
-                    if p.maybe_specific() == Some(Specific::ModuleNotFound) {
-                        return TypeNameLookup::Unknown(UnknownCause::UnknownName(
-                            AnyCause::ModuleNotFound,
-                        ));
-                    } else if p.maybe_specific() == Some(Specific::AnyDueToError) {
+                    if p.maybe_specific() == Some(Specific::AnyDueToError) {
                         return TypeNameLookup::Unknown(UnknownCause::AnyCause(
                             AnyCause::FromError,
                         ));
@@ -3773,6 +3769,11 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 }
                 if let Some(file) = inferred.maybe_file(i_s.db) {
                     return TypeNameLookup::Module(i_s.db.loaded_python_file(file));
+                }
+                if inferred.maybe_specific(i_s.db) == Some(Specific::ModuleNotFound) {
+                    return TypeNameLookup::Unknown(UnknownCause::UnknownName(
+                        AnyCause::ModuleNotFound,
+                    ));
                 }
             }
             _ => (),
