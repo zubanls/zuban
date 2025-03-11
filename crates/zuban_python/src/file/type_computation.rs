@@ -3630,12 +3630,21 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             }
         };
         let func_is_invalid_type = |node_ref: NodeRef<'db>| {
-            TypeNameLookup::InvalidVariable({
-                let func = Function::new_with_unknown_parent(i_s.db, node_ref);
-                InvalidVariableType::Function {
-                    name: func.name(),
-                    qualified_name: func.qualified_name(i_s.db),
+            let func = Function::new_with_unknown_parent(i_s.db, node_ref);
+            if let Some(specific) = node_ref
+                .file
+                .points
+                .get(func.node().name_def().index())
+                .maybe_calculated_and_specific()
+            {
+                if let Some(special) = check_special_type(specific) {
+                    return TypeNameLookup::SpecialType(special);
                 }
+            }
+
+            TypeNameLookup::InvalidVariable(InvalidVariableType::Function {
+                name: func.name(),
+                qualified_name: func.qualified_name(i_s.db),
             })
         };
         match resolved {
@@ -3703,7 +3712,8 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                             self.resolve_import_name_name_def_without_narrowing(dotted_as_name),
                         ),
                     TypeLike::Function(f) => {
-                        func_is_invalid_type(NodeRef::new(node_ref.file, f.index()))
+                        let func_node_ref = NodeRef::new(node_ref.file, f.index());
+                        func_is_invalid_type(func_node_ref)
                     }
                     TypeLike::ParamName(annotation) => TypeNameLookup::InvalidVariable({
                         let as_base_class_any = annotation
@@ -3751,6 +3761,9 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                             ComplexPoint::Class(_) => {
                                 let c_node_ref = ClassNodeRef::from_node_ref(i_node_ref);
                                 return ensure_cached_class(c_node_ref);
+                            }
+                            ComplexPoint::TypeInstance(Type::Namespace(ns)) => {
+                                return TypeNameLookup::Namespace(ns.clone())
                             }
                             _ => (),
                         };
