@@ -3757,7 +3757,12 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                             return r;
                         }
                     }
-                    if i_node_ref.point().maybe_specific() == Some(Specific::AnyDueToError) {
+                    let p = i_node_ref.point();
+                    if p.maybe_specific() == Some(Specific::ModuleNotFound) {
+                        return TypeNameLookup::Unknown(UnknownCause::UnknownName(
+                            AnyCause::ModuleNotFound,
+                        ));
+                    } else if p.maybe_specific() == Some(Specific::AnyDueToError) {
                         return TypeNameLookup::Unknown(UnknownCause::AnyCause(
                             AnyCause::FromError,
                         ));
