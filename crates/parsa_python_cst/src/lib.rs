@@ -981,6 +981,15 @@ pub enum NameOrPrimaryWithNames<'db> {
     PrimaryWithNames(Primary<'db>),
 }
 
+impl NameOrPrimaryWithNames<'_> {
+    pub fn index(&self) -> NodeIndex {
+        match self {
+            Self::Name(n) => n.index(),
+            Self::PrimaryWithNames(p) => p.index(),
+        }
+    }
+}
+
 macro_rules! for_each_expr_part {
     ($name:ident, $return_type:ty) => {
         pub fn $name(&self) -> $return_type {

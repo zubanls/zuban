@@ -3809,6 +3809,16 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                         if let Some(special) = check_special_type(specific) {
                             return TypeNameLookup::SpecialType(special);
                         }
+                        if matches!(
+                            specific,
+                            Specific::TypingTypeVarClass
+                                | Specific::TypingTypeVarTupleClass
+                                | Specific::TypingParamSpecClass
+                        ) {
+                            return TypeNameLookup::InvalidVariable(InvalidVariableType::Variable(
+                                i_node_ref,
+                            ));
+                        }
                     } else if let Some(complex) = i_node_ref.complex() {
                         match complex {
                             ComplexPoint::TypeVarLike(tvl) => {
@@ -4283,11 +4293,27 @@ impl<'db: 'x, 'file, 'x> Inference<'db, 'file, '_> {
                         self.lookup_primary_names(primary)
                     }
                 });
-                if let Some(lookup) = lookup {
-                    debug!("Alias can be redirected: {lookup:?}");
-                    return lookup;
-                } else {
-                    debug!("Alias can not be redirected");
+                match lookup {
+                    Some(TypeNameLookup::SpecialType(SpecialType::Any)) => {
+                        // This is a bit of a weird special case that was necessary to pass the test
+                        // testDisallowAnyExplicitAlias
+                        if self.flags().disallow_any_explicit {
+                            NodeRef::new(file, name_or_prim.index())
+                                .add_issue(self.i_s, IssueKind::DisallowedAnyExplicit)
+                        }
+                    }
+                    /*
+                    Some(Specific::Cycle) => {
+                        return TypeNameLookup::Unknown(UnknownCause::ReportedIssue)
+                    }
+                    */
+                    Some(lookup) => {
+                        debug!("Alias can be redirected: {lookup:?}");
+                        return lookup;
+                    }
+                    _ => {
+                        debug!("Alias can not be redirected");
+                    }
                 }
             }
         }
