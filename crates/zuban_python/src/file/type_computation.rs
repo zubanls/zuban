@@ -4408,7 +4408,9 @@ impl<'db: 'x, 'file, 'x> Inference<'db, 'file, '_> {
             debug!("Finished type alias calculation: {}", name_def.as_code());
             result
         } else {
-            if let AssignmentContent::WithAnnotation(target, annotation, _) = assignment.unpack() {
+            if let AssignmentContent::WithAnnotation(target, annotation, right) =
+                assignment.unpack()
+            {
                 let calculating = match target {
                     Target::Name(n) => {
                         file.points.get(n.index()).maybe_calculated_and_specific()
@@ -4427,7 +4429,7 @@ impl<'db: 'x, 'file, 'x> Inference<'db, 'file, '_> {
                     );
                     return TypeNameLookup::Unknown(UnknownCause::ReportedIssue);
                 }
-                self.cache_assignment(assignment);
+                self.ensure_cached_annotation(annotation, right.is_some());
                 if let Type::Any(cause) = self.use_cached_annotation_type(annotation).as_ref() {
                     return TypeNameLookup::Unknown(UnknownCause::AnyCause(*cause));
                 }
