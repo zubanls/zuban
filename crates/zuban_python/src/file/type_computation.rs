@@ -1728,7 +1728,6 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         .point_resolution_to_type_name_lookup(resolved);
                     self.resolve_type_name_lookup(result, name.index())
                 } else {
-                    debug!("TypeComputation: Attribute on module not found");
                     self.add_issue_for_index(primary.index(), IssueKind::TypeNotFound);
                     self.inference.file.points.set(
                         name.index(),

@@ -737,6 +737,29 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
         name: &str,
         add_issue: impl Fn(IssueKind),
     ) -> Option<(PointResolution<'file>, Option<PointLink>)> {
+        let result = self.resolve_module_access_internal(name, add_issue);
+        if cfg!(feature = "zuban_debug") {
+            if let Some((pr, _)) = &result {
+                debug!(
+                    "Module lookup on {}: {}",
+                    self.file.qualified_name(self.i_s.db),
+                    pr.debug_info(self.i_s.db)
+                );
+            } else {
+                debug!(
+                    "Attribute lookup {name} on module {} failed",
+                    self.file.qualified_name(self.i_s.db),
+                );
+            }
+        }
+        result
+    }
+
+    pub(super) fn resolve_module_access_internal(
+        &self,
+        name: &str,
+        add_issue: impl Fn(IssueKind),
+    ) -> Option<(PointResolution<'file>, Option<PointLink>)> {
         let db = self.i_s.db;
         Some(if let Some(name_ref) = self.file.lookup_global(name) {
             if let Some(r) =
