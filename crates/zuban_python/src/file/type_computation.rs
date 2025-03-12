@@ -934,12 +934,6 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             }
                         }
                         SpecialType::Final => {
-                            if self.inference.in_loop() {
-                                self.add_issue(
-                                    type_storage_node_ref,
-                                    IssueKind::FinalInLoopDisallowed,
-                                );
-                            }
                             self.add_issue_if_final_attribute_in_wrong_place(type_storage_node_ref);
                             Some(Specific::AnnotationOrTypeCommentFinal)
                         }
@@ -993,9 +987,6 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         ..
                     } = self.origin
                     {
-                        if self.inference.in_loop() {
-                            self.add_issue(type_storage_node_ref, IssueKind::FinalInLoopDisallowed);
-                        }
                         is_final = true;
                         if !is_initialized
                             && !self.inference.file.is_stub()
