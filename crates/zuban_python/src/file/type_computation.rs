@@ -4261,7 +4261,14 @@ impl<'db: 'x, 'file, 'x> Inference<'db, 'file, '_> {
     }
 
     fn compute_type_assignment(&self, assignment: Assignment) -> TypeNameLookup<'file, 'file> {
-        let is_explicit = assignment.maybe_annotation().is_some();
+        let is_explicit = match assignment.maybe_annotation() {
+            Some(annotation) => {
+                self.ensure_cached_annotation(annotation, true);
+                self.file.points.get(annotation.index()).maybe_specific()
+                    == Some(Specific::AnnotationTypeAlias)
+            }
+            None => false,
+        };
         self.compute_type_assignment_internal(assignment, is_explicit)
     }
 
