@@ -3862,13 +3862,44 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         TypeNameLookup::InvalidVariable(InvalidVariableType::Other)
     }
 
-    fn maybe_special_assignment_execution(&self, expr: Expression) -> bool {
+    fn maybe_special_assignment_execution(
+        &self,
+        expr: Expression,
+    ) -> Result<(), CalculatingAliasType> {
         // For TypeVar, TypedDict, NewType and similar definitions
         let ExpressionContent::ExpressionPart(ExpressionPart::Primary(primary)) = expr.unpack()
         else {
-            return false;
+            return Err(CalculatingAliasType::Normal);
         };
-        matches!(primary.second(), PrimaryContent::Execution(_))
+        let PrimaryContent::Execution(_) = primary.second() else {
+            return Err(CalculatingAliasType::Normal);
+        };
+        match self.lookup_primary_or_atom_type(primary.first()) {
+            Some(TypeNameLookup::SpecialType(SpecialType::TypingTypedDict)) => {
+                Err(CalculatingAliasType::TypedDict())
+            }
+            _ => Ok(()),
+        }
+    }
+
+    fn lookup_primary_or_atom_type(&self, p: PrimaryOrAtom) -> Option<TypeNameLookup<'db, 'db>> {
+        match p {
+            PrimaryOrAtom::Primary(primary) => match primary.second() {
+                PrimaryContent::Attribute(name) => {
+                    match self.lookup_primary_or_atom_type(primary.first())? {
+                        TypeNameLookup::Module(f) => {
+                            Some(self.with_new_file(f).lookup_type_name(name))
+                        }
+                        _ => None,
+                    }
+                }
+                _ => None,
+            },
+            PrimaryOrAtom::Atom(atom) => match atom.unpack() {
+                AtomContent::Name(n) => Some(self.lookup_type_name(n)),
+                _ => None,
+            },
+        }
     }
 
     fn check_special_assignments(
@@ -3876,15 +3907,22 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         assignment: Assignment,
         name_def: NameDef,
         expr: Expression,
-    ) -> Option<TypeNameLookup<'file, 'file>> {
-        if !self.maybe_special_assignment_execution(expr) {
-            return None;
-        }
+    ) -> Result<TypeNameLookup<'file, 'file>, CalculatingAliasType> {
+        self.maybe_special_assignment_execution(expr)?;
         if self.file.points.get(name_def.index()).calculating() {
             // TODO this is wrong, circular functional NamedTuples/TypedDicts are not implemented
             // properly now
-            return Some(TypeNameLookup::Unknown(UnknownCause::ReportedIssue));
+            return Ok(TypeNameLookup::Unknown(UnknownCause::ReportedIssue));
         }
+        self.infer_special_type_definition(assignment, name_def)
+            .ok_or(CalculatingAliasType::Normal)
+    }
+
+    fn infer_special_type_definition(
+        &self,
+        assignment: Assignment,
+        name_def: NameDef,
+    ) -> Option<TypeNameLookup<'db, 'db>> {
         // We use inference from here on, because we know this is not really infering crazy stuff,
         // it's just running the normal initalizers for our special cases.
         // Inference is not a good idea to run otherwise, because it uses a lot of narrowing.
@@ -4362,7 +4400,7 @@ impl<'db: 'x, 'file, 'x> Inference<'db, 'file, '_> {
 
             let result = self
                 .check_special_assignments(assignment, name_def, expr)
-                .unwrap_or_else(|| check_for_alias());
+                .unwrap_or_else(|_| check_for_alias());
             debug!("Finished type alias calculation: {}", name_def.as_code());
             result
         } else {
@@ -5292,6 +5330,11 @@ impl<'a, I: Clone + Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
             args: gatherer.into_tuple_args(),
         }
     }
+}
+
+enum CalculatingAliasType {
+    Normal,
+    TypedDict(),
 }
 
 pub(super) fn assignment_type_node_ref<'x>(
