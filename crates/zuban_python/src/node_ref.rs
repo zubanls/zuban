@@ -274,8 +274,13 @@ impl<'file> NodeRef<'file> {
         }
     }
 
-    pub fn debug_info(&self) -> String {
-        format!("{}:#{}", self.file_index(), self.line(),)
+    pub fn debug_info(&self, db: &Database) -> String {
+        format!(
+            "{}({}):#{}",
+            self.file.qualified_name(db),
+            self.file_index(),
+            self.line(),
+        )
     }
 
     pub fn compute_new_type_constraint(&self, i_s: &InferenceState) -> Type {

@@ -1709,20 +1709,20 @@ impl<'db: 'slf, 'slf> Inferred {
                 format!(
                     "ClassDefinition({}, {})",
                     from.unwrap().maybe_class().unwrap().name().as_code(),
-                    from.unwrap().debug_info()
+                    from.unwrap().debug_info(db)
                 )
             }
             ComplexPoint::ClassInfos(_) => {
-                format!("ClassInfos({})", from.unwrap().debug_info())
+                format!("ClassInfos({})", from.unwrap().debug_info(db))
             }
             ComplexPoint::TypeVarLikes(_) => {
-                format!("TypeVarLikes({})", from.unwrap().debug_info())
+                format!("TypeVarLikes({})", from.unwrap().debug_info(db))
             }
             ComplexPoint::FunctionOverload(_) => {
-                format!("OverloadedFunction({})", from.unwrap().debug_info())
+                format!("OverloadedFunction({})", from.unwrap().debug_info(db))
             }
             ComplexPoint::NewTypeDefinition(_) => {
-                format!("NewTypeDef({})", from.unwrap().debug_info())
+                format!("NewTypeDef({})", from.unwrap().debug_info(db))
             }
             ComplexPoint::NamedTupleDefinition(t) => {
                 format!("NamedTupleDef({})", t.format_short(db))
@@ -1740,7 +1740,7 @@ impl<'db: 'slf, 'slf> Inferred {
                 format!(
                     "TypeAlias({}, {})",
                     alias.name(db).unwrap_or("without-name"),
-                    from.unwrap().debug_info()
+                    from.unwrap().debug_info(db)
                 )
             }
         };

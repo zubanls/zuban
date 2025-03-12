@@ -48,19 +48,19 @@ impl PointResolution<'_> {
                 global_redirect,
             } => format!(
                 "NameDef: {}, {}",
-                node_ref.debug_info(),
+                node_ref.debug_info(db),
                 match global_redirect {
                     true => "redirect",
                     false => "no-redirect",
                 }
             ),
             Self::Inferred(inferred) => format!("Inferred: {}", inferred.debug_info(db)),
-            Self::Param(node_ref) => format!("Param: {}", node_ref.debug_info()),
+            Self::Param(node_ref) => format!("Param: {}", node_ref.debug_info(db)),
             Self::GlobalOrNonlocalName(node_ref) => {
-                format!("GlobalOrNonlocal: {}", node_ref.debug_info())
+                format!("GlobalOrNonlocal: {}", node_ref.debug_info(db))
             }
             Self::ModuleGetattrName(node_ref) => {
-                format!("ModuleGetattrName: {}", node_ref.debug_info())
+                format!("ModuleGetattrName: {}", node_ref.debug_info(db))
             }
         }
     }
@@ -682,7 +682,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                     .unwrap_or_else(|| {
                         unreachable!(
                             "This should never happen {}",
-                            NodeRef::new(r.file, next_node_index).debug_info()
+                            NodeRef::new(r.file, next_node_index).debug_info(self.i_s.db)
                         )
                     })
                 };

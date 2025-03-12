@@ -1726,7 +1726,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     let result = self
                         .inference
                         .point_resolution_to_type_name_lookup(resolved);
-                    self.resolve_type_name_lookup(result, name.index())
+                    let tc = self.resolve_type_name_lookup(result, name.index());
+                    debug!("Point resolution for module: {tc:?}");
+                    tc
                 } else {
                     self.add_issue_for_index(primary.index(), IssueKind::TypeNotFound);
                     self.inference.file.points.set(
