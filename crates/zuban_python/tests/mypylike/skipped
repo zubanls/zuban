@@ -12,14 +12,6 @@ testTypedDictUpdateNonRecursiveToRecursiveCoarse
 testRecursiveTypedDict*
 testBasicRecursiveGenericTypedDict
 testVariableTypeWithQualifiedName
-testCheckDisallowAnyGenericsNamedTuple
-testSelfRefNTIncremental1
-testSelfRefNTIncremental5
-testBasicRecursiveNamedTuple
-testBasicRecursiveNamedTupleSpecial
-testMutuallyRecursiveNamedTuplesCalls
-testRecursiveNamedTupleWithList
-testCrashOnComplexCheckWithNamedTupleNext
 
 testNewAnalyzerAliasesFixedMany
 testRecursiveAliasViaBaseClass
@@ -367,9 +359,30 @@ testTypedDictFromMypyExtensionsReadOnlyMutateMethods
 # Functional TypedDict in class def
 testCanCreateClassWithFunctionBasedTypedDictBase
 # TypedDict definition circle: A = TypedDict('A', {'a': 'A'})
-testCrashOnSelfRecursiveTypedDictVar
 testBasicRecursiveTypedDictCall
 testRecursiveTypedDictWithList
+# functional NamedTuple recursive definition
+testBasicRecursiveNamedTuple
+testBasicRecursiveNamedTupleSpecial
+testMutuallyRecursiveNamedTuplesCalls
+testRecursiveNamedTupleWithList
+testRecursiveNamedTupleTypedDict
+testMutuallyRecursiveNamedTuples
+# TypedDict Unpack
+testUnpackKwargsInference
+testUnpackKwargsParamSpec
+# TypedDict dict unpacking
+testTypedDictUnpackFromUnion
+testTypedDictUnpackUnionRequiredMissing
+testTypedDictUnpackIncompatible
+# TypedDict Lookups
+testTypedDictAsStarStarArgCalleeKwargs
+testTypedDictAsStarStarAndDictAsStarStar
+testTypedDictNonMappingMethods
+# Nested typed dict formatting
+testSerializeTypedDictInMethod
+# TypedDict unions
+testTypedDictChainedGetWithEmptyDictDefault
 
 # enum member gathering
 testFinalWithMethodAssignment
@@ -391,24 +404,6 @@ testDataclassTransformOverloadsDecoratorOnImpl
 testDataclassTransformUnsupportedDescriptors
 # dataclass __replace__
 testDunderReplacePresent
-
-# TypedDict Recursive definitions
-testRecursiveNamedTupleTypedDict
-# TypedDict Unpack
-testUnpackKwargsInference
-testUnpackKwargsParamSpec
-# TypedDict dict unpacking
-testTypedDictUnpackFromUnion
-testTypedDictUnpackUnionRequiredMissing
-testTypedDictUnpackIncompatible
-# TypedDict Lookups
-testTypedDictAsStarStarArgCalleeKwargs
-testTypedDictAsStarStarAndDictAsStarStar
-testTypedDictNonMappingMethods
-# Nested typed dict formatting
-testSerializeTypedDictInMethod
-# TypedDict unions
-testTypedDictChainedGetWithEmptyDictDefault
 
 # multiline annotations
 testMultilineQuotedAnnotation

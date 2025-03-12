@@ -3880,6 +3880,11 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         if !self.maybe_special_assignment_execution(expr) {
             return None;
         }
+        if self.file.points.get(name_def.index()).calculating() {
+            // TODO this is wrong, circular functional NamedTuples/TypedDicts are not implemented
+            // properly now
+            return Some(TypeNameLookup::Unknown(UnknownCause::ReportedIssue));
+        }
         // We use inference from here on, because we know this is not really infering crazy stuff,
         // it's just running the normal initalizers for our special cases.
         // Inference is not a good idea to run otherwise, because it uses a lot of narrowing.

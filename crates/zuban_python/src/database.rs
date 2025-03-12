@@ -774,7 +774,7 @@ impl TypeAlias {
 
     pub fn type_if_valid(&self) -> &Type {
         let Some(state) = self.state.get() else {
-            recoverable_error!("Should probably not happen and means there is probably a bug");
+            recoverable_error!("Alias type access while still calculating should not happen");
             return &Type::ERROR;
         };
         match state {
