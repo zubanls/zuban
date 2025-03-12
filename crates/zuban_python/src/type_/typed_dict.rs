@@ -538,13 +538,39 @@ fn add_access_key_must_be_string_literal_issue(
 }
 
 pub(crate) fn new_typed_dict<'db>(i_s: &InferenceState<'db, '_>, args: &dyn Args<'db>) -> Inferred {
-    new_typed_dict_internal(i_s, args).unwrap_or_else(Inferred::new_invalid_type_definition)
+    let on_type_var = &mut |_: &InferenceState, _: &_, _, _| TypeVarCallbackReturn::NotFound {
+        allow_late_bound_callables: false,
+    };
+    let Some(first_arg) = args.iter(i_s.mode).next() else {
+        args.add_issue(i_s, IssueKind::TypedDictFirstArgMustBeString);
+        return Inferred::new_invalid_type_definition();
+    };
+    let ArgKind::Positional(first) = first_arg.kind else {
+        args.add_issue(i_s, IssueKind::UnexpectedArgumentsToTypedDict);
+        return Inferred::new_invalid_type_definition();
+    };
+    let inference = first.node_ref.file.inference(i_s);
+    let mut comp = TypeComputation::new(
+        &inference,
+        first.node_ref.as_link(),
+        on_type_var,
+        TypeComputationOrigin::TypedDictMember,
+    );
+    let Some((name, members, total)) = new_typed_dict_internal(i_s, &mut comp, args) else {
+        return Inferred::new_invalid_type_definition();
+    };
+    let type_var_likes = comp.into_type_vars(|_, _| ());
+    Inferred::new_unsaved_complex(ComplexPoint::TypedDictDefinition(TypedDictDefinition::new(
+        TypedDict::new_definition(name, members, first.node_ref.as_link(), type_var_likes),
+        total,
+    )))
 }
 
-fn new_typed_dict_internal<'db>(
+pub fn new_typed_dict_internal<'db>(
     i_s: &InferenceState<'db, '_>,
+    comp: &mut TypeComputation,
     args: &dyn Args<'db>,
-) -> Option<Inferred> {
+) -> Option<(StringSlice, Box<[TypedDictMember]>, bool)> {
     let mut iterator = args.iter(i_s.mode);
     let Some(first_arg) = iterator.next() else {
         args.add_issue(i_s, IssueKind::TypedDictFirstArgMustBeString);
@@ -644,16 +670,6 @@ fn new_typed_dict_internal<'db>(
             return None;
         }
     };
-    let on_type_var = &mut |_: &InferenceState, _: &_, _, _| TypeVarCallbackReturn::NotFound {
-        allow_late_bound_callables: false,
-    };
-    let inference = first.node_ref.file.inference(i_s);
-    let mut comp = TypeComputation::new(
-        &inference,
-        first.node_ref.as_link(),
-        on_type_var,
-        TypeComputationOrigin::TypedDictMember,
-    );
     let mut members = TypedDictMemberGatherer::default();
     for element in dct_iterator {
         match element {
@@ -682,19 +698,7 @@ fn new_typed_dict_internal<'db>(
             }
         };
     }
-
-    let type_var_likes = comp.into_type_vars(|_, _| ());
-    Some(Inferred::new_unsaved_complex(
-        ComplexPoint::TypedDictDefinition(TypedDictDefinition::new(
-            TypedDict::new_definition(
-                name,
-                members.into_boxed_slice(),
-                first.node_ref.as_link(),
-                type_var_likes,
-            ),
-            total,
-        )),
-    ))
+    Some((name, members.into_boxed_slice(), total))
 }
 
 pub(crate) fn infer_typed_dict_total_argument(

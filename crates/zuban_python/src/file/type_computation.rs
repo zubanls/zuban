@@ -26,9 +26,9 @@ use crate::{
     node_ref::NodeRef,
     type_::{
         add_named_tuple_param, add_param_spec_to_params, new_collections_named_tuple,
-        new_typing_named_tuple, AnyCause, CallableContent, CallableParam, CallableParams,
-        CallableWithParent, ClassGenerics, Dataclass, DbBytes, DbString, Enum, EnumMember,
-        FunctionKind, GenericClass, GenericItem, GenericsList, Literal, LiteralKind,
+        new_typed_dict_internal, new_typing_named_tuple, AnyCause, CallableContent, CallableParam,
+        CallableParams, CallableWithParent, ClassGenerics, Dataclass, DbBytes, DbString, Enum,
+        EnumMember, FunctionKind, GenericClass, GenericItem, GenericsList, Literal, LiteralKind,
         MaybeUnpackGatherer, NamedTuple, Namespace, NeverCause, NewType, ParamSpecArg,
         ParamSpecUsage, ParamType, RecursiveType, StarParamType, StarStarParamType, StringSlice,
         Tuple, TupleArgs, TupleUnpack, Type, TypeArgs, TypeGuardInfo, TypeVar, TypeVarKind,
@@ -3862,21 +3862,24 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         TypeNameLookup::InvalidVariable(InvalidVariableType::Other)
     }
 
-    fn maybe_special_assignment_execution(
+    fn maybe_special_assignment_execution<'x>(
         &self,
-        expr: Expression,
-    ) -> Result<(), CalculatingAliasType> {
+        expr: Expression<'x>,
+    ) -> Result<(), CalculatingAliasType<'x>> {
         // For TypeVar, TypedDict, NewType and similar definitions
         let ExpressionContent::ExpressionPart(ExpressionPart::Primary(primary)) = expr.unpack()
         else {
             return Err(CalculatingAliasType::Normal);
         };
-        let PrimaryContent::Execution(_) = primary.second() else {
+        let PrimaryContent::Execution(details) = primary.second() else {
             return Err(CalculatingAliasType::Normal);
         };
         match self.lookup_primary_or_atom_type(primary.first()) {
             Some(TypeNameLookup::SpecialType(SpecialType::TypingTypedDict)) => {
-                Err(CalculatingAliasType::TypedDict())
+                Err(CalculatingAliasType::TypedDict {
+                    primary_index: primary.index(),
+                    details,
+                })
             }
             _ => Ok(()),
         }
@@ -3902,12 +3905,12 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         }
     }
 
-    fn check_special_assignments(
+    fn check_special_assignments<'x>(
         &self,
         assignment: Assignment,
         name_def: NameDef,
-        expr: Expression,
-    ) -> Result<TypeNameLookup<'file, 'file>, CalculatingAliasType> {
+        expr: Expression<'x>,
+    ) -> Result<TypeNameLookup<'file, 'file>, CalculatingAliasType<'x>> {
         self.maybe_special_assignment_execution(expr)?;
         if self.file.points.get(name_def.index()).calculating() {
             // TODO this is wrong, circular functional NamedTuples/TypedDicts are not implemented
@@ -4391,16 +4394,17 @@ impl<'db: 'x, 'file, 'x> Inference<'db, 'file, '_> {
                 ));
             }
 
-            let check_for_alias =
-                || self.check_for_alias(cached_type_node_ref, name_def, expr, is_explicit);
+            let check_for_alias = |origin| {
+                self.check_for_alias(origin, cached_type_node_ref, name_def, expr, is_explicit)
+            };
 
             if is_explicit {
-                return check_for_alias();
+                return check_for_alias(CalculatingAliasType::Normal);
             }
 
             let result = self
                 .check_special_assignments(assignment, name_def, expr)
-                .unwrap_or_else(|_| check_for_alias());
+                .unwrap_or_else(|origin| check_for_alias(origin));
             debug!("Finished type alias calculation: {}", name_def.as_code());
             result
         } else {
@@ -4434,6 +4438,7 @@ impl<'db: 'x, 'file, 'x> Inference<'db, 'file, '_> {
 
     fn check_for_alias(
         &self,
+        origin: CalculatingAliasType,
         cached_type_node_ref: NodeRef<'file>,
         name_def: NameDef,
         expr: Expression,
@@ -4470,67 +4475,101 @@ impl<'db: 'x, 'file, 'x> Inference<'db, 'file, '_> {
             self,
             in_definition,
             &mut type_var_callback,
-            TypeComputationOrigin::TypeAlias,
+            match &origin {
+                CalculatingAliasType::Normal => TypeComputationOrigin::TypeAlias,
+                CalculatingAliasType::TypedDict { .. } => TypeComputationOrigin::TypedDictMember,
+            },
         );
-        comp.errors_already_calculated = p.calculated();
-        let t = comp.compute_type(expr);
         let ComplexPoint::TypeAlias(alias) = cached_type_node_ref.complex().unwrap() else {
             unreachable!()
         };
-        let node_ref = NodeRef::new(self.file, expr.index());
-        match t {
-            TypeContent::InvalidVariable(_)
-            | TypeContent::Unknown(UnknownCause::UnknownName(_))
-                if !is_explicit =>
-            {
-                alias.set_invalid();
+        match origin {
+            CalculatingAliasType::Normal => {
+                comp.errors_already_calculated = p.calculated();
+                let tc = comp.compute_type(expr);
+                let node_ref = NodeRef::new(self.file, expr.index());
+                match tc {
+                    TypeContent::InvalidVariable(_)
+                    | TypeContent::Unknown(UnknownCause::UnknownName(_))
+                        if !is_explicit =>
+                    {
+                        alias.set_invalid();
+                    }
+                    _ => {
+                        let type_ = comp.as_type(tc, node_ref);
+                        let is_recursive_alias = comp.is_recursive_alias;
+                        debug_assert!(!comp.type_var_manager.has_type_vars());
+                        let mut had_error = false;
+                        if is_recursive_alias && self.i_s.current_function().is_some() {
+                            node_ref.add_issue(
+                                self.i_s,
+                                IssueKind::RecursiveTypesNotAllowedInFunctionScope {
+                                    alias_name: name_def.as_code().into(),
+                                },
+                            );
+                            had_error = true;
+                        }
+                        if is_invalid_recursive_alias(
+                            self.i_s.db,
+                            &SeenRecursiveAliases::new(in_definition),
+                            &type_,
+                        ) {
+                            node_ref.add_issue(
+                                self.i_s,
+                                IssueKind::InvalidRecursiveTypeAliasUnionOfItself {
+                                    target: "union",
+                                },
+                            );
+                            had_error = true;
+                        }
+                        // This is called detect_diverging_alias in Mypy as well.
+                        if detect_diverging_alias(self.i_s.db, &alias.type_vars, &type_) {
+                            node_ref.add_issue(
+                                self.i_s,
+                                IssueKind::InvalidRecursiveTypeAliasTypeVarNesting,
+                            );
+                            had_error = true;
+                        }
+                        if had_error {
+                            alias.set_valid(Type::ERROR, false);
+                        } else {
+                            alias.set_valid(type_, is_recursive_alias);
+                        }
+                        if is_recursive_alias {
+                            // Since the type aliases are not finished at the time of the type
+                            // calculation, we need to recheck for Type[Type[...]]. It is however
+                            // very important that this happens after setting the alias, otherwise
+                            // something like X = Type[X] is not recognized.
+                            check_for_and_replace_type_type_in_finished_alias(
+                                self.i_s,
+                                cached_type_node_ref,
+                                alias,
+                            );
+                        }
+                    }
+                };
             }
-            _ => {
-                let type_ = comp.as_type(t, node_ref);
-                let is_recursive_alias = comp.is_recursive_alias;
-                debug_assert!(!comp.type_var_manager.has_type_vars());
-                let mut had_error = false;
-                if is_recursive_alias && self.i_s.current_function().is_some() {
-                    node_ref.add_issue(
-                        self.i_s,
-                        IssueKind::RecursiveTypesNotAllowedInFunctionScope {
-                            alias_name: name_def.as_code().into(),
-                        },
-                    );
-                    had_error = true;
-                }
-                if is_invalid_recursive_alias(
-                    self.i_s.db,
-                    &SeenRecursiveAliases::new(in_definition),
-                    &type_,
+            CalculatingAliasType::TypedDict {
+                primary_index,
+                details,
+            } => {
+                match new_typed_dict_internal(
+                    self.i_s,
+                    &mut comp,
+                    &SimpleArgs::new(*self.i_s, self.file, primary_index, details),
                 ) {
-                    node_ref.add_issue(
-                        self.i_s,
-                        IssueKind::InvalidRecursiveTypeAliasUnionOfItself { target: "union" },
-                    );
-                    had_error = true;
-                }
-                // This is called detect_diverging_alias in Mypy as well.
-                if detect_diverging_alias(self.i_s.db, &alias.type_vars, &type_) {
-                    node_ref
-                        .add_issue(self.i_s, IssueKind::InvalidRecursiveTypeAliasTypeVarNesting);
-                    had_error = true;
-                }
-                if had_error {
-                    alias.set_valid(Type::ERROR, false);
-                } else {
-                    alias.set_valid(type_, is_recursive_alias);
-                }
-                if is_recursive_alias {
-                    // Since the type aliases are not finished at the time of the type
-                    // calculation, we need to recheck for Type[Type[...]]. It is however
-                    // very important that this happens after setting the alias, otherwise
-                    // something like X = Type[X] is not recognized.
-                    check_for_and_replace_type_type_in_finished_alias(
-                        self.i_s,
-                        cached_type_node_ref,
-                        alias,
-                    );
+                    Some((name, members, _)) => {
+                        alias.set_valid(
+                            Type::TypedDict(TypedDict::new_definition(
+                                name,
+                                members,
+                                alias.location,
+                                alias.type_vars.clone(),
+                            )),
+                            comp.is_recursive_alias,
+                        );
+                    }
+                    None => alias.set_valid(Type::ERROR, false),
                 }
             }
         };
@@ -4538,7 +4577,7 @@ impl<'db: 'x, 'file, 'x> Inference<'db, 'file, '_> {
             "Alias {}={} on #{} is valid? {}",
             name_def.as_code(),
             expr.as_code(),
-            node_ref.line(),
+            NodeRef::new(self.file, expr.index()).line(),
             alias.is_valid()
         );
         load_cached_type(cached_type_node_ref)
@@ -5332,9 +5371,12 @@ impl<'a, I: Clone + Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
     }
 }
 
-enum CalculatingAliasType {
+enum CalculatingAliasType<'x> {
     Normal,
-    TypedDict(),
+    TypedDict {
+        primary_index: NodeIndex,
+        details: ArgumentsDetails<'x>,
+    },
 }
 
 pub(super) fn assignment_type_node_ref<'x>(

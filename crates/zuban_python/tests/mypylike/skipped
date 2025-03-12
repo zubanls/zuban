@@ -7,11 +7,6 @@ testOverloadPossibleOverlapWithArgsAndKwargs
 flow_analysis_avoid_final_loop_issue_in_simple_case
 flow_analysis_base_class_calculation_should_not_lead_to_recursion
 
-testSerializeTypedDict
-testForwardRefsInWithStatementImplicit
-testForwardReferenceToTypedDictInTypedDict
-testTypedDictWithImportCycleForward
-
 # TODO PointResolution::GlobalOrNonlocal
 testTypedDictUpdateNonRecursiveToRecursiveCoarse
 testRecursiveTypedDict*
@@ -363,9 +358,6 @@ testTypedDictFromTypingExtensionsReadOnlyMutateMethods
 testTypedDictFromMypyExtensionsReadOnlyMutateMethods
 # Functional TypedDict in class def
 testCanCreateClassWithFunctionBasedTypedDictBase
-# TypedDict definition circle: A = TypedDict('A', {'a': 'A'})
-testBasicRecursiveTypedDictCall
-testRecursiveTypedDictWithList
 # functional NamedTuple recursive definition
 testBasicRecursiveNamedTuple
 testBasicRecursiveNamedTupleSpecial
