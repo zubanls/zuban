@@ -904,7 +904,7 @@ impl<'db: 'a, 'a> Class<'a> {
                             // other attributes in Mypy, see testMetaclassConflictingInstanceVars
                             let metaclass_result = lookup_on_metaclass(true);
                             if metaclass_result.lookup.is_some()
-                                && !metaclass_result.lookup.is_any(i_s.db)
+                                && !metaclass_result.lookup.maybe_any(i_s.db).is_some()
                             {
                                 return metaclass_result;
                             }

@@ -38,7 +38,6 @@ use crate::{
     },
     type_helpers::{
         cache_class_name, start_namedtuple_params, Class, ClassInitializer, ClassNodeRef, Function,
-        Module,
     },
     utils::{debug_indent, rc_slice_into_vec, AlreadySeen},
 };
@@ -1729,20 +1728,6 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         .point_resolution_to_type_name_lookup(resolved);
                     self.resolve_type_name_lookup(result, name.index())
                 } else {
-                    let node_ref = NodeRef::new(self.inference.file, primary.index());
-                    if let Some(inf) = Module::new(f)
-                        .maybe_execute_getattr(self.inference.i_s, &|issue| {
-                            node_ref.add_issue(self.inference.i_s, issue)
-                        })
-                    {
-                        // If a module contains a __getattr__, the type can be part of that
-                        // (which is typically just an Any that propagates).
-                        if let TypeNameLookup::Unknown(cause) =
-                            check_module_getattr_type(self.inference.i_s, inf)
-                        {
-                            return TypeContent::Unknown(cause);
-                        }
-                    }
                     debug!("TypeComputation: Attribute on module not found");
                     self.add_issue_for_index(primary.index(), IssueKind::TypeNotFound);
                     self.inference.file.points.set(
@@ -3835,11 +3820,8 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                             return r;
                         }
                     }
-                    let p = i_node_ref.point();
-                    if p.maybe_specific() == Some(Specific::AnyDueToError) {
-                        return TypeNameLookup::Unknown(UnknownCause::AnyCause(
-                            AnyCause::FromError,
-                        ));
+                    if let Some(cause) = inferred.maybe_any(i_s.db) {
+                        return TypeNameLookup::Unknown(UnknownCause::UnknownName(cause));
                     } else if i_node_ref.maybe_function().is_some() {
                         return func_is_invalid_type(i_node_ref);
                     }
@@ -3857,6 +3839,13 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                         AnyCause::ModuleNotFound,
                     ));
                 }
+            }
+            PointResolution::ModuleGetattrName(name_node_ref) => {
+                // TODO Avoid using inference here
+                let inf = name_node_ref.infer_name_of_definition_by_index(i_s);
+                // If a module contains a __getattr__, the type can be part of that
+                // (which is typically just an Any that propagates).
+                return check_module_getattr_type(self.i_s, inf);
             }
             _ => (),
         };
@@ -5402,7 +5391,9 @@ fn check_module_getattr_type(
     i_s: &InferenceState,
     inf: Inferred,
 ) -> TypeNameLookup<'static, 'static> {
-    if let Type::Any(cause) = inf.as_cow_type(i_s).as_ref() {
+    let t = inf.as_cow_type(i_s);
+    debug!("Module __getattr__ type is {}", t.format_short(i_s.db));
+    if let Type::Any(cause) = t.as_ref() {
         TypeNameLookup::Unknown(UnknownCause::AnyCause(*cause))
     } else {
         TypeNameLookup::InvalidVariable(InvalidVariableType::Other)

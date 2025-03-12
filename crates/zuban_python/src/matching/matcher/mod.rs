@@ -743,7 +743,7 @@ impl<'a> Matcher<'a> {
                     for arg in args.iter() {
                         let inferred = match arg.infer(&mut ResultContext::Unknown) {
                             InferredArg::Inferred(inferred) => {
-                                if inferred.is_any(i_s.db) {
+                                if inferred.maybe_any(i_s.db).is_some() {
                                     continue;
                                 }
                                 inferred

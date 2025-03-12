@@ -1797,11 +1797,22 @@ impl<'db: 'slf, 'slf> Inferred {
         self.as_cow_type(i_s).is_union_like(i_s.db)
     }
 
-    pub fn is_any(&self, db: &Database) -> bool {
+    pub fn maybe_any(&self, db: &Database) -> Option<AnyCause> {
         if let Some(complex) = self.maybe_complex_point(db) {
-            return matches!(complex, ComplexPoint::TypeInstance(Type::Any(_)));
+            return match complex {
+                ComplexPoint::TypeInstance(Type::Any(cause)) => Some(*cause),
+                _ => None,
+            };
         }
-        self.maybe_saved_specific(db).is_some_and(|s| s.is_any())
+
+        match self.maybe_saved_specific(db)? {
+            Specific::AnyDueToError | Specific::Cycle | Specific::InvalidTypeDefinition => {
+                Some(AnyCause::FromError)
+            }
+            Specific::AnnotationOrTypeCommentWithoutTypeVars => Some(AnyCause::FromError),
+            Specific::ModuleNotFound => Some(AnyCause::ModuleNotFound),
+            _ => None,
+        }
     }
 
     #[inline]

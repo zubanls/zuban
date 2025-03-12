@@ -547,16 +547,6 @@ pub enum Specific {
 }
 
 impl Specific {
-    pub fn is_any(self) -> bool {
-        matches!(
-            self,
-            Specific::AnyDueToError
-                | Specific::Cycle
-                | Specific::InvalidTypeDefinition
-                | Specific::ModuleNotFound
-        )
-    }
-
     pub fn is_partial(self) -> bool {
         matches!(
             self,

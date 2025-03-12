@@ -3538,6 +3538,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     })
                 }
             }
+            PointResolution::ModuleGetattrName(_) => todo!(),
         }
     }
 

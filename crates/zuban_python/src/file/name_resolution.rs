@@ -37,6 +37,7 @@ pub enum PointResolution<'file> {
     Inferred(Inferred),
     Param(NodeRef<'file>),
     GlobalOrNonlocalName(NodeRef<'file>),
+    ModuleGetattrName(NodeRef<'file>),
 }
 
 impl PointResolution<'_> {
@@ -57,6 +58,9 @@ impl PointResolution<'_> {
             Self::Param(node_ref) => format!("Param: {}", node_ref.debug_info()),
             Self::GlobalOrNonlocalName(node_ref) => {
                 format!("GlobalOrNonlocal: {}", node_ref.debug_info())
+            }
+            Self::ModuleGetattrName(node_ref) => {
+                format!("ModuleGetattrName: {}", node_ref.debug_info())
             }
         }
     }
@@ -779,6 +783,8 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
             (PointResolution::Inferred(r.into_inferred()), None)
         } else if let Some(r) = self.resolve_star_import_name(name, None, &|_, _, _| None) {
             (r, None)
+        } else if let Some(r) = self.file.lookup_global("__getattr__") {
+            (PointResolution::ModuleGetattrName(r), None)
         } else {
             return None;
         })
