@@ -4308,11 +4308,8 @@ impl<'db: 'x, 'file, 'x> Inference<'db, 'file, '_> {
                                 .add_issue(self.i_s, IssueKind::DisallowedAnyExplicit)
                         }
                     }
-                    /*
-                    Some(Specific::Cycle) => {
-                        return TypeNameLookup::Unknown(UnknownCause::ReportedIssue)
-                    }
-                    */
+                    // It seems like Mypy is ignoring this?
+                    Some(TypeNameLookup::SpecialType(_)) => (),
                     Some(lookup) => {
                         debug!("Alias can be redirected: {lookup:?}");
                         return lookup;
