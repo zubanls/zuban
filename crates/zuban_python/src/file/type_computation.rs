@@ -9,7 +9,7 @@ use super::{
     TypeVarFinder,
 };
 use crate::{
-    arguments::SimpleArgs,
+    arguments::{KnownArgsWithCustomAddIssue, SimpleArgs},
     database::{
         ComplexPoint, Database, Locality, Point, PointKind, PointLink, Specific, TypeAlias,
     },
@@ -3843,10 +3843,19 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             }
             PointResolution::ModuleGetattrName(name_node_ref) => {
                 // TODO Avoid using inference here
-                let inf = name_node_ref.infer_name_of_definition_by_index(i_s);
                 // If a module contains a __getattr__, the type can be part of that
                 // (which is typically just an Any that propagates).
-                return check_module_getattr_type(self.i_s, inf);
+                let inf = name_node_ref.infer_name_of_definition_by_index(i_s);
+                let executed = inf.execute(
+                    i_s,
+                    &KnownArgsWithCustomAddIssue::new(
+                        &Inferred::from_type(i_s.db.python_state.str_type()),
+                        &|_| (),
+                    ),
+                );
+                if let Some(cause) = executed.maybe_any(i_s.db) {
+                    return TypeNameLookup::Unknown(UnknownCause::AnyCause(cause));
+                }
             }
             _ => (),
         };
@@ -5386,19 +5395,6 @@ pub(super) fn cache_name_on_class(
         },
     );
     cache_name_on_class(cls, file, name)
-}
-
-fn check_module_getattr_type(
-    i_s: &InferenceState,
-    inf: Inferred,
-) -> TypeNameLookup<'static, 'static> {
-    let t = inf.as_cow_type(i_s);
-    debug!("Module __getattr__ type is {}", t.format_short(i_s.db));
-    if let Type::Any(cause) = t.as_ref() {
-        TypeNameLookup::Unknown(UnknownCause::AnyCause(*cause))
-    } else {
-        TypeNameLookup::InvalidVariable(InvalidVariableType::Other)
-    }
 }
 
 pub fn use_cached_simple_generic_type<'db>(
