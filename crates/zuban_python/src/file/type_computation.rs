@@ -3,7 +3,6 @@ use std::{borrow::Cow, cell::Cell, rc::Rc};
 use parsa_python_cst::{SliceType as CSTSliceType, *};
 
 use super::{
-    inference::AssignKind,
     name_resolution::{NameResolution, PointResolution},
     utils::func_of_self_symbol,
     TypeVarFinder,
@@ -4410,14 +4409,6 @@ impl<'db: 'x, 'file, 'x> Inference<'db, 'file, '_> {
                     _ => false,
                 };
                 if calculating {
-                    NodeRef::new(file, assignment.index())
-                        .add_issue(self.i_s, IssueKind::InvalidTypeCycle);
-                    self.assign_targets(
-                        target,
-                        Inferred::new_cycle(),
-                        NodeRef::new(file, assignment.index()),
-                        AssignKind::Normal,
-                    );
                     return TypeNameLookup::Unknown(UnknownCause::ReportedIssue);
                 }
                 self.ensure_cached_annotation(annotation, right.is_some());
