@@ -23,6 +23,7 @@ use crate::{
     matching::{Generics, ResultContext},
     new_class,
     node_ref::NodeRef,
+    recoverable_error,
     type_::{
         add_named_tuple_param, add_param_spec_to_params, new_collections_named_tuple,
         new_typed_dict_internal, new_typing_named_tuple, AnyCause, CallableContent, CallableParam,
@@ -4265,8 +4266,19 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 }
             }
             // Error should have been created, because it's an invalid alias.
-            TypeNameLookup::InvalidVariable(_) => Inferred::new_any_from_error(),
-            tnl => unreachable!("{tnl:?}"),
+            TypeNameLookup::InvalidVariable(_) | TypeNameLookup::Unknown(_) => {
+                self.add_issue(
+                    assignment.index(),
+                    IssueKind::InvalidAssignmentForm {
+                        class_name: "TypedDict",
+                    },
+                );
+                Inferred::new_any_from_error()
+            }
+            tnl => {
+                recoverable_error!("Unexpected special type assignment result: {tnl:?}");
+                Inferred::new_any_from_error()
+            }
         }
     }
 

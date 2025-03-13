@@ -22,6 +22,7 @@ use crate::{
     inferred::{AttributeKind, Inferred},
     matching::{ErrorStrs, LookupKind, Match, Matcher, MismatchReason, OnTypeError, ResultContext},
     node_ref::NodeRef,
+    recoverable_error,
     type_helpers::{Class, Instance, InstanceLookupOptions, LookupDetails},
     utils::join_with_commas,
 };
@@ -576,12 +577,7 @@ pub fn new_typed_dict_internal<'db>(
             );
         }
     } else {
-        first.node_ref.add_issue(
-            i_s,
-            IssueKind::InvalidAssignmentForm {
-                class_name: "TypedDict",
-            },
-        );
+        recoverable_error!("Shouldn only ever get a normal TypedDict initialization for aliases");
         return None;
     }
 
