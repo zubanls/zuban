@@ -4208,6 +4208,10 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         // We use inference from here on, because we know this is not really infering crazy stuff,
         // it's just running the normal initalizers for our special cases.
         // Inference is not a good idea to run otherwise, because it uses a lot of narrowing.
+        debug!(
+            "Infer special definition for assignment {:?}",
+            assignment.as_code()
+        );
         let inference = self.file.inference(self.i_s);
         inference.cache_assignment(assignment);
         let inf = inference.check_point_cache(name_def.index())?;
@@ -4244,6 +4248,26 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             },
             _ => return None,
         })
+    }
+
+    pub(crate) fn infer_special_calculated_type_assignment(
+        &self,
+        specific: Specific,
+        assignment: Assignment,
+    ) -> Inferred {
+        debug_assert!(matches!(specific, Specific::TypingTypedDict));
+        match self.compute_type_assignment(assignment) {
+            TypeNameLookup::TypeAlias(ta) => {
+                if ta.is_valid() {
+                    Inferred::from_type(Type::Type(Rc::new(ta.type_if_valid().clone())))
+                } else {
+                    Inferred::new_any_from_error()
+                }
+            }
+            // Error should have been created, because it's an invalid alias.
+            TypeNameLookup::InvalidVariable(_) => Inferred::new_any_from_error(),
+            tnl => unreachable!("{tnl:?}"),
+        }
     }
 
     fn compute_type_assignment(&self, assignment: Assignment) -> TypeNameLookup<'file, 'file> {

@@ -13,9 +13,9 @@ use super::{
 };
 use crate::{
     arguments::{ArgKind, Args, InferredArg},
-    database::{ComplexPoint, Database, PointLink, TypedDictDefinition},
+    database::{Database, PointLink},
     diagnostics::IssueKind,
-    file::{infer_string_index, TypeComputation, TypeComputationOrigin, TypeVarCallbackReturn},
+    file::{infer_string_index, TypeComputation},
     format_data::{AvoidRecursionFor, FormatData},
     getitem::{SliceType, SliceTypeContent},
     inference_state::InferenceState,
@@ -535,34 +535,6 @@ fn add_access_key_must_be_string_literal_issue(
         )
         .into(),
     })
-}
-
-pub(crate) fn new_typed_dict<'db>(i_s: &InferenceState<'db, '_>, args: &dyn Args<'db>) -> Inferred {
-    let on_type_var = &mut |_: &InferenceState, _: &_, _, _| TypeVarCallbackReturn::NotFound {
-        allow_late_bound_callables: false,
-    };
-    let Some(first_arg) = args.iter(i_s.mode).next() else {
-        args.add_issue(i_s, IssueKind::TypedDictFirstArgMustBeString);
-        return Inferred::new_invalid_type_definition();
-    };
-    let ArgKind::Positional(first) = first_arg.kind else {
-        args.add_issue(i_s, IssueKind::UnexpectedArgumentsToTypedDict);
-        return Inferred::new_invalid_type_definition();
-    };
-    let mut comp = TypeComputation::new(
-        first.node_ref.file.name_resolution(i_s),
-        first.node_ref.as_link(),
-        on_type_var,
-        TypeComputationOrigin::TypedDictMember,
-    );
-    let Some((name, members, total)) = new_typed_dict_internal(i_s, &mut comp, args) else {
-        return Inferred::new_invalid_type_definition();
-    };
-    let type_var_likes = comp.into_type_vars(|_, _| ());
-    Inferred::new_unsaved_complex(ComplexPoint::TypedDictDefinition(TypedDictDefinition::new(
-        TypedDict::new_definition(name, members, first.node_ref.as_link(), type_var_likes),
-        total,
-    )))
 }
 
 pub fn new_typed_dict_internal<'db>(

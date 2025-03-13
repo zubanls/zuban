@@ -168,7 +168,18 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
                 BaseLookup::TypeVarLike(_) => todo!(),
                 _ => BaseLookup::Other,
             },
-            PrimaryContent::Execution(_) => BaseLookup::Other,
+            PrimaryContent::Execution(details) => {
+                // Check these for TypeDicts
+                if let ArgumentsDetails::Node(n) = details {
+                    // Skip the name
+                    for arg in n.iter().skip(1) {
+                        if let Argument::Positional(pos) = arg {
+                            self.find_in_expr(pos.expression());
+                        }
+                    }
+                }
+                BaseLookup::Other
+            }
             PrimaryContent::GetItem(slice_type) => {
                 let s = SliceType::new(self.file, primary.index(), slice_type);
                 match base {
@@ -199,7 +210,7 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
         }
     }
 
-    fn find_in_atom(&mut self, atom: Atom) -> BaseLookup {
+    fn find_in_atom(&mut self, atom: Atom<'d>) -> BaseLookup {
         match atom.unpack() {
             AtomContent::Name(n) => return self.find_in_name(n),
             AtomContent::Strings(s_o_b) => match s_o_b.as_python_string() {
@@ -211,6 +222,17 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
                 }
                 PythonString::FString => (),
             },
+            AtomContent::Dict(dict) => {
+                // For TypedDicts
+                for element in dict.iter_elements() {
+                    match element {
+                        DictElement::KeyValue(dict_key_value) => {
+                            self.find_in_expr(dict_key_value.value())
+                        }
+                        DictElement::Star(_) => (),
+                    }
+                }
+            }
             _ => (),
         }
         BaseLookup::Other

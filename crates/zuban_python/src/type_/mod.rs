@@ -63,7 +63,7 @@ pub(crate) use self::{
     },
     typed_dict::{
         check_typed_dict_call, infer_typed_dict_item, infer_typed_dict_total_argument,
-        initialize_typed_dict, lookup_on_typed_dict, maybe_add_extra_keys_issue, new_typed_dict,
+        initialize_typed_dict, lookup_on_typed_dict, maybe_add_extra_keys_issue,
         new_typed_dict_internal, TypedDict, TypedDictGenerics, TypedDictMember,
         TypedDictMemberGatherer,
     },

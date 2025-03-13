@@ -26,11 +26,11 @@ use crate::{
     node_ref::NodeRef,
     type_::{
         execute_collections_named_tuple, execute_tuple_class, execute_type_of_type,
-        execute_typing_named_tuple, merge_class_type_vars, new_typed_dict, AnyCause,
-        CallableContent, CallableLike, CallableParams, ClassGenerics, DataclassTransformObj,
-        DbBytes, DbString, FunctionKind, FunctionOverload, GenericClass, GenericItem, GenericsList,
-        IterCause, IterInfos, Literal as DbLiteral, LiteralKind, LiteralValue, LookupResult,
-        NeverCause, PropertySetter, Type, TypeVarKind, TypeVarLike, TypeVarLikes,
+        execute_typing_named_tuple, merge_class_type_vars, AnyCause, CallableContent, CallableLike,
+        CallableParams, ClassGenerics, DataclassTransformObj, DbBytes, DbString, FunctionKind,
+        FunctionOverload, GenericClass, GenericItem, GenericsList, IterCause, IterInfos,
+        Literal as DbLiteral, LiteralKind, LiteralValue, LookupResult, NeverCause, PropertySetter,
+        Type, TypeVarKind, TypeVarLike, TypeVarLikes,
     },
     type_helpers::{
         execute_assert_type, execute_cast, execute_isinstance, execute_issubclass,
@@ -1690,7 +1690,7 @@ impl<'db: 'slf, 'slf> Inferred {
                 format!("NamedTupleDef({})", t.format_short(db))
             }
             ComplexPoint::TypedDictDefinition(td) => {
-                format!("NamedTupleDef({})", td.type_.format_short(db))
+                format!("TypedDictDef({})", td.type_.format_short(db))
             }
             ComplexPoint::IndirectFinal(t) => {
                 format!("IndirectFinal({})", t.format_short(db))
@@ -1926,7 +1926,21 @@ impl<'db: 'slf, 'slf> Inferred {
                             Specific::TypingNamedTuple => {
                                 return execute_typing_named_tuple(i_s, args)
                             }
-                            Specific::TypingTypedDict => return new_typed_dict(i_s, args),
+                            Specific::TypingTypedDict => {
+                                if let ResultContext::AssignmentNewDefinition {
+                                    assignment_definition,
+                                } = &result_context
+                                {
+                                    let n = NodeRef::from_link(i_s.db, *assignment_definition);
+                                    return n
+                                        .file
+                                        .name_resolution(i_s)
+                                        .infer_special_calculated_type_assignment(
+                                            specific,
+                                            n.expect_assignment(),
+                                        );
+                                }
+                            }
                             Specific::CollectionsNamedTuple => {
                                 return execute_collections_named_tuple(
                                     i_s,
