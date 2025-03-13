@@ -431,7 +431,7 @@ fn type_computation_for_variable_annotation(
 }
 
 pub struct TypeComputation<'db, 'file, 'i_s, 'c> {
-    inference: &'c Inference<'db, 'file, 'i_s>,
+    inference: &'c NameResolution<'db, 'file, 'i_s>,
     for_definition: PointLink,
     current_callable: Option<PointLink>,
     type_var_manager: TypeVarManager<PointLink>,
@@ -447,7 +447,7 @@ pub struct TypeComputation<'db, 'file, 'i_s, 'c> {
 
 impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c> {
     pub fn new(
-        inference: &'c Inference<'db, 'file, 'i_s>,
+        inference: &'c NameResolution<'db, 'file, 'i_s>,
         for_definition: PointLink,
         type_var_callback: TypeVarCallback<'db, 'c>,
         origin: TypeComputationOrigin,
@@ -3368,6 +3368,8 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         let mut name = None;
         let mut type_ = None;
         self.inference
+            .file
+            .inference(self.inference.i_s)
             .infer_primary(primary, &mut ResultContext::Unknown);
         if let ArgumentsDetails::Node(arguments) = details {
             let mut iterator = arguments.iter();
@@ -3515,7 +3517,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
 
     pub fn into_type_vars<C>(self, on_type_var_recalculation: C) -> TypeVarLikes
     where
-        C: FnOnce(&Inference, &dyn Fn(&Type) -> Type),
+        C: FnOnce(&NameResolution, &dyn Fn(&Type) -> Type),
     {
         if self.type_var_manager.has_late_bound_type_vars() {
             on_type_var_recalculation(self.inference, &|t| {
@@ -3962,9 +3964,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             _ => return None,
         })
     }
-}
 
-impl<'db: 'x, 'file, 'x> Inference<'db, 'file, '_> {
     pub fn ensure_cached_named_tuple_annotation(&self, annotation: Annotation) {
         self.ensure_cached_annotation_internal(annotation, TypeComputationOrigin::NamedTupleMember)
     }
