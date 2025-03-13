@@ -3833,68 +3833,6 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         }
     }
 
-    fn check_special_assignments<'x>(
-        &self,
-        assignment: Assignment,
-        name_def: NameDef,
-        expr: Expression<'x>,
-    ) -> Result<TypeNameLookup<'file, 'file>, CalculatingAliasType<'x>> {
-        self.maybe_special_assignment_execution(expr)?;
-        if self.file.points.get(name_def.index()).calculating() {
-            // TODO this is wrong, circular functional NamedTuples/TypedDicts are not implemented
-            // properly now
-            return Ok(TypeNameLookup::Unknown(UnknownCause::ReportedIssue));
-        }
-        self.infer_special_type_definition(assignment, name_def)
-            .ok_or(CalculatingAliasType::Normal)
-    }
-
-    fn infer_special_type_definition(
-        &self,
-        assignment: Assignment,
-        name_def: NameDef,
-    ) -> Option<TypeNameLookup<'db, 'db>> {
-        // We use inference from here on, because we know this is not really infering crazy stuff,
-        // it's just running the normal initalizers for our special cases.
-        // Inference is not a good idea to run otherwise, because it uses a lot of narrowing.
-        let inference = self.file.inference(self.i_s);
-        inference.cache_assignment(assignment);
-        let inf = inference.check_point_cache(name_def.index())?;
-        let saved_node_ref = inf.maybe_saved_node_ref(self.i_s.db)?;
-        if matches!(
-            saved_node_ref.point().maybe_specific(),
-            Some(Specific::InvalidTypeDefinition)
-        ) {
-            return Some(TypeNameLookup::Unknown(UnknownCause::ReportedIssue));
-        }
-        Self::check_special_type_definition(saved_node_ref)
-    }
-
-    fn check_special_type_definition(node_ref: NodeRef) -> Option<TypeNameLookup> {
-        Some(match node_ref.complex()? {
-            ComplexPoint::TypeVarLike(tv) => TypeNameLookup::TypeVarLike(tv.clone()),
-            ComplexPoint::NamedTupleDefinition(t) => {
-                let Type::NamedTuple(nt) = t.as_ref() else {
-                    unreachable!()
-                };
-                TypeNameLookup::NamedTupleDefinition(nt.clone())
-            }
-            ComplexPoint::NewTypeDefinition(n) => TypeNameLookup::NewType(n.clone()),
-            ComplexPoint::TypedDictDefinition(tdd) => {
-                let Type::TypedDict(td) = tdd.type_.as_ref() else {
-                    unreachable!();
-                };
-                TypeNameLookup::TypedDictDefinition(td.clone())
-            }
-            ComplexPoint::TypeInstance(Type::Type(t)) => match t.as_ref() {
-                Type::Enum(e) => TypeNameLookup::Enum(e.clone()),
-                Type::None => TypeNameLookup::AliasNoneType,
-                _ => return None,
-            },
-            _ => return None,
-        })
-    }
-
     pub fn ensure_cached_named_tuple_annotation(&self, annotation: Annotation) {
         self.ensure_cached_annotation_internal(annotation, TypeComputationOrigin::NamedTupleMember)
     }
@@ -4244,6 +4182,68 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 Locality::Todo,
             )
         }
+    }
+
+    fn check_special_assignments<'x>(
+        &self,
+        assignment: Assignment,
+        name_def: NameDef,
+        expr: Expression<'x>,
+    ) -> Result<TypeNameLookup<'file, 'file>, CalculatingAliasType<'x>> {
+        self.maybe_special_assignment_execution(expr)?;
+        if self.file.points.get(name_def.index()).calculating() {
+            // TODO this is wrong, circular functional NamedTuples/TypedDicts are not implemented
+            // properly now
+            return Ok(TypeNameLookup::Unknown(UnknownCause::ReportedIssue));
+        }
+        self.infer_special_type_definition(assignment, name_def)
+            .ok_or(CalculatingAliasType::Normal)
+    }
+
+    fn infer_special_type_definition(
+        &self,
+        assignment: Assignment,
+        name_def: NameDef,
+    ) -> Option<TypeNameLookup<'db, 'db>> {
+        // We use inference from here on, because we know this is not really infering crazy stuff,
+        // it's just running the normal initalizers for our special cases.
+        // Inference is not a good idea to run otherwise, because it uses a lot of narrowing.
+        let inference = self.file.inference(self.i_s);
+        inference.cache_assignment(assignment);
+        let inf = inference.check_point_cache(name_def.index())?;
+        let saved_node_ref = inf.maybe_saved_node_ref(self.i_s.db)?;
+        if matches!(
+            saved_node_ref.point().maybe_specific(),
+            Some(Specific::InvalidTypeDefinition)
+        ) {
+            return Some(TypeNameLookup::Unknown(UnknownCause::ReportedIssue));
+        }
+        Self::check_special_type_definition(saved_node_ref)
+    }
+
+    fn check_special_type_definition(node_ref: NodeRef) -> Option<TypeNameLookup> {
+        Some(match node_ref.complex()? {
+            ComplexPoint::TypeVarLike(tv) => TypeNameLookup::TypeVarLike(tv.clone()),
+            ComplexPoint::NamedTupleDefinition(t) => {
+                let Type::NamedTuple(nt) = t.as_ref() else {
+                    unreachable!()
+                };
+                TypeNameLookup::NamedTupleDefinition(nt.clone())
+            }
+            ComplexPoint::NewTypeDefinition(n) => TypeNameLookup::NewType(n.clone()),
+            ComplexPoint::TypedDictDefinition(tdd) => {
+                let Type::TypedDict(td) = tdd.type_.as_ref() else {
+                    unreachable!();
+                };
+                TypeNameLookup::TypedDictDefinition(td.clone())
+            }
+            ComplexPoint::TypeInstance(Type::Type(t)) => match t.as_ref() {
+                Type::Enum(e) => TypeNameLookup::Enum(e.clone()),
+                Type::None => TypeNameLookup::AliasNoneType,
+                _ => return None,
+            },
+            _ => return None,
+        })
     }
 
     fn compute_type_assignment(&self, assignment: Assignment) -> TypeNameLookup<'file, 'file> {
