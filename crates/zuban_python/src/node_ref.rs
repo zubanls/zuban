@@ -441,6 +441,7 @@ impl fmt::Debug for NodeRef<'_> {
         if let Some(complex_index) = point.maybe_complex_index() {
             s.field("complex", self.file.complex_points.get(complex_index));
         }
+        s.field("line", &self.line());
         s.finish()
     }
 }
