@@ -964,11 +964,11 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         save: impl FnOnce(NodeIndex, &Inferred),
     ) {
         debug!(
-            "Assign to name def {} (#{}, {}:{})",
+            "Assign to name {} ({}#{}): {}",
             name_def.as_code(),
-            self.file.byte_to_line_column(name_def.start()).0,
             self.file.file_index,
-            name_def.index(),
+            self.file.byte_to_line_column(name_def.start()).0,
+            value.debug_info(self.i_s.db),
         );
         debug_indent(|| self.assign_to_name_def_internal(name_def, from, value, assign_kind, save))
     }
