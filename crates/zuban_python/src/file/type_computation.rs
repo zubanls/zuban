@@ -4157,43 +4157,57 @@ impl<'db: 'x, 'file, 'x> Inference<'db, 'file, '_> {
         }
     }
 
+    #[inline]
     pub(super) fn use_cached_param_annotation(&self, annotation: ParamAnnotation) -> Inferred {
-        let point = self.file.points.get(annotation.index());
-        debug_assert!(matches!(
-            point.specific(),
-            Specific::AnnotationOrTypeCommentWithTypeVars
-                | Specific::AnnotationOrTypeCommentWithoutTypeVars
-                | Specific::AnnotationOrTypeCommentSimpleClassInstance
-                | Specific::AnnotationOrTypeCommentClassVar
-                | Specific::AnnotationOrTypeCommentFinal
-        ));
-        self.check_point_cache(annotation.index()).unwrap()
+        if cfg!(debug_assertions) {
+            let point = self.file.points.get(annotation.index());
+            debug_assert!(
+                matches!(
+                    point.specific(),
+                    Specific::AnnotationOrTypeCommentWithTypeVars
+                        | Specific::AnnotationOrTypeCommentWithoutTypeVars
+                        | Specific::AnnotationOrTypeCommentSimpleClassInstance
+                        | Specific::AnnotationOrTypeCommentClassVar
+                        | Specific::AnnotationOrTypeCommentFinal
+                ),
+                "{point:?}"
+            );
+        }
+        Inferred::from_saved_link(PointLink::new(self.file.file_index, annotation.index()))
     }
 
     pub(super) fn use_cached_annotation(&self, annotation: Annotation) -> Inferred {
-        let point = self.file.points.get(annotation.index());
-        debug_assert!(
-            matches!(
-                point.specific(),
-                Specific::AnnotationOrTypeCommentWithTypeVars
-                    | Specific::AnnotationOrTypeCommentWithoutTypeVars
-                    | Specific::AnnotationOrTypeCommentSimpleClassInstance
-                    | Specific::AnnotationOrTypeCommentClassVar
-                    | Specific::AnnotationOrTypeCommentFinal
-            ),
-            "{point:?}"
-        );
-        self.check_point_cache(annotation.index()).unwrap()
+        if cfg!(debug_assertions) {
+            let point = self.file.points.get(annotation.index());
+            debug_assert!(
+                matches!(
+                    point.specific(),
+                    Specific::AnnotationOrTypeCommentWithTypeVars
+                        | Specific::AnnotationOrTypeCommentWithoutTypeVars
+                        | Specific::AnnotationOrTypeCommentSimpleClassInstance
+                        | Specific::AnnotationOrTypeCommentClassVar
+                        | Specific::AnnotationOrTypeCommentFinal
+                ),
+                "{point:?}"
+            );
+        }
+        Inferred::from_saved_link(PointLink::new(self.file.file_index, annotation.index()))
     }
 
     pub fn use_cached_return_annotation(&self, annotation: ReturnAnnotation) -> Inferred {
-        debug_assert!(matches!(
-            self.file.points.get(annotation.index()).specific(),
-            Specific::AnnotationOrTypeCommentWithTypeVars
-                | Specific::AnnotationOrTypeCommentWithoutTypeVars
-                | Specific::AnnotationOrTypeCommentSimpleClassInstance
-        ));
-        self.check_point_cache(annotation.index()).unwrap()
+        if cfg!(debug_assertions) {
+            let point = self.file.points.get(annotation.index());
+            debug_assert!(
+                matches!(
+                    point.specific(),
+                    Specific::AnnotationOrTypeCommentWithTypeVars
+                        | Specific::AnnotationOrTypeCommentWithoutTypeVars
+                        | Specific::AnnotationOrTypeCommentSimpleClassInstance
+                ),
+                "{point:?}"
+            );
+        }
+        Inferred::from_saved_link(PointLink::new(self.file.file_index, annotation.index()))
     }
 
     pub fn use_cached_return_annotation_type(
