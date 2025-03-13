@@ -178,6 +178,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
         let mut found_inf = None;
         self.assign_import_from_only_particular_name_def(as_name, |name_def, inf, _| {
             debug_assert!(self.file.points.get(name_def.index()).calculating());
+            if self.is_allowed_to_assign_on_import_without_narrowing(name_def) {}
             self.file
                 .points
                 .set(name_def.index(), Point::new_uncalculated());
@@ -203,10 +204,11 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                 debug_assert!(!p.calculated(), "{p:?}");
                 debug_assert!(!p.calculating(), "{p:?}");
             }
-            self.file
-                .points
-                .set(name_def.index(), Point::new_uncalculated());
-            found_inf = Some(inf);
+            if self.is_allowed_to_assign_on_import_without_narrowing(name_def) {
+                found_inf = Some(inf.save_redirect(self.i_s, self.file, name_def.index()))
+            } else {
+                found_inf = Some(inf);
+            }
         });
         match found_inf {
             Some(inf) => PointResolution::Inferred(inf),
@@ -214,6 +216,14 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                 .resolve_point_without_narrowing(dotted_as_name.name_def().index())
                 .expect("Resolving import"),
         }
+    }
+
+    #[inline]
+    fn is_allowed_to_assign_on_import_without_narrowing(&self, name_def: NameDef) -> bool {
+        self.file
+            .points
+            .get(name_def.name_index())
+            .needs_flow_analysis()
     }
 
     pub fn cache_import_dotted_name(
