@@ -4403,7 +4403,27 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         is_explicit: bool,
     ) -> TypeNameLookup<'file, 'file> {
         cached_type_node_ref.set_point(Point::new_calculating());
-        let type_var_likes = TypeVarFinder::find_alias_type_vars(self.i_s, self.file, expr);
+        let find_type_var_likes = || match &origin {
+            CalculatingAliasType::Normal => {
+                TypeVarFinder::find_alias_type_vars(self.i_s, self.file, expr)
+            }
+            CalculatingAliasType::TypedDict { details, .. } => {
+                if let ArgumentsDetails::Node(n) = details {
+                    // Skip the name
+                    if let Some(arg) = n.iter().nth(1) {
+                        if let Argument::Positional(pos) = arg {
+                            return TypeVarFinder::find_alias_type_vars(
+                                self.i_s,
+                                self.file,
+                                pos.expression(),
+                            );
+                        }
+                    }
+                }
+                self.i_s.db.python_state.empty_type_var_likes.clone()
+            }
+        };
+        let type_var_likes = find_type_var_likes();
 
         let in_definition = cached_type_node_ref.as_link();
         let alias = TypeAlias::new(

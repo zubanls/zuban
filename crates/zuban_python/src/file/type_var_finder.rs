@@ -168,18 +168,7 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
                 BaseLookup::TypeVarLike(_) => todo!(),
                 _ => BaseLookup::Other,
             },
-            PrimaryContent::Execution(details) => {
-                // Check these for TypeDicts
-                if let ArgumentsDetails::Node(n) = details {
-                    // Skip the name
-                    for arg in n.iter().skip(1) {
-                        if let Argument::Positional(pos) = arg {
-                            self.find_in_expr(pos.expression());
-                        }
-                    }
-                }
-                BaseLookup::Other
-            }
+            PrimaryContent::Execution(_) => BaseLookup::Other,
             PrimaryContent::GetItem(slice_type) => {
                 let s = SliceType::new(self.file, primary.index(), slice_type);
                 match base {
