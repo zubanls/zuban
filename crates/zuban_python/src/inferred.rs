@@ -2178,12 +2178,12 @@ impl<'db: 'slf, 'slf> Inferred {
                         let assignment = node_ref.expect_assignment();
                         return node_ref
                             .file
-                            .inference(i_s)
+                            .name_resolution(i_s)
                             .compute_explicit_type_assignment(assignment);
                     }
                     let result = slice_type
                         .file
-                        .inference(i_s)
+                        .name_resolution(i_s)
                         .compute_type_application_on_typing_class(
                             specific,
                             *slice_type,
@@ -2202,7 +2202,7 @@ impl<'db: 'slf, 'slf> Inferred {
                     if let Some(ComplexPoint::TypeAlias(ta)) = node_ref.complex() {
                         return slice_type
                             .file
-                            .inference(i_s)
+                            .name_resolution(i_s)
                             .compute_type_application_on_alias(
                                 ta,
                                 *slice_type,

@@ -1396,7 +1396,7 @@ impl<'db: 'a, 'a> Class<'a> {
         }
         slice_type
             .file
-            .inference(i_s)
+            .name_resolution(i_s)
             .compute_type_application_on_class(
                 *self,
                 *slice_type,

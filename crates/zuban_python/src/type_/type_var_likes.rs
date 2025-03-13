@@ -704,7 +704,7 @@ impl TypeVar {
                 |i_s, node_ref| {
                     node_ref
                         .file
-                        .inference(i_s)
+                        .name_resolution(i_s)
                         .compute_type_var_bound(node_ref.as_expression())
                 },
             )),
@@ -713,7 +713,7 @@ impl TypeVar {
                     c.get_type(db, &self.name_string, self.scope, |i_s, node_ref| {
                         node_ref
                             .file
-                            .inference(i_s)
+                            .name_resolution(i_s)
                             .compute_type_var_value(node_ref.as_expression())
                             .unwrap_or(Type::ERROR)
                     })
@@ -728,7 +728,7 @@ impl TypeVar {
             default.get_type(db, &self.name_string, self.scope, |i_s, node_ref| {
                 let default = if let Some(t) = node_ref
                     .file
-                    .inference(i_s)
+                    .name_resolution(i_s)
                     .compute_type_var_default(node_ref.as_expression())
                 {
                     t

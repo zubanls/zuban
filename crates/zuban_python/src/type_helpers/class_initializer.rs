@@ -1510,7 +1510,7 @@ fn find_stmt_typed_dict_types(
                     }
                     if let Err(issue) = vec.add(
                         i_s.db,
-                        file.inference(i_s).compute_class_typed_dict_member(
+                        file.name_resolution(i_s).compute_class_typed_dict_member(
                             StringSlice::from_name(file.file_index, name_def.name()),
                             annot,
                             total,
@@ -1571,7 +1571,7 @@ fn find_stmt_named_tuple_types(
                             .add_issue(i_s, IssueKind::NamedTupleNonDefaultFieldFollowsDefault);
                         continue;
                     }
-                    file.inference(i_s)
+                    file.name_resolution(i_s)
                         .ensure_cached_named_tuple_annotation(annot);
                     let t = use_cached_annotation_type(i_s.db, file, annot).into_owned();
                     if name.as_code().starts_with('_') {

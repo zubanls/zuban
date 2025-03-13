@@ -282,7 +282,7 @@ impl<'file> NodeRef<'file> {
 
     pub fn compute_new_type_constraint(&self, i_s: &InferenceState) -> Type {
         self.file
-            .inference(i_s)
+            .name_resolution(i_s)
             .compute_new_type_constraint(self.as_expression())
     }
 

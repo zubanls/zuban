@@ -523,11 +523,11 @@ impl Type {
                 Type::Class(c) => c.class(i_s.db).get_item(i_s, slice_type, result_context),
                 Type::Dataclass(d) => slice_type
                     .file
-                    .inference(i_s)
+                    .name_resolution(i_s)
                     .compute_type_application_on_dataclass(d, *slice_type, false),
                 Type::NamedTuple(nt) => slice_type
                     .file
-                    .inference(i_s)
+                    .name_resolution(i_s)
                     .compute_type_application_on_named_tuple(nt.clone(), *slice_type, false),
                 t @ Type::Enum(_) => {
                     let enum_index = slice_type.infer(i_s);
@@ -544,7 +544,7 @@ impl Type {
                 }
                 Type::TypedDict(td) => slice_type
                     .file
-                    .inference(i_s)
+                    .name_resolution(i_s)
                     .compute_type_application_on_typed_dict(
                         td,
                         *slice_type,
