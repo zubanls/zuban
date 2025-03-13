@@ -175,16 +175,40 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
         // For type resolution, we don't want to infer names in the normal way, because it leads to
         // weird narrowing recursions. We have to make sure we do not assign the names, because
         // they might be different later.
-        let mut found_inf = None;
-        self.assign_import_from_only_particular_name_def(as_name, |name_def, inf, _| {
-            debug_assert!(self.file.points.get(name_def.index()).calculating());
-            if self.is_allowed_to_assign_on_import_without_narrowing(name_def) {}
-            self.file
-                .points
-                .set(name_def.index(), Point::new_uncalculated());
-            found_inf = Some(inf);
-        });
-        match found_inf {
+        let mut found_pr = None;
+        self.assign_import_from_only_particular_name_def(
+            as_name,
+            |name_def, pr, redirect_to_link| {
+                debug_assert!(self.file.points.get(name_def.index()).calculating());
+                if self.is_allowed_to_assign_on_import_without_narrowing(name_def) {
+                    match redirect_to_link {
+                        Some(link) => {
+                            self.file
+                                .points
+                                .set(name_def.index(), link.into_redirect_point(Locality::Todo));
+                        }
+                        None => {
+                            // We can not assign in all cases here, for example in the precense of
+                            // a module __getattr__, we don't know the assignment type, yet.
+                            if let PointResolution::Inferred(inf) = pr {
+                                found_pr = Some(PointResolution::Inferred(inf.save_redirect(
+                                    self.i_s,
+                                    self.file,
+                                    name_def.index(),
+                                )));
+                                return;
+                            }
+                        }
+                    }
+                } else {
+                    self.file
+                        .points
+                        .set(name_def.index(), Point::new_uncalculated());
+                }
+                found_pr = Some(pr);
+            },
+        );
+        match found_pr {
             Some(pr) => pr,
             None => self
                 .resolve_point_without_narrowing(as_name.name_def().index())
