@@ -79,11 +79,8 @@ impl<'file> NodeRef<'file> {
         self.file.points.set(self.node_index, point)
     }
 
-    pub fn set_point_redirect_in_same_file(&self, node_index: NodeIndex, locality: Locality) {
-        self.file.points.set(
-            self.node_index,
-            Point::new_redirect(self.file.file_index, node_index, locality),
-        )
+    pub fn as_redirection_point(&self, locality: Locality) -> Point {
+        Point::new_redirect(self.file.file_index, self.node_index, locality)
     }
 
     pub fn accumulate_types(&self, i_s: &InferenceState, add: &Inferred) {

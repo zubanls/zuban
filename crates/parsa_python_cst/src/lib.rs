@@ -2800,6 +2800,10 @@ impl<'db> Primary<'db> {
         }
     }
 
+    pub fn first_child_index(&self) -> NodeIndex {
+        self.index() + 1
+    }
+
     pub fn second(&self) -> PrimaryContent<'db> {
         let second = self.node.nth_child(2);
         if second.is_type(Terminal(TerminalType::Name)) {

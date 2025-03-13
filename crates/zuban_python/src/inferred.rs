@@ -1,6 +1,6 @@
 use std::{borrow::Cow, cell::RefCell, rc::Rc};
 
-use parsa_python_cst::{NodeIndex, ParamKind, PrimaryContent, SliceType as CSTSliceType};
+use parsa_python_cst::{NodeIndex, ParamKind};
 use vfs::FileIndex;
 
 use crate::{
@@ -441,44 +441,6 @@ impl<'db: 'slf, 'slf> Inferred {
             }
         }
         self
-    }
-
-    pub fn expect_class_or_simple_generic(&self, i_s: &InferenceState<'db, '_>) -> Cow<'db, Type> {
-        let mut generics = ClassGenerics::None;
-        if let InferredState::Saved(link) = &self.state {
-            let definition = NodeRef::from_link(i_s.db, *link);
-            let point = definition.point();
-            if point.kind() == PointKind::Specific {
-                generics = Self::expect_class_generics(definition, point);
-            }
-        }
-        let link = self.get_class_link(i_s);
-        Cow::Owned(Type::new_class(link, generics))
-    }
-
-    fn get_class_link(&self, i_s: &InferenceState) -> PointLink {
-        let InferredState::Saved(link) = &self.state else {
-            unreachable!()
-        };
-        let node_ref = NodeRef::from_link(i_s.db, *link);
-        let point = node_ref.point();
-        match point.kind() {
-            PointKind::Complex => {
-                node_ref.ensure_cached_class_infos(i_s);
-                *link
-            }
-            PointKind::Specific => match point.specific() {
-                Specific::SimpleGeneric => {
-                    let inferred = node_ref
-                        .file
-                        .inference(i_s)
-                        .infer_primary_or_atom(node_ref.as_primary().first());
-                    inferred.get_class_link(i_s)
-                }
-                _ => unreachable!(),
-            },
-            _ => unreachable!(),
-        }
     }
 
     pub fn maybe_complex_point(&'slf self, db: &'db Database) -> Option<&'slf ComplexPoint> {
@@ -1772,24 +1734,6 @@ impl<'db: 'slf, 'slf> Inferred {
                     Function::new(NodeRef::from_link(db, *func_link), None).name()
                 )
             }
-        }
-    }
-
-    fn expect_class_generics(definition: NodeRef, point: Point) -> ClassGenerics {
-        debug_assert_eq!(point.kind(), PointKind::Specific);
-        debug_assert_eq!(point.specific(), Specific::SimpleGeneric);
-        let PrimaryContent::GetItem(slice_type) = definition.as_primary().second() else {
-            unreachable!();
-        };
-        match slice_type {
-            CSTSliceType::NamedExpression(named) => ClassGenerics::ExpressionWithClassType(
-                PointLink::new(definition.file_index(), named.expression().index()),
-            ),
-            CSTSliceType::Slice(_) | CSTSliceType::StarredExpression(_) => unreachable!(),
-            CSTSliceType::Slices(slices) => ClassGenerics::SlicesWithClassTypes(PointLink::new(
-                definition.file_index(),
-                slices.index(),
-            )),
         }
     }
 

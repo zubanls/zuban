@@ -1517,3 +1517,13 @@ def dec(x) -> C: ...
 
 @dec
 class C: ...
+
+[case simple_class_annotation_through_complex_narrowing]
+import m
+def foo() -> m.X: ...
+
+reveal_type(foo())  # N: Revealed type is "int"
+
+[file m.py]
+if bool():
+    X = int

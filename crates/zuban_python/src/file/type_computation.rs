@@ -2141,6 +2141,12 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             // We have no unfinished iterator and can therefore safely return.
             let node_ref = NodeRef::new(self.inference.file, primary.index())
                 .to_db_lifetime(self.inference.i_s.db);
+            let redirect_node_ref = NodeRef::new(self.inference.file, primary.first_child_index());
+            debug_assert!(
+                !redirect_node_ref.point().calculated(),
+                "For now nothing sets this, but this could change"
+            );
+            redirect_node_ref.set_point(class.node_ref.as_redirection_point(Locality::Todo));
             node_ref.set_point(Point::new_specific(Specific::SimpleGeneric, Locality::Todo));
             Some((
                 node_ref,
@@ -4245,9 +4251,9 @@ impl<'db: 'x, 'file, 'x> Inference<'db, 'file, '_> {
         let point = self.file.points.get(annotation_index);
         assert!(point.calculated(), "Expr: {:?}", expr);
         match point.specific() {
-            Specific::AnnotationOrTypeCommentSimpleClassInstance => self
-                .infer_expression(expr)
-                .expect_class_or_simple_generic(self.i_s),
+            Specific::AnnotationOrTypeCommentSimpleClassInstance => {
+                expect_class_or_simple_generic(self.i_s.db, NodeRef::new(self.file, expr.index()))
+            }
             _ => {
                 debug_assert!(
                     matches!(
@@ -5480,15 +5486,45 @@ pub fn use_cached_simple_generic_type<'db>(
     file: &PythonFile,
     expr: Expression,
 ) -> Cow<'db, Type> {
-    // The context of inference state is not important, because this is only a simple generic type.
-    let i_s = &InferenceState::new(db);
-    let inference = file.inference(i_s);
-    debug_assert_eq!(
-        inference.file.points.get(expr.index()).kind(),
-        PointKind::Redirect
-    );
-    let inferred = inference.check_point_cache(expr.index()).unwrap();
-    inferred.expect_class_or_simple_generic(i_s)
+    debug_assert_eq!(file.points.get(expr.index()).kind(), PointKind::Redirect);
+    expect_class_or_simple_generic(db, NodeRef::new(file, expr.index()))
+}
+
+fn expect_class_or_simple_generic(db: &Database, node_ref: NodeRef) -> Cow<'static, Type> {
+    fn inner(db: &Database, node_ref: NodeRef) -> GenericClass {
+        let p = node_ref.point();
+        debug_assert!(p.calculated(), "{node_ref:?}");
+        match p.kind() {
+            PointKind::Specific => {
+                debug_assert_eq!(p.specific(), Specific::SimpleGeneric);
+                let primary = node_ref.as_primary();
+                let first_cls = inner(db, NodeRef::new(node_ref.file, primary.first_child_index()));
+                debug_assert_eq!(first_cls.generics, ClassGenerics::None);
+                let link = first_cls.link;
+
+                let PrimaryContent::GetItem(slice_type) = primary.second() else {
+                    unreachable!();
+                };
+                let generics = match slice_type {
+                    CSTSliceType::NamedExpression(named) => ClassGenerics::ExpressionWithClassType(
+                        PointLink::new(node_ref.file_index(), named.expression().index()),
+                    ),
+                    CSTSliceType::Slice(_) | CSTSliceType::StarredExpression(_) => unreachable!(),
+                    CSTSliceType::Slices(slices) => ClassGenerics::SlicesWithClassTypes(
+                        PointLink::new(node_ref.file_index(), slices.index()),
+                    ),
+                };
+                GenericClass { link, generics }
+            }
+            PointKind::Complex => GenericClass {
+                link: node_ref.as_link(),
+                generics: ClassGenerics::None,
+            },
+            PointKind::Redirect => inner(db, p.as_redirected_node_ref(db)),
+            PointKind::FileReference => unreachable!("Simple class should never be a file"),
+        }
+    }
+    Cow::Owned(Type::Class(inner(db, node_ref)))
 }
 
 pub fn use_cached_param_annotation_type<'db: 'file, 'file>(
