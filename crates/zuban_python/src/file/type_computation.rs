@@ -14,7 +14,7 @@ use crate::{
     },
     debug,
     diagnostics::{Issue, IssueKind},
-    file::{Inference, PythonFile},
+    file::PythonFile,
     format_data::FormatData,
     getitem::{SliceOrSimple, SliceType, SliceTypeIterator},
     imports::{namespace_import, ImportResult},
@@ -365,7 +365,7 @@ macro_rules! compute_type_application {
             }
         };
         let mut tcomp = TypeComputation::new(
-            $self,
+            *$self,
             $slice_type.as_node_ref().as_link(),
             &mut on_type_var,
             match $from_alias_definition {
@@ -431,7 +431,7 @@ fn type_computation_for_variable_annotation(
 }
 
 pub struct TypeComputation<'db, 'file, 'i_s, 'c> {
-    inference: &'c NameResolution<'db, 'file, 'i_s>,
+    inference: NameResolution<'db, 'file, 'i_s>,
     for_definition: PointLink,
     current_callable: Option<PointLink>,
     type_var_manager: TypeVarManager<PointLink>,
@@ -447,13 +447,13 @@ pub struct TypeComputation<'db, 'file, 'i_s, 'c> {
 
 impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c> {
     pub fn new(
-        inference: &'c NameResolution<'db, 'file, 'i_s>,
+        name_resolution: NameResolution<'db, 'file, 'i_s>,
         for_definition: PointLink,
         type_var_callback: TypeVarCallback<'db, 'c>,
         origin: TypeComputationOrigin,
     ) -> Self {
         Self {
-            inference,
+            inference: name_resolution,
             for_definition,
             current_callable: None,
             type_var_manager: TypeVarManager::default(),
@@ -482,7 +482,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 };
             let old_manager = std::mem::take(&mut self.type_var_manager);
             let mut comp = TypeComputation {
-                inference: &mut f.inference(self.inference.i_s),
+                inference: f.name_resolution(self.inference.i_s),
                 type_var_manager: old_manager,
                 current_callable: self.current_callable,
                 for_definition: self.for_definition,
@@ -3520,7 +3520,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         C: FnOnce(&NameResolution, &dyn Fn(&Type) -> Type),
     {
         if self.type_var_manager.has_late_bound_type_vars() {
-            on_type_var_recalculation(self.inference, &|t| {
+            on_type_var_recalculation(&self.inference, &|t| {
                 t.rewrite_late_bound_callables(&self.type_var_manager)
             })
         }
@@ -3977,7 +3977,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         if !self.file.points.get(annotation.index()).calculated() {
             let mut x = type_computation_for_variable_annotation;
             let mut comp = TypeComputation::new(
-                self,
+                *self,
                 PointLink::new(self.file.file_index, annotation.index()),
                 &mut x,
                 origin,
@@ -4476,7 +4476,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         };
         let p = self.file.points.get(expr.index());
         let mut comp = TypeComputation::new(
-            self,
+            *self,
             in_definition,
             &mut type_var_callback,
             match &origin {
@@ -4607,7 +4607,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         let f: &'db PythonFile =
             self.file
                 .ensure_annotation_file(self.i_s.db, start, s.trim_end_matches('\\').into());
-        let inference = f.inference(self.i_s);
+        let name_resolution = f.name_resolution(self.i_s);
         if let Some(star_exprs) = f.tree.maybe_star_expressions() {
             match star_exprs.unpack() {
                 StarExpressionContent::Expression(expr) => {
@@ -4617,8 +4617,8 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                     let expr_index = expr.index();
                     let index = expr_index - ANNOTATION_TO_EXPR_DIFFERENCE;
                     if let Some(tuple) = expr.maybe_tuple() {
-                        let type_ =
-                            inference.calc_type_comment_tuple(assignment_node_ref, tuple.iter());
+                        let type_ = name_resolution
+                            .calc_type_comment_tuple(assignment_node_ref, tuple.iter());
                         NodeRef::new(f, index).set_point(Point::new_specific(
                             Specific::AnnotationOrTypeCommentWithTypeVars,
                             Locality::Todo,
@@ -4627,7 +4627,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                     } else {
                         let mut x = type_computation_for_variable_annotation;
                         let mut comp = TypeComputation::new(
-                            &inference,
+                            name_resolution,
                             assignment_node_ref.as_link(),
                             &mut x,
                             TypeComputationOrigin::AssignmentTypeCommentOrAnnotation {
@@ -4655,9 +4655,10 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                             TypeCommentState::UnfinishedFinalOrClassVar(inf_node_ref)
                         } else {
                             TypeCommentState::Type(
-                                inference.use_cached_annotation_or_type_comment_type_internal(
-                                    index, expr,
-                                ),
+                                name_resolution
+                                    .use_cached_annotation_or_type_comment_type_internal(
+                                        index, expr,
+                                    ),
                             )
                         },
                     }
@@ -4665,7 +4666,8 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 StarExpressionContent::Tuple(t) => {
                     let star_exprs_index = star_exprs.index();
                     let index = star_exprs_index - ANNOTATION_TO_EXPR_DIFFERENCE;
-                    let type_ = inference.calc_type_comment_tuple(assignment_node_ref, t.iter());
+                    let type_ =
+                        name_resolution.calc_type_comment_tuple(assignment_node_ref, t.iter());
                     NodeRef::new(f, index).insert_type(type_);
                     let complex_index = f.points.get(index).complex_index();
                     TypeCommentDetails {
@@ -4737,7 +4739,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                     let expr_node_ref = NodeRef::new(self.file, expr.index());
                     let mut x = type_computation_for_variable_annotation;
                     let mut comp = TypeComputation::new(
-                        self,
+                        *self,
                         assignment_node_ref.as_link(),
                         &mut x,
                         TypeComputationOrigin::AssignmentTypeCommentOrAnnotation {
@@ -4799,7 +4801,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         let named_expr = node_ref.as_named_expression();
         let mut x = type_computation_for_variable_annotation;
         let mut comp = TypeComputation::new(
-            self,
+            *self,
             node_ref.as_link(),
             &mut x,
             TypeComputationOrigin::CastTarget,
@@ -4824,7 +4826,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
     ) -> TypedDictMember {
         let mut x = type_computation_for_variable_annotation;
         let mut comp = TypeComputation::new(
-            self,
+            *self,
             NodeRef::new(self.file, annotation.index()).as_link(),
             &mut x,
             TypeComputationOrigin::TypedDictMember,
@@ -4853,7 +4855,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             )
         };
         let comp = TypeComputation::new(
-            self,
+            *self,
             in_definition,
             &mut on_type_var,
             TypeComputationOrigin::Other,
@@ -4884,7 +4886,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             }
         };
         let mut comp = TypeComputation::new(
-            self,
+            *self,
             node_ref.as_link(),
             &mut on_type_var,
             TypeComputationOrigin::Other,
@@ -4936,7 +4938,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         let mut x = type_computation_for_variable_annotation;
         let node_ref = NodeRef::new(self.file, expr.index());
         let mut comp = TypeComputation::new(
-            self,
+            *self,
             node_ref.as_link(),
             &mut x,
             TypeComputationOrigin::Other,

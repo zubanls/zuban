@@ -481,9 +481,8 @@ pub(crate) fn new_typing_named_tuple(
                 allow_late_bound_callables: false,
             })
     };
-    let inference = second_node_ref.file.inference(i_s);
     let mut comp = TypeComputation::new(
-        &inference,
+        second_node_ref.file.name_resolution(i_s),
         second_node_ref.as_link(),
         on_type_var,
         TypeComputationOrigin::NamedTupleMember,

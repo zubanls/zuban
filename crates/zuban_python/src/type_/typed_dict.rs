@@ -549,9 +549,8 @@ pub(crate) fn new_typed_dict<'db>(i_s: &InferenceState<'db, '_>, args: &dyn Args
         args.add_issue(i_s, IssueKind::UnexpectedArgumentsToTypedDict);
         return Inferred::new_invalid_type_definition();
     };
-    let inference = first.node_ref.file.inference(i_s);
     let mut comp = TypeComputation::new(
-        &inference,
+        first.node_ref.file.name_resolution(i_s),
         first.node_ref.as_link(),
         on_type_var,
         TypeComputationOrigin::TypedDictMember,

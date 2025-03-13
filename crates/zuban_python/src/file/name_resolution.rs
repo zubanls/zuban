@@ -20,6 +20,7 @@ use crate::{
 
 use super::{inference::StarImportResult, python_file::StarImport, PythonFile};
 
+#[derive(Copy, Clone)]
 pub struct NameResolution<'db: 'file, 'file, 'i_s> {
     pub(super) file: &'file PythonFile,
     pub(super) i_s: &'i_s InferenceState<'db, 'i_s>,

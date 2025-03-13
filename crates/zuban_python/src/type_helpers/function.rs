@@ -466,7 +466,6 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
     ) -> (TypeVarLikes, Option<TypeGuardInfo>, Option<ParamAnnotation>) {
         let func_node = self.node();
         let implicit_optional = self.node_ref.file.flags(i_s.db).implicit_optional;
-        let inference = self.node_ref.file.inference(i_s);
         let in_result_type = Cell::new(false);
         let mut unbound_type_vars = vec![];
         let mut on_type_var = |i_s: &InferenceState,
@@ -494,7 +493,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 })
         };
         let mut type_computation = TypeComputation::new(
-            &inference,
+            self.node_ref.file.name_resolution(i_s),
             self.node_ref.as_link(),
             &mut on_type_var,
             TypeComputationOrigin::ParamTypeCommentOrAnnotation,
