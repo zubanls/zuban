@@ -398,6 +398,7 @@ testDataclassTransformUnsupportedDescriptors
 # dataclass __replace__
 testDunderReplacePresent
 
+testDefaultDict
 # NamedTuple recursive definitions
 testBasicRecursiveNamedTupleSpecial
 testRecursiveNamedTupleTypedDict

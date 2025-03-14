@@ -308,8 +308,6 @@ class Result:
 class IteratorResult(Result):
     def f(self) -> Iterator[RowData]: ...
 class ScalarResult(list[R]): ...  # E: Variable "m.R" is not valid as a type \
-                                  # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases \
-                                  # E: Variable "m.R" is not valid as a type \
                                   # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 
 [file n.py]

@@ -62,7 +62,7 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
             ..Default::default()
         };
         let mut finder = TypeVarFinder {
-            name_resolution: class.file.name_resolution(i_s),
+            name_resolution: class.file.name_resolution_and_stop_on_assignments(i_s),
             infos: &mut infos,
         };
 
@@ -92,7 +92,7 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
     ) -> TypeVarLikes {
         let mut infos = Infos::default();
         let mut finder = TypeVarFinder {
-            name_resolution: file.name_resolution(i_s),
+            name_resolution: file.name_resolution_and_stop_on_assignments(i_s),
             infos: &mut infos,
         };
         finder.find_in_expr(expr);
@@ -141,7 +141,7 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
                         .i_s
                         .db
                         .loaded_python_file(f)
-                        .name_resolution(&InferenceState::new(self.i_s.db))
+                        .name_resolution_and_stop_on_assignments(&InferenceState::new(self.i_s.db))
                         .resolve_module_access(name.as_str(), |k| self.add_issue(name.index(), k))
                     else {
                         return BaseLookup::Other;
@@ -332,7 +332,7 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
     fn compute_forward_reference(&mut self, start: CodeIndex, string: Cow<str>) {
         let file = self.file.ensure_annotation_file(self.i_s.db, start, string);
         let mut inner_finder = TypeVarFinder {
-            name_resolution: file.name_resolution(self.i_s),
+            name_resolution: file.name_resolution_and_stop_on_assignments(self.i_s),
             infos: self.infos,
         };
 
@@ -370,7 +370,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 if node_ref.file_index() != self.file.file_index {
                     return node_ref
                         .file
-                        .name_resolution(self.i_s)
+                        .name_resolution_and_stop_on_assignments(self.i_s)
                         .point_resolution_to_base_lookup(resolved);
                 }
 
