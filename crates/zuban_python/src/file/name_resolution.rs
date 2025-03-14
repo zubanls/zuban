@@ -14,7 +14,7 @@ use crate::{
     inferred::Inferred,
     node_ref::NodeRef,
     type_::{LookupResult, Type},
-    type_helpers::{is_private_import, is_reexport_issue, Module},
+    type_helpers::{is_private_import, is_reexport_issue, ClassInitializer, Module},
     utils::AlreadySeen,
 };
 
@@ -1017,6 +1017,28 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
             );
             None
         }
+    }
+
+    pub(super) fn cache_name_on_class(&self, cls: ClassInitializer, name: Name) -> PointKind {
+        // This is needed to lookup names on a class and set the redirect there. It does not modify the
+        // class at all.
+        let name_node_ref = NodeRef::new(self.file, name.index());
+        let point = name_node_ref.point();
+        if point.calculated() {
+            return point.kind();
+        }
+        name_node_ref.set_point(
+            if let Some(index) = cls
+                .class_storage
+                .class_symbol_table
+                .lookup_symbol(name.as_str())
+            {
+                Point::new_redirect(cls.node_ref.file.file_index, index, Locality::Todo)
+            } else {
+                Point::new_specific(Specific::AnyDueToError, Locality::Todo)
+            },
+        );
+        name_node_ref.point().kind()
     }
 
     pub(crate) fn add_issue(&self, node_index: NodeIndex, issue: IssueKind) {

@@ -1755,7 +1755,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         primary: Primary,
         name: Name<'x>,
     ) -> TypeContent<'db, 'x> {
-        let point_kind = cache_name_on_class(cls, self.file, name);
+        let point_kind = self.cache_name_on_class(cls, name);
         if point_kind == PointKind::Redirect {
             self.compute_type_name(name)
         } else {
@@ -5497,32 +5497,6 @@ fn load_cached_type(node_ref: NodeRef) -> TypeNameLookup {
         ComplexPoint::TypeVarLike(t) => TypeNameLookup::TypeVarLike(t.clone()),
         _ => unreachable!("Expected an Alias or TypeVarLike, but received something weird"),
     }
-}
-
-pub(super) fn cache_name_on_class(
-    cls: ClassInitializer,
-    file: &PythonFile,
-    name: Name,
-) -> PointKind {
-    // This is needed to lookup names on a class and set the redirect there. It does not modify the
-    // class at all.
-    let name_node_ref = NodeRef::new(file, name.index());
-    let point = name_node_ref.point();
-    if point.calculated() {
-        return point.kind();
-    }
-    name_node_ref.set_point(
-        if let Some(index) = cls
-            .class_storage
-            .class_symbol_table
-            .lookup_symbol(name.as_str())
-        {
-            Point::new_redirect(cls.node_ref.file.file_index, index, Locality::Todo)
-        } else {
-            Point::new_specific(Specific::AnyDueToError, Locality::Todo)
-        },
-    );
-    cache_name_on_class(cls, file, name)
 }
 
 pub fn use_cached_simple_generic_type<'db>(

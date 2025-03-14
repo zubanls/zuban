@@ -3,10 +3,7 @@ use std::borrow::Cow;
 use parsa_python_cst::*;
 use vfs::FileIndex;
 
-use super::{
-    name_resolution::{NameResolution, PointResolution},
-    type_computation::cache_name_on_class,
-};
+use super::name_resolution::{NameResolution, PointResolution};
 use crate::{
     database::{ComplexPoint, PointKind, PointLink, Specific},
     diagnostics::IssueKind,
@@ -158,7 +155,7 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
                 }
                 BaseLookup::Class(link) => {
                     let cls = ClassInitializer::from_link(self.i_s.db, link);
-                    let point_kind = cache_name_on_class(cls, self.file, name);
+                    let point_kind = self.cache_name_on_class(cls, name);
                     if point_kind == PointKind::Redirect {
                         self.find_in_name(name)
                     } else {

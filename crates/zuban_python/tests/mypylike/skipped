@@ -6,6 +6,7 @@ avoid_type_computation_recursion
 testOverloadPossibleOverlapWithArgsAndKwargs
 flow_analysis_base_class_calculation_should_not_lead_to_recursion
 
+testDefaultDict
 # TODO PointResolution::GlobalOrNonlocal
 testTypedDictUpdateNonRecursiveToRecursiveCoarse
 testRecursiveTypedDict*
@@ -398,7 +399,6 @@ testDataclassTransformUnsupportedDescriptors
 # dataclass __replace__
 testDunderReplacePresent
 
-testDefaultDict
 # NamedTuple recursive definitions
 testBasicRecursiveNamedTupleSpecial
 testRecursiveNamedTupleTypedDict
