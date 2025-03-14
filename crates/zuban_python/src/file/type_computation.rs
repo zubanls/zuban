@@ -26,15 +26,15 @@ use crate::{
     recoverable_error,
     type_::{
         add_named_tuple_param, add_param_spec_to_params, new_collections_named_tuple,
-        new_typed_dict_internal, new_typing_named_tuple, AnyCause, CallableContent, CallableParam,
-        CallableParams, CallableWithParent, ClassGenerics, Dataclass, DbBytes, DbString, Enum,
-        EnumMember, FunctionKind, GenericClass, GenericItem, GenericsList, Literal, LiteralKind,
-        MaybeUnpackGatherer, NamedTuple, Namespace, NeverCause, NewType, ParamSpecArg,
-        ParamSpecUsage, ParamType, RecursiveType, StarParamType, StarStarParamType, StringSlice,
-        Tuple, TupleArgs, TupleUnpack, Type, TypeArgs, TypeGuardInfo, TypeVar, TypeVarKind,
-        TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypeVarTupleUsage,
-        TypeVarUsage, TypedDict, TypedDictGenerics, TypedDictMember, UnionEntry, UnionType,
-        WithUnpack,
+        new_typed_dict_internal, new_typing_named_tuple, new_typing_named_tuple_internal, AnyCause,
+        CallableContent, CallableParam, CallableParams, CallableWithParent, ClassGenerics,
+        Dataclass, DbBytes, DbString, Enum, EnumMember, FunctionKind, GenericClass, GenericItem,
+        GenericsList, Literal, LiteralKind, MaybeUnpackGatherer, NamedTuple, Namespace, NeverCause,
+        NewType, ParamSpecArg, ParamSpecUsage, ParamType, RecursiveType, StarParamType,
+        StarStarParamType, StringSlice, Tuple, TupleArgs, TupleUnpack, Type, TypeArgs,
+        TypeGuardInfo, TypeVar, TypeVarKind, TypeVarLike, TypeVarLikeUsage, TypeVarLikes,
+        TypeVarManager, TypeVarTupleUsage, TypeVarUsage, TypedDict, TypedDictGenerics,
+        TypedDictMember, UnionEntry, UnionType, WithUnpack,
     },
     type_helpers::{
         cache_class_name, start_namedtuple_params, Class, ClassInitializer, ClassNodeRef, Function,
@@ -3810,6 +3810,12 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                     details,
                 })
             }
+            Some(TypeNameLookup::SpecialType(SpecialType::TypingNamedTuple)) => {
+                Err(CalculatingAliasType::NamedTuple {
+                    primary_index: primary.index(),
+                    details,
+                })
+            }
             _ => Ok(()),
         }
     }
@@ -4419,7 +4425,8 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             CalculatingAliasType::Normal => {
                 TypeVarFinder::find_alias_type_vars(self.i_s, self.file, expr)
             }
-            CalculatingAliasType::TypedDict { details, .. } => {
+            CalculatingAliasType::TypedDict { details, .. }
+            | CalculatingAliasType::NamedTuple { details, .. } => {
                 if let ArgumentsDetails::Node(n) = details {
                     // Skip the name
                     if let Some(arg) = n.iter().nth(1) {
@@ -4468,6 +4475,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             match &origin {
                 CalculatingAliasType::Normal => TypeComputationOrigin::TypeAlias,
                 CalculatingAliasType::TypedDict { .. } => TypeComputationOrigin::TypedDictMember,
+                CalculatingAliasType::NamedTuple { .. } => TypeComputationOrigin::NamedTupleMember,
             },
         );
         let ComplexPoint::TypeAlias(alias) = cached_type_node_ref.complex().unwrap() else {
@@ -4555,6 +4563,29 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                                 members,
                                 alias.location,
                                 alias.type_vars.clone(),
+                            )),
+                            comp.is_recursive_alias,
+                        );
+                    }
+                    None => alias.set_valid(Type::ERROR, false),
+                }
+            }
+            CalculatingAliasType::NamedTuple {
+                primary_index,
+                details,
+            } => {
+                match new_typing_named_tuple_internal(
+                    self.i_s,
+                    &mut comp,
+                    &SimpleArgs::new(*self.i_s, self.file, primary_index, details),
+                ) {
+                    Some((name, params)) => {
+                        alias.set_valid(
+                            Type::NamedTuple(NamedTuple::from_params(
+                                alias.location,
+                                name,
+                                alias.type_vars.clone(),
+                                params,
                             )),
                             comp.is_recursive_alias,
                         );
@@ -5366,6 +5397,10 @@ impl<'a, I: Clone + Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
 enum CalculatingAliasType<'x> {
     Normal,
     TypedDict {
+        primary_index: NodeIndex,
+        details: ArgumentsDetails<'x>,
+    },
+    NamedTuple {
         primary_index: NodeIndex,
         details: ArgumentsDetails<'x>,
     },

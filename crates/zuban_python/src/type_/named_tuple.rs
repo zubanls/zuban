@@ -10,7 +10,7 @@ use vfs::FileIndex;
 use super::{
     tuple::lookup_tuple_magic_methods, AnyCause, CallableContent, CallableParam, CallableParams,
     DbString, FormatStyle, FunctionKind, Literal, LiteralKind, LookupResult, ParamType,
-    StringSlice, Tuple, Type,
+    StringSlice, Tuple, Type, TypeVarLikes,
 };
 use crate::{
     arguments::{ArgIterator, ArgKind, Args, KeywordArg},
@@ -42,6 +42,23 @@ impl NamedTuple {
             __new__: Rc::new(__new__),
             tuple: OnceCell::new(),
         }
+    }
+
+    pub fn from_params(
+        defined_at: PointLink,
+        name: StringSlice,
+        type_var_likes: TypeVarLikes,
+        params: Vec<CallableParam>,
+    ) -> Rc<Self> {
+        let callable = CallableContent::new_simple(
+            Some(DbString::StringSlice(name)),
+            None,
+            defined_at,
+            type_var_likes,
+            CallableParams::new_simple(Rc::from(params)),
+            Type::Self_,
+        );
+        Rc::new(NamedTuple::new(name, callable))
     }
 
     pub fn clone_with_new_init_class(&self, name: StringSlice) -> Rc<NamedTuple> {
@@ -455,6 +472,38 @@ pub(crate) fn new_typing_named_tuple(
     args: &dyn Args,
     in_type_definition: bool,
 ) -> Option<Rc<NamedTuple>> {
+    let (_, second_node_ref, _, _) = check_named_tuple_name(i_s, "NamedTuple", args)?;
+    let on_type_var = &mut |i_s: &InferenceState, _: &_, type_var_like, _| {
+        i_s.find_parent_type_var(&type_var_like)
+            .unwrap_or(TypeVarCallbackReturn::NotFound {
+                allow_late_bound_callables: false,
+            })
+    };
+    let mut comp = TypeComputation::new(
+        second_node_ref.file.name_resolution(i_s),
+        second_node_ref.as_link(),
+        on_type_var,
+        TypeComputationOrigin::NamedTupleMember,
+    );
+    let (name, params) = new_typing_named_tuple_internal(i_s, &mut comp, args)?;
+    let type_var_likes = comp.into_type_vars(|_, _| ());
+    if in_type_definition && !type_var_likes.is_empty() {
+        args.add_issue(i_s, IssueKind::NamedTupleGenericInClassDefinition);
+        return None;
+    }
+    Some(NamedTuple::from_params(
+        second_node_ref.as_link(),
+        name,
+        type_var_likes,
+        params,
+    ))
+}
+
+pub(crate) fn new_typing_named_tuple_internal(
+    i_s: &InferenceState,
+    comp: &mut TypeComputation,
+    args: &dyn Args,
+) -> Option<(StringSlice, Vec<CallableParam>)> {
     let (name, second_node_ref, atom_content, mut iterator) =
         check_named_tuple_name(i_s, "NamedTuple", args)?;
     if iterator.next().is_some() {
@@ -475,37 +524,9 @@ pub(crate) fn new_typing_named_tuple(
             return None;
         }
     };
-    let on_type_var = &mut |i_s: &InferenceState, _: &_, type_var_like, _| {
-        i_s.find_parent_type_var(&type_var_like)
-            .unwrap_or(TypeVarCallbackReturn::NotFound {
-                allow_late_bound_callables: false,
-            })
-    };
-    let mut comp = TypeComputation::new(
-        second_node_ref.file.name_resolution(i_s),
-        second_node_ref.as_link(),
-        on_type_var,
-        TypeComputationOrigin::NamedTupleMember,
-    );
-    if let Some(params) = comp.compute_named_tuple_initializer(list_iterator) {
-        check_named_tuple_has_no_fields_with_underscore(i_s, "NamedTuple", args, &params);
-        let type_var_likes = comp.into_type_vars(|_, _| ());
-        if in_type_definition && !type_var_likes.is_empty() {
-            args.add_issue(i_s, IssueKind::NamedTupleGenericInClassDefinition);
-            return None;
-        }
-        let callable = CallableContent::new_simple(
-            Some(DbString::StringSlice(name)),
-            None,
-            second_node_ref.as_link(),
-            type_var_likes,
-            CallableParams::new_simple(Rc::from(params)),
-            Type::Self_,
-        );
-        Some(Rc::new(NamedTuple::new(name, callable)))
-    } else {
-        None
-    }
+    let params = comp.compute_named_tuple_initializer(list_iterator)?;
+    check_named_tuple_has_no_fields_with_underscore(i_s, "NamedTuple", args, &params);
+    Some((name, params))
 }
 
 pub(crate) fn new_collections_named_tuple<'db>(
