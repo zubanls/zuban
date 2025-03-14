@@ -366,7 +366,8 @@ macro_rules! compute_type_application {
             }
         };
         let mut tcomp = TypeComputation::new(
-            *$self,
+            $self.i_s,
+            $self.file,
             $slice_type.as_node_ref().as_link(),
             &mut on_type_var,
             match $from_alias_definition {
@@ -456,13 +457,14 @@ impl<'db: 'file, 'file, 'i_s> std::ops::Deref for TypeComputation<'db, 'file, 'i
 
 impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c> {
     pub fn new(
-        name_resolution: NameResolution<'db, 'file, 'i_s>,
+        i_s: &'i_s InferenceState<'db, 'i_s>,
+        file: &'file PythonFile,
         for_definition: PointLink,
         type_var_callback: TypeVarCallback<'db, 'c>,
         origin: TypeComputationOrigin,
     ) -> Self {
         Self {
-            name_resolution,
+            name_resolution: file.name_resolution_and_stop_on_assignments(i_s),
             for_definition,
             current_callable: None,
             type_var_manager: TypeVarManager::default(),
@@ -3852,7 +3854,8 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         if !self.file.points.get(annotation.index()).calculated() {
             let mut x = type_computation_for_variable_annotation;
             let mut comp = TypeComputation::new(
-                *self,
+                self.i_s,
+                self.file,
                 PointLink::new(self.file.file_index, annotation.index()),
                 &mut x,
                 origin,
@@ -4476,7 +4479,8 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         };
         let p = self.file.points.get(expr.index());
         let mut comp = TypeComputation::new(
-            *self,
+            self.i_s,
+            self.file,
             in_definition,
             &mut type_var_callback,
             match &origin {
@@ -4651,7 +4655,8 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                     } else {
                         let mut x = type_computation_for_variable_annotation;
                         let mut comp = TypeComputation::new(
-                            name_resolution,
+                            self.i_s,
+                            f,
                             assignment_node_ref.as_link(),
                             &mut x,
                             TypeComputationOrigin::AssignmentTypeCommentOrAnnotation {
@@ -4763,7 +4768,8 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                     let expr_node_ref = NodeRef::new(self.file, expr.index());
                     let mut x = type_computation_for_variable_annotation;
                     let mut comp = TypeComputation::new(
-                        *self,
+                        self.i_s,
+                        self.file,
                         assignment_node_ref.as_link(),
                         &mut x,
                         TypeComputationOrigin::AssignmentTypeCommentOrAnnotation {
@@ -4825,7 +4831,8 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         let named_expr = node_ref.as_named_expression();
         let mut x = type_computation_for_variable_annotation;
         let mut comp = TypeComputation::new(
-            *self,
+            self.i_s,
+            self.file,
             node_ref.as_link(),
             &mut x,
             TypeComputationOrigin::CastTarget,
@@ -4850,7 +4857,8 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
     ) -> TypedDictMember {
         let mut x = type_computation_for_variable_annotation;
         let mut comp = TypeComputation::new(
-            *self,
+            self.i_s,
+            self.file,
             NodeRef::new(self.file, annotation.index()).as_link(),
             &mut x,
             TypeComputationOrigin::TypedDictMember,
@@ -4879,7 +4887,8 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             )
         };
         let comp = TypeComputation::new(
-            *self,
+            self.i_s,
+            self.file,
             in_definition,
             &mut on_type_var,
             TypeComputationOrigin::Other,
@@ -4910,7 +4919,8 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             }
         };
         let mut comp = TypeComputation::new(
-            *self,
+            self.i_s,
+            self.file,
             node_ref.as_link(),
             &mut on_type_var,
             TypeComputationOrigin::Other,
@@ -4962,7 +4972,8 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         let mut x = type_computation_for_variable_annotation;
         let node_ref = NodeRef::new(self.file, expr.index());
         let mut comp = TypeComputation::new(
-            *self,
+            self.i_s,
+            self.file,
             node_ref.as_link(),
             &mut x,
             TypeComputationOrigin::Other,

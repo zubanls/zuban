@@ -471,7 +471,8 @@ pub(crate) fn new_typing_named_tuple(
             })
     };
     let mut comp = TypeComputation::new(
-        second_node_ref.file.name_resolution(i_s),
+        i_s,
+        second_node_ref.file,
         second_node_ref.as_link(),
         on_type_var,
         TypeComputationOrigin::NamedTupleMember,

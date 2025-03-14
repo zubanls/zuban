@@ -726,7 +726,8 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                     if name.as_str() == "metaclass" {
                         let node_ref = NodeRef::new(self.node_ref.file, expr.index());
                         let meta_base = TypeComputation::new(
-                            self.node_ref.file.name_resolution(i_s),
+                            i_s,
+                            self.node_ref.file,
                             self.node_ref.as_link(),
                             &mut |_, _: &_, _: TypeVarLike, _| TypeVarCallbackReturn::NotFound {
                                 allow_late_bound_callables: false,
@@ -795,7 +796,8 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                 match argument {
                     Argument::Positional(n) => {
                         let base = TypeComputation::new(
-                            self.node_ref.file.name_resolution(i_s),
+                            i_s,
+                            self.node_ref.file,
                             self.node_ref.as_link(),
                             &mut |i_s, _: &_, type_var_like: TypeVarLike, _| {
                                 if let Some(usage) =

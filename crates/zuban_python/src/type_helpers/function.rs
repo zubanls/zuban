@@ -493,7 +493,8 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 })
         };
         let mut type_computation = TypeComputation::new(
-            self.node_ref.file.name_resolution(i_s),
+            i_s,
+            self.node_ref.file,
             self.node_ref.as_link(),
             &mut on_type_var,
             TypeComputationOrigin::ParamTypeCommentOrAnnotation,
