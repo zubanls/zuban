@@ -26,11 +26,11 @@ use crate::{
     node_ref::NodeRef,
     type_::{
         execute_collections_named_tuple, execute_tuple_class, execute_type_of_type,
-        execute_typing_named_tuple, merge_class_type_vars, AnyCause, CallableContent, CallableLike,
-        CallableParams, ClassGenerics, DataclassTransformObj, DbBytes, DbString, FunctionKind,
-        FunctionOverload, GenericClass, GenericItem, GenericsList, IterCause, IterInfos,
-        Literal as DbLiteral, LiteralKind, LiteralValue, LookupResult, NeverCause, PropertySetter,
-        Type, TypeVarKind, TypeVarLike, TypeVarLikes,
+        merge_class_type_vars, AnyCause, CallableContent, CallableLike, CallableParams,
+        ClassGenerics, DataclassTransformObj, DbBytes, DbString, FunctionKind, FunctionOverload,
+        GenericClass, GenericItem, GenericsList, IterCause, IterInfos, Literal as DbLiteral,
+        LiteralKind, LiteralValue, LookupResult, NeverCause, PropertySetter, Type, TypeVarKind,
+        TypeVarLike, TypeVarLikes,
     },
     type_helpers::{
         execute_assert_type, execute_cast, execute_isinstance, execute_issubclass,
@@ -1923,10 +1923,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             Specific::TypingParamSpecClass => {
                                 return execute_param_spec_class(i_s, args, result_context)
                             }
-                            Specific::TypingNamedTuple => {
-                                return execute_typing_named_tuple(i_s, args)
-                            }
-                            Specific::TypingTypedDict => {
+                            Specific::TypingTypedDict | Specific::TypingNamedTuple => {
                                 if let ResultContext::AssignmentNewDefinition {
                                     assignment_definition,
                                 } = &result_context

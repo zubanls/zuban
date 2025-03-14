@@ -48,9 +48,8 @@ pub(crate) use self::{
     lookup_result::LookupResult,
     matching::{match_arbitrary_len_vs_unpack, match_tuple_type_arguments, match_unpack},
     named_tuple::{
-        add_named_tuple_param, execute_collections_named_tuple, execute_typing_named_tuple,
-        new_collections_named_tuple, new_typing_named_tuple, new_typing_named_tuple_internal,
-        NamedTuple,
+        add_named_tuple_param, execute_collections_named_tuple, new_collections_named_tuple,
+        new_typing_named_tuple, new_typing_named_tuple_internal, NamedTuple,
     },
     operations::{execute_type_of_type, IterCause, IterInfos},
     recursive_type::{RecursiveType, RecursiveTypeOrigin},

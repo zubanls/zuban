@@ -358,15 +358,6 @@ impl Hash for NamedTuple {
     }
 }
 
-pub(crate) fn execute_typing_named_tuple(i_s: &InferenceState, args: &dyn Args) -> Inferred {
-    match new_typing_named_tuple(i_s, args, false) {
-        Some(rc) => Inferred::new_unsaved_complex(ComplexPoint::NamedTupleDefinition(Rc::new(
-            Type::NamedTuple(rc),
-        ))),
-        None => Inferred::new_invalid_type_definition(),
-    }
-}
-
 pub(crate) fn execute_collections_named_tuple<'db>(
     i_s: &InferenceState<'db, '_>,
     args: &dyn Args<'db>,

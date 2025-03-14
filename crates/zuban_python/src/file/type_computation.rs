@@ -4262,7 +4262,10 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         specific: Specific,
         assignment: Assignment,
     ) -> Inferred {
-        debug_assert!(matches!(specific, Specific::TypingTypedDict));
+        debug_assert!(matches!(
+            specific,
+            Specific::TypingTypedDict | Specific::TypingNamedTuple
+        ));
         match self.compute_type_assignment(assignment) {
             TypeNameLookup::TypeAlias(ta) => {
                 if ta.is_valid() {
@@ -4273,12 +4276,16 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             }
             // Error should have been created, because it's an invalid alias.
             TypeNameLookup::InvalidVariable(_) | TypeNameLookup::Unknown(_) => {
-                self.add_issue(
-                    assignment.index(),
-                    IssueKind::InvalidAssignmentForm {
-                        class_name: "TypedDict",
-                    },
-                );
+                match specific {
+                    Specific::TypingTypedDict => self.add_issue(
+                        assignment.index(),
+                        IssueKind::InvalidAssignmentForm {
+                            class_name: "TypedDict",
+                        },
+                    ),
+                    Specific::TypingNamedTuple => todo!(),
+                    _ => unreachable!(),
+                }
                 Inferred::new_any_from_error()
             }
             tnl => {
