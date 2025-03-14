@@ -3645,6 +3645,9 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                         .point_resolution_to_type_name_lookup(resolved);
                 }
                 let node_ref = node_ref.to_db_lifetime(i_s.db);
+                if node_ref.point().maybe_calculated_and_specific() == Some(Specific::Cycle) {
+                    return TypeNameLookup::Unknown(UnknownCause::ReportedIssue);
+                }
 
                 let name_def = node_ref.as_name_def();
                 return match name_def.expect_type() {
@@ -3670,10 +3673,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                                 .name_resolution_for_types(&InferenceState::new(self.i_s.db))
                                 .compute_type_assignment(assignment)
                         } else {
-                            // TODO WTF WHY IS THIS for inference???
-                            node_ref
-                                .file
-                                .name_resolution_for_inference(i_s)
+                            self.with_new_file(node_ref.file)
                                 .compute_type_assignment(assignment)
                         }
                     }
