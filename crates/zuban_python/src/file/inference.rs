@@ -63,12 +63,11 @@ macro_rules! check_point_cache_with {
         $vis fn $name(&self, node: $ast $(, $result_context : &mut ResultContext)?) -> $crate::inferred::Inferred {
             if let Some(inferred) = self.check_point_cache(node.index()) {
                 debug!(
-                    "{} {:?} (#{}, {}:{}) from cache: {}",
+                    "{} {:?} ({}:#{}) from cache: {}",
                     stringify!($name),
                     node.short_debug(),
+                    self.file.qualified_name(self.i_s.db),
                     self.file.byte_to_line_column(node.start()).0,
-                    self.file.file_index,
-                    node.index(),
                     {
                         let point = self.file.points.get(node.index());
                         match point.kind() {
@@ -81,12 +80,11 @@ macro_rules! check_point_cache_with {
                 inferred
             } else {
                 debug!(
-                    "{} {:?} (#{}, {}:{})",
+                    "{} {:?} ({}:#{})",
                     stringify!($name),
                     node.short_debug(),
+                    self.file.qualified_name(self.i_s.db),
                     self.file.byte_to_line_column(node.start()).0,
-                    self.file.file_index,
-                    node.index(),
                 );
                 debug_indent(|| {
                     $func(self, node $(, $result_context)?)
@@ -967,9 +965,9 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         save: impl FnOnce(NodeIndex, &Inferred),
     ) {
         debug!(
-            "Assign to name {} ({}#{}): {}",
+            "Assign to name {} ({}:#{}): {}",
             name_def.as_code(),
-            self.file.file_index,
+            self.file.qualified_name(self.i_s.db),
             self.file.byte_to_line_column(name_def.start()).0,
             value.debug_info(self.i_s.db),
         );
@@ -3680,10 +3678,10 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             }
         }
         debug!(
-            "Infer name of stmt (#{}, {}:{})",
+            "Infer name {} of stmt ({}:#{})",
+            name_def.as_code(),
+            self.file.qualified_name(self.i_s.db),
             name_def.line(),
-            self.file.file_index,
-            defining_stmt.index(),
         );
         match defining_stmt {
             DefiningStmt::FunctionDef(func_def) => {
