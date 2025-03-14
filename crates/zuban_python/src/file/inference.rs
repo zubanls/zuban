@@ -496,12 +496,15 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     // This is essentially a bare `foo += 1` that does not have any definition and
                     // leads to a NameError within Python.
                     match target.clone() {
-                        Target::Name(name_def) => self.add_issue(
-                            name_def.index(),
-                            IssueKind::NameError {
-                                name: name_def.as_code().into(),
-                            },
-                        ),
+                        Target::Name(name_def) => {
+                            debug!("Name not found for aug assignment");
+                            self.add_issue(
+                                name_def.index(),
+                                IssueKind::NameError {
+                                    name: name_def.as_code().into(),
+                                },
+                            )
+                        }
                         Target::NameExpression(t, n) => self.add_issue(
                             assignment.index(),
                             IssueKind::AttributeError {

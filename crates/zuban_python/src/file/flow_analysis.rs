@@ -1851,6 +1851,7 @@ impl Inference<'_, '_, '_> {
         match target {
             Target::Name(name_def) => {
                 if self.infer_name_target(name_def, true).is_none() {
+                    debug!("Name not found for del stmt");
                     self.add_issue(
                         name_def.index(),
                         IssueKind::NameError {
