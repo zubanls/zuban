@@ -35,7 +35,7 @@ pub(crate) fn execute_cast<'db>(i_s: &InferenceState<'db, '_>, args: &dyn Args<'
                     result = positional
                         .node_ref
                         .file
-                        .name_resolution(i_s)
+                        .name_resolution_for_types(i_s)
                         .compute_cast_target(positional.node_ref)
                         .ok()
                 } else {
@@ -229,7 +229,7 @@ pub(crate) fn execute_assert_type<'db>(
     let Ok(second) = second_positional
         .node_ref
         .file
-        .name_resolution(i_s)
+        .name_resolution_for_types(i_s)
         .compute_cast_target(second_positional.node_ref)
     else {
         return Inferred::new_any_from_error();
@@ -517,7 +517,7 @@ fn maybe_type_var_tuple(
                     "default" => {
                         if let Some(type_args) = node_ref
                             .file
-                            .name_resolution(i_s)
+                            .name_resolution_for_types(i_s)
                             .compute_type_var_tuple_default(expression)
                         {
                             default = Some(type_args);
@@ -645,7 +645,7 @@ fn maybe_param_spec(
                 }) => {
                     if let Some(c) = node_ref
                         .file
-                        .name_resolution(i_s)
+                        .name_resolution_for_types(i_s)
                         .compute_param_spec_default(expression)
                     {
                         default = Some(c)

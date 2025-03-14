@@ -714,7 +714,7 @@ impl<'db: 'a, 'a> Class<'a> {
                         if let Some(result) = self
                             .node_ref
                             .file
-                            .name_resolution(i_s)
+                            .name_resolution_for_inference(i_s)
                             .lookup_name_in_star_import(star_import, name, true, None)
                         {
                             return result.into_lookup_result(i_s);
@@ -1396,7 +1396,7 @@ impl<'db: 'a, 'a> Class<'a> {
         }
         slice_type
             .file
-            .name_resolution(i_s)
+            .name_resolution_for_types(i_s)
             .compute_type_application_on_class(
                 *self,
                 *slice_type,

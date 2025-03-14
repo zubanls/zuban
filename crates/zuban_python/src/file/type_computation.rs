@@ -464,7 +464,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         origin: TypeComputationOrigin,
     ) -> Self {
         Self {
-            name_resolution: file.name_resolution_and_stop_on_assignments(i_s),
+            name_resolution: file.name_resolution_for_types(i_s),
             for_definition,
             current_callable: None,
             type_var_manager: TypeVarManager::default(),
@@ -492,7 +492,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 };
             let old_manager = std::mem::take(&mut self.type_var_manager);
             let mut comp = TypeComputation {
-                name_resolution: f.name_resolution(self.i_s),
+                name_resolution: f.name_resolution_for_types(self.i_s),
                 type_var_manager: old_manager,
                 current_callable: self.current_callable,
                 for_definition: self.for_definition,
@@ -1681,7 +1681,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         match base {
             TypeContent::Module(f) => {
                 if let Some((resolved, _)) = f
-                    .name_resolution_and_stop_on_assignments(&InferenceState::new(db))
+                    .name_resolution_for_types(&InferenceState::new(db))
                     .resolve_module_access(name.as_str(), |k| {
                         self.add_issue_for_index(name.index(), k)
                     })
@@ -3667,12 +3667,13 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                         if global_redirect {
                             node_ref
                                 .file
-                                .name_resolution(&InferenceState::new(self.i_s.db))
+                                .name_resolution_for_types(&InferenceState::new(self.i_s.db))
                                 .compute_type_assignment(assignment)
                         } else {
+                            // TODO WTF WHY IS THIS for inference???
                             node_ref
                                 .file
-                                .name_resolution(i_s)
+                                .name_resolution_for_inference(i_s)
                                 .compute_type_assignment(assignment)
                         }
                     }
@@ -4635,7 +4636,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         let f: &'db PythonFile =
             self.file
                 .ensure_annotation_file(self.i_s.db, start, s.trim_end_matches('\\').into());
-        let name_resolution = f.name_resolution(self.i_s);
+        let name_resolution = self.with_new_file(f);
         if let Some(star_exprs) = f.tree.maybe_star_expressions() {
             match star_exprs.unpack() {
                 StarExpressionContent::Expression(expr) => {
@@ -5561,7 +5562,7 @@ pub fn use_cached_param_annotation_type<'db: 'file, 'file>(
     file: &'file PythonFile,
     annotation: ParamAnnotation,
 ) -> Cow<'file, Type> {
-    file.name_resolution(&InferenceState::new(db))
+    file.name_resolution_for_types(&InferenceState::new(db))
         .use_cached_param_annotation_type(annotation)
 }
 
@@ -5570,7 +5571,7 @@ pub fn use_cached_annotation_type<'db: 'file, 'file>(
     file: &'file PythonFile,
     annotation: Annotation,
 ) -> Cow<'file, Type> {
-    file.name_resolution(&InferenceState::new(db))
+    file.name_resolution_for_types(&InferenceState::new(db))
         .use_cached_annotation_or_type_comment_type_internal(
             annotation.index(),
             annotation.expression(),
@@ -5596,7 +5597,7 @@ pub fn use_cached_annotation_or_type_comment<'db: 'file, 'file>(
     };
     definition
         .file
-        .name_resolution(i_s)
+        .name_resolution_for_types(i_s)
         .use_cached_maybe_starred_annotation_type_internal(definition.node_index, maybe_starred)
 }
 

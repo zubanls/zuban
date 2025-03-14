@@ -101,7 +101,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             let return_type = self
                 .node_ref
                 .file
-                .name_resolution(i_s)
+                .name_resolution_for_types(i_s)
                 .use_cached_return_annotation_type(return_annotation);
             GeneratorType::from_type(i_s.db, return_type)
         })
@@ -1746,7 +1746,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         let return_type = self
             .node_ref
             .file
-            .name_resolution(i_s)
+            .name_resolution_for_types(i_s)
             .use_cached_return_annotation_type(return_annotation);
 
         if return_type.is_never() && !self.is_async() {
@@ -1786,7 +1786,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         } else {
             self.node_ref
                 .file
-                .name_resolution(i_s)
+                .name_resolution_for_types(i_s)
                 .use_cached_return_annotation(return_annotation)
         }
     }
@@ -1806,7 +1806,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             .map(|a| {
                 self.node_ref
                     .file
-                    .name_resolution(i_s)
+                    .name_resolution_for_types(i_s)
                     .use_cached_return_annotation_type(a)
             })
             .unwrap_or_else(|| Cow::Borrowed(&Type::Any(AnyCause::Unannotated)))

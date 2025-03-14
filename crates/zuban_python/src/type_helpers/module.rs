@@ -123,7 +123,7 @@ impl<'a> Module<'a> {
             result
         } else if let Some(star_imp) = self
             .file
-            .name_resolution(i_s)
+            .name_resolution_for_inference(i_s)
             .lookup_from_star_import(name, false)
         {
             star_imp.into_lookup_result(i_s)
@@ -182,7 +182,7 @@ impl<'a> Module<'a> {
                 // directory anyway and should not be considered a reexport.
                 submodule_reexport(
                     self.file
-                        .name_resolution(i_s)
+                        .name_resolution_for_types(i_s)
                         .import_from_first_part(import_from),
                 )
             }
@@ -193,7 +193,7 @@ impl<'a> Module<'a> {
                     if let DottedNameContent::DottedName(super_, _) = dotted.unpack() {
                         submodule_reexport(
                             self.file
-                                .name_resolution(i_s)
+                                .name_resolution_for_types(i_s)
                                 .cache_import_dotted_name(super_, None),
                         )
                     } else {

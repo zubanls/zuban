@@ -355,10 +355,10 @@ impl<'db> PythonFile {
         &'file self,
         i_s: &'i_s InferenceState<'db, 'i_s>,
     ) -> Inference<'db, 'file, 'i_s> {
-        Inference(self.name_resolution(i_s))
+        Inference(self.name_resolution_for_inference(i_s))
     }
 
-    pub fn name_resolution<'file, 'i_s>(
+    pub fn name_resolution_for_inference<'file, 'i_s>(
         &'file self,
         i_s: &'i_s InferenceState<'db, 'i_s>,
     ) -> NameResolution<'db, 'file, 'i_s> {
@@ -369,7 +369,7 @@ impl<'db> PythonFile {
         }
     }
 
-    pub fn name_resolution_and_stop_on_assignments<'file, 'i_s>(
+    pub fn name_resolution_for_types<'file, 'i_s>(
         &'file self,
         i_s: &'i_s InferenceState<'db, 'i_s>,
     ) -> NameResolution<'db, 'file, 'i_s> {
@@ -666,7 +666,7 @@ impl<'db> PythonFile {
         }) || self.star_imports.iter().any(|star_import| {
             star_import.in_module_scope()
                 && star_import
-                    .to_file(&self.name_resolution(i_s))
+                    .to_file(&self.name_resolution_for_inference(i_s))
                     .is_some_and(|file| file.has_unsupported_class_scoped_import(db))
         })
     }
