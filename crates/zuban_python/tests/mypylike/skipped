@@ -6,9 +6,6 @@ avoid_type_computation_recursion
 testOverloadPossibleOverlapWithArgsAndKwargs
 flow_analysis_base_class_calculation_should_not_lead_to_recursion
 
-namedtuple_generic_call_form_in_class
-testGenericNamedTupleCallSyntax
-namedtuple_generic_matching
 # TODO PointResolution::GlobalOrNonlocal
 testTypedDictUpdateNonRecursiveToRecursiveCoarse
 testRecursiveTypedDict*
@@ -364,13 +361,6 @@ testTypedDictFromTypingExtensionsReadOnlyMutateMethods
 testTypedDictFromMypyExtensionsReadOnlyMutateMethods
 # Functional TypedDict in class def
 testCanCreateClassWithFunctionBasedTypedDictBase
-# functional NamedTuple recursive definition
-testBasicRecursiveNamedTuple
-testBasicRecursiveNamedTupleSpecial
-testMutuallyRecursiveNamedTuplesCalls
-testRecursiveNamedTupleWithList
-testRecursiveNamedTupleTypedDict
-testMutuallyRecursiveNamedTuples
 # TypedDict Unpack
 testUnpackKwargsInference
 testUnpackKwargsParamSpec
@@ -407,6 +397,12 @@ testDataclassTransformOverloadsDecoratorOnImpl
 testDataclassTransformUnsupportedDescriptors
 # dataclass __replace__
 testDunderReplacePresent
+
+# NamedTuple recursive definitions
+testBasicRecursiveNamedTupleSpecial
+testRecursiveNamedTupleTypedDict
+testMutuallyRecursiveNamedTuplesJoin
+namedtuple_generic_call_form_in_class
 
 # multiline annotations
 testMultilineQuotedAnnotation

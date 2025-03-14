@@ -101,7 +101,7 @@ Bar2 = NamedTuple("Bar2", [(*'x', int)])  # E: Invalid "NamedTuple()" field name
 Bar3 = NamedTuple("Bar3", [*int])  # E: Tuple expected as "NamedTuple()" field
 Bar4 = NamedTuple("Bar4", [()])  # E: NamedTuple field should be a tuple of a string literal and a type
 Bar5 = NamedTuple("Bar5", [(*int,)])  # E: NamedTuple field should be a tuple of a string literal and a type
-Bar5 = NamedTuple("Bar5", [('x',)])  # E: NamedTuple field should be a tuple of a string literal and a type
+Bar6 = NamedTuple("Bar6", [('x',)])  # E: NamedTuple field should be a tuple of a string literal and a type
 
 [case namedtuple_invalid_bound]
 from typing import NamedTuple, Generic, TypeVar

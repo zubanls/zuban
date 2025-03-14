@@ -222,9 +222,27 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
                     }
                 }
             }
+            AtomContent::List(list) => self.find_in_named_tuple_fields(list.unpack()),
+            AtomContent::Tuple(tup) => self.find_in_named_tuple_fields(tup.iter()),
             _ => (),
         }
         BaseLookup::Other
+    }
+
+    fn find_in_named_tuple_fields(&mut self, iterator: StarLikeExpressionIterator<'d>) {
+        let mut check_expr = |e: Expression<'d>| {
+            if let Some(AtomContent::Tuple(name_and_type)) = e.maybe_unpacked_atom() {
+                if let Some(StarLikeExpression::NamedExpression(n)) = name_and_type.iter().nth(1) {
+                    self.find_in_expr(n.expression());
+                }
+            }
+        };
+        for element in iterator {
+            match element {
+                StarLikeExpression::NamedExpression(ne) => check_expr(ne.expression()),
+                _ => (),
+            }
+        }
     }
 
     fn find_in_name(&mut self, name: Name) -> BaseLookup {
