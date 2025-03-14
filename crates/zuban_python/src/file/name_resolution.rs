@@ -808,6 +808,10 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
             if is_reexport_issue(db, name_ref) {
                 if self.stop_on_assignments {
                     // Apparently types are resolved like this.
+                    debug!(
+                        "Found a type {name} in {} that was not reexported -> aborting",
+                        self.file.qualified_name(self.i_s.db)
+                    );
                     return None;
                 }
                 add_issue(IssueKind::ImportStubNoExplicitReexport {
@@ -844,6 +848,10 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
         } else if let Some(r) = self.file.lookup_global("__getattr__") {
             (PointResolution::ModuleGetattrName(r), None)
         } else {
+            debug!(
+                "Did not find name {name} in {}",
+                self.file.qualified_name(db)
+            );
             return None;
         })
     }
@@ -968,6 +976,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
             AlreadySeen::new(link)
         };
         if new_seen.is_cycle() {
+            debug!("Aborting name import, because of a star import cycle");
             // TODO we might want to add an issue in the future (not high-prio however)
             return None;
         }
@@ -975,6 +984,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
         if let Some(dunder) = other_file.maybe_dunder_all(self.i_s.db) {
             // Name not in __all__
             if !dunder.iter().any(|x| x.as_str(self.i_s.db) == name) {
+                debug!("Name {name} found in star imports, but it's not in __all__");
                 return None;
             }
         } else if name.starts_with('_') {
