@@ -429,6 +429,17 @@ impl TypeVarLikes {
         )
     }
 
+    pub fn debug_info(&self, db: &Database) -> String {
+        format!(
+            "[{}]",
+            join_with_commas(self.iter().map(|t| match t {
+                TypeVarLike::TypeVar(t) => t.qualified_name(db).into_string(),
+                TypeVarLike::TypeVarTuple(tvt) => tvt.name(db).to_string(),
+                TypeVarLike::ParamSpec(s) => s.name(db).to_string(),
+            }))
+        )
+    }
+
     pub fn load_saved_type_vars<'a>(db: &'a Database, node_ref: NodeRef<'a>) -> &'a TypeVarLikes {
         debug_assert!(node_ref.point().calculated());
         match node_ref.complex() {

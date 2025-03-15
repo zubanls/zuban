@@ -6,6 +6,7 @@ use vfs::FileIndex;
 use super::name_resolution::{NameResolution, PointResolution};
 use crate::{
     database::{ComplexPoint, PointLink, Specific},
+    debug,
     diagnostics::IssueKind,
     file::PythonFile,
     getitem::{SliceOrSimple, SliceType},
@@ -13,6 +14,7 @@ use crate::{
     node_ref::NodeRef,
     type_::{TypeVarIndex, TypeVarLike, TypeVarLikes, TypeVarManager},
     type_helpers::{ClassInitializer, ClassNodeRef},
+    utils::debug_indent,
 };
 
 #[derive(Debug, Clone, PartialEq)]
@@ -54,32 +56,41 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
         i_s: &'i_s InferenceState<'db, 'i_s>,
         class: &'c ClassNodeRef<'file>,
     ) -> TypeVarLikes {
-        let mut infos = Infos {
-            class: Some(class),
-            ..Default::default()
-        };
-        let mut finder = TypeVarFinder {
-            name_resolution: class.file.name_resolution_for_types(i_s),
-            infos: &mut infos,
-        };
+        debug!("Finding type vars for class {:?}", class.name());
+        let type_vars = debug_indent(|| {
+            let mut infos = Infos {
+                class: Some(class),
+                ..Default::default()
+            };
+            let mut finder = TypeVarFinder {
+                name_resolution: class.file.name_resolution_for_types(i_s),
+                infos: &mut infos,
+            };
 
-        if let Some(arguments) = class.node().arguments() {
-            for argument in arguments.iter() {
-                match argument {
-                    Argument::Positional(n) => {
-                        finder.find_in_expr(n.expression());
+            if let Some(arguments) = class.node().arguments() {
+                for argument in arguments.iter() {
+                    match argument {
+                        Argument::Positional(n) => {
+                            finder.find_in_expr(n.expression());
+                        }
+                        Argument::Keyword(_) => (), // Ignore for now -> part of meta class
+                        Argument::Star(_) | Argument::StarStar(_) => (), // Nobody probably cares about this
                     }
-                    Argument::Keyword(_) => (), // Ignore for now -> part of meta class
-                    Argument::Star(_) | Argument::StarStar(_) => (), // Nobody probably cares about this
                 }
             }
-        }
-        if let Some(slice_type) = finder.infos.generic_or_protocol_slice {
-            if !finder.infos.had_generic_or_protocol_issue {
-                finder.check_generic_or_protocol_length(slice_type)
+            if let Some(slice_type) = finder.infos.generic_or_protocol_slice {
+                if !finder.infos.had_generic_or_protocol_issue {
+                    finder.check_generic_or_protocol_length(slice_type)
+                }
             }
-        }
-        infos.type_var_manager.into_type_vars()
+            infos.type_var_manager.into_type_vars()
+        });
+        debug!(
+            "Found type vars for class {:?}: {:?}",
+            class.name(),
+            type_vars.debug_info(i_s.db)
+        );
+        type_vars
     }
 
     pub fn find_alias_type_vars(
@@ -87,13 +98,22 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
         file: &'file PythonFile,
         expr: Expression<'d>,
     ) -> TypeVarLikes {
-        let mut infos = Infos::default();
-        let mut finder = TypeVarFinder {
-            name_resolution: file.name_resolution_for_types(i_s),
-            infos: &mut infos,
-        };
-        finder.find_in_expr(expr);
-        infos.type_var_manager.into_type_vars()
+        debug!("Finding type vars in {:?}", expr.as_code());
+        let type_vars = debug_indent(|| {
+            let mut infos = Infos::default();
+            let mut finder = TypeVarFinder {
+                name_resolution: file.name_resolution_for_types(i_s),
+                infos: &mut infos,
+            };
+            finder.find_in_expr(expr);
+            infos.type_var_manager.into_type_vars()
+        });
+        debug!(
+            "Found type vars in {:?}: {:?}",
+            expr.as_code(),
+            type_vars.debug_info(i_s.db)
+        );
+        type_vars
     }
 
     fn find_in_slice_like(&mut self, slice_like: SliceOrSimple<'d>) {
