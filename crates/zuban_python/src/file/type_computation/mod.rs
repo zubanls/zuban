@@ -3,7 +3,7 @@ mod typed_dict;
 use std::{borrow::Cow, cell::Cell, rc::Rc};
 
 use parsa_python_cst::{SliceType as CSTSliceType, *};
-use typed_dict::new_typed_dict_internal;
+use typed_dict::new_typed_dict_with_execution_syntax;
 
 use super::{
     name_resolution::{NameResolution, PointResolution},
@@ -4436,7 +4436,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 primary_index,
                 details,
             } => {
-                match new_typed_dict_internal(
+                match new_typed_dict_with_execution_syntax(
                     self.i_s,
                     &mut comp,
                     &SimpleArgs::new(*self.i_s, self.file, primary_index, details),

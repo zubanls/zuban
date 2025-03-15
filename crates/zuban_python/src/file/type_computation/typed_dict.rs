@@ -175,7 +175,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
     }
 }
 
-pub(super) fn new_typed_dict_internal<'db>(
+pub(super) fn new_typed_dict_with_execution_syntax<'db>(
     i_s: &InferenceState<'db, '_>,
     comp: &mut TypeComputation,
     args: &dyn Args<'db>,
