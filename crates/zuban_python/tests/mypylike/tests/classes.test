@@ -1527,3 +1527,8 @@ reveal_type(foo())  # N: Revealed type is "int"
 [file m.py]
 if bool():
     X = int
+
+[case invalid_nested_class_forward_reference]
+class C(list['D.X']): ...  # E: Name "D.X" is not defined
+
+class D: ...

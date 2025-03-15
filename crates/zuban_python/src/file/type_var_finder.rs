@@ -5,7 +5,7 @@ use vfs::FileIndex;
 
 use super::name_resolution::{NameResolution, PointResolution};
 use crate::{
-    database::{ComplexPoint, PointKind, PointLink, Specific},
+    database::{ComplexPoint, PointLink, Specific},
     diagnostics::IssueKind,
     file::PythonFile,
     getitem::{SliceOrSimple, SliceType},
@@ -155,9 +155,8 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
                 }
                 BaseLookup::Class(link) => {
                     let cls = ClassInitializer::from_link(self.i_s.db, link);
-                    let point_kind = self.cache_name_on_class(cls, name);
-                    if point_kind == PointKind::Redirect {
-                        self.find_in_name(name)
+                    if let Some(pr) = self.lookup_type_name_on_class(cls, name) {
+                        self.point_resolution_to_base_lookup(pr)
                     } else {
                         BaseLookup::Other
                     }

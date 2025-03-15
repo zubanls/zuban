@@ -1019,13 +1019,22 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
         }
     }
 
-    pub(super) fn cache_name_on_class(&self, cls: ClassInitializer, name: Name) -> PointKind {
+    pub(super) fn lookup_type_name_on_class(
+        &self,
+        cls: ClassInitializer,
+        name: Name,
+    ) -> Option<PointResolution> {
         // This is needed to lookup names on a class and set the redirect there. It does not modify the
         // class at all.
         let name_node_ref = NodeRef::new(self.file, name.index());
         let point = name_node_ref.point();
         if point.calculated() {
-            return point.kind();
+            return if point.kind() == PointKind::Redirect {
+                Some(self.resolve_name_without_narrowing(name))
+            } else {
+                debug_assert_eq!(point.specific(), Specific::AnyDueToError);
+                None
+            };
         }
         name_node_ref.set_point(
             if let Some(index) = cls
@@ -1035,10 +1044,11 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
             {
                 Point::new_redirect(cls.node_ref.file.file_index, index, Locality::Todo)
             } else {
+                debug!("Type lookup: Attribute on class not found");
                 Point::new_specific(Specific::AnyDueToError, Locality::Todo)
             },
         );
-        name_node_ref.point().kind()
+        self.lookup_type_name_on_class(cls, name)
     }
 
     pub(crate) fn add_issue(&self, node_index: NodeIndex, issue: IssueKind) {

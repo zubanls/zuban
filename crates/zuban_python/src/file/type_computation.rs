@@ -1757,12 +1757,10 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         primary: Primary,
         name: Name<'x>,
     ) -> TypeContent<'db, 'x> {
-        let point_kind = self.cache_name_on_class(cls, name);
-        if point_kind == PointKind::Redirect {
-            self.compute_type_name(name)
+        if let Some(pr) = self.lookup_type_name_on_class(cls, name) {
+            let tnl = self.point_resolution_to_type_name_lookup(pr);
+            self.resolve_type_name_lookup(tnl, name.index())
         } else {
-            debug!("TypeComputation: Attribute on class not found");
-            debug_assert_eq!(point_kind, PointKind::Specific);
             self.add_issue_for_index(primary.index(), IssueKind::TypeNotFound);
             TypeContent::Unknown(UnknownCause::ReportedIssue)
         }
