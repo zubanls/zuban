@@ -152,38 +152,41 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
     fn find_in_primary(&mut self, primary: Primary<'d>) -> BaseLookup {
         let base = self.find_in_primary_or_atom(primary.first());
         match primary.second() {
-            PrimaryContent::Attribute(name) => match base {
-                BaseLookup::Module(f) => {
-                    let Some((resolved, _)) = self
-                        .i_s
-                        .db
-                        .loaded_python_file(f)
-                        .name_resolution_for_types(&InferenceState::new(self.i_s.db))
-                        .resolve_module_access(name.as_str(), |k| self.add_issue(name.index(), k))
-                    else {
-                        return BaseLookup::Other;
-                    };
-                    let result = self.point_resolution_to_base_lookup(resolved);
-                    if let BaseLookup::TypeVarLike(tvl) = result {
-                        self.handle_type_var_like(tvl, |kind| {
-                            NodeRef::new(self.name_resolution.file, primary.index())
-                                .add_issue(self.name_resolution.i_s, kind)
-                        });
-                        return BaseLookup::Other;
+            PrimaryContent::Attribute(name) => {
+                let result = match base {
+                    BaseLookup::Module(f) => {
+                        let Some((resolved, _)) = self
+                            .i_s
+                            .db
+                            .loaded_python_file(f)
+                            .name_resolution_for_types(&InferenceState::new(self.i_s.db))
+                            .resolve_module_access(name.as_str(), |k| {
+                                self.add_issue(name.index(), k)
+                            })
+                        else {
+                            return BaseLookup::Other;
+                        };
+                        self.point_resolution_to_base_lookup(resolved)
                     }
-                    result
-                }
-                BaseLookup::Class(link) => {
-                    let cls = ClassInitializer::from_link(self.i_s.db, link);
-                    if let Some(pr) = self.lookup_type_name_on_class(cls, name) {
+                    BaseLookup::Class(link) => {
+                        let cls = ClassInitializer::from_link(self.i_s.db, link);
+                        let Some(pr) = self.lookup_type_name_on_class(cls, name) else {
+                            return BaseLookup::Other;
+                        };
                         self.point_resolution_to_base_lookup(pr)
-                    } else {
-                        BaseLookup::Other
                     }
+                    BaseLookup::TypeVarLike(_) => todo!(),
+                    _ => BaseLookup::Other,
+                };
+                if let BaseLookup::TypeVarLike(tvl) = result {
+                    self.handle_type_var_like(tvl, |kind| {
+                        NodeRef::new(self.name_resolution.file, primary.index())
+                            .add_issue(self.name_resolution.i_s, kind)
+                    });
+                    return BaseLookup::Other;
                 }
-                BaseLookup::TypeVarLike(_) => todo!(),
-                _ => BaseLookup::Other,
-            },
+                result
+            }
             PrimaryContent::Execution(_) => BaseLookup::Other,
             PrimaryContent::GetItem(slice_type) => {
                 let s = SliceType::new(self.file, primary.index(), slice_type);
