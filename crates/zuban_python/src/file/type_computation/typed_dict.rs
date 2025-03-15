@@ -1,12 +1,19 @@
-use parsa_python_cst::{Annotation, Expression};
+use parsa_python_cst::{Annotation, AtomContent, DictElement, Expression};
 
 use crate::{
+    arguments::{ArgKind, Args},
     diagnostics::IssueKind,
     file::name_resolution::NameResolution,
     format_data::FormatData,
     getitem::SliceType,
+    inference_state::InferenceState,
+    matching::ResultContext,
     node_ref::NodeRef,
-    type_::{GenericsList, StringSlice, Type, TypedDict, TypedDictGenerics, TypedDictMember},
+    recoverable_error,
+    type_::{
+        infer_typed_dict_total_argument, GenericsList, StringSlice, Type, TypedDict,
+        TypedDictGenerics, TypedDictMember, TypedDictMemberGatherer,
+    },
 };
 
 use super::{
@@ -166,4 +173,134 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         debug_assert!(type_vars.is_empty());
         member
     }
+}
+
+pub(super) fn new_typed_dict_internal<'db>(
+    i_s: &InferenceState<'db, '_>,
+    comp: &mut TypeComputation,
+    args: &dyn Args<'db>,
+) -> Option<(StringSlice, Box<[TypedDictMember]>, bool)> {
+    let mut iterator = args.iter(i_s.mode);
+    let Some(first_arg) = iterator.next() else {
+        args.add_issue(i_s, IssueKind::TypedDictFirstArgMustBeString);
+        return None;
+    };
+    let ArgKind::Positional(first) = first_arg.kind else {
+        args.add_issue(i_s, IssueKind::UnexpectedArgumentsToTypedDict);
+        return None;
+    };
+    let expr = first.node_ref.as_named_expression().expression();
+    let Some(name) = StringSlice::from_string_in_expression(first.node_ref.file_index(), expr)
+    else {
+        first
+            .node_ref
+            .add_issue(i_s, IssueKind::TypedDictFirstArgMustBeString);
+        return None;
+    };
+
+    if let Some(definition_name) = expr
+        .maybe_single_string_literal()
+        .unwrap()
+        .in_simple_assignment()
+    {
+        let name = name.as_str(i_s.db);
+        if name != definition_name.as_code() {
+            first.node_ref.add_issue(
+                i_s,
+                IssueKind::TypedDictNameMismatch {
+                    string_name: Box::from(name),
+                    variable_name: Box::from(definition_name.as_code()),
+                },
+            );
+        }
+    } else {
+        recoverable_error!("Shouldn only ever get a normal TypedDict initialization for aliases");
+        return None;
+    }
+
+    let Some(second_arg) = iterator.next() else {
+        args.add_issue(i_s, IssueKind::TooFewArguments(" for TypedDict()".into()));
+        return None;
+    };
+    let ArgKind::Positional(second) = second_arg.kind else {
+        second_arg.add_issue(i_s, IssueKind::TypedDictSecondArgMustBeDict);
+        return None;
+    };
+    let Some(atom_content) = second
+        .node_ref
+        .as_named_expression()
+        .expression()
+        .maybe_unpacked_atom()
+    else {
+        second
+            .node_ref
+            .add_issue(i_s, IssueKind::TypedDictSecondArgMustBeDict);
+        return None;
+    };
+    let mut total = true;
+    if let Some(next) = iterator.next() {
+        match &next.kind {
+            ArgKind::Keyword(kw) if kw.key == "total" => {
+                total = infer_typed_dict_total_argument(
+                    i_s,
+                    kw.infer(&mut ResultContext::Unknown),
+                    |issue| next.add_issue(i_s, issue),
+                )?;
+            }
+            ArgKind::Keyword(kw) => {
+                let s = format!(
+                    r#"Unexpected keyword argument "{}" for "TypedDict""#,
+                    kw.key
+                );
+                kw.add_issue(i_s, IssueKind::ArgumentIssue(s.into()));
+                return None;
+            }
+            _ => {
+                args.add_issue(i_s, IssueKind::UnexpectedArgumentsToTypedDict);
+                return None;
+            }
+        };
+    }
+    if iterator.next().is_some() {
+        args.add_issue(i_s, IssueKind::TooManyArguments(" for \"TODO()\"".into()));
+        return None;
+    }
+    let dct_iterator = match atom_content {
+        AtomContent::Dict(dct) => dct.iter_elements(),
+        _ => {
+            second
+                .node_ref
+                .add_issue(i_s, IssueKind::TypedDictSecondArgMustBeDict);
+            return None;
+        }
+    };
+    let mut members = TypedDictMemberGatherer::default();
+    for element in dct_iterator {
+        match element {
+            DictElement::KeyValue(key_value) => {
+                let Some(name) = StringSlice::from_string_in_expression(
+                    first.node_ref.file_index(),
+                    key_value.key(),
+                ) else {
+                    NodeRef::new(first.node_ref.file, key_value.key().index())
+                        .add_issue(i_s, IssueKind::TypedDictInvalidFieldName);
+                    return None;
+                };
+                if let Err(issue) = members.add(
+                    i_s.db,
+                    comp.compute_typed_dict_member(name, key_value.value(), total),
+                ) {
+                    NodeRef::new(first.node_ref.file, key_value.key().index())
+                        .add_issue(i_s, issue);
+                }
+                key_value.key();
+            }
+            DictElement::Star(d) => {
+                NodeRef::new(first.node_ref.file, d.index())
+                    .add_issue(i_s, IssueKind::TypedDictInvalidFieldName);
+                return None;
+            }
+        };
+    }
+    Some((name, members.into_boxed_slice(), total))
 }

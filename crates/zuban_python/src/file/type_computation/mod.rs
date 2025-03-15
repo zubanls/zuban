@@ -3,6 +3,7 @@ mod typed_dict;
 use std::{borrow::Cow, cell::Cell, rc::Rc};
 
 use parsa_python_cst::{SliceType as CSTSliceType, *};
+use typed_dict::new_typed_dict_internal;
 
 use super::{
     name_resolution::{NameResolution, PointResolution},
@@ -28,15 +29,14 @@ use crate::{
     recoverable_error,
     type_::{
         add_named_tuple_param, add_param_spec_to_params, new_collections_named_tuple,
-        new_typed_dict_internal, new_typing_named_tuple, new_typing_named_tuple_internal, AnyCause,
-        CallableContent, CallableParam, CallableParams, CallableWithParent, ClassGenerics,
-        Dataclass, DbBytes, DbString, Enum, EnumMember, FunctionKind, GenericClass, GenericItem,
-        GenericsList, Literal, LiteralKind, MaybeUnpackGatherer, NamedTuple, Namespace, NeverCause,
-        NewType, ParamSpecArg, ParamSpecUsage, ParamType, RecursiveType, StarParamType,
-        StarStarParamType, StringSlice, Tuple, TupleArgs, TupleUnpack, Type, TypeArgs,
-        TypeGuardInfo, TypeVar, TypeVarKind, TypeVarLike, TypeVarLikeUsage, TypeVarLikes,
-        TypeVarManager, TypeVarTupleUsage, TypeVarUsage, TypedDict, TypedDictGenerics, UnionEntry,
-        UnionType, WithUnpack,
+        new_typing_named_tuple, new_typing_named_tuple_internal, AnyCause, CallableContent,
+        CallableParam, CallableParams, CallableWithParent, ClassGenerics, Dataclass, DbBytes,
+        DbString, Enum, EnumMember, FunctionKind, GenericClass, GenericItem, GenericsList, Literal,
+        LiteralKind, MaybeUnpackGatherer, NamedTuple, Namespace, NeverCause, NewType, ParamSpecArg,
+        ParamSpecUsage, ParamType, RecursiveType, StarParamType, StarStarParamType, StringSlice,
+        Tuple, TupleArgs, TupleUnpack, Type, TypeArgs, TypeGuardInfo, TypeVar, TypeVarKind,
+        TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypeVarTupleUsage,
+        TypeVarUsage, TypedDict, TypedDictGenerics, UnionEntry, UnionType, WithUnpack,
     },
     type_helpers::{
         cache_class_name, start_namedtuple_params, Class, ClassInitializer, ClassNodeRef, Function,

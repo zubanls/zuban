@@ -4,8 +4,6 @@ use std::{
     rc::Rc,
 };
 
-use parsa_python_cst::{AtomContent, DictElement};
-
 use super::{
     utils::method_with_fallback, CallableContent, CallableParam, CallableParams, CustomBehavior,
     DbString, FormatStyle, GenericsList, LookupResult, NeverCause, ParamType, RecursiveType,
@@ -15,14 +13,13 @@ use crate::{
     arguments::{ArgKind, Args, InferredArg},
     database::{Database, PointLink},
     diagnostics::IssueKind,
-    file::{infer_string_index, TypeComputation},
+    file::infer_string_index,
     format_data::{AvoidRecursionFor, FormatData},
     getitem::{SliceType, SliceTypeContent},
     inference_state::InferenceState,
     inferred::{AttributeKind, Inferred},
     matching::{ErrorStrs, LookupKind, Match, Matcher, MismatchReason, OnTypeError, ResultContext},
     node_ref::NodeRef,
-    recoverable_error,
     type_helpers::{Class, Instance, InstanceLookupOptions, LookupDetails},
     utils::join_with_commas,
 };
@@ -536,136 +533,6 @@ fn add_access_key_must_be_string_literal_issue(
         )
         .into(),
     })
-}
-
-pub fn new_typed_dict_internal<'db>(
-    i_s: &InferenceState<'db, '_>,
-    comp: &mut TypeComputation,
-    args: &dyn Args<'db>,
-) -> Option<(StringSlice, Box<[TypedDictMember]>, bool)> {
-    let mut iterator = args.iter(i_s.mode);
-    let Some(first_arg) = iterator.next() else {
-        args.add_issue(i_s, IssueKind::TypedDictFirstArgMustBeString);
-        return None;
-    };
-    let ArgKind::Positional(first) = first_arg.kind else {
-        args.add_issue(i_s, IssueKind::UnexpectedArgumentsToTypedDict);
-        return None;
-    };
-    let expr = first.node_ref.as_named_expression().expression();
-    let Some(name) = StringSlice::from_string_in_expression(first.node_ref.file_index(), expr)
-    else {
-        first
-            .node_ref
-            .add_issue(i_s, IssueKind::TypedDictFirstArgMustBeString);
-        return None;
-    };
-
-    if let Some(definition_name) = expr
-        .maybe_single_string_literal()
-        .unwrap()
-        .in_simple_assignment()
-    {
-        let name = name.as_str(i_s.db);
-        if name != definition_name.as_code() {
-            first.node_ref.add_issue(
-                i_s,
-                IssueKind::TypedDictNameMismatch {
-                    string_name: Box::from(name),
-                    variable_name: Box::from(definition_name.as_code()),
-                },
-            );
-        }
-    } else {
-        recoverable_error!("Shouldn only ever get a normal TypedDict initialization for aliases");
-        return None;
-    }
-
-    let Some(second_arg) = iterator.next() else {
-        args.add_issue(i_s, IssueKind::TooFewArguments(" for TypedDict()".into()));
-        return None;
-    };
-    let ArgKind::Positional(second) = second_arg.kind else {
-        second_arg.add_issue(i_s, IssueKind::TypedDictSecondArgMustBeDict);
-        return None;
-    };
-    let Some(atom_content) = second
-        .node_ref
-        .as_named_expression()
-        .expression()
-        .maybe_unpacked_atom()
-    else {
-        second
-            .node_ref
-            .add_issue(i_s, IssueKind::TypedDictSecondArgMustBeDict);
-        return None;
-    };
-    let mut total = true;
-    if let Some(next) = iterator.next() {
-        match &next.kind {
-            ArgKind::Keyword(kw) if kw.key == "total" => {
-                total = infer_typed_dict_total_argument(
-                    i_s,
-                    kw.infer(&mut ResultContext::Unknown),
-                    |issue| next.add_issue(i_s, issue),
-                )?;
-            }
-            ArgKind::Keyword(kw) => {
-                let s = format!(
-                    r#"Unexpected keyword argument "{}" for "TypedDict""#,
-                    kw.key
-                );
-                kw.add_issue(i_s, IssueKind::ArgumentIssue(s.into()));
-                return None;
-            }
-            _ => {
-                args.add_issue(i_s, IssueKind::UnexpectedArgumentsToTypedDict);
-                return None;
-            }
-        };
-    }
-    if iterator.next().is_some() {
-        args.add_issue(i_s, IssueKind::TooManyArguments(" for \"TODO()\"".into()));
-        return None;
-    }
-    let dct_iterator = match atom_content {
-        AtomContent::Dict(dct) => dct.iter_elements(),
-        _ => {
-            second
-                .node_ref
-                .add_issue(i_s, IssueKind::TypedDictSecondArgMustBeDict);
-            return None;
-        }
-    };
-    let mut members = TypedDictMemberGatherer::default();
-    for element in dct_iterator {
-        match element {
-            DictElement::KeyValue(key_value) => {
-                let Some(name) = StringSlice::from_string_in_expression(
-                    first.node_ref.file_index(),
-                    key_value.key(),
-                ) else {
-                    NodeRef::new(first.node_ref.file, key_value.key().index())
-                        .add_issue(i_s, IssueKind::TypedDictInvalidFieldName);
-                    return None;
-                };
-                if let Err(issue) = members.add(
-                    i_s.db,
-                    comp.compute_typed_dict_member(name, key_value.value(), total),
-                ) {
-                    NodeRef::new(first.node_ref.file, key_value.key().index())
-                        .add_issue(i_s, issue);
-                }
-                key_value.key();
-            }
-            DictElement::Star(d) => {
-                NodeRef::new(first.node_ref.file, d.index())
-                    .add_issue(i_s, IssueKind::TypedDictInvalidFieldName);
-                return None;
-            }
-        };
-    }
-    Some((name, members.into_boxed_slice(), total))
 }
 
 pub(crate) fn infer_typed_dict_total_argument(
