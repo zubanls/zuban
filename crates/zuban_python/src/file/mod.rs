@@ -19,10 +19,10 @@ pub use name_binder::{
 };
 pub use python_file::{dotted_path_from_dir, ComplexValues, OtherDefinitionIterator, PythonFile};
 pub(crate) use type_computation::{
-    maybe_saved_annotation, use_cached_annotation_or_type_comment, use_cached_annotation_type,
-    use_cached_param_annotation_type, use_cached_simple_generic_type, CalculatedBaseClass,
-    GenericCounts, TypeComputation, TypeComputationOrigin, TypeVarCallbackReturn,
-    ANNOTATION_TO_EXPR_DIFFERENCE,
+    execute_collections_named_tuple, maybe_saved_annotation, use_cached_annotation_or_type_comment,
+    use_cached_annotation_type, use_cached_param_annotation_type, use_cached_simple_generic_type,
+    CalculatedBaseClass, GenericCounts, TypeComputation, TypeComputationOrigin,
+    TypeVarCallbackReturn, ANNOTATION_TO_EXPR_DIFFERENCE,
 };
 pub use type_var_finder::TypeVarFinder;
 pub use utils::{infer_index, infer_string_index, on_argument_type_error};

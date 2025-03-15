@@ -1,7 +1,13 @@
+mod named_tuple;
 mod typed_dict;
+
+pub(crate) use named_tuple::execute_collections_named_tuple;
 
 use std::{borrow::Cow, cell::Cell, rc::Rc};
 
+use named_tuple::{
+    new_collections_named_tuple, new_typing_named_tuple, new_typing_named_tuple_internal,
+};
 use parsa_python_cst::{SliceType as CSTSliceType, *};
 use typed_dict::new_typed_dict_with_execution_syntax;
 
@@ -28,19 +34,16 @@ use crate::{
     node_ref::NodeRef,
     recoverable_error,
     type_::{
-        add_named_tuple_param, add_param_spec_to_params, new_collections_named_tuple,
-        new_typing_named_tuple, new_typing_named_tuple_internal, AnyCause, CallableContent,
-        CallableParam, CallableParams, CallableWithParent, ClassGenerics, Dataclass, DbBytes,
-        DbString, Enum, EnumMember, FunctionKind, GenericClass, GenericItem, GenericsList, Literal,
-        LiteralKind, MaybeUnpackGatherer, NamedTuple, Namespace, NeverCause, NewType, ParamSpecArg,
+        add_param_spec_to_params, AnyCause, CallableContent, CallableParam, CallableParams,
+        CallableWithParent, ClassGenerics, Dataclass, DbBytes, DbString, Enum, EnumMember,
+        FunctionKind, GenericClass, GenericItem, GenericsList, Literal, LiteralKind,
+        MaybeUnpackGatherer, NamedTuple, Namespace, NeverCause, NewType, ParamSpecArg,
         ParamSpecUsage, ParamType, RecursiveType, StarParamType, StarStarParamType, StringSlice,
         Tuple, TupleArgs, TupleUnpack, Type, TypeArgs, TypeGuardInfo, TypeVar, TypeVarKind,
         TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypeVarTupleUsage,
         TypeVarUsage, TypedDict, TypedDictGenerics, UnionEntry, UnionType, WithUnpack,
     },
-    type_helpers::{
-        cache_class_name, start_namedtuple_params, Class, ClassInitializer, ClassNodeRef, Function,
-    },
+    type_helpers::{cache_class_name, Class, ClassInitializer, ClassNodeRef, Function},
     utils::{debug_indent, rc_slice_into_vec, AlreadySeen},
 };
 
@@ -1845,40 +1848,6 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         )))
     }
 
-    fn compute_type_get_item_on_named_tuple(
-        &mut self,
-        named_tuple: Rc<NamedTuple>,
-        slice_type: SliceType,
-    ) -> TypeContent<'db, 'db> {
-        let db = self.i_s.db;
-        let mut generics = vec![];
-        self.calculate_type_arguments(
-            slice_type,
-            &mut generics,
-            slice_type.iter(),
-            &named_tuple.__new__.type_vars,
-            &|| named_tuple.name(db).into(),
-            |slf: &mut Self, counts| {
-                slf.add_issue(
-                    slice_type.as_node_ref(),
-                    IssueKind::TypeArgumentIssue {
-                        class: named_tuple.name.as_str(db).into(),
-                        counts,
-                    },
-                );
-            },
-        );
-        let defined_at = named_tuple.__new__.defined_at;
-        let nt = Type::NamedTuple(named_tuple);
-        TypeContent::Type(
-            nt.replace_type_var_likes(db, &mut |usage| {
-                (usage.in_definition() == defined_at)
-                    .then(|| generics[usage.index().as_usize()].clone())
-            })
-            .unwrap_or(nt),
-        )
-    }
-
     fn compute_type_get_item_on_class(
         &mut self,
         class: Class,
@@ -3264,75 +3233,6 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             ),
             might_have_type_vars: true,
         }))
-    }
-
-    pub fn compute_named_tuple_initializer(
-        &mut self,
-        list: StarLikeExpressionIterator,
-    ) -> Option<Vec<CallableParam>> {
-        // From NamedTuple('x', [('a', int)]) to a callable that matches those params
-
-        let file_index = self.file.file_index;
-        let mut params = start_namedtuple_params(self.i_s.db);
-        for element in list {
-            let StarLikeExpression::NamedExpression(ne) = element else {
-                self.name_resolution
-                    .add_issue(element.index(), IssueKind::TupleExpectedAsNamedTupleField);
-                return None;
-            };
-            let mut parts = match ne.expression().maybe_unpacked_atom() {
-                Some(AtomContent::Tuple(tup)) => tup.iter(),
-                _ => {
-                    self.name_resolution
-                        .add_issue(ne.index(), IssueKind::TupleExpectedAsNamedTupleField);
-                    return None;
-                }
-            };
-            let Some(first) = parts.next() else {
-                self.name_resolution.add_issue(
-                    ne.index(),
-                    IssueKind::NamedTupleFieldExpectsTupleOfStrAndType,
-                );
-                return None;
-            };
-            let Some(second) = parts.next() else {
-                self.name_resolution.add_issue(
-                    ne.index(),
-                    IssueKind::NamedTupleFieldExpectsTupleOfStrAndType,
-                );
-                return None;
-            };
-            let StarLikeExpression::NamedExpression(name_expr) = first else {
-                self.name_resolution
-                    .add_issue(ne.index(), IssueKind::NamedTupleInvalidFieldName);
-                return None;
-            };
-            let StarLikeExpression::NamedExpression(type_expr) = second else {
-                self.name_resolution.add_issue(
-                    name_expr.index(),
-                    IssueKind::InvalidType("Star args are not supported".into()),
-                );
-                return None;
-            };
-            let Some(name) =
-                StringSlice::from_string_in_expression(file_index, name_expr.expression())
-            else {
-                self.name_resolution
-                    .add_issue(name_expr.index(), IssueKind::NamedTupleInvalidFieldName);
-                return None;
-            };
-            let t = self.compute_named_expr_type(type_expr);
-            add_named_tuple_param(
-                "NamedTuple",
-                self.i_s.db,
-                &mut params,
-                name,
-                t,
-                false,
-                |issue| self.name_resolution.add_issue(ne.index(), issue),
-            )
-        }
-        Some(params)
     }
 
     pub fn into_type_vars<C>(self, on_type_var_recalculation: C) -> TypeVarLikes

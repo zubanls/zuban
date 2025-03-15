@@ -47,10 +47,7 @@ pub(crate) use self::{
     intersection::Intersection,
     lookup_result::LookupResult,
     matching::{match_arbitrary_len_vs_unpack, match_tuple_type_arguments, match_unpack},
-    named_tuple::{
-        add_named_tuple_param, execute_collections_named_tuple, new_collections_named_tuple,
-        new_typing_named_tuple, new_typing_named_tuple_internal, NamedTuple,
-    },
+    named_tuple::NamedTuple,
     operations::{execute_type_of_type, IterCause, IterInfos},
     recursive_type::{RecursiveType, RecursiveTypeOrigin},
     replace::{replace_param_spec, ReplaceSelf},

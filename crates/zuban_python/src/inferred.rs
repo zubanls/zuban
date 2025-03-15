@@ -11,8 +11,8 @@ use crate::{
     debug,
     diagnostics::IssueKind,
     file::{
-        maybe_saved_annotation, on_argument_type_error, use_cached_annotation_or_type_comment,
-        PythonFile, ANNOTATION_TO_EXPR_DIFFERENCE,
+        execute_collections_named_tuple, maybe_saved_annotation, on_argument_type_error,
+        use_cached_annotation_or_type_comment, PythonFile, ANNOTATION_TO_EXPR_DIFFERENCE,
     },
     format_data::FormatData,
     getitem::SliceType,
@@ -25,12 +25,11 @@ use crate::{
     new_class,
     node_ref::NodeRef,
     type_::{
-        execute_collections_named_tuple, execute_tuple_class, execute_type_of_type,
-        merge_class_type_vars, AnyCause, CallableContent, CallableLike, CallableParams,
-        ClassGenerics, DataclassTransformObj, DbBytes, DbString, FunctionKind, FunctionOverload,
-        GenericClass, GenericItem, GenericsList, IterCause, IterInfos, Literal as DbLiteral,
-        LiteralKind, LiteralValue, LookupResult, NeverCause, PropertySetter, Type, TypeVarKind,
-        TypeVarLike, TypeVarLikes,
+        execute_tuple_class, execute_type_of_type, merge_class_type_vars, AnyCause,
+        CallableContent, CallableLike, CallableParams, ClassGenerics, DataclassTransformObj,
+        DbBytes, DbString, FunctionKind, FunctionOverload, GenericClass, GenericItem, GenericsList,
+        IterCause, IterInfos, Literal as DbLiteral, LiteralKind, LiteralValue, LookupResult,
+        NeverCause, PropertySetter, Type, TypeVarKind, TypeVarLike, TypeVarLikes,
     },
     type_helpers::{
         execute_assert_type, execute_cast, execute_isinstance, execute_issubclass,
