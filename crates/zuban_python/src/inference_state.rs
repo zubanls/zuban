@@ -4,10 +4,10 @@ use vfs::FileIndex;
 
 use crate::{
     database::{Database, ParentScope, PointLink},
-    file::TypeVarCallbackReturn,
+    file::{ClassNodeRef, TypeVarCallbackReturn},
     node_ref::NodeRef,
     type_::{CallableContent, TypeVarLike},
-    type_helpers::{Class, ClassNodeRef, Function},
+    type_helpers::{Class, Function},
     TypeCheckerFlags,
 };
 

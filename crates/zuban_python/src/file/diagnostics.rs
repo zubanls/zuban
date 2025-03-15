@@ -8,7 +8,7 @@ use std::{
 use config::TypeCheckerFlags;
 use parsa_python_cst::*;
 
-use super::{first_defined_name, flow_analysis::FLOW_ANALYSIS, inference::await_};
+use super::{first_defined_name, flow_analysis::FLOW_ANALYSIS, inference::await_, ClassNodeRef};
 use crate::{
     arguments::{CombinedArgs, KnownArgs, NoArgs},
     database::{
@@ -34,7 +34,7 @@ use crate::{
         LookupResult, NeverCause, ParamType, Type, TypeVarKind, TypeVarLike, Variance,
     },
     type_helpers::{
-        cache_class_name, is_private, Class, ClassLookupOptions, ClassNodeRef, FirstParamKind,
+        cache_class_name, is_private, Class, ClassLookupOptions, FirstParamKind,
         FirstParamProperties, Function, Instance, InstanceLookupOptions, LookupDetails,
         TypeOrClass,
     },

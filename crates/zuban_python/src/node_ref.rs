@@ -13,14 +13,15 @@ use crate::{
         ComplexPoint, Database, Locality, Point, PointKind, PointLink, Specific, TypeAlias,
     },
     diagnostics::{Diagnostic, Issue, IssueKind},
-    file::{File, OtherDefinitionIterator, PythonFile},
+    file::{
+        ClassInitializer, ClassNodeRef, File, OtherDefinitionIterator, PythonFile,
+        CLASS_TO_CLASS_INFO_DIFFERENCE,
+    },
     inference_state::InferenceState,
     inferred::Inferred,
     python_state::{NAME_DEF_TO_CLASS_DIFF, NAME_TO_FUNCTION_DIFF},
     type_::Type,
-    type_helpers::{
-        ClassInitializer, ClassNodeRef, Function, Module, CLASS_TO_CLASS_INFO_DIFFERENCE,
-    },
+    type_helpers::{Function, Module},
 };
 
 #[derive(Clone, Copy)]

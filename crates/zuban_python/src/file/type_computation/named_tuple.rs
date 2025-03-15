@@ -17,7 +17,6 @@ use crate::{
         AnyCause, CallableContent, CallableParam, CallableParams, DbString, NamedTuple, ParamType,
         StringSlice, Type,
     },
-    type_helpers::start_namedtuple_params,
 };
 
 use super::{TypeComputation, TypeComputationOrigin, TypeContent, TypeVarCallbackReturn};
@@ -477,4 +476,10 @@ pub fn add_named_tuple_param(
         field_name,
         ParamType::PositionalOrKeyword(t),
     ));
+}
+
+pub(super) fn start_namedtuple_params(db: &Database) -> Vec<CallableParam> {
+    vec![CallableParam::new_anonymous(ParamType::PositionalOnly(
+        db.python_state.type_of_self.clone(),
+    ))]
 }

@@ -10,7 +10,7 @@ use super::{
     on_argument_type_error,
     type_computation::ANNOTATION_TO_EXPR_DIFFERENCE,
     utils::{func_of_self_symbol, infer_dict_like},
-    File, PythonFile, FLOW_ANALYSIS,
+    ClassNodeRef, File, PythonFile, FLOW_ANALYSIS,
 };
 use crate::{
     arguments::{Args, KnownArgs, NoArgs, SimpleArgs},
@@ -40,8 +40,8 @@ use crate::{
         WithUnpack,
     },
     type_helpers::{
-        cache_class_name, is_private, Class, ClassLookupOptions, ClassNodeRef, FirstParamKind,
-        Function, GeneratorType, Instance, InstanceLookupOptions, LookupDetails, TypeOrClass,
+        cache_class_name, is_private, Class, ClassLookupOptions, FirstParamKind, Function,
+        GeneratorType, Instance, InstanceLookupOptions, LookupDetails, TypeOrClass,
     },
     utils::debug_indent,
 };

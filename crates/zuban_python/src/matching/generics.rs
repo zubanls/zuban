@@ -3,10 +3,9 @@ use parsa_python_cst::{Expression, SliceContent, SliceIterator, Slices};
 use super::Generic;
 use crate::{
     database::{Database, PointLink},
-    file::{use_cached_simple_generic_type, PythonFile},
+    file::{use_cached_simple_generic_type, ClassNodeRef, PythonFile},
     node_ref::NodeRef,
     type_::{ClassGenerics, GenericItem, GenericsList, TypeVarLike, TypeVarLikeUsage},
-    type_helpers::ClassNodeRef,
 };
 
 macro_rules! replace_class_vars {

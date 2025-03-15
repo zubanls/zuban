@@ -16,7 +16,7 @@ use crate::{
     diagnostics::{Issue, IssueKind},
     file::{
         first_defined_name_of_multi_def, func_parent_scope, use_cached_param_annotation_type,
-        FuncParentScope, OtherDefinitionIterator, PythonFile, TypeComputation,
+        ClassNodeRef, FuncParentScope, OtherDefinitionIterator, PythonFile, TypeComputation,
         TypeComputationOrigin, TypeVarCallbackReturn, FLOW_ANALYSIS, FUNC_TO_RETURN_OR_YIELD_DIFF,
         FUNC_TO_TYPE_VAR_DIFF,
     },
@@ -43,8 +43,6 @@ use crate::{
     },
     type_helpers::Class,
 };
-
-use super::ClassNodeRef;
 
 #[derive(Clone, Copy)]
 pub struct Function<'a, 'class> {

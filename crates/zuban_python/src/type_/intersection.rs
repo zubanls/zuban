@@ -3,13 +3,13 @@ use std::{borrow::Cow, cell::Cell, rc::Rc};
 use crate::{
     arguments::Args,
     diagnostics::IssueKind,
-    file::check_multiple_inheritance,
+    file::{check_multiple_inheritance, linearize_mro_and_return_linearizable},
     format_data::FormatData,
     getitem::SliceType,
     inference_state::InferenceState,
     inferred::Inferred,
     matching::{IteratorContent, OnTypeError, ResultContext},
-    type_helpers::{linearize_mro_and_return_linearizable, LookupDetails, TypeOrClass},
+    type_helpers::{LookupDetails, TypeOrClass},
 };
 
 use super::{AnyCause, CallableParams, FormatStyle, IterInfos, Type, UnionEntry, UnionType};

@@ -15,6 +15,7 @@ use crate::{
     database::{Database, PointLink},
     debug,
     diagnostics::IssueKind,
+    file::ClassNodeRef,
     inference_state::InferenceState,
     inferred::Inferred,
     matching::{maybe_class_usage, ErrorTypes, GotType},
@@ -29,7 +30,7 @@ use crate::{
         NeverCause, ParamSpecTypeVars, ReplaceSelf, Tuple, TupleArgs, TupleUnpack, Type,
         TypeVarLikes, TypeVarManager, Variance,
     },
-    type_helpers::{Callable, Class, ClassNodeRef, Function},
+    type_helpers::{Callable, Class, Function},
 };
 
 pub(crate) fn calculate_callable_dunder_init_type_vars_and_return<'db: 'a, 'a>(

@@ -20,7 +20,7 @@ use crate::{
     arguments::{Arg, ArgKind, Args, SimpleArgs},
     database::{Database, Locality, Point, PointLink, Specific},
     diagnostics::{Issue, IssueKind},
-    file::PythonFile,
+    file::{ClassNodeRef, PythonFile},
     inference_state::InferenceState,
     inferred::{AttributeKind, Inferred},
     matching::{
@@ -32,8 +32,8 @@ use crate::{
     python_state::NAME_TO_FUNCTION_DIFF,
     type_::CallableLike,
     type_helpers::{
-        Callable, Class, ClassLookupOptions, ClassNodeRef, Instance, InstanceLookupOptions,
-        LookupDetails, OverloadResult, OverloadedFunction, TypeOrClass,
+        Callable, Class, ClassLookupOptions, Instance, InstanceLookupOptions, LookupDetails,
+        OverloadResult, OverloadedFunction, TypeOrClass,
     },
 };
 

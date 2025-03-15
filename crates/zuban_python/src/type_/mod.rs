@@ -73,7 +73,7 @@ use crate::{
     database::{Database, PointLink},
     debug,
     diagnostics::IssueKind,
-    file::dotted_path_from_dir,
+    file::{dotted_path_from_dir, ClassNodeRef},
     format_data::{find_similar_types, AvoidRecursionFor, FormatData},
     inference_state::InferenceState,
     inferred::Inferred,
@@ -82,7 +82,7 @@ use crate::{
         OnTypeError, ResultContext,
     },
     node_ref::NodeRef,
-    type_helpers::{Class, ClassNodeRef, Instance, MroIterator, TypeOrClass},
+    type_helpers::{Class, Instance, MroIterator, TypeOrClass},
     utils::{bytes_repr, join_with_commas, rc_slice_into_vec, str_repr},
 };
 

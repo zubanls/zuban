@@ -3,8 +3,9 @@ use core::fmt;
 use super::Matcher;
 use crate::{
     database::PointLink,
+    file::ClassNodeRef,
     type_::{AnyCause, TupleArgs, Type},
-    type_helpers::{Class, ClassNodeRef},
+    type_helpers::Class,
     InferenceState,
 };
 

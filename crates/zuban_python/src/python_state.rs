@@ -6,7 +6,7 @@ use vfs::FileIndex;
 
 use crate::{
     database::{BaseClass, Database, Locality, Point, PointLink, Specific},
-    file::PythonFile,
+    file::{ClassInitializer, ClassNodeRef, PythonFile},
     inferred::Inferred,
     matching::Generics,
     new_class,
@@ -15,10 +15,7 @@ use crate::{
         dataclasses_replace, AnyCause, CallableContent, CallableParam, CallableParams,
         ClassGenerics, CustomBehavior, NeverCause, ParamType, Tuple, Type, TypeVarLikes,
     },
-    type_helpers::{
-        cache_class_name, Class, ClassInitializer, ClassNodeRef, FirstParamProperties, Function,
-        Instance,
-    },
+    type_helpers::{cache_class_name, Class, FirstParamProperties, Function, Instance},
     InferenceState,
 };
 

@@ -12,7 +12,8 @@ use crate::{
     diagnostics::IssueKind,
     file::{
         execute_collections_named_tuple, maybe_saved_annotation, on_argument_type_error,
-        use_cached_annotation_or_type_comment, PythonFile, ANNOTATION_TO_EXPR_DIFFERENCE,
+        use_cached_annotation_or_type_comment, ClassNodeRef, PythonFile,
+        ANNOTATION_TO_EXPR_DIFFERENCE,
     },
     format_data::FormatData,
     getitem::SliceType,
@@ -35,8 +36,8 @@ use crate::{
         execute_assert_type, execute_cast, execute_isinstance, execute_issubclass,
         execute_new_type, execute_param_spec_class, execute_reveal_type, execute_super,
         execute_type_var_class, execute_type_var_tuple_class, BoundMethod, BoundMethodFunction,
-        Class, ClassNodeRef, FirstParamProperties, Function, Instance, LookupDetails,
-        OverloadedFunction, TypeOrClass,
+        Class, FirstParamProperties, Function, Instance, LookupDetails, OverloadedFunction,
+        TypeOrClass,
     },
 };
 

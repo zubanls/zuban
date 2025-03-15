@@ -7,6 +7,7 @@ use super::{
 use crate::{
     database::{ComplexPoint, MetaclassState},
     debug,
+    file::ClassNodeRef,
     inference_state::InferenceState,
     matching::{
         avoid_protocol_mismatch, format_got_expected, ErrorStrs, ErrorTypes, GotType, Match,
@@ -14,7 +15,7 @@ use crate::{
     },
     params::matches_params,
     type_::{CallableLike, CallableParams, TupleArgs, TupleUnpack, Variance},
-    type_helpers::{Class, ClassNodeRef, TypeOrClass},
+    type_helpers::{Class, TypeOrClass},
 };
 
 impl Type {

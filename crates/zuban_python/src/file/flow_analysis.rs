@@ -21,7 +21,7 @@ use crate::{
     database::{ClassKind, Database, Locality, Point, PointKind, PointLink, Specific},
     debug,
     diagnostics::IssueKind,
-    file::OtherDefinitionIterator,
+    file::{ClassNodeRef, OtherDefinitionIterator},
     getitem::SliceType,
     inference_state::InferenceState,
     inferred::{Inferred, UnionValue},
@@ -34,8 +34,8 @@ use crate::{
         Tuple, TupleArgs, TupleUnpack, Type, TypeVarKind, UnionType, WithUnpack,
     },
     type_helpers::{
-        Callable, Class, ClassLookupOptions, ClassNodeRef, Function, InstanceLookupOptions,
-        LookupDetails, OverloadResult, OverloadedFunction,
+        Callable, Class, ClassLookupOptions, Function, InstanceLookupOptions, LookupDetails,
+        OverloadResult, OverloadedFunction,
     },
     utils::{debug_indent, join_with_commas},
 };

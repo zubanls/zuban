@@ -30,18 +30,18 @@ use crate::{
         NamedTuple, ParamType, StringSlice, Tuple, Type, TypeVarLike, TypeVarLikes, TypedDict,
         TypedDictMember, TypedDictMemberGatherer, Variance,
     },
-    type_helpers::{
-        class::join_abstract_attributes, Class, FirstParamProperties, Function, TypeOrClass,
-    },
-    utils::debug_indent,
+    type_helpers::{Class, FirstParamProperties, Function, TypeOrClass},
+    utils::{debug_indent, join_with_commas},
 };
+
+use super::named_tuple::start_namedtuple_params;
 
 // Basically save the type vars on the class keyword.
 const CLASS_TO_TYPE_VARS_DIFFERENCE: i64 = 1;
 // Basically the `(` or `:` after the name
-pub const CLASS_TO_CLASS_INFO_DIFFERENCE: i64 = NAME_TO_CLASS_DIFF as i64 + 1;
+pub(crate) const CLASS_TO_CLASS_INFO_DIFFERENCE: i64 = NAME_TO_CLASS_DIFF as i64 + 1;
 
-pub(super) const ORDERING_METHODS: [&str; 4] = ["__lt__", "__le__", "__gt__", "__ge__"];
+pub(crate) const ORDERING_METHODS: [&str; 4] = ["__lt__", "__le__", "__gt__", "__ge__"];
 
 const EXCLUDED_PROTOCOL_ATTRIBUTES: [&str; 11] = [
     "__abstractmethods__",
@@ -304,7 +304,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
         self.maybe_type_var_like_in_parent(db, type_var_like)
     }
 
-    pub fn has_a_total_ordering_method_in_mro(&self, db: &Database, mro: &[BaseClass]) -> bool {
+    fn has_a_total_ordering_method_in_mro(&self, db: &Database, mro: &[BaseClass]) -> bool {
         for n in ORDERING_METHODS {
             if self
                 .class_storage
@@ -1553,12 +1553,6 @@ fn find_stmt_typed_dict_types(
     }
 }
 
-pub fn start_namedtuple_params(db: &Database) -> Vec<CallableParam> {
-    vec![CallableParam::new_anonymous(ParamType::PositionalOnly(
-        db.python_state.type_of_self.clone(),
-    ))]
-}
-
 fn find_stmt_named_tuple_types(
     i_s: &InferenceState,
     file: &PythonFile,
@@ -1798,4 +1792,13 @@ pub fn linearize_mro_and_return_linearizable(
         unreachable!()
     }
     (mro.into_boxed_slice(), linearizable)
+}
+
+fn join_abstract_attributes(db: &Database, abstract_attributes: &[PointLink]) -> Box<str> {
+    join_with_commas(
+        abstract_attributes
+            .iter()
+            .map(|&l| format!("\"{}\"", NodeRef::from_link(db, l).as_code())),
+    )
+    .into()
 }

@@ -6,9 +6,10 @@ use std::{
 use super::{GenericsList, Type};
 use crate::{
     database::{Database, PointLink, TypeAlias},
+    file::ClassNodeRef,
     matching::Generics,
     node_ref::NodeRef,
-    type_helpers::{Class, ClassNodeRef},
+    type_helpers::Class,
 };
 
 #[derive(Clone, Eq)]

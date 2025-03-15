@@ -15,7 +15,7 @@ use vfs::{
 
 use crate::{
     debug,
-    file::{File, PythonFile},
+    file::{ClassNodeRef, File, PythonFile},
     node_ref::NodeRef,
     python_state::PythonState,
     recoverable_error, sys_path,
@@ -24,7 +24,7 @@ use crate::{
         GenericsList, NewType, ParamSpecUsage, RecursiveType, StringSlice, Type, TypeVarLike,
         TypeVarLikeUsage, TypeVarLikes, TypeVarTupleUsage, TypeVarUsage, TypedDict, Variance,
     },
-    type_helpers::{Class, ClassNodeRef, Function},
+    type_helpers::{Class, Function},
     utils::SymbolTable,
     ProjectOptions, TypeCheckerFlags,
 };

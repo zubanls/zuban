@@ -3,7 +3,10 @@ use std::borrow::Cow;
 use parsa_python_cst::*;
 use vfs::FileIndex;
 
-use super::name_resolution::{NameResolution, PointResolution};
+use super::{
+    name_resolution::{NameResolution, PointResolution},
+    ClassInitializer, ClassNodeRef,
+};
 use crate::{
     database::{ComplexPoint, PointLink, Specific},
     debug,
@@ -13,7 +16,6 @@ use crate::{
     inference_state::InferenceState,
     node_ref::NodeRef,
     type_::{TypeVarIndex, TypeVarLike, TypeVarLikes, TypeVarManager},
-    type_helpers::{ClassInitializer, ClassNodeRef},
     utils::debug_indent,
 };
 

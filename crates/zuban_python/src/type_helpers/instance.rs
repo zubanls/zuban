@@ -2,16 +2,13 @@ use std::{borrow::Cow, cell::Cell, rc::Rc};
 
 use parsa_python_cst::Name;
 
-use super::{
-    class::TypeOrClass, class_initializer::ORDERING_METHODS, Class, ClassLookupOptions,
-    FirstParamKind, Function, MroIterator,
-};
+use super::{class::TypeOrClass, Class, ClassLookupOptions, FirstParamKind, Function, MroIterator};
 use crate::{
     arguments::{Args, CombinedArgs, InferredArg, KnownArgs, KnownArgsWithCustomAddIssue},
     database::{ComplexPoint, Database, PointLink, Specific},
     debug,
     diagnostics::IssueKind,
-    file::on_argument_type_error,
+    file::{on_argument_type_error, ORDERING_METHODS},
     getitem::SliceType,
     inference_state::InferenceState,
     inferred::{add_attribute_error, AttributeKind, Inferred, MroIndex},

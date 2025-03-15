@@ -1,6 +1,11 @@
+mod class;
 mod named_tuple;
 mod typed_dict;
 
+pub(crate) use class::{
+    linearize_mro_and_return_linearizable, ClassInitializer, ClassNodeRef,
+    CLASS_TO_CLASS_INFO_DIFFERENCE, ORDERING_METHODS,
+};
 pub(crate) use named_tuple::execute_collections_named_tuple;
 
 use std::{borrow::Cow, cell::Cell, rc::Rc};
@@ -43,7 +48,7 @@ use crate::{
         TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypeVarTupleUsage,
         TypeVarUsage, TypedDict, TypedDictGenerics, UnionEntry, UnionType, WithUnpack,
     },
-    type_helpers::{cache_class_name, Class, ClassInitializer, ClassNodeRef, Function},
+    type_helpers::{cache_class_name, Class, Function},
     utils::{debug_indent, rc_slice_into_vec, AlreadySeen},
 };
 

@@ -14,11 +14,11 @@ use crate::{
     inferred::Inferred,
     node_ref::NodeRef,
     type_::{LookupResult, Type},
-    type_helpers::{is_private_import, is_reexport_issue, ClassInitializer, Module},
+    type_helpers::{is_private_import, is_reexport_issue, Module},
     utils::AlreadySeen,
 };
 
-use super::{inference::StarImportResult, python_file::StarImport, PythonFile};
+use super::{inference::StarImportResult, python_file::StarImport, ClassInitializer, PythonFile};
 
 #[derive(Copy, Clone)]
 pub struct NameResolution<'db: 'file, 'file, 'i_s> {

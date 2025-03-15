@@ -23,9 +23,10 @@ use crate::{
         IterCause, Literal, LiteralKind, LiteralValue, NeverCause, Type, TypedDict,
         TypedDictGenerics,
     },
-    type_helpers::ClassNodeRef,
     Inferred,
 };
+
+use super::ClassNodeRef;
 
 impl<'db> Inference<'db, '_, '_> {
     pub fn create_list_or_set_generics<'x>(

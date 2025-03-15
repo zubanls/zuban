@@ -7,10 +7,7 @@ use std::{
 
 use parsa_python_cst::{Assignment, ClassDef, TypeLike};
 
-use super::{
-    overload::OverloadResult, Callable, ClassInitializer, ClassNodeRef, Instance,
-    InstanceLookupOptions, LookupDetails,
-};
+use super::{overload::OverloadResult, Callable, Instance, InstanceLookupOptions, LookupDetails};
 use crate::{
     arguments::Args,
     database::{
@@ -19,7 +16,7 @@ use crate::{
     },
     debug,
     diagnostics::IssueKind,
-    file::TypeVarCallbackReturn,
+    file::{ClassInitializer, ClassNodeRef, TypeVarCallbackReturn},
     format_data::FormatData,
     getitem::SliceType,
     inference_state::InferenceState,
@@ -37,7 +34,7 @@ use crate::{
         NeverCause, ParamSpecArg, ParamSpecUsage, Tuple, TupleArgs, Type, TypeVarLike,
         TypeVarLikeUsage, TypeVarLikes, TypedDict, TypedDictGenerics, Variance,
     },
-    utils::{debug_indent, join_with_commas},
+    utils::debug_indent,
 };
 
 pub fn cache_class_name(name_def: NodeRef, class: ClassDef) {
@@ -1840,18 +1837,6 @@ fn protocol_conflict_note(db: &Database, other: &Type) -> Box<str> {
             other.format_short(db)
         ),
     }
-    .into()
-}
-
-pub(super) fn join_abstract_attributes(
-    db: &Database,
-    abstract_attributes: &[PointLink],
-) -> Box<str> {
-    join_with_commas(
-        abstract_attributes
-            .iter()
-            .map(|&l| format!("\"{}\"", NodeRef::from_link(db, l).as_code())),
-    )
     .into()
 }
 
