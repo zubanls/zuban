@@ -103,7 +103,6 @@ enum SpecialType {
     TypeIs,
     FlexibleAlias,
     Specific(Specific),
-    MypyExtensionsParamType(Specific),
 }
 
 #[derive(Debug, Clone)]
@@ -1533,9 +1532,14 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     TypeContent::InvalidVariable(InvalidVariableType::InlineTypedDict)
                 }
                 TypeContent::Unknown(cause) => TypeContent::Unknown(cause),
-                TypeContent::SpecialType(SpecialType::MypyExtensionsParamType(s)) => {
-                    self.execute_mypy_extension_param(primary, s, details)
-                }
+                TypeContent::SpecialType(SpecialType::Specific(
+                    s @ (Specific::MypyExtensionsArg
+                    | Specific::MypyExtensionsDefaultArg
+                    | Specific::MypyExtensionsNamedArg
+                    | Specific::MypyExtensionsDefaultNamedArg
+                    | Specific::MypyExtensionsVarArg
+                    | Specific::MypyExtensionsKwArg),
+                )) => self.execute_mypy_extension_param(primary, s, details),
                 _ => {
                     debug!("Invalid type execution: {base:?}");
                     TypeContent::InvalidVariable(InvalidVariableType::Execution {
@@ -5202,12 +5206,6 @@ fn check_special_type(specific: Specific) -> Option<SpecialType> {
         Specific::TypingTypeGuard => SpecialType::TypeGuard,
         Specific::TypingTypeIs => SpecialType::TypeIs,
         Specific::CollectionsNamedTuple => SpecialType::CollectionsNamedTuple,
-        Specific::MypyExtensionsArg
-        | Specific::MypyExtensionsDefaultArg
-        | Specific::MypyExtensionsNamedArg
-        | Specific::MypyExtensionsDefaultNamedArg
-        | Specific::MypyExtensionsVarArg
-        | Specific::MypyExtensionsKwArg => SpecialType::MypyExtensionsParamType(specific),
         Specific::MypyExtensionsFlexibleAlias => SpecialType::FlexibleAlias,
         Specific::AnyDueToError
         | Specific::ModuleNotFound
