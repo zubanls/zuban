@@ -42,11 +42,11 @@ use crate::{
         add_param_spec_to_params, AnyCause, CallableContent, CallableParam, CallableParams,
         CallableWithParent, ClassGenerics, Dataclass, DbBytes, DbString, Enum, EnumMember,
         FunctionKind, GenericClass, GenericItem, GenericsList, Literal, LiteralKind,
-        MaybeUnpackGatherer, NamedTuple, Namespace, NeverCause, NewType, ParamSpecArg,
-        ParamSpecUsage, ParamType, RecursiveType, StarParamType, StarStarParamType, StringSlice,
-        Tuple, TupleArgs, TupleUnpack, Type, TypeArgs, TypeGuardInfo, TypeVar, TypeVarKind,
-        TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypeVarTupleUsage,
-        TypeVarUsage, TypedDict, TypedDictGenerics, UnionEntry, UnionType, WithUnpack,
+        MaybeUnpackGatherer, NamedTuple, Namespace, NeverCause, ParamSpecArg, ParamSpecUsage,
+        ParamType, RecursiveType, StarParamType, StarStarParamType, StringSlice, Tuple, TupleArgs,
+        TupleUnpack, Type, TypeArgs, TypeGuardInfo, TypeVar, TypeVarKind, TypeVarLike,
+        TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypeVarTupleUsage, TypeVarUsage, TypedDict,
+        TypedDictGenerics, UnionEntry, UnionType, WithUnpack,
     },
     type_helpers::{cache_class_name, Class, Function},
     utils::{debug_indent, rc_slice_into_vec, AlreadySeen},
@@ -311,6 +311,10 @@ enum TypeContent<'db, 'a> {
     Unknown(UnknownCause),
 }
 
+impl TypeContent<'_, '_> {
+    const UNKNOWN_REPORTED: Self = Self::Unknown(UnknownCause::ReportedIssue);
+}
+
 enum ClassGetItemResult<'db> {
     GenericClass(GenericClass),
     SimpleGeneric {
@@ -323,23 +327,14 @@ enum ClassGetItemResult<'db> {
 
 #[derive(Debug)]
 enum Lookup<'db, 'a> {
-    TypeContent(TypeContent<'db, 'a>),
-    Module(&'db PythonFile),
-    Namespace(Rc<Namespace>),
+    T(TypeContent<'db, 'a>),
     Class { node_ref: ClassNodeRef<'db> },
     TypeVarLike(TypeVarLike),
-    TypeAlias(&'db TypeAlias),
-    NewType(Rc<NewType>),
-    SpecialType(SpecialType),
-    InvalidVariable(InvalidVariableType<'a>),
-    NamedTupleDefinition(Rc<NamedTuple>),
-    TypedDictDefinition(Rc<TypedDict>),
-    Enum(Rc<Enum>),
-    Dataclass(Rc<Dataclass>),
-    RecursiveAlias(PointLink),
-    RecursiveClass(ClassNodeRef<'db>),
-    Unknown(UnknownCause),
     AliasNoneType,
+}
+
+impl Lookup<'_, '_> {
+    const UNKNOWN_REPORTED: Self = Self::T(TypeContent::UNKNOWN_REPORTED);
 }
 
 #[derive(Debug)]
@@ -523,7 +518,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             for s in f.tree.root().iter_stmt_likes() {
                 if let StmtLikeContent::Error(_) = s.node {
                     // There is invalid syntax (issue added previously)
-                    return TypeContent::Unknown(UnknownCause::ReportedIssue);
+                    return TypeContent::UNKNOWN_REPORTED;
                 }
             }
             self.file.add_issue(
@@ -534,7 +529,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     kind: IssueKind::InvalidSyntaxInTypeAnnotation,
                 },
             );
-            TypeContent::Unknown(UnknownCause::ReportedIssue)
+            TypeContent::UNKNOWN_REPORTED
         }
     }
 
@@ -1643,7 +1638,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             |t| self.add_issue(s.as_node_ref(), t),
                             self.origin,
                         );
-                        TypeContent::Unknown(UnknownCause::ReportedIssue)
+                        TypeContent::UNKNOWN_REPORTED
                     }
                     TypeContent::Unknown(cause) => TypeContent::Unknown(cause),
                     _ => TypeContent::InvalidVariable(InvalidVariableType::Other),
@@ -1677,7 +1672,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         name.index(),
                         Point::new_specific(Specific::AnyDueToError, Locality::Todo),
                     );
-                    TypeContent::Unknown(UnknownCause::ReportedIssue)
+                    TypeContent::UNKNOWN_REPORTED
                 }
             }
             TypeContent::Namespace(n) => match namespace_import(db, self.file, &n, name.as_str()) {
@@ -1686,12 +1681,10 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     TypeContent::Module(file)
                 }
                 Some(ImportResult::Namespace(ns)) => TypeContent::Namespace(ns),
-                Some(ImportResult::PyTypedMissing) => {
-                    TypeContent::Unknown(UnknownCause::ReportedIssue)
-                }
+                Some(ImportResult::PyTypedMissing) => TypeContent::UNKNOWN_REPORTED,
                 None => {
                     self.add_issue_for_index(primary.index(), IssueKind::TypeNotFound);
-                    TypeContent::Unknown(UnknownCause::ReportedIssue)
+                    TypeContent::UNKNOWN_REPORTED
                 }
             },
             TypeContent::Class { node_ref, .. } => {
@@ -1743,7 +1736,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             self.resolve_type_name_lookup(tnl, name.index())
         } else {
             self.add_issue_for_index(primary.index(), IssueKind::TypeNotFound);
-            TypeContent::Unknown(UnknownCause::ReportedIssue)
+            TypeContent::UNKNOWN_REPORTED
         }
     }
 
@@ -2666,7 +2659,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 slice_type
                     .as_node_ref()
                     .add_issue(self.i_s, IssueKind::FinalAndClassVarUsedBoth);
-                TypeContent::Unknown(UnknownCause::ReportedIssue)
+                TypeContent::UNKNOWN_REPORTED
             }
             t => TypeContent::Final(self.as_type(t, slice_type.as_node_ref())),
         }
@@ -2691,7 +2684,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 slice_type.as_node_ref(),
                 IssueKind::UnpackRequiresExactlyOneArgument,
             );
-            TypeContent::Unknown(UnknownCause::ReportedIssue)
+            TypeContent::UNKNOWN_REPORTED
         }
     }
 
@@ -2715,7 +2708,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             }
             TypeContent::Concatenate(_) => {
                 self.add_issue(slice_type.as_node_ref(), IssueKind::NestedConcatenate);
-                TypeContent::Unknown(UnknownCause::ReportedIssue)
+                TypeContent::UNKNOWN_REPORTED
             }
             TypeContent::Unknown(cause) => TypeContent::Unknown(cause),
             TypeContent::InvalidVariable(InvalidVariableType::Ellipsis) => {
@@ -2732,7 +2725,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     slice_type.as_node_ref(),
                     IssueKind::ConcatenateLastParamNeedsToBeParamSpec,
                 );
-                TypeContent::Unknown(UnknownCause::ReportedIssue)
+                TypeContent::UNKNOWN_REPORTED
             }
         }
     }
@@ -2772,7 +2765,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         "Invalid type: Literal[...] cannot contain arbitrary expressions".into(),
                     ),
                 );
-                TypeContent::Unknown(UnknownCause::ReportedIssue)
+                TypeContent::UNKNOWN_REPORTED
             };
             match s.named_expr.expression().unpack() {
                 ExpressionContent::ExpressionPart(ExpressionPart::Atom(atom)) => {
@@ -2790,7 +2783,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                                         "Literals with chained bytes are not supported".into(),
                                     ),
                                 );
-                                return TypeContent::Unknown(UnknownCause::ReportedIssue);
+                                return TypeContent::UNKNOWN_REPORTED;
                             },
                         )),
                         AtomContent::Strings(s) => s.maybe_single_string_literal().map(|s| {
@@ -2816,7 +2809,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                                     .into(),
                                 ),
                             );
-                            return TypeContent::Unknown(UnknownCause::ReportedIssue);
+                            return TypeContent::UNKNOWN_REPORTED;
                         }
                         AtomContent::Complex(_) => {
                             self.add_issue(
@@ -2829,7 +2822,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                                     .into(),
                                 ),
                             );
-                            return TypeContent::Unknown(UnknownCause::ReportedIssue);
+                            return TypeContent::UNKNOWN_REPORTED;
                         }
                         AtomContent::Name(_) | AtomContent::NoneLiteral => None,
                         _ => return expr_not_allowed(self),
@@ -2880,7 +2873,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             .into(),
                     ),
                 );
-                TypeContent::Unknown(UnknownCause::ReportedIssue)
+                TypeContent::UNKNOWN_REPORTED
             }
             TypeContent::InvalidVariable(_) => {
                 self.add_issue(
@@ -2889,7 +2882,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         format!("Parameter {index} of Literal[...] is invalid").into(),
                     ),
                 );
-                TypeContent::Unknown(UnknownCause::ReportedIssue)
+                TypeContent::UNKNOWN_REPORTED
             }
             TypeContent::EnumMember(e) => TypeContent::Type(Type::EnumMember(e)),
             t => match self.as_type(t, slice.as_node_ref()) {
@@ -2909,7 +2902,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             format!("Parameter {} of Literal[...] is invalid", index).into(),
                         ),
                     );
-                    TypeContent::Unknown(UnknownCause::ReportedIssue)
+                    TypeContent::UNKNOWN_REPORTED
                 }
             },
         }
@@ -2926,7 +2919,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     "Annotated[...] must have exactly one type argument and at least one annotation",
                 )),
             );
-            TypeContent::Unknown(UnknownCause::ReportedIssue)
+            TypeContent::UNKNOWN_REPORTED
         } else {
             // Annotated[..., ...] can simply be ignored and the first part can be used.
             self.compute_slice_type_content(first)
@@ -2941,7 +2934,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 slice_type.as_node_ref(),
                 IssueKind::ClassVarTooManyArguments,
             );
-            TypeContent::Unknown(UnknownCause::ReportedIssue)
+            TypeContent::UNKNOWN_REPORTED
         } else {
             let i_s = self.i_s;
             if i_s.current_class().is_none() || i_s.current_function().is_some() {
@@ -2949,7 +2942,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     slice_type.as_node_ref(),
                     IssueKind::ClassVarOnlyInAssignmentsInClass,
                 );
-                TypeContent::Unknown(UnknownCause::ReportedIssue)
+                TypeContent::UNKNOWN_REPORTED
             } else {
                 TypeContent::ClassVar(self.compute_slice_type(first))
             }
@@ -2991,7 +2984,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         let first = iterator.next().unwrap();
         let Some(second) = iterator.next() else {
             add_issue();
-            return TypeContent::Unknown(UnknownCause::ReportedIssue);
+            return TypeContent::UNKNOWN_REPORTED;
         };
         if iterator.next().is_some() {
             add_issue();
@@ -3074,9 +3067,16 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         origin_index: NodeIndex,
     ) -> TypeContent<'db, 'x> {
         match lookup {
-            Lookup::TypeContent(c) => c,
-            Lookup::Module(f) => TypeContent::Module(f),
-            Lookup::Namespace(namespace) => TypeContent::Namespace(namespace),
+            Lookup::T(TypeContent::SpecialType(special)) => {
+                if matches!(special, SpecialType::Any) && self.flags().disallow_any_explicit {
+                    self.add_issue(
+                        NodeRef::new(self.file, origin_index),
+                        IssueKind::DisallowedAnyExplicit,
+                    )
+                }
+                TypeContent::SpecialType(special)
+            }
+            Lookup::T(c) => c,
             Lookup::Class { node_ref } => TypeContent::Class {
                 node_ref,
                 has_type_vars: !node_ref.type_vars(self.i_s).is_empty(),
@@ -3106,12 +3106,12 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                                 type_var_like: type_var_like,
                             },
                         );
-                        TypeContent::Unknown(UnknownCause::ReportedIssue)
+                        TypeContent::UNKNOWN_REPORTED
                     }
                     TypeVarCallbackReturn::AddIssue(kind) => {
                         let node_ref = NodeRef::new(self.file, origin_index);
                         node_ref.add_issue(self.i_s, kind);
-                        TypeContent::Unknown(UnknownCause::ReportedIssue)
+                        TypeContent::UNKNOWN_REPORTED
                     }
                     TypeVarCallbackReturn::NotFound {
                         allow_late_bound_callables,
@@ -3134,25 +3134,6 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     }
                 }
             }
-            Lookup::TypeAlias(alias) => TypeContent::TypeAlias(alias),
-            Lookup::NewType(n) => TypeContent::Type(Type::NewType(n)),
-            Lookup::NamedTupleDefinition(n) => TypeContent::NamedTuple(n),
-            Lookup::TypedDictDefinition(t) => TypeContent::TypedDictDefinition(t),
-            Lookup::Enum(t) => TypeContent::Type(Type::Enum(t)),
-            Lookup::Dataclass(d) => TypeContent::Dataclass(d),
-            Lookup::InvalidVariable(t) => TypeContent::InvalidVariable(t),
-            Lookup::Unknown(cause) => TypeContent::Unknown(cause),
-            Lookup::SpecialType(special) => {
-                if matches!(special, SpecialType::Any) && self.flags().disallow_any_explicit {
-                    self.add_issue(
-                        NodeRef::new(self.file, origin_index),
-                        IssueKind::DisallowedAnyExplicit,
-                    )
-                }
-                TypeContent::SpecialType(special)
-            }
-            Lookup::RecursiveAlias(link) => TypeContent::RecursiveAlias(link),
-            Lookup::RecursiveClass(node_ref) => TypeContent::RecursiveClass(node_ref),
             Lookup::AliasNoneType => TypeContent::Type(Type::None),
         }
     }
@@ -3321,7 +3302,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             unreachable!("Expect this to be called only with attributes")
         };
         let pr = match base {
-            Lookup::Module(file) => {
+            Lookup::T(TypeContent::Module(file)) => {
                 let had_issue = Cell::new(false);
                 let (pr, _) = self
                     .with_new_file(file)
@@ -3331,12 +3312,12 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 }
                 pr
             }
-            Lookup::Namespace(ns) => {
+            Lookup::T(TypeContent::Namespace(ns)) => {
                 return match namespace_import(self.i_s.db, self.file, &ns, name.as_str())? {
-                    ImportResult::File(file_index) => {
-                        Some(Lookup::Module(self.i_s.db.loaded_python_file(file_index)))
-                    }
-                    ImportResult::Namespace(new) => Some(Lookup::Namespace(new)),
+                    ImportResult::File(file_index) => Some(Lookup::T(TypeContent::Module(
+                        self.i_s.db.loaded_python_file(file_index),
+                    ))),
+                    ImportResult::Namespace(new) => Some(Lookup::T(TypeContent::Namespace(new))),
                     _ => None,
                 }
             }
@@ -3364,7 +3345,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         let ensure_cached_class = |class_node_ref: ClassNodeRef<'db>| {
             // At this point the class is not necessarily calculated and we therefore do this here.
             if class_node_ref.is_calculating_class_infos() {
-                return Lookup::RecursiveClass(class_node_ref);
+                return Lookup::T(TypeContent::RecursiveClass(class_node_ref));
             }
 
             class_node_ref.ensure_cached_class_infos(i_s);
@@ -3374,16 +3355,15 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 .get()
             {
                 match t.as_ref() {
-                    Type::Enum(e) => return Lookup::Enum(e.clone()),
-                    Type::Dataclass(d) => return Lookup::Dataclass(d.clone()),
+                    t @ Type::Enum(_) => return Lookup::T(TypeContent::Type(t.clone())),
+                    Type::Dataclass(d) => return Lookup::T(TypeContent::Dataclass(d.clone())),
                     Type::TypedDict(td) => {
                         if td.calculating() {
-                            return Lookup::RecursiveClass(ClassNodeRef::from_link(
-                                i_s.db,
-                                td.defined_at,
+                            return Lookup::T(TypeContent::RecursiveClass(
+                                ClassNodeRef::from_link(i_s.db, td.defined_at),
                             ));
                         } else {
-                            return Lookup::TypedDictDefinition(td.clone());
+                            return Lookup::T(TypeContent::TypedDictDefinition(td.clone()));
                         }
                     }
                     _ => (),
@@ -3402,14 +3382,16 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 .maybe_calculated_and_specific()
             {
                 if let Some(special) = check_special_type(specific) {
-                    return Lookup::SpecialType(special);
+                    return Lookup::T(TypeContent::SpecialType(special));
                 }
             }
 
-            Lookup::InvalidVariable(InvalidVariableType::Function {
-                name: func.name(),
-                qualified_name: func.qualified_name(i_s.db),
-            })
+            Lookup::T(TypeContent::InvalidVariable(
+                InvalidVariableType::Function {
+                    name: func.name(),
+                    qualified_name: func.qualified_name(i_s.db),
+                },
+            ))
         };
         match resolved {
             PointResolution::NameDef {
@@ -3423,7 +3405,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 }
                 let node_ref = node_ref.to_db_lifetime(i_s.db);
                 if node_ref.point().maybe_calculated_and_specific() == Some(Specific::Cycle) {
-                    return Lookup::Unknown(UnknownCause::ReportedIssue);
+                    return Lookup::T(TypeContent::UNKNOWN_REPORTED);
                 }
 
                 let name_def = node_ref.as_name_def();
@@ -3466,7 +3448,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                         let func_node_ref = NodeRef::new(node_ref.file, f.index());
                         func_is_invalid_type(func_node_ref)
                     }
-                    TypeLike::ParamName(annotation) => Lookup::InvalidVariable({
+                    TypeLike::ParamName(annotation) => Lookup::T(TypeContent::InvalidVariable({
                         let as_base_class_any = annotation
                             .map(|a| {
                                 match use_cached_annotation_type(i_s.db, node_ref.file, a).as_ref()
@@ -3491,10 +3473,12 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                         } else {
                             InvalidVariableType::Variable(node_ref)
                         }
-                    }),
+                    })),
                     TypeLike::Other => {
                         // Happens currently with walrus assignments
-                        Lookup::InvalidVariable(InvalidVariableType::Variable(node_ref))
+                        Lookup::T(TypeContent::InvalidVariable(InvalidVariableType::Variable(
+                            node_ref,
+                        )))
                     }
                 };
             }
@@ -3502,7 +3486,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 if let Some(i_node_ref) = inferred.maybe_saved_node_ref(i_s.db) {
                     if let Some(specific) = i_node_ref.point().maybe_specific() {
                         if let Some(special) = check_special_type(specific) {
-                            return Lookup::SpecialType(special);
+                            return Lookup::T(TypeContent::SpecialType(special));
                         }
                         if matches!(
                             specific,
@@ -3510,8 +3494,8 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                                 | Specific::TypingTypeVarTupleClass
                                 | Specific::TypingParamSpecClass
                         ) {
-                            return Lookup::InvalidVariable(InvalidVariableType::Variable(
-                                i_node_ref,
+                            return Lookup::T(TypeContent::InvalidVariable(
+                                InvalidVariableType::Variable(i_node_ref),
                             ));
                         }
                     } else if let Some(complex) = i_node_ref.complex() {
@@ -3523,7 +3507,9 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                                 let c_node_ref = ClassNodeRef::from_node_ref(i_node_ref);
                                 return ensure_cached_class(c_node_ref);
                             }
-                            ComplexPoint::TypeAlias(a) => return Lookup::TypeAlias(a),
+                            ComplexPoint::TypeAlias(a) => {
+                                return Lookup::T(TypeContent::TypeAlias(a))
+                            }
                             _ => (),
                         };
                         if let Some(r) = Self::check_special_type_definition(i_node_ref) {
@@ -3531,21 +3517,23 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                         }
                     }
                     if let Some(cause) = inferred.maybe_any(i_s.db) {
-                        return Lookup::Unknown(UnknownCause::UnknownName(cause));
+                        return Lookup::T(TypeContent::Unknown(UnknownCause::UnknownName(cause)));
                     } else if i_node_ref.maybe_function().is_some() {
                         return func_is_invalid_type(i_node_ref);
                     }
                 }
                 if let Some(file) = inferred.maybe_file(i_s.db) {
-                    return Lookup::Module(i_s.db.loaded_python_file(file));
+                    return Lookup::T(TypeContent::Module(i_s.db.loaded_python_file(file)));
                 }
                 if let Some(ComplexPoint::TypeInstance(Type::Namespace(ns))) =
                     inferred.maybe_complex_point(i_s.db)
                 {
-                    return Lookup::Namespace(ns.clone());
+                    return Lookup::T(TypeContent::Namespace(ns.clone()));
                 }
                 if inferred.maybe_specific(i_s.db) == Some(Specific::ModuleNotFound) {
-                    return Lookup::Unknown(UnknownCause::UnknownName(AnyCause::ModuleNotFound));
+                    return Lookup::T(TypeContent::Unknown(UnknownCause::UnknownName(
+                        AnyCause::ModuleNotFound,
+                    )));
                 }
             }
             PointResolution::ModuleGetattrName(name_node_ref) => {
@@ -3561,12 +3549,12 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                     ),
                 );
                 if let Some(cause) = executed.maybe_any(i_s.db) {
-                    return Lookup::Unknown(UnknownCause::AnyCause(cause));
+                    return Lookup::T(TypeContent::Unknown(UnknownCause::AnyCause(cause)));
                 }
             }
             _ => (),
         };
-        Lookup::InvalidVariable(InvalidVariableType::Other)
+        Lookup::T(TypeContent::InvalidVariable(InvalidVariableType::Other))
     }
 
     fn maybe_special_assignment_execution<'x>(
@@ -3582,13 +3570,13 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             return Err(CalculatingAliasType::Normal);
         };
         match self.lookup_primary_or_atom_type(primary.first()) {
-            Some(Lookup::SpecialType(SpecialType::TypingTypedDict)) => {
+            Some(Lookup::T(TypeContent::SpecialType(SpecialType::TypingTypedDict))) => {
                 Err(CalculatingAliasType::TypedDict {
                     primary_index: primary.index(),
                     details,
                 })
             }
-            Some(Lookup::SpecialType(SpecialType::TypingNamedTuple)) => {
+            Some(Lookup::T(TypeContent::SpecialType(SpecialType::TypingNamedTuple))) => {
                 Err(CalculatingAliasType::NamedTuple {
                     primary_index: primary.index(),
                     details,
@@ -3603,7 +3591,9 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             PrimaryOrAtom::Primary(primary) => match primary.second() {
                 PrimaryContent::Attribute(name) => {
                     match self.lookup_primary_or_atom_type(primary.first())? {
-                        Lookup::Module(f) => Some(self.with_new_file(f).lookup_type_name(name)),
+                        Lookup::T(TypeContent::Module(f)) => {
+                            Some(self.with_new_file(f).lookup_type_name(name))
+                        }
                         _ => None,
                     }
                 }
@@ -3978,7 +3968,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         if self.file.points.get(name_def.index()).calculating() {
             // TODO this is wrong, circular functional NamedTuples/TypedDicts are not implemented
             // properly now
-            return Ok(Lookup::Unknown(UnknownCause::ReportedIssue));
+            return Ok(Lookup::UNKNOWN_REPORTED);
         }
         self.infer_special_type_definition(assignment, name_def)
             .ok_or(CalculatingAliasType::Normal)
@@ -4004,7 +3994,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             saved_node_ref.point().maybe_specific(),
             Some(Specific::InvalidTypeDefinition)
         ) {
-            return Some(Lookup::Unknown(UnknownCause::ReportedIssue));
+            return Some(Lookup::UNKNOWN_REPORTED);
         }
         Self::check_special_type_definition(saved_node_ref)
     }
@@ -4016,17 +4006,19 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 let Type::NamedTuple(nt) = t.as_ref() else {
                     unreachable!()
                 };
-                Lookup::NamedTupleDefinition(nt.clone())
+                Lookup::T(TypeContent::NamedTuple(nt.clone()))
             }
-            ComplexPoint::NewTypeDefinition(n) => Lookup::NewType(n.clone()),
+            ComplexPoint::NewTypeDefinition(n) => {
+                Lookup::T(TypeContent::Type(Type::NewType(n.clone())))
+            }
             ComplexPoint::TypedDictDefinition(tdd) => {
                 let Type::TypedDict(td) = tdd.type_.as_ref() else {
                     unreachable!();
                 };
-                Lookup::TypedDictDefinition(td.clone())
+                Lookup::T(TypeContent::TypedDictDefinition(td.clone()))
             }
             ComplexPoint::TypeInstance(Type::Type(t)) => match t.as_ref() {
-                Type::Enum(e) => Lookup::Enum(e.clone()),
+                t @ Type::Enum(_) => Lookup::T(TypeContent::Type(t.clone())),
                 Type::None => Lookup::AliasNoneType,
                 _ => return None,
             },
@@ -4044,7 +4036,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             Specific::TypingTypedDict | Specific::TypingNamedTuple
         ));
         match self.compute_type_assignment(assignment) {
-            Lookup::TypeAlias(ta) => {
+            Lookup::T(TypeContent::TypeAlias(ta)) => {
                 if ta.is_valid() {
                     Inferred::from_type(Type::Type(Rc::new(ta.type_if_valid().clone())))
                 } else {
@@ -4052,7 +4044,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 }
             }
             // Error should have been created, because it's an invalid alias.
-            Lookup::InvalidVariable(_) | Lookup::Unknown(_) => {
+            Lookup::T(TypeContent::InvalidVariable(_) | TypeContent::Unknown(_)) => {
                 match specific {
                     Specific::TypingTypedDict => self.add_issue(
                         assignment.index(),
@@ -4112,7 +4104,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                     }
                 });
                 match lookup {
-                    Some(Lookup::SpecialType(SpecialType::Any)) => {
+                    Some(Lookup::T(TypeContent::SpecialType(SpecialType::Any))) => {
                         // This is a bit of a weird special case that was necessary to pass the test
                         // testDisallowAnyExplicitAlias
                         if self.flags().disallow_any_explicit {
@@ -4121,7 +4113,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                         }
                     }
                     // It seems like Mypy is ignoring this?
-                    Some(Lookup::SpecialType(_)) => (),
+                    Some(Lookup::T(TypeContent::SpecialType(_))) => (),
                     Some(lookup) => {
                         debug!("Alias can be redirected: {lookup:?}");
                         return lookup;
@@ -4148,16 +4140,15 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 //     Foo = 1  # type: Any
                 if let TypeCommentState::Type(t) = &type_comment.type_ {
                     if let Type::Any(cause) = t.as_ref() {
-                        return Lookup::Unknown(UnknownCause::AnyCause(*cause));
+                        return Lookup::T(TypeContent::Unknown(UnknownCause::AnyCause(*cause)));
                     }
                 }
             }
             if !is_explicit
                 && (expr.maybe_single_string_literal().is_some() || annotation.is_some())
             {
-                return Lookup::InvalidVariable(InvalidVariableType::Variable(NodeRef::new(
-                    file,
-                    name_def.index(),
+                return Lookup::T(TypeContent::InvalidVariable(InvalidVariableType::Variable(
+                    NodeRef::new(file, name_def.index()),
                 )));
             }
 
@@ -4186,14 +4177,14 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                     _ => false,
                 };
                 if calculating {
-                    return Lookup::Unknown(UnknownCause::ReportedIssue);
+                    return Lookup::UNKNOWN_REPORTED;
                 }
                 self.ensure_cached_annotation(annotation, right.is_some());
                 if let Type::Any(cause) = self.use_cached_annotation_type(annotation).as_ref() {
-                    return Lookup::Unknown(UnknownCause::AnyCause(*cause));
+                    return Lookup::T(TypeContent::Unknown(UnknownCause::AnyCause(*cause)));
                 }
             }
-            Lookup::InvalidVariable(InvalidVariableType::Other)
+            Lookup::T(TypeContent::InvalidVariable(InvalidVariableType::Other))
         }
     }
 
@@ -4392,7 +4383,10 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
 
     pub(crate) fn compute_explicit_type_assignment(&self, assignment: Assignment) -> Inferred {
         let name_lookup = self.compute_type_assignment_internal(assignment, true);
-        if matches!(name_lookup, Lookup::Unknown(_) | Lookup::InvalidVariable(_)) {
+        if matches!(
+            name_lookup,
+            Lookup::T(TypeContent::Unknown(_) | TypeContent::InvalidVariable(_))
+        ) {
             return Inferred::new_any(AnyCause::FromError);
         }
         Inferred::from_saved_node_ref(assignment_type_node_ref(self.file, assignment))
@@ -5234,7 +5228,7 @@ fn load_cached_type(node_ref: NodeRef) -> Lookup {
         ComplexPoint::TypeAlias(a) => {
             if a.calculating() {
                 // This means it's a recursive type definition.
-                Lookup::RecursiveAlias(node_ref.as_link())
+                Lookup::T(TypeContent::RecursiveAlias(node_ref.as_link()))
             } else if !a.is_valid() {
                 let assignment = NodeRef::new(
                     node_ref.file,
@@ -5246,12 +5240,11 @@ fn load_cached_type(node_ref: NodeRef) -> Lookup {
                     .unwrap()
                     .0;
                 debug!("Found invalid type alias: {}", name_def.as_code());
-                Lookup::InvalidVariable(InvalidVariableType::Variable(NodeRef::new(
-                    node_ref.file,
-                    name_def.index(),
+                Lookup::T(TypeContent::InvalidVariable(InvalidVariableType::Variable(
+                    NodeRef::new(node_ref.file, name_def.index()),
                 )))
             } else {
-                Lookup::TypeAlias(a)
+                Lookup::T(TypeContent::TypeAlias(a))
             }
         }
         ComplexPoint::TypeVarLike(t) => Lookup::TypeVarLike(t.clone()),

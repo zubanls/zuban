@@ -492,7 +492,7 @@ impl Type {
         Self::Class(GenericClass { link, generics })
     }
 
-    pub const ERROR: Type = Self::Any(AnyCause::FromError);
+    pub const ERROR: Self = Self::Any(AnyCause::FromError);
 
     pub fn from_union_entries(entries: Vec<UnionEntry>) -> Self {
         match entries.len() {
