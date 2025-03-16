@@ -92,12 +92,9 @@ enum SpecialType {
     LiteralString,
     Unpack,
     Concatenate,
-    TypeAlias,
     Self_,
-    Final,
     Annotated,
     Never,
-    ClassVar,
     TypeGuard,
     TypeIs,
     FlexibleAlias,
@@ -861,7 +858,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     }
                     return;
                 }
-                TypeContent::SpecialType(SpecialType::ClassVar)
+                TypeContent::SpecialCase(Specific::TypingClassVar)
                     if !matches!(
                         self.origin,
                         TypeComputationOrigin::AssignmentTypeCommentOrAnnotation { .. }
@@ -874,16 +871,18 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     );
                     Type::ERROR
                 }
-                TypeContent::SpecialType(
-                    special @ (SpecialType::TypeAlias | SpecialType::Final | SpecialType::ClassVar),
+                TypeContent::SpecialCase(
+                    specific @ (Specific::TypingTypeAlias
+                    | Specific::TypingFinal
+                    | Specific::TypingClassVar),
                 ) if matches!(
                     self.origin,
                     TypeComputationOrigin::AssignmentTypeCommentOrAnnotation { .. }
                 ) =>
                 {
                     debug_assert!(!is_implicit_optional);
-                    let specific = match special {
-                        SpecialType::TypeAlias => {
+                    let specific = match specific {
+                        Specific::TypingTypeAlias => {
                             let TypeComputationOrigin::AssignmentTypeCommentOrAnnotation {
                                 is_initialized,
                                 type_comment,
@@ -909,11 +908,11 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                                 Some(Specific::AnnotationTypeAlias)
                             }
                         }
-                        SpecialType::Final => {
+                        Specific::TypingFinal => {
                             self.add_issue_if_final_attribute_in_wrong_place(type_storage_node_ref);
                             Some(Specific::AnnotationOrTypeCommentFinal)
                         }
-                        SpecialType::ClassVar => Some(Specific::AnnotationOrTypeCommentClassVar),
+                        Specific::TypingClassVar => Some(Specific::AnnotationOrTypeCommentClassVar),
                         _ => unreachable!(),
                     };
                     if let Some(specific) = specific {
@@ -1177,9 +1176,6 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 SpecialType::TypingNamedTuple => {
                     return Some(db.python_state.typing_named_tuple_type())
                 }
-                SpecialType::ClassVar => {
-                    self.add_issue(node_ref, IssueKind::ClassVarNestedInsideOtherType);
-                }
                 SpecialType::LiteralString => {
                     return Some(Type::new_class(
                         db.python_state.str_node_ref().as_link(),
@@ -1241,7 +1237,6 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 SpecialType::Unpack => {
                     self.add_issue(node_ref, IssueKind::UnpackRequiresExactlyOneArgument);
                 }
-                SpecialType::Final => self.add_issue(node_ref, IssueKind::FinalInWrongPlace),
                 SpecialType::TypeGuard => self.add_issue(
                     node_ref,
                     IssueKind::MustHaveOneArgument { name: "TypeGuard" },
@@ -1252,6 +1247,13 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 _ => {
                     self.add_issue(node_ref, IssueKind::InvalidType(Box::from("Invalid type")));
                 }
+            },
+            TypeContent::SpecialCase(specific) => match specific {
+                Specific::TypingClassVar => {
+                    self.add_issue(node_ref, IssueKind::ClassVarNestedInsideOtherType);
+                }
+                Specific::TypingFinal => self.add_issue(node_ref, IssueKind::FinalInWrongPlace),
+                _ => self.add_issue(node_ref, IssueKind::InvalidType(Box::from("Invalid type"))),
             },
             TypeContent::TypeVarTuple(t) => self.add_issue(
                 node_ref,
@@ -1370,7 +1372,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             TypeContent::TypedDictFieldModifier(m) => {
                 self.add_issue(node_ref, IssueKind::MustHaveOneArgument { name: m.name() })
             }
-            TypeContent::SpecialCase(_) | TypeContent::CallableParam(_) => {
+            TypeContent::CallableParam(_) => {
                 self.add_issue(node_ref, IssueKind::InvalidType(Box::from("Invalid type")))
             }
         }
@@ -1599,14 +1601,17 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             );
                             TypeContent::Type(Type::ERROR)
                         }
-                        SpecialType::Final => self.compute_type_get_item_on_final(s),
                         SpecialType::Unpack => self.compute_type_get_item_on_unpack(s),
                         SpecialType::Concatenate => self.compute_type_get_item_on_concatenate(s),
                         SpecialType::Annotated => self.compute_get_item_on_annotated(s),
-                        SpecialType::ClassVar => self.compute_get_item_on_class_var(s),
                         SpecialType::TypeGuard => self.compute_get_item_on_type_guard(s, false),
                         SpecialType::TypeIs => self.compute_get_item_on_type_guard(s, true),
                         SpecialType::FlexibleAlias => self.compute_get_item_on_flexible_alias(s),
+                        _ => TypeContent::InvalidVariable(InvalidVariableType::Other),
+                    },
+                    TypeContent::SpecialCase(specific) => match specific {
+                        Specific::TypingFinal => self.compute_type_get_item_on_final(s),
+                        Specific::TypingClassVar => self.compute_get_item_on_class_var(s),
                         _ => TypeContent::InvalidVariable(InvalidVariableType::Other),
                     },
                     TypeContent::RecursiveAlias(link) => {
@@ -5184,9 +5189,7 @@ fn check_special_case(specific: Specific) -> Option<TypeContent<'static, 'static
         Specific::TypingLiteralString => SpecialType::LiteralString,
         Specific::TypingUnpack => SpecialType::Unpack,
         Specific::TypingConcatenateClass => SpecialType::Concatenate,
-        Specific::TypingTypeAlias => SpecialType::TypeAlias,
         Specific::TypingLiteral => SpecialType::Literal,
-        Specific::TypingFinal => SpecialType::Final,
         Specific::TypingSelf => SpecialType::Self_,
         Specific::TypingAnnotated => SpecialType::Annotated,
         Specific::TypingNeverOrNoReturn => SpecialType::Never,
@@ -5207,7 +5210,6 @@ fn check_special_case(specific: Specific) -> Option<TypeContent<'static, 'static
                 TypedDictFieldModifier::ReadOnly,
             ))
         }
-        Specific::TypingClassVar => SpecialType::ClassVar,
         Specific::TypingNamedTuple => SpecialType::TypingNamedTuple,
         Specific::TypingTypeGuard => SpecialType::TypeGuard,
         Specific::TypingTypeIs => SpecialType::TypeIs,
