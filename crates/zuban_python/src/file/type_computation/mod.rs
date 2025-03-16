@@ -330,7 +330,6 @@ enum Lookup<'db, 'a> {
     T(TypeContent<'db, 'a>),
     Class { node_ref: ClassNodeRef<'db> },
     TypeVarLike(TypeVarLike),
-    AliasNoneType,
 }
 
 impl Lookup<'_, '_> {
@@ -3100,12 +3099,8 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     }
                     TypeVarCallbackReturn::UnboundTypeVar => {
                         let node_ref = NodeRef::new(self.file, origin_index);
-                        node_ref.add_issue(
-                            self.i_s,
-                            IssueKind::UnboundTypeVarLike {
-                                type_var_like: type_var_like,
-                            },
-                        );
+                        node_ref
+                            .add_issue(self.i_s, IssueKind::UnboundTypeVarLike { type_var_like });
                         TypeContent::UNKNOWN_REPORTED
                     }
                     TypeVarCallbackReturn::AddIssue(kind) => {
@@ -3134,7 +3129,6 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     }
                 }
             }
-            Lookup::AliasNoneType => TypeContent::Type(Type::None),
         }
     }
 
@@ -4000,30 +3994,28 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
     }
 
     fn check_special_type_definition(node_ref: NodeRef) -> Option<Lookup> {
-        Some(match node_ref.complex()? {
-            ComplexPoint::TypeVarLike(tv) => Lookup::TypeVarLike(tv.clone()),
+        Some(Lookup::T(match node_ref.complex()? {
+            ComplexPoint::TypeVarLike(tv) => return Some(Lookup::TypeVarLike(tv.clone())),
             ComplexPoint::NamedTupleDefinition(t) => {
                 let Type::NamedTuple(nt) = t.as_ref() else {
                     unreachable!()
                 };
-                Lookup::T(TypeContent::NamedTuple(nt.clone()))
+                TypeContent::NamedTuple(nt.clone())
             }
-            ComplexPoint::NewTypeDefinition(n) => {
-                Lookup::T(TypeContent::Type(Type::NewType(n.clone())))
-            }
+            ComplexPoint::NewTypeDefinition(n) => TypeContent::Type(Type::NewType(n.clone())),
             ComplexPoint::TypedDictDefinition(tdd) => {
                 let Type::TypedDict(td) = tdd.type_.as_ref() else {
                     unreachable!();
                 };
-                Lookup::T(TypeContent::TypedDictDefinition(td.clone()))
+                TypeContent::TypedDictDefinition(td.clone())
             }
             ComplexPoint::TypeInstance(Type::Type(t)) => match t.as_ref() {
-                t @ Type::Enum(_) => Lookup::T(TypeContent::Type(t.clone())),
-                Type::None => Lookup::AliasNoneType,
+                t @ Type::Enum(_) => TypeContent::Type(t.clone()),
+                Type::None => TypeContent::Type(Type::None),
                 _ => return None,
             },
             _ => return None,
-        })
+        }))
     }
 
     pub(crate) fn infer_special_calculated_type_assignment(
