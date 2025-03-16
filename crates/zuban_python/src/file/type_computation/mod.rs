@@ -73,13 +73,6 @@ type TypeVarCallback<'db, 'x> = &'x mut dyn FnMut(
 ) -> TypeVarCallbackReturn;
 
 #[derive(Debug, Clone)]
-enum SpecialType {
-    Callable,
-    BuiltinsType,
-    TypingType,
-}
-
-#[derive(Debug, Clone)]
 enum TypedDictFieldModifier {
     Required,
     NotRequired,
@@ -264,7 +257,6 @@ enum TypeContent<'db, 'a> {
     TypedDictDefinition(Rc<TypedDict>),
     TypeAlias(&'db TypeAlias),
     Type(Type),
-    SpecialType(SpecialType),
     SpecialCase(Specific),
     RecursiveAlias(PointLink),
     RecursiveClass(ClassNodeRef<'db>),
@@ -519,7 +511,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 CalculatedBaseClass::NewNamedTuple
             }
             TypeContent::SpecialCase(Specific::TypingTypedDict) => CalculatedBaseClass::TypedDict,
-            TypeContent::SpecialType(SpecialType::BuiltinsType) => {
+            TypeContent::SpecialCase(Specific::BuiltinsType) => {
                 CalculatedBaseClass::Type(Type::new_class(
                     self.i_s.db.python_state.bare_type_node_ref().as_link(),
                     ClassGenerics::None,
@@ -531,7 +523,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             }
             TypeContent::ParamSpec(_)
             | TypeContent::InvalidVariable(_)
-            | TypeContent::SpecialType(SpecialType::TypingType) => CalculatedBaseClass::Invalid,
+            | TypeContent::SpecialCase(Specific::TypingType) => CalculatedBaseClass::Invalid,
             TypeContent::Type(Type::Enum(e)) => CalculatedBaseClass::InvalidEnum(e),
             _ => {
                 let type_ = self.as_type(calculated, NodeRef::new(self.file, expr.index()));
@@ -1110,35 +1102,6 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 self.is_recursive_alias |= a.is_recursive();
                 return Some(a.as_type_and_set_type_vars_any(db));
             }
-            TypeContent::SpecialType(m) => match m {
-                SpecialType::Callable => {
-                    if self.flags().disallow_any_generics {
-                        self.add_issue(
-                            node_ref,
-                            IssueKind::MissingTypeParameters {
-                                name: "Callable".into(),
-                            },
-                        );
-                    }
-                    return Some(Type::Callable(
-                        self.i_s.db.python_state.any_callable_from_error.clone(),
-                    ));
-                }
-                SpecialType::BuiltinsType | SpecialType::TypingType => {
-                    if self.flags().disallow_any_generics && matches!(m, SpecialType::TypingType) {
-                        self.add_issue(
-                            node_ref,
-                            IssueKind::MissingTypeParameters {
-                                name: "Type".into(),
-                            },
-                        );
-                    }
-                    return Some(db.python_state.type_of_any.clone());
-                }
-                _ => {
-                    self.add_issue(node_ref, IssueKind::InvalidType(Box::from("Invalid type")));
-                }
-            },
             TypeContent::SpecialCase(specific) => match specific {
                 Specific::TypingAny => return Some(Type::Any(AnyCause::Explicit)),
                 Specific::TypingNeverOrNoReturn => return Some(Type::Never(NeverCause::Explicit)),
@@ -1152,6 +1115,32 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         );
                     }
                     return Some(Type::Tuple(Tuple::new_arbitrary_length_with_any()));
+                }
+                Specific::TypingCallable => {
+                    if self.flags().disallow_any_generics {
+                        self.add_issue(
+                            node_ref,
+                            IssueKind::MissingTypeParameters {
+                                name: "Callable".into(),
+                            },
+                        );
+                    }
+                    return Some(Type::Callable(
+                        self.i_s.db.python_state.any_callable_from_error.clone(),
+                    ));
+                }
+                Specific::BuiltinsType | Specific::TypingType => {
+                    if self.flags().disallow_any_generics
+                        && matches!(specific, Specific::TypingType)
+                    {
+                        self.add_issue(
+                            node_ref,
+                            IssueKind::MissingTypeParameters {
+                                name: "Type".into(),
+                            },
+                        );
+                    }
+                    return Some(db.python_state.type_of_any.clone());
                 }
                 Specific::TypingLiteralString => {
                     return Some(Type::new_class(
@@ -1552,17 +1541,14 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         }
                     },
                     TypeContent::TypeAlias(m) => self.compute_type_get_item_on_alias(m, s),
-                    TypeContent::SpecialType(special) => match special {
-                        SpecialType::BuiltinsType | SpecialType::TypingType => {
-                            self.compute_type_get_item_on_type(s)
-                        }
-                        SpecialType::Callable => self.compute_type_get_item_on_callable(s),
-                        _ => TypeContent::InvalidVariable(InvalidVariableType::Other),
-                    },
                     TypeContent::SpecialCase(specific) => match specific {
                         Specific::TypingUnion => self.compute_type_get_item_on_union(s),
                         Specific::TypingOptional => self.compute_type_get_item_on_optional(s),
                         Specific::TypingTuple => self.compute_type_get_item_on_tuple(s),
+                        Specific::BuiltinsType | Specific::TypingType => {
+                            self.compute_type_get_item_on_type(s)
+                        }
+                        Specific::TypingCallable => self.compute_type_get_item_on_callable(s),
                         Specific::TypingLiteral => self.compute_get_item_on_literal(s),
                         Specific::TypingFinal => self.compute_type_get_item_on_final(s),
                         Specific::TypingClassVar => self.compute_get_item_on_class_var(s),
@@ -2597,7 +2583,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             return TypeContent::InvalidVariable(InvalidVariableType::Other);
         }
         let t = match self.compute_slice_type_content(content) {
-            TypeContent::SpecialType(SpecialType::BuiltinsType | SpecialType::TypingType) => {
+            TypeContent::SpecialCase(Specific::BuiltinsType | Specific::TypingType) => {
                 self.i_s.db.python_state.bare_type_type()
             }
             t => self.as_type(t, content.as_node_ref()),
@@ -4095,9 +4081,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                         }
                     }
                     // It seems like Mypy is ignoring this?
-                    Some(Lookup::T(TypeContent::SpecialType(_) | TypeContent::SpecialCase(_))) => {
-                        ()
-                    }
+                    Some(Lookup::T(TypeContent::SpecialCase(_))) => (),
                     Some(lookup) => {
                         debug!("Alias can be redirected: {lookup:?}");
                         return lookup;
@@ -5160,24 +5144,15 @@ pub(super) fn assignment_type_node_ref<'x>(
 
 #[inline]
 fn check_special_case(specific: Specific) -> Option<TypeContent<'static, 'static>> {
-    Some(TypeContent::SpecialType(match specific {
-        Specific::BuiltinsType => SpecialType::BuiltinsType,
-        Specific::TypingType => SpecialType::TypingType,
-        Specific::TypingCallable => SpecialType::Callable,
+    Some(match specific {
         Specific::TypingRequired => {
-            return Some(TypeContent::TypedDictFieldModifier(
-                TypedDictFieldModifier::Required,
-            ))
+            TypeContent::TypedDictFieldModifier(TypedDictFieldModifier::Required)
         }
         Specific::TypingNotRequired => {
-            return Some(TypeContent::TypedDictFieldModifier(
-                TypedDictFieldModifier::NotRequired,
-            ))
+            TypeContent::TypedDictFieldModifier(TypedDictFieldModifier::NotRequired)
         }
         Specific::TypingReadOnly => {
-            return Some(TypeContent::TypedDictFieldModifier(
-                TypedDictFieldModifier::ReadOnly,
-            ))
+            TypeContent::TypedDictFieldModifier(TypedDictFieldModifier::ReadOnly)
         }
         Specific::AnyDueToError
         | Specific::ModuleNotFound
@@ -5187,8 +5162,8 @@ fn check_special_case(specific: Specific) -> Option<TypeContent<'static, 'static
         | Specific::TypingTypeVarClass
         | Specific::TypingTypeVarTupleClass
         | Specific::TypingParamSpecClass => return None,
-        _ => return Some(TypeContent::SpecialCase(specific)),
-    }))
+        _ => TypeContent::SpecialCase(specific),
+    })
 }
 
 fn load_cached_type(node_ref: NodeRef) -> Lookup {
