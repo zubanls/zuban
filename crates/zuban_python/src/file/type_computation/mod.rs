@@ -86,10 +86,6 @@ enum SpecialType {
     LiteralString,
     Unpack,
     Concatenate,
-    Annotated,
-    TypeGuard,
-    TypeIs,
-    FlexibleAlias,
 }
 
 #[derive(Debug, Clone)]
@@ -1175,23 +1171,8 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         )),
                     );
                 }
-                SpecialType::Annotated => {
-                    self.add_issue(
-                        node_ref,
-                        IssueKind::InvalidType(Box::from(
-                            "Annotated[...] must have exactly one type argument and at least one annotation",
-                        )),
-                    );
-                }
                 SpecialType::Unpack => {
                     self.add_issue(node_ref, IssueKind::UnpackRequiresExactlyOneArgument);
-                }
-                SpecialType::TypeGuard => self.add_issue(
-                    node_ref,
-                    IssueKind::MustHaveOneArgument { name: "TypeGuard" },
-                ),
-                SpecialType::TypeIs => {
-                    self.add_issue(node_ref, IssueKind::MustHaveOneArgument { name: "TypeIs" })
                 }
                 _ => {
                     self.add_issue(node_ref, IssueKind::InvalidType(Box::from("Invalid type")));
@@ -1243,6 +1224,21 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     self.add_issue(node_ref, IssueKind::ClassVarNestedInsideOtherType);
                 }
                 Specific::TypingFinal => self.add_issue(node_ref, IssueKind::FinalInWrongPlace),
+                Specific::TypingAnnotated => {
+                    self.add_issue(
+                        node_ref,
+                        IssueKind::InvalidType(Box::from(
+                            "Annotated[...] must have exactly one type argument and at least one annotation",
+                        )),
+                    );
+                }
+                Specific::TypingTypeGuard => self.add_issue(
+                    node_ref,
+                    IssueKind::MustHaveOneArgument { name: "TypeGuard" },
+                ),
+                Specific::TypingTypeIs => {
+                    self.add_issue(node_ref, IssueKind::MustHaveOneArgument { name: "TypeIs" })
+                }
                 _ => self.add_issue(node_ref, IssueKind::InvalidType(Box::from("Invalid type"))),
             },
             TypeContent::TypeVarTuple(t) => self.add_issue(
@@ -1582,10 +1578,6 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         SpecialType::Literal => self.compute_get_item_on_literal(s),
                         SpecialType::Unpack => self.compute_type_get_item_on_unpack(s),
                         SpecialType::Concatenate => self.compute_type_get_item_on_concatenate(s),
-                        SpecialType::Annotated => self.compute_get_item_on_annotated(s),
-                        SpecialType::TypeGuard => self.compute_get_item_on_type_guard(s, false),
-                        SpecialType::TypeIs => self.compute_get_item_on_type_guard(s, true),
-                        SpecialType::FlexibleAlias => self.compute_get_item_on_flexible_alias(s),
                         _ => TypeContent::InvalidVariable(InvalidVariableType::Other),
                     },
                     TypeContent::SpecialCase(specific) => match specific {
@@ -1593,6 +1585,12 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         Specific::TypingOptional => self.compute_type_get_item_on_optional(s),
                         Specific::TypingFinal => self.compute_type_get_item_on_final(s),
                         Specific::TypingClassVar => self.compute_get_item_on_class_var(s),
+                        Specific::TypingAnnotated => self.compute_get_item_on_annotated(s),
+                        Specific::TypingTypeGuard => self.compute_get_item_on_type_guard(s, false),
+                        Specific::TypingTypeIs => self.compute_get_item_on_type_guard(s, true),
+                        Specific::MypyExtensionsFlexibleAlias => {
+                            self.compute_get_item_on_flexible_alias(s)
+                        }
                         Specific::TypingSelf => {
                             self.add_issue(
                                 s.as_node_ref(),
@@ -5177,7 +5175,6 @@ fn check_special_case(specific: Specific) -> Option<TypeContent<'static, 'static
         Specific::TypingUnpack => SpecialType::Unpack,
         Specific::TypingConcatenateClass => SpecialType::Concatenate,
         Specific::TypingLiteral => SpecialType::Literal,
-        Specific::TypingAnnotated => SpecialType::Annotated,
         Specific::TypingTuple => SpecialType::Tuple,
         Specific::TypingRequired => {
             return Some(TypeContent::TypedDictFieldModifier(
@@ -5194,9 +5191,6 @@ fn check_special_case(specific: Specific) -> Option<TypeContent<'static, 'static
                 TypedDictFieldModifier::ReadOnly,
             ))
         }
-        Specific::TypingTypeGuard => SpecialType::TypeGuard,
-        Specific::TypingTypeIs => SpecialType::TypeIs,
-        Specific::MypyExtensionsFlexibleAlias => SpecialType::FlexibleAlias,
         Specific::AnyDueToError
         | Specific::ModuleNotFound
         | Specific::AnnotationOrTypeCommentSimpleClassInstance
