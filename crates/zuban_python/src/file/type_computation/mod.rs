@@ -74,7 +74,6 @@ type TypeVarCallback<'db, 'x> = &'x mut dyn FnMut(
 
 #[derive(Debug, Clone)]
 enum SpecialType {
-    Any,
     Protocol,
     ProtocolWithGenerics,
     Generic,
@@ -87,9 +86,7 @@ enum SpecialType {
     LiteralString,
     Unpack,
     Concatenate,
-    Self_,
     Annotated,
-    Never,
     TypeGuard,
     TypeIs,
     FlexibleAlias,
@@ -1142,8 +1139,6 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         self.i_s.db.python_state.any_callable_from_error.clone(),
                     ));
                 }
-                SpecialType::Any => return Some(Type::Any(AnyCause::Explicit)),
-                SpecialType::Never => return Some(Type::Never(NeverCause::Explicit)),
                 SpecialType::BuiltinsType | SpecialType::TypingType => {
                     if self.flags().disallow_any_generics && matches!(m, SpecialType::TypingType) {
                         self.add_issue(
@@ -1180,7 +1175,32 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         )),
                     );
                 }
-                SpecialType::Self_ => self.add_issue(
+                SpecialType::Annotated => {
+                    self.add_issue(
+                        node_ref,
+                        IssueKind::InvalidType(Box::from(
+                            "Annotated[...] must have exactly one type argument and at least one annotation",
+                        )),
+                    );
+                }
+                SpecialType::Unpack => {
+                    self.add_issue(node_ref, IssueKind::UnpackRequiresExactlyOneArgument);
+                }
+                SpecialType::TypeGuard => self.add_issue(
+                    node_ref,
+                    IssueKind::MustHaveOneArgument { name: "TypeGuard" },
+                ),
+                SpecialType::TypeIs => {
+                    self.add_issue(node_ref, IssueKind::MustHaveOneArgument { name: "TypeIs" })
+                }
+                _ => {
+                    self.add_issue(node_ref, IssueKind::InvalidType(Box::from("Invalid type")));
+                }
+            },
+            TypeContent::SpecialCase(specific) => match specific {
+                Specific::TypingAny => return Some(Type::Any(AnyCause::Explicit)),
+                Specific::TypingNeverOrNoReturn => return Some(Type::Never(NeverCause::Explicit)),
+                Specific::TypingSelf => self.add_issue(
                     node_ref,
                     match self.origin {
                         TypeComputationOrigin::TypedDictMember => {
@@ -1208,29 +1228,6 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         }
                     },
                 ),
-                SpecialType::Annotated => {
-                    self.add_issue(
-                        node_ref,
-                        IssueKind::InvalidType(Box::from(
-                            "Annotated[...] must have exactly one type argument and at least one annotation",
-                        )),
-                    );
-                }
-                SpecialType::Unpack => {
-                    self.add_issue(node_ref, IssueKind::UnpackRequiresExactlyOneArgument);
-                }
-                SpecialType::TypeGuard => self.add_issue(
-                    node_ref,
-                    IssueKind::MustHaveOneArgument { name: "TypeGuard" },
-                ),
-                SpecialType::TypeIs => {
-                    self.add_issue(node_ref, IssueKind::MustHaveOneArgument { name: "TypeIs" })
-                }
-                _ => {
-                    self.add_issue(node_ref, IssueKind::InvalidType(Box::from("Invalid type")));
-                }
-            },
-            TypeContent::SpecialCase(specific) => match specific {
                 Specific::TypingNamedTuple => {
                     return Some(db.python_state.typing_named_tuple_type())
                 }
@@ -1479,10 +1476,10 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 let node_ref_b = NodeRef::new(self.file, b.index());
                 if self.errors_already_calculated {
                     if self.flags().disallow_any_explicit {
-                        if matches!(first, TypeContent::SpecialType(SpecialType::Any)) {
+                        if matches!(first, TypeContent::SpecialCase(Specific::TypingAny)) {
                             node_ref_a.add_issue(self.i_s, IssueKind::DisallowedAnyExplicit)
                         }
-                        if matches!(second, TypeContent::SpecialType(SpecialType::Any)) {
+                        if matches!(second, TypeContent::SpecialCase(Specific::TypingAny)) {
                             node_ref_b.add_issue(self.i_s, IssueKind::DisallowedAnyExplicit)
                         }
                     }
@@ -1583,15 +1580,6 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         }
                         SpecialType::Callable => self.compute_type_get_item_on_callable(s),
                         SpecialType::Literal => self.compute_get_item_on_literal(s),
-                        SpecialType::Self_ => {
-                            self.add_issue(
-                                s.as_node_ref(),
-                                IssueKind::InvalidType(Box::from(
-                                    "Self type cannot have type arguments",
-                                )),
-                            );
-                            TypeContent::Type(Type::ERROR)
-                        }
                         SpecialType::Unpack => self.compute_type_get_item_on_unpack(s),
                         SpecialType::Concatenate => self.compute_type_get_item_on_concatenate(s),
                         SpecialType::Annotated => self.compute_get_item_on_annotated(s),
@@ -1605,6 +1593,15 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         Specific::TypingOptional => self.compute_type_get_item_on_optional(s),
                         Specific::TypingFinal => self.compute_type_get_item_on_final(s),
                         Specific::TypingClassVar => self.compute_get_item_on_class_var(s),
+                        Specific::TypingSelf => {
+                            self.add_issue(
+                                s.as_node_ref(),
+                                IssueKind::InvalidType(Box::from(
+                                    "Self type cannot have type arguments",
+                                )),
+                            );
+                            TypeContent::Type(Type::ERROR)
+                        }
                         _ => TypeContent::InvalidVariable(InvalidVariableType::Other),
                     },
                     TypeContent::RecursiveAlias(link) => {
@@ -2478,7 +2475,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             Some(AtomContent::Ellipsis) => CallableParams::Any(AnyCause::Explicit),
             _ => match self.compute_type(expr) {
                 TypeContent::ParamSpec(p) => CallableParams::new_param_spec(p),
-                TypeContent::SpecialType(SpecialType::Any) if from_class_generics => {
+                TypeContent::SpecialCase(Specific::TypingAny) if from_class_generics => {
                     CallableParams::Any(AnyCause::Explicit)
                 }
                 TypeContent::Unknown(cause) => CallableParams::Any(cause.into()),
@@ -2869,7 +2866,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             }
         }
         match self.compute_slice_type_content(slice) {
-            TypeContent::SpecialType(SpecialType::Any) => {
+            TypeContent::SpecialCase(Specific::TypingAny) => {
                 self.add_issue(
                     slice.as_node_ref(),
                     IssueKind::InvalidType(
@@ -3071,7 +3068,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         origin_index: NodeIndex,
     ) -> TypeContent<'db, 'x> {
         match lookup {
-            Lookup::T(c @ TypeContent::SpecialType(SpecialType::Any))
+            Lookup::T(c @ TypeContent::SpecialCase(Specific::TypingAny))
                 if self.flags().disallow_any_explicit =>
             {
                 self.add_issue(
@@ -4098,7 +4095,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                     }
                 });
                 match lookup {
-                    Some(Lookup::T(TypeContent::SpecialType(SpecialType::Any))) => {
+                    Some(Lookup::T(TypeContent::SpecialCase(Specific::TypingAny))) => {
                         // This is a bit of a weird special case that was necessary to pass the test
                         // testDisallowAnyExplicitAlias
                         if self.flags().disallow_any_explicit {
@@ -5171,7 +5168,6 @@ pub(super) fn assignment_type_node_ref<'x>(
 #[inline]
 fn check_special_case(specific: Specific) -> Option<TypeContent<'static, 'static>> {
     Some(TypeContent::SpecialType(match specific {
-        Specific::TypingAny => SpecialType::Any,
         Specific::TypingGeneric => SpecialType::Generic,
         Specific::TypingProtocol => SpecialType::Protocol,
         Specific::BuiltinsType => SpecialType::BuiltinsType,
@@ -5181,9 +5177,7 @@ fn check_special_case(specific: Specific) -> Option<TypeContent<'static, 'static
         Specific::TypingUnpack => SpecialType::Unpack,
         Specific::TypingConcatenateClass => SpecialType::Concatenate,
         Specific::TypingLiteral => SpecialType::Literal,
-        Specific::TypingSelf => SpecialType::Self_,
         Specific::TypingAnnotated => SpecialType::Annotated,
-        Specific::TypingNeverOrNoReturn => SpecialType::Never,
         Specific::TypingTuple => SpecialType::Tuple,
         Specific::TypingRequired => {
             return Some(TypeContent::TypedDictFieldModifier(
