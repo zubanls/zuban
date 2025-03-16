@@ -322,7 +322,8 @@ enum ClassGetItemResult<'db> {
 }
 
 #[derive(Debug)]
-enum TypeNameLookup<'db, 'a> {
+enum Lookup<'db, 'a> {
+    TypeContent(TypeContent<'db, 'a>),
     Module(&'db PythonFile),
     Namespace(Rc<Namespace>),
     Class { node_ref: ClassNodeRef<'db> },
@@ -3069,17 +3070,18 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
 
     fn resolve_type_name_lookup(
         &mut self,
-        lookup: TypeNameLookup<'db, 'db>,
+        lookup: Lookup<'db, 'db>,
         origin_index: NodeIndex,
     ) -> TypeContent<'db, 'x> {
         match lookup {
-            TypeNameLookup::Module(f) => TypeContent::Module(f),
-            TypeNameLookup::Namespace(namespace) => TypeContent::Namespace(namespace),
-            TypeNameLookup::Class { node_ref } => TypeContent::Class {
+            Lookup::TypeContent(c) => c,
+            Lookup::Module(f) => TypeContent::Module(f),
+            Lookup::Namespace(namespace) => TypeContent::Namespace(namespace),
+            Lookup::Class { node_ref } => TypeContent::Class {
                 node_ref,
                 has_type_vars: !node_ref.type_vars(self.i_s).is_empty(),
             },
-            TypeNameLookup::TypeVarLike(type_var_like) => {
+            Lookup::TypeVarLike(type_var_like) => {
                 self.has_type_vars_or_self = true;
                 match (self.type_var_callback)(
                     self.name_resolution.i_s,
@@ -3132,15 +3134,15 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     }
                 }
             }
-            TypeNameLookup::TypeAlias(alias) => TypeContent::TypeAlias(alias),
-            TypeNameLookup::NewType(n) => TypeContent::Type(Type::NewType(n)),
-            TypeNameLookup::NamedTupleDefinition(n) => TypeContent::NamedTuple(n),
-            TypeNameLookup::TypedDictDefinition(t) => TypeContent::TypedDictDefinition(t),
-            TypeNameLookup::Enum(t) => TypeContent::Type(Type::Enum(t)),
-            TypeNameLookup::Dataclass(d) => TypeContent::Dataclass(d),
-            TypeNameLookup::InvalidVariable(t) => TypeContent::InvalidVariable(t),
-            TypeNameLookup::Unknown(cause) => TypeContent::Unknown(cause),
-            TypeNameLookup::SpecialType(special) => {
+            Lookup::TypeAlias(alias) => TypeContent::TypeAlias(alias),
+            Lookup::NewType(n) => TypeContent::Type(Type::NewType(n)),
+            Lookup::NamedTupleDefinition(n) => TypeContent::NamedTuple(n),
+            Lookup::TypedDictDefinition(t) => TypeContent::TypedDictDefinition(t),
+            Lookup::Enum(t) => TypeContent::Type(Type::Enum(t)),
+            Lookup::Dataclass(d) => TypeContent::Dataclass(d),
+            Lookup::InvalidVariable(t) => TypeContent::InvalidVariable(t),
+            Lookup::Unknown(cause) => TypeContent::Unknown(cause),
+            Lookup::SpecialType(special) => {
                 if matches!(special, SpecialType::Any) && self.flags().disallow_any_explicit {
                     self.add_issue(
                         NodeRef::new(self.file, origin_index),
@@ -3149,9 +3151,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 }
                 TypeContent::SpecialType(special)
             }
-            TypeNameLookup::RecursiveAlias(link) => TypeContent::RecursiveAlias(link),
-            TypeNameLookup::RecursiveClass(node_ref) => TypeContent::RecursiveClass(node_ref),
-            TypeNameLookup::AliasNoneType => TypeContent::Type(Type::None),
+            Lookup::RecursiveAlias(link) => TypeContent::RecursiveAlias(link),
+            Lookup::RecursiveClass(node_ref) => TypeContent::RecursiveClass(node_ref),
+            Lookup::AliasNoneType => TypeContent::Type(Type::None),
         }
     }
 
@@ -3295,7 +3297,7 @@ impl UnknownCause {
 }
 
 impl<'db, 'file> NameResolution<'db, 'file, '_> {
-    fn lookup_type_name(&self, name: Name) -> TypeNameLookup<'db, 'db> {
+    fn lookup_type_name(&self, name: Name) -> Lookup<'db, 'db> {
         let resolved = self.resolve_name_without_narrowing(name);
         debug!(
             "Resolved type for {} to {}",
@@ -3305,7 +3307,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         self.point_resolution_to_type_name_lookup(resolved)
     }
 
-    fn lookup_primary_names(&self, p: Primary) -> Option<TypeNameLookup<'db, 'db>> {
+    fn lookup_primary_names(&self, p: Primary) -> Option<Lookup<'db, 'db>> {
         let base = match p.first() {
             PrimaryOrAtom::Atom(atom) => {
                 let AtomContent::Name(name) = atom.unpack() else {
@@ -3319,7 +3321,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             unreachable!("Expect this to be called only with attributes")
         };
         let pr = match base {
-            TypeNameLookup::Module(file) => {
+            Lookup::Module(file) => {
                 let had_issue = Cell::new(false);
                 let (pr, _) = self
                     .with_new_file(file)
@@ -3329,16 +3331,16 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 }
                 pr
             }
-            TypeNameLookup::Namespace(ns) => {
+            Lookup::Namespace(ns) => {
                 return match namespace_import(self.i_s.db, self.file, &ns, name.as_str())? {
-                    ImportResult::File(file_index) => Some(TypeNameLookup::Module(
-                        self.i_s.db.loaded_python_file(file_index),
-                    )),
-                    ImportResult::Namespace(new) => Some(TypeNameLookup::Namespace(new)),
+                    ImportResult::File(file_index) => {
+                        Some(Lookup::Module(self.i_s.db.loaded_python_file(file_index)))
+                    }
+                    ImportResult::Namespace(new) => Some(Lookup::Namespace(new)),
                     _ => None,
                 }
             }
-            TypeNameLookup::Class { node_ref } => {
+            Lookup::Class { node_ref } => {
                 node_ref.ensure_cached_class_infos(self.i_s);
                 let node_index = ClassInitializer::from_node_ref(node_ref)
                     .class_storage
@@ -3356,16 +3358,13 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         Some(self.point_resolution_to_type_name_lookup(pr))
     }
 
-    fn point_resolution_to_type_name_lookup(
-        &self,
-        resolved: PointResolution,
-    ) -> TypeNameLookup<'db, 'db> {
+    fn point_resolution_to_type_name_lookup(&self, resolved: PointResolution) -> Lookup<'db, 'db> {
         let i_s = self.i_s;
 
         let ensure_cached_class = |class_node_ref: ClassNodeRef<'db>| {
             // At this point the class is not necessarily calculated and we therefore do this here.
             if class_node_ref.is_calculating_class_infos() {
-                return TypeNameLookup::RecursiveClass(class_node_ref);
+                return Lookup::RecursiveClass(class_node_ref);
             }
 
             class_node_ref.ensure_cached_class_infos(i_s);
@@ -3375,22 +3374,22 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 .get()
             {
                 match t.as_ref() {
-                    Type::Enum(e) => return TypeNameLookup::Enum(e.clone()),
-                    Type::Dataclass(d) => return TypeNameLookup::Dataclass(d.clone()),
+                    Type::Enum(e) => return Lookup::Enum(e.clone()),
+                    Type::Dataclass(d) => return Lookup::Dataclass(d.clone()),
                     Type::TypedDict(td) => {
                         if td.calculating() {
-                            return TypeNameLookup::RecursiveClass(ClassNodeRef::from_link(
+                            return Lookup::RecursiveClass(ClassNodeRef::from_link(
                                 i_s.db,
                                 td.defined_at,
                             ));
                         } else {
-                            return TypeNameLookup::TypedDictDefinition(td.clone());
+                            return Lookup::TypedDictDefinition(td.clone());
                         }
                     }
                     _ => (),
                 }
             }
-            TypeNameLookup::Class {
+            Lookup::Class {
                 node_ref: class_node_ref,
             }
         };
@@ -3403,11 +3402,11 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 .maybe_calculated_and_specific()
             {
                 if let Some(special) = check_special_type(specific) {
-                    return TypeNameLookup::SpecialType(special);
+                    return Lookup::SpecialType(special);
                 }
             }
 
-            TypeNameLookup::InvalidVariable(InvalidVariableType::Function {
+            Lookup::InvalidVariable(InvalidVariableType::Function {
                 name: func.name(),
                 qualified_name: func.qualified_name(i_s.db),
             })
@@ -3424,7 +3423,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 }
                 let node_ref = node_ref.to_db_lifetime(i_s.db);
                 if node_ref.point().maybe_calculated_and_specific() == Some(Specific::Cycle) {
-                    return TypeNameLookup::Unknown(UnknownCause::ReportedIssue);
+                    return Lookup::Unknown(UnknownCause::ReportedIssue);
                 }
 
                 let name_def = node_ref.as_name_def();
@@ -3467,7 +3466,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                         let func_node_ref = NodeRef::new(node_ref.file, f.index());
                         func_is_invalid_type(func_node_ref)
                     }
-                    TypeLike::ParamName(annotation) => TypeNameLookup::InvalidVariable({
+                    TypeLike::ParamName(annotation) => Lookup::InvalidVariable({
                         let as_base_class_any = annotation
                             .map(|a| {
                                 match use_cached_annotation_type(i_s.db, node_ref.file, a).as_ref()
@@ -3495,7 +3494,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                     }),
                     TypeLike::Other => {
                         // Happens currently with walrus assignments
-                        TypeNameLookup::InvalidVariable(InvalidVariableType::Variable(node_ref))
+                        Lookup::InvalidVariable(InvalidVariableType::Variable(node_ref))
                     }
                 };
             }
@@ -3503,7 +3502,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 if let Some(i_node_ref) = inferred.maybe_saved_node_ref(i_s.db) {
                     if let Some(specific) = i_node_ref.point().maybe_specific() {
                         if let Some(special) = check_special_type(specific) {
-                            return TypeNameLookup::SpecialType(special);
+                            return Lookup::SpecialType(special);
                         }
                         if matches!(
                             specific,
@@ -3511,20 +3510,20 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                                 | Specific::TypingTypeVarTupleClass
                                 | Specific::TypingParamSpecClass
                         ) {
-                            return TypeNameLookup::InvalidVariable(InvalidVariableType::Variable(
+                            return Lookup::InvalidVariable(InvalidVariableType::Variable(
                                 i_node_ref,
                             ));
                         }
                     } else if let Some(complex) = i_node_ref.complex() {
                         match complex {
                             ComplexPoint::TypeVarLike(tvl) => {
-                                return TypeNameLookup::TypeVarLike(tvl.clone())
+                                return Lookup::TypeVarLike(tvl.clone())
                             }
                             ComplexPoint::Class(_) => {
                                 let c_node_ref = ClassNodeRef::from_node_ref(i_node_ref);
                                 return ensure_cached_class(c_node_ref);
                             }
-                            ComplexPoint::TypeAlias(a) => return TypeNameLookup::TypeAlias(a),
+                            ComplexPoint::TypeAlias(a) => return Lookup::TypeAlias(a),
                             _ => (),
                         };
                         if let Some(r) = Self::check_special_type_definition(i_node_ref) {
@@ -3532,23 +3531,21 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                         }
                     }
                     if let Some(cause) = inferred.maybe_any(i_s.db) {
-                        return TypeNameLookup::Unknown(UnknownCause::UnknownName(cause));
+                        return Lookup::Unknown(UnknownCause::UnknownName(cause));
                     } else if i_node_ref.maybe_function().is_some() {
                         return func_is_invalid_type(i_node_ref);
                     }
                 }
                 if let Some(file) = inferred.maybe_file(i_s.db) {
-                    return TypeNameLookup::Module(i_s.db.loaded_python_file(file));
+                    return Lookup::Module(i_s.db.loaded_python_file(file));
                 }
                 if let Some(ComplexPoint::TypeInstance(Type::Namespace(ns))) =
                     inferred.maybe_complex_point(i_s.db)
                 {
-                    return TypeNameLookup::Namespace(ns.clone());
+                    return Lookup::Namespace(ns.clone());
                 }
                 if inferred.maybe_specific(i_s.db) == Some(Specific::ModuleNotFound) {
-                    return TypeNameLookup::Unknown(UnknownCause::UnknownName(
-                        AnyCause::ModuleNotFound,
-                    ));
+                    return Lookup::Unknown(UnknownCause::UnknownName(AnyCause::ModuleNotFound));
                 }
             }
             PointResolution::ModuleGetattrName(name_node_ref) => {
@@ -3564,12 +3561,12 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                     ),
                 );
                 if let Some(cause) = executed.maybe_any(i_s.db) {
-                    return TypeNameLookup::Unknown(UnknownCause::AnyCause(cause));
+                    return Lookup::Unknown(UnknownCause::AnyCause(cause));
                 }
             }
             _ => (),
         };
-        TypeNameLookup::InvalidVariable(InvalidVariableType::Other)
+        Lookup::InvalidVariable(InvalidVariableType::Other)
     }
 
     fn maybe_special_assignment_execution<'x>(
@@ -3585,13 +3582,13 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             return Err(CalculatingAliasType::Normal);
         };
         match self.lookup_primary_or_atom_type(primary.first()) {
-            Some(TypeNameLookup::SpecialType(SpecialType::TypingTypedDict)) => {
+            Some(Lookup::SpecialType(SpecialType::TypingTypedDict)) => {
                 Err(CalculatingAliasType::TypedDict {
                     primary_index: primary.index(),
                     details,
                 })
             }
-            Some(TypeNameLookup::SpecialType(SpecialType::TypingNamedTuple)) => {
+            Some(Lookup::SpecialType(SpecialType::TypingNamedTuple)) => {
                 Err(CalculatingAliasType::NamedTuple {
                     primary_index: primary.index(),
                     details,
@@ -3601,14 +3598,12 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         }
     }
 
-    fn lookup_primary_or_atom_type(&self, p: PrimaryOrAtom) -> Option<TypeNameLookup<'db, 'db>> {
+    fn lookup_primary_or_atom_type(&self, p: PrimaryOrAtom) -> Option<Lookup<'db, 'db>> {
         match p {
             PrimaryOrAtom::Primary(primary) => match primary.second() {
                 PrimaryContent::Attribute(name) => {
                     match self.lookup_primary_or_atom_type(primary.first())? {
-                        TypeNameLookup::Module(f) => {
-                            Some(self.with_new_file(f).lookup_type_name(name))
-                        }
+                        Lookup::Module(f) => Some(self.with_new_file(f).lookup_type_name(name)),
                         _ => None,
                     }
                 }
@@ -3978,12 +3973,12 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         assignment: Assignment,
         name_def: NameDef,
         expr: Expression<'x>,
-    ) -> Result<TypeNameLookup<'file, 'file>, CalculatingAliasType<'x>> {
+    ) -> Result<Lookup<'file, 'file>, CalculatingAliasType<'x>> {
         self.maybe_special_assignment_execution(expr)?;
         if self.file.points.get(name_def.index()).calculating() {
             // TODO this is wrong, circular functional NamedTuples/TypedDicts are not implemented
             // properly now
-            return Ok(TypeNameLookup::Unknown(UnknownCause::ReportedIssue));
+            return Ok(Lookup::Unknown(UnknownCause::ReportedIssue));
         }
         self.infer_special_type_definition(assignment, name_def)
             .ok_or(CalculatingAliasType::Normal)
@@ -3993,7 +3988,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         &self,
         assignment: Assignment,
         name_def: NameDef,
-    ) -> Option<TypeNameLookup<'db, 'db>> {
+    ) -> Option<Lookup<'db, 'db>> {
         // We use inference from here on, because we know this is not really infering crazy stuff,
         // it's just running the normal initalizers for our special cases.
         // Inference is not a good idea to run otherwise, because it uses a lot of narrowing.
@@ -4009,30 +4004,30 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             saved_node_ref.point().maybe_specific(),
             Some(Specific::InvalidTypeDefinition)
         ) {
-            return Some(TypeNameLookup::Unknown(UnknownCause::ReportedIssue));
+            return Some(Lookup::Unknown(UnknownCause::ReportedIssue));
         }
         Self::check_special_type_definition(saved_node_ref)
     }
 
-    fn check_special_type_definition(node_ref: NodeRef) -> Option<TypeNameLookup> {
+    fn check_special_type_definition(node_ref: NodeRef) -> Option<Lookup> {
         Some(match node_ref.complex()? {
-            ComplexPoint::TypeVarLike(tv) => TypeNameLookup::TypeVarLike(tv.clone()),
+            ComplexPoint::TypeVarLike(tv) => Lookup::TypeVarLike(tv.clone()),
             ComplexPoint::NamedTupleDefinition(t) => {
                 let Type::NamedTuple(nt) = t.as_ref() else {
                     unreachable!()
                 };
-                TypeNameLookup::NamedTupleDefinition(nt.clone())
+                Lookup::NamedTupleDefinition(nt.clone())
             }
-            ComplexPoint::NewTypeDefinition(n) => TypeNameLookup::NewType(n.clone()),
+            ComplexPoint::NewTypeDefinition(n) => Lookup::NewType(n.clone()),
             ComplexPoint::TypedDictDefinition(tdd) => {
                 let Type::TypedDict(td) = tdd.type_.as_ref() else {
                     unreachable!();
                 };
-                TypeNameLookup::TypedDictDefinition(td.clone())
+                Lookup::TypedDictDefinition(td.clone())
             }
             ComplexPoint::TypeInstance(Type::Type(t)) => match t.as_ref() {
-                Type::Enum(e) => TypeNameLookup::Enum(e.clone()),
-                Type::None => TypeNameLookup::AliasNoneType,
+                Type::Enum(e) => Lookup::Enum(e.clone()),
+                Type::None => Lookup::AliasNoneType,
                 _ => return None,
             },
             _ => return None,
@@ -4049,7 +4044,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             Specific::TypingTypedDict | Specific::TypingNamedTuple
         ));
         match self.compute_type_assignment(assignment) {
-            TypeNameLookup::TypeAlias(ta) => {
+            Lookup::TypeAlias(ta) => {
                 if ta.is_valid() {
                     Inferred::from_type(Type::Type(Rc::new(ta.type_if_valid().clone())))
                 } else {
@@ -4057,7 +4052,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 }
             }
             // Error should have been created, because it's an invalid alias.
-            TypeNameLookup::InvalidVariable(_) | TypeNameLookup::Unknown(_) => {
+            Lookup::InvalidVariable(_) | Lookup::Unknown(_) => {
                 match specific {
                     Specific::TypingTypedDict => self.add_issue(
                         assignment.index(),
@@ -4077,7 +4072,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         }
     }
 
-    fn compute_type_assignment(&self, assignment: Assignment) -> TypeNameLookup<'file, 'file> {
+    fn compute_type_assignment(&self, assignment: Assignment) -> Lookup<'file, 'file> {
         let is_explicit = match assignment.maybe_annotation() {
             Some(annotation) => {
                 self.ensure_cached_annotation(annotation, true);
@@ -4093,7 +4088,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         &self,
         assignment: Assignment,
         is_explicit: bool,
-    ) -> TypeNameLookup<'file, 'file> {
+    ) -> Lookup<'file, 'file> {
         // Use the node star_targets or single_target, because they are not used otherwise.
         let file = self.file;
         let cached_type_node_ref = assignment_type_node_ref(file, assignment);
@@ -4117,7 +4112,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                     }
                 });
                 match lookup {
-                    Some(TypeNameLookup::SpecialType(SpecialType::Any)) => {
+                    Some(Lookup::SpecialType(SpecialType::Any)) => {
                         // This is a bit of a weird special case that was necessary to pass the test
                         // testDisallowAnyExplicitAlias
                         if self.flags().disallow_any_explicit {
@@ -4126,7 +4121,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                         }
                     }
                     // It seems like Mypy is ignoring this?
-                    Some(TypeNameLookup::SpecialType(_)) => (),
+                    Some(Lookup::SpecialType(_)) => (),
                     Some(lookup) => {
                         debug!("Alias can be redirected: {lookup:?}");
                         return lookup;
@@ -4153,16 +4148,17 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 //     Foo = 1  # type: Any
                 if let TypeCommentState::Type(t) = &type_comment.type_ {
                     if let Type::Any(cause) = t.as_ref() {
-                        return TypeNameLookup::Unknown(UnknownCause::AnyCause(*cause));
+                        return Lookup::Unknown(UnknownCause::AnyCause(*cause));
                     }
                 }
             }
             if !is_explicit
                 && (expr.maybe_single_string_literal().is_some() || annotation.is_some())
             {
-                return TypeNameLookup::InvalidVariable(InvalidVariableType::Variable(
-                    NodeRef::new(file, name_def.index()),
-                ));
+                return Lookup::InvalidVariable(InvalidVariableType::Variable(NodeRef::new(
+                    file,
+                    name_def.index(),
+                )));
             }
 
             let check_for_alias = |origin| {
@@ -4190,14 +4186,14 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                     _ => false,
                 };
                 if calculating {
-                    return TypeNameLookup::Unknown(UnknownCause::ReportedIssue);
+                    return Lookup::Unknown(UnknownCause::ReportedIssue);
                 }
                 self.ensure_cached_annotation(annotation, right.is_some());
                 if let Type::Any(cause) = self.use_cached_annotation_type(annotation).as_ref() {
-                    return TypeNameLookup::Unknown(UnknownCause::AnyCause(*cause));
+                    return Lookup::Unknown(UnknownCause::AnyCause(*cause));
                 }
             }
-            TypeNameLookup::InvalidVariable(InvalidVariableType::Other)
+            Lookup::InvalidVariable(InvalidVariableType::Other)
         }
     }
 
@@ -4208,7 +4204,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         name_def: NameDef,
         expr: Expression,
         is_explicit: bool,
-    ) -> TypeNameLookup<'file, 'file> {
+    ) -> Lookup<'file, 'file> {
         cached_type_node_ref.set_point(Point::new_calculating());
         let find_type_var_likes = || match &origin {
             CalculatingAliasType::Normal => {
@@ -4396,10 +4392,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
 
     pub(crate) fn compute_explicit_type_assignment(&self, assignment: Assignment) -> Inferred {
         let name_lookup = self.compute_type_assignment_internal(assignment, true);
-        if matches!(
-            name_lookup,
-            TypeNameLookup::Unknown(_) | TypeNameLookup::InvalidVariable(_)
-        ) {
+        if matches!(name_lookup, Lookup::Unknown(_) | Lookup::InvalidVariable(_)) {
             return Inferred::new_any(AnyCause::FromError);
         }
         Inferred::from_saved_node_ref(assignment_type_node_ref(self.file, assignment))
@@ -5236,12 +5229,12 @@ fn check_special_type(specific: Specific) -> Option<SpecialType> {
     })
 }
 
-fn load_cached_type(node_ref: NodeRef) -> TypeNameLookup {
+fn load_cached_type(node_ref: NodeRef) -> Lookup {
     match node_ref.complex().unwrap() {
         ComplexPoint::TypeAlias(a) => {
             if a.calculating() {
                 // This means it's a recursive type definition.
-                TypeNameLookup::RecursiveAlias(node_ref.as_link())
+                Lookup::RecursiveAlias(node_ref.as_link())
             } else if !a.is_valid() {
                 let assignment = NodeRef::new(
                     node_ref.file,
@@ -5253,15 +5246,15 @@ fn load_cached_type(node_ref: NodeRef) -> TypeNameLookup {
                     .unwrap()
                     .0;
                 debug!("Found invalid type alias: {}", name_def.as_code());
-                TypeNameLookup::InvalidVariable(InvalidVariableType::Variable(NodeRef::new(
+                Lookup::InvalidVariable(InvalidVariableType::Variable(NodeRef::new(
                     node_ref.file,
                     name_def.index(),
                 )))
             } else {
-                TypeNameLookup::TypeAlias(a)
+                Lookup::TypeAlias(a)
             }
         }
-        ComplexPoint::TypeVarLike(t) => TypeNameLookup::TypeVarLike(t.clone()),
+        ComplexPoint::TypeVarLike(t) => Lookup::TypeVarLike(t.clone()),
         _ => unreachable!("Expected an Alias or TypeVarLike, but received something weird"),
     }
 }
