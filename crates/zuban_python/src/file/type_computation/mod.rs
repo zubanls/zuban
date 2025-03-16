@@ -74,16 +74,11 @@ type TypeVarCallback<'db, 'x> = &'x mut dyn FnMut(
 
 #[derive(Debug, Clone)]
 enum SpecialType {
-    Protocol,
     ProtocolWithGenerics,
-    Generic,
     GenericWithGenerics,
     Callable,
     BuiltinsType,
     TypingType,
-    Tuple,
-    Literal,
-    LiteralString,
     Unpack,
     Concatenate,
 }
@@ -522,7 +517,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             TypeContent::SpecialType(SpecialType::GenericWithGenerics) => {
                 CalculatedBaseClass::Generic
             }
-            TypeContent::SpecialType(SpecialType::Protocol) => CalculatedBaseClass::Protocol,
+            TypeContent::SpecialCase(Specific::TypingProtocol) => CalculatedBaseClass::Protocol,
             TypeContent::SpecialType(SpecialType::ProtocolWithGenerics) => {
                 CalculatedBaseClass::Protocol
             }
@@ -1146,31 +1141,6 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     }
                     return Some(db.python_state.type_of_any.clone());
                 }
-                SpecialType::Tuple => {
-                    if self.flags().disallow_any_generics {
-                        self.add_issue(
-                            node_ref,
-                            IssueKind::MissingTypeParameters {
-                                name: "Tuple".into(),
-                            },
-                        );
-                    }
-                    return Some(Type::Tuple(Tuple::new_arbitrary_length_with_any()));
-                }
-                SpecialType::LiteralString => {
-                    return Some(Type::new_class(
-                        db.python_state.str_node_ref().as_link(),
-                        ClassGenerics::None,
-                    ))
-                }
-                SpecialType::Literal => {
-                    self.add_issue(
-                        node_ref,
-                        IssueKind::InvalidType(Box::from(
-                            "Literal[...] must have at least one parameter",
-                        )),
-                    );
-                }
                 SpecialType::Unpack => {
                     self.add_issue(node_ref, IssueKind::UnpackRequiresExactlyOneArgument);
                 }
@@ -1181,6 +1151,31 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             TypeContent::SpecialCase(specific) => match specific {
                 Specific::TypingAny => return Some(Type::Any(AnyCause::Explicit)),
                 Specific::TypingNeverOrNoReturn => return Some(Type::Never(NeverCause::Explicit)),
+                Specific::TypingTuple => {
+                    if self.flags().disallow_any_generics {
+                        self.add_issue(
+                            node_ref,
+                            IssueKind::MissingTypeParameters {
+                                name: "Tuple".into(),
+                            },
+                        );
+                    }
+                    return Some(Type::Tuple(Tuple::new_arbitrary_length_with_any()));
+                }
+                Specific::TypingLiteralString => {
+                    return Some(Type::new_class(
+                        db.python_state.str_node_ref().as_link(),
+                        ClassGenerics::None,
+                    ))
+                }
+                Specific::TypingLiteral => {
+                    self.add_issue(
+                        node_ref,
+                        IssueKind::InvalidType(Box::from(
+                            "Literal[...] must have at least one parameter",
+                        )),
+                    );
+                }
                 Specific::TypingSelf => self.add_issue(
                     node_ref,
                     match self.origin {
@@ -1565,17 +1560,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         SpecialType::BuiltinsType | SpecialType::TypingType => {
                             self.compute_type_get_item_on_type(s)
                         }
-                        SpecialType::Tuple => self.compute_type_get_item_on_tuple(s),
-                        SpecialType::Protocol => {
-                            self.expect_type_var_like_args(s, "Protocol");
-                            TypeContent::SpecialType(SpecialType::ProtocolWithGenerics)
-                        }
-                        SpecialType::Generic => {
-                            self.expect_type_var_like_args(s, "Generic");
-                            TypeContent::SpecialType(SpecialType::GenericWithGenerics)
-                        }
                         SpecialType::Callable => self.compute_type_get_item_on_callable(s),
-                        SpecialType::Literal => self.compute_get_item_on_literal(s),
                         SpecialType::Unpack => self.compute_type_get_item_on_unpack(s),
                         SpecialType::Concatenate => self.compute_type_get_item_on_concatenate(s),
                         _ => TypeContent::InvalidVariable(InvalidVariableType::Other),
@@ -1583,11 +1568,21 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     TypeContent::SpecialCase(specific) => match specific {
                         Specific::TypingUnion => self.compute_type_get_item_on_union(s),
                         Specific::TypingOptional => self.compute_type_get_item_on_optional(s),
+                        Specific::TypingTuple => self.compute_type_get_item_on_tuple(s),
+                        Specific::TypingLiteral => self.compute_get_item_on_literal(s),
                         Specific::TypingFinal => self.compute_type_get_item_on_final(s),
                         Specific::TypingClassVar => self.compute_get_item_on_class_var(s),
                         Specific::TypingAnnotated => self.compute_get_item_on_annotated(s),
                         Specific::TypingTypeGuard => self.compute_get_item_on_type_guard(s, false),
                         Specific::TypingTypeIs => self.compute_get_item_on_type_guard(s, true),
+                        Specific::TypingProtocol => {
+                            self.expect_type_var_like_args(s, "Protocol");
+                            TypeContent::SpecialType(SpecialType::ProtocolWithGenerics)
+                        }
+                        Specific::TypingGeneric => {
+                            self.expect_type_var_like_args(s, "Generic");
+                            TypeContent::SpecialType(SpecialType::GenericWithGenerics)
+                        }
                         Specific::MypyExtensionsFlexibleAlias => {
                             self.compute_get_item_on_flexible_alias(s)
                         }
@@ -4102,7 +4097,9 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                         }
                     }
                     // It seems like Mypy is ignoring this?
-                    Some(Lookup::T(TypeContent::SpecialType(_))) => (),
+                    Some(Lookup::T(TypeContent::SpecialType(_) | TypeContent::SpecialCase(_))) => {
+                        ()
+                    }
                     Some(lookup) => {
                         debug!("Alias can be redirected: {lookup:?}");
                         return lookup;
@@ -5166,16 +5163,11 @@ pub(super) fn assignment_type_node_ref<'x>(
 #[inline]
 fn check_special_case(specific: Specific) -> Option<TypeContent<'static, 'static>> {
     Some(TypeContent::SpecialType(match specific {
-        Specific::TypingGeneric => SpecialType::Generic,
-        Specific::TypingProtocol => SpecialType::Protocol,
         Specific::BuiltinsType => SpecialType::BuiltinsType,
         Specific::TypingType => SpecialType::TypingType,
         Specific::TypingCallable => SpecialType::Callable,
-        Specific::TypingLiteralString => SpecialType::LiteralString,
         Specific::TypingUnpack => SpecialType::Unpack,
         Specific::TypingConcatenateClass => SpecialType::Concatenate,
-        Specific::TypingLiteral => SpecialType::Literal,
-        Specific::TypingTuple => SpecialType::Tuple,
         Specific::TypingRequired => {
             return Some(TypeContent::TypedDictFieldModifier(
                 TypedDictFieldModifier::Required,
