@@ -103,7 +103,6 @@ enum SpecialType {
     TypeIs,
     FlexibleAlias,
     MypyExtensionsParamType(Specific),
-    CallableParam(CallableParam),
 }
 
 #[derive(Debug, Clone)]
@@ -304,6 +303,7 @@ enum TypeContent<'db, 'a> {
     TypedDictMemberModifiers(TypedDictFieldModifiers, Type),
     Final(Type),
     TypeGuardInfo(TypeGuardInfo),
+    CallableParam(CallableParam),
     ParamSpecAttr {
         usage: ParamSpecUsage,
         name: &'a str,
@@ -1370,6 +1370,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     _ => (), // Error was added earlier
                 }
             }
+            TypeContent::CallableParam(_) => {
+                self.add_issue(node_ref, IssueKind::InvalidType(Box::from("Invalid type")))
+            }
         }
         None
     }
@@ -2218,7 +2221,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
 
     fn check_param(&mut self, t: TypeContent, from: NodeRef) -> CallableParam {
         let param_type = match t {
-            TypeContent::SpecialType(SpecialType::CallableParam(p)) => return p,
+            TypeContent::CallableParam(p) => return p,
             TypeContent::Unpacked(TypeOrUnpack::Type(Type::TypedDict(td))) => {
                 ParamType::StarStar(StarStarParamType::UnpackTypedDict(td))
             }
@@ -3195,7 +3198,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             }
         };
         let type_ = type_.unwrap_or(Type::Any(AnyCause::Todo));
-        TypeContent::SpecialType(SpecialType::CallableParam(CallableParam {
+        TypeContent::CallableParam(CallableParam {
             type_: match param_kind {
                 ParamKind::PositionalOnly => ParamType::PositionalOnly(type_),
                 ParamKind::PositionalOrKeyword => ParamType::PositionalOrKeyword(type_),
@@ -3209,7 +3212,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 Specific::MypyExtensionsDefaultArg | Specific::MypyExtensionsDefaultNamedArg
             ),
             might_have_type_vars: true,
-        }))
+        })
     }
 
     pub fn into_type_vars<C>(self, on_type_var_recalculation: C) -> TypeVarLikes
