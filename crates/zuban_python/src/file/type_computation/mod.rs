@@ -3101,7 +3101,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         node_ref.add_issue(
                             self.i_s,
                             IssueKind::UnboundTypeVarLike {
-                                type_var_like: type_var_like.clone(),
+                                type_var_like: type_var_like,
                             },
                         );
                         TypeContent::Unknown(UnknownCause::ReportedIssue)
