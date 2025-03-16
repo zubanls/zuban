@@ -328,7 +328,6 @@ enum ClassGetItemResult<'db> {
 #[derive(Debug)]
 enum Lookup<'db, 'a> {
     T(TypeContent<'db, 'a>),
-    Class { node_ref: ClassNodeRef<'db> },
     TypeVarLike(TypeVarLike),
 }
 
@@ -3076,10 +3075,6 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 TypeContent::SpecialType(special)
             }
             Lookup::T(c) => c,
-            Lookup::Class { node_ref } => TypeContent::Class {
-                node_ref,
-                has_type_vars: !node_ref.type_vars(self.i_s).is_empty(),
-            },
             Lookup::TypeVarLike(type_var_like) => {
                 self.has_type_vars_or_self = true;
                 match (self.type_var_callback)(
@@ -3315,7 +3310,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                     _ => None,
                 }
             }
-            Lookup::Class { node_ref } => {
+            Lookup::T(TypeContent::Class { node_ref, .. }) => {
                 node_ref.ensure_cached_class_infos(self.i_s);
                 let node_index = ClassInitializer::from_node_ref(node_ref)
                     .class_storage
@@ -3363,9 +3358,10 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                     _ => (),
                 }
             }
-            Lookup::Class {
+            Lookup::T(TypeContent::Class {
                 node_ref: class_node_ref,
-            }
+                has_type_vars: !class_node_ref.type_vars(self.i_s).is_empty(),
+            })
         };
         let func_is_invalid_type = |node_ref: NodeRef<'db>| {
             let func = Function::new_with_unknown_parent(i_s.db, node_ref);
