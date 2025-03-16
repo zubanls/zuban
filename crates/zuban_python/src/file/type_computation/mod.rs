@@ -102,6 +102,7 @@ enum SpecialType {
     TypeGuard,
     TypeIs,
     FlexibleAlias,
+    Specific(Specific),
     MypyExtensionsParamType(Specific),
 }
 
@@ -1514,9 +1515,6 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         match primary.second() {
             PrimaryContent::Attribute(name) => self.compute_type_attribute(primary, base, name),
             PrimaryContent::Execution(details) => match base {
-                TypeContent::SpecialType(SpecialType::MypyExtensionsParamType(s)) => {
-                    self.execute_mypy_extension_param(primary, s, details)
-                }
                 TypeContent::SpecialType(SpecialType::TypingNamedTuple) => {
                     let args = SimpleArgs::from_primary(*self.i_s, self.file, primary);
                     TypeContent::Type(match new_typing_named_tuple(self.i_s, &args, true) {
@@ -1535,6 +1533,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     TypeContent::InvalidVariable(InvalidVariableType::InlineTypedDict)
                 }
                 TypeContent::Unknown(cause) => TypeContent::Unknown(cause),
+                TypeContent::SpecialType(SpecialType::MypyExtensionsParamType(s)) => {
+                    self.execute_mypy_extension_param(primary, s, details)
+                }
                 _ => {
                     debug!("Invalid type execution: {base:?}");
                     TypeContent::InvalidVariable(InvalidVariableType::Execution {
@@ -5208,9 +5209,15 @@ fn check_special_type(specific: Specific) -> Option<SpecialType> {
         | Specific::MypyExtensionsVarArg
         | Specific::MypyExtensionsKwArg => SpecialType::MypyExtensionsParamType(specific),
         Specific::MypyExtensionsFlexibleAlias => SpecialType::FlexibleAlias,
-        _ => {
-            return None;
-        }
+        Specific::AnyDueToError
+        | Specific::ModuleNotFound
+        | Specific::AnnotationOrTypeCommentSimpleClassInstance
+        | Specific::AnnotationOrTypeCommentWithTypeVars
+        | Specific::AnnotationOrTypeCommentWithoutTypeVars
+        | Specific::TypingTypeVarClass
+        | Specific::TypingTypeVarTupleClass
+        | Specific::TypingParamSpecClass => return None,
+        _ => SpecialType::Specific(specific),
     })
 }
 
