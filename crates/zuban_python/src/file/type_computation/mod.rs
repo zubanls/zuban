@@ -79,8 +79,6 @@ enum SpecialType {
     Callable,
     BuiltinsType,
     TypingType,
-    Unpack,
-    Concatenate,
 }
 
 #[derive(Debug, Clone)]
@@ -1141,9 +1139,6 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     }
                     return Some(db.python_state.type_of_any.clone());
                 }
-                SpecialType::Unpack => {
-                    self.add_issue(node_ref, IssueKind::UnpackRequiresExactlyOneArgument);
-                }
                 _ => {
                     self.add_issue(node_ref, IssueKind::InvalidType(Box::from("Invalid type")));
                 }
@@ -1231,6 +1226,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     node_ref,
                     IssueKind::MustHaveOneArgument { name: "TypeGuard" },
                 ),
+                Specific::TypingUnpack => {
+                    self.add_issue(node_ref, IssueKind::UnpackRequiresExactlyOneArgument);
+                }
                 Specific::TypingTypeIs => {
                     self.add_issue(node_ref, IssueKind::MustHaveOneArgument { name: "TypeIs" })
                 }
@@ -1561,8 +1559,6 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             self.compute_type_get_item_on_type(s)
                         }
                         SpecialType::Callable => self.compute_type_get_item_on_callable(s),
-                        SpecialType::Unpack => self.compute_type_get_item_on_unpack(s),
-                        SpecialType::Concatenate => self.compute_type_get_item_on_concatenate(s),
                         _ => TypeContent::InvalidVariable(InvalidVariableType::Other),
                     },
                     TypeContent::SpecialCase(specific) => match specific {
@@ -1573,6 +1569,10 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         Specific::TypingFinal => self.compute_type_get_item_on_final(s),
                         Specific::TypingClassVar => self.compute_get_item_on_class_var(s),
                         Specific::TypingAnnotated => self.compute_get_item_on_annotated(s),
+                        Specific::TypingUnpack => self.compute_type_get_item_on_unpack(s),
+                        Specific::TypingConcatenateClass => {
+                            self.compute_type_get_item_on_concatenate(s)
+                        }
                         Specific::TypingTypeGuard => self.compute_get_item_on_type_guard(s, false),
                         Specific::TypingTypeIs => self.compute_get_item_on_type_guard(s, true),
                         Specific::TypingProtocol => {
@@ -2240,7 +2240,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 };
                 ParamType::Star(StarParamType::ArbitraryLen(Type::Any(any_cause)))
             }
-            TypeContent::SpecialType(SpecialType::Unpack) => {
+            TypeContent::SpecialCase(Specific::TypingUnpack) => {
                 ParamType::Star(StarParamType::ArbitraryLen(
                     // Creates an Any.
                     self.as_type(t, from),
@@ -5166,8 +5166,6 @@ fn check_special_case(specific: Specific) -> Option<TypeContent<'static, 'static
         Specific::BuiltinsType => SpecialType::BuiltinsType,
         Specific::TypingType => SpecialType::TypingType,
         Specific::TypingCallable => SpecialType::Callable,
-        Specific::TypingUnpack => SpecialType::Unpack,
-        Specific::TypingConcatenateClass => SpecialType::Concatenate,
         Specific::TypingRequired => {
             return Some(TypeContent::TypedDictFieldModifier(
                 TypedDictFieldModifier::Required,
