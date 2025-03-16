@@ -101,7 +101,6 @@ enum SpecialType {
     TypeGuard,
     TypeIs,
     FlexibleAlias,
-    Specific(Specific),
 }
 
 #[derive(Debug, Clone)]
@@ -290,6 +289,7 @@ enum TypeContent<'db, 'a> {
     TypeAlias(&'db TypeAlias),
     Type(Type),
     SpecialType(SpecialType),
+    SpecialCase(Specific),
     RecursiveAlias(PointLink),
     RecursiveClass(ClassNodeRef<'db>),
     InvalidVariable(InvalidVariableType<'a>),
@@ -1367,11 +1367,11 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     _ => (), // Error was added earlier
                 }
             }
-            TypeContent::CallableParam(_) => {
-                self.add_issue(node_ref, IssueKind::InvalidType(Box::from("Invalid type")))
-            }
             TypeContent::TypedDictFieldModifier(m) => {
                 self.add_issue(node_ref, IssueKind::MustHaveOneArgument { name: m.name() })
+            }
+            TypeContent::SpecialCase(_) | TypeContent::CallableParam(_) => {
+                self.add_issue(node_ref, IssueKind::InvalidType(Box::from("Invalid type")))
             }
         }
         None
@@ -1532,14 +1532,14 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     TypeContent::InvalidVariable(InvalidVariableType::InlineTypedDict)
                 }
                 TypeContent::Unknown(cause) => TypeContent::Unknown(cause),
-                TypeContent::SpecialType(SpecialType::Specific(
+                TypeContent::SpecialCase(
                     s @ (Specific::MypyExtensionsArg
                     | Specific::MypyExtensionsDefaultArg
                     | Specific::MypyExtensionsNamedArg
                     | Specific::MypyExtensionsDefaultNamedArg
                     | Specific::MypyExtensionsVarArg
                     | Specific::MypyExtensionsKwArg),
-                )) => self.execute_mypy_extension_param(primary, s, details),
+                ) => self.execute_mypy_extension_param(primary, s, details),
                 _ => {
                     debug!("Invalid type execution: {base:?}");
                     TypeContent::InvalidVariable(InvalidVariableType::Execution {
@@ -3379,7 +3379,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 .get(func.node().name_def().index())
                 .maybe_calculated_and_specific()
             {
-                if let Some(tc) = check_special_type(specific) {
+                if let Some(tc) = check_special_case(specific) {
                     return Lookup::T(tc);
                 }
             }
@@ -3483,7 +3483,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             PointResolution::Inferred(inferred) => {
                 if let Some(i_node_ref) = inferred.maybe_saved_node_ref(i_s.db) {
                     if let Some(specific) = i_node_ref.point().maybe_specific() {
-                        if let Some(tc) = check_special_type(specific) {
+                        if let Some(tc) = check_special_case(specific) {
                             return Lookup::T(tc);
                         }
                         if matches!(
@@ -5171,7 +5171,7 @@ pub(super) fn assignment_type_node_ref<'x>(
 }
 
 #[inline]
-fn check_special_type(specific: Specific) -> Option<TypeContent<'static, 'static>> {
+fn check_special_case(specific: Specific) -> Option<TypeContent<'static, 'static>> {
     Some(TypeContent::SpecialType(match specific {
         Specific::TypingUnion => SpecialType::Union,
         Specific::TypingOptional => SpecialType::Optional,
@@ -5221,7 +5221,7 @@ fn check_special_type(specific: Specific) -> Option<TypeContent<'static, 'static
         | Specific::TypingTypeVarClass
         | Specific::TypingTypeVarTupleClass
         | Specific::TypingParamSpecClass => return None,
-        _ => SpecialType::Specific(specific),
+        _ => return Some(TypeContent::SpecialCase(specific)),
     }))
 }
 
