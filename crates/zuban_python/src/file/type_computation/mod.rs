@@ -3065,14 +3065,14 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         origin_index: NodeIndex,
     ) -> TypeContent<'db, 'x> {
         match lookup {
-            Lookup::T(TypeContent::SpecialType(special)) => {
-                if matches!(special, SpecialType::Any) && self.flags().disallow_any_explicit {
-                    self.add_issue(
-                        NodeRef::new(self.file, origin_index),
-                        IssueKind::DisallowedAnyExplicit,
-                    )
-                }
-                TypeContent::SpecialType(special)
+            Lookup::T(c @ TypeContent::SpecialType(SpecialType::Any))
+                if self.flags().disallow_any_explicit =>
+            {
+                self.add_issue(
+                    NodeRef::new(self.file, origin_index),
+                    IssueKind::DisallowedAnyExplicit,
+                );
+                c
             }
             Lookup::T(c) => c,
             Lookup::TypeVarLike(type_var_like) => {
