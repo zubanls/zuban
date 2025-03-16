@@ -83,7 +83,6 @@ enum SpecialType {
     GenericWithGenerics,
     TypingNamedTuple,
     TypingTypedDict,
-    TypedDictFieldModifier(TypedDictFieldModifier),
     CollectionsNamedTuple,
     Callable,
     BuiltinsType,
@@ -303,6 +302,7 @@ enum TypeContent<'db, 'a> {
     TypedDictMemberModifiers(TypedDictFieldModifiers, Type),
     Final(Type),
     TypeGuardInfo(TypeGuardInfo),
+    TypedDictFieldModifier(TypedDictFieldModifier),
     CallableParam(CallableParam),
     ParamSpecAttr {
         usage: ParamSpecUsage,
@@ -1249,9 +1249,6 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 SpecialType::TypeIs => {
                     self.add_issue(node_ref, IssueKind::MustHaveOneArgument { name: "TypeIs" })
                 }
-                SpecialType::TypedDictFieldModifier(m) => {
-                    self.add_issue(node_ref, IssueKind::MustHaveOneArgument { name: m.name() })
-                }
                 _ => {
                     self.add_issue(node_ref, IssueKind::InvalidType(Box::from("Invalid type")));
                 }
@@ -1372,6 +1369,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             }
             TypeContent::CallableParam(_) => {
                 self.add_issue(node_ref, IssueKind::InvalidType(Box::from("Invalid type")))
+            }
+            TypeContent::TypedDictFieldModifier(m) => {
+                self.add_issue(node_ref, IssueKind::MustHaveOneArgument { name: m.name() })
             }
         }
         None
@@ -1588,9 +1588,6 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             self.expect_type_var_like_args(s, "Generic");
                             TypeContent::SpecialType(SpecialType::GenericWithGenerics)
                         }
-                        SpecialType::TypedDictFieldModifier(m) => {
-                            self.compute_type_get_item_on_typed_dict_field_modifier(s, m)
-                        }
                         SpecialType::Callable => self.compute_type_get_item_on_callable(s),
                         SpecialType::Literal => self.compute_get_item_on_literal(s),
                         SpecialType::Self_ => {
@@ -1647,6 +1644,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         TypeContent::UNKNOWN_REPORTED
                     }
                     TypeContent::Unknown(cause) => TypeContent::Unknown(cause),
+                    TypeContent::TypedDictFieldModifier(m) => {
+                        self.compute_type_get_item_on_typed_dict_field_modifier(s, m)
+                    }
                     _ => TypeContent::InvalidVariable(InvalidVariableType::Other),
                 }
             }
@@ -3379,8 +3379,8 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 .get(func.node().name_def().index())
                 .maybe_calculated_and_specific()
             {
-                if let Some(special) = check_special_type(specific) {
-                    return Lookup::T(TypeContent::SpecialType(special));
+                if let Some(tc) = check_special_type(specific) {
+                    return Lookup::T(tc);
                 }
             }
 
@@ -3483,8 +3483,8 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             PointResolution::Inferred(inferred) => {
                 if let Some(i_node_ref) = inferred.maybe_saved_node_ref(i_s.db) {
                     if let Some(specific) = i_node_ref.point().maybe_specific() {
-                        if let Some(special) = check_special_type(specific) {
-                            return Lookup::T(TypeContent::SpecialType(special));
+                        if let Some(tc) = check_special_type(specific) {
+                            return Lookup::T(tc);
                         }
                         if matches!(
                             specific,
@@ -5171,8 +5171,8 @@ pub(super) fn assignment_type_node_ref<'x>(
 }
 
 #[inline]
-fn check_special_type(specific: Specific) -> Option<SpecialType> {
-    Some(match specific {
+fn check_special_type(specific: Specific) -> Option<TypeContent<'static, 'static>> {
+    Some(TypeContent::SpecialType(match specific {
         Specific::TypingUnion => SpecialType::Union,
         Specific::TypingOptional => SpecialType::Optional,
         Specific::TypingAny => SpecialType::Any,
@@ -5193,13 +5193,19 @@ fn check_special_type(specific: Specific) -> Option<SpecialType> {
         Specific::TypingTuple => SpecialType::Tuple,
         Specific::TypingTypedDict => SpecialType::TypingTypedDict,
         Specific::TypingRequired => {
-            SpecialType::TypedDictFieldModifier(TypedDictFieldModifier::Required)
+            return Some(TypeContent::TypedDictFieldModifier(
+                TypedDictFieldModifier::Required,
+            ))
         }
         Specific::TypingNotRequired => {
-            SpecialType::TypedDictFieldModifier(TypedDictFieldModifier::NotRequired)
+            return Some(TypeContent::TypedDictFieldModifier(
+                TypedDictFieldModifier::NotRequired,
+            ))
         }
         Specific::TypingReadOnly => {
-            SpecialType::TypedDictFieldModifier(TypedDictFieldModifier::ReadOnly)
+            return Some(TypeContent::TypedDictFieldModifier(
+                TypedDictFieldModifier::ReadOnly,
+            ))
         }
         Specific::TypingClassVar => SpecialType::ClassVar,
         Specific::TypingNamedTuple => SpecialType::TypingNamedTuple,
@@ -5216,7 +5222,7 @@ fn check_special_type(specific: Specific) -> Option<SpecialType> {
         | Specific::TypingTypeVarTupleClass
         | Specific::TypingParamSpecClass => return None,
         _ => SpecialType::Specific(specific),
-    })
+    }))
 }
 
 fn load_cached_type(node_ref: NodeRef) -> Lookup {
