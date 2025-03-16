@@ -74,8 +74,6 @@ type TypeVarCallback<'db, 'x> = &'x mut dyn FnMut(
 
 #[derive(Debug, Clone)]
 enum SpecialType {
-    Union,
-    Optional,
     Any,
     Protocol,
     ProtocolWithGenerics,
@@ -1226,14 +1224,6 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         )),
                     );
                 }
-                SpecialType::Optional => {
-                    self.add_issue(
-                        node_ref,
-                        IssueKind::MustHaveOneArgument {
-                            name: "Optional[...]",
-                        },
-                    );
-                }
                 SpecialType::Unpack => {
                     self.add_issue(node_ref, IssueKind::UnpackRequiresExactlyOneArgument);
                 }
@@ -1249,6 +1239,14 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 }
             },
             TypeContent::SpecialCase(specific) => match specific {
+                Specific::TypingOptional => {
+                    self.add_issue(
+                        node_ref,
+                        IssueKind::MustHaveOneArgument {
+                            name: "Optional[...]",
+                        },
+                    );
+                }
                 Specific::TypingClassVar => {
                     self.add_issue(node_ref, IssueKind::ClassVarNestedInsideOtherType);
                 }
@@ -1576,8 +1574,6 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     },
                     TypeContent::TypeAlias(m) => self.compute_type_get_item_on_alias(m, s),
                     TypeContent::SpecialType(special) => match special {
-                        SpecialType::Union => self.compute_type_get_item_on_union(s),
-                        SpecialType::Optional => self.compute_type_get_item_on_optional(s),
                         SpecialType::BuiltinsType | SpecialType::TypingType => {
                             self.compute_type_get_item_on_type(s)
                         }
@@ -1610,6 +1606,8 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         _ => TypeContent::InvalidVariable(InvalidVariableType::Other),
                     },
                     TypeContent::SpecialCase(specific) => match specific {
+                        Specific::TypingUnion => self.compute_type_get_item_on_union(s),
+                        Specific::TypingOptional => self.compute_type_get_item_on_optional(s),
                         Specific::TypingFinal => self.compute_type_get_item_on_final(s),
                         Specific::TypingClassVar => self.compute_get_item_on_class_var(s),
                         _ => TypeContent::InvalidVariable(InvalidVariableType::Other),
@@ -5178,8 +5176,6 @@ pub(super) fn assignment_type_node_ref<'x>(
 #[inline]
 fn check_special_case(specific: Specific) -> Option<TypeContent<'static, 'static>> {
     Some(TypeContent::SpecialType(match specific {
-        Specific::TypingUnion => SpecialType::Union,
-        Specific::TypingOptional => SpecialType::Optional,
         Specific::TypingAny => SpecialType::Any,
         Specific::TypingGeneric => SpecialType::Generic,
         Specific::TypingProtocol => SpecialType::Protocol,
