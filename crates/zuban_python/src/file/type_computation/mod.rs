@@ -79,9 +79,6 @@ enum SpecialType {
     ProtocolWithGenerics,
     Generic,
     GenericWithGenerics,
-    TypingNamedTuple,
-    TypingTypedDict,
-    CollectionsNamedTuple,
     Callable,
     BuiltinsType,
     TypingType,
@@ -536,12 +533,10 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             TypeContent::SpecialType(SpecialType::ProtocolWithGenerics) => {
                 CalculatedBaseClass::Protocol
             }
-            TypeContent::SpecialType(SpecialType::TypingNamedTuple) => {
+            TypeContent::SpecialCase(Specific::TypingNamedTuple) => {
                 CalculatedBaseClass::NewNamedTuple
             }
-            TypeContent::SpecialType(SpecialType::TypingTypedDict) => {
-                CalculatedBaseClass::TypedDict
-            }
+            TypeContent::SpecialCase(Specific::TypingTypedDict) => CalculatedBaseClass::TypedDict,
             TypeContent::SpecialType(SpecialType::BuiltinsType) => {
                 CalculatedBaseClass::Type(Type::new_class(
                     self.i_s.db.python_state.bare_type_node_ref().as_link(),
@@ -1171,9 +1166,6 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     }
                     return Some(Type::Tuple(Tuple::new_arbitrary_length_with_any()));
                 }
-                SpecialType::TypingNamedTuple => {
-                    return Some(db.python_state.typing_named_tuple_type())
-                }
                 SpecialType::LiteralString => {
                     return Some(Type::new_class(
                         db.python_state.str_node_ref().as_link(),
@@ -1239,6 +1231,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 }
             },
             TypeContent::SpecialCase(specific) => match specific {
+                Specific::TypingNamedTuple => {
+                    return Some(db.python_state.typing_named_tuple_type())
+                }
                 Specific::TypingOptional => {
                     self.add_issue(
                         node_ref,
@@ -1514,21 +1509,21 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         match primary.second() {
             PrimaryContent::Attribute(name) => self.compute_type_attribute(primary, base, name),
             PrimaryContent::Execution(details) => match base {
-                TypeContent::SpecialType(SpecialType::TypingNamedTuple) => {
+                TypeContent::SpecialCase(Specific::TypingNamedTuple) => {
                     let args = SimpleArgs::from_primary(*self.i_s, self.file, primary);
                     TypeContent::Type(match new_typing_named_tuple(self.i_s, &args, true) {
                         Some(rc) => Type::NamedTuple(rc),
                         None => Type::ERROR,
                     })
                 }
-                TypeContent::SpecialType(SpecialType::CollectionsNamedTuple) => {
+                TypeContent::SpecialCase(Specific::CollectionsNamedTuple) => {
                     let args = SimpleArgs::from_primary(*self.i_s, self.file, primary);
                     TypeContent::Type(match new_collections_named_tuple(self.i_s, &args) {
                         Some(rc) => Type::NamedTuple(rc),
                         None => Type::ERROR,
                     })
                 }
-                TypeContent::SpecialType(SpecialType::TypingTypedDict) => {
+                TypeContent::SpecialCase(Specific::TypingTypedDict) => {
                     TypeContent::InvalidVariable(InvalidVariableType::InlineTypedDict)
                 }
                 TypeContent::Unknown(cause) => TypeContent::Unknown(cause),
@@ -3571,13 +3566,13 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             return Err(CalculatingAliasType::Normal);
         };
         match self.lookup_primary_or_atom_type(primary.first()) {
-            Some(Lookup::T(TypeContent::SpecialType(SpecialType::TypingTypedDict))) => {
+            Some(Lookup::T(TypeContent::SpecialCase(Specific::TypingTypedDict))) => {
                 Err(CalculatingAliasType::TypedDict {
                     primary_index: primary.index(),
                     details,
                 })
             }
-            Some(Lookup::T(TypeContent::SpecialType(SpecialType::TypingNamedTuple))) => {
+            Some(Lookup::T(TypeContent::SpecialCase(Specific::TypingNamedTuple))) => {
                 Err(CalculatingAliasType::NamedTuple {
                     primary_index: primary.index(),
                     details,
@@ -5190,7 +5185,6 @@ fn check_special_case(specific: Specific) -> Option<TypeContent<'static, 'static
         Specific::TypingAnnotated => SpecialType::Annotated,
         Specific::TypingNeverOrNoReturn => SpecialType::Never,
         Specific::TypingTuple => SpecialType::Tuple,
-        Specific::TypingTypedDict => SpecialType::TypingTypedDict,
         Specific::TypingRequired => {
             return Some(TypeContent::TypedDictFieldModifier(
                 TypedDictFieldModifier::Required,
@@ -5206,10 +5200,8 @@ fn check_special_case(specific: Specific) -> Option<TypeContent<'static, 'static
                 TypedDictFieldModifier::ReadOnly,
             ))
         }
-        Specific::TypingNamedTuple => SpecialType::TypingNamedTuple,
         Specific::TypingTypeGuard => SpecialType::TypeGuard,
         Specific::TypingTypeIs => SpecialType::TypeIs,
-        Specific::CollectionsNamedTuple => SpecialType::CollectionsNamedTuple,
         Specific::MypyExtensionsFlexibleAlias => SpecialType::FlexibleAlias,
         Specific::AnyDueToError
         | Specific::ModuleNotFound
