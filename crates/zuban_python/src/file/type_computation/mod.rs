@@ -74,8 +74,6 @@ type TypeVarCallback<'db, 'x> = &'x mut dyn FnMut(
 
 #[derive(Debug, Clone)]
 enum SpecialType {
-    ProtocolWithGenerics,
-    GenericWithGenerics,
     Callable,
     BuiltinsType,
     TypingType,
@@ -286,6 +284,8 @@ enum TypeContent<'db, 'a> {
         usage: ParamSpecUsage,
         name: &'a str,
     },
+    ProtocolWithGenerics,
+    GenericWithGenerics,
     Unknown(UnknownCause),
 }
 
@@ -512,13 +512,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
     pub fn compute_base_class(&mut self, expr: Expression) -> CalculatedBaseClass {
         let calculated = self.compute_type(expr);
         match calculated {
-            TypeContent::SpecialType(SpecialType::GenericWithGenerics) => {
-                CalculatedBaseClass::Generic
-            }
+            TypeContent::GenericWithGenerics => CalculatedBaseClass::Generic,
             TypeContent::SpecialCase(Specific::TypingProtocol) => CalculatedBaseClass::Protocol,
-            TypeContent::SpecialType(SpecialType::ProtocolWithGenerics) => {
-                CalculatedBaseClass::Protocol
-            }
+            TypeContent::ProtocolWithGenerics => CalculatedBaseClass::Protocol,
             TypeContent::SpecialCase(Specific::TypingNamedTuple) => {
                 CalculatedBaseClass::NewNamedTuple
             }
@@ -1351,7 +1347,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             TypeContent::TypedDictFieldModifier(m) => {
                 self.add_issue(node_ref, IssueKind::MustHaveOneArgument { name: m.name() })
             }
-            TypeContent::CallableParam(_) => {
+            TypeContent::CallableParam(_)
+            | TypeContent::GenericWithGenerics
+            | TypeContent::ProtocolWithGenerics => {
                 self.add_issue(node_ref, IssueKind::InvalidType(Box::from("Invalid type")))
             }
         }
@@ -1577,11 +1575,11 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         Specific::TypingTypeIs => self.compute_get_item_on_type_guard(s, true),
                         Specific::TypingProtocol => {
                             self.expect_type_var_like_args(s, "Protocol");
-                            TypeContent::SpecialType(SpecialType::ProtocolWithGenerics)
+                            TypeContent::ProtocolWithGenerics
                         }
                         Specific::TypingGeneric => {
                             self.expect_type_var_like_args(s, "Generic");
-                            TypeContent::SpecialType(SpecialType::GenericWithGenerics)
+                            TypeContent::GenericWithGenerics
                         }
                         Specific::MypyExtensionsFlexibleAlias => {
                             self.compute_get_item_on_flexible_alias(s)
