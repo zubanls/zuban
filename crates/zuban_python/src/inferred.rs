@@ -34,9 +34,8 @@ use crate::{
     },
     type_helpers::{
         execute_assert_type, execute_cast, execute_isinstance, execute_issubclass,
-        execute_new_type, execute_reveal_type, execute_super, BoundMethod, BoundMethodFunction,
-        Class, FirstParamProperties, Function, Instance, LookupDetails, OverloadedFunction,
-        TypeOrClass,
+        execute_reveal_type, execute_super, BoundMethod, BoundMethodFunction, Class,
+        FirstParamProperties, Function, Instance, LookupDetails, OverloadedFunction, TypeOrClass,
     },
 };
 
@@ -1952,6 +1951,16 @@ impl<'db: 'slf, 'slf> Inferred {
                             Specific::TypingNamedTuple => {
                                 return_on_type_def!(infer_named_tuple_assignment)
                             }
+                            Specific::TypingNewType => {
+                                if result_context.is_annotation_assignment() {
+                                    args.add_issue(
+                                        i_s,
+                                        IssueKind::NewTypeCannotHaveTypeDeclaration,
+                                    );
+                                    return Inferred::new_any(AnyCause::FromError);
+                                }
+                                return_on_type_def!(compute_new_type_assignment, args)
+                            }
                             Specific::CollectionsNamedTuple => {
                                 return execute_collections_named_tuple(
                                     i_s,
@@ -1974,9 +1983,6 @@ impl<'db: 'slf, 'slf> Inferred {
                             }
                             Specific::AssertTypeFunction => {
                                 return execute_assert_type(i_s, args, result_context)
-                            }
-                            Specific::TypingNewType => {
-                                return execute_new_type(i_s, args, result_context)
                             }
                             Specific::TypingAny => {
                                 args.add_issue(i_s, IssueKind::AnyNotCallable);

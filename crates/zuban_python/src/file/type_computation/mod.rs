@@ -1,6 +1,7 @@
 mod alias;
 mod class;
 mod named_tuple;
+mod new_type;
 mod type_var_likes;
 mod typed_dict;
 
