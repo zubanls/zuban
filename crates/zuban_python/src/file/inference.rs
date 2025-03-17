@@ -1249,10 +1249,6 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                         add_redefinition_issue();
                         return;
                     }
-                    Some(ComplexPoint::TypeVarLike(_)) => {
-                        cannot_redefine("a type variable");
-                        return;
-                    }
                     _ => (),
                 }
             }

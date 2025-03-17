@@ -6,9 +6,6 @@ avoid_type_computation_recursion
 testOverloadPossibleOverlapWithArgsAndKwargs
 flow_analysis_base_class_calculation_should_not_lead_to_recursion
 
-testNewAnalyzerDuplicateTypeVar
-testRedefineVariableAsTypevar
-
 testDefaultDict
 # TODO PointResolution::GlobalOrNonlocal
 testTypedDictUpdateNonRecursiveToRecursiveCoarse

@@ -442,3 +442,9 @@ AliasedType = Unknown[int, "aliased"]  # E: Name "Unknown" is not defined
 
 def aliased() -> AliasedType: ...  # E: Variable "__main__.AliasedType" is not valid as a type \
                                    # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+
+[case redefining_type_variables]
+# From testRedefineVariableAsTypevar, but fully implemented
+from typing import TypeVar
+x = 0
+x = TypeVar('x') # E: Incompatible types in assignment (expression has type "TypeVar", variable has type "int")
