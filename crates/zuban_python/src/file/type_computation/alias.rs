@@ -165,9 +165,31 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         name_def: NameDef,
         expr: Expression<'x>,
     ) -> Result<Lookup<'file, 'file>, CalculatingAliasType<'x>> {
-        let kind = self.maybe_special_assignment_execution(expr)?;
-        self.compute_special_type_definition(assignment, name_def)
-            .ok_or(CalculatingAliasType::Normal)
+        let assignment_node_ref = NodeRef::new(self.file, assignment.index());
+        debug_assert!(
+            !assignment_node_ref.point().calculating(),
+            "{}",
+            assignment.as_code()
+        );
+        let assign = |inf: Inferred| {
+            if assignment_node_ref.point().calculated() {
+                return Err(CalculatingAliasType::Normal);
+            }
+            inf.save_redirect(self.i_s, self.file, name_def.index());
+            Ok(
+                Self::check_special_type_definition(NodeRef::new(self.file, name_def.index()))
+                    .unwrap_or(Lookup::UNKNOWN_REPORTED),
+            )
+        };
+        match self.maybe_special_assignment_execution(expr)? {
+            SpecialAssignmentKind::NewType(a) => assign(self.compute_new_type_assignment(
+                assignment,
+                &SimpleArgs::new(*self.i_s, self.file, a.primary_index, a.details),
+            )),
+            SpecialAssignmentKind::Other => self
+                .compute_special_type_definition(assignment, name_def)
+                .ok_or(CalculatingAliasType::Normal),
+        }
     }
 
     fn compute_special_type_definition(
@@ -270,7 +292,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
     fn maybe_special_assignment_execution<'x>(
         &self,
         expr: Expression<'x>,
-    ) -> Result<SpecialAssignmentKind, CalculatingAliasType<'x>> {
+    ) -> Result<SpecialAssignmentKind<'x>, CalculatingAliasType<'x>> {
         // For TypeVar, TypedDict, NewType and similar definitions
         let ExpressionContent::ExpressionPart(ExpressionPart::Primary(primary)) = expr.unpack()
         else {
@@ -292,9 +314,9 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                     details,
                 })
             }
-            Some(Lookup::T(TypeContent::SpecialCase(Specific::TypingNewType))) => {
-                Ok(SpecialAssignmentKind::NewType {})
-            }
+            Some(Lookup::T(TypeContent::SpecialCase(Specific::TypingNewType))) => Ok(
+                SpecialAssignmentKind::NewType(ArgsContent::new(primary.index(), details)),
+            ),
             _ => Ok(SpecialAssignmentKind::Other),
         }
     }
@@ -593,9 +615,23 @@ enum CalculatingAliasType<'x> {
     },
 }
 
-enum SpecialAssignmentKind {
-    NewType(),
+enum SpecialAssignmentKind<'tree> {
+    NewType(ArgsContent<'tree>),
     Other,
+}
+
+struct ArgsContent<'tree> {
+    primary_index: NodeIndex,
+    details: ArgumentsDetails<'tree>,
+}
+
+impl<'x> ArgsContent<'x> {
+    fn new(primary_index: NodeIndex, details: ArgumentsDetails<'x>) -> Self {
+        Self {
+            primary_index,
+            details,
+        }
+    }
 }
 
 fn check_for_and_replace_type_type_in_finished_alias(
