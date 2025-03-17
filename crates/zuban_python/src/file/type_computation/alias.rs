@@ -132,7 +132,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             }
 
             let result = self
-                .check_special_assignments(assignment, name_def, expr)
+                .compute_special_assignments(assignment, name_def, expr)
                 .unwrap_or_else(|origin| check_for_alias(origin));
             debug!("Finished type alias calculation: {}", name_def.as_code());
             result
@@ -159,23 +159,23 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         }
     }
 
-    fn check_special_assignments<'x>(
+    fn compute_special_assignments<'x>(
         &self,
         assignment: Assignment,
         name_def: NameDef,
         expr: Expression<'x>,
     ) -> Result<Lookup<'file, 'file>, CalculatingAliasType<'x>> {
-        self.maybe_special_assignment_execution(expr)?;
+        let kind = self.maybe_special_assignment_execution(expr)?;
         if self.file.points.get(name_def.index()).calculating() {
             // TODO this is wrong, circular functional NamedTuples/TypedDicts are not implemented
             // properly now
             return Ok(Lookup::UNKNOWN_REPORTED);
         }
-        self.infer_special_type_definition(assignment, name_def)
+        self.compute_special_type_definition(assignment, name_def)
             .ok_or(CalculatingAliasType::Normal)
     }
 
-    fn infer_special_type_definition(
+    fn compute_special_type_definition(
         &self,
         assignment: Assignment,
         name_def: NameDef,
@@ -225,7 +225,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         }))
     }
 
-    pub(crate) fn infer_typed_dict_assignment(&self, assignment: Assignment) -> Inferred {
+    pub(crate) fn compute_typed_dict_assignment(&self, assignment: Assignment) -> Inferred {
         match self.compute_type_assignment(assignment) {
             Lookup::T(TypeContent::TypeAlias(ta)) => {
                 if ta.is_valid() {
@@ -251,7 +251,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         }
     }
 
-    pub(crate) fn infer_named_tuple_assignment(&self, assignment: Assignment) -> Inferred {
+    pub(crate) fn compute_named_tuple_assignment(&self, assignment: Assignment) -> Inferred {
         match self.compute_type_assignment(assignment) {
             Lookup::T(TypeContent::TypeAlias(ta)) => {
                 if ta.is_valid() {
@@ -275,7 +275,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
     fn maybe_special_assignment_execution<'x>(
         &self,
         expr: Expression<'x>,
-    ) -> Result<(), CalculatingAliasType<'x>> {
+    ) -> Result<SpecialAssignmentKind, CalculatingAliasType<'x>> {
         // For TypeVar, TypedDict, NewType and similar definitions
         let ExpressionContent::ExpressionPart(ExpressionPart::Primary(primary)) = expr.unpack()
         else {
@@ -297,7 +297,10 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                     details,
                 })
             }
-            _ => Ok(()),
+            Some(Lookup::T(TypeContent::SpecialCase(Specific::TypingNewType))) => {
+                Ok(SpecialAssignmentKind::NewType {})
+            }
+            _ => Ok(SpecialAssignmentKind::Other),
         }
     }
 
@@ -593,6 +596,11 @@ enum CalculatingAliasType<'x> {
         primary_index: NodeIndex,
         details: ArgumentsDetails<'x>,
     },
+}
+
+enum SpecialAssignmentKind {
+    NewType(),
+    Other,
 }
 
 fn check_for_and_replace_type_type_in_finished_alias(

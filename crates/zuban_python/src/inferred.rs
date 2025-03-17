@@ -1946,10 +1946,10 @@ impl<'db: 'slf, 'slf> Inferred {
                                 }
                             }
                             Specific::TypingTypedDict => {
-                                return_on_type_def!(infer_typed_dict_assignment)
+                                return_on_type_def!(compute_typed_dict_assignment)
                             }
                             Specific::TypingNamedTuple => {
-                                return_on_type_def!(infer_named_tuple_assignment)
+                                return_on_type_def!(compute_named_tuple_assignment)
                             }
                             Specific::TypingNewType => {
                                 if result_context.is_annotation_assignment() {
