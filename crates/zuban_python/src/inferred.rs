@@ -34,8 +34,7 @@ use crate::{
     },
     type_helpers::{
         execute_assert_type, execute_cast, execute_isinstance, execute_issubclass,
-        execute_new_type, execute_param_spec_class, execute_reveal_type, execute_super,
-        execute_type_var_class, execute_type_var_tuple_class, BoundMethod, BoundMethodFunction,
+        execute_new_type, execute_reveal_type, execute_super, BoundMethod, BoundMethodFunction,
         Class, FirstParamProperties, Function, Instance, LookupDetails, OverloadedFunction,
         TypeOrClass,
     },
@@ -1902,7 +1901,7 @@ impl<'db: 'slf, 'slf> Inferred {
                 match point.kind() {
                     PointKind::Specific => {
                         macro_rules! return_on_type_def {
-                            ($name:ident) => {
+                            ($name:ident $(, $args:ident )?) => {
                                 if let ResultContext::AssignmentNewDefinition {
                                     assignment_definition,
                                 } = &result_context
@@ -1911,7 +1910,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                     return n
                                         .file
                                         .name_resolution_for_types(i_s)
-                                        .$name(n.expect_assignment());
+                                        .$name(n.expect_assignment(), $($args)?);
                                 }
                             };
                         }
@@ -1930,13 +1929,22 @@ impl<'db: 'slf, 'slf> Inferred {
                             Specific::BuiltinsIsinstance => return execute_isinstance(i_s, args),
                             Specific::BuiltinsIssubclass => return execute_issubclass(i_s, args),
                             Specific::TypingTypeVarClass => {
-                                return execute_type_var_class(i_s, args, result_context)
+                                return_on_type_def!(compute_type_var_assignment, args);
+                                if result_context.is_annotation_assignment() {
+                                    args.add_issue(i_s, IssueKind::UnexpectedTypeForTypeVar);
+                                }
                             }
                             Specific::TypingTypeVarTupleClass => {
-                                return execute_type_var_tuple_class(i_s, args, result_context)
+                                return_on_type_def!(compute_type_var_tuple_assignment, args);
+                                if result_context.is_annotation_assignment() {
+                                    args.add_issue(i_s, IssueKind::UnexpectedTypeForTypeVar);
+                                }
                             }
                             Specific::TypingParamSpecClass => {
-                                return execute_param_spec_class(i_s, args, result_context)
+                                return_on_type_def!(compute_param_spec_assignment, args);
+                                if result_context.is_annotation_assignment() {
+                                    args.add_issue(i_s, IssueKind::UnexpectedTypeForTypeVar);
+                                }
                             }
                             Specific::TypingTypedDict => {
                                 return_on_type_def!(infer_typed_dict_assignment)
