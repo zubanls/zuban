@@ -2346,39 +2346,6 @@ impl<'db> Assignment<'db> {
         unreachable!()
     }
 
-    // TODO this methods feels wrong. I don't think assignments can ever be simpler. The grammar is
-    // the same.
-    pub fn unpack_with_simple_targets(&self) -> AssignmentContentWithSimpleTargets<'db> {
-        // | (star_targets "=" )+ (yield_expr | star_expressions)
-        // | single_target annotation ["=" (yield_expr | star_expressions)]
-        // | single_target augassign (yield_expr | star_expressions)
-        let mut iterator = self.node.iter_children().skip(1);
-        while let Some(child) = iterator.next() {
-            if child.is_type(Nonterminal(yield_expr))
-                || child.is_type(Nonterminal(star_expressions))
-            {
-                let iter = StarTargetsIterator(self.node.iter_children().step_by(2));
-                return AssignmentContentWithSimpleTargets::Normal(iter, Self::right_side(child));
-            } else if child.is_type(Nonterminal(annotation)) {
-                iterator.next();
-                let right = iterator.next().map(Self::right_side);
-                return AssignmentContentWithSimpleTargets::WithAnnotation(
-                    SingleTarget::new(self.node.nth_child(0)),
-                    Annotation::new(child),
-                    right,
-                );
-            } else if child.is_type(Nonterminal(augassign)) {
-                let right = Self::right_side(iterator.next().unwrap());
-                return AssignmentContentWithSimpleTargets::AugAssign(
-                    SingleTarget::new(self.node.nth_child(0)),
-                    AugAssign::new(child),
-                    right,
-                );
-            }
-        }
-        unreachable!()
-    }
-
     fn right_side(child: PyNode) -> AssignmentRightSide {
         if child.is_type(Nonterminal(star_expressions)) {
             AssignmentRightSide::StarExpressions(StarExpressions::new(child))
