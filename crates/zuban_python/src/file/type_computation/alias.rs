@@ -225,15 +225,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         }))
     }
 
-    pub(crate) fn infer_special_calculated_type_assignment(
-        &self,
-        specific: Specific,
-        assignment: Assignment,
-    ) -> Inferred {
-        debug_assert!(matches!(
-            specific,
-            Specific::TypingTypedDict | Specific::TypingNamedTuple
-        ));
+    pub(crate) fn infer_typed_dict_assignment(&self, assignment: Assignment) -> Inferred {
         match self.compute_type_assignment(assignment) {
             Lookup::T(TypeContent::TypeAlias(ta)) => {
                 if ta.is_valid() {
@@ -244,17 +236,34 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             }
             // Error should have been created, because it's an invalid alias.
             Lookup::T(TypeContent::InvalidVariable(_) | TypeContent::Unknown(_)) => {
-                match specific {
-                    Specific::TypingTypedDict => self.add_issue(
-                        assignment.index(),
-                        IssueKind::InvalidAssignmentForm {
-                            class_name: "TypedDict",
-                        },
-                    ),
-                    Specific::TypingNamedTuple => todo!(),
-                    _ => unreachable!(),
-                }
+                self.add_issue(
+                    assignment.index(),
+                    IssueKind::InvalidAssignmentForm {
+                        class_name: "TypedDict",
+                    },
+                );
                 Inferred::new_any_from_error()
+            }
+            tnl => {
+                recoverable_error!("Unexpected special type assignment result: {tnl:?}");
+                Inferred::new_any_from_error()
+            }
+        }
+    }
+
+    pub(crate) fn infer_named_tuple_assignment(&self, assignment: Assignment) -> Inferred {
+        match self.compute_type_assignment(assignment) {
+            Lookup::T(TypeContent::TypeAlias(ta)) => {
+                if ta.is_valid() {
+                    Inferred::from_type(Type::Type(Rc::new(ta.type_if_valid().clone())))
+                } else {
+                    Inferred::new_any_from_error()
+                }
+            }
+            // Error should have been created, because it's an invalid alias.
+            Lookup::T(TypeContent::InvalidVariable(_) | TypeContent::Unknown(_)) => {
+                todo!();
+                //Inferred::new_any_from_error()
             }
             tnl => {
                 recoverable_error!("Unexpected special type assignment result: {tnl:?}");

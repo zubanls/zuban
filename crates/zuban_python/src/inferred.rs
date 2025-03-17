@@ -1901,6 +1901,21 @@ impl<'db: 'slf, 'slf> Inferred {
                 let point = node_ref.point();
                 match point.kind() {
                     PointKind::Specific => {
+                        macro_rules! return_on_type_def {
+                            ($name:ident) => {
+                                if let ResultContext::AssignmentNewDefinition {
+                                    assignment_definition,
+                                } = &result_context
+                                {
+                                    let n = NodeRef::from_link(i_s.db, *assignment_definition);
+                                    return n
+                                        .file
+                                        .name_resolution_for_types(i_s)
+                                        .$name(n.expect_assignment());
+                                }
+                            };
+                        }
+
                         let specific = point.specific();
                         match specific {
                             Specific::Function => {
@@ -1923,20 +1938,11 @@ impl<'db: 'slf, 'slf> Inferred {
                             Specific::TypingParamSpecClass => {
                                 return execute_param_spec_class(i_s, args, result_context)
                             }
-                            Specific::TypingTypedDict | Specific::TypingNamedTuple => {
-                                if let ResultContext::AssignmentNewDefinition {
-                                    assignment_definition,
-                                } = &result_context
-                                {
-                                    let n = NodeRef::from_link(i_s.db, *assignment_definition);
-                                    return n
-                                        .file
-                                        .name_resolution_for_types(i_s)
-                                        .infer_special_calculated_type_assignment(
-                                            specific,
-                                            n.expect_assignment(),
-                                        );
-                                }
+                            Specific::TypingTypedDict => {
+                                return_on_type_def!(infer_typed_dict_assignment)
+                            }
+                            Specific::TypingNamedTuple => {
+                                return_on_type_def!(infer_named_tuple_assignment)
                             }
                             Specific::CollectionsNamedTuple => {
                                 return execute_collections_named_tuple(
