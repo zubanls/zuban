@@ -122,14 +122,13 @@ from typing import NamedTuple
 from collections import namedtuple
 
 x = NamedTuple()  # E: Too few arguments for "NamedTuple()"
-y = namedtuple()  # E: Missing positional arguments "typename", "field_names" in call to "namedtuple"
+y = namedtuple()  # E: Too few arguments for "namedtuple()"
 
 A = NamedTuple("A", *[{}])  # E: List or tuple literal expected as the second argument to "NamedTuple()"
 B = namedtuple("B", *[{}])  # E: List or tuple literal expected as the second argument to "namedtuple()"
 
 C = NamedTuple("C", lambda: 1)  # E: List or tuple literal expected as the second argument to "NamedTuple()"
-D = namedtuple("D", lambda: 1)  # E: List or tuple literal expected as the second argument to "namedtuple()" \
-                                # E: Argument 2 to "namedtuple" has incompatible type "Callable[[], int]"; expected "str | Iterable[str]"
+D = namedtuple("D", lambda: 1)  # E: List or tuple literal expected as the second argument to "namedtuple()"
 
 str_lst = ['']
 E = namedtuple("E", [*str_lst])  # E: String literal expected as "namedtuple()" item

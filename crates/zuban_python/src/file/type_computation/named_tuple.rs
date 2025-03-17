@@ -1,17 +1,19 @@
 use std::rc::Rc;
 
 use parsa_python_cst::{
-    keywords_contain, AtomContent, CodeIndex, StarLikeExpression, StarLikeExpressionIterator,
+    keywords_contain, Assignment, AtomContent, CodeIndex, StarLikeExpression,
+    StarLikeExpressionIterator,
 };
 
 use crate::{
     arguments::{ArgIterator, ArgKind, Args, KeywordArg},
     database::{ComplexPoint, Database},
     diagnostics::IssueKind,
+    file::name_resolution::NameResolution,
     getitem::SliceType,
     inference_state::InferenceState,
     inferred::Inferred,
-    matching::{OnTypeError, ResultContext},
+    matching::ResultContext,
     node_ref::NodeRef,
     type_::{
         AnyCause, CallableContent, CallableParam, CallableParams, DbString, NamedTuple, ParamType,
@@ -20,6 +22,21 @@ use crate::{
 };
 
 use super::{TypeComputation, TypeComputationOrigin, TypeContent, TypeVarCallbackReturn};
+
+impl<'db, 'file> NameResolution<'db, 'file, '_> {
+    pub(crate) fn compute_collections_named_tuple(
+        &self,
+        assignment: Assignment,
+        args: &dyn Args<'db>,
+    ) -> Inferred {
+        match new_collections_named_tuple(self.i_s, args) {
+            Some(rc) => Inferred::new_unsaved_complex(ComplexPoint::NamedTupleDefinition(Rc::new(
+                Type::NamedTuple(rc),
+            ))),
+            None => Inferred::new_invalid_type_definition(),
+        }
+    }
+}
 
 impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c> {
     pub fn compute_named_tuple_initializer(
@@ -126,22 +143,6 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
     }
 }
 
-pub(crate) fn execute_collections_named_tuple<'db>(
-    i_s: &InferenceState<'db, '_>,
-    args: &dyn Args<'db>,
-    result_context: &mut ResultContext,
-    on_type_error: OnTypeError,
-) -> Inferred {
-    let func = i_s.db.python_state.collections_namedtuple_function(i_s);
-    func.execute(i_s, args, result_context, on_type_error);
-    match new_collections_named_tuple(i_s, args) {
-        Some(rc) => Inferred::new_unsaved_complex(ComplexPoint::NamedTupleDefinition(Rc::new(
-            Type::NamedTuple(rc),
-        ))),
-        None => Inferred::new_invalid_type_definition(),
-    }
-}
-
 fn check_named_tuple_name<'x, 'y>(
     i_s: &InferenceState<'_, 'y>,
     executable_name: &'static str,
@@ -153,13 +154,11 @@ fn check_named_tuple_name<'x, 'y>(
     ArgIterator<'x, 'y>,
 )> {
     let too_few_args = || {
-        if executable_name != "namedtuple" {
-            // For namedtuple this is already handled by type checking.
-            args.add_issue(
-                i_s,
-                IssueKind::TooFewArguments(r#" for "NamedTuple()""#.into()),
-            );
-        }
+        // For namedtuple this is already handled by type checking.
+        args.add_issue(
+            i_s,
+            IssueKind::TooFewArguments(format!(r#" for "{executable_name}()""#).into()),
+        );
         None
     };
     let mut iterator = args.iter(i_s.mode);
@@ -167,7 +166,12 @@ fn check_named_tuple_name<'x, 'y>(
         return too_few_args();
     };
     let ArgKind::Positional(pos) = first_arg.kind else {
-        first_arg.add_issue(i_s, IssueKind::UnexpectedArgumentsTo { name: "namedtuple" });
+        first_arg.add_issue(
+            i_s,
+            IssueKind::UnexpectedArgumentsTo {
+                name: executable_name,
+            },
+        );
         return None;
     };
     let expr = pos.node_ref.as_named_expression().expression();
@@ -366,32 +370,42 @@ pub(crate) fn new_collections_named_tuple<'db>(
     check_named_tuple_has_no_fields_with_underscore(i_s, "namedtuple", args, &params);
 
     for arg in args.iter(i_s.mode) {
-        if let ArgKind::Keyword(KeywordArg {
-            key: "defaults",
-            expression,
-            ..
-        }) = arg.kind
-        {
-            let defaults_iterator = match expression.maybe_unpacked_atom() {
-                Some(AtomContent::List(list)) => list.unpack(),
-                Some(AtomContent::Tuple(tuple)) => tuple.iter(),
-                _ => {
-                    arg.add_issue(i_s, IssueKind::NamedTupleDefaultsShouldBeListOrTuple);
-                    return None;
+        match &arg.kind {
+            ArgKind::Keyword(KeywordArg {
+                key: "defaults",
+                expression,
+                ..
+            }) => {
+                let defaults_iterator = match expression.maybe_unpacked_atom() {
+                    Some(AtomContent::List(list)) => list.unpack(),
+                    Some(AtomContent::Tuple(tuple)) => tuple.iter(),
+                    _ => {
+                        arg.add_issue(i_s, IssueKind::NamedTupleDefaultsShouldBeListOrTuple);
+                        return None;
+                    }
+                };
+                let member_count = params.len() - 1;
+                let defaults_count = defaults_iterator.count();
+                let skip = if defaults_count > member_count {
+                    arg.add_issue(i_s, IssueKind::NamedTupleToManyDefaults);
+                    0
+                } else {
+                    member_count - defaults_count
+                };
+                for param in params.iter_mut().skip(skip + 1) {
+                    param.has_default = true;
                 }
-            };
-            let member_count = params.len() - 1;
-            let defaults_count = defaults_iterator.count();
-            let skip = if defaults_count > member_count {
-                arg.add_issue(i_s, IssueKind::NamedTupleToManyDefaults);
-                0
-            } else {
-                member_count - defaults_count
-            };
-            for param in params.iter_mut().skip(skip + 1) {
-                param.has_default = true;
+                break;
             }
-            break;
+            ArgKind::Keyword(kw) if kw.key != "rename" => {
+                arg.add_issue(
+                    i_s,
+                    IssueKind::NamedTupleUnexpectedKeywordArgument {
+                        keyword_name: kw.key.into(),
+                    },
+                );
+            }
+            _ => (), //todo!(),
         }
     }
 

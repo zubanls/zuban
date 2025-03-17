@@ -11,9 +11,8 @@ use crate::{
     debug,
     diagnostics::IssueKind,
     file::{
-        execute_collections_named_tuple, maybe_saved_annotation, on_argument_type_error,
-        use_cached_annotation_or_type_comment, ClassNodeRef, PythonFile,
-        ANNOTATION_TO_EXPR_DIFFERENCE,
+        maybe_saved_annotation, on_argument_type_error, use_cached_annotation_or_type_comment,
+        ClassNodeRef, PythonFile, ANNOTATION_TO_EXPR_DIFFERENCE,
     },
     format_data::FormatData,
     getitem::SliceType,
@@ -1962,12 +1961,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 return_on_type_def!(compute_new_type_assignment, args)
                             }
                             Specific::CollectionsNamedTuple => {
-                                return execute_collections_named_tuple(
-                                    i_s,
-                                    args,
-                                    result_context,
-                                    on_type_error,
-                                )
+                                return_on_type_def!(compute_collections_named_tuple, args)
                             }
                             Specific::TypingTuple => {
                                 return execute_tuple_class(

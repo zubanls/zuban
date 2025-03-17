@@ -9,7 +9,6 @@ pub(crate) use class::{
     linearize_mro_and_return_linearizable, ClassInitializer, ClassNodeRef,
     CLASS_TO_CLASS_INFO_DIFFERENCE, ORDERING_METHODS,
 };
-pub(crate) use named_tuple::execute_collections_named_tuple;
 
 use std::{borrow::Cow, cell::Cell, rc::Rc};
 

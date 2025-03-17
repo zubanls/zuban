@@ -324,6 +324,8 @@ pub(crate) enum IssueKind {
     NamedTupleNameCannotStartWithUnderscore { field_name: Box<str> },
     NamedTupleInvalidFieldName,
     NamedTupleFirstArgumentMismatch { should: Box<str>, is: Box<str> },
+    NamedTupleUnexpectedRenameArgument,
+    NamedTupleUnexpectedKeywordArgument { keyword_name: Box<str> },
     NamedTupleDefaultsShouldBeListOrTuple,
     NamedTupleToManyDefaults,
     NamedTupleGenericInClassDefinition,
@@ -1711,6 +1713,12 @@ impl<'db> Diagnostic<'db> {
             NamedTupleInvalidFieldName => "Invalid \"NamedTuple()\" field name".to_string(),
             NamedTupleFirstArgumentMismatch { should, is } => format!(
                 r#"First argument to namedtuple() should be "{should}", not "{is}""#
+            ),
+            NamedTupleUnexpectedRenameArgument => format!(
+                r#"Boolean literal expected as the "rename" argument to namedtuple()"#
+            ),
+            NamedTupleUnexpectedKeywordArgument { keyword_name } => format!(
+                r#"Unexpected keyword argument "{keyword_name}" for "namedtuple""#
             ),
             NamedTupleDefaultsShouldBeListOrTuple =>
                 r#"List or tuple literal expected as the defaults argument to namedtuple()"#.to_string(),
