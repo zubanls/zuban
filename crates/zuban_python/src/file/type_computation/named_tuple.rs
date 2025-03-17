@@ -13,7 +13,6 @@ use crate::{
     getitem::SliceType,
     inference_state::InferenceState,
     inferred::Inferred,
-    matching::ResultContext,
     node_ref::NodeRef,
     type_::{
         AnyCause, CallableContent, CallableParam, CallableParams, DbString, NamedTuple, ParamType,
@@ -297,12 +296,53 @@ pub(crate) fn new_collections_named_tuple<'db>(
     i_s: &InferenceState<'db, '_>,
     args: &dyn Args<'db>,
 ) -> Option<Rc<NamedTuple>> {
-    let rename = args.iter(i_s.mode).any(|arg| {
-        matches!(arg.keyword_name(i_s.db), Some("rename"))
-            && arg.infer(&mut ResultContext::Unknown).is_true_literal(i_s)
-    });
     let (name, second_node_ref, atom_content, _) = check_named_tuple_name(i_s, "namedtuple", args)?;
     let mut params = start_namedtuple_params(i_s.db);
+    let mut rename = false;
+    let mut defaults_arg = None;
+
+    for arg in args.iter(i_s.mode).skip(2) {
+        match &arg.kind {
+            ArgKind::Keyword(KeywordArg {
+                key: "defaults",
+                expression,
+                ..
+            }) => {
+                let defaults_iterator = match expression.maybe_unpacked_atom() {
+                    Some(AtomContent::List(list)) => list.unpack(),
+                    Some(AtomContent::Tuple(tuple)) => tuple.iter(),
+                    _ => {
+                        arg.add_issue(i_s, IssueKind::NamedTupleDefaultsShouldBeListOrTuple);
+                        return None;
+                    }
+                };
+                defaults_arg = Some((arg, defaults_iterator.count()));
+            }
+            ArgKind::Keyword(KeywordArg {
+                key: "rename",
+                expression,
+                ..
+            }) => {
+                if let Some(b) = expression.maybe_simple_bool() {
+                    rename = b
+                } else {
+                    arg.add_issue(i_s, IssueKind::NamedTupleExpectedBoolForRenameArgument);
+                }
+            }
+            ArgKind::Keyword(kw) if kw.key != "rename" => {
+                arg.add_issue(
+                    i_s,
+                    IssueKind::NamedTupleUnexpectedKeywordArgument {
+                        keyword_name: kw.key.into(),
+                    },
+                );
+            }
+            _ => arg.add_issue(
+                i_s,
+                IssueKind::TooManyArguments(r#" for "namedtuple""#.into()),
+            ),
+        }
+    }
 
     let mut add_param = |name| {
         add_named_tuple_param(
@@ -369,43 +409,16 @@ pub(crate) fn new_collections_named_tuple<'db>(
     };
     check_named_tuple_has_no_fields_with_underscore(i_s, "namedtuple", args, &params);
 
-    for arg in args.iter(i_s.mode) {
-        match &arg.kind {
-            ArgKind::Keyword(KeywordArg {
-                key: "defaults",
-                expression,
-                ..
-            }) => {
-                let defaults_iterator = match expression.maybe_unpacked_atom() {
-                    Some(AtomContent::List(list)) => list.unpack(),
-                    Some(AtomContent::Tuple(tuple)) => tuple.iter(),
-                    _ => {
-                        arg.add_issue(i_s, IssueKind::NamedTupleDefaultsShouldBeListOrTuple);
-                        return None;
-                    }
-                };
-                let member_count = params.len() - 1;
-                let defaults_count = defaults_iterator.count();
-                let skip = if defaults_count > member_count {
-                    arg.add_issue(i_s, IssueKind::NamedTupleToManyDefaults);
-                    0
-                } else {
-                    member_count - defaults_count
-                };
-                for param in params.iter_mut().skip(skip + 1) {
-                    param.has_default = true;
-                }
-                break;
-            }
-            ArgKind::Keyword(kw) if kw.key != "rename" => {
-                arg.add_issue(
-                    i_s,
-                    IssueKind::NamedTupleUnexpectedKeywordArgument {
-                        keyword_name: kw.key.into(),
-                    },
-                );
-            }
-            _ => (), //todo!(),
+    if let Some((arg, defaults_count)) = defaults_arg {
+        let member_count = params.len() - 1;
+        let skip = if defaults_count > member_count {
+            arg.add_issue(i_s, IssueKind::NamedTupleToManyDefaults);
+            0
+        } else {
+            member_count - defaults_count
+        };
+        for param in params.iter_mut().skip(skip + 1) {
+            param.has_default = true;
         }
     }
 
