@@ -166,11 +166,6 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         expr: Expression<'x>,
     ) -> Result<Lookup<'file, 'file>, CalculatingAliasType<'x>> {
         let kind = self.maybe_special_assignment_execution(expr)?;
-        if self.file.points.get(name_def.index()).calculating() {
-            // TODO this is wrong, circular functional NamedTuples/TypedDicts are not implemented
-            // properly now
-            return Ok(Lookup::UNKNOWN_REPORTED);
-        }
         self.compute_special_type_definition(assignment, name_def)
             .ok_or(CalculatingAliasType::Normal)
     }
