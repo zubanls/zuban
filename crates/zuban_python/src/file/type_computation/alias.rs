@@ -12,7 +12,8 @@ use super::{
 use crate::{
     arguments::SimpleArgs,
     database::{
-        ClassKind, ComplexPoint, Database, Locality, Point, PointLink, Specific, TypeAlias,
+        ClassKind, ComplexPoint, Database, Locality, Point, PointKind, PointLink, Specific,
+        TypeAlias,
     },
     debug,
     diagnostics::IssueKind,
@@ -198,6 +199,17 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                         .ok_or(CalculatingAliasType::Normal)
                 }
             }
+            let cached_type_node_ref = assignment_type_node_ref(self.file, assignment);
+            debug_assert!(
+                !cached_type_node_ref.point().calculated(),
+                "{cached_type_node_ref:?}"
+            );
+            cached_type_node_ref.set_point(Point::new_redirect(
+                self.file.file_index,
+                name_def.index(),
+                Locality::Todo,
+            ));
+            return Ok(self.compute_type_assignment_internal(assignment, false));
         };
         Ok(
             Self::check_special_type_definition(NodeRef::new(self.file, name_def.index()))
@@ -540,6 +552,35 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
 }
 
 fn load_cached_type(node_ref: NodeRef) -> Lookup {
+    let p = node_ref.point();
+    if p.kind() == PointKind::Redirect {
+        debug_assert_eq!(p.file_index(), node_ref.file_index());
+        // Some special assignments like TypeVars are defined on names, because they can also be
+        // inferred.
+        /*
+        return self.point_resolution_to_type_name_lookup(
+            self.resolve_point_without_narrowing(p.node_index())
+                .unwrap(),
+        );
+        */
+        let redirected_to = NodeRef::new(node_ref.file, p.node_index());
+        if let Some(specific) = redirected_to.point().maybe_specific() {
+            debug_assert!(
+                matches!(
+                    specific,
+                    Specific::InvalidTypeDefinition | Specific::AnyDueToError
+                ),
+                "{specific:?}",
+            );
+            return Lookup::UNKNOWN_REPORTED;
+        } else {
+            if redirected_to.point().kind() == PointKind::Redirect {
+                return load_cached_type(redirected_to);
+            }
+            return NameResolution::check_special_type_definition(redirected_to)
+                .unwrap_or_else(|| panic!("{redirected_to:?}"));
+        }
+    }
     match node_ref.complex().unwrap() {
         ComplexPoint::TypeAlias(a) => {
             if a.calculating() {
@@ -563,7 +604,6 @@ fn load_cached_type(node_ref: NodeRef) -> Lookup {
                 Lookup::T(TypeContent::TypeAlias(a))
             }
         }
-        ComplexPoint::TypeVarLike(t) => Lookup::TypeVarLike(t.clone()),
         _ => unreachable!("Expected an Alias or TypeVarLike, but received something weird"),
     }
 }

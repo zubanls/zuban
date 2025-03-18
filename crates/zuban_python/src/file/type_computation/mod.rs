@@ -3468,9 +3468,6 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                         }
                     } else if let Some(complex) = i_node_ref.complex() {
                         match complex {
-                            ComplexPoint::TypeVarLike(tvl) => {
-                                return Lookup::TypeVarLike(tvl.clone())
-                            }
                             ComplexPoint::Class(_) => {
                                 let c_node_ref = ClassNodeRef::from_node_ref(i_node_ref);
                                 return ensure_cached_class(c_node_ref);
