@@ -173,7 +173,15 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             inf.save_redirect(self.i_s, self.file, name_def.index());
         };
         let special = self.maybe_special_assignment_execution(expr)?;
-        if !self.file.points.get(name_def.index()).calculated() {
+        // At this point we only take care of special assignments like TypeVars, NewTypes, etc.
+        // This does not include typing.NamedTuple and typing.TypedDict executions, which are taken
+        // care of in normal alias calculation, because they need access to type vars and can in
+        // general create recursive types.
+        if self.file.points.get(name_def.index()).calculated() {
+            // The special assignment has been inferred with the normal inference and we simply set
+            // the correct alias below.
+            debug_assert!(self.file.points.get(assignment.index()).calculated());
+        } else {
             match special {
                 SpecialAssignmentKind::NewType(a) => assign(self.compute_new_type_assignment(
                     assignment,
@@ -207,7 +215,16 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                     &SimpleArgs::new(*self.i_s, self.file, a.primary_index, a.details),
                 )),
             }
+            // Since this sets the name def, we need to imitate the inference, which sets the name
+            // def as well. (see Inference::cache_assignment)
+            debug_assert!(!self.file.points.get(assignment.index()).calculated());
+            self.file.points.set(
+                assignment.index(),
+                Point::new_specific(Specific::Analyzed, Locality::Todo),
+            );
         };
+        // In all cases we now have assigned to the name def and want to assign to the type cache
+        // of the assignment to avoid checking this again and again.
         let cached_type_node_ref = assignment_type_node_ref(self.file, assignment);
         debug_assert!(
             !cached_type_node_ref.point().calculated(),
