@@ -169,43 +169,40 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         expr: Expression<'x>,
     ) -> Result<Lookup<'file, 'file>, CalculatingAliasType<'x>> {
         let assignment_node_ref = NodeRef::new(self.file, assignment.index());
-        debug_assert!(
-            !assignment_node_ref.point().calculating(),
-            "{}",
-            assignment.as_code()
-        );
         let assign = |inf: Inferred| {
-            if assignment_node_ref.point().calculated() {
-                return Err(CalculatingAliasType::Normal);
-            }
             inf.save_redirect(self.i_s, self.file, name_def.index());
-            Ok(
-                Self::check_special_type_definition(NodeRef::new(self.file, name_def.index()))
-                    .unwrap_or(Lookup::UNKNOWN_REPORTED),
-            )
         };
-        match self.maybe_special_assignment_execution(expr)? {
-            SpecialAssignmentKind::NewType(a) => assign(self.compute_new_type_assignment(
-                assignment,
-                &SimpleArgs::new(*self.i_s, self.file, a.primary_index, a.details),
-            )),
-            SpecialAssignmentKind::Enum(class, args) => assign(
-                self.compute_functional_enum_definition(
-                    class,
-                    &SimpleArgs::new(*self.i_s, self.file, args.primary_index, args.details),
-                )
-                .unwrap_or_else(Inferred::new_invalid_type_definition),
-            ),
-            SpecialAssignmentKind::CollectionsNamedTuple(a) => {
-                assign(self.compute_collections_named_tuple(
+        let special = self.maybe_special_assignment_execution(expr)?;
+        if !self.file.points.get(name_def.index()).calculated() {
+            match special {
+                SpecialAssignmentKind::NewType(a) => assign(self.compute_new_type_assignment(
                     assignment,
                     &SimpleArgs::new(*self.i_s, self.file, a.primary_index, a.details),
-                ))
+                )),
+                SpecialAssignmentKind::Enum(class, args) => assign(
+                    self.compute_functional_enum_definition(
+                        class,
+                        &SimpleArgs::new(*self.i_s, self.file, args.primary_index, args.details),
+                    )
+                    .unwrap_or_else(Inferred::new_invalid_type_definition),
+                ),
+                SpecialAssignmentKind::CollectionsNamedTuple(a) => {
+                    assign(self.compute_collections_named_tuple(
+                        assignment,
+                        &SimpleArgs::new(*self.i_s, self.file, a.primary_index, a.details),
+                    ))
+                }
+                SpecialAssignmentKind::Other => {
+                    return self
+                        .compute_special_type_definition(assignment, name_def)
+                        .ok_or(CalculatingAliasType::Normal)
+                }
             }
-            SpecialAssignmentKind::Other => self
-                .compute_special_type_definition(assignment, name_def)
-                .ok_or(CalculatingAliasType::Normal),
-        }
+        };
+        Ok(
+            Self::check_special_type_definition(NodeRef::new(self.file, name_def.index()))
+                .unwrap_or(Lookup::UNKNOWN_REPORTED),
+        )
     }
 
     fn compute_special_type_definition(
