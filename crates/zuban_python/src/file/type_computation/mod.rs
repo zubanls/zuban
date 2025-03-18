@@ -1,5 +1,6 @@
 mod alias;
 mod class;
+mod enum_;
 mod named_tuple;
 mod new_type;
 mod type_var_likes;

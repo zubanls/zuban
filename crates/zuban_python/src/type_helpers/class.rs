@@ -29,10 +29,10 @@ use crate::{
     },
     node_ref::NodeRef,
     type_::{
-        execute_functional_enum, AnyCause, CallableContent, CallableLike, ClassGenerics, Dataclass,
-        FormatStyle, FunctionOverload, GenericClass, GenericsList, LookupResult, NamedTuple,
-        NeverCause, ParamSpecArg, ParamSpecUsage, Tuple, TupleArgs, Type, TypeVarLike,
-        TypeVarLikeUsage, TypeVarLikes, TypedDict, TypedDictGenerics, Variance,
+        AnyCause, CallableContent, CallableLike, ClassGenerics, Dataclass, FormatStyle,
+        FunctionOverload, GenericClass, GenericsList, LookupResult, NamedTuple, NeverCause,
+        ParamSpecArg, ParamSpecUsage, Tuple, TupleArgs, Type, TypeVarLike, TypeVarLikeUsage,
+        TypeVarLikes, TypedDict, TypedDictGenerics, Variance,
     },
     utils::debug_indent,
 };
@@ -1281,10 +1281,14 @@ impl<'db: 'a, 'a> Class<'a> {
             ClassKind::Enum if self.node_ref.as_link() != i_s.db.python_state.enum_auto_link() => {
                 // For whatever reason, auto is special, because it is somehow defined as an enum as
                 // well, which is very weird.
-                return ClassExecutionResult::Inferred(
-                    execute_functional_enum(i_s, *self, args)
-                        .unwrap_or_else(Inferred::new_invalid_type_definition),
-                );
+
+                if let Some(file) = args.in_file() {
+                    return ClassExecutionResult::Inferred(
+                        file.name_resolution_for_types(i_s)
+                            .compute_functional_enum_definition(*self, args)
+                            .unwrap_or_else(Inferred::new_invalid_type_definition),
+                    );
+                }
             }
             _ => (),
         }
