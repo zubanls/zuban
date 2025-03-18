@@ -3456,16 +3456,6 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                         if let Some(tc) = check_special_case(specific) {
                             return Lookup::T(tc);
                         }
-                        if matches!(
-                            specific,
-                            Specific::TypingTypeVarClass
-                                | Specific::TypingTypeVarTupleClass
-                                | Specific::TypingParamSpecClass
-                        ) {
-                            return Lookup::T(TypeContent::InvalidVariable(
-                                InvalidVariableType::Variable(i_node_ref),
-                            ));
-                        }
                     } else if let Some(complex) = i_node_ref.complex() {
                         match complex {
                             ComplexPoint::Class(_) => {

@@ -7,8 +7,6 @@ testOverloadPossibleOverlapWithArgsAndKwargs
 flow_analysis_base_class_calculation_should_not_lead_to_recursion
 
 testGenericFineCallableBoundDeleted-only_when_cache
-testInvalidTypeInTypeApplication
-invalid-type-var-types
 testDefaultDict
 # TODO PointResolution::GlobalOrNonlocal
 testTypedDictUpdateNonRecursiveToRecursiveCoarse
