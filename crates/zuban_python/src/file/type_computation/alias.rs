@@ -326,7 +326,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         let PrimaryContent::Execution(details) = primary.second() else {
             return Err(CalculatingAliasType::Normal);
         };
-        match self.lookup_primary_or_atom_type(primary.first()) {
+        match self.lookup_special_primary_or_atom_type(primary.first()) {
             Some(Lookup::T(TypeContent::SpecialCase(Specific::TypingTypedDict))) => Err(
                 CalculatingAliasType::TypedDict(ArgsContent::new(primary.index(), details)),
             ),

@@ -3522,13 +3522,16 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         Lookup::T(TypeContent::InvalidVariable(InvalidVariableType::Other))
     }
 
-    fn lookup_primary_or_atom_type(&self, p: PrimaryOrAtom) -> Option<Lookup<'db, 'db>> {
+    fn lookup_special_primary_or_atom_type(&self, p: PrimaryOrAtom) -> Option<Lookup<'db, 'db>> {
         match p {
             PrimaryOrAtom::Primary(primary) => match primary.second() {
                 PrimaryContent::Attribute(name) => {
-                    match self.lookup_primary_or_atom_type(primary.first())? {
+                    match self.lookup_special_primary_or_atom_type(primary.first())? {
                         Lookup::T(TypeContent::Module(f)) => {
-                            Some(self.with_new_file(f).lookup_type_name(name))
+                            let (pr, _) = self
+                                .with_new_file(f)
+                                .resolve_module_access(name.as_str(), |_| ())?;
+                            Some(self.point_resolution_to_type_name_lookup(pr))
                         }
                         _ => None,
                     }
