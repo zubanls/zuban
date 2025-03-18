@@ -196,6 +196,12 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 )
                 .unwrap_or_else(Inferred::new_invalid_type_definition),
             ),
+            SpecialAssignmentKind::CollectionsNamedTuple(a) => {
+                assign(self.compute_collections_named_tuple(
+                    assignment,
+                    &SimpleArgs::new(*self.i_s, self.file, a.primary_index, a.details),
+                ))
+            }
             SpecialAssignmentKind::Other => self
                 .compute_special_type_definition(assignment, name_def)
                 .ok_or(CalculatingAliasType::Normal),
@@ -321,6 +327,11 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             Some(Lookup::T(TypeContent::SpecialCase(Specific::TypingNewType))) => Ok(
                 SpecialAssignmentKind::NewType(ArgsContent::new(primary.index(), details)),
             ),
+            Some(Lookup::T(TypeContent::SpecialCase(Specific::CollectionsNamedTuple))) => {
+                Ok(SpecialAssignmentKind::CollectionsNamedTuple(
+                    ArgsContent::new(primary.index(), details),
+                ))
+            }
             Some(Lookup::T(TypeContent::Class { node_ref, .. }))
                 if node_ref.use_cached_class_infos(self.i_s.db).class_kind == ClassKind::Enum =>
             {
@@ -617,6 +628,7 @@ enum CalculatingAliasType<'tree> {
 enum SpecialAssignmentKind<'db, 'tree> {
     NewType(ArgsContent<'tree>),
     Enum(Class<'db>, ArgsContent<'tree>),
+    CollectionsNamedTuple(ArgsContent<'tree>),
     Other,
 }
 
