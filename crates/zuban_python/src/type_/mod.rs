@@ -684,7 +684,7 @@ impl Type {
             },
             Type::Self_ => i_s.current_class().unwrap(),
             Type::TypedDict(_) => i_s.db.python_state.typed_dict_class(),
-            Type::NewType(n) => return n.type_(i_s).inner_generic_class(i_s),
+            Type::NewType(n) => return n.type_.inner_generic_class(i_s),
             _ => return None,
         })
     }
@@ -1083,7 +1083,7 @@ impl Type {
             Self::Tuple(content) => content.args.has_any_internal(i_s, already_checked),
             Self::Callable(content) => content.has_any_internal(i_s, already_checked),
             Self::Any(_) => true,
-            Self::NewType(n) => n.type_(i_s).has_any(i_s),
+            Self::NewType(n) => n.type_.has_any(i_s),
             Self::RecursiveType(recursive_alias) => {
                 if let Some(generics) = &recursive_alias.generics {
                     if generics.has_any_internal(i_s, already_checked) {
@@ -1693,10 +1693,6 @@ pub struct NewType {
 impl NewType {
     pub fn new(name_string: PointLink, type_: Type) -> Self {
         Self { name_string, type_ }
-    }
-
-    pub fn type_(&self, i_s: &InferenceState) -> &Type {
-        &self.type_
     }
 
     pub fn format(&self, format_data: &FormatData) -> Box<str> {

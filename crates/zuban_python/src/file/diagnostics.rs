@@ -160,9 +160,6 @@ impl Inference<'_, '_, '_> {
             for complex_point in unsafe { self.file.complex_points.iter() } {
                 // Make sure types are calculated and the errors are generated.
                 match complex_point {
-                    ComplexPoint::NewTypeDefinition(n) => {
-                        n.type_(self.i_s);
-                    }
                     ComplexPoint::TypeVarLike(tvl) => {
                         tvl.ensure_calculated_types(self.i_s.db);
                     }

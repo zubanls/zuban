@@ -329,8 +329,7 @@ impl Type {
             ),
             Type::Never(_) => (),
             Type::NewType(new_type) => {
-                let t = new_type.type_(i_s);
-                if let Type::Class(c) = t {
+                if let Type::Class(c) = &new_type.type_ {
                     let l = Instance::new(c.class(i_s.db), None).lookup(
                         i_s,
                         name,
@@ -340,7 +339,7 @@ impl Type {
                     );
                     callable(self, l)
                 } else {
-                    t.run_after_lookup_on_each_union_member(
+                    new_type.type_.run_after_lookup_on_each_union_member(
                         i_s,
                         None,
                         from_file,
@@ -555,13 +554,11 @@ impl Type {
                     ),
                 _ => not_possible(true),
             },
-            Type::NewType(new_type) => new_type.type_(i_s).get_item_internal(
-                i_s,
-                None,
-                slice_type,
-                result_context,
-                add_issue,
-            ),
+            Type::NewType(new_type) => {
+                new_type
+                    .type_
+                    .get_item_internal(i_s, None, slice_type, result_context, add_issue)
+            }
             Type::RecursiveType(r) => r.calculated_type(i_s.db).get_item_internal(
                 i_s,
                 None,
@@ -715,7 +712,7 @@ impl Type {
                     IteratorContent::Any(AnyCause::FromError)
                 }
             },
-            Type::NewType(n) => n.type_(i_s).iter(i_s, infos),
+            Type::NewType(n) => n.type_.iter(i_s, infos),
             Type::Self_ => Instance::new(i_s.current_class().unwrap(), None).iter(i_s, self, infos),
             Type::RecursiveType(rec) => rec.calculated_type(i_s.db).iter(i_s, infos),
             Type::Intersection(i) => i.iter(i_s, infos),
@@ -1098,7 +1095,7 @@ impl NewType {
         args: &dyn Args<'db>,
         on_type_error: OnTypeError,
     ) {
-        let t = self.type_(i_s);
+        let t = &self.type_;
         let Some(inf) = args.maybe_single_positional_arg(i_s, &mut ResultContext::new_known(t))
         else {
             args.add_issue(

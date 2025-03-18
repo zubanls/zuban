@@ -2099,10 +2099,9 @@ impl<'db: 'slf, 'slf> Inferred {
                                 return Inferred::new_any_from_error();
                             }
                             ComplexPoint::NewTypeDefinition(new_type) => {
-                                let t = new_type.type_(i_s);
                                 let Some(inf) = args.maybe_single_positional_arg(
                                     i_s,
-                                    &mut ResultContext::new_known(t),
+                                    &mut ResultContext::new_known(&new_type.type_),
                                 ) else {
                                     args.add_issue(
                                         i_s,
@@ -2122,7 +2121,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 };
                                 let other = inf.as_cow_type(i_s);
                                 if let Match::False { ref reason, .. } =
-                                    t.is_simple_super_type_of(i_s, &other)
+                                    new_type.type_.is_simple_super_type_of(i_s, &other)
                                 {
                                     (on_type_error.callback)(
                                         i_s,
@@ -2136,7 +2135,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                             matcher: None,
                                             reason,
                                             got: GotType::Type(&other),
-                                            expected: t,
+                                            expected: &new_type.type_,
                                         },
                                     );
                                 }

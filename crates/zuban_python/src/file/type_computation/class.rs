@@ -1632,7 +1632,7 @@ fn to_base_kind(i_s: &InferenceState, t: &Type) -> BaseKind {
         Type::TypedDict(d) => BaseKind::TypedDict(d.clone()),
         Type::NamedTuple(nt) => BaseKind::NamedTuple(nt.clone()),
         Type::Enum(_) => BaseKind::Enum,
-        Type::NewType(n) => to_base_kind(i_s, n.type_(i_s)),
+        Type::NewType(n) => to_base_kind(i_s, &n.type_),
         _ => unreachable!("{t:?}"),
     }
 }

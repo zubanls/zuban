@@ -450,8 +450,7 @@ impl Type {
                 })
             }
             Type::NewType(n2) if variance == Variance::Covariant => {
-                let t = n2.type_(i_s);
-                return self.matches(i_s, matcher, t, variance);
+                return self.matches(i_s, matcher, &n2.type_, variance);
             }
             Type::Never(_) if variance == Variance::Covariant => return Match::new_true(), // Never is assignable to anything
             Type::Self_ if variance == Variance::Covariant => {
