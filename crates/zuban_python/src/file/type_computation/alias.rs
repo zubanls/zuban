@@ -169,9 +169,6 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         name_def: NameDef,
         expr: Expression<'x>,
     ) -> Result<Lookup<'file, 'file>, CalculatingAliasType<'x>> {
-        let assign = |inf: Inferred| {
-            inf.save_redirect(self.i_s, self.file, name_def.index());
-        };
         let special = self.maybe_special_assignment_execution(expr)?;
         // At this point we only take care of special assignments like TypeVars,
         // collection.namedtuple, etc.
@@ -183,37 +180,31 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             // the correct alias below.
             debug_assert!(self.file.points.get(assignment.index()).calculated());
         } else {
-            match special {
-                SpecialAssignmentKind::Enum(class, args) => assign(
-                    self.compute_functional_enum_definition(
+            let inf = match special {
+                SpecialAssignmentKind::Enum(class, args) => self
+                    .compute_functional_enum_definition(
                         class,
                         &SimpleArgs::new(*self.i_s, self.file, args.primary_index, args.details),
                     )
                     .unwrap_or_else(Inferred::new_invalid_type_definition),
+                SpecialAssignmentKind::CollectionsNamedTuple(a) => self
+                    .compute_collections_named_tuple(&SimpleArgs::new(
+                        *self.i_s,
+                        self.file,
+                        a.primary_index,
+                        a.details,
+                    )),
+                SpecialAssignmentKind::TypeVar(a) => self.compute_type_var_assignment(
+                    &SimpleArgs::new(*self.i_s, self.file, a.primary_index, a.details),
                 ),
-                SpecialAssignmentKind::CollectionsNamedTuple(a) => {
-                    assign(self.compute_collections_named_tuple(&SimpleArgs::new(
-                        *self.i_s,
-                        self.file,
-                        a.primary_index,
-                        a.details,
-                    )))
-                }
-                SpecialAssignmentKind::TypeVar(a) => assign(self.compute_type_var_assignment(
+                SpecialAssignmentKind::TypeVarTuple(a) => self.compute_type_var_tuple_assignment(
                     &SimpleArgs::new(*self.i_s, self.file, a.primary_index, a.details),
-                )),
-                SpecialAssignmentKind::TypeVarTuple(a) => {
-                    assign(self.compute_type_var_tuple_assignment(&SimpleArgs::new(
-                        *self.i_s,
-                        self.file,
-                        a.primary_index,
-                        a.details,
-                    )))
-                }
-                SpecialAssignmentKind::ParamSpec(a) => assign(self.compute_param_spec_assignment(
+                ),
+                SpecialAssignmentKind::ParamSpec(a) => self.compute_param_spec_assignment(
                     &SimpleArgs::new(*self.i_s, self.file, a.primary_index, a.details),
-                )),
-            }
+                ),
+            };
+            inf.save_redirect(self.i_s, self.file, name_def.index());
             // Since this sets the name def, we need to imitate the inference, which sets the name
             // def as well. (see Inference::cache_assignment)
             debug_assert!(!self.file.points.get(assignment.index()).calculated());
