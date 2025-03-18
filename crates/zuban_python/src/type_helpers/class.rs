@@ -1263,13 +1263,6 @@ impl<'db: 'a, 'a> Class<'a> {
         on_type_error: OnTypeError,
         from_type_type: bool,
     ) -> ClassExecutionResult {
-        let had_type_error = Cell::new(false);
-        let d = |_: &FunctionOrCallable, _: &Database| {
-            had_type_error.set(true);
-            Some(format!("\"{}\"", self.name()))
-        };
-        let on_type_error = on_type_error.with_custom_generate_diagnostic_string(&d);
-
         let class_infos = self.use_cached_class_infos(i_s.db);
         if !class_infos.abstract_attributes.is_empty()
             && !class_infos.incomplete_mro
@@ -1283,20 +1276,11 @@ impl<'db: 'a, 'a> Class<'a> {
                 },
             )
         }
+
         match &class_infos.class_kind {
             ClassKind::Enum if self.node_ref.as_link() != i_s.db.python_state.enum_auto_link() => {
                 // For whatever reason, auto is special, because it is somehow defined as an enum as
                 // well, which is very weird.
-                let metaclass =
-                    Class::from_non_generic_link(i_s.db, i_s.db.python_state.enum_meta_link())
-                        .instance();
-                metaclass
-                    .type_lookup(i_s, |issue| args.add_issue(i_s, issue), "__call__")
-                    .into_inferred()
-                    .execute_with_details(i_s, args, result_context, on_type_error);
-                if had_type_error.get() {
-                    return ClassExecutionResult::Inferred(Inferred::new_any_from_error());
-                }
                 return ClassExecutionResult::Inferred(
                     execute_functional_enum(i_s, *self, args)
                         .unwrap_or_else(Inferred::new_invalid_type_definition),
@@ -1305,6 +1289,8 @@ impl<'db: 'a, 'a> Class<'a> {
             _ => (),
         }
 
+        let d = |_: &FunctionOrCallable, _: &Database| Some(format!("\"{}\"", self.name()));
+        let on_type_error = on_type_error.with_custom_generate_diagnostic_string(&d);
         let constructor = self.find_relevant_constructor(i_s);
         if constructor.is_new {
             let result = constructor

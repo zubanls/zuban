@@ -392,7 +392,7 @@ pub(crate) enum IssueKind {
     MultipleStarredExpressionsInAssignment,
 
     EnumFirstArgMustBeString,
-    EnumInvalidSecondArgument,
+    EnumInvalidSecondArgument { enum_name: Box<str> },
     EnumNeedsAtLeastOneItem { name: Box<str> },
     EnumWithTupleOrListExpectsStringPairs { name: Box<str> },
     EnumWithDictRequiresStringLiterals { name: Box<str> },
@@ -1042,9 +1042,10 @@ impl<'db> Diagnostic<'db> {
 
             EnumFirstArgMustBeString =>
                 "Enum() expects a string literal as the first argument".to_string(),
-            EnumInvalidSecondArgument =>
-                "Second argument of Enum() must be string, tuple, list or dict \
-                 literal for mypy to determine Enum members".to_string(),
+            EnumInvalidSecondArgument { enum_name } => format!(
+                "Second argument of {enum_name}() must be string, tuple, list or dict \
+                 literal for mypy to determine Enum members"
+            ),
             EnumNeedsAtLeastOneItem { name } => format!(
                 "{name}() needs at least one item"
             ),

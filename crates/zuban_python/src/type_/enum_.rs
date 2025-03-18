@@ -398,9 +398,13 @@ pub(crate) fn execute_functional_enum<'db>(
                     ));
                 } else if fields_infos.is_none() {
                     fields_infos = Some((positional.node_ref, expr));
+                } else {
+                    args.add_issue(
+                        i_s,
+                        IssueKind::TooManyArguments(format!(" for {}()", class.name()).into()),
+                    );
+                    return None;
                 }
-                // All the other arguments are not relevant here and were checked by checking
-                // EnumMeta.__call__.
             }
             ArgKind::Keyword(kw) => match kw.key {
                 "value" => {
@@ -411,8 +415,16 @@ pub(crate) fn execute_functional_enum<'db>(
                     ))
                 }
                 "names" => fields_infos = Some((kw.node_ref, kw.expression)),
-                // Keyword names were checked by checking EnumMeta.__call__
-                _ => (),
+                "module" | "qualname" | "type" | "start" | "boundary" => (), // TODO type check these
+                _ => {
+                    kw.add_issue(
+                        i_s,
+                        IssueKind::ArgumentIssue(
+                            format!(r#"Unexpected keyword argument "{}""#, kw.key).into(),
+                        ),
+                    );
+                    return None;
+                }
             },
             _ => {
                 args.add_issue(
@@ -425,9 +437,13 @@ pub(crate) fn execute_functional_enum<'db>(
             }
         }
     }
-    let name_infos = name_infos.unwrap();
-    let fields_infos = fields_infos.unwrap();
-
+    let Some(name_infos) = name_infos else {
+        args.add_issue(
+            i_s,
+            IssueKind::TooFewArguments(format!(" for {}()", class.name()).into()),
+        );
+        return None;
+    };
     let Type::Literal(Literal {
         kind: LiteralKind::String(name),
         ..
@@ -438,6 +454,15 @@ pub(crate) fn execute_functional_enum<'db>(
             .add_issue(i_s, IssueKind::EnumFirstArgMustBeString);
         return None;
     };
+
+    let Some(fields_infos) = fields_infos else {
+        args.add_issue(
+            i_s,
+            IssueKind::TooFewArguments(format!(" for {}()", class.name()).into()),
+        );
+        return None;
+    };
+
     if let Some(name_def) = name_infos.2 {
         let n = name.as_str(i_s.db);
         if name_def.as_code() != n {
@@ -587,7 +612,12 @@ fn gather_functional_enum_members(
                     &s,
                 ),
                 _ => {
-                    node_ref.add_issue(i_s, IssueKind::EnumInvalidSecondArgument);
+                    node_ref.add_issue(
+                        i_s,
+                        IssueKind::EnumInvalidSecondArgument {
+                            enum_name: class.name().into(),
+                        },
+                    );
                     return None;
                 }
             }
@@ -640,7 +670,12 @@ fn gather_functional_enum_members(
                     return Some(members.into_boxed_slice());
                 }
             }
-            node_ref.add_issue(i_s, IssueKind::EnumInvalidSecondArgument);
+            node_ref.add_issue(
+                i_s,
+                IssueKind::EnumInvalidSecondArgument {
+                    enum_name: class.name().into(),
+                },
+            );
             return None;
         }
     };
