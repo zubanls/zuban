@@ -4587,10 +4587,7 @@ fn check_special_case(specific: Specific) -> Option<TypeContent<'static, 'static
         | Specific::ModuleNotFound
         | Specific::AnnotationOrTypeCommentSimpleClassInstance
         | Specific::AnnotationOrTypeCommentWithTypeVars
-        | Specific::AnnotationOrTypeCommentWithoutTypeVars
-        | Specific::TypingTypeVarClass
-        | Specific::TypingTypeVarTupleClass
-        | Specific::TypingParamSpecClass => return None,
+        | Specific::AnnotationOrTypeCommentWithoutTypeVars => return None,
         _ => TypeContent::SpecialCase(specific),
     })
 }

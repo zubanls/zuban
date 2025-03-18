@@ -169,7 +169,6 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         name_def: NameDef,
         expr: Expression<'x>,
     ) -> Result<Lookup<'file, 'file>, CalculatingAliasType<'x>> {
-        let assignment_node_ref = NodeRef::new(self.file, assignment.index());
         let assign = |inf: Inferred| {
             inf.save_redirect(self.i_s, self.file, name_def.index());
         };
@@ -193,53 +192,33 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                         &SimpleArgs::new(*self.i_s, self.file, a.primary_index, a.details),
                     ))
                 }
-                SpecialAssignmentKind::Other => {
-                    return self
-                        .compute_special_type_definition(assignment, name_def)
-                        .ok_or(CalculatingAliasType::Normal)
+                SpecialAssignmentKind::TypeVar(a) => assign(self.compute_type_var_assignment(
+                    assignment,
+                    &SimpleArgs::new(*self.i_s, self.file, a.primary_index, a.details),
+                )),
+                SpecialAssignmentKind::TypeVarTuple(a) => {
+                    assign(self.compute_type_var_tuple_assignment(
+                        assignment,
+                        &SimpleArgs::new(*self.i_s, self.file, a.primary_index, a.details),
+                    ))
                 }
+                SpecialAssignmentKind::ParamSpec(a) => assign(self.compute_param_spec_assignment(
+                    assignment,
+                    &SimpleArgs::new(*self.i_s, self.file, a.primary_index, a.details),
+                )),
             }
-            let cached_type_node_ref = assignment_type_node_ref(self.file, assignment);
-            debug_assert!(
-                !cached_type_node_ref.point().calculated(),
-                "{cached_type_node_ref:?}"
-            );
-            cached_type_node_ref.set_point(Point::new_redirect(
-                self.file.file_index,
-                name_def.index(),
-                Locality::Todo,
-            ));
-            return Ok(self.compute_type_assignment_internal(assignment, false));
         };
-        Ok(
-            Self::check_special_type_definition(NodeRef::new(self.file, name_def.index()))
-                .unwrap_or(Lookup::UNKNOWN_REPORTED),
-        )
-    }
-
-    fn compute_special_type_definition(
-        &self,
-        assignment: Assignment,
-        name_def: NameDef,
-    ) -> Option<Lookup<'db, 'db>> {
-        // We use inference from here on, because we know this is not really infering crazy stuff,
-        // it's just running the normal initalizers for our special cases.
-        // Inference is not a good idea to run otherwise, because it uses a lot of narrowing.
-        debug!(
-            "Infer special definition for assignment {:?}",
-            assignment.as_code()
+        let cached_type_node_ref = assignment_type_node_ref(self.file, assignment);
+        debug_assert!(
+            !cached_type_node_ref.point().calculated(),
+            "{cached_type_node_ref:?}"
         );
-        let inference = self.file.inference(self.i_s);
-        inference.cache_assignment(assignment);
-        let inf = inference.check_point_cache(name_def.index())?;
-        let saved_node_ref = inf.maybe_saved_node_ref(self.i_s.db)?;
-        if matches!(
-            saved_node_ref.point().maybe_specific(),
-            Some(Specific::InvalidTypeDefinition)
-        ) {
-            return Some(Lookup::UNKNOWN_REPORTED);
-        }
-        Self::check_special_type_definition(saved_node_ref)
+        cached_type_node_ref.set_point(Point::new_redirect(
+            self.file.file_index,
+            name_def.index(),
+            Locality::Todo,
+        ));
+        return Ok(self.compute_type_assignment_internal(assignment, false));
     }
 
     pub(super) fn check_special_type_definition(node_ref: NodeRef) -> Option<Lookup> {
@@ -327,6 +306,15 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             return Err(CalculatingAliasType::Normal);
         };
         match self.lookup_special_primary_or_atom_type(primary.first()) {
+            Some(Lookup::T(TypeContent::SpecialCase(Specific::TypingTypeVarClass))) => Ok(
+                SpecialAssignmentKind::TypeVar(ArgsContent::new(primary.index(), details)),
+            ),
+            Some(Lookup::T(TypeContent::SpecialCase(Specific::TypingTypeVarTupleClass))) => Ok(
+                SpecialAssignmentKind::TypeVarTuple(ArgsContent::new(primary.index(), details)),
+            ),
+            Some(Lookup::T(TypeContent::SpecialCase(Specific::TypingParamSpecClass))) => Ok(
+                SpecialAssignmentKind::ParamSpec(ArgsContent::new(primary.index(), details)),
+            ),
             Some(Lookup::T(TypeContent::SpecialCase(Specific::TypingTypedDict))) => Err(
                 CalculatingAliasType::TypedDict(ArgsContent::new(primary.index(), details)),
             ),
@@ -349,7 +337,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                     SpecialAssignmentKind::Enum(class, ArgsContent::new(primary.index(), details))
                 })
             }
-            _ => Ok(SpecialAssignmentKind::Other),
+            _ => Err(CalculatingAliasType::Normal),
         }
     }
 
@@ -666,7 +654,9 @@ enum SpecialAssignmentKind<'db, 'tree> {
     NewType(ArgsContent<'tree>),
     Enum(Class<'db>, ArgsContent<'tree>),
     CollectionsNamedTuple(ArgsContent<'tree>),
-    Other,
+    TypeVar(ArgsContent<'tree>),
+    TypeVarTuple(ArgsContent<'tree>),
+    ParamSpec(ArgsContent<'tree>),
 }
 
 struct ArgsContent<'tree> {
