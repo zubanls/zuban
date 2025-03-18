@@ -302,18 +302,12 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             return Err(CalculatingAliasType::Normal);
         };
         match self.lookup_primary_or_atom_type(primary.first()) {
-            Some(Lookup::T(TypeContent::SpecialCase(Specific::TypingTypedDict))) => {
-                Err(CalculatingAliasType::TypedDict {
-                    primary_index: primary.index(),
-                    details,
-                })
-            }
-            Some(Lookup::T(TypeContent::SpecialCase(Specific::TypingNamedTuple))) => {
-                Err(CalculatingAliasType::NamedTuple {
-                    primary_index: primary.index(),
-                    details,
-                })
-            }
+            Some(Lookup::T(TypeContent::SpecialCase(Specific::TypingTypedDict))) => Err(
+                CalculatingAliasType::TypedDict(ArgsContent::new(primary.index(), details)),
+            ),
+            Some(Lookup::T(TypeContent::SpecialCase(Specific::TypingNamedTuple))) => Err(
+                CalculatingAliasType::NamedTuple(ArgsContent::new(primary.index(), details)),
+            ),
             Some(Lookup::T(TypeContent::SpecialCase(Specific::TypingNewType))) => Ok(
                 SpecialAssignmentKind::NewType(ArgsContent::new(primary.index(), details)),
             ),
@@ -334,9 +328,8 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             CalculatingAliasType::Normal => {
                 TypeVarFinder::find_alias_type_vars(self.i_s, self.file, expr)
             }
-            CalculatingAliasType::TypedDict { details, .. }
-            | CalculatingAliasType::NamedTuple { details, .. } => {
-                if let ArgumentsDetails::Node(n) = details {
+            CalculatingAliasType::TypedDict(args) | CalculatingAliasType::NamedTuple(args) => {
+                if let ArgumentsDetails::Node(n) = args.details {
                     // Skip the name
                     if let Some(arg) = n.iter().nth(1) {
                         if let Argument::Positional(pos) = arg {
@@ -457,14 +450,11 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                     }
                 };
             }
-            CalculatingAliasType::TypedDict {
-                primary_index,
-                details,
-            } => {
+            CalculatingAliasType::TypedDict(args) => {
                 match new_typed_dict_with_execution_syntax(
                     self.i_s,
                     &mut comp,
-                    &SimpleArgs::new(*self.i_s, self.file, primary_index, details),
+                    &SimpleArgs::new(*self.i_s, self.file, args.primary_index, args.details),
                 ) {
                     Some((name, members, _)) => {
                         alias.set_valid(
@@ -480,14 +470,11 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                     None => alias.set_valid(Type::ERROR, false),
                 }
             }
-            CalculatingAliasType::NamedTuple {
-                primary_index,
-                details,
-            } => {
+            CalculatingAliasType::NamedTuple(args) => {
                 match new_typing_named_tuple_internal(
                     self.i_s,
                     &mut comp,
-                    &SimpleArgs::new(*self.i_s, self.file, primary_index, details),
+                    &SimpleArgs::new(*self.i_s, self.file, args.primary_index, args.details),
                 ) {
                     Some((name, params)) => {
                         alias.set_valid(
@@ -603,16 +590,10 @@ fn is_invalid_recursive_alias(db: &Database, seen: &SeenRecursiveAliases, t: &Ty
             false
         })
 }
-enum CalculatingAliasType<'x> {
+enum CalculatingAliasType<'tree> {
     Normal,
-    TypedDict {
-        primary_index: NodeIndex,
-        details: ArgumentsDetails<'x>,
-    },
-    NamedTuple {
-        primary_index: NodeIndex,
-        details: ArgumentsDetails<'x>,
-    },
+    TypedDict(ArgsContent<'tree>),
+    NamedTuple(ArgsContent<'tree>),
 }
 
 enum SpecialAssignmentKind<'tree> {
