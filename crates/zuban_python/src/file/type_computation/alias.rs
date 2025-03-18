@@ -173,19 +173,17 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             inf.save_redirect(self.i_s, self.file, name_def.index());
         };
         let special = self.maybe_special_assignment_execution(expr)?;
-        // At this point we only take care of special assignments like TypeVars, NewTypes, etc.
-        // This does not include typing.NamedTuple and typing.TypedDict executions, which are taken
-        // care of in normal alias calculation, because they need access to type vars and can in
-        // general create recursive types.
+        // At this point we only take care of special assignments like TypeVars,
+        // collection.namedtuple, etc.
+        // This does not include NamedTuple, NewType and TypedDict executions, which are taken care
+        // of in normal alias calculation, because they need access to type vars and can in general
+        // create recursive types.
         if self.file.points.get(name_def.index()).calculated() {
             // The special assignment has been inferred with the normal inference and we simply set
             // the correct alias below.
             debug_assert!(self.file.points.get(assignment.index()).calculated());
         } else {
             match special {
-                SpecialAssignmentKind::NewType(a) => assign(self.compute_new_type_assignment(
-                    &SimpleArgs::new(*self.i_s, self.file, a.primary_index, a.details),
-                )),
                 SpecialAssignmentKind::Enum(class, args) => assign(
                     self.compute_functional_enum_definition(
                         class,
@@ -271,7 +269,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
     ) -> Inferred {
         debug_assert!(matches!(
             specific,
-            Specific::TypingTypedDict | Specific::TypingNamedTuple
+            Specific::TypingTypedDict | Specific::TypingNamedTuple | Specific::TypingNewType
         ));
         match self.compute_type_assignment(assignment) {
             Lookup::T(TypeContent::TypeAlias(ta)) => {
@@ -291,6 +289,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                         },
                     ),
                     Specific::TypingNamedTuple => todo!(),
+                    Specific::TypingNewType => todo!(),
                     _ => unreachable!(),
                 }
                 Inferred::new_any_from_error()
@@ -330,8 +329,8 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             Some(Lookup::T(TypeContent::SpecialCase(Specific::TypingNamedTuple))) => Err(
                 CalculatingAliasType::NamedTuple(ArgsContent::new(primary.index(), details)),
             ),
-            Some(Lookup::T(TypeContent::SpecialCase(Specific::TypingNewType))) => Ok(
-                SpecialAssignmentKind::NewType(ArgsContent::new(primary.index(), details)),
+            Some(Lookup::T(TypeContent::SpecialCase(Specific::TypingNewType))) => Err(
+                CalculatingAliasType::NewType(ArgsContent::new(primary.index(), details)),
             ),
             Some(Lookup::T(TypeContent::SpecialCase(Specific::CollectionsNamedTuple))) => {
                 Ok(SpecialAssignmentKind::CollectionsNamedTuple(
@@ -363,7 +362,9 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             CalculatingAliasType::Normal => {
                 TypeVarFinder::find_alias_type_vars(self.i_s, self.file, expr)
             }
-            CalculatingAliasType::TypedDict(args) | CalculatingAliasType::NamedTuple(args) => {
+            CalculatingAliasType::TypedDict(args)
+            | CalculatingAliasType::NamedTuple(args)
+            | CalculatingAliasType::NewType(args) => {
                 if let ArgumentsDetails::Node(n) = args.details {
                     // Skip the name
                     if let Some(arg) = n.iter().nth(1) {
@@ -413,7 +414,8 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             match &origin {
                 CalculatingAliasType::Normal => TypeComputationOrigin::TypeAlias,
                 CalculatingAliasType::TypedDict { .. } => TypeComputationOrigin::TypedDictMember,
-                CalculatingAliasType::NamedTuple { .. } => TypeComputationOrigin::NamedTupleMember,
+                CalculatingAliasType::NamedTuple(_) => TypeComputationOrigin::NamedTupleMember,
+                CalculatingAliasType::NewType(_) => TypeComputationOrigin::Other,
             },
         );
         let ComplexPoint::TypeAlias(alias) = cached_type_node_ref.complex().unwrap() else {
@@ -525,6 +527,14 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                     None => alias.set_valid(Type::ERROR, false),
                 }
             }
+            CalculatingAliasType::NewType(a) => match comp.compute_new_type_assignment(
+                &SimpleArgs::new(*self.i_s, self.file, a.primary_index, a.details),
+            ) {
+                Some(new_type) => {
+                    alias.set_valid(Type::NewType(Rc::new(new_type)), comp.is_recursive_alias);
+                }
+                None => alias.set_valid(Type::ERROR, false),
+            },
         };
         debug!(
             "Alias {}={} on #{} is valid? {}",
@@ -657,10 +667,10 @@ enum CalculatingAliasType<'tree> {
     Normal,
     TypedDict(ArgsContent<'tree>),
     NamedTuple(ArgsContent<'tree>),
+    NewType(ArgsContent<'tree>),
 }
 
 enum SpecialAssignmentKind<'db, 'tree> {
-    NewType(ArgsContent<'tree>),
     Enum(Class<'db>, ArgsContent<'tree>),
     CollectionsNamedTuple(ArgsContent<'tree>),
     TypeVar(ArgsContent<'tree>),

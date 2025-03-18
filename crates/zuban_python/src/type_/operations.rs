@@ -5,7 +5,7 @@ use super::{
     lookup_on_dataclass_type, lookup_on_enum_class, lookup_on_enum_instance,
     lookup_on_enum_member_instance, lookup_on_typed_dict,
     tuple::{lookup_on_tuple, lookup_tuple_magic_methods},
-    AnyCause, DataclassTransformObj, LookupResult, Type, TypeVarKind,
+    AnyCause, DataclassTransformObj, LookupResult, NewType, Type, TypeVarKind,
 };
 use crate::{
     arguments::{Args, NoArgs},
@@ -17,8 +17,8 @@ use crate::{
     inference_state::InferenceState,
     inferred::{AttributeKind, Inferred},
     matching::{
-        calculate_callable_type_vars_and_return, IteratorContent, LookupKind, OnLookupError,
-        OnTypeError, ResultContext,
+        calculate_callable_type_vars_and_return, ErrorTypes, GotType, IteratorContent, LookupKind,
+        Match, OnLookupError, OnTypeError, ResultContext,
     },
     node_ref::NodeRef,
     recoverable_error,
@@ -1021,8 +1021,8 @@ pub(crate) fn execute_type_of_type<'db>(
             }
         },
         Type::NewType(n) => {
-            execute_type_of_type(i_s, args, result_context, on_type_error, n.type_(i_s));
-            Inferred::from_type(type_.clone())
+            n.check_initialization_args(i_s, args, on_type_error);
+            Inferred::from_type(Type::NewType(n.clone()))
         }
         Type::Self_ => {
             i_s.current_class()
@@ -1087,6 +1087,47 @@ pub(crate) fn execute_type_of_type<'db>(
                 type_.format_short(i_s.db),
             );
             Inferred::new_any_from_error()
+        }
+    }
+}
+
+impl NewType {
+    fn check_initialization_args<'db>(
+        &self,
+        i_s: &InferenceState<'db, '_>,
+        args: &dyn Args<'db>,
+        on_type_error: OnTypeError,
+    ) {
+        let t = self.type_(i_s);
+        let Some(inf) = args.maybe_single_positional_arg(i_s, &mut ResultContext::new_known(t))
+        else {
+            args.add_issue(
+                i_s,
+                match args.iter(i_s.mode).count() {
+                    0 => {
+                        IssueKind::TooFewArguments(format!(" for \"{}\"", self.name(i_s.db)).into())
+                    }
+                    1 => IssueKind::NewTypesExpectSinglePositionalArgument,
+                    _ => IssueKind::TooManyArguments(
+                        format!(" for \"{}\"", self.name(i_s.db)).into(),
+                    ),
+                },
+            );
+            return;
+        };
+        let other = inf.as_cow_type(i_s);
+        if let Match::False { ref reason, .. } = t.is_simple_super_type_of(i_s, &other) {
+            (on_type_error.callback)(
+                i_s,
+                &|_| Some(format!(" to \"{}\"", self.name(i_s.db)).into()),
+                &args.iter(i_s.mode).next().unwrap(),
+                ErrorTypes {
+                    matcher: None,
+                    reason,
+                    got: GotType::Type(&other),
+                    expected: t,
+                },
+            );
         }
     }
 }

@@ -19,7 +19,7 @@ mod utils;
 
 use std::{
     borrow::Cow,
-    cell::{Cell, OnceCell},
+    cell::Cell,
     hash::{Hash, Hasher},
     mem,
     rc::Rc,
@@ -1684,29 +1684,19 @@ impl FunctionKind {
     }
 }
 
-#[derive(Debug, Clone, Eq)]
+#[derive(Debug, Clone, Eq, Hash)]
 pub struct NewType {
     pub name_string: PointLink,
-    type_expression: PointLink,
-    // TODO locality needs to be checked, because this is lazily calculated.
-    type_: OnceCell<Type>,
+    pub type_: Type,
 }
 
 impl NewType {
-    pub fn new(name_string: PointLink, type_expression: PointLink) -> Self {
-        Self {
-            name_string,
-            type_expression,
-            type_: OnceCell::new(),
-        }
+    pub fn new(name_string: PointLink, type_: Type) -> Self {
+        Self { name_string, type_ }
     }
 
     pub fn type_(&self, i_s: &InferenceState) -> &Type {
-        self.type_.get_or_init(|| {
-            let t =
-                NodeRef::from_link(i_s.db, self.type_expression).compute_new_type_constraint(i_s);
-            t
-        })
+        &self.type_
     }
 
     pub fn format(&self, format_data: &FormatData) -> Box<str> {
@@ -1738,13 +1728,7 @@ impl NewType {
 
 impl PartialEq for NewType {
     fn eq(&self, other: &Self) -> bool {
-        self.type_expression == other.type_expression
-    }
-}
-
-impl Hash for NewType {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.type_expression.hash(state);
+        self.name_string == other.name_string
     }
 }
 

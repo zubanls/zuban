@@ -281,12 +281,6 @@ impl<'file> NodeRef<'file> {
         )
     }
 
-    pub fn compute_new_type_constraint(&self, i_s: &InferenceState) -> Type {
-        self.file
-            .name_resolution_for_types(i_s)
-            .compute_new_type_constraint(self.as_expression())
-    }
-
     pub fn as_code(&self) -> &'file str {
         self.file.tree.code_of_index(self.node_index)
     }

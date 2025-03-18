@@ -1944,7 +1944,15 @@ impl<'db: 'slf, 'slf> Inferred {
                                     args.add_issue(i_s, IssueKind::UnexpectedTypeForTypeVar);
                                 }
                             }
-                            Specific::TypingTypedDict | Specific::TypingNamedTuple => {
+                            Specific::TypingNewType
+                                if result_context.is_annotation_assignment() =>
+                            {
+                                args.add_issue(i_s, IssueKind::NewTypeCannotHaveTypeDeclaration);
+                                return Inferred::new_any(AnyCause::FromError);
+                            }
+                            Specific::TypingTypedDict
+                            | Specific::TypingNamedTuple
+                            | Specific::TypingNewType => {
                                 if let ResultContext::AssignmentNewDefinition {
                                     assignment_definition,
                                 } = &result_context
@@ -1958,16 +1966,6 @@ impl<'db: 'slf, 'slf> Inferred {
                                             n.expect_assignment(),
                                         );
                                 }
-                            }
-                            Specific::TypingNewType => {
-                                if result_context.is_annotation_assignment() {
-                                    args.add_issue(
-                                        i_s,
-                                        IssueKind::NewTypeCannotHaveTypeDeclaration,
-                                    );
-                                    return Inferred::new_any(AnyCause::FromError);
-                                }
-                                return_on_type_def!(compute_new_type_assignment, args)
                             }
                             Specific::CollectionsNamedTuple => {
                                 return_on_type_def!(compute_collections_named_tuple, args)

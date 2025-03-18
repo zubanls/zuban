@@ -4205,41 +4205,6 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             _ => None,
         })
     }
-
-    pub fn compute_new_type_constraint(&self, expr: Expression) -> Type {
-        let mut x = type_computation_for_variable_annotation;
-        let node_ref = NodeRef::new(self.file, expr.index());
-        let mut comp = TypeComputation::new(
-            self.i_s,
-            self.file,
-            node_ref.as_link(),
-            &mut x,
-            TypeComputationOrigin::Other,
-        );
-        match comp.compute_type(expr) {
-            TypeContent::InvalidVariable(_) => {
-                node_ref.add_issue(self.i_s, IssueKind::NewTypeInvalidType);
-                Type::ERROR
-            }
-            t => {
-                let t = comp.as_type(t, node_ref);
-                if !t.is_subclassable(self.i_s.db) {
-                    node_ref.add_issue(
-                        self.i_s,
-                        IssueKind::NewTypeMustBeSubclassable {
-                            got: t.format_short(self.i_s.db),
-                        },
-                    );
-                }
-                if t.maybe_class(self.i_s.db)
-                    .is_some_and(|cls| cls.is_protocol(self.i_s.db))
-                {
-                    node_ref.add_issue(self.i_s, IssueKind::NewTypeCannotUseProtocols);
-                }
-                t
-            }
-        }
-    }
 }
 
 #[derive(Debug)]
