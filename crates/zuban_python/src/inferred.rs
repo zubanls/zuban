@@ -1680,9 +1680,6 @@ impl<'db: 'slf, 'slf> Inferred {
             ComplexPoint::FunctionOverload(_) => {
                 format!("OverloadedFunction({})", from.unwrap().debug_info(db))
             }
-            ComplexPoint::NewTypeDefinition(_) => {
-                format!("NewTypeDef({})", from.unwrap().debug_info(db))
-            }
             ComplexPoint::NamedTupleDefinition(t) => {
                 format!("NamedTupleDef({})", t.format_short(db))
             }
@@ -2097,49 +2094,6 @@ impl<'db: 'slf, 'slf> Inferred {
                                     },
                                 );
                                 return Inferred::new_any_from_error();
-                            }
-                            ComplexPoint::NewTypeDefinition(new_type) => {
-                                let Some(inf) = args.maybe_single_positional_arg(
-                                    i_s,
-                                    &mut ResultContext::new_known(&new_type.type_),
-                                ) else {
-                                    args.add_issue(
-                                        i_s,
-                                        match args.iter(i_s.mode).count() {
-                                            0 => IssueKind::TooFewArguments(
-                                                format!(" for \"{}\"", new_type.name(i_s.db))
-                                                    .into(),
-                                            ),
-                                            1 => IssueKind::NewTypesExpectSinglePositionalArgument,
-                                            _ => IssueKind::TooManyArguments(
-                                                format!(" for \"{}\"", new_type.name(i_s.db))
-                                                    .into(),
-                                            ),
-                                        },
-                                    );
-                                    return Self::from_type(Type::NewType(new_type.clone()));
-                                };
-                                let other = inf.as_cow_type(i_s);
-                                if let Match::False { ref reason, .. } =
-                                    new_type.type_.is_simple_super_type_of(i_s, &other)
-                                {
-                                    (on_type_error.callback)(
-                                        i_s,
-                                        &|_| {
-                                            Some(
-                                                format!(" to \"{}\"", new_type.name(i_s.db)).into(),
-                                            )
-                                        },
-                                        &args.iter(i_s.mode).next().unwrap(),
-                                        ErrorTypes {
-                                            matcher: None,
-                                            reason,
-                                            got: GotType::Type(&other),
-                                            expected: &new_type.type_,
-                                        },
-                                    );
-                                }
-                                return Self::from_type(Type::NewType(new_type.clone()));
                             }
                             _ => (),
                         }
@@ -2660,9 +2614,6 @@ fn type_of_complex<'db: 'x, 'x>(
             TypeVarLike::TypeVarTuple(_) => Cow::Owned(i_s.db.python_state.type_var_tuple_type()),
             TypeVarLike::ParamSpec(_) => Cow::Owned(i_s.db.python_state.param_spec_type()),
         },
-        ComplexPoint::NewTypeDefinition(n) => {
-            Cow::Owned(Type::Type(Rc::new(Type::NewType(n.clone()))))
-        }
         ComplexPoint::NamedTupleDefinition(n) => Cow::Owned(Type::Type(n.clone())),
         ComplexPoint::TypedDictDefinition(t) => Cow::Owned(Type::Type(t.type_.clone())),
         ComplexPoint::IndirectFinal(t) => Cow::Borrowed(t),

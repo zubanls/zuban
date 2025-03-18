@@ -640,7 +640,6 @@ pub enum ComplexPoint {
     ClassInfos(Box<ClassInfos>),
     TypeVarLikes(TypeVarLikes),
     FunctionOverload(Box<OverloadDefinition>),
-    NewTypeDefinition(Rc<NewType>),
     // e.g. X = NamedTuple('X', []), does not include classes.
     NamedTupleDefinition(Rc<Type>),
     // e.g. X = TypedDict('X', {'x': int}), does not include classes.

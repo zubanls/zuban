@@ -246,7 +246,6 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 };
                 TypeContent::NamedTuple(nt.clone())
             }
-            ComplexPoint::NewTypeDefinition(n) => TypeContent::Type(Type::NewType(n.clone())),
             ComplexPoint::TypedDictDefinition(tdd) => {
                 let Type::TypedDict(td) = tdd.type_.as_ref() else {
                     unreachable!();

@@ -1243,14 +1243,6 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                         },
                     );
                 };
-                match node_ref.complex() {
-                    Some(ComplexPoint::NewTypeDefinition(_)) => {
-                        cannot_redefine("a NewType");
-                        add_redefinition_issue();
-                        return;
-                    }
-                    _ => (),
-                }
             }
 
             let maybe_saved = self.follow_and_maybe_saved(first_index);
