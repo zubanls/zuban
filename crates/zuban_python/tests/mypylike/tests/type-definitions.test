@@ -324,25 +324,25 @@ A = NewType("A", list[int | "A"])
 B = NewType("B", "B")
 C = NewType("C", list[undefined | "A"])  # E: Name "undefined" is not defined
 
-#a1: A = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "A")
-#a2: A = A([1])
-#a3: A = A([a1])
-#b1: B = 1
-#b2: B = B(b)
-#c1: C = 1
-#c2: C = C([c1])
-#c3: C = C([1])
+a1: A = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "A")
+a2: A = A([1])
+a3: A = A([a1])
+b1: B = 1
+b2: B = B(b)
+c1: C = 1
+c2: C = C([c1])
+c3: C = C([1])
 
 [case new_type_recursion_other_module]
 import m
-#a1: m.A = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "A")
-#a2: m.A = m.A([1])
-#a3: m.A = m.A([a1])
-#b1: m.B = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "B")
-#b2: m.B = m.B(b)
+a1: m.A = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "A")
+a2: m.A = m.A([1])
+a3: m.A = m.A([a1])
+b1: m.B = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "B")
+b2: m.B = m.B(b)
 c1: m.C = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "C")
-#c2: m.C = m.C([c1])
-#c3: m.C = m.C([1])
+c2: m.C = m.C([c1])
+c3: m.C = m.C([1])
 
 [file m.py]
 from typing import NewType
