@@ -19,8 +19,8 @@ use crate::{
     inference_state::InferenceState,
     matching::{
         calculate_property_return, create_signature_without_self_for_callable, match_self_type,
-        maybe_class_usage, replace_class_type_vars, ErrorStrs, ErrorTypes, Generics, GotType,
-        IteratorContent, LookupKind, Match, Matcher, OnLookupError, OnTypeError, ResultContext,
+        maybe_class_usage, replace_class_type_vars, ErrorStrs, Generics, IteratorContent,
+        LookupKind, Matcher, OnLookupError, OnTypeError, ResultContext,
     },
     new_class,
     node_ref::NodeRef,

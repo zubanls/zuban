@@ -21,7 +21,7 @@ use crate::{
     recoverable_error, sys_path,
     type_::{
         CallableContent, DataclassTransformObj, FunctionKind, FunctionOverload, GenericItem,
-        GenericsList, NewType, ParamSpecUsage, RecursiveType, StringSlice, Type, TypeVarLike,
+        GenericsList, ParamSpecUsage, RecursiveType, StringSlice, Type, TypeVarLike,
         TypeVarLikeUsage, TypeVarLikes, TypeVarTupleUsage, TypeVarUsage, TypedDict, Variance,
     },
     type_helpers::{Class, Function},

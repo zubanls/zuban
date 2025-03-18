@@ -1232,19 +1232,6 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 }
             };
 
-            if let Some(node_ref) = value.maybe_saved_node_ref(i_s.db) {
-                let name_def_ref = NodeRef::new(self.file, current_index);
-                let cannot_redefine = |as_| {
-                    name_def_ref.add_issue(
-                        self.i_s,
-                        IssueKind::CannotRedefineAs {
-                            name: name_def.as_code().into(),
-                            as_,
-                        },
-                    );
-                };
-            }
-
             let maybe_saved = self.follow_and_maybe_saved(first_index);
             let maybe_complex_def = maybe_saved.and_then(|n| n.complex());
             // This is mostly to make it clear that things like NewType/TypeVars are special
