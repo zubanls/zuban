@@ -12,7 +12,6 @@ new_type_with_class_generics3
 new_type_with_function_generics
 new_type_recursion_same_module
 new_type_recursion_other_module
-new_type_invalid_assignment_form
 testDefaultDict
 # TODO PointResolution::GlobalOrNonlocal
 testTypedDictUpdateNonRecursiveToRecursiveCoarse

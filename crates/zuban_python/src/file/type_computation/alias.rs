@@ -280,17 +280,17 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             }
             // Error should have been created, because it's an invalid alias.
             Lookup::T(TypeContent::InvalidVariable(_) | TypeContent::Unknown(_)) => {
-                match specific {
-                    Specific::TypingTypedDict => self.add_issue(
-                        assignment.index(),
-                        IssueKind::InvalidAssignmentForm {
-                            class_name: "TypedDict",
+                self.add_issue(
+                    assignment.index(),
+                    IssueKind::InvalidAssignmentForm {
+                        class_name: match specific {
+                            Specific::TypingTypedDict => "TypedDict",
+                            Specific::TypingNamedTuple => "NamedTuple",
+                            Specific::TypingNewType => "NewType",
+                            _ => unreachable!(),
                         },
-                    ),
-                    Specific::TypingNamedTuple => todo!(),
-                    Specific::TypingNewType => todo!(),
-                    _ => unreachable!(),
-                }
+                    },
+                );
                 Inferred::new_any_from_error()
             }
             tnl => {
