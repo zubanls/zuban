@@ -11,7 +11,9 @@ use super::{
 };
 use crate::{
     arguments::SimpleArgs,
-    database::{ComplexPoint, Database, Locality, Point, PointLink, Specific, TypeAlias},
+    database::{
+        ClassKind, ComplexPoint, Database, Locality, Point, PointLink, Specific, TypeAlias,
+    },
     debug,
     diagnostics::IssueKind,
     file::{
@@ -29,6 +31,7 @@ use crate::{
         AnyCause, GenericItem, NamedTuple, TupleArgs, TupleUnpack, Type, TypeVarLike, TypeVarLikes,
         TypeVarManager, TypedDict,
     },
+    type_helpers::Class,
     utils::{debug_indent, AlreadySeen},
 };
 
@@ -186,6 +189,13 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 assignment,
                 &SimpleArgs::new(*self.i_s, self.file, a.primary_index, a.details),
             )),
+            SpecialAssignmentKind::Enum(class, args) => assign(
+                self.compute_functional_enum_definition(
+                    class,
+                    &SimpleArgs::new(*self.i_s, self.file, args.primary_index, args.details),
+                )
+                .unwrap_or_else(Inferred::new_invalid_type_definition),
+            ),
             SpecialAssignmentKind::Other => self
                 .compute_special_type_definition(assignment, name_def)
                 .ok_or(CalculatingAliasType::Normal),
@@ -292,7 +302,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
     fn maybe_special_assignment_execution<'x>(
         &self,
         expr: Expression<'x>,
-    ) -> Result<SpecialAssignmentKind<'x>, CalculatingAliasType<'x>> {
+    ) -> Result<SpecialAssignmentKind<'db, 'x>, CalculatingAliasType<'x>> {
         // For TypeVar, TypedDict, NewType and similar definitions
         let ExpressionContent::ExpressionPart(ExpressionPart::Primary(primary)) = expr.unpack()
         else {
@@ -311,6 +321,14 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             Some(Lookup::T(TypeContent::SpecialCase(Specific::TypingNewType))) => Ok(
                 SpecialAssignmentKind::NewType(ArgsContent::new(primary.index(), details)),
             ),
+            Some(Lookup::T(TypeContent::Class { node_ref, .. }))
+                if node_ref.use_cached_class_infos(self.i_s.db).class_kind == ClassKind::Enum =>
+            {
+                Ok({
+                    let class = Class::with_self_generics(self.i_s.db, node_ref);
+                    SpecialAssignmentKind::Enum(class, ArgsContent::new(primary.index(), details))
+                })
+            }
             _ => Ok(SpecialAssignmentKind::Other),
         }
     }
@@ -596,8 +614,9 @@ enum CalculatingAliasType<'tree> {
     NamedTuple(ArgsContent<'tree>),
 }
 
-enum SpecialAssignmentKind<'tree> {
+enum SpecialAssignmentKind<'db, 'tree> {
     NewType(ArgsContent<'tree>),
+    Enum(Class<'db>, ArgsContent<'tree>),
     Other,
 }
 
