@@ -6,6 +6,8 @@ avoid_type_computation_recursion
 testOverloadPossibleOverlapWithArgsAndKwargs
 flow_analysis_base_class_calculation_should_not_lead_to_recursion
 
+new_type_recursion_same_module
+new_type_recursion_other_module
 testDefaultDict
 # TODO PointResolution::GlobalOrNonlocal
 testTypedDictUpdateNonRecursiveToRecursiveCoarse
