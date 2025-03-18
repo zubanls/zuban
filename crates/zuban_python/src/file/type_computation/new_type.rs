@@ -1,7 +1,5 @@
 use std::rc::Rc;
 
-use parsa_python_cst::Assignment;
-
 use crate::{
     arguments::Args,
     database::{ComplexPoint, PointLink},
@@ -14,11 +12,7 @@ use crate::{
 };
 
 impl<'db, 'file> NameResolution<'db, 'file, '_> {
-    pub(crate) fn compute_new_type_assignment(
-        &self,
-        assignment: Assignment,
-        args: &dyn Args<'db>,
-    ) -> Inferred {
+    pub(crate) fn compute_new_type_assignment(&self, args: &dyn Args<'db>) -> Inferred {
         if let Some(n) = maybe_new_type(self.i_s, args) {
             Inferred::new_unsaved_complex(ComplexPoint::NewTypeDefinition(Rc::new(n)))
         } else {

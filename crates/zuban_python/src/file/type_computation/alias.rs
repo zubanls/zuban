@@ -184,7 +184,6 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         } else {
             match special {
                 SpecialAssignmentKind::NewType(a) => assign(self.compute_new_type_assignment(
-                    assignment,
                     &SimpleArgs::new(*self.i_s, self.file, a.primary_index, a.details),
                 )),
                 SpecialAssignmentKind::Enum(class, args) => assign(
@@ -195,23 +194,25 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                     .unwrap_or_else(Inferred::new_invalid_type_definition),
                 ),
                 SpecialAssignmentKind::CollectionsNamedTuple(a) => {
-                    assign(self.compute_collections_named_tuple(
-                        assignment,
-                        &SimpleArgs::new(*self.i_s, self.file, a.primary_index, a.details),
-                    ))
+                    assign(self.compute_collections_named_tuple(&SimpleArgs::new(
+                        *self.i_s,
+                        self.file,
+                        a.primary_index,
+                        a.details,
+                    )))
                 }
                 SpecialAssignmentKind::TypeVar(a) => assign(self.compute_type_var_assignment(
-                    assignment,
                     &SimpleArgs::new(*self.i_s, self.file, a.primary_index, a.details),
                 )),
                 SpecialAssignmentKind::TypeVarTuple(a) => {
-                    assign(self.compute_type_var_tuple_assignment(
-                        assignment,
-                        &SimpleArgs::new(*self.i_s, self.file, a.primary_index, a.details),
-                    ))
+                    assign(self.compute_type_var_tuple_assignment(&SimpleArgs::new(
+                        *self.i_s,
+                        self.file,
+                        a.primary_index,
+                        a.details,
+                    )))
                 }
                 SpecialAssignmentKind::ParamSpec(a) => assign(self.compute_param_spec_assignment(
-                    assignment,
                     &SimpleArgs::new(*self.i_s, self.file, a.primary_index, a.details),
                 )),
             }
@@ -263,7 +264,15 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         }))
     }
 
-    pub(crate) fn compute_typed_dict_assignment(&self, assignment: Assignment) -> Inferred {
+    pub(crate) fn compute_special_alias_assignment(
+        &self,
+        specific: Specific,
+        assignment: Assignment,
+    ) -> Inferred {
+        debug_assert!(matches!(
+            specific,
+            Specific::TypingTypedDict | Specific::TypingNamedTuple
+        ));
         match self.compute_type_assignment(assignment) {
             Lookup::T(TypeContent::TypeAlias(ta)) => {
                 if ta.is_valid() {
@@ -274,34 +283,17 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             }
             // Error should have been created, because it's an invalid alias.
             Lookup::T(TypeContent::InvalidVariable(_) | TypeContent::Unknown(_)) => {
-                self.add_issue(
-                    assignment.index(),
-                    IssueKind::InvalidAssignmentForm {
-                        class_name: "TypedDict",
-                    },
-                );
-                Inferred::new_any_from_error()
-            }
-            tnl => {
-                recoverable_error!("Unexpected special type assignment result: {tnl:?}");
-                Inferred::new_any_from_error()
-            }
-        }
-    }
-
-    pub(crate) fn compute_named_tuple_assignment(&self, assignment: Assignment) -> Inferred {
-        match self.compute_type_assignment(assignment) {
-            Lookup::T(TypeContent::TypeAlias(ta)) => {
-                if ta.is_valid() {
-                    Inferred::from_type(Type::Type(Rc::new(ta.type_if_valid().clone())))
-                } else {
-                    Inferred::new_any_from_error()
+                match specific {
+                    Specific::TypingTypedDict => self.add_issue(
+                        assignment.index(),
+                        IssueKind::InvalidAssignmentForm {
+                            class_name: "TypedDict",
+                        },
+                    ),
+                    Specific::TypingNamedTuple => todo!(),
+                    _ => unreachable!(),
                 }
-            }
-            // Error should have been created, because it's an invalid alias.
-            Lookup::T(TypeContent::InvalidVariable(_) | TypeContent::Unknown(_)) => {
-                todo!();
-                //Inferred::new_any_from_error()
+                Inferred::new_any_from_error()
             }
             tnl => {
                 recoverable_error!("Unexpected special type assignment result: {tnl:?}");

@@ -1908,7 +1908,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                     return n
                                         .file
                                         .name_resolution_for_types(i_s)
-                                        .$name(n.expect_assignment(), $($args)?);
+                                        .$name($($args)?);
                                 }
                             };
                         }
@@ -1944,11 +1944,20 @@ impl<'db: 'slf, 'slf> Inferred {
                                     args.add_issue(i_s, IssueKind::UnexpectedTypeForTypeVar);
                                 }
                             }
-                            Specific::TypingTypedDict => {
-                                return_on_type_def!(compute_typed_dict_assignment)
-                            }
-                            Specific::TypingNamedTuple => {
-                                return_on_type_def!(compute_named_tuple_assignment)
+                            Specific::TypingTypedDict | Specific::TypingNamedTuple => {
+                                if let ResultContext::AssignmentNewDefinition {
+                                    assignment_definition,
+                                } = &result_context
+                                {
+                                    let n = NodeRef::from_link(i_s.db, *assignment_definition);
+                                    return n
+                                        .file
+                                        .name_resolution_for_types(i_s)
+                                        .compute_special_alias_assignment(
+                                            specific,
+                                            n.expect_assignment(),
+                                        );
+                                }
                             }
                             Specific::TypingNewType => {
                                 if result_context.is_annotation_assignment() {

@@ -1,7 +1,5 @@
 use std::rc::Rc;
 
-use parsa_python_cst::Assignment;
-
 use crate::{
     arguments::{ArgKind, Args, KeywordArg},
     database::{ComplexPoint, PointLink},
@@ -16,11 +14,7 @@ use crate::{
 };
 
 impl<'db, 'file> NameResolution<'db, 'file, '_> {
-    pub(crate) fn compute_type_var_assignment(
-        &self,
-        assignment: Assignment,
-        args: &dyn Args,
-    ) -> Inferred {
+    pub(crate) fn compute_type_var_assignment(&self, args: &dyn Args) -> Inferred {
         if let Some(t) = maybe_type_var(self.i_s, args) {
             Inferred::new_unsaved_complex(ComplexPoint::TypeVarLike(t))
         } else {
@@ -28,11 +22,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         }
     }
 
-    pub(crate) fn compute_type_var_tuple_assignment(
-        &self,
-        assignment: Assignment,
-        args: &dyn Args,
-    ) -> Inferred {
+    pub(crate) fn compute_type_var_tuple_assignment(&self, args: &dyn Args) -> Inferred {
         if let Some(t) = maybe_type_var_tuple(self.i_s, args) {
             Inferred::new_unsaved_complex(ComplexPoint::TypeVarLike(t))
         } else {
@@ -40,11 +30,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         }
     }
 
-    pub(crate) fn compute_param_spec_assignment(
-        &self,
-        assignment: Assignment,
-        args: &dyn Args,
-    ) -> Inferred {
+    pub(crate) fn compute_param_spec_assignment(&self, args: &dyn Args) -> Inferred {
         if let Some(t) = maybe_param_spec(self.i_s, args) {
             Inferred::new_unsaved_complex(ComplexPoint::TypeVarLike(t))
         } else {
