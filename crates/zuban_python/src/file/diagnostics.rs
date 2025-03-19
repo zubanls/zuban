@@ -1854,10 +1854,7 @@ impl Inference<'_, '_, '_> {
 
 fn valid_raise_type(i_s: &InferenceState, from: NodeRef, t: &Type, allow_none: bool) -> bool {
     let db = i_s.db;
-    let check = |cls: Class| {
-        cls.incomplete_mro(db)
-            || cls.class_link_in_mro(db, db.python_state.base_exception_node_ref().as_link())
-    };
+    let check = |cls: Class| cls.incomplete_mro(db) || cls.is_base_exception(db);
     match t {
         Type::Class(c) => check(c.class(db)),
         Type::Type(t) => match t.as_ref() {
@@ -1868,7 +1865,7 @@ fn valid_raise_type(i_s: &InferenceState, from: NodeRef, t: &Type, allow_none: b
                     &NoArgs::new(from),
                     &mut ResultContext::Unknown,
                     OnTypeError::new(&|_, _, _, _| {
-                        unreachable!(
+                        recoverable_error!(
                             "Type errors should not be possible, because there are no params"
                         )
                     }),
