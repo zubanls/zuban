@@ -436,11 +436,12 @@ impl<'a> Instance<'a> {
         }
         if options.kind == LookupKind::Normal && options.check_dunder_getattr {
             for method_name in ["__getattr__", "__getattribute__"] {
-                let l = self.lookup_with_details(
+                let l = self.lookup(
                     i_s,
-                    options.add_issue,
                     method_name,
-                    LookupKind::OnlyType,
+                    InstanceLookupOptions::new(&options.add_issue)
+                        .with_kind(LookupKind::OnlyType)
+                        .without_object(),
                 );
                 if l.class.is_object(i_s.db) {
                     // object defines a __getattribute__ that returns Any
@@ -455,13 +456,14 @@ impl<'a> Instance<'a> {
                         ),
                     ));
                     let is_writable = {
-                        let details = self.lookup_with_details(
+                        let details = self.lookup(
                             i_s,
-                            options.add_issue,
                             "__setattr__",
-                            LookupKind::OnlyType,
+                            InstanceLookupOptions::new(&options.add_issue)
+                                .with_kind(LookupKind::OnlyType)
+                                .without_object(),
                         );
-                        details.lookup.is_some() && !details.class.is_object(i_s.db)
+                        details.lookup.is_some()
                     };
                     return LookupDetails {
                         class: TypeOrClass::Class(self.class),
