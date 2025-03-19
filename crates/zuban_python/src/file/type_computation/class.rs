@@ -496,7 +496,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                     self.add_issue_on_name(i_s.db, IssueKind::EnumCannotBeGeneric);
                 }
                 class_infos.class_kind = ClassKind::Enum;
-                let members = self.enum_members(i_s);
+                let members = self.enum_members(i_s.db);
                 if !members.is_empty() {
                     let enum_ = Enum::new(
                         DbString::StringSlice(self.name_string_slice()),
@@ -826,7 +826,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                                     .find_map(|base| base.check_duplicate_base_class(db, &t))
                                 {
                                     NodeRef::new(self.node_ref.file, n.index())
-                                        .add_issue(i_s, IssueKind::DuplicateBaseClass { name });
+                                        .add_type_issue(db, IssueKind::DuplicateBaseClass { name });
                                     incomplete_mro = true;
                                     continue;
                                 }
@@ -888,12 +888,13 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                                         let cached_class_infos = class.use_cached_class_infos(db);
                                         if cached_class_infos.is_final {
                                             is_final = cached_class_infos.is_final;
-                                            NodeRef::new(self.node_ref.file, n.index()).add_issue(
-                                                i_s,
-                                                IssueKind::CannotInheritFromFinalClass {
-                                                    class_name: Box::from(class.name()),
-                                                },
-                                            );
+                                            NodeRef::new(self.node_ref.file, n.index())
+                                                .add_type_issue(
+                                                    db,
+                                                    IssueKind::CannotInheritFromFinalClass {
+                                                        class_name: Box::from(class.name()),
+                                                    },
+                                                );
                                         }
                                         incomplete_mro |= cached_class_infos.incomplete_mro;
                                         has_slots |= cached_class_infos.has_slots;
@@ -902,7 +903,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                                         // https://github.com/python/typeshed/issues/13466
                                         // https://github.com/python/mypy/issues/15870#issuecomment-1681373243
                                         if class.node_ref.file_index()
-                                            != i_s.db.python_state.builtins().file_index
+                                            != db.python_state.builtins().file_index
                                         {
                                             Self::update_metaclass(
                                                 i_s,
@@ -959,8 +960,8 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                             }
                             CalculatedBaseClass::TypedDict => {
                                 if had_new_typed_dict {
-                                    NodeRef::new(self.node_ref.file, n.index()).add_issue(
-                                        i_s,
+                                    NodeRef::new(self.node_ref.file, n.index()).add_type_issue(
+                                        db,
                                         IssueKind::DuplicateBaseClass {
                                             name: "TypedDict".into(),
                                         },
@@ -977,9 +978,9 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                             }
                             CalculatedBaseClass::Generic => (),
                             CalculatedBaseClass::Unknown => {
-                                if self.node_ref.file.flags(i_s.db).disallow_subclassing_any {
-                                    NodeRef::new(self.node_ref.file, n.index()).add_issue(
-                                        i_s,
+                                if self.node_ref.file.flags(db).disallow_subclassing_any {
+                                    NodeRef::new(self.node_ref.file, n.index()).add_type_issue(
+                                        db,
                                         IssueKind::DisallowedAnySubclass {
                                             class: n.as_code().into(),
                                         },
@@ -988,14 +989,14 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                                 incomplete_mro = true;
                             }
                             CalculatedBaseClass::InvalidEnum(enum_) => {
-                                let name = enum_.name.as_str(i_s.db);
-                                NodeRef::new(self.node_ref.file, n.index()).add_issue(
-                                    i_s,
+                                let name = enum_.name.as_str(db);
+                                NodeRef::new(self.node_ref.file, n.index()).add_type_issue(
+                                    db,
                                     IssueKind::EnumWithMembersNotExtendable { name: name.into() },
                                 );
-                                if enum_.class(i_s.db).use_cached_class_infos(i_s.db).is_final {
-                                    NodeRef::new(self.node_ref.file, n.index()).add_issue(
-                                        i_s,
+                                if enum_.class(db).use_cached_class_infos(db).is_final {
+                                    NodeRef::new(self.node_ref.file, n.index()).add_type_issue(
+                                        db,
                                         IssueKind::CannotInheritFromFinalClass {
                                             class_name: Box::from(name),
                                         },
@@ -1005,7 +1006,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                             }
                             CalculatedBaseClass::Invalid => {
                                 NodeRef::new(self.node_ref.file, n.index())
-                                    .add_issue(i_s, IssueKind::InvalidBaseClass);
+                                    .add_type_issue(db, IssueKind::InvalidBaseClass);
                                 incomplete_mro = true;
                             }
                         };
@@ -1023,11 +1024,11 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                     }
                     Argument::Star(starred) => {
                         NodeRef::new(self.node_ref.file, starred.index())
-                            .add_issue(i_s, IssueKind::InvalidBaseClass);
+                            .add_type_issue(db, IssueKind::InvalidBaseClass);
                     }
                     Argument::StarStar(double_starred) => {
                         NodeRef::new(self.node_ref.file, double_starred.index())
-                            .add_issue(i_s, IssueKind::InvalidBaseClass);
+                            .add_type_issue(db, IssueKind::InvalidBaseClass);
                     }
                 }
             }
@@ -1036,7 +1037,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
             ClassKind::TypedDict => {
                 if bases.iter().any(|t| !matches!(t, Type::TypedDict(_))) {
                     NodeRef::new(self.node_ref.file, arguments.unwrap().index())
-                        .add_issue(i_s, IssueKind::TypedDictBasesMustBeTypedDicts);
+                        .add_type_issue(db, IssueKind::TypedDictBasesMustBeTypedDicts);
                 }
             }
             ClassKind::Protocol => {
@@ -1047,19 +1048,25 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                     })
                 }) {
                     NodeRef::new(self.node_ref.file, arguments.unwrap().index())
-                        .add_issue(i_s, IssueKind::BasesOfProtocolMustBeProtocol);
+                        .add_type_issue(db, IssueKind::BasesOfProtocolMustBeProtocol);
                 }
             }
             _ => (),
         }
         if is_new_named_tuple && bases.len() > 1 {
             NodeRef::new(self.node_ref.file, arguments.unwrap().index())
-                .add_issue(i_s, IssueKind::NamedTupleShouldBeASingleBase);
+                .add_type_issue(db, IssueKind::NamedTupleShouldBeASingleBase);
         }
 
         let (mro, linearizable) = linearize_mro_and_return_linearizable(i_s, &bases);
         if !linearizable {
-            self.add_inconsistency_issue(i_s)
+            NodeRef::new(self.node_ref.file, self.node().arguments().unwrap().index())
+                .add_type_issue(
+                    db,
+                    IssueKind::InconsistentMro {
+                        name: self.name().into(),
+                    },
+                );
         }
 
         let mut found_tuple_like = None;
@@ -1068,7 +1075,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                 if let Some(found_tuple_like) = found_tuple_like {
                     if found_tuple_like != &base.type_ {
                         NodeRef::new(self.node_ref.file, arguments.unwrap().index())
-                            .add_issue(i_s, IssueKind::IncompatibleBaseTuples);
+                            .add_type_issue(db, IssueKind::IncompatibleBaseTuples);
                     }
                 } else {
                     found_tuple_like = Some(&base.type_);
@@ -1101,15 +1108,6 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
         )
     }
 
-    fn add_inconsistency_issue(&self, i_s: &InferenceState) {
-        NodeRef::new(self.node_ref.file, self.node().arguments().unwrap().index()).add_issue(
-            i_s,
-            IssueKind::InconsistentMro {
-                name: self.name().into(),
-            },
-        );
-    }
-
     fn update_metaclass(
         i_s: &InferenceState<'db, '_>,
         node_ref: NodeRef,
@@ -1137,7 +1135,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                         if t2.is_simple_sub_type_of(i_s, &t1).bool() {
                             *current = new
                         } else {
-                            node_ref.add_issue(i_s, IssueKind::MetaclassConflict);
+                            node_ref.add_type_issue(i_s.db, IssueKind::MetaclassConflict);
                         }
                     }
                 }
@@ -1146,7 +1144,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
         }
     }
 
-    fn enum_members(&self, i_s: &InferenceState) -> Box<[EnumMemberDefinition]> {
+    fn enum_members(&self, db: &Database) -> Box<[EnumMemberDefinition]> {
         let mut members = vec![];
         let mut name_indexes = vec![];
         for (name, name_index) in self.class_storage.class_symbol_table.iter() {
@@ -1157,7 +1155,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                         .as_name()
                         .is_assignment_annotation_without_definition()
                     {
-                        name_node_ref.add_issue(i_s, IssueKind::EnumMembersAttributeOverwritten)
+                        name_node_ref.add_type_issue(db, IssueKind::EnumMembersAttributeOverwritten)
                     }
                 }
                 continue;
@@ -1179,8 +1177,8 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                 let point = name_node_ref.point();
                 debug_assert!(point.is_name_of_name_def_like(), "{point:?}");
                 if point.node_index() != name_index {
-                    NodeRef::new(self.node_ref.file, point.node_index()).add_issue(
-                        i_s,
+                    NodeRef::new(self.node_ref.file, point.node_index()).add_type_issue(
+                        db,
                         IssueKind::EnumReusedMemberName {
                             enum_name: self.name().into(),
                             member_name: name_node_ref.as_code().into(),
@@ -1191,7 +1189,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                 if let Some(assignment) = name.maybe_assignment_definition_name() {
                     if let AssignmentContent::WithAnnotation(_, _, Some(_)) = assignment.unpack() {
                         NodeRef::new(self.node_ref.file, point.node_index())
-                            .add_issue(i_s, IssueKind::EnumMemberAnnotationDisallowed);
+                            .add_type_issue(db, IssueKind::EnumMemberAnnotationDisallowed);
                     }
                 }
                 if name.is_assignment_annotation_without_definition()
