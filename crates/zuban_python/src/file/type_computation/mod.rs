@@ -3371,7 +3371,13 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             PointResolution::NameDef {
                 node_ref,
                 global_redirect,
-            } => return Self::handle_name_def(i_s, node_ref, global_redirect),
+            } => {
+                if global_redirect {
+                    return Self::handle_name_def(&InferenceState::new(i_s.db), node_ref);
+                } else {
+                    return Self::handle_name_def(i_s, node_ref);
+                }
+            }
             PointResolution::Inferred(inferred) => {
                 if let Some(i_node_ref) = inferred.maybe_saved_node_ref(i_s.db) {
                     if let Some(specific) = i_node_ref.point().maybe_specific() {
@@ -3435,11 +3441,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
     }
 
     #[inline]
-    fn handle_name_def(
-        i_s: &InferenceState<'db, '_>,
-        node_ref: NodeRef,
-        mut global_redirect: bool,
-    ) -> Lookup<'db, 'db> {
+    fn handle_name_def(i_s: &InferenceState<'db, '_>, node_ref: NodeRef) -> Lookup<'db, 'db> {
         let node_ref = node_ref.to_db_lifetime(i_s.db);
         if node_ref.point().maybe_calculated_and_specific() == Some(Specific::Cycle) {
             return Lookup::T(TypeContent::UNKNOWN_REPORTED);
@@ -3465,17 +3467,10 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                         }
                     }
                 }
-                if global_redirect {
-                    node_ref
-                        .file
-                        .name_resolution_for_types(&InferenceState::new(i_s.db))
-                        .compute_type_assignment(assignment)
-                } else {
-                    node_ref
-                        .file
-                        .name_resolution_for_types(i_s)
-                        .compute_type_assignment(assignment)
-                }
+                node_ref
+                    .file
+                    .name_resolution_for_types(i_s)
+                    .compute_type_assignment(assignment)
             }
             TypeLike::ImportFromAsName(from_as_name) => {
                 let name_resolution = node_ref.file.name_resolution_for_types(i_s);
