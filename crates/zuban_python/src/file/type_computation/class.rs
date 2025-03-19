@@ -16,25 +16,25 @@ use crate::{
     debug,
     diagnostics::{Issue, IssueKind},
     file::{
-        use_cached_annotation_type, CalculatedBaseClass, OtherDefinitionIterator, PythonFile,
-        TypeComputation, TypeComputationOrigin, TypeVarCallbackReturn, TypeVarFinder,
+        type_computation::typed_dict::TypedDictMemberGatherer, use_cached_annotation_type,
+        CalculatedBaseClass, OtherDefinitionIterator, PythonFile, TypeComputation,
+        TypeComputationOrigin, TypeVarCallbackReturn, TypeVarFinder,
     },
     inference_state::InferenceState,
     inferred::Inferred,
     node_ref::NodeRef,
     python_state::{NAME_TO_CLASS_DIFF, NAME_TO_FUNCTION_DIFF},
     type_::{
-        check_dataclass_options, dataclass_init_func, infer_typed_dict_total_argument, AnyCause,
-        CallableContent, CallableParam, CallableParams, ClassGenerics, Dataclass, DataclassOptions,
-        DataclassTransformObj, DbString, Enum, EnumMemberDefinition, FunctionKind, GenericClass,
-        NamedTuple, ParamType, StringSlice, Tuple, Type, TypeVarLike, TypeVarLikes, TypedDict,
-        TypedDictMember, TypedDictMemberGatherer, Variance,
+        check_dataclass_options, dataclass_init_func, AnyCause, CallableContent, CallableParam,
+        CallableParams, ClassGenerics, Dataclass, DataclassOptions, DataclassTransformObj,
+        DbString, Enum, EnumMemberDefinition, FunctionKind, GenericClass, NamedTuple, ParamType,
+        StringSlice, Tuple, Type, TypeVarLike, TypeVarLikes, TypedDict, TypedDictMember, Variance,
     },
     type_helpers::{Class, FirstParamProperties, Function, TypeOrClass},
     utils::{debug_indent, join_with_commas},
 };
 
-use super::named_tuple::start_namedtuple_params;
+use super::{named_tuple::start_namedtuple_params, typed_dict::infer_typed_dict_total_argument};
 
 // Basically save the type vars on the class keyword.
 const CLASS_TO_TYPE_VARS_DIFFERENCE: i64 = 1;

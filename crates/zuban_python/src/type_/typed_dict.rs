@@ -19,7 +19,6 @@ use crate::{
     inference_state::InferenceState,
     inferred::{AttributeKind, Inferred},
     matching::{ErrorStrs, LookupKind, Match, Matcher, MismatchReason, OnTypeError, ResultContext},
-    node_ref::NodeRef,
     type_helpers::{Class, Instance, InstanceLookupOptions, LookupDetails},
     utils::join_with_commas,
 };
@@ -468,54 +467,6 @@ impl Hash for TypedDict {
     }
 }
 
-#[derive(Default)]
-pub struct TypedDictMemberGatherer {
-    members: Vec<TypedDictMember>,
-    first_after_merge_index: usize,
-}
-
-impl TypedDictMemberGatherer {
-    pub(crate) fn add(&mut self, db: &Database, member: TypedDictMember) -> Result<(), IssueKind> {
-        let key = member.name.as_str(db);
-        if let Some((i, m)) = self
-            .members
-            .iter_mut()
-            .enumerate()
-            .find(|(_, m)| m.name.as_str(db) == key)
-        {
-            if i >= self.first_after_merge_index {
-                Err(IssueKind::TypedDictDuplicateKey { key: key.into() })
-            } else {
-                *m = member;
-                Err(IssueKind::TypedDictOverwritingKeyWhileExtending { key: key.into() })
-            }
-        } else {
-            self.members.push(member);
-            Ok(())
-        }
-    }
-
-    pub fn merge(&mut self, db: &Database, node_ref: NodeRef, slice: &[TypedDictMember]) {
-        for to_add in slice.iter() {
-            let key = to_add.name.as_str(db);
-            if let Some(current) = self.members.iter_mut().find(|m| m.name.as_str(db) == key) {
-                node_ref.add_type_issue(
-                    db,
-                    IssueKind::TypedDictOverwritingKeyWhileMerging { key: key.into() },
-                );
-                *current = to_add.clone(); // Mypy prioritizes this...
-            } else {
-                self.members.push(to_add.clone());
-            }
-        }
-        self.first_after_merge_index = self.members.len();
-    }
-
-    pub fn into_boxed_slice(self) -> Box<[TypedDictMember]> {
-        self.members.into_boxed_slice()
-    }
-}
-
 fn add_access_key_must_be_string_literal_issue(
     db: &Database,
     td: &TypedDict,
@@ -529,21 +480,6 @@ fn add_access_key_must_be_string_literal_issue(
         )
         .into(),
     })
-}
-
-pub(crate) fn infer_typed_dict_total_argument(
-    i_s: &InferenceState,
-    inf: Inferred,
-    add_issue: impl Fn(IssueKind),
-) -> Option<bool> {
-    if let Some(total) = inf.maybe_bool_literal(i_s) {
-        Some(total)
-    } else {
-        add_issue(IssueKind::ArgumentMustBeTrueOrFalse {
-            key: "total".into(),
-        });
-        None
-    }
 }
 
 pub(crate) fn typed_dict_setdefault<'db>(
