@@ -36,7 +36,7 @@ use crate::{
     inferred::Inferred,
     matching::{Generics, ResultContext},
     new_class,
-    node_ref::{self, NodeRef},
+    node_ref::NodeRef,
     type_::{
         add_param_spec_to_params, AnyCause, CallableContent, CallableParam, CallableParams,
         CallableWithParent, ClassGenerics, Dataclass, DbBytes, DbString, Enum, EnumMember,

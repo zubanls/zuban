@@ -609,7 +609,16 @@ impl<'db> PythonFile {
     }
 
     pub fn add_issue(&self, i_s: &InferenceState, issue: Issue) {
-        if !i_s.should_add_issue() || self.ignore_type_errors {
+        if !i_s.should_add_issue() {
+            return;
+        }
+        self.add_type_issue(i_s.db, issue)
+    }
+
+    pub fn add_type_issue(&self, db: &'db Database, issue: Issue) {
+        // This function adds issues in all normal cases and does not respect the InferenceState
+        // mode.
+        if self.ignore_type_errors {
             return;
         }
         let maybe_ignored = self
@@ -622,11 +631,11 @@ impl<'db> PythonFile {
         match self.issues.add_if_not_ignored(issue, maybe_ignored) {
             Ok(issue) => debug!(
                 "NEW ISSUE: {}",
-                Diagnostic::new(i_s.db, self, issue).as_string(&config)
+                Diagnostic::new(db, self, issue).as_string(&config)
             ),
             Err(issue) => debug!(
                 "New ignored issue: {}",
-                Diagnostic::new(i_s.db, self, &issue).as_string(&config)
+                Diagnostic::new(db, self, &issue).as_string(&config)
             ),
         }
     }

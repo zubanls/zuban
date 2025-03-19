@@ -14,7 +14,7 @@ use crate::{
         TypedDictDefinition,
     },
     debug,
-    diagnostics::IssueKind,
+    diagnostics::{Issue, IssueKind},
     file::{
         use_cached_annotation_type, CalculatedBaseClass, OtherDefinitionIterator, PythonFile,
         TypeComputation, TypeComputationOrigin, TypeVarCallbackReturn, TypeVarFinder,
@@ -140,8 +140,9 @@ impl<'db: 'file, 'file> ClassNodeRef<'file> {
         }
     }
 
-    fn add_issue_on_name(&self, i_s: &InferenceState, issue: IssueKind) {
-        NodeRef::new(self.0.file, self.node().name().index()).add_issue(i_s, issue)
+    fn add_issue_on_name(&self, db: &Database, kind: IssueKind) {
+        let issue = Issue::from_node_index(&self.file.tree, self.node_index, kind);
+        self.file.add_type_issue(db, issue)
     }
 
     #[inline]
@@ -435,7 +436,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                 let class = dataclass.class(i_s.db);
                 if dataclass.options.slots && class.lookup_symbol(i_s, "__slots__").is_some() {
                     class.add_issue_on_name(
-                        i_s,
+                        i_s.db,
                         IssueKind::DataclassPlusExplicitSlots {
                             class_name: class.name().into(),
                         },
@@ -469,7 +470,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
         } else {
             if is_runtime_checkable {
                 self.add_issue_on_name(
-                    i_s,
+                    i_s.db,
                     IssueKind::RuntimeCheckableCanOnlyBeUsedWithProtocolClasses,
                 );
             }
@@ -478,7 +479,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
 
         if is_final && !class_infos.abstract_attributes.is_empty() {
             self.add_issue_on_name(
-                i_s,
+                i_s.db,
                 IssueKind::FinalClassHasAbstractAttributes {
                     class_name: self.qualified_name(i_s.db).into(),
                     attributes: join_abstract_attributes(i_s.db, &class_infos.abstract_attributes),
@@ -492,7 +493,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
             if link == i_s.db.python_state.enum_meta_link() {
                 was_enum_base = true;
                 if !self.use_cached_type_vars(i_s.db).is_empty() {
-                    self.add_issue_on_name(i_s, IssueKind::EnumCannotBeGeneric);
+                    self.add_issue_on_name(i_s.db, IssueKind::EnumCannotBeGeneric);
                 }
                 class_infos.class_kind = ClassKind::Enum;
                 let members = self.enum_members(i_s);
@@ -600,7 +601,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                         had_new += 1;
                         if had_new > 1 {
                             self.add_issue_on_name(
-                                i_s,
+                                i_s.db,
                                 IssueKind::EnumMultipleMixinNew {
                                     extra: c.qualified_name(i_s.db).into(),
                                 },
@@ -611,7 +612,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                     match enum_spotted {
                         Some(after) if !is_enum => {
                             self.add_issue_on_name(
-                                i_s,
+                                i_s.db,
                                 IssueKind::EnumMixinNotAllowedAfterEnum {
                                     after: after.qualified_name(i_s.db).into(),
                                 },
@@ -1422,7 +1423,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
             };
             if !has_abc_meta_metaclass() {
                 self.add_issue_on_name(
-                    i_s,
+                    i_s.db,
                     IssueKind::ClassNeedsAbcMeta {
                         class_name: self.qualified_name(i_s.db).into(),
                         attributes: join_abstract_attributes(i_s.db, &result),
