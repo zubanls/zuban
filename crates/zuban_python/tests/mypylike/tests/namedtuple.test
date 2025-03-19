@@ -68,7 +68,7 @@ class Foo(Generic[S]):
         NT = NamedTuple("NT", [("key", S), ("value", T)])
         reveal_type(NT)  # N: Revealed type is "def [T] (key: S, value: T) -> Tuple[S, T, fallback=__main__.NT]"
 
-        wrong_count: NT[int, str] # E: "NT" expects 1 type argument, but 2 given
+        wrong_count: NT[int, str] # E: Bad number of arguments for type alias, expected 1, given 2
 
         nt_any: NT
         reveal_type(nt_any)  # N: Revealed type is "Tuple[S, Any, fallback=__main__.NT]"

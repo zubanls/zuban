@@ -280,14 +280,7 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
     }
 
     fn handle_type_var_like(&mut self, tvl: TypeVarLike, add_issue: impl Fn(IssueKind)) {
-        if self
-            .infos
-            .class
-            .and_then(|c| {
-                ClassInitializer::from_node_ref(*c).maybe_type_var_like_in_parent(self.i_s.db, &tvl)
-            })
-            .is_none()
-        {
+        if self.i_s.find_parent_type_var(&tvl).is_none() {
             if matches!(tvl, TypeVarLike::TypeVarTuple(_))
                 && self.infos.type_var_manager.has_type_var_tuples()
             {

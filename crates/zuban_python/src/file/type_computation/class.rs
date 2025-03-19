@@ -263,7 +263,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
             .qualified_name(db, self.node_ref.0, self.name())
     }
 
-    pub(crate) fn maybe_type_var_like_in_parent(
+    fn maybe_type_var_like_in_parent(
         &self,
         db: &Database,
         type_var: &TypeVarLike,
