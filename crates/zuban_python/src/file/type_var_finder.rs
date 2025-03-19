@@ -280,7 +280,12 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
     }
 
     fn handle_type_var_like(&mut self, tvl: TypeVarLike, add_issue: impl Fn(IssueKind)) {
-        if self.i_s.find_parent_type_var(&tvl).is_none() {
+        if let Some(_) = self.i_s.find_parent_type_var(&tvl) {
+            debug!(
+                "Found bound TypeVar {} in parent scope",
+                tvl.name(self.i_s.db)
+            );
+        } else {
             if matches!(tvl, TypeVarLike::TypeVarTuple(_))
                 && self.infos.type_var_manager.has_type_var_tuples()
             {
@@ -299,7 +304,11 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
                     }
                 }
             }
-            let old_index = self.infos.type_var_manager.add(tvl.clone(), None);
+            debug!(
+                "Found unbound TypeVar {} in parent scope",
+                tvl.name(self.i_s.db)
+            );
+            let old_index = self.infos.type_var_manager.add(tvl, None);
             if let Some(force_index) = self.infos.current_generic_or_protocol_index {
                 if old_index < force_index {
                     add_issue(IssueKind::DuplicateTypeVar)
