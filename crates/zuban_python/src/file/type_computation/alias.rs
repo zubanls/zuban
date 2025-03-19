@@ -393,7 +393,10 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             unreachable!()
         };
 
-        let mut type_var_callback = |_: &InferenceState, _: &_, type_var_like: TypeVarLike, _| {
+        let mut type_var_callback = |i_s: &InferenceState, _: &_, type_var_like: TypeVarLike, _| {
+            if let Some(result) = i_s.find_parent_type_var(&type_var_like) {
+                return result;
+            }
             if let Some(usage) = alias.type_vars.find(type_var_like, alias.location) {
                 TypeVarCallbackReturn::TypeVarLike(usage)
             } else if let CalculatingAliasType::NewType(_) = &origin {
