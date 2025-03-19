@@ -148,9 +148,9 @@ impl Intersection {
                 .filter(|t| !matches!(t, Type::Callable(_)))
                 .cloned()
                 .collect();
-            linearize_mro_and_return_linearizable(i_s, &check_entries).1
+            linearize_mro_and_return_linearizable(i_s.db, &check_entries).1
         } else {
-            linearize_mro_and_return_linearizable(i_s, &intersection.entries).1
+            linearize_mro_and_return_linearizable(i_s.db, &intersection.entries).1
         };
 
         if !linearizable {

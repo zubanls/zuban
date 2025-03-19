@@ -1061,7 +1061,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                 .add_type_issue(db, IssueKind::NamedTupleShouldBeASingleBase);
         }
 
-        let (mro, linearizable) = linearize_mro_and_return_linearizable(i_s, &bases);
+        let (mro, linearizable) = linearize_mro_and_return_linearizable(db, &bases);
         if !linearizable {
             NodeRef::new(self.node_ref.file, self.node().arguments().unwrap().index())
                 .add_type_issue(
@@ -1464,7 +1464,7 @@ fn initialize_typed_dict_members(i_s: &InferenceState, cls: &Class, typed_dict: 
                     );
                     return;
                 };
-                typed_dict_members.merge(i_s, node_ref, td.members(i_s.db));
+                typed_dict_members.merge(i_s.db, node_ref, td.members(i_s.db));
             }
         }
     }
@@ -1627,7 +1627,7 @@ enum BaseKind {
     Enum,
 }
 
-fn to_base_kind(i_s: &InferenceState, t: &Type) -> BaseKind {
+fn to_base_kind(t: &Type) -> BaseKind {
     match t {
         Type::Class(c) => BaseKind::Class(c.link),
         Type::Type(_) => BaseKind::Type,
@@ -1636,18 +1636,18 @@ fn to_base_kind(i_s: &InferenceState, t: &Type) -> BaseKind {
         Type::TypedDict(d) => BaseKind::TypedDict(d.clone()),
         Type::NamedTuple(nt) => BaseKind::NamedTuple(nt.clone()),
         Type::Enum(_) => BaseKind::Enum,
-        Type::NewType(n) => to_base_kind(i_s, &n.type_),
+        Type::NewType(n) => to_base_kind(&n.type_),
         _ => unreachable!("{t:?}"),
     }
 }
 
 pub fn linearize_mro_and_return_linearizable(
-    i_s: &InferenceState,
+    db: &Database,
     bases: &[Type],
 ) -> (Box<[BaseClass]>, bool) {
     let mut mro: Vec<BaseClass> = vec![];
 
-    let object = i_s.db.python_state.object_type();
+    let object = db.python_state.object_type();
     let mut linearizable = true;
     if let Some(index) = bases.iter().position(|base| base == &object) {
         // Instead of adding object to each iterator (because in our mro, object is not saved), we
@@ -1666,18 +1666,18 @@ pub fn linearize_mro_and_return_linearizable(
                 type_: if new_base.needs_remapping {
                     new_base
                         .t
-                        .replace_type_var_likes(i_s.db, &mut |usage| {
+                        .replace_type_var_likes(db, &mut |usage| {
                             Some(match &bases[base_index] {
                                 Type::Tuple(tup) => tup
-                                    .class(i_s.db)
+                                    .class(db)
                                     .generics
-                                    .nth_usage(i_s.db, &usage)
+                                    .nth_usage(db, &usage)
                                     .into_generic_item(),
                                 Type::NamedTuple(n) => n
                                     .as_tuple_ref()
-                                    .class(i_s.db)
+                                    .class(db)
                                     .generics
-                                    .nth_usage(i_s.db, &usage)
+                                    .nth_usage(db, &usage)
                                     .into_generic_item(),
                                 Type::Class(GenericClass {
                                     generics: ClassGenerics::List(generics),
@@ -1685,9 +1685,9 @@ pub fn linearize_mro_and_return_linearizable(
                                 }) => generics[usage.index()].clone(),
                                 // Very rare and therefore a separate case.
                                 Type::Class(c) => c
-                                    .class(i_s.db)
+                                    .class(db)
                                     .generics
-                                    .nth_usage(i_s.db, &usage)
+                                    .nth_usage(db, &usage)
                                     .into_generic_item(),
                                 Type::Dataclass(d) => match &d.class.generics {
                                     ClassGenerics::List(generics) => {
@@ -1715,22 +1715,22 @@ pub fn linearize_mro_and_return_linearizable(
         .map(|t| {
             let mut additional_type = None;
             let generic_class = match &t {
-                Type::Class(c) => Some(c.class(i_s.db)),
-                Type::Dataclass(d) => Some(d.class.class(i_s.db)),
+                Type::Class(c) => Some(c.class(db)),
+                Type::Dataclass(d) => Some(d.class.class(db)),
                 Type::Tuple(tup) => {
-                    let cls = tup.class(i_s.db);
-                    additional_type = Some(cls.as_type(i_s.db));
+                    let cls = tup.class(db);
+                    additional_type = Some(cls.as_type(db));
                     Some(cls)
                 }
                 Type::NamedTuple(nt) => {
-                    let cls = nt.as_tuple_ref().class(i_s.db);
-                    additional_type = Some(cls.as_type(i_s.db));
+                    let cls = nt.as_tuple_ref().class(db);
+                    additional_type = Some(cls.as_type(db));
                     Some(cls)
                 }
                 _ => None,
             };
             let super_classes = if let Some(cls) = generic_class {
-                let cached_class_infos = cls.use_cached_class_infos(i_s.db);
+                let cached_class_infos = cls.use_cached_class_infos(db);
                 cached_class_infos.mro.as_ref()
             } else {
                 &[]
@@ -1758,14 +1758,15 @@ pub fn linearize_mro_and_return_linearizable(
             if let Some((i, candidate)) = base_iterators[base_index].peek().cloned() {
                 had_entry = true;
                 let conflicts = base_iterators.iter().any(|base_bases| {
-                    base_bases.clone().skip(1).any(|(_, other)| {
-                        to_base_kind(i_s, &candidate.t) == to_base_kind(i_s, &other.t)
-                    })
+                    base_bases
+                        .clone()
+                        .skip(1)
+                        .any(|(_, other)| to_base_kind(&candidate.t) == to_base_kind(&other.t))
                 });
                 if !conflicts {
                     for base_bases in base_iterators.iter_mut() {
                         base_bases.next_if(|(_, next)| {
-                            to_base_kind(i_s, &candidate.t) == to_base_kind(i_s, &next.t)
+                            to_base_kind(&candidate.t) == to_base_kind(&next.t)
                         });
                     }
                     add_to_mro(
