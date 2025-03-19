@@ -15,8 +15,7 @@ use crate::{
 enum Context<'a> {
     None,
     Class(&'a Class<'a>),
-    DiagnosticExecution(&'a Function<'a, 'a>),
-    Execution(&'a Function<'a, 'a>),
+    Function(&'a Function<'a, 'a>),
     LambdaCallable {
         callable: &'a CallableContent,
         parent_context: &'a Context<'a>,
@@ -27,7 +26,7 @@ impl<'a> Context<'a> {
     fn current_class(&self, db: &'a Database) -> Option<Class<'a>> {
         match self {
             Context::Class(c) => Some(**c),
-            Context::DiagnosticExecution(func) | Context::Execution(func) => func.parent_class(db),
+            Context::Function(func) => func.parent_class(db),
             Context::LambdaCallable { parent_context, .. } => parent_context.current_class(db),
             Context::None => None,
         }
@@ -72,7 +71,7 @@ impl<'db, 'a> InferenceState<'db, 'a> {
                     db,
                     NodeRef::from_link(db, PointLink::new(file_index, func_index)),
                 );
-                Context::DiagnosticExecution(&func)
+                Context::Function(&func)
             }
             ParentScope::Class(class_index) => {
                 class = Class::with_self_generics(
@@ -92,7 +91,7 @@ impl<'db, 'a> InferenceState<'db, 'a> {
     pub(crate) fn with_func_and_args(&self, func: &'a Function<'a, 'a>) -> Self {
         Self {
             db: self.db,
-            context: Context::Execution(func),
+            context: Context::Function(func),
             mode: self.mode,
         }
     }
@@ -100,7 +99,7 @@ impl<'db, 'a> InferenceState<'db, 'a> {
     pub(crate) fn with_diagnostic_func_and_args(&self, func: &'a Function<'a, 'a>) -> Self {
         Self {
             db: self.db,
-            context: Context::DiagnosticExecution(func),
+            context: Context::Function(func),
             mode: self.mode,
         }
     }
@@ -171,7 +170,7 @@ impl<'db, 'a> InferenceState<'db, 'a> {
 
     pub fn current_function(&self) -> Option<&'a Function<'a, 'a>> {
         match &self.context {
-            Context::DiagnosticExecution(func) | Context::Execution(func) => Some(func),
+            Context::Function(func) => Some(func),
             _ => None,
         }
     }
