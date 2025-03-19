@@ -3306,41 +3306,46 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         Some(self.point_resolution_to_type_name_lookup(pr))
     }
 
+    fn ensure_cached_class(
+        i_s: &InferenceState<'db, '_>,
+        class_node_ref: ClassNodeRef<'db>,
+    ) -> Lookup<'db, 'db> {
+        // At this point the class is not necessarily calculated and we therefore do this here.
+        if class_node_ref.is_calculating_class_infos() {
+            return Lookup::T(TypeContent::RecursiveClass(class_node_ref));
+        }
+
+        class_node_ref.ensure_cached_class_infos(i_s);
+        if let Some(t) = class_node_ref
+            .use_cached_class_infos(i_s.db)
+            .undefined_generics_type
+            .get()
+        {
+            match t.as_ref() {
+                t @ Type::Enum(_) => return Lookup::T(TypeContent::Type(t.clone())),
+                Type::Dataclass(d) => return Lookup::T(TypeContent::Dataclass(d.clone())),
+                Type::TypedDict(td) => {
+                    if td.calculating() {
+                        return Lookup::T(TypeContent::RecursiveClass(ClassNodeRef::from_link(
+                            i_s.db,
+                            td.defined_at,
+                        )));
+                    } else {
+                        return Lookup::T(TypeContent::TypedDictDefinition(td.clone()));
+                    }
+                }
+                _ => (),
+            }
+        }
+        Lookup::T(TypeContent::Class {
+            node_ref: class_node_ref,
+            has_type_vars: !class_node_ref.type_vars(i_s).is_empty(),
+        })
+    }
+
     fn point_resolution_to_type_name_lookup(&self, resolved: PointResolution) -> Lookup<'db, 'db> {
         let i_s = self.i_s;
 
-        let ensure_cached_class = |class_node_ref: ClassNodeRef<'db>| {
-            // At this point the class is not necessarily calculated and we therefore do this here.
-            if class_node_ref.is_calculating_class_infos() {
-                return Lookup::T(TypeContent::RecursiveClass(class_node_ref));
-            }
-
-            class_node_ref.ensure_cached_class_infos(i_s);
-            if let Some(t) = class_node_ref
-                .use_cached_class_infos(i_s.db)
-                .undefined_generics_type
-                .get()
-            {
-                match t.as_ref() {
-                    t @ Type::Enum(_) => return Lookup::T(TypeContent::Type(t.clone())),
-                    Type::Dataclass(d) => return Lookup::T(TypeContent::Dataclass(d.clone())),
-                    Type::TypedDict(td) => {
-                        if td.calculating() {
-                            return Lookup::T(TypeContent::RecursiveClass(
-                                ClassNodeRef::from_link(i_s.db, td.defined_at),
-                            ));
-                        } else {
-                            return Lookup::T(TypeContent::TypedDictDefinition(td.clone()));
-                        }
-                    }
-                    _ => (),
-                }
-            }
-            Lookup::T(TypeContent::Class {
-                node_ref: class_node_ref,
-                has_type_vars: !class_node_ref.type_vars(self.i_s).is_empty(),
-            })
-        };
         let func_is_invalid_type = |node_ref: NodeRef<'db>| {
             let func = Function::new_with_unknown_parent(i_s.db, node_ref);
             if let Some(specific) = node_ref
@@ -3380,7 +3385,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 return match name_def.expect_type() {
                     TypeLike::ClassDef(c) => {
                         cache_class_name(node_ref, c);
-                        ensure_cached_class(ClassNodeRef::new(node_ref.file, c.index()))
+                        Self::ensure_cached_class(i_s, ClassNodeRef::new(node_ref.file, c.index()))
                     }
                     TypeLike::Assignment(assignment) => {
                         if node_ref.point().calculated() {
@@ -3460,7 +3465,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                         match complex {
                             ComplexPoint::Class(_) => {
                                 let c_node_ref = ClassNodeRef::from_node_ref(i_node_ref);
-                                return ensure_cached_class(c_node_ref);
+                                return Self::ensure_cached_class(i_s, c_node_ref);
                             }
                             ComplexPoint::TypeAlias(a) => {
                                 return Lookup::T(TypeContent::TypeAlias(a))
