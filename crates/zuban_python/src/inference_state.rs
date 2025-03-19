@@ -14,7 +14,6 @@ use crate::{
 #[derive(Debug, Copy, Clone)]
 enum Context<'a> {
     None,
-    DiagnosticClass(&'a Class<'a>),
     Class(&'a Class<'a>),
     DiagnosticExecution(&'a Function<'a, 'a>),
     Execution(&'a Function<'a, 'a>),
@@ -27,7 +26,7 @@ enum Context<'a> {
 impl<'a> Context<'a> {
     fn current_class(&self, db: &'a Database) -> Option<Class<'a>> {
         match self {
-            Context::DiagnosticClass(c) | Context::Class(c) => Some(**c),
+            Context::Class(c) => Some(**c),
             Context::DiagnosticExecution(func) | Context::Execution(func) => func.parent_class(db),
             Context::LambdaCallable { parent_context, .. } => parent_context.current_class(db),
             Context::None => None,
@@ -80,7 +79,7 @@ impl<'db, 'a> InferenceState<'db, 'a> {
                     db,
                     ClassNodeRef::from_link(db, PointLink::new(file_index, class_index)),
                 );
-                Context::DiagnosticClass(&class)
+                Context::Class(&class)
             }
         };
         callback(InferenceState {
@@ -122,14 +121,6 @@ impl<'db, 'a> InferenceState<'db, 'a> {
         Self {
             db: self.db,
             context: Context::Class(current_class),
-            mode: self.mode,
-        }
-    }
-
-    pub fn with_diagnostic_class_context(&self, current_class: &'a Class<'a>) -> Self {
-        Self {
-            db: self.db,
-            context: Context::DiagnosticClass(current_class),
             mode: self.mode,
         }
     }
@@ -201,7 +192,7 @@ impl<'db, 'a> InferenceState<'db, 'a> {
 
     pub fn in_class_scope(&self) -> Option<&'a Class<'a>> {
         match self.context {
-            Context::DiagnosticClass(c) | Context::Class(c) => Some(c),
+            Context::Class(c) => Some(c),
             _ => None,
         }
     }
@@ -239,13 +230,6 @@ impl<'db, 'a> InferenceState<'db, 'a> {
         } else {
             ParentScope::Module
         }
-    }
-
-    pub fn is_diagnostic(&self) -> bool {
-        matches!(
-            self.context,
-            Context::DiagnosticClass(_) | Context::DiagnosticExecution(..)
-        )
     }
 
     pub fn should_add_issue(&self) -> bool {

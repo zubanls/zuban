@@ -679,7 +679,7 @@ impl Inference<'_, '_, '_> {
             // We skip all of this logic, because there's custom logic for TypedDicts.
             return;
         }
-        let i_s = self.i_s.with_diagnostic_class_context(&c);
+        let i_s = self.i_s.with_class_context(&c);
         let inference = self.file.inference(&i_s);
         let result = inference.calculate_class_block_diagnostics(c, block);
         if !result.is_ok() {
