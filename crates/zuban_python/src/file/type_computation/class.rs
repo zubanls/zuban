@@ -563,7 +563,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
         // some member initialization things with TypedDicts, Enums, etc.
         let class = Class::with_undefined_generics(self.node_ref);
         if let Some(td) = was_typed_dict {
-            initialize_typed_dict_members(i_s, &class, td);
+            initialize_typed_dict_members(db, &class, td);
         };
 
         if let Some(enum_) = was_enum {
@@ -958,7 +958,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                             }
                             CalculatedBaseClass::NewNamedTuple => {
                                 is_new_named_tuple = true;
-                                let named_tuple = self.named_tuple_from_class(i_s);
+                                let named_tuple = self.named_tuple_from_class(db);
                                 bases.push(Type::NamedTuple(named_tuple));
                                 class_kind = ClassKind::NamedTuple;
                             }
@@ -1230,28 +1230,28 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
         total
     }
 
-    fn named_tuple_from_class(&self, i_s: &InferenceState) -> Rc<NamedTuple> {
+    fn named_tuple_from_class(&self, db: &Database) -> Rc<NamedTuple> {
         let name = self.name_string_slice();
         Rc::new(NamedTuple::new(
             name,
-            self.initialize_named_tuple_class_members(i_s, name),
+            self.initialize_named_tuple_class_members(db, name),
         ))
     }
 
     fn initialize_named_tuple_class_members(
         &self,
-        i_s: &InferenceState,
+        db: &Database,
         name: StringSlice,
     ) -> CallableContent {
-        let mut vec = start_namedtuple_params(i_s.db);
+        let mut vec = start_namedtuple_params(db);
         let file = self.node_ref.file;
         let cls = Class::with_undefined_generics(self.node_ref);
-        let i_s = &i_s.with_class_context(&cls);
+        let i_s = &InferenceState::new(db).with_class_context(&cls);
         find_stmt_named_tuple_types(i_s, file, &mut vec, self.node().block().iter_stmt_likes());
         for (name, index) in self.class_storage.class_symbol_table.iter() {
             if NAMEDTUPLE_PROHIBITED_NAMES.contains(&name) {
                 NodeRef::new(self.node_ref.file, *index).add_type_issue(
-                    i_s.db,
+                    db,
                     IssueKind::NamedTupleInvalidAttributeOverride { name: name.into() },
                 )
             }
@@ -1260,7 +1260,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
             Some(DbString::StringSlice(name)),
             None,
             self.node_ref.as_link(),
-            self.use_cached_type_vars(i_s.db).clone(),
+            self.use_cached_type_vars(db).clone(),
             CallableParams::new_simple(Rc::from(vec)),
             Type::Self_,
         )
@@ -1436,13 +1436,12 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
     }
 }
 
-fn initialize_typed_dict_members(i_s: &InferenceState, cls: &Class, typed_dict: Rc<TypedDict>) {
+fn initialize_typed_dict_members(db: &Database, cls: &Class, typed_dict: Rc<TypedDict>) {
     let typed_dict_definition = cls.maybe_typed_dict_definition().unwrap();
-    let i_s = &i_s.with_class_context(cls);
     let mut typed_dict_members = TypedDictMemberGatherer::default();
     if let Some(args) = cls.node().arguments() {
         for (i, base) in cls
-            .use_cached_class_infos(i_s.db)
+            .use_cached_class_infos(db)
             .mro
             .iter()
             .rev()
@@ -1451,8 +1450,8 @@ fn initialize_typed_dict_members(i_s: &InferenceState, cls: &Class, typed_dict: 
         {
             if let Type::TypedDict(td) = &base.type_ {
                 let node_ref = NodeRef::new(cls.node_ref.file, args.iter().nth(i).unwrap().index());
-                if !td.has_calculated_members(i_s.db) {
-                    let super_cls = ClassInitializer::from_link(i_s.db, td.defined_at);
+                if !td.has_calculated_members(db) {
+                    let super_cls = ClassInitializer::from_link(db, td.defined_at);
                     let tdd = super_cls.maybe_typed_dict_definition().unwrap();
                     tdd.deferred_subclass_member_initializations
                         .borrow_mut()
@@ -1464,14 +1463,14 @@ fn initialize_typed_dict_members(i_s: &InferenceState, cls: &Class, typed_dict: 
                     );
                     return;
                 };
-                typed_dict_members.merge(i_s.db, node_ref, td.members(i_s.db));
+                typed_dict_members.merge(db, node_ref, td.members(db));
             }
         }
     }
     debug!("Start TypedDict members calculation for {:?}", cls.name());
     let file = cls.node_ref.file;
     find_stmt_typed_dict_types(
-        i_s,
+        &InferenceState::new(db).with_class_context(&cls),
         file,
         &mut typed_dict_members,
         cls.node().block().iter_stmt_likes(),
@@ -1488,12 +1487,12 @@ fn initialize_typed_dict_members(i_s: &InferenceState, cls: &Class, typed_dict: 
         };
         drop(borrowed);
         // TODO is this initialization correct?
-        let cls = Class::from_non_generic_link(i_s.db, deferred.defined_at);
+        let cls = Class::from_non_generic_link(db, deferred.defined_at);
         debug!(
             "Calculate TypedDict members for deferred subclass {:?}",
             cls.name()
         );
-        initialize_typed_dict_members(i_s, &cls, deferred)
+        initialize_typed_dict_members(db, &cls, deferred)
     }
 }
 
