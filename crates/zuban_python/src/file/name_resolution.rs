@@ -737,10 +737,8 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                 Specific::NameOfNameDef | Specific::FirstNameOfNameDef => {
                     // MultiDefinition means we are on a Name that has a NameDef as a
                     // parent.
-                    let node_index = node_index - NAME_DEF_TO_NAME_DIFFERENCE;
-                    let p = self.file.points.get(node_index);
-
-                    let node_ref = NodeRef::new(self.file, node_index);
+                    let name_def_node_index = node_index - NAME_DEF_TO_NAME_DIFFERENCE;
+                    let node_ref = NodeRef::new(self.file, name_def_node_index);
                     if self.stop_on_assignments {
                         let defining = node_ref.as_name_def().expect_defining_stmt();
                         if matches!(
@@ -749,15 +747,21 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                         ) {
                             return PointResolution::NameDef {
                                 node_ref,
-                                global_redirect,
+                                global_redirect: global_redirect
+                                    || node_ref.name_ref_of_name_def().point().in_global_scope(),
                             };
                         }
                     }
-                    self.resolve_point_internal(node_index, p, global_redirect, narrow_name)
-                        .unwrap_or_else(|| PointResolution::NameDef {
-                            node_ref,
-                            global_redirect,
-                        })
+                    self.resolve_point_internal(
+                        name_def_node_index,
+                        node_ref.point(),
+                        global_redirect,
+                        narrow_name,
+                    )
+                    .unwrap_or_else(|| PointResolution::NameDef {
+                        node_ref,
+                        global_redirect,
+                    })
                 }
                 _ => PointResolution::Inferred(Inferred::new_saved(self.file, node_index)),
             },
