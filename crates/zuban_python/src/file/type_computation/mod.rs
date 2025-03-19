@@ -36,7 +36,7 @@ use crate::{
     inferred::Inferred,
     matching::{Generics, ResultContext},
     new_class,
-    node_ref::NodeRef,
+    node_ref::{self, NodeRef},
     type_::{
         add_param_spec_to_params, AnyCause, CallableContent, CallableParam, CallableParams,
         CallableWithParent, ClassGenerics, Dataclass, DbBytes, DbString, Enum, EnumMember,
@@ -3343,118 +3343,35 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         })
     }
 
+    fn func_is_invalid_type(db: &'db Database, node_ref: NodeRef<'db>) -> Lookup<'db, 'db> {
+        let func = Function::new_with_unknown_parent(db, node_ref);
+        if let Some(specific) = node_ref
+            .file
+            .points
+            .get(func.node().name_def().index())
+            .maybe_calculated_and_specific()
+        {
+            if let Some(tc) = check_special_case(specific) {
+                return Lookup::T(tc);
+            }
+        }
+
+        Lookup::T(TypeContent::InvalidVariable(
+            InvalidVariableType::Function {
+                name: func.name(),
+                qualified_name: func.qualified_name(db),
+            },
+        ))
+    }
+
     fn point_resolution_to_type_name_lookup(&self, resolved: PointResolution) -> Lookup<'db, 'db> {
         let i_s = self.i_s;
 
-        let func_is_invalid_type = |node_ref: NodeRef<'db>| {
-            let func = Function::new_with_unknown_parent(i_s.db, node_ref);
-            if let Some(specific) = node_ref
-                .file
-                .points
-                .get(func.node().name_def().index())
-                .maybe_calculated_and_specific()
-            {
-                if let Some(tc) = check_special_case(specific) {
-                    return Lookup::T(tc);
-                }
-            }
-
-            Lookup::T(TypeContent::InvalidVariable(
-                InvalidVariableType::Function {
-                    name: func.name(),
-                    qualified_name: func.qualified_name(i_s.db),
-                },
-            ))
-        };
         match resolved {
             PointResolution::NameDef {
                 node_ref,
                 global_redirect,
-            } => {
-                if node_ref.file_index() != self.file.file_index {
-                    return self
-                        .with_new_file(node_ref.file)
-                        .point_resolution_to_type_name_lookup(resolved);
-                }
-                let node_ref = node_ref.to_db_lifetime(i_s.db);
-                if node_ref.point().maybe_calculated_and_specific() == Some(Specific::Cycle) {
-                    return Lookup::T(TypeContent::UNKNOWN_REPORTED);
-                }
-
-                let name_def = node_ref.as_name_def();
-                return match name_def.expect_type() {
-                    TypeLike::ClassDef(c) => {
-                        cache_class_name(node_ref, c);
-                        Self::ensure_cached_class(i_s, ClassNodeRef::new(node_ref.file, c.index()))
-                    }
-                    TypeLike::Assignment(assignment) => {
-                        if node_ref.point().calculated() {
-                            if let Some(PointResolution::Inferred(inf)) =
-                                self.resolve_point_without_narrowing(node_ref.node_index)
-                            {
-                                if let Some(n) = inf.maybe_saved_node_ref(self.i_s.db) {
-                                    if let Some(tnl) = Self::check_special_type_definition(n) {
-                                        return tnl;
-                                    }
-                                }
-                            }
-                        }
-                        if global_redirect {
-                            node_ref
-                                .file
-                                .name_resolution_for_types(&InferenceState::new(self.i_s.db))
-                                .compute_type_assignment(assignment)
-                        } else {
-                            self.with_new_file(node_ref.file)
-                                .compute_type_assignment(assignment)
-                        }
-                    }
-                    TypeLike::ImportFromAsName(from_as_name) => self
-                        .point_resolution_to_type_name_lookup(
-                            self.resolve_import_from_name_def_without_narrowing(from_as_name),
-                        ),
-                    TypeLike::DottedAsName(dotted_as_name) => self
-                        .point_resolution_to_type_name_lookup(
-                            self.resolve_import_name_name_def_without_narrowing(dotted_as_name),
-                        ),
-                    TypeLike::Function(f) => {
-                        let func_node_ref = NodeRef::new(node_ref.file, f.index());
-                        func_is_invalid_type(func_node_ref)
-                    }
-                    TypeLike::ParamName(annotation) => Lookup::T(TypeContent::InvalidVariable({
-                        let as_base_class_any = annotation
-                            .map(|a| {
-                                match use_cached_annotation_type(i_s.db, node_ref.file, a).as_ref()
-                                {
-                                    Type::Any(_) => true,
-                                    Type::Type(t) => match t.as_ref() {
-                                        Type::Any(_) => true,
-                                        Type::Class(GenericClass {
-                                            link,
-                                            generics: ClassGenerics::None,
-                                        }) => {
-                                            *link == i_s.db.python_state.object_node_ref().as_link()
-                                        }
-                                        _ => false,
-                                    },
-                                    _ => false,
-                                }
-                            })
-                            .unwrap_or(true);
-                        if as_base_class_any {
-                            InvalidVariableType::ParamNameAsBaseClassAny(node_ref)
-                        } else {
-                            InvalidVariableType::Variable(node_ref)
-                        }
-                    })),
-                    TypeLike::Other => {
-                        // Happens currently with walrus assignments
-                        Lookup::T(TypeContent::InvalidVariable(InvalidVariableType::Variable(
-                            node_ref,
-                        )))
-                    }
-                };
-            }
+            } => return Self::handle_name_def(i_s, node_ref, global_redirect),
             PointResolution::Inferred(inferred) => {
                 if let Some(i_node_ref) = inferred.maybe_saved_node_ref(i_s.db) {
                     if let Some(specific) = i_node_ref.point().maybe_specific() {
@@ -3479,7 +3396,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                     if let Some(cause) = inferred.maybe_any(i_s.db) {
                         return Lookup::T(TypeContent::Unknown(UnknownCause::UnknownName(cause)));
                     } else if i_node_ref.maybe_function().is_some() {
-                        return func_is_invalid_type(i_node_ref);
+                        return Self::func_is_invalid_type(i_s.db, i_node_ref);
                     }
                 }
                 if let Some(file) = inferred.maybe_file(i_s.db) {
@@ -3515,6 +3432,97 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             _ => (),
         };
         Lookup::T(TypeContent::InvalidVariable(InvalidVariableType::Other))
+    }
+
+    #[inline]
+    fn handle_name_def(
+        i_s: &InferenceState<'db, '_>,
+        node_ref: NodeRef,
+        mut global_redirect: bool,
+    ) -> Lookup<'db, 'db> {
+        let node_ref = node_ref.to_db_lifetime(i_s.db);
+        if node_ref.point().maybe_calculated_and_specific() == Some(Specific::Cycle) {
+            return Lookup::T(TypeContent::UNKNOWN_REPORTED);
+        }
+
+        let name_def = node_ref.as_name_def();
+        return match name_def.expect_type() {
+            TypeLike::ClassDef(c) => {
+                cache_class_name(node_ref, c);
+                Self::ensure_cached_class(i_s, ClassNodeRef::new(node_ref.file, c.index()))
+            }
+            TypeLike::Assignment(assignment) => {
+                if node_ref.point().calculated() {
+                    if let Some(PointResolution::Inferred(inf)) = node_ref
+                        .file
+                        .name_resolution_for_types(i_s)
+                        .resolve_point_without_narrowing(node_ref.node_index)
+                    {
+                        if let Some(n) = inf.maybe_saved_node_ref(i_s.db) {
+                            if let Some(tnl) = Self::check_special_type_definition(n) {
+                                return tnl;
+                            }
+                        }
+                    }
+                }
+                if global_redirect {
+                    node_ref
+                        .file
+                        .name_resolution_for_types(&InferenceState::new(i_s.db))
+                        .compute_type_assignment(assignment)
+                } else {
+                    node_ref
+                        .file
+                        .name_resolution_for_types(i_s)
+                        .compute_type_assignment(assignment)
+                }
+            }
+            TypeLike::ImportFromAsName(from_as_name) => {
+                let name_resolution = node_ref.file.name_resolution_for_types(i_s);
+                name_resolution.point_resolution_to_type_name_lookup(
+                    name_resolution.resolve_import_from_name_def_without_narrowing(from_as_name),
+                )
+            }
+            TypeLike::DottedAsName(dotted_as_name) => {
+                let name_resolution = node_ref.file.name_resolution_for_types(i_s);
+                name_resolution.point_resolution_to_type_name_lookup(
+                    name_resolution.resolve_import_name_name_def_without_narrowing(dotted_as_name),
+                )
+            }
+            TypeLike::Function(f) => {
+                let func_node_ref = NodeRef::new(node_ref.file, f.index());
+                Self::func_is_invalid_type(i_s.db, func_node_ref)
+            }
+            TypeLike::ParamName(annotation) => Lookup::T(TypeContent::InvalidVariable({
+                let as_base_class_any = annotation
+                    .map(
+                        |a| match use_cached_annotation_type(i_s.db, node_ref.file, a).as_ref() {
+                            Type::Any(_) => true,
+                            Type::Type(t) => match t.as_ref() {
+                                Type::Any(_) => true,
+                                Type::Class(GenericClass {
+                                    link,
+                                    generics: ClassGenerics::None,
+                                }) => *link == i_s.db.python_state.object_node_ref().as_link(),
+                                _ => false,
+                            },
+                            _ => false,
+                        },
+                    )
+                    .unwrap_or(true);
+                if as_base_class_any {
+                    InvalidVariableType::ParamNameAsBaseClassAny(node_ref)
+                } else {
+                    InvalidVariableType::Variable(node_ref)
+                }
+            })),
+            TypeLike::Other => {
+                // Happens currently with walrus assignments
+                Lookup::T(TypeContent::InvalidVariable(InvalidVariableType::Variable(
+                    node_ref,
+                )))
+            }
+        };
     }
 
     fn lookup_special_primary_or_atom_type(&self, p: PrimaryOrAtom) -> Option<Lookup<'db, 'db>> {
