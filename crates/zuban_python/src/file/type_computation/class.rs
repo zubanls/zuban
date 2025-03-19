@@ -405,11 +405,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                     } else if maybe_link == db.python_state.total_ordering_link() {
                         total_ordering = true;
                     } else if maybe_link == db.python_state.runtime_checkable_link()
-                        || maybe_link
-                            == i_s
-                                .db
-                                .python_state
-                                .typing_extensions_runtime_checkable_link()
+                        || maybe_link == db.python_state.typing_extensions_runtime_checkable_link()
                     {
                         is_runtime_checkable = true;
                     }
@@ -521,7 +517,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
             let td = TypedDict::new_class_definition(
                 self.name_string_slice(),
                 self.node_ref.as_link(),
-                self.type_vars(i_s).clone(),
+                type_vars.clone(),
                 is_final,
             );
             // In case TypedDict is combined with dataclass, just let the dataclass win
