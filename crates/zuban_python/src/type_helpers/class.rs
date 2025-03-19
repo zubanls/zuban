@@ -280,19 +280,18 @@ impl<'db: 'a, 'a> Class<'a> {
         }
     }
 
-    pub fn is_base_exception_group(&self, i_s: &InferenceState) -> bool {
-        i_s.db
-            .python_state
+    pub fn is_base_exception_group(&self, db: &Database) -> bool {
+        db.python_state
             .base_exception_group_node_ref()
-            .is_some_and(|g| self.class_link_in_mro(i_s, g.as_link()))
+            .is_some_and(|g| self.class_link_in_mro(db, g.as_link()))
     }
 
-    pub fn is_base_exception(&self, i_s: &InferenceState) -> bool {
-        self.class_link_in_mro(i_s, i_s.db.python_state.base_exception_node_ref().as_link())
+    pub fn is_base_exception(&self, db: &Database) -> bool {
+        self.class_link_in_mro(db, db.python_state.base_exception_node_ref().as_link())
     }
 
-    pub fn is_exception(&self, i_s: &InferenceState) -> bool {
-        self.class_link_in_mro(i_s, i_s.db.python_state.exception_node_ref().as_link())
+    pub fn is_exception(&self, db: &Database) -> bool {
+        self.class_link_in_mro(db, db.python_state.exception_node_ref().as_link())
     }
 
     pub fn is_protocol(&self, db: &Database) -> bool {

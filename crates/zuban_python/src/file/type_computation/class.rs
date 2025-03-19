@@ -170,15 +170,15 @@ impl<'db: 'file, 'file> ClassNodeRef<'file> {
         TypeVarLikes::load_saved_type_vars(db, self.type_vars_node_ref())
     }
 
-    pub fn class_link_in_mro(&self, i_s: &InferenceState, link: PointLink) -> bool {
+    pub fn class_link_in_mro(&self, db: &Database, link: PointLink) -> bool {
         if self.0.as_link() == link {
             return true;
         }
-        let class_infos = self.use_cached_class_infos(i_s.db);
+        let class_infos = self.use_cached_class_infos(db);
         class_infos.mro.iter().any(|b| match &b.type_ {
             Type::Class(c) => link == c.link,
             t => t
-                .inner_generic_class(i_s)
+                .inner_generic_class_with_db(db)
                 .is_some_and(|c| c.node_ref.as_link() == link),
         })
     }
@@ -753,7 +753,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                                     metaclass = MetaclassState::Unknown;
                                 } else if c.incomplete_mro(db)
                                     || c.class_link_in_mro(
-                                        i_s,
+                                        db,
                                         db.python_state.bare_type_node_ref().as_link(),
                                     )
                                 {
@@ -935,7 +935,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                                             // Metaclasses don't inherit the dataclass_transform
                                             // state. See e.g. testDataclassTransformViaSubclassOfMetaclass
                                             if !class.class_link_in_mro(
-                                                i_s,
+                                                db,
                                                 db.python_state.bare_type_node_ref().as_link(),
                                             ) {
                                                 dataclass_transform = Some(dt.clone());
@@ -1091,7 +1091,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
             Default::default()
         };
         let abstract_attributes =
-            self.calculate_abstract_attributes(i_s, &metaclass, &class_kind, &mro);
+            self.calculate_abstract_attributes(db, &metaclass, &class_kind, &mro);
         (
             Box::new(ClassInfos {
                 mro,
@@ -1343,7 +1343,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
 
     fn calculate_abstract_attributes(
         &self,
-        i_s: &InferenceState,
+        db: &Database,
         metaclass: &MetaclassState,
         class_kind: &ClassKind,
         mro: &[BaseClass],
@@ -1360,11 +1360,11 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                 .is_none()
                 && !result
                     .iter()
-                    .any(|&l| NodeRef::from_link(i_s.db, l).as_code() == name)
+                    .any(|&l| NodeRef::from_link(db, l).as_code() == name)
             {
                 for base in &mro[..mro_index] {
                     if let Type::Class(c) = &base.type_ {
-                        let class = c.class(i_s.db);
+                        let class = c.class(db);
                         if class
                             .class_storage
                             .class_symbol_table
@@ -1380,11 +1380,11 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
         };
         for (i, base) in mro.iter().enumerate() {
             if let Type::Class(c) = &base.type_ {
-                let class = c.class(i_s.db);
-                let class_infos = class.use_cached_class_infos(i_s.db);
+                let class = c.class(db);
+                let class_infos = class.use_cached_class_infos(db);
                 if base.is_direct_base {
                     for &link in class_infos.abstract_attributes.iter() {
-                        let name = NodeRef::from_link(i_s.db, link).as_code();
+                        let name = NodeRef::from_link(db, link).as_code();
                         maybe_add(link, name, i)
                     }
                     if !matches!(class_kind, ClassKind::Protocol) {
@@ -1412,22 +1412,22 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
             }
         }
         // Mypy sorts these alphanumerically
-        result.sort_by_key(|&l| NodeRef::from_link(i_s.db, l).as_code());
+        result.sort_by_key(|&l| NodeRef::from_link(db, l).as_code());
         if self.class_storage.abstract_attributes.is_empty()
             && !result.is_empty()
             && self.node_ref.file.is_stub()
         {
             let has_abc_meta_metaclass = || match metaclass {
-                MetaclassState::Some(link) => ClassInitializer::from_link(i_s.db, *link)
-                    .class_link_in_mro(i_s, i_s.db.python_state.abc_meta_link()),
+                MetaclassState::Some(link) => ClassInitializer::from_link(db, *link)
+                    .class_link_in_mro(db, db.python_state.abc_meta_link()),
                 _ => false,
             };
             if !has_abc_meta_metaclass() {
                 self.add_issue_on_name(
-                    i_s.db,
+                    db,
                     IssueKind::ClassNeedsAbcMeta {
-                        class_name: self.qualified_name(i_s.db).into(),
-                        attributes: join_abstract_attributes(i_s.db, &result),
+                        class_name: self.qualified_name(db).into(),
+                        attributes: join_abstract_attributes(db, &result),
                     },
                 )
             }

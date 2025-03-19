@@ -82,6 +82,7 @@ use crate::{
         OnTypeError, ResultContext,
     },
     node_ref::NodeRef,
+    recoverable_error,
     type_helpers::{Class, Instance, MroIterator, TypeOrClass},
     utils::{bytes_repr, join_with_commas, rc_slice_into_vec, str_repr},
 };
@@ -669,22 +670,41 @@ impl Type {
         &'x self,
         i_s: &InferenceState<'db, 'x>,
     ) -> Option<Class<'x>> {
+        match self {
+            Type::Self_ => {
+                let cls = i_s.current_class();
+                if cls.is_none() {
+                    recoverable_error!(
+                        "Self was somehow not handled properly when finding inner_generic_class"
+                    )
+                }
+                cls
+            }
+            Type::Type(t) => Some(
+                t.inner_generic_class(i_s)?
+                    .use_cached_class_infos(i_s.db)
+                    .metaclass(i_s.db),
+            ),
+            _ => self.inner_generic_class_with_db(i_s.db),
+        }
+    }
+
+    pub fn inner_generic_class_with_db<'x>(&'x self, db: &'x Database) -> Option<Class<'x>> {
         Some(match self {
-            Type::Class(c) => c.class(i_s.db),
-            Type::Dataclass(dc) => dc.class(i_s.db),
-            Type::Enum(enum_) => enum_.class(i_s.db),
-            Type::EnumMember(member) => member.enum_.class(i_s.db),
+            Type::Class(c) => c.class(db),
+            Type::Dataclass(dc) => dc.class(db),
+            Type::Enum(enum_) => enum_.class(db),
+            Type::EnumMember(member) => member.enum_.class(db),
             Type::Type(t) => t
-                .inner_generic_class(i_s)?
-                .use_cached_class_infos(i_s.db)
-                .metaclass(i_s.db),
-            Type::TypeVar(tv) => match tv.type_var.kind(i_s.db) {
-                TypeVarKind::Bound(t) => return t.inner_generic_class(i_s),
+                .inner_generic_class_with_db(db)?
+                .use_cached_class_infos(db)
+                .metaclass(db),
+            Type::TypeVar(tv) => match tv.type_var.kind(db) {
+                TypeVarKind::Bound(t) => return t.inner_generic_class_with_db(db),
                 _ => return None,
             },
-            Type::Self_ => i_s.current_class().unwrap(),
-            Type::TypedDict(_) => i_s.db.python_state.typed_dict_class(),
-            Type::NewType(n) => return n.type_.inner_generic_class(i_s),
+            Type::TypedDict(_) => db.python_state.typed_dict_class(),
+            Type::NewType(n) => return n.type_.inner_generic_class_with_db(db),
             _ => return None,
         })
     }

@@ -1974,7 +1974,7 @@ impl Inference<'_, '_, '_> {
                                 )
                             }
                         }
-                        Some(except_type(self.i_s, &inf_t, true))
+                        Some(except_type(self.i_s.db, &inf_t, true))
                     } else {
                         None
                     };
@@ -4306,10 +4306,10 @@ enum ExceptType {
 }
 
 impl ExceptType {
-    fn from_types<'x>(i_s: &InferenceState, types: impl Iterator<Item = &'x Type>) -> Self {
+    fn from_types<'x>(db: &Database, types: impl Iterator<Item = &'x Type>) -> Self {
         let mut result = ExceptType::ContainsOnlyBaseExceptions;
         for t in types {
-            match except_type(i_s, t, false) {
+            match except_type(db, t, false) {
                 ExceptType::ContainsOnlyBaseExceptions => (),
                 x @ ExceptType::HasExceptionGroup => result = x,
                 ExceptType::Invalid => return ExceptType::Invalid,
@@ -4319,13 +4319,13 @@ impl ExceptType {
     }
 }
 
-fn except_type(i_s: &InferenceState, t: &Type, allow_tuple: bool) -> ExceptType {
+fn except_type(db: &Database, t: &Type, allow_tuple: bool) -> ExceptType {
     match t {
         Type::Type(t) => {
-            if let Some(cls) = t.maybe_class(i_s.db) {
-                if cls.is_base_exception_group(i_s) {
+            if let Some(cls) = t.maybe_class(db) {
+                if cls.is_base_exception_group(db) {
                     return ExceptType::HasExceptionGroup;
-                } else if cls.is_base_exception(i_s) {
+                } else if cls.is_base_exception(db) {
                     return ExceptType::ContainsOnlyBaseExceptions;
                 }
             }
@@ -4333,12 +4333,12 @@ fn except_type(i_s: &InferenceState, t: &Type, allow_tuple: bool) -> ExceptType 
         }
         Type::Any(_) => ExceptType::ContainsOnlyBaseExceptions,
         Type::Tuple(content) if allow_tuple => match &content.args {
-            TupleArgs::FixedLen(ts) => ExceptType::from_types(i_s, ts.iter()),
-            TupleArgs::ArbitraryLen(t) => except_type(i_s, t, false),
+            TupleArgs::FixedLen(ts) => ExceptType::from_types(db, ts.iter()),
+            TupleArgs::ArbitraryLen(t) => except_type(db, t, false),
             TupleArgs::WithUnpack(w) => match &w.unpack {
                 TupleUnpack::TypeVarTuple(_) => ExceptType::Invalid,
                 TupleUnpack::ArbitraryLen(t) => ExceptType::from_types(
-                    i_s,
+                    db,
                     w.before
                         .iter()
                         .chain(w.after.iter())
@@ -4349,7 +4349,7 @@ fn except_type(i_s: &InferenceState, t: &Type, allow_tuple: bool) -> ExceptType 
         Type::Union(union) => {
             let mut result = ExceptType::ContainsOnlyBaseExceptions;
             for t in union.iter() {
-                match except_type(i_s, t, allow_tuple) {
+                match except_type(db, t, allow_tuple) {
                     ExceptType::ContainsOnlyBaseExceptions => (),
                     x @ ExceptType::HasExceptionGroup => result = x,
                     ExceptType::Invalid => return ExceptType::Invalid,

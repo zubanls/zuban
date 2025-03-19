@@ -4083,7 +4083,7 @@ pub fn instantiate_except_star(i_s: &InferenceState, t: &Type) -> Type {
     let result = gather_except_star(i_s, t);
     // When BaseException is used, we need a BaseExceptionGroup. Otherwise when every exception
     // inherits from Exception, ExceptionGroup is used.
-    let is_base_exception_group = has_base_exception(i_s, &result);
+    let is_base_exception_group = has_base_exception(i_s.db, &result);
     new_class!(
         match is_base_exception_group {
             false => i_s
@@ -4105,10 +4105,10 @@ pub fn instantiate_except_star(i_s: &InferenceState, t: &Type) -> Type {
     )
 }
 
-fn has_base_exception(i_s: &InferenceState, t: &Type) -> bool {
+fn has_base_exception(db: &Database, t: &Type) -> bool {
     match t {
-        Type::Class(c) => !c.class(i_s.db).is_exception(i_s),
-        Type::Union(u) => u.iter().any(|t| has_base_exception(i_s, t)),
+        Type::Class(c) => !c.class(db).is_exception(db),
+        Type::Union(u) => u.iter().any(|t| has_base_exception(db, t)),
         Type::Any(_) => false,
         // Gathering the exceptions already makes sure we do not end up with arbitrary types here.
         _ => unreachable!(),
@@ -4120,10 +4120,10 @@ fn gather_except_star(i_s: &InferenceState, t: &Type) -> Type {
         Type::Type(t) => match t.as_ref() {
             inner @ Type::Class(c) => {
                 let cls = c.class(i_s.db);
-                if cls.is_base_exception_group(i_s) {
+                if cls.is_base_exception_group(i_s.db) {
                     // Diagnostics are calculated when calculating diagnostics, not here.
                     Type::ERROR
-                } else if cls.is_base_exception(i_s) {
+                } else if cls.is_base_exception(i_s.db) {
                     inner.clone()
                 } else {
                     Type::ERROR
