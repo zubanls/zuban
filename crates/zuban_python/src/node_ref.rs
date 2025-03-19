@@ -297,7 +297,7 @@ impl<'file> NodeRef<'file> {
         self.file.add_issue(i_s, issue)
     }
 
-    fn add_type_issue(&self, db: &Database, kind: IssueKind) {
+    pub(crate) fn add_type_issue(&self, db: &Database, kind: IssueKind) {
         let issue = Issue::from_node_index(&self.file.tree, self.node_index, kind);
         self.file.add_type_issue(db, issue)
     }

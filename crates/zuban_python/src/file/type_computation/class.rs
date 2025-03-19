@@ -353,6 +353,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
             .calculated());
 
         node_ref.set_point(Point::new_calculating());
+        let db = i_s.db;
 
         let type_vars = self.type_vars(i_s);
 
@@ -373,7 +374,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                 {
                     if let PrimaryContent::Execution(exec) = primary.second() {
                         let inf = inference.infer_primary_or_atom(primary.first());
-                        if inf.is_name_defined_in_module(i_s.db, "dataclasses", "dataclass") {
+                        if inf.is_name_defined_in_module(db, "dataclasses", "dataclass") {
                             dataclass_options = Some(check_dataclass_options(
                                 i_s,
                                 self.node_ref.file,
@@ -384,7 +385,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                             continue;
                         }
                         if let Some(ComplexPoint::TypeInstance(Type::DataclassTransformObj(d))) =
-                            inf.maybe_complex_point(i_s.db)
+                            inf.maybe_complex_point(db)
                         {
                             dataclass_options = Some(check_dataclass_options(
                                 i_s,
@@ -399,11 +400,11 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                 }
                 let inf = inference.infer_decorator(decorator);
                 if let Some(maybe_link) = inf.maybe_saved_link() {
-                    if maybe_link == i_s.db.python_state.typing_final().as_link() {
+                    if maybe_link == db.python_state.typing_final().as_link() {
                         is_final = true;
-                    } else if maybe_link == i_s.db.python_state.total_ordering_link() {
+                    } else if maybe_link == db.python_state.total_ordering_link() {
                         total_ordering = true;
-                    } else if maybe_link == i_s.db.python_state.runtime_checkable_link()
+                    } else if maybe_link == db.python_state.runtime_checkable_link()
                         || maybe_link
                             == i_s
                                 .db
@@ -414,11 +415,11 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                     }
                 }
 
-                if inf.is_name_defined_in_module(i_s.db, "dataclasses", "dataclass") {
+                if inf.is_name_defined_in_module(db, "dataclasses", "dataclass") {
                     dataclass_options = Some(DataclassOptions::default());
                 }
                 if let Some(ComplexPoint::TypeInstance(Type::DataclassTransformObj(d))) =
-                    inf.maybe_complex_point(i_s.db)
+                    inf.maybe_complex_point(db)
                 {
                     if d.executed_by_function {
                         dataclass_options = Some(d.as_dataclass_options());
@@ -433,10 +434,10 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                     type_vars,
                     dataclass_options,
                 );
-                let class = dataclass.class(i_s.db);
+                let class = dataclass.class(db);
                 if dataclass.options.slots && class.lookup_symbol(i_s, "__slots__").is_some() {
                     class.add_issue_on_name(
-                        i_s.db,
+                        db,
                         IssueKind::DataclassPlusExplicitSlots {
                             class_name: class.name().into(),
                         },
@@ -456,7 +457,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
         if dataclass_transform.is_some() {
             class_infos.dataclass_transform = dataclass_transform;
         }
-        if total_ordering && !self.has_a_total_ordering_method_in_mro(i_s.db, &class_infos.mro) {
+        if total_ordering && !self.has_a_total_ordering_method_in_mro(db, &class_infos.mro) {
             // If there is no corresponding method, we just ignore the MRO
             NodeRef::new(self.node_ref.file, self.node().name_def().index())
                 .add_issue(i_s, IssueKind::TotalOrderingMissingMethod);
@@ -470,7 +471,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
         } else {
             if is_runtime_checkable {
                 self.add_issue_on_name(
-                    i_s.db,
+                    db,
                     IssueKind::RuntimeCheckableCanOnlyBeUsedWithProtocolClasses,
                 );
             }
@@ -479,10 +480,10 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
 
         if is_final && !class_infos.abstract_attributes.is_empty() {
             self.add_issue_on_name(
-                i_s.db,
+                db,
                 IssueKind::FinalClassHasAbstractAttributes {
-                    class_name: self.qualified_name(i_s.db).into(),
-                    attributes: join_abstract_attributes(i_s.db, &class_infos.abstract_attributes),
+                    class_name: self.qualified_name(db).into(),
+                    attributes: join_abstract_attributes(db, &class_infos.abstract_attributes),
                 },
             );
         }
@@ -490,13 +491,13 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
         let mut was_enum = None;
         let mut was_enum_base = false;
         if let MetaclassState::Some(link) = class_infos.metaclass {
-            if link == i_s.db.python_state.enum_meta_link() {
+            if link == db.python_state.enum_meta_link() {
                 was_enum_base = true;
-                if !self.use_cached_type_vars(i_s.db).is_empty() {
-                    self.add_issue_on_name(i_s.db, IssueKind::EnumCannotBeGeneric);
+                if !self.use_cached_type_vars(db).is_empty() {
+                    self.add_issue_on_name(db, IssueKind::EnumCannotBeGeneric);
                 }
                 class_infos.class_kind = ClassKind::Enum;
-                let members = self.enum_members(i_s.db);
+                let members = self.enum_members(db);
                 if !members.is_empty() {
                     let enum_ = Enum::new(
                         DbString::StringSlice(self.name_string_slice()),
@@ -555,7 +556,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
         }
 
         if let Some(dataclass) = was_dataclass {
-            dataclass_init_func(&dataclass, i_s.db);
+            dataclass_init_func(&dataclass, db);
         }
 
         // Now that the class has been saved, we can use it like an actual class. We have to do
@@ -582,13 +583,13 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
             // Also check if mixins appear after enums (2)
             let mut had_new = 0;
             let mut enum_spotted: Option<Class> = None;
-            for base in class.bases(i_s.db) {
+            for base in class.bases(db) {
                 if let TypeOrClass::Class(c) = &base {
-                    let is_enum = c.use_cached_class_infos(i_s.db).class_kind == ClassKind::Enum;
+                    let is_enum = c.use_cached_class_infos(db).class_kind == ClassKind::Enum;
                     let has_mixin_enum_new = if is_enum {
-                        c.bases(i_s.db).any(|inner| match inner {
+                        c.bases(db).any(|inner| match inner {
                             TypeOrClass::Class(inner) => {
-                                inner.use_cached_class_infos(i_s.db).class_kind != ClassKind::Enum
+                                inner.use_cached_class_infos(db).class_kind != ClassKind::Enum
                                     && inner.has_customized_enum_new(i_s)
                             }
                             TypeOrClass::Type(_) => false,
@@ -601,9 +602,9 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                         had_new += 1;
                         if had_new > 1 {
                             self.add_issue_on_name(
-                                i_s.db,
+                                db,
                                 IssueKind::EnumMultipleMixinNew {
-                                    extra: c.qualified_name(i_s.db).into(),
+                                    extra: c.qualified_name(db).into(),
                                 },
                             );
                         }
@@ -612,9 +613,9 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                     match enum_spotted {
                         Some(after) if !is_enum => {
                             self.add_issue_on_name(
-                                i_s.db,
+                                db,
                                 IssueKind::EnumMixinNotAllowedAfterEnum {
-                                    after: after.qualified_name(i_s.db).into(),
+                                    after: after.qualified_name(db).into(),
                                 },
                             );
                         }
@@ -701,7 +702,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                     ArgumentsDetails::Node(args),
                 );
                 for arg in args.iter(i_s.mode) {
-                    if let Some(key) = arg.keyword_name(i_s.db) {
+                    if let Some(key) = arg.keyword_name(db) {
                         options.assign_keyword_arg_to_dataclass_options(i_s, key, &arg);
                     }
                     // If another option is present, just ignore it. It is either checked by
@@ -774,7 +775,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                                 }
                             }
                             CalculatedBaseClass::Unknown => {
-                                if node_ref.file.flags(i_s.db).disallow_subclassing_any {
+                                if node_ref.file.flags(db).disallow_subclassing_any {
                                     NodeRef::new(self.node_ref.file, kwarg.index()).add_issue(
                                         i_s,
                                         IssueKind::DisallowedAnyMetaclass {
@@ -800,13 +801,13 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                             i_s,
                             self.node_ref.file,
                             self.node_ref.as_link(),
-                            &mut |i_s, _: &_, type_var_like: TypeVarLike, _| {
+                            &mut |_, _: &_, type_var_like: TypeVarLike, _| {
                                 if let Some(usage) =
                                     type_vars.find(type_var_like.clone(), self.node_ref.as_link())
                                 {
                                     TypeVarCallbackReturn::TypeVarLike(usage)
                                 } else if let Some(usage) =
-                                    self.maybe_type_var_like_in_parent(i_s.db, &type_var_like)
+                                    self.maybe_type_var_like_in_parent(db, &type_var_like)
                                 {
                                     usage
                                 } else {
@@ -833,8 +834,8 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                                 bases.push(t);
                                 let class = match &bases.last().unwrap() {
                                     Type::Class(c) => {
-                                        let c = Self::from_link(i_s.db, c.link);
-                                        if let Some(cached) = c.maybe_cached_class_infos(i_s.db) {
+                                        let c = Self::from_link(db, c.link);
+                                        if let Some(cached) = c.maybe_cached_class_infos(db) {
                                             if cached.class_kind != ClassKind::Normal
                                                 && class_kind == ClassKind::Normal
                                                 && !matches!(cached.class_kind, ClassKind::Protocol)
@@ -852,9 +853,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                                         }
                                         None
                                     }
-                                    Type::Dataclass(d) => {
-                                        Some(Self::from_link(i_s.db, d.class.link))
-                                    }
+                                    Type::Dataclass(d) => Some(Self::from_link(db, d.class.link)),
                                     Type::TypedDict(typed_dict) => {
                                         if typed_dict_total.is_none() {
                                             typed_dict_total =
@@ -868,7 +867,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                                                 i_s,
                                                 IssueKind::CannotInheritFromFinalClass {
                                                     class_name: Box::from(
-                                                        typed_dict.name.unwrap().as_str(i_s.db),
+                                                        typed_dict.name.unwrap().as_str(db),
                                                     ),
                                                 },
                                             );
@@ -1042,9 +1041,8 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
             }
             ClassKind::Protocol => {
                 if bases.iter().any(|t| {
-                    t.maybe_class(i_s.db).map_or(true, |cls| {
-                        !cls.is_protocol(i_s.db)
-                            && cls.node_ref != i_s.db.python_state.object_node_ref()
+                    t.maybe_class(db).map_or(true, |cls| {
+                        !cls.is_protocol(db) && cls.node_ref != db.python_state.object_node_ref()
                     })
                 }) {
                     NodeRef::new(self.node_ref.file, arguments.unwrap().index())
