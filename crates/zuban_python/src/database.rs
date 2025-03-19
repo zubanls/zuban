@@ -213,6 +213,7 @@ impl Point {
     }
 
     pub fn in_global_scope(self) -> bool {
+        debug_assert!(self.calculated());
         (self.flags & IN_GLOBAL_SCOPE_MASK) != 0
     }
 

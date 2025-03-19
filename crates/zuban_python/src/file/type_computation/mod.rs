@@ -3364,7 +3364,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         match resolved {
             PointResolution::NameDef {
                 node_ref,
-                global_redirect,
+                mut global_redirect,
             } => {
                 if node_ref.file_index() != self.file.file_index {
                     return self
@@ -3383,6 +3383,14 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                         ensure_cached_class(ClassNodeRef::new(node_ref.file, c.index()))
                     }
                     TypeLike::Assignment(assignment) => {
+                        if node_ref
+                            .file
+                            .points
+                            .get(name_def.name_index())
+                            .in_global_scope()
+                        {
+                            global_redirect = true;
+                        }
                         if node_ref.point().calculated() {
                             if let Some(PointResolution::Inferred(inf)) =
                                 self.resolve_point_without_narrowing(node_ref.node_index)

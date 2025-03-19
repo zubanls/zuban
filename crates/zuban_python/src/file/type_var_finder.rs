@@ -391,12 +391,10 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 global_redirect: _,
             } => {
                 if node_ref.file_index() != self.file.file_index {
-                    return node_ref
-                        .file
-                        .name_resolution_for_types(self.i_s)
+                    return self
+                        .with_new_file(node_ref.file)
                         .point_resolution_to_base_lookup(resolved);
                 }
-
                 let name_def = node_ref.as_name_def();
                 match name_def.expect_type() {
                     TypeLike::ClassDef(c) => {
