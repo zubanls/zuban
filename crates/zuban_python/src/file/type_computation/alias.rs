@@ -358,9 +358,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             CalculatingAliasType::Normal => {
                 TypeVarFinder::find_alias_type_vars(self.i_s, self.file, expr)
             }
-            CalculatingAliasType::TypedDict(args)
-            | CalculatingAliasType::NamedTuple(args)
-            | CalculatingAliasType::NewType(args) => {
+            CalculatingAliasType::TypedDict(args) | CalculatingAliasType::NamedTuple(args) => {
                 if let ArgumentsDetails::Node(n) = args.details {
                     // Skip the name
                     if let Some(arg) = n.iter().nth(1) {
@@ -373,6 +371,9 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                         }
                     }
                 }
+                self.i_s.db.python_state.empty_type_var_likes.clone()
+            }
+            CalculatingAliasType::NewType(_) => {
                 self.i_s.db.python_state.empty_type_var_likes.clone()
             }
         };
@@ -395,6 +396,8 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         let mut type_var_callback = |_: &InferenceState, _: &_, type_var_like: TypeVarLike, _| {
             if let Some(usage) = alias.type_vars.find(type_var_like, alias.location) {
                 TypeVarCallbackReturn::TypeVarLike(usage)
+            } else if let CalculatingAliasType::NewType(_) = &origin {
+                TypeVarCallbackReturn::UnboundTypeVar
             } else {
                 TypeVarCallbackReturn::NotFound {
                     allow_late_bound_callables: false,
@@ -414,7 +417,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 CalculatingAliasType::NewType(_) => TypeComputationOrigin::Other,
             },
         );
-        match origin {
+        match &origin {
             CalculatingAliasType::Normal => {
                 comp.errors_already_calculated = p.calculated();
                 let tc = comp.compute_type(expr);
