@@ -30,7 +30,7 @@ use crate::{
     recoverable_error,
     type_::{
         AnyCause, GenericItem, NamedTuple, TupleArgs, TupleUnpack, Type, TypeVarLike, TypeVarLikes,
-        TypeVarManager, TypedDict,
+        TypedDict,
     },
     type_helpers::Class,
     utils::{debug_indent, AlreadySeen},
@@ -348,6 +348,12 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         is_explicit: bool,
     ) -> Lookup<'file, 'file> {
         cached_type_node_ref.set_point(Point::new_calculating());
+
+        // Here we avoid all late bound type var calculation for callable, which is how
+        // mypy works. The default behavior without a type_var_callback would be to
+        // just calculate all late bound type vars, but that would mean that something
+        // like `Foo = Callable[[T], T]` could not be used like `Foo[int]`, which is
+        // generally how type aliases work.
         let find_type_var_likes = || match &origin {
             CalculatingAliasType::Normal => {
                 TypeVarFinder::find_alias_type_vars(self.i_s, self.file, expr)
@@ -382,18 +388,18 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             )),
         );
         save_alias(cached_type_node_ref, alias);
+        let ComplexPoint::TypeAlias(alias) = cached_type_node_ref.complex().unwrap() else {
+            unreachable!()
+        };
 
-        let mut type_var_manager = TypeVarManager::<PointLink>::default();
         let mut type_var_callback = |_: &InferenceState, _: &_, type_var_like: TypeVarLike, _| {
-            // Here we avoid all late bound type var calculation for callable, which is how
-            // mypy works. The default behavior without a type_var_callback would be to
-            // just calculate all late bound type vars, but that would mean that something
-            // like `Foo = Callable[[T], T]` could not be used like `Foo[int]`, which is
-            // generally how type aliases work.
-            let index = type_var_manager.add(type_var_like.clone(), None);
-            TypeVarCallbackReturn::TypeVarLike(
-                type_var_like.as_type_var_like_usage(index, in_definition),
-            )
+            if let Some(usage) = alias.type_vars.find(type_var_like, alias.location) {
+                TypeVarCallbackReturn::TypeVarLike(usage)
+            } else {
+                TypeVarCallbackReturn::NotFound {
+                    allow_late_bound_callables: false,
+                }
+            }
         };
         let p = self.file.points.get(expr.index());
         let mut comp = TypeComputation::new(
@@ -408,9 +414,6 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 CalculatingAliasType::NewType(_) => TypeComputationOrigin::Other,
             },
         );
-        let ComplexPoint::TypeAlias(alias) = cached_type_node_ref.complex().unwrap() else {
-            unreachable!()
-        };
         match origin {
             CalculatingAliasType::Normal => {
                 comp.errors_already_calculated = p.calculated();
@@ -426,7 +429,6 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                     _ => {
                         let type_ = comp.as_type(tc, node_ref);
                         let is_recursive_alias = comp.is_recursive_alias;
-                        debug_assert!(!comp.type_var_manager.has_type_vars());
                         let mut had_error = false;
                         if is_recursive_alias && self.i_s.current_function().is_some() {
                             node_ref.add_issue(
