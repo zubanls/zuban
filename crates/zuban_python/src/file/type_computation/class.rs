@@ -460,7 +460,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
         if total_ordering && !self.has_a_total_ordering_method_in_mro(db, &class_infos.mro) {
             // If there is no corresponding method, we just ignore the MRO
             NodeRef::new(self.node_ref.file, self.node().name_def().index())
-                .add_issue(i_s, IssueKind::TotalOrderingMissingMethod);
+                .add_type_issue(db, IssueKind::TotalOrderingMissingMethod);
             total_ordering = false;
         }
         class_infos.is_final |= is_final;
@@ -744,8 +744,8 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                             })) => {
                                 let c = ClassInitializer::from_link(db, link);
                                 if c.is_calculating_class_infos() {
-                                    NodeRef::new(self.node_ref.file, name.index()).add_issue(
-                                        i_s,
+                                    NodeRef::new(self.node_ref.file, name.index()).add_type_issue(
+                                        db,
                                         IssueKind::CyclicDefinition {
                                             name: c.name().into(),
                                         },
@@ -770,14 +770,16 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                                         }
                                     }
                                 } else {
-                                    node_ref
-                                        .add_issue(i_s, IssueKind::MetaclassMustInheritFromType);
+                                    node_ref.add_type_issue(
+                                        db,
+                                        IssueKind::MetaclassMustInheritFromType,
+                                    );
                                 }
                             }
                             CalculatedBaseClass::Unknown => {
                                 if node_ref.file.flags(db).disallow_subclassing_any {
-                                    NodeRef::new(self.node_ref.file, kwarg.index()).add_issue(
-                                        i_s,
+                                    NodeRef::new(self.node_ref.file, kwarg.index()).add_type_issue(
+                                        db,
                                         IssueKind::DisallowedAnyMetaclass {
                                             class: expr.as_code().into(),
                                         },
@@ -786,7 +788,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                                 metaclass = MetaclassState::Unknown
                             }
                             _ => {
-                                node_ref.add_issue(i_s, IssueKind::InvalidMetaclass);
+                                node_ref.add_type_issue(db, IssueKind::InvalidMetaclass);
                             }
                         }
                     }
@@ -863,14 +865,15 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                                         }
                                         class_kind = ClassKind::TypedDict;
                                         if typed_dict.is_final {
-                                            NodeRef::new(self.node_ref.file, n.index()).add_issue(
-                                                i_s,
-                                                IssueKind::CannotInheritFromFinalClass {
-                                                    class_name: Box::from(
-                                                        typed_dict.name.unwrap().as_str(db),
-                                                    ),
-                                                },
-                                            );
+                                            NodeRef::new(self.node_ref.file, n.index())
+                                                .add_type_issue(
+                                                    db,
+                                                    IssueKind::CannotInheritFromFinalClass {
+                                                        class_name: Box::from(
+                                                            typed_dict.name.unwrap().as_str(db),
+                                                        ),
+                                                    },
+                                                );
                                         }
                                         continue;
                                     }
@@ -881,8 +884,10 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                                         let name = Box::<str>::from(class.name());
                                         bases.pop();
                                         incomplete_mro = true;
-                                        NodeRef::new(self.node_ref.file, n.index())
-                                            .add_issue(i_s, IssueKind::CyclicDefinition { name });
+                                        NodeRef::new(self.node_ref.file, n.index()).add_type_issue(
+                                            db,
+                                            IssueKind::CyclicDefinition { name },
+                                        );
                                     } else {
                                         let cached_class_infos = class.use_cached_class_infos(db);
                                         if cached_class_infos.is_final {
@@ -1216,7 +1221,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                 if name.as_code() == "total" {
                     let inf = inference.infer_expression(expr);
                     total = infer_typed_dict_total_argument(i_s, inf, |issue| {
-                        NodeRef::new(self.node_ref.file, expr.index()).add_issue(i_s, issue)
+                        NodeRef::new(self.node_ref.file, expr.index()).add_type_issue(i_s.db, issue)
                     })
                     .unwrap_or(true);
                 }
@@ -1245,8 +1250,8 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
         find_stmt_named_tuple_types(i_s, file, &mut vec, self.node().block().iter_stmt_likes());
         for (name, index) in self.class_storage.class_symbol_table.iter() {
             if NAMEDTUPLE_PROHIBITED_NAMES.contains(&name) {
-                NodeRef::new(self.node_ref.file, *index).add_issue(
-                    i_s,
+                NodeRef::new(self.node_ref.file, *index).add_type_issue(
+                    i_s.db,
                     IssueKind::NamedTupleInvalidAttributeOverride { name: name.into() },
                 )
             }
@@ -1499,16 +1504,17 @@ fn find_stmt_typed_dict_types(
     stmt_likes: StmtLikeIterator,
     total: bool,
 ) {
+    let db = i_s.db;
     for stmt_like in stmt_likes {
         match stmt_like.node {
             StmtLikeContent::Assignment(assignment) => match assignment.unpack() {
                 AssignmentContent::WithAnnotation(Target::Name(name_def), annot, right_side) => {
                     if right_side.is_some() {
                         NodeRef::new(file, assignment.index())
-                            .add_issue(i_s, IssueKind::TypedDictInvalidMemberRightSide);
+                            .add_type_issue(db, IssueKind::TypedDictInvalidMemberRightSide);
                     }
                     if let Err(issue) = vec.add(
-                        i_s.db,
+                        db,
                         file.name_resolution_for_types(i_s)
                             .compute_class_typed_dict_member(
                                 StringSlice::from_name(file.file_index, name_def.name()),
@@ -1516,17 +1522,17 @@ fn find_stmt_typed_dict_types(
                                 total,
                             ),
                     ) {
-                        NodeRef::new(file, assignment.index()).add_issue(i_s, issue);
+                        NodeRef::new(file, assignment.index()).add_type_issue(db, issue);
                     }
                 }
                 AssignmentContent::Normal(targets, _) => {
                     NodeRef::new(file, assignment.index())
-                        .add_issue(i_s, IssueKind::TypedDictInvalidMember);
+                        .add_type_issue(db, IssueKind::TypedDictInvalidMember);
                     for target in targets {
                         if let Target::Name(name_def) = target {
                             // Add those names regardless, because an error was already added.
                             vec.add(
-                                i_s.db,
+                                db,
                                 TypedDictMember {
                                     type_: Type::Any(AnyCause::Todo),
                                     required: true,
@@ -1539,13 +1545,13 @@ fn find_stmt_typed_dict_types(
                     }
                 }
                 _ => NodeRef::new(file, assignment.index())
-                    .add_issue(i_s, IssueKind::TypedDictInvalidMember),
+                    .add_type_issue(db, IssueKind::TypedDictInvalidMember),
             },
             StmtLikeContent::Error(_)
             | StmtLikeContent::PassStmt(_)
             | StmtLikeContent::StarExpressions(_) => (),
             _ => NodeRef::new(file, stmt_like.parent_index)
-                .add_issue(i_s, IssueKind::TypedDictInvalidMember),
+                .add_type_issue(db, IssueKind::TypedDictInvalidMember),
         }
     }
 }
@@ -1556,21 +1562,22 @@ fn find_stmt_named_tuple_types(
     vec: &mut Vec<CallableParam>,
     stmts: StmtLikeIterator,
 ) {
+    let db = i_s.db;
     for stmt_like in stmts {
         match stmt_like.node {
             StmtLikeContent::Assignment(assignment) => match assignment.unpack() {
                 AssignmentContent::WithAnnotation(Target::Name(name), annot, default) => {
                     if default.is_none() && vec.last().is_some_and(|last| last.has_default) {
                         NodeRef::new(file, assignment.index())
-                            .add_issue(i_s, IssueKind::NamedTupleNonDefaultFieldFollowsDefault);
+                            .add_type_issue(db, IssueKind::NamedTupleNonDefaultFieldFollowsDefault);
                         continue;
                     }
                     file.name_resolution_for_types(i_s)
                         .ensure_cached_named_tuple_annotation(annot);
-                    let t = use_cached_annotation_type(i_s.db, file, annot).into_owned();
+                    let t = use_cached_annotation_type(db, file, annot).into_owned();
                     if name.as_code().starts_with('_') {
-                        NodeRef::new(file, name.index()).add_issue(
-                            i_s,
+                        NodeRef::new(file, name.index()).add_type_issue(
+                            db,
                             IssueKind::NamedTupleNameCannotStartWithUnderscore {
                                 field_name: name.as_code().into(),
                             },
@@ -1585,7 +1592,7 @@ fn find_stmt_named_tuple_types(
                     }
                 }
                 _ => NodeRef::new(file, assignment.index())
-                    .add_issue(i_s, IssueKind::InvalidStmtInNamedTuple),
+                    .add_type_issue(db, IssueKind::InvalidStmtInNamedTuple),
             },
             StmtLikeContent::AsyncStmt(async_stmt)
                 if matches!(async_stmt.unpack(), AsyncStmtContent::FunctionDef(_)) => {}
@@ -1598,7 +1605,7 @@ fn find_stmt_named_tuple_types(
             | StmtLikeContent::PassStmt(_)
             | StmtLikeContent::StarExpressions(_) => (),
             _ => NodeRef::new(file, stmt_like.parent_index)
-                .add_issue(i_s, IssueKind::InvalidStmtInNamedTuple),
+                .add_type_issue(db, IssueKind::InvalidStmtInNamedTuple),
         }
     }
 }
