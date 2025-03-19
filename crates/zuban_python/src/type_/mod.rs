@@ -1083,7 +1083,7 @@ impl Type {
             Self::Tuple(content) => content.args.has_any_internal(i_s, already_checked),
             Self::Callable(content) => content.has_any_internal(i_s, already_checked),
             Self::Any(_) => true,
-            Self::NewType(n) => n.type_.has_any(i_s),
+            Self::NewType(n) => n.type_.has_any_internal(i_s, already_checked),
             Self::RecursiveType(recursive_alias) => {
                 if let Some(generics) = &recursive_alias.generics {
                     if generics.has_any_internal(i_s, already_checked) {
