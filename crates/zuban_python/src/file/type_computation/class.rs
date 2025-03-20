@@ -16,8 +16,7 @@ use crate::{
     diagnostics::{Issue, IssueKind},
     file::{
         type_computation::typed_dict::TypedDictMemberGatherer, use_cached_annotation_type,
-        CalculatedBaseClass, OtherDefinitionIterator, PythonFile, TypeComputation,
-        TypeComputationOrigin, TypeVarCallbackReturn, TypeVarFinder,
+        OtherDefinitionIterator, PythonFile, TypeVarCallbackReturn, TypeVarFinder,
     },
     inference_state::InferenceState,
     node_ref::NodeRef,
@@ -32,7 +31,10 @@ use crate::{
     utils::{debug_indent, join_with_commas},
 };
 
-use super::{named_tuple::start_namedtuple_params, typed_dict::check_typed_dict_total_argument};
+use super::{
+    named_tuple::start_namedtuple_params, typed_dict::check_typed_dict_total_argument,
+    CalculatedBaseClass, TypeComputation, TypeComputationOrigin,
+};
 
 // Basically save the type vars on the class keyword.
 const CLASS_TO_TYPE_VARS_DIFFERENCE: i64 = 1;

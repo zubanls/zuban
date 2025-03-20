@@ -53,7 +53,7 @@ use crate::{
     utils::rc_slice_into_vec,
 };
 
-pub const ANNOTATION_TO_EXPR_DIFFERENCE: u32 = 2;
+pub(crate) const ANNOTATION_TO_EXPR_DIFFERENCE: u32 = 2;
 
 #[derive(Debug)]
 pub(crate) enum TypeVarCallbackReturn {
@@ -114,7 +114,7 @@ pub(super) enum InvalidVariableType<'a> {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub enum TypeComputationOrigin {
+enum TypeComputationOrigin {
     AssignmentTypeCommentOrAnnotation {
         is_initialized: bool,
         type_comment: bool,
@@ -226,7 +226,7 @@ impl InvalidVariableType<'_> {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum TypeOrUnpack {
+enum TypeOrUnpack {
     Type(Type),
     TypeVarTuple(TypeVarTupleUsage),
     Unknown(UnknownCause),
@@ -306,7 +306,7 @@ impl Lookup<'_, '_> {
 }
 
 #[derive(Debug)]
-pub enum CalculatedBaseClass {
+enum CalculatedBaseClass {
     Type(Type),
     Protocol,
     NamedTuple(Rc<NamedTuple>),
@@ -406,7 +406,7 @@ fn type_computation_for_variable_annotation(
     }
 }
 
-pub struct TypeComputation<'db, 'file, 'i_s, 'c> {
+struct TypeComputation<'db, 'file, 'i_s, 'c> {
     name_resolution: NameResolution<'db, 'file, 'i_s>,
     for_definition: PointLink,
     current_callable: Option<PointLink>,
@@ -416,7 +416,7 @@ pub struct TypeComputation<'db, 'file, 'i_s, 'c> {
     // It's therefore unclear if type inference or type computation is needed. So once we encounter
     // a type alias we check in the database if the error was already calculated and set the flag.
     errors_already_calculated: bool,
-    pub has_type_vars_or_self: bool,
+    has_type_vars_or_self: bool,
     origin: TypeComputationOrigin,
     is_recursive_alias: bool,
 }
@@ -430,7 +430,7 @@ impl<'db: 'file, 'file, 'i_s> std::ops::Deref for TypeComputation<'db, 'file, 'i
 }
 
 impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c> {
-    pub fn new(
+    fn new(
         i_s: &'i_s InferenceState<'db, 'i_s>,
         file: &'file PythonFile,
         for_definition: PointLink,
@@ -501,7 +501,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         }
     }
 
-    pub fn compute_base_class(&mut self, expr: Expression) -> CalculatedBaseClass {
+    fn compute_base_class(&mut self, expr: Expression) -> CalculatedBaseClass {
         let calculated = self.compute_type(expr);
         match calculated {
             TypeContent::GenericWithGenerics => CalculatedBaseClass::Generic,
@@ -564,7 +564,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         }
     }
 
-    pub fn cache_param_annotation(
+    fn cache_param_annotation(
         &mut self,
         param_annotation: ParamAnnotation,
         param_kind: ParamKind,
@@ -743,10 +743,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         }
     }
 
-    pub fn cache_return_annotation(
-        &mut self,
-        annotation: ReturnAnnotation,
-    ) -> Option<TypeGuardInfo> {
+    fn cache_return_annotation(&mut self, annotation: ReturnAnnotation) -> Option<TypeGuardInfo> {
         let expr = annotation.expression();
         let mut type_guard = None;
         self.cache_annotation_or_type_comment_detailed(
@@ -3192,7 +3189,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         })
     }
 
-    pub fn into_type_vars<C>(self, on_type_var_recalculation: C) -> TypeVarLikes
+    fn into_type_vars<C>(self, on_type_var_recalculation: C) -> TypeVarLikes
     where
         C: FnOnce(&NameResolution, &dyn Fn(&Type) -> Type),
     {
@@ -3231,7 +3228,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub enum UnknownCause {
+enum UnknownCause {
     ReportedIssue,
     AnyCause(AnyCause),
     UnknownName(AnyCause),
@@ -3545,7 +3542,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         }
     }
 
-    pub fn ensure_cached_named_tuple_annotation(&self, annotation: Annotation) {
+    fn ensure_cached_named_tuple_annotation(&self, annotation: Annotation) {
         self.ensure_cached_annotation_internal(annotation, TypeComputationOrigin::NamedTupleMember)
     }
 
@@ -3570,7 +3567,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         }
     }
 
-    pub fn ensure_cached_annotation(&self, annotation: Annotation, is_initialized: bool) {
+    pub(crate) fn ensure_cached_annotation(&self, annotation: Annotation, is_initialized: bool) {
         self.ensure_cached_annotation_internal(
             annotation,
             TypeComputationOrigin::AssignmentTypeCommentOrAnnotation {
@@ -3580,7 +3577,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         )
     }
 
-    pub fn compute_type_application_on_class(
+    pub(crate) fn compute_type_application_on_class(
         &self,
         class: Class,
         slice_type: SliceType,
@@ -3594,7 +3591,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         )
     }
 
-    pub fn compute_type_application_on_dataclass(
+    pub(crate) fn compute_type_application_on_dataclass(
         &self,
         dataclass: &Dataclass,
         slice_type: SliceType,
@@ -3608,7 +3605,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         )
     }
 
-    pub fn compute_type_application_on_named_tuple(
+    pub(crate) fn compute_type_application_on_named_tuple(
         &self,
         named_tuple: Rc<NamedTuple>,
         slice_type: SliceType,
@@ -3622,7 +3619,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         )
     }
 
-    pub fn compute_type_application_on_typed_dict(
+    pub(crate) fn compute_type_application_on_typed_dict(
         &self,
         typed_dict: &TypedDict,
         slice_type: SliceType,
@@ -3636,7 +3633,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         )
     }
 
-    pub fn compute_type_application_on_alias(
+    pub(crate) fn compute_type_application_on_alias(
         &self,
         alias: &TypeAlias,
         slice_type: SliceType,
@@ -3656,7 +3653,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         )
     }
 
-    pub fn compute_type_application_on_typing_class(
+    pub(crate) fn compute_type_application_on_typing_class(
         &self,
         specific: Specific,
         slice_type: SliceType,
@@ -3775,7 +3772,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         Inferred::from_saved_link(PointLink::new(self.file.file_index, annotation.index()))
     }
 
-    pub fn use_cached_return_annotation(&self, annotation: ReturnAnnotation) -> Inferred {
+    pub(crate) fn use_cached_return_annotation(&self, annotation: ReturnAnnotation) -> Inferred {
         if cfg!(debug_assertions) {
             let point = self.file.points.get(annotation.index());
             debug_assert!(
@@ -3791,7 +3788,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         Inferred::from_saved_link(PointLink::new(self.file.file_index, annotation.index()))
     }
 
-    pub fn use_cached_return_annotation_type(
+    pub(crate) fn use_cached_return_annotation_type(
         &self,
         annotation: ReturnAnnotation,
     ) -> Cow<'file, Type> {
@@ -3801,14 +3798,14 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         )
     }
 
-    pub fn use_cached_annotation_type(&self, annotation: Annotation) -> Cow<'file, Type> {
+    pub(crate) fn use_cached_annotation_type(&self, annotation: Annotation) -> Cow<'file, Type> {
         self.use_cached_annotation_or_type_comment_type_internal(
             annotation.index(),
             annotation.expression(),
         )
     }
 
-    pub fn use_cached_param_annotation_type(
+    pub(crate) fn use_cached_param_annotation_type(
         &self,
         annotation: ParamAnnotation,
     ) -> Cow<'file, Type> {
@@ -3874,7 +3871,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         }
     }
 
-    pub fn recalculate_annotation_type_vars(
+    fn recalculate_annotation_type_vars(
         &self,
         node_index: NodeIndex,
         recalculate: impl Fn(&Type) -> Type,
@@ -3897,7 +3894,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         }
     }
 
-    pub(super) fn compute_type_comment(
+    fn compute_type_comment(
         &self,
         start: CodeIndex,
         s: &str,
@@ -4061,7 +4058,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         Type::Tuple(Tuple::new_fixed_length(generics))
     }
 
-    pub fn check_for_type_comment(
+    pub(super) fn check_for_type_comment(
         &self,
         assignment: Assignment,
     ) -> Option<TypeCommentDetails<'db>> {
@@ -4098,7 +4095,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         }
         None
     }
-    pub fn compute_cast_target(&self, node_ref: NodeRef) -> Result<Inferred, ()> {
+    pub(crate) fn compute_cast_target(&self, node_ref: NodeRef) -> Result<Inferred, ()> {
         let named_expr = node_ref.as_named_expression();
         let mut x = type_computation_for_variable_annotation;
         let mut comp = TypeComputation::new(
@@ -4144,7 +4141,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         callback(comp)
     }
 
-    pub fn compute_type_var_bound(&self, expr: Expression) -> Type {
+    pub(crate) fn compute_type_var_bound(&self, expr: Expression) -> Type {
         let node_ref = NodeRef::new(self.file, expr.index());
         self.within_type_var_like_definition(node_ref, |mut comp| {
             match comp.compute_type(expr) {
@@ -4157,7 +4154,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             }
         })
     }
-    pub fn compute_type_var_value(&self, expr: Expression) -> Option<Type> {
+    pub(crate) fn compute_type_var_value(&self, expr: Expression) -> Option<Type> {
         let node_ref = NodeRef::new(self.file, expr.index());
         let mut on_type_var = |i_s: &InferenceState, _: &_, type_var_like, _| {
             if i_s.find_parent_type_var(&type_var_like).is_some() {
@@ -4191,7 +4188,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         }
     }
 
-    pub fn compute_type_var_default(&self, expr: Expression) -> Option<Type> {
+    pub(crate) fn compute_type_var_default(&self, expr: Expression) -> Option<Type> {
         let node_ref = NodeRef::new(self.file, expr.index());
         self.within_type_var_like_definition(node_ref, |mut comp| {
             let tc = comp.compute_type(expr);
@@ -4199,14 +4196,14 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         })
     }
 
-    pub fn compute_param_spec_default(&self, expr: Expression) -> Option<CallableParams> {
+    fn compute_param_spec_default(&self, expr: Expression) -> Option<CallableParams> {
         let node_ref = NodeRef::new(self.file, expr.index());
         self.within_type_var_like_definition(node_ref, |mut comp| {
             comp.calculate_callable_params_for_expr(expr, false, false)
         })
     }
 
-    pub fn compute_type_var_tuple_default(&self, expr: Expression) -> Option<TypeArgs> {
+    fn compute_type_var_tuple_default(&self, expr: Expression) -> Option<TypeArgs> {
         let node_ref = NodeRef::new(self.file, expr.index());
         self.within_type_var_like_definition(node_ref, |mut comp| match comp.compute_type(expr) {
             TypeContent::Unpacked(unpacked) => Some(TypeArgs::new(
@@ -4557,7 +4554,7 @@ fn check_special_case(specific: Specific) -> Option<TypeContent<'static, 'static
     })
 }
 
-pub fn use_cached_simple_generic_type<'db>(
+pub(crate) fn use_cached_simple_generic_type<'db>(
     db: &'db Database,
     file: &PythonFile,
     expr: Expression,
@@ -4603,7 +4600,7 @@ fn expect_class_or_simple_generic(db: &Database, node_ref: NodeRef) -> Cow<'stat
     Cow::Owned(Type::Class(inner(db, node_ref)))
 }
 
-pub fn use_cached_param_annotation_type<'db: 'file, 'file>(
+pub(crate) fn use_cached_param_annotation_type<'db: 'file, 'file>(
     db: &'db Database,
     file: &'file PythonFile,
     annotation: ParamAnnotation,
@@ -4612,7 +4609,7 @@ pub fn use_cached_param_annotation_type<'db: 'file, 'file>(
         .use_cached_param_annotation_type(annotation)
 }
 
-pub fn use_cached_annotation_type<'db: 'file, 'file>(
+pub(crate) fn use_cached_annotation_type<'db: 'file, 'file>(
     db: &'db Database,
     file: &'file PythonFile,
     annotation: Annotation,
@@ -4624,7 +4621,7 @@ pub fn use_cached_annotation_type<'db: 'file, 'file>(
         )
 }
 
-pub fn use_cached_annotation_or_type_comment<'db: 'file, 'file>(
+pub(crate) fn use_cached_annotation_or_type_comment<'db: 'file, 'file>(
     i_s: &InferenceState<'db, '_>,
     definition: NodeRef<'file>,
 ) -> Cow<'file, Type> {
@@ -4647,7 +4644,7 @@ pub fn use_cached_annotation_or_type_comment<'db: 'file, 'file>(
         .use_cached_maybe_starred_annotation_type_internal(definition.node_index, maybe_starred)
 }
 
-pub fn maybe_saved_annotation(node_ref: NodeRef) -> Option<&Type> {
+pub(crate) fn maybe_saved_annotation(node_ref: NodeRef) -> Option<&Type> {
     if matches!(
         node_ref.point().maybe_specific(),
         Some(
@@ -4673,12 +4670,12 @@ struct TupleArgsDetails {
     empty_not_explicit: bool, // Explicit would be something like Unpack[Tuple[()]]
 }
 
-pub enum TypeCommentState<'db> {
+pub(super) enum TypeCommentState<'db> {
     Type(Cow<'db, Type>),
     UnfinishedFinalOrClassVar(NodeRef<'db>),
 }
 
-pub struct TypeCommentDetails<'db> {
+pub(super) struct TypeCommentDetails<'db> {
     pub type_: TypeCommentState<'db>,
     pub inferred: Inferred,
 }
@@ -4693,7 +4690,7 @@ impl TypeCommentDetails<'_> {
 }
 
 #[derive(Debug, Clone)]
-pub struct GenericCounts {
+pub(crate) struct GenericCounts {
     pub expected: usize,
     pub expected_minimum: Option<usize>,
     pub given: usize,

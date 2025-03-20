@@ -20,9 +20,10 @@ use crate::{
     file::{
         type_computation::{
             named_tuple::new_typing_named_tuple_internal,
-            typed_dict::new_typed_dict_with_execution_syntax, TypeCommentState,
+            typed_dict::new_typed_dict_with_execution_syntax, TypeCommentState, TypeComputation,
+            TypeComputationOrigin,
         },
-        PythonFile, TypeComputation, TypeComputationOrigin, TypeVarCallbackReturn,
+        PythonFile, TypeVarCallbackReturn,
     },
     inference_state::InferenceState,
     inferred::Inferred,
