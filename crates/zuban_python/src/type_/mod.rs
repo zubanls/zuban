@@ -36,9 +36,9 @@ pub(crate) use self::{
         ParamTypeDetails, StarParamType, StarStarParamType, TypeGuardInfo, WrongPositionalCount,
     },
     dataclass::{
-        check_dataclass_options, dataclass_init_func, dataclass_initialize, dataclasses_replace,
-        lookup_dataclass_symbol, lookup_on_dataclass, lookup_on_dataclass_type, Dataclass,
-        DataclassOptions, DataclassTransformObj,
+        dataclass_init_func, dataclass_initialize, dataclasses_replace, lookup_dataclass_symbol,
+        lookup_on_dataclass, lookup_on_dataclass_type, Dataclass, DataclassOptions,
+        DataclassTransformObj,
     },
     enum_::{
         lookup_on_enum_class, lookup_on_enum_instance, lookup_on_enum_member_instance, Enum,

@@ -7,7 +7,7 @@ use parsa_python_cst::{
 };
 
 use crate::{
-    arguments::{Args, KnownArgs, SimpleArgs},
+    arguments::{Arg, Args, KnownArgs, SimpleArgs},
     database::{
         BaseClass, ClassInfos, ClassKind, ClassStorage, ComplexPoint, Database, Locality,
         MetaclassState, ParentScope, Point, PointLink, ProtocolMember, Specific,
@@ -22,13 +22,14 @@ use crate::{
     },
     inference_state::InferenceState,
     inferred::Inferred,
+    matching::ResultContext,
     node_ref::NodeRef,
     python_state::{NAME_TO_CLASS_DIFF, NAME_TO_FUNCTION_DIFF},
     type_::{
-        check_dataclass_options, dataclass_init_func, AnyCause, CallableContent, CallableParam,
-        CallableParams, ClassGenerics, Dataclass, DataclassOptions, DataclassTransformObj,
-        DbString, Enum, EnumMemberDefinition, FunctionKind, GenericClass, NamedTuple, ParamType,
-        StringSlice, Tuple, Type, TypeVarLike, TypeVarLikes, TypedDict, TypedDictMember, Variance,
+        dataclass_init_func, AnyCause, CallableContent, CallableParam, CallableParams,
+        ClassGenerics, Dataclass, DataclassOptions, DataclassTransformObj, DbString, Enum,
+        EnumMemberDefinition, FunctionKind, GenericClass, NamedTuple, ParamType, StringSlice,
+        Tuple, Type, TypeVarLike, TypeVarLikes, TypedDict, TypedDictMember, Variance,
     },
     type_helpers::{Class, FirstParamProperties, Function, TypeOrClass},
     utils::{debug_indent, join_with_commas},
@@ -1798,4 +1799,61 @@ fn join_abstract_attributes(db: &Database, abstract_attributes: &[PointLink]) ->
             .map(|&l| format!("\"{}\"", NodeRef::from_link(db, l).as_code())),
     )
     .into()
+}
+
+fn check_dataclass_options(
+    i_s: &InferenceState,
+    file: &PythonFile,
+    primary_index: NodeIndex,
+    details: ArgumentsDetails,
+    default_options: DataclassOptions,
+) -> DataclassOptions {
+    let mut options = default_options;
+    let args = SimpleArgs::new(*i_s, file, primary_index, details);
+    for arg in args.iter(i_s.mode) {
+        if let Some(key) = arg.keyword_name(i_s.db) {
+            options.assign_keyword_arg_to_dataclass_options(i_s, key, &arg);
+        } else {
+            arg.add_issue(i_s, IssueKind::UnexpectedArgumentTo { name: "dataclass" })
+        }
+    }
+    if !options.eq && options.order {
+        options.eq = true;
+        args.add_issue(i_s, IssueKind::DataclassOrderEnabledButNotEq);
+    }
+    options
+}
+
+impl DataclassOptions {
+    fn assign_keyword_arg_to_dataclass_options<'db>(
+        &mut self,
+        i_s: &InferenceState,
+        key: &str,
+        arg: &Arg<'db, '_>,
+    ) {
+        let assign_option = |target: &mut _, arg: &Arg<'db, '_>| {
+            let result = arg.infer_inferrable(i_s, &mut ResultContext::Unknown);
+            if let Some(bool_) = result.maybe_bool_literal(i_s) {
+                *target = bool_;
+            } else {
+                let key = arg.keyword_name(i_s.db).unwrap().into();
+                arg.add_issue(i_s, IssueKind::ArgumentMustBeTrueOrFalse { key })
+            }
+        };
+        match key {
+            "kw_only" => assign_option(&mut self.kw_only, arg),
+            "frozen" => {
+                let mut new_frozen = false;
+                assign_option(&mut new_frozen, arg);
+                self.frozen = Some(new_frozen);
+            }
+            "order" => assign_option(&mut self.order, arg),
+            "eq" => assign_option(&mut self.eq, arg),
+            "init" => assign_option(&mut self.init, arg),
+            "match_args" => assign_option(&mut self.match_args, arg),
+            "slots" => assign_option(&mut self.slots, arg),
+            // The other names should not go through while type checking
+            _ => (),
+        }
+    }
 }
