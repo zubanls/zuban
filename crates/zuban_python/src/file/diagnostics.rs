@@ -717,6 +717,12 @@ impl Inference<'_, '_, '_> {
         let class_infos = class_node_ref.use_cached_class_infos(db);
         let c = Class::with_self_generics(db, class_node_ref);
 
+        if matches!(class_infos.class_kind, ClassKind::TypedDict) {
+            // TypedDicts are special, because they really only contain annotations and no methods.
+            // We skip all of this logic, because there's custom logic for TypedDicts.
+            return;
+        }
+
         if let MetaclassState::Some(link) = class_infos.metaclass {
             if link == db.python_state.enum_meta_link() {
                 // Check if __new__ was correctly used in combination with enums (1)
@@ -770,11 +776,6 @@ impl Inference<'_, '_, '_> {
             }
         }
 
-        if matches!(class_infos.class_kind, ClassKind::TypedDict) {
-            // TypedDicts are special, because they really only contain annotations and no methods.
-            // We skip all of this logic, because there's custom logic for TypedDicts.
-            return;
-        }
         let i_s = self.i_s.with_class_context(&c);
         let inference = self.file.inference(&i_s);
         let result = inference.calculate_class_block_diagnostics(c, block);

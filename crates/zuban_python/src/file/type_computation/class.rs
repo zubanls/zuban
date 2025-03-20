@@ -499,14 +499,12 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                         members,
                         OnceCell::new(),
                     );
+                    let enum_type = Rc::new(Type::Enum(enum_.clone()));
+                    // In case enum is combined with dataclass, just let the dataclass win
+                    let _ = class_infos.undefined_generics_type.set(enum_type.clone());
                     was_enum = Some(enum_);
                 }
             }
-        }
-        if let Some(enum_) = &was_enum {
-            let enum_type = Rc::new(Type::Enum(enum_.clone()));
-            // In case enum is combined with dataclass, just let the dataclass win
-            let _ = class_infos.undefined_generics_type.set(enum_type.clone());
         }
         let mut was_typed_dict = None;
         if let Some(total) = typed_dict_total {
