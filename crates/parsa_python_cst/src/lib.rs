@@ -2312,6 +2312,41 @@ impl<'db> ArgumentsDetails<'db> {
             _ => None,
         }
     }
+
+    pub fn iter(&self) -> impl Iterator<Item = ArgOrComprehension<'db>> {
+        match self {
+            ArgumentsDetails::None => AllArgsIterator::None,
+            ArgumentsDetails::Comprehension(c) => AllArgsIterator::Comprehension(*c),
+            ArgumentsDetails::Node(args) => AllArgsIterator::Args(args.iter()),
+        }
+    }
+}
+
+pub enum ArgOrComprehension<'db> {
+    Comprehension(Comprehension<'db>),
+    Arg(Argument<'db>),
+}
+
+enum AllArgsIterator<'db> {
+    None,
+    Comprehension(Comprehension<'db>),
+    Args(ArgsIterator<'db>),
+}
+
+impl<'db> Iterator for AllArgsIterator<'db> {
+    type Item = ArgOrComprehension<'db>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self {
+            Self::None => None,
+            Self::Comprehension(comp) => {
+                let x = *comp;
+                *self = Self::None;
+                Some(Self::Item::Comprehension(x))
+            }
+            Self::Args(args_iterator) => Some(Self::Item::Arg(args_iterator.next()?)),
+        }
+    }
 }
 
 impl<'db> Assignment<'db> {

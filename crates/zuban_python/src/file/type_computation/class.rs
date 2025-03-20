@@ -1,13 +1,13 @@
 use std::{borrow::Cow, cell::OnceCell, rc::Rc};
 
 use parsa_python_cst::{
-    Argument, Arguments as CSTArguments, ArgumentsDetails, AssignmentContent, AsyncStmtContent,
-    ClassDef, Decoratee, ExpressionContent, ExpressionPart, NodeIndex, PrimaryContent,
-    StmtLikeContent, StmtLikeIterator, Target, TypeLike,
+    ArgOrComprehension, Argument, Arguments as CSTArguments, ArgumentsDetails, AssignmentContent,
+    AsyncStmtContent, ClassDef, Decoratee, ExpressionContent, ExpressionPart, Kwarg, NodeIndex,
+    PrimaryContent, StmtLikeContent, StmtLikeIterator, Target, TypeLike,
 };
 
 use crate::{
-    arguments::{Arg, ArgKind, Args, KnownArgs, SimpleArgs},
+    arguments::KnownArgs,
     database::{
         BaseClass, ClassInfos, ClassKind, ClassStorage, ComplexPoint, Database, Locality,
         MetaclassState, ParentScope, Point, PointLink, ProtocolMember, Specific,
@@ -22,7 +22,6 @@ use crate::{
     },
     inference_state::InferenceState,
     inferred::Inferred,
-    matching::ResultContext,
     node_ref::NodeRef,
     python_state::{NAME_TO_CLASS_DIFF, NAME_TO_FUNCTION_DIFF},
     type_::{
@@ -377,9 +376,8 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                         let inf = inference.infer_primary_or_atom(primary.first());
                         if inf.is_name_defined_in_module(db, "dataclasses", "dataclass") {
                             dataclass_options = Some(check_dataclass_options(
-                                i_s,
+                                db,
                                 self.node_ref.file,
-                                primary.index(),
                                 exec,
                                 DataclassOptions::default(),
                             ));
@@ -389,9 +387,8 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                             inf.maybe_complex_point(db)
                         {
                             dataclass_options = Some(check_dataclass_options(
-                                i_s,
+                                db,
                                 self.node_ref.file,
-                                primary.index(),
                                 exec,
                                 d.as_dataclass_options(),
                             ));
@@ -692,20 +689,9 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                 options.frozen = None;
             }
             if let Some(args) = self.node().arguments() {
-                let args = SimpleArgs::new(
-                    *i_s,
-                    self.node_ref.file,
-                    args.index(),
-                    ArgumentsDetails::Node(args),
-                );
-                for arg in args.iter(i_s.mode) {
-                    if let Some(key) = arg.keyword_name(db) {
-                        options.assign_keyword_arg_to_dataclass_options(
-                            db,
-                            self.node_ref.file,
-                            key,
-                            &arg,
-                        );
+                for arg in args.iter() {
+                    if let Argument::Keyword(kw) = arg {
+                        options.assign_keyword_arg_to_dataclass_options(db, self.node_ref.file, kw);
                     }
                     // If another option is present, just ignore it. It is either checked by
                     // __init_subclass__ or it's a complex metaclass and we're screwed.
@@ -1807,24 +1793,24 @@ fn join_abstract_attributes(db: &Database, abstract_attributes: &[PointLink]) ->
 }
 
 fn check_dataclass_options(
-    i_s: &InferenceState,
+    db: &Database,
     file: &PythonFile,
-    primary_index: NodeIndex,
     details: ArgumentsDetails,
     default_options: DataclassOptions,
 ) -> DataclassOptions {
     let mut options = default_options;
-    let args = SimpleArgs::new(*i_s, file, primary_index, details);
-    for arg in args.iter(i_s.mode) {
-        if let Some(key) = arg.keyword_name(i_s.db) {
-            options.assign_keyword_arg_to_dataclass_options(i_s.db, file, key, &arg);
+    for arg in details.iter() {
+        if let ArgOrComprehension::Arg(Argument::Keyword(kw)) = arg {
+            options.assign_keyword_arg_to_dataclass_options(db, file, kw);
         } else {
-            arg.add_issue(i_s, IssueKind::UnexpectedArgumentTo { name: "dataclass" })
+            NodeRef::new(file, details.index().unwrap())
+                .add_type_issue(db, IssueKind::UnexpectedArgumentTo { name: "dataclass" })
         }
     }
     if !options.eq && options.order {
         options.eq = true;
-        args.add_issue(i_s, IssueKind::DataclassOrderEnabledButNotEq);
+        NodeRef::new(file, details.index().unwrap())
+            .add_type_issue(db, IssueKind::DataclassOrderEnabledButNotEq);
     }
     options
 }
@@ -1834,33 +1820,30 @@ impl DataclassOptions {
         &mut self,
         db: &Database,
         file: &PythonFile,
-        key: &str,
-        arg: &Arg<'db, '_>,
+        kwarg: Kwarg,
     ) {
-        let ArgKind::Keyword(kw) = &arg.kind else {
-            unreachable!()
-        };
-        let assign_option = |target: &mut _, arg: &Arg<'db, '_>| {
-            if let Some(bool_) = kw.expression.maybe_simple_bool() {
+        let (key, expr) = kwarg.unpack();
+        let key = key.as_code();
+        let assign_option = |target: &mut _| {
+            if let Some(bool_) = expr.maybe_simple_bool() {
                 *target = bool_;
             } else {
-                let key = arg.keyword_name(db).unwrap().into();
-                NodeRef::new(file, kw.expression.index())
-                    .add_type_issue(db, IssueKind::ArgumentMustBeTrueOrFalse { key })
+                NodeRef::new(file, expr.index())
+                    .add_type_issue(db, IssueKind::ArgumentMustBeTrueOrFalse { key: key.into() })
             }
         };
         match key {
-            "kw_only" => assign_option(&mut self.kw_only, arg),
+            "kw_only" => assign_option(&mut self.kw_only),
             "frozen" => {
                 let mut new_frozen = false;
-                assign_option(&mut new_frozen, arg);
+                assign_option(&mut new_frozen);
                 self.frozen = Some(new_frozen);
             }
-            "order" => assign_option(&mut self.order, arg),
-            "eq" => assign_option(&mut self.eq, arg),
-            "init" => assign_option(&mut self.init, arg),
-            "match_args" => assign_option(&mut self.match_args, arg),
-            "slots" => assign_option(&mut self.slots, arg),
+            "order" => assign_option(&mut self.order),
+            "eq" => assign_option(&mut self.eq),
+            "init" => assign_option(&mut self.init),
+            "match_args" => assign_option(&mut self.match_args),
+            "slots" => assign_option(&mut self.slots),
             // The other names should not go through while type checking
             _ => (),
         }
