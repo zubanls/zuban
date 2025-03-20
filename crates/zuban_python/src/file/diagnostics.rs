@@ -12,7 +12,8 @@ use super::{first_defined_name, flow_analysis::FLOW_ANALYSIS, inference::await_,
 use crate::{
     arguments::{CombinedArgs, KnownArgs, NoArgs},
     database::{
-        ClassKind, ComplexPoint, Database, Locality, OverloadImplementation, Point, Specific,
+        ClassKind, ComplexPoint, Database, Locality, MetaclassState, OverloadImplementation, Point,
+        Specific,
     },
     debug,
     diagnostics::{Issue, IssueKind},
@@ -681,7 +682,7 @@ impl Inference<'_, '_, '_> {
                         let (name, expr) = kwarg.unpack();
                         if name.as_str() != "metaclass" {
                             // Generate diagnostics
-                            self.file.inference(self.i_s).infer_expression(expr);
+                            self.infer_expression(expr);
                             debug!(
                                 "TODO shouldn't we handle this? In \
                                 testNewAnalyzerClassKeywordsForward it's ignored..."
@@ -699,9 +700,76 @@ impl Inference<'_, '_, '_> {
                 }
             }
         }
+        if let Some(decorated) = class.maybe_decorated() {
+            // TODO we pretty much just ignore the fact that a decorated class can also be an enum.
+            let mut inferred = Inferred::from_saved_node_ref(class_node_ref.into());
+            for decorator in decorated.decorators().iter_reverse() {
+                let decorate = self.infer_decorator(decorator);
+                inferred = decorate.execute(
+                    self.i_s,
+                    &KnownArgs::new(&inferred, NodeRef::new(self.file, decorator.index())),
+                );
+            }
+            // TODO for now don't save class decorators, because they are really not used in mypy.
+            // let saved = inferred.save_redirect(i_s, name_def.file, name_def.node_index);
+        }
 
+        let class_infos = class_node_ref.use_cached_class_infos(db);
         let c = Class::with_self_generics(db, class_node_ref);
-        let class_infos = c.use_cached_class_infos(db);
+
+        if let MetaclassState::Some(link) = class_infos.metaclass {
+            if link == db.python_state.enum_meta_link() {
+                // Check if __new__ was correctly used in combination with enums (1)
+                // Also check if mixins appear after enums (2)
+                let mut had_new = 0;
+                let mut enum_spotted: Option<Class> = None;
+                for base in c.bases(db) {
+                    if let TypeOrClass::Class(c) = &base {
+                        let is_enum = c.use_cached_class_infos(db).class_kind == ClassKind::Enum;
+                        let has_mixin_enum_new = if is_enum {
+                            c.bases(db).any(|inner| match inner {
+                                TypeOrClass::Class(inner) => {
+                                    inner.use_cached_class_infos(db).class_kind != ClassKind::Enum
+                                        && inner.has_customized_enum_new(self.i_s)
+                                }
+                                TypeOrClass::Type(_) => false,
+                            })
+                        } else {
+                            c.has_customized_enum_new(self.i_s)
+                        };
+                        // (1)
+                        if has_mixin_enum_new {
+                            had_new += 1;
+                            if had_new > 1 {
+                                class_node_ref.add_issue_on_name(
+                                    db,
+                                    IssueKind::EnumMultipleMixinNew {
+                                        extra: c.qualified_name(db).into(),
+                                    },
+                                );
+                            }
+                        }
+                        // (2)
+                        match enum_spotted {
+                            Some(after) if !is_enum => {
+                                class_node_ref.add_issue_on_name(
+                                    db,
+                                    IssueKind::EnumMixinNotAllowedAfterEnum {
+                                        after: after.qualified_name(db).into(),
+                                    },
+                                );
+                            }
+                            _ => {
+                                if is_enum {
+                                    enum_spotted = Some(*c);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         if matches!(class_infos.class_kind, ClassKind::TypedDict) {
             // TypedDicts are special, because they really only contain annotations and no methods.
             // We skip all of this logic, because there's custom logic for TypedDicts.

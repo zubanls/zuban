@@ -140,7 +140,7 @@ impl<'db: 'file, 'file> ClassNodeRef<'file> {
         }
     }
 
-    fn add_issue_on_name(&self, db: &Database, kind: IssueKind) {
+    pub(crate) fn add_issue_on_name(&self, db: &Database, kind: IssueKind) {
         let issue = Issue::from_node_index(&self.file.tree, self.node_index, kind);
         self.file.add_type_issue(db, issue)
     }
@@ -483,10 +483,8 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
         }
 
         let mut was_enum = None;
-        let mut was_enum_base = false;
         if let MetaclassState::Some(link) = class_infos.metaclass {
             if link == db.python_state.enum_meta_link() {
-                was_enum_base = true;
                 if !self.use_cached_type_vars(db).is_empty() {
                     self.add_issue_on_name(db, IssueKind::EnumCannotBeGeneric);
                 }
@@ -532,23 +530,6 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
         node_ref.insert_complex(ComplexPoint::ClassInfos(class_infos), Locality::Todo);
         debug_assert!(node_ref.point().calculated());
 
-        if let Some(decorated) = maybe_decorated {
-            // TODO we pretty much just ignore the fact that a decorated class can also be an enum.
-            let mut inferred = Inferred::from_saved_node_ref(self.node_ref.into());
-            for decorator in decorated.decorators().iter_reverse() {
-                let decorate = self.node_ref.file.inference(i_s).infer_decorator(decorator);
-                inferred = decorate.execute(
-                    i_s,
-                    &KnownArgs::new(
-                        &inferred,
-                        NodeRef::new(self.node_ref.file, decorator.index()),
-                    ),
-                );
-            }
-            // TODO for now don't save class decorators, because they are really not used in mypy.
-            // let saved = inferred.save_redirect(i_s, name_def.file, name_def.node_index);
-        }
-
         if let Some(dataclass) = was_dataclass {
             dataclass_init_func(&dataclass, db);
         }
@@ -572,56 +553,6 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
             }
         }
 
-        if was_enum_base {
-            // Check if __new__ was correctly used in combination with enums (1)
-            // Also check if mixins appear after enums (2)
-            let mut had_new = 0;
-            let mut enum_spotted: Option<Class> = None;
-            for base in class.bases(db) {
-                if let TypeOrClass::Class(c) = &base {
-                    let is_enum = c.use_cached_class_infos(db).class_kind == ClassKind::Enum;
-                    let has_mixin_enum_new = if is_enum {
-                        c.bases(db).any(|inner| match inner {
-                            TypeOrClass::Class(inner) => {
-                                inner.use_cached_class_infos(db).class_kind != ClassKind::Enum
-                                    && inner.has_customized_enum_new(i_s)
-                            }
-                            TypeOrClass::Type(_) => false,
-                        })
-                    } else {
-                        c.has_customized_enum_new(i_s)
-                    };
-                    // (1)
-                    if has_mixin_enum_new {
-                        had_new += 1;
-                        if had_new > 1 {
-                            self.add_issue_on_name(
-                                db,
-                                IssueKind::EnumMultipleMixinNew {
-                                    extra: c.qualified_name(db).into(),
-                                },
-                            );
-                        }
-                    }
-                    // (2)
-                    match enum_spotted {
-                        Some(after) if !is_enum => {
-                            self.add_issue_on_name(
-                                db,
-                                IssueKind::EnumMixinNotAllowedAfterEnum {
-                                    after: after.qualified_name(db).into(),
-                                },
-                            );
-                        }
-                        _ => {
-                            if is_enum {
-                                enum_spotted = Some(*c);
-                            }
-                        }
-                    }
-                }
-            }
-        }
         // Change the methods that are actually changed by Python to be classmethods.
         for name in ["__init_subclass__", "__class_getitem__"] {
             if let Some(node_index) = self.class_storage.class_symbol_table.lookup_symbol(name) {
