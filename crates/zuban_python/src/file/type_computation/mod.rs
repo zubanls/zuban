@@ -11,7 +11,7 @@ pub(crate) use class::{
     linearize_mro_and_return_linearizable, ClassInitializer, ClassNodeRef,
     CLASS_TO_CLASS_INFO_DIFFERENCE, ORDERING_METHODS,
 };
-pub(crate) use function::FuncNodeRef;
+pub(crate) use function::{FuncNodeRef, FuncParent};
 
 use std::{borrow::Cow, cell::Cell, rc::Rc};
 

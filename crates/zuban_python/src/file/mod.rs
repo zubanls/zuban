@@ -22,7 +22,7 @@ pub(crate) use type_computation::{
     linearize_mro_and_return_linearizable, maybe_saved_annotation,
     use_cached_annotation_or_type_comment, use_cached_annotation_type,
     use_cached_param_annotation_type, use_cached_simple_generic_type, CalculatedBaseClass,
-    ClassInitializer, ClassNodeRef, FuncNodeRef, GenericCounts, TypeComputation,
+    ClassInitializer, ClassNodeRef, FuncNodeRef, FuncParent, GenericCounts, TypeComputation,
     TypeComputationOrigin, TypeVarCallbackReturn, ANNOTATION_TO_EXPR_DIFFERENCE,
     CLASS_TO_CLASS_INFO_DIFFERENCE, ORDERING_METHODS,
 };

@@ -5,11 +5,17 @@ use parsa_python_cst::{
 use crate::{
     database::Database,
     diagnostics::{Issue, IssueKind},
-    file::{PythonFile, FUNC_TO_RETURN_OR_YIELD_DIFF, FUNC_TO_TYPE_VAR_DIFF},
+    file::{
+        func_parent_scope, FuncParentScope, PythonFile, FUNC_TO_RETURN_OR_YIELD_DIFF,
+        FUNC_TO_TYPE_VAR_DIFF,
+    },
     inference_state::InferenceState,
     node_ref::NodeRef,
     type_::{StringSlice, TypeVarLikes},
+    type_helpers::{Class, Function},
 };
+
+use super::ClassNodeRef;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) struct FuncNodeRef<'file>(NodeRef<'file>);
@@ -139,6 +145,20 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
         let func = FunctionDef::by_index(&self.file.tree, self.node_index);
         func.name().as_str()
     }
+
+    pub(crate) fn parent(&self, db: &'db Database) -> FuncParent<'db> {
+        match func_parent_scope(&self.file.tree, &self.file.points, self.node_index) {
+            FuncParentScope::Module => FuncParent::Module,
+            FuncParentScope::ClassDef(c) => {
+                let n = ClassNodeRef::new(self.file, c.index()).to_db_lifetime(db);
+                FuncParent::Class(Class::with_self_generics(db, n))
+            }
+            FuncParentScope::FunctionDef(f) => {
+                let n = NodeRef::new(self.file, f.index()).to_db_lifetime(db);
+                FuncParent::Function(Function::new_with_unknown_parent(db, n))
+            }
+        }
+    }
 }
 
 pub struct ReturnOrYieldIterator<'a> {
@@ -160,4 +180,10 @@ impl<'a> Iterator for ReturnOrYieldIterator<'a> {
             Some(ReturnOrYield::by_index(&self.file.tree, index - 1))
         }
     }
+}
+
+pub(crate) enum FuncParent<'x> {
+    Module,
+    Function(Function<'x, 'x>),
+    Class(Class<'x>),
 }

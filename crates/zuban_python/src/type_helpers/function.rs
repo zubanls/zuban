@@ -15,9 +15,9 @@ use crate::{
     debug,
     diagnostics::IssueKind,
     file::{
-        first_defined_name_of_multi_def, func_parent_scope, use_cached_param_annotation_type,
-        ClassNodeRef, FuncNodeRef, FuncParentScope, OtherDefinitionIterator, PythonFile,
-        TypeComputation, TypeComputationOrigin, TypeVarCallbackReturn, FLOW_ANALYSIS,
+        first_defined_name_of_multi_def, use_cached_param_annotation_type, FuncNodeRef, FuncParent,
+        OtherDefinitionIterator, PythonFile, TypeComputation, TypeComputationOrigin,
+        TypeVarCallbackReturn, FLOW_ANALYSIS,
     },
     format_data::FormatData,
     inference_state::InferenceState,
@@ -76,9 +76,14 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
     }
 
     pub fn new_with_unknown_parent(db: &'db Database, node_ref: NodeRef<'a>) -> Self {
-        match Self::new(node_ref, None).parent(db) {
-            FuncParent::Class(c) => Self::new(node_ref, Some(c)),
-            _ => Self::new(node_ref, None),
+        let func_node_ref = FuncNodeRef::from_node_ref(node_ref);
+        let class = match func_node_ref.parent(db) {
+            FuncParent::Class(c) => Some(c),
+            _ => None,
+        };
+        Self {
+            node_ref: func_node_ref,
+            class,
         }
     }
 
@@ -210,24 +215,6 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             }
         }
         Inferred::new_none()
-    }
-
-    fn parent(&self, db: &'db Database) -> FuncParent<'db> {
-        match func_parent_scope(
-            &self.node_ref.file.tree,
-            &self.node_ref.file.points,
-            self.node_ref.node_index,
-        ) {
-            FuncParentScope::Module => FuncParent::Module,
-            FuncParentScope::ClassDef(c) => {
-                let n = ClassNodeRef::new(self.node_ref.file, c.index()).to_db_lifetime(db);
-                FuncParent::Class(Class::with_self_generics(db, n))
-            }
-            FuncParentScope::FunctionDef(f) => {
-                let n = NodeRef::new(self.node_ref.file, f.index()).to_db_lifetime(db);
-                FuncParent::Function(Function::new_with_unknown_parent(db, n))
-            }
-        }
     }
 
     pub fn parent_class(&self, db: &'db Database) -> Option<Class<'class>> {
@@ -2108,10 +2095,4 @@ impl GeneratorType {
             _ => None,
         }
     }
-}
-
-enum FuncParent<'x> {
-    Module,
-    Function(Function<'x, 'x>),
-    Class(Class<'x>),
 }
