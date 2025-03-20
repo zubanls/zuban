@@ -1,9 +1,8 @@
 use std::{borrow::Cow, cell::Cell, fmt, rc::Rc};
 
 use parsa_python_cst::{
-    Decorated, Decorator, ExpressionContent, ExpressionPart, Param as CSTParam, ParamAnnotation,
-    ParamIterator, ParamKind, PrimaryContent, PrimaryOrAtom, ReturnAnnotation, ReturnOrYield,
-    StmtLikeContent,
+    Decorated, Decorator, ExpressionContent, ExpressionPart, Param as CSTParam, ParamIterator,
+    ParamKind, PrimaryContent, PrimaryOrAtom, ReturnAnnotation, ReturnOrYield, StmtLikeContent,
 };
 
 use crate::{
@@ -16,8 +15,7 @@ use crate::{
     diagnostics::IssueKind,
     file::{
         first_defined_name_of_multi_def, use_cached_param_annotation_type, FuncNodeRef, FuncParent,
-        OtherDefinitionIterator, PythonFile, TypeComputation, TypeComputationOrigin,
-        TypeVarCallbackReturn, FLOW_ANALYSIS,
+        OtherDefinitionIterator, PythonFile, TypeVarCallbackReturn, FLOW_ANALYSIS,
     },
     format_data::FormatData,
     inference_state::InferenceState,
@@ -37,8 +35,7 @@ use crate::{
         replace_param_spec, AnyCause, CallableContent, CallableLike, CallableParam, CallableParams,
         ClassGenerics, DbString, FunctionKind, FunctionOverload, GenericClass, GenericItem,
         NeverCause, ParamType, PropertySetter, ReplaceSelf, StarParamType, StarStarParamType,
-        StringSlice, TupleArgs, Type, TypeGuardInfo, TypeVarKind, TypeVarLike, TypeVarLikes,
-        TypeVarManager, WrongPositionalCount,
+        StringSlice, TupleArgs, Type, TypeVarLike, TypeVarLikes, WrongPositionalCount,
     },
     type_helpers::Class,
 };
@@ -353,19 +350,12 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
     }
 
     fn ensure_cached_type_vars(&self, i_s: &InferenceState<'db, '_>) -> Option<CallableContent> {
-        let type_var_reference = self.type_var_reference();
-        if type_var_reference.point().calculated() {
-            return None; // TODO this feels wrong, because below we only sometimes calculate the callable
-        }
-        let (type_vars, type_guard, star_annotation) = self.cache_type_vars(i_s);
-        match type_vars.len() {
-            0 => type_var_reference
-                .set_point(Point::new_specific(Specific::Analyzed, Locality::Todo)),
-            _ => type_var_reference
-                .insert_complex(ComplexPoint::TypeVarLikes(type_vars), Locality::Todo),
-        }
-        debug_assert!(type_var_reference.point().calculated());
-
+        let Some((type_guard, star_annotation)) = self
+            .node_ref
+            .ensure_cached_type_vars(i_s, self.class.map(|c| c.node_ref))
+        else {
+            return None;
+        };
         let mut needs_callable = false;
         if let Some(annotation) = star_annotation {
             let t = use_cached_param_annotation_type(i_s.db, self.node_ref.file, annotation);
@@ -389,127 +379,6 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             return Some(callable);
         }
         None
-    }
-
-    fn cache_type_vars(
-        &self,
-        i_s: &InferenceState<'db, '_>,
-    ) -> (TypeVarLikes, Option<TypeGuardInfo>, Option<ParamAnnotation>) {
-        let func_node = self.node();
-        let implicit_optional = self.node_ref.file.flags(i_s.db).implicit_optional;
-        let in_result_type = Cell::new(false);
-        let mut unbound_type_vars = vec![];
-        let mut on_type_var = |i_s: &InferenceState,
-                               manager: &TypeVarManager<PointLink>,
-                               type_var: TypeVarLike,
-                               current_callable: Option<_>| {
-            self.class
-                .and_then(|class| {
-                    class
-                        .use_cached_type_vars(i_s.db)
-                        .find(type_var.clone(), class.node_ref.as_link())
-                        .map(TypeVarCallbackReturn::TypeVarLike)
-                })
-                .or_else(|| i_s.find_parent_type_var(&type_var))
-                .unwrap_or_else(|| {
-                    if in_result_type.get()
-                        && manager.position(&type_var).is_none()
-                        && current_callable.is_none()
-                    {
-                        unbound_type_vars.push(type_var);
-                    }
-                    TypeVarCallbackReturn::NotFound {
-                        allow_late_bound_callables: in_result_type.get(),
-                    }
-                })
-        };
-        let mut type_computation = TypeComputation::new(
-            i_s,
-            self.node_ref.file,
-            self.node_ref.as_link(),
-            &mut on_type_var,
-            TypeComputationOrigin::ParamTypeCommentOrAnnotation,
-        );
-        let mut star_annotation = None;
-        let mut previous_param = None;
-        for param in func_node.params().iter() {
-            if let Some(annotation) = param.annotation() {
-                let mut is_implicit_optional = false;
-                if implicit_optional {
-                    if let Some(default) = param.default() {
-                        if default.as_code() == "None" {
-                            is_implicit_optional = true;
-                        }
-                    }
-                }
-                let param_kind = param.kind();
-                type_computation.cache_param_annotation(
-                    annotation,
-                    param_kind,
-                    previous_param,
-                    is_implicit_optional,
-                );
-                if param_kind == ParamKind::Star {
-                    star_annotation = Some(annotation);
-                }
-            }
-            previous_param = Some(param);
-        }
-        if let Some(annotation) = star_annotation {
-            let t = use_cached_param_annotation_type(i_s.db, self.node_ref.file, annotation);
-            if let Type::ParamSpecArgs(usage) = t.as_ref() {
-                let iterator = func_node.params().iter();
-                // The type computation only checked if **kwargs was ok. If there is no param, no
-                // issue was added, so add it here.
-                if !iterator
-                    .skip_while(|p| p.kind() != ParamKind::Star)
-                    .nth(1)
-                    .is_some_and(|p| p.annotation().is_some())
-                {
-                    NodeRef::new(self.node_ref.file, annotation.index()).add_issue(
-                        i_s,
-                        IssueKind::ParamSpecParamsNeedBothStarAndStarStar {
-                            name: usage.param_spec.name(i_s.db).into(),
-                        },
-                    );
-                }
-            }
-        }
-        let type_guard = func_node.return_annotation().and_then(|return_annot| {
-            in_result_type.set(true);
-            type_computation.cache_return_annotation(return_annot)
-        });
-        let type_vars = type_computation.into_type_vars(|inf, recalculate_type_vars| {
-            for param in func_node.params().iter() {
-                if let Some(annotation) = param.annotation() {
-                    inf.recalculate_annotation_type_vars(annotation.index(), recalculate_type_vars);
-                }
-            }
-            if let Some(return_annot) = func_node.return_annotation() {
-                inf.recalculate_annotation_type_vars(return_annot.index(), recalculate_type_vars);
-            }
-        });
-        if !unbound_type_vars.is_empty() {
-            if let Type::TypeVar(t) = self.return_type(i_s).as_ref() {
-                if unbound_type_vars.contains(&TypeVarLike::TypeVar(t.type_var.clone())) {
-                    let node_ref = self.expect_return_annotation_node_ref();
-                    node_ref.add_issue(i_s, IssueKind::TypeVarInReturnButNotArgument);
-                    if let TypeVarKind::Bound(bound) = t.type_var.kind(i_s.db) {
-                        node_ref.add_issue(
-                            i_s,
-                            IssueKind::Note(
-                                format!(
-                                    "Consider using the upper bound \"{}\" instead",
-                                    bound.format_short(i_s.db)
-                                )
-                                .into(),
-                            ),
-                        );
-                    }
-                }
-            }
-        }
-        (type_vars, type_guard, star_annotation)
     }
 
     pub fn cache_func(&self, i_s: &InferenceState) {
@@ -1697,17 +1566,6 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             }
             None => format!("{:?}", name),
         }
-    }
-
-    pub fn return_type(&self, i_s: &InferenceState<'db, '_>) -> Cow<'a, Type> {
-        self.return_annotation()
-            .map(|a| {
-                self.node_ref
-                    .file
-                    .name_resolution_for_types(i_s)
-                    .use_cached_return_annotation_type(a)
-            })
-            .unwrap_or_else(|| Cow::Borrowed(&Type::Any(AnyCause::Unannotated)))
     }
 
     pub fn expected_return_type_for_return_stmt(
