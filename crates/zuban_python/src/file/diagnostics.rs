@@ -672,6 +672,34 @@ impl Inference<'_, '_, '_> {
         let class_node_ref = ClassNodeRef::new(self.file, class.index());
         class_node_ref.ensure_cached_class_infos(self.i_s);
         let db = self.i_s.db;
+
+        if let Some(arguments) = arguments {
+            for argument in arguments.iter() {
+                match argument {
+                    Argument::Positional(_) => (), // These are checked in ensure_cached_class_infos
+                    Argument::Keyword(kwarg) => {
+                        let (name, expr) = kwarg.unpack();
+                        if name.as_str() != "metaclass" {
+                            // Generate diagnostics
+                            self.file.inference(self.i_s).infer_expression(expr);
+                            debug!(
+                                "TODO shouldn't we handle this? In \
+                                testNewAnalyzerClassKeywordsForward it's ignored..."
+                            )
+                        }
+                    }
+                    Argument::Star(starred) => {
+                        NodeRef::new(self.file, starred.index())
+                            .add_type_issue(db, IssueKind::InvalidBaseClass);
+                    }
+                    Argument::StarStar(double_starred) => {
+                        NodeRef::new(self.file, double_starred.index())
+                            .add_type_issue(db, IssueKind::InvalidBaseClass);
+                    }
+                }
+            }
+        }
+
         let c = Class::with_self_generics(db, class_node_ref);
         let class_infos = c.use_cached_class_infos(db);
         if matches!(class_infos.class_kind, ClassKind::TypedDict) {

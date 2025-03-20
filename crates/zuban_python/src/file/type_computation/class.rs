@@ -1002,25 +1002,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                             }
                         };
                     }
-                    Argument::Keyword(kwarg) => {
-                        let (name, expr) = kwarg.unpack();
-                        if name.as_str() != "metaclass" {
-                            // Generate diagnostics
-                            self.node_ref.file.inference(i_s).infer_expression(expr);
-                            debug!(
-                                "TODO shouldn't we handle this? In \
-                                    testNewAnalyzerClassKeywordsForward it's ignored..."
-                            )
-                        }
-                    }
-                    Argument::Star(starred) => {
-                        NodeRef::new(self.node_ref.file, starred.index())
-                            .add_type_issue(db, IssueKind::InvalidBaseClass);
-                    }
-                    Argument::StarStar(double_starred) => {
-                        NodeRef::new(self.node_ref.file, double_starred.index())
-                            .add_type_issue(db, IssueKind::InvalidBaseClass);
-                    }
+                    _ => (),
                 }
             }
         }
