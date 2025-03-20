@@ -240,11 +240,9 @@ pub(super) fn new_typed_dict_with_execution_syntax<'db>(
     if let Some(next) = iterator.next() {
         match &next.kind {
             ArgKind::Keyword(kw) if kw.key == "total" => {
-                total = infer_typed_dict_total_argument(
-                    i_s,
-                    kw.infer(&mut ResultContext::Unknown),
-                    |issue| next.add_issue(i_s, issue),
-                )?;
+                total = check_typed_dict_total_argument(kw.expression, |issue| {
+                    next.add_issue(i_s, issue)
+                })?;
             }
             ArgKind::Keyword(kw) => {
                 let s = format!(
@@ -304,19 +302,17 @@ pub(super) fn new_typed_dict_with_execution_syntax<'db>(
     Some((name, members.into_boxed_slice(), total))
 }
 
-pub(super) fn infer_typed_dict_total_argument(
-    i_s: &InferenceState,
-    inf: Inferred,
+pub(super) fn check_typed_dict_total_argument(
+    expr: Expression,
     add_issue: impl Fn(IssueKind),
 ) -> Option<bool> {
-    if let Some(total) = inf.maybe_bool_literal(i_s) {
-        Some(total)
-    } else {
+    let result = expr.maybe_simple_bool();
+    if result.is_none() {
         add_issue(IssueKind::ArgumentMustBeTrueOrFalse {
             key: "total".into(),
         });
-        None
     }
+    result
 }
 
 #[derive(Default)]

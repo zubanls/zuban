@@ -34,7 +34,7 @@ use crate::{
     utils::{debug_indent, join_with_commas},
 };
 
-use super::{named_tuple::start_namedtuple_params, typed_dict::infer_typed_dict_total_argument};
+use super::{named_tuple::start_namedtuple_params, typed_dict::check_typed_dict_total_argument};
 
 // Basically save the type vars on the class keyword.
 const CLASS_TO_TYPE_VARS_DIFFERENCE: i64 = 1;
@@ -854,10 +854,9 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                                     Type::Dataclass(d) => Some(Self::from_link(db, d.class.link)),
                                     Type::TypedDict(typed_dict) => {
                                         if typed_dict_total.is_none() {
-                                            typed_dict_total =
-                                                Some(self.check_total_typed_dict_argument(
-                                                    i_s, arguments,
-                                                ))
+                                            typed_dict_total = Some(
+                                                self.check_total_typed_dict_argument(db, arguments),
+                                            )
                                         }
                                         class_kind = ClassKind::TypedDict;
                                         if typed_dict.is_final {
@@ -971,7 +970,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                                     class_kind = ClassKind::TypedDict;
                                     if typed_dict_total.is_none() {
                                         typed_dict_total = Some(
-                                            self.check_total_typed_dict_argument(i_s, arguments),
+                                            self.check_total_typed_dict_argument(db, arguments),
                                         )
                                     }
                                 }
@@ -1208,16 +1207,14 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
         members.into_boxed_slice()
     }
 
-    fn check_total_typed_dict_argument(&self, i_s: &InferenceState, args: CSTArguments) -> bool {
+    fn check_total_typed_dict_argument(&self, db: &Database, args: CSTArguments) -> bool {
         let mut total = true;
-        let inference = self.node_ref.file.inference(i_s);
         for argument in args.iter() {
             if let Argument::Keyword(kwarg) = argument {
                 let (name, expr) = kwarg.unpack();
                 if name.as_code() == "total" {
-                    let inf = inference.infer_expression(expr);
-                    total = infer_typed_dict_total_argument(i_s, inf, |issue| {
-                        NodeRef::new(self.node_ref.file, expr.index()).add_type_issue(i_s.db, issue)
+                    total = check_typed_dict_total_argument(expr, |issue| {
+                        NodeRef::new(self.node_ref.file, expr.index()).add_type_issue(db, issue)
                     })
                     .unwrap_or(true);
                 }
