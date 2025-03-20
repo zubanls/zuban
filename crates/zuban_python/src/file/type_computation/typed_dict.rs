@@ -8,8 +8,6 @@ use crate::{
     format_data::FormatData,
     getitem::SliceType,
     inference_state::InferenceState,
-    inferred::Inferred,
-    matching::ResultContext,
     node_ref::NodeRef,
     recoverable_error,
     type_::{GenericsList, StringSlice, Type, TypedDict, TypedDictGenerics, TypedDictMember},

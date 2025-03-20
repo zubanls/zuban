@@ -7,7 +7,6 @@ use parsa_python_cst::{
 };
 
 use crate::{
-    arguments::KnownArgs,
     database::{
         BaseClass, ClassInfos, ClassKind, ClassStorage, ComplexPoint, Database, Locality,
         MetaclassState, ParentScope, Point, PointLink, ProtocolMember, Specific,
@@ -21,7 +20,6 @@ use crate::{
         TypeComputationOrigin, TypeVarCallbackReturn, TypeVarFinder,
     },
     inference_state::InferenceState,
-    inferred::Inferred,
     node_ref::NodeRef,
     python_state::{NAME_TO_CLASS_DIFF, NAME_TO_FUNCTION_DIFF},
     type_::{
@@ -30,7 +28,7 @@ use crate::{
         EnumMemberDefinition, FunctionKind, GenericClass, NamedTuple, ParamType, StringSlice,
         Tuple, Type, TypeVarLike, TypeVarLikes, TypedDict, TypedDictMember, Variance,
     },
-    type_helpers::{Class, FirstParamProperties, Function, TypeOrClass},
+    type_helpers::{Class, FirstParamProperties, Function},
     utils::{debug_indent, join_with_commas},
 };
 
@@ -482,7 +480,6 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
             );
         }
 
-        let mut was_enum = None;
         if let MetaclassState::Some(link) = class_infos.metaclass {
             if link == db.python_state.enum_meta_link() {
                 if !self.use_cached_type_vars(db).is_empty() {
@@ -502,7 +499,6 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                     let enum_type = Rc::new(Type::Enum(enum_.clone()));
                     // In case enum is combined with dataclass, just let the dataclass win
                     let _ = class_infos.undefined_generics_type.set(enum_type.clone());
-                    was_enum = Some(enum_);
                 }
             }
         }
@@ -538,18 +534,6 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
         if let Some(td) = was_typed_dict {
             initialize_typed_dict_members(db, &class, td);
         };
-
-        if let Some(enum_) = was_enum {
-            // Precalculate the enum values here. Note that this is intentionally done after
-            // the insertion, to avoid recursions.
-            // We need to calculate here, because otherwise the normal class
-            // calculation will do it for us, which we probably do not want.
-            for member in enum_.members.iter() {
-                if member.value.is_some() {
-                    member.infer_value(i_s, &enum_);
-                }
-            }
-        }
 
         // Change the methods that are actually changed by Python to be classmethods.
         for name in ["__init_subclass__", "__class_getitem__"] {

@@ -773,6 +773,18 @@ impl Inference<'_, '_, '_> {
                         }
                     }
                 }
+                if let Some(t) = class_infos.undefined_generics_type.get() {
+                    if let Type::Enum(enum_) = t.as_ref() {
+                        // Precalculate the enum values here.
+                        // We need to calculate here, because otherwise the normal class
+                        // calculation will do it for us, which will infer different values.
+                        for member in enum_.members.iter() {
+                            if member.value.is_some() {
+                                member.infer_value(self.i_s, &enum_);
+                            }
+                        }
+                    }
+                }
             }
         }
 
