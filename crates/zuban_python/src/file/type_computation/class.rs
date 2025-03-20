@@ -7,6 +7,7 @@ use parsa_python_cst::{
 };
 
 use crate::{
+    arguments::SimpleArgs,
     database::{
         BaseClass, ClassInfos, ClassKind, ClassStorage, ComplexPoint, Database, Locality,
         MetaclassState, ParentScope, Point, PointLink, ProtocolMember, Specific,
@@ -15,6 +16,7 @@ use crate::{
     debug,
     diagnostics::{Issue, IssueKind},
     file::{
+        name_resolution::NameResolution,
         type_computation::{typed_dict::TypedDictMemberGatherer, InvalidVariableType, TypeContent},
         use_cached_annotation_type, OtherDefinitionIterator, PythonFile, TypeVarCallbackReturn,
         TypeVarFinder,
@@ -34,7 +36,7 @@ use crate::{
 
 use super::{
     named_tuple::start_namedtuple_params, typed_dict::check_typed_dict_total_argument,
-    CalculatedBaseClass, Lookup, TypeComputation, TypeComputationOrigin,
+    CalculatedBaseClass, FuncNodeRef, Lookup, TypeComputation, TypeComputationOrigin,
 };
 
 // Basically save the type vars on the class keyword.
@@ -394,20 +396,27 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                                     ));
                                     continue;
                                 }
+                                if let Some(d) = name_resolution.maybe_dataclass_transform(node_ref)
+                                {
+                                    dataclass_options = Some(check_dataclass_options(
+                                        db,
+                                        self.node_ref.file,
+                                        exec,
+                                        d.as_dataclass_options(),
+                                    ));
+                                    continue;
+                                }
+                            }
+                            Some(Lookup::T(TypeContent::SpecialCase(
+                                Specific::TypingDataclassTransform,
+                            ))) => {
+                                let d = DataclassTransformObj::from_args(
+                                    i_s,
+                                    &SimpleArgs::new(*i_s, self.file, primary.index(), exec),
+                                );
+                                dataclass_transform = Some(Box::new(d.clone()));
                             }
                             _ => (),
-                        }
-                        let inf = inference.infer_primary_or_atom(primary.first());
-                        if let Some(ComplexPoint::TypeInstance(Type::DataclassTransformObj(d))) =
-                            inf.maybe_complex_point(db)
-                        {
-                            dataclass_options = Some(check_dataclass_options(
-                                db,
-                                self.node_ref.file,
-                                exec,
-                                d.as_dataclass_options(),
-                            ));
-                            continue;
                         }
                     }
                 }
@@ -1759,5 +1768,44 @@ impl DataclassOptions {
             // The other names should not go through while type checking
             _ => (),
         }
+    }
+}
+
+impl<'db, 'file> NameResolution<'db, 'file, '_> {
+    fn maybe_dataclass_transform(&self, func: FuncNodeRef<'db>) -> Option<DataclassTransformObj> {
+        let decorated = func.node().maybe_decorated()?;
+        for decorator in decorated.decorators().iter() {
+            let dec_node_ref = NodeRef::new(self.file, decorator.index());
+            if dec_node_ref.point().calculated() {
+                if let Some(ComplexPoint::TypeInstance(Type::DataclassTransformObj(dto))) =
+                    dec_node_ref.complex()
+                {
+                    let mut result = dto.clone();
+                    result.executed_by_function = true;
+                    return Some(result);
+                }
+                continue;
+            }
+            if let ExpressionContent::ExpressionPart(ExpressionPart::Primary(primary)) =
+                decorator.named_expression().expression().unpack()
+            {
+                if let PrimaryContent::Execution(exec) = primary.second() {
+                    if let Some(Lookup::T(TypeContent::SpecialCase(
+                        Specific::TypingDataclassTransform,
+                    ))) = self.lookup_type_primary_or_atom_if_only_names(primary.first())
+                    {
+                        let d = DataclassTransformObj::from_args(
+                            self.i_s,
+                            &SimpleArgs::new(*self.i_s, self.file, primary.index(), exec),
+                        );
+                        let mut result = d.clone();
+                        result.executed_by_function = true;
+                        dec_node_ref.insert_type(Type::DataclassTransformObj(d));
+                        return Some(result);
+                    }
+                }
+            }
+        }
+        None
     }
 }
