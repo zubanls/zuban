@@ -7,7 +7,7 @@ use parsa_python_cst::{
 };
 
 use crate::{
-    arguments::{Arg, Args, KnownArgs, SimpleArgs},
+    arguments::{Arg, ArgKind, Args, KnownArgs, SimpleArgs},
     database::{
         BaseClass, ClassInfos, ClassKind, ClassStorage, ComplexPoint, Database, Locality,
         MetaclassState, ParentScope, Point, PointLink, ProtocolMember, Specific,
@@ -700,7 +700,12 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                 );
                 for arg in args.iter(i_s.mode) {
                     if let Some(key) = arg.keyword_name(db) {
-                        options.assign_keyword_arg_to_dataclass_options(i_s, key, &arg);
+                        options.assign_keyword_arg_to_dataclass_options(
+                            db,
+                            self.node_ref.file,
+                            key,
+                            &arg,
+                        );
                     }
                     // If another option is present, just ignore it. It is either checked by
                     // __init_subclass__ or it's a complex metaclass and we're screwed.
@@ -1812,7 +1817,7 @@ fn check_dataclass_options(
     let args = SimpleArgs::new(*i_s, file, primary_index, details);
     for arg in args.iter(i_s.mode) {
         if let Some(key) = arg.keyword_name(i_s.db) {
-            options.assign_keyword_arg_to_dataclass_options(i_s, key, &arg);
+            options.assign_keyword_arg_to_dataclass_options(i_s.db, file, key, &arg);
         } else {
             arg.add_issue(i_s, IssueKind::UnexpectedArgumentTo { name: "dataclass" })
         }
@@ -1827,17 +1832,21 @@ fn check_dataclass_options(
 impl DataclassOptions {
     fn assign_keyword_arg_to_dataclass_options<'db>(
         &mut self,
-        i_s: &InferenceState,
+        db: &Database,
+        file: &PythonFile,
         key: &str,
         arg: &Arg<'db, '_>,
     ) {
+        let ArgKind::Keyword(kw) = &arg.kind else {
+            unreachable!()
+        };
         let assign_option = |target: &mut _, arg: &Arg<'db, '_>| {
-            let result = arg.infer_inferrable(i_s, &mut ResultContext::Unknown);
-            if let Some(bool_) = result.maybe_bool_literal(i_s) {
+            if let Some(bool_) = kw.expression.maybe_simple_bool() {
                 *target = bool_;
             } else {
-                let key = arg.keyword_name(i_s.db).unwrap().into();
-                arg.add_issue(i_s, IssueKind::ArgumentMustBeTrueOrFalse { key })
+                let key = arg.keyword_name(db).unwrap().into();
+                NodeRef::new(file, kw.expression.index())
+                    .add_type_issue(db, IssueKind::ArgumentMustBeTrueOrFalse { key })
             }
         };
         match key {
