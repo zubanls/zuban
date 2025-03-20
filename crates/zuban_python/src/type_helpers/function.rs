@@ -419,7 +419,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             self.class
                 .and_then(|class| {
                     class
-                        .type_vars(i_s)
+                        .use_cached_type_vars(i_s.db)
                         .find(type_var.clone(), class.node_ref.as_link())
                         .map(TypeVarCallbackReturn::TypeVarLike)
                 })
