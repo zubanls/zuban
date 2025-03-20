@@ -15,8 +15,9 @@ use crate::{
     debug,
     diagnostics::{Issue, IssueKind},
     file::{
-        type_computation::typed_dict::TypedDictMemberGatherer, use_cached_annotation_type,
-        OtherDefinitionIterator, PythonFile, TypeVarCallbackReturn, TypeVarFinder,
+        type_computation::{typed_dict::TypedDictMemberGatherer, InvalidVariableType, TypeContent},
+        use_cached_annotation_type, OtherDefinitionIterator, PythonFile, TypeVarCallbackReturn,
+        TypeVarFinder,
     },
     inference_state::InferenceState,
     node_ref::NodeRef,
@@ -33,7 +34,7 @@ use crate::{
 
 use super::{
     named_tuple::start_namedtuple_params, typed_dict::check_typed_dict_total_argument,
-    CalculatedBaseClass, TypeComputation, TypeComputationOrigin,
+    CalculatedBaseClass, Lookup, TypeComputation, TypeComputationOrigin,
 };
 
 // Basically save the type vars on the class keyword.
@@ -364,6 +365,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
         let mut is_runtime_checkable = false;
         let mut dataclass_transform = None;
         if let Some(decorated) = maybe_decorated {
+            let name_resolution = self.node_ref.file.name_resolution_for_types(i_s);
             let inference = self.node_ref.file.inference(i_s);
 
             let mut dataclass_options = None;
@@ -373,16 +375,29 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                     expr.unpack()
                 {
                     if let PrimaryContent::Execution(exec) = primary.second() {
-                        let inf = inference.infer_primary_or_atom(primary.first());
-                        if inf.is_name_defined_in_module(db, "dataclasses", "dataclass") {
-                            dataclass_options = Some(check_dataclass_options(
-                                db,
-                                self.node_ref.file,
-                                exec,
-                                DataclassOptions::default(),
-                            ));
-                            continue;
+                        match name_resolution
+                            .lookup_type_primary_or_atom_if_only_names(primary.first())
+                        {
+                            Some(Lookup::T(TypeContent::InvalidVariable(
+                                InvalidVariableType::Function { node_ref },
+                            ))) => {
+                                if node_ref.is_name_defined_in_module(
+                                    db,
+                                    "dataclasses",
+                                    "dataclass",
+                                ) {
+                                    dataclass_options = Some(check_dataclass_options(
+                                        db,
+                                        self.node_ref.file,
+                                        exec,
+                                        DataclassOptions::default(),
+                                    ));
+                                    continue;
+                                }
+                            }
+                            _ => (),
                         }
+                        let inf = inference.infer_primary_or_atom(primary.first());
                         if let Some(ComplexPoint::TypeInstance(Type::DataclassTransformObj(d))) =
                             inf.maybe_complex_point(db)
                         {
