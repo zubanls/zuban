@@ -3254,16 +3254,23 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         self.point_resolution_to_type_name_lookup(resolved)
     }
 
-    fn lookup_type_primary_if_only_names(&self, p: Primary) -> Option<Lookup<'db, 'db>> {
-        let base = match p.first() {
+    fn lookup_type_primary_or_atom_if_only_names(
+        &self,
+        p: PrimaryOrAtom,
+    ) -> Option<Lookup<'db, 'db>> {
+        match p {
             PrimaryOrAtom::Atom(atom) => {
                 let AtomContent::Name(name) = atom.unpack() else {
-                    unreachable!()
+                    return None;
                 };
-                self.lookup_type_name(name)
+                Some(self.lookup_type_name(name))
             }
-            PrimaryOrAtom::Primary(primary) => self.lookup_type_primary_if_only_names(primary)?,
-        };
+            PrimaryOrAtom::Primary(primary) => self.lookup_type_primary_if_only_names(primary),
+        }
+    }
+
+    fn lookup_type_primary_if_only_names(&self, p: Primary) -> Option<Lookup<'db, 'db>> {
+        let base = self.lookup_type_primary_or_atom_if_only_names(p.first())?;
         let PrimaryContent::Attribute(name) = p.second() else {
             unreachable!("Expect this to be called only with attributes")
         };
