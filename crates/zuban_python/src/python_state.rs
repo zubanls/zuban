@@ -970,6 +970,9 @@ impl PythonState {
         collections_namedtuple_index
     );
     class_node_ref!(_collections_abc, pub _collections_abc_dict_keys_node_ref, _collections_abc_dict_keys_index);
+    attribute_node_ref!(functools, pub total_ordering_node_ref, functools_total_ordering_index);
+    attribute_node_ref!(typing, pub runtime_checkable_node_ref, typing_runtime_checkable_index);
+    attribute_node_ref!(typing_extensions, pub typing_extensions_runtime_checkable_node_ref, typing_extensions_runtime_checkable_index);
 
     attribute_link!(builtins, pub object_link, builtins_object_index);
     attribute_link!(builtins, pub int_link, builtins_int_index);
@@ -985,7 +988,6 @@ impl PythonState {
     attribute_link!(abc, pub abstractmethod_link, abc_abstractmethod_index);
     attribute_link!(abc, pub abstractproperty_link, abc_abstractproperty_index);
     attribute_link!(functools, pub cached_property_link, functools_cached_property_index);
-    attribute_link!(functools, pub total_ordering_link, functools_total_ordering_index);
     attribute_link!(enum_file, pub enum_meta_link, enum_enum_meta_index);
     attribute_link!(enum_file, pub enum_auto_link, enum_auto_index);
     attribute_link!(typing, pub overload_link, typing_overload_index);
@@ -996,8 +998,6 @@ impl PythonState {
     attribute_link!(typing, pub async_generator_link, typing_async_generator_index);
     attribute_link!(typing, pub async_iterator_link, typing_async_iterator_index);
     attribute_link!(typing, pub async_iterable_link, typing_async_iterable_index);
-    attribute_link!(typing, pub runtime_checkable_link, typing_runtime_checkable_index);
-    attribute_link!(typing_extensions, pub typing_extensions_runtime_checkable_link, typing_extensions_runtime_checkable_index);
     attribute_link!(typing, pub no_type_check_link, typing_no_type_check_index);
     attribute_link!(collections, pub defaultdict_link, collections_defaultdict_index);
     optional_attribute_link!(types, ellipsis_type_link, types_ellipsis_type_index);

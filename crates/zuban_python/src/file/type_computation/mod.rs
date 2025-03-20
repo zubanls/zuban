@@ -3248,6 +3248,22 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         self.point_resolution_to_type_name_lookup(resolved)
     }
 
+    fn lookup_type_expr_if_only_names(&self, expr: Expression) -> Option<Lookup<'db, 'db>> {
+        match expr.unpack() {
+            ExpressionContent::ExpressionPart(ExpressionPart::Atom(atom)) => match atom.unpack() {
+                AtomContent::Name(name) => Some(self.lookup_type_name(name)),
+                AtomContent::NamedExpression(n) => {
+                    self.lookup_type_expr_if_only_names(n.expression())
+                }
+                _ => None,
+            },
+            ExpressionContent::ExpressionPart(ExpressionPart::Primary(primary)) => {
+                self.lookup_type_primary_if_only_names(primary)
+            }
+            _ => None,
+        }
+    }
+
     fn lookup_type_primary_or_atom_if_only_names(
         &self,
         p: PrimaryOrAtom,
@@ -3266,7 +3282,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
     fn lookup_type_primary_if_only_names(&self, p: Primary) -> Option<Lookup<'db, 'db>> {
         let base = self.lookup_type_primary_or_atom_if_only_names(p.first())?;
         let PrimaryContent::Attribute(name) = p.second() else {
-            unreachable!("Expect this to be called only with attributes")
+            return None;
         };
         let pr = match base {
             Lookup::T(TypeContent::Module(file)) => {

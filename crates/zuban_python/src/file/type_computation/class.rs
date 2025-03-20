@@ -420,19 +420,24 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                         }
                     }
                 }
-                let inf = inference.infer_decorator(decorator);
-                if let Some(maybe_link) = inf.maybe_saved_link() {
-                    if maybe_link == db.python_state.typing_final().as_link() {
+                if let Some(Lookup::T(TypeContent::InvalidVariable(
+                    InvalidVariableType::Function { node_ref },
+                ))) = name_resolution.lookup_type_expr_if_only_names(expr)
+                {
+                    if node_ref == db.python_state.typing_final() {
                         is_final = true;
-                    } else if maybe_link == db.python_state.total_ordering_link() {
+                    } else if node_ref == db.python_state.total_ordering_node_ref() {
                         total_ordering = true;
-                    } else if maybe_link == db.python_state.runtime_checkable_link()
-                        || maybe_link == db.python_state.typing_extensions_runtime_checkable_link()
+                    } else if node_ref == db.python_state.runtime_checkable_node_ref()
+                        || node_ref
+                            == db
+                                .python_state
+                                .typing_extensions_runtime_checkable_node_ref()
                     {
                         is_runtime_checkable = true;
                     }
                 }
-
+                let inf = inference.infer_decorator(decorator);
                 if inf.is_name_defined_in_module(db, "dataclasses", "dataclass") {
                     dataclass_options = Some(DataclassOptions::default());
                 }
