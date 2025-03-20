@@ -1,4 +1,11 @@
-use crate::node_ref::NodeRef;
+use parsa_python_cst::{FunctionDef, FunctionParent, NodeIndex, ReturnAnnotation, ReturnOrYield};
+
+use crate::{
+    database::Database,
+    file::{PythonFile, FUNC_TO_RETURN_OR_YIELD_DIFF, FUNC_TO_TYPE_VAR_DIFF},
+    node_ref::NodeRef,
+    type_::TypeVarLikes,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) struct FuncNodeRef<'file>(NodeRef<'file>);
@@ -28,5 +35,86 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
     pub fn from_node_ref(node_ref: NodeRef<'file>) -> Self {
         debug_assert!(node_ref.maybe_function().is_some(), "{node_ref:?}");
         Self(node_ref)
+    }
+
+    pub fn node(&self) -> FunctionDef<'file> {
+        FunctionDef::by_index(&self.file.tree, self.node_index)
+    }
+
+    pub fn return_annotation(&self) -> Option<ReturnAnnotation> {
+        self.node().return_annotation()
+    }
+
+    pub fn expect_return_annotation_node_ref(&self) -> NodeRef {
+        NodeRef::new(
+            self.file,
+            self.return_annotation().unwrap().expression().index(),
+        )
+    }
+
+    pub fn is_typed(&self) -> bool {
+        self.node().is_typed()
+    }
+
+    pub fn iter_return_or_yield(&self) -> ReturnOrYieldIterator<'file> {
+        let def_point = self
+            .file
+            .points
+            .get(self.node_index + FUNC_TO_RETURN_OR_YIELD_DIFF);
+        let first_return_or_yield = def_point.node_index();
+        ReturnOrYieldIterator {
+            file: self.file,
+            next_node_index: first_return_or_yield,
+        }
+    }
+
+    pub fn is_generator(&self) -> bool {
+        for return_or_yield in self.iter_return_or_yield() {
+            if let ReturnOrYield::Yield(_) = return_or_yield {
+                return true;
+            }
+        }
+        false
+    }
+
+    pub fn is_async(&self) -> bool {
+        matches!(
+            self.node().parent(),
+            FunctionParent::Async | FunctionParent::DecoratedAsync(_)
+        )
+    }
+
+    pub fn type_vars(&self, db: &'db Database) -> &'file TypeVarLikes {
+        let type_var_reference = self.type_var_reference();
+        if type_var_reference.point().calculated() {
+            TypeVarLikes::load_saved_type_vars(db, type_var_reference)
+        } else {
+            unreachable!()
+        }
+    }
+
+    pub fn type_var_reference(&self) -> NodeRef<'file> {
+        self.add_to_node_index(FUNC_TO_TYPE_VAR_DIFF)
+    }
+}
+
+pub struct ReturnOrYieldIterator<'a> {
+    file: &'a PythonFile,
+    next_node_index: NodeIndex,
+}
+
+impl<'a> Iterator for ReturnOrYieldIterator<'a> {
+    type Item = ReturnOrYield<'a>;
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.next_node_index == 0 {
+            None
+        } else {
+            let point = self.file.points.get(self.next_node_index);
+            let index = self.next_node_index;
+            self.next_node_index = point.node_index();
+            // - 1 because the index points to the next yield/return literal. The parent of those
+            // literals are then `return_stmt` and `yield_expr` terminals.
+            Some(ReturnOrYield::by_index(&self.file.tree, index - 1))
+        }
     }
 }

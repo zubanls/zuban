@@ -1,9 +1,9 @@
 use std::{borrow::Cow, cell::Cell, fmt, rc::Rc};
 
 use parsa_python_cst::{
-    Decorated, Decorator, ExpressionContent, ExpressionPart, FunctionDef, FunctionParent,
-    NodeIndex, Param as CSTParam, ParamAnnotation, ParamIterator, ParamKind, PrimaryContent,
-    PrimaryOrAtom, ReturnAnnotation, ReturnOrYield, StmtLikeContent,
+    Decorated, Decorator, ExpressionContent, ExpressionPart, FunctionDef, Param as CSTParam,
+    ParamAnnotation, ParamIterator, ParamKind, PrimaryContent, PrimaryOrAtom, ReturnAnnotation,
+    ReturnOrYield, StmtLikeContent,
 };
 
 use crate::{
@@ -18,7 +18,6 @@ use crate::{
         first_defined_name_of_multi_def, func_parent_scope, use_cached_param_annotation_type,
         ClassNodeRef, FuncNodeRef, FuncParentScope, OtherDefinitionIterator, PythonFile,
         TypeComputation, TypeComputationOrigin, TypeVarCallbackReturn, FLOW_ANALYSIS,
-        FUNC_TO_RETURN_OR_YIELD_DIFF, FUNC_TO_TYPE_VAR_DIFF,
     },
     format_data::FormatData,
     inference_state::InferenceState,
@@ -81,25 +80,6 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             FuncParent::Class(c) => Self::new(node_ref, Some(c)),
             _ => Self::new(node_ref, None),
         }
-    }
-
-    pub fn node(&self) -> FunctionDef<'a> {
-        FunctionDef::by_index(&self.node_ref.file.tree, self.node_ref.node_index)
-    }
-
-    pub fn return_annotation(&self) -> Option<ReturnAnnotation> {
-        self.node().return_annotation()
-    }
-
-    pub fn expect_return_annotation_node_ref(&self) -> NodeRef {
-        NodeRef::new(
-            self.node_ref.file,
-            self.return_annotation().unwrap().expression().index(),
-        )
-    }
-
-    pub fn is_typed(&self) -> bool {
-        self.node().is_typed()
     }
 
     pub fn generator_return(&self, i_s: &InferenceState) -> Option<GeneratorType> {
@@ -230,48 +210,6 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             }
         }
         Inferred::new_none()
-    }
-
-    pub fn iter_return_or_yield(&self) -> ReturnOrYieldIterator<'a> {
-        let def_point = self
-            .node_ref
-            .file
-            .points
-            .get(self.node_ref.node_index + FUNC_TO_RETURN_OR_YIELD_DIFF);
-        let first_return_or_yield = def_point.node_index();
-        ReturnOrYieldIterator {
-            file: self.node_ref.file,
-            next_node_index: first_return_or_yield,
-        }
-    }
-
-    pub fn is_generator(&self) -> bool {
-        for return_or_yield in self.iter_return_or_yield() {
-            if let ReturnOrYield::Yield(_) = return_or_yield {
-                return true;
-            }
-        }
-        false
-    }
-
-    pub fn is_async(&self) -> bool {
-        matches!(
-            self.node().parent(),
-            FunctionParent::Async | FunctionParent::DecoratedAsync(_)
-        )
-    }
-
-    pub fn type_vars(&self, db: &'db Database) -> &'a TypeVarLikes {
-        let type_var_reference = self.type_var_reference();
-        if type_var_reference.point().calculated() {
-            TypeVarLikes::load_saved_type_vars(db, type_var_reference)
-        } else {
-            unreachable!()
-        }
-    }
-
-    fn type_var_reference(&self) -> NodeRef<'a> {
-        self.node_ref.add_to_node_index(FUNC_TO_TYPE_VAR_DIFF)
     }
 
     fn parent(&self, db: &'db Database) -> FuncParent<'db> {
@@ -1881,27 +1819,6 @@ pub enum FirstParamProperties<'a> {
 pub struct AsCallableOptions<'a> {
     first_param: FirstParamProperties<'a>,
     return_type: Cow<'a, Type>,
-}
-
-pub struct ReturnOrYieldIterator<'a> {
-    file: &'a PythonFile,
-    next_node_index: NodeIndex,
-}
-
-impl<'a> Iterator for ReturnOrYieldIterator<'a> {
-    type Item = ReturnOrYield<'a>;
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.next_node_index == 0 {
-            None
-        } else {
-            let point = self.file.points.get(self.next_node_index);
-            let index = self.next_node_index;
-            self.next_node_index = point.node_index();
-            // - 1 because the index points to the next yield/return literal. The parent of those
-            // literals are then `return_stmt` and `yield_expr` terminals.
-            Some(ReturnOrYield::by_index(&self.file.tree, index - 1))
-        }
-    }
 }
 
 #[derive(Clone, Copy, Debug)]
