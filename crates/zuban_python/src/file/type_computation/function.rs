@@ -155,6 +155,14 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
         func.name().as_str()
     }
 
+    pub fn qualified_name(&self, db: &Database) -> String {
+        let base = match self.parent(db) {
+            FuncParent::Module | FuncParent::Function(_) => self.file.qualified_name(db),
+            FuncParent::Class(c) => c.qualified_name(db),
+        };
+        format!("{base}.{}", self.name())
+    }
+
     pub(crate) fn parent(&self, db: &'db Database) -> FuncParent<'db> {
         match func_parent_scope(&self.file.tree, &self.file.points, self.node_index) {
             FuncParentScope::Module => FuncParent::Module,

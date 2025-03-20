@@ -92,16 +92,9 @@ impl TypedDictFieldModifier {
 #[derive(Debug, Clone)]
 pub(super) enum InvalidVariableType<'a> {
     List,
-    Tuple {
-        tuple_length: usize,
-    },
-    Execution {
-        was_class: bool,
-    },
-    Function {
-        name: &'a str,
-        qualified_name: String,
-    },
+    Tuple { tuple_length: usize },
+    Execution { was_class: bool },
+    Function { node_ref: FuncNodeRef<'a> },
     ParamNameAsBaseClassAny(NodeRef<'a>),
     Literal(&'a str),
     Variable(NodeRef<'a>),
@@ -150,14 +143,15 @@ impl InvalidVariableType<'_> {
                     Box::from("See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases"),
                 )
             }
-            Self::Function {
-                name,
-                qualified_name,
-            } => {
+            Self::Function { node_ref } => {
                 add_issue(IssueKind::InvalidType(
-                    format!("Function {:?} is not valid as a type", qualified_name,).into(),
+                    format!(
+                        "Function {:?} is not valid as a type",
+                        node_ref.qualified_name(db)
+                    )
+                    .into(),
                 ));
-                IssueKind::Note(Box::from(match *name {
+                IssueKind::Note(Box::from(match node_ref.name() {
                     "any" => "Perhaps you meant \"typing.Any\" instead of \"any\"?",
                     "callable" => "Perhaps you meant \"typing.Callable\" instead of \"callable\"?",
                     _ => "Perhaps you need \"Callable[...]\" or a callback protocol?",
@@ -3364,8 +3358,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
 
         Lookup::T(TypeContent::InvalidVariable(
             InvalidVariableType::Function {
-                name: func.name(),
-                qualified_name: func.qualified_name(db),
+                node_ref: func.node_ref,
             },
         ))
     }
