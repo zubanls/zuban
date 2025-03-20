@@ -1,10 +1,14 @@
-use parsa_python_cst::{FunctionDef, FunctionParent, NodeIndex, ReturnAnnotation, ReturnOrYield};
+use parsa_python_cst::{
+    Decorated, FunctionDef, FunctionParent, NodeIndex, ReturnAnnotation, ReturnOrYield,
+};
 
 use crate::{
     database::Database,
+    diagnostics::{Issue, IssueKind},
     file::{PythonFile, FUNC_TO_RETURN_OR_YIELD_DIFF, FUNC_TO_TYPE_VAR_DIFF},
+    inference_state::InferenceState,
     node_ref::NodeRef,
-    type_::TypeVarLikes,
+    type_::{StringSlice, TypeVarLikes},
 };
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -95,6 +99,45 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
 
     pub fn type_var_reference(&self) -> NodeRef<'file> {
         self.add_to_node_index(FUNC_TO_TYPE_VAR_DIFF)
+    }
+
+    pub(crate) fn expect_decorated_node(&self) -> Decorated {
+        self.node().maybe_decorated().unwrap()
+    }
+
+    pub(crate) fn add_issue_for_declaration(&self, i_s: &InferenceState, kind: IssueKind) {
+        let node = self.node();
+        self.file.add_issue(
+            i_s,
+            Issue {
+                kind,
+                start_position: node.start(),
+                end_position: node.end_position_of_colon(),
+            },
+        )
+    }
+
+    pub(crate) fn add_issue_onto_start_including_decorator(
+        &self,
+        i_s: &InferenceState,
+        kind: IssueKind,
+    ) {
+        let node = self.node();
+        if let Some(decorated) = node.maybe_decorated() {
+            NodeRef::new(self.file, decorated.index()).add_issue(i_s, kind)
+        } else {
+            self.add_issue_for_declaration(i_s, kind)
+        }
+    }
+
+    pub fn name_string_slice(&self) -> StringSlice {
+        let name = self.node().name();
+        StringSlice::new(self.file_index(), name.start(), name.end())
+    }
+
+    pub fn name(&self) -> &'file str {
+        let func = FunctionDef::by_index(&self.file.tree, self.node_index);
+        func.name().as_str()
     }
 }
 

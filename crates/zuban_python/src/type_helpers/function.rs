@@ -1,9 +1,9 @@
 use std::{borrow::Cow, cell::Cell, fmt, rc::Rc};
 
 use parsa_python_cst::{
-    Decorated, Decorator, ExpressionContent, ExpressionPart, FunctionDef, Param as CSTParam,
-    ParamAnnotation, ParamIterator, ParamKind, PrimaryContent, PrimaryOrAtom, ReturnAnnotation,
-    ReturnOrYield, StmtLikeContent,
+    Decorated, Decorator, ExpressionContent, ExpressionPart, Param as CSTParam, ParamAnnotation,
+    ParamIterator, ParamKind, PrimaryContent, PrimaryOrAtom, ReturnAnnotation, ReturnOrYield,
+    StmtLikeContent,
 };
 
 use crate::{
@@ -13,7 +13,7 @@ use crate::{
         PointLink, Specific,
     },
     debug,
-    diagnostics::{Issue, IssueKind},
+    diagnostics::IssueKind,
     file::{
         first_defined_name_of_multi_def, func_parent_scope, use_cached_param_annotation_type,
         ClassNodeRef, FuncNodeRef, FuncParentScope, OtherDefinitionIterator, PythonFile,
@@ -754,10 +754,6 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         }
     }
 
-    fn expect_decorated_node(&self) -> Decorated {
-        self.node().maybe_decorated().unwrap()
-    }
-
     fn calculate_decorated_function_details(
         &self,
         i_s: &InferenceState,
@@ -1313,31 +1309,6 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         }
     }
 
-    pub(crate) fn add_issue_for_declaration(&self, i_s: &InferenceState, kind: IssueKind) {
-        let node = self.node();
-        self.node_ref.file.add_issue(
-            i_s,
-            Issue {
-                kind,
-                start_position: node.start(),
-                end_position: node.end_position_of_colon(),
-            },
-        )
-    }
-
-    pub(crate) fn add_issue_onto_start_including_decorator(
-        &self,
-        i_s: &InferenceState,
-        kind: IssueKind,
-    ) {
-        let node = self.node();
-        if let Some(decorated) = node.maybe_decorated() {
-            NodeRef::new(self.node_ref.file, decorated.index()).add_issue(i_s, kind)
-        } else {
-            self.add_issue_for_declaration(i_s, kind)
-        }
-    }
-
     pub fn as_callable(
         &self,
         i_s: &InferenceState,
@@ -1583,11 +1554,6 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         }
     }
 
-    pub fn name_string_slice(&self) -> StringSlice {
-        let name = self.node().name();
-        StringSlice::new(self.node_ref.file_index(), name.start(), name.end())
-    }
-
     pub fn iter_params(&self) -> impl Iterator<Item = FunctionParam<'a>> {
         let file = self.node_ref.file;
         self.node()
@@ -1800,11 +1766,6 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         } else {
             format!("{file_names}.{}", self.name())
         }
-    }
-
-    pub fn name(&self) -> &'a str {
-        let func = FunctionDef::by_index(&self.node_ref.file.tree, self.node_ref.node_index);
-        func.name().as_str()
     }
 }
 
