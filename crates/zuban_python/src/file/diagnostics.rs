@@ -640,7 +640,7 @@ impl Inference<'_, '_, '_> {
         }
     }
 
-    pub fn calc_block_diagnostics(
+    pub(crate) fn calc_block_diagnostics(
         &self,
         block: Block,
         class: Option<Class>,
@@ -987,7 +987,7 @@ impl Inference<'_, '_, '_> {
         })
     }
 
-    pub fn ensure_func_diagnostics(&self, function: Function) -> Result<(), ()> {
+    pub(crate) fn ensure_func_diagnostics(&self, function: Function) -> Result<(), ()> {
         let func_node = function.node();
         let from = NodeRef::new(self.file, func_node.body().index());
         diagnostics_for_scope(from, || {

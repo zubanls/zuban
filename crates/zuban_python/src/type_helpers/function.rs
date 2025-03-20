@@ -16,9 +16,9 @@ use crate::{
     diagnostics::{Issue, IssueKind},
     file::{
         first_defined_name_of_multi_def, func_parent_scope, use_cached_param_annotation_type,
-        ClassNodeRef, FuncParentScope, OtherDefinitionIterator, PythonFile, TypeComputation,
-        TypeComputationOrigin, TypeVarCallbackReturn, FLOW_ANALYSIS, FUNC_TO_RETURN_OR_YIELD_DIFF,
-        FUNC_TO_TYPE_VAR_DIFF,
+        ClassNodeRef, FuncNodeRef, FuncParentScope, OtherDefinitionIterator, PythonFile,
+        TypeComputation, TypeComputationOrigin, TypeVarCallbackReturn, FLOW_ANALYSIS,
+        FUNC_TO_RETURN_OR_YIELD_DIFF, FUNC_TO_TYPE_VAR_DIFF,
     },
     format_data::FormatData,
     inference_state::InferenceState,
@@ -37,17 +37,25 @@ use crate::{
     type_::{
         replace_param_spec, AnyCause, CallableContent, CallableLike, CallableParam, CallableParams,
         ClassGenerics, DbString, FunctionKind, FunctionOverload, GenericClass, GenericItem,
-        LookupResult, NeverCause, ParamType, PropertySetter, ReplaceSelf, StarParamType,
-        StarStarParamType, StringSlice, TupleArgs, Type, TypeGuardInfo, TypeVarKind, TypeVarLike,
-        TypeVarLikes, TypeVarManager, WrongPositionalCount,
+        NeverCause, ParamType, PropertySetter, ReplaceSelf, StarParamType, StarStarParamType,
+        StringSlice, TupleArgs, Type, TypeGuardInfo, TypeVarKind, TypeVarLike, TypeVarLikes,
+        TypeVarManager, WrongPositionalCount,
     },
     type_helpers::Class,
 };
 
 #[derive(Clone, Copy)]
-pub struct Function<'a, 'class> {
-    pub node_ref: NodeRef<'a>,
+pub(crate) struct Function<'a, 'class> {
+    pub node_ref: FuncNodeRef<'a>,
     pub class: Option<Class<'class>>,
+}
+
+impl<'a> std::ops::Deref for Function<'a, '_> {
+    type Target = FuncNodeRef<'a>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.node_ref
+    }
 }
 
 impl fmt::Debug for Function<'_, '_> {
@@ -62,10 +70,10 @@ impl fmt::Debug for Function<'_, '_> {
 
 impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
     pub fn new(node_ref: NodeRef<'a>, class: Option<Class<'class>>) -> Self {
-        if std::cfg!(debug_assertions) {
-            debug_assert!(node_ref.maybe_function().is_some(), "{node_ref:?}");
+        Self {
+            node_ref: FuncNodeRef::from_node_ref(node_ref),
+            class,
         }
-        Self { node_ref, class }
     }
 
     pub fn new_with_unknown_parent(db: &'db Database, node_ref: NodeRef<'a>) -> Self {
@@ -400,7 +408,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         if let Some(decorated) = maybe_decorated {
             if let Some(class) = self.class {
                 let class = Class::with_self_generics(i_s.db, class.node_ref);
-                Self::new(self.node_ref, Some(class)).decorated_to_be_saved(
+                Self::new(self.node_ref.into(), Some(class)).decorated_to_be_saved(
                     &i_s.with_class_context(&class),
                     decorated,
                     maybe_computed,
@@ -620,7 +628,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         let inference = self.node_ref.file.inference(i_s);
         let original = inference.infer_name_of_definition_by_index(first);
         let original_t = original.as_cow_type(i_s);
-        let redefinition = Inferred::from_saved_node_ref(self.node_ref);
+        let redefinition = Inferred::from_saved_node_ref(self.node_ref.into());
 
         let redefinition_t = redefinition.as_cow_type(i_s);
         inference.narrow_or_widen_name_target(
@@ -1643,10 +1651,11 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
     }
 
     pub fn iter_params(&self) -> impl Iterator<Item = FunctionParam<'a>> {
-        self.node().params().iter().map(|param| FunctionParam {
-            file: self.node_ref.file,
-            param,
-        })
+        let file = self.node_ref.file;
+        self.node()
+            .params()
+            .iter()
+            .map(|param| FunctionParam { file, param })
     }
 
     pub fn first_param_annotation_type(&self, i_s: &InferenceState<'db, '_>) -> Option<Cow<Type>> {
@@ -1844,16 +1853,6 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         } else {
             self.execute_internal(i_s, args, false, on_type_error, None, result_context)
         }
-    }
-
-    pub fn lookup(
-        &self,
-        _i_s: &InferenceState,
-        _node_ref: Option<NodeRef>,
-        _name: &str,
-    ) -> LookupResult {
-        debug!("TODO Function lookup");
-        LookupResult::None
     }
 
     pub fn qualified_name(&self, db: &'a Database) -> String {

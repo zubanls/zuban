@@ -22,9 +22,9 @@ pub(crate) use type_computation::{
     linearize_mro_and_return_linearizable, maybe_saved_annotation,
     use_cached_annotation_or_type_comment, use_cached_annotation_type,
     use_cached_param_annotation_type, use_cached_simple_generic_type, CalculatedBaseClass,
-    ClassInitializer, ClassNodeRef, GenericCounts, TypeComputation, TypeComputationOrigin,
-    TypeVarCallbackReturn, ANNOTATION_TO_EXPR_DIFFERENCE, CLASS_TO_CLASS_INFO_DIFFERENCE,
-    ORDERING_METHODS,
+    ClassInitializer, ClassNodeRef, FuncNodeRef, GenericCounts, TypeComputation,
+    TypeComputationOrigin, TypeVarCallbackReturn, ANNOTATION_TO_EXPR_DIFFERENCE,
+    CLASS_TO_CLASS_INFO_DIFFERENCE, ORDERING_METHODS,
 };
 pub use type_var_finder::TypeVarFinder;
 pub use utils::{infer_index, infer_string_index, on_argument_type_error};

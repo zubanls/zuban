@@ -23,7 +23,7 @@ use crate::{
 };
 
 #[derive(Debug, Clone, Copy)]
-pub enum FunctionOrCallable<'a> {
+pub(crate) enum FunctionOrCallable<'a> {
     Function(Function<'a, 'a>),
     Callable(Callable<'a>),
 }

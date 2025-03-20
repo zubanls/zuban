@@ -196,7 +196,6 @@ pub struct PythonState {
     typing_runtime_checkable_index: NodeIndex,
     typing_extensions_runtime_checkable_index: NodeIndex,
     typing_container_index: NodeIndex,
-    typing_mapping_get_index: NodeIndex,
     typing_special_form_index: NodeIndex,
     typing_no_type_check_index: NodeIndex,
     pub typing_typed_dict_bases: Box<[BaseClass]>,
@@ -318,7 +317,6 @@ impl PythonState {
             typing_keys_view_index: 0,
             typing_runtime_checkable_index: 0,
             typing_extensions_runtime_checkable_index: 0,
-            typing_mapping_get_index: 0,
             typing_special_form_index: 0,
             typing_no_type_check_index: 0,
             typing_coroutine_index: 0,
@@ -715,15 +713,6 @@ impl PythonState {
             "dict_keys"
         );
 
-        db.python_state.typing_mapping_get_index = db
-            .python_state
-            .mapping_node_ref()
-            .class_storage()
-            .class_symbol_table
-            .lookup_symbol("get")
-            .unwrap()
-            - NAME_TO_FUNCTION_DIFF;
-
         let typed_dict_mro = calculate_mro_for_class(db, db.python_state.typed_dict_class());
         let builtins_int_mro = calculate_mro_for_class(db, db.python_state.int());
         let builtins_bool_mro = calculate_mro_for_class(db, db.python_state.bool());
@@ -957,7 +946,6 @@ impl PythonState {
     attribute_node_ref!(typing, pub container_node_ref, typing_container_index);
     class_node_ref!(typing, pub mapping_node_ref, typing_mapping_index);
     class_node_ref!(typing, pub keys_view_node_ref, typing_keys_view_index);
-    attribute_node_ref!(typing, mapping_get_node_ref, typing_mapping_get_index);
     attribute_node_ref!(typing, pub typing_overload, typing_overload_index);
     optional_attribute_node_ref!(typing, pub typing_override, typing_override_index);
     attribute_node_ref!(typing, pub typing_final, typing_final_index);
@@ -1090,17 +1078,13 @@ impl PythonState {
         Class::with_self_generics(db, self.supports_keys_and_get_item_node_ref())
     }
 
-    pub fn collections_namedtuple_function(&self, i_s: &InferenceState) -> Function {
+    pub(crate) fn collections_namedtuple_function(&self, i_s: &InferenceState) -> Function {
         let func = Function::new(self.collections_named_tuple_node_ref(), None);
         func.ensure_cached_func(i_s);
         func
     }
 
-    pub fn mapping_get_function<'class>(&self, class: Class<'class>) -> Function<'_, 'class> {
-        Function::new(self.mapping_get_node_ref(), Some(class))
-    }
-
-    pub fn dataclasses_replace(&self, i_s: &InferenceState) -> Function {
+    pub(crate) fn dataclasses_replace(&self, i_s: &InferenceState) -> Function {
         debug_assert!(self.dataclasses_replace_index != 0);
         let func = Function::new(
             NodeRef::new(self.dataclasses_file(), self.dataclasses_replace_index),
@@ -1122,7 +1106,7 @@ impl PythonState {
         };
         let func = Function::new(NodeRef::new(self.mypy_extensions(), node_index), None);
         func.ensure_cached_func(&InferenceState::new(db));
-        Inferred::from_saved_node_ref(func.node_ref)
+        Inferred::from_saved_node_ref(func.node_ref.into())
     }
 
     pub fn module_instance(&self) -> Instance {

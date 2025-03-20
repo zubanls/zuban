@@ -50,7 +50,7 @@ impl From<usize> for MroIndex {
 }
 
 #[derive(Debug)]
-pub enum FunctionOrOverload<'a> {
+pub(crate) enum FunctionOrOverload<'a> {
     Function(Function<'a, 'a>),
     Callable(Rc<CallableContent>),
     Overload(OverloadedFunction<'a>),
@@ -696,7 +696,7 @@ impl<'db: 'slf, 'slf> Inferred {
         Self::new_saved(file, index)
     }
 
-    pub fn init_as_function<'a>(
+    pub(crate) fn init_as_function<'a>(
         &self,
         i_s: &InferenceState<'db, '_>,
         class: Option<Class<'a>>,

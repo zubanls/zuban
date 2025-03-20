@@ -660,7 +660,7 @@ pub struct OverloadImplementation {
 }
 
 impl OverloadImplementation {
-    pub fn function<'db, 'class>(
+    pub(crate) fn function<'db, 'class>(
         &self,
         db: &'db Database,
         class: Option<Class<'class>>,

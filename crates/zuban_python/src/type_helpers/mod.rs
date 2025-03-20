@@ -12,7 +12,9 @@ pub use callable::Callable;
 pub use class::{
     cache_class_name, Class, ClassExecutionResult, ClassLookupOptions, MroIterator, TypeOrClass,
 };
-pub use function::{is_private, FirstParamKind, FirstParamProperties, Function, GeneratorType};
+pub(crate) use function::{
+    is_private, FirstParamKind, FirstParamProperties, Function, GeneratorType,
+};
 pub(crate) use instance::{
     execute_isinstance, execute_issubclass, execute_super, Instance, InstanceLookupOptions,
     LookupDetails,

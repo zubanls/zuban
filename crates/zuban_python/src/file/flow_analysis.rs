@@ -46,7 +46,7 @@ use super::{
     name_binder::{is_expr_part_reachable_for_name_binder, Truthiness},
     on_argument_type_error,
     utils::func_of_self_symbol,
-    PythonFile,
+    FuncNodeRef, PythonFile,
 };
 
 type Entries = Vec<Entry>;
@@ -377,10 +377,10 @@ impl FlowAnalysis {
         result
     }
 
-    pub fn with_reused_narrowings_for_nested_function(
+    pub(crate) fn with_reused_narrowings_for_nested_function(
         &self,
         i_s: &InferenceState,
-        func_node_ref: NodeRef,
+        func_node_ref: FuncNodeRef,
         callable: impl FnOnce(),
     ) {
         let reused_narrowings = Frame::new(
@@ -1640,7 +1640,7 @@ impl Inference<'_, '_, '_> {
         })
     }
 
-    pub fn flow_analysis_for_if_stmt(
+    pub(crate) fn flow_analysis_for_if_stmt(
         &self,
         if_stmt: IfStmt,
         class: Option<Class>,
@@ -1649,7 +1649,7 @@ impl Inference<'_, '_, '_> {
         self.process_ifs(if_stmt.iter_blocks(), class, func)
     }
 
-    pub fn flow_analysis_for_while_stmt(
+    pub(crate) fn flow_analysis_for_while_stmt(
         &self,
         while_stmt: WhileStmt,
         class: Option<Class>,
@@ -1726,7 +1726,7 @@ impl Inference<'_, '_, '_> {
         });
     }
 
-    pub fn flow_analysis_for_for_stmt(
+    pub(crate) fn flow_analysis_for_for_stmt(
         &self,
         for_stmt: ForStmt,
         class: Option<Class>,
@@ -1894,7 +1894,7 @@ impl Inference<'_, '_, '_> {
         }
     }
 
-    pub fn flow_analysis_for_try_stmt(
+    pub(crate) fn flow_analysis_for_try_stmt(
         &self,
         try_stmt: TryStmt,
         class: Option<Class>,
@@ -2090,7 +2090,7 @@ impl Inference<'_, '_, '_> {
         })
     }
 
-    pub fn flow_analysis_for_match_stmt(
+    pub(crate) fn flow_analysis_for_match_stmt(
         &self,
         match_stmt: MatchStmt,
         class: Option<Class>,

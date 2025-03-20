@@ -150,7 +150,7 @@ impl<'db, 'a> InferenceState<'db, 'a> {
         new
     }
 
-    pub fn avoid_errors_within<T>(
+    pub(crate) fn avoid_errors_within<T>(
         &self,
         mut callable: impl FnMut(&InferenceState<'db, '_>) -> T,
     ) -> (T, bool) {
@@ -164,18 +164,18 @@ impl<'db, 'a> InferenceState<'db, 'a> {
         (result, had_error.get())
     }
 
-    pub fn is_calculating_enum_members(&self) -> bool {
+    pub(crate) fn is_calculating_enum_members(&self) -> bool {
         matches!(self.mode, Mode::EnumMemberCalculation)
     }
 
-    pub fn current_function(&self) -> Option<&'a Function<'a, 'a>> {
+    pub(crate) fn current_function(&self) -> Option<&'a Function<'a, 'a>> {
         match &self.context {
             Context::Function(func) => Some(func),
             _ => None,
         }
     }
 
-    pub fn current_class(&self) -> Option<Class<'a>>
+    pub(crate) fn current_class(&self) -> Option<Class<'a>>
     where
         'db: 'a,
     {

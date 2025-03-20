@@ -5,7 +5,7 @@ mod utils;
 use core::fmt;
 use std::{borrow::Cow, collections::HashSet};
 
-pub use type_var_matcher::FunctionOrCallable;
+pub(crate) use type_var_matcher::FunctionOrCallable;
 use type_var_matcher::TypeVarMatcher;
 use utils::match_arguments_against_params;
 pub(crate) use utils::{
@@ -50,7 +50,7 @@ pub struct Matcher<'a> {
     type_var_matchers: Vec<TypeVarMatcher>,
     pub checking_type_recursion: Option<CheckedTypeRecursion<'a>>,
     class: Option<&'a Class<'a>>,
-    pub func_or_callable: Option<FunctionOrCallable<'a>>,
+    pub(crate) func_or_callable: Option<FunctionOrCallable<'a>>,
     ignore_promotions: bool,
     pub precise_matching: bool, // This is what Mypy does with proper_subtype=True
     replace_self: Option<ReplaceSelfInMatcher<'a>>,
@@ -123,7 +123,7 @@ impl<'a> Matcher<'a> {
         self
     }
 
-    pub fn new_function_matcher(
+    pub(crate) fn new_function_matcher(
         function: Function<'a, 'a>,
         type_vars: &TypeVarLikes,
         replace_self: ReplaceSelfInMatcher<'a>,
