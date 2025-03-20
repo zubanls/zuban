@@ -76,7 +76,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 let lookup = debug_indent(|| match name_or_prim {
                     NameOrPrimaryWithNames::Name(name) => Some(self.lookup_type_name(name)),
                     NameOrPrimaryWithNames::PrimaryWithNames(primary) => {
-                        self.lookup_primary_names(primary)
+                        self.lookup_type_primary_if_only_names(primary)
                     }
                 });
                 match lookup {
