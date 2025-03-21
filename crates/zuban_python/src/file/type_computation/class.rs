@@ -137,7 +137,7 @@ impl<'db: 'file, 'file> ClassNodeRef<'file> {
         if !node_ref.point().calculated() {
             return None;
         }
-        match node_ref.to_db_lifetime(db).complex().unwrap() {
+        match node_ref.to_db_lifetime(db).maybe_complex().unwrap() {
             ComplexPoint::ClassInfos(class_infos) => Some(class_infos),
             _ => unreachable!(),
         }
@@ -188,7 +188,7 @@ impl<'db: 'file, 'file> ClassNodeRef<'file> {
 
     pub fn maybe_typed_dict_definition(&self) -> Option<&TypedDictDefinition> {
         NodeRef::new(self.file, self.node().name_def().index())
-            .complex()
+            .maybe_complex()
             .and_then(|c| match c {
                 ComplexPoint::TypedDictDefinition(tdd) => Some(tdd),
                 _ => None,
@@ -196,7 +196,7 @@ impl<'db: 'file, 'file> ClassNodeRef<'file> {
     }
 
     pub fn class_storage(&self) -> &'file ClassStorage {
-        let complex = self.complex().unwrap_or_else(|| {
+        let complex = self.maybe_complex().unwrap_or_else(|| {
             panic!(
                 "Node {:?} ({}:{}) is not a complex class",
                 self.file.tree.debug_info(self.node_index),
@@ -1761,7 +1761,7 @@ fn maybe_dataclass_transform_func(
             let primary_node_ref = NodeRef::new(func.file, primary.index());
             if primary_node_ref.point().calculated() {
                 if let Some(ComplexPoint::TypeInstance(Type::DataclassTransformObj(dto))) =
-                    primary_node_ref.complex()
+                    primary_node_ref.maybe_complex()
                 {
                     return Some(dto.clone());
                 }

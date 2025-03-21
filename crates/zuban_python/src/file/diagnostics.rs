@@ -953,7 +953,7 @@ impl Inference<'_, '_, '_> {
         // Calculate if there is an @override decorator
         let mut has_override_decorator = false;
         if let Some(ComplexPoint::FunctionOverload(overload)) =
-            NodeRef::new(self.file, func_def.index()).complex()
+            NodeRef::new(self.file, func_def.index()).maybe_complex()
         {
             has_override_decorator = overload.is_override;
         } else if let Some(decorated) = func_def.maybe_decorated() {
@@ -979,7 +979,9 @@ impl Inference<'_, '_, '_> {
     ) {
         let function = Function::new(NodeRef::new(self.file, f.index()), class);
         function.cache_func(self.i_s);
-        if let Some(ComplexPoint::TypeInstance(Type::Callable(c))) = function.node_ref.complex() {
+        if let Some(ComplexPoint::TypeInstance(Type::Callable(c))) =
+            function.node_ref.maybe_complex()
+        {
             if c.no_type_check {
                 return;
             }
@@ -1109,7 +1111,7 @@ impl Inference<'_, '_, '_> {
     ) -> bool {
         let i_s = self.i_s;
         let mut is_overload_member = false;
-        if let Some(ComplexPoint::FunctionOverload(o)) = function.node_ref.complex() {
+        if let Some(ComplexPoint::FunctionOverload(o)) = function.node_ref.maybe_complex() {
             is_overload_member = true;
             for (i, c1) in o.iter_functions().enumerate() {
                 if let Some(implementation) = &o.implementation {

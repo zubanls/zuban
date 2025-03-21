@@ -1233,7 +1233,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             };
 
             let maybe_saved = self.follow_and_maybe_saved(first_index);
-            let maybe_complex_def = maybe_saved.and_then(|n| n.complex());
+            let maybe_complex_def = maybe_saved.and_then(|n| n.maybe_complex());
             // This is mostly to make it clear that things like NewType/TypeVars are special
             // and cannot be redefined
             let is_special_def = !matches!(
@@ -1728,7 +1728,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                             if specific == Specific::PartialDefaultDict {
                                 let Some(ComplexPoint::TypeInstance(original_value)) = from
                                     .add_to_node_index(NAME_DEF_TO_DEFAULTDICT_DIFF)
-                                    .complex()
+                                    .maybe_complex()
                                 else {
                                     unreachable!(
                                         "The defaultdict value type should always be defined"

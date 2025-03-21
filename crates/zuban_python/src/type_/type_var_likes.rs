@@ -442,7 +442,7 @@ impl TypeVarLikes {
 
     pub fn load_saved_type_vars<'a>(db: &'a Database, node_ref: NodeRef<'a>) -> &'a TypeVarLikes {
         debug_assert!(node_ref.point().calculated());
-        match node_ref.complex() {
+        match node_ref.maybe_complex() {
             Some(ComplexPoint::TypeVarLikes(type_vars)) => type_vars,
             None => &db.python_state.empty_type_var_likes,
             _ => unreachable!(),

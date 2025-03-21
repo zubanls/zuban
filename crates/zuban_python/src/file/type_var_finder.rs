@@ -410,7 +410,8 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                                 let inference = node_ref.file.inference(self.i_s);
                                 let inf = inference.infer_name_of_definition(name_def.name());
                                 if let Some(node_ref) = inf.maybe_saved_node_ref(self.i_s.db) {
-                                    if let Some(ComplexPoint::TypeVarLike(tvl)) = node_ref.complex()
+                                    if let Some(ComplexPoint::TypeVarLike(tvl)) =
+                                        node_ref.maybe_complex()
                                     {
                                         return BaseLookup::TypeVarLike(tvl.clone());
                                     }

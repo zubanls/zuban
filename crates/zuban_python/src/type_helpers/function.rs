@@ -507,7 +507,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             .next()
             .is_some_and(|p| p.annotation().is_some());
 
-        match self.node_ref.complex() {
+        match self.node_ref.maybe_complex() {
             Some(ComplexPoint::TypeInstance(Type::Callable(c))) => c.kind.clone(),
             Some(ComplexPoint::FunctionOverload(o)) => o.kind().clone(),
             Some(_) => {
@@ -1121,7 +1121,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             {
                 if let Some(func) = NodeRef::new(file, first_index).maybe_name_of_function() {
                     if let Some(ComplexPoint::FunctionOverload(o)) =
-                        NodeRef::new(self.node_ref.file, func.index()).complex()
+                        NodeRef::new(self.node_ref.file, func.index()).maybe_complex()
                     {
                         return Some(o);
                     }
@@ -1138,7 +1138,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
     }
 
     pub fn is_abstract(&self) -> bool {
-        match self.node_ref.complex() {
+        match self.node_ref.maybe_complex() {
             Some(ComplexPoint::TypeInstance(Type::Callable(c))) => c.is_abstract,
             Some(ComplexPoint::FunctionOverload(o)) => o.functions.is_abstract(),
             _ => {
@@ -1152,7 +1152,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
     }
 
     pub fn is_final(&self) -> bool {
-        match self.node_ref.complex() {
+        match self.node_ref.maybe_complex() {
             Some(ComplexPoint::TypeInstance(Type::Callable(c))) => c.is_final,
             Some(ComplexPoint::FunctionOverload(o)) => o.is_final,
             _ => {

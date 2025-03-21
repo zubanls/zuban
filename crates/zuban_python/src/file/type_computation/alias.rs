@@ -230,7 +230,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
     }
 
     pub(super) fn check_special_type_definition(node_ref: NodeRef) -> Option<Lookup> {
-        Some(Lookup::T(match node_ref.complex()? {
+        Some(Lookup::T(match node_ref.maybe_complex()? {
             ComplexPoint::TypeVarLike(tv) => return Some(Lookup::TypeVarLike(tv.clone())),
             ComplexPoint::NamedTupleDefinition(t) => {
                 let Type::NamedTuple(nt) = t.as_ref() else {
@@ -390,7 +390,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             )),
         );
         save_alias(cached_type_node_ref, alias);
-        let ComplexPoint::TypeAlias(alias) = cached_type_node_ref.complex().unwrap() else {
+        let ComplexPoint::TypeAlias(alias) = cached_type_node_ref.maybe_complex().unwrap() else {
             unreachable!()
         };
 
@@ -587,7 +587,7 @@ fn load_cached_type(node_ref: NodeRef) -> Lookup {
                 .unwrap_or_else(|| panic!("{redirected_to:?}"));
         }
     }
-    match node_ref.complex().unwrap() {
+    match node_ref.maybe_complex().unwrap() {
         ComplexPoint::TypeAlias(a) => {
             if a.calculating() {
                 // This means it's a recursive type definition.

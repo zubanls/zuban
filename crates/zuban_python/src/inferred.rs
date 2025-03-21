@@ -442,7 +442,7 @@ impl<'db: 'slf, 'slf> Inferred {
 
     pub fn maybe_complex_point(&'slf self, db: &'db Database) -> Option<&'slf ComplexPoint> {
         match &self.state {
-            InferredState::Saved(definition) => NodeRef::from_link(db, *definition).complex(),
+            InferredState::Saved(definition) => NodeRef::from_link(db, *definition).maybe_complex(),
             InferredState::UnsavedComplex(t) => Some(t),
             _ => None,
         }
@@ -710,7 +710,7 @@ impl<'db: 'slf, 'slf> Inferred {
                 if definition.point().maybe_specific() == Some(Specific::Function) {
                     return FunctionOrOverload::Function(Function::new(definition, class));
                 }
-                match definition.complex() {
+                match definition.maybe_complex() {
                     Some(ComplexPoint::FunctionOverload(overload)) => {
                         return FunctionOrOverload::Overload(OverloadedFunction::new(
                             &overload.functions,
@@ -754,7 +754,10 @@ impl<'db: 'slf, 'slf> Inferred {
                         _ => return self,
                     },
                     PointKind::Complex => {
-                        if !matches!(node_ref.complex().unwrap(), ComplexPoint::TypeInstance(_)) {
+                        if !matches!(
+                            node_ref.maybe_complex().unwrap(),
+                            ComplexPoint::TypeInstance(_)
+                        ) {
                             return self;
                         }
                     }
@@ -986,7 +989,7 @@ impl<'db: 'slf, 'slf> Inferred {
                         _ => (),
                     },
                     PointKind::Complex => {
-                        match node_ref.complex().unwrap() {
+                        match node_ref.maybe_complex().unwrap() {
                             ComplexPoint::FunctionOverload(o) => {
                                 let kind = o.kind();
                                 let attr_kind = match kind {
@@ -1370,7 +1373,7 @@ impl<'db: 'slf, 'slf> Inferred {
                         }
                         _ => (),
                     },
-                    PointKind::Complex => match node_ref.complex().unwrap() {
+                    PointKind::Complex => match node_ref.maybe_complex().unwrap() {
                         ComplexPoint::FunctionOverload(o) => match o.kind() {
                             FunctionKind::Function { .. } => {
                                 return Some((
@@ -1626,7 +1629,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             }
                         }
                     }
-                    PointKind::Complex => match node_ref.complex().unwrap() {
+                    PointKind::Complex => match node_ref.maybe_complex().unwrap() {
                         ComplexPoint::FunctionOverload(o) => {
                             let Some(inf) =
                                 infer_overloaded_class_method(i_s, *class, attribute_class, o)
@@ -2182,7 +2185,7 @@ impl<'db: 'slf, 'slf> Inferred {
                 }
                 _ => {
                     let node_ref = NodeRef::from_link(i_s.db, link);
-                    if let Some(ComplexPoint::TypeAlias(ta)) = node_ref.complex() {
+                    if let Some(ComplexPoint::TypeAlias(ta)) = node_ref.maybe_complex() {
                         return slice_type
                             .file
                             .name_resolution_for_types(i_s)
@@ -2313,7 +2316,7 @@ impl<'db: 'slf, 'slf> Inferred {
                     link.node_index + ANNOTATION_TO_EXPR_DIFFERENCE,
                 )));
             }
-            if n.complex()
+            if n.maybe_complex()
                 .is_some_and(|c| matches!(c, ComplexPoint::IndirectFinal(_)))
             {
                 return Some(Self::from_type(self.as_type(i_s)).avoid_implicit_literal(i_s));
@@ -2330,7 +2333,7 @@ fn load_bound_method<'db: 'a, 'a, 'b>(
     func_link: PointLink,
 ) -> BoundMethod<'a, 'b> {
     let reference = NodeRef::from_link(i_s.db, func_link);
-    match reference.complex() {
+    match reference.maybe_complex() {
         Some(ComplexPoint::FunctionOverload(overload)) => {
             let func = OverloadedFunction::new(&overload.functions, Some(class));
             BoundMethod::new(instance, BoundMethodFunction::Overload(func))

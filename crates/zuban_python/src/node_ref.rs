@@ -105,7 +105,7 @@ impl<'file> NodeRef<'file> {
         }
     }
 
-    pub fn complex(&self) -> Option<&'file ComplexPoint> {
+    pub fn maybe_complex(&self) -> Option<&'file ComplexPoint> {
         let point = self.point();
         if !point.calculated() {
             return None;
@@ -118,14 +118,14 @@ impl<'file> NodeRef<'file> {
     }
 
     pub fn maybe_alias(&self) -> Option<&'file TypeAlias> {
-        match self.complex() {
+        match self.maybe_complex() {
             Some(ComplexPoint::TypeAlias(alias)) => Some(alias),
             _ => None,
         }
     }
 
     pub fn maybe_type(&self) -> Option<&'file Type> {
-        match self.complex() {
+        match self.maybe_complex() {
             Some(ComplexPoint::TypeInstance(t)) => Some(t),
             _ => None,
         }
@@ -246,7 +246,7 @@ impl<'file> NodeRef<'file> {
     }
 
     pub fn expect_complex_type(&self) -> &Type {
-        let Some(ComplexPoint::TypeInstance(value_t)) = self.complex() else {
+        let Some(ComplexPoint::TypeInstance(value_t)) = self.maybe_complex() else {
             unreachable!("{:?}", self)
         };
         value_t
@@ -272,7 +272,7 @@ impl<'file> NodeRef<'file> {
             .calculated()
         {
             let class_ref = ClassNodeRef::new(self.file, self.node_index);
-            let ComplexPoint::Class(cls_storage) = class_ref.complex().unwrap() else {
+            let ComplexPoint::Class(cls_storage) = class_ref.maybe_complex().unwrap() else {
                 unreachable!("{self:?}")
             };
 

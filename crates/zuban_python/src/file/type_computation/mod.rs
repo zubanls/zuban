@@ -3399,7 +3399,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                         if let Some(tc) = check_special_case(specific) {
                             return Lookup::T(tc);
                         }
-                    } else if let Some(complex) = i_node_ref.complex() {
+                    } else if let Some(complex) = i_node_ref.maybe_complex() {
                         match complex {
                             ComplexPoint::Class(_) => {
                                 let c_node_ref = ClassNodeRef::from_node_ref(i_node_ref);
@@ -4678,7 +4678,7 @@ pub(crate) fn maybe_saved_annotation(node_ref: NodeRef) -> Option<&Type> {
     ) {
         let Some(ComplexPoint::TypeInstance(t)) = node_ref
             .add_to_node_index(ANNOTATION_TO_EXPR_DIFFERENCE as i64)
-            .complex()
+            .maybe_complex()
         else {
             unreachable!()
         };

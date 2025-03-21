@@ -319,7 +319,7 @@ impl Type {
         matcher: &mut Matcher,
         class2_node_ref: ClassNodeRef,
     ) -> Match {
-        let ComplexPoint::Class(storage) = class2_node_ref.complex().unwrap() else {
+        let ComplexPoint::Class(storage) = class2_node_ref.maybe_complex().unwrap() else {
             unreachable!()
         };
         if let Some(promote_to) = storage.promote_to.get() {
