@@ -360,15 +360,12 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
         let type_vars = self.type_vars(i_s);
 
         let mut was_dataclass = None;
-        let maybe_decorated = self.node().maybe_decorated();
         let mut is_final = false;
         let mut total_ordering = false;
         let mut is_runtime_checkable = false;
         let mut dataclass_transform = None;
-        if let Some(decorated) = maybe_decorated {
+        if let Some(decorated) = self.node().maybe_decorated() {
             let name_resolution = self.node_ref.file.name_resolution_for_types(i_s);
-            let inference = self.node_ref.file.inference(i_s);
-
             let mut dataclass_options = None;
             for decorator in decorated.decorators().iter() {
                 let expr = decorator.named_expression().expression();
@@ -445,7 +442,6 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                         continue;
                     }
                 }
-                inference.infer_decorator(decorator);
             }
             if let Some(dataclass_options) = dataclass_options {
                 let dataclass = Dataclass::new_uninitialized(
