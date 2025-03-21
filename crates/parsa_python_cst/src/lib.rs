@@ -2323,8 +2323,17 @@ impl<'db> ArgumentsDetails<'db> {
 }
 
 pub enum ArgOrComprehension<'db> {
-    Comprehension(Comprehension<'db>),
     Arg(Argument<'db>),
+    Comprehension(Comprehension<'db>),
+}
+
+impl ArgOrComprehension<'_> {
+    pub fn index(&self) -> NodeIndex {
+        match self {
+            Self::Arg(arg) => arg.index(),
+            Self::Comprehension(comp) => comp.index(),
+        }
+    }
 }
 
 enum AllArgsIterator<'db> {

@@ -3,11 +3,11 @@ use std::{borrow::Cow, cell::OnceCell, rc::Rc};
 use parsa_python_cst::{
     ArgOrComprehension, Argument, Arguments as CSTArguments, ArgumentsDetails, AssignmentContent,
     AsyncStmtContent, ClassDef, Decoratee, Expression, ExpressionContent, ExpressionPart, Kwarg,
-    NodeIndex, Primary, PrimaryContent, StmtLikeContent, StmtLikeIterator, Target, TypeLike,
+    NodeIndex, Primary, PrimaryContent, StarLikeExpression, StmtLikeContent, StmtLikeIterator,
+    Target, TypeLike,
 };
 
 use crate::{
-    arguments::SimpleArgs,
     database::{
         BaseClass, ClassInfos, ClassKind, ClassStorage, ComplexPoint, Database, Locality,
         MetaclassState, ParentScope, Point, PointLink, ProtocolMember, Specific,
@@ -1801,13 +1801,73 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         primary: Primary,
         details: ArgumentsDetails,
     ) -> DataclassTransformObj {
-        let d = DataclassTransformObj::from_args(
-            self.i_s,
-            &SimpleArgs::new(*self.i_s, self.file, primary.index(), details),
-        );
+        // Checks dataclass_transform(...)
+        let mut d = DataclassTransformObj::default();
+        for arg in details.iter() {
+            if let ArgOrComprehension::Arg(Argument::Keyword(kw)) = arg {
+                let (key, value) = kw.unpack();
+                let key = key.as_code();
+                let assign_option = |target: &mut _| {
+                    if let Some(bool_) = value.maybe_simple_bool() {
+                        *target = bool_;
+                    } else {
+                        self.add_issue(
+                            value.index(),
+                            IssueKind::ArgumentMustBeTrueOrFalse { key: key.into() },
+                        );
+                    }
+                };
+                match key {
+                    "eq_default" => assign_option(&mut d.eq_default),
+                    "order_default" => assign_option(&mut d.order_default),
+                    "kw_only_default" => assign_option(&mut d.kw_only_default),
+                    "frozen_default" => assign_option(&mut d.frozen_default),
+                    "field_specifiers" => self
+                        .fill_dataclass_transform_field_specifiers(value, &mut d.field_specifiers),
+                    _ => self.add_issue(
+                        arg.index(),
+                        IssueKind::DataclassTransformUnknownParam { name: key.into() },
+                    ),
+                }
+            } else {
+                self.add_type_issue(
+                    arg.index(),
+                    IssueKind::UnexpectedArgumentTo {
+                        name: "dataclass_transform",
+                    },
+                )
+            }
+        }
         let mut result = d.clone();
         NodeRef::new(self.file, expr.index()).insert_type(Type::DataclassTransformObj(d));
         result.executed_by_function = true;
         result
+    }
+
+    fn fill_dataclass_transform_field_specifiers(
+        &self,
+        value: Expression,
+        field_specifiers: &mut Rc<[PointLink]>,
+    ) {
+        let check =
+            || -> Result<Rc<[_]>, IssueKind> {
+                if let Some(tuple) = value.maybe_tuple() {
+                    return tuple.iter().map(|s| {
+                    if let StarLikeExpression::NamedExpression(ne) = s {
+                        if let Some(Lookup::T(TypeContent::InvalidVariable(
+                            InvalidVariableType::Function { node_ref },
+                        ))) = dbg!(self.lookup_type_expr_if_only_names(ne.expression())) {
+                            return Ok(node_ref.as_link())
+                        }
+                    }
+                    Err(IssueKind::DataclassTransformFieldSpecifiersMustOnlyContainIdentifiers)
+                }).collect();
+                }
+                Err(IssueKind::DataclassTransformFieldSpecifiersMustBeTuple)
+            };
+        match check() {
+            Ok(new_specifiers) => *field_specifiers = new_specifiers,
+            Err(issue) => self.add_type_issue(value.index(), issue),
+        }
     }
 }

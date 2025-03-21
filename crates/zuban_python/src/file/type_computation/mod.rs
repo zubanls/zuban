@@ -4228,6 +4228,11 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             _ => None,
         })
     }
+
+    fn add_type_issue(&self, node_index: NodeIndex, kind: IssueKind) {
+        let from = NodeRef::new(self.file, node_index);
+        from.add_type_issue(self.i_s.db, kind);
+    }
 }
 
 #[derive(Debug)]
@@ -4562,6 +4567,7 @@ fn check_special_case(specific: Specific) -> Option<TypeContent<'static, 'static
             TypeContent::TypedDictFieldModifier(TypedDictFieldModifier::ReadOnly)
         }
         Specific::AnyDueToError
+        | Specific::Function
         | Specific::ModuleNotFound
         | Specific::AnnotationOrTypeCommentSimpleClassInstance
         | Specific::AnnotationOrTypeCommentWithTypeVars

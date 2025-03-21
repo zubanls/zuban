@@ -7,7 +7,7 @@ use std::{
 
 use parsa_python_cst::{
     ArgumentsDetails, AssignmentContent, AssignmentRightSide, ExpressionContent, ExpressionPart,
-    NodeIndex, ParamKind, PrimaryContent, StarExpressionContent, StarLikeExpression,
+    NodeIndex, ParamKind, PrimaryContent, StarExpressionContent,
 };
 
 use super::{
@@ -17,7 +17,7 @@ use super::{
     TypeVarLike, TypeVarLikes, TypeVarUsage,
 };
 use crate::{
-    arguments::{Arg, ArgKind, Args, SimpleArgs},
+    arguments::{ArgKind, Args, SimpleArgs},
     database::{Database, Locality, Point, PointLink, Specific},
     diagnostics::{Issue, IssueKind},
     file::{ClassNodeRef, PythonFile},
@@ -1120,47 +1120,6 @@ impl Default for DataclassTransformObj {
 }
 
 impl DataclassTransformObj {
-    pub(crate) fn from_args<'db>(i_s: &InferenceState<'db, '_>, args: &dyn Args<'db>) -> Self {
-        // Checks dataclass_transform(...)
-        let mut options = Self::default();
-        let assign_option = |target: &mut _, arg: Arg<'db, '_>| {
-            let result = arg.infer_inferrable(i_s, &mut ResultContext::Unknown);
-            if let Some(bool_) = result.maybe_bool_literal(i_s) {
-                *target = bool_;
-            } else {
-                let key = arg.keyword_name(i_s.db).unwrap().into();
-                arg.add_issue(i_s, IssueKind::ArgumentMustBeTrueOrFalse { key });
-            }
-        };
-        for arg in args.iter(i_s.mode) {
-            if let Some(key) = arg.keyword_name(i_s.db) {
-                match key {
-                    "eq_default" => assign_option(&mut options.eq_default, arg),
-                    "order_default" => assign_option(&mut options.order_default, arg),
-                    "kw_only_default" => assign_option(&mut options.kw_only_default, arg),
-                    "frozen_default" => assign_option(&mut options.frozen_default, arg),
-                    "field_specifiers" => fill_dataclass_transform_field_specifiers(
-                        i_s,
-                        arg,
-                        &mut options.field_specifiers,
-                    ),
-                    _ => arg.add_issue(
-                        i_s,
-                        IssueKind::DataclassTransformUnknownParam { name: key.into() },
-                    ),
-                }
-            } else {
-                arg.add_issue(
-                    i_s,
-                    IssueKind::UnexpectedArgumentTo {
-                        name: "dataclass_transform",
-                    },
-                )
-            }
-        }
-        options
-    }
-
     pub(crate) fn as_dataclass_options(&self) -> DataclassOptions {
         DataclassOptions {
             eq: self.eq_default,
@@ -1170,35 +1129,5 @@ impl DataclassTransformObj {
             transform_field_specifiers: Some(self.field_specifiers.clone()),
             ..Default::default()
         }
-    }
-}
-
-fn fill_dataclass_transform_field_specifiers(
-    i_s: &InferenceState,
-    arg: Arg,
-    field_specifiers: &mut Rc<[PointLink]>,
-) {
-    let check =
-        || -> Result<Rc<[_]>, IssueKind> {
-            if let ArgKind::Keyword(kwarg) = &arg.kind {
-                if let Some(tuple) = kwarg.expression.maybe_tuple() {
-                    return tuple.iter().map(|s| {
-                    if let StarLikeExpression::NamedExpression(ne) = s {
-                        let inf = kwarg.node_ref.file.inference(i_s).infer_named_expression(ne);
-                        if let Some(from) = inf.maybe_saved_node_ref(i_s.db) {
-                            if from.maybe_function().is_some() {
-                                return Ok(from.as_link())
-                            }
-                        }
-                    }
-                    Err(IssueKind::DataclassTransformFieldSpecifiersMustOnlyContainIdentifiers)
-                }).collect();
-                }
-            }
-            Err(IssueKind::DataclassTransformFieldSpecifiersMustBeTuple)
-        };
-    match check() {
-        Ok(new_specifiers) => *field_specifiers = new_specifiers,
-        Err(issue) => arg.add_issue(i_s, issue),
     }
 }
