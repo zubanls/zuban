@@ -2015,9 +2015,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 return Inferred::new_any_from_error();
                             }
                             Specific::TypingDataclassTransform => {
-                                return Inferred::from_type(Type::DataclassTransformObj(
-                                    DataclassTransformObj::from_args(i_s, args),
-                                ))
+                                todo!()
                             }
                             _ => (),
                         }

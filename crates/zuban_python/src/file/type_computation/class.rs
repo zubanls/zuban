@@ -403,10 +403,8 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                             Some(Lookup::T(TypeContent::SpecialCase(
                                 Specific::TypingDataclassTransform,
                             ))) => {
-                                let d = DataclassTransformObj::from_args(
-                                    i_s,
-                                    &SimpleArgs::new(*i_s, self.file, primary.index(), exec),
-                                );
+                                let d =
+                                    name_resolution.insert_dataclass_transform(expr, primary, exec);
                                 dataclass_transform = Some(Box::new(d.clone()));
                             }
                             _ => (),
