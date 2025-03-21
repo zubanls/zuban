@@ -185,7 +185,7 @@ impl<'db: 'a, 'a> Args<'db> for SimpleArgs<'db, 'a> {
         let end = if let Some(primary_target) = from.maybe_primary_target() {
             primary_target.expect_closing_bracket_index()
         } else {
-            let primary = from.as_primary();
+            let primary = from.expect_primary();
             primary.expect_closing_bracket_index()
         };
         Some(self.file.points.backup(self.primary_node_index..end))

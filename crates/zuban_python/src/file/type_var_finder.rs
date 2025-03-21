@@ -395,7 +395,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                         .with_new_file(node_ref.file)
                         .point_resolution_to_base_lookup(resolved);
                 }
-                let name_def = node_ref.as_name_def();
+                let name_def = node_ref.expect_name_def();
                 match name_def.expect_type() {
                     TypeLike::ClassDef(c) => {
                         return BaseLookup::Class(PointLink::new(node_ref.file_index(), c.index()))

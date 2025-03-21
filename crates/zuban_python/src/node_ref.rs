@@ -145,35 +145,35 @@ impl<'file> NodeRef<'file> {
         PointLink::new(self.file.file_index, self.node_index)
     }
 
-    pub fn as_expression(&self) -> Expression<'file> {
+    pub fn expect_expression(&self) -> Expression<'file> {
         Expression::by_index(&self.file.tree, self.node_index)
     }
 
-    pub fn as_star_expression(&self) -> StarExpression<'file> {
+    pub fn expect_star_expression(&self) -> StarExpression<'file> {
         StarExpression::by_index(&self.file.tree, self.node_index)
     }
 
-    pub fn as_slices(&self) -> Slices<'file> {
+    pub fn expect_slices(&self) -> Slices<'file> {
         Slices::by_index(&self.file.tree, self.node_index)
     }
 
-    pub fn as_primary(&self) -> Primary<'file> {
+    pub fn expect_primary(&self) -> Primary<'file> {
         Primary::by_index(&self.file.tree, self.node_index)
     }
 
-    pub fn as_name(&self) -> Name<'file> {
+    pub fn expect_name(&self) -> Name<'file> {
         Name::by_index(&self.file.tree, self.node_index)
     }
 
-    pub fn as_name_def(&self) -> NameDef<'file> {
+    pub fn expect_name_def(&self) -> NameDef<'file> {
         NameDef::by_index(&self.file.tree, self.node_index)
     }
 
-    pub fn as_annotation(&self) -> Annotation<'file> {
+    pub fn expect_annotation(&self) -> Annotation<'file> {
         Annotation::by_index(&self.file.tree, self.node_index)
     }
 
-    pub fn as_bytes_literal(&self) -> BytesLiteral<'file> {
+    pub fn expect_bytes_literal(&self) -> BytesLiteral<'file> {
         BytesLiteral::by_index(&self.file.tree, self.node_index)
     }
 
@@ -202,7 +202,7 @@ impl<'file> NodeRef<'file> {
     }
 
     pub fn maybe_import_of_name_in_symbol_table(&self) -> Option<NameImportParent<'file>> {
-        self.as_name().name_def().unwrap().maybe_import()
+        self.expect_name().name_def().unwrap().maybe_import()
     }
 
     #[inline]
@@ -234,7 +234,7 @@ impl<'file> NodeRef<'file> {
         PrimaryTarget::maybe_by_index(&self.file.tree, self.node_index)
     }
 
-    pub fn as_named_expression(&self) -> NamedExpression<'file> {
+    pub fn expect_named_expression(&self) -> NamedExpression<'file> {
         NamedExpression::by_index(&self.file.tree, self.node_index)
     }
 

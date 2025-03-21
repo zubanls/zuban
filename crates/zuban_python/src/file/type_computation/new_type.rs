@@ -22,7 +22,7 @@ impl<'db, 'file> TypeComputation<'db, 'file, '_, '_> {
             return None;
         };
         let result = first
-            .as_named_expression()
+            .expect_named_expression()
             .maybe_single_string_literal()
             .map(|py_string| (first, py_string));
         let (name_node, py_string) = match result {
@@ -57,7 +57,8 @@ impl<'db, 'file> TypeComputation<'db, 'file, '_, '_> {
             );
             return None;
         }
-        let type_ = self.compute_new_type_constraint(second.as_named_expression().expression())?;
+        let type_ =
+            self.compute_new_type_constraint(second.expect_named_expression().expression())?;
         Some(NewType::new(
             PointLink {
                 file: name_node.file_index(),

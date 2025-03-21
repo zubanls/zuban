@@ -52,11 +52,11 @@ impl<'a> Generics<'a> {
             ClassGenerics::None => Generics::None,
             ClassGenerics::ExpressionWithClassType(link) => {
                 let node_ref = NodeRef::from_link(db, *link);
-                Self::ExpressionWithClassType(node_ref.file, node_ref.as_expression())
+                Self::ExpressionWithClassType(node_ref.file, node_ref.expect_expression())
             }
             ClassGenerics::SlicesWithClassTypes(link) => {
                 let node_ref = NodeRef::from_link(db, *link);
-                Self::SlicesWithClassTypes(node_ref.file, node_ref.as_slices())
+                Self::SlicesWithClassTypes(node_ref.file, node_ref.expect_slices())
             }
             ClassGenerics::NotDefinedYet => Generics::NotDefinedYet { class_ref },
         }

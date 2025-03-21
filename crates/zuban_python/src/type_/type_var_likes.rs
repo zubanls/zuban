@@ -716,7 +716,7 @@ impl TypeVar {
                     node_ref
                         .file
                         .name_resolution_for_types(i_s)
-                        .compute_type_var_bound(node_ref.as_expression())
+                        .compute_type_var_bound(node_ref.expect_expression())
                 },
             )),
             TypeVarKindInfos::Constraints(constraints) => {
@@ -725,7 +725,7 @@ impl TypeVar {
                         node_ref
                             .file
                             .name_resolution_for_types(i_s)
-                            .compute_type_var_value(node_ref.as_expression())
+                            .compute_type_var_value(node_ref.expect_expression())
                             .unwrap_or(Type::ERROR)
                     })
                 }))
@@ -740,7 +740,7 @@ impl TypeVar {
                 let default = if let Some(t) = node_ref
                     .file
                     .name_resolution_for_types(i_s)
-                    .compute_type_var_default(node_ref.as_expression())
+                    .compute_type_var_default(node_ref.expect_expression())
                 {
                     t
                 } else {

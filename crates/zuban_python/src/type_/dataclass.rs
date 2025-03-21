@@ -253,7 +253,7 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> Init
                     let param_name = cloned_name.as_str(db);
                     if let Some(in_current_class) = class_symbol_table.lookup_symbol(param_name) {
                         let mut n = NodeRef::new(file, in_current_class);
-                        if n.as_name()
+                        if n.expect_name()
                             .name_def()
                             .unwrap()
                             .maybe_assignment_definition()
@@ -295,7 +295,7 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> Init
     }
 
     for (_, name_index) in class_symbol_table.iter() {
-        let name = NodeRef::new(file, *name_index).as_name();
+        let name = NodeRef::new(file, *name_index).expect_name();
         if let Some(assignment) = name.maybe_assignment_definition_name() {
             if let AssignmentContent::WithAnnotation(target, annotation, right_side) =
                 assignment.unpack()

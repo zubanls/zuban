@@ -875,7 +875,7 @@ impl Inference<'_, '_, '_> {
     fn check_function_override(&self, c: Class, index: NodeIndex, name: &str) {
         let i_s = self.i_s;
         let Some(func_def) = NodeRef::new(c.node_ref.file, index)
-            .as_name()
+            .expect_name()
             .name_def()
             .unwrap()
             .maybe_name_of_func()

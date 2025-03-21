@@ -982,7 +982,10 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         let Some(class) = self.i_s.in_class_scope() else {
             return false;
         };
-        let Some(name_def) = annotation_node_ref.as_annotation().maybe_assignment_name() else {
+        let Some(name_def) = annotation_node_ref
+            .expect_annotation()
+            .maybe_assignment_name()
+        else {
             return false;
         };
         // TODO this is not correctly looking up Final assignments. To do this correctly we would
@@ -3462,7 +3465,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             return Lookup::T(TypeContent::UNKNOWN_REPORTED);
         }
 
-        let name_def = node_ref.as_name_def();
+        let name_def = node_ref.expect_name_def();
         return match name_def.expect_type() {
             TypeLike::ClassDef(c) => {
                 cache_class_name(node_ref, c);
@@ -4112,7 +4115,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         None
     }
     pub(crate) fn compute_cast_target(&self, node_ref: NodeRef) -> Result<Inferred, ()> {
-        let named_expr = node_ref.as_named_expression();
+        let named_expr = node_ref.expect_named_expression();
         let mut x = type_computation_for_variable_annotation;
         let mut comp = TypeComputation::new(
             self.i_s,
@@ -4592,7 +4595,7 @@ fn expect_class_or_simple_generic(db: &Database, node_ref: NodeRef) -> Cow<'stat
         match p.kind() {
             PointKind::Specific => {
                 debug_assert_eq!(p.specific(), Specific::SimpleGeneric);
-                let primary = node_ref.as_primary();
+                let primary = node_ref.expect_primary();
                 let first_cls = inner(db, NodeRef::new(node_ref.file, primary.first_child_index()));
                 debug_assert_eq!(first_cls.generics, ClassGenerics::None);
                 let link = first_cls.link;
@@ -4658,7 +4661,7 @@ pub(crate) fn use_cached_annotation_or_type_comment<'db: 'file, 'file>(
     let n = definition.add_to_node_index(ANNOTATION_TO_EXPR_DIFFERENCE as i64);
     let maybe_starred = match n.maybe_expression() {
         Some(expr) => Err(expr),
-        None => Ok(n.as_star_expression()),
+        None => Ok(n.expect_star_expression()),
     };
     definition
         .file

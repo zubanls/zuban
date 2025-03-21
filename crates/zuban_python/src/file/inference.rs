@@ -2087,7 +2087,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 line = NodeRef::new(self.file, decorated.index()).line();
             }
         }
-        let first_name_def = first_ref.as_name().name_def().unwrap();
+        let first_name_def = first_ref.expect_name().name_def().unwrap();
         let suffix = match first_name_def.maybe_import() {
             Some(_) => {
                 let mut s = "(possibly by an import)";
@@ -2114,7 +2114,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         if std::cfg!(debug_assertions) {
             // Make sure it's a NameDef
             let ref_ = NodeRef::new(self.file, name_index - NAME_DEF_TO_NAME_DIFFERENCE);
-            ref_.as_name_def();
+            ref_.expect_name_def();
         }
         self.check_point_cache(name_index - NAME_DEF_TO_NAME_DIFFERENCE)
             .and_then(|inf| inf.maybe_saved_node_ref(self.i_s.db))
@@ -3504,7 +3504,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 .file
                 .inference(self.i_s)
                 .with_correct_context(global_redirect, |inference| {
-                    inference._infer_name_def(node_ref.as_name_def())
+                    inference._infer_name_def(node_ref.expect_name_def())
                 }),
             PointResolution::Inferred(inferred) => inferred,
             PointResolution::Param(node_ref) => {
@@ -3764,7 +3764,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     self.file_path()
                 );
                 self.assign_to_name_def_simple(
-                    name_def.as_name_def(),
+                    name_def.expect_name_def(),
                     name_def,
                     &Inferred::new_any_from_error(),
                     AssignKind::Normal,
@@ -3774,7 +3774,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 // This should basically only ever happen on weird error cases where errors are
                 // added in other places. We assign Any to make sure
                 self.assign_to_name_def_simple(
-                    name_def.as_name_def(),
+                    name_def.expect_name_def(),
                     name_def,
                     &Inferred::new_any_from_error(),
                     AssignKind::Normal,

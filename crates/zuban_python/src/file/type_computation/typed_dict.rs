@@ -186,7 +186,7 @@ pub(super) fn new_typed_dict_with_execution_syntax<'db>(
         args.add_issue(i_s, IssueKind::UnexpectedArgumentsToTypedDict);
         return None;
     };
-    let expr = first.node_ref.as_named_expression().expression();
+    let expr = first.node_ref.expect_named_expression().expression();
     let Some(name) = StringSlice::from_string_in_expression(first.node_ref.file_index(), expr)
     else {
         first
@@ -225,7 +225,7 @@ pub(super) fn new_typed_dict_with_execution_syntax<'db>(
     };
     let Some(atom_content) = second
         .node_ref
-        .as_named_expression()
+        .expect_named_expression()
         .expression()
         .maybe_unpacked_atom()
     else {

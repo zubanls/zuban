@@ -168,7 +168,7 @@ fn check_named_tuple_name<'x, 'y>(
         );
         return None;
     };
-    let expr = pos.node_ref.as_named_expression().expression();
+    let expr = pos.node_ref.expect_named_expression().expression();
     let Some(mut string_slice) =
         StringSlice::from_string_in_expression(pos.node_ref.file_index(), expr)
     else {
@@ -209,7 +209,7 @@ fn check_named_tuple_name<'x, 'y>(
     };
     let Some(atom_content) = second
         .node_ref
-        .as_named_expression()
+        .expect_named_expression()
         .expression()
         .maybe_unpacked_atom()
     else {

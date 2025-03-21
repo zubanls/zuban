@@ -1803,7 +1803,7 @@ impl Literal {
             LiteralKind::Bytes(b) => match b {
                 DbBytes::Link(link) => {
                     let node_ref = NodeRef::from_link(db, *link);
-                    LiteralValue::Bytes(node_ref.as_bytes_literal().content_as_bytes())
+                    LiteralValue::Bytes(node_ref.expect_bytes_literal().content_as_bytes())
                 }
                 DbBytes::Static(b) => LiteralValue::Bytes(Cow::Borrowed(b)),
             },

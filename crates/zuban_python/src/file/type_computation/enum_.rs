@@ -28,7 +28,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         for arg in args.iter(self.i_s.mode) {
             match arg.kind {
                 ArgKind::Positional(positional) => {
-                    let expr = positional.node_ref.as_named_expression().expression();
+                    let expr = positional.node_ref.expect_named_expression().expression();
                     if name_infos.is_none() {
                         name_infos = Some((
                             positional.node_ref,

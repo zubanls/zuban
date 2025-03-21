@@ -632,5 +632,7 @@ pub(super) fn func_of_self_symbol(file: &PythonFile, self_symbol: NodeIndex) -> 
             .specific(),
         Specific::MaybeSelfParam
     );
-    param_name_node_ref.as_name().expect_as_param_of_function()
+    param_name_node_ref
+        .expect_name()
+        .expect_as_param_of_function()
 }

@@ -44,7 +44,7 @@ fn maybe_type_var(i_s: &InferenceState, args: &dyn Args) -> Option<TypeVarLike> 
     if let Some(first_arg) = iterator.next() {
         let result = if let ArgKind::Positional(pos) = &first_arg.kind {
             pos.node_ref
-                .as_named_expression()
+                .expect_named_expression()
                 .maybe_single_string_literal()
                 .map(|py_string| (pos.node_ref, py_string))
         } else {
@@ -92,7 +92,7 @@ fn maybe_type_var(i_s: &InferenceState, args: &dyn Args) -> Option<TypeVarLike> 
         for arg in iterator {
             match arg.kind {
                 ArgKind::Positional(pos) => {
-                    let expr_index = pos.node_ref.as_named_expression().expression().index();
+                    let expr_index = pos.node_ref.expect_named_expression().expression().index();
                     constraints.push(TypeInTypeVar::new_lazy(expr_index));
                 }
                 ArgKind::Keyword(KeywordArg {
@@ -205,7 +205,7 @@ fn maybe_type_var_tuple(i_s: &InferenceState, args: &dyn Args) -> Option<TypeVar
     if let Some(first_arg) = iterator.next() {
         let result = if let ArgKind::Positional(pos) = &first_arg.kind {
             pos.node_ref
-                .as_named_expression()
+                .expect_named_expression()
                 .maybe_single_string_literal()
                 .map(|py_string| (pos.node_ref, py_string))
         } else {
@@ -323,7 +323,7 @@ fn maybe_param_spec(i_s: &InferenceState, args: &dyn Args) -> Option<TypeVarLike
     if let Some(first_arg) = iterator.next() {
         let result = if let ArgKind::Positional(pos) = &first_arg.kind {
             pos.node_ref
-                .as_named_expression()
+                .expect_named_expression()
                 .maybe_single_string_literal()
                 .map(|py_string| (pos.node_ref, py_string))
         } else {

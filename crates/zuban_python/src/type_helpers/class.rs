@@ -685,7 +685,10 @@ impl<'db: 'a, 'a> Class<'a> {
             let protocol_members = &c.use_cached_class_infos(db).protocol_members;
             for protocol_member in protocol_members.iter() {
                 let name_node_ref = NodeRef::new(self.node_ref.file, protocol_member.name_index);
-                if !matches!(name_node_ref.as_name().expect_type(), TypeLike::Function(_)) {
+                if !matches!(
+                    name_node_ref.expect_name().expect_type(),
+                    TypeLike::Function(_)
+                ) {
                     members.push(name_node_ref.as_code().into())
                 }
             }
@@ -696,7 +699,7 @@ impl<'db: 'a, 'a> Class<'a> {
     pub fn lookup_assignment(&self, name: &str) -> Option<Assignment<'a>> {
         let i = self.class_storage.class_symbol_table.lookup_symbol(name)?;
         NodeRef::new(self.node_ref.file, i)
-            .as_name()
+            .expect_name()
             .maybe_assignment_definition_name()
     }
 

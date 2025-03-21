@@ -1042,7 +1042,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                 if name == "__members__" {
                     let name_node_ref = NodeRef::new(self.node_ref.file, *name_index);
                     if !name_node_ref
-                        .as_name()
+                        .expect_name()
                         .is_assignment_annotation_without_definition()
                     {
                         name_node_ref.add_type_issue(db, IssueKind::EnumMembersAttributeOverwritten)
@@ -1075,7 +1075,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                         },
                     )
                 }
-                let name = name_node_ref.as_name();
+                let name = name_node_ref.expect_name();
                 if let Some(assignment) = name.maybe_assignment_definition_name() {
                     if let AssignmentContent::WithAnnotation(_, _, Some(_)) = assignment.unpack() {
                         NodeRef::new(self.node_ref.file, point.node_index())
@@ -1167,7 +1167,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                     .self_symbol_table
                     .lookup_symbol(name)
                     .is_none();
-            let variance = match name_node_ref.as_name().expect_type() {
+            let variance = match name_node_ref.expect_name().expect_type() {
                 TypeLike::ImportFromAsName(_) | TypeLike::DottedAsName(_) => continue,
                 TypeLike::Function(_) => {
                     let p = name_node_ref.point();

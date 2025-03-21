@@ -106,7 +106,7 @@ impl EnumMemberDefinition {
                         .inference(&class_i_s.with_enum_calculation_mode())
                         .infer_name_of_definition(name)
                 } else {
-                    let expr = node_ref.as_expression();
+                    let expr = node_ref.expect_expression();
                     node_ref.file.inference(class_i_s).infer_expression(expr)
                 };
                 match inferred.as_cow_type(class_i_s).as_ref() {

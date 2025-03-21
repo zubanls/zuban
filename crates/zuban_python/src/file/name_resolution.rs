@@ -740,7 +740,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                     let name_def_node_index = node_index - NAME_DEF_TO_NAME_DIFFERENCE;
                     let node_ref = NodeRef::new(self.file, name_def_node_index);
                     if self.stop_on_assignments {
-                        let defining = node_ref.as_name_def().expect_defining_stmt();
+                        let defining = node_ref.expect_name_def().expect_defining_stmt();
                         if matches!(
                             defining,
                             DefiningStmt::Assignment(_) | DefiningStmt::FunctionDef(_)
@@ -827,7 +827,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                 && name_ref.point().maybe_specific() == Some(Specific::FirstNameOfNameDef)
             {
                 let name_def_ref = name_ref.name_def_ref_of_name();
-                let defining = name_def_ref.as_name_def().expect_defining_stmt();
+                let defining = name_def_ref.expect_name_def().expect_defining_stmt();
                 if matches!(
                     defining,
                     DefiningStmt::Assignment(_) | DefiningStmt::FunctionDef(_)
@@ -842,7 +842,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                 }
             }
             (
-                self.resolve_name_without_narrowing(name_ref.as_name()),
+                self.resolve_name_without_narrowing(name_ref.expect_name()),
                 Some(name_ref.as_link()),
             )
         } else if let Some(r) = Module::new(self.file).sub_module_lookup(db, name) {
@@ -880,7 +880,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                 None => {
                     let node_ref = NodeRef::from_link(self.i_s.db, link);
                     self.with_new_file(node_ref.file)
-                        .resolve_name(node_ref.as_name(), narrow_name)
+                        .resolve_name(node_ref.expect_name(), narrow_name)
                 }
             },
             StarImportResult::AnyDueToError => PointResolution::Inferred(match save_to_index {

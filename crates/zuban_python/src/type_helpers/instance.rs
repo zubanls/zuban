@@ -914,7 +914,7 @@ fn execute_isinstance_or_issubclass<'db>(
         if node_ref2
             .file
             .inference(i_s)
-            .check_isinstance_or_issubclass_type(node_ref2.as_named_expression(), issubclass)
+            .check_isinstance_or_issubclass_type(node_ref2.expect_named_expression(), issubclass)
             .is_some()
         {
             return Inferred::from_type(i_s.db.python_state.bool_type());
