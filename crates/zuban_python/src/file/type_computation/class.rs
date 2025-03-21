@@ -391,7 +391,8 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                                         exec,
                                         DataclassOptions::default(),
                                     ));
-                                } else if let Some(d) = maybe_dataclass_transform(db, node_ref) {
+                                } else if let Some(d) = maybe_dataclass_transform_func(db, node_ref)
+                                {
                                     dataclass_options = Some(check_dataclass_options(
                                         db,
                                         self.node_ref.file,
@@ -428,7 +429,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                                 .typing_extensions_runtime_checkable_node_ref()
                     {
                         is_runtime_checkable = true;
-                    } else if let Some(d) = maybe_dataclass_transform(db, node_ref) {
+                    } else if let Some(d) = maybe_dataclass_transform_func(db, node_ref) {
                         dataclass_options = Some(d.as_dataclass_options());
                     }
                 }
@@ -1749,7 +1750,10 @@ impl DataclassOptions {
     }
 }
 
-fn maybe_dataclass_transform(db: &Database, func: FuncNodeRef) -> Option<DataclassTransformObj> {
+fn maybe_dataclass_transform_func(
+    db: &Database,
+    func: FuncNodeRef,
+) -> Option<DataclassTransformObj> {
     let decorated = func.node().maybe_decorated()?;
     for decorator in decorated.decorators().iter() {
         let expr = decorator.named_expression().expression();

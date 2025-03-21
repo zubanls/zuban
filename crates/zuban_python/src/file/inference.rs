@@ -4018,17 +4018,28 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         let expr = decorator.named_expression().expression();
         if let ExpressionContent::ExpressionPart(ExpressionPart::Primary(primary)) = expr.unpack() {
             if let PrimaryContent::Execution(exec) = primary.second() {
-                // Try to find dataclass_transform and if there isn't one use the normal inference
-                let base = self.infer_primary_or_atom(primary.first());
-                if base.maybe_saved_specific(self.i_s.db)
-                    == Some(Specific::TypingDataclassTransform)
-                {
-                    self.insert_dataclass_transform(primary, exec);
-                } else {
-                    self.primary_exec(&base, primary.index(), exec, &mut ResultContext::Unknown)
-                        .save_redirect(self.i_s, self.file, primary.index());
-                };
-                debug_assert!(self.file.points.get(primary.index()).calculated());
+                if !self.file.points.get(primary.index()).calculated() {
+                    // Try to find dataclass_transform and if there isn't one use the normal inference
+                    let base = self.infer_primary_or_atom(primary.first());
+                    if base.maybe_saved_specific(self.i_s.db)
+                        == Some(Specific::TypingDataclassTransform)
+                    {
+                        self.insert_dataclass_transform(primary, exec);
+                    } else {
+                        self.primary_exec(
+                            &base,
+                            primary.index(),
+                            exec,
+                            &mut ResultContext::Unknown,
+                        )
+                        .save_redirect(
+                            self.i_s,
+                            self.file,
+                            primary.index(),
+                        );
+                    };
+                    debug_assert!(self.file.points.get(primary.index()).calculated());
+                }
             }
         }
         let i = self.infer_named_expression(decorator.named_expression());
