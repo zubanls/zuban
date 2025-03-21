@@ -3095,14 +3095,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 .unwrap_or_else(Inferred::new_any_from_error)
             }
             PrimaryContent::Execution(details) => {
-                let f = self.file;
-                let args = SimpleArgs::new(*self.i_s, f, node_index, details);
-                base.execute_with_details(
-                    self.i_s,
-                    &args,
-                    result_context,
-                    OnTypeError::new(&on_argument_type_error),
-                )
+                self.primary_exec(base, node_index, details, result_context)
             }
             PrimaryContent::GetItem(slice_type) => {
                 let f = self.file;
@@ -3115,6 +3108,23 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 )
             }
         }
+    }
+
+    fn primary_exec(
+        &self,
+        base: &Inferred,
+        node_index: NodeIndex,
+        details: ArgumentsDetails,
+        result_context: &mut ResultContext,
+    ) -> Inferred {
+        let f = self.file;
+        let args = SimpleArgs::new(*self.i_s, f, node_index, details);
+        base.execute_with_details(
+            self.i_s,
+            &args,
+            result_context,
+            OnTypeError::new(&on_argument_type_error),
+        )
     }
 
     pub fn infer_primary_or_atom(&self, p: PrimaryOrAtom) -> Inferred {
@@ -4005,6 +4015,23 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
 
     check_point_cache_with!(pub infer_decorator, Self::_infer_decorator, Decorator);
     fn _infer_decorator(&self, decorator: Decorator) -> Inferred {
+        let expr = decorator.named_expression().expression();
+        if let ExpressionContent::ExpressionPart(ExpressionPart::Primary(primary)) = expr.unpack() {
+            if let PrimaryContent::Execution(exec) = primary.second() {
+                // Try to find dataclass_transform and if there isn't one use the normal inference
+                let base = self.infer_primary_or_atom(primary.first());
+                let new_inf = if base.maybe_saved_specific(self.i_s.db)
+                    == Some(Specific::TypingDataclassTransform)
+                {
+                    self.insert_dataclass_transform(expr, primary, exec);
+                    return Inferred::from_saved_node_ref(NodeRef::new(self.file, expr.index()))
+                        .save_redirect(self.i_s, self.file, decorator.index());
+                } else {
+                    self.primary_exec(&base, primary.index(), exec, &mut ResultContext::Unknown)
+                };
+                new_inf.save_redirect(self.i_s, self.file, primary.index());
+            }
+        }
         let i = self.infer_named_expression(decorator.named_expression());
         i.save_redirect(self.i_s, self.file, decorator.index())
     }

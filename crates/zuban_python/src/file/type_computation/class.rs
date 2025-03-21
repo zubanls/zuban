@@ -2,8 +2,8 @@ use std::{borrow::Cow, cell::OnceCell, rc::Rc};
 
 use parsa_python_cst::{
     ArgOrComprehension, Argument, Arguments as CSTArguments, ArgumentsDetails, AssignmentContent,
-    AsyncStmtContent, ClassDef, Decoratee, ExpressionContent, ExpressionPart, Kwarg, NodeIndex,
-    PrimaryContent, StmtLikeContent, StmtLikeIterator, Target, TypeLike,
+    AsyncStmtContent, ClassDef, Decoratee, Expression, ExpressionContent, ExpressionPart, Kwarg,
+    NodeIndex, Primary, PrimaryContent, StmtLikeContent, StmtLikeIterator, Target, TypeLike,
 };
 
 use crate::{
@@ -16,6 +16,7 @@ use crate::{
     debug,
     diagnostics::{Issue, IssueKind},
     file::{
+        name_resolution::NameResolution,
         type_computation::{typed_dict::TypedDictMemberGatherer, InvalidVariableType, TypeContent},
         use_cached_annotation_type, OtherDefinitionIterator, PythonFile, TypeVarCallbackReturn,
         TypeVarFinder,
@@ -1787,17 +1788,28 @@ fn maybe_dataclass_transform(db: &Database, func: FuncNodeRef) -> Option<Datacla
                     Specific::TypingDataclassTransform,
                 ))) = name_resolution.lookup_type_primary_or_atom_if_only_names(primary.first())
                 {
-                    let d = DataclassTransformObj::from_args(
-                        i_s,
-                        &SimpleArgs::new(*i_s, func.file, primary.index(), exec),
-                    );
-                    let mut result = d.clone();
-                    expr_node_ref.insert_type(Type::DataclassTransformObj(d));
-                    result.executed_by_function = true;
-                    return Some(result);
+                    return Some(name_resolution.insert_dataclass_transform(expr, primary, exec));
                 }
             }
         }
     }
     None
+}
+
+impl<'db, 'file> NameResolution<'db, 'file, '_> {
+    pub(crate) fn insert_dataclass_transform(
+        &self,
+        expr: Expression,
+        primary: Primary,
+        details: ArgumentsDetails,
+    ) -> DataclassTransformObj {
+        let d = DataclassTransformObj::from_args(
+            self.i_s,
+            &SimpleArgs::new(*self.i_s, self.file, primary.index(), details),
+        );
+        let mut result = d.clone();
+        NodeRef::new(self.file, expr.index()).insert_type(Type::DataclassTransformObj(d));
+        result.executed_by_function = true;
+        result
+    }
 }

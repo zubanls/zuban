@@ -1770,7 +1770,8 @@ fn infer_decorator_details(
     decorator: Decorator,
     had_first_annotation: bool,
 ) -> InferredDecorator {
-    let redirect = file.inference(i_s).infer_decorator(decorator);
+    let inference = file.inference(i_s);
+    let redirect = inference.infer_decorator(decorator);
     if let Some(saved_link) = redirect.maybe_saved_link() {
         if saved_link == i_s.db.python_state.overload_link() {
             return InferredDecorator::Overload;
