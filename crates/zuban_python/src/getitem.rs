@@ -236,10 +236,6 @@ pub(crate) struct Slices<'file> {
 }
 
 impl<'file> Slices<'file> {
-    pub fn as_node_ref(&self) -> NodeRef<'file> {
-        NodeRef::new(self.file, self.slices.index())
-    }
-
     pub fn iter(&self) -> SliceIterator<'file> {
         SliceIterator(self.file, self.slices.iter())
     }

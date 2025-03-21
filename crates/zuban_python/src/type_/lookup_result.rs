@@ -6,7 +6,6 @@ use vfs::FileIndex;
 use crate::{
     database::{Database, Locality, Point, PointLink},
     file::PythonFile,
-    inference_state::InferenceState,
     inferred::Inferred,
     type_::AnyCause,
 };
@@ -52,16 +51,6 @@ impl LookupResult {
     pub fn into_inferred(self) -> Inferred {
         self.into_maybe_inferred()
             .unwrap_or_else(|| Inferred::new_any(AnyCause::Todo))
-    }
-
-    pub fn union(self, i_s: &InferenceState, other: Self) -> Self {
-        match self.into_maybe_inferred() {
-            Some(self_) => match other.into_maybe_inferred() {
-                Some(other) => LookupResult::UnknownName(self_.simplified_union(i_s, other)),
-                None => LookupResult::UnknownName(self_),
-            },
-            None => other,
-        }
     }
 
     pub fn save_name(self, file: &PythonFile, name_index: NodeIndex) -> Option<Inferred> {

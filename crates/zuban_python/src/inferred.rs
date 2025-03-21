@@ -2268,13 +2268,6 @@ impl<'db: 'slf, 'slf> Inferred {
         result
     }
 
-    pub fn maybe_bound_method_of_function(&self) -> Option<PointLink> {
-        match &self.state {
-            InferredState::BoundMethod { func_link, .. } => Some(*func_link),
-            _ => None,
-        }
-    }
-
     pub fn iter(self, i_s: &InferenceState, from: NodeRef, cause: IterCause) -> IteratorContent {
         self.as_cow_type(i_s).iter(
             i_s,
@@ -2672,7 +2665,6 @@ pub fn specific_to_type<'db>(
         Specific::String => Cow::Owned(i_s.db.python_state.str_type()),
         Specific::Int => Cow::Owned(i_s.db.python_state.int_type()),
         Specific::Float => Cow::Owned(i_s.db.python_state.float_type()),
-        Specific::Bool => Cow::Owned(i_s.db.python_state.bool_type()),
         Specific::Bytes => Cow::Owned(i_s.db.python_state.bytes_type()),
         Specific::Complex => Cow::Owned(i_s.db.python_state.complex_type()),
         Specific::Ellipsis => Cow::Owned(i_s.db.python_state.ellipsis_type()),

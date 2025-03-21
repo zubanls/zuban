@@ -442,7 +442,9 @@ pub(crate) enum PointKind {
 #[repr(u32)]
 pub(crate) enum Specific {
     // This is reserved, because if everything is initialized as zero, this is the value it takes.
+    #[allow(dead_code)]
     ReservedBecauseUnused,
+
     Analyzed, // Signals that a node has been analyzed
     Calculating,
     Cycle,
@@ -466,7 +468,6 @@ pub(crate) enum Specific {
     Complex,
     Bytes,
     Int,
-    Bool,
     None,
     // Literals are used for things like Literal[42]
     StringLiteral,
@@ -528,7 +529,6 @@ pub(crate) enum Specific {
     AssertTypeFunction,
     TypingNamedTuple,      // typing.NamedTuple
     CollectionsNamedTuple, // collections.namedtuple
-    DataclassesDataclass,
     MypyExtensionsFlexibleAlias,
 
     MypyExtensionsArg,
@@ -620,6 +620,7 @@ pub(crate) struct LocalityLink {
 }
 
 impl LocalityLink {
+    #[expect(dead_code)]
     pub fn into_point_redirect(self) -> Point {
         Point::new_redirect(self.file, self.node_index, self.locality)
     }

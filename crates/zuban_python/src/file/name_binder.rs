@@ -46,7 +46,7 @@ enum Unresolved<'db> {
     },
     Lambda(Lambda<'db>),
     Comprehension(Comprehension<'db>),
-    #[allow(dead_code)] // TODO remove this
+    #[expect(dead_code)] // TODO remove this
     DictComprehension(DictComprehension<'db>),
     Name(Name<'db>),
 }

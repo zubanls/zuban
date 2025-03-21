@@ -946,7 +946,6 @@ impl PythonState {
     attribute_node_ref!(typing, pub container_node_ref, typing_container_index);
     class_node_ref!(typing, pub mapping_node_ref, typing_mapping_index);
     class_node_ref!(typing, pub keys_view_node_ref, typing_keys_view_index);
-    attribute_node_ref!(typing, pub typing_overload, typing_overload_index);
     optional_attribute_node_ref!(typing, pub typing_override, typing_override_index);
     attribute_node_ref!(typing, pub typing_final, typing_final_index);
     class_node_ref!(typing, pub generator_node_ref, typing_generator_index);
@@ -980,9 +979,6 @@ impl PythonState {
     attribute_link!(builtins, pub bytes_link, builtins_bytes_index);
     attribute_link!(builtins, pub bool_link, builtins_bool_index);
     attribute_link!(builtins, pub notimplementederror_link, builtins_notimplementederror);
-    attribute_link!(builtins, pub staticmethod_link, builtins_staticmethod_index);
-    attribute_link!(builtins, pub classmethod_link, builtins_staticmethod_index);
-    attribute_link!(builtins, pub property_link, builtins_staticmethod_index);
     attribute_link!(builtins, pub slice_link, builtins_slice_index);
     attribute_link!(abc, pub abc_meta_link, abc_abc_meta_index);
     attribute_link!(abc, pub abstractmethod_link, abc_abstractmethod_index);
@@ -1036,7 +1032,6 @@ impl PythonState {
     node_ref_to_type_class_without_generic!(pub property_type, property_node_ref);
     node_ref_to_type_class_without_generic!(pub function_type, function_node_ref);
     node_ref_to_type_class_without_generic!(pub bare_type_type, bare_type_node_ref);
-    node_ref_to_type_class_without_generic!(pub typed_dict_type, typed_dict_node_ref);
     node_ref_to_type_class_without_generic!(pub type_var_type, type_var_node_ref);
     node_ref_to_type_class_without_generic!(pub typing_special_form_type, typing_special_form_node_ref);
 

@@ -1165,15 +1165,6 @@ impl<'db: 'a, 'a> Class<'a> {
         })
     }
 
-    pub fn as_type_with_type_vars_for_not_yet_defined_generics(&self, db: &Database) -> Type {
-        match self.generics {
-            Generics::NotDefinedYet { .. } => {
-                Class::with_self_generics(db, self.node_ref).as_type(db)
-            }
-            _ => self.as_type(db),
-        }
-    }
-
     pub fn find_relevant_constructor(
         &self,
         i_s: &InferenceState<'db, '_>,
@@ -1630,13 +1621,6 @@ impl<'a> TypeOrClass<'a> {
                 Type::NamedTuple(nt) => nt.qualified_name(db),
                 _ => self.name(db).into(),
             },
-        }
-    }
-
-    pub fn format(&self, db: &FormatData) -> Box<str> {
-        match self {
-            Self::Class(class) => class.format(db),
-            Self::Type(t) => t.format(db),
         }
     }
 

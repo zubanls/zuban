@@ -1,10 +1,10 @@
 use std::fmt;
 
 use parsa_python_cst::{
-    Annotation, Assignment, Atom, BytesLiteral, ClassDef, CodeIndex, Expression, Factor,
-    FunctionDef, ImportFrom, Int, Name, NameDef, NameImportParent, NamedExpression, NodeIndex,
-    Primary, PrimaryTarget, Slices, StarExpression, StarStarExpression, StarredExpression,
-    StringLiteral, NAME_DEF_TO_NAME_DIFFERENCE,
+    Annotation, Assignment, BytesLiteral, ClassDef, CodeIndex, Expression, FunctionDef, ImportFrom,
+    Int, Name, NameDef, NameImportParent, NamedExpression, NodeIndex, Primary, PrimaryTarget,
+    Slices, StarExpression, StarStarExpression, StarredExpression, StringLiteral,
+    NAME_DEF_TO_NAME_DIFFERENCE,
 };
 use vfs::FileIndex;
 
@@ -21,7 +21,7 @@ use crate::{
     inferred::Inferred,
     python_state::{NAME_DEF_TO_CLASS_DIFF, NAME_TO_FUNCTION_DIFF},
     type_::Type,
-    type_helpers::{Function, Module},
+    type_helpers::Function,
 };
 
 #[derive(Clone, Copy)]
@@ -48,10 +48,6 @@ impl<'file> NodeRef<'file> {
             file,
             node_index: link.node_index,
         }
-    }
-
-    pub fn in_module(&self) -> Module<'file> {
-        Module::new(self.file)
     }
 
     #[inline]
@@ -193,10 +189,6 @@ impl<'file> NodeRef<'file> {
         ImportFrom::by_index(&self.file.tree, self.node_index)
     }
 
-    pub fn expect_atom(&self) -> Atom<'file> {
-        Atom::by_index(&self.file.tree, self.node_index)
-    }
-
     pub fn maybe_expression(&self) -> Option<Expression<'file>> {
         Expression::maybe_by_index(&self.file.tree, self.node_index)
     }
@@ -233,10 +225,6 @@ impl<'file> NodeRef<'file> {
         ClassDef::maybe_by_index(&self.file.tree, self.node_index)
     }
 
-    pub fn maybe_factor(&self) -> Option<Factor<'file>> {
-        Factor::maybe_by_index(&self.file.tree, self.node_index)
-    }
-
     pub fn maybe_primary_target(&self) -> Option<PrimaryTarget<'file>> {
         PrimaryTarget::maybe_by_index(&self.file.tree, self.node_index)
     }
@@ -244,10 +232,6 @@ impl<'file> NodeRef<'file> {
     #[inline]
     pub fn file_index(&self) -> FileIndex {
         self.file.file_index
-    }
-
-    pub fn infer_int(&self) -> Option<i64> {
-        Int::maybe_by_index(&self.file.tree, self.node_index).and_then(|i| i.as_str().parse().ok())
     }
 
     pub fn expect_inferred(&self, i_s: &InferenceState) -> Inferred {

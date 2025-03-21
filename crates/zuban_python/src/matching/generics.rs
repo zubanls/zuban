@@ -38,10 +38,6 @@ pub(crate) enum Generics<'a> {
 }
 
 impl<'a> Generics<'a> {
-    pub fn new_list(list: &'a GenericsList) -> Self {
-        Self::List(list, None)
-    }
-
     pub fn from_class_generics(
         db: &'a Database,
         class_ref: ClassNodeRef<'a>,

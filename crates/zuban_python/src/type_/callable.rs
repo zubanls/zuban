@@ -120,8 +120,10 @@ impl ParamType {
 
 pub(crate) enum ParamTypeDetails<'a> {
     Type(&'a Type),
+    #[expect(dead_code)]
     ParamSpecUsage(&'a ParamSpecUsage),
     UnpackedTuple(Rc<Tuple>),
+    #[expect(dead_code)]
     UnpackTypedDict(Rc<TypedDict>),
 }
 

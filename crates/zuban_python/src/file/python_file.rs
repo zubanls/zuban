@@ -43,10 +43,6 @@ impl ComplexValues {
         &self.0[index]
     }
 
-    pub fn get_by_node_index(&self, points: &Points, node_index: NodeIndex) -> &ComplexPoint {
-        &self.0[points.get(node_index).complex_index()]
-    }
-
     pub fn insert(
         &self,
         points: &Points,
@@ -66,6 +62,7 @@ impl ComplexValues {
         self.0.iter()
     }
 
+    #[expect(dead_code)]
     pub fn clear(&mut self) {
         self.0.clear()
     }
@@ -431,15 +428,6 @@ impl<'db> PythonFile {
         } else {
             self.ensure_annotation_file(db, start, code)
         }
-    }
-
-    pub fn is_stub_or_in_protocol(&self, i_s: &InferenceState) -> bool {
-        if let Some(current_class) = i_s.current_class() {
-            if current_class.is_protocol(i_s.db) {
-                return true;
-            }
-        }
-        self.is_stub()
     }
 
     #[inline]

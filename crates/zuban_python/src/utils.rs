@@ -112,10 +112,6 @@ impl SymbolTable {
         self.symbols.iter().map(|(k, v)| (k.as_str(), v))
     }
 
-    pub fn len(&self) -> usize {
-        self.symbols.len()
-    }
-
     pub fn add_or_replace_symbol(&mut self, name: Name) -> Option<NodeIndex> {
         self.symbols
             .insert(HashableRawStr::new(name.as_str()), name.index())

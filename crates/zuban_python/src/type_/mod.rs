@@ -181,10 +181,6 @@ impl TypeArgs {
         Self { args }
     }
 
-    pub fn new_fixed_length(args: Rc<[Type]>) -> Self {
-        Self::new(TupleArgs::FixedLen(args))
-    }
-
     pub fn new_arbitrary_length(arg: Type) -> Self {
         Self::new(TupleArgs::ArbitraryLen(Box::new(arg)))
     }
@@ -230,13 +226,6 @@ pub(crate) enum ClassGenerics {
 }
 
 impl ClassGenerics {
-    pub fn map_list(&self, callable: impl FnOnce(&GenericsList) -> GenericsList) -> Self {
-        match self {
-            Self::List(list) => Self::List(callable(list)),
-            _ => self.clone(),
-        }
-    }
-
     pub fn all_any(&self) -> bool {
         match self {
             Self::List(list) => list.iter().all(|g| g.is_any()),
@@ -312,10 +301,6 @@ impl GenericsList {
             GenericItem::ParamSpecArg(a) => a.params.has_any_internal(i_s, already_checked),
         })
     }
-
-    pub fn is_empty(&self) -> bool {
-        self.0.is_empty()
-    }
 }
 
 impl std::ops::Index<TypeVarIndex> for GenericsList {
@@ -378,13 +363,6 @@ impl FunctionOverload {
 
     pub fn iter_functions(&self) -> impl Iterator<Item = &Rc<CallableContent>> + Clone {
         self.0.iter()
-    }
-
-    pub fn map_functions(
-        &self,
-        callable: impl FnOnce(&[Rc<CallableContent>]) -> Box<[Rc<CallableContent>]>,
-    ) -> Rc<Self> {
-        Rc::new(Self(callable(&self.0)))
     }
 }
 
@@ -546,13 +524,6 @@ impl Type {
     fn is_none_or_none_in_union(&self, db: &Database) -> bool {
         self.iter_with_unpacked_unions(db)
             .any(|t| matches!(t, Type::None))
-    }
-
-    pub fn is_true_literal(&self) -> bool {
-        match self {
-            Self::Literal(literal) => matches!(literal.kind, LiteralKind::Bool(true)),
-            _ => false,
-        }
     }
 
     pub fn is_object(&self, db: &Database) -> bool {
@@ -895,18 +866,6 @@ impl Type {
 
     pub fn union_in_place(&mut self, other: Type) {
         *self = mem::replace(self, Self::Never(NeverCause::Other)).union(other);
-    }
-
-    pub fn gather_union(callable: impl FnOnce(&mut dyn FnMut(Self))) -> Self {
-        let mut result: Option<Self> = None;
-        let r = &mut result;
-        callable(&mut |t| {
-            *r = Some(match r.take() {
-                Some(i) => i.union(t),
-                None => t,
-            });
-        });
-        result.unwrap_or_else(|| Type::Never(NeverCause::Other))
     }
 
     pub fn format_short(&self, db: &Database) -> Box<str> {

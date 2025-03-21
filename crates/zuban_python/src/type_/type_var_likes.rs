@@ -131,10 +131,6 @@ impl<T: CallableId> TypeVarManager<T> {
             .any(|t| t.most_outer_callable.is_some())
     }
 
-    pub fn has_type_vars(&self) -> bool {
-        !self.type_vars.is_empty()
-    }
-
     pub fn has_type_var_tuples(&self) -> bool {
         self.type_vars
             .iter()

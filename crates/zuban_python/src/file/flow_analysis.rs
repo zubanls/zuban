@@ -1266,6 +1266,7 @@ impl Inference<'_, '_, '_> {
         FLOW_ANALYSIS.with(|fa| fa.in_type_checking_only_block.get())
     }
 
+    #[expect(dead_code)]
     pub fn in_loop(&self) -> bool {
         FLOW_ANALYSIS.with(|fa| fa.in_loop())
     }
