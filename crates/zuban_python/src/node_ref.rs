@@ -177,6 +177,26 @@ impl<'file> NodeRef<'file> {
         BytesLiteral::by_index(&self.file.tree, self.node_index)
     }
 
+    pub fn expect_int(&self) -> Int<'file> {
+        Int::by_index(&self.file.tree, self.node_index)
+    }
+
+    pub fn expect_named_expression(&self) -> NamedExpression<'file> {
+        NamedExpression::by_index(&self.file.tree, self.node_index)
+    }
+
+    pub fn expect_assignment(&self) -> Assignment<'file> {
+        Assignment::by_index(&self.file.tree, self.node_index)
+    }
+
+    pub fn expect_import_from(&self) -> ImportFrom<'file> {
+        ImportFrom::by_index(&self.file.tree, self.node_index)
+    }
+
+    pub fn expect_atom(&self) -> Atom<'file> {
+        Atom::by_index(&self.file.tree, self.node_index)
+    }
+
     pub fn maybe_expression(&self) -> Option<Expression<'file>> {
         Expression::maybe_by_index(&self.file.tree, self.node_index)
     }
@@ -205,21 +225,8 @@ impl<'file> NodeRef<'file> {
         self.expect_name().name_def().unwrap().maybe_import()
     }
 
-    #[inline]
-    pub fn file_index(&self) -> FileIndex {
-        self.file.file_index
-    }
-
-    pub fn infer_int(&self) -> Option<i64> {
-        Int::maybe_by_index(&self.file.tree, self.node_index).and_then(|i| i.as_str().parse().ok())
-    }
-
     pub fn maybe_str(&self) -> Option<StringLiteral<'file>> {
         StringLiteral::maybe_by_index(&self.file.tree, self.node_index)
-    }
-
-    pub fn expect_int(&self) -> Int<'file> {
-        Int::by_index(&self.file.tree, self.node_index)
     }
 
     pub fn maybe_class(&self) -> Option<ClassDef<'file>> {
@@ -234,8 +241,13 @@ impl<'file> NodeRef<'file> {
         PrimaryTarget::maybe_by_index(&self.file.tree, self.node_index)
     }
 
-    pub fn expect_named_expression(&self) -> NamedExpression<'file> {
-        NamedExpression::by_index(&self.file.tree, self.node_index)
+    #[inline]
+    pub fn file_index(&self) -> FileIndex {
+        self.file.file_index
+    }
+
+    pub fn infer_int(&self) -> Option<i64> {
+        Int::maybe_by_index(&self.file.tree, self.node_index).and_then(|i| i.as_str().parse().ok())
     }
 
     pub fn expect_inferred(&self, i_s: &InferenceState) -> Inferred {
@@ -250,18 +262,6 @@ impl<'file> NodeRef<'file> {
             unreachable!("{:?}", self)
         };
         value_t
-    }
-
-    pub fn expect_assignment(&self) -> Assignment<'file> {
-        Assignment::by_index(&self.file.tree, self.node_index)
-    }
-
-    pub fn expect_import_from(&self) -> ImportFrom<'file> {
-        ImportFrom::by_index(&self.file.tree, self.node_index)
-    }
-
-    pub fn expect_atom(&self) -> Atom<'file> {
-        Atom::by_index(&self.file.tree, self.node_index)
     }
 
     pub fn ensure_cached_class_infos(&self, i_s: &InferenceState) {
