@@ -439,15 +439,6 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                     type_vars,
                     dataclass_options,
                 );
-                let class = dataclass.class(db);
-                if dataclass.options.slots && class.lookup_symbol(i_s, "__slots__").is_some() {
-                    class.add_issue_on_name(
-                        db,
-                        IssueKind::DataclassPlusExplicitSlots {
-                            class_name: class.name().into(),
-                        },
-                    )
-                }
                 was_dataclass = Some(dataclass);
             }
         }

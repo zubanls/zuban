@@ -722,6 +722,18 @@ impl Inference<'_, '_, '_> {
             // We skip all of this logic, because there's custom logic for TypedDicts.
             return;
         }
+        if let Some(t) = class_infos.undefined_generics_type.get() {
+            if let Type::Dataclass(d) = t.as_ref() {
+                if d.options.slots && c.lookup_symbol(self.i_s, "__slots__").is_some() {
+                    c.add_issue_on_name(
+                        db,
+                        IssueKind::DataclassPlusExplicitSlots {
+                            class_name: c.name().into(),
+                        },
+                    )
+                }
+            }
+        }
 
         if let MetaclassState::Some(link) = class_infos.metaclass {
             if link == db.python_state.enum_meta_link() {
