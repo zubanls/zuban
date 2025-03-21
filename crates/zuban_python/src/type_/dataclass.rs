@@ -1102,8 +1102,6 @@ pub struct DataclassTransformObj {
     pub kw_only_default: bool,
     pub frozen_default: bool,
     pub field_specifiers: FieldSpecifiers,
-    // Whether it was use before a def foo()
-    pub executed_by_function: bool,
 }
 
 impl Default for DataclassTransformObj {
@@ -1114,7 +1112,6 @@ impl Default for DataclassTransformObj {
             kw_only_default: false,
             frozen_default: false,
             field_specifiers: Rc::default(),
-            executed_by_function: false,
         }
     }
 }

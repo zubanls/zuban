@@ -430,11 +430,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                     {
                         is_runtime_checkable = true;
                     } else if let Some(d) = maybe_dataclass_transform(db, node_ref) {
-                        if d.executed_by_function {
-                            dataclass_options = Some(d.as_dataclass_options());
-                        } else {
-                            dataclass_transform = Some(Box::new(d.clone()));
-                        }
+                        dataclass_options = Some(d.as_dataclass_options());
                     }
                 }
             }
@@ -1772,9 +1768,7 @@ fn maybe_dataclass_transform(db: &Database, func: FuncNodeRef) -> Option<Datacla
             if let Some(ComplexPoint::TypeInstance(Type::DataclassTransformObj(dto))) =
                 expr_node_ref.complex()
             {
-                let mut result = dto.clone();
-                result.executed_by_function = true;
-                return Some(result);
+                return Some(dto.clone());
             }
             continue;
         }
@@ -1840,7 +1834,6 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         }
         let mut result = d.clone();
         NodeRef::new(self.file, expr.index()).insert_type(Type::DataclassTransformObj(d));
-        result.executed_by_function = true;
         result
     }
 

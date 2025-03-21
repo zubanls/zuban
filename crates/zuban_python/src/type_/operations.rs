@@ -681,13 +681,9 @@ impl Type {
             Type::Intersection(intersection) => {
                 intersection.execute(i_s, args, result_context, on_type_error)
             }
-            Type::DataclassTransformObj(d) => Inferred::from_type({
-                let d = DataclassTransformObj {
-                    executed_by_function: true,
-                    ..d.clone()
-                };
-                Type::DataclassTransformObj(d)
-            }),
+            Type::DataclassTransformObj(d) => {
+                Inferred::from_type(Type::DataclassTransformObj(d.clone()))
+            }
             _ => not_callable(),
         }
     }
