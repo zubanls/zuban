@@ -4020,16 +4020,15 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             if let PrimaryContent::Execution(exec) = primary.second() {
                 // Try to find dataclass_transform and if there isn't one use the normal inference
                 let base = self.infer_primary_or_atom(primary.first());
-                let new_inf = if base.maybe_saved_specific(self.i_s.db)
+                if base.maybe_saved_specific(self.i_s.db)
                     == Some(Specific::TypingDataclassTransform)
                 {
-                    self.insert_dataclass_transform(expr, primary, exec);
-                    return Inferred::from_saved_node_ref(NodeRef::new(self.file, expr.index()))
-                        .save_redirect(self.i_s, self.file, decorator.index());
+                    self.insert_dataclass_transform(primary, exec);
                 } else {
                     self.primary_exec(&base, primary.index(), exec, &mut ResultContext::Unknown)
+                        .save_redirect(self.i_s, self.file, primary.index());
                 };
-                new_inf.save_redirect(self.i_s, self.file, primary.index());
+                debug_assert!(self.file.points.get(primary.index()).calculated());
             }
         }
         let i = self.infer_named_expression(decorator.named_expression());

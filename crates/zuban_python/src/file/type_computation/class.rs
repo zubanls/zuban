@@ -403,8 +403,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                             Some(Lookup::T(TypeContent::SpecialCase(
                                 Specific::TypingDataclassTransform,
                             ))) => {
-                                let d =
-                                    name_resolution.insert_dataclass_transform(expr, primary, exec);
+                                let d = name_resolution.insert_dataclass_transform(primary, exec);
                                 dataclass_transform = Some(Box::new(d.clone()));
                             }
                             _ => (),
@@ -1763,24 +1762,22 @@ fn maybe_dataclass_transform(db: &Database, func: FuncNodeRef) -> Option<Datacla
     let decorated = func.node().maybe_decorated()?;
     for decorator in decorated.decorators().iter() {
         let expr = decorator.named_expression().expression();
-        let expr_node_ref = NodeRef::new(func.file, expr.index());
-        if expr_node_ref.point().calculated() {
-            if let Some(ComplexPoint::TypeInstance(Type::DataclassTransformObj(dto))) =
-                expr_node_ref.complex()
-            {
-                return Some(dto.clone());
-            }
-            continue;
-        }
         if let ExpressionContent::ExpressionPart(ExpressionPart::Primary(primary)) = expr.unpack() {
-            if let PrimaryContent::Execution(exec) = primary.second() {
+            let primary_node_ref = NodeRef::new(func.file, primary.index());
+            if primary_node_ref.point().calculated() {
+                if let Some(ComplexPoint::TypeInstance(Type::DataclassTransformObj(dto))) =
+                    primary_node_ref.complex()
+                {
+                    return Some(dto.clone());
+                }
+            } else if let PrimaryContent::Execution(exec) = primary.second() {
                 let i_s = &InferenceState::new(db);
                 let name_resolution = func.file.name_resolution_for_types(i_s);
                 if let Some(Lookup::T(TypeContent::SpecialCase(
                     Specific::TypingDataclassTransform,
                 ))) = name_resolution.lookup_type_primary_or_atom_if_only_names(primary.first())
                 {
-                    return Some(name_resolution.insert_dataclass_transform(expr, primary, exec));
+                    return Some(name_resolution.insert_dataclass_transform(primary, exec));
                 }
             }
         }
@@ -1791,7 +1788,6 @@ fn maybe_dataclass_transform(db: &Database, func: FuncNodeRef) -> Option<Datacla
 impl<'db, 'file> NameResolution<'db, 'file, '_> {
     pub(crate) fn insert_dataclass_transform(
         &self,
-        expr: Expression,
         primary: Primary,
         details: ArgumentsDetails,
     ) -> DataclassTransformObj {
@@ -1832,9 +1828,9 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 )
             }
         }
-        let mut result = d.clone();
-        NodeRef::new(self.file, expr.index()).insert_type(Type::DataclassTransformObj(d));
-        result
+        NodeRef::new(self.file, primary.index())
+            .insert_type(Type::DataclassTransformObj(d.clone()));
+        d
     }
 
     fn fill_dataclass_transform_field_specifiers(

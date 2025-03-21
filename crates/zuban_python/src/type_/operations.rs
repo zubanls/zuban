@@ -5,7 +5,7 @@ use super::{
     lookup_on_dataclass_type, lookup_on_enum_class, lookup_on_enum_instance,
     lookup_on_enum_member_instance, lookup_on_typed_dict,
     tuple::{lookup_on_tuple, lookup_tuple_magic_methods},
-    AnyCause, DataclassTransformObj, LookupResult, NewType, Type, TypeVarKind,
+    AnyCause, LookupResult, NewType, Type, TypeVarKind,
 };
 use crate::{
     arguments::{Args, NoArgs},
