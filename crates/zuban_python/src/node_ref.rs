@@ -124,6 +124,13 @@ impl<'file> NodeRef<'file> {
         }
     }
 
+    pub fn maybe_type(&self) -> Option<&'file Type> {
+        match self.complex() {
+            Some(ComplexPoint::TypeInstance(t)) => Some(t),
+            _ => None,
+        }
+    }
+
     pub fn insert_complex(&self, complex: ComplexPoint, locality: Locality) {
         self.file
             .complex_points

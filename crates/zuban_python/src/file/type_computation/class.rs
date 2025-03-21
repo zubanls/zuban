@@ -1772,7 +1772,11 @@ fn maybe_dataclass_transform_func(
                     Specific::TypingDataclassTransform,
                 ))) = name_resolution.lookup_type_primary_or_atom_if_only_names(primary.first())
                 {
-                    return Some(name_resolution.insert_dataclass_transform(primary, exec));
+                    return Some(
+                        name_resolution
+                            .insert_dataclass_transform(primary, exec)
+                            .clone(),
+                    );
                 }
             }
         }
@@ -1785,7 +1789,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         &self,
         primary: Primary,
         details: ArgumentsDetails,
-    ) -> DataclassTransformObj {
+    ) -> &'file DataclassTransformObj {
         // Checks dataclass_transform(...)
         let mut d = DataclassTransformObj::default();
         for arg in details.iter() {
@@ -1823,8 +1827,11 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 )
             }
         }
-        NodeRef::new(self.file, primary.index())
-            .insert_type(Type::DataclassTransformObj(d.clone()));
+        let node_ref = NodeRef::new(self.file, primary.index());
+        node_ref.insert_type(Type::DataclassTransformObj(d.clone()));
+        let Type::DataclassTransformObj(d) = node_ref.maybe_type().unwrap() else {
+            unreachable!()
+        };
         d
     }
 
