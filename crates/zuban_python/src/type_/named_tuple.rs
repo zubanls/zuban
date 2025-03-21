@@ -25,7 +25,7 @@ use crate::{
 };
 
 #[derive(Debug, Eq, Clone)]
-pub struct NamedTuple {
+pub(crate) struct NamedTuple {
     pub name: StringSlice,
     pub __new__: Rc<CallableContent>,
     tuple: OnceCell<Rc<Tuple>>,

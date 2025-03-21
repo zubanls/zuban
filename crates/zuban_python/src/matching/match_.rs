@@ -6,13 +6,13 @@ use std::{
 use crate::type_::{Type, TypeVar};
 
 #[derive(Debug)]
-pub struct ArgumentIndexWithParam {
+pub(crate) struct ArgumentIndexWithParam {
     pub argument_index: usize,
     pub type_: Type,
 }
 
 #[derive(Debug)]
-pub enum SignatureMatch {
+pub(crate) enum SignatureMatch {
     False {
         similar: bool,
     },
@@ -42,7 +42,7 @@ impl From<bool> for SignatureMatch {
 }
 
 #[derive(Debug, Clone)]
-pub enum Match {
+pub(crate) enum Match {
     False {
         similar: bool,
         reason: MismatchReason,
@@ -53,7 +53,7 @@ pub enum Match {
 }
 
 #[derive(Clone, Debug)]
-pub enum MismatchReason {
+pub(crate) enum MismatchReason {
     None,
     ConstraintAlreadySet,
     ConstraintMismatch {

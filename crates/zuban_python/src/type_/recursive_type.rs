@@ -13,7 +13,7 @@ use crate::{
 };
 
 #[derive(Clone, Eq)]
-pub struct RecursiveType {
+pub(crate) struct RecursiveType {
     pub link: PointLink,
     pub generics: Option<GenericsList>,
     calculated_type: OnceCell<Type>,
@@ -108,7 +108,7 @@ impl std::fmt::Debug for RecursiveType {
     }
 }
 
-pub enum RecursiveTypeOrigin<'x> {
+pub(crate) enum RecursiveTypeOrigin<'x> {
     TypeAlias(&'x TypeAlias),
     Class(Class<'x>),
 }

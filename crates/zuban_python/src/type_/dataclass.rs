@@ -42,14 +42,14 @@ type FieldSpecifiers = Rc<[PointLink]>;
 const ORDER_METHOD_NAMES: [&str; 4] = ["__lt__", "__gt__", "__le__", "__ge__"];
 
 #[derive(Clone, Eq)]
-pub struct Dataclass {
+pub(crate) struct Dataclass {
     pub class: GenericClass,
     inits: OnceCell<Inits>,
     pub options: DataclassOptions,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct DataclassOptions {
+pub(crate) struct DataclassOptions {
     pub init: bool,
     pub eq: bool,
     pub order: bool,
@@ -1096,7 +1096,7 @@ fn type_order_func(self_: Rc<Dataclass>, i_s: &InferenceState) -> LookupResult {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct DataclassTransformObj {
+pub(crate) struct DataclassTransformObj {
     pub eq_default: bool,
     pub order_default: bool,
     pub kw_only_default: bool,

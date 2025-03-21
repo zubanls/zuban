@@ -12,7 +12,7 @@ use crate::{
 };
 
 #[derive(Debug, Clone)]
-pub enum LookupResult {
+pub(crate) enum LookupResult {
     // Locality is part of Inferred
     GotoName { name: PointLink, inf: Inferred },
     FileReference(FileIndex),

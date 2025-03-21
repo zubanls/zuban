@@ -25,7 +25,7 @@ use crate::{
 };
 
 #[derive(Clone, Copy)]
-pub struct NodeRef<'file> {
+pub(crate) struct NodeRef<'file> {
     pub file: &'file PythonFile,
     pub node_index: NodeIndex,
 }

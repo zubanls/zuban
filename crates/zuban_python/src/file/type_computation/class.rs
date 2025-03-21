@@ -77,7 +77,7 @@ const NAMEDTUPLE_PROHIBITED_NAMES: [&str; 12] = [
 ];
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct ClassNodeRef<'file>(NodeRef<'file>);
+pub(crate) struct ClassNodeRef<'file>(NodeRef<'file>);
 
 impl<'db: 'file, 'file> ClassNodeRef<'file> {
     #[inline]
@@ -240,7 +240,7 @@ impl<'a> std::ops::Deref for ClassInitializer<'a> {
 }
 
 #[derive(Clone, Copy)]
-pub struct ClassInitializer<'a> {
+pub(crate) struct ClassInitializer<'a> {
     pub node_ref: ClassNodeRef<'a>,
     pub class_storage: &'a ClassStorage,
 }

@@ -31,7 +31,7 @@ thread_local! {
 }
 
 #[derive(Debug, Clone, Eq)]
-pub struct Tuple {
+pub(crate) struct Tuple {
     pub args: TupleArgs,
     pub(super) tuple_class_generics: OnceCell<GenericsList>,
 }
@@ -434,7 +434,7 @@ impl Hash for Tuple {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum TupleUnpack {
+pub(crate) enum TupleUnpack {
     TypeVarTuple(TypeVarTupleUsage),
     ArbitraryLen(Type),
 }
@@ -451,7 +451,7 @@ impl TupleUnpack {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct WithUnpack {
+pub(crate) struct WithUnpack {
     pub before: Rc<[Type]>,
     pub unpack: TupleUnpack,
     pub after: Rc<[Type]>,
@@ -506,7 +506,7 @@ impl WithUnpack {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum TupleArgs {
+pub(crate) enum TupleArgs {
     WithUnpack(WithUnpack),
     FixedLen(Rc<[Type]>),
     ArbitraryLen(Box<Type>),
@@ -906,7 +906,7 @@ pub fn execute_tuple_class<'db>(
 }
 
 #[derive(Default, Debug)]
-pub struct MaybeUnpackGatherer {
+pub(crate) struct MaybeUnpackGatherer {
     before: Vec<Type>,
     unpack: Option<TupleUnpack>,
     after: Vec<Type>,

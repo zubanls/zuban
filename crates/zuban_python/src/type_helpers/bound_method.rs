@@ -8,13 +8,13 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub enum BoundMethodFunction<'a> {
+pub(crate) enum BoundMethodFunction<'a> {
     Function(Function<'a, 'a>),
     Overload(OverloadedFunction<'a>),
 }
 
 #[derive(Debug)]
-pub struct BoundMethod<'a, 'b> {
+pub(crate) struct BoundMethod<'a, 'b> {
     instance: &'b Type,
     function: BoundMethodFunction<'a>,
 }

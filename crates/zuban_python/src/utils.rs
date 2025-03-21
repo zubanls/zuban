@@ -62,7 +62,7 @@ macro_rules! new_class {
 }
 
 #[derive(Clone)]
-pub struct HashableRawStr {
+pub(crate) struct HashableRawStr {
     ptr: *const str,
 }
 
@@ -99,7 +99,7 @@ impl fmt::Debug for HashableRawStr {
 }
 
 #[derive(Debug, Default, Clone)]
-pub struct SymbolTable {
+pub(crate) struct SymbolTable {
     // The name symbol table comes from compiler theory, it's basically a mapping of a name to a
     // pointer. To avoid wasting space, we don't use a pointer here, instead we use the node index,
     // which acts as one.
@@ -180,7 +180,7 @@ pub fn rc_slice_into_vec<T: Clone>(this: Rc<[T]>) -> Vec<T> {
     Vec::from(this.as_ref())
 }
 
-pub struct AlreadySeen<'a, T> {
+pub(crate) struct AlreadySeen<'a, T> {
     pub current: T,
     pub previous: Option<&'a AlreadySeen<'a, T>>,
 }
@@ -229,7 +229,7 @@ impl<T: Clone> Clone for AlreadySeen<'_, T> {
 
 impl<T: Copy> Copy for AlreadySeen<'_, T> {}
 
-pub struct AlreadySeenIterator<'a, T>(Option<&'a AlreadySeen<'a, T>>);
+pub(crate) struct AlreadySeenIterator<'a, T>(Option<&'a AlreadySeen<'a, T>>);
 
 impl<'a, T> Iterator for AlreadySeenIterator<'a, T> {
     type Item = &'a T;

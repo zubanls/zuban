@@ -330,7 +330,7 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
     }
 }
 
-pub struct ReturnOrYieldIterator<'a> {
+pub(crate) struct ReturnOrYieldIterator<'a> {
     file: &'a PythonFile,
     next_node_index: NodeIndex,
 }

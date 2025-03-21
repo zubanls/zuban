@@ -21,7 +21,7 @@ use crate::{
 use super::{inference::StarImportResult, python_file::StarImport, ClassInitializer, PythonFile};
 
 #[derive(Copy, Clone)]
-pub struct NameResolution<'db: 'file, 'file, 'i_s> {
+pub(crate) struct NameResolution<'db: 'file, 'file, 'i_s> {
     pub(super) file: &'file PythonFile,
     pub(super) i_s: &'i_s InferenceState<'db, 'i_s>,
     // Type computation uses alias calculation, which works in a different way than normal
@@ -30,7 +30,7 @@ pub struct NameResolution<'db: 'file, 'file, 'i_s> {
 }
 
 #[derive(Debug)]
-pub enum PointResolution<'file> {
+pub(crate) enum PointResolution<'file> {
     NameDef {
         node_ref: NodeRef<'file>,
         global_redirect: bool,

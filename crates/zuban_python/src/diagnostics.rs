@@ -602,7 +602,7 @@ impl IssueKind {
 }
 
 #[derive(Debug, Clone)]
-pub struct Issue {
+pub(crate) struct Issue {
     pub(crate) kind: IssueKind,
     pub start_position: CodeIndex,
     pub end_position: CodeIndex,
@@ -1976,7 +1976,7 @@ impl std::fmt::Debug for Diagnostic<'_> {
 }
 
 #[derive(Default, Clone)]
-pub struct Diagnostics(InsertOnlyVec<Issue>);
+pub(crate) struct Diagnostics(InsertOnlyVec<Issue>);
 
 impl Diagnostics {
     pub fn add_if_not_ignored(

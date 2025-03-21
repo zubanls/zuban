@@ -4317,14 +4317,14 @@ fn targets_len_infos(targets: TargetIterator) -> (usize, TupleLenInfos) {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
-pub enum AssignKind {
+pub(crate) enum AssignKind {
     Annotation { specific: Option<Specific> }, // `a: int = 1` or `a = 1 # type: int
     Normal,                                    // a = 1
     Import,
     AugAssign, // a += 1
 }
 
-pub enum StarImportResult {
+pub(crate) enum StarImportResult {
     Link(PointLink),
     AnyDueToError,
 }

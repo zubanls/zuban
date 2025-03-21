@@ -40,7 +40,7 @@ struct Infos<'c, 'd> {
     had_generic_or_protocol_issue: bool,
 }
 
-pub struct TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, 'e> {
+pub(crate) struct TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, 'e> {
     name_resolution: NameResolution<'db, 'file, 'i_s>,
     infos: &'e mut Infos<'c, 'd>,
 }

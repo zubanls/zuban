@@ -34,14 +34,14 @@ impl<'a> Context<'a> {
 }
 
 #[derive(Clone, Copy, Debug)]
-pub enum Mode<'a> {
+pub(crate) enum Mode<'a> {
     Normal,
     EnumMemberCalculation,
     AvoidErrors { had_error: &'a Cell<bool> },
 }
 
 #[derive(Clone, Copy, Debug)]
-pub struct InferenceState<'db, 'a> {
+pub(crate) struct InferenceState<'db, 'a> {
     pub db: &'db Database,
     context: Context<'a>,
     pub mode: Mode<'a>,

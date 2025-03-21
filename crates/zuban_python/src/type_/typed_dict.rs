@@ -24,7 +24,7 @@ use crate::{
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct TypedDictMember {
+pub(crate) struct TypedDictMember {
     pub name: StringSlice,
     pub type_: Type,
     pub required: bool,
@@ -52,14 +52,14 @@ impl TypedDictMember {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum TypedDictGenerics {
+pub(crate) enum TypedDictGenerics {
     None,
     NotDefinedYet(TypeVarLikes),
     Generics(GenericsList),
 }
 
 #[derive(Debug, Clone, Eq)]
-pub struct TypedDict {
+pub(crate) struct TypedDict {
     pub name: Option<StringSlice>,
     members: OnceCell<Box<[TypedDictMember]>>,
     pub defined_at: PointLink,

@@ -18,7 +18,7 @@ type RunOnUnionEntry<'a> =
     &'a mut dyn FnMut(&Type, &dyn Fn(IssueKind), &mut dyn FnMut(&Type, LookupDetails));
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Intersection {
+pub(crate) struct Intersection {
     entries: Rc<[Type]>,
 }
 

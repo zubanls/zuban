@@ -11,7 +11,7 @@ use crate::{
 };
 
 #[derive(Debug, Copy, Clone)]
-pub struct Callable<'a> {
+pub(crate) struct Callable<'a> {
     pub content: &'a CallableContent,
     pub defined_in: Option<Class<'a>>,
 }

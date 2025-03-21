@@ -46,7 +46,7 @@ pub type ReplaceSelfInMatcher<'x> = &'x dyn Fn() -> Type;
 pub type CheckedTypeRecursion<'a> = AlreadySeen<'a, (&'a Type, &'a Type)>;
 
 #[derive(Default, Clone)]
-pub struct Matcher<'a> {
+pub(crate) struct Matcher<'a> {
     type_var_matchers: Vec<TypeVarMatcher>,
     pub checking_type_recursion: Option<CheckedTypeRecursion<'a>>,
     class: Option<&'a Class<'a>>,
@@ -1808,7 +1808,7 @@ fn infer_params_from_args<'db>(
     CallableParams::new_simple(params.into())
 }
 
-pub enum MatcherFormatResult {
+pub(crate) enum MatcherFormatResult {
     Str(Box<str>),
     TypeVarTupleUnknown,
 }

@@ -307,7 +307,7 @@ impl CalculatingTypeArg {
 }
 
 #[derive(Debug, Clone)]
-pub struct TypeVarMatcher {
+pub(crate) struct TypeVarMatcher {
     pub(super) calculating_type_args: Vec<CalculatingTypeArg>,
     pub(super) type_var_likes: TypeVarLikes,
     pub(super) match_in_definition: PointLink,

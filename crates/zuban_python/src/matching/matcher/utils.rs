@@ -148,7 +148,7 @@ fn calculate_dunder_init_type_vars_and_return<'db: 'a, 'a>(
 }
 
 #[derive(Debug)]
-pub struct CalculatedTypeArgs {
+pub(crate) struct CalculatedTypeArgs {
     pub(super) in_definition: PointLink,
     pub matches: SignatureMatch,
     pub(super) type_arguments: Option<GenericsList>,

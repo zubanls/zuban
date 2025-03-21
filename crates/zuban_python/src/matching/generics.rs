@@ -25,7 +25,7 @@ macro_rules! replace_class_vars {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub enum Generics<'a> {
+pub(crate) enum Generics<'a> {
     ExpressionWithClassType(&'a PythonFile, Expression<'a>),
     SlicesWithClassTypes(&'a PythonFile, Slices<'a>),
     // The remapping of type vars is done by List(). In a lot of
@@ -127,7 +127,7 @@ impl<'a> Generics<'a> {
     }
 }
 
-pub struct GenericsIterator<'a> {
+pub(crate) struct GenericsIterator<'a> {
     db: &'a Database,
     ended: bool,
     item: GenericsIteratorItem<'a>,

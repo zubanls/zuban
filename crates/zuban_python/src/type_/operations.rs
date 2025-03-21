@@ -736,7 +736,7 @@ impl Type {
 }
 
 #[derive(Copy, Clone)]
-pub enum IterCause {
+pub(crate) enum IterCause {
     Iter,             // for i in *x
     AssignmentUnpack, // a, b = *x
     VariadicUnpack,   // [*x] or foo(*x)

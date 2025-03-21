@@ -16,7 +16,7 @@ const INIT_PY: &str = "__init__.py";
 const INIT_PYI: &str = "__init__.pyi";
 
 #[derive(Debug)]
-pub enum ImportResult {
+pub(crate) enum ImportResult {
     File(FileIndex),
     Namespace(Rc<Namespace>), // A Python Namespace package, i.e. a directory
     PyTypedMissing,           // Files exist, but the py.typed marker is missing.

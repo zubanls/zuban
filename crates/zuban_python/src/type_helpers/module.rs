@@ -17,7 +17,7 @@ use crate::{
 };
 
 #[derive(Copy, Clone)]
-pub struct Module<'a> {
+pub(crate) struct Module<'a> {
     pub file: &'a PythonFile,
 }
 

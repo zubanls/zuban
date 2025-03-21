@@ -273,20 +273,20 @@ struct LoopDetails {
 }
 
 #[derive(Debug)]
-pub struct DelayedFunc {
+pub(crate) struct DelayedFunc {
     pub func: PointLink,
     pub class: Option<PointLink>,
     pub in_type_checking_only_block: bool,
 }
 
 #[must_use]
-pub struct FlowAnalysisResult<T> {
+pub(crate) struct FlowAnalysisResult<T> {
     pub result: T,
     pub unfinished_partials: Vec<PointLink>,
 }
 
 #[derive(Debug, Default)]
-pub struct FlowAnalysis {
+pub(crate) struct FlowAnalysis {
     frames: RefCell<Vec<Frame>>,
     try_frames: RefCell<Vec<Entries>>,
     loop_details: RefCell<Option<LoopDetails>>,

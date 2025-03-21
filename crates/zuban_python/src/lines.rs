@@ -8,7 +8,7 @@ lazy_static::lazy_static! {
 }
 
 #[derive(Clone)]
-pub struct NewlineIndices(OnceCell<Box<[u32]>>);
+pub(crate) struct NewlineIndices(OnceCell<Box<[u32]>>);
 
 impl NewlineIndices {
     pub fn new() -> Self {

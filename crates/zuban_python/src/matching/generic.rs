@@ -13,7 +13,7 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub enum Generic<'a> {
+pub(crate) enum Generic<'a> {
     TypeArg(Cow<'a, Type>),
     TypeArgs(Cow<'a, TypeArgs>),
     ParamSpecArg(Cow<'a, ParamSpecArg>),
