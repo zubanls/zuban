@@ -48,7 +48,7 @@ use crate::{
 
 const ENUM_NAMES_OVERRIDABLE: [&str; 2] = ["value", "name"];
 
-pub struct Inference<'db: 'file, 'file, 'i_s>(pub(super) NameResolution<'db, 'file, 'i_s>);
+pub(crate) struct Inference<'db: 'file, 'file, 'i_s>(pub(super) NameResolution<'db, 'file, 'i_s>);
 
 impl<'db: 'file, 'file, 'i_s> std::ops::Deref for Inference<'db, 'file, 'i_s> {
     type Target = NameResolution<'db, 'file, 'i_s>;
@@ -95,6 +95,7 @@ macro_rules! check_point_cache_with {
 }
 
 impl<'db, 'file> Inference<'db, 'file, '_> {
+    pub fn foo() {}
     pub(super) fn cache_import_name(&self, imp: ImportName) {
         if self.file.points.get(imp.index()).calculated() {
             return;

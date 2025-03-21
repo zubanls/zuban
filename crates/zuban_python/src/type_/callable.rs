@@ -22,21 +22,21 @@ use crate::{
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum StarParamType {
+pub(crate) enum StarParamType {
     ArbitraryLen(Type),
     ParamSpecArgs(ParamSpecUsage),
     UnpackedTuple(Rc<Tuple>),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum StarStarParamType {
+pub(crate) enum StarStarParamType {
     ValueType(Type),
     ParamSpecKwargs(ParamSpecUsage),
     UnpackTypedDict(Rc<TypedDict>),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum ParamType {
+pub(crate) enum ParamType {
     PositionalOnly(Type),
     PositionalOrKeyword(Type),
     KeywordOnly(Type),
@@ -118,7 +118,7 @@ impl ParamType {
     }
 }
 
-pub enum ParamTypeDetails<'a> {
+pub(crate) enum ParamTypeDetails<'a> {
     Type(&'a Type),
     ParamSpecUsage(&'a ParamSpecUsage),
     UnpackedTuple(Rc<Tuple>),
@@ -126,7 +126,7 @@ pub enum ParamTypeDetails<'a> {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct CallableParam {
+pub(crate) struct CallableParam {
     pub type_: ParamType,
     pub name: Option<DbString>,
     pub has_default: bool,
@@ -285,7 +285,7 @@ impl CallableParam {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum CallableParams {
+pub(crate) enum CallableParams {
     Simple(Rc<[CallableParam]>),
     Any(AnyCause),
     Never(NeverCause),
@@ -449,7 +449,7 @@ impl CallableParams {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct CallableContent {
+pub(crate) struct CallableContent {
     pub name: Option<DbString>,
     pub class_name: Option<StringSlice>,
     pub defined_at: PointLink,
@@ -464,7 +464,7 @@ pub struct CallableContent {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct TypeGuardInfo {
+pub(crate) struct TypeGuardInfo {
     pub type_: Type,
     pub from_type_is: bool, // true when TypeIs[...], false when TypeGuard[...]
 }
@@ -813,7 +813,7 @@ impl CallableContent {
     }
 }
 
-pub enum WrongPositionalCount {
+pub(crate) enum WrongPositionalCount {
     TooMany,
     TooFew,
 }

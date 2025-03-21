@@ -66,7 +66,7 @@ const CALCULATED_OR_REDIRECT_LIKE_KIND_OR_REST_MASK: u32 = IS_ANALIZED_MASK | KI
 const REDIRECT_KIND_VALUE: u32 = (PointKind::Redirect as u32) << KIND_BIT_INDEX;
 
 #[derive(Copy, Clone, Eq, PartialEq, Default)]
-pub struct Point {
+pub(crate) struct Point {
     flags: u32,
     node_index: u32,
 }
@@ -370,7 +370,7 @@ impl fmt::Debug for Point {
 }
 
 #[derive(Debug, Clone, Default)]
-pub struct Points(Vec<Cell<Point>>);
+pub(crate) struct Points(Vec<Cell<Point>>);
 
 impl Points {
     pub fn new(length: usize) -> Self {
@@ -424,14 +424,14 @@ impl Points {
     }
 }
 
-pub struct PointsBackup {
+pub(crate) struct PointsBackup {
     pub range: Range<NodeIndex>,
     points: Vec<Cell<Point>>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
 #[repr(u32)]
-pub enum PointKind {
+pub(crate) enum PointKind {
     Specific,
     Complex,
     Redirect,
@@ -440,7 +440,7 @@ pub enum PointKind {
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 #[repr(u32)]
-pub enum Specific {
+pub(crate) enum Specific {
     // This is reserved, because if everything is initialized as zero, this is the value it takes.
     ReservedBecauseUnused,
     Analyzed, // Signals that a node has been analyzed
@@ -576,7 +576,7 @@ impl Specific {
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 #[repr(u32)]
-pub enum Locality {
+pub(crate) enum Locality {
     // Intern: 0xx
     NameBinder,
     _Reserved1,
@@ -591,7 +591,7 @@ pub enum Locality {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub struct PointLink {
+pub(crate) struct PointLink {
     pub file: FileIndex,
     pub node_index: NodeIndex,
 }
@@ -613,7 +613,7 @@ impl From<LocalityLink> for PointLink {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct LocalityLink {
+pub(crate) struct LocalityLink {
     pub file: FileIndex,
     pub node_index: NodeIndex,
     pub locality: Locality,
@@ -626,7 +626,7 @@ impl LocalityLink {
 }
 
 #[derive(Debug)]
-pub struct PartialFlags {
+pub(crate) struct PartialFlags {
     pub nullable: bool,
     pub reported_error: bool,
     pub finished: bool,
@@ -635,7 +635,7 @@ pub struct PartialFlags {
 // This is a core data structure and it should be kept as small as possible, because it's used in
 // arrays. It therefore uses a lot of Rcs.
 #[derive(Debug, Clone, PartialEq)]
-pub enum ComplexPoint {
+pub(crate) enum ComplexPoint {
     TypeInstance(Type),
     Class(Box<ClassStorage>),
     ClassInfos(Box<ClassInfos>),
@@ -654,7 +654,7 @@ pub enum ComplexPoint {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct OverloadImplementation {
+pub(crate) struct OverloadImplementation {
     pub function_link: PointLink,
     pub callable: CallableContent,
 }
@@ -670,7 +670,7 @@ impl OverloadImplementation {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct OverloadDefinition {
+pub(crate) struct OverloadDefinition {
     pub implementation: Option<OverloadImplementation>,
     pub functions: Rc<FunctionOverload>,
     pub is_final: bool,    // Had @final
@@ -688,7 +688,7 @@ impl OverloadDefinition {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct TypedDictDefinition {
+pub(crate) struct TypedDictDefinition {
     pub type_: Rc<Type>,
     pub deferred_subclass_member_initializations: Box<RefCell<Vec<Rc<TypedDict>>>>,
     pub total: bool,
@@ -725,7 +725,7 @@ enum TypeAliasState {
     Invalid,
 }
 #[derive(Debug, PartialEq, Clone)]
-pub struct TypeAlias {
+pub(crate) struct TypeAlias {
     pub type_vars: TypeVarLikes,
     pub location: PointLink,
     pub name: Option<PointLink>,
@@ -903,7 +903,7 @@ impl fmt::Debug for Database {
     }
 }
 
-pub struct Database {
+pub(crate) struct Database {
     pub vfs: Vfs<PythonFile>,
     pub python_state: PythonState,
     pub project: PythonProject,
@@ -1246,7 +1246,7 @@ impl Database {
     }
 }
 
-pub struct PythonProject {
+pub(crate) struct PythonProject {
     pub sys_path: Vec<Box<AbsPath>>,
     pub settings: Settings,
     pub flags: TypeCheckerFlags,
@@ -1262,7 +1262,7 @@ impl PythonProject {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub enum ParentScope {
+pub(crate) enum ParentScope {
     Module,
     Function(NodeIndex),
     Class(NodeIndex),
@@ -1288,7 +1288,7 @@ impl ParentScope {
 }
 
 #[derive(Debug, Clone)]
-pub struct ClassStorage {
+pub(crate) struct ClassStorage {
     pub class_symbol_table: SymbolTable,
     pub self_symbol_table: SymbolTable,
     pub abstract_attributes: Box<[NodeIndex]>,
@@ -1298,14 +1298,14 @@ pub struct ClassStorage {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub enum MetaclassState {
+pub(crate) enum MetaclassState {
     None,
     Unknown,
     Some(PointLink),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub enum ClassKind {
+pub(crate) enum ClassKind {
     Normal,
     Protocol,
     Enum,
@@ -1315,20 +1315,20 @@ pub enum ClassKind {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct BaseClass {
+pub(crate) struct BaseClass {
     pub type_: Type,
     pub is_direct_base: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct ProtocolMember {
+pub(crate) struct ProtocolMember {
     pub name_index: NodeIndex,
     pub is_abstract: bool,
     pub variance: Variance,
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct ClassInfos {
+pub(crate) struct ClassInfos {
     pub mro: Box<[BaseClass]>, // Does never include `object`
     pub metaclass: MetaclassState,
     pub class_kind: ClassKind,

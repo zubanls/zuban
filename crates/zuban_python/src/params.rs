@@ -912,7 +912,7 @@ impl<'x> Param<'x> for &'x CallableParam {
     }
 }
 
-pub enum UnpackTypedDictState {
+pub(crate) enum UnpackTypedDictState {
     Unused(Rc<TypedDict>),
     CheckingUnusedKwArgs,
     Used,
@@ -925,7 +925,7 @@ impl UnpackTypedDictState {
         }
     }
 }
-pub struct InferrableParamIterator<'db, 'a, I, P, AI: Iterator> {
+pub(crate) struct InferrableParamIterator<'db, 'a, I, P, AI: Iterator> {
     db: &'db Database,
     arguments: AI,
     current_arg: Option<Arg<'db, 'a>>,
@@ -1295,7 +1295,7 @@ impl<'member> Param<'member> for TypedDictMemberParam<'member> {
 }
 
 #[derive(Debug, Clone)]
-pub enum ParamArgument<'db, 'a> {
+pub(crate) enum ParamArgument<'db, 'a> {
     None,
     Argument(Arg<'db, 'a>),
     TupleUnpack(Box<[Arg<'db, 'a>]>), // For stuff like *args: *Ts
@@ -1308,13 +1308,13 @@ pub enum ParamArgument<'db, 'a> {
 }
 
 #[derive(Debug, Clone)]
-pub struct InferrableParam<'db, 'a, P> {
+pub(crate) struct InferrableParam<'db, 'a, P> {
     pub param: P,
     pub argument: ParamArgument<'db, 'a>,
 }
 
 #[derive(Debug)]
-pub enum WrappedParamType<'a> {
+pub(crate) enum WrappedParamType<'a> {
     PositionalOnly(Option<Cow<'a, Type>>),
     PositionalOrKeyword(Option<Cow<'a, Type>>),
     KeywordOnly(Option<Cow<'a, Type>>),
@@ -1323,14 +1323,14 @@ pub enum WrappedParamType<'a> {
 }
 
 #[derive(Debug)]
-pub enum WrappedStar<'a> {
+pub(crate) enum WrappedStar<'a> {
     ArbitraryLen(Option<Cow<'a, Type>>),
     ParamSpecArgs(&'a ParamSpecUsage),
     UnpackedTuple(Rc<Tuple>),
 }
 
 #[derive(Debug)]
-pub enum WrappedStarStar<'a> {
+pub(crate) enum WrappedStarStar<'a> {
     ValueType(Option<Cow<'a, Type>>),
     ParamSpecKwargs(&'a ParamSpecUsage),
     UnpackTypedDict(Rc<TypedDict>),

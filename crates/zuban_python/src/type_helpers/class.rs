@@ -56,7 +56,7 @@ impl<'a> std::ops::Deref for Class<'a> {
 }
 
 #[derive(Clone, Copy)]
-pub struct Class<'a> {
+pub(crate) struct Class<'a> {
     pub node_ref: ClassNodeRef<'a>,
     pub class_storage: &'a ClassStorage,
     pub generics: Generics<'a>,
@@ -1559,12 +1559,12 @@ impl fmt::Debug for Class<'_> {
     }
 }
 
-pub enum ClassExecutionResult {
+pub(crate) enum ClassExecutionResult {
     ClassGenerics(ClassGenerics),
     Inferred(Inferred),
 }
 
-pub struct MroIterator<'db, 'a> {
+pub(crate) struct MroIterator<'db, 'a> {
     db: &'db Database,
     generics: Generics<'a>,
     pub class: Option<TypeOrClass<'a>>,
@@ -1593,7 +1593,7 @@ impl<'db, 'a> MroIterator<'db, 'a> {
 }
 
 #[derive(Debug, Clone)]
-pub enum TypeOrClass<'a> {
+pub(crate) enum TypeOrClass<'a> {
     Type(Cow<'a, Type>),
     Class(Class<'a>),
 }
@@ -1969,7 +1969,7 @@ fn init_as_callable(
     })
 }
 
-pub struct NewOrInitConstructor<'a> {
+pub(crate) struct NewOrInitConstructor<'a> {
     // A data structure to show wheter __init__ or __new__ is the relevant constructor for a class
     constructor: LookupResult,
     init_class: TypeOrClass<'a>,
@@ -1991,7 +1991,7 @@ impl NewOrInitConstructor<'_> {
     }
 }
 
-pub struct ClassLookupOptions<'x> {
+pub(crate) struct ClassLookupOptions<'x> {
     add_issue: &'x dyn Fn(IssueKind),
     kind: LookupKind,
     use_descriptors: bool,

@@ -22,7 +22,7 @@ use crate::{
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Hash)]
-pub struct TypeVarIndex(pub(super) u32);
+pub(crate) struct TypeVarIndex(pub(super) u32);
 
 impl TypeVarIndex {
     pub fn as_usize(&self) -> usize {
@@ -43,7 +43,7 @@ impl From<usize> for TypeVarIndex {
 }
 
 #[derive(Debug)]
-pub struct CallableWithParent<T> {
+pub(crate) struct CallableWithParent<T> {
     pub defined_at: T,
     pub parent_callable: Option<T>,
 }
@@ -82,7 +82,7 @@ struct UnresolvedTypeVarLike<T> {
 }
 
 #[derive(Debug)]
-pub struct TypeVarManager<T> {
+pub(crate) struct TypeVarManager<T> {
     type_vars: Vec<UnresolvedTypeVarLike<T>>,
     callables: Vec<CallableWithParent<T>>,
 }
@@ -327,7 +327,7 @@ impl CallableId for Rc<CallableContent> {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
-pub enum Variance {
+pub(crate) enum Variance {
     Invariant = 0,
     Covariant,
     Contravariant,
@@ -352,7 +352,7 @@ impl Variance {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct TypeVarLikes(Rc<[TypeVarLike]>);
+pub(crate) struct TypeVarLikes(Rc<[TypeVarLike]>);
 
 impl TypeVarLikes {
     pub fn new(rc: Rc<[TypeVarLike]>) -> Self {
@@ -459,7 +459,7 @@ impl std::ops::Index<usize> for TypeVarLikes {
 }
 
 #[derive(Debug, Clone, Eq)]
-pub enum TypeVarLike {
+pub(crate) enum TypeVarLike {
     TypeVar(Rc<TypeVar>),
     TypeVarTuple(Rc<TypeVarTuple>),
     ParamSpec(Rc<ParamSpec>),
@@ -579,13 +579,13 @@ impl Hash for TypeVarLike {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum TypeVarName {
+pub(crate) enum TypeVarName {
     PointLink(PointLink),
     Self_,
 }
 
 #[derive(Debug, Clone)]
-pub struct TypeInTypeVar {
+pub(crate) struct TypeInTypeVar {
     node: Option<NodeIndex>,
     calculating: Cell<bool>,
     pub t: OnceCell<Type>,
@@ -637,20 +637,20 @@ impl TypeInTypeVar {
 }
 
 #[derive(Debug, Clone)]
-pub enum TypeVarKindInfos {
+pub(crate) enum TypeVarKindInfos {
     Unrestricted,
     Bound(TypeInTypeVar),
     Constraints(Box<[TypeInTypeVar]>),
 }
 
-pub enum TypeVarKind<'a, I: Iterator<Item = &'a Type> + Clone> {
+pub(crate) enum TypeVarKind<'a, I: Iterator<Item = &'a Type> + Clone> {
     Unrestricted,
     Bound(&'a Type),
     Constraints(I),
 }
 
 #[derive(Debug, Clone)]
-pub struct TypeVar {
+pub(crate) struct TypeVar {
     pub name_string: TypeVarName,
     scope: ParentScope,
     kind: TypeVarKindInfos,
@@ -828,7 +828,7 @@ impl TypeVar {
 }
 
 #[derive(Debug, Clone, Eq)]
-pub struct TypeVarTuple {
+pub(crate) struct TypeVarTuple {
     pub name_string: PointLink,
     // TODO calculated these lazily
     pub default: Option<TypeArgs>,
@@ -864,7 +864,7 @@ impl PartialEq for TypeVarTuple {
 }
 
 #[derive(Debug, Clone, Eq)]
-pub struct ParamSpec {
+pub(crate) struct ParamSpec {
     pub name_string: PointLink,
     // TODO calculated these lazily
     pub default: Option<CallableParams>,
@@ -898,7 +898,7 @@ impl PartialEq for ParamSpec {
 }
 
 #[derive(Debug, Eq, Clone)]
-pub struct TypeVarUsage {
+pub(crate) struct TypeVarUsage {
     pub type_var: Rc<TypeVar>,
     pub in_definition: PointLink,
     pub index: TypeVarIndex,
@@ -938,7 +938,7 @@ impl Hash for TypeVarUsage {
 }
 
 #[derive(Debug, PartialEq, Clone, Eq)]
-pub struct TypeVarTupleUsage {
+pub(crate) struct TypeVarTupleUsage {
     pub type_var_tuple: Rc<TypeVarTuple>,
     pub in_definition: PointLink,
     pub index: TypeVarIndex,
@@ -970,7 +970,7 @@ impl Hash for TypeVarTupleUsage {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
-pub struct ParamSpecUsage {
+pub(crate) struct ParamSpecUsage {
     pub param_spec: Rc<ParamSpec>,
     pub in_definition: PointLink,
     pub index: TypeVarIndex,
@@ -1005,13 +1005,13 @@ impl Hash for ParamSpecUsage {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct ParamSpecTypeVars {
+pub(crate) struct ParamSpecTypeVars {
     pub type_vars: TypeVarLikes,
     pub in_definition: PointLink,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct ParamSpecArg {
+pub(crate) struct ParamSpecArg {
     pub params: CallableParams,
     pub type_vars: Option<ParamSpecTypeVars>,
 }
@@ -1037,7 +1037,7 @@ impl ParamSpecArg {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub enum TypeVarLikeUsage {
+pub(crate) enum TypeVarLikeUsage {
     TypeVar(TypeVarUsage),
     TypeVarTuple(TypeVarTupleUsage),
     ParamSpec(ParamSpecUsage),

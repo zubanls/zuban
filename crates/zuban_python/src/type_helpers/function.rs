@@ -1606,20 +1606,20 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
 }
 
 #[derive(Copy, Clone)]
-pub enum FirstParamProperties<'a> {
+pub(crate) enum FirstParamProperties<'a> {
     Skip {
         to_self_instance: &'a dyn Fn() -> Type,
     },
     None,
 }
 
-pub struct AsCallableOptions<'a> {
+pub(crate) struct AsCallableOptions<'a> {
     first_param: FirstParamProperties<'a>,
     return_type: Cow<'a, Type>,
 }
 
 #[derive(Clone, Copy, Debug)]
-pub struct FunctionParam<'x> {
+pub(crate) struct FunctionParam<'x> {
     file: &'x PythonFile,
     param: CSTParam<'x>,
 }
@@ -1864,13 +1864,13 @@ enum PropertyModifier {
 }
 
 #[derive(PartialEq)]
-pub enum FirstParamKind {
+pub(crate) enum FirstParamKind {
     Self_,
     ClassOfSelf,
     InStaticmethod,
 }
 
-pub struct GeneratorType {
+pub(crate) struct GeneratorType {
     pub yield_type: Type,
     pub send_type: Option<Type>,
     pub return_type: Option<Type>,

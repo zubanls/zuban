@@ -90,18 +90,18 @@ thread_local! {
     static EMPTY_TYPES: Rc<[Type]> = Rc::new([]);
 }
 
-pub fn empty_types() -> Rc<[Type]> {
+pub(crate) fn empty_types() -> Rc<[Type]> {
     EMPTY_TYPES.with(|t| t.clone())
 }
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
-pub enum FormatStyle {
+pub(crate) enum FormatStyle {
     Short,
     MypyRevealType,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct StringSlice {
+pub(crate) struct StringSlice {
     pub file_index: FileIndex,
     pub start: CodeIndex,
     pub end: CodeIndex,
@@ -137,7 +137,7 @@ impl StringSlice {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum DbString {
+pub(crate) enum DbString {
     StringSlice(StringSlice),
     RcStr(Rc<str>),
     Static(&'static str),
@@ -172,7 +172,7 @@ impl From<StringSlice> for DbString {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct TypeArgs {
+pub(crate) struct TypeArgs {
     pub args: TupleArgs,
 }
 
@@ -200,7 +200,7 @@ impl TypeArgs {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum GenericItem {
+pub(crate) enum GenericItem {
     TypeArg(Type),
     // For TypeVarTuple
     TypeArgs(TypeArgs),
@@ -219,7 +219,7 @@ impl GenericItem {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum ClassGenerics {
+pub(crate) enum ClassGenerics {
     List(GenericsList),
     // A class definition (no type vars or stuff like callables)
     ExpressionWithClassType(PointLink),
@@ -247,7 +247,7 @@ impl ClassGenerics {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct GenericsList(Rc<[GenericItem]>);
+pub(crate) struct GenericsList(Rc<[GenericItem]>);
 
 impl GenericsList {
     pub fn new_generics(parts: Rc<[GenericItem]>) -> Self {
@@ -327,7 +327,7 @@ impl std::ops::Index<TypeVarIndex> for GenericsList {
 }
 
 #[derive(Debug, Clone)]
-pub struct Namespace {
+pub(crate) struct Namespace {
     pub directories: Rc<[Rc<Directory>]>,
 }
 
@@ -360,7 +360,7 @@ impl Hash for Namespace {
 impl std::cmp::Eq for Namespace {}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct FunctionOverload(Box<[Rc<CallableContent>]>);
+pub(crate) struct FunctionOverload(Box<[Rc<CallableContent>]>);
 
 impl FunctionOverload {
     pub fn new(functions: Box<[Rc<CallableContent>]>) -> Rc<Self> {
@@ -389,7 +389,7 @@ impl FunctionOverload {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct GenericClass {
+pub(crate) struct GenericClass {
     pub link: PointLink,
     pub generics: ClassGenerics,
 }
@@ -453,7 +453,7 @@ impl<'a, Iter: Iterator<Item = &'a Type>> Iterator for TypeRefIterator<'a, Iter>
 // with another type.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[allow(clippy::enum_variant_names)]
-pub enum Type {
+pub(crate) enum Type {
     Class(GenericClass),
     Union(UnionType),
     Intersection(Intersection),
@@ -1639,13 +1639,13 @@ impl Tuple {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum PropertySetter {
+pub(crate) enum PropertySetter {
     SameType,
     OtherType(Type),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum FunctionKind {
+pub(crate) enum FunctionKind {
     Function {
         had_first_self_or_class_annotation: bool,
     },
@@ -1704,7 +1704,7 @@ impl FunctionKind {
 }
 
 #[derive(Debug, Clone, Eq, Hash)]
-pub struct NewType {
+pub(crate) struct NewType {
     pub name_string: PointLink,
     pub type_: Type,
 }
@@ -1748,7 +1748,7 @@ impl PartialEq for NewType {
 }
 
 #[derive(Debug, Clone, Eq)]
-pub struct Literal {
+pub(crate) struct Literal {
     pub kind: LiteralKind,
     pub implicit: bool,
 }
@@ -1766,7 +1766,7 @@ impl Hash for Literal {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum LiteralKind {
+pub(crate) enum LiteralKind {
     String(DbString),
     Int(i64), // TODO this does not work for Python ints > usize
     Bytes(DbBytes),
@@ -1774,13 +1774,13 @@ pub enum LiteralKind {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum DbBytes {
+pub(crate) enum DbBytes {
     Link(PointLink),
     Static(&'static [u8]),
 }
 
 #[derive(PartialEq, Eq, Debug)]
-pub enum LiteralValue<'db> {
+pub(crate) enum LiteralValue<'db> {
     String(&'db str),
     Int(i64),
     Bytes(Cow<'db, [u8]>),
@@ -1866,13 +1866,13 @@ type CustomBehaviorCallback = for<'db> fn(
 ) -> Inferred;
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
-pub enum CustomBehaviorKind {
+pub(crate) enum CustomBehaviorKind {
     Function,
     Method { bound: Option<Rc<Type>> },
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
-pub struct CustomBehavior {
+pub(crate) struct CustomBehavior {
     callback: CustomBehaviorCallback,
     kind: CustomBehaviorKind,
 }
@@ -1920,7 +1920,7 @@ impl CustomBehavior {
 }
 
 #[derive(Debug, PartialEq, Eq, Hash)]
-pub enum CallableLike {
+pub(crate) enum CallableLike {
     Callable(Rc<CallableContent>),
     Overload(Rc<FunctionOverload>),
 }
@@ -1981,7 +1981,7 @@ impl Hash for AnyCause {
 }
 
 #[derive(Debug, Eq, Copy, Clone)]
-pub enum AnyCause {
+pub(crate) enum AnyCause {
     Unannotated,
     Explicit,
     FromError,
@@ -1991,7 +1991,7 @@ pub enum AnyCause {
 }
 
 #[derive(Debug, Eq, Copy, Clone)]
-pub enum NeverCause {
+pub(crate) enum NeverCause {
     Explicit,
     Inference,
     Other,

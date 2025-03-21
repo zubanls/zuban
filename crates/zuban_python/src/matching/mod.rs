@@ -7,17 +7,17 @@ mod utils;
 
 use std::{borrow::Cow, cell::RefCell, collections::HashMap, rc::Rc};
 
-pub use generic::Generic;
-pub use generics::Generics;
-pub use match_::{ArgumentIndexWithParam, Match, MismatchReason, SignatureMatch};
+pub(crate) use generic::Generic;
+pub(crate) use generics::Generics;
+pub(crate) use match_::{ArgumentIndexWithParam, Match, MismatchReason, SignatureMatch};
 pub(crate) use matcher::{
     calculate_callable_dunder_init_type_vars_and_return, calculate_callable_type_vars_and_return,
     calculate_class_dunder_init_type_vars_and_return, calculate_function_type_vars_and_return,
     CalculatedTypeArgs, CheckedTypeRecursion, FunctionOrCallable, Matcher, MatcherFormatResult,
     ReplaceSelfInMatcher,
 };
-pub use result_context::{CouldBeALiteral, ResultContext};
-pub use utils::{
+pub(crate) use result_context::{CouldBeALiteral, ResultContext};
+pub(crate) use utils::{
     calculate_property_return, create_signature_without_self_for_callable, match_self_type,
     maybe_class_usage, replace_class_type_vars, replace_class_type_vars_in_callable,
 };
@@ -129,7 +129,7 @@ type OnOverloadMismatch<'a> = Option<&'a dyn Fn()>;
 type GenerateDiagnosticString<'a> = &'a dyn Fn(&FunctionOrCallable, &Database) -> Option<String>;
 
 #[derive(Clone, Copy)]
-pub struct OnTypeError<'a> {
+pub(crate) struct OnTypeError<'a> {
     pub callback: OnTypeErrorCallback<'a>,
     pub on_overload_mismatch: OnOverloadMismatch<'a>,
     pub generate_diagnostic_string: GenerateDiagnosticString<'a>,
@@ -177,7 +177,7 @@ fn func_or_callable_diagnostic_string(f: &FunctionOrCallable, db: &Database) -> 
 }
 
 #[derive(Debug)]
-pub enum GotType<'t> {
+pub(crate) enum GotType<'t> {
     Type(&'t Type),
     Starred(Type),
     DoubleStarred(Type),
@@ -210,7 +210,7 @@ impl<'t> GotType<'t> {
     }
 }
 
-pub struct ErrorTypes<'a> {
+pub(crate) struct ErrorTypes<'a> {
     pub matcher: Option<&'a Matcher<'a>>,
     pub got: GotType<'a>,
     pub expected: &'a Type,
@@ -227,7 +227,7 @@ pub fn format_got_expected(db: &Database, got: &Type, expected: &Type) -> ErrorS
     .as_boxed_strs(db)
 }
 
-pub struct ErrorStrs {
+pub(crate) struct ErrorStrs {
     pub got: Box<str>,
     pub expected: Box<str>,
 }
@@ -300,7 +300,7 @@ pub type OnTypeErrorCallback<'a> = &'a dyn Fn(
 pub type OnLookupError<'a> = &'a dyn Fn(&Type);
 
 #[derive(Debug, Clone)]
-pub enum IteratorContent {
+pub(crate) enum IteratorContent {
     Inferred(Inferred),
     // The code before makes sure that no type var tuples are passed.
     FixedLenTupleGenerics {
@@ -541,7 +541,7 @@ impl IteratorContent {
     }
 }
 
-pub enum UnpackedArgument {
+pub(crate) enum UnpackedArgument {
     Normal {
         inferred: Inferred,
         arbitrary_len: bool,
@@ -550,7 +550,7 @@ pub enum UnpackedArgument {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum LookupKind {
+pub(crate) enum LookupKind {
     Normal,
     // In CPython there is PyTypeObject (for documentation see CPython's `Doc/c-api/typeobj.rst`).
     // This type object is used to access __and__, when a user types `int & int`. Note that int
@@ -559,7 +559,7 @@ pub enum LookupKind {
 }
 
 #[derive(Copy, Clone)]
-pub enum TupleLenInfos {
+pub(crate) enum TupleLenInfos {
     FixedLen(usize),
     WithStar { before: usize, after: usize },
 }

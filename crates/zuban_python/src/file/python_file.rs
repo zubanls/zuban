@@ -36,7 +36,7 @@ use crate::{
 };
 
 #[derive(Default, Debug, Clone)]
-pub struct ComplexValues(InsertOnlyVec<ComplexPoint>);
+pub(crate) struct ComplexValues(InsertOnlyVec<ComplexPoint>);
 
 impl ComplexValues {
     pub fn get(&self, index: usize) -> &ComplexPoint {
@@ -72,7 +72,7 @@ impl ComplexValues {
 }
 
 #[derive(Clone)]
-pub struct PythonFile {
+pub(crate) struct PythonFile {
     pub tree: Tree, // TODO should probably not be public
     pub symbol_table: SymbolTable,
     maybe_dunder_all: OnceCell<Option<Box<[DbString]>>>, // For __all__
@@ -212,7 +212,7 @@ impl vfs::VfsFile for PythonFile {
 }
 
 #[derive(Debug, Clone)]
-pub struct StarImport {
+pub(crate) struct StarImport {
     pub scope: NodeIndex,
     pub(super) import_from_node: NodeIndex,
     pub(super) star_node: NodeIndex,
@@ -944,7 +944,7 @@ fn maybe_dunder_all_names(
 }
 
 // An Iterator that goes through all nodes except the given one
-pub struct OtherDefinitionIterator<'a> {
+pub(crate) struct OtherDefinitionIterator<'a> {
     points: &'a Points,
     start: NodeIndex,
     current: NodeIndex,

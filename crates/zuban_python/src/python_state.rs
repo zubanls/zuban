@@ -121,7 +121,7 @@ macro_rules! link_to_type_class_without_generic {
 }
 
 #[derive(Clone)]
-pub struct PythonState {
+pub(crate) struct PythonState {
     pub builtins: *const PythonFile,
     pub typing: *const PythonFile,
     pub typeshed: *const PythonFile,

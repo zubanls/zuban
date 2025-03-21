@@ -8,7 +8,6 @@ use crate::{
     database::Database,
     file::{File, PythonFile},
     inference_state::InferenceState,
-    inferred::Inferred,
 };
 
 type Signatures = Vec<()>;
@@ -71,7 +70,7 @@ pub trait Name<'db>: fmt::Debug {
         vec![]
     }
 
-    fn infer(&self) -> Inferred;
+    fn infer(&self);
 
     fn goto(&self) -> Names<'db>;
 
@@ -80,7 +79,7 @@ pub trait Name<'db>: fmt::Debug {
     }
 }
 
-pub struct TreeName<'db, F: File, N> {
+pub(crate) struct TreeName<'db, F: File, N> {
     db: &'db Database,
     file: &'db F,
     cst_name: N,
@@ -141,11 +140,12 @@ impl<'db> Name<'db> for TreeName<'db, PythonFile, CSTName<'db>> {
     }
     */
 
-    fn infer(&self) -> Inferred {
+    fn infer(&self) {
         let i_s = InferenceState::new(self.db);
         self.file
             .inference(&i_s)
-            .infer_name_of_definition(self.cst_name)
+            .infer_name_of_definition(self.cst_name);
+        // TODO
     }
 
     fn goto(&self) -> Names<'db> {

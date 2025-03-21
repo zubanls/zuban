@@ -41,7 +41,7 @@ use crate::{
 pub const NAME_DEF_TO_DEFAULTDICT_DIFF: i64 = -1;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd)]
-pub struct MroIndex(pub u32);
+pub(crate) struct MroIndex(pub u32);
 
 impl From<usize> for MroIndex {
     fn from(item: usize) -> Self {
@@ -70,7 +70,7 @@ enum InferredState {
 }
 
 #[derive(Clone, Debug)]
-pub struct Inferred {
+pub(crate) struct Inferred {
     state: InferredState,
 }
 
@@ -2365,7 +2365,7 @@ fn prepare_func<'db, 'class>(
     func
 }
 
-pub enum UnionValue<T, I: Iterator<Item = T>> {
+pub(crate) enum UnionValue<T, I: Iterator<Item = T>> {
     Single(T),
     Multiple(I),
     Any,
@@ -2850,7 +2850,7 @@ pub fn add_attribute_error(
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub enum AttributeKind {
+pub(crate) enum AttributeKind {
     AnnotatedAttribute,
     Attribute,
     ClassVar,

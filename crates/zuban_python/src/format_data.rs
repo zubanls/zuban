@@ -10,7 +10,7 @@ use crate::{
 };
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub enum AvoidRecursionFor<'a> {
+pub(crate) enum AvoidRecursionFor<'a> {
     RecursiveType(&'a RecursiveType),
     TypedDict(PointLink),
     NamedTuple(PointLink),
@@ -19,14 +19,14 @@ pub enum AvoidRecursionFor<'a> {
 type DisplayedRecursive<'a> = AlreadySeen<'a, AvoidRecursionFor<'a>>;
 
 #[derive(Clone, Copy)]
-pub enum ParamsStyle {
+pub(crate) enum ParamsStyle {
     CallableParamsInner,
     CallableParams,
     Unreachable,
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct FormatData<'db, 'a, 'b, 'c> {
+pub(crate) struct FormatData<'db, 'a, 'b, 'c> {
     pub db: &'db Database,
     pub matcher: Option<&'b Matcher<'a>>,
     pub style: FormatStyle,

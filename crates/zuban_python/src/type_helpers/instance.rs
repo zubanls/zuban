@@ -21,7 +21,7 @@ use crate::{
 };
 
 #[derive(Debug, Clone, Copy)]
-pub struct Instance<'a> {
+pub(crate) struct Instance<'a> {
     pub class: Class<'a>,
     inferred: Option<&'a Inferred>,
 }
@@ -942,7 +942,7 @@ fn get_relevant_type_for_super(db: &Database, t: &Type) -> Type {
 }
 
 #[derive(Clone)]
-pub struct LookupDetails<'a> {
+pub(crate) struct LookupDetails<'a> {
     pub class: TypeOrClass<'a>,
     pub lookup: LookupResult,
     pub attr_kind: AttributeKind,
@@ -997,7 +997,7 @@ impl LookupDetails<'_> {
 }
 
 #[derive(Copy, Clone)]
-pub struct InstanceLookupOptions<'x> {
+pub(crate) struct InstanceLookupOptions<'x> {
     add_issue: &'x dyn Fn(IssueKind),
     kind: LookupKind,
     super_count: usize,
