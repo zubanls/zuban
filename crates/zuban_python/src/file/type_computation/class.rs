@@ -390,16 +390,13 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                                         exec,
                                         DataclassOptions::default(),
                                     ));
-                                    continue;
-                                }
-                                if let Some(d) = maybe_dataclass_transform(db, node_ref) {
+                                } else if let Some(d) = maybe_dataclass_transform(db, node_ref) {
                                     dataclass_options = Some(check_dataclass_options(
                                         db,
                                         self.node_ref.file,
                                         exec,
                                         d.as_dataclass_options(),
                                     ));
-                                    continue;
                                 }
                             }
                             Some(Lookup::T(TypeContent::SpecialCase(
@@ -413,6 +410,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                             }
                             _ => (),
                         }
+                        continue;
                     }
                 }
                 if let Some(Lookup::T(TypeContent::InvalidVariable(
@@ -421,7 +419,6 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                 {
                     if node_ref.is_name_defined_in_module(db, "dataclasses", "dataclass") {
                         dataclass_options = Some(DataclassOptions::default());
-                        continue;
                     } else if node_ref == db.python_state.typing_final() {
                         is_final = true;
                     } else if node_ref == db.python_state.total_ordering_node_ref() {
@@ -439,7 +436,6 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                         } else {
                             dataclass_transform = Some(Box::new(d.clone()));
                         }
-                        continue;
                     }
                 }
             }
