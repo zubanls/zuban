@@ -16,7 +16,6 @@ use crate::{
     debug,
     diagnostics::{Issue, IssueKind},
     file::{
-        name_resolution::NameResolution,
         type_computation::{typed_dict::TypedDictMemberGatherer, InvalidVariableType, TypeContent},
         use_cached_annotation_type, OtherDefinitionIterator, PythonFile, TypeVarCallbackReturn,
         TypeVarFinder,
@@ -396,8 +395,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                                     ));
                                     continue;
                                 }
-                                if let Some(d) = name_resolution.maybe_dataclass_transform(node_ref)
-                                {
+                                if let Some(d) = maybe_dataclass_transform(db, node_ref) {
                                     dataclass_options = Some(check_dataclass_options(
                                         db,
                                         self.node_ref.file,
@@ -438,18 +436,16 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                                 .typing_extensions_runtime_checkable_node_ref()
                     {
                         is_runtime_checkable = true;
+                    } else if let Some(d) = maybe_dataclass_transform(db, node_ref) {
+                        if d.executed_by_function {
+                            dataclass_options = Some(d.as_dataclass_options());
+                        } else {
+                            dataclass_transform = Some(Box::new(d.clone()));
+                        }
+                        continue;
                     }
                 }
-                let inf = inference.infer_decorator(decorator);
-                if let Some(ComplexPoint::TypeInstance(Type::DataclassTransformObj(d))) =
-                    inf.maybe_complex_point(db)
-                {
-                    if d.executed_by_function {
-                        dataclass_options = Some(d.as_dataclass_options());
-                    } else {
-                        dataclass_transform = Some(Box::new(d.clone()));
-                    }
-                }
+                inference.infer_decorator(decorator);
             }
             if let Some(dataclass_options) = dataclass_options {
                 let dataclass = Dataclass::new_uninitialized(
@@ -1776,41 +1772,40 @@ impl DataclassOptions {
     }
 }
 
-impl<'db, 'file> NameResolution<'db, 'file, '_> {
-    fn maybe_dataclass_transform(&self, func: FuncNodeRef<'db>) -> Option<DataclassTransformObj> {
-        let decorated = func.node().maybe_decorated()?;
-        for decorator in decorated.decorators().iter() {
-            let dec_node_ref = NodeRef::new(self.file, decorator.index());
-            if dec_node_ref.point().calculated() {
-                if let Some(ComplexPoint::TypeInstance(Type::DataclassTransformObj(dto))) =
-                    dec_node_ref.complex()
+fn maybe_dataclass_transform(db: &Database, func: FuncNodeRef) -> Option<DataclassTransformObj> {
+    let decorated = func.node().maybe_decorated()?;
+    for decorator in decorated.decorators().iter() {
+        let expr = decorator.named_expression().expression();
+        let expr_node_ref = NodeRef::new(func.file, expr.index());
+        if expr_node_ref.point().calculated() {
+            if let Some(ComplexPoint::TypeInstance(Type::DataclassTransformObj(dto))) =
+                expr_node_ref.complex()
+            {
+                let mut result = dto.clone();
+                result.executed_by_function = true;
+                return Some(result);
+            }
+            continue;
+        }
+        if let ExpressionContent::ExpressionPart(ExpressionPart::Primary(primary)) = expr.unpack() {
+            if let PrimaryContent::Execution(exec) = primary.second() {
+                let i_s = &InferenceState::new(db);
+                let name_resolution = func.file.name_resolution_for_types(i_s);
+                if let Some(Lookup::T(TypeContent::SpecialCase(
+                    Specific::TypingDataclassTransform,
+                ))) = name_resolution.lookup_type_primary_or_atom_if_only_names(primary.first())
                 {
-                    let mut result = dto.clone();
+                    let d = DataclassTransformObj::from_args(
+                        i_s,
+                        &SimpleArgs::new(*i_s, func.file, primary.index(), exec),
+                    );
+                    let mut result = d.clone();
+                    expr_node_ref.insert_type(Type::DataclassTransformObj(d));
                     result.executed_by_function = true;
                     return Some(result);
                 }
-                continue;
-            }
-            if let ExpressionContent::ExpressionPart(ExpressionPart::Primary(primary)) =
-                decorator.named_expression().expression().unpack()
-            {
-                if let PrimaryContent::Execution(exec) = primary.second() {
-                    if let Some(Lookup::T(TypeContent::SpecialCase(
-                        Specific::TypingDataclassTransform,
-                    ))) = self.lookup_type_primary_or_atom_if_only_names(primary.first())
-                    {
-                        let d = DataclassTransformObj::from_args(
-                            self.i_s,
-                            &SimpleArgs::new(*self.i_s, self.file, primary.index(), exec),
-                        );
-                        let mut result = d.clone();
-                        result.executed_by_function = true;
-                        dec_node_ref.insert_type(Type::DataclassTransformObj(d));
-                        return Some(result);
-                    }
-                }
             }
         }
-        None
     }
+    None
 }
