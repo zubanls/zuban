@@ -424,7 +424,10 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                     InvalidVariableType::Function { node_ref },
                 ))) = name_resolution.lookup_type_expr_if_only_names(expr)
                 {
-                    if node_ref == db.python_state.typing_final() {
+                    if node_ref.is_name_defined_in_module(db, "dataclasses", "dataclass") {
+                        dataclass_options = Some(DataclassOptions::default());
+                        continue;
+                    } else if node_ref == db.python_state.typing_final() {
                         is_final = true;
                     } else if node_ref == db.python_state.total_ordering_node_ref() {
                         total_ordering = true;
@@ -438,9 +441,6 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                     }
                 }
                 let inf = inference.infer_decorator(decorator);
-                if inf.is_name_defined_in_module(db, "dataclasses", "dataclass") {
-                    dataclass_options = Some(DataclassOptions::default());
-                }
                 if let Some(ComplexPoint::TypeInstance(Type::DataclassTransformObj(d))) =
                     inf.maybe_complex_point(db)
                 {
