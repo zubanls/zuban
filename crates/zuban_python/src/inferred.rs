@@ -756,7 +756,7 @@ impl<'db: 'slf, 'slf> Inferred {
                     PointKind::Complex => {
                         if !matches!(
                             node_ref.maybe_complex().unwrap(),
-                            ComplexPoint::TypeInstance(_)
+                            ComplexPoint::TypeInstance(_) | ComplexPoint::IndirectFinal(_)
                         ) {
                             return self;
                         }

@@ -5,7 +5,7 @@ use parsa_python_cst::{
 };
 
 use crate::{
-    database::{ComplexPoint, Database, Locality, Point, PointKind, PointLink, Specific},
+    database::{Database, Locality, Point, PointKind, PointLink, Specific},
     debug,
     diagnostics::IssueKind,
     file::File,
@@ -262,10 +262,8 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
             return match p.kind() {
                 PointKind::FileReference => Some(ImportResult::File(p.file_index())),
                 PointKind::Specific => None,
-                PointKind::Complex => match node_ref.maybe_complex().unwrap() {
-                    ComplexPoint::TypeInstance(Type::Namespace(ns)) => {
-                        Some(ImportResult::Namespace(ns.clone()))
-                    }
+                PointKind::Complex => match node_ref.maybe_type().unwrap() {
+                    Type::Namespace(ns) => Some(ImportResult::Namespace(ns.clone())),
                     _ => unreachable!(),
                 },
                 _ => unreachable!(),

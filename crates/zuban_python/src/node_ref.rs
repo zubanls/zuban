@@ -258,10 +258,8 @@ impl<'file> NodeRef<'file> {
     }
 
     pub fn expect_complex_type(&self) -> &Type {
-        let Some(ComplexPoint::TypeInstance(value_t)) = self.maybe_complex() else {
-            unreachable!("{:?}", self)
-        };
-        value_t
+        self.maybe_type()
+            .unwrap_or_else(|| unreachable!("{:?}", self))
     }
 
     pub fn ensure_cached_class_infos(&self, i_s: &InferenceState) {
