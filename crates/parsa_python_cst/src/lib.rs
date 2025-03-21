@@ -3969,8 +3969,13 @@ impl<'db> StringLiteral<'db> {
 }
 
 fn in_simple_assignment(node: PyNode) -> Option<NameDef> {
-    node.parent_until(&[Nonterminal(assignment)])
-        .and_then(|n| Assignment::new(n).maybe_simple_type_expression_assignment())
+    node.parent_until(&[Nonterminal(assignment), Nonterminal(stmt)])
+        .and_then(|n| {
+            if n.is_type(Nonterminal(stmt)) {
+                return None;
+            }
+            Assignment::new(n).maybe_simple_type_expression_assignment()
+        })
         .map(|(name, _, _)| name)
 }
 
