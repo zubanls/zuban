@@ -1847,7 +1847,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                     if let StarLikeExpression::NamedExpression(ne) = s {
                         if let Some(Lookup::T(TypeContent::InvalidVariable(
                             InvalidVariableType::Function { node_ref },
-                        ))) = dbg!(self.lookup_type_expr_if_only_names(ne.expression())) {
+                        ))) = self.lookup_type_expr_if_only_names(ne.expression()) {
                             return Ok(node_ref.as_link())
                         }
                     }
