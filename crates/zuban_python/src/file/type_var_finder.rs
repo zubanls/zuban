@@ -470,12 +470,19 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             PrimaryOrAtom::Primary(primary) => match primary.second() {
                 PrimaryContent::Attribute(name) => {
                     match self.lookup_primary_or_atom(primary.first()) {
-                        BaseLookup::Module(f) => self
-                            .i_s
-                            .db
-                            .loaded_python_file(f)
-                            .name_resolution_for_types(self.i_s)
-                            .lookup_name(name),
+                        BaseLookup::Module(f) => {
+                            let Some((pr, _link_to)) = self
+                                .i_s
+                                .db
+                                .loaded_python_file(f)
+                                .name_resolution_for_types(self.i_s)
+                                .resolve_module_access(name.as_code(), |_| ())
+                            else {
+                                return BaseLookup::Other;
+                            };
+                            // TODO should we use link_to? Probably only if we add the issue
+                            self.point_resolution_to_base_lookup(pr)
+                        }
                         _ => BaseLookup::Other,
                     }
                 }

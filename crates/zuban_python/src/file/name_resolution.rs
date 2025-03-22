@@ -792,7 +792,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
         result
     }
 
-    pub(super) fn resolve_module_access_internal(
+    fn resolve_module_access_internal(
         &self,
         name: &str,
         add_issue: impl Fn(IssueKind),

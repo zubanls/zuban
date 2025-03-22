@@ -480,3 +480,12 @@ def aliased() -> AliasedType: ...  # E: Variable "__main__.AliasedType" is not v
 from typing import TypeVar
 x = 0
 x = TypeVar('x') # E: Incompatible types in assignment (expression has type "TypeVar", variable has type "int")
+
+[case type_var_on_attribute_before_and_after_def]
+import typing as t
+
+class Foo(t.Generic['T']): ...
+
+T = t.TypeVar('T')
+
+class Bar(t.Generic['T']): ...

@@ -1904,6 +1904,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                     assignment_definition,
                                 } = &result_context
                                 {
+                                    debug!("Execute type def {}", stringify!($name));
                                     let n = NodeRef::from_link(i_s.db, *assignment_definition);
                                     return n
                                         .file
