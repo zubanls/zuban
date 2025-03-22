@@ -64,6 +64,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         if point.calculated() {
             return load_cached_type(cached_type_node_ref);
         }
+        cached_type_node_ref.set_point(Point::new_calculating());
 
         if !is_explicit {
             // Only non-explicit TypeAliases are allowed here.
@@ -104,19 +105,20 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             assignment.maybe_simple_type_expression_assignment()
         {
             debug!("Started type alias calculation: {}", name_def.as_code());
-            if let Some(type_comment) = self.check_for_type_comment_internal(assignment, || {
-                file.points
-                    .get(name_def.index())
-                    .maybe_calculated_and_specific()
-                    == Some(Specific::Cycle)
-            }) {
+            if let Some(type_comment) =
+                self.check_for_type_comment_internal(assignment, || point.calculating())
+            {
                 // This case is a bit weird in Mypy, but it makes it possible to use a type
                 // definition like:
                 //
                 //     Foo = 1  # type: Any
                 if let TypeCommentState::Type(t) = &type_comment.type_ {
-                    if let Type::Any(cause) = t.as_ref() {
-                        return Lookup::T(TypeContent::Unknown(UnknownCause::AnyCause(*cause)));
+                    if let Type::Any(_) = t.as_ref() {
+                        cached_type_node_ref.set_point(Point::new_specific(
+                            Specific::AnyDueToError,
+                            Locality::Todo,
+                        ));
+                        return self.compute_type_assignment_internal(assignment, is_explicit);
                     }
                 }
             }
@@ -587,8 +589,8 @@ fn load_cached_type(node_ref: NodeRef) -> Lookup {
                 .unwrap_or_else(|| panic!("{redirected_to:?}"));
         }
     }
-    match node_ref.maybe_complex().unwrap() {
-        ComplexPoint::TypeAlias(a) => {
+    match node_ref.maybe_complex() {
+        Some(ComplexPoint::TypeAlias(a)) => {
             if a.calculating() {
                 // This means it's a recursive type definition.
                 Lookup::T(TypeContent::RecursiveAlias(node_ref.as_link()))
@@ -609,6 +611,10 @@ fn load_cached_type(node_ref: NodeRef) -> Lookup {
             } else {
                 Lookup::T(TypeContent::TypeAlias(a))
             }
+        }
+        None => {
+            debug_assert_eq!(node_ref.point().specific(), Specific::AnyDueToError);
+            Lookup::T(TypeContent::UNKNOWN_REPORTED)
         }
         _ => unreachable!("Expected an Alias or TypeVarLike, but received something weird"),
     }
