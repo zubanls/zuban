@@ -31,19 +31,16 @@ class Foo:
     bla: baz  # E: Invalid type comment or annotation
 
     x = x  # E: Name "x" is not defined
-    y: x  # E: Variable "__main__.x" is not valid as a type \
-          # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+    y: x
     a = list[a]  # E: Name "a" is not defined
     b: a
 
 [case avoid_type_cycle_in_assignment_expr]
 class Foo:
     l = (x := x)  # E: Name "x" is not defined
-    y: x  # E: Variable "__main__.x" is not valid as a type \
-          # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+    y: x
     l = (a := list[a])  # E: Name "a" is not defined
-    b: a  # E: Variable "__main__.a" is not valid as a type \
-          # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+    b: a  # E: Invalid type comment or annotation
 
 [case avoid_type_cycle_in_lambda]
 class Foo:
@@ -128,7 +125,7 @@ y: Bar[str]  # E: Type argument "str" of "Bar" must be a subtype of "int"
 [case typed_dict_non_generic_getitem]
 from typing import TypedDict
 Bar = TypedDict("Bar", {'x': int})
-x: Bar[int]  # E: "Bar" expects no type arguments, but 1 given
+x: Bar[int]  # E: Bad number of arguments for type alias, expected 0, given 1
 
 [case invalid_class_type_application]
 from typing import Generic, TypeVar
@@ -252,11 +249,11 @@ from typing import TypeAlias, TypeVarTuple, Unpack
 Ts = TypeVarTuple("Ts")
 D = list[F[tuple[*Ts]]]  # E: Invalid recursive alias: type variable nesting on right hand side \
                       # E: Name "F" is used before definition
-F = D[Ts]  # Error reported above
+F = D[*Ts]  # Error reported above
 
 # Is this fine?
 A = list[B[*Ts]]  # E: Name "B" is used before definition
-B = A[Ts]
+B = A[*Ts]
 
 x: A[int]
 y: D[int]
@@ -436,7 +433,7 @@ class C(Generic[T]):
 [case getattr_on_module_with_specific_type]
 import m
 
-x: m.A  # E: Name "m.A" is not defined
+x: m.A  # E: Invalid type comment or annotation
 
 [file m.py]
 def __getattr__(name: str) -> int: ...
