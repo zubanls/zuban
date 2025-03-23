@@ -501,3 +501,14 @@ def foo() -> None:
     def bar() -> None:
         nonlocal Y
         y: Y  # E: Invalid type comment or annotation
+
+[case param_name_used_in_type_definition]
+from typing import Any
+
+def foo(a: Any, b: int, c: str = "", *args: Any, d: bytes = b'', **kwargs: Any):
+    a1: a  # E: Variable "__main__.a" is not valid as a type  # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+    b1: b  # E: Variable "__main__.b" is not valid as a type  # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+    c1: c  # E: Variable "__main__.c" is not valid as a type  # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+    d1: d  # E: Variable "__main__.d" is not valid as a type  # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+    args1: args  # E: Variable "__main__.args" is not valid as a type  # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+    kwargs2: kwargs  # E: Variable "__main__.kwargs" is not valid as a type  # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases

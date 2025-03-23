@@ -3690,6 +3690,8 @@ impl<'db> NameDef<'db> {
                 Nonterminal(param_no_default),
                 Nonterminal(param_with_default),
                 Nonterminal(param_maybe_default),
+                Nonterminal(starred_param),
+                Nonterminal(double_starred_param),
             ])
             .expect("There should always be a stmt");
         if node.is_type(Nonterminal(class_def)) {
@@ -3710,6 +3712,8 @@ impl<'db> NameDef<'db> {
                 Nonterminal(param_no_default)
                     | Nonterminal(param_with_default)
                     | Nonterminal(param_maybe_default)
+                    | Nonterminal(starred_param)
+                    | Nonterminal(double_starred_param)
             ));
             TypeLike::ParamName(node.iter_children().nth(1).and_then(|n| {
                 n.is_type(Nonterminal(annotation))
