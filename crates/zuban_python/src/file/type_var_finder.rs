@@ -8,7 +8,7 @@ use super::{
     ClassInitializer, ClassNodeRef,
 };
 use crate::{
-    database::{ComplexPoint, PointLink, Specific},
+    database::{ComplexPoint, PointKind, PointLink, Specific},
     debug,
     diagnostics::IssueKind,
     file::PythonFile,
@@ -401,6 +401,28 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                         return BaseLookup::Class(PointLink::new(node_ref.file_index(), c.index()))
                     }
                     TypeLike::Assignment(assignment) => {
+                        if node_ref.point().calculated() {
+                            // This is essentially just a performance optimization to avoid looking
+                            // up TypeVar each time.
+                            fn follow_potential_inferred(node_ref: NodeRef) -> BaseLookup {
+                                let p = node_ref.point();
+                                if p.kind() == PointKind::Redirect {
+                                    if p.file_index() == node_ref.file_index() {
+                                        let new = NodeRef::new(node_ref.file, p.node_index());
+                                        follow_potential_inferred(new)
+                                    } else {
+                                        BaseLookup::Other
+                                    }
+                                } else if let Some(ComplexPoint::TypeVarLike(tvl)) =
+                                    node_ref.maybe_complex()
+                                {
+                                    BaseLookup::TypeVarLike(tvl.clone())
+                                } else {
+                                    BaseLookup::Other
+                                }
+                            }
+                            return follow_potential_inferred(node_ref);
+                        }
                         if let Some((_, None, expr)) =
                             assignment.maybe_simple_type_expression_assignment()
                         {
