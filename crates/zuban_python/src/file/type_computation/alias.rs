@@ -6,7 +6,7 @@ use parsa_python_cst::{
 };
 
 use super::{
-    super::name_resolution::NameResolution, InvalidVariableType, Lookup, TypeContent,
+    super::name_resolution::NameResolution, ClassNodeRef, InvalidVariableType, Lookup, TypeContent,
     TypeVarFinder, UnknownCause,
 };
 use crate::{
@@ -244,7 +244,15 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 let Type::TypedDict(td) = tdd.type_.as_ref() else {
                     unreachable!();
                 };
-                TypeContent::TypedDictDefinition(td.clone())
+                if td.calculating() {
+                    debug_assert_eq!(node_ref.file_index(), td.defined_at.file);
+                    TypeContent::RecursiveClass(ClassNodeRef::new(
+                        node_ref.file,
+                        td.defined_at.node_index,
+                    ))
+                } else {
+                    TypeContent::TypedDictDefinition(td.clone())
+                }
             }
             ComplexPoint::TypeInstance(Type::Type(t)) => match t.as_ref() {
                 t @ Type::Enum(_) => TypeContent::Type(t.clone()),

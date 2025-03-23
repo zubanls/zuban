@@ -7,9 +7,6 @@ testOverloadPossibleOverlapWithArgsAndKwargs
 
 testRecursiveAliasViaBaseClass2
 # TODO PointResolution::GlobalOrNonlocal
-testTypedDictUpdateNonRecursiveToRecursiveCoarse
-testRecursiveTypedDict*
-testBasicRecursiveGenericTypedDict
 
 testNewAnalyzerAliasesFixedMany
 testRecursiveAliasViaBaseClass
