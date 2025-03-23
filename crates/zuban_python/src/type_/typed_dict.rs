@@ -932,7 +932,7 @@ pub(crate) fn lookup_on_typed_dict<'a>(
     )
 }
 
-pub(crate) fn infer_typed_dict_item(
+pub(crate) fn infer_typed_dict_arg(
     i_s: &InferenceState,
     typed_dict: &TypedDict,
     matcher: &mut Matcher,
@@ -975,7 +975,7 @@ pub(crate) fn check_typed_dict_call<'db>(
     let mut extra_keys = vec![];
     for arg in args.iter(i_s.mode) {
         if let Some(key) = arg.keyword_name(i_s.db) {
-            infer_typed_dict_item(
+            infer_typed_dict_arg(
                 i_s,
                 &typed_dict,
                 matcher,

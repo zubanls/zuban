@@ -19,7 +19,7 @@ use crate::{
     new_class,
     node_ref::NodeRef,
     type_::{
-        check_typed_dict_call, infer_typed_dict_item, maybe_add_extra_keys_issue, AnyCause,
+        check_typed_dict_call, infer_typed_dict_arg, maybe_add_extra_keys_issue, AnyCause,
         IterCause, Literal, LiteralKind, LiteralValue, NeverCause, Type, TypedDict,
         TypedDictGenerics,
     },
@@ -163,7 +163,7 @@ impl<'db> Inference<'db, '_, '_> {
                         Some(literal) => {
                             let key = literal.as_str(i_s.db);
                             missing_keys.retain(|k| *k != key);
-                            infer_typed_dict_item(
+                            infer_typed_dict_arg(
                                 self.i_s,
                                 &typed_dict,
                                 matcher,
@@ -194,7 +194,7 @@ impl<'db> Inference<'db, '_, '_> {
                                 if self.flags().extra_checks {
                                     debug!("TODO need to implement --extra-checks");
                                 }
-                                infer_typed_dict_item(
+                                infer_typed_dict_arg(
                                     self.i_s,
                                     &typed_dict,
                                     matcher,

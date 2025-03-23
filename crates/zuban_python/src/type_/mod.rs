@@ -59,7 +59,7 @@ pub(crate) use self::{
         TypeVarTupleUsage, TypeVarUsage, Variance,
     },
     typed_dict::{
-        check_typed_dict_call, infer_typed_dict_item, initialize_typed_dict, lookup_on_typed_dict,
+        check_typed_dict_call, infer_typed_dict_arg, initialize_typed_dict, lookup_on_typed_dict,
         maybe_add_extra_keys_issue, TypedDict, TypedDictGenerics, TypedDictMember,
     },
     union::{
