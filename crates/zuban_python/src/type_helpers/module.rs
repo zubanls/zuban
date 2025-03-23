@@ -78,7 +78,7 @@ impl<'a> Module<'a> {
         add_issue: impl Fn(IssueKind),
         name: &str,
     ) -> LookupResult {
-        let i_s = &InferenceState::new(db);
+        let i_s = &InferenceState::new(db, self.file);
         if let Some(name_ref) = self.file.lookup_global(name) {
             let ensure_flow_analysis = || {
                 if self.file.inference(i_s).calculate_diagnostics().is_err() {

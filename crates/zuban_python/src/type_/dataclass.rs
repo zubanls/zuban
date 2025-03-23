@@ -168,9 +168,9 @@ struct Inits {
 fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> Inits {
     let cls = dataclass.class(db);
     let mut with_indexes = vec![];
-    let i_s = &InferenceState::new(db);
-    let cls_i_s = &i_s.with_class_context(&cls);
     let file = cls.node_ref.file;
+    let i_s = &InferenceState::new(db, file);
+    let cls_i_s = &i_s.with_class_context(&cls);
     let inference = file.inference(cls_i_s);
 
     let mut params: Vec<CallableParam> = vec![];

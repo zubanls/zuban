@@ -317,7 +317,7 @@ impl FlowAnalysis {
                 let result = func
                     .node_ref
                     .file
-                    .inference(&InferenceState::new(i_s.db))
+                    .inference(&InferenceState::new(i_s.db, func.node_ref.file))
                     .ensure_func_diagnostics(func);
                 debug_assert!(result.is_ok());
             });

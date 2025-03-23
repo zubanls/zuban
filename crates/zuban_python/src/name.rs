@@ -7,7 +7,6 @@ use parsa_python_cst::{CodeIndex, Name as CSTName};
 use crate::{
     database::Database,
     file::{File, PythonFile},
-    inference_state::InferenceState,
 };
 
 type Signatures = Vec<()>;
@@ -141,10 +140,12 @@ impl<'db> Name<'db> for TreeName<'db, PythonFile, CSTName<'db>> {
     */
 
     fn infer(&self) {
+        /*
         let i_s = InferenceState::new(self.db);
         self.file
             .inference(&i_s)
             .infer_name_of_definition(self.cst_name);
+        */
         // TODO
     }
 

@@ -1100,7 +1100,7 @@ impl PythonState {
             _ => unreachable!(),
         };
         let func = Function::new(NodeRef::new(self.mypy_extensions(), node_index), None);
-        func.ensure_cached_func(&InferenceState::new(db));
+        func.ensure_cached_func(&InferenceState::new(db, func.file));
         Inferred::from_saved_node_ref(func.node_ref.into())
     }
 
@@ -1131,7 +1131,7 @@ fn node_ref_to_global_func_type(db: &Database, n: NodeRef) -> Type {
         n.file.tree.short_debug_of_index(n.node_index)
     );
     let func = Function::new(n, None);
-    let i_s = InferenceState::new(db);
+    let i_s = InferenceState::new(db, func.file);
     func.ensure_cached_func(&i_s);
     func.as_type(&i_s, FirstParamProperties::None)
 }

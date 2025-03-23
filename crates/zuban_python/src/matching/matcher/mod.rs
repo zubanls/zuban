@@ -1120,7 +1120,7 @@ impl<'a> Matcher<'a> {
                     let c = self.calculating_arg(*tv_index);
                     if c.calculated() {
                         let bound = c.type_.clone();
-                        let i_s = &InferenceState::new(db);
+                        let i_s = &InferenceState::new_in_unknown_file(db);
 
                         let t1 = match wanted_constraint {
                             Bound::Invariant(t) => t,
@@ -1443,7 +1443,7 @@ impl<'a> Matcher<'a> {
                         };
                         match (&current_tv.kind(db), &new.kind(db)) {
                             (TypeVarKind::Bound(t1), TypeVarKind::Bound(t2)) => {
-                                let i_s = &InferenceState::new(db);
+                                let i_s = &InferenceState::new_in_unknown_file(db);
                                 if t1.is_simple_sub_type_of(i_s, t2).bool() {
                                     // Nothing left to do here.
                                 } else if t2.is_simple_sub_type_of(i_s, t1).bool() {

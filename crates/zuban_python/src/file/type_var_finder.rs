@@ -157,11 +157,9 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
             PrimaryContent::Attribute(name) => {
                 let result = match base {
                     BaseLookup::Module(f) => {
-                        let Some((resolved, _)) = self
-                            .i_s
-                            .db
-                            .loaded_python_file(f)
-                            .name_resolution_for_types(&InferenceState::new(self.i_s.db))
+                        let file = self.i_s.db.loaded_python_file(f);
+                        let Some((resolved, _)) = file
+                            .name_resolution_for_types(&InferenceState::new(self.i_s.db, file))
                             .resolve_module_access(name.as_str(), |k| {
                                 self.add_issue(name.index(), k)
                             })

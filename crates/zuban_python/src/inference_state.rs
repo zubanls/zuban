@@ -4,7 +4,7 @@ use vfs::FileIndex;
 
 use crate::{
     database::{Database, ParentScope, PointLink},
-    file::{ClassNodeRef, TypeVarCallbackReturn},
+    file::{ClassNodeRef, PythonFile, TypeVarCallbackReturn},
     node_ref::NodeRef,
     type_::{CallableContent, TypeVarLike},
     type_helpers::{Class, Function},
@@ -14,6 +14,7 @@ use crate::{
 #[derive(Debug, Copy, Clone)]
 enum Context<'a> {
     None,
+    File(&'a PythonFile),
     Class(&'a Class<'a>),
     Function(&'a Function<'a, 'a>),
     LambdaCallable {
@@ -28,7 +29,7 @@ impl<'a> Context<'a> {
             Context::Class(c) => Some(**c),
             Context::Function(func) => func.parent_class(db),
             Context::LambdaCallable { parent_context, .. } => parent_context.current_class(db),
-            Context::None => None,
+            Context::File(_) | Context::None => None,
         }
     }
 }
@@ -48,10 +49,18 @@ pub(crate) struct InferenceState<'db, 'a> {
 }
 
 impl<'db, 'a> InferenceState<'db, 'a> {
-    pub fn new(db: &'db Database) -> Self {
+    pub fn new_in_unknown_file(db: &'db Database) -> Self {
         Self {
             db,
             context: Context::None,
+            mode: Mode::Normal,
+        }
+    }
+
+    pub fn new(db: &'db Database, file: &'a PythonFile) -> Self {
+        Self {
+            db,
+            context: Context::File(file),
             mode: Mode::Normal,
         }
     }

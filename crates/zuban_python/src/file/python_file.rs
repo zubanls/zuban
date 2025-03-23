@@ -27,7 +27,6 @@ use crate::{
     inference_state::InferenceState,
     inferred::Inferred,
     lines::NewlineIndices,
-    matching::ResultContext,
     name::{FilePosition, Names, TreeName},
     node_ref::NodeRef,
     type_::DbString,
@@ -101,7 +100,8 @@ impl File for PythonFile {
         }
     }
 
-    fn infer_operator_leaf(&self, db: &Database, leaf: Keyword) -> Inferred {
+    fn infer_operator_leaf(&self, _db: &Database, _leaf: Keyword) -> Inferred {
+        /*
         if ["(", "[", "{", ")", "]", "}"]
             .iter()
             .any(|&x| x == leaf.as_str())
@@ -113,6 +113,7 @@ impl File for PythonFile {
                     .infer_primary(primary, &mut ResultContext::Unknown);
             }
         }
+        */
         unimplemented!()
     }
 
@@ -143,7 +144,7 @@ impl File for PythonFile {
     }
 
     fn diagnostics<'db>(&'db self, db: &'db Database) -> Box<[Diagnostic<'db>]> {
-        let i_s = InferenceState::new(db);
+        let i_s = InferenceState::new(db, self);
         if self.super_file.is_none() {
             // The main file is responsible for calculating diagnostics of type comments,
             // annotation strings, etc.
@@ -496,7 +497,7 @@ impl<'db> PythonFile {
                         } else if let Some(NameImportParent::ImportFromAsName(as_name)) =
                             name_def.maybe_import()
                         {
-                            let i_s = InferenceState::new(db);
+                            let i_s = InferenceState::new(db, self);
                             let inference = self.inference(&i_s);
                             inference.infer_name_def(name_def);
                             // Just take the __all__ from the now calculated file. The exact
@@ -654,7 +655,7 @@ impl<'db> PythonFile {
     }
 
     pub fn has_unsupported_class_scoped_import(&self, db: &Database) -> bool {
-        let i_s = &InferenceState::new(db);
+        let i_s = &InferenceState::new(db, self);
         self.symbol_table.iter().any(|(_, index)| {
             NodeRef::new(self, *index)
                 .infer_name_of_definition_by_index(i_s)

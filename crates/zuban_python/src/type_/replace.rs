@@ -817,7 +817,7 @@ impl Replacer for ReplaceTypeVarLikes<'_, '_> {
                         format_index: u.format_index,
                     })
                 })?;
-                let i_s = InferenceState::new(self.db);
+                let i_s = InferenceState::new_in_unknown_file(self.db);
                 let highest_union_format_index = new_entries
                     .iter()
                     .map(|e| e.type_.highest_union_format_index())

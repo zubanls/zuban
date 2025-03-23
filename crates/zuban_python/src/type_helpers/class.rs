@@ -1037,7 +1037,7 @@ impl<'db: 'a, 'a> Class<'a> {
             }
             _ => self.qualified_name(format_data.db),
         };
-        let type_var_likes = self.type_vars(&InferenceState::new(format_data.db));
+        let type_var_likes = self.type_vars(&InferenceState::new(format_data.db, self.file));
         // Format classes that have not been initialized like Foo() or Foo[int] like "Foo".
         if !type_var_likes.is_empty() && !matches!(self.generics, Generics::NotDefinedYet { .. }) {
             // Returns something like [str] or [List[int], Set[Any]]
@@ -1092,7 +1092,7 @@ impl<'db: 'a, 'a> Class<'a> {
 
     pub fn generics_as_list(&self, db: &Database) -> ClassGenerics {
         // TODO we instantiate, because we cannot use use_cached_type_vars?
-        let type_var_likes = self.type_vars(&InferenceState::new(db));
+        let type_var_likes = self.type_vars(&InferenceState::new(db, self.file));
         match type_var_likes.is_empty() {
             false => match self.generics() {
                 Generics::NotDefinedYet { .. } => ClassGenerics::List(GenericsList::new_generics(

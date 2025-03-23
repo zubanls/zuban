@@ -1131,7 +1131,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
         let mut vec = start_namedtuple_params(db);
         let file = self.node_ref.file;
         let cls = Class::with_undefined_generics(self.node_ref);
-        let i_s = &InferenceState::new(db).with_class_context(&cls);
+        let i_s = &InferenceState::new(db, file).with_class_context(&cls);
         find_stmt_named_tuple_types(i_s, file, &mut vec, self.node().block().iter_stmt_likes());
         for (name, index) in self.class_storage.class_symbol_table.iter() {
             if NAMEDTUPLE_PROHIBITED_NAMES.contains(&name) {
@@ -1355,7 +1355,7 @@ fn initialize_typed_dict_members(db: &Database, cls: &Class, typed_dict: Rc<Type
     debug!("Start TypedDict members calculation for {:?}", cls.name());
     let file = cls.node_ref.file;
     find_stmt_typed_dict_types(
-        &InferenceState::new(db).with_class_context(&cls),
+        &InferenceState::new(db, file).with_class_context(&cls),
         file,
         &mut typed_dict_members,
         cls.node().block().iter_stmt_likes(),
@@ -1766,7 +1766,7 @@ fn maybe_dataclass_transform_func(
                     return Some(dto.clone());
                 }
             } else if let PrimaryContent::Execution(exec) = primary.second() {
-                let i_s = &InferenceState::new(db);
+                let i_s = &InferenceState::new(db, func.file);
                 let name_resolution = func.file.name_resolution_for_types(i_s);
                 if let Some(Lookup::T(TypeContent::SpecialCase(
                     Specific::TypingDataclassTransform,

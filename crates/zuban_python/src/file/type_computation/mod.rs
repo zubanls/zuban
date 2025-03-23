@@ -1629,7 +1629,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         match base {
             TypeContent::Module(f) => {
                 if let Some((resolved, _)) = f
-                    .name_resolution_for_types(&InferenceState::new(db))
+                    .name_resolution_for_types(&InferenceState::new(db, f))
                     .resolve_module_access(name.as_str(), |k| {
                         self.add_issue_for_index(name.index(), k)
                     })
@@ -3391,7 +3391,10 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 global_redirect,
             } => {
                 if global_redirect {
-                    return Self::handle_name_def(&InferenceState::new(i_s.db), node_ref);
+                    return Self::handle_name_def(
+                        &InferenceState::new(i_s.db, node_ref.file),
+                        node_ref,
+                    );
                 } else {
                     return Self::handle_name_def(i_s, node_ref);
                 }
@@ -3443,7 +3446,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 if let Some(func) = name_node_ref.maybe_name_of_function() {
                     let func_node_ref = FuncNodeRef::new(name_node_ref.file, func.index());
                     // The inference state context is new, because we are in a new module.
-                    let i_s = &InferenceState::new(self.i_s.db);
+                    let i_s = &InferenceState::new(self.i_s.db, name_node_ref.file);
                     func_node_ref.ensure_cached_type_vars(i_s, None);
                     if let Type::Any(cause) = func_node_ref.return_type(i_s).as_ref() {
                         return Lookup::T(TypeContent::Unknown(UnknownCause::AnyCause(*cause)));
@@ -4627,7 +4630,7 @@ pub(crate) fn use_cached_param_annotation_type<'db: 'file, 'file>(
     file: &'file PythonFile,
     annotation: ParamAnnotation,
 ) -> Cow<'file, Type> {
-    file.name_resolution_for_types(&InferenceState::new(db))
+    file.name_resolution_for_types(&InferenceState::new(db, file))
         .use_cached_param_annotation_type(annotation)
 }
 
@@ -4636,7 +4639,7 @@ pub(crate) fn use_cached_annotation_type<'db: 'file, 'file>(
     file: &'file PythonFile,
     annotation: Annotation,
 ) -> Cow<'file, Type> {
-    file.name_resolution_for_types(&InferenceState::new(db))
+    file.name_resolution_for_types(&InferenceState::new(db, file))
         .use_cached_annotation_or_type_comment_type_internal(
             annotation.index(),
             annotation.expression(),

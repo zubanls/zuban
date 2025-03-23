@@ -3547,7 +3547,11 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         if global_redirect {
             FLOW_ANALYSIS.with(|fa| {
                 fa.with_new_empty_and_delay_functions_further(self.i_s, || {
-                    callable(&self.file.inference(&InferenceState::new(self.i_s.db)))
+                    callable(
+                        &self
+                            .file
+                            .inference(&InferenceState::new(self.i_s.db, self.file)),
+                    )
                 })
             })
         } else {
