@@ -3757,9 +3757,11 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             }
             DefiningStmt::Lambda(_)
             | DefiningStmt::Comprehension(_)
-            | DefiningStmt::DictComprehension(_) => {
+            | DefiningStmt::DictComprehension(_)
+            | DefiningStmt::GlobalStmt(_)
+            | DefiningStmt::NonlocalStmt(_) => {
                 recoverable_error!(
-                    "Not implemented: and therefore assigning Any to {:?} in {}",
+                    "Why do we hit these defining stmts: -> assigning Any to {:?} in {}",
                     name_def,
                     self.file_path()
                 );

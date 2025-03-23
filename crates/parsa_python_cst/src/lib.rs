@@ -614,6 +614,8 @@ pub enum DefiningStmt<'db> {
     WithItem(WithItem<'db>),
     DelStmt(DelStmt<'db>),
     MatchStmt(MatchStmt<'db>),
+    GlobalStmt(GlobalStmt<'db>),
+    NonlocalStmt(NonlocalStmt<'db>),
 }
 
 impl DefiningStmt<'_> {
@@ -634,6 +636,8 @@ impl DefiningStmt<'_> {
             DefiningStmt::WithItem(w) => w.index(),
             DefiningStmt::DelStmt(d) => d.index(),
             DefiningStmt::MatchStmt(m) => m.index(),
+            DefiningStmt::GlobalStmt(g) => g.index(),
+            DefiningStmt::NonlocalStmt(n) => n.index(),
         }
     }
 }
@@ -3628,6 +3632,8 @@ impl<'db> NameDef<'db> {
                 Nonterminal(with_item),
                 Nonterminal(del_stmt),
                 Nonterminal(match_stmt),
+                Nonterminal(global_stmt),
+                Nonterminal(nonlocal_stmt),
             ])
             .expect("There should always be a stmt");
         if stmt_node.is_type(Nonterminal(function_def)) {
@@ -3658,6 +3664,10 @@ impl<'db> NameDef<'db> {
             DefiningStmt::DelStmt(DelStmt::new(stmt_node))
         } else if stmt_node.is_type(Nonterminal(match_stmt)) {
             DefiningStmt::MatchStmt(MatchStmt::new(stmt_node))
+        } else if stmt_node.is_type(Nonterminal(global_stmt)) {
+            DefiningStmt::GlobalStmt(GlobalStmt::new(stmt_node))
+        } else if stmt_node.is_type(Nonterminal(nonlocal_stmt)) {
+            DefiningStmt::NonlocalStmt(NonlocalStmt::new(stmt_node))
         } else {
             unreachable!(
                 "Reached a previously unknown defining statement {:?}",

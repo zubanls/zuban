@@ -489,3 +489,15 @@ class Foo(t.Generic['T']): ...
 T = t.TypeVar('T')
 
 class Bar(t.Generic['T']): ...
+
+[case global_or_nonlocal_type_definition]
+X = list[int]
+
+def foo() -> None:
+    global X
+    x: X  # E: Invalid type comment or annotation
+
+    Y = list[str]
+    def bar() -> None:
+        nonlocal Y
+        y: Y  # E: Invalid type comment or annotation

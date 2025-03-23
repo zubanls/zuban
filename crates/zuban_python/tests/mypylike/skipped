@@ -6,7 +6,6 @@ avoid_type_computation_recursion
 testOverloadPossibleOverlapWithArgsAndKwargs
 
 testRecursiveAliasViaBaseClass2
-# TODO PointResolution::GlobalOrNonlocal
 
 testNewAnalyzerAliasesFixedMany
 testRecursiveAliasViaBaseClass
