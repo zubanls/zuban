@@ -23,8 +23,6 @@ typed_dict_non_generic_getitem
 testRecursiveAliasesProhibited-skip
 testRecursiveAliasesProhibitBadAliases
 
-star_import_overwrite_regression2
-
 testLiteralAndGenericsRespectsUpperBound
 self_instance_variable1
 
@@ -74,11 +72,11 @@ class_method_generics_with_type_var_in_class_scope
 # Type var bound cycle
 testNewAnalyzerDuplicateTypeVarImportCycle
 testNewAnalyzerDuplicateTypeVarImportCycleWithAliases
-# NewType generics resolving
-new_type_with_class_generics
-new_type_with_class_generics2
-# import recursive usages and therefore "Cannot determine type of "Node""
-testTreeShadowingViaParentPackage
+# Recursive aliases that fail to resolve because imports are calculating
+check-incremental:testRecursiveAliasImported
+check-recursive-types:testRecursiveAliasImported
+testTypeAliasUpdateNonRecursiveToRecursiveFine
+testTypeAliasUpdateNonRecursiveToRecursiveCoarse
 
 # param spec complex nested transitive tests
 testParamSpecNestedApplyPosVsNamed
@@ -987,12 +985,6 @@ testEnumTypeCompatibleWithLiteralUnion
 testFunctionalEnumListOfPairs
 # "Detected enum "lib.D" in a type stub with zero members. There is a chance this is due to a recent change in the semantics of enum membership
 testEnumNotFinalWithMethodsAndUninitializedValuesStub
-
-# Recursive aliases that fail to resolve because imports are calculating
-check-incremental:testRecursiveAliasImported
-check-recursive-types:testRecursiveAliasImported
-testTypeAliasUpdateNonRecursiveToRecursiveFine
-testTypeAliasUpdateNonRecursiveToRecursiveCoarse
 
 # future imports (future is not part of stubs)
 testNewAnalyzerMetaclassFuture1
