@@ -24,7 +24,7 @@ use super::{
     TypeVarFinder,
 };
 use crate::{
-    arguments::{KnownArgsWithCustomAddIssue, SimpleArgs},
+    arguments::SimpleArgs,
     database::{
         ComplexPoint, Database, Locality, Point, PointKind, PointLink, Specific, TypeAlias,
     },
@@ -3438,19 +3438,16 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 }
             }
             PointResolution::ModuleGetattrName(name_node_ref) => {
-                // TODO Avoid using inference here
                 // If a module contains a __getattr__, the type can be part of that
                 // (which is typically just an Any that propagates).
-                let inf = name_node_ref.infer_name_of_definition_by_index(i_s);
-                let executed = inf.execute(
-                    i_s,
-                    &KnownArgsWithCustomAddIssue::new(
-                        &Inferred::from_type(i_s.db.python_state.str_type()),
-                        &|_| (),
-                    ),
-                );
-                if let Some(cause) = executed.maybe_any(i_s.db) {
-                    return Lookup::T(TypeContent::Unknown(UnknownCause::AnyCause(cause)));
+                if let Some(func) = name_node_ref.maybe_name_of_function() {
+                    let func_node_ref = FuncNodeRef::new(name_node_ref.file, func.index());
+                    // The inference state context is new, because we are in a new module.
+                    let i_s = &InferenceState::new(self.i_s.db);
+                    func_node_ref.ensure_cached_type_vars(i_s, None);
+                    if let Type::Any(cause) = func_node_ref.return_type(i_s).as_ref() {
+                        return Lookup::T(TypeContent::Unknown(UnknownCause::AnyCause(*cause)));
+                    }
                 }
             }
             _ => (),

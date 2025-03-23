@@ -51,6 +51,11 @@ impl<'a> From<FuncNodeRef<'a>> for NodeRef<'a> {
 
 impl<'db: 'file, 'file> FuncNodeRef<'file> {
     #[inline]
+    pub fn new(file: &'file PythonFile, node_index: NodeIndex) -> Self {
+        Self::from_node_ref(NodeRef::new(file, node_index))
+    }
+
+    #[inline]
     pub fn from_node_ref(node_ref: NodeRef<'file>) -> Self {
         debug_assert!(node_ref.maybe_function().is_some(), "{node_ref:?}");
         Self(node_ref)

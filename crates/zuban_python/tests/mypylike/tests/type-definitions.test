@@ -512,3 +512,23 @@ def foo(a: Any, b: int, c: str = "", *args: Any, d: bytes = b'', **kwargs: Any):
     d1: d  # E: Variable "__main__.d" is not valid as a type  # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
     args1: args  # E: Variable "__main__.args" is not valid as a type  # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
     kwargs2: kwargs  # E: Variable "__main__.kwargs" is not valid as a type  # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+
+[case module_getattr_types]
+import m, n, o, p
+a: m.X
+b: n.X  # E: Invalid type comment or annotation
+c: o.X
+d: p.X  # E: Invalid type comment or annotation
+
+[file m.py]
+def __getattr__(n): ...
+
+[file n.py]
+def __getattr__(n) -> int: ...
+
+[file o.py]
+import typing
+def __getattr__(n) -> typing.Any: ...
+
+[file p.py]
+__getattr__ = 1  # E: Invalid signature "int" for "__getattr__"
