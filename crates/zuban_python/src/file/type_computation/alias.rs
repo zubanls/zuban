@@ -600,6 +600,7 @@ fn load_cached_type(node_ref: NodeRef) -> Lookup {
     match node_ref.maybe_complex() {
         Some(ComplexPoint::TypeAlias(a)) => {
             if a.calculating() {
+                debug!("Found a recursive type on alias");
                 // This means it's a recursive type definition.
                 Lookup::T(TypeContent::RecursiveAlias(node_ref.as_link()))
             } else if !a.is_valid() {

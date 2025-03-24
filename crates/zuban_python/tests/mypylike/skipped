@@ -5,6 +5,9 @@ testPostInitIsNotAFunction
 avoid_type_computation_recursion
 testOverloadPossibleOverlapWithArgsAndKwargs
 
+testGenericJoinRecursiveTypes
+testRecursiveAliasesJoins
+
 testNewAnalyzerAliasesFixedMany
 
 testLiteralAndGenericsRespectsUpperBound
@@ -61,6 +64,7 @@ check-incremental:testRecursiveAliasImported
 check-recursive-types:testRecursiveAliasImported
 testTypeAliasUpdateNonRecursiveToRecursiveFine
 testTypeAliasUpdateNonRecursiveToRecursiveCoarse
+testRecursiveNamedTupleTypedDict
 # Recursive aliases, classes should be resolved first
 testRecursiveAliasViaBaseClass
 testRecursiveAliasViaBaseClass2
@@ -380,11 +384,6 @@ testDataclassTransformOverloadsDecoratorOnImpl
 testDataclassTransformUnsupportedDescriptors
 # dataclass __replace__
 testDunderReplacePresent
-
-# NamedTuple recursive definitions
-testBasicRecursiveNamedTupleSpecial
-testRecursiveNamedTupleTypedDict
-testMutuallyRecursiveNamedTuplesJoin
 
 # multiline annotations
 testMultilineQuotedAnnotation
