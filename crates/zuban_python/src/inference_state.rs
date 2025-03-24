@@ -115,14 +115,6 @@ impl<'db, 'a> InferenceState<'db, 'a> {
         }
     }
 
-    pub(crate) fn with_diagnostic_func_and_args(&self, func: &'a Function<'a, 'a>) -> Self {
-        Self {
-            db: self.db,
-            context: Context::Function(func),
-            mode: self.mode,
-        }
-    }
-
     pub fn with_simplified_annotation_instance(&self) -> Self {
         Self {
             db: self.db,
