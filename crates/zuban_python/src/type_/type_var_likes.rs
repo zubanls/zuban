@@ -623,7 +623,7 @@ impl TypeInTypeVar {
                 unreachable!()
             };
             let node_ref = NodeRef::from_link(db, PointLink::new(link.file, node));
-            InferenceState::run_with_parent_scope(db, link.file, scope, |i_s| {
+            InferenceState::run_with_parent_scope(db, node_ref.file, scope, |i_s| {
                 let t = calculate_type(&i_s, node_ref);
                 self.calculating.set(false);
                 t

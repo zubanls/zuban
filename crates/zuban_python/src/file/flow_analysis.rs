@@ -1541,7 +1541,7 @@ impl Inference<'_, '_, '_> {
                     class
                         .node_ref
                         .file
-                        .inference(&self.i_s.without_context())
+                        .inference(&InferenceState::new(self.i_s.db, self.file))
                         .calculate_diagnostics()?;
                 }
                 fa.with_new_empty_and_delay_functions_further(self.i_s, || {

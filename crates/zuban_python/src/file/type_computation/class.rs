@@ -340,7 +340,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
         }
         InferenceState::run_with_parent_scope(
             db,
-            self.node_ref.file_index(),
+            self.node_ref.file,
             self.class_storage.parent_scope,
             |i_s| {
                 debug!("Calculate class infos for {}", self.name());

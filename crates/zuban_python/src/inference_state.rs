@@ -1,9 +1,7 @@
 use std::cell::Cell;
 
-use vfs::FileIndex;
-
 use crate::{
-    database::{Database, ParentScope, PointLink},
+    database::{Database, ParentScope},
     file::{ClassNodeRef, PythonFile, TypeVarCallbackReturn},
     node_ref::NodeRef,
     type_::{CallableContent, TypeVarLike},
@@ -77,26 +75,20 @@ impl<'db, 'a> InferenceState<'db, 'a> {
 
     pub fn run_with_parent_scope<T>(
         db: &'db Database,
-        file_index: FileIndex,
+        file: &PythonFile,
         parent_scope: ParentScope,
         callback: impl FnOnce(InferenceState) -> T,
     ) -> T {
         let class;
         let func;
         let context = match parent_scope {
-            ParentScope::Module => Context::None,
+            ParentScope::Module => Context::File(file),
             ParentScope::Function(func_index) => {
-                func = Function::new_with_unknown_parent(
-                    db,
-                    NodeRef::from_link(db, PointLink::new(file_index, func_index)),
-                );
+                func = Function::new_with_unknown_parent(db, NodeRef::new(file, func_index));
                 Context::Function(&func)
             }
             ParentScope::Class(class_index) => {
-                class = Class::with_self_generics(
-                    db,
-                    ClassNodeRef::from_link(db, PointLink::new(file_index, class_index)),
-                );
+                class = Class::with_self_generics(db, ClassNodeRef::new(file, class_index));
                 Context::Class(&class)
             }
         };
@@ -113,18 +105,6 @@ impl<'db, 'a> InferenceState<'db, 'a> {
             context: Context::Function(func),
             mode: self.mode,
         }
-    }
-
-    pub fn with_simplified_annotation_instance(&self) -> Self {
-        Self {
-            db: self.db,
-            context: Context::None,
-            mode: self.mode,
-        }
-    }
-
-    pub fn without_context(&self) -> Self {
-        self.with_simplified_annotation_instance()
     }
 
     pub fn with_class_context(&self, current_class: &'a Class<'a>) -> Self {
@@ -208,7 +188,7 @@ impl<'db, 'a> InferenceState<'db, 'a> {
     }
 
     pub fn in_module_context(&self) -> bool {
-        matches!(self.context, Context::None)
+        matches!(self.context, Context::None | Context::File(_))
     }
 
     pub(crate) fn find_parent_type_var(
