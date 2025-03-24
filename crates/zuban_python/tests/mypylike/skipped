@@ -5,9 +5,6 @@ testPostInitIsNotAFunction
 avoid_type_computation_recursion
 testOverloadPossibleOverlapWithArgsAndKwargs
 
-testGenericJoinRecursiveTypes
-testRecursiveAliasesJoins
-
 testNewAnalyzerAliasesFixedMany
 
 testLiteralAndGenericsRespectsUpperBound

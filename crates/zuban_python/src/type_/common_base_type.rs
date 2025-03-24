@@ -34,7 +34,7 @@ impl Type {
             return i_s.db.python_state.object_type();
         }
 
-        let check_both_sides = |t1: &_, t2: &Type| match t1 {
+        let check_both_sides = |t1: &_, t2: &Type, is_reverse| match t1 {
             /*
             Type::Union(u) if u.iter().any(|t| matches!(t, Type::None)) => {
                 return self.clone().union(i_s.db, other.clone()).into_type()
@@ -48,18 +48,21 @@ impl Type {
                 Type::EnumMember(_) | Type::Enum(_) => Some(t1.simplified_union(i_s, t2)),
                 _ => None,
             },
-            Type::RecursiveType(r1) => Some(r1.calculated_type(i_s.db).common_base_type_internal(
-                i_s,
-                t2,
-                Some(checked_recursions),
-            )),
+            Type::RecursiveType(r1) => Some({
+                let mut t1 = r1.calculated_type(i_s.db);
+                let mut t2 = t2;
+                if is_reverse {
+                    (t1, t2) = (t2, t1);
+                }
+                t1.common_base_type_internal(i_s, t2, Some(checked_recursions))
+            }),
             _ => None,
         };
 
-        if let Some(new) = check_both_sides(self, other) {
+        if let Some(new) = check_both_sides(self, other, false) {
             return new;
         }
-        if let Some(new) = check_both_sides(other, self) {
+        if let Some(new) = check_both_sides(other, self, true) {
             return new;
         }
         for (_, c1) in self.mro(i_s.db) {
