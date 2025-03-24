@@ -32,6 +32,16 @@ impl<'a> Context<'a> {
             Context::File(_) | Context::None => None,
         }
     }
+
+    fn current_file(&self) -> Option<&'a PythonFile> {
+        match self {
+            Context::None => None,
+            Context::File(f) => Some(f),
+            Context::Class(c) => Some(c.file),
+            Context::Function(f) => Some(f.file),
+            Context::LambdaCallable { parent_context, .. } => parent_context.current_file(),
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -250,8 +260,14 @@ impl<'db, 'a> InferenceState<'db, 'a> {
         }
     }
 
-    pub fn flags(&self) -> &TypeCheckerFlags {
-        // TODO this is not implemented properly with context, yet.
-        &self.db.project.flags
+    pub fn flags(&self) -> &'a TypeCheckerFlags
+    where
+        'db: 'a,
+    {
+        if let Some(file) = self.context.current_file() {
+            file.flags(self.db)
+        } else {
+            &self.db.project.flags
+        }
     }
 }
