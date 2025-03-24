@@ -637,23 +637,19 @@ fn detect_diverging_alias(db: &Database, type_var_likes: &TypeVarLikes, t: &Type
     !type_var_likes.is_empty()
         && t.find_in_type(db, &mut |t| match t {
             Type::RecursiveType(rec) if rec.has_alias_origin(db) && rec.generics.is_some() => {
-                if rec.calculating(db) {
-                    rec.generics.as_ref().is_some_and(|generics| {
-                        let has_direct_type_var_like = generics.iter().any(|g| match g {
-                            GenericItem::TypeArg(t) => matches!(t, Type::TypeVar(_)),
-                            GenericItem::TypeArgs(ts) => match &ts.args {
-                                TupleArgs::WithUnpack(w) => {
-                                    matches!(w.unpack, TupleUnpack::TypeVarTuple(_))
-                                }
-                                _ => false,
-                            },
-                            GenericItem::ParamSpecArg(p) => p.params.maybe_param_spec().is_some(),
-                        });
-                        !has_direct_type_var_like && generics.has_type_vars()
-                    })
-                } else {
-                    false
-                }
+                rec.generics.as_ref().is_some_and(|generics| {
+                    let has_direct_type_var_like = generics.iter().any(|g| match g {
+                        GenericItem::TypeArg(t) => matches!(t, Type::TypeVar(_)),
+                        GenericItem::TypeArgs(ts) => match &ts.args {
+                            TupleArgs::WithUnpack(w) => {
+                                matches!(w.unpack, TupleUnpack::TypeVarTuple(_))
+                            }
+                            _ => false,
+                        },
+                        GenericItem::ParamSpecArg(p) => p.params.maybe_param_spec().is_some(),
+                    });
+                    !has_direct_type_var_like && generics.has_type_vars()
+                })
             }
             _ => false,
         })
