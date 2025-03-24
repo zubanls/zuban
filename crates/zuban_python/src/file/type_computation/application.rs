@@ -10,16 +10,21 @@ use crate::{
     getitem::SliceType,
     inference_state::InferenceState,
     inferred::Inferred,
+    node_ref::NodeRef,
     type_::{Dataclass, NamedTuple, Type, TypeVarLike, TypedDict},
     type_helpers::Class,
 };
 
 macro_rules! compute_type_application {
     ($self:ident, $slice_type:expr, $result_context:expr, $method:ident $args:tt) => {{
-        let from_alias_definition = matches!(
-            $result_context,
-            ResultContext::AssignmentNewDefinition { .. }
-        );
+        let from_alias_definition = match $result_context {
+            ResultContext::AssignmentNewDefinition { assignment_definition } => {
+                let node_ref = NodeRef::from_link($self.i_s.db, *assignment_definition);
+                let assignment = node_ref.expect_assignment();
+                return $self.compute_explicit_type_assignment(assignment);
+            }
+            _ => false,
+        };
         let mut on_type_var = |i_s: &InferenceState, _: &_, type_var_like: TypeVarLike, current_callable: Option<_>| {
             if let Some(result) = i_s.find_parent_type_var(&type_var_like) {
                 if from_alias_definition {

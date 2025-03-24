@@ -2587,8 +2587,8 @@ fn type_of_complex<'db: 'x, 'x>(
         }
         ComplexPoint::TypeInstance(t) => Cow::Borrowed(t),
         ComplexPoint::TypeAlias(alias) => Cow::Owned({
-            if alias.type_if_valid().is_subclassable(i_s.db) {
-                // TODO is this type correct with the Any?
+            let t = alias.type_if_valid();
+            if t.is_subclassable(i_s.db) || matches!(t, Type::TypedDict(_) | Type::Any(_)) {
                 Type::Type(Rc::new(alias.as_type_and_set_type_vars_any(i_s.db)))
             } else {
                 i_s.db.python_state.typing_special_form_type()

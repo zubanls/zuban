@@ -61,8 +61,8 @@ S = TypeVar("S")
 T = TypeVar("T")
 
 Rec1 = list[Union[Rec1[T, S], T, S]]
-Rec2 = list[Union[Rec2[T, S, int], T, S]]  # E: Bad number of arguments for type alias, expected 2, given 3 # E: Bad number of arguments for type alias, expected 2, given 3
-Rec3 = list[Union[Rec3[int], T, S]]  # E: Bad number of arguments for type alias, expected 2, given 1 # E: Bad number of arguments for type alias, expected 2, given 1
+Rec2 = list[Union[Rec2[T, S, int], T, S]]  # E: Bad number of arguments for type alias, expected 2, given 3
+Rec3 = list[Union[Rec3[int], T, S]]  # E: Bad number of arguments for type alias, expected 2, given 1
 
 x1: Rec1[int, str]
 x2: Rec2[int, str]
