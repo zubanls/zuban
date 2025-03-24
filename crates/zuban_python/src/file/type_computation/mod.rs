@@ -2608,12 +2608,16 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         TypeContent::Type(
             alias
                 .replace_type_var_likes(self.i_s.db, false, &mut |usage| {
-                    if let Some(generic) = generics.get(usage.index().as_usize()) {
-                        generic.clone()
+                    if usage.in_definition() == alias.location {
+                        if let Some(generic) = generics.get(usage.index().as_usize()) {
+                            generic.clone()
+                        } else {
+                            // Can happen when a generic is not available, because it's defined in e.g.
+                            // X = dict[T1, T2], where T2 has a default, but T1 has not.
+                            usage.as_any_generic_item(self.i_s.db)
+                        }
                     } else {
-                        // Can happen when a generic is not available, because it's defined in e.g.
-                        // X = dict[T1, T2], where T2 has a default, but T1 has not.
-                        usage.as_any_generic_item(self.i_s.db)
+                        usage.into_generic_item()
                     }
                 })
                 .into_owned(),

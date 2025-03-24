@@ -385,7 +385,6 @@ testDunderReplacePresent
 testBasicRecursiveNamedTupleSpecial
 testRecursiveNamedTupleTypedDict
 testMutuallyRecursiveNamedTuplesJoin
-namedtuple_generic_call_form_in_class
 
 # multiline annotations
 testMultilineQuotedAnnotation
