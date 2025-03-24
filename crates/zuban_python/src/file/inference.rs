@@ -3095,7 +3095,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 .unwrap_or_else(Inferred::new_any_from_error)
             }
             PrimaryContent::Execution(details) => {
-                self.primary_exec(base, node_index, details, result_context)
+                self.primary_execute(base, node_index, details, result_context)
             }
             PrimaryContent::GetItem(slice_type) => {
                 let f = self.file;
@@ -3110,7 +3110,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         }
     }
 
-    fn primary_exec(
+    fn primary_execute(
         &self,
         base: &Inferred,
         node_index: NodeIndex,
@@ -4032,7 +4032,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     {
                         self.insert_dataclass_transform(primary, exec);
                     } else {
-                        self.primary_exec(
+                        self.primary_execute(
                             &base,
                             primary.index(),
                             exec,
