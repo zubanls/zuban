@@ -611,10 +611,6 @@ mypy_ini_exclude_multi_line_verbose_regex_not_working
 
 # ------------- Additional unimportant, but would be nice -----------------
 
-# strict optional with config file
-testPerFileStrictOptionalListItemImportOptional
-testPerFileStrictOptionalListItemImportOptionalPyProjectTOML
-testStrictOptionalCovarianceCrossModule
 # Uses an environment variable in mypy.ini files=$MYPY_CONFIG_FILE_DIR/good.py
 testEnvvar_MYPY_CONFIG_FILE_DIR
 
@@ -1408,6 +1404,8 @@ testMeetOfIncompatibleProtocols
 testIssubclassWithMetaclasses
 testImportAndAssignToModule
 testSerializeDummyType
+testPerFileStrictOptionalListItemImportOptional
+testPerFileStrictOptionalListItemImportOptionalPyProjectTOML
 
 # --untyped-calls-exclude=bar.A
 testDisallowUntypedCallsAllowListFlags

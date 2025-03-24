@@ -70,7 +70,9 @@ impl Type {
             Type::Callable(c1) => {
                 Self::matches_callable_against_arbitrary(i_s, matcher, c1, value_type, variance)
             }
-            Type::None => matches!(value_type, Type::None).into(),
+            Type::None => (matches!(value_type, Type::None)
+                || !i_s.flags().strict_optional && variance == Variance::Invariant)
+                .into(),
             Type::Any(cause) => {
                 matcher.set_all_contained_type_vars_to_any(value_type, *cause);
                 Match::True {
@@ -319,6 +321,10 @@ impl Type {
         matcher: &mut Matcher,
         class2_node_ref: ClassNodeRef,
     ) -> Match {
+        if matches!(self, Type::None) {
+            // In no-strict optional cases we don't want to match.
+            return Match::new_false();
+        }
         let ComplexPoint::Class(storage) = class2_node_ref.maybe_complex().unwrap() else {
             unreachable!()
         };
