@@ -45,7 +45,13 @@ impl Type {
             Type::Never(_) => Some(t2.clone()),
             Type::Callable(c1) => common_base_for_callable_against_type(i_s, c1, t2),
             Type::EnumMember(_) => match t2 {
-                Type::EnumMember(_) | Type::Enum(_) => Some(t1.simplified_union(i_s, t2)),
+                Type::EnumMember(_) | Type::Enum(_) => {
+                    if is_reverse {
+                        Some(t2.simplified_union(i_s, t1))
+                    } else {
+                        Some(t1.simplified_union(i_s, t2))
+                    }
+                }
                 _ => None,
             },
             Type::RecursiveType(r1) => Some({
