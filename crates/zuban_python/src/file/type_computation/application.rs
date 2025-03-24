@@ -3,6 +3,7 @@ use std::rc::Rc;
 
 use super::super::name_resolution::NameResolution;
 use super::{TypeComputation, TypeComputationOrigin, TypeContent, TypeVarCallbackReturn};
+use crate::matching::ResultContext;
 use crate::{
     database::{ComplexPoint, Specific, TypeAlias},
     diagnostics::IssueKind,
@@ -14,10 +15,14 @@ use crate::{
 };
 
 macro_rules! compute_type_application {
-    ($self:ident, $slice_type:expr, $from_alias_definition:expr, $method:ident $args:tt) => {{
+    ($self:ident, $slice_type:expr, $result_context:expr, $method:ident $args:tt) => {{
+        let from_alias_definition = matches!(
+            $result_context,
+            ResultContext::AssignmentNewDefinition { .. }
+        );
         let mut on_type_var = |i_s: &InferenceState, _: &_, type_var_like: TypeVarLike, current_callable: Option<_>| {
             if let Some(result) = i_s.find_parent_type_var(&type_var_like) {
-                if $from_alias_definition {
+                if from_alias_definition {
                     $slice_type.as_node_ref().add_issue(
                         i_s,
                         IssueKind::BoundTypeVarInAlias{
@@ -28,8 +33,8 @@ macro_rules! compute_type_application {
                     return result
                 }
             }
-            if $from_alias_definition || current_callable.is_some(){
-                TypeVarCallbackReturn::NotFound { allow_late_bound_callables: !$from_alias_definition }
+            if from_alias_definition || current_callable.is_some(){
+                TypeVarCallbackReturn::NotFound { allow_late_bound_callables: !from_alias_definition }
             } else {
                 TypeVarCallbackReturn::UnboundTypeVar
             }
@@ -39,7 +44,7 @@ macro_rules! compute_type_application {
             $self.file,
             $slice_type.as_node_ref().as_link(),
             &mut on_type_var,
-            match $from_alias_definition {
+            match from_alias_definition {
                 false => TypeComputationOrigin::TypeApplication,
                 true => TypeComputationOrigin::TypeAlias,
             }
@@ -53,8 +58,8 @@ macro_rules! compute_type_application {
                 let type_var_likes = tcomp.into_type_vars(|_, recalculate_type_vars| {
                     type_ = recalculate_type_vars(&type_);
                 });
-                if type_var_likes.len() > 0 && $from_alias_definition  {
-                    debug_assert!($from_alias_definition);
+                if type_var_likes.len() > 0 && from_alias_definition  {
+                    debug_assert!(from_alias_definition);
                     Inferred::new_unsaved_complex(ComplexPoint::TypeAlias(Box::new(TypeAlias::new_valid(
                         type_var_likes,
                         $slice_type.as_node_ref().as_link(),
@@ -89,12 +94,12 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         &self,
         class: Class,
         slice_type: SliceType,
-        from_alias_definition: bool,
+        result_context: &ResultContext,
     ) -> Inferred {
         compute_type_application!(
             self,
             slice_type,
-            from_alias_definition,
+            result_context,
             compute_type_get_item_on_class(class, slice_type, None)
         )
     }
@@ -103,12 +108,12 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         &self,
         dataclass: &Dataclass,
         slice_type: SliceType,
-        from_alias_definition: bool,
+        result_context: &ResultContext,
     ) -> Inferred {
         compute_type_application!(
             self,
             slice_type,
-            from_alias_definition,
+            result_context,
             compute_type_get_item_on_dataclass(dataclass, slice_type, None)
         )
     }
@@ -117,12 +122,12 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         &self,
         named_tuple: Rc<NamedTuple>,
         slice_type: SliceType,
-        from_alias_definition: bool,
+        result_context: &ResultContext,
     ) -> Inferred {
         compute_type_application!(
             self,
             slice_type,
-            from_alias_definition,
+            result_context,
             compute_type_get_item_on_named_tuple(named_tuple, slice_type)
         )
     }
@@ -131,12 +136,12 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         &self,
         typed_dict: &TypedDict,
         slice_type: SliceType,
-        from_alias_definition: bool,
+        result_context: &ResultContext,
     ) -> Inferred {
         compute_type_application!(
             self,
             slice_type,
-            from_alias_definition,
+            result_context,
             compute_type_get_item_on_typed_dict(typed_dict, slice_type)
         )
     }
@@ -145,8 +150,12 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         &self,
         alias: &TypeAlias,
         slice_type: SliceType,
-        from_alias_definition: bool,
+        result_context: &ResultContext,
     ) -> Inferred {
+        let from_alias_definition = matches!(
+            result_context,
+            ResultContext::AssignmentNewDefinition { .. }
+        );
         if !from_alias_definition && !alias.application_allowed() {
             slice_type
                 .as_node_ref()
@@ -156,7 +165,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         compute_type_application!(
             self,
             slice_type,
-            from_alias_definition,
+            result_context,
             compute_type_get_item_on_alias(alias, slice_type)
         )
     }
@@ -165,7 +174,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         &self,
         specific: Specific,
         slice_type: SliceType,
-        from_alias_definition: bool,
+        result_context: &ResultContext,
     ) -> Inferred {
         match specific {
             Specific::TypingGeneric | Specific::TypingProtocol => {
@@ -179,7 +188,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 compute_type_application!(
                     self,
                     slice_type,
-                    from_alias_definition,
+                    result_context,
                     compute_type_get_item_on_tuple(slice_type)
                 )
             }
@@ -187,7 +196,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 compute_type_application!(
                     self,
                     slice_type,
-                    from_alias_definition,
+                    result_context,
                     compute_type_get_item_on_callable(slice_type)
                 )
             }
@@ -195,7 +204,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 compute_type_application!(
                     self,
                     slice_type,
-                    from_alias_definition,
+                    result_context,
                     compute_type_get_item_on_union(slice_type)
                 )
             }
@@ -203,7 +212,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 compute_type_application!(
                     self,
                     slice_type,
-                    from_alias_definition,
+                    result_context,
                     compute_type_get_item_on_optional(slice_type)
                 )
             }
@@ -211,7 +220,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 compute_type_application!(
                     self,
                     slice_type,
-                    from_alias_definition,
+                    result_context,
                     compute_type_get_item_on_type(slice_type)
                 )
             }
@@ -219,7 +228,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 compute_type_application!(
                     self,
                     slice_type,
-                    from_alias_definition,
+                    result_context,
                     compute_get_item_on_literal(slice_type)
                 )
             }
@@ -227,7 +236,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 compute_type_application!(
                     self,
                     slice_type,
-                    from_alias_definition,
+                    result_context,
                     compute_get_item_on_annotated(slice_type)
                 )
             }
@@ -235,7 +244,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 compute_type_application!(
                     self,
                     slice_type,
-                    from_alias_definition,
+                    result_context,
                     compute_get_item_on_flexible_alias(slice_type)
                 )
             }

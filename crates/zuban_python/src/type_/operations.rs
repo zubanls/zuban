@@ -523,11 +523,15 @@ impl Type {
                 Type::Dataclass(d) => slice_type
                     .file
                     .name_resolution_for_types(i_s)
-                    .compute_type_application_on_dataclass(d, *slice_type, false),
+                    .compute_type_application_on_dataclass(d, *slice_type, result_context),
                 Type::NamedTuple(nt) => slice_type
                     .file
                     .name_resolution_for_types(i_s)
-                    .compute_type_application_on_named_tuple(nt.clone(), *slice_type, false),
+                    .compute_type_application_on_named_tuple(
+                        nt.clone(),
+                        *slice_type,
+                        result_context,
+                    ),
                 t @ Type::Enum(_) => {
                     let enum_index = slice_type.infer(i_s);
                     if !enum_index
@@ -544,14 +548,7 @@ impl Type {
                 Type::TypedDict(td) => slice_type
                     .file
                     .name_resolution_for_types(i_s)
-                    .compute_type_application_on_typed_dict(
-                        td,
-                        *slice_type,
-                        matches!(
-                            result_context,
-                            ResultContext::AssignmentNewDefinition { .. }
-                        ),
-                    ),
+                    .compute_type_application_on_typed_dict(td, *slice_type, result_context),
                 _ => not_possible(true),
             },
             Type::NewType(new_type) => {

@@ -2174,10 +2174,7 @@ impl<'db: 'slf, 'slf> Inferred {
                         .compute_type_application_on_typing_class(
                             specific,
                             *slice_type,
-                            matches!(
-                                result_context,
-                                ResultContext::AssignmentNewDefinition { .. }
-                            ),
+                            result_context,
                         );
                     if matches!(specific, Specific::TypingTuple) {
                         return result;
@@ -2190,14 +2187,7 @@ impl<'db: 'slf, 'slf> Inferred {
                         return slice_type
                             .file
                             .name_resolution_for_types(i_s)
-                            .compute_type_application_on_alias(
-                                ta,
-                                *slice_type,
-                                matches!(
-                                    result_context,
-                                    ResultContext::AssignmentNewDefinition { .. }
-                                ),
-                            );
+                            .compute_type_application_on_alias(ta, *slice_type, result_context);
                     }
                 }
             }

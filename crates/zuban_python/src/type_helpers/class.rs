@@ -1377,14 +1377,7 @@ impl<'db: 'a, 'a> Class<'a> {
         slice_type
             .file
             .name_resolution_for_types(i_s)
-            .compute_type_application_on_class(
-                *self,
-                *slice_type,
-                matches!(
-                    result_context,
-                    ResultContext::AssignmentNewDefinition { .. }
-                ),
-            )
+            .compute_type_application_on_class(*self, *slice_type, result_context)
     }
 
     pub fn in_slots(&self, db: &Database, name: &str) -> bool {
