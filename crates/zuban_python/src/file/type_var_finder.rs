@@ -175,7 +175,6 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
                         };
                         self.point_resolution_to_base_lookup(pr)
                     }
-                    BaseLookup::TypeVarLike(_) => todo!(),
                     _ => BaseLookup::Other,
                 };
                 if let BaseLookup::TypeVarLike(tvl) = result {
