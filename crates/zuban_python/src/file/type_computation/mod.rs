@@ -45,10 +45,11 @@ use crate::{
         CallableWithParent, ClassGenerics, Dataclass, DbBytes, DbString, Enum, EnumMember,
         FunctionKind, GenericClass, GenericItem, GenericsList, Literal, LiteralKind,
         MaybeUnpackGatherer, NamedTuple, Namespace, NeverCause, ParamSpecArg, ParamSpecUsage,
-        ParamType, RecursiveType, StarParamType, StarStarParamType, StringSlice, Tuple, TupleArgs,
-        TupleUnpack, Type, TypeArgs, TypeGuardInfo, TypeVar, TypeVarKind, TypeVarLike,
-        TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypeVarTupleUsage, TypeVarUsage, TypedDict,
-        TypedDictGenerics, UnionEntry, UnionType, WithUnpack,
+        ParamType, RecursiveType, RecursiveTypeOrigin, StarParamType, StarStarParamType,
+        StringSlice, Tuple, TupleArgs, TupleUnpack, Type, TypeArgs, TypeGuardInfo, TypeVar,
+        TypeVarKind, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager,
+        TypeVarTupleUsage, TypeVarUsage, TypedDict, TypedDictGenerics, UnionEntry, UnionType,
+        WithUnpack,
     },
     type_helpers::{cache_class_name, Class, Function},
     utils::rc_slice_into_vec,
@@ -481,8 +482,17 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 self.add_issue_for_index(expr.index(), IssueKind::CannotSubclassNewType);
                 CalculatedBaseClass::Unknown
             }
-            Type::RecursiveType(t) => {
-                self.compute_base_class_for_type(expr, t.calculated_type(self.i_s.db).clone())
+            Type::RecursiveType(r) => {
+                if let RecursiveTypeOrigin::TypeAlias(alias) = r.origin(self.i_s.db) {
+                    if alias.calculating() {
+                        self.add_issue_for_index(
+                            expr.index(),
+                            IssueKind::CurrentlyUnsupportedBaseClassCycle,
+                        );
+                        return CalculatedBaseClass::Unknown;
+                    }
+                }
+                self.compute_base_class_for_type(expr, r.calculated_type(self.i_s.db).clone())
             }
             _ => CalculatedBaseClass::Invalid,
         }

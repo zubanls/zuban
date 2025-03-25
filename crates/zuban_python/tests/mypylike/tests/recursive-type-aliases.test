@@ -123,3 +123,16 @@ reveal_type(x[0][0])  # N: Revealed type is "n.C"
 [file n.py]
 import m
 class C(m.B): pass
+
+[case recursive_alias_via_base_class_with_nested_class]
+# flags: --disable-error-code used-before-def
+# Like testRecursiveAliasViaBaseClass, but with forward references
+from typing import List
+
+x: B
+B = List[X.C]
+class X:
+    class C(B): pass  # E: This base class/alias cycle is currently unsupported
+
+reveal_type(x)  # N: Revealed type is "builtins.list[__main__.X.C]"
+reveal_type(x[0][0])  # E: Value of type "C" is not indexable # N: Revealed type is "Any"

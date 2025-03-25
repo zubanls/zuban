@@ -138,6 +138,7 @@ pub(crate) enum IssueKind {
     InconsistentMro { name: Box<str> },
     CyclicDefinition { name: Box<str> },
     InvalidTypeCycle,
+    CurrentlyUnsupportedBaseClassCycle,
     EnsureSingleGenericOrProtocol,
 
     InvalidType(Box<str>),
@@ -1264,6 +1265,8 @@ impl<'db> Diagnostic<'db> {
             CyclicDefinition{name} =>
                 format!("Cannot resolve name {name:?} (possible cyclic definition)"),
             InvalidTypeCycle => "Invalid type cycle".to_string(),
+            CurrentlyUnsupportedBaseClassCycle =>
+                "This base class/alias cycle is currently unsupported".to_string(),
             EnsureSingleGenericOrProtocol =>
                 "Only single Generic[...] or Protocol[...] can be in bases".to_string(),
 
