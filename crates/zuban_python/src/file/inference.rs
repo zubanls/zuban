@@ -10,7 +10,7 @@ use super::{
     on_argument_type_error,
     type_computation::ANNOTATION_TO_EXPR_DIFFERENCE,
     utils::{func_of_self_symbol, infer_dict_like},
-    ClassNodeRef, File, PythonFile, FLOW_ANALYSIS,
+    ClassNodeRef, File, FuncNodeRef, PythonFile, FLOW_ANALYSIS,
 };
 use crate::{
     arguments::{Args, KnownArgs, NoArgs, SimpleArgs},
@@ -3524,7 +3524,20 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     })
                 }
             }
-            PointResolution::ModuleGetattrName(_) => todo!(),
+            PointResolution::ModuleGetattrName(node_ref) => {
+                let func = node_ref.maybe_name_of_function().unwrap();
+                let func = Function::new(NodeRef::new(node_ref.file, func.index()), None);
+                let i_s = &InferenceState::new(self.i_s.db, node_ref.file);
+                func.ensure_cached_func(i_s);
+                func.execute(
+                    i_s,
+                    &KnownArgs::new(&Inferred::new_any_from_error(), node_ref),
+                    &mut ResultContext::Unknown,
+                    // Errors are reported when checking the file (the signature can only contain
+                    // one positional argument)
+                    OnTypeError::new(&|_, _, _, _| {}),
+                )
+            }
         }
     }
 
