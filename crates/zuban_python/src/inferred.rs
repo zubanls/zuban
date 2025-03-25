@@ -2019,7 +2019,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 return Inferred::new_any_from_error();
                             }
                             Specific::TypingDataclassTransform => {
-                                todo!()
+                                return Inferred::new_object(i_s.db)
                             }
                             _ => (),
                         }

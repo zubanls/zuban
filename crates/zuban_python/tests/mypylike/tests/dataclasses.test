@@ -411,6 +411,11 @@ class E(C):
         # TODO this is not correct, because it's wrapped as a dataclass again
         super().__post_init__  # E: "__post_init__" undefined in superclass
 
+[case dataclass_transform_in_wrong_place]
+from typing import dataclass_transform
+# This is not correct, but for now we don't support it in a better way
+reveal_type(dataclass_transform())  # N: Revealed type is "object"
+
 [case dataclass_enum_combination]
 from dataclasses import dataclass
 from enum import Enum
