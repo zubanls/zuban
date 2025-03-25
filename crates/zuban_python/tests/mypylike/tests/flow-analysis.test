@@ -83,7 +83,7 @@ if bool():  # Causes flow analysis to happen
     X = TypeVar("X")
 
 def here() -> None:
-    reveal_type(foo.Foo())
+    reveal_type(foo.Foo())  # N: Revealed type is "foo.Foo[Never]"
 
 [case flow_analysis_should_be_avoided_for_simple_imports]
 import foo
