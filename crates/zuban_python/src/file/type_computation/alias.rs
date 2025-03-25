@@ -1,9 +1,9 @@
-use std::rc::Rc;
+use std::{borrow::Cow, rc::Rc};
 
 use parsa_python_cst::{
     Argument, ArgumentsDetails, Assignment, AssignmentContent, Atom, AtomContent, Expression,
     ExpressionContent, ExpressionPart, NameDef, NameOrPrimaryWithNames, NodeIndex, Primary,
-    PrimaryContent, PrimaryOrAtom, PythonString, Target, TypeLike,
+    PrimaryContent, PrimaryOrAtom, PythonString, StarExpressionContent, Target, TypeLike,
 };
 
 use super::{
@@ -652,25 +652,31 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
     }
 
     fn pre_calc_classes_in_atom(&self, atom: Atom) -> PreClassCalculationLookup<'file> {
+        let compute_forward_reference = |start, string: Cow<str>| {
+            let file = self.file.ensure_annotation_file(self.i_s.db, start, string);
+
+            let Some(star_exprs) = file.tree.maybe_star_expressions() else {
+                return;
+            };
+            let StarExpressionContent::Expression(expr) = star_exprs.unpack() else {
+                return;
+            };
+            file.name_resolution_for_types(self.i_s)
+                .pre_calc_classes_in_expr(expr);
+        };
         match atom.unpack() {
             AtomContent::Name(n) => {
-                self.pre_calc_classes_point_resolution(self.resolve_name_without_narrowing(n))
+                return self
+                    .pre_calc_classes_point_resolution(self.resolve_name_without_narrowing(n))
             }
             AtomContent::Strings(s_o_b) => match s_o_b.as_python_string() {
-                PythonString::Ref(start, s) => {
-                    // TODO
-                    //self.compute_forward_reference(start, Cow::Borrowed(s))
-                    PreClassCalculationLookup::Other
-                }
-                PythonString::String(start, s) => {
-                    // TODO
-                    //self.compute_forward_reference(start, Cow::Owned(s))
-                    PreClassCalculationLookup::Other
-                }
-                PythonString::FString => PreClassCalculationLookup::Other,
+                PythonString::Ref(start, s) => compute_forward_reference(start, Cow::Borrowed(s)),
+                PythonString::String(start, s) => compute_forward_reference(start, Cow::Owned(s)),
+                PythonString::FString => (),
             },
-            _ => PreClassCalculationLookup::Other,
+            _ => (),
         }
+        PreClassCalculationLookup::Other
     }
 
     fn pre_calc_classes_in_primary(&self, primary: Primary) -> PreClassCalculationLookup<'file> {

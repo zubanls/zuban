@@ -94,3 +94,15 @@ def f(x: A[int]):
     reveal_type(x)  # N: Revealed type is "int | list[Any | list[...]]"
     if isinstance(x, list):
         reveal_type(x[0])  # N: Revealed type is "Any | list[...]"
+
+[case recursive_alias_via_base_class_with_forward_reference]
+# flags: --disable-error-code used-before-def
+# Like testRecursiveAliasViaBaseClass, but with forward references
+from typing import List
+
+x: B
+B = List["C"]
+class C(B): pass
+
+reveal_type(x)  # N: Revealed type is "builtins.list[__main__.C]"
+reveal_type(x[0][0])  # N: Revealed type is "__main__.C"
