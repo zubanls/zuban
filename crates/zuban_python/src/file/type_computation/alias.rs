@@ -688,19 +688,14 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             PrimaryContent::Attribute(name) => {
                 return match base {
                     PreClassCalculationLookup::Module(f) => {
-                        /*
                         if let Some((resolved, _)) = f
                             .name_resolution_for_types(&InferenceState::new(self.i_s.db, f))
                             .resolve_module_access(name.as_str(), |k| {
                                 self.add_issue(name.index(), k)
                             })
                         {
-                            self.pre_calc_classes_point_resolution(resolved)
-                        } else {
-                            PreClassCalculationLookup::Other
+                            return self.pre_calc_classes_point_resolution(resolved);
                         }
-                        */
-                        // TODO
                         PreClassCalculationLookup::Other
                     }
                     PreClassCalculationLookup::Class(_) => {
