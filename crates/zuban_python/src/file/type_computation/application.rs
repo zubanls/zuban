@@ -5,7 +5,7 @@ use super::super::name_resolution::NameResolution;
 use super::{TypeComputation, TypeComputationOrigin, TypeContent, TypeVarCallbackReturn};
 use crate::matching::ResultContext;
 use crate::{
-    database::{ComplexPoint, Specific, TypeAlias},
+    database::{Specific, TypeAlias},
     diagnostics::IssueKind,
     getitem::SliceType,
     inference_state::InferenceState,
@@ -17,20 +17,20 @@ use crate::{
 
 macro_rules! compute_type_application {
     ($self:ident, $slice_type:expr, $result_context:expr, $method:ident $args:tt) => {{
-        let from_alias_definition = match $result_context {
+        match $result_context {
             ResultContext::AssignmentNewDefinition { assignment_definition } => {
                 let node_ref = NodeRef::from_link($self.i_s.db, *assignment_definition);
                 let assignment = node_ref.expect_assignment();
                 return $self.compute_explicit_type_assignment(assignment);
             }
-            _ => false,
+            _ => (),
         };
         let mut on_type_var = |i_s: &InferenceState, _: &_, type_var_like: TypeVarLike, current_callable: Option<_>| {
             if let Some(result) = i_s.find_parent_type_var(&type_var_like) {
                 return result
             }
-            if from_alias_definition || current_callable.is_some(){
-                TypeVarCallbackReturn::NotFound { allow_late_bound_callables: !from_alias_definition }
+            if current_callable.is_some(){
+                TypeVarCallbackReturn::NotFound { allow_late_bound_callables: true }
             } else {
                 TypeVarCallbackReturn::UnboundTypeVar
             }
@@ -40,10 +40,7 @@ macro_rules! compute_type_application {
             $self.file,
             $slice_type.as_node_ref().as_link(),
             &mut on_type_var,
-            match from_alias_definition {
-                false => TypeComputationOrigin::TypeApplication,
-                true => TypeComputationOrigin::TypeAlias,
-            }
+            TypeComputationOrigin::TypeApplication,
         );
         let t = tcomp.$method $args;
         match t {
@@ -51,21 +48,10 @@ macro_rules! compute_type_application {
                 Inferred::from_type(Type::Type(Rc::new(Type::new_class(class_link, generics))))
             }
             TypeContent::Type(mut type_) => {
-                let type_var_likes = tcomp.into_type_vars(|_, recalculate_type_vars| {
+                tcomp.into_type_vars(|_, recalculate_type_vars| {
                     type_ = recalculate_type_vars(&type_);
                 });
-                if type_var_likes.len() > 0 && from_alias_definition  {
-                    debug_assert!(from_alias_definition);
-                    Inferred::new_unsaved_complex(ComplexPoint::TypeAlias(Box::new(TypeAlias::new_valid(
-                        type_var_likes,
-                        $slice_type.as_node_ref().as_link(),
-                        None,
-                        Rc::new(type_),
-                        false,
-                    ))))
-                } else {
-                    Inferred::from_type(Type::Type(Rc::new(type_)))
-                }
+                Inferred::from_type(Type::Type(Rc::new(type_)))
             },
             TypeContent::Unknown(cause) => Inferred::new_any(cause.into()),
             TypeContent::InvalidVariable(var) => {

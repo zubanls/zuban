@@ -745,23 +745,6 @@ impl TypeAlias {
         }
     }
 
-    pub fn new_valid(
-        type_vars: TypeVarLikes,
-        location: PointLink,
-        name: Option<PointLink>,
-        type_: Rc<Type>,
-        is_recursive: bool,
-    ) -> Self {
-        let slf = Self::new(type_vars, location, name);
-        slf.state
-            .set(TypeAliasState::Valid(CalculatedTypeAlias {
-                type_,
-                is_recursive,
-            }))
-            .unwrap();
-        slf
-    }
-
     pub fn is_recursive(&self) -> bool {
         match self.state.get().unwrap() {
             TypeAliasState::Invalid => unreachable!(),
