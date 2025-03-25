@@ -406,6 +406,13 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
 
         let mut type_var_callback = |i_s: &InferenceState, _: &_, type_var_like: TypeVarLike, _| {
             if let Some(result) = i_s.find_parent_type_var(&type_var_like) {
+                if let TypeVarCallbackReturn::TypeVarLike(_) = &result {
+                    if matches!(origin, CalculatingAliasType::Normal) {
+                        return TypeVarCallbackReturn::AddIssue(IssueKind::BoundTypeVarInAlias {
+                            name: Box::from(type_var_like.name(i_s.db)),
+                        });
+                    }
+                }
                 return result;
             }
             if let Some(usage) = alias.type_vars.find(type_var_like, alias.location) {

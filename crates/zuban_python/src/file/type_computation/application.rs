@@ -27,16 +27,7 @@ macro_rules! compute_type_application {
         };
         let mut on_type_var = |i_s: &InferenceState, _: &_, type_var_like: TypeVarLike, current_callable: Option<_>| {
             if let Some(result) = i_s.find_parent_type_var(&type_var_like) {
-                if from_alias_definition {
-                    $slice_type.as_node_ref().add_issue(
-                        i_s,
-                        IssueKind::BoundTypeVarInAlias{
-                            name: Box::from(type_var_like.name(i_s.db))
-                        },
-                    );
-                } else {
-                    return result
-                }
+                return result
             }
             if from_alias_definition || current_callable.is_some(){
                 TypeVarCallbackReturn::NotFound { allow_late_bound_callables: !from_alias_definition }
