@@ -1698,7 +1698,7 @@ impl<'db: 'slf, 'slf> Inferred {
             ComplexPoint::TypeAlias(alias) => {
                 format!(
                     "TypeAlias({}, {})",
-                    alias.name(db).unwrap_or("without-name"),
+                    alias.name(db),
                     from.unwrap().debug_info(db)
                 )
             }
@@ -2071,10 +2071,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                             node_ref.add_issue(
                                                 i_s,
                                                 IssueKind::MissingTypeParameters {
-                                                    name: alias
-                                                        .name(i_s.db)
-                                                        .unwrap_or("<Alias>")
-                                                        .into(),
+                                                    name: alias.name(i_s.db).into(),
                                                 },
                                             );
                                         }

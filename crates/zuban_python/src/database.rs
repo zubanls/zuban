@@ -729,14 +729,14 @@ enum TypeAliasState {
 pub(crate) struct TypeAlias {
     pub type_vars: TypeVarLikes,
     pub location: PointLink,
-    pub name: Option<PointLink>,
+    pub name: PointLink,
     // The two attributes around is_recursive are calculated after the TypeAlias is
     // added to the DB.
     state: OnceCell<TypeAliasState>,
 }
 
 impl TypeAlias {
-    pub fn new(type_vars: TypeVarLikes, location: PointLink, name: Option<PointLink>) -> Self {
+    pub fn new(type_vars: TypeVarLikes, location: PointLink, name: PointLink) -> Self {
         Self {
             type_vars,
             location,
@@ -784,8 +784,8 @@ impl TypeAlias {
         self.state.set(TypeAliasState::Invalid).unwrap()
     }
 
-    pub fn name<'db>(&self, db: &'db Database) -> Option<&'db str> {
-        self.name.map(|name| NodeRef::from_link(db, name).as_code())
+    pub fn name<'db>(&self, db: &'db Database) -> &'db str {
+        NodeRef::from_link(db, self.name).as_code()
     }
 
     pub fn application_allowed(&self) -> bool {

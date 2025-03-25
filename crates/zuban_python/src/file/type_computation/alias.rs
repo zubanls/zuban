@@ -394,10 +394,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         let alias = TypeAlias::new(
             type_var_likes,
             in_definition,
-            Some(PointLink::new(
-                self.file.file_index,
-                name_def.name().index(),
-            )),
+            PointLink::new(self.file.file_index, name_def.name().index()),
         );
         save_alias(cached_type_node_ref, alias);
         let ComplexPoint::TypeAlias(alias) = cached_type_node_ref.maybe_complex().unwrap() else {

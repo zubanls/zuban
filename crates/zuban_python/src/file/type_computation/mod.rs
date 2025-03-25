@@ -1019,7 +1019,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     self.add_issue(
                         node_ref,
                         IssueKind::MissingTypeParameters {
-                            name: a.name(db).unwrap().into(),
+                            name: a.name(db).into(),
                         },
                     );
                 }
@@ -1652,12 +1652,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             &mut generics,
             slice_type.iter(),
             &alias.type_vars,
-            &|| {
-                alias
-                    .name(self.name_resolution.i_s.db)
-                    .unwrap_or("<Alias>")
-                    .into()
-            },
+            &|| alias.name(self.name_resolution.i_s.db).into(),
             |slf: &mut Self, counts| {
                 slf.add_issue(
                     slice_type.as_node_ref(),
