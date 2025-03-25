@@ -1,8 +1,9 @@
 use std::rc::Rc;
 
 use parsa_python_cst::{
-    Argument, ArgumentsDetails, Assignment, AssignmentContent, Expression, ExpressionContent,
-    ExpressionPart, NameDef, NameOrPrimaryWithNames, NodeIndex, PrimaryContent, Target,
+    Argument, ArgumentsDetails, Assignment, AssignmentContent, Atom, AtomContent, Expression,
+    ExpressionContent, ExpressionPart, NameDef, NameOrPrimaryWithNames, NodeIndex, Primary,
+    PrimaryContent, PrimaryOrAtom, PythonString, Target, TypeLike,
 };
 
 use super::{
@@ -18,6 +19,7 @@ use crate::{
     debug,
     diagnostics::IssueKind,
     file::{
+        name_resolution::PointResolution,
         type_computation::{
             named_tuple::new_typing_named_tuple_internal,
             typed_dict::new_typed_dict_with_execution_syntax, TypeCommentState, TypeComputation,
@@ -25,6 +27,7 @@ use crate::{
         },
         PythonFile, TypeVarCallbackReturn,
     },
+    getitem::{SliceOrSimple, SliceType},
     inference_state::InferenceState,
     inferred::Inferred,
     node_ref::NodeRef,
@@ -33,7 +36,7 @@ use crate::{
         AnyCause, GenericItem, NamedTuple, TupleArgs, TupleUnpack, Type, TypeVarLike, TypeVarLikes,
         TypedDict,
     },
-    type_helpers::Class,
+    type_helpers::{cache_class_name, Class},
     utils::{debug_indent, AlreadySeen},
 };
 
@@ -131,6 +134,12 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             }
 
             let check_for_alias = |origin| {
+                // We never want to have unfinished aliases in the class mro and we therefore make
+                // sure that classes are initialized first.
+                self.pre_calc_classes_in_expr(expr);
+                if cached_type_node_ref.point().calculated() {
+                    return load_cached_type(cached_type_node_ref);
+                }
                 self.check_for_alias(origin, cached_type_node_ref, name_def, expr, is_explicit)
             };
 
@@ -358,8 +367,6 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         expr: Expression,
         is_explicit: bool,
     ) -> Lookup<'file, 'file> {
-        cached_type_node_ref.set_point(Point::new_calculating());
-
         // Here we avoid all late bound type var calculation for callable, which is how
         // mypy works. The default behavior without a type_var_callback would be to
         // just calculate all late bound type vars, but that would mean that something
@@ -569,6 +576,157 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         }
         Inferred::from_saved_node_ref(assignment_type_node_ref(self.file, assignment))
     }
+
+    // ------------------------------------------------------------------------
+    // Here comes the class precalculation
+    // ------------------------------------------------------------------------
+
+    fn pre_calc_classes_in_slice_like(&self, slice_like: SliceOrSimple) {
+        match slice_like {
+            SliceOrSimple::Simple(s) => self.pre_calc_classes_in_expr(s.named_expr.expression()),
+            SliceOrSimple::Slice(_) => (),
+            SliceOrSimple::Starred(starred) => {
+                self.pre_calc_classes_in_expr(starred.starred_expr.expression())
+            }
+        };
+    }
+
+    fn pre_calc_classes_in_expr(&self, expr: Expression) {
+        if let ExpressionContent::ExpressionPart(n) = expr.unpack() {
+            self.pre_calc_classes_in_expression_part(n);
+        }
+    }
+
+    fn pre_calc_classes_point_resolution(
+        &self,
+        pr: PointResolution<'file>,
+    ) -> PreClassCalculationLookup<'file> {
+        match pr {
+            PointResolution::NameDef { node_ref, .. } => {
+                let name_def = node_ref.expect_name_def();
+                if let TypeLike::ClassDef(class_def) = name_def.expect_type() {
+                    let class_node_ref = ClassNodeRef::new(node_ref.file, class_def.index());
+                    cache_class_name(node_ref, class_def);
+                    class_node_ref.ensure_cached_class_infos(&InferenceState::new(
+                        self.i_s.db,
+                        node_ref.file,
+                    ));
+                    return PreClassCalculationLookup::Class(class_node_ref);
+                }
+            }
+            PointResolution::Inferred(inferred) => {
+                if let Some(Specific::TypingLiteral) = inferred.maybe_saved_specific(self.i_s.db) {
+                    return PreClassCalculationLookup::Literal;
+                } else if let Some(ComplexPoint::Class(_)) =
+                    inferred.maybe_complex_point(self.i_s.db)
+                {
+                    let cls = ClassNodeRef::from_node_ref(
+                        inferred.maybe_saved_node_ref(self.i_s.db).unwrap(),
+                    );
+                    return PreClassCalculationLookup::Class(cls);
+                }
+                if let Some(f) = inferred.maybe_file(self.i_s.db) {
+                    return PreClassCalculationLookup::Module(self.i_s.db.loaded_python_file(f));
+                }
+            }
+            _ => (),
+        }
+        PreClassCalculationLookup::Other
+    }
+
+    fn pre_calc_classes_in_expression_part(&self, node: ExpressionPart) {
+        match node {
+            ExpressionPart::Atom(atom) => {
+                self.pre_calc_classes_in_atom(atom);
+            }
+            ExpressionPart::Primary(primary) => {
+                self.pre_calc_classes_in_primary(primary);
+            }
+            ExpressionPart::BitwiseOr(bitwise_or) => {
+                let (a, b) = bitwise_or.unpack();
+                self.pre_calc_classes_in_expression_part(a);
+                self.pre_calc_classes_in_expression_part(b);
+            }
+            _ => (),
+        }
+    }
+
+    fn pre_calc_classes_in_atom(&self, atom: Atom) -> PreClassCalculationLookup<'file> {
+        match atom.unpack() {
+            AtomContent::Name(n) => {
+                self.pre_calc_classes_point_resolution(self.resolve_name_without_narrowing(n))
+            }
+            AtomContent::Strings(s_o_b) => match s_o_b.as_python_string() {
+                PythonString::Ref(start, s) => {
+                    // TODO
+                    //self.compute_forward_reference(start, Cow::Borrowed(s))
+                    PreClassCalculationLookup::Other
+                }
+                PythonString::String(start, s) => {
+                    // TODO
+                    //self.compute_forward_reference(start, Cow::Owned(s))
+                    PreClassCalculationLookup::Other
+                }
+                PythonString::FString => PreClassCalculationLookup::Other,
+            },
+            _ => PreClassCalculationLookup::Other,
+        }
+    }
+
+    fn pre_calc_classes_in_primary(&self, primary: Primary) -> PreClassCalculationLookup<'file> {
+        let base = match primary.first() {
+            PrimaryOrAtom::Primary(primary) => self.pre_calc_classes_in_primary(primary),
+            PrimaryOrAtom::Atom(atom) => self.pre_calc_classes_in_atom(atom),
+        };
+        match primary.second() {
+            PrimaryContent::Attribute(name) => {
+                return match base {
+                    PreClassCalculationLookup::Module(f) => {
+                        /*
+                        if let Some((resolved, _)) = f
+                            .name_resolution_for_types(&InferenceState::new(self.i_s.db, f))
+                            .resolve_module_access(name.as_str(), |k| {
+                                self.add_issue(name.index(), k)
+                            })
+                        {
+                            self.pre_calc_classes_point_resolution(resolved)
+                        } else {
+                            PreClassCalculationLookup::Other
+                        }
+                        */
+                        // TODO
+                        PreClassCalculationLookup::Other
+                    }
+                    PreClassCalculationLookup::Class(_) => {
+                        // TODO we would need to do class lookups
+                        PreClassCalculationLookup::Other
+                    }
+                    _ => PreClassCalculationLookup::Other,
+                };
+            }
+            PrimaryContent::Execution(_) => (),
+            PrimaryContent::GetItem(slice_type) => {
+                let s = SliceType::new(self.file, primary.index(), slice_type);
+                match base {
+                    PreClassCalculationLookup::Literal => (), // Literals can never contain type vars
+                    _ => {
+                        for slice_like in s.iter() {
+                            self.pre_calc_classes_in_slice_like(slice_like)
+                        }
+                    }
+                }
+            }
+        }
+        PreClassCalculationLookup::Other
+    }
+}
+
+enum PreClassCalculationLookup<'file> {
+    Module(&'file PythonFile),
+    #[expect(dead_code)]
+    Class(ClassNodeRef<'file>),
+    Literal,
+    Other,
 }
 
 fn load_cached_type(node_ref: NodeRef) -> Lookup {

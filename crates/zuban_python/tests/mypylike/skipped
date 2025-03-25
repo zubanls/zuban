@@ -60,8 +60,7 @@ check-recursive-types:testRecursiveAliasImported
 testTypeAliasUpdateNonRecursiveToRecursiveFine
 testTypeAliasUpdateNonRecursiveToRecursiveCoarse
 testRecursiveNamedTupleTypedDict
-# Recursive aliases, classes should be resolved first
-testRecursiveAliasViaBaseClass
+# Recursive aliases with NewType, classes should be resolved first
 testRecursiveAliasViaBaseClass2
 
 # param spec complex nested transitive tests
