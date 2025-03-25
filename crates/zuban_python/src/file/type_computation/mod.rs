@@ -2533,6 +2533,16 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         slice_type: SliceType,
     ) -> TypeContent<'db, 'db> {
         let generics = self.compute_generics_for_alias(slice_type, alias);
+        let type_ = alias.type_if_valid();
+        if let Type::TypedDict(td) = type_ {
+            if let TypedDictGenerics::NotDefinedYet(_) = &td.generics {
+                let generics = GenericsList::generics_from_vec(generics);
+                return TypeContent::Type(Type::TypedDict(
+                    td.apply_generics(self.i_s.db, TypedDictGenerics::Generics(generics)),
+                ));
+            }
+        }
+
         self.is_recursive_alias |= alias.is_recursive();
         TypeContent::Type(
             alias

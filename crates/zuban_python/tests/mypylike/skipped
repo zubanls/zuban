@@ -5,8 +5,6 @@ testPostInitIsNotAFunction
 avoid_type_computation_recursion
 testOverloadPossibleOverlapWithArgsAndKwargs
 
-testGenericTypedDictMultipleGenerics
-
 testLiteralAndGenericsRespectsUpperBound
 self_instance_variable1
 
