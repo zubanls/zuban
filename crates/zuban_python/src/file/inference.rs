@@ -10,7 +10,7 @@ use super::{
     on_argument_type_error, process_unfinished_partials,
     type_computation::ANNOTATION_TO_EXPR_DIFFERENCE,
     utils::{func_of_self_symbol, infer_dict_like},
-    ClassNodeRef, File, FuncNodeRef, PythonFile, FLOW_ANALYSIS,
+    ClassNodeRef, File, PythonFile, FLOW_ANALYSIS,
 };
 use crate::{
     arguments::{Args, KnownArgs, NoArgs, SimpleArgs},
@@ -120,9 +120,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             return;
         }
         self.assign_import_from_names(imp, |name_def, pr, redirect_to_link| {
-            let inf =
-                self.infer_module_point_resolution(pr, |k| self.add_issue(name_def.index(), k));
-            self.assign_to_import_from_name(name_def, inf, redirect_to_link)
+            self.assign_to_import_from_name(name_def, pr, redirect_to_link)
         });
         self.file.points.set(
             imp.index(),
@@ -133,9 +131,10 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
     fn assign_to_import_from_name(
         &self,
         name_def: NameDef,
-        inf: Inferred,
+        pr: PointResolution,
         redirect_to_link: Option<PointLink>,
     ) {
+        let inf = self.infer_module_point_resolution(pr, |k| self.add_issue(name_def.index(), k));
         self.assign_to_name_def(
             name_def,
             NodeRef::new(self.file, name_def.index()),
@@ -3754,10 +3753,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 self.assign_import_from_only_particular_name_def(
                     as_name,
                     |name_def, pr, redirect_to_link| {
-                        let inf = self.infer_module_point_resolution(pr, |k| {
-                            self.add_issue(name_def.index(), k)
-                        });
-                        self.assign_to_import_from_name(name_def, inf, redirect_to_link)
+                        self.assign_to_import_from_name(name_def, pr, redirect_to_link)
                     },
                 );
             }
