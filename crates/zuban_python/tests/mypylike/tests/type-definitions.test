@@ -193,7 +193,7 @@ reveal_type(Foo().y)  # N: Revealed type is "int"
 
 [case invalid_module_getattr]
 from ok import undefined1
-from not_ok import undefined2  # E: "int" not callable
+from not_ok import undefined2
 reveal_type(undefined1)  # N: Revealed type is "str"
 reveal_type(undefined2)  # N: Revealed type is "Any"
 

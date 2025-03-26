@@ -3525,18 +3525,22 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 }
             }
             PointResolution::ModuleGetattrName(node_ref) => {
-                let func = node_ref.maybe_name_of_function().unwrap();
-                let func = Function::new(NodeRef::new(node_ref.file, func.index()), None);
-                let i_s = &InferenceState::new(self.i_s.db, node_ref.file);
-                func.ensure_cached_func(i_s);
-                func.execute(
-                    i_s,
-                    &KnownArgs::new(&Inferred::new_any_from_error(), node_ref),
-                    &mut ResultContext::Unknown,
-                    // Errors are reported when checking the file (the signature can only contain
-                    // one positional argument)
-                    OnTypeError::new(&|_, _, _, _| {}),
-                )
+                if let Some(func) = node_ref.maybe_name_of_function() {
+                    let func = Function::new(NodeRef::new(node_ref.file, func.index()), None);
+                    let i_s = &InferenceState::new(self.i_s.db, node_ref.file);
+                    func.ensure_cached_func(i_s);
+                    func.execute(
+                        i_s,
+                        &KnownArgs::new(&Inferred::new_any_from_error(), node_ref),
+                        &mut ResultContext::Unknown,
+                        // Errors are reported when checking the file (the signature can only contain
+                        // one positional argument)
+                        OnTypeError::new(&|_, _, _, _| {}),
+                    )
+                } else {
+                    // In case of a non-function an error is raised anyway.
+                    Inferred::new_any_from_error()
+                }
             }
         }
     }
