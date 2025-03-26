@@ -8,7 +8,6 @@ use crate::{
     file::{File, PythonFile},
     inferred::Inferred,
     type_::{Namespace, Type},
-    type_helpers::Module,
 };
 
 pub const STUBS_SUFFIX: &str = "-stubs";
@@ -30,10 +29,7 @@ impl ImportResult {
         name: &str,
     ) -> Option<ImportResult> {
         match self {
-            Self::File(file_index) => {
-                let module = Module::from_file_index(db, *file_index);
-                module.sub_module(db, name)
-            }
+            Self::File(file_index) => db.loaded_python_file(*file_index).sub_module(db, name),
             Self::Namespace(ns) => {
                 python_import(db, original_file, ns.directories.iter().cloned(), name)
             }

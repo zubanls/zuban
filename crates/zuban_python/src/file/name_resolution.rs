@@ -14,7 +14,7 @@ use crate::{
     inferred::Inferred,
     node_ref::NodeRef,
     type_::{LookupResult, Type},
-    type_helpers::{is_private_import, is_reexport_issue, Module},
+    type_helpers::{is_private_import, is_reexport_issue},
     utils::AlreadySeen,
 };
 
@@ -274,15 +274,15 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
             let mut in_stub_and_has_getattr = false;
             let result = match &import_result {
                 ImportResult::File(file_index) => {
-                    let module = Module::from_file_index(i_s.db, *file_index);
+                    let module = i_s.db.loaded_python_file(*file_index);
                     let r = module.sub_module(i_s.db, name.as_str());
 
                     // This is such weird logic. I don't understand at all why Mypy is doing this.
                     // It seems to come from here:
                     // https://github.com/python/mypy/blob/bc591c756a453bb6a78a31e734b1f0aa475e90e0/mypy/semanal_pass1.py#L87-L96
                     if r.is_none()
-                        && module.file.is_stub()
-                        && module.file.lookup_symbol("__getattr__").is_some()
+                        && module.is_stub()
+                        && module.lookup_symbol("__getattr__").is_some()
                     {
                         in_stub_and_has_getattr = true
                     }
@@ -416,8 +416,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                 let import_file = self.i_s.db.loaded_python_file(*file_index);
                 // Coming from an import we need to make sure that we do not create loops for imports
                 if self.file.file_index == import_file.file_index {
-                    let module = Module::new(import_file);
-                    let inf = convert_imp_result(module.sub_module(self.i_s.db, name)?);
+                    let inf = convert_imp_result(import_file.sub_module(self.i_s.db, name)?);
                     (PointResolution::Inferred(inf), None)
                 } else {
                     return self
@@ -769,9 +768,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
     ) -> Option<(PointResolution<'file>, Option<PointLink>)> {
         let db = self.i_s.db;
         Some(if let Some(name_ref) = self.file.lookup_symbol(name) {
-            if let Some(r) =
-                Module::new(self.file).maybe_submodule_reexport(self.i_s, name_ref, name)
-            {
+            if let Some(r) = self.file.maybe_submodule_reexport(self.i_s, name_ref, name) {
                 return Some((
                     PointResolution::Inferred(r.into_inferred()),
                     Some(name_ref.as_link()),
@@ -817,7 +814,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                 }
             }
             (resolved, Some(name_ref.as_link()))
-        } else if let Some(r) = Module::new(self.file).sub_module_lookup(db, name) {
+        } else if let Some(r) = self.file.sub_module_lookup(db, name) {
             (PointResolution::Inferred(r.into_inferred()), None)
         } else if let Some(r) = self.resolve_star_import_name(name, None, &|_, _, _| None) {
             (r, None)

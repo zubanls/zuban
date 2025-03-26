@@ -19,6 +19,6 @@ pub(crate) use instance::{
     execute_isinstance, execute_issubclass, execute_super, Instance, InstanceLookupOptions,
     LookupDetails,
 };
-pub(crate) use module::{is_private_import, is_reexport_issue, lookup_in_namespace, Module};
+pub(crate) use module::{is_private_import, is_reexport_issue, lookup_in_namespace};
 pub(crate) use overload::{OverloadResult, OverloadedFunction};
 pub(crate) use typing::{execute_assert_type, execute_cast, execute_reveal_type};

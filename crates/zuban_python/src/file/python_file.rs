@@ -9,7 +9,7 @@ use std::{
 use config::{set_flag_and_return_ignore_errors, DiagnosticConfig, IniOrTomlValue, OverrideConfig};
 use parsa_python_cst::*;
 use utils::InsertOnlyVec;
-use vfs::{Directory, DirectoryEntry, FileEntry, FileIndex};
+use vfs::{Directory, DirectoryEntry, FileEntry, FileIndex, Parent};
 
 use super::{
     file_state::{File, Leaf},
@@ -23,13 +23,13 @@ use crate::{
     },
     debug,
     diagnostics::{Diagnostic, Diagnostics, Issue, IssueKind},
-    imports::{ImportResult, STUBS_SUFFIX},
+    imports::{python_import_with_needs_exact_case, ImportResult, STUBS_SUFFIX},
     inference_state::InferenceState,
     inferred::Inferred,
     lines::NewlineIndices,
     name::{FilePosition, Names, TreeName},
     node_ref::NodeRef,
-    type_::{DbString, LookupResult},
+    type_::{DbString, LookupResult, Type},
     utils::SymbolTable,
     TypeCheckerFlags,
 };
@@ -405,6 +405,89 @@ impl<'db> PythonFile {
             entry,
             &*entry.name == "__init__.py" || &*entry.name == "__init__.pyi",
         )
+    }
+
+    pub fn sub_module(&self, db: &'db Database, name: &str) -> Option<ImportResult> {
+        let (entry, is_package) = self.file_entry_and_is_package(db);
+        if !is_package {
+            return None;
+        }
+        match &entry.parent {
+            Parent::Directory(dir) => python_import_with_needs_exact_case(
+                db,
+                self,
+                std::iter::once((dir.upgrade().unwrap(), false)),
+                name,
+                true,
+            )
+            .or_else(|| {
+                if self.in_partial_stubs(db) {
+                    self.normal_file_of_stub_file(db)?.sub_module(db, name)
+                } else {
+                    None
+                }
+            }),
+            Parent::Workspace(_) => None,
+        }
+    }
+
+    pub fn sub_module_lookup(&self, db: &'db Database, name: &str) -> Option<LookupResult> {
+        Some(match self.sub_module(db, name)? {
+            ImportResult::File(file_index) => LookupResult::FileReference(file_index),
+            ImportResult::Namespace(ns) => {
+                LookupResult::UnknownName(Inferred::from_type(Type::Namespace(ns)))
+            }
+            ImportResult::PyTypedMissing => unreachable!(),
+        })
+    }
+
+    pub fn maybe_submodule_reexport(
+        &self,
+        i_s: &InferenceState,
+        name_ref: NodeRef,
+        name: &str,
+    ) -> Option<LookupResult> {
+        let Some(import) = name_ref.maybe_import_of_name_in_symbol_table() else {
+            return None;
+        };
+        let submodule_reexport = |import_result| {
+            if let Some(ImportResult::File(f)) = import_result {
+                if f == self.file_index {
+                    return Some(
+                        self.sub_module_lookup(i_s.db, name)
+                            .unwrap_or(LookupResult::None),
+                    );
+                }
+            }
+            None
+        };
+        match import {
+            NameImportParent::ImportFromAsName(imp) => {
+                let import_from = imp.import_from();
+                // from . import x simply imports the module that exists in the same
+                // directory anyway and should not be considered a reexport.
+                submodule_reexport(
+                    self.name_resolution_for_types(i_s)
+                        .import_from_first_part(import_from),
+                )
+            }
+            NameImportParent::DottedAsName(dotted) => {
+                if let DottedAsNameContent::WithAs(dotted, _) = dotted.unpack() {
+                    // Only import `foo.bar as bar` can be a submodule.
+                    // `import foo.bar` just exports the name foo.
+                    if let DottedNameContent::DottedName(super_, _) = dotted.unpack() {
+                        submodule_reexport(
+                            self.name_resolution_for_types(i_s)
+                                .cache_import_dotted_name(super_, None),
+                        )
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            }
+        }
     }
 
     pub(super) fn ensure_annotation_file(
