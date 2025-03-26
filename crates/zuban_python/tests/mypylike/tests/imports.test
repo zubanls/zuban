@@ -412,3 +412,10 @@ from l import *
 
 [file l.py]
 from m import *
+
+[case importing_dunder_file]
+reveal_type(__file__)  # N: Revealed type is "str"
+from m import __file__ as f
+reveal_type(f)  # N: Revealed type is "str"
+
+[file m.py]

@@ -13,7 +13,7 @@ use crate::{
     inference_state::InferenceState,
     inferred::Inferred,
     node_ref::NodeRef,
-    type_::Type,
+    type_::{LookupResult, Type},
     type_helpers::{is_private_import, is_reexport_issue, Module},
     utils::AlreadySeen,
 };
@@ -824,11 +824,38 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
         } else if let Some(r) = self.file.lookup_symbol("__getattr__") {
             (PointResolution::ModuleGetattrName(r), None)
         } else {
-            debug!(
-                "Did not find name {name} in {}",
-                self.file.qualified_name(db)
-            );
-            return None;
+            if name == "__path__" && !self.file.file_entry_and_is_package(db).1 {
+                return None;
+            }
+            let mut result = LookupResult::None;
+            // TODO it's a bit weird that we only do it on assignments.
+            if !self.stop_on_assignments {
+                result = db
+                    .python_state
+                    .module_instance()
+                    .type_lookup(self.i_s, add_issue, name);
+                if matches!(name, "__spec__" | "__file__" | "__package__") {
+                    // __spec__ is special, because it always has a ModuleSpec and only if the module
+                    // is __main__ it sometimes doesn't. But since __main__ is only ever known to Mypy
+                    // as a static file it will also have a ModuleSpec and never be None, therefore we
+                    // simply remove the None here.
+                    // Also do the same for __file__ / __package__
+                    // https://docs.python.org/3/reference/import.html#main-spec
+                    result = result
+                        .and_then(|inf| Some(inf.remove_none(self.i_s)))
+                        .unwrap()
+                }
+            }
+            if !result.is_some() {
+                debug!(
+                    "Did not find name {name} in {}",
+                    self.file.qualified_name(db)
+                );
+            }
+            (
+                PointResolution::Inferred(result.into_maybe_inferred()?),
+                None,
+            )
         })
     }
 
