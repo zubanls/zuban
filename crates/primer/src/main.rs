@@ -9,15 +9,19 @@ use clap::Parser;
 #[derive(Parser)]
 #[command(version, about)]
 pub struct Cli {
+    #[arg()]
+    project: Option<String>,
     #[arg(num_args = 0..)]
-    projects: Vec<String>,
+    mypy_args: Vec<String>,
 }
 
 fn main() -> ExitCode {
     let primer_projects_dir = env::var("HOME").unwrap() + "/tmp/mypy_primer/projects";
     let cli = Cli::parse();
-    let mut projects = cli.projects;
-    if projects.is_empty() {
+    let mut projects = vec![];
+    if let Some(project) = cli.project {
+        projects.push(project);
+    } else {
         let entries = fs::read_dir(&primer_projects_dir).unwrap();
         projects = entries
             .filter_map(|entry| {
@@ -48,7 +52,9 @@ fn main() -> ExitCode {
             .unwrap();
         env::set_current_dir(&pth).expect("Failed to change directory");
 
-        let cli = zmypy::Cli::parse_from(&["", "--python-executable", &executable]);
+        let mut v = vec!["".into(), "--python-executable".into(), executable];
+        v.extend_from_slice(&cli.mypy_args);
+        let cli = zmypy::Cli::parse_from(v);
         let code = zmypy::run_with_cli(cli, pth, Some(test_utils::typeshed_path()));
         if code == ExitCode::FAILURE {
             println!("Mypy generated diagnostics, which leads to an error code that was ignored");
