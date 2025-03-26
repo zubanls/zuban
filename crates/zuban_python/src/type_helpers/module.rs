@@ -1,14 +1,10 @@
-use std::rc::Rc;
-
 use parsa_python_cst::{DottedAsNameContent, DottedNameContent, NameImportParent};
-use vfs::{FileEntry, FileIndex, Parent};
+use vfs::{FileIndex, Parent};
 
 use crate::{
-    arguments::KnownArgsWithCustomAddIssue,
     database::Database,
     debug,
-    diagnostics::IssueKind,
-    file::{process_unfinished_partials, PythonFile, FLOW_ANALYSIS},
+    file::PythonFile,
     imports::{namespace_import, python_import_with_needs_exact_case, ImportResult},
     inference_state::InferenceState,
     inferred::Inferred,
@@ -30,16 +26,8 @@ impl<'a> Module<'a> {
         Self::new(db.loaded_python_file(file_index))
     }
 
-    fn file_entry_and_is_package(&self, db: &'a Database) -> (&'a Rc<FileEntry>, bool) {
-        let entry = self.file.file_entry(db);
-        (
-            entry,
-            &*entry.name == "__init__.py" || &*entry.name == "__init__.pyi",
-        )
-    }
-
     pub fn sub_module(&self, db: &'a Database, name: &str) -> Option<ImportResult> {
-        let (entry, is_package) = self.file_entry_and_is_package(db);
+        let (entry, is_package) = self.file.file_entry_and_is_package(db);
         if !is_package {
             return None;
         }
@@ -70,89 +58,6 @@ impl<'a> Module<'a> {
             }
             ImportResult::PyTypedMissing => unreachable!(),
         })
-    }
-
-    pub(crate) fn lookup(
-        &self,
-        db: &Database,
-        add_issue: impl Fn(IssueKind),
-        name: &str,
-    ) -> LookupResult {
-        let i_s = &InferenceState::new(db, self.file);
-        if let Some(name_ref) = self.file.lookup_symbol(name) {
-            let ensure_flow_analysis = || {
-                if self.file.inference(i_s).calculate_diagnostics().is_err() {
-                    add_issue(IssueKind::CannotDetermineType { for_: name.into() });
-                    return Some(LookupResult::any(AnyCause::FromError));
-                }
-                None
-            };
-            let p = name_ref.point();
-            if p.calculated() && p.needs_flow_analysis() {
-                if let Some(result) = ensure_flow_analysis() {
-                    return result;
-                }
-            }
-            if let Some(r) = self.maybe_submodule_reexport(i_s, name_ref, name) {
-                return r;
-            }
-            if is_reexport_issue(db, name_ref) {
-                add_issue(IssueKind::ImportStubNoExplicitReexport {
-                    module_name: self.file.qualified_name(db).into(),
-                    attribute: name.into(),
-                })
-            }
-            let r = FLOW_ANALYSIS.with(|fa| {
-                fa.with_new_empty_without_unfinished_partial_checking(|| {
-                    name_ref.infer_name_of_definition_by_index(i_s)
-                })
-            });
-            if !r.unfinished_partials.is_empty() {
-                if let Some(result) = ensure_flow_analysis() {
-                    return result;
-                }
-                process_unfinished_partials(i_s, r.unfinished_partials);
-                // In case where the partial is overwritten, we can just return the old Inferred,
-                // because it points to the correct place.
-            }
-            LookupResult::GotoName {
-                name: name_ref.as_link(),
-                inf: r.result,
-            }
-        } else if let Some(result) = self.sub_module_lookup(db, name) {
-            result
-        } else if let Some(star_imp) = self
-            .file
-            .name_resolution_for_inference(i_s)
-            .lookup_from_star_import(name, false)
-        {
-            star_imp.into_lookup_result(i_s)
-        } else if let Some(inf) = self.maybe_execute_getattr(i_s, &add_issue) {
-            LookupResult::UnknownName(inf)
-        } else if name == "__getattr__" {
-            // There is a weird (and wrong) definition in typeshed that defines __getattr__ on
-            // ModuleType:
-            // https://github.com/python/typeshed/blob/516f6655051b061652f086445ea54e8e82232349/stdlib/types.pyi#L352
-            LookupResult::None
-        } else {
-            if name == "__path__" && !self.file_entry_and_is_package(db).1 {
-                return LookupResult::None;
-            }
-            let mut result = db
-                .python_state
-                .module_instance()
-                .type_lookup(i_s, add_issue, name);
-            if matches!(name, "__spec__" | "__file__" | "__package__") {
-                // __spec__ is special, because it always has a ModuleSpec and only if the module
-                // is __main__ it sometimes doesn't. But since __main__ is only ever known to Mypy
-                // as a static file it will also have a ModuleSpec and never be None, therefore we
-                // simply remove the None here.
-                // Also do the same for __file__ / __package__
-                // https://docs.python.org/3/reference/import.html#main-spec
-                result = result.and_then(|inf| Some(inf.remove_none(i_s))).unwrap()
-            }
-            result
-        }
     }
 
     pub fn maybe_submodule_reexport(
@@ -204,23 +109,6 @@ impl<'a> Module<'a> {
                 }
             }
         }
-    }
-
-    pub(crate) fn maybe_execute_getattr(
-        &self,
-        i_s: &InferenceState,
-        add_issue: &'a dyn Fn(IssueKind),
-    ) -> Option<Inferred> {
-        self.file.lookup_symbol("__getattr__").map(|name_ref| {
-            let inf = name_ref.infer_name_of_definition_by_index(i_s);
-            inf.execute(
-                i_s,
-                &KnownArgsWithCustomAddIssue::new(
-                    &Inferred::from_type(i_s.db.python_state.str_type()),
-                    add_issue,
-                ),
-            )
-        })
     }
 }
 

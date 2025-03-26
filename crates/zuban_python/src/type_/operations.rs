@@ -25,7 +25,7 @@ use crate::{
     type_::{Intersection, NamedTuple},
     type_helpers::{
         lookup_in_namespace, Callable, Class, ClassLookupOptions, Instance, InstanceLookupOptions,
-        LookupDetails, Module, OverloadedFunction,
+        LookupDetails, OverloadedFunction,
     },
 };
 
@@ -225,8 +225,10 @@ impl Type {
                     .lookup_with_details(i_s, add_issue, name, kind),
             ),
             Type::Module(file_index) => {
-                let module = Module::from_file_index(i_s.db, *file_index);
-                let lookup = module.lookup(i_s.db, add_issue, name);
+                let lookup = i_s
+                    .db
+                    .loaded_python_file(*file_index)
+                    .lookup(i_s.db, add_issue, name);
                 let mut attr_kind = AttributeKind::Attribute;
                 if let Some(inf) = lookup.maybe_inferred() {
                     if inf.maybe_saved_specific(i_s.db)

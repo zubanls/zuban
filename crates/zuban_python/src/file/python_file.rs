@@ -29,7 +29,7 @@ use crate::{
     lines::NewlineIndices,
     name::{FilePosition, Names, TreeName},
     node_ref::NodeRef,
-    type_::DbString,
+    type_::{DbString, LookupResult},
     utils::SymbolTable,
     TypeCheckerFlags,
 };
@@ -382,6 +382,45 @@ impl<'db> PythonFile {
         self.symbol_table
             .lookup_symbol(name)
             .map(|node_index| NodeRef::new(self, node_index))
+    }
+
+    pub fn lookup(&self, db: &Database, add_issue: impl Fn(IssueKind), name: &str) -> LookupResult {
+        let i_s = &InferenceState::new(db, self);
+        let inference = self.inference(i_s);
+        if let Some((pr, redirect_to)) = inference.resolve_module_access(name, &add_issue) {
+            let inf = inference.infer_module_point_resolution(pr, add_issue);
+            if let Some(name) = redirect_to {
+                LookupResult::GotoName { inf, name }
+            } else {
+                LookupResult::UnknownName(inf)
+            }
+        } else {
+            if name == "__path__" && !self.file_entry_and_is_package(db).1 {
+                return LookupResult::None;
+            }
+            let mut result = db
+                .python_state
+                .module_instance()
+                .type_lookup(i_s, add_issue, name);
+            if matches!(name, "__spec__" | "__file__" | "__package__") {
+                // __spec__ is special, because it always has a ModuleSpec and only if the module
+                // is __main__ it sometimes doesn't. But since __main__ is only ever known to Mypy
+                // as a static file it will also have a ModuleSpec and never be None, therefore we
+                // simply remove the None here.
+                // Also do the same for __file__ / __package__
+                // https://docs.python.org/3/reference/import.html#main-spec
+                result = result.and_then(|inf| Some(inf.remove_none(i_s))).unwrap()
+            }
+            result
+        }
+    }
+
+    pub fn file_entry_and_is_package(&self, db: &'db Database) -> (&'db Rc<FileEntry>, bool) {
+        let entry = self.file_entry(db);
+        (
+            entry,
+            &*entry.name == "__init__.py" || &*entry.name == "__init__.pyi",
+        )
     }
 
     pub(super) fn ensure_annotation_file(

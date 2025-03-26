@@ -3545,7 +3545,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         }
     }
 
-    fn infer_module_point_resolution(
+    pub(super) fn infer_module_point_resolution(
         &self,
         pr: PointResolution,
         add_issue: impl Fn(IssueKind),
