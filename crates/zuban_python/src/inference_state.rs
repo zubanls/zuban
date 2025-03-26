@@ -191,6 +191,10 @@ impl<'db, 'a> InferenceState<'db, 'a> {
         matches!(self.context, Context::None | Context::File(_))
     }
 
+    pub fn is_file_context(&self) -> bool {
+        matches!(self.context, Context::File(_))
+    }
+
     pub(crate) fn find_parent_type_var(
         &self,
         searched: &TypeVarLike,

@@ -7,7 +7,6 @@ testLiteralAndGenericsRespectsUpperBound
 self_instance_variable1
 
 testFinalReassignModuleReexport
-testUnusedTargetNotImport
 testCyclicUndefinedImportWithName
 testNewAnalyzerTypeAnnotationCycle4
 module_mutual_flow_analysis4

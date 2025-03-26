@@ -815,10 +815,14 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                     ));
                 }
             }
-            (
-                self.resolve_name_without_narrowing(name_ref.expect_name()),
-                Some(name_ref.as_link()),
-            )
+            let mut resolved = self.resolve_name_without_narrowing(name_ref.expect_name());
+            if let PointResolution::NameDef { node_ref, .. } = resolved {
+                resolved = PointResolution::NameDef {
+                    node_ref,
+                    global_redirect: true,
+                }
+            }
+            (resolved, Some(name_ref.as_link()))
         } else if let Some(r) = Module::new(self.file).sub_module_lookup(db, name) {
             (PointResolution::Inferred(r.into_inferred()), None)
         } else if let Some(r) = self.resolve_star_import_name(name, None, &|_, _, _| None) {

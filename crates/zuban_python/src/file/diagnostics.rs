@@ -140,6 +140,7 @@ impl Inference<'_, '_, '_> {
                 self.file.file_path(self.i_s.db),
                 self.file.file_index(),
             );
+            debug_assert!(self.i_s.is_file_context());
             FLOW_ANALYSIS.with(|fa| {
                 debug_indent(|| {
                     fa.with_new_empty_and_process_delayed_funcs(self.i_s, || {
