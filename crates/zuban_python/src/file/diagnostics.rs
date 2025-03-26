@@ -169,10 +169,10 @@ impl Inference<'_, '_, '_> {
                 }
             }
 
-            if let Some(name_ref) = self.file.lookup_global("__getattribute__") {
+            if let Some(name_ref) = self.file.lookup_symbol("__getattribute__") {
                 name_ref.add_issue(self.i_s, IssueKind::GetattributeInvalidAtModuleLevel)
             }
-            if let Some(name_ref) = self.file.lookup_global("__getattr__") {
+            if let Some(name_ref) = self.file.lookup_symbol("__getattr__") {
                 let actual = name_ref.infer_name_of_definition_by_index(self.i_s);
                 let actual = actual.as_cow_type(self.i_s);
                 let Type::Callable(callable) = &self.i_s.db.python_state.valid_getattr_supertype

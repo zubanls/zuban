@@ -378,7 +378,7 @@ impl<'db> PythonFile {
         }
     }
 
-    pub fn lookup_global(&self, name: &str) -> Option<NodeRef> {
+    pub fn lookup_symbol(&self, name: &str) -> Option<NodeRef> {
         self.symbol_table
             .lookup_symbol(name)
             .map(|node_index| NodeRef::new(self, node_index))

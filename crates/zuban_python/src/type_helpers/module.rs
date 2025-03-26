@@ -79,7 +79,7 @@ impl<'a> Module<'a> {
         name: &str,
     ) -> LookupResult {
         let i_s = &InferenceState::new(db, self.file);
-        if let Some(name_ref) = self.file.lookup_global(name) {
+        if let Some(name_ref) = self.file.lookup_symbol(name) {
             let ensure_flow_analysis = || {
                 if self.file.inference(i_s).calculate_diagnostics().is_err() {
                     add_issue(IssueKind::CannotDetermineType { for_: name.into() });
@@ -211,7 +211,7 @@ impl<'a> Module<'a> {
         i_s: &InferenceState,
         add_issue: &'a dyn Fn(IssueKind),
     ) -> Option<Inferred> {
-        self.file.lookup_global("__getattr__").map(|name_ref| {
+        self.file.lookup_symbol("__getattr__").map(|name_ref| {
             let inf = name_ref.infer_name_of_definition_by_index(i_s);
             inf.execute(
                 i_s,

@@ -282,7 +282,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                     // https://github.com/python/mypy/blob/bc591c756a453bb6a78a31e734b1f0aa475e90e0/mypy/semanal_pass1.py#L87-L96
                     if r.is_none()
                         && module.file.is_stub()
-                        && module.file.lookup_global("__getattr__").is_some()
+                        && module.file.lookup_symbol("__getattr__").is_some()
                     {
                         in_stub_and_has_getattr = true
                     }
@@ -513,7 +513,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                 )
             }
             _ => {
-                if let Some(name_ref) = builtins.lookup_global(name_str).filter(|name_ref| {
+                if let Some(name_ref) = builtins.lookup_symbol(name_str).filter(|name_ref| {
                     (is_valid_builtins_export(name_str)) && !is_private_import(*name_ref)
                 }) {
                     debug_assert!(
@@ -581,7 +581,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                             .db
                             .python_state
                             .typing()
-                            .lookup_global(name_str)
+                            .lookup_symbol(name_str)
                             .is_some()
                     {
                         // TODO what about underscore or other vars?
@@ -768,7 +768,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
         add_issue: impl Fn(IssueKind),
     ) -> Option<(PointResolution<'file>, Option<PointLink>)> {
         let db = self.i_s.db;
-        Some(if let Some(name_ref) = self.file.lookup_global(name) {
+        Some(if let Some(name_ref) = self.file.lookup_symbol(name) {
             if let Some(r) =
                 Module::new(self.file).maybe_submodule_reexport(self.i_s, name_ref, name)
             {
@@ -821,7 +821,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
             (PointResolution::Inferred(r.into_inferred()), None)
         } else if let Some(r) = self.resolve_star_import_name(name, None, &|_, _, _| None) {
             (r, None)
-        } else if let Some(r) = self.file.lookup_global("__getattr__") {
+        } else if let Some(r) = self.file.lookup_symbol("__getattr__") {
             (PointResolution::ModuleGetattrName(r), None)
         } else {
             debug!(
@@ -928,7 +928,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
             }
 
             let super_file = self.i_s.db.loaded_python_file(*super_file);
-            if let Some(name_ref) = super_file.lookup_global(name) {
+            if let Some(name_ref) = super_file.lookup_symbol(name) {
                 return Some(StarImportResult::Link(name_ref.as_link()));
             }
             self.with_new_file(super_file)
@@ -967,7 +967,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
             return None;
         }
 
-        if let Some(name_ref) = other_file.lookup_global(name) {
+        if let Some(name_ref) = other_file.lookup_symbol(name) {
             if !is_reexport_issue(self.i_s.db, name_ref) {
                 let mut result = StarImportResult::Link(name_ref.as_link());
                 if is_class_star_import
