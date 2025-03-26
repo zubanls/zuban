@@ -138,6 +138,7 @@ pub(crate) enum IssueKind {
     InconsistentMro { name: Box<str> },
     CyclicDefinition { name: Box<str> },
     InvalidTypeCycle,
+    CurrentlyUnsupportedBaseClassCycle,
     EnsureSingleGenericOrProtocol,
 
     InvalidType(Box<str>),
@@ -324,6 +325,8 @@ pub(crate) enum IssueKind {
     NamedTupleNameCannotStartWithUnderscore { field_name: Box<str> },
     NamedTupleInvalidFieldName,
     NamedTupleFirstArgumentMismatch { should: Box<str>, is: Box<str> },
+    NamedTupleExpectedBoolForRenameArgument,
+    NamedTupleUnexpectedKeywordArgument { keyword_name: Box<str> },
     NamedTupleDefaultsShouldBeListOrTuple,
     NamedTupleToManyDefaults,
     NamedTupleGenericInClassDefinition,
@@ -390,7 +393,7 @@ pub(crate) enum IssueKind {
     MultipleStarredExpressionsInAssignment,
 
     EnumFirstArgMustBeString,
-    EnumInvalidSecondArgument,
+    EnumInvalidSecondArgument { enum_name: Box<str> },
     EnumNeedsAtLeastOneItem { name: Box<str> },
     EnumWithTupleOrListExpectsStringPairs { name: Box<str> },
     EnumWithDictRequiresStringLiterals { name: Box<str> },
@@ -600,7 +603,7 @@ impl IssueKind {
 }
 
 #[derive(Debug, Clone)]
-pub struct Issue {
+pub(crate) struct Issue {
     pub(crate) kind: IssueKind,
     pub start_position: CodeIndex,
     pub end_position: CodeIndex,
@@ -1040,9 +1043,10 @@ impl<'db> Diagnostic<'db> {
 
             EnumFirstArgMustBeString =>
                 "Enum() expects a string literal as the first argument".to_string(),
-            EnumInvalidSecondArgument =>
-                "Second argument of Enum() must be string, tuple, list or dict \
-                 literal for mypy to determine Enum members".to_string(),
+            EnumInvalidSecondArgument { enum_name } => format!(
+                "Second argument of {enum_name}() must be string, tuple, list or dict \
+                 literal for mypy to determine Enum members"
+            ),
             EnumNeedsAtLeastOneItem { name } => format!(
                 "{name}() needs at least one item"
             ),
@@ -1261,6 +1265,8 @@ impl<'db> Diagnostic<'db> {
             CyclicDefinition{name} =>
                 format!("Cannot resolve name {name:?} (possible cyclic definition)"),
             InvalidTypeCycle => "Invalid type cycle".to_string(),
+            CurrentlyUnsupportedBaseClassCycle =>
+                "This base class/alias cycle is currently unsupported".to_string(),
             EnsureSingleGenericOrProtocol =>
                 "Only single Generic[...] or Protocol[...] can be in bases".to_string(),
 
@@ -1712,6 +1718,12 @@ impl<'db> Diagnostic<'db> {
             NamedTupleFirstArgumentMismatch { should, is } => format!(
                 r#"First argument to namedtuple() should be "{should}", not "{is}""#
             ),
+            NamedTupleExpectedBoolForRenameArgument => format!(
+                r#"Boolean literal expected as the "rename" argument to namedtuple()"#
+            ),
+            NamedTupleUnexpectedKeywordArgument { keyword_name } => format!(
+                r#"Unexpected keyword argument "{keyword_name}" for "namedtuple""#
+            ),
             NamedTupleDefaultsShouldBeListOrTuple =>
                 r#"List or tuple literal expected as the defaults argument to namedtuple()"#.to_string(),
             NamedTupleToManyDefaults =>
@@ -1967,7 +1979,7 @@ impl std::fmt::Debug for Diagnostic<'_> {
 }
 
 #[derive(Default, Clone)]
-pub struct Diagnostics(InsertOnlyVec<Issue>);
+pub(crate) struct Diagnostics(InsertOnlyVec<Issue>);
 
 impl Diagnostics {
     pub fn add_if_not_ignored(

@@ -1,9 +1,8 @@
 use std::{borrow::Cow, cell::Cell, fmt, rc::Rc};
 
 use parsa_python_cst::{
-    Decorated, Decorator, ExpressionContent, ExpressionPart, FunctionDef, FunctionParent,
-    NodeIndex, Param as CSTParam, ParamAnnotation, ParamIterator, ParamKind, PrimaryContent,
-    PrimaryOrAtom, ReturnAnnotation, ReturnOrYield, StmtLikeContent,
+    Decorated, Decorator, ExpressionContent, ExpressionPart, Param as CSTParam, ParamIterator,
+    ParamKind, PrimaryContent, PrimaryOrAtom, ReturnAnnotation, ReturnOrYield, StmtLikeContent,
 };
 
 use crate::{
@@ -13,12 +12,10 @@ use crate::{
         PointLink, Specific,
     },
     debug,
-    diagnostics::{Issue, IssueKind},
+    diagnostics::IssueKind,
     file::{
-        first_defined_name_of_multi_def, func_parent_scope, use_cached_param_annotation_type,
-        FuncParentScope, OtherDefinitionIterator, PythonFile, TypeComputation,
-        TypeComputationOrigin, TypeVarCallbackReturn, FLOW_ANALYSIS, FUNC_TO_RETURN_OR_YIELD_DIFF,
-        FUNC_TO_TYPE_VAR_DIFF,
+        first_defined_name_of_multi_def, use_cached_param_annotation_type, FuncNodeRef, FuncParent,
+        OtherDefinitionIterator, PythonFile, TypeVarCallbackReturn, FLOW_ANALYSIS,
     },
     format_data::FormatData,
     inference_state::InferenceState,
@@ -37,19 +34,24 @@ use crate::{
     type_::{
         replace_param_spec, AnyCause, CallableContent, CallableLike, CallableParam, CallableParams,
         ClassGenerics, DbString, FunctionKind, FunctionOverload, GenericClass, GenericItem,
-        LookupResult, NeverCause, ParamType, PropertySetter, ReplaceSelf, StarParamType,
-        StarStarParamType, StringSlice, TupleArgs, Type, TypeGuardInfo, TypeVarKind, TypeVarLike,
-        TypeVarLikes, TypeVarManager, WrongPositionalCount,
+        NeverCause, ParamType, PropertySetter, ReplaceSelf, StarParamType, StarStarParamType,
+        StringSlice, TupleArgs, Type, TypeVarLike, TypeVarLikes, WrongPositionalCount,
     },
     type_helpers::Class,
 };
 
-use super::ClassNodeRef;
-
 #[derive(Clone, Copy)]
-pub struct Function<'a, 'class> {
-    pub node_ref: NodeRef<'a>,
+pub(crate) struct Function<'a, 'class> {
+    pub node_ref: FuncNodeRef<'a>,
     pub class: Option<Class<'class>>,
+}
+
+impl<'a> std::ops::Deref for Function<'a, '_> {
+    type Target = FuncNodeRef<'a>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.node_ref
+    }
 }
 
 impl fmt::Debug for Function<'_, '_> {
@@ -64,36 +66,22 @@ impl fmt::Debug for Function<'_, '_> {
 
 impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
     pub fn new(node_ref: NodeRef<'a>, class: Option<Class<'class>>) -> Self {
-        if std::cfg!(debug_assertions) {
-            debug_assert!(node_ref.maybe_function().is_some(), "{node_ref:?}");
+        Self {
+            node_ref: FuncNodeRef::from_node_ref(node_ref),
+            class,
         }
-        Self { node_ref, class }
     }
 
     pub fn new_with_unknown_parent(db: &'db Database, node_ref: NodeRef<'a>) -> Self {
-        match Self::new(node_ref, None).parent(db) {
-            FuncParent::Class(c) => Self::new(node_ref, Some(c)),
-            _ => Self::new(node_ref, None),
+        let func_node_ref = FuncNodeRef::from_node_ref(node_ref);
+        let class = match func_node_ref.parent(db) {
+            FuncParent::Class(c) => Some(c),
+            _ => None,
+        };
+        Self {
+            node_ref: func_node_ref,
+            class,
         }
-    }
-
-    pub fn node(&self) -> FunctionDef<'a> {
-        FunctionDef::by_index(&self.node_ref.file.tree, self.node_ref.node_index)
-    }
-
-    pub fn return_annotation(&self) -> Option<ReturnAnnotation> {
-        self.node().return_annotation()
-    }
-
-    pub fn expect_return_annotation_node_ref(&self) -> NodeRef {
-        NodeRef::new(
-            self.node_ref.file,
-            self.return_annotation().unwrap().expression().index(),
-        )
-    }
-
-    pub fn is_typed(&self) -> bool {
-        self.node().is_typed()
     }
 
     pub fn generator_return(&self, i_s: &InferenceState) -> Option<GeneratorType> {
@@ -101,7 +89,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             let return_type = self
                 .node_ref
                 .file
-                .inference(i_s)
+                .name_resolution_for_types(i_s)
                 .use_cached_return_annotation_type(return_annotation);
             GeneratorType::from_type(i_s.db, return_type)
         })
@@ -226,66 +214,6 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         Inferred::new_none()
     }
 
-    pub fn iter_return_or_yield(&self) -> ReturnOrYieldIterator<'a> {
-        let def_point = self
-            .node_ref
-            .file
-            .points
-            .get(self.node_ref.node_index + FUNC_TO_RETURN_OR_YIELD_DIFF);
-        let first_return_or_yield = def_point.node_index();
-        ReturnOrYieldIterator {
-            file: self.node_ref.file,
-            next_node_index: first_return_or_yield,
-        }
-    }
-
-    pub fn is_generator(&self) -> bool {
-        for return_or_yield in self.iter_return_or_yield() {
-            if let ReturnOrYield::Yield(_) = return_or_yield {
-                return true;
-            }
-        }
-        false
-    }
-
-    pub fn is_async(&self) -> bool {
-        matches!(
-            self.node().parent(),
-            FunctionParent::Async | FunctionParent::DecoratedAsync(_)
-        )
-    }
-
-    pub fn type_vars(&self, db: &'db Database) -> &'a TypeVarLikes {
-        let type_var_reference = self.type_var_reference();
-        if type_var_reference.point().calculated() {
-            TypeVarLikes::load_saved_type_vars(db, type_var_reference)
-        } else {
-            unreachable!()
-        }
-    }
-
-    fn type_var_reference(&self) -> NodeRef<'a> {
-        self.node_ref.add_to_node_index(FUNC_TO_TYPE_VAR_DIFF)
-    }
-
-    fn parent(&self, db: &'db Database) -> FuncParent<'db> {
-        match func_parent_scope(
-            &self.node_ref.file.tree,
-            &self.node_ref.file.points,
-            self.node_ref.node_index,
-        ) {
-            FuncParentScope::Module => FuncParent::Module,
-            FuncParentScope::ClassDef(c) => {
-                let n = ClassNodeRef::new(self.node_ref.file, c.index()).to_db_lifetime(db);
-                FuncParent::Class(Class::with_self_generics(db, n))
-            }
-            FuncParentScope::FunctionDef(f) => {
-                let n = NodeRef::new(self.node_ref.file, f.index()).to_db_lifetime(db);
-                FuncParent::Function(Function::new_with_unknown_parent(db, n))
-            }
-        }
-    }
-
     pub fn parent_class(&self, db: &'db Database) -> Option<Class<'class>> {
         if let Some(cls) = self.class {
             return Some(cls);
@@ -402,7 +330,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         if let Some(decorated) = maybe_decorated {
             if let Some(class) = self.class {
                 let class = Class::with_self_generics(i_s.db, class.node_ref);
-                Self::new(self.node_ref, Some(class)).decorated_to_be_saved(
+                Self::new(self.node_ref.into(), Some(class)).decorated_to_be_saved(
                     &i_s.with_class_context(&class),
                     decorated,
                     maybe_computed,
@@ -422,19 +350,12 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
     }
 
     fn ensure_cached_type_vars(&self, i_s: &InferenceState<'db, '_>) -> Option<CallableContent> {
-        let type_var_reference = self.type_var_reference();
-        if type_var_reference.point().calculated() {
-            return None; // TODO this feels wrong, because below we only sometimes calculate the callable
-        }
-        let (type_vars, type_guard, star_annotation) = self.cache_type_vars(i_s);
-        match type_vars.len() {
-            0 => type_var_reference
-                .set_point(Point::new_specific(Specific::Analyzed, Locality::Todo)),
-            _ => type_var_reference
-                .insert_complex(ComplexPoint::TypeVarLikes(type_vars), Locality::Todo),
-        }
-        debug_assert!(type_var_reference.point().calculated());
-
+        let Some((type_guard, star_annotation)) = self
+            .node_ref
+            .ensure_cached_type_vars(i_s, self.class.map(|c| c.node_ref))
+        else {
+            return None;
+        };
         let mut needs_callable = false;
         if let Some(annotation) = star_annotation {
             let t = use_cached_param_annotation_type(i_s.db, self.node_ref.file, annotation);
@@ -458,127 +379,6 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             return Some(callable);
         }
         None
-    }
-
-    fn cache_type_vars(
-        &self,
-        i_s: &InferenceState<'db, '_>,
-    ) -> (TypeVarLikes, Option<TypeGuardInfo>, Option<ParamAnnotation>) {
-        let func_node = self.node();
-        let implicit_optional = self.node_ref.file.flags(i_s.db).implicit_optional;
-        let inference = self.node_ref.file.inference(i_s);
-        let in_result_type = Cell::new(false);
-        let mut unbound_type_vars = vec![];
-        let mut on_type_var = |i_s: &InferenceState,
-                               manager: &TypeVarManager<PointLink>,
-                               type_var: TypeVarLike,
-                               current_callable: Option<_>| {
-            self.class
-                .and_then(|class| {
-                    class
-                        .type_vars(i_s)
-                        .find(type_var.clone(), class.node_ref.as_link())
-                        .map(TypeVarCallbackReturn::TypeVarLike)
-                })
-                .or_else(|| i_s.find_parent_type_var(&type_var))
-                .unwrap_or_else(|| {
-                    if in_result_type.get()
-                        && manager.position(&type_var).is_none()
-                        && current_callable.is_none()
-                    {
-                        unbound_type_vars.push(type_var);
-                    }
-                    TypeVarCallbackReturn::NotFound {
-                        allow_late_bound_callables: in_result_type.get(),
-                    }
-                })
-        };
-        let mut type_computation = TypeComputation::new(
-            &inference,
-            self.node_ref.as_link(),
-            &mut on_type_var,
-            TypeComputationOrigin::ParamTypeCommentOrAnnotation,
-        );
-        let mut star_annotation = None;
-        let mut previous_param = None;
-        for param in func_node.params().iter() {
-            if let Some(annotation) = param.annotation() {
-                let mut is_implicit_optional = false;
-                if implicit_optional {
-                    if let Some(default) = param.default() {
-                        if default.as_code() == "None" {
-                            is_implicit_optional = true;
-                        }
-                    }
-                }
-                let param_kind = param.kind();
-                type_computation.cache_param_annotation(
-                    annotation,
-                    param_kind,
-                    previous_param,
-                    is_implicit_optional,
-                );
-                if param_kind == ParamKind::Star {
-                    star_annotation = Some(annotation);
-                }
-            }
-            previous_param = Some(param);
-        }
-        if let Some(annotation) = star_annotation {
-            let t = use_cached_param_annotation_type(i_s.db, self.node_ref.file, annotation);
-            if let Type::ParamSpecArgs(usage) = t.as_ref() {
-                let iterator = func_node.params().iter();
-                // The type computation only checked if **kwargs was ok. If there is no param, no
-                // issue was added, so add it here.
-                if !iterator
-                    .skip_while(|p| p.kind() != ParamKind::Star)
-                    .nth(1)
-                    .is_some_and(|p| p.annotation().is_some())
-                {
-                    NodeRef::new(self.node_ref.file, annotation.index()).add_issue(
-                        i_s,
-                        IssueKind::ParamSpecParamsNeedBothStarAndStarStar {
-                            name: usage.param_spec.name(i_s.db).into(),
-                        },
-                    );
-                }
-            }
-        }
-        let type_guard = func_node.return_annotation().and_then(|return_annot| {
-            in_result_type.set(true);
-            type_computation.cache_return_annotation(return_annot)
-        });
-        let type_vars = type_computation.into_type_vars(|inf, recalculate_type_vars| {
-            for param in func_node.params().iter() {
-                if let Some(annotation) = param.annotation() {
-                    inf.recalculate_annotation_type_vars(annotation.index(), recalculate_type_vars);
-                }
-            }
-            if let Some(return_annot) = func_node.return_annotation() {
-                inf.recalculate_annotation_type_vars(return_annot.index(), recalculate_type_vars);
-            }
-        });
-        if !unbound_type_vars.is_empty() {
-            if let Type::TypeVar(t) = self.return_type(i_s).as_ref() {
-                if unbound_type_vars.contains(&TypeVarLike::TypeVar(t.type_var.clone())) {
-                    let node_ref = self.expect_return_annotation_node_ref();
-                    node_ref.add_issue(i_s, IssueKind::TypeVarInReturnButNotArgument);
-                    if let TypeVarKind::Bound(bound) = t.type_var.kind(i_s.db) {
-                        node_ref.add_issue(
-                            i_s,
-                            IssueKind::Note(
-                                format!(
-                                    "Consider using the upper bound \"{}\" instead",
-                                    bound.format_short(i_s.db)
-                                )
-                                .into(),
-                            ),
-                        );
-                    }
-                }
-            }
-        }
-        (type_vars, type_guard, star_annotation)
     }
 
     pub fn cache_func(&self, i_s: &InferenceState) {
@@ -622,7 +422,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         let inference = self.node_ref.file.inference(i_s);
         let original = inference.infer_name_of_definition_by_index(first);
         let original_t = original.as_cow_type(i_s);
-        let redefinition = Inferred::from_saved_node_ref(self.node_ref);
+        let redefinition = Inferred::from_saved_node_ref(self.node_ref.into());
 
         let redefinition_t = redefinition.as_cow_type(i_s);
         inference.narrow_or_widen_name_target(
@@ -707,7 +507,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             .next()
             .is_some_and(|p| p.annotation().is_some());
 
-        match self.node_ref.complex() {
+        match self.node_ref.maybe_complex() {
             Some(ComplexPoint::TypeInstance(Type::Callable(c))) => c.kind.clone(),
             Some(ComplexPoint::FunctionOverload(o)) => o.kind().clone(),
             Some(_) => {
@@ -808,10 +608,6 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             }
             _ => details.inferred,
         }
-    }
-
-    fn expect_decorated_node(&self) -> Decorated {
-        self.node().maybe_decorated().unwrap()
     }
 
     fn calculate_decorated_function_details(
@@ -1325,7 +1121,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             {
                 if let Some(func) = NodeRef::new(file, first_index).maybe_name_of_function() {
                     if let Some(ComplexPoint::FunctionOverload(o)) =
-                        NodeRef::new(self.node_ref.file, func.index()).complex()
+                        NodeRef::new(self.node_ref.file, func.index()).maybe_complex()
                     {
                         return Some(o);
                     }
@@ -1342,7 +1138,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
     }
 
     pub fn is_abstract(&self) -> bool {
-        match self.node_ref.complex() {
+        match self.node_ref.maybe_complex() {
             Some(ComplexPoint::TypeInstance(Type::Callable(c))) => c.is_abstract,
             Some(ComplexPoint::FunctionOverload(o)) => o.functions.is_abstract(),
             _ => {
@@ -1356,7 +1152,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
     }
 
     pub fn is_final(&self) -> bool {
-        match self.node_ref.complex() {
+        match self.node_ref.maybe_complex() {
             Some(ComplexPoint::TypeInstance(Type::Callable(c))) => c.is_final,
             Some(ComplexPoint::FunctionOverload(o)) => o.is_final,
             _ => {
@@ -1366,31 +1162,6 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     false
                 }
             }
-        }
-    }
-
-    pub(crate) fn add_issue_for_declaration(&self, i_s: &InferenceState, kind: IssueKind) {
-        let node = self.node();
-        self.node_ref.file.add_issue(
-            i_s,
-            Issue {
-                kind,
-                start_position: node.start(),
-                end_position: node.end_position_of_colon(),
-            },
-        )
-    }
-
-    pub(crate) fn add_issue_onto_start_including_decorator(
-        &self,
-        i_s: &InferenceState,
-        kind: IssueKind,
-    ) {
-        let node = self.node();
-        if let Some(decorated) = node.maybe_decorated() {
-            NodeRef::new(self.node_ref.file, decorated.index()).add_issue(i_s, kind)
-        } else {
-            self.add_issue_for_declaration(i_s, kind)
         }
     }
 
@@ -1639,16 +1410,12 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         }
     }
 
-    pub fn name_string_slice(&self) -> StringSlice {
-        let name = self.node().name();
-        StringSlice::new(self.node_ref.file_index(), name.start(), name.end())
-    }
-
     pub fn iter_params(&self) -> impl Iterator<Item = FunctionParam<'a>> {
-        self.node().params().iter().map(|param| FunctionParam {
-            file: self.node_ref.file,
-            param,
-        })
+        let file = self.node_ref.file;
+        self.node()
+            .params()
+            .iter()
+            .map(|param| FunctionParam { file, param })
     }
 
     pub fn first_param_annotation_type(&self, i_s: &InferenceState<'db, '_>) -> Option<Cow<Type>> {
@@ -1746,7 +1513,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         let return_type = self
             .node_ref
             .file
-            .inference(i_s)
+            .name_resolution_for_types(i_s)
             .use_cached_return_annotation_type(return_annotation);
 
         if return_type.is_never() && !self.is_async() {
@@ -1786,7 +1553,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         } else {
             self.node_ref
                 .file
-                .inference(i_s)
+                .name_resolution_for_types(i_s)
                 .use_cached_return_annotation(return_annotation)
         }
     }
@@ -1799,17 +1566,6 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             }
             None => format!("{:?}", name),
         }
-    }
-
-    pub fn return_type(&self, i_s: &InferenceState<'db, '_>) -> Cow<'a, Type> {
-        self.return_annotation()
-            .map(|a| {
-                self.node_ref
-                    .file
-                    .inference(i_s)
-                    .use_cached_return_annotation_type(a)
-            })
-            .unwrap_or_else(|| Cow::Borrowed(&Type::Any(AnyCause::Unannotated)))
     }
 
     pub fn expected_return_type_for_return_stmt(
@@ -1847,68 +1603,23 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             self.execute_internal(i_s, args, false, on_type_error, None, result_context)
         }
     }
-
-    pub fn lookup(
-        &self,
-        _i_s: &InferenceState,
-        _node_ref: Option<NodeRef>,
-        _name: &str,
-    ) -> LookupResult {
-        debug!("TODO Function lookup");
-        LookupResult::None
-    }
-
-    pub fn qualified_name(&self, db: &'a Database) -> String {
-        let file_names = self.node_ref.file.qualified_name(db);
-        if let Some(class) = self.class {
-            format!("{file_names}.{}.{}", class.name(), self.name())
-        } else {
-            format!("{file_names}.{}", self.name())
-        }
-    }
-
-    pub fn name(&self) -> &str {
-        let func = FunctionDef::by_index(&self.node_ref.file.tree, self.node_ref.node_index);
-        func.name().as_str()
-    }
 }
 
 #[derive(Copy, Clone)]
-pub enum FirstParamProperties<'a> {
+pub(crate) enum FirstParamProperties<'a> {
     Skip {
         to_self_instance: &'a dyn Fn() -> Type,
     },
     None,
 }
 
-pub struct AsCallableOptions<'a> {
+pub(crate) struct AsCallableOptions<'a> {
     first_param: FirstParamProperties<'a>,
     return_type: Cow<'a, Type>,
 }
 
-pub struct ReturnOrYieldIterator<'a> {
-    file: &'a PythonFile,
-    next_node_index: NodeIndex,
-}
-
-impl<'a> Iterator for ReturnOrYieldIterator<'a> {
-    type Item = ReturnOrYield<'a>;
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.next_node_index == 0 {
-            None
-        } else {
-            let point = self.file.points.get(self.next_node_index);
-            let index = self.next_node_index;
-            self.next_node_index = point.node_index();
-            // - 1 because the index points to the next yield/return literal. The parent of those
-            // literals are then `return_stmt` and `yield_expr` terminals.
-            Some(ReturnOrYield::by_index(&self.file.tree, index - 1))
-        }
-    }
-}
-
 #[derive(Clone, Copy, Debug)]
-pub struct FunctionParam<'x> {
+pub(crate) struct FunctionParam<'x> {
     file: &'x PythonFile,
     param: CSTParam<'x>,
 }
@@ -2059,7 +1770,8 @@ fn infer_decorator_details(
     decorator: Decorator,
     had_first_annotation: bool,
 ) -> InferredDecorator {
-    let redirect = file.inference(i_s).infer_decorator(decorator);
+    let inference = file.inference(i_s);
+    let redirect = inference.infer_decorator(decorator);
     if let Some(saved_link) = redirect.maybe_saved_link() {
         if saved_link == i_s.db.python_state.overload_link() {
             return InferredDecorator::Overload;
@@ -2099,7 +1811,8 @@ fn infer_decorator_details(
             class.node_ref.ensure_cached_class_infos(i_s);
             let is_abstract_property = saved_link == i_s.db.python_state.abstractproperty_link();
             if is_abstract_property
-                || class.class_link_in_mro(i_s, i_s.db.python_state.property_node_ref().as_link())
+                || class
+                    .class_link_in_mro(i_s.db, i_s.db.python_state.property_node_ref().as_link())
             {
                 return InferredDecorator::FunctionKind {
                     kind: FunctionKind::Property {
@@ -2109,7 +1822,7 @@ fn infer_decorator_details(
                     is_abstract: is_abstract_property,
                 };
             }
-            if class.class_link_in_mro(i_s, i_s.db.python_state.cached_property_link()) {
+            if class.class_link_in_mro(i_s.db, i_s.db.python_state.cached_property_link()) {
                 return InferredDecorator::FunctionKind {
                     kind: FunctionKind::Property {
                         had_first_self_or_class_annotation: had_first_annotation,
@@ -2151,13 +1864,13 @@ enum PropertyModifier {
 }
 
 #[derive(PartialEq)]
-pub enum FirstParamKind {
+pub(crate) enum FirstParamKind {
     Self_,
     ClassOfSelf,
     InStaticmethod,
 }
 
-pub struct GeneratorType {
+pub(crate) struct GeneratorType {
     pub yield_type: Type,
     pub send_type: Option<Type>,
     pub return_type: Option<Type>,
@@ -2232,10 +1945,4 @@ impl GeneratorType {
             _ => None,
         }
     }
-}
-
-enum FuncParent<'x> {
-    Module,
-    Function(Function<'x, 'x>),
-    Class(Class<'x>),
 }

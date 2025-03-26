@@ -1,10 +1,8 @@
 [case invalid-type-var-types]
-
-from typing import TypeVarTuple, ParamSpec
-a: list[TypeVarTuple]  # E: Variable "typing.TypeVarTuple" is not valid as a type \
-                       # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
-b: list[ParamSpec]  # E: Variable "typing.ParamSpec" is not valid as a type \
-                       # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+from typing import TypeVar, TypeVarTuple, ParamSpec
+a: list[TypeVar]  # E: Invalid type
+b: list[TypeVarTuple]  # E: Invalid type
+c: list[ParamSpec]  # E: Invalid type
 
 [case invalid_base_class_in_param]
 # Checked mypy for this.

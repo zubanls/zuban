@@ -6,13 +6,12 @@ use vfs::FileIndex;
 use crate::{
     database::{Database, Locality, Point, PointLink},
     file::PythonFile,
-    inference_state::InferenceState,
     inferred::Inferred,
     type_::AnyCause,
 };
 
 #[derive(Debug, Clone)]
-pub enum LookupResult {
+pub(crate) enum LookupResult {
     // Locality is part of Inferred
     GotoName { name: PointLink, inf: Inferred },
     FileReference(FileIndex),
@@ -29,8 +28,8 @@ impl LookupResult {
         !matches!(self, Self::None)
     }
 
-    pub fn is_any(&self, db: &Database) -> bool {
-        self.maybe_inferred().is_some_and(|inf| inf.is_any(db))
+    pub fn maybe_any(&self, db: &Database) -> Option<AnyCause> {
+        self.maybe_inferred().and_then(|inf| inf.maybe_any(db))
     }
 
     pub fn into_maybe_inferred(self) -> Option<Inferred> {
@@ -52,16 +51,6 @@ impl LookupResult {
     pub fn into_inferred(self) -> Inferred {
         self.into_maybe_inferred()
             .unwrap_or_else(|| Inferred::new_any(AnyCause::Todo))
-    }
-
-    pub fn union(self, i_s: &InferenceState, other: Self) -> Self {
-        match self.into_maybe_inferred() {
-            Some(self_) => match other.into_maybe_inferred() {
-                Some(other) => LookupResult::UnknownName(self_.simplified_union(i_s, other)),
-                None => LookupResult::UnknownName(self_),
-            },
-            None => other,
-        }
     }
 
     pub fn save_name(self, file: &PythonFile, name_index: NodeIndex) -> Option<Inferred> {

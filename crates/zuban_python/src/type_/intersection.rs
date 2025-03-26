@@ -3,13 +3,13 @@ use std::{borrow::Cow, cell::Cell, rc::Rc};
 use crate::{
     arguments::Args,
     diagnostics::IssueKind,
-    file::check_multiple_inheritance,
+    file::{check_multiple_inheritance, linearize_mro_and_return_linearizable},
     format_data::FormatData,
     getitem::SliceType,
     inference_state::InferenceState,
     inferred::Inferred,
     matching::{IteratorContent, OnTypeError, ResultContext},
-    type_helpers::{linearize_mro_and_return_linearizable, LookupDetails, TypeOrClass},
+    type_helpers::{LookupDetails, TypeOrClass},
 };
 
 use super::{AnyCause, CallableParams, FormatStyle, IterInfos, Type, UnionEntry, UnionType};
@@ -18,7 +18,7 @@ type RunOnUnionEntry<'a> =
     &'a mut dyn FnMut(&Type, &dyn Fn(IssueKind), &mut dyn FnMut(&Type, LookupDetails));
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Intersection {
+pub(crate) struct Intersection {
     entries: Rc<[Type]>,
 }
 
@@ -148,9 +148,9 @@ impl Intersection {
                 .filter(|t| !matches!(t, Type::Callable(_)))
                 .cloned()
                 .collect();
-            linearize_mro_and_return_linearizable(i_s, &check_entries).1
+            linearize_mro_and_return_linearizable(i_s.db, &check_entries).1
         } else {
-            linearize_mro_and_return_linearizable(i_s, &intersection.entries).1
+            linearize_mro_and_return_linearizable(i_s.db, &intersection.entries).1
         };
 
         if !linearizable {

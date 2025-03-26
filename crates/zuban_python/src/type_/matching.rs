@@ -7,6 +7,7 @@ use super::{
 use crate::{
     database::{ComplexPoint, MetaclassState},
     debug,
+    file::ClassNodeRef,
     inference_state::InferenceState,
     matching::{
         avoid_protocol_mismatch, format_got_expected, ErrorStrs, ErrorTypes, GotType, Match,
@@ -14,7 +15,7 @@ use crate::{
     },
     params::matches_params,
     type_::{CallableLike, CallableParams, TupleArgs, TupleUnpack, Variance},
-    type_helpers::{Class, ClassNodeRef, TypeOrClass},
+    type_helpers::{Class, TypeOrClass},
 };
 
 impl Type {
@@ -69,7 +70,9 @@ impl Type {
             Type::Callable(c1) => {
                 Self::matches_callable_against_arbitrary(i_s, matcher, c1, value_type, variance)
             }
-            Type::None => matches!(value_type, Type::None).into(),
+            Type::None => (matches!(value_type, Type::None)
+                || !i_s.flags().strict_optional && variance == Variance::Invariant)
+                .into(),
             Type::Any(cause) => {
                 matcher.set_all_contained_type_vars_to_any(value_type, *cause);
                 Match::True {
@@ -318,7 +321,11 @@ impl Type {
         matcher: &mut Matcher,
         class2_node_ref: ClassNodeRef,
     ) -> Match {
-        let ComplexPoint::Class(storage) = class2_node_ref.complex().unwrap() else {
+        if matches!(self, Type::None) {
+            // In no-strict optional cases we don't want to match.
+            return Match::new_false();
+        }
+        let ComplexPoint::Class(storage) = class2_node_ref.maybe_complex().unwrap() else {
             unreachable!()
         };
         if let Some(promote_to) = storage.promote_to.get() {
@@ -449,8 +456,7 @@ impl Type {
                 })
             }
             Type::NewType(n2) if variance == Variance::Covariant => {
-                let t = n2.type_(i_s);
-                return self.matches(i_s, matcher, t, variance);
+                return self.matches(i_s, matcher, &n2.type_, variance);
             }
             Type::Never(_) if variance == Variance::Covariant => return Match::new_true(), // Never is assignable to anything
             Type::Self_ if variance == Variance::Covariant => {

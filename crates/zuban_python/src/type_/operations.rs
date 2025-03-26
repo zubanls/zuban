@@ -5,7 +5,7 @@ use super::{
     lookup_on_dataclass_type, lookup_on_enum_class, lookup_on_enum_instance,
     lookup_on_enum_member_instance, lookup_on_typed_dict,
     tuple::{lookup_on_tuple, lookup_tuple_magic_methods},
-    AnyCause, DataclassTransformObj, LookupResult, Type, TypeVarKind,
+    AnyCause, LookupResult, Namespace, NewType, Type, TypeVarKind,
 };
 use crate::{
     arguments::{Args, NoArgs},
@@ -14,18 +14,19 @@ use crate::{
     diagnostics::IssueKind,
     file::PythonFile,
     getitem::SliceType,
+    imports::{namespace_import, ImportResult},
     inference_state::InferenceState,
     inferred::{AttributeKind, Inferred},
     matching::{
-        calculate_callable_type_vars_and_return, IteratorContent, LookupKind, OnLookupError,
-        OnTypeError, ResultContext,
+        calculate_callable_type_vars_and_return, ErrorTypes, GotType, IteratorContent, LookupKind,
+        Match, OnLookupError, OnTypeError, ResultContext,
     },
     node_ref::NodeRef,
     recoverable_error,
     type_::{Intersection, NamedTuple},
     type_helpers::{
-        lookup_in_namespace, Callable, Class, ClassLookupOptions, Instance, InstanceLookupOptions,
-        LookupDetails, Module, OverloadedFunction,
+        Callable, Class, ClassLookupOptions, Instance, InstanceLookupOptions, LookupDetails,
+        OverloadedFunction,
     },
 };
 
@@ -225,8 +226,10 @@ impl Type {
                     .lookup_with_details(i_s, add_issue, name, kind),
             ),
             Type::Module(file_index) => {
-                let module = Module::from_file_index(i_s.db, *file_index);
-                let lookup = module.lookup(i_s.db, add_issue, name);
+                let lookup = i_s
+                    .db
+                    .loaded_python_file(*file_index)
+                    .lookup(i_s.db, add_issue, name);
                 let mut attr_kind = AttributeKind::Attribute;
                 if let Some(inf) = lookup.maybe_inferred() {
                     if inf.maybe_saved_specific(i_s.db)
@@ -329,8 +332,7 @@ impl Type {
             ),
             Type::Never(_) => (),
             Type::NewType(new_type) => {
-                let t = new_type.type_(i_s);
-                if let Type::Class(c) = t {
+                if let Type::Class(c) = &new_type.type_ {
                     let l = Instance::new(c.class(i_s.db), None).lookup(
                         i_s,
                         name,
@@ -340,7 +342,7 @@ impl Type {
                     );
                     callable(self, l)
                 } else {
-                    t.run_after_lookup_on_each_union_member(
+                    new_type.type_.run_after_lookup_on_each_union_member(
                         i_s,
                         None,
                         from_file,
@@ -523,12 +525,16 @@ impl Type {
                 Type::Class(c) => c.class(i_s.db).get_item(i_s, slice_type, result_context),
                 Type::Dataclass(d) => slice_type
                     .file
-                    .inference(i_s)
-                    .compute_type_application_on_dataclass(d, *slice_type, false),
+                    .name_resolution_for_types(i_s)
+                    .compute_type_application_on_dataclass(d, *slice_type, result_context),
                 Type::NamedTuple(nt) => slice_type
                     .file
-                    .inference(i_s)
-                    .compute_type_application_on_named_tuple(nt.clone(), *slice_type, false),
+                    .name_resolution_for_types(i_s)
+                    .compute_type_application_on_named_tuple(
+                        nt.clone(),
+                        *slice_type,
+                        result_context,
+                    ),
                 t @ Type::Enum(_) => {
                     let enum_index = slice_type.infer(i_s);
                     if !enum_index
@@ -544,24 +550,15 @@ impl Type {
                 }
                 Type::TypedDict(td) => slice_type
                     .file
-                    .inference(i_s)
-                    .compute_type_application_on_typed_dict(
-                        td,
-                        *slice_type,
-                        matches!(
-                            result_context,
-                            ResultContext::AssignmentNewDefinition { .. }
-                        ),
-                    ),
+                    .name_resolution_for_types(i_s)
+                    .compute_type_application_on_typed_dict(td, *slice_type, result_context),
                 _ => not_possible(true),
             },
-            Type::NewType(new_type) => new_type.type_(i_s).get_item_internal(
-                i_s,
-                None,
-                slice_type,
-                result_context,
-                add_issue,
-            ),
+            Type::NewType(new_type) => {
+                new_type
+                    .type_
+                    .get_item_internal(i_s, None, slice_type, result_context, add_issue)
+            }
             Type::RecursiveType(r) => r.calculated_type(i_s.db).get_item_internal(
                 i_s,
                 None,
@@ -684,13 +681,9 @@ impl Type {
             Type::Intersection(intersection) => {
                 intersection.execute(i_s, args, result_context, on_type_error)
             }
-            Type::DataclassTransformObj(d) => Inferred::from_type({
-                let d = DataclassTransformObj {
-                    executed_by_function: true,
-                    ..d.clone()
-                };
-                Type::DataclassTransformObj(d)
-            }),
+            Type::DataclassTransformObj(d) => {
+                Inferred::from_type(Type::DataclassTransformObj(d.clone()))
+            }
             _ => not_callable(),
         }
     }
@@ -715,7 +708,7 @@ impl Type {
                     IteratorContent::Any(AnyCause::FromError)
                 }
             },
-            Type::NewType(n) => n.type_(i_s).iter(i_s, infos),
+            Type::NewType(n) => n.type_.iter(i_s, infos),
             Type::Self_ => Instance::new(i_s.current_class().unwrap(), None).iter(i_s, self, infos),
             Type::RecursiveType(rec) => rec.calculated_type(i_s.db).iter(i_s, infos),
             Type::Intersection(i) => i.iter(i_s, infos),
@@ -743,7 +736,7 @@ impl Type {
 }
 
 #[derive(Copy, Clone)]
-pub enum IterCause {
+pub(crate) enum IterCause {
     Iter,             // for i in *x
     AssignmentUnpack, // a, b = *x
     VariadicUnpack,   // [*x] or foo(*x)
@@ -1021,8 +1014,8 @@ pub(crate) fn execute_type_of_type<'db>(
             }
         },
         Type::NewType(n) => {
-            execute_type_of_type(i_s, args, result_context, on_type_error, n.type_(i_s));
-            Inferred::from_type(type_.clone())
+            n.check_initialization_args(i_s, args, on_type_error);
+            Inferred::from_type(Type::NewType(n.clone()))
         }
         Type::Self_ => {
             i_s.current_class()
@@ -1087,6 +1080,66 @@ pub(crate) fn execute_type_of_type<'db>(
                 type_.format_short(i_s.db),
             );
             Inferred::new_any_from_error()
+        }
+    }
+}
+
+impl NewType {
+    fn check_initialization_args<'db>(
+        &self,
+        i_s: &InferenceState<'db, '_>,
+        args: &dyn Args<'db>,
+        on_type_error: OnTypeError,
+    ) {
+        let t = &self.type_;
+        let Some(inf) = args.maybe_single_positional_arg(i_s, &mut ResultContext::new_known(t))
+        else {
+            args.add_issue(
+                i_s,
+                match args.iter(i_s.mode).count() {
+                    0 => {
+                        IssueKind::TooFewArguments(format!(" for \"{}\"", self.name(i_s.db)).into())
+                    }
+                    1 => IssueKind::NewTypesExpectSinglePositionalArgument,
+                    _ => IssueKind::TooManyArguments(
+                        format!(" for \"{}\"", self.name(i_s.db)).into(),
+                    ),
+                },
+            );
+            return;
+        };
+        let other = inf.as_cow_type(i_s);
+        if let Match::False { ref reason, .. } = t.is_simple_super_type_of(i_s, &other) {
+            (on_type_error.callback)(
+                i_s,
+                &|_| Some(format!(" to \"{}\"", self.name(i_s.db)).into()),
+                &args.iter(i_s.mode).next().unwrap(),
+                ErrorTypes {
+                    matcher: None,
+                    reason,
+                    got: GotType::Type(&other),
+                    expected: t,
+                },
+            );
+        }
+    }
+}
+
+fn lookup_in_namespace(
+    db: &Database,
+    from_file: &PythonFile,
+    namespace: &Namespace,
+    name: &str,
+) -> LookupResult {
+    match namespace_import(db, from_file, namespace, name) {
+        Some(ImportResult::File(file_index)) => LookupResult::FileReference(file_index),
+        Some(ImportResult::Namespace(namespace)) => {
+            LookupResult::UnknownName(Inferred::from_type(Type::Namespace(namespace)))
+        }
+        Some(ImportResult::PyTypedMissing) => LookupResult::any(AnyCause::FromError),
+        None => {
+            debug!("TODO namespace basic lookups");
+            LookupResult::None
         }
     }
 }

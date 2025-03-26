@@ -61,8 +61,8 @@ S = TypeVar("S")
 T = TypeVar("T")
 
 Rec1 = list[Union[Rec1[T, S], T, S]]
-Rec2 = list[Union[Rec2[T, S, int], T, S]]  # E: Bad number of arguments for type alias, expected 2, given 3 # E: Bad number of arguments for type alias, expected 2, given 3
-Rec3 = list[Union[Rec3[int], T, S]]  # E: Bad number of arguments for type alias, expected 2, given 1 # E: Bad number of arguments for type alias, expected 2, given 1
+Rec2 = list[Union[Rec2[T, S, int], T, S]]  # E: Bad number of arguments for type alias, expected 2, given 3
+Rec3 = list[Union[Rec3[int], T, S]]  # E: Bad number of arguments for type alias, expected 2, given 1
 
 x1: Rec1[int, str]
 x2: Rec2[int, str]
@@ -94,3 +94,45 @@ def f(x: A[int]):
     reveal_type(x)  # N: Revealed type is "int | list[Any | list[...]]"
     if isinstance(x, list):
         reveal_type(x[0])  # N: Revealed type is "Any | list[...]"
+
+[case recursive_alias_via_base_class_with_forward_reference]
+# Like testRecursiveAliasViaBaseClass, but with forward references
+from typing import List
+
+x: B
+B = List["C"]
+class C(B): pass
+
+reveal_type(x)  # N: Revealed type is "builtins.list[__main__.C]"
+reveal_type(x[0][0])  # N: Revealed type is "__main__.C"
+
+[case recursive_alias_via_base_class_with_different_module]
+# Like testRecursiveAliasViaBaseClass, but with different modules
+import m
+
+[file m.py]
+import n
+from typing import List
+
+x: B
+B = List[n.C]
+
+reveal_type(x)  # N: Revealed type is "builtins.list[n.C]"
+reveal_type(x[0][0])  # N: Revealed type is "n.C"
+
+[file n.py]
+import m
+class C(m.B): pass
+
+[case recursive_alias_via_base_class_with_nested_class]
+# flags: --disable-error-code used-before-def
+# Like testRecursiveAliasViaBaseClass, but with forward references
+from typing import List
+
+x: B
+B = List[X.C]
+class X:
+    class C(B): pass  # E: This base class/alias cycle is currently unsupported
+
+reveal_type(x)  # N: Revealed type is "builtins.list[__main__.X.C]"
+reveal_type(x[0][0])  # E: Value of type "C" is not indexable # N: Revealed type is "Any"

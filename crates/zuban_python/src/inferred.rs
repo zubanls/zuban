@@ -1,6 +1,6 @@
 use std::{borrow::Cow, cell::RefCell, rc::Rc};
 
-use parsa_python_cst::{NodeIndex, ParamKind, PrimaryContent, SliceType as CSTSliceType};
+use parsa_python_cst::{NodeIndex, ParamKind};
 use vfs::FileIndex;
 
 use crate::{
@@ -12,39 +12,36 @@ use crate::{
     diagnostics::IssueKind,
     file::{
         maybe_saved_annotation, on_argument_type_error, use_cached_annotation_or_type_comment,
-        PythonFile, ANNOTATION_TO_EXPR_DIFFERENCE,
+        ClassNodeRef, PythonFile, ANNOTATION_TO_EXPR_DIFFERENCE,
     },
     format_data::FormatData,
     getitem::SliceType,
     inference_state::InferenceState,
     matching::{
         calculate_property_return, create_signature_without_self_for_callable, match_self_type,
-        maybe_class_usage, replace_class_type_vars, ErrorStrs, ErrorTypes, Generics, GotType,
-        IteratorContent, LookupKind, Match, Matcher, OnLookupError, OnTypeError, ResultContext,
+        maybe_class_usage, replace_class_type_vars, ErrorStrs, Generics, IteratorContent,
+        LookupKind, Matcher, OnLookupError, OnTypeError, ResultContext,
     },
     new_class,
     node_ref::NodeRef,
     type_::{
-        execute_collections_named_tuple, execute_tuple_class, execute_type_of_type,
-        execute_typing_named_tuple, merge_class_type_vars, new_typed_dict, AnyCause,
-        CallableContent, CallableLike, CallableParams, ClassGenerics, DataclassTransformObj,
-        DbBytes, DbString, FunctionKind, FunctionOverload, GenericClass, GenericItem, GenericsList,
-        IterCause, IterInfos, Literal as DbLiteral, LiteralKind, LiteralValue, LookupResult,
-        NeverCause, PropertySetter, Type, TypeVarKind, TypeVarLike, TypeVarLikes,
+        execute_tuple_class, execute_type_of_type, merge_class_type_vars, AnyCause,
+        CallableContent, CallableLike, CallableParams, ClassGenerics, DbBytes, DbString,
+        FunctionKind, FunctionOverload, GenericClass, GenericItem, GenericsList, IterCause,
+        IterInfos, Literal as DbLiteral, LiteralKind, LiteralValue, LookupResult, NeverCause,
+        PropertySetter, Type, TypeVarKind, TypeVarLike, TypeVarLikes,
     },
     type_helpers::{
         execute_assert_type, execute_cast, execute_isinstance, execute_issubclass,
-        execute_new_type, execute_param_spec_class, execute_reveal_type, execute_super,
-        execute_type_var_class, execute_type_var_tuple_class, BoundMethod, BoundMethodFunction,
-        Class, ClassNodeRef, FirstParamProperties, Function, Instance, LookupDetails,
-        OverloadedFunction, TypeOrClass,
+        execute_reveal_type, execute_super, BoundMethod, BoundMethodFunction, Class,
+        FirstParamProperties, Function, Instance, LookupDetails, OverloadedFunction, TypeOrClass,
     },
 };
 
 pub const NAME_DEF_TO_DEFAULTDICT_DIFF: i64 = -1;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd)]
-pub struct MroIndex(pub u32);
+pub(crate) struct MroIndex(pub u32);
 
 impl From<usize> for MroIndex {
     fn from(item: usize) -> Self {
@@ -53,7 +50,7 @@ impl From<usize> for MroIndex {
 }
 
 #[derive(Debug)]
-pub enum FunctionOrOverload<'a> {
+pub(crate) enum FunctionOrOverload<'a> {
     Function(Function<'a, 'a>),
     Callable(Rc<CallableContent>),
     Overload(OverloadedFunction<'a>),
@@ -73,7 +70,7 @@ enum InferredState {
 }
 
 #[derive(Clone, Debug)]
-pub struct Inferred {
+pub(crate) struct Inferred {
     state: InferredState,
 }
 
@@ -115,23 +112,23 @@ impl<'db: 'slf, 'slf> Inferred {
         }
     }
 
-    pub fn new_cycle() -> Self {
+    pub const fn new_cycle() -> Self {
         Self::new_unsaved_specific(Specific::Cycle)
     }
 
-    pub fn new_none() -> Self {
+    pub const fn new_none() -> Self {
         Self::new_unsaved_specific(Specific::None)
     }
 
-    pub fn new_invalid_type_definition() -> Self {
+    pub const fn new_invalid_type_definition() -> Self {
         Self::new_unsaved_specific(Specific::InvalidTypeDefinition)
     }
 
-    pub fn new_module_not_found() -> Self {
+    pub const fn new_module_not_found() -> Self {
         Self::new_unsaved_specific(Specific::ModuleNotFound)
     }
 
-    fn new_unsaved_specific(specific: Specific) -> Self {
+    const fn new_unsaved_specific(specific: Specific) -> Self {
         Self {
             state: InferredState::UnsavedSpecific(specific),
         }
@@ -261,6 +258,14 @@ impl<'db: 'slf, 'slf> Inferred {
         self.maybe_saved_node_ref(db).is_some_and(|node_ref| {
             node_ref.is_name_defined_in_module(db, module_name, symbol_name)
         })
+    }
+
+    pub fn maybe_specific(&self, db: &Database) -> Option<Specific> {
+        if let InferredState::UnsavedSpecific(specific) = &self.state {
+            return Some(*specific);
+        }
+        self.maybe_saved_node_ref(db)
+            .and_then(|node_ref| node_ref.point().maybe_specific())
     }
 
     pub fn maybe_saved_specific(&self, db: &Database) -> Option<Specific> {
@@ -435,47 +440,9 @@ impl<'db: 'slf, 'slf> Inferred {
         self
     }
 
-    pub fn expect_class_or_simple_generic(&self, i_s: &InferenceState<'db, '_>) -> Cow<'db, Type> {
-        let mut generics = ClassGenerics::None;
-        if let InferredState::Saved(link) = &self.state {
-            let definition = NodeRef::from_link(i_s.db, *link);
-            let point = definition.point();
-            if point.kind() == PointKind::Specific {
-                generics = Self::expect_class_generics(definition, point);
-            }
-        }
-        let link = self.get_class_link(i_s);
-        Cow::Owned(Type::new_class(link, generics))
-    }
-
-    fn get_class_link(&self, i_s: &InferenceState) -> PointLink {
-        let InferredState::Saved(link) = &self.state else {
-            unreachable!()
-        };
-        let node_ref = NodeRef::from_link(i_s.db, *link);
-        let point = node_ref.point();
-        match point.kind() {
-            PointKind::Complex => {
-                node_ref.ensure_cached_class_infos(i_s);
-                *link
-            }
-            PointKind::Specific => match point.specific() {
-                Specific::SimpleGeneric => {
-                    let inferred = node_ref
-                        .file
-                        .inference(i_s)
-                        .infer_primary_or_atom(node_ref.as_primary().first());
-                    inferred.get_class_link(i_s)
-                }
-                _ => unreachable!(),
-            },
-            _ => unreachable!(),
-        }
-    }
-
     pub fn maybe_complex_point(&'slf self, db: &'db Database) -> Option<&'slf ComplexPoint> {
         match &self.state {
-            InferredState::Saved(definition) => NodeRef::from_link(db, *definition).complex(),
+            InferredState::Saved(definition) => NodeRef::from_link(db, *definition).maybe_complex(),
             InferredState::UnsavedComplex(t) => Some(t),
             _ => None,
         }
@@ -729,7 +696,7 @@ impl<'db: 'slf, 'slf> Inferred {
         Self::new_saved(file, index)
     }
 
-    pub fn init_as_function<'a>(
+    pub(crate) fn init_as_function<'a>(
         &self,
         i_s: &InferenceState<'db, '_>,
         class: Option<Class<'a>>,
@@ -743,7 +710,7 @@ impl<'db: 'slf, 'slf> Inferred {
                 if definition.point().maybe_specific() == Some(Specific::Function) {
                     return FunctionOrOverload::Function(Function::new(definition, class));
                 }
-                match definition.complex() {
+                match definition.maybe_complex() {
                     Some(ComplexPoint::FunctionOverload(overload)) => {
                         return FunctionOrOverload::Overload(OverloadedFunction::new(
                             &overload.functions,
@@ -787,7 +754,10 @@ impl<'db: 'slf, 'slf> Inferred {
                         _ => return self,
                     },
                     PointKind::Complex => {
-                        if !matches!(node_ref.complex().unwrap(), ComplexPoint::TypeInstance(_)) {
+                        if !matches!(
+                            node_ref.maybe_complex().unwrap(),
+                            ComplexPoint::TypeInstance(_) | ComplexPoint::IndirectFinal(_)
+                        ) {
                             return self;
                         }
                     }
@@ -1019,7 +989,7 @@ impl<'db: 'slf, 'slf> Inferred {
                         _ => (),
                     },
                     PointKind::Complex => {
-                        match node_ref.complex().unwrap() {
+                        match node_ref.maybe_complex().unwrap() {
                             ComplexPoint::FunctionOverload(o) => {
                                 let kind = o.kind();
                                 let attr_kind = match kind {
@@ -1403,7 +1373,7 @@ impl<'db: 'slf, 'slf> Inferred {
                         }
                         _ => (),
                     },
-                    PointKind::Complex => match node_ref.complex().unwrap() {
+                    PointKind::Complex => match node_ref.maybe_complex().unwrap() {
                         ComplexPoint::FunctionOverload(o) => match o.kind() {
                             FunctionKind::Function { .. } => {
                                 return Some((
@@ -1659,7 +1629,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             }
                         }
                     }
-                    PointKind::Complex => match node_ref.complex().unwrap() {
+                    PointKind::Complex => match node_ref.maybe_complex().unwrap() {
                         ComplexPoint::FunctionOverload(o) => {
                             let Some(inf) =
                                 infer_overloaded_class_method(i_s, *class, attribute_class, o)
@@ -1694,39 +1664,73 @@ impl<'db: 'slf, 'slf> Inferred {
         self
     }
 
-    pub fn debug_info(&self, i_s: &InferenceState) -> String {
-        let details = match &self.state {
-            InferredState::Saved(definition) => {
-                let definition = NodeRef::from_link(i_s.db, *definition);
+    pub fn debug_info(&self, db: &Database) -> String {
+        let format_complex = |from: Option<NodeRef>, complex: &_| match complex {
+            ComplexPoint::TypeInstance(t) => t.format_short(db).into(),
+            ComplexPoint::Class(_) => {
                 format!(
-                    "{} (complex?: {:?})",
-                    definition.debug_info(i_s.db),
-                    definition.complex(),
+                    "ClassDefinition({}, {})",
+                    from.unwrap().maybe_class().unwrap().name().as_code(),
+                    from.unwrap().debug_info(db)
                 )
             }
-            _ => "".to_owned(),
+            ComplexPoint::ClassInfos(_) => {
+                format!("ClassInfos({})", from.unwrap().debug_info(db))
+            }
+            ComplexPoint::TypeVarLikes(_) => {
+                format!("TypeVarLikes({})", from.unwrap().debug_info(db))
+            }
+            ComplexPoint::FunctionOverload(_) => {
+                format!("OverloadedFunction({})", from.unwrap().debug_info(db))
+            }
+            ComplexPoint::NamedTupleDefinition(t) => {
+                format!("NamedTupleDef({})", t.format_short(db))
+            }
+            ComplexPoint::TypedDictDefinition(td) => {
+                format!("TypedDictDef({})", td.type_.format_short(db))
+            }
+            ComplexPoint::IndirectFinal(t) => {
+                format!("IndirectFinal({})", t.format_short(db))
+            }
+            ComplexPoint::TypeVarLike(tvl) => {
+                format!("TypeVarLike({})", tvl.name(db))
+            }
+            ComplexPoint::TypeAlias(alias) => {
+                format!(
+                    "TypeAlias({}, {})",
+                    alias.name(db),
+                    from.unwrap().debug_info(db)
+                )
+            }
         };
-        format!(
-            "description = {}\ndebug = {self:?}\ndetails = {details}",
-            "",
-        )
-    }
-
-    fn expect_class_generics(definition: NodeRef, point: Point) -> ClassGenerics {
-        debug_assert_eq!(point.kind(), PointKind::Specific);
-        debug_assert_eq!(point.specific(), Specific::SimpleGeneric);
-        let PrimaryContent::GetItem(slice_type) = definition.as_primary().second() else {
-            unreachable!();
-        };
-        match slice_type {
-            CSTSliceType::NamedExpression(named) => ClassGenerics::ExpressionWithClassType(
-                PointLink::new(definition.file_index(), named.expression().index()),
-            ),
-            CSTSliceType::Slice(_) | CSTSliceType::StarredExpression(_) => unreachable!(),
-            CSTSliceType::Slices(slices) => ClassGenerics::SlicesWithClassTypes(PointLink::new(
-                definition.file_index(),
-                slices.index(),
-            )),
+        match &self.state {
+            InferredState::Saved(definition) => {
+                let from = NodeRef::from_link(db, *definition);
+                let p = from.point();
+                match p.kind() {
+                    PointKind::Specific => format!("Specific({:?})", p.specific()),
+                    PointKind::Complex => {
+                        let complex = from.file.complex_points.get(p.complex_index());
+                        format_complex(Some(from), complex)
+                    }
+                    PointKind::FileReference => format!("UnsavedFile({})", p.file_index()),
+                    PointKind::Redirect => unreachable!(),
+                }
+            }
+            InferredState::UnsavedFileReference(file_index) => format!("UnsavedFile({file_index})"),
+            InferredState::UnsavedComplex(c) => format!("Unsaved{}", format_complex(None, c)),
+            InferredState::UnsavedSpecific(specific) => format!("UnsavedSpecific({specific:?})"),
+            InferredState::BoundMethod {
+                instance,
+                func_link,
+                ..
+            } => {
+                format!(
+                    "BoundMethod({}.{})",
+                    instance.format_short(db),
+                    Function::new(NodeRef::from_link(db, *func_link), None).name()
+                )
+            }
         }
     }
 
@@ -1734,11 +1738,22 @@ impl<'db: 'slf, 'slf> Inferred {
         self.as_cow_type(i_s).is_union_like(i_s.db)
     }
 
-    pub fn is_any(&self, db: &Database) -> bool {
+    pub fn maybe_any(&self, db: &Database) -> Option<AnyCause> {
         if let Some(complex) = self.maybe_complex_point(db) {
-            return matches!(complex, ComplexPoint::TypeInstance(Type::Any(_)));
+            return match complex {
+                ComplexPoint::TypeInstance(Type::Any(cause)) => Some(*cause),
+                _ => None,
+            };
         }
-        self.maybe_saved_specific(db).is_some_and(|s| s.is_any())
+
+        match self.maybe_saved_specific(db)? {
+            Specific::AnyDueToError | Specific::Cycle | Specific::InvalidTypeDefinition => {
+                Some(AnyCause::FromError)
+            }
+            Specific::AnnotationOrTypeCommentWithoutTypeVars => Some(AnyCause::FromError),
+            Specific::ModuleNotFound => Some(AnyCause::ModuleNotFound),
+            _ => None,
+        }
     }
 
     #[inline]
@@ -1883,6 +1898,22 @@ impl<'db: 'slf, 'slf> Inferred {
                 let point = node_ref.point();
                 match point.kind() {
                     PointKind::Specific => {
+                        macro_rules! return_on_type_def {
+                            ($name:ident $(, $args:ident )?) => {
+                                if let ResultContext::AssignmentNewDefinition {
+                                    assignment_definition,
+                                } = &result_context
+                                {
+                                    debug!("Execute type def {}", stringify!($name));
+                                    let n = NodeRef::from_link(i_s.db, *assignment_definition);
+                                    return n
+                                        .file
+                                        .name_resolution_for_types(i_s)
+                                        .$name($($args)?);
+                                }
+                            };
+                        }
+
                         let specific = point.specific();
                         match specific {
                             Specific::Function => {
@@ -1897,25 +1928,48 @@ impl<'db: 'slf, 'slf> Inferred {
                             Specific::BuiltinsIsinstance => return execute_isinstance(i_s, args),
                             Specific::BuiltinsIssubclass => return execute_issubclass(i_s, args),
                             Specific::TypingTypeVarClass => {
-                                return execute_type_var_class(i_s, args, result_context)
+                                return_on_type_def!(compute_type_var_assignment, args);
+                                if result_context.is_annotation_assignment() {
+                                    args.add_issue(i_s, IssueKind::UnexpectedTypeForTypeVar);
+                                }
                             }
                             Specific::TypingTypeVarTupleClass => {
-                                return execute_type_var_tuple_class(i_s, args, result_context)
+                                return_on_type_def!(compute_type_var_tuple_assignment, args);
+                                if result_context.is_annotation_assignment() {
+                                    args.add_issue(i_s, IssueKind::UnexpectedTypeForTypeVar);
+                                }
                             }
                             Specific::TypingParamSpecClass => {
-                                return execute_param_spec_class(i_s, args, result_context)
+                                return_on_type_def!(compute_param_spec_assignment, args);
+                                if result_context.is_annotation_assignment() {
+                                    args.add_issue(i_s, IssueKind::UnexpectedTypeForTypeVar);
+                                }
                             }
-                            Specific::TypingNamedTuple => {
-                                return execute_typing_named_tuple(i_s, args)
+                            Specific::TypingNewType
+                                if result_context.is_annotation_assignment() =>
+                            {
+                                args.add_issue(i_s, IssueKind::NewTypeCannotHaveTypeDeclaration);
+                                return Inferred::new_any(AnyCause::FromError);
                             }
-                            Specific::TypingTypedDict => return new_typed_dict(i_s, args),
+                            Specific::TypingTypedDict
+                            | Specific::TypingNamedTuple
+                            | Specific::TypingNewType => {
+                                if let ResultContext::AssignmentNewDefinition {
+                                    assignment_definition,
+                                } = &result_context
+                                {
+                                    let n = NodeRef::from_link(i_s.db, *assignment_definition);
+                                    return n
+                                        .file
+                                        .name_resolution_for_types(i_s)
+                                        .compute_special_alias_assignment(
+                                            specific,
+                                            n.expect_assignment(),
+                                        );
+                                }
+                            }
                             Specific::CollectionsNamedTuple => {
-                                return execute_collections_named_tuple(
-                                    i_s,
-                                    args,
-                                    result_context,
-                                    on_type_error,
-                                )
+                                return_on_type_def!(compute_collections_named_tuple, args)
                             }
                             Specific::TypingTuple => {
                                 return execute_tuple_class(
@@ -1931,9 +1985,6 @@ impl<'db: 'slf, 'slf> Inferred {
                             }
                             Specific::AssertTypeFunction => {
                                 return execute_assert_type(i_s, args, result_context)
-                            }
-                            Specific::TypingNewType => {
-                                return execute_new_type(i_s, args, result_context)
                             }
                             Specific::TypingAny => {
                                 args.add_issue(i_s, IssueKind::AnyNotCallable);
@@ -1968,9 +2019,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 return Inferred::new_any_from_error();
                             }
                             Specific::TypingDataclassTransform => {
-                                return Inferred::from_type(Type::DataclassTransformObj(
-                                    DataclassTransformObj::from_args(i_s, args),
-                                ))
+                                return Inferred::new_object(i_s.db)
                             }
                             _ => (),
                         }
@@ -2022,10 +2071,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                             node_ref.add_issue(
                                                 i_s,
                                                 IssueKind::MissingTypeParameters {
-                                                    name: alias
-                                                        .name(i_s.db)
-                                                        .unwrap_or("<Alias>")
-                                                        .into(),
+                                                    name: alias.name(i_s.db).into(),
                                                 },
                                             );
                                         }
@@ -2047,50 +2093,6 @@ impl<'db: 'slf, 'slf> Inferred {
                                     },
                                 );
                                 return Inferred::new_any_from_error();
-                            }
-                            ComplexPoint::NewTypeDefinition(new_type) => {
-                                let t = new_type.type_(i_s);
-                                let Some(inf) = args.maybe_single_positional_arg(
-                                    i_s,
-                                    &mut ResultContext::new_known(t),
-                                ) else {
-                                    args.add_issue(
-                                        i_s,
-                                        match args.iter(i_s.mode).count() {
-                                            0 => IssueKind::TooFewArguments(
-                                                format!(" for \"{}\"", new_type.name(i_s.db))
-                                                    .into(),
-                                            ),
-                                            1 => IssueKind::NewTypesExpectSinglePositionalArgument,
-                                            _ => IssueKind::TooManyArguments(
-                                                format!(" for \"{}\"", new_type.name(i_s.db))
-                                                    .into(),
-                                            ),
-                                        },
-                                    );
-                                    return Self::from_type(Type::NewType(new_type.clone()));
-                                };
-                                let other = inf.as_cow_type(i_s);
-                                if let Match::False { ref reason, .. } =
-                                    t.is_simple_super_type_of(i_s, &other)
-                                {
-                                    (on_type_error.callback)(
-                                        i_s,
-                                        &|_| {
-                                            Some(
-                                                format!(" to \"{}\"", new_type.name(i_s.db)).into(),
-                                            )
-                                        },
-                                        &args.iter(i_s.mode).next().unwrap(),
-                                        ErrorTypes {
-                                            matcher: None,
-                                            reason,
-                                            got: GotType::Type(&other),
-                                            expected: t,
-                                        },
-                                    );
-                                }
-                                return Self::from_type(Type::NewType(new_type.clone()));
                             }
                             _ => (),
                         }
@@ -2160,19 +2162,16 @@ impl<'db: 'slf, 'slf> Inferred {
                         let assignment = node_ref.expect_assignment();
                         return node_ref
                             .file
-                            .inference(i_s)
+                            .name_resolution_for_types(i_s)
                             .compute_explicit_type_assignment(assignment);
                     }
                     let result = slice_type
                         .file
-                        .inference(i_s)
+                        .name_resolution_for_types(i_s)
                         .compute_type_application_on_typing_class(
                             specific,
                             *slice_type,
-                            matches!(
-                                result_context,
-                                ResultContext::AssignmentNewDefinition { .. }
-                            ),
+                            result_context,
                         );
                     if matches!(specific, Specific::TypingTuple) {
                         return result;
@@ -2181,18 +2180,11 @@ impl<'db: 'slf, 'slf> Inferred {
                 }
                 _ => {
                     let node_ref = NodeRef::from_link(i_s.db, link);
-                    if let Some(ComplexPoint::TypeAlias(ta)) = node_ref.complex() {
+                    if let Some(ComplexPoint::TypeAlias(ta)) = node_ref.maybe_complex() {
                         return slice_type
                             .file
-                            .inference(i_s)
-                            .compute_type_application_on_alias(
-                                ta,
-                                *slice_type,
-                                matches!(
-                                    result_context,
-                                    ResultContext::AssignmentNewDefinition { .. }
-                                ),
-                            );
+                            .name_resolution_for_types(i_s)
+                            .compute_type_application_on_alias(ta, *slice_type, result_context);
                     }
                 }
             }
@@ -2264,18 +2256,15 @@ impl<'db: 'slf, 'slf> Inferred {
         result
     }
 
-    pub fn maybe_bound_method_of_function(&self) -> Option<PointLink> {
-        match &self.state {
-            InferredState::BoundMethod { func_link, .. } => Some(*func_link),
-            _ => None,
-        }
-    }
-
     pub fn iter(self, i_s: &InferenceState, from: NodeRef, cause: IterCause) -> IteratorContent {
         self.as_cow_type(i_s).iter(
             i_s,
             IterInfos::new(from, cause, &|issue| from.add_issue(i_s, issue)),
         )
+    }
+
+    pub fn is_saved(&self) -> bool {
+        matches!(&self.state, InferredState::Saved(_))
     }
 
     pub fn is_saved_partial(&self, db: &Database) -> bool {
@@ -2312,7 +2301,7 @@ impl<'db: 'slf, 'slf> Inferred {
                     link.node_index + ANNOTATION_TO_EXPR_DIFFERENCE,
                 )));
             }
-            if n.complex()
+            if n.maybe_complex()
                 .is_some_and(|c| matches!(c, ComplexPoint::IndirectFinal(_)))
             {
                 return Some(Self::from_type(self.as_type(i_s)).avoid_implicit_literal(i_s));
@@ -2329,7 +2318,7 @@ fn load_bound_method<'db: 'a, 'a, 'b>(
     func_link: PointLink,
 ) -> BoundMethod<'a, 'b> {
     let reference = NodeRef::from_link(i_s.db, func_link);
-    match reference.complex() {
+    match reference.maybe_complex() {
         Some(ComplexPoint::FunctionOverload(overload)) => {
             let func = OverloadedFunction::new(&overload.functions, Some(class));
             BoundMethod::new(instance, BoundMethodFunction::Overload(func))
@@ -2361,7 +2350,7 @@ fn prepare_func<'db, 'class>(
     func
 }
 
-pub enum UnionValue<T, I: Iterator<Item = T>> {
+pub(crate) enum UnionValue<T, I: Iterator<Item = T>> {
     Single(T),
     Multiple(I),
     Any,
@@ -2599,8 +2588,8 @@ fn type_of_complex<'db: 'x, 'x>(
         }
         ComplexPoint::TypeInstance(t) => Cow::Borrowed(t),
         ComplexPoint::TypeAlias(alias) => Cow::Owned({
-            if alias.type_if_valid().is_subclassable(i_s.db) {
-                // TODO is this type correct with the Any?
+            let t = alias.type_if_valid();
+            if t.is_subclassable(i_s.db) || matches!(t, Type::TypedDict(_) | Type::Any(_)) {
                 Type::Type(Rc::new(alias.as_type_and_set_type_vars_any(i_s.db)))
             } else {
                 i_s.db.python_state.typing_special_form_type()
@@ -2611,9 +2600,6 @@ fn type_of_complex<'db: 'x, 'x>(
             TypeVarLike::TypeVarTuple(_) => Cow::Owned(i_s.db.python_state.type_var_tuple_type()),
             TypeVarLike::ParamSpec(_) => Cow::Owned(i_s.db.python_state.param_spec_type()),
         },
-        ComplexPoint::NewTypeDefinition(n) => {
-            Cow::Owned(Type::Type(Rc::new(Type::NewType(n.clone()))))
-        }
         ComplexPoint::NamedTupleDefinition(n) => Cow::Owned(Type::Type(n.clone())),
         ComplexPoint::TypedDictDefinition(t) => Cow::Owned(Type::Type(t.type_.clone())),
         ComplexPoint::IndirectFinal(t) => Cow::Borrowed(t),
@@ -2671,7 +2657,6 @@ pub fn specific_to_type<'db>(
         Specific::String => Cow::Owned(i_s.db.python_state.str_type()),
         Specific::Int => Cow::Owned(i_s.db.python_state.int_type()),
         Specific::Float => Cow::Owned(i_s.db.python_state.float_type()),
-        Specific::Bool => Cow::Owned(i_s.db.python_state.bool_type()),
         Specific::Bytes => Cow::Owned(i_s.db.python_state.bytes_type()),
         Specific::Complex => Cow::Owned(i_s.db.python_state.complex_type()),
         Specific::Ellipsis => Cow::Owned(i_s.db.python_state.ellipsis_type()),
@@ -2849,7 +2834,7 @@ pub fn add_attribute_error(
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub enum AttributeKind {
+pub(crate) enum AttributeKind {
     AnnotatedAttribute,
     Attribute,
     ClassVar,

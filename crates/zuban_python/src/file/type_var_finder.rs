@@ -5,17 +5,18 @@ use vfs::FileIndex;
 
 use super::{
     name_resolution::{NameResolution, PointResolution},
-    type_computation::cache_name_on_class,
+    ClassInitializer, ClassNodeRef,
 };
 use crate::{
     database::{ComplexPoint, PointKind, PointLink, Specific},
+    debug,
     diagnostics::IssueKind,
     file::PythonFile,
     getitem::{SliceOrSimple, SliceType},
     inference_state::InferenceState,
     node_ref::NodeRef,
     type_::{TypeVarIndex, TypeVarLike, TypeVarLikes, TypeVarManager},
-    type_helpers::{ClassInitializer, ClassNodeRef},
+    utils::debug_indent,
 };
 
 #[derive(Debug, Clone, PartialEq)]
@@ -39,7 +40,7 @@ struct Infos<'c, 'd> {
     had_generic_or_protocol_issue: bool,
 }
 
-pub struct TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, 'e> {
+pub(crate) struct TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, 'e> {
     name_resolution: NameResolution<'db, 'file, 'i_s>,
     infos: &'e mut Infos<'c, 'd>,
 }
@@ -57,32 +58,41 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
         i_s: &'i_s InferenceState<'db, 'i_s>,
         class: &'c ClassNodeRef<'file>,
     ) -> TypeVarLikes {
-        let mut infos = Infos {
-            class: Some(class),
-            ..Default::default()
-        };
-        let mut finder = TypeVarFinder {
-            name_resolution: class.file.name_resolution(i_s),
-            infos: &mut infos,
-        };
+        debug!("Finding type vars for class {:?}", class.name());
+        let type_vars = debug_indent(|| {
+            let mut infos = Infos {
+                class: Some(class),
+                ..Default::default()
+            };
+            let mut finder = TypeVarFinder {
+                name_resolution: class.file.name_resolution_for_types(i_s),
+                infos: &mut infos,
+            };
 
-        if let Some(arguments) = class.node().arguments() {
-            for argument in arguments.iter() {
-                match argument {
-                    Argument::Positional(n) => {
-                        finder.find_in_expr(n.expression());
+            if let Some(arguments) = class.node().arguments() {
+                for argument in arguments.iter() {
+                    match argument {
+                        Argument::Positional(n) => {
+                            finder.find_in_expr(n.expression());
+                        }
+                        Argument::Keyword(_) => (), // Ignore for now -> part of meta class
+                        Argument::Star(_) | Argument::StarStar(_) => (), // Nobody probably cares about this
                     }
-                    Argument::Keyword(_) => (), // Ignore for now -> part of meta class
-                    Argument::Star(_) | Argument::StarStar(_) => (), // Nobody probably cares about this
                 }
             }
-        }
-        if let Some(slice_type) = finder.infos.generic_or_protocol_slice {
-            if !finder.infos.had_generic_or_protocol_issue {
-                finder.check_generic_or_protocol_length(slice_type)
+            if let Some(slice_type) = finder.infos.generic_or_protocol_slice {
+                if !finder.infos.had_generic_or_protocol_issue {
+                    finder.check_generic_or_protocol_length(slice_type)
+                }
             }
-        }
-        infos.type_var_manager.into_type_vars()
+            infos.type_var_manager.into_type_vars()
+        });
+        debug!(
+            "Found type vars for class {:?}: {:?}",
+            class.name(),
+            type_vars.debug_info(i_s.db)
+        );
+        type_vars
     }
 
     pub fn find_alias_type_vars(
@@ -90,13 +100,22 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
         file: &'file PythonFile,
         expr: Expression<'d>,
     ) -> TypeVarLikes {
-        let mut infos = Infos::default();
-        let mut finder = TypeVarFinder {
-            name_resolution: file.name_resolution(i_s),
-            infos: &mut infos,
-        };
-        finder.find_in_expr(expr);
-        infos.type_var_manager.into_type_vars()
+        debug!("Finding type vars in {:?}", expr.as_code());
+        let type_vars = debug_indent(|| {
+            let mut infos = Infos::default();
+            let mut finder = TypeVarFinder {
+                name_resolution: file.name_resolution_for_types(i_s),
+                infos: &mut infos,
+            };
+            finder.find_in_expr(expr);
+            infos.type_var_manager.into_type_vars()
+        });
+        debug!(
+            "Found type vars in {:?}: {:?}",
+            expr.as_code(),
+            type_vars.debug_info(i_s.db)
+        );
+        type_vars
     }
 
     fn find_in_slice_like(&mut self, slice_like: SliceOrSimple<'d>) {
@@ -135,39 +154,38 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
     fn find_in_primary(&mut self, primary: Primary<'d>) -> BaseLookup {
         let base = self.find_in_primary_or_atom(primary.first());
         match primary.second() {
-            PrimaryContent::Attribute(name) => match base {
-                BaseLookup::Module(f) => {
-                    let Some(resolved) = self
-                        .i_s
-                        .db
-                        .loaded_python_file(f)
-                        .name_resolution(&InferenceState::new(self.i_s.db))
-                        .resolve_module_access(name.as_str(), |k| self.add_issue(name.index(), k))
-                    else {
-                        return BaseLookup::Other;
-                    };
-                    let result = self.point_resolution_to_base_lookup(resolved);
-                    if let BaseLookup::TypeVarLike(tvl) = result {
-                        self.handle_type_var_like(tvl, |kind| {
-                            NodeRef::new(self.name_resolution.file, primary.index())
-                                .add_issue(self.name_resolution.i_s, kind)
-                        });
-                        return BaseLookup::Other;
+            PrimaryContent::Attribute(name) => {
+                let result = match base {
+                    BaseLookup::Module(f) => {
+                        let file = self.i_s.db.loaded_python_file(f);
+                        let Some((resolved, _)) = file
+                            .name_resolution_for_types(&InferenceState::new(self.i_s.db, file))
+                            .resolve_module_access(name.as_str(), |k| {
+                                self.add_issue(name.index(), k)
+                            })
+                        else {
+                            return BaseLookup::Other;
+                        };
+                        self.point_resolution_to_base_lookup(resolved)
                     }
-                    result
-                }
-                BaseLookup::Class(link) => {
-                    let cls = ClassInitializer::from_link(self.i_s.db, link);
-                    let point_kind = cache_name_on_class(cls, self.file, name);
-                    if point_kind == PointKind::Redirect {
-                        self.find_in_name(name)
-                    } else {
-                        BaseLookup::Other
+                    BaseLookup::Class(link) => {
+                        let cls = ClassInitializer::from_link(self.i_s.db, link);
+                        let Some(pr) = self.lookup_type_name_on_class(cls, name) else {
+                            return BaseLookup::Other;
+                        };
+                        self.point_resolution_to_base_lookup(pr)
                     }
+                    _ => BaseLookup::Other,
+                };
+                if let BaseLookup::TypeVarLike(tvl) = result {
+                    self.handle_type_var_like(tvl, |kind| {
+                        NodeRef::new(self.name_resolution.file, primary.index())
+                            .add_issue(self.name_resolution.i_s, kind)
+                    });
+                    return BaseLookup::Other;
                 }
-                BaseLookup::TypeVarLike(_) => todo!(),
-                _ => BaseLookup::Other,
-            },
+                result
+            }
             PrimaryContent::Execution(_) => BaseLookup::Other,
             PrimaryContent::GetItem(slice_type) => {
                 let s = SliceType::new(self.file, primary.index(), slice_type);
@@ -199,7 +217,7 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
         }
     }
 
-    fn find_in_atom(&mut self, atom: Atom) -> BaseLookup {
+    fn find_in_atom(&mut self, atom: Atom<'d>) -> BaseLookup {
         match atom.unpack() {
             AtomContent::Name(n) => return self.find_in_name(n),
             AtomContent::Strings(s_o_b) => match s_o_b.as_python_string() {
@@ -211,9 +229,38 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
                 }
                 PythonString::FString => (),
             },
+            AtomContent::Dict(dict) => {
+                // For TypedDicts
+                for element in dict.iter_elements() {
+                    match element {
+                        DictElement::KeyValue(dict_key_value) => {
+                            self.find_in_expr(dict_key_value.value())
+                        }
+                        DictElement::Star(_) => (),
+                    }
+                }
+            }
+            AtomContent::List(list) => self.find_in_named_tuple_fields(list.unpack()),
+            AtomContent::Tuple(tup) => self.find_in_named_tuple_fields(tup.iter()),
             _ => (),
         }
         BaseLookup::Other
+    }
+
+    fn find_in_named_tuple_fields(&mut self, iterator: StarLikeExpressionIterator<'d>) {
+        let mut check_expr = |e: Expression<'d>| {
+            if let Some(AtomContent::Tuple(name_and_type)) = e.maybe_unpacked_atom() {
+                if let Some(StarLikeExpression::NamedExpression(n)) = name_and_type.iter().nth(1) {
+                    self.find_in_expr(n.expression());
+                }
+            }
+        };
+        for element in iterator {
+            match element {
+                StarLikeExpression::NamedExpression(ne) => check_expr(ne.expression()),
+                _ => (),
+            }
+        }
     }
 
     fn find_in_name(&mut self, name: Name) -> BaseLookup {
@@ -230,14 +277,12 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
     }
 
     fn handle_type_var_like(&mut self, tvl: TypeVarLike, add_issue: impl Fn(IssueKind)) {
-        if self
-            .infos
-            .class
-            .and_then(|c| {
-                ClassInitializer::from_node_ref(*c).maybe_type_var_like_in_parent(self.i_s.db, &tvl)
-            })
-            .is_none()
-        {
+        if let Some(_) = self.i_s.find_parent_type_var(&tvl) {
+            debug!(
+                "Found bound TypeVar {} in parent scope",
+                tvl.name(self.i_s.db)
+            );
+        } else {
             if matches!(tvl, TypeVarLike::TypeVarTuple(_))
                 && self.infos.type_var_manager.has_type_var_tuples()
             {
@@ -256,7 +301,11 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
                     }
                 }
             }
-            let old_index = self.infos.type_var_manager.add(tvl.clone(), None);
+            debug!(
+                "Found unbound TypeVar {} in parent scope",
+                tvl.name(self.i_s.db)
+            );
+            let old_index = self.infos.type_var_manager.add(tvl, None);
             if let Some(force_index) = self.infos.current_generic_or_protocol_index {
                 if old_index < force_index {
                     add_issue(IssueKind::DuplicateTypeVar)
@@ -303,7 +352,7 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
     fn compute_forward_reference(&mut self, start: CodeIndex, string: Cow<str>) {
         let file = self.file.ensure_annotation_file(self.i_s.db, start, string);
         let mut inner_finder = TypeVarFinder {
-            name_resolution: file.name_resolution(self.i_s),
+            name_resolution: file.name_resolution_for_types(self.i_s),
             infos: self.infos,
         };
 
@@ -336,21 +385,41 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         match resolved {
             PointResolution::NameDef {
                 node_ref,
-                global_redirect,
+                global_redirect: _,
             } => {
                 if node_ref.file_index() != self.file.file_index {
-                    return node_ref
-                        .file
-                        .name_resolution(self.i_s)
+                    return self
+                        .with_new_file(node_ref.file)
                         .point_resolution_to_base_lookup(resolved);
                 }
-
-                let name_def = node_ref.as_name_def();
+                let name_def = node_ref.expect_name_def();
                 match name_def.expect_type() {
                     TypeLike::ClassDef(c) => {
                         return BaseLookup::Class(PointLink::new(node_ref.file_index(), c.index()))
                     }
                     TypeLike::Assignment(assignment) => {
+                        if node_ref.point().calculated() {
+                            // This is essentially just a performance optimization to avoid looking
+                            // up TypeVar each time.
+                            fn follow_potential_inferred(node_ref: NodeRef) -> BaseLookup {
+                                let p = node_ref.point();
+                                if p.kind() == PointKind::Redirect {
+                                    if p.file_index() == node_ref.file_index() {
+                                        let new = NodeRef::new(node_ref.file, p.node_index());
+                                        follow_potential_inferred(new)
+                                    } else {
+                                        BaseLookup::Other
+                                    }
+                                } else if let Some(ComplexPoint::TypeVarLike(tvl)) =
+                                    node_ref.maybe_complex()
+                                {
+                                    BaseLookup::TypeVarLike(tvl.clone())
+                                } else {
+                                    BaseLookup::Other
+                                }
+                            }
+                            return follow_potential_inferred(node_ref);
+                        }
                         if let Some((_, None, expr)) =
                             assignment.maybe_simple_type_expression_assignment()
                         {
@@ -360,7 +429,8 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                                 let inference = node_ref.file.inference(self.i_s);
                                 let inf = inference.infer_name_of_definition(name_def.name());
                                 if let Some(node_ref) = inf.maybe_saved_node_ref(self.i_s.db) {
-                                    if let Some(ComplexPoint::TypeVarLike(tvl)) = node_ref.complex()
+                                    if let Some(ComplexPoint::TypeVarLike(tvl)) =
+                                        node_ref.maybe_complex()
                                     {
                                         return BaseLookup::TypeVarLike(tvl.clone());
                                     }
@@ -419,12 +489,19 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             PrimaryOrAtom::Primary(primary) => match primary.second() {
                 PrimaryContent::Attribute(name) => {
                     match self.lookup_primary_or_atom(primary.first()) {
-                        BaseLookup::Module(f) => self
-                            .i_s
-                            .db
-                            .loaded_python_file(f)
-                            .name_resolution(self.i_s)
-                            .lookup_name(name),
+                        BaseLookup::Module(f) => {
+                            let Some((pr, _link_to)) = self
+                                .i_s
+                                .db
+                                .loaded_python_file(f)
+                                .name_resolution_for_types(self.i_s)
+                                .resolve_module_access(name.as_code(), |_| ())
+                            else {
+                                return BaseLookup::Other;
+                            };
+                            // TODO should we use link_to? Probably only if we add the issue
+                            self.point_resolution_to_base_lookup(pr)
+                        }
                         _ => BaseLookup::Other,
                     }
                 }

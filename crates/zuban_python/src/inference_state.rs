@@ -1,23 +1,20 @@
 use std::cell::Cell;
 
-use vfs::FileIndex;
-
 use crate::{
-    database::{Database, ParentScope, PointLink},
-    file::TypeVarCallbackReturn,
+    database::{Database, ParentScope},
+    file::{ClassNodeRef, PythonFile, TypeVarCallbackReturn},
     node_ref::NodeRef,
     type_::{CallableContent, TypeVarLike},
-    type_helpers::{Class, ClassNodeRef, Function},
+    type_helpers::{Class, Function},
     TypeCheckerFlags,
 };
 
 #[derive(Debug, Copy, Clone)]
 enum Context<'a> {
     None,
-    DiagnosticClass(&'a Class<'a>),
+    File(&'a PythonFile),
     Class(&'a Class<'a>),
-    DiagnosticExecution(&'a Function<'a, 'a>),
-    Execution(&'a Function<'a, 'a>),
+    Function(&'a Function<'a, 'a>),
     LambdaCallable {
         callable: &'a CallableContent,
         parent_context: &'a Context<'a>,
@@ -27,30 +24,40 @@ enum Context<'a> {
 impl<'a> Context<'a> {
     fn current_class(&self, db: &'a Database) -> Option<Class<'a>> {
         match self {
-            Context::DiagnosticClass(c) | Context::Class(c) => Some(**c),
-            Context::DiagnosticExecution(func) | Context::Execution(func) => func.parent_class(db),
+            Context::Class(c) => Some(**c),
+            Context::Function(func) => func.parent_class(db),
             Context::LambdaCallable { parent_context, .. } => parent_context.current_class(db),
+            Context::File(_) | Context::None => None,
+        }
+    }
+
+    fn current_file(&self) -> Option<&'a PythonFile> {
+        match self {
             Context::None => None,
+            Context::File(f) => Some(f),
+            Context::Class(c) => Some(c.file),
+            Context::Function(f) => Some(f.file),
+            Context::LambdaCallable { parent_context, .. } => parent_context.current_file(),
         }
     }
 }
 
 #[derive(Clone, Copy, Debug)]
-pub enum Mode<'a> {
+pub(crate) enum Mode<'a> {
     Normal,
     EnumMemberCalculation,
     AvoidErrors { had_error: &'a Cell<bool> },
 }
 
 #[derive(Clone, Copy, Debug)]
-pub struct InferenceState<'db, 'a> {
+pub(crate) struct InferenceState<'db, 'a> {
     pub db: &'db Database,
     context: Context<'a>,
     pub mode: Mode<'a>,
 }
 
 impl<'db, 'a> InferenceState<'db, 'a> {
-    pub fn new(db: &'db Database) -> Self {
+    pub fn new_in_unknown_file(db: &'db Database) -> Self {
         Self {
             db,
             context: Context::None,
@@ -58,29 +65,31 @@ impl<'db, 'a> InferenceState<'db, 'a> {
         }
     }
 
+    pub fn new(db: &'db Database, file: &'a PythonFile) -> Self {
+        Self {
+            db,
+            context: Context::File(file),
+            mode: Mode::Normal,
+        }
+    }
+
     pub fn run_with_parent_scope<T>(
         db: &'db Database,
-        file_index: FileIndex,
+        file: &PythonFile,
         parent_scope: ParentScope,
         callback: impl FnOnce(InferenceState) -> T,
     ) -> T {
         let class;
         let func;
         let context = match parent_scope {
-            ParentScope::Module => Context::None,
+            ParentScope::Module => Context::File(file),
             ParentScope::Function(func_index) => {
-                func = Function::new_with_unknown_parent(
-                    db,
-                    NodeRef::from_link(db, PointLink::new(file_index, func_index)),
-                );
-                Context::DiagnosticExecution(&func)
+                func = Function::new_with_unknown_parent(db, NodeRef::new(file, func_index));
+                Context::Function(&func)
             }
             ParentScope::Class(class_index) => {
-                class = Class::with_self_generics(
-                    db,
-                    ClassNodeRef::from_link(db, PointLink::new(file_index, class_index)),
-                );
-                Context::DiagnosticClass(&class)
+                class = Class::with_self_generics(db, ClassNodeRef::new(file, class_index));
+                Context::Class(&class)
             }
         };
         callback(InferenceState {
@@ -93,43 +102,15 @@ impl<'db, 'a> InferenceState<'db, 'a> {
     pub(crate) fn with_func_and_args(&self, func: &'a Function<'a, 'a>) -> Self {
         Self {
             db: self.db,
-            context: Context::Execution(func),
+            context: Context::Function(func),
             mode: self.mode,
         }
-    }
-
-    pub(crate) fn with_diagnostic_func_and_args(&self, func: &'a Function<'a, 'a>) -> Self {
-        Self {
-            db: self.db,
-            context: Context::DiagnosticExecution(func),
-            mode: self.mode,
-        }
-    }
-
-    pub fn with_simplified_annotation_instance(&self) -> Self {
-        Self {
-            db: self.db,
-            context: Context::None,
-            mode: self.mode,
-        }
-    }
-
-    pub fn without_context(&self) -> Self {
-        self.with_simplified_annotation_instance()
     }
 
     pub fn with_class_context(&self, current_class: &'a Class<'a>) -> Self {
         Self {
             db: self.db,
             context: Context::Class(current_class),
-            mode: self.mode,
-        }
-    }
-
-    pub fn with_diagnostic_class_context(&self, current_class: &'a Class<'a>) -> Self {
-        Self {
-            db: self.db,
-            context: Context::DiagnosticClass(current_class),
             mode: self.mode,
         }
     }
@@ -160,7 +141,7 @@ impl<'db, 'a> InferenceState<'db, 'a> {
         new
     }
 
-    pub fn avoid_errors_within<T>(
+    pub(crate) fn avoid_errors_within<T>(
         &self,
         mut callable: impl FnMut(&InferenceState<'db, '_>) -> T,
     ) -> (T, bool) {
@@ -174,18 +155,18 @@ impl<'db, 'a> InferenceState<'db, 'a> {
         (result, had_error.get())
     }
 
-    pub fn is_calculating_enum_members(&self) -> bool {
+    pub(crate) fn is_calculating_enum_members(&self) -> bool {
         matches!(self.mode, Mode::EnumMemberCalculation)
     }
 
-    pub fn current_function(&self) -> Option<&'a Function<'a, 'a>> {
+    pub(crate) fn current_function(&self) -> Option<&'a Function<'a, 'a>> {
         match &self.context {
-            Context::DiagnosticExecution(func) | Context::Execution(func) => Some(func),
+            Context::Function(func) => Some(func),
             _ => None,
         }
     }
 
-    pub fn current_class(&self) -> Option<Class<'a>>
+    pub(crate) fn current_class(&self) -> Option<Class<'a>>
     where
         'db: 'a,
     {
@@ -201,13 +182,17 @@ impl<'db, 'a> InferenceState<'db, 'a> {
 
     pub fn in_class_scope(&self) -> Option<&'a Class<'a>> {
         match self.context {
-            Context::DiagnosticClass(c) | Context::Class(c) => Some(c),
+            Context::Class(c) => Some(c),
             _ => None,
         }
     }
 
     pub fn in_module_context(&self) -> bool {
-        matches!(self.context, Context::None)
+        matches!(self.context, Context::None | Context::File(_))
+    }
+
+    pub fn is_file_context(&self) -> bool {
+        matches!(self.context, Context::File(_))
     }
 
     pub(crate) fn find_parent_type_var(
@@ -241,13 +226,6 @@ impl<'db, 'a> InferenceState<'db, 'a> {
         }
     }
 
-    pub fn is_diagnostic(&self) -> bool {
-        matches!(
-            self.context,
-            Context::DiagnosticClass(_) | Context::DiagnosticExecution(..)
-        )
-    }
-
     pub fn should_add_issue(&self) -> bool {
         match self.mode {
             Mode::AvoidErrors { had_error } => {
@@ -258,8 +236,14 @@ impl<'db, 'a> InferenceState<'db, 'a> {
         }
     }
 
-    pub fn flags(&self) -> &TypeCheckerFlags {
-        // TODO this is not implemented properly with context, yet.
-        &self.db.project.flags
+    pub fn flags(&self) -> &'a TypeCheckerFlags
+    where
+        'db: 'a,
+    {
+        if let Some(file) = self.context.current_file() {
+            file.flags(self.db)
+        } else {
+            &self.db.project.flags
+        }
     }
 }

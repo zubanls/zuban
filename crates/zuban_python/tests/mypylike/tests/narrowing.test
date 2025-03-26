@@ -1160,7 +1160,7 @@ if bool():
     b = a  # E: Name "a" is used before definition
 else:
     b = a  # E: Name "a" is used before definition
-from a import a  # E: Cannot determine type of "a"
+from a import a  # E: Cannot resolve name "a" (possible cyclic definition)
 reveal_type(b)  # N: Revealed type is "Any"
 
 [case module_mutual_flow_analysis5]

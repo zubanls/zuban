@@ -15,7 +15,7 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub enum Leaf<'db> {
+pub(crate) enum Leaf<'db> {
     Name(Box<dyn Name<'db> + 'db>),
     String,
     Number,

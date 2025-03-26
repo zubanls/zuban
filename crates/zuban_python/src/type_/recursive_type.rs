@@ -6,13 +6,14 @@ use std::{
 use super::{GenericsList, Type};
 use crate::{
     database::{Database, PointLink, TypeAlias},
+    file::ClassNodeRef,
     matching::Generics,
     node_ref::NodeRef,
-    type_helpers::{Class, ClassNodeRef},
+    type_helpers::Class,
 };
 
 #[derive(Clone, Eq)]
-pub struct RecursiveType {
+pub(crate) struct RecursiveType {
     pub link: PointLink,
     pub generics: Option<GenericsList>,
     calculated_type: OnceCell<Type>,
@@ -29,7 +30,7 @@ impl RecursiveType {
 
     pub(super) fn name<'x>(&'x self, db: &'x Database) -> &'x str {
         match self.origin(db) {
-            RecursiveTypeOrigin::TypeAlias(alias) => alias.name(db).unwrap(),
+            RecursiveTypeOrigin::TypeAlias(alias) => alias.name(db),
             RecursiveTypeOrigin::Class(class) => class.name(),
         }
     }
@@ -107,7 +108,7 @@ impl std::fmt::Debug for RecursiveType {
     }
 }
 
-pub enum RecursiveTypeOrigin<'x> {
+pub(crate) enum RecursiveTypeOrigin<'x> {
     TypeAlias(&'x TypeAlias),
     Class(Class<'x>),
 }

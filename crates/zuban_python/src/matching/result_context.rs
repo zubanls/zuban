@@ -3,12 +3,13 @@ use core::fmt;
 use super::Matcher;
 use crate::{
     database::PointLink,
+    file::ClassNodeRef,
     type_::{AnyCause, TupleArgs, Type},
-    type_helpers::{Class, ClassNodeRef},
+    type_helpers::Class,
     InferenceState,
 };
 
-pub enum ResultContext<'a, 'b> {
+pub(crate) enum ResultContext<'a, 'b> {
     Known {
         type_: &'a Type,
         from_assignment_annotation: bool,
@@ -209,7 +210,7 @@ impl fmt::Debug for ResultContext<'_, '_> {
     }
 }
 
-pub enum TupleContextIterator<'a> {
+pub(crate) enum TupleContextIterator<'a> {
     ArbitraryLen(&'a Type),
     FixedLen(std::slice::Iter<'a, Type>),
     Unknown,
@@ -228,7 +229,7 @@ impl<'a> Iterator for TupleContextIterator<'a> {
 }
 
 #[derive(Debug)]
-pub enum CouldBeALiteral {
+pub(crate) enum CouldBeALiteral {
     Yes { implicit: bool },
     No,
 }

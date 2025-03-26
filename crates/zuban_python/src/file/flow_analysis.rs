@@ -21,7 +21,7 @@ use crate::{
     database::{ClassKind, Database, Locality, Point, PointKind, PointLink, Specific},
     debug,
     diagnostics::IssueKind,
-    file::OtherDefinitionIterator,
+    file::{ClassNodeRef, OtherDefinitionIterator},
     getitem::SliceType,
     inference_state::InferenceState,
     inferred::{Inferred, UnionValue},
@@ -34,8 +34,8 @@ use crate::{
         Tuple, TupleArgs, TupleUnpack, Type, TypeVarKind, UnionType, WithUnpack,
     },
     type_helpers::{
-        Callable, Class, ClassLookupOptions, ClassNodeRef, Function, InstanceLookupOptions,
-        LookupDetails, OverloadResult, OverloadedFunction,
+        Callable, Class, ClassLookupOptions, Function, InstanceLookupOptions, LookupDetails,
+        OverloadResult, OverloadedFunction,
     },
     utils::{debug_indent, join_with_commas},
 };
@@ -46,7 +46,7 @@ use super::{
     name_binder::{is_expr_part_reachable_for_name_binder, Truthiness},
     on_argument_type_error,
     utils::func_of_self_symbol,
-    PythonFile,
+    FuncNodeRef, PythonFile,
 };
 
 type Entries = Vec<Entry>;
@@ -273,20 +273,20 @@ struct LoopDetails {
 }
 
 #[derive(Debug)]
-pub struct DelayedFunc {
+pub(crate) struct DelayedFunc {
     pub func: PointLink,
     pub class: Option<PointLink>,
     pub in_type_checking_only_block: bool,
 }
 
 #[must_use]
-pub struct FlowAnalysisResult<T> {
+pub(crate) struct FlowAnalysisResult<T> {
     pub result: T,
     pub unfinished_partials: Vec<PointLink>,
 }
 
 #[derive(Debug, Default)]
-pub struct FlowAnalysis {
+pub(crate) struct FlowAnalysis {
     frames: RefCell<Vec<Frame>>,
     try_frames: RefCell<Vec<Entries>>,
     loop_details: RefCell<Option<LoopDetails>>,
@@ -317,7 +317,7 @@ impl FlowAnalysis {
                 let result = func
                     .node_ref
                     .file
-                    .inference(&InferenceState::new(i_s.db))
+                    .inference(&InferenceState::new(i_s.db, func.node_ref.file))
                     .ensure_func_diagnostics(func);
                 debug_assert!(result.is_ok());
             });
@@ -377,10 +377,10 @@ impl FlowAnalysis {
         result
     }
 
-    pub fn with_reused_narrowings_for_nested_function(
+    pub(crate) fn with_reused_narrowings_for_nested_function(
         &self,
         i_s: &InferenceState,
-        func_node_ref: NodeRef,
+        func_node_ref: FuncNodeRef,
         callable: impl FnOnce(),
     ) {
         let reused_narrowings = Frame::new(
@@ -1266,6 +1266,7 @@ impl Inference<'_, '_, '_> {
         FLOW_ANALYSIS.with(|fa| fa.in_type_checking_only_block.get())
     }
 
+    #[expect(dead_code)]
     pub fn in_loop(&self) -> bool {
         FLOW_ANALYSIS.with(|fa| fa.in_loop())
     }
@@ -1540,7 +1541,7 @@ impl Inference<'_, '_, '_> {
                     class
                         .node_ref
                         .file
-                        .inference(&self.i_s.without_context())
+                        .inference(&InferenceState::new(self.i_s.db, self.file))
                         .calculate_diagnostics()?;
                 }
                 fa.with_new_empty_and_delay_functions_further(self.i_s, || {
@@ -1640,7 +1641,7 @@ impl Inference<'_, '_, '_> {
         })
     }
 
-    pub fn flow_analysis_for_if_stmt(
+    pub(crate) fn flow_analysis_for_if_stmt(
         &self,
         if_stmt: IfStmt,
         class: Option<Class>,
@@ -1649,7 +1650,7 @@ impl Inference<'_, '_, '_> {
         self.process_ifs(if_stmt.iter_blocks(), class, func)
     }
 
-    pub fn flow_analysis_for_while_stmt(
+    pub(crate) fn flow_analysis_for_while_stmt(
         &self,
         while_stmt: WhileStmt,
         class: Option<Class>,
@@ -1726,7 +1727,7 @@ impl Inference<'_, '_, '_> {
         });
     }
 
-    pub fn flow_analysis_for_for_stmt(
+    pub(crate) fn flow_analysis_for_for_stmt(
         &self,
         for_stmt: ForStmt,
         class: Option<Class>,
@@ -1824,12 +1825,21 @@ impl Inference<'_, '_, '_> {
     }
 
     pub fn flow_analysis_for_del_stmt(&self, del_targets: DelTargets) {
-        for del_target in del_targets.iter() {
-            match del_target {
-                DelTarget::Target(target) => self.flow_analysis_for_del_target(target),
-                DelTarget::DelTargets(del_targets) => self.flow_analysis_for_del_stmt(del_targets),
+        debug!(
+            r#"Flow analysis for "del {}" {}"#,
+            del_targets.as_code(),
+            NodeRef::new(self.file, del_targets.index()).debug_info(self.i_s.db)
+        );
+        debug_indent(|| {
+            for del_target in del_targets.iter() {
+                match del_target {
+                    DelTarget::Target(target) => self.flow_analysis_for_del_target(target),
+                    DelTarget::DelTargets(del_targets) => {
+                        self.flow_analysis_for_del_stmt(del_targets)
+                    }
+                }
             }
-        }
+        })
     }
 
     pub fn delete_name(&self, name_def: NameDef) {
@@ -1851,6 +1861,7 @@ impl Inference<'_, '_, '_> {
         match target {
             Target::Name(name_def) => {
                 if self.infer_name_target(name_def, true).is_none() {
+                    debug!("Name not found for del stmt");
                     self.add_issue(
                         name_def.index(),
                         IssueKind::NameError {
@@ -1859,6 +1870,7 @@ impl Inference<'_, '_, '_> {
                     );
                     self.assign_any_to_target(target, NodeRef::new(self.file, name_def.index()));
                 } else {
+                    debug!("Assigned deleted variable {}", name_def.as_code());
                     // TODO this should be something like Specific::DeletedVariable
                     NodeRef::new(self.file, name_def.index())
                         .set_point(Point::new_specific(Specific::AnyDueToError, Locality::Todo))
@@ -1893,7 +1905,7 @@ impl Inference<'_, '_, '_> {
         }
     }
 
-    pub fn flow_analysis_for_try_stmt(
+    pub(crate) fn flow_analysis_for_try_stmt(
         &self,
         try_stmt: TryStmt,
         class: Option<Class>,
@@ -1973,7 +1985,7 @@ impl Inference<'_, '_, '_> {
                                 )
                             }
                         }
-                        Some(except_type(self.i_s, &inf_t, true))
+                        Some(except_type(self.i_s.db, &inf_t, true))
                     } else {
                         None
                     };
@@ -2089,7 +2101,7 @@ impl Inference<'_, '_, '_> {
         })
     }
 
-    pub fn flow_analysis_for_match_stmt(
+    pub(crate) fn flow_analysis_for_match_stmt(
         &self,
         match_stmt: MatchStmt,
         class: Option<Class>,
@@ -4305,10 +4317,10 @@ enum ExceptType {
 }
 
 impl ExceptType {
-    fn from_types<'x>(i_s: &InferenceState, types: impl Iterator<Item = &'x Type>) -> Self {
+    fn from_types<'x>(db: &Database, types: impl Iterator<Item = &'x Type>) -> Self {
         let mut result = ExceptType::ContainsOnlyBaseExceptions;
         for t in types {
-            match except_type(i_s, t, false) {
+            match except_type(db, t, false) {
                 ExceptType::ContainsOnlyBaseExceptions => (),
                 x @ ExceptType::HasExceptionGroup => result = x,
                 ExceptType::Invalid => return ExceptType::Invalid,
@@ -4318,13 +4330,13 @@ impl ExceptType {
     }
 }
 
-fn except_type(i_s: &InferenceState, t: &Type, allow_tuple: bool) -> ExceptType {
+fn except_type(db: &Database, t: &Type, allow_tuple: bool) -> ExceptType {
     match t {
         Type::Type(t) => {
-            if let Some(cls) = t.maybe_class(i_s.db) {
-                if cls.is_base_exception_group(i_s) {
+            if let Some(cls) = t.maybe_class(db) {
+                if cls.is_base_exception_group(db) {
                     return ExceptType::HasExceptionGroup;
-                } else if cls.is_base_exception(i_s) {
+                } else if cls.is_base_exception(db) {
                     return ExceptType::ContainsOnlyBaseExceptions;
                 }
             }
@@ -4332,12 +4344,12 @@ fn except_type(i_s: &InferenceState, t: &Type, allow_tuple: bool) -> ExceptType 
         }
         Type::Any(_) => ExceptType::ContainsOnlyBaseExceptions,
         Type::Tuple(content) if allow_tuple => match &content.args {
-            TupleArgs::FixedLen(ts) => ExceptType::from_types(i_s, ts.iter()),
-            TupleArgs::ArbitraryLen(t) => except_type(i_s, t, false),
+            TupleArgs::FixedLen(ts) => ExceptType::from_types(db, ts.iter()),
+            TupleArgs::ArbitraryLen(t) => except_type(db, t, false),
             TupleArgs::WithUnpack(w) => match &w.unpack {
                 TupleUnpack::TypeVarTuple(_) => ExceptType::Invalid,
                 TupleUnpack::ArbitraryLen(t) => ExceptType::from_types(
-                    i_s,
+                    db,
                     w.before
                         .iter()
                         .chain(w.after.iter())
@@ -4348,7 +4360,7 @@ fn except_type(i_s: &InferenceState, t: &Type, allow_tuple: bool) -> ExceptType 
         Type::Union(union) => {
             let mut result = ExceptType::ContainsOnlyBaseExceptions;
             for t in union.iter() {
-                match except_type(i_s, t, allow_tuple) {
+                match except_type(db, t, allow_tuple) {
                     ExceptType::ContainsOnlyBaseExceptions => (),
                     x @ ExceptType::HasExceptionGroup => result = x,
                     ExceptType::Invalid => return ExceptType::Invalid,

@@ -290,7 +290,7 @@ fn contract_bool_literals(db: &Database, entries: &mut Vec<UnionEntry>) {
 }
 
 #[derive(Debug, Clone, Eq)]
-pub struct UnionEntry {
+pub(crate) struct UnionEntry {
     pub type_: Type,
     pub format_index: usize,
 }
@@ -312,7 +312,7 @@ impl Hash for UnionEntry {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct UnionType {
+pub(crate) struct UnionType {
     pub entries: Box<[UnionEntry]>,
 }
 

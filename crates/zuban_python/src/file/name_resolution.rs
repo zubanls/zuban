@@ -1,11 +1,11 @@
 use config::TypeCheckerFlags;
 use parsa_python_cst::{
-    DottedAsName, DottedAsNameContent, DottedName, DottedNameContent, ImportFrom, ImportFromAsName,
-    ImportFromTargets, Name, NameDef, NodeIndex, NAME_DEF_TO_NAME_DIFFERENCE,
+    DefiningStmt, DottedAsName, DottedAsNameContent, DottedName, DottedNameContent, ImportFrom,
+    ImportFromAsName, ImportFromTargets, Name, NameDef, NodeIndex, NAME_DEF_TO_NAME_DIFFERENCE,
 };
 
 use crate::{
-    database::{ComplexPoint, Locality, Point, PointKind, PointLink, Specific},
+    database::{Database, Locality, Point, PointKind, PointLink, Specific},
     debug,
     diagnostics::IssueKind,
     file::File,
@@ -13,19 +13,23 @@ use crate::{
     inference_state::InferenceState,
     inferred::Inferred,
     node_ref::NodeRef,
-    type_::{AnyCause, LookupResult, Type},
-    type_helpers::{is_private_import, is_reexport_issue, lookup_in_namespace, Module},
+    type_::{LookupResult, Type},
     utils::AlreadySeen,
 };
 
-use super::{inference::StarImportResult, python_file::StarImport, PythonFile};
+use super::{inference::StarImportResult, python_file::StarImport, ClassInitializer, PythonFile};
 
-pub struct NameResolution<'db: 'file, 'file, 'i_s> {
+#[derive(Copy, Clone)]
+pub(crate) struct NameResolution<'db: 'file, 'file, 'i_s> {
     pub(super) file: &'file PythonFile,
     pub(super) i_s: &'i_s InferenceState<'db, 'i_s>,
+    // Type computation uses alias calculation, which works in a different way than normal
+    // inference. Therefore we want to stop and return the assignment.
+    pub(super) stop_on_assignments: bool,
 }
 
-pub enum PointResolution<'file> {
+#[derive(Debug)]
+pub(crate) enum PointResolution<'file> {
     NameDef {
         node_ref: NodeRef<'file>,
         global_redirect: bool,
@@ -33,9 +37,47 @@ pub enum PointResolution<'file> {
     Inferred(Inferred),
     Param(NodeRef<'file>),
     GlobalOrNonlocalName(NodeRef<'file>),
+    ModuleGetattrName(NodeRef<'file>),
 }
 
-impl<'db, 'file> NameResolution<'db, 'file, '_> {
+impl PointResolution<'_> {
+    pub(super) fn debug_info(&self, db: &Database) -> String {
+        match self {
+            Self::NameDef {
+                node_ref,
+                global_redirect,
+            } => format!(
+                "NameDef: {}, {}",
+                node_ref.debug_info(db),
+                match global_redirect {
+                    true => "global-redirect",
+                    false => "no-global-redirect",
+                }
+            ),
+            Self::Inferred(inferred) => format!("Inferred: {}", inferred.debug_info(db)),
+            Self::Param(node_ref) => format!("Param: {}", node_ref.debug_info(db)),
+            Self::GlobalOrNonlocalName(node_ref) => {
+                format!("GlobalOrNonlocal: {}", node_ref.debug_info(db))
+            }
+            Self::ModuleGetattrName(node_ref) => {
+                format!("ModuleGetattrName: {}", node_ref.debug_info(db))
+            }
+        }
+    }
+}
+
+impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
+    pub(super) fn with_new_file<'new_file>(
+        &self,
+        file: &'new_file PythonFile,
+    ) -> NameResolution<'db, 'new_file, 'i_s> {
+        NameResolution {
+            file,
+            i_s: self.i_s,
+            stop_on_assignments: self.stop_on_assignments,
+        }
+    }
+
     pub(super) fn assign_dotted_as_name(
         &self,
         dotted_as_name: DottedAsName,
@@ -70,7 +112,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
     pub(super) fn assign_import_from_names(
         &self,
         imp: ImportFrom,
-        assign_to_name_def: impl Fn(NameDef, Inferred, Option<PointLink>),
+        assign_to_name_def: impl Fn(NameDef, PointResolution<'file>, Option<PointLink>),
     ) {
         let from_first_part = self.import_from_first_part(imp);
 
@@ -119,7 +161,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
     pub(super) fn assign_import_from_only_particular_name_def(
         &self,
         as_name: ImportFromAsName,
-        assign_to_name_def: impl FnOnce(NameDef, Inferred, Option<PointLink>),
+        assign_to_name_def: impl FnOnce(NameDef, PointResolution<'file>, Option<PointLink>),
     ) {
         let import_from = as_name.import_from();
         let from_first_part = self.import_from_first_part(import_from);
@@ -133,18 +175,43 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         // For type resolution, we don't want to infer names in the normal way, because it leads to
         // weird narrowing recursions. We have to make sure we do not assign the names, because
         // they might be different later.
-        let mut found_inf = None;
-        self.assign_import_from_only_particular_name_def(as_name, |name_def, inf, _| {
-            debug_assert!(self.file.points.get(name_def.index()).calculating());
-            self.file
-                .points
-                .set(name_def.index(), Point::new_uncalculated());
-            found_inf = Some(inf);
-        });
-        match found_inf {
-            Some(inf) => PointResolution::Inferred(inf),
+        let mut found_pr = None;
+        self.assign_import_from_only_particular_name_def(
+            as_name,
+            |name_def, pr, redirect_to_link| {
+                debug_assert!(self.file.points.get(name_def.index()).calculating());
+                if self.is_allowed_to_assign_on_import_without_narrowing(name_def) {
+                    match redirect_to_link {
+                        Some(link) => {
+                            self.file
+                                .points
+                                .set(name_def.index(), link.into_redirect_point(Locality::Todo));
+                        }
+                        None => {
+                            // We can not assign in all cases here, for example in the precense of
+                            // a module __getattr__, we don't know the assignment type, yet.
+                            if let PointResolution::Inferred(inf) = pr {
+                                found_pr = Some(PointResolution::Inferred(inf.save_redirect(
+                                    self.i_s,
+                                    self.file,
+                                    name_def.index(),
+                                )));
+                                return;
+                            }
+                        }
+                    }
+                } else {
+                    self.file
+                        .points
+                        .set(name_def.index(), Point::new_uncalculated());
+                }
+                found_pr = Some(pr);
+            },
+        );
+        match found_pr {
+            Some(pr) => pr,
             None => self
-                .resolve_point(as_name.name_def().index(), |_, _, _| None)
+                .resolve_point_without_narrowing(as_name.name_def().index())
                 .expect("Resolving import"),
         }
     }
@@ -161,17 +228,26 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 debug_assert!(!p.calculated(), "{p:?}");
                 debug_assert!(!p.calculating(), "{p:?}");
             }
-            self.file
-                .points
-                .set(name_def.index(), Point::new_uncalculated());
-            found_inf = Some(inf);
+            if self.is_allowed_to_assign_on_import_without_narrowing(name_def) {
+                found_inf = Some(inf.save_redirect(self.i_s, self.file, name_def.index()))
+            } else {
+                found_inf = Some(inf);
+            }
         });
         match found_inf {
             Some(inf) => PointResolution::Inferred(inf),
             None => self
-                .resolve_point(dotted_as_name.name_def().index(), |_, _, _| None)
+                .resolve_point_without_narrowing(dotted_as_name.name_def().index())
                 .expect("Resolving import"),
         }
+    }
+
+    #[inline]
+    fn is_allowed_to_assign_on_import_without_narrowing(&self, name_def: NameDef) -> bool {
+        self.file
+            .points
+            .get(name_def.name_index())
+            .needs_flow_analysis()
     }
 
     pub fn cache_import_dotted_name(
@@ -185,10 +261,8 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             return match p.kind() {
                 PointKind::FileReference => Some(ImportResult::File(p.file_index())),
                 PointKind::Specific => None,
-                PointKind::Complex => match node_ref.complex().unwrap() {
-                    ComplexPoint::TypeInstance(Type::Namespace(ns)) => {
-                        Some(ImportResult::Namespace(ns.clone()))
-                    }
+                PointKind::Complex => match node_ref.maybe_type().unwrap() {
+                    Type::Namespace(ns) => Some(ImportResult::Namespace(ns.clone())),
                     _ => unreachable!(),
                 },
                 _ => unreachable!(),
@@ -199,21 +273,15 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             let mut in_stub_and_has_getattr = false;
             let result = match &import_result {
                 ImportResult::File(file_index) => {
-                    let module = Module::from_file_index(i_s.db, *file_index);
+                    let module = i_s.db.loaded_python_file(*file_index);
                     let r = module.sub_module(i_s.db, name.as_str());
 
                     // This is such weird logic. I don't understand at all why Mypy is doing this.
                     // It seems to come from here:
                     // https://github.com/python/mypy/blob/bc591c756a453bb6a78a31e734b1f0aa475e90e0/mypy/semanal_pass1.py#L87-L96
                     if r.is_none()
-                        && module.file.is_stub()
-                        && module
-                            .lookup(
-                                i_s.db,
-                                |issue| self.add_issue(name.index(), issue),
-                                "__getattr__",
-                            )
-                            .is_some()
+                        && module.is_stub()
+                        && module.lookup_symbol("__getattr__").is_some()
                     {
                         in_stub_and_has_getattr = true
                     }
@@ -279,7 +347,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         &self,
         from_first_part: &Option<ImportResult>,
         as_name: ImportFromAsName,
-        assign_to_name_def: impl FnOnce(NameDef, Inferred, Option<PointLink>),
+        assign_to_name_def: impl FnOnce(NameDef, PointResolution<'file>, Option<PointLink>),
     ) {
         let (import_name, name_def) = as_name.unpack();
 
@@ -290,10 +358,9 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         // Set calculating here, so that the logic that follows the names can set a
         // cycle if it needs to.
         self.file.points.set(n_index, Point::new_calculating());
-        let mut redirect_to_link = None;
         let inf = match from_first_part {
             Some(imp) => {
-                let maybe_add_issue = || {
+                let add_issue_if_not_ignored = || {
                     if !self.flags().ignore_missing_imports {
                         self.add_issue(
                             import_name.index(),
@@ -304,8 +371,9 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                         );
                     }
                 };
+
                 match self.lookup_import_from_target(imp, import_name) {
-                    LookupResult::GotoName { name: link, inf } => {
+                    Some((pr, redirect_to)) => {
                         if self
                             .file
                             .points
@@ -313,18 +381,14 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                             .maybe_calculated_and_specific()
                             == Some(Specific::Cycle)
                         {
-                            maybe_add_issue();
+                            add_issue_if_not_ignored();
                             return;
                         }
-                        redirect_to_link = Some(link);
-                        inf
+                        assign_to_name_def(name_def, pr, redirect_to);
+                        return;
                     }
-                    LookupResult::FileReference(file_index) => {
-                        Inferred::new_file_reference(file_index)
-                    }
-                    LookupResult::UnknownName(inf) => inf,
-                    LookupResult::None => {
-                        maybe_add_issue();
+                    None => {
+                        add_issue_if_not_ignored();
                         Inferred::new_module_not_found()
                     }
                 }
@@ -332,37 +396,49 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             // Means one of the imports before failed.
             None => Inferred::new_module_not_found(),
         };
-        assign_to_name_def(name_def, inf, redirect_to_link)
+        assign_to_name_def(name_def, PointResolution::Inferred(inf), None)
     }
 
     fn lookup_import_from_target(
         &self,
         from_first_part: &ImportResult,
         import_name: Name,
-    ) -> LookupResult {
+    ) -> Option<(PointResolution<'file>, Option<PointLink>)> {
         let name = import_name.as_str();
-        match from_first_part {
+        let convert_imp_result = |imp_result| match imp_result {
+            ImportResult::File(file_index) => Inferred::new_file_reference(file_index),
+            ImportResult::Namespace(ns) => Inferred::from_type(Type::Namespace(ns)),
+            ImportResult::PyTypedMissing => Inferred::new_any_from_error(),
+        };
+        Some(match from_first_part {
             ImportResult::File(file_index) => {
                 let import_file = self.i_s.db.loaded_python_file(*file_index);
-                let module = Module::new(import_file);
                 // Coming from an import we need to make sure that we do not create loops for imports
                 if self.file.file_index == import_file.file_index {
-                    module
-                        .sub_module_lookup(self.i_s.db, name)
-                        .unwrap_or(LookupResult::None)
+                    let inf = convert_imp_result(import_file.sub_module(self.i_s.db, name)?);
+                    (PointResolution::Inferred(inf), None)
                 } else {
-                    module.lookup(
-                        self.i_s.db,
-                        |issue| self.add_issue(import_name.index(), issue),
-                        import_name.as_str(),
-                    )
+                    return self
+                        .with_new_file(import_file)
+                        .resolve_module_access(name, |kind| {
+                            self.add_issue(import_name.index(), kind)
+                        });
                 }
             }
-            ImportResult::Namespace(namespace) => {
-                lookup_in_namespace(self.i_s.db, self.file, namespace, name)
-            }
-            ImportResult::PyTypedMissing => LookupResult::any(AnyCause::FromError),
-        }
+            ImportResult::Namespace(namespace) => (
+                PointResolution::Inferred(convert_imp_result(namespace_import(
+                    self.i_s.db,
+                    self.file,
+                    namespace,
+                    name,
+                )?)),
+                None,
+            ),
+            ImportResult::PyTypedMissing => (
+                PointResolution::Inferred(Inferred::new_any_from_error()),
+                None,
+            ),
+        })
     }
 
     fn global_import(&self, name: Name) -> Option<ImportResult> {
@@ -435,7 +511,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 )
             }
             _ => {
-                if let Some(name_ref) = builtins.lookup_global(name_str).filter(|name_ref| {
+                if let Some(name_ref) = builtins.lookup_symbol(name_str).filter(|name_ref| {
                     (is_valid_builtins_export(name_str)) && !is_private_import(*name_ref)
                 }) {
                     debug_assert!(
@@ -503,7 +579,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                             .db
                             .python_state
                             .typing()
-                            .lookup_global(name_str)
+                            .lookup_symbol(name_str)
                             .is_some()
                     {
                         // TODO what about underscore or other vars?
@@ -525,6 +601,13 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         self.file.points.set(save_to_index, point);
         debug_assert!(self.file.points.get(save_to_index).calculated());
         self.resolve_point(save_to_index, narrow_name).unwrap()
+    }
+
+    pub fn resolve_point_without_narrowing(
+        &self,
+        node_index: NodeIndex,
+    ) -> Option<PointResolution<'file>> {
+        self.resolve_point(node_index, |_, _, _| None)
     }
 
     pub fn resolve_point(
@@ -550,9 +633,9 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 if point.calculating() {
                     let node_ref = NodeRef::new(self.file, node_index);
                     debug!(
-                        "Found a cycle at #{}, {}:{node_index}: {:?}",
+                        "Found a cycle at {}:#{} on name {:?}",
+                        self.file.qualified_name(self.i_s.db),
                         node_ref.line(),
-                        self.file.file_index,
                         node_ref.as_code()
                     );
                     node_ref.set_point(Point::new_specific(Specific::Cycle, Locality::Todo));
@@ -607,13 +690,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 if file_index == self.file.file_index {
                     resolve(self)
                 } else {
-                    resolve(
-                        &mut self
-                            .i_s
-                            .db
-                            .loaded_python_file(file_index)
-                            .name_resolution(self.i_s),
-                    )
+                    resolve(&mut self.with_new_file(self.i_s.db.loaded_python_file(file_index)))
                 }
             }
             PointKind::Specific => match point.specific() {
@@ -626,13 +703,31 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 Specific::NameOfNameDef | Specific::FirstNameOfNameDef => {
                     // MultiDefinition means we are on a Name that has a NameDef as a
                     // parent.
-                    let node_index = node_index - NAME_DEF_TO_NAME_DIFFERENCE;
-                    let p = self.file.points.get(node_index);
-                    self.resolve_point_internal(node_index, p, global_redirect, narrow_name)
-                        .unwrap_or_else(|| PointResolution::NameDef {
-                            node_ref: NodeRef::new(self.file, node_index),
-                            global_redirect,
-                        })
+                    let name_def_node_index = node_index - NAME_DEF_TO_NAME_DIFFERENCE;
+                    let node_ref = NodeRef::new(self.file, name_def_node_index);
+                    if self.stop_on_assignments {
+                        let defining = node_ref.expect_name_def().expect_defining_stmt();
+                        if matches!(
+                            defining,
+                            DefiningStmt::Assignment(_) | DefiningStmt::FunctionDef(_)
+                        ) {
+                            return PointResolution::NameDef {
+                                node_ref,
+                                global_redirect: global_redirect
+                                    || node_ref.name_ref_of_name_def().point().in_global_scope(),
+                            };
+                        }
+                    }
+                    self.resolve_point_internal(
+                        name_def_node_index,
+                        node_ref.point(),
+                        global_redirect,
+                        narrow_name,
+                    )
+                    .unwrap_or_else(|| PointResolution::NameDef {
+                        node_ref,
+                        global_redirect,
+                    })
                 }
                 _ => PointResolution::Inferred(Inferred::new_saved(self.file, node_index)),
             },
@@ -646,31 +741,117 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         &self,
         name: &str,
         add_issue: impl Fn(IssueKind),
-    ) -> Option<PointResolution<'file>> {
+    ) -> Option<(PointResolution<'file>, Option<PointLink>)> {
+        let result = self.resolve_module_access_internal(name, add_issue);
+        if cfg!(feature = "zuban_debug") {
+            if let Some((pr, _)) = &result {
+                debug!(
+                    "Module lookup on {}: {}",
+                    self.file.qualified_name(self.i_s.db),
+                    pr.debug_info(self.i_s.db)
+                );
+            } else {
+                debug!(
+                    "Attribute lookup {name} on module {} failed",
+                    self.file.qualified_name(self.i_s.db),
+                );
+            }
+        }
+        result
+    }
+
+    fn resolve_module_access_internal(
+        &self,
+        name: &str,
+        add_issue: impl Fn(IssueKind),
+    ) -> Option<(PointResolution<'file>, Option<PointLink>)> {
         let db = self.i_s.db;
-        Some(if let Some(name_ref) = self.file.lookup_global(name) {
-            if let Some(r) =
-                Module::new(self.file).maybe_submodule_reexport(self.i_s, name_ref, name)
-            {
-                return Some(PointResolution::Inferred(r.into_inferred()));
+        Some(if let Some(name_ref) = self.file.lookup_symbol(name) {
+            if let Some(r) = self.file.maybe_submodule_reexport(self.i_s, name_ref, name) {
+                return Some((
+                    PointResolution::Inferred(r.into_inferred()),
+                    Some(name_ref.as_link()),
+                ));
             }
             if is_reexport_issue(db, name_ref) {
+                if self.stop_on_assignments {
+                    // Apparently types are resolved like this.
+                    debug!(
+                        "Found a type {name} in {} that was not reexported -> aborting",
+                        self.file.qualified_name(self.i_s.db)
+                    );
+                    return None;
+                }
                 add_issue(IssueKind::ImportStubNoExplicitReexport {
                     module_name: self.file.qualified_name(db).into(),
                     attribute: name.into(),
                 })
             }
-            self.resolve_name_without_narrowing(name_ref.as_name())
-        } else if let Some(r) = Module::new(self.file).sub_module_lookup(db, name) {
-            PointResolution::Inferred(r.into_inferred())
-        } else if let Some(r) = self
-            .file
-            .name_resolution(self.i_s)
-            .resolve_star_import_name(name, None, &|_, _, _| None)
-        {
-            r
+            if self.stop_on_assignments
+                && name_ref.point().maybe_specific() == Some(Specific::FirstNameOfNameDef)
+            {
+                let name_def_ref = name_ref.name_def_ref_of_name();
+                let defining = name_def_ref.expect_name_def().expect_defining_stmt();
+                if matches!(
+                    defining,
+                    DefiningStmt::Assignment(_) | DefiningStmt::FunctionDef(_)
+                ) {
+                    return Some((
+                        PointResolution::NameDef {
+                            node_ref: name_def_ref,
+                            global_redirect: true,
+                        },
+                        Some(name_ref.as_link()),
+                    ));
+                }
+            }
+            let mut resolved = self.resolve_name_without_narrowing(name_ref.expect_name());
+            if let PointResolution::NameDef { node_ref, .. } = resolved {
+                resolved = PointResolution::NameDef {
+                    node_ref,
+                    global_redirect: true,
+                }
+            }
+            (resolved, Some(name_ref.as_link()))
+        } else if let Some(r) = self.file.sub_module_lookup(db, name) {
+            (PointResolution::Inferred(r.into_inferred()), None)
+        } else if let Some(r) = self.resolve_star_import_name(name, None, &|_, _, _| None) {
+            (r, None)
+        } else if let Some(r) = self.file.lookup_symbol("__getattr__") {
+            (PointResolution::ModuleGetattrName(r), None)
         } else {
-            return None;
+            if name == "__path__" && !self.file.file_entry_and_is_package(db).1 {
+                return None;
+            }
+            let mut result = LookupResult::None;
+            // TODO it's a bit weird that we only do it on assignments.
+            if !self.stop_on_assignments {
+                result = db
+                    .python_state
+                    .module_instance()
+                    .type_lookup(self.i_s, add_issue, name);
+                if matches!(name, "__spec__" | "__file__" | "__package__") {
+                    // __spec__ is special, because it always has a ModuleSpec and only if the module
+                    // is __main__ it sometimes doesn't. But since __main__ is only ever known to Mypy
+                    // as a static file it will also have a ModuleSpec and never be None, therefore we
+                    // simply remove the None here.
+                    // Also do the same for __file__ / __package__
+                    // https://docs.python.org/3/reference/import.html#main-spec
+                    result = result
+                        .and_then(|inf| Some(inf.remove_none(self.i_s)))
+                        .unwrap()
+                }
+            }
+            if !result.is_some() {
+                debug!(
+                    "Did not find name {name} in {}",
+                    self.file.qualified_name(db)
+                );
+            }
+            (
+                PointResolution::Inferred(result.into_maybe_inferred()?),
+                None,
+            )
         })
     }
 
@@ -692,7 +873,9 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                     self.resolve_point(save_to_index, narrow_name).unwrap()
                 }
                 None => {
-                    self.resolve_name(NodeRef::from_link(self.i_s.db, link).as_name(), narrow_name)
+                    let node_ref = NodeRef::from_link(self.i_s.db, link);
+                    self.with_new_file(node_ref.file)
+                        .resolve_name(node_ref.expect_name(), narrow_name)
                 }
             },
             StarImportResult::AnyDueToError => PointResolution::Inferred(match save_to_index {
@@ -768,11 +951,10 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             }
 
             let super_file = self.i_s.db.loaded_python_file(*super_file);
-            if let Some(name_ref) = super_file.lookup_global(name) {
+            if let Some(name_ref) = super_file.lookup_symbol(name) {
                 return Some(StarImportResult::Link(name_ref.as_link()));
             }
-            super_file
-                .name_resolution(self.i_s)
+            self.with_new_file(super_file)
                 .lookup_from_star_import_with_node_index(name, false, None, star_imports_seen)
         } else {
             None
@@ -793,6 +975,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             AlreadySeen::new(link)
         };
         if new_seen.is_cycle() {
+            debug!("Aborting name import, because of a star import cycle");
             // TODO we might want to add an issue in the future (not high-prio however)
             return None;
         }
@@ -800,13 +983,14 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         if let Some(dunder) = other_file.maybe_dunder_all(self.i_s.db) {
             // Name not in __all__
             if !dunder.iter().any(|x| x.as_str(self.i_s.db) == name) {
+                debug!("Name {name} found in star imports, but it's not in __all__");
                 return None;
             }
         } else if name.starts_with('_') {
             return None;
         }
 
-        if let Some(name_ref) = other_file.lookup_global(name) {
+        if let Some(name_ref) = other_file.lookup_symbol(name) {
             if !is_reexport_issue(self.i_s.db, name_ref) {
                 let mut result = StarImportResult::Link(name_ref.as_link());
                 if is_class_star_import
@@ -820,8 +1004,8 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 return Some(result);
             }
         }
-        if let Some(l) = other_file
-            .name_resolution(self.i_s)
+        if let Some(l) = self
+            .with_new_file(other_file)
             .lookup_from_star_import_with_node_index(name, false, None, Some(new_seen))
         {
             Some(l)
@@ -832,6 +1016,38 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             );
             None
         }
+    }
+
+    pub(super) fn lookup_type_name_on_class(
+        &self,
+        cls: ClassInitializer,
+        name: Name,
+    ) -> Option<PointResolution> {
+        // This is needed to lookup names on a class and set the redirect there. It does not modify the
+        // class at all.
+        let name_node_ref = NodeRef::new(self.file, name.index());
+        let point = name_node_ref.point();
+        if point.calculated() {
+            return if point.kind() == PointKind::Redirect {
+                Some(self.resolve_name_without_narrowing(name))
+            } else {
+                debug_assert_eq!(point.specific(), Specific::AnyDueToError);
+                None
+            };
+        }
+        name_node_ref.set_point(
+            if let Some(index) = cls
+                .class_storage
+                .class_symbol_table
+                .lookup_symbol(name.as_str())
+            {
+                Point::new_redirect(cls.node_ref.file.file_index, index, Locality::Todo)
+            } else {
+                debug!("Type lookup: Attribute on class not found");
+                Point::new_specific(Specific::AnyDueToError, Locality::Todo)
+            },
+        );
+        self.lookup_type_name_on_class(cls, name)
     }
 
     pub(crate) fn add_issue(&self, node_index: NodeIndex, issue: IssueKind) {
@@ -850,4 +1066,25 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
 
 fn is_valid_builtins_export(name: &str) -> bool {
     !name.starts_with('_') || name.starts_with("__") && name.ends_with("__")
+}
+
+fn is_reexport_issue(db: &Database, name_ref: NodeRef) -> bool {
+    if !name_ref.file.is_stub() && !name_ref.file.flags(db).no_implicit_reexport {
+        return false;
+    }
+    if let Some(dunder_all) = name_ref.file.maybe_dunder_all(db) {
+        debug_assert!(name_ref.maybe_name().is_some());
+        let name = name_ref.as_code();
+        if dunder_all.iter().any(|d| d.as_str(db) == name) || name == "__all__" {
+            // Name was exported in __all__
+            return false;
+        }
+    }
+    is_private_import(name_ref)
+}
+
+fn is_private_import(name_ref: NodeRef) -> bool {
+    name_ref
+        .maybe_import_of_name_in_symbol_table()
+        .is_some_and(|i| !i.is_stub_reexport())
 }

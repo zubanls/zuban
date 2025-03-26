@@ -31,19 +31,16 @@ class Foo:
     bla: baz  # E: Invalid type comment or annotation
 
     x = x  # E: Name "x" is not defined
-    y: x  # E: Variable "__main__.x" is not valid as a type \
-          # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+    y: x
     a = list[a]  # E: Name "a" is not defined
     b: a
 
 [case avoid_type_cycle_in_assignment_expr]
 class Foo:
     l = (x := x)  # E: Name "x" is not defined
-    y: x  # E: Variable "__main__.x" is not valid as a type \
-          # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+    y: x
     l = (a := list[a])  # E: Name "a" is not defined
-    b: a  # E: Variable "__main__.a" is not valid as a type \
-          # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+    b: a  # E: Invalid type comment or annotation
 
 [case avoid_type_cycle_in_lambda]
 class Foo:
@@ -101,7 +98,7 @@ Bar2 = NamedTuple("Bar2", [(*'x', int)])  # E: Invalid "NamedTuple()" field name
 Bar3 = NamedTuple("Bar3", [*int])  # E: Tuple expected as "NamedTuple()" field
 Bar4 = NamedTuple("Bar4", [()])  # E: NamedTuple field should be a tuple of a string literal and a type
 Bar5 = NamedTuple("Bar5", [(*int,)])  # E: NamedTuple field should be a tuple of a string literal and a type
-Bar5 = NamedTuple("Bar5", [('x',)])  # E: NamedTuple field should be a tuple of a string literal and a type
+Bar6 = NamedTuple("Bar6", [('x',)])  # E: NamedTuple field should be a tuple of a string literal and a type
 
 [case namedtuple_invalid_bound]
 from typing import NamedTuple, Generic, TypeVar
@@ -128,7 +125,7 @@ y: Bar[str]  # E: Type argument "str" of "Bar" must be a subtype of "int"
 [case typed_dict_non_generic_getitem]
 from typing import TypedDict
 Bar = TypedDict("Bar", {'x': int})
-x: Bar[int]  # E: "Bar" expects no type arguments, but 1 given
+x: Bar[int]  # E: Bad number of arguments for type alias, expected 0, given 1
 
 [case invalid_class_type_application]
 from typing import Generic, TypeVar
@@ -196,7 +193,7 @@ reveal_type(Foo().y)  # N: Revealed type is "int"
 
 [case invalid_module_getattr]
 from ok import undefined1
-from not_ok import undefined2  # E: "int" not callable
+from not_ok import undefined2
 reveal_type(undefined1)  # N: Revealed type is "str"
 reveal_type(undefined2)  # N: Revealed type is "Any"
 
@@ -252,11 +249,11 @@ from typing import TypeAlias, TypeVarTuple, Unpack
 Ts = TypeVarTuple("Ts")
 D = list[F[tuple[*Ts]]]  # E: Invalid recursive alias: type variable nesting on right hand side \
                       # E: Name "F" is used before definition
-F = D[Ts]  # Error reported above
+F = D[*Ts]  # Error reported above
 
 # Is this fine?
 A = list[B[*Ts]]  # E: Name "B" is used before definition
-B = A[Ts]
+B = A[*Ts]
 
 x: A[int]
 y: D[int]
@@ -317,6 +314,38 @@ P = ParamSpec("P", **{"x": "y"})  # E: Unexpected argument to "ParamSpec()"
 [case new_type_invalid_assignment_form]
 from typing import NewType
 A, B = NewType("A", int)  # E: Invalid assignment form for NewType, please use the simple form "X = NewType(..)"
+
+[case new_type_recursion_same_module]
+from typing import NewType
+A = NewType("A", list[int | "A"])
+B = NewType("B", "B")  # E: Argument 2 to NewType(...) must be subclassable (got "B")
+C = NewType("C", list[undefined | "A"])  # E: Name "undefined" is not defined
+
+a1: A = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "A")
+a2: A = A([1])
+a3: A = A([a1])
+b1: B = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "B")
+b2: B = B(b1)
+c1: C = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "C")
+c2: C = C([c1])
+c3: C = C([1])
+
+[case new_type_recursion_other_module]
+import m
+a1: m.A = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "A")
+a2: m.A = m.A([1])
+a3: m.A = m.A([a1])
+b1: m.B = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "B")
+b2: m.B = m.B(b1)
+c1: m.C = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "C")
+c2: m.C = m.C([c1])
+c3: m.C = m.C([1])
+
+[file m.py]
+from typing import NewType
+A = NewType("A", list[int | "A"])
+B = NewType("B", "B")  # E: Argument 2 to NewType(...) must be subclassable (got "B")
+C = NewType("C", list[undefined | "A"])  # E: Name "undefined" is not defined
 
 [case double_string_in_annotation]
 # flags: --show-column-numbers
@@ -404,7 +433,7 @@ class C(Generic[T]):
 [case getattr_on_module_with_specific_type]
 import m
 
-x: m.A  # E: Name "m.A" is not defined
+x: m.A  # E: Invalid type comment or annotation
 
 [file m.py]
 def __getattr__(name: str) -> int: ...
@@ -442,3 +471,61 @@ AliasedType = Unknown[int, "aliased"]  # E: Name "Unknown" is not defined
 
 def aliased() -> AliasedType: ...  # E: Variable "__main__.AliasedType" is not valid as a type \
                                    # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+
+[case redefining_type_variables]
+# From testRedefineVariableAsTypevar, but fully implemented
+from typing import TypeVar
+x = 0
+x = TypeVar('x') # E: Incompatible types in assignment (expression has type "TypeVar", variable has type "int")
+
+[case type_var_on_attribute_before_and_after_def]
+import typing as t
+
+class Foo(t.Generic['T']): ...
+
+T = t.TypeVar('T')
+
+class Bar(t.Generic['T']): ...
+
+[case global_or_nonlocal_type_definition]
+X = list[int]
+
+def foo() -> None:
+    global X
+    x: X  # E: Invalid type comment or annotation
+
+    Y = list[str]
+    def bar() -> None:
+        nonlocal Y
+        y: Y  # E: Invalid type comment or annotation
+
+[case param_name_used_in_type_definition]
+from typing import Any
+
+def foo(a: Any, b: int, c: str = "", *args: Any, d: bytes = b'', **kwargs: Any):
+    a1: a  # E: Variable "__main__.a" is not valid as a type  # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+    b1: b  # E: Variable "__main__.b" is not valid as a type  # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+    c1: c  # E: Variable "__main__.c" is not valid as a type  # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+    d1: d  # E: Variable "__main__.d" is not valid as a type  # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+    args1: args  # E: Variable "__main__.args" is not valid as a type  # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+    kwargs2: kwargs  # E: Variable "__main__.kwargs" is not valid as a type  # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+
+[case module_getattr_types]
+import m, n, o, p
+a: m.X
+b: n.X  # E: Invalid type comment or annotation
+c: o.X
+d: p.X  # E: Invalid type comment or annotation
+
+[file m.py]
+def __getattr__(n): ...
+
+[file n.py]
+def __getattr__(n) -> int: ...
+
+[file o.py]
+import typing
+def __getattr__(n) -> typing.Any: ...
+
+[file p.py]
+__getattr__ = 1  # E: Invalid signature "int" for "__getattr__"

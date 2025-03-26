@@ -1,10 +1,10 @@
 use std::fmt;
 
 use parsa_python_cst::{
-    Annotation, Assignment, Atom, BytesLiteral, ClassDef, CodeIndex, Expression, Factor,
-    FunctionDef, ImportFrom, Int, Name, NameDef, NameImportParent, NamedExpression, NodeIndex,
-    Primary, PrimaryTarget, Slices, StarExpression, StarStarExpression, StarredExpression,
-    StringLiteral,
+    Annotation, Assignment, BytesLiteral, ClassDef, CodeIndex, Expression, FunctionDef, ImportFrom,
+    Int, Name, NameDef, NameImportParent, NamedExpression, NodeIndex, Primary, PrimaryTarget,
+    Slices, StarExpression, StarStarExpression, StarredExpression, StringLiteral,
+    NAME_DEF_TO_NAME_DIFFERENCE,
 };
 use vfs::FileIndex;
 
@@ -13,18 +13,19 @@ use crate::{
         ComplexPoint, Database, Locality, Point, PointKind, PointLink, Specific, TypeAlias,
     },
     diagnostics::{Diagnostic, Issue, IssueKind},
-    file::{File, OtherDefinitionIterator, PythonFile},
+    file::{
+        ClassInitializer, ClassNodeRef, File, OtherDefinitionIterator, PythonFile,
+        CLASS_TO_CLASS_INFO_DIFFERENCE,
+    },
     inference_state::InferenceState,
     inferred::Inferred,
     python_state::{NAME_DEF_TO_CLASS_DIFF, NAME_TO_FUNCTION_DIFF},
     type_::Type,
-    type_helpers::{
-        ClassInitializer, ClassNodeRef, Function, Module, CLASS_TO_CLASS_INFO_DIFFERENCE,
-    },
+    type_helpers::Function,
 };
 
 #[derive(Clone, Copy)]
-pub struct NodeRef<'file> {
+pub(crate) struct NodeRef<'file> {
     pub file: &'file PythonFile,
     pub node_index: NodeIndex,
 }
@@ -49,10 +50,6 @@ impl<'file> NodeRef<'file> {
         }
     }
 
-    pub fn in_module(&self) -> Module<'file> {
-        Module::new(self.file)
-    }
-
     #[inline]
     pub fn to_db_lifetime(self, _: &Database) -> NodeRef {
         // This should be safe, because all files are added to the database.
@@ -64,6 +61,20 @@ impl<'file> NodeRef<'file> {
         Self::new(self.file, ((self.node_index as i64) + add) as NodeIndex)
     }
 
+    #[inline]
+    pub fn name_def_ref_of_name(&self) -> Self {
+        let n = Self::new(self.file, self.node_index - NAME_DEF_TO_NAME_DIFFERENCE);
+        debug_assert!(n.maybe_name_def().is_some());
+        n
+    }
+
+    #[inline]
+    pub fn name_ref_of_name_def(&self) -> Self {
+        let n = Self::new(self.file, self.node_index + NAME_DEF_TO_NAME_DIFFERENCE);
+        debug_assert!(n.maybe_name().is_some());
+        n
+    }
+
     pub fn point(&self) -> Point {
         self.file.points.get(self.node_index)
     }
@@ -72,11 +83,8 @@ impl<'file> NodeRef<'file> {
         self.file.points.set(self.node_index, point)
     }
 
-    pub fn set_point_redirect_in_same_file(&self, node_index: NodeIndex, locality: Locality) {
-        self.file.points.set(
-            self.node_index,
-            Point::new_redirect(self.file.file_index, node_index, locality),
-        )
+    pub fn as_redirection_point(&self, locality: Locality) -> Point {
+        Point::new_redirect(self.file.file_index, self.node_index, locality)
     }
 
     pub fn accumulate_types(&self, i_s: &InferenceState, add: &Inferred) {
@@ -93,7 +101,7 @@ impl<'file> NodeRef<'file> {
         }
     }
 
-    pub fn complex(&self) -> Option<&'file ComplexPoint> {
+    pub fn maybe_complex(&self) -> Option<&'file ComplexPoint> {
         let point = self.point();
         if !point.calculated() {
             return None;
@@ -106,8 +114,15 @@ impl<'file> NodeRef<'file> {
     }
 
     pub fn maybe_alias(&self) -> Option<&'file TypeAlias> {
-        match self.complex() {
+        match self.maybe_complex() {
             Some(ComplexPoint::TypeAlias(alias)) => Some(alias),
+            _ => None,
+        }
+    }
+
+    pub fn maybe_type(&self) -> Option<&'file Type> {
+        match self.maybe_complex() {
+            Some(ComplexPoint::TypeInstance(t)) => Some(t),
             _ => None,
         }
     }
@@ -126,36 +141,52 @@ impl<'file> NodeRef<'file> {
         PointLink::new(self.file.file_index, self.node_index)
     }
 
-    pub fn as_expression(&self) -> Expression<'file> {
+    pub fn expect_expression(&self) -> Expression<'file> {
         Expression::by_index(&self.file.tree, self.node_index)
     }
 
-    pub fn as_star_expression(&self) -> StarExpression<'file> {
+    pub fn expect_star_expression(&self) -> StarExpression<'file> {
         StarExpression::by_index(&self.file.tree, self.node_index)
     }
 
-    pub fn as_slices(&self) -> Slices<'file> {
+    pub fn expect_slices(&self) -> Slices<'file> {
         Slices::by_index(&self.file.tree, self.node_index)
     }
 
-    pub fn as_primary(&self) -> Primary<'file> {
+    pub fn expect_primary(&self) -> Primary<'file> {
         Primary::by_index(&self.file.tree, self.node_index)
     }
 
-    pub fn as_name(&self) -> Name<'file> {
+    pub fn expect_name(&self) -> Name<'file> {
         Name::by_index(&self.file.tree, self.node_index)
     }
 
-    pub fn as_name_def(&self) -> NameDef<'file> {
+    pub fn expect_name_def(&self) -> NameDef<'file> {
         NameDef::by_index(&self.file.tree, self.node_index)
     }
 
-    pub fn as_annotation(&self) -> Annotation<'file> {
+    pub fn expect_annotation(&self) -> Annotation<'file> {
         Annotation::by_index(&self.file.tree, self.node_index)
     }
 
-    pub fn as_bytes_literal(&self) -> BytesLiteral<'file> {
+    pub fn expect_bytes_literal(&self) -> BytesLiteral<'file> {
         BytesLiteral::by_index(&self.file.tree, self.node_index)
+    }
+
+    pub fn expect_int(&self) -> Int<'file> {
+        Int::by_index(&self.file.tree, self.node_index)
+    }
+
+    pub fn expect_named_expression(&self) -> NamedExpression<'file> {
+        NamedExpression::by_index(&self.file.tree, self.node_index)
+    }
+
+    pub fn expect_assignment(&self) -> Assignment<'file> {
+        Assignment::by_index(&self.file.tree, self.node_index)
+    }
+
+    pub fn expect_import_from(&self) -> ImportFrom<'file> {
+        ImportFrom::by_index(&self.file.tree, self.node_index)
     }
 
     pub fn maybe_expression(&self) -> Option<Expression<'file>> {
@@ -183,40 +214,24 @@ impl<'file> NodeRef<'file> {
     }
 
     pub fn maybe_import_of_name_in_symbol_table(&self) -> Option<NameImportParent<'file>> {
-        self.as_name().name_def().unwrap().maybe_import()
-    }
-
-    #[inline]
-    pub fn file_index(&self) -> FileIndex {
-        self.file.file_index
-    }
-
-    pub fn infer_int(&self) -> Option<i64> {
-        Int::maybe_by_index(&self.file.tree, self.node_index).and_then(|i| i.as_str().parse().ok())
+        self.expect_name().name_def().unwrap().maybe_import()
     }
 
     pub fn maybe_str(&self) -> Option<StringLiteral<'file>> {
         StringLiteral::maybe_by_index(&self.file.tree, self.node_index)
     }
 
-    pub fn expect_int(&self) -> Int<'file> {
-        Int::by_index(&self.file.tree, self.node_index)
-    }
-
     pub fn maybe_class(&self) -> Option<ClassDef<'file>> {
         ClassDef::maybe_by_index(&self.file.tree, self.node_index)
-    }
-
-    pub fn maybe_factor(&self) -> Option<Factor<'file>> {
-        Factor::maybe_by_index(&self.file.tree, self.node_index)
     }
 
     pub fn maybe_primary_target(&self) -> Option<PrimaryTarget<'file>> {
         PrimaryTarget::maybe_by_index(&self.file.tree, self.node_index)
     }
 
-    pub fn as_named_expression(&self) -> NamedExpression<'file> {
-        NamedExpression::by_index(&self.file.tree, self.node_index)
+    #[inline]
+    pub fn file_index(&self) -> FileIndex {
+        self.file.file_index
     }
 
     pub fn expect_inferred(&self, i_s: &InferenceState) -> Inferred {
@@ -227,22 +242,8 @@ impl<'file> NodeRef<'file> {
     }
 
     pub fn expect_complex_type(&self) -> &Type {
-        let Some(ComplexPoint::TypeInstance(value_t)) = self.complex() else {
-            unreachable!("{:?}", self)
-        };
-        value_t
-    }
-
-    pub fn expect_assignment(&self) -> Assignment<'file> {
-        Assignment::by_index(&self.file.tree, self.node_index)
-    }
-
-    pub fn expect_import_from(&self) -> ImportFrom<'file> {
-        ImportFrom::by_index(&self.file.tree, self.node_index)
-    }
-
-    pub fn expect_atom(&self) -> Atom<'file> {
-        Atom::by_index(&self.file.tree, self.node_index)
+        self.maybe_type()
+            .unwrap_or_else(|| unreachable!("{:?}", self))
     }
 
     pub fn ensure_cached_class_infos(&self, i_s: &InferenceState) {
@@ -253,7 +254,7 @@ impl<'file> NodeRef<'file> {
             .calculated()
         {
             let class_ref = ClassNodeRef::new(self.file, self.node_index);
-            let ComplexPoint::Class(cls_storage) = class_ref.complex().unwrap() else {
+            let ComplexPoint::Class(cls_storage) = class_ref.maybe_complex().unwrap() else {
                 unreachable!("{self:?}")
             };
 
@@ -269,17 +270,11 @@ impl<'file> NodeRef<'file> {
 
     pub fn debug_info(&self, db: &Database) -> String {
         format!(
-            "{}: {}, {:?}",
-            self.file.file_path(db),
-            self.file.tree.debug_info(self.node_index),
-            self.point(),
+            "{}({}):#{}",
+            self.file.qualified_name(db),
+            self.file_index(),
+            self.line(),
         )
-    }
-
-    pub fn compute_new_type_constraint(&self, i_s: &InferenceState) -> Type {
-        self.file
-            .inference(i_s)
-            .compute_new_type_constraint(self.as_expression())
     }
 
     pub fn as_code(&self) -> &'file str {
@@ -289,6 +284,11 @@ impl<'file> NodeRef<'file> {
     pub(crate) fn add_issue(&self, i_s: &InferenceState, kind: IssueKind) {
         let issue = Issue::from_node_index(&self.file.tree, self.node_index, kind);
         self.file.add_issue(i_s, issue)
+    }
+
+    pub(crate) fn add_type_issue(&self, db: &Database, kind: IssueKind) {
+        let issue = Issue::from_node_index(&self.file.tree, self.node_index, kind);
+        self.file.add_type_issue(db, issue)
     }
 
     pub(crate) fn issue_to_str(&self, i_s: &InferenceState, kind: IssueKind) -> String {
@@ -423,8 +423,6 @@ impl<'file> NodeRef<'file> {
 impl fmt::Debug for NodeRef<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut s = f.debug_struct("NodeRef");
-        s.field("file_index", &self.file.file_index);
-        s.field("node_index", &self.node_index);
         s.field(
             "node",
             &self.file.tree.short_debug_of_index(self.node_index),
@@ -432,8 +430,16 @@ impl fmt::Debug for NodeRef<'_> {
         let point = self.point();
         s.field("point", &point);
         if let Some(complex_index) = point.maybe_complex_index() {
-            s.field("complex", self.file.complex_points.get(complex_index));
+            let complex_point = self.file.complex_points.get(complex_index);
+            if matches!(complex_point, ComplexPoint::Class(_)) {
+                s.field("complex", &"ClassStorage { .. }");
+            } else {
+                s.field("complex", complex_point);
+            }
         }
+        s.field("file_index", &self.file.file_index);
+        s.field("node_index", &self.node_index);
+        s.field("line", &self.line());
         s.finish()
     }
 }

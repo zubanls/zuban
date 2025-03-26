@@ -21,19 +21,19 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub struct OverloadedFunction<'a> {
+pub(crate) struct OverloadedFunction<'a> {
     overload: &'a Rc<FunctionOverload>,
     class: Option<Class<'a>>,
 }
 
-pub enum OverloadResult<'a> {
+pub(crate) enum OverloadResult<'a> {
     Single(Callable<'a>),
     Union(Type),
     NotFound,
 }
 
 #[derive(Debug)]
-pub enum UnionMathResult {
+pub(crate) enum UnionMathResult {
     FirstSimilarIndex(usize),
     Match {
         first_similar_index: usize,

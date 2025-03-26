@@ -7,13 +7,13 @@ use super::{
     flow_analysis::has_custom_special_method,
     name_binder::GLOBAL_NONLOCAL_TO_NAME_DIFFERENCE,
     name_resolution::NameResolution,
-    on_argument_type_error,
+    on_argument_type_error, process_unfinished_partials,
     type_computation::ANNOTATION_TO_EXPR_DIFFERENCE,
     utils::{func_of_self_symbol, infer_dict_like},
-    File, PythonFile, FLOW_ANALYSIS,
+    ClassNodeRef, File, PythonFile, FLOW_ANALYSIS,
 };
 use crate::{
-    arguments::{Args, KnownArgs, NoArgs, SimpleArgs},
+    arguments::{Args, KnownArgs, KnownArgsWithCustomAddIssue, NoArgs, SimpleArgs},
     database::{ComplexPoint, Database, Locality, Point, PointKind, PointLink, Specific},
     debug,
     diagnostics::{Issue, IssueKind},
@@ -40,15 +40,15 @@ use crate::{
         WithUnpack,
     },
     type_helpers::{
-        cache_class_name, is_private, Class, ClassLookupOptions, ClassNodeRef, FirstParamKind,
-        Function, GeneratorType, Instance, InstanceLookupOptions, LookupDetails, TypeOrClass,
+        cache_class_name, is_private, Class, ClassLookupOptions, FirstParamKind, Function,
+        GeneratorType, Instance, InstanceLookupOptions, LookupDetails, TypeOrClass,
     },
     utils::debug_indent,
 };
 
 const ENUM_NAMES_OVERRIDABLE: [&str; 2] = ["value", "name"];
 
-pub struct Inference<'db: 'file, 'file, 'i_s>(pub(super) NameResolution<'db, 'file, 'i_s>);
+pub(crate) struct Inference<'db: 'file, 'file, 'i_s>(pub(super) NameResolution<'db, 'file, 'i_s>);
 
 impl<'db: 'file, 'file, 'i_s> std::ops::Deref for Inference<'db, 'file, 'i_s> {
     type Target = NameResolution<'db, 'file, 'i_s>;
@@ -63,12 +63,11 @@ macro_rules! check_point_cache_with {
         $vis fn $name(&self, node: $ast $(, $result_context : &mut ResultContext)?) -> $crate::inferred::Inferred {
             if let Some(inferred) = self.check_point_cache(node.index()) {
                 debug!(
-                    "{} {:?} (#{}, {}:{}) from cache: {}",
+                    "{} {:?} ({}:#{}) from cache: {}",
                     stringify!($name),
                     node.short_debug(),
+                    self.file.qualified_name(self.i_s.db),
                     self.file.byte_to_line_column(node.start()).0,
-                    self.file.file_index,
-                    node.index(),
                     {
                         let point = self.file.points.get(node.index());
                         match point.kind() {
@@ -81,12 +80,11 @@ macro_rules! check_point_cache_with {
                 inferred
             } else {
                 debug!(
-                    "{} {:?} (#{}, {}:{})",
+                    "{} {:?} ({}:#{})",
                     stringify!($name),
                     node.short_debug(),
+                    self.file.qualified_name(self.i_s.db),
                     self.file.byte_to_line_column(node.start()).0,
-                    self.file.file_index,
-                    node.index(),
                 );
                 debug_indent(|| {
                     $func(self, node $(, $result_context)?)
@@ -116,12 +114,13 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             Point::new_specific(Specific::Analyzed, Locality::Todo),
         );
     }
+
     pub(super) fn cache_import_from(&self, imp: ImportFrom) {
         if self.file.points.get(imp.index()).calculated() {
             return;
         }
-        self.assign_import_from_names(imp, |name_def, inf, redirect_to_link| {
-            self.assign_to_import_from_name(name_def, inf, redirect_to_link)
+        self.assign_import_from_names(imp, |name_def, pr, redirect_to_link| {
+            self.assign_to_import_from_name(name_def, pr, redirect_to_link)
         });
         self.file.points.set(
             imp.index(),
@@ -132,21 +131,22 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
     fn assign_to_import_from_name(
         &self,
         name_def: NameDef,
-        inf: Inferred,
+        pr: PointResolution,
         redirect_to_link: Option<PointLink>,
     ) {
+        let inf = self.infer_module_point_resolution(pr, |k| self.add_issue(name_def.index(), k));
         self.assign_to_name_def(
             name_def,
             NodeRef::new(self.file, name_def.index()),
             &inf,
             AssignKind::Import,
             |_, inf| match redirect_to_link {
-                Some(link) => {
+                Some(link) if inf.is_saved() => {
                     self.file
                         .points
                         .set(name_def.index(), link.into_redirect_point(Locality::Todo));
                 }
-                None => {
+                _ => {
                     inf.clone()
                         .save_redirect(self.i_s, self.file, name_def.index());
                 }
@@ -494,12 +494,15 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     // This is essentially a bare `foo += 1` that does not have any definition and
                     // leads to a NameError within Python.
                     match target.clone() {
-                        Target::Name(name_def) => self.add_issue(
-                            name_def.index(),
-                            IssueKind::NameError {
-                                name: name_def.as_code().into(),
-                            },
-                        ),
+                        Target::Name(name_def) => {
+                            debug!("Name not found for aug assignment");
+                            self.add_issue(
+                                name_def.index(),
+                                IssueKind::NameError {
+                                    name: name_def.as_code().into(),
+                                },
+                            )
+                        }
                         Target::NameExpression(t, n) => self.add_issue(
                             assignment.index(),
                             IssueKind::AttributeError {
@@ -962,11 +965,11 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         save: impl FnOnce(NodeIndex, &Inferred),
     ) {
         debug!(
-            "Assign to name def {} (#{}, {}:{})",
+            "Assign to name {} ({}:#{}): {}",
             name_def.as_code(),
+            self.file.qualified_name(self.i_s.db),
             self.file.byte_to_line_column(name_def.start()).0,
-            self.file.file_index,
-            name_def.index(),
+            value.debug_info(self.i_s.db),
         );
         debug_indent(|| self.assign_to_name_def_internal(name_def, from, value, assign_kind, save))
     }
@@ -1229,33 +1232,8 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 }
             };
 
-            if let Some(node_ref) = value.maybe_saved_node_ref(i_s.db) {
-                let name_def_ref = NodeRef::new(self.file, current_index);
-                let cannot_redefine = |as_| {
-                    name_def_ref.add_issue(
-                        self.i_s,
-                        IssueKind::CannotRedefineAs {
-                            name: name_def.as_code().into(),
-                            as_,
-                        },
-                    );
-                };
-                match node_ref.complex() {
-                    Some(ComplexPoint::NewTypeDefinition(_)) => {
-                        cannot_redefine("a NewType");
-                        add_redefinition_issue();
-                        return;
-                    }
-                    Some(ComplexPoint::TypeVarLike(_)) => {
-                        cannot_redefine("a type variable");
-                        return;
-                    }
-                    _ => (),
-                }
-            }
-
             let maybe_saved = self.follow_and_maybe_saved(first_index);
-            let maybe_complex_def = maybe_saved.and_then(|n| n.complex());
+            let maybe_complex_def = maybe_saved.and_then(|n| n.maybe_complex());
             // This is mostly to make it clear that things like NewType/TypeVars are special
             // and cannot be redefined
             let is_special_def = !matches!(
@@ -1750,7 +1728,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                             if specific == Specific::PartialDefaultDict {
                                 let Some(ComplexPoint::TypeInstance(original_value)) = from
                                     .add_to_node_index(NAME_DEF_TO_DEFAULTDICT_DIFF)
-                                    .complex()
+                                    .maybe_complex()
                                 else {
                                     unreachable!(
                                         "The defaultdict value type should always be defined"
@@ -2109,7 +2087,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 line = NodeRef::new(self.file, decorated.index()).line();
             }
         }
-        let first_name_def = first_ref.as_name().name_def().unwrap();
+        let first_name_def = first_ref.expect_name().name_def().unwrap();
         let suffix = match first_name_def.maybe_import() {
             Some(_) => {
                 let mut s = "(possibly by an import)";
@@ -2136,7 +2114,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         if std::cfg!(debug_assertions) {
             // Make sure it's a NameDef
             let ref_ = NodeRef::new(self.file, name_index - NAME_DEF_TO_NAME_DIFFERENCE);
-            ref_.as_name_def();
+            ref_.expect_name_def();
         }
         self.check_point_cache(name_index - NAME_DEF_TO_NAME_DIFFERENCE)
             .and_then(|inf| inf.maybe_saved_node_ref(self.i_s.db))
@@ -3117,14 +3095,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 .unwrap_or_else(Inferred::new_any_from_error)
             }
             PrimaryContent::Execution(details) => {
-                let f = self.file;
-                let args = SimpleArgs::new(*self.i_s, f, node_index, details);
-                base.execute_with_details(
-                    self.i_s,
-                    &args,
-                    result_context,
-                    OnTypeError::new(&on_argument_type_error),
-                )
+                self.primary_execute(base, node_index, details, result_context)
             }
             PrimaryContent::GetItem(slice_type) => {
                 let f = self.file;
@@ -3137,6 +3108,23 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 )
             }
         }
+    }
+
+    fn primary_execute(
+        &self,
+        base: &Inferred,
+        node_index: NodeIndex,
+        details: ArgumentsDetails,
+        result_context: &mut ResultContext,
+    ) -> Inferred {
+        let f = self.file;
+        let args = SimpleArgs::new(*self.i_s, f, node_index, details);
+        base.execute_with_details(
+            self.i_s,
+            &args,
+            result_context,
+            OnTypeError::new(&on_argument_type_error),
+        )
     }
 
     pub fn infer_primary_or_atom(&self, p: PrimaryOrAtom) -> Inferred {
@@ -3516,7 +3504,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 .file
                 .inference(self.i_s)
                 .with_correct_context(global_redirect, |inference| {
-                    inference._infer_name_def(node_ref.as_name_def())
+                    inference._infer_name_def(node_ref.expect_name_def())
                 }),
             PointResolution::Inferred(inferred) => inferred,
             PointResolution::Param(node_ref) => {
@@ -3536,6 +3524,68 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     })
                 }
             }
+            PointResolution::ModuleGetattrName(node_ref) => {
+                let i_s = &InferenceState::new(self.i_s.db, node_ref.file);
+                let inf = node_ref.infer_name_of_definition_by_index(i_s);
+                return inf.execute(
+                    i_s,
+                    &KnownArgsWithCustomAddIssue::new(
+                        &Inferred::new_any_from_error(),
+                        // Errors are reported when checking the file (the signature can only contain
+                        // one positional argument)
+                        &|_| (),
+                    ),
+                );
+            }
+        }
+    }
+
+    pub(super) fn infer_module_point_resolution(
+        &self,
+        pr: PointResolution,
+        add_issue: impl Fn(IssueKind),
+    ) -> Inferred {
+        match pr {
+            PointResolution::NameDef {
+                node_ref,
+                global_redirect,
+            } => node_ref.file.inference(self.i_s).with_correct_context(
+                global_redirect,
+                |inference| {
+                    let ensure_flow_analysis = || {
+                        if inference.calculate_diagnostics().is_err() {
+                            add_issue(IssueKind::CannotDetermineType {
+                                for_: node_ref.as_code().into(),
+                            });
+                            return Some(Inferred::new_any_from_error());
+                        }
+                        None
+                    };
+                    let p = node_ref.name_ref_of_name_def().point();
+                    if p.calculated() && p.needs_flow_analysis() {
+                        if let Some(result) = ensure_flow_analysis() {
+                            return result;
+                        }
+                    }
+                    let r = FLOW_ANALYSIS.with(|fa| {
+                        fa.with_new_empty_without_unfinished_partial_checking(|| {
+                            inference.infer_name_def(node_ref.expect_name_def())
+                        })
+                    });
+                    if !r.unfinished_partials.is_empty() {
+                        if let Some(result) = ensure_flow_analysis() {
+                            return result;
+                        }
+                        process_unfinished_partials(inference.i_s, r.unfinished_partials);
+                        // In case where the partial is overwritten, we can just return the old Inferred,
+                        // because it points to the correct place.
+                    }
+                    r.result
+                },
+            ),
+
+            PointResolution::Inferred(inferred) => inferred,
+            _ => self.infer_point_resolution(pr),
         }
     }
 
@@ -3553,12 +3603,16 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
     pub(super) fn with_correct_context<T>(
         &self,
         global_redirect: bool,
-        callable: impl Fn(&Inference) -> T,
+        callable: impl FnOnce(&Inference) -> T,
     ) -> T {
         if global_redirect {
             FLOW_ANALYSIS.with(|fa| {
                 fa.with_new_empty_and_delay_functions_further(self.i_s, || {
-                    callable(&self.file.inference(&InferenceState::new(self.i_s.db)))
+                    callable(
+                        &self
+                            .file
+                            .inference(&InferenceState::new(self.i_s.db, self.file)),
+                    )
                 })
             })
         } else {
@@ -3674,10 +3728,10 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             }
         }
         debug!(
-            "Infer name of stmt (#{}, {}:{})",
+            "Infer name {} of stmt ({}:#{})",
+            name_def.as_code(),
+            self.file.qualified_name(self.i_s.db),
             name_def.line(),
-            self.file.file_index,
-            defining_stmt.index(),
         );
         match defining_stmt {
             DefiningStmt::FunctionDef(func_def) => {
@@ -3697,8 +3751,8 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             DefiningStmt::ImportFromAsName(as_name) => {
                 self.assign_import_from_only_particular_name_def(
                     as_name,
-                    |name_def, inf, redirect_to_link| {
-                        self.assign_to_import_from_name(name_def, inf, redirect_to_link)
+                    |name_def, pr, redirect_to_link| {
+                        self.assign_to_import_from_name(name_def, pr, redirect_to_link)
                     },
                 );
             }
@@ -3763,18 +3817,21 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 // Apparently assigning any here is enough for everything to be working well.
                 // Errors are raised in the proper places anyway, see test
                 // `del_stmt_inference_of_self_name`.
+                debug!("Assigning Any to del_stmt, because it wasn't properly type checked");
                 self.assign_any_to_del_stmts(del_stmt.targets());
             }
             DefiningStmt::Lambda(_)
             | DefiningStmt::Comprehension(_)
-            | DefiningStmt::DictComprehension(_) => {
+            | DefiningStmt::DictComprehension(_)
+            | DefiningStmt::GlobalStmt(_)
+            | DefiningStmt::NonlocalStmt(_) => {
                 recoverable_error!(
-                    "Not implemented: and therefore assigning Any to {:?} in {}",
+                    "Why do we hit these defining stmts: -> assigning Any to {:?} in {}",
                     name_def,
                     self.file_path()
                 );
                 self.assign_to_name_def_simple(
-                    name_def.as_name_def(),
+                    name_def.expect_name_def(),
                     name_def,
                     &Inferred::new_any_from_error(),
                     AssignKind::Normal,
@@ -3784,7 +3841,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 // This should basically only ever happen on weird error cases where errors are
                 // added in other places. We assign Any to make sure
                 self.assign_to_name_def_simple(
-                    name_def.as_name_def(),
+                    name_def.expect_name_def(),
                     name_def,
                     &Inferred::new_any_from_error(),
                     AssignKind::Normal,
@@ -4025,6 +4082,33 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
 
     check_point_cache_with!(pub infer_decorator, Self::_infer_decorator, Decorator);
     fn _infer_decorator(&self, decorator: Decorator) -> Inferred {
+        let expr = decorator.named_expression().expression();
+        if let ExpressionContent::ExpressionPart(ExpressionPart::Primary(primary)) = expr.unpack() {
+            if let PrimaryContent::Execution(exec) = primary.second() {
+                if !self.file.points.get(primary.index()).calculated() {
+                    // Try to find dataclass_transform and if there isn't one use the normal inference
+                    let base = self.infer_primary_or_atom(primary.first());
+                    if base.maybe_saved_specific(self.i_s.db)
+                        == Some(Specific::TypingDataclassTransform)
+                    {
+                        self.insert_dataclass_transform(primary, exec);
+                    } else {
+                        self.primary_execute(
+                            &base,
+                            primary.index(),
+                            exec,
+                            &mut ResultContext::Unknown,
+                        )
+                        .save_redirect(
+                            self.i_s,
+                            self.file,
+                            primary.index(),
+                        );
+                    };
+                    debug_assert!(self.file.points.get(primary.index()).calculated());
+                }
+            }
+        }
         let i = self.infer_named_expression(decorator.named_expression());
         i.save_redirect(self.i_s, self.file, decorator.index())
     }
@@ -4103,7 +4187,7 @@ pub fn instantiate_except_star(i_s: &InferenceState, t: &Type) -> Type {
     let result = gather_except_star(i_s, t);
     // When BaseException is used, we need a BaseExceptionGroup. Otherwise when every exception
     // inherits from Exception, ExceptionGroup is used.
-    let is_base_exception_group = has_base_exception(i_s, &result);
+    let is_base_exception_group = has_base_exception(i_s.db, &result);
     new_class!(
         match is_base_exception_group {
             false => i_s
@@ -4125,10 +4209,10 @@ pub fn instantiate_except_star(i_s: &InferenceState, t: &Type) -> Type {
     )
 }
 
-fn has_base_exception(i_s: &InferenceState, t: &Type) -> bool {
+fn has_base_exception(db: &Database, t: &Type) -> bool {
     match t {
-        Type::Class(c) => !c.class(i_s.db).is_exception(i_s),
-        Type::Union(u) => u.iter().any(|t| has_base_exception(i_s, t)),
+        Type::Class(c) => !c.class(db).is_exception(db),
+        Type::Union(u) => u.iter().any(|t| has_base_exception(db, t)),
         Type::Any(_) => false,
         // Gathering the exceptions already makes sure we do not end up with arbitrary types here.
         _ => unreachable!(),
@@ -4140,10 +4224,10 @@ fn gather_except_star(i_s: &InferenceState, t: &Type) -> Type {
         Type::Type(t) => match t.as_ref() {
             inner @ Type::Class(c) => {
                 let cls = c.class(i_s.db);
-                if cls.is_base_exception_group(i_s) {
+                if cls.is_base_exception_group(i_s.db) {
                     // Diagnostics are calculated when calculating diagnostics, not here.
                     Type::ERROR
-                } else if cls.is_base_exception(i_s) {
+                } else if cls.is_base_exception(i_s.db) {
                     inner.clone()
                 } else {
                     Type::ERROR
@@ -4299,14 +4383,14 @@ fn targets_len_infos(targets: TargetIterator) -> (usize, TupleLenInfos) {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
-pub enum AssignKind {
+pub(crate) enum AssignKind {
     Annotation { specific: Option<Specific> }, // `a: int = 1` or `a = 1 # type: int
     Normal,                                    // a = 1
     Import,
     AugAssign, // a += 1
 }
 
-pub enum StarImportResult {
+pub(crate) enum StarImportResult {
     Link(PointLink),
     AnyDueToError,
 }

@@ -86,9 +86,10 @@ class Foo:
 X = NewType("X", Foo)
 
 def f(a: type[X]) -> None:
-    x1: X = a()  # E: Missing positional argument "x" in call to "Foo"
-    x2: X = a(1)
-    x3: X = a(1, 2)  # E: Too many arguments for "Foo"
+    x1: X = a()  # E: Too few arguments for "X"
+    x2: X = a(1)  # E: Argument 1 to "X" has incompatible type "int"; expected "Foo"
+    x3: X = a(1, 2)  # E: Too many arguments for "X"
+    x4: X = a(Foo(1))
 
 [case new_type_invalid_params]
 from typing import NewType, TypeVarTuple

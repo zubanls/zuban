@@ -18,13 +18,13 @@ use crate::{
 };
 
 #[derive(Debug, Copy, Clone)]
-pub struct SliceType<'file> {
+pub(crate) struct SliceType<'file> {
     pub file: &'file PythonFile,
     pub cst_node: CSTSliceType<'file>,
     node_index: NodeIndex,
 }
 
-pub enum SliceTypeContent<'file> {
+pub(crate) enum SliceTypeContent<'file> {
     Simple(Simple<'file>),
     Starred(Starred<'file>),
     Slice(Slice<'file>),
@@ -117,7 +117,7 @@ impl<'db, 'file> SliceType<'file> {
 }
 
 #[derive(Debug, Copy, Clone)]
-pub struct Simple<'file> {
+pub(crate) struct Simple<'file> {
     pub file: &'file PythonFile,
     pub named_expr: NamedExpression<'file>,
 }
@@ -135,7 +135,7 @@ impl<'file> Simple<'file> {
 }
 
 #[derive(Debug, Copy, Clone)]
-pub struct Starred<'file> {
+pub(crate) struct Starred<'file> {
     pub file: &'file PythonFile,
     pub starred_expr: StarredExpression<'file>,
 }
@@ -154,7 +154,7 @@ impl<'file> Starred<'file> {
 }
 
 #[derive(Debug, Copy, Clone)]
-pub struct Slice<'file> {
+pub(crate) struct Slice<'file> {
     file: &'file PythonFile,
     slice: CSTSlice<'file>,
 }
@@ -230,16 +230,12 @@ impl<'file> Slice<'file> {
 }
 
 #[derive(Debug, Copy, Clone)]
-pub struct Slices<'file> {
+pub(crate) struct Slices<'file> {
     pub file: &'file PythonFile,
     slices: CSTSlices<'file>,
 }
 
 impl<'file> Slices<'file> {
-    pub fn as_node_ref(&self) -> NodeRef<'file> {
-        NodeRef::new(self.file, self.slices.index())
-    }
-
     pub fn iter(&self) -> SliceIterator<'file> {
         SliceIterator(self.file, self.slices.iter())
     }
@@ -254,7 +250,7 @@ impl<'file> Slices<'file> {
 }
 
 #[derive(Copy, Clone)]
-pub enum SliceOrSimple<'file> {
+pub(crate) enum SliceOrSimple<'file> {
     Simple(Simple<'file>),
     Slice(Slice<'file>),
     Starred(Starred<'file>),
@@ -279,7 +275,7 @@ impl<'file> SliceOrSimple<'file> {
 }
 
 #[derive(Clone)]
-pub struct SliceIterator<'file>(&'file PythonFile, CSTSliceIterator<'file>);
+pub(crate) struct SliceIterator<'file>(&'file PythonFile, CSTSliceIterator<'file>);
 
 impl<'file> Iterator for SliceIterator<'file> {
     type Item = SliceOrSimple<'file>;
@@ -304,7 +300,7 @@ impl<'file> Iterator for SliceIterator<'file> {
 }
 
 #[derive(Clone)]
-pub enum SliceTypeIterator<'file> {
+pub(crate) enum SliceTypeIterator<'file> {
     SliceIterator(SliceIterator<'file>),
     SliceOrSimple(SliceOrSimple<'file>),
     Finished,
@@ -330,7 +326,7 @@ impl<'file> Iterator for SliceTypeIterator<'file> {
 }
 
 #[derive(Debug)]
-pub struct SliceArguments<'db, 'a> {
+pub(crate) struct SliceArguments<'db, 'a> {
     slice_type: &'a SliceType<'a>,
     i_s: InferenceState<'db, 'a>,
 }

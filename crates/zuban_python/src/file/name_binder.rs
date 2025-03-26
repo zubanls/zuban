@@ -46,7 +46,7 @@ enum Unresolved<'db> {
     },
     Lambda(Lambda<'db>),
     Comprehension(Comprehension<'db>),
-    #[allow(dead_code)] // TODO remove this
+    #[expect(dead_code)] // TODO remove this
     DictComprehension(DictComprehension<'db>),
     Name(Name<'db>),
 }
@@ -59,7 +59,7 @@ struct UnresolvedClass<'db> {
 }
 
 #[derive(Clone, Copy)]
-pub struct DbInfos<'db> {
+pub(crate) struct DbInfos<'db> {
     pub settings: &'db Settings,
     pub flags: &'db TypeCheckerFlags,
     pub tree: &'db Tree,
@@ -1542,7 +1542,7 @@ fn try_to_process_reference_for_symbol_table(
 }
 
 #[derive(PartialEq, Debug)]
-pub enum Truthiness {
+pub(crate) enum Truthiness {
     True { in_type_checking_block: bool }, // in_type_checking_block for `if TYPE_CHECKING:`
     False,
     Unknown,
@@ -1908,7 +1908,7 @@ pub fn func_parent_scope<'tree>(
     }
 }
 
-pub enum FuncParentScope<'db> {
+pub(crate) enum FuncParentScope<'db> {
     Module,
     FunctionDef(FunctionDef<'db>),
     ClassDef(ClassDef<'db>),

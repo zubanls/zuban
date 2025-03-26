@@ -67,26 +67,26 @@ z: list[int]
 # A bit like testCyclicUndefinedImportWithName, but with a usage
 import a
 [file a.py]
-from b import no_such_export  # E: Module "b" has no attribute "no_such_export"
+from b import no_such_export
 reveal_type(no_such_export)  # N: Revealed type is "Any"
 [file b.py]
-from a import no_such_export
+from a import no_such_export  # E: Cannot resolve name "no_such_export" (possible cyclic definition)
 
 [case import_recursion_usage2]
 import a
 [file a.py]
-from b import no_such_export  # E: Module "b" has no attribute "no_such_export"
+from b import no_such_export
 [file b.py]
-from a import no_such_export
+from a import no_such_export  # E: Cannot resolve name "no_such_export" (possible cyclic definition)
 reveal_type(no_such_export)  # N: Revealed type is "Any"
 
 [case import_recursion_usage3]
 import a
 reveal_type(a.no_such_export)  # N: Revealed type is "Any"
 [file a.py]
-from b import no_such_export  # E: Module "b" has no attribute "no_such_export"
+from b import no_such_export
 [file b.py]
-from a import no_such_export
+from a import no_such_export  # E: Cannot resolve name "no_such_export" (possible cyclic definition)
 
 [case inference_context_with_star_import]
 import module3
@@ -412,3 +412,10 @@ from l import *
 
 [file l.py]
 from m import *
+
+[case importing_dunder_file]
+reveal_type(__file__)  # N: Revealed type is "str"
+from m import __file__ as f
+reveal_type(f)  # N: Revealed type is "str"
+
+[file m.py]

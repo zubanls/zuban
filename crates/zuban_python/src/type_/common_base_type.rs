@@ -26,7 +26,15 @@ impl Type {
         other: &Self,
         checked_recursions: Option<CheckedTypeRecursion>,
     ) -> Type {
-        let check_both_sides = |t1: &_, t2: &Type| match t1 {
+        let checked_recursions = CheckedTypeRecursion {
+            current: (self, other),
+            previous: checked_recursions.as_ref(),
+        };
+        if checked_recursions.is_cycle() {
+            return i_s.db.python_state.object_type();
+        }
+
+        let check_both_sides = |t1: &_, t2: &Type, is_reverse| match t1 {
             /*
             Type::Union(u) if u.iter().any(|t| matches!(t, Type::None)) => {
                 return self.clone().union(i_s.db, other.clone()).into_type()
@@ -37,37 +45,37 @@ impl Type {
             Type::Never(_) => Some(t2.clone()),
             Type::Callable(c1) => common_base_for_callable_against_type(i_s, c1, t2),
             Type::EnumMember(_) => match t2 {
-                Type::EnumMember(_) | Type::Enum(_) => Some(t1.simplified_union(i_s, t2)),
+                Type::EnumMember(_) | Type::Enum(_) => {
+                    if is_reverse {
+                        Some(t2.simplified_union(i_s, t1))
+                    } else {
+                        Some(t1.simplified_union(i_s, t2))
+                    }
+                }
                 _ => None,
             },
+            Type::RecursiveType(r1) => Some({
+                let mut t1 = r1.calculated_type(i_s.db);
+                let mut t2 = t2;
+                if is_reverse {
+                    (t1, t2) = (t2, t1);
+                }
+                t1.common_base_type_internal(i_s, t2, Some(checked_recursions))
+            }),
             _ => None,
         };
 
-        let checked_recursions = CheckedTypeRecursion {
-            current: (self, other),
-            previous: checked_recursions.as_ref(),
-        };
-        if checked_recursions.is_cycle() {
-            return i_s.db.python_state.object_type();
-        }
-
-        if let Some(new) = check_both_sides(self, other) {
+        if let Some(new) = check_both_sides(self, other, false) {
             return new;
         }
-        if let Some(new) = check_both_sides(other, self) {
+        if let Some(new) = check_both_sides(other, self, true) {
             return new;
         }
         for (_, c1) in self.mro(i_s.db) {
             for (_, c2) in other.mro(i_s.db) {
                 match &c1 {
                     TypeOrClass::Type(t1) => match c2 {
-                        TypeOrClass::Class(c2) => {
-                            if let Some(base) =
-                                class_against_non_class(i_s, c2, t1, checked_recursions)
-                            {
-                                return base;
-                            }
-                        }
+                        TypeOrClass::Class(_) => (),
                         TypeOrClass::Type(t2) => {
                             if let Some(base) =
                                 common_base_type_for_non_class(i_s, t1, &t2, checked_recursions)
@@ -82,13 +90,7 @@ impl Type {
                                 return t;
                             }
                         }
-                        TypeOrClass::Type(t2) => {
-                            if let Some(base) =
-                                class_against_non_class(i_s, *c1, &t2, checked_recursions)
-                            {
-                                return base;
-                            }
-                        }
+                        TypeOrClass::Type(_) => (),
                     },
                 }
             }
@@ -221,20 +223,6 @@ fn common_base_class_basic(
     ))
 }
 
-fn class_against_non_class(
-    i_s: &InferenceState,
-    c1: Class,
-    t2: &Type,
-    checked_recursions: CheckedTypeRecursion,
-) -> Option<Type> {
-    if let Type::RecursiveType(r2) = t2 {
-        if let Type::Class(c2) = r2.calculated_type(i_s.db) {
-            return common_base_class(i_s, c1, c2.class(i_s.db), checked_recursions);
-        }
-    }
-    None
-}
-
 fn common_base_type_for_non_class(
     i_s: &InferenceState,
     type1: &Type,
@@ -263,15 +251,6 @@ fn common_base_type_for_non_class(
                     t2,
                     Some(checked_recursions),
                 ))));
-            }
-        }
-        Type::RecursiveType(r1) => {
-            if let Type::RecursiveType(r2) = type2 {
-                return Some(r1.calculated_type(i_s.db).common_base_type_internal(
-                    i_s,
-                    r2.calculated_type(i_s.db),
-                    Some(checked_recursions),
-                ));
             }
         }
         _ => {

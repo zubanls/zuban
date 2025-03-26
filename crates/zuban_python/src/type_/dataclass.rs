@@ -7,7 +7,7 @@ use std::{
 
 use parsa_python_cst::{
     ArgumentsDetails, AssignmentContent, AssignmentRightSide, ExpressionContent, ExpressionPart,
-    NodeIndex, ParamKind, PrimaryContent, StarExpressionContent, StarLikeExpression,
+    NodeIndex, ParamKind, PrimaryContent, StarExpressionContent,
 };
 
 use super::{
@@ -17,10 +17,10 @@ use super::{
     TypeVarLike, TypeVarLikes, TypeVarUsage,
 };
 use crate::{
-    arguments::{Arg, ArgKind, Args, SimpleArgs},
+    arguments::{ArgKind, Args, SimpleArgs},
     database::{Database, Locality, Point, PointLink, Specific},
     diagnostics::{Issue, IssueKind},
-    file::PythonFile,
+    file::{ClassNodeRef, PythonFile},
     inference_state::InferenceState,
     inferred::{AttributeKind, Inferred},
     matching::{
@@ -32,8 +32,8 @@ use crate::{
     python_state::NAME_TO_FUNCTION_DIFF,
     type_::CallableLike,
     type_helpers::{
-        Callable, Class, ClassLookupOptions, ClassNodeRef, Instance, InstanceLookupOptions,
-        LookupDetails, OverloadResult, OverloadedFunction, TypeOrClass,
+        Callable, Class, ClassLookupOptions, Instance, InstanceLookupOptions, LookupDetails,
+        OverloadResult, OverloadedFunction, TypeOrClass,
     },
 };
 
@@ -42,14 +42,14 @@ type FieldSpecifiers = Rc<[PointLink]>;
 const ORDER_METHOD_NAMES: [&str; 4] = ["__lt__", "__gt__", "__le__", "__ge__"];
 
 #[derive(Clone, Eq)]
-pub struct Dataclass {
+pub(crate) struct Dataclass {
     pub class: GenericClass,
     inits: OnceCell<Inits>,
     pub options: DataclassOptions,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct DataclassOptions {
+pub(crate) struct DataclassOptions {
     pub init: bool,
     pub eq: bool,
     pub order: bool,
@@ -75,40 +75,6 @@ impl Default for DataclassOptions {
             kw_only: false,
             slots: false,
             transform_field_specifiers: None,
-        }
-    }
-}
-
-impl DataclassOptions {
-    pub fn assign_keyword_arg_to_dataclass_options<'db>(
-        &mut self,
-        i_s: &InferenceState,
-        key: &str,
-        arg: &Arg<'db, '_>,
-    ) {
-        let assign_option = |target: &mut _, arg: &Arg<'db, '_>| {
-            let result = arg.infer_inferrable(i_s, &mut ResultContext::Unknown);
-            if let Some(bool_) = result.maybe_bool_literal(i_s) {
-                *target = bool_;
-            } else {
-                let key = arg.keyword_name(i_s.db).unwrap().into();
-                arg.add_issue(i_s, IssueKind::ArgumentMustBeTrueOrFalse { key })
-            }
-        };
-        match key {
-            "kw_only" => assign_option(&mut self.kw_only, arg),
-            "frozen" => {
-                let mut new_frozen = false;
-                assign_option(&mut new_frozen, arg);
-                self.frozen = Some(new_frozen);
-            }
-            "order" => assign_option(&mut self.order, arg),
-            "eq" => assign_option(&mut self.eq, arg),
-            "init" => assign_option(&mut self.init, arg),
-            "match_args" => assign_option(&mut self.match_args, arg),
-            "slots" => assign_option(&mut self.slots, arg),
-            // The other names should not go through while type checking
-            _ => (),
         }
     }
 }
@@ -202,9 +168,9 @@ struct Inits {
 fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> Inits {
     let cls = dataclass.class(db);
     let mut with_indexes = vec![];
-    let i_s = &InferenceState::new(db);
-    let cls_i_s = &i_s.with_class_context(&cls);
     let file = cls.node_ref.file;
+    let i_s = &InferenceState::new(db, file);
+    let cls_i_s = &i_s.with_class_context(&cls);
     let inference = file.inference(cls_i_s);
 
     let mut params: Vec<CallableParam> = vec![];
@@ -287,7 +253,7 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> Init
                     let param_name = cloned_name.as_str(db);
                     if let Some(in_current_class) = class_symbol_table.lookup_symbol(param_name) {
                         let mut n = NodeRef::new(file, in_current_class);
-                        if n.as_name()
+                        if n.expect_name()
                             .name_def()
                             .unwrap()
                             .maybe_assignment_definition()
@@ -329,7 +295,7 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> Init
     }
 
     for (_, name_index) in class_symbol_table.iter() {
-        let name = NodeRef::new(file, *name_index).as_name();
+        let name = NodeRef::new(file, *name_index).expect_name();
         if let Some(assignment) = name.maybe_assignment_definition_name() {
             if let AssignmentContent::WithAnnotation(target, annotation, right_side) =
                 assignment.unpack()
@@ -751,29 +717,6 @@ fn apply_default_options_from_dataclass_transform_field<'db>(
     }
 }
 
-pub fn check_dataclass_options(
-    i_s: &InferenceState,
-    file: &PythonFile,
-    primary_index: NodeIndex,
-    details: ArgumentsDetails,
-    default_options: DataclassOptions,
-) -> DataclassOptions {
-    let mut options = default_options;
-    let args = SimpleArgs::new(*i_s, file, primary_index, details);
-    for arg in args.iter(i_s.mode) {
-        if let Some(key) = arg.keyword_name(i_s.db) {
-            options.assign_keyword_arg_to_dataclass_options(i_s, key, &arg);
-        } else {
-            arg.add_issue(i_s, IssueKind::UnexpectedArgumentTo { name: "dataclass" })
-        }
-    }
-    if !options.eq && options.order {
-        options.eq = true;
-        args.add_issue(i_s, IssueKind::DataclassOrderEnabledButNotEq);
-    }
-    options
-}
-
 pub(crate) fn dataclasses_replace<'db>(
     i_s: &InferenceState<'db, '_>,
     args: &dyn Args<'db>,
@@ -1153,14 +1096,12 @@ fn type_order_func(self_: Rc<Dataclass>, i_s: &InferenceState) -> LookupResult {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct DataclassTransformObj {
+pub(crate) struct DataclassTransformObj {
     pub eq_default: bool,
     pub order_default: bool,
     pub kw_only_default: bool,
     pub frozen_default: bool,
     pub field_specifiers: FieldSpecifiers,
-    // Whether it was use before a def foo()
-    pub executed_by_function: bool,
 }
 
 impl Default for DataclassTransformObj {
@@ -1171,53 +1112,11 @@ impl Default for DataclassTransformObj {
             kw_only_default: false,
             frozen_default: false,
             field_specifiers: Rc::default(),
-            executed_by_function: false,
         }
     }
 }
 
 impl DataclassTransformObj {
-    pub(crate) fn from_args<'db>(i_s: &InferenceState<'db, '_>, args: &dyn Args<'db>) -> Self {
-        // Checks dataclass_transform(...)
-        let mut options = Self::default();
-        let assign_option = |target: &mut _, arg: Arg<'db, '_>| {
-            let result = arg.infer_inferrable(i_s, &mut ResultContext::Unknown);
-            if let Some(bool_) = result.maybe_bool_literal(i_s) {
-                *target = bool_;
-            } else {
-                let key = arg.keyword_name(i_s.db).unwrap().into();
-                arg.add_issue(i_s, IssueKind::ArgumentMustBeTrueOrFalse { key });
-            }
-        };
-        for arg in args.iter(i_s.mode) {
-            if let Some(key) = arg.keyword_name(i_s.db) {
-                match key {
-                    "eq_default" => assign_option(&mut options.eq_default, arg),
-                    "order_default" => assign_option(&mut options.order_default, arg),
-                    "kw_only_default" => assign_option(&mut options.kw_only_default, arg),
-                    "frozen_default" => assign_option(&mut options.frozen_default, arg),
-                    "field_specifiers" => fill_dataclass_transform_field_specifiers(
-                        i_s,
-                        arg,
-                        &mut options.field_specifiers,
-                    ),
-                    _ => arg.add_issue(
-                        i_s,
-                        IssueKind::DataclassTransformUnknownParam { name: key.into() },
-                    ),
-                }
-            } else {
-                arg.add_issue(
-                    i_s,
-                    IssueKind::UnexpectedArgumentTo {
-                        name: "dataclass_transform",
-                    },
-                )
-            }
-        }
-        options
-    }
-
     pub(crate) fn as_dataclass_options(&self) -> DataclassOptions {
         DataclassOptions {
             eq: self.eq_default,
@@ -1227,35 +1126,5 @@ impl DataclassTransformObj {
             transform_field_specifiers: Some(self.field_specifiers.clone()),
             ..Default::default()
         }
-    }
-}
-
-fn fill_dataclass_transform_field_specifiers(
-    i_s: &InferenceState,
-    arg: Arg,
-    field_specifiers: &mut Rc<[PointLink]>,
-) {
-    let check =
-        || -> Result<Rc<[_]>, IssueKind> {
-            if let ArgKind::Keyword(kwarg) = &arg.kind {
-                if let Some(tuple) = kwarg.expression.maybe_tuple() {
-                    return tuple.iter().map(|s| {
-                    if let StarLikeExpression::NamedExpression(ne) = s {
-                        let inf = kwarg.node_ref.file.inference(i_s).infer_named_expression(ne);
-                        if let Some(from) = inf.maybe_saved_node_ref(i_s.db) {
-                            if from.maybe_function().is_some() {
-                                return Ok(from.as_link())
-                            }
-                        }
-                    }
-                    Err(IssueKind::DataclassTransformFieldSpecifiersMustOnlyContainIdentifiers)
-                }).collect();
-                }
-            }
-            Err(IssueKind::DataclassTransformFieldSpecifiersMustBeTuple)
-        };
-    match check() {
-        Ok(new_specifiers) => *field_specifiers = new_specifiers,
-        Err(issue) => arg.add_issue(i_s, issue),
     }
 }

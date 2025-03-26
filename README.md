@@ -85,6 +85,7 @@ For a patch release, simply run `./release.sh`, for a minor release `./release.s
 - 2024-10-23:  8143 /  9344 (1.60s ->  5089 tests/s 1540a3062b529d99b04fc5865def01482822872b)
 - 2024-11-23:  8480 /  9668 (1.65s ->  5139 tests/s 0dac1c48911dffc925c03b81a79d3f099bae6ffb)
 - 2025-02-23:  8812 / 10128 (1.25s ->  7050 tests/s b65d5256011792e807562f366168a3d3b7845eaa)
+- 2025-03-23:  8968 / 10369 (1.27s ->  7061 tests/s 4d34f7bc9aaa82ed1b64c54479a29932953a8eb8)
 
 ### Unsound?
 

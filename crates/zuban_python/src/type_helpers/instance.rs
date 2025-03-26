@@ -2,16 +2,13 @@ use std::{borrow::Cow, cell::Cell, rc::Rc};
 
 use parsa_python_cst::Name;
 
-use super::{
-    class::TypeOrClass, class_initializer::ORDERING_METHODS, Class, ClassLookupOptions,
-    FirstParamKind, Function, MroIterator,
-};
+use super::{class::TypeOrClass, Class, ClassLookupOptions, FirstParamKind, Function, MroIterator};
 use crate::{
     arguments::{Args, CombinedArgs, InferredArg, KnownArgs, KnownArgsWithCustomAddIssue},
     database::{ComplexPoint, Database, PointLink, Specific},
     debug,
     diagnostics::IssueKind,
-    file::on_argument_type_error,
+    file::{on_argument_type_error, ORDERING_METHODS},
     getitem::SliceType,
     inference_state::InferenceState,
     inferred::{add_attribute_error, AttributeKind, Inferred, MroIndex},
@@ -24,7 +21,7 @@ use crate::{
 };
 
 #[derive(Debug, Clone, Copy)]
-pub struct Instance<'a> {
+pub(crate) struct Instance<'a> {
     pub class: Class<'a>,
     inferred: Option<&'a Inferred>,
 }
@@ -439,11 +436,12 @@ impl<'a> Instance<'a> {
         }
         if options.kind == LookupKind::Normal && options.check_dunder_getattr {
             for method_name in ["__getattr__", "__getattribute__"] {
-                let l = self.lookup_with_details(
+                let l = self.lookup(
                     i_s,
-                    options.add_issue,
                     method_name,
-                    LookupKind::OnlyType,
+                    InstanceLookupOptions::new(&options.add_issue)
+                        .with_kind(LookupKind::OnlyType)
+                        .without_object(),
                 );
                 if l.class.is_object(i_s.db) {
                     // object defines a __getattribute__ that returns Any
@@ -458,13 +456,14 @@ impl<'a> Instance<'a> {
                         ),
                     ));
                     let is_writable = {
-                        let details = self.lookup_with_details(
+                        let details = self.lookup(
                             i_s,
-                            options.add_issue,
                             "__setattr__",
-                            LookupKind::OnlyType,
+                            InstanceLookupOptions::new(&options.add_issue)
+                                .with_kind(LookupKind::OnlyType)
+                                .without_object(),
                         );
-                        details.lookup.is_some() && !details.class.is_object(i_s.db)
+                        details.lookup.is_some()
                     };
                     return LookupDetails {
                         class: TypeOrClass::Class(self.class),
@@ -915,7 +914,7 @@ fn execute_isinstance_or_issubclass<'db>(
         if node_ref2
             .file
             .inference(i_s)
-            .check_isinstance_or_issubclass_type(node_ref2.as_named_expression(), issubclass)
+            .check_isinstance_or_issubclass_type(node_ref2.expect_named_expression(), issubclass)
             .is_some()
         {
             return Inferred::from_type(i_s.db.python_state.bool_type());
@@ -943,7 +942,7 @@ fn get_relevant_type_for_super(db: &Database, t: &Type) -> Type {
 }
 
 #[derive(Clone)]
-pub struct LookupDetails<'a> {
+pub(crate) struct LookupDetails<'a> {
     pub class: TypeOrClass<'a>,
     pub lookup: LookupResult,
     pub attr_kind: AttributeKind,
@@ -998,7 +997,7 @@ impl LookupDetails<'_> {
 }
 
 #[derive(Copy, Clone)]
-pub struct InstanceLookupOptions<'x> {
+pub(crate) struct InstanceLookupOptions<'x> {
     add_issue: &'x dyn Fn(IssueKind),
     kind: LookupKind,
     super_count: usize,

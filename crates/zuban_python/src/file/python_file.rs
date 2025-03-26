@@ -9,7 +9,7 @@ use std::{
 use config::{set_flag_and_return_ignore_errors, DiagnosticConfig, IniOrTomlValue, OverrideConfig};
 use parsa_python_cst::*;
 use utils::InsertOnlyVec;
-use vfs::{Directory, DirectoryEntry, FileEntry, FileIndex};
+use vfs::{Directory, DirectoryEntry, FileEntry, FileIndex, Parent};
 
 use super::{
     file_state::{File, Leaf},
@@ -23,28 +23,23 @@ use crate::{
     },
     debug,
     diagnostics::{Diagnostic, Diagnostics, Issue, IssueKind},
-    imports::{ImportResult, STUBS_SUFFIX},
+    imports::{python_import_with_needs_exact_case, ImportResult, STUBS_SUFFIX},
     inference_state::InferenceState,
     inferred::Inferred,
     lines::NewlineIndices,
-    matching::ResultContext,
     name::{FilePosition, Names, TreeName},
     node_ref::NodeRef,
-    type_::DbString,
+    type_::{DbString, LookupResult, Type},
     utils::SymbolTable,
     TypeCheckerFlags,
 };
 
 #[derive(Default, Debug, Clone)]
-pub struct ComplexValues(InsertOnlyVec<ComplexPoint>);
+pub(crate) struct ComplexValues(InsertOnlyVec<ComplexPoint>);
 
 impl ComplexValues {
     pub fn get(&self, index: usize) -> &ComplexPoint {
         &self.0[index]
-    }
-
-    pub fn get_by_node_index(&self, points: &Points, node_index: NodeIndex) -> &ComplexPoint {
-        &self.0[points.get(node_index).complex_index()]
     }
 
     pub fn insert(
@@ -66,13 +61,14 @@ impl ComplexValues {
         self.0.iter()
     }
 
+    #[expect(dead_code)]
     pub fn clear(&mut self) {
         self.0.clear()
     }
 }
 
 #[derive(Clone)]
-pub struct PythonFile {
+pub(crate) struct PythonFile {
     pub tree: Tree, // TODO should probably not be public
     pub symbol_table: SymbolTable,
     maybe_dunder_all: OnceCell<Option<Box<[DbString]>>>, // For __all__
@@ -104,7 +100,8 @@ impl File for PythonFile {
         }
     }
 
-    fn infer_operator_leaf(&self, db: &Database, leaf: Keyword) -> Inferred {
+    fn infer_operator_leaf(&self, _db: &Database, _leaf: Keyword) -> Inferred {
+        /*
         if ["(", "[", "{", ")", "]", "}"]
             .iter()
             .any(|&x| x == leaf.as_str())
@@ -116,6 +113,7 @@ impl File for PythonFile {
                     .infer_primary(primary, &mut ResultContext::Unknown);
             }
         }
+        */
         unimplemented!()
     }
 
@@ -146,7 +144,7 @@ impl File for PythonFile {
     }
 
     fn diagnostics<'db>(&'db self, db: &'db Database) -> Box<[Diagnostic<'db>]> {
-        let i_s = InferenceState::new(db);
+        let i_s = InferenceState::new(db, self);
         if self.super_file.is_none() {
             // The main file is responsible for calculating diagnostics of type comments,
             // annotation strings, etc.
@@ -212,7 +210,7 @@ impl vfs::VfsFile for PythonFile {
 }
 
 #[derive(Debug, Clone)]
-pub struct StarImport {
+pub(crate) struct StarImport {
     pub scope: NodeIndex,
     pub(super) import_from_node: NodeIndex,
     pub(super) star_node: NodeIndex,
@@ -355,20 +353,141 @@ impl<'db> PythonFile {
         &'file self,
         i_s: &'i_s InferenceState<'db, 'i_s>,
     ) -> Inference<'db, 'file, 'i_s> {
-        Inference(self.name_resolution(i_s))
+        Inference(self.name_resolution_for_inference(i_s))
     }
 
-    pub fn name_resolution<'file, 'i_s>(
+    pub fn name_resolution_for_inference<'file, 'i_s>(
         &'file self,
         i_s: &'i_s InferenceState<'db, 'i_s>,
     ) -> NameResolution<'db, 'file, 'i_s> {
-        NameResolution { file: self, i_s }
+        NameResolution {
+            file: self,
+            i_s,
+            stop_on_assignments: false,
+        }
     }
 
-    pub fn lookup_global(&self, name: &str) -> Option<NodeRef> {
+    pub fn name_resolution_for_types<'file, 'i_s>(
+        &'file self,
+        i_s: &'i_s InferenceState<'db, 'i_s>,
+    ) -> NameResolution<'db, 'file, 'i_s> {
+        NameResolution {
+            file: self,
+            i_s,
+            stop_on_assignments: true,
+        }
+    }
+
+    pub fn lookup_symbol(&self, name: &str) -> Option<NodeRef> {
         self.symbol_table
             .lookup_symbol(name)
             .map(|node_index| NodeRef::new(self, node_index))
+    }
+
+    pub fn lookup(&self, db: &Database, add_issue: impl Fn(IssueKind), name: &str) -> LookupResult {
+        let i_s = &InferenceState::new(db, self);
+        let inference = self.inference(i_s);
+        if let Some((pr, redirect_to)) = inference.resolve_module_access(name, &add_issue) {
+            let inf = inference.infer_module_point_resolution(pr, add_issue);
+            if let Some(name) = redirect_to {
+                LookupResult::GotoName { inf, name }
+            } else {
+                LookupResult::UnknownName(inf)
+            }
+        } else {
+            LookupResult::None
+        }
+    }
+
+    pub fn file_entry_and_is_package(&self, db: &'db Database) -> (&'db Rc<FileEntry>, bool) {
+        let entry = self.file_entry(db);
+        (
+            entry,
+            &*entry.name == "__init__.py" || &*entry.name == "__init__.pyi",
+        )
+    }
+
+    pub fn sub_module(&self, db: &'db Database, name: &str) -> Option<ImportResult> {
+        let (entry, is_package) = self.file_entry_and_is_package(db);
+        if !is_package {
+            return None;
+        }
+        match &entry.parent {
+            Parent::Directory(dir) => python_import_with_needs_exact_case(
+                db,
+                self,
+                std::iter::once((dir.upgrade().unwrap(), false)),
+                name,
+                true,
+            )
+            .or_else(|| {
+                if self.in_partial_stubs(db) {
+                    self.normal_file_of_stub_file(db)?.sub_module(db, name)
+                } else {
+                    None
+                }
+            }),
+            Parent::Workspace(_) => None,
+        }
+    }
+
+    pub fn sub_module_lookup(&self, db: &'db Database, name: &str) -> Option<LookupResult> {
+        Some(match self.sub_module(db, name)? {
+            ImportResult::File(file_index) => LookupResult::FileReference(file_index),
+            ImportResult::Namespace(ns) => {
+                LookupResult::UnknownName(Inferred::from_type(Type::Namespace(ns)))
+            }
+            ImportResult::PyTypedMissing => unreachable!(),
+        })
+    }
+
+    pub fn maybe_submodule_reexport(
+        &self,
+        i_s: &InferenceState,
+        name_ref: NodeRef,
+        name: &str,
+    ) -> Option<LookupResult> {
+        let Some(import) = name_ref.maybe_import_of_name_in_symbol_table() else {
+            return None;
+        };
+        let submodule_reexport = |import_result| {
+            if let Some(ImportResult::File(f)) = import_result {
+                if f == self.file_index {
+                    return Some(
+                        self.sub_module_lookup(i_s.db, name)
+                            .unwrap_or(LookupResult::None),
+                    );
+                }
+            }
+            None
+        };
+        match import {
+            NameImportParent::ImportFromAsName(imp) => {
+                let import_from = imp.import_from();
+                // from . import x simply imports the module that exists in the same
+                // directory anyway and should not be considered a reexport.
+                submodule_reexport(
+                    self.name_resolution_for_types(i_s)
+                        .import_from_first_part(import_from),
+                )
+            }
+            NameImportParent::DottedAsName(dotted) => {
+                if let DottedAsNameContent::WithAs(dotted, _) = dotted.unpack() {
+                    // Only import `foo.bar as bar` can be a submodule.
+                    // `import foo.bar` just exports the name foo.
+                    if let DottedNameContent::DottedName(super_, _) = dotted.unpack() {
+                        submodule_reexport(
+                            self.name_resolution_for_types(i_s)
+                                .cache_import_dotted_name(super_, None),
+                        )
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            }
+        }
     }
 
     pub(super) fn ensure_annotation_file(
@@ -416,15 +535,6 @@ impl<'db> PythonFile {
         } else {
             self.ensure_annotation_file(db, start, code)
         }
-    }
-
-    pub fn is_stub_or_in_protocol(&self, i_s: &InferenceState) -> bool {
-        if let Some(current_class) = i_s.current_class() {
-            if current_class.is_protocol(i_s.db) {
-                return true;
-            }
-        }
-        self.is_stub()
     }
 
     #[inline]
@@ -478,7 +588,7 @@ impl<'db> PythonFile {
                     .lookup_symbol("__all__")
                     .and_then(|dunder_all_index| {
                         let name_def = NodeRef::new(self, dunder_all_index)
-                            .as_name()
+                            .expect_name()
                             .name_def()
                             .unwrap();
                         if let Some((_, _, expr)) =
@@ -493,7 +603,7 @@ impl<'db> PythonFile {
                         } else if let Some(NameImportParent::ImportFromAsName(as_name)) =
                             name_def.maybe_import()
                         {
-                            let i_s = InferenceState::new(db);
+                            let i_s = InferenceState::new(db, self);
                             let inference = self.inference(&i_s);
                             inference.infer_name_def(name_def);
                             // Just take the __all__ from the now calculated file. The exact
@@ -575,7 +685,7 @@ impl<'db> PythonFile {
         let p = self.points.get(dunder_all_index);
         if p.calculated() && p.maybe_specific() == Some(Specific::FirstNameOfNameDef) {
             for index in OtherDefinitionIterator::new(&self.points, dunder_all_index) {
-                let name = NodeRef::new(self, index as NodeIndex).as_name();
+                let name = NodeRef::new(self, index as NodeIndex).expect_name();
                 dunder_all = check_multi_def(dunder_all, name)?
             }
         }
@@ -594,7 +704,16 @@ impl<'db> PythonFile {
     }
 
     pub fn add_issue(&self, i_s: &InferenceState, issue: Issue) {
-        if !i_s.should_add_issue() || self.ignore_type_errors {
+        if !i_s.should_add_issue() {
+            return;
+        }
+        self.add_type_issue(i_s.db, issue)
+    }
+
+    pub fn add_type_issue(&self, db: &'db Database, issue: Issue) {
+        // This function adds issues in all normal cases and does not respect the InferenceState
+        // mode.
+        if self.ignore_type_errors {
             return;
         }
         let maybe_ignored = self
@@ -607,11 +726,11 @@ impl<'db> PythonFile {
         match self.issues.add_if_not_ignored(issue, maybe_ignored) {
             Ok(issue) => debug!(
                 "NEW ISSUE: {}",
-                Diagnostic::new(i_s.db, self, issue).as_string(&config)
+                Diagnostic::new(db, self, issue).as_string(&config)
             ),
             Err(issue) => debug!(
                 "New ignored issue: {}",
-                Diagnostic::new(i_s.db, self, &issue).as_string(&config)
+                Diagnostic::new(db, self, &issue).as_string(&config)
             ),
         }
     }
@@ -642,7 +761,7 @@ impl<'db> PythonFile {
     }
 
     pub fn has_unsupported_class_scoped_import(&self, db: &Database) -> bool {
-        let i_s = &InferenceState::new(db);
+        let i_s = &InferenceState::new(db, self);
         self.symbol_table.iter().any(|(_, index)| {
             NodeRef::new(self, *index)
                 .infer_name_of_definition_by_index(i_s)
@@ -651,7 +770,7 @@ impl<'db> PythonFile {
         }) || self.star_imports.iter().any(|star_import| {
             star_import.in_module_scope()
                 && star_import
-                    .to_file(&self.name_resolution(i_s))
+                    .to_file(&self.name_resolution_for_inference(i_s))
                     .is_some_and(|file| file.has_unsupported_class_scoped_import(db))
         })
     }
@@ -920,7 +1039,7 @@ fn maybe_dunder_all_names(
 }
 
 // An Iterator that goes through all nodes except the given one
-pub struct OtherDefinitionIterator<'a> {
+pub(crate) struct OtherDefinitionIterator<'a> {
     points: &'a Points,
     start: NodeIndex,
     current: NodeIndex,

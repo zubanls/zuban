@@ -8,11 +8,12 @@ use std::{
 use config::TypeCheckerFlags;
 use parsa_python_cst::*;
 
-use super::{first_defined_name, flow_analysis::FLOW_ANALYSIS, inference::await_};
+use super::{first_defined_name, flow_analysis::FLOW_ANALYSIS, inference::await_, ClassNodeRef};
 use crate::{
     arguments::{CombinedArgs, KnownArgs, NoArgs},
     database::{
-        ClassKind, ComplexPoint, Database, Locality, OverloadImplementation, Point, Specific,
+        ClassKind, ComplexPoint, Database, Locality, MetaclassState, OverloadImplementation, Point,
+        Specific,
     },
     debug,
     diagnostics::{Issue, IssueKind},
@@ -34,7 +35,7 @@ use crate::{
         LookupResult, NeverCause, ParamType, Type, TypeVarKind, TypeVarLike, Variance,
     },
     type_helpers::{
-        cache_class_name, is_private, Class, ClassLookupOptions, ClassNodeRef, FirstParamKind,
+        cache_class_name, is_private, Class, ClassLookupOptions, FirstParamKind,
         FirstParamProperties, Function, Instance, InstanceLookupOptions, LookupDetails,
         TypeOrClass,
     },
@@ -139,6 +140,7 @@ impl Inference<'_, '_, '_> {
                 self.file.file_path(self.i_s.db),
                 self.file.file_index(),
             );
+            debug_assert!(self.i_s.is_file_context());
             FLOW_ANALYSIS.with(|fa| {
                 debug_indent(|| {
                     fa.with_new_empty_and_process_delayed_funcs(self.i_s, || {
@@ -160,9 +162,6 @@ impl Inference<'_, '_, '_> {
             for complex_point in unsafe { self.file.complex_points.iter() } {
                 // Make sure types are calculated and the errors are generated.
                 match complex_point {
-                    ComplexPoint::NewTypeDefinition(n) => {
-                        n.type_(self.i_s);
-                    }
                     ComplexPoint::TypeVarLike(tvl) => {
                         tvl.ensure_calculated_types(self.i_s.db);
                     }
@@ -170,10 +169,10 @@ impl Inference<'_, '_, '_> {
                 }
             }
 
-            if let Some(name_ref) = self.file.lookup_global("__getattribute__") {
+            if let Some(name_ref) = self.file.lookup_symbol("__getattribute__") {
                 name_ref.add_issue(self.i_s, IssueKind::GetattributeInvalidAtModuleLevel)
             }
-            if let Some(name_ref) = self.file.lookup_global("__getattr__") {
+            if let Some(name_ref) = self.file.lookup_symbol("__getattr__") {
                 let actual = name_ref.infer_name_of_definition_by_index(self.i_s);
                 let actual = actual.as_cow_type(self.i_s);
                 let Type::Callable(callable) = &self.i_s.db.python_state.valid_getattr_supertype
@@ -642,7 +641,7 @@ impl Inference<'_, '_, '_> {
         }
     }
 
-    pub fn calc_block_diagnostics(
+    pub(crate) fn calc_block_diagnostics(
         &self,
         block: Block,
         class: Option<Class>,
@@ -675,14 +674,134 @@ impl Inference<'_, '_, '_> {
         let class_node_ref = ClassNodeRef::new(self.file, class.index());
         class_node_ref.ensure_cached_class_infos(self.i_s);
         let db = self.i_s.db;
+
+        if let Some(arguments) = arguments {
+            for argument in arguments.iter() {
+                match argument {
+                    Argument::Positional(_) => (), // These are checked in ensure_cached_class_infos
+                    Argument::Keyword(kwarg) => {
+                        let (name, expr) = kwarg.unpack();
+                        if name.as_str() != "metaclass" {
+                            // Generate diagnostics
+                            self.infer_expression(expr);
+                            debug!(
+                                "TODO shouldn't we handle this? In \
+                                testNewAnalyzerClassKeywordsForward it's ignored..."
+                            )
+                        }
+                    }
+                    Argument::Star(starred) => {
+                        NodeRef::new(self.file, starred.index())
+                            .add_type_issue(db, IssueKind::InvalidBaseClass);
+                    }
+                    Argument::StarStar(double_starred) => {
+                        NodeRef::new(self.file, double_starred.index())
+                            .add_type_issue(db, IssueKind::InvalidBaseClass);
+                    }
+                }
+            }
+        }
+        if let Some(decorated) = class.maybe_decorated() {
+            // TODO we pretty much just ignore the fact that a decorated class can also be an enum.
+            let mut inferred = Inferred::from_saved_node_ref(class_node_ref.into());
+            for decorator in decorated.decorators().iter_reverse() {
+                let decorate = self.infer_decorator(decorator);
+                inferred = decorate.execute(
+                    self.i_s,
+                    &KnownArgs::new(&inferred, NodeRef::new(self.file, decorator.index())),
+                );
+            }
+            // TODO for now don't save class decorators, because they are really not used in mypy.
+            // let saved = inferred.save_redirect(i_s, name_def.file, name_def.node_index);
+        }
+
+        let class_infos = class_node_ref.use_cached_class_infos(db);
         let c = Class::with_self_generics(db, class_node_ref);
-        let class_infos = c.use_cached_class_infos(db);
+
         if matches!(class_infos.class_kind, ClassKind::TypedDict) {
             // TypedDicts are special, because they really only contain annotations and no methods.
             // We skip all of this logic, because there's custom logic for TypedDicts.
             return;
         }
-        let i_s = self.i_s.with_diagnostic_class_context(&c);
+        if let Some(t) = class_infos.undefined_generics_type.get() {
+            if let Type::Dataclass(d) = t.as_ref() {
+                if d.options.slots && c.lookup_symbol(self.i_s, "__slots__").is_some() {
+                    c.add_issue_on_name(
+                        db,
+                        IssueKind::DataclassPlusExplicitSlots {
+                            class_name: c.name().into(),
+                        },
+                    )
+                }
+            }
+        }
+
+        if let MetaclassState::Some(link) = class_infos.metaclass {
+            if link == db.python_state.enum_meta_link() {
+                // Check if __new__ was correctly used in combination with enums (1)
+                // Also check if mixins appear after enums (2)
+                let mut had_new = 0;
+                let mut enum_spotted: Option<Class> = None;
+                for base in c.bases(db) {
+                    if let TypeOrClass::Class(c) = &base {
+                        let is_enum = c.use_cached_class_infos(db).class_kind == ClassKind::Enum;
+                        let has_mixin_enum_new = if is_enum {
+                            c.bases(db).any(|inner| match inner {
+                                TypeOrClass::Class(inner) => {
+                                    inner.use_cached_class_infos(db).class_kind != ClassKind::Enum
+                                        && inner.has_customized_enum_new(self.i_s)
+                                }
+                                TypeOrClass::Type(_) => false,
+                            })
+                        } else {
+                            c.has_customized_enum_new(self.i_s)
+                        };
+                        // (1)
+                        if has_mixin_enum_new {
+                            had_new += 1;
+                            if had_new > 1 {
+                                class_node_ref.add_issue_on_name(
+                                    db,
+                                    IssueKind::EnumMultipleMixinNew {
+                                        extra: c.qualified_name(db).into(),
+                                    },
+                                );
+                            }
+                        }
+                        // (2)
+                        match enum_spotted {
+                            Some(after) if !is_enum => {
+                                class_node_ref.add_issue_on_name(
+                                    db,
+                                    IssueKind::EnumMixinNotAllowedAfterEnum {
+                                        after: after.qualified_name(db).into(),
+                                    },
+                                );
+                            }
+                            _ => {
+                                if is_enum {
+                                    enum_spotted = Some(*c);
+                                }
+                            }
+                        }
+                    }
+                }
+                if let Some(t) = class_infos.undefined_generics_type.get() {
+                    if let Type::Enum(enum_) = t.as_ref() {
+                        // Precalculate the enum values here.
+                        // We need to calculate here, because otherwise the normal class
+                        // calculation will do it for us, which will infer different values.
+                        for member in enum_.members.iter() {
+                            if member.value.is_some() {
+                                member.infer_value(self.i_s, &enum_);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        let i_s = self.i_s.with_class_context(&c);
         let inference = self.file.inference(&i_s);
         let result = inference.calculate_class_block_diagnostics(c, block);
         if !result.is_ok() {
@@ -757,7 +876,7 @@ impl Inference<'_, '_, '_> {
     fn check_function_override(&self, c: Class, index: NodeIndex, name: &str) {
         let i_s = self.i_s;
         let Some(func_def) = NodeRef::new(c.node_ref.file, index)
-            .as_name()
+            .expect_name()
             .name_def()
             .unwrap()
             .maybe_name_of_func()
@@ -835,7 +954,7 @@ impl Inference<'_, '_, '_> {
         // Calculate if there is an @override decorator
         let mut has_override_decorator = false;
         if let Some(ComplexPoint::FunctionOverload(overload)) =
-            NodeRef::new(self.file, func_def.index()).complex()
+            NodeRef::new(self.file, func_def.index()).maybe_complex()
         {
             has_override_decorator = overload.is_override;
         } else if let Some(decorated) = func_def.maybe_decorated() {
@@ -861,7 +980,9 @@ impl Inference<'_, '_, '_> {
     ) {
         let function = Function::new(NodeRef::new(self.file, f.index()), class);
         function.cache_func(self.i_s);
-        if let Some(ComplexPoint::TypeInstance(Type::Callable(c))) = function.node_ref.complex() {
+        if let Some(ComplexPoint::TypeInstance(Type::Callable(c))) =
+            function.node_ref.maybe_complex()
+        {
             if c.no_type_check {
                 return;
             }
@@ -881,7 +1002,7 @@ impl Inference<'_, '_, '_> {
         })
     }
 
-    pub fn ensure_func_diagnostics(&self, function: Function) -> Result<(), ()> {
+    pub(crate) fn ensure_func_diagnostics(&self, function: Function) -> Result<(), ()> {
         let func_node = function.node();
         let from = NodeRef::new(self.file, func_node.body().index());
         diagnostics_for_scope(from, || {
@@ -991,7 +1112,7 @@ impl Inference<'_, '_, '_> {
     ) -> bool {
         let i_s = self.i_s;
         let mut is_overload_member = false;
-        if let Some(ComplexPoint::FunctionOverload(o)) = function.node_ref.complex() {
+        if let Some(ComplexPoint::FunctionOverload(o)) = function.node_ref.maybe_complex() {
             is_overload_member = true;
             for (i, c1) in o.iter_functions().enumerate() {
                 if let Some(implementation) = &o.implementation {
@@ -1280,7 +1401,7 @@ impl Inference<'_, '_, '_> {
             )
         }
 
-        let function_i_s = &i_s.with_diagnostic_func_and_args(&function);
+        let function_i_s = &i_s.with_func_and_args(&function);
         self.file
             .inference(function_i_s)
             .function_diagnostics_with_class_i_s(function, func_kind, flags, name, params, block);
@@ -1857,10 +1978,7 @@ impl Inference<'_, '_, '_> {
 
 fn valid_raise_type(i_s: &InferenceState, from: NodeRef, t: &Type, allow_none: bool) -> bool {
     let db = i_s.db;
-    let check = |cls: Class| {
-        cls.incomplete_mro(db)
-            || cls.class_link_in_mro(i_s, db.python_state.base_exception_node_ref().as_link())
-    };
+    let check = |cls: Class| cls.incomplete_mro(db) || cls.is_base_exception(db);
     match t {
         Type::Class(c) => check(c.class(db)),
         Type::Type(t) => match t.as_ref() {
@@ -1871,7 +1989,7 @@ fn valid_raise_type(i_s: &InferenceState, from: NodeRef, t: &Type, allow_none: b
                     &NoArgs::new(from),
                     &mut ResultContext::Unknown,
                     OnTypeError::new(&|_, _, _, _| {
-                        unreachable!(
+                        recoverable_error!(
                             "Type errors should not be possible, because there are no params"
                         )
                     }),

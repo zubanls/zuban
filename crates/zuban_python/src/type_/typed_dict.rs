@@ -4,8 +4,6 @@ use std::{
     rc::Rc,
 };
 
-use parsa_python_cst::{AtomContent, DictElement};
-
 use super::{
     utils::method_with_fallback, CallableContent, CallableParam, CallableParams, CustomBehavior,
     DbString, FormatStyle, GenericsList, LookupResult, NeverCause, ParamType, RecursiveType,
@@ -13,21 +11,20 @@ use super::{
 };
 use crate::{
     arguments::{ArgKind, Args, InferredArg},
-    database::{ComplexPoint, Database, PointLink, TypedDictDefinition},
+    database::{Database, PointLink},
     diagnostics::IssueKind,
-    file::{infer_string_index, TypeComputation, TypeComputationOrigin, TypeVarCallbackReturn},
+    file::infer_string_index,
     format_data::{AvoidRecursionFor, FormatData},
     getitem::{SliceType, SliceTypeContent},
     inference_state::InferenceState,
     inferred::{AttributeKind, Inferred},
     matching::{ErrorStrs, LookupKind, Match, Matcher, MismatchReason, OnTypeError, ResultContext},
-    node_ref::NodeRef,
     type_helpers::{Class, Instance, InstanceLookupOptions, LookupDetails},
     utils::join_with_commas,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct TypedDictMember {
+pub(crate) struct TypedDictMember {
     pub name: StringSlice,
     pub type_: Type,
     pub required: bool,
@@ -55,14 +52,14 @@ impl TypedDictMember {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum TypedDictGenerics {
+pub(crate) enum TypedDictGenerics {
     None,
     NotDefinedYet(TypeVarLikes),
     Generics(GenericsList),
 }
 
 #[derive(Debug, Clone, Eq)]
-pub struct TypedDict {
+pub(crate) struct TypedDict {
     pub name: Option<StringSlice>,
     members: OnceCell<Box<[TypedDictMember]>>,
     pub defined_at: PointLink,
@@ -470,58 +467,6 @@ impl Hash for TypedDict {
     }
 }
 
-#[derive(Default)]
-pub struct TypedDictMemberGatherer {
-    members: Vec<TypedDictMember>,
-    first_after_merge_index: usize,
-}
-
-impl TypedDictMemberGatherer {
-    pub(crate) fn add(&mut self, db: &Database, member: TypedDictMember) -> Result<(), IssueKind> {
-        let key = member.name.as_str(db);
-        if let Some((i, m)) = self
-            .members
-            .iter_mut()
-            .enumerate()
-            .find(|(_, m)| m.name.as_str(db) == key)
-        {
-            if i >= self.first_after_merge_index {
-                Err(IssueKind::TypedDictDuplicateKey { key: key.into() })
-            } else {
-                *m = member;
-                Err(IssueKind::TypedDictOverwritingKeyWhileExtending { key: key.into() })
-            }
-        } else {
-            self.members.push(member);
-            Ok(())
-        }
-    }
-
-    pub fn merge(&mut self, i_s: &InferenceState, node_ref: NodeRef, slice: &[TypedDictMember]) {
-        for to_add in slice.iter() {
-            let key = to_add.name.as_str(i_s.db);
-            if let Some(current) = self
-                .members
-                .iter_mut()
-                .find(|m| m.name.as_str(i_s.db) == key)
-            {
-                node_ref.add_issue(
-                    i_s,
-                    IssueKind::TypedDictOverwritingKeyWhileMerging { key: key.into() },
-                );
-                *current = to_add.clone(); // Mypy prioritizes this...
-            } else {
-                self.members.push(to_add.clone());
-            }
-        }
-        self.first_after_merge_index = self.members.len();
-    }
-
-    pub fn into_boxed_slice(self) -> Box<[TypedDictMember]> {
-        self.members.into_boxed_slice()
-    }
-}
-
 fn add_access_key_must_be_string_literal_issue(
     db: &Database,
     td: &TypedDict,
@@ -535,181 +480,6 @@ fn add_access_key_must_be_string_literal_issue(
         )
         .into(),
     })
-}
-
-pub(crate) fn new_typed_dict<'db>(i_s: &InferenceState<'db, '_>, args: &dyn Args<'db>) -> Inferred {
-    new_typed_dict_internal(i_s, args).unwrap_or_else(Inferred::new_invalid_type_definition)
-}
-
-fn new_typed_dict_internal<'db>(
-    i_s: &InferenceState<'db, '_>,
-    args: &dyn Args<'db>,
-) -> Option<Inferred> {
-    let mut iterator = args.iter(i_s.mode);
-    let Some(first_arg) = iterator.next() else {
-        args.add_issue(i_s, IssueKind::TypedDictFirstArgMustBeString);
-        return None;
-    };
-    let ArgKind::Positional(first) = first_arg.kind else {
-        args.add_issue(i_s, IssueKind::UnexpectedArgumentsToTypedDict);
-        return None;
-    };
-    let expr = first.node_ref.as_named_expression().expression();
-    let Some(name) = StringSlice::from_string_in_expression(first.node_ref.file_index(), expr)
-    else {
-        first
-            .node_ref
-            .add_issue(i_s, IssueKind::TypedDictFirstArgMustBeString);
-        return None;
-    };
-
-    if let Some(definition_name) = expr
-        .maybe_single_string_literal()
-        .unwrap()
-        .in_simple_assignment()
-    {
-        let name = name.as_str(i_s.db);
-        if name != definition_name.as_code() {
-            first.node_ref.add_issue(
-                i_s,
-                IssueKind::TypedDictNameMismatch {
-                    string_name: Box::from(name),
-                    variable_name: Box::from(definition_name.as_code()),
-                },
-            );
-        }
-    } else {
-        first.node_ref.add_issue(
-            i_s,
-            IssueKind::InvalidAssignmentForm {
-                class_name: "TypedDict",
-            },
-        );
-        return None;
-    }
-
-    let Some(second_arg) = iterator.next() else {
-        args.add_issue(i_s, IssueKind::TooFewArguments(" for TypedDict()".into()));
-        return None;
-    };
-    let ArgKind::Positional(second) = second_arg.kind else {
-        second_arg.add_issue(i_s, IssueKind::TypedDictSecondArgMustBeDict);
-        return None;
-    };
-    let Some(atom_content) = second
-        .node_ref
-        .as_named_expression()
-        .expression()
-        .maybe_unpacked_atom()
-    else {
-        second
-            .node_ref
-            .add_issue(i_s, IssueKind::TypedDictSecondArgMustBeDict);
-        return None;
-    };
-    let mut total = true;
-    if let Some(next) = iterator.next() {
-        match &next.kind {
-            ArgKind::Keyword(kw) if kw.key == "total" => {
-                total = infer_typed_dict_total_argument(
-                    i_s,
-                    kw.infer(&mut ResultContext::Unknown),
-                    |issue| next.add_issue(i_s, issue),
-                )?;
-            }
-            ArgKind::Keyword(kw) => {
-                let s = format!(
-                    r#"Unexpected keyword argument "{}" for "TypedDict""#,
-                    kw.key
-                );
-                kw.add_issue(i_s, IssueKind::ArgumentIssue(s.into()));
-                return None;
-            }
-            _ => {
-                args.add_issue(i_s, IssueKind::UnexpectedArgumentsToTypedDict);
-                return None;
-            }
-        };
-    }
-    if iterator.next().is_some() {
-        args.add_issue(i_s, IssueKind::TooManyArguments(" for \"TODO()\"".into()));
-        return None;
-    }
-    let dct_iterator = match atom_content {
-        AtomContent::Dict(dct) => dct.iter_elements(),
-        _ => {
-            second
-                .node_ref
-                .add_issue(i_s, IssueKind::TypedDictSecondArgMustBeDict);
-            return None;
-        }
-    };
-    let on_type_var = &mut |_: &InferenceState, _: &_, _, _| TypeVarCallbackReturn::NotFound {
-        allow_late_bound_callables: false,
-    };
-    let inference = first.node_ref.file.inference(i_s);
-    let mut comp = TypeComputation::new(
-        &inference,
-        first.node_ref.as_link(),
-        on_type_var,
-        TypeComputationOrigin::TypedDictMember,
-    );
-    let mut members = TypedDictMemberGatherer::default();
-    for element in dct_iterator {
-        match element {
-            DictElement::KeyValue(key_value) => {
-                let Some(name) = StringSlice::from_string_in_expression(
-                    first.node_ref.file_index(),
-                    key_value.key(),
-                ) else {
-                    NodeRef::new(first.node_ref.file, key_value.key().index())
-                        .add_issue(i_s, IssueKind::TypedDictInvalidFieldName);
-                    return None;
-                };
-                if let Err(issue) = members.add(
-                    i_s.db,
-                    comp.compute_typed_dict_member(name, key_value.value(), total),
-                ) {
-                    NodeRef::new(first.node_ref.file, key_value.key().index())
-                        .add_issue(i_s, issue);
-                }
-                key_value.key();
-            }
-            DictElement::Star(d) => {
-                NodeRef::new(first.node_ref.file, d.index())
-                    .add_issue(i_s, IssueKind::TypedDictInvalidFieldName);
-                return None;
-            }
-        };
-    }
-
-    let type_var_likes = comp.into_type_vars(|_, _| ());
-    Some(Inferred::new_unsaved_complex(
-        ComplexPoint::TypedDictDefinition(TypedDictDefinition::new(
-            TypedDict::new_definition(
-                name,
-                members.into_boxed_slice(),
-                first.node_ref.as_link(),
-                type_var_likes,
-            ),
-            total,
-        )),
-    ))
-}
-
-pub(crate) fn infer_typed_dict_total_argument(
-    i_s: &InferenceState,
-    inf: Inferred,
-    add_issue: impl Fn(IssueKind),
-) -> Option<bool> {
-    if let Some(total) = inf.maybe_bool_literal(i_s) {
-        Some(total)
-    } else {
-        add_issue(IssueKind::ArgumentMustBeTrueOrFalse {
-            key: "total".into(),
-        });
-        None
-    }
 }
 
 pub(crate) fn typed_dict_setdefault<'db>(
@@ -1162,7 +932,7 @@ pub(crate) fn lookup_on_typed_dict<'a>(
     )
 }
 
-pub(crate) fn infer_typed_dict_item(
+pub(crate) fn infer_typed_dict_arg(
     i_s: &InferenceState,
     typed_dict: &TypedDict,
     matcher: &mut Matcher,
@@ -1205,7 +975,7 @@ pub(crate) fn check_typed_dict_call<'db>(
     let mut extra_keys = vec![];
     for arg in args.iter(i_s.mode) {
         if let Some(key) = arg.keyword_name(i_s.db) {
-            infer_typed_dict_item(
+            infer_typed_dict_arg(
                 i_s,
                 &typed_dict,
                 matcher,

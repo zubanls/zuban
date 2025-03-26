@@ -6,7 +6,7 @@ use vfs::FileIndex;
 
 use crate::{
     database::{BaseClass, Database, Locality, Point, PointLink, Specific},
-    file::PythonFile,
+    file::{ClassInitializer, ClassNodeRef, PythonFile},
     inferred::Inferred,
     matching::Generics,
     new_class,
@@ -15,10 +15,7 @@ use crate::{
         dataclasses_replace, AnyCause, CallableContent, CallableParam, CallableParams,
         ClassGenerics, CustomBehavior, NeverCause, ParamType, Tuple, Type, TypeVarLikes,
     },
-    type_helpers::{
-        cache_class_name, Class, ClassInitializer, ClassNodeRef, FirstParamProperties, Function,
-        Instance,
-    },
+    type_helpers::{cache_class_name, Class, FirstParamProperties, Function, Instance},
     InferenceState,
 };
 
@@ -124,7 +121,7 @@ macro_rules! link_to_type_class_without_generic {
 }
 
 #[derive(Clone)]
-pub struct PythonState {
+pub(crate) struct PythonState {
     pub builtins: *const PythonFile,
     pub typing: *const PythonFile,
     pub typeshed: *const PythonFile,
@@ -199,7 +196,6 @@ pub struct PythonState {
     typing_runtime_checkable_index: NodeIndex,
     typing_extensions_runtime_checkable_index: NodeIndex,
     typing_container_index: NodeIndex,
-    typing_mapping_get_index: NodeIndex,
     typing_special_form_index: NodeIndex,
     typing_no_type_check_index: NodeIndex,
     pub typing_typed_dict_bases: Box<[BaseClass]>,
@@ -321,7 +317,6 @@ impl PythonState {
             typing_keys_view_index: 0,
             typing_runtime_checkable_index: 0,
             typing_extensions_runtime_checkable_index: 0,
-            typing_mapping_get_index: 0,
             typing_special_form_index: 0,
             typing_no_type_check_index: 0,
             typing_coroutine_index: 0,
@@ -718,15 +713,6 @@ impl PythonState {
             "dict_keys"
         );
 
-        db.python_state.typing_mapping_get_index = db
-            .python_state
-            .mapping_node_ref()
-            .class_storage()
-            .class_symbol_table
-            .lookup_symbol("get")
-            .unwrap()
-            - NAME_TO_FUNCTION_DIFF;
-
         let typed_dict_mro = calculate_mro_for_class(db, db.python_state.typed_dict_class());
         let builtins_int_mro = calculate_mro_for_class(db, db.python_state.int());
         let builtins_bool_mro = calculate_mro_for_class(db, db.python_state.bool());
@@ -960,8 +946,6 @@ impl PythonState {
     attribute_node_ref!(typing, pub container_node_ref, typing_container_index);
     class_node_ref!(typing, pub mapping_node_ref, typing_mapping_index);
     class_node_ref!(typing, pub keys_view_node_ref, typing_keys_view_index);
-    attribute_node_ref!(typing, mapping_get_node_ref, typing_mapping_get_index);
-    attribute_node_ref!(typing, pub typing_overload, typing_overload_index);
     optional_attribute_node_ref!(typing, pub typing_override, typing_override_index);
     attribute_node_ref!(typing, pub typing_final, typing_final_index);
     class_node_ref!(typing, pub generator_node_ref, typing_generator_index);
@@ -985,6 +969,9 @@ impl PythonState {
         collections_namedtuple_index
     );
     class_node_ref!(_collections_abc, pub _collections_abc_dict_keys_node_ref, _collections_abc_dict_keys_index);
+    attribute_node_ref!(functools, pub total_ordering_node_ref, functools_total_ordering_index);
+    attribute_node_ref!(typing, pub runtime_checkable_node_ref, typing_runtime_checkable_index);
+    attribute_node_ref!(typing_extensions, pub typing_extensions_runtime_checkable_node_ref, typing_extensions_runtime_checkable_index);
 
     attribute_link!(builtins, pub object_link, builtins_object_index);
     attribute_link!(builtins, pub int_link, builtins_int_index);
@@ -992,15 +979,11 @@ impl PythonState {
     attribute_link!(builtins, pub bytes_link, builtins_bytes_index);
     attribute_link!(builtins, pub bool_link, builtins_bool_index);
     attribute_link!(builtins, pub notimplementederror_link, builtins_notimplementederror);
-    attribute_link!(builtins, pub staticmethod_link, builtins_staticmethod_index);
-    attribute_link!(builtins, pub classmethod_link, builtins_staticmethod_index);
-    attribute_link!(builtins, pub property_link, builtins_staticmethod_index);
     attribute_link!(builtins, pub slice_link, builtins_slice_index);
     attribute_link!(abc, pub abc_meta_link, abc_abc_meta_index);
     attribute_link!(abc, pub abstractmethod_link, abc_abstractmethod_index);
     attribute_link!(abc, pub abstractproperty_link, abc_abstractproperty_index);
     attribute_link!(functools, pub cached_property_link, functools_cached_property_index);
-    attribute_link!(functools, pub total_ordering_link, functools_total_ordering_index);
     attribute_link!(enum_file, pub enum_meta_link, enum_enum_meta_index);
     attribute_link!(enum_file, pub enum_auto_link, enum_auto_index);
     attribute_link!(typing, pub overload_link, typing_overload_index);
@@ -1011,8 +994,6 @@ impl PythonState {
     attribute_link!(typing, pub async_generator_link, typing_async_generator_index);
     attribute_link!(typing, pub async_iterator_link, typing_async_iterator_index);
     attribute_link!(typing, pub async_iterable_link, typing_async_iterable_index);
-    attribute_link!(typing, pub runtime_checkable_link, typing_runtime_checkable_index);
-    attribute_link!(typing_extensions, pub typing_extensions_runtime_checkable_link, typing_extensions_runtime_checkable_index);
     attribute_link!(typing, pub no_type_check_link, typing_no_type_check_index);
     attribute_link!(collections, pub defaultdict_link, collections_defaultdict_index);
     optional_attribute_link!(types, ellipsis_type_link, types_ellipsis_type_index);
@@ -1051,7 +1032,6 @@ impl PythonState {
     node_ref_to_type_class_without_generic!(pub property_type, property_node_ref);
     node_ref_to_type_class_without_generic!(pub function_type, function_node_ref);
     node_ref_to_type_class_without_generic!(pub bare_type_type, bare_type_node_ref);
-    node_ref_to_type_class_without_generic!(pub typed_dict_type, typed_dict_node_ref);
     node_ref_to_type_class_without_generic!(pub type_var_type, type_var_node_ref);
     node_ref_to_type_class_without_generic!(pub typing_special_form_type, typing_special_form_node_ref);
 
@@ -1093,17 +1073,13 @@ impl PythonState {
         Class::with_self_generics(db, self.supports_keys_and_get_item_node_ref())
     }
 
-    pub fn collections_namedtuple_function(&self, i_s: &InferenceState) -> Function {
+    pub(crate) fn collections_namedtuple_function(&self, i_s: &InferenceState) -> Function {
         let func = Function::new(self.collections_named_tuple_node_ref(), None);
         func.ensure_cached_func(i_s);
         func
     }
 
-    pub fn mapping_get_function<'class>(&self, class: Class<'class>) -> Function<'_, 'class> {
-        Function::new(self.mapping_get_node_ref(), Some(class))
-    }
-
-    pub fn dataclasses_replace(&self, i_s: &InferenceState) -> Function {
+    pub(crate) fn dataclasses_replace(&self, i_s: &InferenceState) -> Function {
         debug_assert!(self.dataclasses_replace_index != 0);
         let func = Function::new(
             NodeRef::new(self.dataclasses_file(), self.dataclasses_replace_index),
@@ -1124,8 +1100,8 @@ impl PythonState {
             _ => unreachable!(),
         };
         let func = Function::new(NodeRef::new(self.mypy_extensions(), node_index), None);
-        func.ensure_cached_func(&InferenceState::new(db));
-        Inferred::from_saved_node_ref(func.node_ref)
+        func.ensure_cached_func(&InferenceState::new(db, func.file));
+        Inferred::from_saved_node_ref(func.node_ref.into())
     }
 
     pub fn module_instance(&self) -> Instance {
@@ -1155,7 +1131,7 @@ fn node_ref_to_global_func_type(db: &Database, n: NodeRef) -> Type {
         n.file.tree.short_debug_of_index(n.node_index)
     );
     let func = Function::new(n, None);
-    let i_s = InferenceState::new(db);
+    let i_s = InferenceState::new(db, func.file);
     func.ensure_cached_func(&i_s);
     func.as_type(&i_s, FirstParamProperties::None)
 }

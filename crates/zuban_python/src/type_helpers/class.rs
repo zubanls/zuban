@@ -7,10 +7,7 @@ use std::{
 
 use parsa_python_cst::{Assignment, ClassDef, TypeLike};
 
-use super::{
-    overload::OverloadResult, Callable, ClassInitializer, ClassNodeRef, Instance,
-    InstanceLookupOptions, LookupDetails,
-};
+use super::{overload::OverloadResult, Callable, Instance, InstanceLookupOptions, LookupDetails};
 use crate::{
     arguments::Args,
     database::{
@@ -19,7 +16,7 @@ use crate::{
     },
     debug,
     diagnostics::IssueKind,
-    file::TypeVarCallbackReturn,
+    file::{ClassInitializer, ClassNodeRef, TypeVarCallbackReturn},
     format_data::FormatData,
     getitem::SliceType,
     inference_state::InferenceState,
@@ -32,12 +29,12 @@ use crate::{
     },
     node_ref::NodeRef,
     type_::{
-        execute_functional_enum, AnyCause, CallableContent, CallableLike, ClassGenerics, Dataclass,
-        FormatStyle, FunctionOverload, GenericClass, GenericsList, LookupResult, NamedTuple,
-        NeverCause, ParamSpecArg, ParamSpecUsage, Tuple, TupleArgs, Type, TypeVarLike,
-        TypeVarLikeUsage, TypeVarLikes, TypedDict, TypedDictGenerics, Variance,
+        AnyCause, CallableContent, CallableLike, ClassGenerics, Dataclass, FormatStyle,
+        FunctionOverload, GenericClass, GenericsList, LookupResult, NamedTuple, NeverCause,
+        ParamSpecArg, ParamSpecUsage, Tuple, TupleArgs, Type, TypeVarLike, TypeVarLikeUsage,
+        TypeVarLikes, TypedDict, TypedDictGenerics, Variance,
     },
-    utils::{debug_indent, join_with_commas},
+    utils::debug_indent,
 };
 
 pub fn cache_class_name(name_def: NodeRef, class: ClassDef) {
@@ -59,7 +56,7 @@ impl<'a> std::ops::Deref for Class<'a> {
 }
 
 #[derive(Clone, Copy)]
-pub struct Class<'a> {
+pub(crate) struct Class<'a> {
     pub node_ref: ClassNodeRef<'a>,
     pub class_storage: &'a ClassStorage,
     pub generics: Generics<'a>,
@@ -283,19 +280,18 @@ impl<'db: 'a, 'a> Class<'a> {
         }
     }
 
-    pub fn is_base_exception_group(&self, i_s: &InferenceState) -> bool {
-        i_s.db
-            .python_state
+    pub fn is_base_exception_group(&self, db: &Database) -> bool {
+        db.python_state
             .base_exception_group_node_ref()
-            .is_some_and(|g| self.class_link_in_mro(i_s, g.as_link()))
+            .is_some_and(|g| self.class_link_in_mro(db, g.as_link()))
     }
 
-    pub fn is_base_exception(&self, i_s: &InferenceState) -> bool {
-        self.class_link_in_mro(i_s, i_s.db.python_state.base_exception_node_ref().as_link())
+    pub fn is_base_exception(&self, db: &Database) -> bool {
+        self.class_link_in_mro(db, db.python_state.base_exception_node_ref().as_link())
     }
 
-    pub fn is_exception(&self, i_s: &InferenceState) -> bool {
-        self.class_link_in_mro(i_s, i_s.db.python_state.exception_node_ref().as_link())
+    pub fn is_exception(&self, db: &Database) -> bool {
+        self.class_link_in_mro(db, db.python_state.exception_node_ref().as_link())
     }
 
     pub fn is_protocol(&self, db: &Database) -> bool {
@@ -689,7 +685,10 @@ impl<'db: 'a, 'a> Class<'a> {
             let protocol_members = &c.use_cached_class_infos(db).protocol_members;
             for protocol_member in protocol_members.iter() {
                 let name_node_ref = NodeRef::new(self.node_ref.file, protocol_member.name_index);
-                if !matches!(name_node_ref.as_name().expect_type(), TypeLike::Function(_)) {
+                if !matches!(
+                    name_node_ref.expect_name().expect_type(),
+                    TypeLike::Function(_)
+                ) {
                     members.push(name_node_ref.as_code().into())
                 }
             }
@@ -700,7 +699,7 @@ impl<'db: 'a, 'a> Class<'a> {
     pub fn lookup_assignment(&self, name: &str) -> Option<Assignment<'a>> {
         let i = self.class_storage.class_symbol_table.lookup_symbol(name)?;
         NodeRef::new(self.node_ref.file, i)
-            .as_name()
+            .expect_name()
             .maybe_assignment_definition_name()
     }
 
@@ -714,7 +713,7 @@ impl<'db: 'a, 'a> Class<'a> {
                         if let Some(result) = self
                             .node_ref
                             .file
-                            .name_resolution(i_s)
+                            .name_resolution_for_inference(i_s)
                             .lookup_name_in_star_import(star_import, name, true, None)
                         {
                             return result.into_lookup_result(i_s);
@@ -904,7 +903,7 @@ impl<'db: 'a, 'a> Class<'a> {
                             // other attributes in Mypy, see testMetaclassConflictingInstanceVars
                             let metaclass_result = lookup_on_metaclass(true);
                             if metaclass_result.lookup.is_some()
-                                && !metaclass_result.lookup.is_any(i_s.db)
+                                && !metaclass_result.lookup.maybe_any(i_s.db).is_some()
                             {
                                 return metaclass_result;
                             }
@@ -1038,7 +1037,7 @@ impl<'db: 'a, 'a> Class<'a> {
             }
             _ => self.qualified_name(format_data.db),
         };
-        let type_var_likes = self.type_vars(&InferenceState::new(format_data.db));
+        let type_var_likes = self.type_vars(&InferenceState::new(format_data.db, self.file));
         // Format classes that have not been initialized like Foo() or Foo[int] like "Foo".
         if !type_var_likes.is_empty() && !matches!(self.generics, Generics::NotDefinedYet { .. }) {
             // Returns something like [str] or [List[int], Set[Any]]
@@ -1093,7 +1092,7 @@ impl<'db: 'a, 'a> Class<'a> {
 
     pub fn generics_as_list(&self, db: &Database) -> ClassGenerics {
         // TODO we instantiate, because we cannot use use_cached_type_vars?
-        let type_var_likes = self.type_vars(&InferenceState::new(db));
+        let type_var_likes = self.type_vars(&InferenceState::new(db, self.file));
         match type_var_likes.is_empty() {
             false => match self.generics() {
                 Generics::NotDefinedYet { .. } => ClassGenerics::List(GenericsList::new_generics(
@@ -1164,15 +1163,6 @@ impl<'db: 'a, 'a> Class<'a> {
         } else {
             Rc::new(self.as_type(db))
         })
-    }
-
-    pub fn as_type_with_type_vars_for_not_yet_defined_generics(&self, db: &Database) -> Type {
-        match self.generics {
-            Generics::NotDefinedYet { .. } => {
-                Class::with_self_generics(db, self.node_ref).as_type(db)
-            }
-            _ => self.as_type(db),
-        }
     }
 
     pub fn find_relevant_constructor(
@@ -1266,13 +1256,6 @@ impl<'db: 'a, 'a> Class<'a> {
         on_type_error: OnTypeError,
         from_type_type: bool,
     ) -> ClassExecutionResult {
-        let had_type_error = Cell::new(false);
-        let d = |_: &FunctionOrCallable, _: &Database| {
-            had_type_error.set(true);
-            Some(format!("\"{}\"", self.name()))
-        };
-        let on_type_error = on_type_error.with_custom_generate_diagnostic_string(&d);
-
         let class_infos = self.use_cached_class_infos(i_s.db);
         if !class_infos.abstract_attributes.is_empty()
             && !class_infos.incomplete_mro
@@ -1286,28 +1269,25 @@ impl<'db: 'a, 'a> Class<'a> {
                 },
             )
         }
+
         match &class_infos.class_kind {
             ClassKind::Enum if self.node_ref.as_link() != i_s.db.python_state.enum_auto_link() => {
                 // For whatever reason, auto is special, because it is somehow defined as an enum as
                 // well, which is very weird.
-                let metaclass =
-                    Class::from_non_generic_link(i_s.db, i_s.db.python_state.enum_meta_link())
-                        .instance();
-                metaclass
-                    .type_lookup(i_s, |issue| args.add_issue(i_s, issue), "__call__")
-                    .into_inferred()
-                    .execute_with_details(i_s, args, result_context, on_type_error);
-                if had_type_error.get() {
-                    return ClassExecutionResult::Inferred(Inferred::new_any_from_error());
+
+                if let Some(file) = args.in_file() {
+                    return ClassExecutionResult::Inferred(
+                        file.name_resolution_for_types(i_s)
+                            .compute_functional_enum_definition(*self, args)
+                            .unwrap_or_else(Inferred::new_invalid_type_definition),
+                    );
                 }
-                return ClassExecutionResult::Inferred(
-                    execute_functional_enum(i_s, *self, args)
-                        .unwrap_or_else(Inferred::new_invalid_type_definition),
-                );
             }
             _ => (),
         }
 
+        let d = |_: &FunctionOrCallable, _: &Database| Some(format!("\"{}\"", self.name()));
+        let on_type_error = on_type_error.with_custom_generate_diagnostic_string(&d);
         let constructor = self.find_relevant_constructor(i_s);
         if constructor.is_new {
             let result = constructor
@@ -1396,15 +1376,8 @@ impl<'db: 'a, 'a> Class<'a> {
         }
         slice_type
             .file
-            .inference(i_s)
-            .compute_type_application_on_class(
-                *self,
-                *slice_type,
-                matches!(
-                    result_context,
-                    ResultContext::AssignmentNewDefinition { .. }
-                ),
-            )
+            .name_resolution_for_types(i_s)
+            .compute_type_application_on_class(*self, *slice_type, result_context)
     }
 
     pub fn in_slots(&self, db: &Database, name: &str) -> bool {
@@ -1570,12 +1543,12 @@ impl fmt::Debug for Class<'_> {
     }
 }
 
-pub enum ClassExecutionResult {
+pub(crate) enum ClassExecutionResult {
     ClassGenerics(ClassGenerics),
     Inferred(Inferred),
 }
 
-pub struct MroIterator<'db, 'a> {
+pub(crate) struct MroIterator<'db, 'a> {
     db: &'db Database,
     generics: Generics<'a>,
     pub class: Option<TypeOrClass<'a>>,
@@ -1604,7 +1577,7 @@ impl<'db, 'a> MroIterator<'db, 'a> {
 }
 
 #[derive(Debug, Clone)]
-pub enum TypeOrClass<'a> {
+pub(crate) enum TypeOrClass<'a> {
     Type(Cow<'a, Type>),
     Class(Class<'a>),
 }
@@ -1641,13 +1614,6 @@ impl<'a> TypeOrClass<'a> {
                 Type::NamedTuple(nt) => nt.qualified_name(db),
                 _ => self.name(db).into(),
             },
-        }
-    }
-
-    pub fn format(&self, db: &FormatData) -> Box<str> {
-        match self {
-            Self::Class(class) => class.format(db),
-            Self::Type(t) => t.format(db),
         }
     }
 
@@ -1843,18 +1809,6 @@ fn protocol_conflict_note(db: &Database, other: &Type) -> Box<str> {
     .into()
 }
 
-pub(super) fn join_abstract_attributes(
-    db: &Database,
-    abstract_attributes: &[PointLink],
-) -> Box<str> {
-    join_with_commas(
-        abstract_attributes
-            .iter()
-            .map(|&l| format!("\"{}\"", NodeRef::from_link(db, l).as_code())),
-    )
-    .into()
-}
-
 fn format_callable_like(
     db: &Database,
     notes: &mut Vec<Box<str>>,
@@ -1992,7 +1946,7 @@ fn init_as_callable(
     })
 }
 
-pub struct NewOrInitConstructor<'a> {
+pub(crate) struct NewOrInitConstructor<'a> {
     // A data structure to show wheter __init__ or __new__ is the relevant constructor for a class
     constructor: LookupResult,
     init_class: TypeOrClass<'a>,
@@ -2014,7 +1968,7 @@ impl NewOrInitConstructor<'_> {
     }
 }
 
-pub struct ClassLookupOptions<'x> {
+pub(crate) struct ClassLookupOptions<'x> {
     add_issue: &'x dyn Fn(IssueKind),
     kind: LookupKind,
     use_descriptors: bool,

@@ -3,10 +3,9 @@ use parsa_python_cst::{Expression, SliceContent, SliceIterator, Slices};
 use super::Generic;
 use crate::{
     database::{Database, PointLink},
-    file::{use_cached_simple_generic_type, PythonFile},
+    file::{use_cached_simple_generic_type, ClassNodeRef, PythonFile},
     node_ref::NodeRef,
     type_::{ClassGenerics, GenericItem, GenericsList, TypeVarLike, TypeVarLikeUsage},
-    type_helpers::ClassNodeRef,
 };
 
 macro_rules! replace_class_vars {
@@ -26,7 +25,7 @@ macro_rules! replace_class_vars {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub enum Generics<'a> {
+pub(crate) enum Generics<'a> {
     ExpressionWithClassType(&'a PythonFile, Expression<'a>),
     SlicesWithClassTypes(&'a PythonFile, Slices<'a>),
     // The remapping of type vars is done by List(). In a lot of
@@ -39,10 +38,6 @@ pub enum Generics<'a> {
 }
 
 impl<'a> Generics<'a> {
-    pub fn new_list(list: &'a GenericsList) -> Self {
-        Self::List(list, None)
-    }
-
     pub fn from_class_generics(
         db: &'a Database,
         class_ref: ClassNodeRef<'a>,
@@ -53,11 +48,11 @@ impl<'a> Generics<'a> {
             ClassGenerics::None => Generics::None,
             ClassGenerics::ExpressionWithClassType(link) => {
                 let node_ref = NodeRef::from_link(db, *link);
-                Self::ExpressionWithClassType(node_ref.file, node_ref.as_expression())
+                Self::ExpressionWithClassType(node_ref.file, node_ref.expect_expression())
             }
             ClassGenerics::SlicesWithClassTypes(link) => {
                 let node_ref = NodeRef::from_link(db, *link);
-                Self::SlicesWithClassTypes(node_ref.file, node_ref.as_slices())
+                Self::SlicesWithClassTypes(node_ref.file, node_ref.expect_slices())
             }
             ClassGenerics::NotDefinedYet => Generics::NotDefinedYet { class_ref },
         }
@@ -128,7 +123,7 @@ impl<'a> Generics<'a> {
     }
 }
 
-pub struct GenericsIterator<'a> {
+pub(crate) struct GenericsIterator<'a> {
     db: &'a Database,
     ended: bool,
     item: GenericsIteratorItem<'a>,

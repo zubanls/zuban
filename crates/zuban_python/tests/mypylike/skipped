@@ -2,16 +2,7 @@
 testTypeVarTupleTypeApplicationOverload
 testUnionOfNonIterableUnpacking
 testPostInitIsNotAFunction
-avoid_type_computation_recursion
 testOverloadPossibleOverlapWithArgsAndKwargs
-flow_analysis_avoid_final_loop_issue_in_simple_case
-flow_analysis_base_class_calculation_should_not_lead_to_recursion
-
-testRecursiveAliasesProhibited-skip
-testRecursiveAliasesProhibitBadAliases
-
-star_import_overwrite_regression2
-
 testLiteralAndGenericsRespectsUpperBound
 self_instance_variable1
 
@@ -61,11 +52,14 @@ class_method_generics_with_type_var_in_class_scope
 # Type var bound cycle
 testNewAnalyzerDuplicateTypeVarImportCycle
 testNewAnalyzerDuplicateTypeVarImportCycleWithAliases
-# NewType generics resolving
-new_type_with_class_generics
-new_type_with_class_generics2
-# import recursive usages and therefore "Cannot determine type of "Node""
-testTreeShadowingViaParentPackage
+# Recursive aliases that fail to resolve because imports are calculating
+check-incremental:testRecursiveAliasImported
+check-recursive-types:testRecursiveAliasImported
+testTypeAliasUpdateNonRecursiveToRecursiveFine
+testTypeAliasUpdateNonRecursiveToRecursiveCoarse
+testRecursiveNamedTupleTypedDict
+# Recursive aliases with NewType, classes should be resolved first
+testRecursiveAliasViaBaseClass2
 
 # param spec complex nested transitive tests
 testParamSpecNestedApplyPosVsNamed
@@ -281,6 +275,9 @@ testGenericDictWithOverload
 # ClassVar/Final changes
 testFinalUsedWithClassVarAfterPy313
 testNamedTupleFinalAndClassVar
+# Final not allowed in loop
+testFinalNotInLoops
+final_with_getitem_in_loop
 
 # self.x = self where self: T
 testTypingSelfAttrOldVsNewStyle
@@ -343,10 +340,21 @@ testTypedDictFromTypingExtensionsReadOnlyMutateMethods
 testTypedDictFromMypyExtensionsReadOnlyMutateMethods
 # Functional TypedDict in class def
 testCanCreateClassWithFunctionBasedTypedDictBase
-# TypedDict definition circle: A = TypedDict('A', {'a': 'A'})
-testCrashOnSelfRecursiveTypedDictVar
-testBasicRecursiveTypedDictCall
-testRecursiveTypedDictWithList
+# TypedDict Unpack
+testUnpackKwargsInference
+testUnpackKwargsParamSpec
+# TypedDict dict unpacking
+testTypedDictUnpackFromUnion
+testTypedDictUnpackUnionRequiredMissing
+testTypedDictUnpackIncompatible
+# TypedDict Lookups
+testTypedDictAsStarStarArgCalleeKwargs
+testTypedDictAsStarStarAndDictAsStarStar
+testTypedDictNonMappingMethods
+# Nested typed dict formatting
+testSerializeTypedDictInMethod
+# TypedDict unions
+testTypedDictChainedGetWithEmptyDictDefault
 
 # enum member gathering
 testFinalWithMethodAssignment
@@ -368,24 +376,6 @@ testDataclassTransformOverloadsDecoratorOnImpl
 testDataclassTransformUnsupportedDescriptors
 # dataclass __replace__
 testDunderReplacePresent
-
-# TypedDict Recursive definitions
-testRecursiveNamedTupleTypedDict
-# TypedDict Unpack
-testUnpackKwargsInference
-testUnpackKwargsParamSpec
-# TypedDict dict unpacking
-testTypedDictUnpackFromUnion
-testTypedDictUnpackUnionRequiredMissing
-testTypedDictUnpackIncompatible
-# TypedDict Lookups
-testTypedDictAsStarStarArgCalleeKwargs
-testTypedDictAsStarStarAndDictAsStarStar
-testTypedDictNonMappingMethods
-# Nested typed dict formatting
-testSerializeTypedDictInMethod
-# TypedDict unions
-testTypedDictChainedGetWithEmptyDictDefault
 
 # multiline annotations
 testMultilineQuotedAnnotation
@@ -611,20 +601,6 @@ mypy_ini_exclude_multi_line_verbose_regex_not_working
 
 # ------------- Additional unimportant, but would be nice -----------------
 
-# strict optional with config file
-testPerFileStrictOptionalBasic
-testPerFileStrictOptionalBasicImportStandard
-testPerFileStrictOptionalListItemImportOptional
-testPerFileStrictOptionalBasicPyProjectTOML
-testPerFileStrictOptionalBasicImportStandardPyProjectTOML
-testPerFileStrictOptionalListItemImportOptionalPyProjectTOML
-testPerFileStrictOptionalModuleOnly
-testPerFileStrictOptionalFunction
-testPerFileStrictOptionalMethod
-testNewAnalyzerTypeArgBoundCheckWithStrictOptional
-testNewAnalyzerTypeArgBoundCheckWithStrictOptionalPyProjectTOML
-testPerFileStrictOptionalModule
-testStrictOptionalCovarianceCrossModule
 # Uses an environment variable in mypy.ini files=$MYPY_CONFIG_FILE_DIR/good.py
 testEnvvar_MYPY_CONFIG_FILE_DIR
 
@@ -972,12 +948,6 @@ testEnumTypeCompatibleWithLiteralUnion
 testFunctionalEnumListOfPairs
 # "Detected enum "lib.D" in a type stub with zero members. There is a chance this is due to a recent change in the semantics of enum membership
 testEnumNotFinalWithMethodsAndUninitializedValuesStub
-
-# Recursive aliases that fail to resolve because imports are calculating
-check-incremental:testRecursiveAliasImported
-check-recursive-types:testRecursiveAliasImported
-testTypeAliasUpdateNonRecursiveToRecursiveFine
-testTypeAliasUpdateNonRecursiveToRecursiveCoarse
 
 # future imports (future is not part of stubs)
 testNewAnalyzerMetaclassFuture1
@@ -1424,6 +1394,8 @@ testMeetOfIncompatibleProtocols
 testIssubclassWithMetaclasses
 testImportAndAssignToModule
 testSerializeDummyType
+testPerFileStrictOptionalListItemImportOptional
+testPerFileStrictOptionalListItemImportOptionalPyProjectTOML
 
 # --untyped-calls-exclude=bar.A
 testDisallowUntypedCallsAllowListFlags

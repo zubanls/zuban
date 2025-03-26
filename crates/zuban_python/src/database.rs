@@ -15,16 +15,16 @@ use vfs::{
 
 use crate::{
     debug,
-    file::{File, PythonFile},
+    file::{ClassNodeRef, File, PythonFile},
     node_ref::NodeRef,
     python_state::PythonState,
     recoverable_error, sys_path,
     type_::{
         CallableContent, DataclassTransformObj, FunctionKind, FunctionOverload, GenericItem,
-        GenericsList, NewType, ParamSpecUsage, RecursiveType, StringSlice, Type, TypeVarLike,
+        GenericsList, ParamSpecUsage, RecursiveType, StringSlice, Type, TypeVarLike,
         TypeVarLikeUsage, TypeVarLikes, TypeVarTupleUsage, TypeVarUsage, TypedDict, Variance,
     },
-    type_helpers::{Class, ClassNodeRef, Function},
+    type_helpers::{Class, Function},
     utils::SymbolTable,
     ProjectOptions, TypeCheckerFlags,
 };
@@ -66,7 +66,7 @@ const CALCULATED_OR_REDIRECT_LIKE_KIND_OR_REST_MASK: u32 = IS_ANALIZED_MASK | KI
 const REDIRECT_KIND_VALUE: u32 = (PointKind::Redirect as u32) << KIND_BIT_INDEX;
 
 #[derive(Copy, Clone, Eq, PartialEq, Default)]
-pub struct Point {
+pub(crate) struct Point {
     flags: u32,
     node_index: u32,
 }
@@ -213,6 +213,7 @@ impl Point {
     }
 
     pub fn in_global_scope(self) -> bool {
+        debug_assert!(self.calculated());
         (self.flags & IN_GLOBAL_SCOPE_MASK) != 0
     }
 
@@ -369,7 +370,7 @@ impl fmt::Debug for Point {
 }
 
 #[derive(Debug, Clone, Default)]
-pub struct Points(Vec<Cell<Point>>);
+pub(crate) struct Points(Vec<Cell<Point>>);
 
 impl Points {
     pub fn new(length: usize) -> Self {
@@ -423,14 +424,14 @@ impl Points {
     }
 }
 
-pub struct PointsBackup {
+pub(crate) struct PointsBackup {
     pub range: Range<NodeIndex>,
     points: Vec<Cell<Point>>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
 #[repr(u32)]
-pub enum PointKind {
+pub(crate) enum PointKind {
     Specific,
     Complex,
     Redirect,
@@ -439,9 +440,11 @@ pub enum PointKind {
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 #[repr(u32)]
-pub enum Specific {
+pub(crate) enum Specific {
     // This is reserved, because if everything is initialized as zero, this is the value it takes.
+    #[allow(dead_code)]
     ReservedBecauseUnused,
+
     Analyzed, // Signals that a node has been analyzed
     Calculating,
     Cycle,
@@ -465,7 +468,6 @@ pub enum Specific {
     Complex,
     Bytes,
     Int,
-    Bool,
     None,
     // Literals are used for things like Literal[42]
     StringLiteral,
@@ -527,7 +529,6 @@ pub enum Specific {
     AssertTypeFunction,
     TypingNamedTuple,      // typing.NamedTuple
     CollectionsNamedTuple, // collections.namedtuple
-    DataclassesDataclass,
     MypyExtensionsFlexibleAlias,
 
     MypyExtensionsArg,
@@ -547,16 +548,6 @@ pub enum Specific {
 }
 
 impl Specific {
-    pub fn is_any(self) -> bool {
-        matches!(
-            self,
-            Specific::AnyDueToError
-                | Specific::Cycle
-                | Specific::InvalidTypeDefinition
-                | Specific::ModuleNotFound
-        )
-    }
-
     pub fn is_partial(self) -> bool {
         matches!(
             self,
@@ -585,7 +576,7 @@ impl Specific {
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 #[repr(u32)]
-pub enum Locality {
+pub(crate) enum Locality {
     // Intern: 0xx
     NameBinder,
     _Reserved1,
@@ -600,7 +591,7 @@ pub enum Locality {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub struct PointLink {
+pub(crate) struct PointLink {
     pub file: FileIndex,
     pub node_index: NodeIndex,
 }
@@ -622,20 +613,21 @@ impl From<LocalityLink> for PointLink {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct LocalityLink {
+pub(crate) struct LocalityLink {
     pub file: FileIndex,
     pub node_index: NodeIndex,
     pub locality: Locality,
 }
 
 impl LocalityLink {
+    #[expect(dead_code)]
     pub fn into_point_redirect(self) -> Point {
         Point::new_redirect(self.file, self.node_index, self.locality)
     }
 }
 
 #[derive(Debug)]
-pub struct PartialFlags {
+pub(crate) struct PartialFlags {
     pub nullable: bool,
     pub reported_error: bool,
     pub finished: bool,
@@ -644,13 +636,12 @@ pub struct PartialFlags {
 // This is a core data structure and it should be kept as small as possible, because it's used in
 // arrays. It therefore uses a lot of Rcs.
 #[derive(Debug, Clone, PartialEq)]
-pub enum ComplexPoint {
+pub(crate) enum ComplexPoint {
     TypeInstance(Type),
     Class(Box<ClassStorage>),
     ClassInfos(Box<ClassInfos>),
     TypeVarLikes(TypeVarLikes),
     FunctionOverload(Box<OverloadDefinition>),
-    NewTypeDefinition(Rc<NewType>),
     // e.g. X = NamedTuple('X', []), does not include classes.
     NamedTupleDefinition(Rc<Type>),
     // e.g. X = TypedDict('X', {'x': int}), does not include classes.
@@ -664,13 +655,13 @@ pub enum ComplexPoint {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct OverloadImplementation {
+pub(crate) struct OverloadImplementation {
     pub function_link: PointLink,
     pub callable: CallableContent,
 }
 
 impl OverloadImplementation {
-    pub fn function<'db, 'class>(
+    pub(crate) fn function<'db, 'class>(
         &self,
         db: &'db Database,
         class: Option<Class<'class>>,
@@ -680,7 +671,7 @@ impl OverloadImplementation {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct OverloadDefinition {
+pub(crate) struct OverloadDefinition {
     pub implementation: Option<OverloadImplementation>,
     pub functions: Rc<FunctionOverload>,
     pub is_final: bool,    // Had @final
@@ -698,7 +689,7 @@ impl OverloadDefinition {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct TypedDictDefinition {
+pub(crate) struct TypedDictDefinition {
     pub type_: Rc<Type>,
     pub deferred_subclass_member_initializations: Box<RefCell<Vec<Rc<TypedDict>>>>,
     pub total: bool,
@@ -735,40 +726,23 @@ enum TypeAliasState {
     Invalid,
 }
 #[derive(Debug, PartialEq, Clone)]
-pub struct TypeAlias {
+pub(crate) struct TypeAlias {
     pub type_vars: TypeVarLikes,
     pub location: PointLink,
-    pub name: Option<PointLink>,
+    pub name: PointLink,
     // The two attributes around is_recursive are calculated after the TypeAlias is
     // added to the DB.
     state: OnceCell<TypeAliasState>,
 }
 
 impl TypeAlias {
-    pub fn new(type_vars: TypeVarLikes, location: PointLink, name: Option<PointLink>) -> Self {
+    pub fn new(type_vars: TypeVarLikes, location: PointLink, name: PointLink) -> Self {
         Self {
             type_vars,
             location,
             name,
             state: OnceCell::new(),
         }
-    }
-
-    pub fn new_valid(
-        type_vars: TypeVarLikes,
-        location: PointLink,
-        name: Option<PointLink>,
-        type_: Rc<Type>,
-        is_recursive: bool,
-    ) -> Self {
-        let slf = Self::new(type_vars, location, name);
-        slf.state
-            .set(TypeAliasState::Valid(CalculatedTypeAlias {
-                type_,
-                is_recursive,
-            }))
-            .unwrap();
-        slf
     }
 
     pub fn is_recursive(&self) -> bool {
@@ -784,7 +758,7 @@ impl TypeAlias {
 
     pub fn type_if_valid(&self) -> &Type {
         let Some(state) = self.state.get() else {
-            recoverable_error!("Should probably not happen and means there is probably a bug");
+            recoverable_error!("Alias type access while still calculating should not happen");
             return &Type::ERROR;
         };
         match state {
@@ -810,8 +784,8 @@ impl TypeAlias {
         self.state.set(TypeAliasState::Invalid).unwrap()
     }
 
-    pub fn name<'db>(&self, db: &'db Database) -> Option<&'db str> {
-        self.name.map(|name| NodeRef::from_link(db, name).as_code())
+    pub fn name<'db>(&self, db: &'db Database) -> &'db str {
+        NodeRef::from_link(db, self.name).as_code()
     }
 
     pub fn application_allowed(&self) -> bool {
@@ -913,7 +887,7 @@ impl fmt::Debug for Database {
     }
 }
 
-pub struct Database {
+pub(crate) struct Database {
     pub vfs: Vfs<PythonFile>,
     pub python_state: PythonState,
     pub project: PythonProject,
@@ -1256,7 +1230,7 @@ impl Database {
     }
 }
 
-pub struct PythonProject {
+pub(crate) struct PythonProject {
     pub sys_path: Vec<Box<AbsPath>>,
     pub settings: Settings,
     pub flags: TypeCheckerFlags,
@@ -1272,7 +1246,7 @@ impl PythonProject {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub enum ParentScope {
+pub(crate) enum ParentScope {
     Module,
     Function(NodeIndex),
     Class(NodeIndex),
@@ -1298,7 +1272,7 @@ impl ParentScope {
 }
 
 #[derive(Debug, Clone)]
-pub struct ClassStorage {
+pub(crate) struct ClassStorage {
     pub class_symbol_table: SymbolTable,
     pub self_symbol_table: SymbolTable,
     pub abstract_attributes: Box<[NodeIndex]>,
@@ -1308,14 +1282,14 @@ pub struct ClassStorage {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub enum MetaclassState {
+pub(crate) enum MetaclassState {
     None,
     Unknown,
     Some(PointLink),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub enum ClassKind {
+pub(crate) enum ClassKind {
     Normal,
     Protocol,
     Enum,
@@ -1325,20 +1299,20 @@ pub enum ClassKind {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct BaseClass {
+pub(crate) struct BaseClass {
     pub type_: Type,
     pub is_direct_base: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct ProtocolMember {
+pub(crate) struct ProtocolMember {
     pub name_index: NodeIndex,
     pub is_abstract: bool,
     pub variance: Variance,
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct ClassInfos {
+pub(crate) struct ClassInfos {
     pub mro: Box<[BaseClass]>, // Does never include `object`
     pub metaclass: MetaclassState,
     pub class_kind: ClassKind,

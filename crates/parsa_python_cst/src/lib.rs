@@ -614,6 +614,8 @@ pub enum DefiningStmt<'db> {
     WithItem(WithItem<'db>),
     DelStmt(DelStmt<'db>),
     MatchStmt(MatchStmt<'db>),
+    GlobalStmt(GlobalStmt<'db>),
+    NonlocalStmt(NonlocalStmt<'db>),
 }
 
 impl DefiningStmt<'_> {
@@ -634,6 +636,8 @@ impl DefiningStmt<'_> {
             DefiningStmt::WithItem(w) => w.index(),
             DefiningStmt::DelStmt(d) => d.index(),
             DefiningStmt::MatchStmt(m) => m.index(),
+            DefiningStmt::GlobalStmt(g) => g.index(),
+            DefiningStmt::NonlocalStmt(n) => n.index(),
         }
     }
 }
@@ -868,16 +872,18 @@ impl<'db> Expression<'db> {
         NameIterator(self.node.search(&[Terminal(TerminalType::Name)], false))
     }
 
-    fn maybe_name_or_last_primary_name(&self) -> Option<Name<'db>> {
+    fn maybe_name_or_last_primary_name(&self) -> Option<NameOrPrimaryWithNames<'db>> {
         match self.unpack() {
             ExpressionContent::ExpressionPart(ExpressionPart::Atom(a)) => {
                 if let AtomContent::Name(n) = a.unpack() {
-                    Some(n)
+                    Some(NameOrPrimaryWithNames::Name(n))
                 } else {
                     None
                 }
             }
-            ExpressionContent::ExpressionPart(ExpressionPart::Primary(p)) => p.is_only_attributes(),
+            ExpressionContent::ExpressionPart(ExpressionPart::Primary(p)) => p
+                .is_only_attributes()
+                .then_some(NameOrPrimaryWithNames::PrimaryWithNames(p)),
             _ => None,
         }
     }
@@ -972,6 +978,20 @@ pub enum ExpressionPart<'db> {
     Inversion(Inversion<'db>),
     Conjunction(Conjunction<'db>),
     Disjunction(Disjunction<'db>),
+}
+
+pub enum NameOrPrimaryWithNames<'db> {
+    Name(Name<'db>),
+    PrimaryWithNames(Primary<'db>),
+}
+
+impl NameOrPrimaryWithNames<'_> {
+    pub fn index(&self) -> NodeIndex {
+        match self {
+            Self::Name(n) => n.index(),
+            Self::PrimaryWithNames(p) => p.index(),
+        }
+    }
 }
 
 macro_rules! for_each_expr_part {
@@ -2296,6 +2316,50 @@ impl<'db> ArgumentsDetails<'db> {
             _ => None,
         }
     }
+
+    pub fn iter(&self) -> impl Iterator<Item = ArgOrComprehension<'db>> {
+        match self {
+            ArgumentsDetails::None => AllArgsIterator::None,
+            ArgumentsDetails::Comprehension(c) => AllArgsIterator::Comprehension(*c),
+            ArgumentsDetails::Node(args) => AllArgsIterator::Args(args.iter()),
+        }
+    }
+}
+
+pub enum ArgOrComprehension<'db> {
+    Arg(Argument<'db>),
+    Comprehension(Comprehension<'db>),
+}
+
+impl ArgOrComprehension<'_> {
+    pub fn index(&self) -> NodeIndex {
+        match self {
+            Self::Arg(arg) => arg.index(),
+            Self::Comprehension(comp) => comp.index(),
+        }
+    }
+}
+
+enum AllArgsIterator<'db> {
+    None,
+    Comprehension(Comprehension<'db>),
+    Args(ArgsIterator<'db>),
+}
+
+impl<'db> Iterator for AllArgsIterator<'db> {
+    type Item = ArgOrComprehension<'db>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self {
+            Self::None => None,
+            Self::Comprehension(comp) => {
+                let x = *comp;
+                *self = Self::None;
+                Some(Self::Item::Comprehension(x))
+            }
+            Self::Args(args_iterator) => Some(Self::Item::Arg(args_iterator.next()?)),
+        }
+    }
 }
 
 impl<'db> Assignment<'db> {
@@ -2322,39 +2386,6 @@ impl<'db> Assignment<'db> {
                 let right = Self::right_side(iterator.next().unwrap());
                 return AssignmentContent::AugAssign(
                     Target::new_single_target(self.node.nth_child(0)),
-                    AugAssign::new(child),
-                    right,
-                );
-            }
-        }
-        unreachable!()
-    }
-
-    // TODO this methods feels wrong. I don't think assignments can ever be simpler. The grammar is
-    // the same.
-    pub fn unpack_with_simple_targets(&self) -> AssignmentContentWithSimpleTargets<'db> {
-        // | (star_targets "=" )+ (yield_expr | star_expressions)
-        // | single_target annotation ["=" (yield_expr | star_expressions)]
-        // | single_target augassign (yield_expr | star_expressions)
-        let mut iterator = self.node.iter_children().skip(1);
-        while let Some(child) = iterator.next() {
-            if child.is_type(Nonterminal(yield_expr))
-                || child.is_type(Nonterminal(star_expressions))
-            {
-                let iter = StarTargetsIterator(self.node.iter_children().step_by(2));
-                return AssignmentContentWithSimpleTargets::Normal(iter, Self::right_side(child));
-            } else if child.is_type(Nonterminal(annotation)) {
-                iterator.next();
-                let right = iterator.next().map(Self::right_side);
-                return AssignmentContentWithSimpleTargets::WithAnnotation(
-                    SingleTarget::new(self.node.nth_child(0)),
-                    Annotation::new(child),
-                    right,
-                );
-            } else if child.is_type(Nonterminal(augassign)) {
-                let right = Self::right_side(iterator.next().unwrap());
-                return AssignmentContentWithSimpleTargets::AugAssign(
-                    SingleTarget::new(self.node.nth_child(0)),
                     AugAssign::new(child),
                     right,
                 );
@@ -2415,7 +2446,7 @@ impl<'db> Assignment<'db> {
         }
     }
 
-    pub fn maybe_simple_type_reassignment(&self) -> Option<Name<'db>> {
+    pub fn maybe_simple_type_reassignment(&self) -> Option<NameOrPrimaryWithNames<'db>> {
         self.maybe_simple_type_expression_assignment()
             .and_then(|(_, annot, expr)| match annot {
                 None => expr.maybe_name_or_last_primary_name(),
@@ -2784,6 +2815,10 @@ impl<'db> Primary<'db> {
         }
     }
 
+    pub fn first_child_index(&self) -> NodeIndex {
+        self.index() + 1
+    }
+
     pub fn second(&self) -> PrimaryContent<'db> {
         let second = self.node.nth_child(2);
         if second.is_type(Terminal(TerminalType::Name)) {
@@ -2826,17 +2861,12 @@ impl<'db> Primary<'db> {
         }
     }
 
-    fn is_only_attributes(&self) -> Option<Name<'db>> {
-        match self.first() {
-            PrimaryOrAtom::Atom(_) => (),
-            PrimaryOrAtom::Primary(p) => {
-                p.is_only_attributes()?;
+    fn is_only_attributes(&self) -> bool {
+        matches!(self.second(), PrimaryContent::Attribute(_))
+            && match self.first() {
+                PrimaryOrAtom::Atom(a) => matches!(a.unpack(), AtomContent::Name(_)),
+                PrimaryOrAtom::Primary(p) => p.is_only_attributes(),
             }
-        }
-        match self.second() {
-            PrimaryContent::Attribute(name) => Some(name),
-            _ => None,
-        }
     }
 
     pub fn expect_closing_bracket_index(&self) -> NodeIndex {
@@ -3602,6 +3632,8 @@ impl<'db> NameDef<'db> {
                 Nonterminal(with_item),
                 Nonterminal(del_stmt),
                 Nonterminal(match_stmt),
+                Nonterminal(global_stmt),
+                Nonterminal(nonlocal_stmt),
             ])
             .expect("There should always be a stmt");
         if stmt_node.is_type(Nonterminal(function_def)) {
@@ -3632,6 +3664,10 @@ impl<'db> NameDef<'db> {
             DefiningStmt::DelStmt(DelStmt::new(stmt_node))
         } else if stmt_node.is_type(Nonterminal(match_stmt)) {
             DefiningStmt::MatchStmt(MatchStmt::new(stmt_node))
+        } else if stmt_node.is_type(Nonterminal(global_stmt)) {
+            DefiningStmt::GlobalStmt(GlobalStmt::new(stmt_node))
+        } else if stmt_node.is_type(Nonterminal(nonlocal_stmt)) {
+            DefiningStmt::NonlocalStmt(NonlocalStmt::new(stmt_node))
         } else {
             unreachable!(
                 "Reached a previously unknown defining statement {:?}",
@@ -3654,6 +3690,8 @@ impl<'db> NameDef<'db> {
                 Nonterminal(param_no_default),
                 Nonterminal(param_with_default),
                 Nonterminal(param_maybe_default),
+                Nonterminal(starred_param),
+                Nonterminal(double_starred_param),
             ])
             .expect("There should always be a stmt");
         if node.is_type(Nonterminal(class_def)) {
@@ -3674,6 +3712,8 @@ impl<'db> NameDef<'db> {
                 Nonterminal(param_no_default)
                     | Nonterminal(param_with_default)
                     | Nonterminal(param_maybe_default)
+                    | Nonterminal(starred_param)
+                    | Nonterminal(double_starred_param)
             ));
             TypeLike::ParamName(node.iter_children().nth(1).and_then(|n| {
                 n.is_type(Nonterminal(annotation))
@@ -3943,8 +3983,13 @@ impl<'db> StringLiteral<'db> {
 }
 
 fn in_simple_assignment(node: PyNode) -> Option<NameDef> {
-    node.parent_until(&[Nonterminal(assignment)])
-        .and_then(|n| Assignment::new(n).maybe_simple_type_expression_assignment())
+    node.parent_until(&[Nonterminal(assignment), Nonterminal(stmt)])
+        .and_then(|n| {
+            if n.is_type(Nonterminal(stmt)) {
+                return None;
+            }
+            Assignment::new(n).maybe_simple_type_expression_assignment()
+        })
         .map(|(name, _, _)| name)
 }
 

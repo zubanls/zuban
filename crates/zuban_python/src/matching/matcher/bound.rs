@@ -14,7 +14,7 @@ use crate::{
 };
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum Bound {
+pub(crate) enum Bound {
     Uncalculated { fallback: Option<Type> },
 
     Invariant(BoundKind),
@@ -24,7 +24,7 @@ pub enum Bound {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum BoundKind {
+pub(crate) enum BoundKind {
     TypeVar(Type),
     TypeVarTuple(TupleArgs),
     ParamSpec(CallableParams),

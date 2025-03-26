@@ -5,7 +5,7 @@ mod utils;
 use core::fmt;
 use std::{borrow::Cow, collections::HashSet};
 
-pub use type_var_matcher::FunctionOrCallable;
+pub(crate) use type_var_matcher::FunctionOrCallable;
 use type_var_matcher::TypeVarMatcher;
 use utils::match_arguments_against_params;
 pub(crate) use utils::{
@@ -46,11 +46,11 @@ pub type ReplaceSelfInMatcher<'x> = &'x dyn Fn() -> Type;
 pub type CheckedTypeRecursion<'a> = AlreadySeen<'a, (&'a Type, &'a Type)>;
 
 #[derive(Default, Clone)]
-pub struct Matcher<'a> {
+pub(crate) struct Matcher<'a> {
     type_var_matchers: Vec<TypeVarMatcher>,
     pub checking_type_recursion: Option<CheckedTypeRecursion<'a>>,
     class: Option<&'a Class<'a>>,
-    pub func_or_callable: Option<FunctionOrCallable<'a>>,
+    pub(crate) func_or_callable: Option<FunctionOrCallable<'a>>,
     ignore_promotions: bool,
     pub precise_matching: bool, // This is what Mypy does with proper_subtype=True
     replace_self: Option<ReplaceSelfInMatcher<'a>>,
@@ -123,7 +123,7 @@ impl<'a> Matcher<'a> {
         self
     }
 
-    pub fn new_function_matcher(
+    pub(crate) fn new_function_matcher(
         function: Function<'a, 'a>,
         type_vars: &TypeVarLikes,
         replace_self: ReplaceSelfInMatcher<'a>,
@@ -277,7 +277,7 @@ impl<'a> Matcher<'a> {
                 if let Some(func_or_callable) = self.func_or_callable {
                     if let Some(class) = func_or_callable.class() {
                         if let Some(other_class) = i_s.current_class() {
-                            if !other_class.class_link_in_mro(i_s, class.node_ref.as_link()) {
+                            if !other_class.class_link_in_mro(i_s.db, class.node_ref.as_link()) {
                                 return Match::new_false();
                             }
                         }
@@ -743,7 +743,7 @@ impl<'a> Matcher<'a> {
                     for arg in args.iter() {
                         let inferred = match arg.infer(&mut ResultContext::Unknown) {
                             InferredArg::Inferred(inferred) => {
-                                if inferred.is_any(i_s.db) {
+                                if inferred.maybe_any(i_s.db).is_some() {
                                     continue;
                                 }
                                 inferred
@@ -1120,7 +1120,7 @@ impl<'a> Matcher<'a> {
                     let c = self.calculating_arg(*tv_index);
                     if c.calculated() {
                         let bound = c.type_.clone();
-                        let i_s = &InferenceState::new(db);
+                        let i_s = &InferenceState::new_in_unknown_file(db);
 
                         let t1 = match wanted_constraint {
                             Bound::Invariant(t) => t,
@@ -1443,7 +1443,7 @@ impl<'a> Matcher<'a> {
                         };
                         match (&current_tv.kind(db), &new.kind(db)) {
                             (TypeVarKind::Bound(t1), TypeVarKind::Bound(t2)) => {
-                                let i_s = &InferenceState::new(db);
+                                let i_s = &InferenceState::new_in_unknown_file(db);
                                 if t1.is_simple_sub_type_of(i_s, t2).bool() {
                                     // Nothing left to do here.
                                 } else if t2.is_simple_sub_type_of(i_s, t1).bool() {
@@ -1808,7 +1808,7 @@ fn infer_params_from_args<'db>(
     CallableParams::new_simple(params.into())
 }
 
-pub enum MatcherFormatResult {
+pub(crate) enum MatcherFormatResult {
     Str(Box<str>),
     TypeVarTupleUnknown,
 }

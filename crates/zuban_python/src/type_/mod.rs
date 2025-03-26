@@ -19,7 +19,7 @@ mod utils;
 
 use std::{
     borrow::Cow,
-    cell::{Cell, OnceCell},
+    cell::Cell,
     hash::{Hash, Hasher},
     mem,
     rc::Rc,
@@ -36,21 +36,18 @@ pub(crate) use self::{
         ParamTypeDetails, StarParamType, StarStarParamType, TypeGuardInfo, WrongPositionalCount,
     },
     dataclass::{
-        check_dataclass_options, dataclass_init_func, dataclass_initialize, dataclasses_replace,
-        lookup_dataclass_symbol, lookup_on_dataclass, lookup_on_dataclass_type, Dataclass,
-        DataclassOptions, DataclassTransformObj,
+        dataclass_init_func, dataclass_initialize, dataclasses_replace, lookup_dataclass_symbol,
+        lookup_on_dataclass, lookup_on_dataclass_type, Dataclass, DataclassOptions,
+        DataclassTransformObj,
     },
     enum_::{
-        execute_functional_enum, lookup_on_enum_class, lookup_on_enum_instance,
-        lookup_on_enum_member_instance, Enum, EnumKind, EnumMember, EnumMemberDefinition,
+        lookup_on_enum_class, lookup_on_enum_instance, lookup_on_enum_member_instance, Enum,
+        EnumKind, EnumMember, EnumMemberDefinition,
     },
     intersection::Intersection,
     lookup_result::LookupResult,
     matching::{match_arbitrary_len_vs_unpack, match_tuple_type_arguments, match_unpack},
-    named_tuple::{
-        add_named_tuple_param, execute_collections_named_tuple, execute_typing_named_tuple,
-        new_collections_named_tuple, new_typing_named_tuple, NamedTuple,
-    },
+    named_tuple::NamedTuple,
     operations::{execute_type_of_type, IterCause, IterInfos},
     recursive_type::{RecursiveType, RecursiveTypeOrigin},
     replace::{replace_param_spec, ReplaceSelf},
@@ -62,9 +59,8 @@ pub(crate) use self::{
         TypeVarTupleUsage, TypeVarUsage, Variance,
     },
     typed_dict::{
-        check_typed_dict_call, infer_typed_dict_item, infer_typed_dict_total_argument,
-        initialize_typed_dict, lookup_on_typed_dict, maybe_add_extra_keys_issue, new_typed_dict,
-        TypedDict, TypedDictGenerics, TypedDictMember, TypedDictMemberGatherer,
+        check_typed_dict_call, infer_typed_dict_arg, initialize_typed_dict, lookup_on_typed_dict,
+        maybe_add_extra_keys_issue, TypedDict, TypedDictGenerics, TypedDictMember,
     },
     union::{
         simplified_union_from_iterators, simplified_union_from_iterators_with_format_index,
@@ -76,7 +72,7 @@ use crate::{
     database::{Database, PointLink},
     debug,
     diagnostics::IssueKind,
-    file::dotted_path_from_dir,
+    file::{dotted_path_from_dir, ClassNodeRef},
     format_data::{find_similar_types, AvoidRecursionFor, FormatData},
     inference_state::InferenceState,
     inferred::Inferred,
@@ -85,7 +81,8 @@ use crate::{
         OnTypeError, ResultContext,
     },
     node_ref::NodeRef,
-    type_helpers::{Class, ClassNodeRef, Instance, MroIterator, TypeOrClass},
+    recoverable_error,
+    type_helpers::{Class, Instance, MroIterator, TypeOrClass},
     utils::{bytes_repr, join_with_commas, rc_slice_into_vec, str_repr},
 };
 
@@ -93,18 +90,18 @@ thread_local! {
     static EMPTY_TYPES: Rc<[Type]> = Rc::new([]);
 }
 
-pub fn empty_types() -> Rc<[Type]> {
+pub(crate) fn empty_types() -> Rc<[Type]> {
     EMPTY_TYPES.with(|t| t.clone())
 }
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
-pub enum FormatStyle {
+pub(crate) enum FormatStyle {
     Short,
     MypyRevealType,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct StringSlice {
+pub(crate) struct StringSlice {
     pub file_index: FileIndex,
     pub start: CodeIndex,
     pub end: CodeIndex,
@@ -140,7 +137,7 @@ impl StringSlice {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum DbString {
+pub(crate) enum DbString {
     StringSlice(StringSlice),
     RcStr(Rc<str>),
     Static(&'static str),
@@ -175,17 +172,13 @@ impl From<StringSlice> for DbString {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct TypeArgs {
+pub(crate) struct TypeArgs {
     pub args: TupleArgs,
 }
 
 impl TypeArgs {
     pub fn new(args: TupleArgs) -> Self {
         Self { args }
-    }
-
-    pub fn new_fixed_length(args: Rc<[Type]>) -> Self {
-        Self::new(TupleArgs::FixedLen(args))
     }
 
     pub fn new_arbitrary_length(arg: Type) -> Self {
@@ -203,7 +196,7 @@ impl TypeArgs {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum GenericItem {
+pub(crate) enum GenericItem {
     TypeArg(Type),
     // For TypeVarTuple
     TypeArgs(TypeArgs),
@@ -222,7 +215,7 @@ impl GenericItem {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum ClassGenerics {
+pub(crate) enum ClassGenerics {
     List(GenericsList),
     // A class definition (no type vars or stuff like callables)
     ExpressionWithClassType(PointLink),
@@ -233,13 +226,6 @@ pub enum ClassGenerics {
 }
 
 impl ClassGenerics {
-    pub fn map_list(&self, callable: impl FnOnce(&GenericsList) -> GenericsList) -> Self {
-        match self {
-            Self::List(list) => Self::List(callable(list)),
-            _ => self.clone(),
-        }
-    }
-
     pub fn all_any(&self) -> bool {
         match self {
             Self::List(list) => list.iter().all(|g| g.is_any()),
@@ -250,7 +236,7 @@ impl ClassGenerics {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct GenericsList(Rc<[GenericItem]>);
+pub(crate) struct GenericsList(Rc<[GenericItem]>);
 
 impl GenericsList {
     pub fn new_generics(parts: Rc<[GenericItem]>) -> Self {
@@ -315,10 +301,6 @@ impl GenericsList {
             GenericItem::ParamSpecArg(a) => a.params.has_any_internal(i_s, already_checked),
         })
     }
-
-    pub fn is_empty(&self) -> bool {
-        self.0.is_empty()
-    }
 }
 
 impl std::ops::Index<TypeVarIndex> for GenericsList {
@@ -330,7 +312,7 @@ impl std::ops::Index<TypeVarIndex> for GenericsList {
 }
 
 #[derive(Debug, Clone)]
-pub struct Namespace {
+pub(crate) struct Namespace {
     pub directories: Rc<[Rc<Directory>]>,
 }
 
@@ -363,7 +345,7 @@ impl Hash for Namespace {
 impl std::cmp::Eq for Namespace {}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct FunctionOverload(Box<[Rc<CallableContent>]>);
+pub(crate) struct FunctionOverload(Box<[Rc<CallableContent>]>);
 
 impl FunctionOverload {
     pub fn new(functions: Box<[Rc<CallableContent>]>) -> Rc<Self> {
@@ -382,17 +364,10 @@ impl FunctionOverload {
     pub fn iter_functions(&self) -> impl Iterator<Item = &Rc<CallableContent>> + Clone {
         self.0.iter()
     }
-
-    pub fn map_functions(
-        &self,
-        callable: impl FnOnce(&[Rc<CallableContent>]) -> Box<[Rc<CallableContent>]>,
-    ) -> Rc<Self> {
-        Rc::new(Self(callable(&self.0)))
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct GenericClass {
+pub(crate) struct GenericClass {
     pub link: PointLink,
     pub generics: ClassGenerics,
 }
@@ -456,7 +431,7 @@ impl<'a, Iter: Iterator<Item = &'a Type>> Iterator for TypeRefIterator<'a, Iter>
 // with another type.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[allow(clippy::enum_variant_names)]
-pub enum Type {
+pub(crate) enum Type {
     Class(GenericClass),
     Union(UnionType),
     Intersection(Intersection),
@@ -495,7 +470,7 @@ impl Type {
         Self::Class(GenericClass { link, generics })
     }
 
-    pub const ERROR: Type = Self::Any(AnyCause::FromError);
+    pub const ERROR: Self = Self::Any(AnyCause::FromError);
 
     pub fn from_union_entries(entries: Vec<UnionEntry>) -> Self {
         match entries.len() {
@@ -549,13 +524,6 @@ impl Type {
     fn is_none_or_none_in_union(&self, db: &Database) -> bool {
         self.iter_with_unpacked_unions(db)
             .any(|t| matches!(t, Type::None))
-    }
-
-    pub fn is_true_literal(&self) -> bool {
-        match self {
-            Self::Literal(literal) => matches!(literal.kind, LiteralKind::Bool(true)),
-            _ => false,
-        }
     }
 
     pub fn is_object(&self, db: &Database) -> bool {
@@ -672,22 +640,41 @@ impl Type {
         &'x self,
         i_s: &InferenceState<'db, 'x>,
     ) -> Option<Class<'x>> {
+        match self {
+            Type::Self_ => {
+                let cls = i_s.current_class();
+                if cls.is_none() {
+                    recoverable_error!(
+                        "Self was somehow not handled properly when finding inner_generic_class"
+                    )
+                }
+                cls
+            }
+            Type::Type(t) => Some(
+                t.inner_generic_class(i_s)?
+                    .use_cached_class_infos(i_s.db)
+                    .metaclass(i_s.db),
+            ),
+            _ => self.inner_generic_class_with_db(i_s.db),
+        }
+    }
+
+    pub fn inner_generic_class_with_db<'x>(&'x self, db: &'x Database) -> Option<Class<'x>> {
         Some(match self {
-            Type::Class(c) => c.class(i_s.db),
-            Type::Dataclass(dc) => dc.class(i_s.db),
-            Type::Enum(enum_) => enum_.class(i_s.db),
-            Type::EnumMember(member) => member.enum_.class(i_s.db),
+            Type::Class(c) => c.class(db),
+            Type::Dataclass(dc) => dc.class(db),
+            Type::Enum(enum_) => enum_.class(db),
+            Type::EnumMember(member) => member.enum_.class(db),
             Type::Type(t) => t
-                .inner_generic_class(i_s)?
-                .use_cached_class_infos(i_s.db)
-                .metaclass(i_s.db),
-            Type::TypeVar(tv) => match tv.type_var.kind(i_s.db) {
-                TypeVarKind::Bound(t) => return t.inner_generic_class(i_s),
+                .inner_generic_class_with_db(db)?
+                .use_cached_class_infos(db)
+                .metaclass(db),
+            Type::TypeVar(tv) => match tv.type_var.kind(db) {
+                TypeVarKind::Bound(t) => return t.inner_generic_class_with_db(db),
                 _ => return None,
             },
-            Type::Self_ => i_s.current_class().unwrap(),
-            Type::TypedDict(_) => i_s.db.python_state.typed_dict_class(),
-            Type::NewType(n) => return n.type_(i_s).inner_generic_class(i_s),
+            Type::TypedDict(_) => db.python_state.typed_dict_class(),
+            Type::NewType(n) => return n.type_.inner_generic_class_with_db(db),
             _ => return None,
         })
     }
@@ -879,18 +866,6 @@ impl Type {
 
     pub fn union_in_place(&mut self, other: Type) {
         *self = mem::replace(self, Self::Never(NeverCause::Other)).union(other);
-    }
-
-    pub fn gather_union(callable: impl FnOnce(&mut dyn FnMut(Self))) -> Self {
-        let mut result: Option<Self> = None;
-        let r = &mut result;
-        callable(&mut |t| {
-            *r = Some(match r.take() {
-                Some(i) => i.union(t),
-                None => t,
-            });
-        });
-        result.unwrap_or_else(|| Type::Never(NeverCause::Other))
     }
 
     pub fn format_short(&self, db: &Database) -> Box<str> {
@@ -1086,7 +1061,7 @@ impl Type {
             Self::Tuple(content) => content.args.has_any_internal(i_s, already_checked),
             Self::Callable(content) => content.has_any_internal(i_s, already_checked),
             Self::Any(_) => true,
-            Self::NewType(n) => n.type_(i_s).has_any(i_s),
+            Self::NewType(n) => n.type_.has_any_internal(i_s, already_checked),
             Self::RecursiveType(recursive_alias) => {
                 if let Some(generics) = &recursive_alias.generics {
                     if generics.has_any_internal(i_s, already_checked) {
@@ -1623,13 +1598,13 @@ impl Tuple {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum PropertySetter {
+pub(crate) enum PropertySetter {
     SameType,
     OtherType(Type),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum FunctionKind {
+pub(crate) enum FunctionKind {
     Function {
         had_first_self_or_class_annotation: bool,
     },
@@ -1687,29 +1662,15 @@ impl FunctionKind {
     }
 }
 
-#[derive(Debug, Clone, Eq)]
-pub struct NewType {
+#[derive(Debug, Clone, Eq, Hash)]
+pub(crate) struct NewType {
     pub name_string: PointLink,
-    type_expression: PointLink,
-    // TODO locality needs to be checked, because this is lazily calculated.
-    type_: OnceCell<Type>,
+    pub type_: Type,
 }
 
 impl NewType {
-    pub fn new(name_string: PointLink, type_expression: PointLink) -> Self {
-        Self {
-            name_string,
-            type_expression,
-            type_: OnceCell::new(),
-        }
-    }
-
-    pub fn type_(&self, i_s: &InferenceState) -> &Type {
-        self.type_.get_or_init(|| {
-            let t =
-                NodeRef::from_link(i_s.db, self.type_expression).compute_new_type_constraint(i_s);
-            t
-        })
+    pub fn new(name_string: PointLink, type_: Type) -> Self {
+        Self { name_string, type_ }
     }
 
     pub fn format(&self, format_data: &FormatData) -> Box<str> {
@@ -1741,18 +1702,12 @@ impl NewType {
 
 impl PartialEq for NewType {
     fn eq(&self, other: &Self) -> bool {
-        self.type_expression == other.type_expression
-    }
-}
-
-impl Hash for NewType {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.type_expression.hash(state);
+        self.name_string == other.name_string
     }
 }
 
 #[derive(Debug, Clone, Eq)]
-pub struct Literal {
+pub(crate) struct Literal {
     pub kind: LiteralKind,
     pub implicit: bool,
 }
@@ -1770,7 +1725,7 @@ impl Hash for Literal {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum LiteralKind {
+pub(crate) enum LiteralKind {
     String(DbString),
     Int(i64), // TODO this does not work for Python ints > usize
     Bytes(DbBytes),
@@ -1778,13 +1733,13 @@ pub enum LiteralKind {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum DbBytes {
+pub(crate) enum DbBytes {
     Link(PointLink),
     Static(&'static [u8]),
 }
 
 #[derive(PartialEq, Eq, Debug)]
-pub enum LiteralValue<'db> {
+pub(crate) enum LiteralValue<'db> {
     String(&'db str),
     Int(i64),
     Bytes(Cow<'db, [u8]>),
@@ -1807,7 +1762,7 @@ impl Literal {
             LiteralKind::Bytes(b) => match b {
                 DbBytes::Link(link) => {
                     let node_ref = NodeRef::from_link(db, *link);
-                    LiteralValue::Bytes(node_ref.as_bytes_literal().content_as_bytes())
+                    LiteralValue::Bytes(node_ref.expect_bytes_literal().content_as_bytes())
                 }
                 DbBytes::Static(b) => LiteralValue::Bytes(Cow::Borrowed(b)),
             },
@@ -1870,13 +1825,13 @@ type CustomBehaviorCallback = for<'db> fn(
 ) -> Inferred;
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
-pub enum CustomBehaviorKind {
+pub(crate) enum CustomBehaviorKind {
     Function,
     Method { bound: Option<Rc<Type>> },
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
-pub struct CustomBehavior {
+pub(crate) struct CustomBehavior {
     callback: CustomBehaviorCallback,
     kind: CustomBehaviorKind,
 }
@@ -1924,7 +1879,7 @@ impl CustomBehavior {
 }
 
 #[derive(Debug, PartialEq, Eq, Hash)]
-pub enum CallableLike {
+pub(crate) enum CallableLike {
     Callable(Rc<CallableContent>),
     Overload(Rc<FunctionOverload>),
 }
@@ -1985,7 +1940,7 @@ impl Hash for AnyCause {
 }
 
 #[derive(Debug, Eq, Copy, Clone)]
-pub enum AnyCause {
+pub(crate) enum AnyCause {
     Unannotated,
     Explicit,
     FromError,
@@ -1995,7 +1950,7 @@ pub enum AnyCause {
 }
 
 #[derive(Debug, Eq, Copy, Clone)]
-pub enum NeverCause {
+pub(crate) enum NeverCause {
     Explicit,
     Inference,
     Other,

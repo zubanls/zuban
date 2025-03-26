@@ -103,7 +103,7 @@ pub(crate) trait Args<'db>: std::fmt::Debug {
 }
 
 #[derive(Debug)]
-pub struct SimpleArgs<'db, 'a> {
+pub(crate) struct SimpleArgs<'db, 'a> {
     // The node id of the grammar node called primary, which is defined like
     // primary "(" [arguments | comprehension] ")"
     file: &'a PythonFile,
@@ -185,7 +185,7 @@ impl<'db: 'a, 'a> Args<'db> for SimpleArgs<'db, 'a> {
         let end = if let Some(primary_target) = from.maybe_primary_target() {
             primary_target.expect_closing_bracket_index()
         } else {
-            let primary = from.as_primary();
+            let primary = from.expect_primary();
             primary.expect_closing_bracket_index()
         };
         Some(self.file.points.backup(self.primary_node_index..end))
@@ -228,7 +228,7 @@ impl<'db: 'a, 'a> SimpleArgs<'db, 'a> {
 }
 
 #[derive(Debug)]
-pub struct KnownArgs<'a> {
+pub(crate) struct KnownArgs<'a> {
     inferred: &'a Inferred,
     node_ref: NodeRef<'a>,
 }
@@ -288,7 +288,7 @@ impl<'db> Args<'db> for KnownArgsWithCustomAddIssue<'_> {
 }
 
 #[derive(Debug)]
-pub struct CombinedArgs<'db, 'a> {
+pub(crate) struct CombinedArgs<'db, 'a> {
     args1: &'a dyn Args<'db>,
     args2: &'a dyn Args<'db>,
 }
@@ -336,7 +336,7 @@ impl<'db, 'a> CombinedArgs<'db, 'a> {
 }
 
 #[derive(Debug, Clone)]
-pub struct PositionalArg<'db, 'a> {
+pub(crate) struct PositionalArg<'db, 'a> {
     i_s: InferenceState<'db, 'a>,
     pub position: usize, // The position as a 1-based index
     pub node_ref: NodeRef<'a>,
@@ -353,7 +353,7 @@ impl PositionalArg<'_, '_> {
 }
 
 #[derive(Debug, Clone)]
-pub struct KeywordArg<'db, 'a> {
+pub(crate) struct KeywordArg<'db, 'a> {
     i_s: InferenceState<'db, 'a>,
     pub key: &'a str,
     pub node_ref: NodeRef<'a>,
@@ -374,7 +374,7 @@ impl KeywordArg<'_, '_> {
 }
 
 #[derive(Debug, Clone)]
-pub enum ArgKind<'db, 'a> {
+pub(crate) enum ArgKind<'db, 'a> {
     // Can be used for classmethod class or self in bound methods
     Keyword(KeywordArg<'db, 'a>),
     Inferred {
@@ -446,23 +446,14 @@ impl<'db, 'a> ArgKind<'db, 'a> {
     }
 }
 
-pub enum InferredArg<'a> {
+pub(crate) enum InferredArg<'a> {
     Inferred(Inferred),
     StarredWithUnpack(WithUnpack),
     ParamSpec { usage: &'a ParamSpecUsage },
 }
 
-impl InferredArg<'_> {
-    pub fn is_true_literal(&self, i_s: &InferenceState) -> bool {
-        match self {
-            Self::Inferred(inf) => inf.as_cow_type(i_s).is_true_literal(),
-            _ => false,
-        }
-    }
-}
-
 #[derive(Debug, Clone)]
-pub struct Arg<'db, 'a> {
+pub(crate) struct Arg<'db, 'a> {
     pub kind: ArgKind<'db, 'a>,
     pub index: usize,
 }
@@ -970,7 +961,7 @@ impl<'db: 'a, 'a> Iterator for ArgIteratorBase<'db, 'a> {
 }
 
 #[derive(Debug, Clone)]
-pub struct ArgIterator<'db, 'a> {
+pub(crate) struct ArgIterator<'db, 'a> {
     current: ArgIteratorBase<'db, 'a>,
     args_kwargs_iterator: ArgsKwargsIterator<'a>,
     next: Option<(Mode<'a>, &'a dyn Args<'db>)>,
@@ -1231,7 +1222,7 @@ pub fn unpack_star_star(i_s: &InferenceState, t: &Type) -> Option<(Type, Type)> 
     })
 }
 
-pub struct NoArgs<'a> {
+pub(crate) struct NoArgs<'a> {
     node_ref: NodeRef<'a>,
     add_issue: Option<&'a dyn Fn(IssueKind)>,
 }
@@ -1276,7 +1267,7 @@ impl<'db> Args<'db> for NoArgs<'_> {
 }
 
 #[derive(Clone, Copy)]
-pub struct CustomAddIssue<'a>(&'a dyn Fn(IssueKind));
+pub(crate) struct CustomAddIssue<'a>(&'a dyn Fn(IssueKind));
 
 impl std::fmt::Debug for CustomAddIssue<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
