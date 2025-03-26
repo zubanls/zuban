@@ -1825,12 +1825,21 @@ impl Inference<'_, '_, '_> {
     }
 
     pub fn flow_analysis_for_del_stmt(&self, del_targets: DelTargets) {
-        for del_target in del_targets.iter() {
-            match del_target {
-                DelTarget::Target(target) => self.flow_analysis_for_del_target(target),
-                DelTarget::DelTargets(del_targets) => self.flow_analysis_for_del_stmt(del_targets),
+        debug!(
+            r#"Flow analysis for "del {}" {}"#,
+            del_targets.as_code(),
+            NodeRef::new(self.file, del_targets.index()).debug_info(self.i_s.db)
+        );
+        debug_indent(|| {
+            for del_target in del_targets.iter() {
+                match del_target {
+                    DelTarget::Target(target) => self.flow_analysis_for_del_target(target),
+                    DelTarget::DelTargets(del_targets) => {
+                        self.flow_analysis_for_del_stmt(del_targets)
+                    }
+                }
             }
-        }
+        })
     }
 
     pub fn delete_name(&self, name_def: NameDef) {
@@ -1861,6 +1870,7 @@ impl Inference<'_, '_, '_> {
                     );
                     self.assign_any_to_target(target, NodeRef::new(self.file, name_def.index()));
                 } else {
+                    debug!("Assigned deleted variable {}", name_def.as_code());
                     // TODO this should be something like Specific::DeletedVariable
                     NodeRef::new(self.file, name_def.index())
                         .set_point(Point::new_specific(Specific::AnyDueToError, Locality::Todo))

@@ -3574,7 +3574,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     }
                     let r = FLOW_ANALYSIS.with(|fa| {
                         fa.with_new_empty_without_unfinished_partial_checking(|| {
-                            inference._infer_name_def(node_ref.expect_name_def())
+                            inference.infer_name_def(node_ref.expect_name_def())
                         })
                     });
                     if !r.unfinished_partials.is_empty() {
