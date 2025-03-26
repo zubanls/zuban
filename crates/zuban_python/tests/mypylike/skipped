@@ -14,13 +14,6 @@ import_recursion_usage1
 import_recursion_usage2
 import_recursion_usage3
 
-testModuleLevelGetattrInvalidSignature
-testModuleLevelGetattrNotCallable
-testModuleLevelGetattrAssignedGood
-testModuleLevelGetattrAssignedBad
-testModuleLevelGetattrImportedGood
-testModuleLevelGetattrImportedBad
-
 # parser fails
 avoid_bracket_slowdown
 

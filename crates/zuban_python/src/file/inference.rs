@@ -13,7 +13,7 @@ use super::{
     ClassNodeRef, File, PythonFile, FLOW_ANALYSIS,
 };
 use crate::{
-    arguments::{Args, KnownArgs, NoArgs, SimpleArgs},
+    arguments::{Args, KnownArgs, KnownArgsWithCustomAddIssue, NoArgs, SimpleArgs},
     database::{ComplexPoint, Database, Locality, Point, PointKind, PointLink, Specific},
     debug,
     diagnostics::{Issue, IssueKind},
@@ -3525,22 +3525,17 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 }
             }
             PointResolution::ModuleGetattrName(node_ref) => {
-                if let Some(func) = node_ref.maybe_name_of_function() {
-                    let func = Function::new(NodeRef::new(node_ref.file, func.index()), None);
-                    let i_s = &InferenceState::new(self.i_s.db, node_ref.file);
-                    func.ensure_cached_func(i_s);
-                    func.execute(
-                        i_s,
-                        &KnownArgs::new(&Inferred::new_any_from_error(), node_ref),
-                        &mut ResultContext::Unknown,
+                let i_s = &InferenceState::new(self.i_s.db, node_ref.file);
+                let inf = node_ref.infer_name_of_definition_by_index(i_s);
+                return inf.execute(
+                    i_s,
+                    &KnownArgsWithCustomAddIssue::new(
+                        &Inferred::new_any_from_error(),
                         // Errors are reported when checking the file (the signature can only contain
                         // one positional argument)
-                        OnTypeError::new(&|_, _, _, _| {}),
-                    )
-                } else {
-                    // In case of a non-function an error is raised anyway.
-                    Inferred::new_any_from_error()
-                }
+                        &|_| (),
+                    ),
+                );
             }
         }
     }
