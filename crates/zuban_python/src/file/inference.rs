@@ -7,7 +7,7 @@ use super::{
     flow_analysis::has_custom_special_method,
     name_binder::GLOBAL_NONLOCAL_TO_NAME_DIFFERENCE,
     name_resolution::NameResolution,
-    on_argument_type_error,
+    on_argument_type_error, process_unfinished_partials,
     type_computation::ANNOTATION_TO_EXPR_DIFFERENCE,
     utils::{func_of_self_symbol, infer_dict_like},
     ClassNodeRef, File, FuncNodeRef, PythonFile, FLOW_ANALYSIS,
@@ -120,7 +120,8 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             return;
         }
         self.assign_import_from_names(imp, |name_def, pr, redirect_to_link| {
-            let inf = self.infer_point_resolution(pr);
+            let inf =
+                self.infer_module_point_resolution(pr, |k| self.add_issue(name_def.index(), k));
             self.assign_to_import_from_name(name_def, inf, redirect_to_link)
         });
         self.file.points.set(
@@ -141,12 +142,12 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             &inf,
             AssignKind::Import,
             |_, inf| match redirect_to_link {
-                Some(link) => {
+                Some(link) if inf.is_saved() => {
                     self.file
                         .points
                         .set(name_def.index(), link.into_redirect_point(Locality::Todo));
                 }
-                None => {
+                _ => {
                     inf.clone()
                         .save_redirect(self.i_s, self.file, name_def.index());
                 }
@@ -3541,6 +3542,55 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         }
     }
 
+    fn infer_module_point_resolution(
+        &self,
+        pr: PointResolution,
+        add_issue: impl Fn(IssueKind),
+    ) -> Inferred {
+        match pr {
+            PointResolution::NameDef {
+                node_ref,
+                global_redirect,
+            } => node_ref.file.inference(self.i_s).with_correct_context(
+                global_redirect,
+                |inference| {
+                    let ensure_flow_analysis = || {
+                        if inference.calculate_diagnostics().is_err() {
+                            add_issue(IssueKind::CannotDetermineType {
+                                for_: node_ref.as_code().into(),
+                            });
+                            return Some(Inferred::new_any_from_error());
+                        }
+                        None
+                    };
+                    let p = node_ref.name_ref_of_name_def().point();
+                    if p.calculated() && p.needs_flow_analysis() {
+                        if let Some(result) = ensure_flow_analysis() {
+                            return result;
+                        }
+                    }
+                    let r = FLOW_ANALYSIS.with(|fa| {
+                        fa.with_new_empty_without_unfinished_partial_checking(|| {
+                            inference._infer_name_def(node_ref.expect_name_def())
+                        })
+                    });
+                    if !r.unfinished_partials.is_empty() {
+                        if let Some(result) = ensure_flow_analysis() {
+                            return result;
+                        }
+                        process_unfinished_partials(inference.i_s, r.unfinished_partials);
+                        // In case where the partial is overwritten, we can just return the old Inferred,
+                        // because it points to the correct place.
+                    }
+                    r.result
+                },
+            ),
+
+            PointResolution::Inferred(inferred) => inferred,
+            _ => self.infer_point_resolution(pr),
+        }
+    }
+
     pub fn check_point_cache(&self, i: NodeIndex) -> Option<Inferred> {
         let resolved = self.resolve_point(i, |i_s, node_ref, next| {
             node_ref
@@ -3555,7 +3605,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
     pub(super) fn with_correct_context<T>(
         &self,
         global_redirect: bool,
-        callable: impl Fn(&Inference) -> T,
+        callable: impl FnOnce(&Inference) -> T,
     ) -> T {
         if global_redirect {
             FLOW_ANALYSIS.with(|fa| {
@@ -3704,7 +3754,9 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 self.assign_import_from_only_particular_name_def(
                     as_name,
                     |name_def, pr, redirect_to_link| {
-                        let inf = self.infer_point_resolution(pr);
+                        let inf = self.infer_module_point_resolution(pr, |k| {
+                            self.add_issue(name_def.index(), k)
+                        });
                         self.assign_to_import_from_name(name_def, inf, redirect_to_link)
                     },
                 );

@@ -13,7 +13,7 @@ use crate::{
     inference_state::InferenceState,
     inferred::Inferred,
     node_ref::NodeRef,
-    type_::{LookupResult, Type},
+    type_::Type,
     type_helpers::{is_private_import, is_reexport_issue, Module},
     utils::AlreadySeen,
 };
@@ -426,35 +426,11 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                     let inf = convert_imp_result(module.sub_module(self.i_s.db, name)?);
                     (PointResolution::Inferred(inf), None)
                 } else {
-                    if self.stop_on_assignments {
-                        return self
-                            .with_new_file(import_file)
-                            .resolve_module_access(name, |kind| {
-                                self.add_issue(import_name.index(), kind)
-                            });
-                    } else {
-                        // TODO Shouldn't we use the normal resolving?
-                        let module = Module::new(import_file);
-                        let mut redirect_to_link = None;
-                        let inf = match module.lookup(
-                            self.i_s.db,
-                            |issue| self.add_issue(import_name.index(), issue),
-                            import_name.as_str(),
-                        ) {
-                            LookupResult::GotoName { name: link, inf } => {
-                                redirect_to_link = Some(link);
-                                inf
-                            }
-                            LookupResult::FileReference(file_index) => {
-                                Inferred::new_file_reference(file_index)
-                            }
-                            LookupResult::UnknownName(inf) => inf,
-                            LookupResult::None => {
-                                return None;
-                            }
-                        };
-                        return Some((PointResolution::Inferred(inf), redirect_to_link));
-                    }
+                    return self
+                        .with_new_file(import_file)
+                        .resolve_module_access(name, |kind| {
+                            self.add_issue(import_name.index(), kind)
+                        });
                 }
             }
             ImportResult::Namespace(namespace) => (

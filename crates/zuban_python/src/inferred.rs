@@ -2263,6 +2263,10 @@ impl<'db: 'slf, 'slf> Inferred {
         )
     }
 
+    pub fn is_saved(&self) -> bool {
+        matches!(&self.state, InferredState::Saved(_))
+    }
+
     pub fn is_saved_partial(&self, db: &Database) -> bool {
         self.maybe_saved_specific(db)
             .is_some_and(|specific| specific.is_partial())
