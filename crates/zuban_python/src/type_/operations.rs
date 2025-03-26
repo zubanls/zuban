@@ -5,7 +5,7 @@ use super::{
     lookup_on_dataclass_type, lookup_on_enum_class, lookup_on_enum_instance,
     lookup_on_enum_member_instance, lookup_on_typed_dict,
     tuple::{lookup_on_tuple, lookup_tuple_magic_methods},
-    AnyCause, LookupResult, NewType, Type, TypeVarKind,
+    AnyCause, LookupResult, Namespace, NewType, Type, TypeVarKind,
 };
 use crate::{
     arguments::{Args, NoArgs},
@@ -14,6 +14,7 @@ use crate::{
     diagnostics::IssueKind,
     file::PythonFile,
     getitem::SliceType,
+    imports::{namespace_import, ImportResult},
     inference_state::InferenceState,
     inferred::{AttributeKind, Inferred},
     matching::{
@@ -24,8 +25,8 @@ use crate::{
     recoverable_error,
     type_::{Intersection, NamedTuple},
     type_helpers::{
-        lookup_in_namespace, Callable, Class, ClassLookupOptions, Instance, InstanceLookupOptions,
-        LookupDetails, OverloadedFunction,
+        Callable, Class, ClassLookupOptions, Instance, InstanceLookupOptions, LookupDetails,
+        OverloadedFunction,
     },
 };
 
@@ -1120,6 +1121,25 @@ impl NewType {
                     expected: t,
                 },
             );
+        }
+    }
+}
+
+fn lookup_in_namespace(
+    db: &Database,
+    from_file: &PythonFile,
+    namespace: &Namespace,
+    name: &str,
+) -> LookupResult {
+    match namespace_import(db, from_file, namespace, name) {
+        Some(ImportResult::File(file_index)) => LookupResult::FileReference(file_index),
+        Some(ImportResult::Namespace(namespace)) => {
+            LookupResult::UnknownName(Inferred::from_type(Type::Namespace(namespace)))
+        }
+        Some(ImportResult::PyTypedMissing) => LookupResult::any(AnyCause::FromError),
+        None => {
+            debug!("TODO namespace basic lookups");
+            LookupResult::None
         }
     }
 }
