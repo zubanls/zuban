@@ -6,14 +6,6 @@ testOverloadPossibleOverlapWithArgsAndKwargs
 testLiteralAndGenericsRespectsUpperBound
 self_instance_variable1
 
-testFinalReassignModuleReexport
-testCyclicUndefinedImportWithName
-testNewAnalyzerTypeAnnotationCycle4
-module_mutual_flow_analysis4
-import_recursion_usage1
-import_recursion_usage2
-import_recursion_usage3
-
 # parser fails
 avoid_bracket_slowdown
 
