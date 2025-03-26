@@ -51,8 +51,8 @@ impl PointResolution<'_> {
                 "NameDef: {}, {}",
                 node_ref.debug_info(db),
                 match global_redirect {
-                    true => "redirect",
-                    false => "no-redirect",
+                    true => "global-redirect",
+                    false => "no-global-redirect",
                 }
             ),
             Self::Inferred(inferred) => format!("Inferred: {}", inferred.debug_info(db)),
@@ -282,13 +282,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                     // https://github.com/python/mypy/blob/bc591c756a453bb6a78a31e734b1f0aa475e90e0/mypy/semanal_pass1.py#L87-L96
                     if r.is_none()
                         && module.file.is_stub()
-                        && module
-                            .lookup(
-                                i_s.db,
-                                |issue| self.add_issue(name.index(), issue),
-                                "__getattr__",
-                            )
-                            .is_some()
+                        && module.file.lookup_global("__getattr__").is_some()
                     {
                         in_stub_and_has_getattr = true
                     }
