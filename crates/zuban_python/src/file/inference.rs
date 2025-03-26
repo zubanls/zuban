@@ -3822,6 +3822,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 // Apparently assigning any here is enough for everything to be working well.
                 // Errors are raised in the proper places anyway, see test
                 // `del_stmt_inference_of_self_name`.
+                debug!("Assigning Any to del_stmt, because it wasn't properly type checked");
                 self.assign_any_to_del_stmts(del_stmt.targets());
             }
             DefiningStmt::Lambda(_)
