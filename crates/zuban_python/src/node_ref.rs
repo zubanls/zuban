@@ -423,8 +423,6 @@ impl<'file> NodeRef<'file> {
 impl fmt::Debug for NodeRef<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut s = f.debug_struct("NodeRef");
-        s.field("file_index", &self.file.file_index);
-        s.field("node_index", &self.node_index);
         s.field(
             "node",
             &self.file.tree.short_debug_of_index(self.node_index),
@@ -432,8 +430,15 @@ impl fmt::Debug for NodeRef<'_> {
         let point = self.point();
         s.field("point", &point);
         if let Some(complex_index) = point.maybe_complex_index() {
-            s.field("complex", self.file.complex_points.get(complex_index));
+            let complex_point = self.file.complex_points.get(complex_index);
+            if matches!(complex_point, ComplexPoint::Class(_)) {
+                s.field("complex", &"ClassStorage { .. }");
+            } else {
+                s.field("complex", complex_point);
+            }
         }
+        s.field("file_index", &self.file.file_index);
+        s.field("node_index", &self.node_index);
         s.field("line", &self.line());
         s.finish()
     }
