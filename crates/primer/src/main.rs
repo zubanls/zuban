@@ -9,10 +9,15 @@ use clap::Parser;
 #[derive(Parser)]
 #[command(version, about)]
 pub struct Cli {
+    /// Specify a project to only run this one.
     #[arg()]
     project: Option<String>,
+    /// These args are passed to zmypy. You can use -- before --some-arg
     #[arg(num_args = 0..)]
     mypy_args: Vec<String>,
+    /// Ignore this specific project
+    #[arg(long)]
+    ignore: Option<String>,
 }
 
 fn main() -> ExitCode {
@@ -31,6 +36,9 @@ fn main() -> ExitCode {
             })
             .collect();
         projects.sort();
+    }
+    if let Some(ignore) = cli.ignore {
+        projects.retain(|p| p != &ignore);
     }
 
     let start = Instant::now();
