@@ -58,11 +58,11 @@ impl<'a> Generics<'a> {
         }
     }
 
-    pub fn nth_usage<'db: 'a>(&self, db: &'db Database, usage: &TypeVarLikeUsage) -> Generic<'a> {
+    pub fn nth_usage(&self, db: &'a Database, usage: &TypeVarLikeUsage) -> Generic<'a> {
         self.nth(db, usage.index().as_usize())
     }
 
-    pub fn nth<'db: 'a>(&self, db: &'db Database, n: usize) -> Generic<'a> {
+    pub fn nth(&self, db: &'a Database, n: usize) -> Generic<'a> {
         match self {
             Self::ExpressionWithClassType(file, expr) => {
                 debug_assert_eq!(n, 0);
@@ -100,7 +100,7 @@ impl<'a> Generics<'a> {
         }
     }
 
-    pub fn iter<'x>(&'x self, db: &'x Database) -> GenericsIterator<'x> {
+    pub fn iter(&self, db: &'a Database) -> GenericsIterator<'a> {
         let item = match self {
             Self::ExpressionWithClassType(file, expr) => {
                 GenericsIteratorItem::SimpleGenericExpression(file, *expr)
