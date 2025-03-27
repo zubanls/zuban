@@ -187,10 +187,15 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         // This does not include NamedTuple, NewType and TypedDict executions, which are taken care
         // of in normal alias calculation, because they need access to type vars and can in general
         // create recursive types.
-        if self.file.points.get(name_def.index()).calculated() {
+        let p = self.file.points.get(name_def.index());
+        if p.calculated() {
             // The special assignment has been inferred with the normal inference and we simply set
             // the correct alias below.
-            debug_assert!(self.file.points.get(assignment.index()).calculated());
+            debug_assert!(
+                self.file.points.get(assignment.index()).calculated()
+                    // This happens when we are in an untyped context
+                    || p.maybe_specific() == Some(Specific::AnyDueToError)
+            );
         } else {
             let inf = match special {
                 SpecialAssignmentKind::Enum(class, args) => self
