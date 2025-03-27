@@ -492,3 +492,19 @@ def f(x: tuple[str, ...], y: tuple[bytes, ...]):
 def f(x: tuple[str, ...], y: tuple[bytes, ...]):
     t = [x, y]
     reveal_type(t)  # N: Revealed type is "builtins.list[tuple[str | bytes, ...]]"
+
+[case common_base_type_for_arbitrary_vs_fixed_len_tuple_mypy_compatible]
+# flags: --mypy-compatible
+def f(x: tuple[str, ...], y: tuple[bytes]):
+    t1 = [x, y]
+    reveal_type(t1)  # N: Revealed type is "builtins.list[tuple[typing.Sequence[builtins.object], ...]]"
+    t2 = [x, y]
+    reveal_type(t2)  # N: Revealed type is "builtins.list[tuple[typing.Sequence[builtins.object], ...]]"
+
+[case common_base_type_for_arbitrary_vs_fixed_len_tuple_no_mypy_compatible]
+# flags: --no-mypy-compatible
+def f(x: tuple[str, ...], y: tuple[bytes, ...]):
+    t1 = [x, y]
+    reveal_type(t1)  # N: Revealed type is "builtins.list[tuple[str | bytes, ...]]"
+    t2 = [x, y]
+    reveal_type(t2)  # N: Revealed type is "builtins.list[tuple[str | bytes, ...]]"

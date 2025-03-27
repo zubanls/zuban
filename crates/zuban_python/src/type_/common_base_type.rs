@@ -4,8 +4,8 @@ use parsa_python_cst::ParamKind;
 
 use super::{
     CallableContent, CallableParam, CallableParams, ClassGenerics, GenericItem, GenericsList,
-    ParamType, ParamTypeDetails, StarParamType, StarStarParamType, Tuple, TupleArgs, Type,
-    TypeGuardInfo, TypeVarLike, Variance,
+    NeverCause, ParamType, ParamTypeDetails, StarParamType, StarStarParamType, Tuple, TupleArgs,
+    Type, TypeGuardInfo, TypeVarLike, Variance,
 };
 use crate::{
     database::Database,
@@ -541,8 +541,24 @@ fn common_base_for_tuples(
     }
 }
 
+fn common_base_type_from_iterator<'x>(
+    i_s: &InferenceState,
+    types: impl Iterator<Item = &'x Type>,
+    checked_recursions: Option<CheckedTypeRecursion>,
+) -> Type {
+    let mut out: Option<Type> = None;
+    for t in types {
+        if let Some(o) = out.take() {
+            out = Some(o.common_base_type_internal(i_s, t, checked_recursions))
+        } else {
+            out = Some(t.clone());
+        }
+    }
+    out.unwrap_or_else(|| Type::Never(NeverCause::Other))
+}
+
 impl TupleArgs {
-    pub fn common_base_type(
+    fn common_base_type(
         &self,
         i_s: &InferenceState,
         other: &Self,
@@ -552,17 +568,23 @@ impl TupleArgs {
             return self.clone();
         }
         match (self, other) {
-            (TupleArgs::FixedLen(ts1), TupleArgs::FixedLen(ts2)) if ts1.len() == ts2.len() => {
-                TupleArgs::FixedLen(
-                    ts1.iter()
-                        .zip(ts2.iter())
-                        .map(|(t1, t2)| t1.common_base_type_internal(i_s, t2, checked_recursions))
-                        .collect(),
-                )
-            }
-            (TupleArgs::ArbitraryLen(t1), TupleArgs::ArbitraryLen(t2)) => TupleArgs::ArbitraryLen(
-                Box::from(t1.common_base_type_internal(i_s, t2, checked_recursions)),
+            (Self::FixedLen(ts1), Self::FixedLen(ts2)) if ts1.len() == ts2.len() => Self::FixedLen(
+                ts1.iter()
+                    .zip(ts2.iter())
+                    .map(|(t1, t2)| t1.common_base_type_internal(i_s, t2, checked_recursions))
+                    .collect(),
             ),
+            (Self::ArbitraryLen(t1), Self::ArbitraryLen(t2)) => Self::ArbitraryLen(Box::from(
+                t1.common_base_type_internal(i_s, t2, checked_recursions),
+            )),
+            (Self::ArbitraryLen(t), Self::FixedLen(ts))
+            | (Self::FixedLen(ts), Self::ArbitraryLen(t)) => {
+                Self::ArbitraryLen(Box::new(common_base_type_from_iterator(
+                    i_s,
+                    std::iter::once(t.as_ref()).chain(ts.iter()),
+                    checked_recursions,
+                )))
+            }
             (_, _) => self.simplified_union(i_s, other),
         }
     }
