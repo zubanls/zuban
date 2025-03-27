@@ -177,8 +177,8 @@ impl<'db: 'slf, 'slf> Inferred {
             InferredState::UnsavedComplex(complex) => type_of_complex(i_s, complex, None),
             InferredState::UnsavedSpecific(specific) => match specific {
                 Specific::None | Specific::PartialNone => Cow::Borrowed(&Type::None),
-                Specific::Cycle | Specific::ModuleNotFound => {
-                    Cow::Borrowed(&Type::Any(AnyCause::Todo))
+                Specific::Cycle | Specific::ModuleNotFound | Specific::InvalidTypeDefinition => {
+                    Cow::Borrowed(&Type::ERROR)
                 }
                 Specific::PartialList => Cow::Borrowed(&i_s.db.python_state.list_of_never),
                 Specific::PartialDict => Cow::Borrowed(&i_s.db.python_state.dict_of_never),

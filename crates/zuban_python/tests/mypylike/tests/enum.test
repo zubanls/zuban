@@ -194,3 +194,8 @@ class Foo(Enum):
     e = 1
 
 Bar = Foo | int
+
+[case invalid_enum_execution_with_attr_access]
+from enum import Enum
+
+Enum().x  # E: Too few arguments for Enum()
