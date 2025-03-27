@@ -1,3 +1,5 @@
+use utils::FastHashSet;
+
 use crate::{
     database::{Database, PointLink},
     matching::{Matcher, MatcherFormatResult},
@@ -174,7 +176,7 @@ impl<'db, 'a, 'b, 'c> FormatData<'db, 'a, 'b, 'c> {
 
 pub fn find_similar_types(db: &Database, types: &[&Type]) -> Vec<PointLink> {
     // Mypy calls this `mypy.messages.find_type_overlaps`
-    let mut seen_types = vec![];
+    let mut seen_types = FastHashSet::default();
     let mut types_with_same_names = vec![];
     for t in types {
         t.find_in_type(db, &mut |t| {
@@ -203,7 +205,7 @@ pub fn find_similar_types(db: &Database, types: &[&Type]) -> Vec<PointLink> {
                                 return false;
                             }
                         }
-                        seen_types.push(t.clone());
+                        seen_types.insert(t.clone());
                     }
                 }
                 _ => (),
