@@ -43,7 +43,9 @@ impl Type {
             Type::None | Type::Union(_) => Some(self.simplified_union(i_s, other)),
             Type::Any(cause) => Some(Type::Any(*cause)),
             Type::Never(_) => Some(t2.clone()),
-            Type::Callable(c1) => common_base_for_callable_against_type(i_s, c1, t2),
+            Type::Callable(c1) => {
+                common_base_for_callable_against_type(i_s, c1, t2, checked_recursions)
+            }
             Type::EnumMember(_) => match t2 {
                 Type::EnumMember(_) | Type::Enum(_) => {
                     if is_reverse {
@@ -212,7 +214,9 @@ fn common_base_class_basic(
                 if p1.type_vars.is_some() || p2.type_vars.is_some() {
                     return None;
                 }
-                let new = p1.params.common_base_type(i_s, &p2.params)?;
+                let new = p1
+                    .params
+                    .common_base_type(i_s, &p2.params, Some(checked_recursions))?;
                 generics.push(GenericItem::ParamSpecArg(ParamSpecArg::new(new, None)));
             }
         }
@@ -230,14 +234,21 @@ fn common_base_type_for_non_class(
     checked_recursions: CheckedTypeRecursion,
 ) -> Option<Type> {
     match type1 {
-        Type::Tuple(tup1) => return common_base_for_tuple_against_type(i_s, tup1, type2),
+        Type::Tuple(tup1) => {
+            return common_base_for_tuple_against_type(i_s, tup1, type2, checked_recursions)
+        }
         Type::NamedTuple(nt1) => {
             if let Type::NamedTuple(nt2) = type2 {
                 if nt1.__new__.defined_at == nt2.__new__.defined_at {
                     return Some(Type::NamedTuple(nt1.clone()));
                 }
             }
-            return common_base_for_tuple_against_type(i_s, &nt1.as_tuple(), type2);
+            return common_base_for_tuple_against_type(
+                i_s,
+                &nt1.as_tuple(),
+                type2,
+                checked_recursions,
+            );
         }
         Type::TypedDict(td1) => {
             if let Type::TypedDict(td2) = &type2 {
@@ -267,10 +278,13 @@ impl CallableParams {
         &self,
         i_s: &InferenceState,
         other: &CallableParams,
+        checked_recursions: Option<CheckedTypeRecursion>,
     ) -> Option<CallableParams> {
         match self {
             CallableParams::Simple(params1) => match other {
-                CallableParams::Simple(params2) => common_params(i_s, params1, params2),
+                CallableParams::Simple(params2) => {
+                    common_params(i_s, params1, params2, checked_recursions)
+                }
                 CallableParams::Any(_) => Some(other.clone()),
                 CallableParams::Never(_) => None,
             },
@@ -284,9 +298,12 @@ fn common_base_for_callable_against_type(
     i_s: &InferenceState,
     c1: &CallableContent,
     other: &Type,
+    checked_recursions: CheckedTypeRecursion,
 ) -> Option<Type> {
     match other.maybe_callable(i_s)? {
-        CallableLike::Callable(c2) => Some(common_base_for_callables(i_s, c1, &c2)),
+        CallableLike::Callable(c2) => {
+            Some(common_base_for_callables(i_s, c1, &c2, checked_recursions))
+        }
         CallableLike::Overload(_) => None,
     }
 }
@@ -294,11 +311,15 @@ fn common_base_for_callables(
     i_s: &InferenceState,
     c1: &CallableContent,
     c2: &CallableContent,
+    checked_recursions: CheckedTypeRecursion,
 ) -> Type {
     if !c1.kind.is_same_base_kind(&c2.kind) {
         return i_s.db.python_state.function_type();
     }
-    if let Some(params) = c1.params.common_base_type(i_s, &c2.params) {
+    if let Some(params) = c1
+        .params
+        .common_base_type(i_s, &c2.params, Some(checked_recursions))
+    {
         Type::Callable(Rc::new(CallableContent {
             name: None,
             class_name: None,
@@ -310,7 +331,11 @@ fn common_base_for_callables(
             is_abstract: c1.is_abstract && c2.is_abstract,
             is_final: c1.is_final && c2.is_final,
             params,
-            return_type: c1.return_type.common_base_type(i_s, &c2.return_type),
+            return_type: c1.return_type.common_base_type_internal(
+                i_s,
+                &c2.return_type,
+                Some(checked_recursions),
+            ),
             no_type_check: false,
         }))
     } else {
@@ -328,6 +353,7 @@ fn common_params<'x>(
     i_s: &InferenceState,
     params1: &'x [CallableParam],
     params2: &'x [CallableParam],
+    checked_recursions: Option<CheckedTypeRecursion>,
 ) -> Option<CallableParams> {
     fn maybe_unpack_typed_dict_params<'y: 'z, 'z>(
         i_s: &InferenceState,
@@ -357,12 +383,26 @@ fn common_params<'x>(
         maybe_unpack_typed_dict_params(i_s, params1, &mut new1)
     {
         if let Some((len_p2, new_p2)) = maybe_unpack_typed_dict_params(i_s, params2, &mut new2) {
-            common_params_by_iterable(i_s, len_p1, len_p2, new_p1, new_p2)
+            common_params_by_iterable(i_s, len_p1, len_p2, new_p1, new_p2, checked_recursions)
         } else {
-            common_params_by_iterable(i_s, len_p1, params2.len(), new_p1, params2.iter())
+            common_params_by_iterable(
+                i_s,
+                len_p1,
+                params2.len(),
+                new_p1,
+                params2.iter(),
+                checked_recursions,
+            )
         }
     } else if let Some((len_p2, new_p2)) = maybe_unpack_typed_dict_params(i_s, params2, &mut new2) {
-        common_params_by_iterable(i_s, params1.len(), len_p2, params1.iter(), new_p2)
+        common_params_by_iterable(
+            i_s,
+            params1.len(),
+            len_p2,
+            params1.iter(),
+            new_p2,
+            checked_recursions,
+        )
     } else {
         common_params_by_iterable(
             i_s,
@@ -370,6 +410,7 @@ fn common_params<'x>(
             params2.len(),
             params1.iter(),
             params2.iter(),
+            checked_recursions,
         )
     };
     result
@@ -381,6 +422,7 @@ fn common_params_by_iterable<'x>(
     p2_len: usize,
     params1: impl Iterator<Item = &'x CallableParam>,
     params2: impl Iterator<Item = &'x CallableParam>,
+    checked_recursions: Option<CheckedTypeRecursion>,
 ) -> Option<CallableParams> {
     let mut new_params = vec![];
     if p1_len == p2_len {
@@ -414,7 +456,7 @@ fn common_params_by_iterable<'x>(
                 ParamTypeDetails::UnpackedTuple(u1) => match p2.type_.details() {
                     ParamTypeDetails::UnpackedTuple(u2) => {
                         new_params.push(new_param(ParamType::Star(StarParamType::UnpackedTuple(
-                            common_base_for_tuples(i_s, &u1, &u2),
+                            common_base_for_tuples(i_s, &u1, &u2, checked_recursions),
                         ))));
                         continue;
                     }
@@ -459,22 +501,39 @@ fn common_base_for_tuple_against_type(
     i_s: &InferenceState,
     tup1: &Tuple,
     t2: &Type,
+    checked_recursions: CheckedTypeRecursion,
 ) -> Option<Type> {
     Some(match t2 {
-        Type::Tuple(tup2) => Type::Tuple(common_base_for_tuples(i_s, tup1, tup2)),
-        Type::NamedTuple(nt2) => Type::Tuple(common_base_for_tuples(i_s, tup1, &nt2.as_tuple())),
+        Type::Tuple(tup2) => Type::Tuple(common_base_for_tuples(
+            i_s,
+            tup1,
+            tup2,
+            Some(checked_recursions),
+        )),
+        Type::NamedTuple(nt2) => Type::Tuple(common_base_for_tuples(
+            i_s,
+            tup1,
+            &nt2.as_tuple(),
+            Some(checked_recursions),
+        )),
         _ => return None,
     })
 }
 
-fn common_base_for_tuples(i_s: &InferenceState, tup1: &Tuple, tup2: &Tuple) -> Rc<Tuple> {
+fn common_base_for_tuples(
+    i_s: &InferenceState,
+    tup1: &Tuple,
+    tup2: &Tuple,
+    checked_recursions: Option<CheckedTypeRecursion>,
+) -> Rc<Tuple> {
     if let Some(tup1) = tup1.maybe_avoid_implicit_literal(i_s.db) {
-        common_base_for_tuples(i_s, &tup1, tup2)
+        common_base_for_tuples(i_s, &tup1, tup2, checked_recursions)
     } else if let Some(tup2) = tup2.maybe_avoid_implicit_literal(i_s.db) {
-        common_base_for_tuples(i_s, tup1, &tup2)
+        common_base_for_tuples(i_s, tup1, &tup2, checked_recursions)
     } else {
         let tup_args = if i_s.db.project.settings.mypy_compatible {
-            tup1.args.common_base_type(i_s, &tup2.args)
+            tup1.args
+                .common_base_type(i_s, &tup2.args, checked_recursions)
         } else {
             tup1.args.simplified_union(i_s, &tup2.args)
         };
@@ -483,7 +542,12 @@ fn common_base_for_tuples(i_s: &InferenceState, tup1: &Tuple, tup2: &Tuple) -> R
 }
 
 impl TupleArgs {
-    pub fn common_base_type(&self, i_s: &InferenceState, other: &Self) -> Self {
+    pub fn common_base_type(
+        &self,
+        i_s: &InferenceState,
+        other: &Self,
+        checked_recursions: Option<CheckedTypeRecursion>,
+    ) -> Self {
         if self == other {
             return self.clone();
         }
@@ -492,13 +556,13 @@ impl TupleArgs {
                 TupleArgs::FixedLen(
                     ts1.iter()
                         .zip(ts2.iter())
-                        .map(|(t1, t2)| t1.common_base_type(i_s, t2))
+                        .map(|(t1, t2)| t1.common_base_type_internal(i_s, t2, checked_recursions))
                         .collect(),
                 )
             }
-            (TupleArgs::ArbitraryLen(t1), TupleArgs::ArbitraryLen(t2)) => {
-                TupleArgs::ArbitraryLen(Box::from(t1.common_base_type(i_s, t2)))
-            }
+            (TupleArgs::ArbitraryLen(t1), TupleArgs::ArbitraryLen(t2)) => TupleArgs::ArbitraryLen(
+                Box::from(t1.common_base_type_internal(i_s, t2, checked_recursions)),
+            ),
             (_, _) => self.simplified_union(i_s, other),
         }
     }

@@ -6,8 +6,6 @@ testOverloadPossibleOverlapWithArgsAndKwargs
 testLiteralAndGenericsRespectsUpperBound
 self_instance_variable1
 
-testCrashInJoinOfSelfRecursiveNamedTuples
-
 # parser fails
 avoid_bracket_slowdown
 

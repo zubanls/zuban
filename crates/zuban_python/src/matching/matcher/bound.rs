@@ -277,9 +277,9 @@ impl BoundKind {
             (Self::TypeVarTuple(tup1), Self::TypeVarTuple(tup2)) => {
                 Some(Self::TypeVarTuple(tup1.simplified_union(i_s, tup2)))
             }
-            (Self::ParamSpec(params1), Self::ParamSpec(params2)) => {
-                params1.common_base_type(i_s, params2).map(Self::ParamSpec)
-            }
+            (Self::ParamSpec(params1), Self::ParamSpec(params2)) => params1
+                .common_base_type(i_s, params2, None)
+                .map(Self::ParamSpec),
             _ => unreachable!(),
         }
     }
