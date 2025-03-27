@@ -464,3 +464,31 @@ g1 = c  # E: Incompatible types in assignment (expression has type "Callable[[tu
 g2 = c  # E: Incompatible types in assignment (expression has type "Callable[[tuple[Unpack[Ts]], VarArg(Unpack[tuple[Unpack[Ts], int]])], Any]", variable has type "Callable[[tuple[str, str], VarArg(int)], Any]")
 g3 = c
 g4 = c  # E: Incompatible types in assignment (expression has type "Callable[[tuple[Unpack[Ts]], VarArg(Unpack[tuple[Unpack[Ts], int]])], Any]", variable has type "Callable[[tuple[str, ...], VarArg(int)], Any]")
+
+[case common_base_type_for_fixed_len_tuple_mypy_compatible]
+# flags: --mypy-compatible
+x = [
+    (1, ""),
+    (1, b''),
+]
+reveal_type(x)  # N: Revealed type is "builtins.list[tuple[builtins.int, typing.Sequence[builtins.object]]]"
+
+[case common_base_type_for_fixed_len_tuple_no_mypy_compatible]
+# flags: --no-mypy-compatible
+x = [
+    (1, ""),
+    (1, b''),
+]
+reveal_type(x)  # N: Revealed type is "builtins.list[tuple[builtins.int, str | bytes]]"
+
+[case common_base_type_for_arbitrary_len_tuple_mypy_compatible]
+# flags: --mypy-compatible
+def f(x: tuple[str, ...], y: tuple[bytes, ...]):
+    t = [x, y]
+    reveal_type(t)  # N: Revealed type is "builtins.list[tuple[typing.Sequence[builtins.object], ...]]"
+
+[case common_base_type_for_arbitrary_len_tuple_no_mypy_compatible]
+# flags: --no-mypy-compatible
+def f(x: tuple[str, ...], y: tuple[bytes, ...]):
+    t = [x, y]
+    reveal_type(t)  # N: Revealed type is "builtins.list[tuple[str | bytes, ...]]"

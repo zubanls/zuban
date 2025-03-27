@@ -4,8 +4,8 @@ use parsa_python_cst::ParamKind;
 
 use super::{
     CallableContent, CallableParam, CallableParams, ClassGenerics, GenericItem, GenericsList,
-    ParamType, ParamTypeDetails, StarParamType, StarStarParamType, Tuple, Type, TypeGuardInfo,
-    TypeVarLike, Variance,
+    ParamType, ParamTypeDetails, StarParamType, StarStarParamType, Tuple, TupleArgs, Type,
+    TypeGuardInfo, TypeVarLike, Variance,
 };
 use crate::{
     database::Database,
@@ -473,6 +473,33 @@ fn common_base_for_tuples(i_s: &InferenceState, tup1: &Tuple, tup2: &Tuple) -> R
     } else if let Some(tup2) = tup2.maybe_avoid_implicit_literal(i_s.db) {
         common_base_for_tuples(i_s, tup1, &tup2)
     } else {
-        Tuple::new(tup1.args.simplified_union(i_s, &tup2.args))
+        let tup_args = if i_s.db.project.settings.mypy_compatible {
+            tup1.args.common_base_type(i_s, &tup2.args)
+        } else {
+            tup1.args.simplified_union(i_s, &tup2.args)
+        };
+        Tuple::new(tup_args)
+    }
+}
+
+impl TupleArgs {
+    pub fn common_base_type(&self, i_s: &InferenceState, other: &Self) -> Self {
+        if self == other {
+            return self.clone();
+        }
+        match (self, other) {
+            (TupleArgs::FixedLen(ts1), TupleArgs::FixedLen(ts2)) if ts1.len() == ts2.len() => {
+                TupleArgs::FixedLen(
+                    ts1.iter()
+                        .zip(ts2.iter())
+                        .map(|(t1, t2)| t1.common_base_type(i_s, t2))
+                        .collect(),
+                )
+            }
+            (TupleArgs::ArbitraryLen(t1), TupleArgs::ArbitraryLen(t2)) => {
+                TupleArgs::ArbitraryLen(Box::from(t1.common_base_type(i_s, t2)))
+            }
+            (_, _) => self.simplified_union(i_s, other),
+        }
     }
 }
