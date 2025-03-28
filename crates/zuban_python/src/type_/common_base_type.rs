@@ -40,7 +40,13 @@ impl Type {
                 return self.clone().union(i_s.db, other.clone()).into_type()
             }
             */
-            Type::None | Type::Union(_) => Some(self.simplified_union(i_s, other)),
+            Type::None | Type::Union(_) => {
+                if other.is_object(i_s.db) {
+                    Some(other.clone())
+                } else {
+                    Some(self.simplified_union(i_s, other))
+                }
+            }
             Type::Any(cause) => Some(Type::Any(*cause)),
             Type::Never(_) => Some(t2.clone()),
             Type::Callable(c1) => {
@@ -568,12 +574,24 @@ impl TupleArgs {
             return self.clone();
         }
         match (self, other) {
-            (Self::FixedLen(ts1), Self::FixedLen(ts2)) if ts1.len() == ts2.len() => Self::FixedLen(
-                ts1.iter()
-                    .zip(ts2.iter())
-                    .map(|(t1, t2)| t1.common_base_type_internal(i_s, t2, checked_recursions))
-                    .collect(),
-            ),
+            (Self::FixedLen(ts1), Self::FixedLen(ts2)) => {
+                if ts1.len() == ts2.len() {
+                    Self::FixedLen(
+                        ts1.iter()
+                            .zip(ts2.iter())
+                            .map(|(t1, t2)| {
+                                t1.common_base_type_internal(i_s, t2, checked_recursions)
+                            })
+                            .collect(),
+                    )
+                } else {
+                    Self::ArbitraryLen(Box::new(common_base_type_from_iterator(
+                        i_s,
+                        ts1.iter().chain(ts2.iter()),
+                        checked_recursions,
+                    )))
+                }
+            }
             (Self::ArbitraryLen(t1), Self::ArbitraryLen(t2)) => Self::ArbitraryLen(Box::from(
                 t1.common_base_type_internal(i_s, t2, checked_recursions),
             )),
