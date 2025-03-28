@@ -619,8 +619,11 @@ impl Inference<'_, '_, '_> {
                 RelevantUntypedNode::FunctionDef(_func) => {
                     // TODO
                 }
-                RelevantUntypedNode::ClassDef(_class) => {
-                    // TODO
+                RelevantUntypedNode::ClassDef(class) => {
+                    // Classes need to be initialized, otherwise there can be issues when they are
+                    // references e.g. in annotations in untyped code.
+                    cache_class_name(NodeRef::new(self.file, class.name_def().index()), class);
+                    NodeRef::new(self.file, class.index()).ensure_cached_class_infos(self.i_s);
                 }
             }
         }
