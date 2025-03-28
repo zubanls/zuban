@@ -338,7 +338,7 @@ impl<'a> Instance<'a> {
                                     is_abstract: true,
                                 };
                                 return Some(Inferred::from_type(
-                                    param.type_.expect_positional_type_as_ref().clone(),
+                                    param.type_.expect_positional_type().clone(),
                                 ));
                             }
                         }

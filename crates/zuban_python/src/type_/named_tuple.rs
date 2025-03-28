@@ -93,7 +93,7 @@ impl NamedTuple {
                 Tuple::new_fixed_length(
                     self.params()
                         .iter()
-                        .map(|t| t.type_.expect_positional_type_as_ref().clone())
+                        .map(|t| t.type_.expect_positional_type().clone())
                         .collect(),
                 )
             })
@@ -123,7 +123,7 @@ impl NamedTuple {
                 let types = match params.is_empty() {
                     true => "()".into(),
                     false => join_with_commas(params.iter().map(|p| {
-                        let t = p.type_.expect_positional_type_as_ref();
+                        let t = p.type_.expect_positional_type();
                         match generics {
                             Generics::NotDefinedYet { .. } | Generics::None => {
                                 t.format(&format_data)
@@ -190,8 +190,9 @@ impl NamedTuple {
                 for param in self.params() {
                     let mut new_param = param.clone();
                     new_param.has_default = true;
-                    new_param.type_ =
-                        ParamType::KeywordOnly(new_param.type_.expect_positional_type().clone());
+                    new_param.type_ = ParamType::KeywordOnly(
+                        new_param.type_.into_expected_positional_type().clone(),
+                    );
                     params.push(new_param);
                 }
                 Rc::new(CallableContent::new_simple(
@@ -300,7 +301,7 @@ impl NamedTuple {
                         is_final: false,
                         is_abstract: true,
                     };
-                    param.type_.expect_positional_type_as_ref().clone()
+                    param.type_.expect_positional_type().clone()
                 } else {
                     return LookupDetails::none();
                 }

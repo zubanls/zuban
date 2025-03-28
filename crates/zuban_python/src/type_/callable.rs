@@ -62,14 +62,14 @@ impl ParamType {
         }
     }
 
-    pub fn expect_positional_type(self) -> Type {
+    pub fn into_expected_positional_type(self) -> Type {
         match self {
             Self::PositionalOnly(t) | Self::PositionalOrKeyword(t) => t,
             _ => unreachable!(),
         }
     }
 
-    pub fn expect_positional_type_as_ref(&self) -> &Type {
+    pub fn expect_positional_type(&self) -> &Type {
         match &self {
             Self::PositionalOnly(t) | Self::PositionalOrKeyword(t) => t,
             _ => unreachable!(),
@@ -912,12 +912,9 @@ pub fn format_params_as_param_spec(
         format_data.format_param_spec(p, ParamsStyle::CallableParams)
     } else {
         let name = format_data.format_param_spec(p, ParamsStyle::CallableParamsInner);
-        let ps = join_with_commas(params_iter.map(|p| {
-            p.type_
-                .expect_positional_type_as_ref()
-                .format(format_data)
-                .into()
-        }));
+        let ps = join_with_commas(
+            params_iter.map(|p| p.type_.expect_positional_type().format(format_data).into()),
+        );
         if name.is_empty() {
             format!("[{ps}]").into()
         } else {
