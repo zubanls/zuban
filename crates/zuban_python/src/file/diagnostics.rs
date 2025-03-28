@@ -135,9 +135,10 @@ lazy_static::lazy_static! {
 impl Inference<'_, '_, '_> {
     pub fn calculate_diagnostics(&self) -> Result<(), ()> {
         diagnostics_for_scope(NodeRef::new(self.file, 0), || {
+            let file_path = self.file.file_path(self.i_s.db);
+            let _panic_context = utils::panic_context::enter(file_path.to_string());
             debug!(
-                "Diagnostics for module {} ({})",
-                self.file.file_path(self.i_s.db),
+                "Diagnostics for module {file_path} ({})",
                 self.file.file_index(),
             );
             debug_assert!(self.i_s.is_file_context());

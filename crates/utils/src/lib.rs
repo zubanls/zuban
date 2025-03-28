@@ -1,3 +1,5 @@
+pub mod panic_context;
+
 use std::{cell::UnsafeCell, fmt, path::PathBuf, pin::Pin};
 
 use fnv::{FnvHashMap, FnvHashSet};
