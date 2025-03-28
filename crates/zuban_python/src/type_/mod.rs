@@ -1114,14 +1114,12 @@ impl Type {
     }
 
     pub fn find_in_type(&self, db: &Database, check: &mut impl FnMut(&Type) -> bool) -> bool {
+        if check(self) {
+            return true;
+        }
         match self {
             Self::Class(c) => {
-                check(self)
-                    || Generics::from_class_generics(
-                        db,
-                        ClassNodeRef::from_link(db, c.link),
-                        &c.generics,
-                    )
+                Generics::from_class_generics(db, ClassNodeRef::from_link(db, c.link), &c.generics)
                     .iter(db)
                     .any(|generic| generic.find_in_type(db, check))
             }
@@ -1129,19 +1127,16 @@ impl Type {
             Self::FunctionOverload(intersection) => intersection
                 .iter_functions()
                 .any(|c| c.find_in_type(db, check)),
-            Self::Type(t) => check(self) || t.find_in_type(db, check),
+            Self::Type(t) => t.find_in_type(db, check),
             Self::Tuple(tup) => tup.find_in_type(db, check),
-            Self::Callable(content) => check(self) || content.find_in_type(db, check),
-            Self::TypedDict(d) => {
-                check(self)
-                    || match &d.generics {
-                        TypedDictGenerics::Generics(gs) => {
-                            gs.iter().any(|g| Generic::new(g).find_in_type(db, check))
-                        }
-                        TypedDictGenerics::None | TypedDictGenerics::NotDefinedYet(_) => false,
-                    }
-            }
-            _ => check(self),
+            Self::Callable(content) => content.find_in_type(db, check),
+            Self::TypedDict(d) => match &d.generics {
+                TypedDictGenerics::Generics(gs) => {
+                    gs.iter().any(|g| Generic::new(g).find_in_type(db, check))
+                }
+                TypedDictGenerics::None | TypedDictGenerics::NotDefinedYet(_) => false,
+            },
+            _ => false,
         }
     }
 
