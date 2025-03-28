@@ -1228,52 +1228,6 @@ impl<'db> Block<'db> {
             StmtLikeIterator::from_stmt_iterator(first, iterator)
         }
     }
-
-    pub fn search_relevant_untyped_nodes(&self) -> RelevantUntypedNodes<'db> {
-        const SEARCH: &[PyNodeType] = &[
-            Nonterminal(primary),
-            Nonterminal(import_name),
-            Nonterminal(import_from),
-            Nonterminal(assignment),
-            Nonterminal(class_def),
-            Nonterminal(function_def),
-        ];
-        RelevantUntypedNodes(self.node.search(SEARCH, false))
-    }
-}
-
-// A bit special, since this does not make much sense except for zuban's NameBinder.
-pub enum RelevantUntypedNode<'db> {
-    ImportFrom(ImportFrom<'db>),
-    ImportName(ImportName<'db>),
-    Primary(Primary<'db>),
-    Assignment(Assignment<'db>),
-    ClassDef(ClassDef<'db>),
-    FunctionDef(FunctionDef<'db>),
-}
-pub struct RelevantUntypedNodes<'db>(SearchIterator<'db>);
-
-impl<'db> Iterator for RelevantUntypedNodes<'db> {
-    type Item = RelevantUntypedNode<'db>;
-    #[inline]
-    fn next(&mut self) -> Option<Self::Item> {
-        self.0.next().map(|n| {
-            if n.is_type(Nonterminal(primary)) {
-                RelevantUntypedNode::Primary(Primary::new(n))
-            } else if n.is_type(Nonterminal(assignment)) {
-                RelevantUntypedNode::Assignment(Assignment::new(n))
-            } else if n.is_type(Nonterminal(class_def)) {
-                RelevantUntypedNode::ClassDef(ClassDef::new(n))
-            } else if n.is_type(Nonterminal(function_def)) {
-                RelevantUntypedNode::FunctionDef(FunctionDef::new(n))
-            } else if n.is_type(Nonterminal(import_from)) {
-                RelevantUntypedNode::ImportFrom(ImportFrom::new(n))
-            } else {
-                debug_assert_eq!(n.type_(), Nonterminal(import_name));
-                RelevantUntypedNode::ImportName(ImportName::new(n))
-            }
-        })
-    }
 }
 
 impl<'db> ElseBlock<'db> {

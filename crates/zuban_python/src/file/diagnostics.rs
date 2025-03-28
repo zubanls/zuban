@@ -529,9 +529,37 @@ impl Inference<'_, '_, '_> {
     }
 
     fn calc_untyped_block_diagnostics(&self, block: Block, from_type_var_value: bool) {
-        for interesting in block.search_relevant_untyped_nodes() {
-            match interesting {
-                RelevantUntypedNode::Primary(p) => {
+        let check_class = |class: ClassDef| {
+            // Classes need to be initialized, otherwise there can be issues when they are
+            // references e.g. in annotations in untyped code.
+            cache_class_name(NodeRef::new(self.file, class.name_def().index()), class);
+            NodeRef::new(self.file, class.index()).ensure_cached_class_infos(self.i_s);
+            self.calc_untyped_block_diagnostics(class.block(), from_type_var_value)
+        };
+        let check_func = |func: FunctionDef| {
+            self.calc_untyped_block_diagnostics(func.unpack().3, from_type_var_value)
+        };
+        let check_for = |for_stmt: ForStmt| {
+            let (_, _, block, else_block) = for_stmt.unpack();
+            self.calc_untyped_block_diagnostics(block, from_type_var_value);
+            if let Some(else_block) = else_block {
+                self.calc_untyped_block_diagnostics(else_block.block(), from_type_var_value)
+            }
+        };
+        let check_with = |with_stmt: WithStmt| {
+            self.calc_untyped_block_diagnostics(with_stmt.unpack().1, from_type_var_value)
+        };
+        'outer: for stmt_like in block.iter_stmt_likes() {
+            match stmt_like.node {
+                StmtLikeContent::StarExpressions(star_exprs) => {
+                    let Some(expr) = star_exprs.maybe_simple_expression() else {
+                        continue;
+                    };
+                    let ExpressionContent::ExpressionPart(ExpressionPart::Primary(p)) =
+                        expr.unpack()
+                    else {
+                        continue;
+                    };
                     let PrimaryOrAtom::Atom(atom) = p.first() else {
                         continue;
                     };
@@ -560,7 +588,7 @@ impl Inference<'_, '_, '_> {
                         }
                     }
                 }
-                RelevantUntypedNode::Assignment(a) => {
+                StmtLikeContent::Assignment(a) => {
                     let from = NodeRef::new(self.file, a.index());
                     let add_annotation_in_untyped_issue = || {
                         if !from_type_var_value {
@@ -596,6 +624,7 @@ impl Inference<'_, '_, '_> {
                                 Some(ComplexPoint::IndirectFinal(_))
                             ) {
                                 value.clone().save_redirect(self.i_s, self.file, index);
+                            }
                             */
                             self.ensure_cached_annotation(annotation, right_side.is_some());
                             if let Target::Name(n) | Target::NameExpression(_, n) = target {
@@ -615,17 +644,75 @@ impl Inference<'_, '_, '_> {
                         }
                     };
                 }
-                RelevantUntypedNode::ImportFrom(i) => self.cache_import_from(i),
-                RelevantUntypedNode::ImportName(i) => self.cache_import_name(i),
-                RelevantUntypedNode::FunctionDef(_func) => {
-                    // TODO
+                StmtLikeContent::ImportFrom(i) => self.cache_import_from(i),
+                StmtLikeContent::ImportName(i) => self.cache_import_name(i),
+                StmtLikeContent::ClassDef(class) => check_class(class),
+                StmtLikeContent::FunctionDef(func) => check_func(func),
+                StmtLikeContent::Decorated(dec) => match dec.decoratee() {
+                    Decoratee::ClassDef(c) => check_class(c),
+                    Decoratee::FunctionDef(f) | Decoratee::AsyncFunctionDef(f) => check_func(f),
+                },
+                StmtLikeContent::AsyncStmt(async_stmt) => match async_stmt.unpack() {
+                    AsyncStmtContent::FunctionDef(f) => check_func(f),
+                    AsyncStmtContent::ForStmt(for_stmt) => check_for(for_stmt),
+                    AsyncStmtContent::WithStmt(w) => check_with(w),
+                },
+                StmtLikeContent::IfStmt(if_stmt) => {
+                    for b in if_stmt.iter_blocks() {
+                        let name_binder_check = self
+                            .file
+                            .points
+                            .get(b.first_leaf_index())
+                            .maybe_calculated_and_specific();
+                        let block = match b {
+                            IfBlockType::If(_, block) => block,
+                            IfBlockType::Else(e) => e.block(),
+                        };
+                        match name_binder_check {
+                            Some(
+                                Specific::IfBranchAlwaysReachableInTypeCheckingBlock
+                                | Specific::IfBranchAlwaysReachableInNameBinder,
+                            ) => self.calc_untyped_block_diagnostics(block, from_type_var_value),
+                            Some(Specific::IfBranchAlwaysUnreachableInNameBinder) => {
+                                continue 'outer
+                            }
+                            Some(Specific::IfBranchAfterAlwaysReachableInNameBinder) => {
+                                continue 'outer
+                            }
+                            _ => self.calc_untyped_block_diagnostics(block, from_type_var_value),
+                        }
+                    }
                 }
-                RelevantUntypedNode::ClassDef(class) => {
-                    // Classes need to be initialized, otherwise there can be issues when they are
-                    // references e.g. in annotations in untyped code.
-                    cache_class_name(NodeRef::new(self.file, class.name_def().index()), class);
-                    NodeRef::new(self.file, class.index()).ensure_cached_class_infos(self.i_s);
+                StmtLikeContent::WhileStmt(while_stmt) => {
+                    let (_, block, else_block) = while_stmt.unpack();
+                    self.calc_untyped_block_diagnostics(block, from_type_var_value);
+                    if let Some(else_block) = else_block {
+                        self.calc_untyped_block_diagnostics(else_block.block(), from_type_var_value)
+                    }
                 }
+                StmtLikeContent::ForStmt(for_stmt) => check_for(for_stmt),
+                StmtLikeContent::TryStmt(try_stmt) => {
+                    for b in try_stmt.iter_blocks() {
+                        let block = match b {
+                            TryBlockType::Try(b) => b,
+                            TryBlockType::Except(e) => e.unpack().1,
+                            TryBlockType::ExceptStar(e) => e.unpack().1,
+                            TryBlockType::Else(e) => e.block(),
+                            TryBlockType::Finally(f) => f.block(),
+                        };
+                        self.calc_untyped_block_diagnostics(block, from_type_var_value)
+                    }
+                }
+                StmtLikeContent::WithStmt(w) => check_with(w),
+                StmtLikeContent::MatchStmt(match_stmt) => {
+                    for case_block in match_stmt.unpack().1 {
+                        self.calc_untyped_block_diagnostics(
+                            case_block.unpack().2,
+                            from_type_var_value,
+                        )
+                    }
+                }
+                _ => (),
             }
         }
     }
