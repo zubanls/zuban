@@ -562,10 +562,12 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                                 .enumerate()
                                 .map(|(i, p)| {
                                     let mut p = p.clone();
-                                    if i == 0 {
-                                        p.type_ = ParamType::PositionalOnly(Type::Type(Rc::new(
-                                            p.type_.expect_positional_type(),
-                                        )));
+                                    if let Some(t) = p.type_.maybe_positional_type() {
+                                        if i == 0 {
+                                            p.type_ = ParamType::PositionalOnly(Type::Type(
+                                                Rc::new(t.clone()),
+                                            ));
+                                        }
                                     }
                                     p
                                 })

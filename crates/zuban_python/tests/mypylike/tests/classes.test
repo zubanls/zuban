@@ -1070,6 +1070,16 @@ class Meta(Generic[T]): ...
 
 class Foo(metaclass=Meta[T]): ...  # E: Invalid metaclass "Meta[T]"
 
+[case dunder_class_getitem_with_star_args_kwargs]
+from typing import Any
+class Typed:
+    def __class_getitem__(*args: Any, **kwargs: Any) -> None: ...
+class Untyped:
+    def __class_getitem__(*args, **kwargs): ...
+# TODO these errors are probably wrong, because __class_getitem__, but for now just don't crash
+Typed[int, str]  # E: "Typed" expects no type arguments, but 2 given
+Untyped[int, str]  # E: "Untyped" expects no type arguments, but 2 given
+
 [case invalid_overload_inits_used_as_callable]
 from typing import Callable, overload, Any
 
