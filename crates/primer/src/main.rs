@@ -15,6 +15,9 @@ pub struct Cli {
     /// These args are passed to zmypy. You can use -- before --some-arg
     #[arg(num_args = 0..)]
     mypy_args: Vec<String>,
+    /// Skips all projects before this project (sorted alphabetically)
+    #[arg(long)]
+    start_at: Option<String>,
     /// Ignore this specific project
     #[arg(long)]
     ignore: Option<String>,
@@ -25,6 +28,9 @@ fn main() -> ExitCode {
     let cli = Cli::parse();
     let mut projects = vec![];
     if let Some(project) = cli.project {
+        if cli.start_at.is_some() {
+            panic!("It is not possible to use --start-at and a specific project together");
+        }
         projects.push(project);
     } else {
         let entries = fs::read_dir(&primer_projects_dir).unwrap();
@@ -36,6 +42,12 @@ fn main() -> ExitCode {
             })
             .collect();
         projects.sort();
+        if let Some(name) = cli.start_at {
+            let Some(pos) = projects.iter().position(|p| *p == name) else {
+                panic!("Did not found {name} in the project list");
+            };
+            projects.drain(..pos);
+        }
     }
     if let Some(ignore) = cli.ignore {
         projects.retain(|p| p != &ignore);
