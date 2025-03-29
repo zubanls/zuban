@@ -99,7 +99,10 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
             }
             DottedAsNameContent::WithAs(dotted_name, as_name_def) => {
                 let result = self.cache_import_dotted_name(dotted_name, None);
-                debug_assert!(!self.file.points.get(as_name_def.index()).calculated());
+                if cfg!(debug_assertions) {
+                    let p = self.file.points.get(as_name_def.index());
+                    debug_assert!(!p.calculated(), "{p:?}");
+                }
                 let inf = match result {
                     Some(import_result) => import_result.as_inferred(),
                     None => Inferred::new_module_not_found(),
@@ -943,13 +946,18 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                 debug!("TODO lookup in func of sub file")
             } else if let Some(class) = self.i_s.current_class() {
                 if let Some(index) = class.class_storage.class_symbol_table.lookup_symbol(name) {
-                    return Some(StarImportResult::Link(PointLink::new(
-                        class.node_ref.file_index(),
-                        index,
-                    )));
+                    if !NodeRef::new(class.node_ref.file, index)
+                        .name_def_ref_of_name()
+                        .point()
+                        .calculating()
+                    {
+                        return Some(StarImportResult::Link(PointLink::new(
+                            class.node_ref.file_index(),
+                            index,
+                        )));
+                    }
                 }
             }
-
             let super_file = self.i_s.db.loaded_python_file(*super_file);
             if let Some(name_ref) = super_file.lookup_symbol(name) {
                 return Some(StarImportResult::Link(name_ref.as_link()));

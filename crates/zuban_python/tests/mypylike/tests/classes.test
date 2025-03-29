@@ -1542,3 +1542,39 @@ if bool():
 class C(list['D.X']): ...  # E: Name "D.X" is not defined
 
 class D: ...
+
+[case class_forward_reference_annotated_attribute_with_same_name1]
+import x
+import x as z
+class C:
+    x: "x.D"
+    z: "z.D"
+
+    def foo(self) -> None:
+        x: "x.D"
+        z: "z.D"
+
+def foo(self) -> None:
+    x: "x.D"
+    z: "z.D"
+
+reveal_type(C.x)  # N: Revealed type is "x.D"
+z: z.D # E: Name "z" already defined (by an import)
+
+[file x.py]
+class D: ...
+
+[case class_forward_reference_annotated_attribute_with_same_name2]
+class C:
+    x: "x.D"  # E: Name "x" is not defined
+    z: "z.D"  # E: Name "z" is not defined
+
+    def foo(self) -> None:
+        x: "x.D"  # E: Name "x" is not defined
+        z: "z.D"  # E: Name "z" is not defined
+
+def foo(self) -> None:
+    x: "x.D"  # E: Name "x" is not defined
+    z: "z.D"  # E: Name "z" is not defined
+
+reveal_type(C.x)  # N: Revealed type is "Any"
