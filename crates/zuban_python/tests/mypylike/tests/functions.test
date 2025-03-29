@@ -287,3 +287,8 @@ R = Callable[[], 'R']
 def f(): ...
 def g(y: R): ...
 g(f)
+
+[case func_generator_return_annotation_should_not_crash]
+from typing import Generator
+def f() -> Generator[dict[str, str]]:
+    yield {'': ''}

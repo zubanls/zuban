@@ -1872,6 +1872,26 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         primary: Option<Primary>,
     ) -> Option<(NodeRef<'db>, ClassGenerics)> {
         let primary = primary?;
+        let node_ref = NodeRef::new(self.file, primary.index()).to_db_lifetime(self.i_s.db);
+        let valid_simple_generic = || {
+            Some((
+                node_ref,
+                match slice_type.cst_node {
+                    CSTSliceType::NamedExpression(n) => ClassGenerics::ExpressionWithClassType(
+                        PointLink::new(node_ref.file_index(), n.expression().index()),
+                    ),
+                    CSTSliceType::Slices(slices) => ClassGenerics::SlicesWithClassTypes(
+                        PointLink::new(node_ref.file_index(), slices.index()),
+                    ),
+                    CSTSliceType::StarredExpression(_) => return None,
+                    CSTSliceType::Slice(_) => unreachable!(),
+                },
+            ))
+        };
+        if node_ref.point().calculated() {
+            debug_assert_eq!(node_ref.point().specific(), Specific::SimpleGeneric);
+            return valid_simple_generic();
+        }
         if self.origin != TypeComputationOrigin::ParamTypeCommentOrAnnotation {
             return None;
         }
@@ -1911,27 +1931,14 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         }
         if iterator.next().is_none() {
             // We have no unfinished iterator and can therefore safely return.
-            let node_ref = NodeRef::new(self.file, primary.index()).to_db_lifetime(self.i_s.db);
             let redirect_node_ref = NodeRef::new(self.file, primary.first_child_index());
             debug_assert!(
                 !redirect_node_ref.point().calculated(),
-                "For now nothing sets this, but this could change"
+                "For now nothing sets this, but this could change {redirect_node_ref:?}, {node_ref:?}"
             );
             redirect_node_ref.set_point(class.node_ref.as_redirection_point(Locality::Todo));
             node_ref.set_point(Point::new_specific(Specific::SimpleGeneric, Locality::Todo));
-            Some((
-                node_ref,
-                match slice_type.cst_node {
-                    CSTSliceType::NamedExpression(n) => ClassGenerics::ExpressionWithClassType(
-                        PointLink::new(node_ref.file_index(), n.expression().index()),
-                    ),
-                    CSTSliceType::Slices(slices) => ClassGenerics::SlicesWithClassTypes(
-                        PointLink::new(node_ref.file_index(), slices.index()),
-                    ),
-                    CSTSliceType::StarredExpression(_) => return None,
-                    CSTSliceType::Slice(_) => unreachable!(),
-                },
-            ))
+            valid_simple_generic()
         } else {
             None
         }
