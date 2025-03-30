@@ -329,18 +329,11 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         }
         debug!("Cache assignment {}", assignment.as_code());
         match assignment.unpack() {
-            AssignmentContent::Normal(targets, _) => {
-                for target in targets {
+            AssignmentContent::Normal(targets, right_side) => {
+                for target in targets.clone() {
                     self.set_calculating_on_target(target);
                 }
-            }
-            AssignmentContent::WithAnnotation(target, _, _) => {
-                self.set_calculating_on_target(target);
-            }
-            AssignmentContent::AugAssign(..) => (),
-        };
-        match assignment.unpack() {
-            AssignmentContent::Normal(targets, right_side) => {
+
                 let type_comment_result = self.check_for_type_comment(assignment);
 
                 let assign_kind = match type_comment_result.as_ref() {
@@ -401,6 +394,8 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 }
             }
             AssignmentContent::WithAnnotation(target, annotation, right_side) => {
+                self.set_calculating_on_target(target.clone());
+
                 self.ensure_cached_annotation(annotation, right_side.is_some());
                 let specific = self.file.points.get(annotation.index()).maybe_specific();
                 let assign_kind = AssignKind::Annotation { specific };
