@@ -1567,82 +1567,63 @@ class D: ...
 [case class_forward_reference_annotated_attribute_with_same_name2]
 class C:
     x: "x.D"  # E: Name "x" is not defined
-    z: "z.D"  # E: Name "z" is not defined
 
     def foo(self) -> None:
         x: "x.D"  # E: Name "x" is not defined
-        z: "z.D"  # E: Name "z" is not defined
 
 def foo(self) -> None:
     x: "x.D"  # E: Name "x" is not defined
-    z: "z.D"  # E: Name "z" is not defined
 
 reveal_type(C.x)  # N: Revealed type is "Any"
 
 [case class_forward_reference_annotated_attribute_with_same_name3]
 class C:
-    x: "x.D"  # E: Name "x" is not defined
-    z: "z.D"  # E: Name "z" is not defined
+    x: "x.D"
 
     def foo(self) -> None:
-        x: "x.D"  # E: Name "x" is not defined
-        z: "z.D"  # E: Name "z" is not defined
+        x: "x.D"
 
 def foo(self) -> None:
-    x: "x.D"  # E: Name "x" is not defined
-    z: "z.D"  # E: Name "z" is not defined
+    x: "x.D"
 
 reveal_type(C.x)  # N: Revealed type is "Any"
-x: x.D
-z: z.D
+x: x.D  # E: Name "x" is not defined
 
 [case class_forward_reference_annotated_attribute_with_same_name4]
-x: x.D
-z: z.D
+x: x.D  # E: Name "x" is not defined
 class C:
-    x: "x.D"  # E: Name "x" is not defined
-    z: "z.D"  # E: Name "z" is not defined
+    x: "x.D"
 
     def foo(self) -> None:
-        x: "x.D"  # E: Name "x" is not defined
-        z: "z.D"  # E: Name "z" is not defined
+        x: "x.D"
 
 def foo(self) -> None:
-    x: "x.D"  # E: Name "x" is not defined
-    z: "z.D"  # E: Name "z" is not defined
+    x: "x.D"
 
 reveal_type(C.x)  # N: Revealed type is "Any"
 
 [case class_forward_reference_annotated_attribute_with_same_name5]
 class C:
-    x: "x.D"  # E: Name "x" is not defined
-    z: "z.D"  # E: Name "z" is not defined
-
-    def foo(self) -> None:
-        x: "x.D"  # E: Name "x" is not defined
-        z: "z.D"  # E: Name "z" is not defined
-
-def foo(self) -> None:
-    x: "x.D"  # E: Name "x" is not defined
-    z: "z.D"  # E: Name "z" is not defined
-
-reveal_type(C.x)  # N: Revealed type is "Any"
-x: "x.D"
-z: "z.D"
-
-[case class_forward_reference_annotated_attribute_with_same_name6]
-x: "x.D"  # E: Name "x" is not defined
-z: "z.D"  # E: Name "z" is not defined
-class C:
-    x: "x.D"  # E: Name "x" is not defined
-    z: "z.D"  # E: Name "z" is not defined
+    x: "x.D"
 
     def foo(self) -> None:
         x: "x.D"
-        z: "z.D"
 
 def foo(self) -> None:
     x: "x.D"
-    z: "z.D"
+
+reveal_type(C.x)  # N: Revealed type is "Any"
+x: "x.D"  # E: Name "x" is not defined
+
+[case class_forward_reference_annotated_attribute_with_same_name6]
+x: "x.D"  # E: Name "x" is not defined
+class C:
+    x: "x.D"
+
+    def foo(self) -> None:
+        x: "x.D"
+
+def foo(self) -> None:
+    x: "x.D"
 
 reveal_type(C.x)  # N: Revealed type is "Any"

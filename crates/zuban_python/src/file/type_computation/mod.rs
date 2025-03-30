@@ -106,7 +106,7 @@ pub(super) enum InvalidVariableType<'a> {
     Other,
     Slice,
     InlineTypedDict,
-    TypeNotFound { name_def: NameDef<'a> },
+    NameError { name: &'a str },
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -146,7 +146,9 @@ impl InvalidVariableType<'_> {
                     Box::from("See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases"),
                 )
             }
-            Self::TypeNotFound { name_def } => IssueKind::TypeNotFound,
+            Self::NameError { name } => IssueKind::NameError {
+                name: (*name).into(),
+            },
             Self::Function { node_ref } => {
                 add_issue(IssueKind::InvalidType(
                     format!(

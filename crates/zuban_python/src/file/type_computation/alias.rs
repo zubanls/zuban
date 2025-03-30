@@ -59,7 +59,9 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                     if !p.calculated() {
                         if p.calculating() {
                             return Lookup::T(TypeContent::InvalidVariable(
-                                InvalidVariableType::TypeNotFound { name_def },
+                                InvalidVariableType::NameError {
+                                    name: name_def.as_code(),
+                                },
                             ));
                         }
                         annotation_ref.set_point(Point::new_calculating());

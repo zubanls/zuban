@@ -942,6 +942,11 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
         }
         if let Some(super_file) = &self.file.super_file {
             // This sub file currently means we're in a type definition.
+            // Here we prefer modules, which is a debatable choice.
+            let super_file = self.i_s.db.loaded_python_file(*super_file);
+            if let Some(name_ref) = super_file.lookup_symbol(name) {
+                return Some(StarImportResult::Link(name_ref.as_link()));
+            }
             if let Some(_func) = self.i_s.current_function() {
                 debug!("TODO lookup in func of sub file")
             } else if let Some(class) = self.i_s.current_class() {
@@ -951,10 +956,6 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                         index,
                     )));
                 }
-            }
-            let super_file = self.i_s.db.loaded_python_file(*super_file);
-            if let Some(name_ref) = super_file.lookup_symbol(name) {
-                return Some(StarImportResult::Link(name_ref.as_link()));
             }
             self.with_new_file(super_file)
                 .lookup_from_star_import_with_node_index(name, false, None, star_imports_seen)
