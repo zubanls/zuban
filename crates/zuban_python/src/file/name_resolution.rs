@@ -946,16 +946,10 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                 debug!("TODO lookup in func of sub file")
             } else if let Some(class) = self.i_s.current_class() {
                 if let Some(index) = class.class_storage.class_symbol_table.lookup_symbol(name) {
-                    if !NodeRef::new(class.node_ref.file, index)
-                        .name_def_ref_of_name()
-                        .point()
-                        .calculating()
-                    {
-                        return Some(StarImportResult::Link(PointLink::new(
-                            class.node_ref.file_index(),
-                            index,
-                        )));
-                    }
+                    return Some(StarImportResult::Link(PointLink::new(
+                        class.node_ref.file_index(),
+                        index,
+                    )));
                 }
             }
             let super_file = self.i_s.db.loaded_python_file(*super_file);
