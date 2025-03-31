@@ -452,6 +452,10 @@ x: C
 y: n
 z: nn
 
+x2: C
+y2: n
+z2: nn
+
 reveal_type(x)  # N: Revealed type is "Any"
 reveal_type(y)  # N: Revealed type is "Any"
 reveal_type(z)  # N: Revealed type is "Any"

@@ -128,19 +128,6 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             ImportFromTargets::Iterator(as_names) => {
                 let from_first_part = self.import_from_first_part(imp);
                 for as_name in as_names {
-                    /*
-                    if self
-                        .file
-                        .points
-                        .get(as_name.name_def().index())
-                        .calculated()
-                    {
-                        // It's possible that the import was already calculated for type
-                        // computation.
-                        continue;
-                    }
-                    */
-
                     self.cache_import_from_part(
                         &from_first_part,
                         as_name,
