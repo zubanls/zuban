@@ -81,7 +81,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
     pub(super) fn assign_dotted_as_name(
         &self,
         dotted_as_name: DottedAsName,
-        assign_to_name_def: impl FnOnce(NameDef, Inferred),
+        assign_to_name_def: impl FnOnce(NameDef, Option<Inferred>),
     ) {
         match dotted_as_name.unpack() {
             DottedAsNameContent::Simple(name_def, rest) => {
@@ -89,13 +89,8 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                     // It was already assigned (probably during type computation)
                     return;
                 }
-
                 let result = self.global_import(name_def.name());
-                let inf = match &result {
-                    Some(import_result) => import_result.as_inferred(),
-                    None => Inferred::new_module_not_found(),
-                };
-                assign_to_name_def(name_def, inf);
+                assign_to_name_def(name_def, result.as_ref().map(|r| r.as_inferred()));
                 if let Some(rest) = rest {
                     if result.is_some() {
                         self.cache_import_dotted_name(rest, result);
@@ -113,7 +108,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                     Some(import_result) => import_result.as_inferred(),
                     None => Inferred::new_module_not_found(),
                 };
-                assign_to_name_def(as_name_def, inf);
+                assign_to_name_def(as_name_def, Some(inf));
             }
         }
     }
@@ -245,7 +240,14 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                 debug_assert!(!p.calculated(), "{p:?}");
                 debug_assert!(!p.calculating(), "{p:?}");
             }
-            if self.is_allowed_to_assign_on_import_without_narrowing(name_def) {
+            let write_name_def = self.is_allowed_to_assign_on_import_without_narrowing(name_def);
+            let inf = inf.unwrap_or_else(|| {
+                if write_name_def {
+                    self.add_module_not_found(name_def.name())
+                }
+                Inferred::new_module_not_found()
+            });
+            if write_name_def {
                 found_inf = Some(inf.save_redirect(self.i_s, self.file, name_def.index()))
             } else {
                 found_inf = Some(inf);
@@ -335,7 +337,11 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                 if let Some(base) = base {
                     infer_name(self, base, name)
                 } else {
-                    self.global_import(name)
+                    let result = self.global_import(name);
+                    if result.is_none() {
+                        self.add_module_not_found(name)
+                    }
+                    result
                 }
             }
             DottedNameContent::DottedName(dotted_name, name) => {
@@ -359,6 +365,17 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
             )),
         }
         result
+    }
+
+    pub(super) fn add_module_not_found(&self, name: Name) {
+        if !self.flags().ignore_missing_imports {
+            self.add_issue(
+                name.index(),
+                IssueKind::ModuleNotFound {
+                    module_name: Box::from(name.as_str()),
+                },
+            );
+        }
     }
 
     pub(super) fn cache_import_from_part(
@@ -472,14 +489,6 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                 "Global import '{}': {:?}",
                 name.as_code(),
                 result.debug_info(self.i_s.db),
-            );
-        }
-        if result.is_none() && !self.flags().ignore_missing_imports {
-            self.add_issue(
-                name.index(),
-                IssueKind::ModuleNotFound {
-                    module_name: Box::from(name.as_str()),
-                },
             );
         }
         result

@@ -450,16 +450,20 @@ class C: ...
 [case import_twice_at_end]
 x: C
 y: n
+z: nn
 
 reveal_type(x)  # N: Revealed type is "Any"
 reveal_type(y)  # N: Revealed type is "Any"
+reveal_type(z)  # N: Revealed type is "Any"
 
 from m import C  # E: Module "m" has no attribute "C"
 from m import C  # E: Module "m" has no attribute "C" \
                  # E: Name "C" already defined (possibly by an import)
-import n  # E: Cannot find implementation or library stub for module named "n" \
-          # E: Cannot find implementation or library stub for module named "n"
+import n  # E: Cannot find implementation or library stub for module named "n"
 import n  # E: Cannot find implementation or library stub for module named "n" \
           # E: Name "n" already defined (possibly by an import)
+import m.undefined as nn  # E: Cannot find implementation or library stub for module named "m.undefined"
+import m.undefined as nn  # E: Cannot find implementation or library stub for module named "m.undefined" \
+                          # E: Name "nn" already defined (possibly by an import)
 
-[file m.py]
+[file m/__init__.py]
