@@ -268,8 +268,12 @@ impl CalculatingTypeArg {
 
     fn update_lower_bound(&mut self, i_s: &InferenceState, lower: BoundKind) {
         let common = |b: &BoundKind, lower: BoundKind| {
-            b.common_base_type(i_s, &lower)
-                .expect("It feels like this should never happend, because matching happened before")
+            b.common_base_type(i_s, &lower).unwrap_or_else(|| {
+                recoverable_error!(
+                    "Why is there no common base type when matching happened before?"
+                );
+                lower
+            })
         };
         self.type_ = match &self.type_ {
             Bound::Lower(old) => Bound::Lower(common(old, lower)),
