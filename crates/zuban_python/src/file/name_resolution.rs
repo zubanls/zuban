@@ -145,6 +145,18 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
             }
             ImportFromTargets::Iterator(as_names) => {
                 for as_name in as_names {
+                    /*
+                    if self
+                        .file
+                        .points
+                        .get(as_name.name_def().index())
+                        .calculated()
+                    {
+                        // It's possible that the import was already calculated for type
+                        // computation.
+                        continue;
+                    }
+                    */
                     self.cache_import_from_part(&from_first_part, as_name, &assign_to_name_def)
                 }
             }
@@ -378,13 +390,18 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
             Some(imp) => {
                 let add_issue_if_not_ignored = || {
                     if !self.flags().ignore_missing_imports {
-                        self.add_issue(
-                            import_name.index(),
-                            IssueKind::ImportAttributeError {
-                                module_name: Box::from(imp.qualified_name(self.i_s.db)),
-                                name: Box::from(import_name.as_str()),
-                            },
-                        );
+                        // If we don't assign we don't have to add an error
+                        if !self.stop_on_assignments
+                            || self.is_allowed_to_assign_on_import_without_narrowing(name_def)
+                        {
+                            self.add_issue(
+                                import_name.index(),
+                                IssueKind::ImportAttributeError {
+                                    module_name: Box::from(imp.qualified_name(self.i_s.db)),
+                                    name: Box::from(import_name.as_str()),
+                                },
+                            );
+                        }
                     }
                 };
 
