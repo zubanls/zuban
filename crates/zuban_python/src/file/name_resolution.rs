@@ -1,7 +1,7 @@
 use config::TypeCheckerFlags;
 use parsa_python_cst::{
     DefiningStmt, DottedAsName, DottedAsNameContent, DottedName, DottedNameContent, ImportFrom,
-    ImportFromAsName, ImportFromTargets, Name, NameDef, NodeIndex, NAME_DEF_TO_NAME_DIFFERENCE,
+    ImportFromAsName, Name, NameDef, NodeIndex, NAME_DEF_TO_NAME_DIFFERENCE,
 };
 
 use crate::{
@@ -135,7 +135,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
         self.star_import_file(star_import)
     }
 
-    fn assign_star_import(&self, import_from: ImportFrom, star_index: NodeIndex) {
+    pub(super) fn assign_star_import(&self, import_from: ImportFrom, star_index: NodeIndex) {
         let from_first_part = self.import_from_first_part(import_from);
         // Nothing to do here, was calculated earlier
         let point = match from_first_part {
@@ -154,35 +154,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
         self.file.points.set(star_index, point);
     }
 
-    pub(super) fn assign_import_from_names(
-        &self,
-        imp: ImportFrom,
-        assign_to_name_def: impl Fn(NameDef, PointResolution<'file>, Option<PointLink>),
-    ) {
-        match imp.unpack_targets() {
-            ImportFromTargets::Star(keyword) => self.assign_star_import(imp, keyword.index()),
-            ImportFromTargets::Iterator(as_names) => {
-                let from_first_part = self.import_from_first_part(imp);
-                for as_name in as_names {
-                    /*
-                    if self
-                        .file
-                        .points
-                        .get(as_name.name_def().index())
-                        .calculated()
-                    {
-                        // It's possible that the import was already calculated for type
-                        // computation.
-                        continue;
-                    }
-                    */
-                    self.cache_import_from_part(&from_first_part, as_name, &assign_to_name_def)
-                }
-            }
-        }
-    }
-
-    pub fn import_from_first_part(&self, import_from: ImportFrom) -> Option<ImportResult> {
+    pub(super) fn import_from_first_part(&self, import_from: ImportFrom) -> Option<ImportResult> {
         let (level, dotted_name) = import_from.level_with_dotted_name();
         let maybe_level_file = (level > 0)
             .then(|| {
@@ -389,7 +361,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
         result
     }
 
-    fn cache_import_from_part(
+    pub(super) fn cache_import_from_part(
         &self,
         from_first_part: &Option<ImportResult>,
         as_name: ImportFromAsName,

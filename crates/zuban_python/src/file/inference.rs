@@ -119,9 +119,35 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         if self.file.points.get(imp.index()).calculated() {
             return;
         }
-        self.assign_import_from_names(imp, |name_def, pr, redirect_to_link| {
-            self.assign_to_import_from_name(name_def, pr, redirect_to_link)
-        });
+        match imp.unpack_targets() {
+            ImportFromTargets::Star(keyword) => self.assign_star_import(imp, keyword.index()),
+            ImportFromTargets::Iterator(as_names) => {
+                let from_first_part = self.import_from_first_part(imp);
+                for as_name in as_names {
+                    /*
+                    if self
+                        .file
+                        .points
+                        .get(as_name.name_def().index())
+                        .calculated()
+                    {
+                        // It's possible that the import was already calculated for type
+                        // computation.
+                        continue;
+                    }
+                    */
+
+                    self.cache_import_from_part(
+                        &from_first_part,
+                        as_name,
+                        |name_def, pr, redirect_to_link| {
+                            self.assign_to_import_from_name(name_def, pr, redirect_to_link)
+                        },
+                    )
+                }
+            }
+        }
+
         self.file.points.set(
             imp.index(),
             Point::new_specific(Specific::Analyzed, Locality::Todo),
